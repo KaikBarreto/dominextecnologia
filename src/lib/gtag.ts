@@ -19,7 +19,7 @@
 export const GOOGLE_ADS_ID = 'AW-18492767160';
 
 /**
- * Rótulo da ação de conversão "Inscrições".
+ * Rótulo da ação de conversão "Inscrição".
  *
  * Onde achar: Google Ads → Metas → Conversões → a ação → "Configurar tag" →
  * o snippet de evento mostra `send_to: 'AW-18492767160/XXXXXXXX'`. O rótulo é
@@ -27,9 +27,33 @@ export const GOOGLE_ADS_ID = 'AW-18492767160';
  *
  * Vazio = a tag global continua carregando normal (já alimenta remarketing e
  * o Google continua reconhecendo o clique do anúncio), mas a conversão de
- * cadastro não é reportada. Preencher assim que o Google emitir o rótulo.
+ * cadastro não é reportada.
  */
-export const SIGNUP_CONVERSION_LABEL = '';
+export const SIGNUP_CONVERSION_LABEL = '0ldjCNWn4Y8dELj3hPJE';
+
+/**
+ * Moeda do valor reportado. O snippet que o Google gerou vinha com `EUR`
+ * porque a CONTA do Ads foi aberta em euro (Portugal). Aqui mandamos `BRL`,
+ * que é a moeda real do negócio: os planos são R$ 197 / R$ 447 / R$ 697.
+ *
+ * O Google aceita moeda diferente da conta e converte pela taxa do dia, então
+ * isto não quebra nada. Mas o relatório e a COBRANÇA da conta continuam em
+ * euro, e a moeda de uma conta do Ads não pode ser alterada depois de criada.
+ * Corrigir isso de verdade exige conta nova em BRL — e aí tanto GOOGLE_ADS_ID
+ * quanto SIGNUP_CONVERSION_LABEL mudam, e são só estas duas constantes.
+ */
+export const CONVERSION_CURRENCY = 'BRL';
+
+/**
+ * Valor atribuído a um cadastro novo. Simbólico de propósito: o cadastro é
+ * teste grátis de 14 dias sem cartão, ninguém pagou nada ainda, então não
+ * existe receita real pra reportar nesse instante.
+ *
+ * Como todas as conversões saem com o mesmo valor, o número não influencia o
+ * lance (só o relatório). Calibrar só faz sentido no dia em que medirmos a
+ * conversão de teste em assinatura paga e quisermos ROAS de verdade.
+ */
+export const SIGNUP_CONVERSION_VALUE = 1;
 
 declare global {
   interface Window {
@@ -86,6 +110,8 @@ export function trackSignupConversion(): void {
   try {
     window.gtag('event', 'conversion', {
       send_to: `${GOOGLE_ADS_ID}/${SIGNUP_CONVERSION_LABEL}`,
+      value: SIGNUP_CONVERSION_VALUE,
+      currency: CONVERSION_CURRENCY,
     });
   } catch {
     // ignora: medição de anúncio nunca atrapalha o fluxo do usuário
