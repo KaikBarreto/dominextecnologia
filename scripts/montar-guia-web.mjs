@@ -25,7 +25,6 @@ const SECOES = path.join(ROOT, "secoes");
 const DEST = path.resolve("public/guia-tecnico");
 const CAPS = JSON.parse(fs.readFileSync(path.join(ROOT, "grade/capitulos.json"), "utf8"));
 const VERSAO = (fs.readFileSync("src/config/version.ts", "utf8").match(/["'](\d+\.\d+\.\d+)["']/) || [])[1] || "";
-const PDF_URL = "https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/guia-tecnico/Guia-Tecnico-Dominex.pdf";
 const DIM_ARQ = path.join(ROOT, "img-otim/_dimensoes.json");
 const DIMENSOES = fs.existsSync(DIM_ARQ) ? JSON.parse(fs.readFileSync(DIM_ARQ, "utf8")) : {};
 
@@ -389,9 +388,14 @@ function main() {
 
   // ativos
   fs.mkdirSync(path.join(DEST, "img"), { recursive: true });
-  for (const f of fs.readdirSync(path.join(ROOT, "img-otim"))) {
-    if (f.startsWith("_")) continue;
-    fs.copyFileSync(path.join(ROOT, "img-otim", f), path.join(DEST, "img", f));
+  const imagensOtimizadas = path.join(ROOT, "img-otim");
+  if (fs.existsSync(imagensOtimizadas)) {
+    for (const f of fs.readdirSync(imagensOtimizadas)) {
+      if (f.startsWith("_")) continue;
+      fs.copyFileSync(path.join(imagensOtimizadas, f), path.join(DEST, "img", f));
+    }
+  } else {
+    console.warn("⚠️  img-otim local não encontrado — preservando as imagens já publicadas.");
   }
   fs.copyFileSync(path.join(ROOT, "marca/logo-horizontal.png"), path.join(DEST, "logo.png"));
   // Montserrat self-hosted (mesma fonte já usada pelo app via @fontsource) —
@@ -400,17 +404,8 @@ function main() {
   for (const f of fs.readdirSync(path.join(ROOT, "fonts"))) {
     fs.copyFileSync(path.join(ROOT, "fonts", f), path.join(DEST, "fonts", f));
   }
-  // O PDF NÃO entra no repositório: regerado por inteiro a cada release, viraria
-  // uma cópia nova no histórico do git toda vez. Ele mora no Storage e a página
-  // só aponta pra lá. Publicar com: node scripts/publicar-pdf-guia.mjs
-  const pdfOrigem = path.join(ROOT, "Guia-Tecnico-Dominex.pdf");
-  let pesoPdf = "";
-  if (fs.existsSync(pdfOrigem)) {
-    pesoPdf = `${(fs.statSync(pdfOrigem).size / 1024 / 1024).toFixed(1)} MB`;
-  } else {
-    console.warn("⚠️  PDF não encontrado — o botão de baixar vai apontar pro Storage mesmo assim.");
-  }
-  // se sobrou cópia antiga dentro do public, remove (senão vai pro commit sem querer)
+  // O PDF comercial não é publicado nem referenciado nesta rota. Se sobrou uma
+  // cópia antiga dentro de public, remove para não voltar ao site por acidente.
   const pdfNoPublic = path.join(DEST, "Guia-Tecnico-Dominex.pdf");
   if (fs.existsSync(pdfNoPublic)) fs.unlinkSync(pdfNoPublic);
 
@@ -548,11 +543,6 @@ function main() {
   <img alt="">
   <div class="legenda"></div>
 </div>
-
-<a class="baixar" href="${PDF_URL}" download>
-  <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-  Baixar o PDF${pesoPdf ? ` <span class="peso">${pesoPdf}</span>` : ""}
-</a>
 
 <script>
 // ---------------- busca ----------------
@@ -864,8 +854,6 @@ Atualizado em ${hoje} · versão do sistema ${VERSAO ? "v" + VERSAO : "—"} · 
 - [Guia completo em markdown](/guia-tecnico/guia.md): o documento inteiro, seção por seção.
 - [Chunks para recuperação](/guia-tecnico/chunks.jsonl): um JSON por linha, cada pedaço auto-contido, com seção, capítulo, tipo, rotas do sistema, palavras-chave e sinônimos. Tipos: visao_geral, capitulo, problema, faq, glossario.
 - [Índice do corpus](/guia-tecnico/index.json): seções, capítulos e contagem de chunks.
-- [Guia em PDF](${PDF_URL}): mesma coisa, diagramado.
-
 ## Como usar
 
 Para responder dúvida de usuário, prefira os chunks do tipo \`problema\` (sintoma relatado, causa provável, como resolver)

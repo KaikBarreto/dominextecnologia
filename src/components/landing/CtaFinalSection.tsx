@@ -1,8 +1,8 @@
-import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import { useLocale } from '@/lib/i18n';
+import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 
 export default function CtaFinalSection() {
   const ref = useScrollReveal();
@@ -31,9 +31,9 @@ export default function CtaFinalSection() {
             className="bg-primary text-primary-foreground hover:bg-primary/90 px-10 py-6 text-base shadow-brand-glow whitespace-normal h-auto text-center leading-tight"
             asChild
           >
-            <Link to="/cadastro?origem=Site">
+            <WhatsAppCtaLink>
               {t.ctaPrimary} <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
-            </Link>
+            </WhatsAppCtaLink>
           </Button>
           <Button
             size="lg"
@@ -41,7 +41,7 @@ export default function CtaFinalSection() {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 whitespace-normal h-auto text-center leading-tight"
             asChild
           >
-            <Link to="/cadastro?origem=Site">{t.ctaSecondary}</Link>
+            <WhatsAppCtaLink>{t.ctaSecondary}</WhatsAppCtaLink>
           </Button>
         </div>
       </div>

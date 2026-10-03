@@ -3,14 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { useModuleCatalog } from '@/hooks/useModuleCatalog';
-import { PriceAmount } from '@/components/ui/PriceAmount';
 
 interface ModuleGateModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   moduleName: string;
   moduleDescription?: string;
-  modulePrice?: number;
   /**
    * Código do módulo (ex: 'crm', 'rh'). Quando informado, exibe o CTA
    * "Adicionar módulo" que leva direto pra /assinatura?addModule=<code>, abrindo
@@ -24,19 +22,15 @@ export function ModuleGateModal({
   onOpenChange,
   moduleName,
   moduleDescription,
-  modulePrice,
   moduleCode,
 }: ModuleGateModalProps) {
   const navigate = useNavigate();
 
-  // Nome e preço vêm do banco (subscription_modules) quando há moduleCode —
-  // mudança de preço no catálogo reflete aqui sem editar código. As props
-  // (geralmente vindas do MODULE_INFO hardcoded) são fallback enquanto carrega
-  // ou quando o módulo não existe no catálogo.
+  // O nome vem do catálogo autenticado quando há moduleCode. Valores comerciais
+  // ficam restritos ao fluxo de assinatura e não são embutidos neste modal.
   const { getModule } = useModuleCatalog();
   const dbModule = getModule(moduleCode);
   const displayName = dbModule?.name || moduleName;
-  const displayPrice = dbModule?.price != null ? Number(dbModule.price) : modulePrice;
   const displayDescription = moduleDescription || dbModule?.description || undefined;
 
   return (
@@ -55,17 +49,6 @@ export function ModuleGateModal({
             <p className="text-sm text-muted-foreground max-w-sm">{displayDescription}</p>
           )}
         </div>
-
-        {displayPrice != null && displayPrice > 0 && (
-          <div className="bg-muted rounded-lg px-4 py-2 flex items-baseline justify-center gap-1">
-            <span className="text-sm text-muted-foreground">A partir de</span>
-            <PriceAmount
-              value={displayPrice}
-              suffix="/mês"
-              className="text-lg font-bold text-foreground"
-            />
-          </div>
-        )}
 
         <p className="text-sm text-muted-foreground">
           Seu plano atual não inclui este recurso. Faça upgrade para desbloqueá-lo.
@@ -119,54 +102,44 @@ export function ModuleGateModal({
   );
 }
 
-// Metadados locais dos módulos — FALLBACK apenas. Nome e preço canônicos vivem
-// em subscription_modules (ver useModuleCatalog); este mapa cobre o loading e
-// fornece as descrições ricas em PT-BR que o banco não tem. Não confiar nos
-// preços daqui pra exibição: o ModuleGateModal sobrescreve com o valor do banco.
-export const MODULE_INFO: Record<string, { name: string; description: string; price: number }> = {
+// Metadados locais dos módulos — FALLBACK apenas. Nome e condições comerciais
+// canônicos vivem em subscription_modules (ver useModuleCatalog); este mapa
+// cobre o loading e fornece descrições ricas em PT-BR sem embutir preços.
+export const MODULE_INFO: Record<string, { name: string; description: string }> = {
   basic: {
     name: 'Módulo Básico',
     description: 'OS, Agenda, Dashboard, Orçamentos, Serviços, Mapa, Clientes, Equipamentos, Estoque, Financeiro Básico',
-    price: 197,
   },
   contracts: {
     name: 'Gestão de Contratos e PMOC',
     description: 'Gestão de contratos, Portal do Contrato e Portal do PMOC públicos, documentos (TRT, Certificado, Cronograma, Dossiê)',
-    price: 100,
   },
   rh: {
     name: 'Funcionários / RH',
     description: 'Gestão de funcionários, ponto eletrônico, movimentações financeiras de colaboradores',
-    price: 100,
   },
   crm: {
     name: 'CRM/Kanban',
     description: 'Funis Kanban, oportunidades, interações e webhooks de captação',
-    price: 50,
   },
   nfe: {
     name: 'Emissão de Notas Fiscais',
     description: 'Emissão de NFS-e (nota fiscal de serviço) integrada ao sistema',
-    price: 100,
   },
   finance_advanced: {
     name: 'Financeiro Avançado',
     description: 'DRE - Demonstrativo de Resultado, Contas a Pagar e a Receber',
-    price: 50,
   },
   pricing_advanced: {
     name: 'Precificação Avançada',
     description: 'BDI, Custos Globais de recursos, precificação detalhada de serviços e orçamentos',
-    price: 50,
   },
   customer_portal: {
     name: 'Portal do Cliente',
     description: 'Área exclusiva para o cliente acompanhar OS e equipamentos',
-    price: 0,
   },
   white_label: {
     name: 'White Label',
     description: 'Personalização completa da marca: logo, cores e ícone do sistema',
-    price: 50,
   },
 };

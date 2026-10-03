@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Eye, ArrowRight, TrendingUp } from 'lucide-react';
 import { useLocale } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
+import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 
 type CategoryColor = { name: string; color: string };
 
@@ -14,8 +15,6 @@ type TopPost = {
   category: string | null;
   view_count: number | null;
 };
-
-const CTA_LINK = '/cadastro?origem=Blog';
 
 export const BlogSidebar = ({ categoryColors = [] }: { categoryColors?: CategoryColor[] }) => {
   const { locale, messages } = useLocale();
@@ -49,13 +48,12 @@ export const BlogSidebar = ({ categoryColors = [] }: { categoryColors?: Category
         <p className="mb-5 text-sm leading-relaxed text-neutral-600 dark:text-white/55">
           {t.ctaBody}
         </p>
-        <Link
-          to={CTA_LINK}
+        <WhatsAppCtaLink
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
           {t.ctaButton}
           <ArrowRight className="h-4 w-4" />
-        </Link>
+        </WhatsAppCtaLink>
         <p className="mt-2 text-center text-[11px] text-neutral-500 dark:text-white/35">
           {t.noCard}
         </p>

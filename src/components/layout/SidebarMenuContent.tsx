@@ -68,7 +68,7 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
 import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
-import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
+import { getCompanyWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { podeAcessarDomiflixAdmin } from '@/lib/adminDomiflixAccess';
 import iconePreto from '@/assets/icone_preto.png';
 import iconeVerde from '@/assets/icone_verde.png';
@@ -152,8 +152,8 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Domiflix', icon: Clapperboard, path: '/admin/domiflix', masterOnly: true },
 ];
 
-// Número sorteado no CLIQUE (rodízio de números do suporte).
-const getWhatsAppSupportUrl = () => `https://wa.me/${getRandomWhatsAppNumber()}`;
+// WhatsApp oficial único da Dominex.
+const getWhatsAppSupportUrl = () => `https://wa.me/${getCompanyWhatsAppNumber()}`;
 const ICON_SIZE = 'h-[20px] w-[20px] shrink-0';
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (

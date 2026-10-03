@@ -232,23 +232,19 @@ export default function Registration() {
   const passwordValue = watch('password') || '';
   const confirmValue = watch('confirm_password') || '';
 
-  // Catálogo dos módulos do plano personalizado (leitura pública) — pro resumo
+  // Resumo público do plano personalizado: a RPC retorna somente código/nome,
+  // sem expor preços nem o restante do catálogo comercial.
   const { data: lockedModuleInfo = [] } = useQuery({
     queryKey: ['registration-locked-modules', lockedModulesParam],
     enabled: isCustomPlan && !!lockedModuleCodes?.length,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('subscription_modules')
-        .select('code, name, price')
-        .eq('is_active', true)
-        .in('code', lockedModuleCodes!);
+      const { data, error } = await supabase.rpc('get_public_registration_modules', {
+        p_codes: lockedModuleCodes!,
+      });
       if (error) throw error;
       return data || [];
     },
   });
-
-  const lockedModulesTotal = lockedModuleInfo.reduce((acc, m) => acc + (Number(m.price) || 0), 0);
-  const customPlanPrice = lockedPrice ? parseFloat(lockedPrice) : lockedModulesTotal;
 
   const registerMutation = useMutation({
     mutationFn: async (data: RegistrationFormData) => {
@@ -533,8 +529,7 @@ export default function Registration() {
                     ))}
                   </ul>
                   <p className="text-xs text-white/50 pt-2 border-t border-white/10">
-                    {t.customPlanMonthly} {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(customPlanPrice)}
-                    {lockedPrice && promoMonths ? t.customPlanPromoSuffix(promoMonths) : ''}
+                    {t.customPlanMonthly}
                   </p>
                 </div>
               )}

@@ -41,6 +41,7 @@ import { useLocale } from '@/lib/i18n';
 import { resolveSlug } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
 import { localizeHash, type AnchorKey } from '@/lib/i18n/localizeHash';
+import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 
 /** Chaves canônicas das âncoras do nav. Hash + label localizados no render. */
 const NAV_ANCHOR_KEYS: { key: AnchorKey }[] = [
@@ -648,10 +649,10 @@ export default function LandingNavbar() {
               style={{ backgroundColor: ctaBg, color: ctaFg }}
               asChild
             >
-              <Link to={localizeInternal('/cadastro', locale)}>
+              <WhatsAppCtaLink>
                 {m.signup}
                 <ArrowRight className="ml-0 h-4 w-4 shrink-0" />
-              </Link>
+              </WhatsAppCtaLink>
             </Button>
           </div>
 
@@ -670,14 +671,13 @@ export default function LandingNavbar() {
         !mobileOpen &&
         createPortal(
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[hsl(0,0%,5%)]/95 backdrop-blur-xl px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
-            <Link
-              to={localizeInternal('/cadastro?origem=Site', locale)}
+            <WhatsAppCtaLink
               className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold whitespace-normal text-center leading-tight hover:opacity-90 transition-opacity"
               style={{ backgroundColor: ctaBg, color: ctaFg }}
             >
               {m.trialSticky}
               <ArrowRight className="h-4 w-4 shrink-0" />
-            </Link>
+            </WhatsAppCtaLink>
           </div>,
           document.body
         )}
@@ -852,10 +852,10 @@ export default function LandingNavbar() {
               style={{ backgroundColor: ctaBg, color: ctaFg }}
               asChild
             >
-              <Link to={localizeInternal('/cadastro', locale)}>
+              <WhatsAppCtaLink>
                 {m.signup}
                 <ArrowRight className="h-4 w-4 shrink-0" />
-              </Link>
+              </WhatsAppCtaLink>
             </Button>
           </div>
           </div>

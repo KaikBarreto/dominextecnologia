@@ -30,6 +30,7 @@ import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton'
 import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
 import ScrollSyncFeatures from '@/components/landing/ScrollSyncFeatures';
 import DeepDiveSection from '@/components/landing/DeepDiveSection';
+import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 import { getSiteSegments, getSegment } from '@/utils/companySegments';
 import type { ModuleData } from './modulesData';
 import { TOOLS_BY_SEGMENT } from './tecnicoNicheTools';
@@ -164,10 +165,10 @@ function ModuleHero({ data }: { data: ModuleData }) {
             className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 shadow-brand-glow w-full sm:w-auto whitespace-normal h-auto text-center leading-tight"
             asChild
           >
-            <Link to="/cadastro?origem=Site">
+            <WhatsAppCtaLink>
               {messages.pageChrome.ctaTrial}
               <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
-            </Link>
+            </WhatsAppCtaLink>
           </Button>
           <Button
             size="lg"
@@ -343,10 +344,10 @@ function FeaturesCta() {
       className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8 py-6 text-base rounded-xl whitespace-normal h-auto text-center leading-tight"
       asChild
     >
-      <Link to="/cadastro?origem=Site">
+      <WhatsAppCtaLink>
         {messages.pageChrome.ctaTrial}
         <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
-      </Link>
+      </WhatsAppCtaLink>
     </Button>
   );
 }
@@ -546,10 +547,10 @@ function ModulePricingCta() {
               className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-6 text-base shadow-brand-glow whitespace-normal h-auto text-center leading-tight"
               asChild
             >
-              <Link to="/cadastro?origem=Site">
+              <WhatsAppCtaLink>
                 {c.ctaTrial}
                 <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
-              </Link>
+              </WhatsAppCtaLink>
             </Button>
             <Button
               size="lg"
@@ -626,9 +627,9 @@ function ModuleFinalCta({ data }: { data: ModuleData }) {
             className="bg-primary text-primary-foreground hover:bg-primary/90 px-10 py-6 text-base shadow-brand-glow whitespace-normal h-auto text-center leading-tight"
             asChild
           >
-            <Link to="/cadastro?origem=Site">
+            <WhatsAppCtaLink>
               {c.ctaTrial} <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
-            </Link>
+            </WhatsAppCtaLink>
           </Button>
           <Button
             size="lg"

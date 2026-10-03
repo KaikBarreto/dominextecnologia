@@ -15,7 +15,8 @@ export interface SubscriptionModuleRow {
  *
  * Fonte da verdade pra NOME e PREÇO de cada módulo — mudança de preço no banco
  * reflete no produto sem editar código. Descrições ricas em PT-BR continuam
- * locais (MODULE_INFO em ModuleGateModal.tsx), usadas como fallback/complemento.
+ * locais (MODULE_INFO em ModuleGateModal.tsx), usadas como fallback/complemento
+ * sem copiar preços para o bundle.
  *
  * queryKey compartilhada com Billing.tsx (['subscription-modules']) — mesma
  * shape de dados, cache único.

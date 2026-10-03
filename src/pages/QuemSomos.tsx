@@ -19,6 +19,7 @@ import { localizeHash } from '@/lib/i18n/localizeHash';
 import LandingFooter from '@/components/landing/LandingFooter';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
 import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
+import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 
 // Página institucional pública. NUNCA herda o white-label do tenant logado:
 // restaura o brand Dominex em toda a subárvore (espelha Landing.tsx /
@@ -121,10 +122,10 @@ function Hero() {
             className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 shadow-brand-glow w-full sm:w-auto whitespace-normal h-auto text-center leading-tight"
             asChild
           >
-            <Link to="/cadastro?origem=Site">
+            <WhatsAppCtaLink>
               {t.ctaTrial}
               <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
-            </Link>
+            </WhatsAppCtaLink>
           </Button>
           <Button
             size="lg"
@@ -237,9 +238,9 @@ function FinalCta() {
             className="bg-primary text-primary-foreground hover:bg-primary/90 px-10 py-6 text-base shadow-brand-glow whitespace-normal h-auto text-center leading-tight"
             asChild
           >
-            <Link to="/cadastro?origem=Site">
+            <WhatsAppCtaLink>
               {t.ctaTrial} <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
-            </Link>
+            </WhatsAppCtaLink>
           </Button>
           <Button
             size="lg"

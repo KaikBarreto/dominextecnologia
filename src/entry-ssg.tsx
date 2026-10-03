@@ -342,13 +342,6 @@ function softwareAppLd(pageUrl: string, name: string, description: string) {
     operatingSystem: 'Web',
     description,
     url: pageUrl,
-    offers: {
-      '@type': 'AggregateOffer',
-      priceCurrency: 'BRL',
-      lowPrice: '197',
-      highPrice: '697',
-      offerCount: '3',
-    },
     aggregateRating: {
       '@type': 'AggregateRating',
       ratingValue: '4.9',
@@ -380,7 +373,7 @@ function faqPageLd(faq: RawFaq[] | undefined) {
  * JSON-LD LOCALIZADO da HOME (só en/es/fr). Substitui os blocos globais do shell
  * (SoftwareApplication + FAQPage, que são pt-br) por versões no idioma da página:
  *   - SoftwareApplication: name "Dominex", description = metaDescription localizada
- *     da home; URL/offer/rating iguais aos das demais rotas (softwareAppLd).
+ *     da home; URL/rating iguais aos das demais rotas (softwareAppLd).
  *   - FAQPage: montado a partir de MESSAGES[locale].home.faq.items ({ q, a }) já
  *     traduzido e generalizado (sem PMOC-lei/NFS-e/ISS).
  * Organization e WebSite do shell NÃO são tocados aqui (ficam, são site-wide). A

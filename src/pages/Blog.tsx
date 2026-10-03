@@ -10,6 +10,7 @@ import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton'
 import { BlogSidebar } from '@/components/blog/BlogSidebar';
 import BlogNavbar from '@/components/blog/BlogNavbar';
 import { useBlogTheme } from '@/components/blog/useBlogTheme';
+import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 import {
   BlogPostCard,
   type BlogPostCardData,
@@ -294,12 +295,11 @@ export default function Blog({ initialPosts, initialCategories }: BlogProps = {}
                 <p className="mb-5 text-sm text-neutral-600 dark:text-white/50">
                   {t.ctaMobileBody}
                 </p>
-                <Link
-                  to="/cadastro?origem=Blog"
+                <WhatsAppCtaLink
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
                 >
                   {t.ctaTrialNoCard} <ArrowRight className="h-4 w-4" />
-                </Link>
+                </WhatsAppCtaLink>
               </div>
             </div>
 

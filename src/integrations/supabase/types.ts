@@ -11861,6 +11861,13 @@ export type Database = {
       get_instance_recommendation: { Args: never; Returns: Json }
       get_landing_whatsapp_numbers: { Args: never; Returns: string[] }
       get_lead_capture_form: { Args: { p_short_code: string }; Returns: Json }
+      get_public_registration_modules: {
+        Args: { p_codes: string[] }
+        Returns: {
+          code: string
+          name: string
+        }[]
+      }
       get_nfse_emissions_paged: {
         Args: {
           p_date_end?: string

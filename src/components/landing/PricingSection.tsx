@@ -1,23 +1,19 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Check, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { PriceAmount } from '@/components/ui/PriceAmount';
-import { buildWhatsAppUrl } from '@/lib/whatsapp';
 import { useLocale } from '@/lib/i18n';
-import { useLandingWhatsAppNumbers } from '@/hooks/useLandingWhatsAppNumbers';
 import { localizeHash } from '@/lib/i18n/localizeHash';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 
-// Configuração NÃO-TEXTUAL dos planos (preços, ctaLink, code, destaque). Nome,
-// descrição, features e CTA vêm do i18n (messages.home.pricing.plans[code]).
+// Configuração não textual dos planos. Valores comerciais não ficam no site:
+// cada CTA abre uma conversa com o Maicon para uma proposta adequada à operação.
 const PLAN_CONFIG = [
-  { code: 'start', monthly: 197, annual: 158, popular: false, ctaLink: '/cadastro?plano=start&origem=Site' },
-  { code: 'avancado', monthly: 447, annual: 358, popular: true, ctaLink: '/cadastro?plano=avancado&origem=Site' },
-  { code: 'master', monthly: 697, annual: 558, popular: false, ctaLink: '/cadastro?plano=master&origem=Site' },
+  { code: 'start', popular: false },
+  { code: 'avancado', popular: true },
+  { code: 'master', popular: false },
 ] as const;
 
 // Fragmento específico do CTA Enterprise (plano Personalizado), por locale.
@@ -35,12 +31,10 @@ const ENTERPRISE_WHATSAPP_FRAGMENTS: Record<LocaleCode, string> = {
 };
 
 export default function PricingSection() {
-  const [annual, setAnnual] = useState(false);
   const ref = useScrollReveal();
   const { locale, messages } = useLocale();
-  const { getRandom } = useLandingWhatsAppNumbers();
   const t = messages.home.pricing;
-  // Junta config (preço/link) + texto i18n (nome/desc/features) por code.
+  // Junta config visual + texto i18n (nome/desc/features) por code.
   const plans = PLAN_CONFIG.map((cfg) => {
     const copy = t.plans[cfg.code];
     const videoChecklist = 'videoChecklist' in copy ? (copy as { videoChecklist?: string }).videoChecklist : undefined;
@@ -52,15 +46,7 @@ export default function PricingSection() {
     cta: t.plans.enterprise.cta,
   };
 
-  // URL montada no CLIQUE (não no load do módulo): garante que a UTM capturada
-  // depois do load entre na mensagem e que o rodízio sorteie por clique.
-  // O fragmento e o locale são passados para manter a mensagem no idioma certo.
-  // getRandom() usa a lista ao vivo da RPC; se falhar, cai no fallback fixo (Maicon).
-  function openEnterpriseWhatsApp() {
-    const fragment = ENTERPRISE_WHATSAPP_FRAGMENTS[locale] ?? ENTERPRISE_WHATSAPP_FRAGMENTS['pt-br'];
-    const url = buildWhatsAppUrl(getRandom(), fragment, locale);
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }
+  const enterpriseFragment = ENTERPRISE_WHATSAPP_FRAGMENTS[locale] ?? ENTERPRISE_WHATSAPP_FRAGMENTS['pt-br'];
 
   return (
     <section id={localizeHash('precos', locale)} className="py-24">
@@ -69,29 +55,12 @@ export default function PricingSection() {
           {t.heading}
         </h2>
 
-        <div className="flex items-center justify-center gap-4 mb-16 relative">
-          <span className={cn('text-sm font-medium', !annual ? 'text-white' : 'text-white/55')}>{t.monthly}</span>
-          <button
-            onClick={() => setAnnual(!annual)}
-            role="switch"
-            aria-checked={annual}
-            aria-label="Alternar entre cobrança mensal e anual"
-            className={cn('relative h-7 w-12 rounded-full transition-colors', annual ? 'bg-primary' : 'bg-white/20')}
-          >
-            <div
-              className={cn('absolute top-0.5 h-6 w-6 rounded-full bg-white transition-transform', annual ? 'translate-x-5' : 'translate-x-0.5')}
-            />
-          </button>
-          <span className={cn('text-sm font-medium', annual ? 'text-white' : 'text-white/55')}>{t.annual}</span>
-          <Badge className={cn('bg-emerald-500 text-white transition-opacity ml-5', annual ? 'opacity-100' : 'opacity-0 pointer-events-none')}>{t.annualDiscount}</Badge>
-        </div>
+        <p className="mx-auto mb-16 max-w-2xl text-center text-white/55">
+          {t.contactForPricing}
+        </p>
 
         <div className="grid md:grid-cols-3 gap-5 items-stretch">
-          {plans.map((plan) => {
-            const displayPrice = annual ? plan.annual : plan.monthly;
-            const yearlyTotal = Math.round(plan.monthly * 12 * 0.8);
-
-            return (
+          {plans.map((plan) => (
               <div
                 key={plan.code}
                 className={cn(
@@ -115,31 +84,6 @@ export default function PricingSection() {
 
                 <h3 className="text-xl font-bold text-white break-words">{plan.name}</h3>
                 <p className="text-sm text-white/55 mb-5">{plan.desc}</p>
-
-                <div className="mb-5">
-                  <p className="text-[10px] uppercase tracking-widest text-white/55 font-medium mb-1">
-                    {annual ? t.priceEquivalent : t.priceFrom}
-                  </p>
-                  <PriceAmount
-                    value={displayPrice}
-                    prefix={t.currencyPrefix}
-                    suffix={t.perMonth}
-                    className={cn(
-                      'tracking-tight',
-                      plan.popular
-                        ? 'text-4xl font-extrabold text-primary'
-                        : 'text-3xl font-extrabold text-white'
-                    )}
-                  />
-                  {annual && (
-                    <div className="mt-1 space-y-0.5">
-                      <p className="text-xs text-white/55 line-through">{t.annualStrike(plan.monthly)}</p>
-                      <p className="text-xs font-medium text-emerald-400">
-                        {t.annualTotal(yearlyTotal)}
-                      </p>
-                    </div>
-                  )}
-                </div>
 
                 <div className="flex items-center gap-2 mb-3">
                   <div className="flex-1 h-px bg-white/10" />
@@ -172,14 +116,13 @@ export default function PricingSection() {
                   size="lg"
                   asChild
                 >
-                  <Link to={plan.ctaLink}>
+                  <WhatsAppCtaLink>
                     {plan.cta}
                     <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
-                  </Link>
+                  </WhatsAppCtaLink>
                 </Button>
               </div>
-            );
-          })}
+          ))}
         </div>
 
         {/* Enterprise — linha horizontal abaixo, enxuta */}
@@ -199,12 +142,14 @@ export default function PricingSection() {
               <Button
                 className="bg-[#25D366] hover:bg-[#1ebe5a] text-white font-semibold rounded-md w-full md:w-auto px-8 gap-2 whitespace-normal h-auto py-3 text-center leading-tight"
                 size="lg"
-                onClick={openEnterpriseWhatsApp}
+                asChild
               >
-                <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                <WhatsAppCtaLink fragmentOverride={enterpriseFragment}>
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                </svg>
-                {customPlan.cta}
+                  </svg>
+                  {customPlan.cta}
+                </WhatsAppCtaLink>
               </Button>
             </div>
           </div>

@@ -13,7 +13,6 @@ import {
   Wrench,
   BarChart3,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ScrollSyncFeatures, {
@@ -21,6 +20,7 @@ import ScrollSyncFeatures, {
 } from '@/components/landing/ScrollSyncFeatures';
 import { useLocale } from '@/lib/i18n';
 import { localizeHash } from '@/lib/i18n/localizeHash';
+import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 
 /**
  * Ícones das funcionalidades da HOME, na ORDEM do array de textos em
@@ -68,10 +68,10 @@ export default function HomeFeatures() {
           className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-8 py-6 text-base rounded-xl transition-transform hover:scale-[1.02] whitespace-normal h-auto text-center leading-tight"
           asChild
         >
-          <Link to="/cadastro">
+          <WhatsAppCtaLink>
             {t.cta}
             <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
-          </Link>
+          </WhatsAppCtaLink>
         </Button>
       }
     />

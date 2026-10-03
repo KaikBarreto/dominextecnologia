@@ -38,8 +38,8 @@ export const ptBr = {
     pricing: 'Preços',
     blog: 'Blog',
     login: 'Entrar',
-    signup: 'Criar Conta',
-    trialSticky: 'Testar grátis por 14 dias',
+    signup: 'Falar com o Maicon',
+    trialSticky: 'Falar com o Maicon no WhatsApp',
     openMenu: 'Menu',
     openMenuAria: 'Abrir menu',
     closeMenuAria: 'Fechar menu',
@@ -123,17 +123,17 @@ export const ptBr = {
   // Reutilizado por SegmentLandingPage e ModuleLandingPage. Só o "chrome"
   // (headings/labels de seção/CTAs); o conteúdo dos itens vem de content/<locale>.
   pageChrome: {
-    ctaTrial: 'Teste grátis 14 dias, sem cartão',
+    ctaTrial: 'Falar com o Maicon no WhatsApp',
     seePlans: 'Ver planos',
     seeAllPlans: 'Ver todos os planos',
     faqHeading: 'Perguntas frequentes',
     problemLabel: 'O problema',
     withDominex: 'Com o Dominex',
-    // Preços (ponte). Generalizado no en (sem R$/OS); pt-br mantém o texto atual.
+    // Planos (ponte). Valores comerciais são apresentados somente no atendimento.
     pricing: {
-      heading: 'Preços transparentes, sem surpresa',
+      heading: 'Planos para cada fase da sua operação',
       subtitle:
-        'Planos a partir de R$ 197/mês com OS ilimitadas. Veja a tabela completa e escolha o que cabe na sua operação.',
+        'Conheça os recursos de cada plano e fale com o Maicon para receber uma proposta adequada à sua operação.',
     },
     // Só do SEGMENTO (no módulo essas seções vêm do data.*).
     segment: {
@@ -158,7 +158,7 @@ export const ptBr = {
         'Sistema de ordem de serviço, PMOC e gestão para refrigeração e equipes de campo. Domine a execução do seu negócio.',
       subtitle:
         'Chega de planilha, WhatsApp e retrabalho. O Dominex centraliza suas OS, rastreia sua equipe e entrega dados reais para você crescer.',
-      ctaPrimary: 'Começar grátis por 14 dias',
+      ctaPrimary: 'Falar com o Maicon no WhatsApp',
       ctaSecondary: 'Ver planos',
       videoUnsupported: 'Seu navegador não suporta vídeo HTML5.',
       videoLabel: 'Demonstração do Dominex',
@@ -187,7 +187,7 @@ export const ptBr = {
     features: {
       heading: 'Tudo que sua operação precisa, em um só lugar',
       subheading: 'Do chamado ao faturamento, o Dominex cobre cada etapa do serviço',
-      cta: 'Teste grátis 14 dias, sem cartão',
+      cta: 'Falar com o Maicon no WhatsApp',
       items: [
         {
           title: 'Ordens de serviço digitais',
@@ -323,18 +323,10 @@ export const ptBr = {
     },
     pricing: {
       heading: 'Planos que crescem com a sua operação',
-      monthly: 'Mensal',
-      annual: 'Anual',
-      annualDiscount: '-20%',
+      contactForPricing: 'Os valores são informados pelo Maicon no WhatsApp, conforme a necessidade da sua empresa.',
       mostPopular: '⭐ Mais popular',
-      priceEquivalent: 'equivalente a',
-      priceFrom: 'a partir de',
-      perMonth: '/mês',
       featuresLabel: 'Recursos',
-      currencyPrefix: 'R$',
-      annualStrike: (monthly: number) => `R$ ${monthly}/mês`,
-      annualTotal: (total: number) => `Total: R$ ${total}/ano · Economize 20%`,
-      ctaTrial: 'Testar 14 Dias Grátis',
+      ctaTrial: 'Falar com o Maicon',
       enterpriseBadge: 'Enterprise',
       plans: {
         start: {
@@ -442,8 +434,8 @@ export const ptBr = {
       heading: 'Comece hoje. Resultados em dias.',
       subtitle:
         '14 dias grátis, sem cartão, sem burocracia. Configure em minutos e veja sua equipe ganhar produtividade.',
-      ctaPrimary: 'Criar minha conta grátis',
-      ctaSecondary: 'Ou agendar uma demo',
+      ctaPrimary: 'Falar com o Maicon no WhatsApp',
+      ctaSecondary: 'Tirar dúvidas pelo WhatsApp',
     },
   },
 
@@ -454,7 +446,7 @@ export const ptBr = {
     heroTitleHighlight: 'domina a operação',
     heroSubtitle:
       'A Dominex existe para tirar da papelada o trabalho de quem presta serviço de campo. Um sistema só, no celular e no computador, pra conduzir a operação do orçamento ao recibo.',
-    ctaTrial: 'Teste grátis 14 dias, sem cartão',
+    ctaTrial: 'Falar com o Maicon no WhatsApp',
     ctaPricing: 'Ver planos',
     missionTitle: 'Nossa missão',
     missionP1Strong: 'ordem de serviço, PMOC e gestão',
@@ -711,7 +703,7 @@ export const ptBr = {
 
     // Plano personalizado (link de venda)
     customPlanTitle: 'Seu plano personalizado',
-    customPlanMonthly: 'Valor mensal:',
+    customPlanMonthly: 'Condição comercial informada diretamente pelo Maicon.',
     customPlanPromoSuffix: (months: string) => ` pelos primeiros ${months} meses`,
 
     // Toasts / validações (título + descrição)
@@ -904,8 +896,8 @@ export const ptBr = {
 
     // CTA inline (mobile) da listagem
     ctaMobileTitle: 'Tire sua operação do papel',
-    ctaMobileBody: 'Teste a Dominex de graça e veja a ordem de serviço no celular do técnico.',
-    ctaTrialNoCard: 'Teste grátis 14 dias, sem cartão',
+    ctaMobileBody: 'Fale com o Maicon e veja como a Dominex funciona na sua operação.',
+    ctaTrialNoCard: 'Falar com o Maicon no WhatsApp',
 
     // Sidebar (BlogSidebar)
     sidebar: {
@@ -913,8 +905,8 @@ export const ptBr = {
       ctaTitle: 'Quer tirar a operação do papel?',
       ctaBody:
         'A Dominex coloca ordem de serviço, PMOC e equipe no celular do técnico, sem caderno e sem grupo de WhatsApp.',
-      ctaButton: 'Teste grátis 14 dias',
-      noCard: 'Sem cartão de crédito.',
+      ctaButton: 'Falar com o Maicon',
+      noCard: 'Atendimento direto pelo WhatsApp.',
       mostRead: 'Mais lidos',
       // Sufixo de leituras: "1.234 leituras"
       reads: 'leituras',
@@ -950,8 +942,8 @@ export const ptBr = {
     // CTA final do artigo
     postCtaTitle: 'Pronto pra tirar a operação do papel?',
     postCtaBody:
-      'Teste a Dominex de graça por 14 dias e veja a ordem de serviço no celular do técnico.',
-    postCtaButton: 'Teste grátis 14 dias, sem cartão',
+      'Fale com o Maicon e veja como a Dominex funciona na sua operação.',
+    postCtaButton: 'Falar com o Maicon no WhatsApp',
 
     // Índice de navegação do artigo (BlogTableOfContents)
     tocLabel: 'Neste artigo',

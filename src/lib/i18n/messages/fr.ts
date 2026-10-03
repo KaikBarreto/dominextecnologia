@@ -78,7 +78,7 @@ export const frOverrides: MessagesOverride = {
     doLogin: 'Se connecter',
 
     customPlanTitle: 'Votre offre personnalisée',
-    customPlanMonthly: 'Prix mensuel :',
+    customPlanMonthly: 'Les conditions commerciales sont communiquées directement par Maicon.',
     customPlanPromoSuffix: (months: string) => ` pendant les ${months} premiers mois`,
 
     toastCepNotFound: 'Code postal introuvable',
@@ -236,8 +236,8 @@ export const frOverrides: MessagesOverride = {
     pricing: 'Tarifs',
     blog: 'Blog',
     login: 'Se connecter',
-    signup: "S'inscrire",
-    trialSticky: 'Démarrez votre essai gratuit de 14 jours',
+    signup: 'Parler à Maicon',
+    trialSticky: 'Parler à Maicon sur WhatsApp',
     openMenu: 'Menu',
     openMenuAria: 'Ouvrir le menu',
     closeMenuAria: 'Fermer le menu',
@@ -313,16 +313,16 @@ export const frOverrides: MessagesOverride = {
   },
 
   pageChrome: {
-    ctaTrial: 'Commencez gratuitement pendant 14 jours, sans carte',
+    ctaTrial: 'Parler à Maicon sur WhatsApp',
     seePlans: 'Voir les tarifs',
     seeAllPlans: 'Voir tous les tarifs',
     faqHeading: 'Questions fréquentes',
     problemLabel: 'Le problème',
     withDominex: 'Avec Dominex',
     pricing: {
-      heading: 'Des tarifs transparents, sans surprise',
+      heading: 'Des offres pour chaque étape de votre activité',
       subtitle:
-        'Des offres qui évoluent avec votre activité. Découvrez la gamme complète et choisissez ce qui vous convient.',
+        'Découvrez chaque offre et parlez à Maicon pour recevoir une proposition adaptée à votre activité.',
     },
     segment: {
       painsHeading: 'Les tracas du quotidien, résolus',
@@ -344,7 +344,7 @@ export const frOverrides: MessagesOverride = {
         'Logiciel d’ordres de travail, de maintenance et de gestion pour les équipes CVC et d’intervention sur le terrain. Maîtrisez le fonctionnement de votre entreprise.',
       subtitle:
         'Fini les feuilles de calcul, les fils de discussion et les reprises. Dominex centralise vos ordres de travail, suit votre équipe et fournit des données réelles pour vous aider à grandir.',
-      ctaPrimary: 'Commencez gratuitement pendant 14 jours',
+      ctaPrimary: 'Parler à Maicon sur WhatsApp',
       ctaSecondary: 'Voir les tarifs',
       videoUnsupported: 'Votre navigateur ne prend pas en charge la vidéo HTML5.',
       videoLabel: 'Démo Dominex',
@@ -373,7 +373,7 @@ export const frOverrides: MessagesOverride = {
     features: {
       heading: 'Tout ce dont votre opération a besoin, au même endroit',
       subheading: 'De l’appel de service à la facturation, Dominex couvre chaque étape du travail',
-      cta: 'Essai gratuit de 14 jours, sans carte requise',
+      cta: 'Parler à Maicon sur WhatsApp',
       items: [
         {
           title: 'Ordres de travail numériques',
@@ -508,18 +508,10 @@ export const frOverrides: MessagesOverride = {
     },
     pricing: {
       heading: 'Des offres qui grandissent avec votre opération',
-      monthly: 'Mensuel',
-      annual: 'Annuel',
-      annualDiscount: '-20%',
+      contactForPricing: 'Maicon communique les tarifs sur WhatsApp selon les besoins de votre entreprise.',
       mostPopular: '⭐ Le plus populaire',
-      priceEquivalent: 'équivaut à',
-      priceFrom: 'à partir de',
-      perMonth: '/mois',
       featuresLabel: 'Fonctionnalités',
-      currencyPrefix: '€',
-      annualStrike: (monthly: number) => `${monthly} €/mois`,
-      annualTotal: (total: number) => `Total : ${total} €/an · Économisez 20 %`,
-      ctaTrial: 'Démarrer l’essai gratuit de 14 jours',
+      ctaTrial: 'Parler à Maicon',
       enterpriseBadge: 'Entreprise',
       plans: {
         start: {
@@ -627,8 +619,8 @@ export const frOverrides: MessagesOverride = {
       heading: 'Commencez aujourd’hui. Des résultats en quelques jours.',
       subtitle:
         '14 jours gratuits, sans carte, sans paperasse. Une mise en place en quelques minutes et regardez votre équipe gagner en productivité.',
-      ctaPrimary: 'Créer mon compte gratuit',
-      ctaSecondary: 'Ou planifier une démo',
+      ctaPrimary: 'Parler à Maicon sur WhatsApp',
+      ctaSecondary: 'Poser vos questions sur WhatsApp',
     },
   },
 
@@ -638,7 +630,7 @@ export const frOverrides: MessagesOverride = {
     heroTitleHighlight: 'maîtrisez l’opération',
     heroSubtitle:
       'Dominex existe pour sortir le travail d’intervention de la paperasse. Un seul système, sur mobile et ordinateur, pour piloter l’opération du devis à l’encaissement.',
-    ctaTrial: 'Essai gratuit de 14 jours, sans carte requise',
+    ctaTrial: 'Parler à Maicon sur WhatsApp',
     ctaPricing: 'Voir les tarifs',
     missionTitle: 'Notre mission',
     missionP1Strong: 'ordres de travail, maintenance et gestion',
@@ -828,16 +820,16 @@ export const frOverrides: MessagesOverride = {
     emptyCategory: 'Aucun article dans cette catégorie.',
 
     ctaMobileTitle: 'Sortez votre activité du papier',
-    ctaMobileBody: 'Essayez Dominex gratuitement et voyez l’ordre de travail dans la poche du technicien.',
-    ctaTrialNoCard: 'Commencez gratuitement pendant 14 jours, sans carte',
+    ctaMobileBody: 'Parlez à Maicon et découvrez comment Dominex s’adapte à votre activité.',
+    ctaTrialNoCard: 'Parler à Maicon sur WhatsApp',
 
     sidebar: {
       eyebrow: 'Pour les équipes de terrain',
       ctaTitle: 'Envie de sortir votre activité du papier ?',
       ctaBody:
         'Dominex met les ordres de travail, la maintenance et l’équipe dans la poche du technicien, sans carnet et sans groupe WhatsApp.',
-      ctaButton: 'Commencez votre essai gratuit de 14 jours',
-      noCard: 'Sans carte bancaire.',
+      ctaButton: 'Parler à Maicon',
+      noCard: 'Échange direct sur WhatsApp.',
       mostRead: 'Les plus lus',
       reads: 'lectures',
       empty: 'Aucun article pour l’instant.',
@@ -865,8 +857,8 @@ export const frOverrides: MessagesOverride = {
 
     postCtaTitle: 'Prêt à sortir votre activité du papier ?',
     postCtaBody:
-      'Essayez Dominex gratuitement pendant 14 jours et voyez les ordres de travail dans la poche de votre technicien.',
-    postCtaButton: 'Commencez gratuitement pendant 14 jours, sans carte',
+      'Parlez à Maicon et découvrez comment Dominex s’adapte à votre activité.',
+    postCtaButton: 'Parler à Maicon sur WhatsApp',
 
     tocLabel: 'Dans cet article',
 

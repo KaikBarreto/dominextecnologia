@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import iphoneFrame from '@/assets/iphone-17-pro-deep-blue.svg';
 import { useLocale } from '@/lib/i18n';
 import { localizeHash } from '@/lib/i18n/localizeHash';
+import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 
 const HERO_VIDEO_URL =
   'https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/landingpage/Dominex%20-%20Completo.MP4';
@@ -97,10 +97,10 @@ export default function HeroSection() {
                 className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 py-6 shadow-brand-glow w-full sm:w-auto whitespace-normal h-auto text-center leading-tight"
                 asChild
               >
-                <Link to="/cadastro?origem=Site">
+                <WhatsAppCtaLink>
                   {t.ctaPrimary}
                   <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
-                </Link>
+                </WhatsAppCtaLink>
               </Button>
               <Button
                 size="lg"

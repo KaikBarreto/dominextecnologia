@@ -12,7 +12,7 @@ import { useCancelSubscription } from '@/hooks/useCancelSubscription';
 import { usePlanChange } from '@/hooks/usePlanChange';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { DowngradeOfferCard } from './DowngradeOfferCard';
-import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
+import { getCompanyWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { format } from 'date-fns';
 import { type Locale, ptBR, enUS, es, fr } from 'date-fns/locale';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -274,12 +274,12 @@ export function CancelSubscriptionModal({
                   <p className="text-xs text-white/80 mt-1">{retention.message}</p>
                 </div>
               </div>
-              {/* Número sorteado no CLIQUE (rodízio de números do suporte). */}
+              {/* WhatsApp oficial único da Dominex. */}
               <button
                 type="button"
                 onClick={() =>
                   window.open(
-                    `https://wa.me/${getRandomWhatsAppNumber()}?text=${encodeURIComponent(retention.waText)}`,
+                    `https://wa.me/${getCompanyWhatsAppNumber()}?text=${encodeURIComponent(retention.waText)}`,
                     '_blank',
                     'noopener,noreferrer',
                   )

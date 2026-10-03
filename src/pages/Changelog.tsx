@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.16',
+    date: '3 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Um único WhatsApp oficial para falar com a Dominex',
+        description: 'Os atalhos de atendimento e as chamadas do site agora levam diretamente ao WhatsApp do Maicon. Assim, dúvidas comerciais e pedidos de suporte chegam sempre ao contato oficial da empresa.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Planos apresentados conforme a necessidade da empresa',
+        description: 'A página de planos passou a mostrar o que cada opção inclui sem publicar valores fixos. Para saber as condições atuais, basta falar com o Maicon pelo WhatsApp e receber uma proposta adequada ao tamanho da operação.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.28.15',
     date: '1 de outubro de 2026',
     type: 'patch',

@@ -18,6 +18,7 @@ import LandingFooter from '@/components/landing/LandingFooter';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
 import ScrollSyncFeatures from '@/components/landing/ScrollSyncFeatures';
 import DeepDiveSection from '@/components/landing/DeepDiveSection';
+import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
 import type { SegmentData } from './segmentsData';
 
@@ -27,32 +28,6 @@ import type { SegmentData } from './segmentsData';
 // o necessário pro branco ficar legível, mantendo a cor do nicho reconhecível.
 const SEG_ACCENT_BADGE_GRADIENT =
   'linear-gradient(to right, color-mix(in srgb, var(--seg-accent) 85%, #000), color-mix(in srgb, color-mix(in srgb, var(--seg-accent) 55%, #ffffff) 85%, #000))';
-
-// Mapa slug-da-landing → value canônico do segmento (o mesmo de useCompanySegments
-// / do cadastro). O cadastro lê `?segmento=<value>` e pré-seleciona o nicho.
-// NÃO usamos o slug aqui de propósito: o cadastro espera o VALUE.
-const SLUG_TO_SEGMENT_VALUE: Record<string, string> = {
-  'sistema-para-refrigeracao': 'refrigeracao',
-  'sistema-para-eletricistas': 'eletrica',
-  'sistema-para-energia-solar': 'solar',
-  'sistema-para-provedores': 'telecom',
-  'sistema-para-cftv': 'cftv',
-  'sistema-para-construcao-civil': 'construcao',
-  'sistema-para-elevadores': 'elevadores',
-  'sistema-para-limpeza-conservacao': 'limpeza',
-  'sistema-para-dedetizacao': 'dedetizacao',
-  'sistema-para-assistencia-tecnica': 'ti_assistencia',
-};
-
-// Monta o link de cadastro com o segmento pré-selecionado. NÃO passamos
-// `origem` de propósito: assim o cadastro exibe a etapa "Como nos conheceu"
-// pro usuário escolher (passar origem=Site fazia o cadastro pular essa etapa).
-// Se o slug não estiver no mapa (segmento sem nicho equivalente no cadastro),
-// cai pro link padrão sem param de segmento.
-function cadastroLink(slug: string): string {
-  const value = SLUG_TO_SEGMENT_VALUE[slug];
-  return value ? `/cadastro?segmento=${value}` : '/cadastro';
-}
 
 // A landing de segmento é pública e NUNCA herda o white-label do tenant logado.
 // Restaura o brand Dominex em toda a subárvore (espelha Landing.tsx).
@@ -204,10 +179,10 @@ function SegmentHero({ data }: { data: SegmentData }) {
             }}
             asChild
           >
-            <Link to={cadastroLink(data.slug)}>
+            <WhatsAppCtaLink>
               {messages.pageChrome.ctaTrial}
               <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
-            </Link>
+            </WhatsAppCtaLink>
           </Button>
           <Button
             size="lg"
@@ -421,10 +396,10 @@ function SegmentFeatures({ data }: { data: SegmentData }) {
           style={{ backgroundColor: 'var(--seg-accent)' }}
           asChild
         >
-          <Link to={cadastroLink(data.slug)}>
+          <WhatsAppCtaLink>
             {c.ctaTrial}
             <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
-          </Link>
+          </WhatsAppCtaLink>
         </Button>
       }
     />
@@ -498,10 +473,10 @@ function SegmentPricingCta({ data }: { data: SegmentData }) {
               }}
               asChild
             >
-              <Link to={cadastroLink(data.slug)}>
+              <WhatsAppCtaLink>
                 {c.ctaTrial}
                 <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
-              </Link>
+              </WhatsAppCtaLink>
             </Button>
             <Button
               size="lg"
@@ -582,9 +557,9 @@ function SegmentFinalCta({ data }: { data: SegmentData }) {
             }}
             asChild
           >
-            <Link to={cadastroLink(data.slug)}>
+            <WhatsAppCtaLink>
               {c.ctaTrial} <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
-            </Link>
+            </WhatsAppCtaLink>
           </Button>
           <Button
             size="lg"

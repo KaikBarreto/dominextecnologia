@@ -408,8 +408,8 @@ SET content = $html$
 
 <div style="border-radius:14px;padding:26px;margin:28px 0;background:#00C597;color:#fff;text-align:center">
   <p style="font-size:20px;font-weight:700;margin:0 0 8px">Pare de orçar no chute</p>
-  <p style="margin:0 0 18px;opacity:0.95">Orçamento com markup e BDI, OS no celular do técnico e financeiro num lugar só. Teste grátis por 14 dias, sem cartão.</p>
-  <a href="/cadastro" style="display:inline-block;background:#fff;color:#00897B;font-weight:700;padding:12px 28px;border-radius:10px;text-decoration:none">Começar teste grátis</a>
+  <p style="margin:0 0 18px;opacity:0.95">Orçamento com markup e BDI, OS no celular do técnico e financeiro num lugar só. Fale diretamente com o Maicon.</p>
+  <a href="https://wa.me/5521966885044" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#fff;color:#00897B;font-weight:700;padding:12px 28px;border-radius:10px;text-decoration:none">Falar com o Maicon no WhatsApp</a>
   <p style="margin:16px 0 0;font-size:14px;opacity:0.95">E não esqueça da planilha de precificação grátis: <a href="https://docs.google.com/spreadsheets/d/12-JPF3Ki-C9xC4FCperSDNmBrAhialHnD-N_273EQw8/copy" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline">faça uma cópia no Google Planilhas</a> ou <a href="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/blog-images/files/quanto-cobrar-por-um-servico-precificacao/planilha-precificacao-dominex-v2.xlsx" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline">baixe em Excel</a> pra começar a calcular hoje.</p>
 </div>
 

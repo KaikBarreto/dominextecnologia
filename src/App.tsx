@@ -450,7 +450,6 @@ function ModuleRoute({ moduleKey, children }: { moduleKey: ModuleCode; children:
           onOpenChange={(open) => { if (!open) setGateOpen(false); }}
           moduleName={info?.name || moduleKey}
           moduleDescription={info?.description}
-          modulePrice={info?.price}
           moduleCode={moduleKey}
         />
       </>
@@ -688,7 +687,7 @@ const AppRoutes = () => (
     <Route path="/pagar/:code" element={<PublicCheckout />} />
     {/* Autorização pública de assinatura/Pix Automático — SEM auth/PermissionRoute */}
     <Route path="/assinar/:code" element={<PublicSubscriptionCheckout />} />
-    <Route path="/proposta" element={<ProposalSimulator />} />
+    <Route path="/proposta" element={<ProtectedRoute><ProposalSimulator /></ProtectedRoute>} />
     <Route path="/proposta/:token" element={<ProposalPublic />} />
     {/* Public customer portal */}
     <Route path="/portal/:token" element={<CustomerPortal />} />

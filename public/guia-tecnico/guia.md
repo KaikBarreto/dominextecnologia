@@ -1064,7 +1064,7 @@ Cada plano permite um número de usuários ativos. Usuário desativado não cont
 
 - Aparece uma faixa amarela no topo da lista com Limite de usuários atingido (15/15) e a explicação "Para cadastrar novos usuários, adicione usuários extras ao seu plano.", mais o botão Contratar mais usuários.
 
-- Clicar em Criar Usuário nesse estado abre a janela Limite de usuários atingido, mostrando o contador grande, a frase "Seu plano atual permite até N usuários. Para cadastrar mais, adicione usuários extras ao seu plano (R$ 50,00/mês por usuário)." e os botões Voltar e Contratar mais usuários.
+- Clicar em Criar Usuário nesse estado abre a janela Limite de usuários atingido, mostrando o contador grande, a orientação para adicionar usuários extras ao plano e os botões Voltar e Contratar mais usuários.
 
 - O botão leva pra tela de Assinatura já com o montador de plano aberto na aba Personalizado, focado na parte de usuários extras.
 
@@ -1072,7 +1072,7 @@ Cada plano permite um número de usuários ativos. Usuário desativado não cont
 
 - Desativar quem não usa mais. É grátis e imediato. Ex-funcionário desativado libera a vaga na hora.
 
-- Comprar usuários extras. Cada usuário adicional custa R$ 50,00 por mês e entra na próxima cobrança. Os recursos são liberados na hora.
+- Comprar usuários extras. O valor vigente aparece em Gerenciar Meu Plano e entra na próxima cobrança. Os recursos são liberados na hora.
 
 - Trocar de plano. Planos maiores já vêm com mais usuários inclusos. Compare em Gerenciar Meu Plano antes de comprar extras avulsos.
 
@@ -1122,7 +1122,7 @@ Cada plano permite um número de usuários ativos. Usuário desativado não cont
 **R:** Está escrito logo abaixo do título da tela, no formato "usados/limite usuários". O mesmo número aparece no cartão Uso da conta, em Assinatura.
 
 **P:** Quanto custa um usuário a mais?
-**R:** R$ 50,00 por mês por usuário adicional, somado ao seu plano na próxima cobrança.
+**R:** O valor vigente aparece em Gerenciar Meu Plano e é somado ao plano na próxima cobrança.
 
 **P:** Existe importação de usuários em massa?
 **R:** Não. Cada usuário é criado pela tela, um a um.
@@ -7155,7 +7155,7 @@ Passado o vencimento, o sistema para de abrir e mostra uma tela cheia:
 
 - A tela de Assinatura continua acessível mesmo com a assinatura vencida, porque é por ela que você regulariza.
 
-[Print da tela: Tela Assinatura com o selo verde Ativa, a linha Plano Personalizado com 12 módulos, 847 dias restantes, Vencimento em 30/12/2028, Valor mensal de R$ 650,00 por mês, os três selos de forma de pagamento PIX, Boleto e Cartão e o botão preto Pagar Agora. À direita, o cartão Uso da conta com Usuários 2 de 15 e Notas fiscais este mês 0 de 200. Abaixo, a faixa Dados pendentes para emissão de notas fiscais, o cartão Sua Assinatura com Gerenciar Meu Plano e Cancelar assinatura, e o Histórico de pagamentos vazio.]
+[Print da tela: Tela Assinatura com o selo verde Ativa, a linha Plano Personalizado, vencimento, valor mensal, os três selos de forma de pagamento PIX, Boleto e Cartão e o botão preto Pagar Agora. À direita, o cartão Uso da conta com usuários e notas fiscais do mês. Abaixo, a faixa Dados pendentes para emissão de notas fiscais, o cartão Sua Assinatura com Gerenciar Meu Plano e Cancelar assinatura, e o Histórico de pagamentos vazio.]
 
 Tela Assinatura: status, vencimento, valor e formas de pagamento à esquerda; Uso da conta à direita; e, mais abaixo, Gerenciar Meu Plano e o histórico de pagamentos.
 
@@ -7225,7 +7225,7 @@ A aba Personalizado é o montador: você começa do kit básico e vai somando s�
 
 - Se você marcar o módulo de notas fiscais, aparece a seção Nível de Notas Fiscais (NFS-e), com os níveis disponíveis, o limite de notas por mês de cada um e o preço. O nível atual vem marcado com (atual), e níveis abaixo do seu ficam desabilitados. O aviso: "O novo nível é liberado imediatamente e o valor entra na próxima cobrança."
 
-- Em Usuários adicionais:, os botões de mais e menos aumentam ou diminuem os extras. A linha explica: "2 inclusos + N extras (R$ 50,00/cada)".
+- Em Usuários adicionais:, os botões de mais e menos aumentam ou diminuem os extras. A linha mostra quantos estão inclusos, quantos são extras e o valor vigente.
 
 - O painel Seu Plano, à direita, lista tudo o que você marcou com o preço ao lado e fecha com Total mensal ou Total anual.
 
@@ -7237,7 +7237,7 @@ Aba Personalizado: módulos marcados em verde à esquerda, painel Seu Plano com 
 
 #### Regras que o sistema aplica
 
-- O plano personalizado começa com 2 usuários. Cada usuário a mais custa R$ 50,00 por mês.
+- O plano personalizado começa com 2 usuários. O valor vigente de cada usuário adicional aparece no montador.
 
 - O valor da sua assinatura no plano personalizado é a soma do que você montou. Não existe um "preço de tabela" do personalizado.
 
@@ -7265,7 +7265,7 @@ Módulo é um pedaço do sistema contratado pela empresa inteira. Os preços apa
 | Precificação Avançada | BDI, custos globais de recursos e precificação detalhada de serviços e orçamentos. |
 | Portal do Cliente | A área em que o seu cliente acompanha as OS e os equipamentos dele por link. |
 | White Label | Personalização completa da marca: logo, cores e ícone do sistema, inclusive nos documentos que o cliente recebe. |
-| Usuário extra | Não é uma tela, é uma vaga a mais de usuário ativo no plano, a R$ 50,00 por mês. |
+| Usuário extra | Não é uma tela, é uma vaga a mais de usuário ativo no plano. O valor vigente aparece no montador. |
 
 #### Como saber o que você já tem
 
@@ -7311,7 +7311,7 @@ O botão Pagar Agora leva sempre pra tela de checkout. Não existe pagamento por
 
 - Confirmado o pagamento, aparece a tela de sucesso e o sistema volta pro Dashboard sozinho em alguns segundos.
 
-[Print da tela: Tela de checkout dividida em duas colunas. À esquerda, sobre fundo escuro, o logo Dominex, o link Voltar ao sistema, o resumo da assinatura do plano Personalizado a R$ 650,00 por mês, a data do próximo vencimento e a lista O que está incluso com 15 usuários e os módulos contratados. À direita, o bloco Pagamento com o campo CPF ou CNPJ marcado em vermelho com a mensagem CNPJ inválido, e as três formas de pagamento: Cartão de Crédito com a etiqueta Recomendado e a nota Cobrança mensal, PIX com a nota Instantâneo e Boleto com a nota 1-2 dias úteis.]
+[Print da tela: Tela de checkout dividida em duas colunas. À esquerda, sobre fundo escuro, o logo Dominex, o link Voltar ao sistema, o resumo da assinatura do plano Personalizado, a data do próximo vencimento e a lista do que está incluso. À direita, o bloco Pagamento com o campo CPF ou CNPJ marcado em vermelho e as três formas de pagamento: Cartão de Crédito, PIX e Boleto.]
 
 Checkout: resumo do que você está pagando à esquerda e a escolha da forma de pagamento à direita. O campo de CPF ou CNPJ é validado na hora, e cada forma mostra o prazo em que o pagamento cai.
 
@@ -7325,7 +7325,7 @@ Checkout: resumo do que você está pagando à esquerda e a escolha da forma de 
 
 - Você pode trocar de forma de pagamento a qualquer momento antes de pagar, sem recomeçar do zero.
 
-No cartão, a cobrança é sempre mensal e recorrente. Mesmo com o seletor no Anual, o cartão cobra o valor mensal cheio, todo mês, automaticamente. Não há parcelamento do anual no cartão e não há desconto de 20% no cartão. Se o cliente quer o desconto anual, ele precisa pagar à vista, por Pix ou Boleto.
+No cartão, a cobrança é sempre mensal e recorrente. Mesmo com o seletor no Anual, o cartão cobra o valor mensal cheio, todo mês, automaticamente. Não há parcelamento nem desconto anual no cartão. O desconto vigente do ciclo anual vale no pagamento à vista, por Pix ou Boleto.
 
  Se a marca personalizada (White Label) estiver ligada, o checkout aparece com o logo da sua empresa e sem a marca Dominex. Isso é proposital.
 
@@ -7338,7 +7338,7 @@ No cartão, a cobrança é sempre mensal e recorrente. Mesmo com o seletor no An
 | Boleto | Mensal ou anual à vista, como você escolher | Sim, no anual |
 | Cartão de crédito | Sempre mensal recorrente | Não |
 
-No montador de plano, ao marcar Anual, o painel mostra a economia em destaque no formato Você economiza R$ X/ano e o valor equivalente por mês. O aviso completo aparece logo ali: "O desconto de 20% vale só para pagamento à vista (Pix ou Boleto). No cartão, a cobrança é mensal."
+No montador de plano, ao marcar Anual, o painel mostra a economia e o valor equivalente por mês. O aviso explica que o desconto vigente vale só para pagamento à vista (Pix ou Boleto); no cartão, a cobrança é mensal.
 
 #### Histórico de pagamentos
 
@@ -7361,14 +7361,14 @@ No fim da tela de Assinatura fica o cartão Histórico de pagamentos, com a desc
 | O cliente diz | Causa provável | O que responder / fazer |
 | "Paguei e o sistema continua bloqueado" | Pagamento ainda não compensado, normalmente boleto | Abra Assinatura › Histórico de pagamentos. Se a linha está Pendente, o pagamento não caiu. Pix libera em minutos; boleto pode levar até três dias úteis. |
 | "Meu valor está diferente do site" | Preço promocional ou plano personalizado | O valor da tela é o efetivo da empresa, já com promoção ou preço negociado. No plano Personalizado, o valor é a soma dos módulos e usuários contratados. |
-| "Marquei Anual no cartão e não veio desconto" | Comportamento esperado | O desconto de 20% vale só para pagamento à vista, por Pix ou Boleto. No cartão a cobrança é sempre mensal recorrente. |
+| "Marquei Anual no cartão e não veio desconto" | Comportamento esperado | O desconto vigente do ciclo anual vale só para pagamento à vista, por Pix ou Boleto. No cartão a cobrança é sempre mensal recorrente. |
 | "Não acho o plano Personalizado pra comprar" | Ele não é vendido na escolha de plano | O Personalizado é montado em Assinatura › Gerenciar Meu Plano › aba Personalizado. Ele não aparece na tela de escolha de plano do checkout. |
 | "Contratei um módulo e ele não apareceu" | A página ainda estava com dados antigos | Recarregue a página. O upgrade libera na hora. Se persistir, confirme na aba Personalizado se o módulo ficou marcado. |
 | "Não consigo trocar por um plano menor" | A empresa tem mais usuários do que o plano novo comporta | O sistema pede pra reduzir os usuários antes. Desative os usuários que não usam mais e tente de novo. |
 | "Sumiram recursos depois que assinei" | Fim do período de teste | Durante o teste tudo fica liberado. Ao assinar, valem os módulos do plano escolhido. Contrate os que faltam em Gerenciar Meu Plano. |
 | "Cancelei e perdi o acesso na hora?" | Dúvida sobre o efeito do cancelamento | Não. Cancelar interrompe a renovação automática e você mantém o acesso até o fim do período já pago. Dá pra reativar depois. |
 | "Não vejo o botão de cancelar assinatura" | Falta de papel | Esse botão só aparece pra administrador ou gestor da empresa. |
-| "Estou no limite de usuários" | Vagas do plano esgotadas | Desative usuários inativos (libera vaga na hora) ou compre usuários extras a R$ 50,00 por mês em Gerenciar Meu Plano. |
+| "Estou no limite de usuários" | Vagas do plano esgotadas | Desative usuários inativos (libera vaga na hora) ou compre usuários extras pelo valor vigente em Gerenciar Meu Plano. |
 
 ### Perguntas frequentes
 
@@ -7385,10 +7385,10 @@ No fim da tela de Assinatura fica o cartão Histórico de pagamentos, com a desc
 **R:** Não. O downgrade é agendado: você mantém o plano atual até o fim do período já pago e o valor novo passa a valer na próxima cobrança.
 
 **P:** Quanto custa um usuário a mais?
-**R:** R$ 50,00 por mês por usuário adicional.
+**R:** O valor vigente aparece em Assinatura › Gerenciar Meu Plano › Personalizado.
 
 **P:** Quais formas de pagamento existem?
-**R:** Pix, Boleto e Cartão de crédito. Pix e Boleto aceitam o ciclo anual com 20% de desconto. Cartão é sempre mensal recorrente.
+**R:** Pix, Boleto e Cartão de crédito. Pix e Boleto aceitam o ciclo anual com o desconto vigente. Cartão é sempre mensal recorrente.
 
 **P:** Como recupero um boleto que perdi?
 **R:** Em Assinatura › Histórico de pagamentos, use Ver cobrança na linha correspondente.

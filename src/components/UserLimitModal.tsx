@@ -44,7 +44,7 @@ export function UserLimitModal({
 
         <p className="text-sm text-muted-foreground max-w-sm">
           Seu plano atual permite até {maxUsers} usuário{maxUsers !== 1 ? 's' : ''}. Para cadastrar
-          mais, adicione usuários extras ao seu plano (R$ 50/mês por usuário).
+          mais, consulte as condições para adicionar usuários extras ao seu plano.
         </p>
 
         <div className="flex flex-col-reverse sm:flex-row gap-3 w-full">

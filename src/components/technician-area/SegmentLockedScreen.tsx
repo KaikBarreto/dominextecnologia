@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { getSegment } from '@/utils/companySegments';
-import { getRandomWhatsAppNumber } from '@/components/landing/whatsappNumbers';
+import { getCompanyWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { buildWhatsAppUrl } from '@/lib/whatsapp';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -32,7 +32,7 @@ export function SegmentLockedScreen({ segment }: SegmentLockedScreenProps) {
     // Já é cliente: usa fragmento próprio (a frase vira "Olá! Vim ${fragment}
     // da Dominex...") preservando a intenção de contratar o segmento bloqueado.
     const fragmento = `da Área do Técnico e já uso a Dominex, gostaria de contratar as ferramentas do segmento de *${segLabel}*`;
-    const url = buildWhatsAppUrl(getRandomWhatsAppNumber(), fragmento);
+    const url = buildWhatsAppUrl(getCompanyWhatsAppNumber(), fragmento);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 

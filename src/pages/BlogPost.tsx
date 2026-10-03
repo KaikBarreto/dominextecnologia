@@ -30,6 +30,8 @@ import { BlogTableOfContents } from '@/components/blog/BlogTableOfContents';
 import { RelatedPosts } from '@/components/blog/RelatedPosts';
 import BlogNavbar from '@/components/blog/BlogNavbar';
 import { useBlogTheme } from '@/components/blog/useBlogTheme';
+import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
+import { COMPANY_WHATSAPP_NUMBER } from '@/components/landing/whatsappNumbers';
 
 // Página pública. NUNCA herda o white-label do tenant logado: restaura o brand
 // Dominex em toda a subárvore (espelha Landing.tsx / QuemSomos.tsx).
@@ -45,6 +47,21 @@ const DOMINEX_BRAND_VARS = {
 // Domínio canônico do site público (com www — é o que o projeto usa).
 const SITE_URL = 'https://www.dominex.app';
 const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
+
+/**
+ * Artigos são administrados como HTML e podem conter CTAs antigas de cadastro.
+ * Converte essas âncoras no servidor e no cliente para o WhatsApp oficial, de
+ * modo que o HTML prerenderizado também não divulgue um funil desativado.
+ */
+function replaceRegistrationCtas(content: string, label: string) {
+  const whatsappUrl = `https://wa.me/${COMPANY_WHATSAPP_NUMBER}`;
+
+  return content.replace(
+    /<a\b([^>]*?)\bhref=(["'])\/cadastro(?:\?[^"']*)?\2([^>]*)>[\s\S]*?<\/a>/gi,
+    (_match, before: string, quote: string, after: string) =>
+      `<a${before}href=${quote}${whatsappUrl}${quote}${after}>${label}</a>`,
+  );
+}
 
 /** Uma versão traduzida do mesmo artigo (mesmo translation_group). */
 export interface BlogPostAlternate {
@@ -459,7 +476,9 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
               <div
                 ref={contentRef}
                 className="blog-content prose prose-sm max-w-none prose-headings:text-neutral-900 prose-a:text-primary prose-strong:text-neutral-900 prose-img:rounded-xl sm:prose-base dark:prose-invert dark:prose-headings:text-white dark:prose-strong:text-white"
-                dangerouslySetInnerHTML={{ __html: post.content || '' }}
+                dangerouslySetInnerHTML={{
+                  __html: replaceRegistrationCtas(post.content || '', t.postCtaButton),
+                }}
               />
 
               {/* Like + contagem */}
@@ -571,12 +590,11 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                 <p className="mx-auto mb-6 max-w-md text-neutral-600 dark:text-white/55">
                   {t.postCtaBody}
                 </p>
-                <Link
-                  to="/cadastro?origem=Blog"
+                <WhatsAppCtaLink
                   className="inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-colors"
                 >
                   {t.postCtaButton} <ArrowRight className="h-4 w-4" />
-                </Link>
+                </WhatsAppCtaLink>
               </div>
 
               {/* Leia também — relacionados (mesma categoria primeiro, completa
