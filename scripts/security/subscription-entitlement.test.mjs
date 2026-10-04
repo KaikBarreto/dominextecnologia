@@ -5,7 +5,7 @@ import test from 'node:test';
 import { auditMigrationDirectory } from './audit-rls.mjs';
 
 const migrationPath = new URL(
-  '../../supabase/migrations/20261004120000_tenant_subscription_entitlement_rls.sql',
+  '../../supabase/migrations/20261004213000_tenant_subscription_entitlement_rls.sql',
   import.meta.url,
 );
 
