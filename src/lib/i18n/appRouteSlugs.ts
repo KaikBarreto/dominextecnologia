@@ -76,6 +76,8 @@ const SEGMENTS: Record<string, SegmentTranslations> = {
   cobrancas: { en: 'charges', es: 'cobros', fr: 'encaissements' },
   'configuracoes-financeiras': { en: 'financial-settings', es: 'configuracion-financiera', fr: 'parametres-financiers' },
   organograma: { en: 'organogram', es: 'organigrama', fr: 'organigramme' },
+  fluxogramas: { en: 'flowcharts', es: 'diagramas-de-flujo', fr: 'logigrammes' },
+  // Mantido SÓ pra resolver a URL antiga /funcionarios/processos → redirect.
   processos: { en: 'processes', es: 'procesos', fr: 'processus' },
   // 'configuracoes' já está no mapa acima e serve como sub-segmento também
   // (/notas-fiscais/configuracoes → /invoices/settings).
@@ -143,9 +145,14 @@ const ROUTES: AppRouteDef[] = [
   // (editor de um organograma), ambos in-place dentro de Employees.
   { key: 'orgChart', base: '/funcionarios/organograma' },
   { key: 'orgChartDetail', base: '/funcionarios/organograma/:param' },
-  // Processos (Fluxograma) deep-link amigável: espelha o Organograma — a LISTA
-  // (aba processos) e o DETALHE (editor de um processo), ambos in-place dentro
+  // Fluxograma deep-link amigável: espelha o Organograma — a LISTA (aba
+  // fluxograma) e o DETALHE (editor de um fluxograma), ambos in-place dentro
   // de Employees.
+  { key: 'flowcharts', base: '/funcionarios/fluxogramas' },
+  { key: 'flowchartDetail', base: '/funcionarios/fluxogramas/:param' },
+  // LEGADO: a tela se chamava "Processos" e morava em /funcionarios/processos.
+  // As keys continuam registradas só pra o App.tsx pendurar um redirect nelas —
+  // links e favoritos de antes do rename não podem dar 404.
   { key: 'processes', base: '/funcionarios/processos' },
   { key: 'processDetail', base: '/funcionarios/processos/:param' },
   { key: 'liveMap', base: '/mapa-ao-vivo' },

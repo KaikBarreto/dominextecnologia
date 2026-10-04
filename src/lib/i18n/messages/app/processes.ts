@@ -1,4 +1,10 @@
-// i18n do APP — domínio PROCESSES (Processos / Fluxograma, aba de Funcionários).
+// i18n do APP — domínio PROCESSES (Fluxograma, aba de Funcionários).
+//
+// NOME DO ARTEFATO = "fluxograma" (flowchart / diagrama de flujo / logigramme):
+// é o que o usuário cria, lista, abre e desenha. A palavra "processo" SÓ fica
+// onde se fala da rotina real que o desenho documenta — o painel `meta` (SIPOC)
+// e o `pop` (Procedimento Operacional Padrão). POP de um "fluxograma" não
+// existe; POP de um processo, sim. Não troque essas duas seções.
 // Preencha as chaves nos 4 locales (pt-br é a fonte/base; ausência num locale
 // cai no pt-br pelo deepMerge). Ver app/index.ts.
 //
@@ -10,34 +16,34 @@ export const processes = {
   'pt-br': {
     // ── Aba em Funcionários (não existe em employees.ts: evita tocar em arquivo
     // de outro dev — o rótulo da aba vem direto daqui) ──
-    tabLabel: 'Processos',
+    tabLabel: 'Fluxograma',
 
     subtitle: 'Desenhe os processos da empresa em um fluxograma e documente como cada etapa deve ser feita.',
-    newProcess: 'Novo processo',
+    newProcess: 'Novo fluxograma',
     back: 'Voltar',
-    count: { one: '{count} processo', other: '{count} processos' },
+    count: { one: '{count} fluxograma', other: '{count} fluxogramas' },
     stepCount: { one: '{count} etapa', other: '{count} etapas' },
 
     empty: {
-      title: 'Nenhum processo ainda',
-      description: 'Crie um processo para desenhar o passo a passo de uma rotina da empresa, do início ao fim.',
+      title: 'Nenhum fluxograma ainda',
+      description: 'Crie um fluxograma para desenhar o passo a passo de uma rotina da empresa, do início ao fim.',
     },
 
     create: {
-      title: 'Novo processo',
-      nameLabel: 'Nome do processo',
+      title: 'Novo fluxograma',
+      nameLabel: 'Nome do fluxograma',
       namePlaceholder: 'Ex.: Abertura de ordem de serviço',
-      submit: 'Criar processo',
+      submit: 'Criar fluxograma',
       cancel: 'Cancelar',
     },
 
     rename: {
-      title: 'Renomear processo',
+      title: 'Renomear fluxograma',
       submit: 'Salvar',
     },
 
     delete: {
-      title: 'Excluir processo?',
+      title: 'Excluir fluxograma?',
       description: 'Essa ação é permanente e remove o fluxograma e tudo que foi desenhado nele.',
       confirm: 'Excluir',
       cancel: 'Cancelar',
@@ -58,7 +64,7 @@ export const processes = {
       start: 'Use para marcar onde o processo começa.',
       task: 'Use para uma etapa comum, feita por alguém.',
       decision: 'Use quando o caminho muda conforme uma condição, como Sim ou Não.',
-      subprocess: 'Use para apontar para outro processo já desenhado, sem repetir os passos aqui.',
+      subprocess: 'Use para apontar para outro fluxograma já desenhado, sem repetir os passos aqui.',
       document: 'Use quando a etapa gera ou depende de um documento, como uma nota ou um contrato.',
       delay: 'Use para marcar um tempo de espera antes da próxima etapa.',
       end: 'Use para marcar onde o processo termina.',
@@ -118,8 +124,8 @@ export const processes = {
       colorField: 'Cor',
       iconField: 'Ícone',
       iconDefault: 'Padrão da forma',
-      linkedProcessField: 'Processo vinculado',
-      linkedProcessPlaceholder: 'Selecionar processo',
+      linkedProcessField: 'Fluxograma vinculado',
+      linkedProcessPlaceholder: 'Selecionar fluxograma',
       applyColorToLane: 'Aplicar esta cor a toda a raia',
     },
 
@@ -148,8 +154,8 @@ export const processes = {
     },
 
     validation: {
-      title: 'Conferência do processo',
-      allGood: 'Nenhum problema encontrado. O processo está pronto para ser publicado.',
+      title: 'Conferência do fluxograma',
+      allGood: 'Nenhum problema encontrado. O fluxograma está pronto para ser publicado.',
       errorCount: { one: '{count} erro', other: '{count} erros' },
       warningCount: { one: '{count} aviso', other: '{count} avisos' },
       goToNode: 'Ir até a etapa',
@@ -158,17 +164,17 @@ export const processes = {
     },
 
     issues: {
-      'no-start': 'O processo não tem um ponto de partida. Adicione a forma Início.',
-      'multiple-starts': 'O processo tem mais de um ponto de partida. Deixe só um Início, ou separe em processos diferentes.',
-      'no-end': 'O processo não tem um ponto de chegada. Adicione a forma Fim.',
+      'no-start': 'O fluxograma não tem um ponto de partida. Adicione a forma Início.',
+      'multiple-starts': 'O fluxograma tem mais de um ponto de partida. Deixe só um Início, ou separe em fluxogramas diferentes.',
+      'no-end': 'O fluxograma não tem um ponto de chegada. Adicione a forma Fim.',
       unreachable: 'Esta etapa não é alcançada a partir do início. Conecte ela ao fluxo.',
-      'no-path-to-end': 'Daqui não se chega ao fim do processo. O caminho volta pra trás e nunca termina.',
+      'no-path-to-end': 'Daqui não se chega ao fim do fluxograma. O caminho volta pra trás e nunca termina.',
       'dead-end': 'Esta etapa não leva a nenhuma outra. Quem chega aqui fica sem próximo passo.',
       'decision-needs-two-branches': 'Esta decisão precisa de pelo menos dois caminhos de saída, como Sim e Não.',
       'branch-without-label': 'A saída desta decisão não diz qual é a condição. Escreva o que leva por este caminho (ex.: Sim / Não).',
-      'start-with-incoming': 'O Início não deveria receber nenhuma seta chegando. Ele é o começo do processo.',
-      'end-with-outgoing': 'O Fim não deveria ter nenhuma seta saindo. Ele é o final do processo.',
-      'isolated-node': 'Esta etapa está solta no desenho, sem nenhuma conexão. Ligue ela ao resto do processo ou remova.',
+      'start-with-incoming': 'O Início não deveria receber nenhuma seta chegando. Ele é o começo do fluxograma.',
+      'end-with-outgoing': 'O Fim não deveria ter nenhuma seta saindo. Ele é o final do fluxograma.',
+      'isolated-node': 'Esta etapa está solta no desenho, sem nenhuma conexão. Ligue ela ao resto do fluxograma ou remova.',
       'duplicate-connection': 'Há duas conexões iguais entre as mesmas etapas. Remova a repetida.',
       'empty-label': 'Esta etapa está sem nome. Escreva o que deve ser feito aqui.',
     },
@@ -216,34 +222,34 @@ export const processes = {
     },
   },
   en: {
-    tabLabel: 'Processes',
+    tabLabel: 'Flowchart',
 
     subtitle: 'Draw the company processes as a flowchart and document how each step should be done.',
-    newProcess: 'New process',
+    newProcess: 'New flowchart',
     back: 'Back',
-    count: { one: '{count} process', other: '{count} processes' },
+    count: { one: '{count} flowchart', other: '{count} flowcharts' },
     stepCount: { one: '{count} step', other: '{count} steps' },
 
     empty: {
-      title: 'No processes yet',
-      description: 'Create a process to draw the step-by-step of a company routine, from start to finish.',
+      title: 'No flowcharts yet',
+      description: 'Create a flowchart to draw the step-by-step of a company routine, from start to finish.',
     },
 
     create: {
-      title: 'New process',
-      nameLabel: 'Process name',
+      title: 'New flowchart',
+      nameLabel: 'Flowchart name',
       namePlaceholder: 'E.g.: Opening a work order',
-      submit: 'Create process',
+      submit: 'Create flowchart',
       cancel: 'Cancel',
     },
 
     rename: {
-      title: 'Rename process',
+      title: 'Rename flowchart',
       submit: 'Save',
     },
 
     delete: {
-      title: 'Delete process?',
+      title: 'Delete flowchart?',
       description: 'This action is permanent and removes the flowchart and everything drawn in it.',
       confirm: 'Delete',
       cancel: 'Cancel',
@@ -264,7 +270,7 @@ export const processes = {
       start: 'Use it to mark where the process begins.',
       task: 'Use it for a regular step, done by someone.',
       decision: 'Use it when the path changes depending on a condition, like Yes or No.',
-      subprocess: 'Use it to point to another process already drawn, without repeating its steps here.',
+      subprocess: 'Use it to point to another flowchart already drawn, without repeating its steps here.',
       document: 'Use it when the step creates or depends on a document, like a note or a contract.',
       delay: 'Use it to mark a waiting time before the next step.',
       end: 'Use it to mark where the process ends.',
@@ -324,8 +330,8 @@ export const processes = {
       colorField: 'Color',
       iconField: 'Icon',
       iconDefault: 'Shape default',
-      linkedProcessField: 'Linked process',
-      linkedProcessPlaceholder: 'Select process',
+      linkedProcessField: 'Linked flowchart',
+      linkedProcessPlaceholder: 'Select flowchart',
       applyColorToLane: 'Apply this color to the whole lane',
     },
 
@@ -354,8 +360,8 @@ export const processes = {
     },
 
     validation: {
-      title: 'Process check',
-      allGood: 'No problems found. The process is ready to be published.',
+      title: 'Flowchart check',
+      allGood: 'No problems found. The flowchart is ready to be published.',
       errorCount: { one: '{count} error', other: '{count} errors' },
       warningCount: { one: '{count} warning', other: '{count} warnings' },
       goToNode: 'Go to step',
@@ -364,17 +370,17 @@ export const processes = {
     },
 
     issues: {
-      'no-start': "The process has no starting point. Add the Start shape.",
-      'multiple-starts': 'The process has more than one starting point. Keep only one Start, or split into separate processes.',
-      'no-end': "The process has no ending point. Add the End shape.",
+      'no-start': "The flowchart has no starting point. Add the Start shape.",
+      'multiple-starts': 'The flowchart has more than one starting point. Keep only one Start, or split into separate flowcharts.',
+      'no-end': "The flowchart has no ending point. Add the End shape.",
       unreachable: 'This step cannot be reached from the start. Connect it to the flow.',
-      'no-path-to-end': 'From here there is no way to reach the end of the process. The path loops back and never finishes.',
+      'no-path-to-end': 'From here there is no way to reach the end of the flowchart. The path loops back and never finishes.',
       'dead-end': 'This step does not lead to any other. Whoever gets here has no next step.',
       'decision-needs-two-branches': 'This decision needs at least two outgoing paths, like Yes and No.',
       'branch-without-label': "This decision's outgoing path does not say what the condition is. Write what leads down this path (e.g.: Yes / No).",
-      'start-with-incoming': 'Start should not receive any incoming arrow. It is the beginning of the process.',
-      'end-with-outgoing': 'End should not have any outgoing arrow. It is the end of the process.',
-      'isolated-node': 'This step is loose in the drawing, with no connection at all. Connect it to the rest of the process, or remove it.',
+      'start-with-incoming': 'Start should not receive any incoming arrow. It is the beginning of the flowchart.',
+      'end-with-outgoing': 'End should not have any outgoing arrow. It is the end of the flowchart.',
+      'isolated-node': 'This step is loose in the drawing, with no connection at all. Connect it to the rest of the flowchart, or remove it.',
       'duplicate-connection': 'There are two identical connections between the same steps. Remove the duplicate.',
       'empty-label': 'This step has no name. Write what should be done here.',
     },
@@ -422,34 +428,34 @@ export const processes = {
     },
   },
   es: {
-    tabLabel: 'Procesos',
+    tabLabel: 'Diagrama de flujo',
 
     subtitle: 'Dibuje los procesos de la empresa en un diagrama de flujo y documente cómo debe hacerse cada etapa.',
-    newProcess: 'Nuevo proceso',
+    newProcess: 'Nuevo diagrama de flujo',
     back: 'Volver',
-    count: { one: '{count} proceso', other: '{count} procesos' },
+    count: { one: '{count} diagrama de flujo', other: '{count} diagramas de flujo' },
     stepCount: { one: '{count} etapa', other: '{count} etapas' },
 
     empty: {
-      title: 'Todavía no hay procesos',
-      description: 'Cree un proceso para dibujar el paso a paso de una rutina de la empresa, de principio a fin.',
+      title: 'Todavía no hay diagramas de flujo',
+      description: 'Cree un diagrama de flujo para dibujar el paso a paso de una rutina de la empresa, de principio a fin.',
     },
 
     create: {
-      title: 'Nuevo proceso',
-      nameLabel: 'Nombre del proceso',
+      title: 'Nuevo diagrama de flujo',
+      nameLabel: 'Nombre del diagrama de flujo',
       namePlaceholder: 'Ej.: Apertura de orden de trabajo',
-      submit: 'Crear proceso',
+      submit: 'Crear diagrama de flujo',
       cancel: 'Cancelar',
     },
 
     rename: {
-      title: 'Renombrar proceso',
+      title: 'Renombrar diagrama de flujo',
       submit: 'Guardar',
     },
 
     delete: {
-      title: '¿Eliminar proceso?',
+      title: '¿Eliminar diagrama de flujo?',
       description: 'Esta acción es permanente y elimina el diagrama de flujo y todo lo dibujado en él.',
       confirm: 'Eliminar',
       cancel: 'Cancelar',
@@ -470,7 +476,7 @@ export const processes = {
       start: 'Úsela para marcar dónde empieza el proceso.',
       task: 'Úsela para una etapa común, hecha por alguien.',
       decision: 'Úsela cuando el camino cambia según una condición, como Sí o No.',
-      subprocess: 'Úsela para apuntar a otro proceso ya dibujado, sin repetir sus pasos aquí.',
+      subprocess: 'Úsela para apuntar a otro diagrama de flujo ya dibujado, sin repetir sus pasos aquí.',
       document: 'Úsela cuando la etapa genera o depende de un documento, como una nota o un contrato.',
       delay: 'Úsela para marcar un tiempo de espera antes de la próxima etapa.',
       end: 'Úsela para marcar dónde termina el proceso.',
@@ -530,8 +536,8 @@ export const processes = {
       colorField: 'Color',
       iconField: 'Icono',
       iconDefault: 'Predeterminado de la forma',
-      linkedProcessField: 'Proceso vinculado',
-      linkedProcessPlaceholder: 'Seleccionar proceso',
+      linkedProcessField: 'Diagrama de flujo vinculado',
+      linkedProcessPlaceholder: 'Seleccionar diagrama de flujo',
       applyColorToLane: 'Aplicar este color a todo el carril',
     },
 
@@ -560,8 +566,8 @@ export const processes = {
     },
 
     validation: {
-      title: 'Revisión del proceso',
-      allGood: 'No se encontraron problemas. El proceso está listo para publicarse.',
+      title: 'Revisión del diagrama de flujo',
+      allGood: 'No se encontraron problemas. El diagrama de flujo está listo para publicarse.',
       errorCount: { one: '{count} error', other: '{count} errores' },
       warningCount: { one: '{count} aviso', other: '{count} avisos' },
       goToNode: 'Ir a la etapa',
@@ -570,17 +576,17 @@ export const processes = {
     },
 
     issues: {
-      'no-start': 'El proceso no tiene un punto de partida. Agregue la forma Inicio.',
-      'multiple-starts': 'El proceso tiene más de un punto de partida. Deje solo un Inicio, o sepárelo en procesos diferentes.',
-      'no-end': 'El proceso no tiene un punto de llegada. Agregue la forma Fin.',
+      'no-start': 'El diagrama de flujo no tiene un punto de partida. Agregue la forma Inicio.',
+      'multiple-starts': 'El diagrama de flujo tiene más de un punto de partida. Deje solo un Inicio, o sepárelo en diagramas diferentes.',
+      'no-end': 'El diagrama de flujo no tiene un punto de llegada. Agregue la forma Fin.',
       unreachable: 'Esta etapa no se alcanza desde el inicio. Conéctela al flujo.',
-      'no-path-to-end': 'Desde aquí no se llega al fin del proceso. El camino vuelve hacia atrás y nunca termina.',
+      'no-path-to-end': 'Desde aquí no se llega al fin del diagrama de flujo. El camino vuelve hacia atrás y nunca termina.',
       'dead-end': 'Esta etapa no lleva a ninguna otra. Quien llega aquí se queda sin próximo paso.',
       'decision-needs-two-branches': 'Esta decisión necesita al menos dos caminos de salida, como Sí y No.',
       'branch-without-label': 'La salida de esta decisión no dice cuál es la condición. Escriba qué lleva por este camino (ej.: Sí / No).',
-      'start-with-incoming': 'El Inicio no debería recibir ninguna flecha entrante. Es el comienzo del proceso.',
-      'end-with-outgoing': 'El Fin no debería tener ninguna flecha saliente. Es el final del proceso.',
-      'isolated-node': 'Esta etapa está suelta en el dibujo, sin ninguna conexión. Conéctela al resto del proceso, o elimínela.',
+      'start-with-incoming': 'El Inicio no debería recibir ninguna flecha entrante. Es el comienzo del diagrama de flujo.',
+      'end-with-outgoing': 'El Fin no debería tener ninguna flecha saliente. Es el final del diagrama de flujo.',
+      'isolated-node': 'Esta etapa está suelta en el dibujo, sin ninguna conexión. Conéctela al resto del diagrama de flujo, o elimínela.',
       'duplicate-connection': 'Hay dos conexiones iguales entre las mismas etapas. Elimine la repetida.',
       'empty-label': 'Esta etapa no tiene nombre. Escriba qué debe hacerse aquí.',
     },
@@ -628,34 +634,34 @@ export const processes = {
     },
   },
   fr: {
-    tabLabel: 'Processus',
+    tabLabel: 'Logigramme',
 
     subtitle: 'Dessinez les processus de l`entreprise sous forme de logigramme et documentez comment faire chaque étape.',
-    newProcess: 'Nouveau processus',
+    newProcess: 'Nouveau logigramme',
     back: 'Retour',
-    count: { one: '{count} processus', other: '{count} processus' },
+    count: { one: '{count} logigramme', other: '{count} logigrammes' },
     stepCount: { one: '{count} étape', other: '{count} étapes' },
 
     empty: {
-      title: 'Aucun processus pour le moment',
-      description: 'Créez un processus pour dessiner les étapes d`une routine de l`entreprise, du début à la fin.',
+      title: 'Aucun logigramme pour le moment',
+      description: 'Créez un logigramme pour dessiner les étapes d`une routine de l`entreprise, du début à la fin.',
     },
 
     create: {
-      title: 'Nouveau processus',
-      nameLabel: 'Nom du processus',
+      title: 'Nouveau logigramme',
+      nameLabel: 'Nom du logigramme',
       namePlaceholder: 'Ex. : Ouverture d`un bon de travail',
-      submit: 'Créer le processus',
+      submit: 'Créer le logigramme',
       cancel: 'Annuler',
     },
 
     rename: {
-      title: 'Renommer le processus',
+      title: 'Renommer le logigramme',
       submit: 'Enregistrer',
     },
 
     delete: {
-      title: 'Supprimer le processus ?',
+      title: 'Supprimer le logigramme ?',
       description: 'Cette action est permanente et supprime le logigramme ainsi que tout ce qui y a été dessiné.',
       confirm: 'Supprimer',
       cancel: 'Annuler',
@@ -676,7 +682,7 @@ export const processes = {
       start: 'À utiliser pour marquer où le processus commence.',
       task: 'À utiliser pour une étape courante, faite par quelqu`un.',
       decision: 'À utiliser quand le chemin change selon une condition, comme Oui ou Non.',
-      subprocess: 'À utiliser pour renvoyer vers un autre processus déjà dessiné, sans répéter ses étapes ici.',
+      subprocess: 'À utiliser pour renvoyer vers un autre logigramme déjà dessiné, sans répéter ses étapes ici.',
       document: 'À utiliser quand l`étape crée ou dépend d`un document, comme une note ou un contrat.',
       delay: 'À utiliser pour marquer un temps d`attente avant l`étape suivante.',
       end: 'À utiliser pour marquer où le processus se termine.',
@@ -736,8 +742,8 @@ export const processes = {
       colorField: 'Couleur',
       iconField: 'Icône',
       iconDefault: 'Par défaut de la forme',
-      linkedProcessField: 'Processus lié',
-      linkedProcessPlaceholder: 'Sélectionner un processus',
+      linkedProcessField: 'Logigramme lié',
+      linkedProcessPlaceholder: 'Sélectionner un logigramme',
       applyColorToLane: 'Appliquer cette couleur à toute la voie',
     },
 
@@ -766,8 +772,8 @@ export const processes = {
     },
 
     validation: {
-      title: 'Vérification du processus',
-      allGood: 'Aucun problème trouvé. Le processus est prêt à être publié.',
+      title: 'Vérification du logigramme',
+      allGood: 'Aucun problème trouvé. Le logigramme est prêt à être publié.',
       errorCount: { one: '{count} erreur', other: '{count} erreurs' },
       warningCount: { one: '{count} avertissement', other: '{count} avertissements' },
       goToNode: 'Aller à l`étape',
@@ -776,17 +782,17 @@ export const processes = {
     },
 
     issues: {
-      'no-start': 'Le processus n`a pas de point de départ. Ajoutez la forme Début.',
-      'multiple-starts': 'Le processus a plus d`un point de départ. Ne gardez qu`un seul Début, ou séparez en processus distincts.',
-      'no-end': 'Le processus n`a pas de point d`arrivée. Ajoutez la forme Fin.',
+      'no-start': 'Le logigramme n`a pas de point de départ. Ajoutez la forme Début.',
+      'multiple-starts': 'Le logigramme a plus d`un point de départ. Ne gardez qu`un seul Début, ou séparez en logigrammes distincts.',
+      'no-end': 'Le logigramme n`a pas de point d`arrivée. Ajoutez la forme Fin.',
       unreachable: 'Cette étape n`est pas atteignable depuis le début. Connectez-la au flux.',
-      'no-path-to-end': 'D`ici, on n`arrive pas à la fin du processus. Le chemin revient en arrière et ne se termine jamais.',
+      'no-path-to-end': 'D`ici, on n`arrive pas à la fin du logigramme. Le chemin revient en arrière et ne se termine jamais.',
       'dead-end': 'Cette étape ne mène à aucune autre. Qui arrive ici n`a pas d`étape suivante.',
       'decision-needs-two-branches': 'Cette décision a besoin d`au moins deux chemins de sortie, comme Oui et Non.',
       'branch-without-label': 'La sortie de cette décision ne dit pas quelle est la condition. Écrivez ce qui mène par ce chemin (ex. : Oui / Non).',
-      'start-with-incoming': 'Le Début ne devrait recevoir aucune flèche entrante. C`est le commencement du processus.',
-      'end-with-outgoing': 'La Fin ne devrait avoir aucune flèche sortante. C`est la fin du processus.',
-      'isolated-node': 'Cette étape est isolée dans le dessin, sans aucune connexion. Reliez-la au reste du processus, ou supprimez-la.',
+      'start-with-incoming': 'Le Début ne devrait recevoir aucune flèche entrante. C`est le commencement du logigramme.',
+      'end-with-outgoing': 'La Fin ne devrait avoir aucune flèche sortante. C`est la fin du logigramme.',
+      'isolated-node': 'Cette étape est isolée dans le dessin, sans aucune connexion. Reliez-la au reste du logigramme, ou supprimez-la.',
       'duplicate-connection': 'Il y a deux connexions identiques entre les mêmes étapes. Supprimez celle en double.',
       'empty-label': 'Cette étape n`a pas de nom. Écrivez ce qui doit être fait ici.',
     },

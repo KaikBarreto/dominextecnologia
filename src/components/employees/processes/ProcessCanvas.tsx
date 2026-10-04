@@ -620,6 +620,32 @@ function ProcessCanvasInner({
     scheduleSave();
   }, [nodes, centerFlowPosition, pushHistory, scheduleSave, setNodes, t]);
 
+  // ── Primeira etapa: o fluxograma nunca nasce em branco ─────────────────────
+  // Igual Miro/MindMeister: canvas vazio ganha UMA caixa de "Início" no meio da
+  // tela, pronta pra clicar e renomear — sem ela a pessoa olha pro quadriculado
+  // e não sabe por onde começar.
+  //
+  // Dispara UMA vez por abertura e só quando o grafo GRAVADO está vazio: quem
+  // apagar a última caixa e continuar editando não ganha outra de volta. Não
+  // entra no histórico (o "Desfazer" nasce desligado) nem seleciona o nó — o
+  // painel de edição abrindo sozinho em cima do canvas assusta mais que ajuda.
+  const didSeedRef = useRef(false);
+  useEffect(() => { didSeedRef.current = false; }, [process.id]);
+  useEffect(() => {
+    if (didSeedRef.current || !canMountFlow || process.data.nodes.length > 0) return;
+    didSeedRef.current = true;
+    const center = centerFlowPosition();
+    const size = getShapeSpec('start').size;
+    setNodes([{
+      id: crypto.randomUUID(),
+      type: PROCESS_NODE_TYPE,
+      position: { x: center.x - size.width / 2, y: center.y - size.height / 2 },
+      data: { shape: 'start', label: defaultLabelForShape('start', t) },
+    }]);
+    scheduleSave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canMountFlow, process.id, process.data.nodes.length]);
+
   const addLane = useCallback(() => {
     pushHistory();
     const id = crypto.randomUUID();
@@ -767,10 +793,10 @@ function ProcessCanvasInner({
     try {
       if (format === 'png') {
         const { exportGraphPng } = await import('@/lib/canvas/graphExport');
-        await exportGraphPng({ element, nodes, isDark, graphName: process.name, filePrefix: 'processo' });
+        await exportGraphPng({ element, nodes, isDark, graphName: process.name, filePrefix: 'fluxograma' });
       } else {
         const { exportGraphPdf } = await import('@/lib/canvas/graphExport');
-        await exportGraphPdf({ element, nodes, isDark, graphName: process.name, filePrefix: 'processo', hideBranding: whiteLabelEnabled });
+        await exportGraphPdf({ element, nodes, isDark, graphName: process.name, filePrefix: 'fluxograma', hideBranding: whiteLabelEnabled });
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -1099,36 +1125,47 @@ function ProcessCanvasInner({
                 </div>
 
                 <div className="pointer-events-none absolute right-3 top-3 z-20 flex items-center gap-2" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-                  <span className="pointer-events-none hidden items-center gap-1.5 rounded-lg bg-card/85 px-2.5 py-1.5 text-xs text-muted-foreground shadow-md ring-1 ring-border backdrop-blur sm:inline-flex">
-                    <SaveStatus state={saveState} t={t} />
-                  </span>
+                  {/* `idle` não tem o que dizer: sem este guard sobra a cápsula
+                      com borda e sombra VAZIA ao lado da paleta. */}
+                  {saveState !== 'idle' && (
+                    <span className="pointer-events-none hidden items-center gap-1.5 rounded-lg bg-card/85 px-2.5 py-1.5 text-xs text-muted-foreground shadow-md ring-1 ring-border backdrop-blur sm:inline-flex">
+                      <SaveStatus state={saveState} t={t} />
+                    </span>
+                  )}
+                  {/* ⚠️ `pointer-events-auto` AQUI é obrigatório: o container do
+                      overlay é `pointer-events-none` (pra não roubar o pan do
+                      canvas) e os <Button> da toolbar NÃO reativam o clique
+                      sozinhos — sem este wrapper a barra inteira fica morta e
+                      o clique atravessa pro `.react-flow__pane`. */}
                   {!isMobile && (
-                    <ProcessToolbarButtons
-                      t={t}
-                      compact
-                      paletteOpen={paletteOpen}
-                      setPaletteOpen={setPaletteOpen}
-                      onAddShape={addShape}
-                      onAddLane={addLane}
-                      onOrganize={organize}
-                      onTidy={tidy}
-                      onUndo={undo}
-                      onRedo={redo}
-                      historyLen={historyLen}
-                      onExport={handleExport}
-                      onDownloadPop={handleDownloadPop}
-                      popLoading={popLoading}
-                      prefs={prefs}
-                      setPref={setPref}
-                      validation={validation}
-                      validationOpen={validationOpen}
-                      setValidationOpen={setValidationOpen}
-                      onSelectIssue={(nodeId) => { setSelectedNodeId(nodeId); centerOnNode(nodeId); }}
-                      metaOpen={metaOpen}
-                      setMetaOpen={setMetaOpen}
-                      meta={meta}
-                      onMetaChange={updateMeta}
-                    />
+                    <div className="pointer-events-auto flex items-center gap-2">
+                      <ProcessToolbarButtons
+                        t={t}
+                        compact
+                        paletteOpen={paletteOpen}
+                        setPaletteOpen={setPaletteOpen}
+                        onAddShape={addShape}
+                        onAddLane={addLane}
+                        onOrganize={organize}
+                        onTidy={tidy}
+                        onUndo={undo}
+                        onRedo={redo}
+                        historyLen={historyLen}
+                        onExport={handleExport}
+                        onDownloadPop={handleDownloadPop}
+                        popLoading={popLoading}
+                        prefs={prefs}
+                        setPref={setPref}
+                        validation={validation}
+                        validationOpen={validationOpen}
+                        setValidationOpen={setValidationOpen}
+                        onSelectIssue={(nodeId) => { setSelectedNodeId(nodeId); centerOnNode(nodeId); }}
+                        metaOpen={metaOpen}
+                        setMetaOpen={setMetaOpen}
+                        meta={meta}
+                        onMetaChange={updateMeta}
+                      />
+                    </div>
                   )}
                 </div>
 

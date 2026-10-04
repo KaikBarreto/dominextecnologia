@@ -125,8 +125,9 @@ export default function Employees() {
   //  • `/funcionarios/perfil/<slug>-<code>`     → aba behavioral + detalhe do funcionário
   //  • `/funcionarios/organograma`              → aba organograma (LISTA)
   //  • `/funcionarios/organograma/<slug>-<code>`→ aba organograma + editor aberto
-  //  • `/funcionarios/processos`                → aba processos (LISTA)
-  //  • `/funcionarios/processos/<slug>-<code>`  → aba processos + editor aberto
+  //  • `/funcionarios/fluxogramas`             → aba fluxograma (LISTA)
+  //  • `/funcionarios/fluxogramas/<slug>-<code>`→ aba fluxograma + editor aberto
+  //  (o endereço antigo `/funcionarios/processos[...]` redireciona pra cá — App.tsx)
   // Como compartilham `:param`, distinguimos QUAL rota casou pela KEY
   // canônica do pathname (resolveAppSlug cobre os 4 idiomas + bookmarks pt-br).
   const { param: routeParam } = useParams<{ param?: string }>();
@@ -141,8 +142,8 @@ export default function Employees() {
   const profileParam = routeKey === 'employeeProfile' ? routeParam : undefined;
   const isOrgChartRoute = routeKey === 'orgChart' || routeKey === 'orgChartDetail';
   const orgChartParam = routeKey === 'orgChartDetail' ? routeParam : undefined;
-  const isProcessRoute = routeKey === 'processes' || routeKey === 'processDetail';
-  const processParam = routeKey === 'processDetail' ? routeParam : undefined;
+  const isProcessRoute = routeKey === 'flowcharts' || routeKey === 'flowchartDetail';
+  const processParam = routeKey === 'flowchartDetail' ? routeParam : undefined;
 
   const [activeTab, setActiveTab] = useState(
     profileParam
@@ -261,9 +262,9 @@ export default function Employees() {
     [orgCharts, navigate],
   );
 
-  // ── Deep-link de Processos (Fluxograma) ─────────────────────────────────────
+  // ── Deep-link do Fluxograma ────────────────────────────────────────────────
   // Espelha o organograma: resolve o processo aberto a partir do `:param`
-  // (rota processDetail). Prioriza o public_short_code do fim do slug; FALLBACK
+  // (rota flowchartDetail). Prioriza o public_short_code do fim do slug; FALLBACK
   // para UUID puro.
   const { processes } = useProcesses();
   const resolvedProcessId = useMemo(() => {
@@ -290,7 +291,7 @@ export default function Employees() {
   const processesLoaded = processes.length > 0 || !isProcessRoute;
   useEffect(() => {
     if (processParam && processesLoaded && !resolvedProcessId) {
-      navigate('/funcionarios/processos', { replace: true });
+      navigate('/funcionarios/fluxogramas', { replace: true });
     }
   }, [processParam, processesLoaded, resolvedProcessId, navigate]);
 
@@ -298,12 +299,12 @@ export default function Employees() {
   const handleSelectProcess = useCallback(
     (id: string | null) => {
       if (!id) {
-        navigate('/funcionarios/processos');
+        navigate('/funcionarios/fluxogramas');
         return;
       }
       const process = processes.find((p) => p.id === id);
       const code = process?.public_short_code;
-      navigate(code ? buildProcessPath(process!.name, code) : `/funcionarios/processos/${id}`);
+      navigate(code ? buildProcessPath(process!.name, code) : `/funcionarios/fluxogramas/${id}`);
     },
     [processes, navigate],
   );

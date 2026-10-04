@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.28.16";
+export const APP_VERSION = "1.28.17";
 
-export const VERSION_NOTES = "O atendimento da Dominex agora usa um único WhatsApp oficial, e as condições dos planos são apresentadas diretamente pelo Maicon conforme a necessidade de cada empresa.";
+export const VERSION_NOTES = "Os botões do editor de fluxograma voltaram a responder ao clique, e tanto o fluxograma quanto o organograma já abrem com a primeira caixa pronta no meio da tela. A tela de Processos passou a se chamar Fluxograma.";

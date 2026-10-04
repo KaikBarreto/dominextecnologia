@@ -388,6 +388,18 @@ function TechnicianAreaRoute({ children }: { children: React.ReactNode }) {
 // Retrocompat: a rota antiga era `/ferramentas-tecnico` (renomeada para
 // `/area-tecnico` na "Área do Técnico™"). Links/deep-links antigos
 // (catálogo, gás, modelo) continuam funcionando: preserva subpath + query.
+// A tela "Processos" virou "Fluxograma" e mudou de endereço. Isto mantém vivo o
+// link antigo (/funcionarios/processos[/:param], nos 4 idiomas): o último
+// segmento — slug do nome + public_short_code — passa intacto pro endereço novo.
+function LegacyProcessesRedirect() {
+  const location = useLocation();
+  const segs = location.pathname.replace(/^\/+|\/+$/g, '').split('/');
+  // ['funcionarios','processos'] = lista; com 3º segmento = detalhe.
+  const param = segs.length > 2 ? segs[segs.length - 1] : '';
+  const to = `/funcionarios/fluxogramas${param ? `/${param}` : ''}${location.search}`;
+  return <Navigate to={to} replace />;
+}
+
 function LegacyTechnicianToolsRedirect() {
   const location = useLocation();
   const rest = location.pathname.replace(/^\/ferramentas-tecnico/, '');
@@ -765,10 +777,13 @@ const AppRoutes = () => (
          organograma; o DETALHE (/:param) abre o organograma resolvido pelo código. */}
       {localizedAppRoutes('orgChart', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
       {localizedAppRoutes('orgChartDetail', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
-      {/* Processos (Fluxograma) deep-link amigável: mesma tela Employees. A LISTA
-         abre a aba processos; o DETALHE (/:param) abre o processo resolvido pelo código. */}
-      {localizedAppRoutes('processes', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
-      {localizedAppRoutes('processDetail', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
+      {/* Fluxograma deep-link amigável: mesma tela Employees. A LISTA abre a aba
+         fluxograma; o DETALHE (/:param) abre o fluxograma resolvido pelo código. */}
+      {localizedAppRoutes('flowcharts', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
+      {localizedAppRoutes('flowchartDetail', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
+      {/* Endereço antigo (/funcionarios/processos) → redirect pro novo. */}
+      {localizedAppRoutes('processes', <LegacyProcessesRedirect />)}
+      {localizedAppRoutes('processDetail', <LegacyProcessesRedirect />)}
 <Route path="/rastreamento" element={<Navigate to="/mapa-ao-vivo" replace />} />
       {localizedAppRoutes('liveMap', <PermissionRoute screenKey="screen:tracking"><LiveMap /></PermissionRoute>)}
       {/* Área do Técnico™ — hub client-side/offline. Sub-rotas internas

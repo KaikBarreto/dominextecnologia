@@ -45,6 +45,18 @@ describe('validateProcessGraph', () => {
     expect(v.isPublishable).toBe(true);
   });
 
+  it('não acusa nada no fluxograma recém-criado com só a caixa de Início semeada', () => {
+    const v = validateProcessGraph(graph([node('s', 'start')]));
+    expect(v.issues).toEqual([]);
+    expect(v.isPublishable).toBe(true);
+  });
+
+  it('volta a acusar assim que a pessoa desenha a segunda caixa', () => {
+    // Já não é mais folha em branco: sem Fim e com etapa solta, a conferência
+    // tem que falar. É o que separa o "nasceu agora" do "está pela metade".
+    expect(codes(graph([node('s', 'start'), node('t', 'task')]))).toContain('no-end');
+  });
+
   it('aprova o fluxo mínimo início → tarefa → fim', () => {
     const v = validateProcessGraph(HAPPY);
     expect(v.issues).toEqual([]);

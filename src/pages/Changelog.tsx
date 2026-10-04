@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.17',
+    date: '4 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Os botões do fluxograma voltaram a responder ao clique',
+        description: 'No editor de fluxograma, a barra de cima não estava aceitando clique: adicionar forma, adicionar raia, formatar, organizar, desfazer, conferência, exportar e configurações pareciam travados. Agora todos funcionam normalmente.',
+        category: 'correcao',
+      },
+      {
+        title: 'Fluxograma e organograma já abrem com a primeira caixa',
+        description: 'Antes a tela abria em branco e não ficava claro por onde começar. Agora o fluxograma nasce com uma caixa de Início no meio da tela e o organograma com um primeiro card, prontos para você renomear e seguir desenhando. Quem já tem desenho pronto não tem nenhuma mudança.',
+        category: 'melhoria',
+      },
+      {
+        title: 'A tela de Processos agora se chama Fluxograma',
+        description: 'O nome mudou em toda a tela, do botão de criar até as mensagens de conferência do desenho, nos quatro idiomas. O endereço da página também acompanhou o novo nome, e qualquer link ou favorito salvo antes continua abrindo normalmente.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.28.16',
     date: '3 de outubro de 2026',
     type: 'patch',

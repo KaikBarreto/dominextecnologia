@@ -81,8 +81,8 @@ export function buildOrgChartPath(name: string, shortCode: string): string {
 }
 
 /**
- * Monta o path amigável de um Processo (Fluxograma):
- * `/funcionarios/processos/<slug-do-nome>-<public_short_code>`.
+ * Monta o path amigável de um Fluxograma:
+ * `/funcionarios/fluxogramas/<slug-do-nome>-<public_short_code>`.
  *
  * Espelha o organograma: o `public_short_code` é sempre o último segmento
  * (nunca contém '-'), então `extractShortCode` o recupera mesmo com nome
@@ -91,7 +91,7 @@ export function buildOrgChartPath(name: string, shortCode: string): string {
  * forma canônica.
  */
 export function buildProcessPath(name: string, shortCode: string): string {
-  return `/funcionarios/processos/${buildSlugSegment([name], shortCode, "processo")}`;
+  return `/funcionarios/fluxogramas/${buildSlugSegment([name], shortCode, "fluxograma")}`;
 }
 
 /**

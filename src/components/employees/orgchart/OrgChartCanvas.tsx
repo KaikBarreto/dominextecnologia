@@ -830,6 +830,40 @@ function OrgChartCanvasInner({ chart, employees, employeesById, discCodeByEmploy
     scheduleSave();
   }, [pushHistory, setNodes, setSelectedNodeId, scheduleSave, t.toolbar.boxDefaultText]);
 
+  // ── Primeiro nó: o organograma nunca nasce em branco ──────────────────────
+  // Igual Miro/MindMeister (e espelhando o fluxograma de Processos): quadro
+  // vazio ganha UM card no meio da tela, pronto pra renomear e puxar os "+"
+  // dos lados — sem ele a pessoa olha pro quadriculado e não sabe começar.
+  //
+  // Uma vez por abertura e só quando o grafo GRAVADO está vazio: quem apagar o
+  // último card e continuar editando não ganha outro de volta. Fora do
+  // histórico (o "Desfazer" nasce desligado) e sem selecionar o nó.
+  const didSeedRef = useRef(false);
+  useEffect(() => { didSeedRef.current = false; }, [chart.id]);
+  useEffect(() => {
+    if (didSeedRef.current || !canMountFlow || chart.data.nodes.length > 0) return;
+    didSeedRef.current = true;
+    let position = { x: 0, y: 0 };
+    try {
+      const rf = rfInstanceRef.current;
+      const el = flowWrapperRef.current;
+      if (rf?.screenToFlowPosition && el) {
+        const r = el.getBoundingClientRect();
+        position = rf.screenToFlowPosition({ x: r.left + el.clientWidth / 2, y: r.top + el.clientHeight / 2 });
+      }
+    } catch { /* usa 0,0 */ }
+    setNodes([{
+      id: crypto.randomUUID(),
+      type: ORG_NODE_TYPE,
+      // Desconta metade do card (220x92 do layout) pra o CENTRO dele cair no
+      // centro do container, não o canto superior esquerdo.
+      position: { x: position.x - 110, y: position.y - 46 },
+      data: { kind: 'manual', name: t.firstNodeName },
+    }]);
+    scheduleSave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canMountFlow, chart.id, chart.data.nodes.length]);
+
   // ── Sinal externo addBoxSignal → chama addBox() uma vez por incremento ───
   const lastAddBoxSignal = useRef<number | undefined>(undefined);
   useEffect(() => {

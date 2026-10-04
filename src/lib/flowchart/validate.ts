@@ -74,8 +74,9 @@ const SEVERITY: Record<ProcessIssueCode, ProcessIssueSeverity> = {
 /**
  * Confere o grafo e devolve os problemas encontrados.
  *
- * Grafo VAZIO devolve zero problemas de propósito: processo que o usuário
- * acabou de criar não deve nascer coberto de alerta vermelho.
+ * Grafo VAZIO — ou só com a caixa de Início semeada pelo editor — devolve zero
+ * problemas de propósito: fluxograma que o usuário acabou de criar não deve
+ * nascer coberto de alerta vermelho.
  */
 export function validateProcessGraph(graph: ProcessGraph): ProcessValidation {
   const issues: ProcessIssue[] = [];
@@ -84,6 +85,15 @@ export function validateProcessGraph(graph: ProcessGraph): ProcessValidation {
 
   const steps = stepNodes(graph.nodes);
   if (steps.length === 0) return summarize(issues);
+
+  // Mesma cortesia do grafo vazio: um fluxograma com SÓ a caixa de Início que o
+  // editor semeia sozinho (uma etapa, nenhuma ligação) ainda é folha em branco.
+  // Sem isto todo fluxograma recém-criado nasce com um "2" vermelho na barra e
+  // na lista, antes de a pessoa desenhar a primeira coisa.
+  if (steps.length === 1 && graph.edges.length === 0
+      && (steps[0].data as ProcessNodeData).shape === 'start') {
+    return summarize(issues);
+  }
 
   // Ids válidos de etapa; descarta raia e aresta pendurada em nó inexistente.
   const stepIds = new Set(steps.map((n) => n.id));
