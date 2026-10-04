@@ -8,6 +8,8 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { getSegment } from '@/utils/companySegments';
+import { resolveOrigin } from '@/utils/companyOriginCatalog';
+import { ResolvedOriginBadge } from '@/components/admin/OriginBadge';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 import { SelfServiceBadge } from '@/components/admin/company-lead/SelfServiceBadge';
@@ -51,7 +53,10 @@ export function CompanyKanbanCard({ company, origins, salespersonMap, canSeeTota
     return { text: format(expDate, 'dd/MM/yyyy', { locale: ptBR }), color: 'text-muted-foreground', dotColor: 'bg-emerald-500' };
   };
 
-  const originData = origins?.find(o => o.name === company.origin) || null;
+  // Régua única de origem (case-insensitive, com trim) — ver
+  // src/utils/companyOriginCatalog.ts. Fora do catálogo vira badge cinza neutro;
+  // empresa sem origem continua sem a linha "Origem" no card.
+  const originData = resolveOrigin(company.origin, origins);
   const segmentData = getSegment(company.segment);
   // Vendedor resolvido pelo mapa (companies.salesperson_id → salespeople_basic).
   const salesperson = company.salesperson_id ? salespersonMap?.get(company.salesperson_id) ?? null : null;
@@ -140,9 +145,11 @@ export function CompanyKanbanCard({ company, origins, salespersonMap, canSeeTota
         {originData && (
           <div className="flex items-center justify-between">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Origem:</span>
-            <Badge className="text-xs px-2 py-0.5 h-5 font-normal text-white border-0 max-w-[55%]" style={{ backgroundColor: originData.color || '#6B7280' }}>
-              <span className="truncate">{originData.name}</span>
-            </Badge>
+            <ResolvedOriginBadge
+              origin={originData}
+              className="text-xs px-2 py-0.5 h-5 font-normal max-w-[55%]"
+              iconClassName="h-2.5 w-2.5"
+            />
           </div>
         )}
         {segmentData && (

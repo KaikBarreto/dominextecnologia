@@ -21,6 +21,7 @@ import {
   Tag, Briefcase, Link2, Layers,
 } from 'lucide-react';
 import { getSelectableSegments } from '@/utils/companySegments';
+import { resolveOrigin, UNKNOWN_ORIGIN_COLOR, type CatalogOrigin } from '@/utils/companyOriginCatalog';
 import { Switch } from '@/components/ui/switch';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
@@ -229,6 +230,14 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     setSelectedModules([...BASE_MODULE_CODES]);
     setActiveTab('basic');
   }, [company, open]);
+
+  // Origem: casamento case-insensitive contra o catálogo (régua única em
+  // src/utils/companyOriginCatalog.ts). O Select exibe o nome canônico do
+  // catálogo; se o valor salvo não estiver na lista, ele é preservado como
+  // opção extra em vez de o campo abrir vazio e o dado se perder ao salvar.
+  const resolvedOrigin = resolveOrigin(formData.origin, origins as CatalogOrigin[]);
+  const unlistedOrigin = resolvedOrigin && !resolvedOrigin.known ? resolvedOrigin.name : null;
+  const originValue = resolvedOrigin ? resolvedOrigin.name : 'none';
 
   // Edição: carrega os módulos já contratados na grade.
   useEffect(() => {
@@ -868,10 +877,21 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Origem</Label>
-                <Select value={formData.origin || 'none'} onValueChange={v => updateField('origin', v === 'none' ? '' : v)}>
+                <Select value={originValue} onValueChange={v => updateField('origin', v === 'none' ? '' : v)}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Nenhuma</SelectItem>
+                    {/* Origem salva que saiu do catálogo entra como opção extra:
+                        sem isso o Select abre vazio e o valor atual se perde no
+                        primeiro salvamento. */}
+                    {unlistedOrigin && (
+                      <SelectItem value={unlistedOrigin}>
+                        <span className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full" style={{ backgroundColor: UNKNOWN_ORIGIN_COLOR }} />
+                          {unlistedOrigin}
+                        </span>
+                      </SelectItem>
+                    )}
                     {origins.map((o: any) => (
                       <SelectItem key={o.id} value={o.name}>
                         <span className="flex items-center gap-2">
@@ -882,6 +902,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                     ))}
                   </SelectContent>
                 </Select>
+                {unlistedOrigin && (
+                  <p className="text-xs text-muted-foreground">
+                    Esta origem não está mais na lista de origens. Ela continua salva se você não trocar.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">

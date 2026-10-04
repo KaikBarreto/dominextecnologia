@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { useAdminLeads, useAdminCrmStages, type AdminLead } from '@/hooks/useAdminCrm';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
+import { resolveOrigin, UNKNOWN_ORIGIN_COLOR, UNKNOWN_ORIGIN_ICON } from '@/utils/companyOriginCatalog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
@@ -205,7 +206,12 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
 
   const isSaving = createLead.isPending || updateLead.isPending;
 
-  const selectedOrigin = origins.find(o => o.name === form.source);
+  // Origem: régua única (case-insensitive, com trim) em
+  // src/utils/companyOriginCatalog.ts. Origem fora do catálogo não deixa o campo
+  // vazio: vira opção extra, cinza neutra com ícone Globe, preservando o valor.
+  const selectedOrigin = resolveOrigin(form.source, origins);
+  const unlistedOrigin = selectedOrigin && !selectedOrigin.known ? selectedOrigin.name : null;
+  const originValue = selectedOrigin ? selectedOrigin.name : '';
   const footer = (
     <div className="flex justify-end gap-2">
       <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancelar</Button>
@@ -280,14 +286,14 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
             </div>
             <div>
               <Label>Origem</Label>
-              <Select value={form.source} onValueChange={v => setForm(f => ({ ...f, source: v }))}>
+              <Select value={originValue} onValueChange={v => setForm(f => ({ ...f, source: v }))}>
                 <SelectTrigger
                   className={selectedOrigin ? 'text-white font-medium border-transparent' : ''}
-                  style={selectedOrigin ? { backgroundColor: selectedOrigin.color || '#6B7280' } : undefined}
+                  style={selectedOrigin ? { backgroundColor: selectedOrigin.color } : undefined}
                 >
                   {selectedOrigin ? (
                     <div className="flex items-center gap-2">
-                      <OriginIcon name={selectedOrigin.icon || 'Globe'} className="h-3.5 w-3.5 text-white" />
+                      <OriginIcon name={selectedOrigin.icon} className="h-3.5 w-3.5 text-white" />
                       <span>{selectedOrigin.name}</span>
                     </div>
                   ) : (
@@ -295,6 +301,21 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
                   )}
                 </SelectTrigger>
                 <SelectContent>
+                  {/* Origem salva fora do catálogo: opção extra pra não perder o
+                      valor só por abrir o formulário. */}
+                  {unlistedOrigin && (
+                    <SelectItem
+                      value={unlistedOrigin}
+                      className="cursor-pointer rounded-md my-0.5 transition-colors hover:!text-white [&[data-highlighted]]:!text-white"
+                    >
+                      <div className="flex items-center gap-2 [div[data-highlighted]>&]:text-white">
+                        <div className="h-4 w-4 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: UNKNOWN_ORIGIN_COLOR }}>
+                          <OriginIcon name={UNKNOWN_ORIGIN_ICON} className="h-2.5 w-2.5 text-white" />
+                        </div>
+                        <span>{unlistedOrigin}</span>
+                      </div>
+                    </SelectItem>
+                  )}
                   {origins.map(o => (
                     <SelectItem
                       key={o.id}

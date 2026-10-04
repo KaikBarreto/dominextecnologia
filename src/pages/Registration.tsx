@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import * as LucideIcons from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import {
   ArrowLeft, ArrowRight, Loader2, Check,
   Phone, Mail, Building2, User, Lock,
@@ -16,7 +18,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useToast } from '@/hooks/use-toast';
 import { phoneMask, cepMask } from '@/utils/masks';
 import { cn } from '@/lib/utils';
-import { captureUtmParams, getLeadOriginLabel } from '@/lib/whatsapp';
+import { captureUtmParams, resolveCompanyOriginKey, type OriginUtmKey } from '@/lib/whatsapp';
 import { trackSignupConversion } from '@/lib/gtag';
 import logoWhite from '@/assets/logo-horizontal-verde.png';
 import DarkVeil from '@/components/ui/DarkVeil';
@@ -25,8 +27,8 @@ import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
 import { StepTransition } from '@/components/ui/step-transition';
 import { getSelectableSegments } from '@/utils/companySegments';
-import { ORIGIN_OPTIONS, getOrigin } from '@/utils/companyOrigins';
-import { SelectableCardGrid } from '@/components/registration/SelectableCardGrid';
+import { ORIGIN_OPTIONS } from '@/utils/companyOrigins';
+import { SelectableCardGrid, type SelectableCardOption } from '@/components/registration/SelectableCardGrid';
 import { useLocale } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
 import LanguageSelector from '@/components/i18n/LanguageSelector';
@@ -66,6 +68,55 @@ const EMPTY_ADDRESS: AddressData = {
 
 // Regex de e-mail — mesma do validador do react-hook-form abaixo.
 const EMAIL_REGEX = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+
+// ── Catálogo de origens da etapa Origem ───────────────────────────────────────
+//
+// Fonte de verdade: RPC pública `get_signup_origins()` (tabela `company_origins`).
+// `icon` chega como STRING (nome lucide, ex. "Globe") — resolvida aqui pro
+// componente real. `utm_key` é a chave canônica usada pra atribuição automática
+// por UTM (ver `resolveCompanyOriginKey()` em `@/lib/whatsapp`); o NOME exibido/
+// gravado em `companies.origin` é sempre resolvido em runtime contra este
+// catálogo, nunca hardcoded — se a origem for renomeada no painel, o cadastro
+// acompanha sem precisar de deploy.
+//
+// Gotcha do gerador de types: o `Returns` da RPC em
+// `src/integrations/supabase/types.ts` (NÃO EDITAR — é regenerado) marca
+// `utm_key`/`show_in_signup` como não-nulos, mas `utm_key` É nulo pra
+// Indicação/Feira/Evento. Por isso o tipo da linha é declarado à mão aqui.
+interface SignupOriginRpcRow {
+  name: string;
+  icon: string;
+  color: string;
+  description: string | null;
+  show_in_signup: boolean;
+  utm_key: string | null;
+}
+
+interface ResolvedSignupOrigin {
+  name: string;
+  icon: LucideIcon;
+  color: string;
+  description: string | null;
+  show_in_signup: boolean;
+  utm_key: OriginUtmKey | null;
+}
+
+/** Ícone lucide por nome. Cai no `Globe` se o nome vindo do banco não existir mais. */
+function iconFromName(name: string | null | undefined): LucideIcon {
+  const icons = LucideIcons as unknown as Record<string, LucideIcon>;
+  return (name && icons[name]) || LucideIcons.Globe;
+}
+
+// Fallback offline (RPC falhou/demorou/veio vazia) — espelha ORIGIN_OPTIONS
+// (src/utils/companyOrigins.ts), que por sua vez espelha o catálogo real.
+const FALLBACK_SIGNUP_ORIGINS: ResolvedSignupOrigin[] = ORIGIN_OPTIONS.map((o) => ({
+  name: o.value,
+  icon: o.icon as unknown as LucideIcon,
+  color: o.color,
+  description: o.description ?? null,
+  show_in_signup: o.showInSignup ?? true,
+  utm_key: o.utmKey ?? null,
+}));
 
 export default function Registration() {
   const navigate = useNavigate();
@@ -164,10 +215,51 @@ export default function Registration() {
     captureUtmParams(window.location.search);
   }, []);
 
+  // Catálogo de origens — RPC pública (fonte: `company_origins`), com fallback
+  // estático se falhar/demorar/vier vazia. Disparado aqui no mount (não só
+  // quando o step chega em 3) pra já estar resolvido quando a pessoa passar
+  // pelas etapas Dados/Segmento — evita flash de loading na etapa Origem.
+  const { data: originCatalog = FALLBACK_SIGNUP_ORIGINS, isLoading: originCatalogLoading } = useQuery({
+    queryKey: ['signup-origins'],
+    queryFn: async (): Promise<ResolvedSignupOrigin[]> => {
+      const { data, error } = await supabase.rpc('get_signup_origins');
+      if (error) throw error;
+      const rows = (data || []) as SignupOriginRpcRow[];
+      if (!rows.length) return FALLBACK_SIGNUP_ORIGINS;
+      return rows.map((r) => ({
+        name: r.name,
+        icon: iconFromName(r.icon),
+        color: r.color,
+        description: r.description,
+        show_in_signup: r.show_in_signup,
+        utm_key: (r.utm_key as OriginUtmKey | null) ?? null,
+      }));
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+  // Só as origens com show_in_signup=true viram CARD na etapa Origem (ordem já
+  // vem certa da RPC: sort_order, name — não reordenar). "Tráfego Pago" fica de
+  // fora de propósito: existe no catálogo só pra resolução de UTM, nunca é
+  // "escolha" clicável da pessoa.
+  const signupOriginCards = originCatalog.filter((o) => o.show_in_signup);
+  // Cards da etapa Origem — nome do catálogo é o próprio valor gravado em
+  // `origin` (nunca um rótulo inventado no client).
+  const originCardOptions: SelectableCardOption[] = signupOriginCards.map((o) => ({
+    value: o.name,
+    label: o.name,
+    color: o.color,
+    icon: o.icon,
+    description: o.description ?? undefined,
+  }));
+
   // Origem do lead — prioridade:
   // 1. `origem` explícita da URL que NÃO seja o genérico 'Site' (links de venda/indicação);
-  // 2. UTM capturada (utm_source) → label amigável ("Instagram", "ChatGPT", ...);
-  // 3. `origem=Site` genérico das CTAs da LP.
+  // 2. UTM capturada → chave canônica (resolveCompanyOriginKey) casada contra o
+  //    `utm_key` do catálogo carregado → NOME real da origem (ex.: utm_source=chatgpt.com
+  //    vira 'ai' vira "ChatGPT/IAs"; utm_medium=cpc vira 'paid' vira "Tráfego Pago");
+  // 3. `origem=Site` genérico das CTAs da LP, mas SÓ quando vem acompanhado de
+  //    outro sinal (ver genericSiteOriginOnly abaixo).
   // Origem vinda da URL: truthy SÓ quando há param/UTM real. Sem isso é null
   // → a etapa Origem APARECE no cadastro normal (`/cadastro` puro).
   const explicitOrigin = searchParams.get('origem');
@@ -177,15 +269,31 @@ export default function Registration() {
   // auto-avançar — a pessoa confirma no Continuar.
   const segmentFromUrl = searchParams.get('segmento');
   const refCode = searchParams.get('ref'); // referral_code de indicação
-  const originFromUrl =
-    (explicitOrigin && explicitOrigin !== 'Site' ? explicitOrigin : null) ??
-    getLeadOriginLabel() ??
-    (explicitOrigin || null);
-  // Quando a origem da URL corresponde a uma OPÇÃO do catálogo (ex.: ?origem=Blog),
+  const utmOriginKey = resolveCompanyOriginKey();
+  const utmOriginName = utmOriginKey
+    ? originCatalog.find((o) => o.utm_key === utmOriginKey)?.name ?? null
+    : null;
+  // `?origem=Site` é o rótulo GENÉRICO das CTAs da landing: diz apenas "veio do
+  // site", não existe no catálogo de origens e por isso nunca deveria ir pro
+  // banco. Quando ele é o ÚNICO sinal de origem (sem UTM, sem `ref`, sem
+  // `vendedor`), tratamos como se a URL não trouxesse origem: a etapa Origem
+  // APARECE e a pessoa escolhe. Antes o 'Site' pulava a pergunta e era gravado,
+  // o que jogava a atribuição fora e sujava o relatório do painel master.
+  // `?origem=Site` ACOMPANHADO de UTM/`ref`/`vendedor` continua no caminho de
+  // antes: o sinal bom é o outro parâmetro, e ele manda.
+  // Lê `vendedor` direto do searchParams porque `referrer` só é declarado abaixo.
+  const genericSiteOriginOnly =
+    explicitOrigin === 'Site' && !utmOriginName && !refCode && !searchParams.get('vendedor');
+  const originFromUrl = genericSiteOriginOnly
+    ? null
+    : ((explicitOrigin && explicitOrigin !== 'Site' ? explicitOrigin : null) ??
+      utmOriginName ??
+      (explicitOrigin || null));
+  // Quando a origem da URL corresponde a uma OPÇÃO do catálogo (ex.: ?origem=Indicação),
   // a etapa Origem NÃO é pulada: ela aparece com o card já PRÉ-SELECIONADO e a pessoa
   // confirma no Continuar (mesma UX da pré-seleção de Segmento). Para origens que não
   // são opção do catálogo (UTM mapeada, string livre, etc.) mantém-se o pulo histórico.
-  const originIsCatalogOption = !!getOrigin(originFromUrl);
+  const originIsCatalogOption = !!originFromUrl && signupOriginCards.some((o) => o.name === originFromUrl);
   // Sales-link params
   const linkType = searchParams.get('tipo'); // 'teste' | 'venda'
   const lockedPlan = searchParams.get('plano') || null;
@@ -197,9 +305,13 @@ export default function Registration() {
   const referrer = searchParams.get('vendedor'); // referral_code do closer
   const sdrReferrer = searchParams.get('sdr'); // referral_code do SDR (opcional)
   // Pula a etapa Origem quando a origem veio de algum param de URL
-  // (origem explícita/UTM, indicação `ref` ou vendedor) — EXCETO quando a origem
-  // é uma opção do catálogo (ex.: ?origem=Blog), caso em que a etapa fica visível
-  // com o card pré-selecionado pra a pessoa confirmar.
+  // (origem explícita/UTM, indicação `ref` ou vendedor) — EXCETO em dois casos:
+  //   • a origem é uma opção do catálogo (ex.: ?origem=Indicação): a etapa fica
+  //     visível com o card pré-selecionado pra a pessoa confirmar;
+  //   • o único sinal é o `?origem=Site` genérico: originFromUrl já vira null
+  //     acima, então a etapa aparece em branco e a pessoa escolhe.
+  // Link de vendedor, `ref` e origem fora do catálogo (ex.: ?origem=BNI) seguem
+  // pulando como antes.
   const skipOriginStep = !originIsCatalogOption && !!(originFromUrl || refCode || referrer);
   const isSale = linkType === 'venda';
   // Plano personalizado: módulos à la carte + máx. usuários vindos do link
@@ -746,15 +858,23 @@ export default function Registration() {
                   />
                 )}
 
-                {/* Step 3: Origem — mesmos cards do Segmento, clicar já avança */}
+                {/* Step 3: Origem — mesmos cards do Segmento, clicar já avança.
+                    Catálogo quase sempre já resolvido (RPC disparada no mount);
+                    o spinner só aparece se a pessoa for rápida demais. */}
                 {step === 3 && (
-                  <SelectableCardGrid
-                    title={t.originTitle}
-                    subtitle={t.originSubtitle}
-                    options={ORIGIN_OPTIONS}
-                    selectedValue={selectedOrigin}
-                    onSelect={handleOriginSelect}
-                  />
+                  originCatalogLoading ? (
+                    <div className="flex flex-col items-center justify-center gap-2 py-12 text-white/50">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    </div>
+                  ) : (
+                    <SelectableCardGrid
+                      title={t.originTitle}
+                      subtitle={t.originSubtitle}
+                      options={originCardOptions}
+                      selectedValue={selectedOrigin}
+                      onSelect={handleOriginSelect}
+                    />
+                  )
                 )}
 
                 {/* Step 4: Access */}

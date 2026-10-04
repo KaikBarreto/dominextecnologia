@@ -1,4 +1,3 @@
-import * as LucideIcons from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -6,18 +5,21 @@ import { Calendar, DollarSign, TrendingUp, User, UserX } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 import { getSegment } from '@/utils/companySegments';
+import {
+  resolveOrigin,
+  UNKNOWN_ORIGIN_COLOR,
+  UNKNOWN_ORIGIN_ICON,
+  type ResolvedOrigin,
+} from '@/utils/companyOriginCatalog';
+import { ResolvedOriginBadge } from '@/components/admin/OriginBadge';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
 import type { AdminLead } from '@/hooks/useAdminCrm';
 import { useCrmLabels } from '@/hooks/useCrmCardTools';
 
-function OriginIcon({ name, className }: { name: string; className?: string }) {
-  const LucideIcon = (LucideIcons as any)[name];
-  if (!LucideIcon) return null;
-  return <LucideIcon className={className || 'h-3 w-3'} />;
-}
-
+/** Linha do catálogo `company_origins` já casada pelo pai (`resolveOrigin`).
+ *  `id` é opcional porque algumas telas só fazem `select('name, color')`. */
 export interface AdminLeadCardOrigin {
-  id: string;
+  id?: string;
   name: string;
   color?: string | null;
   icon?: string | null;
@@ -63,6 +65,20 @@ export function AdminLeadCard({ lead, origin, responsible, onClick }: AdminLeadC
   const whatsappLink = buildWhatsAppLink(lead.phone);
   const { labels } = useCrmLabels(true);
   const appliedLabels = labels.filter((label) => lead.crm_label_ids?.includes(label.id));
+
+  // Origem: o pai já resolve pelo catálogo e manda em `origin`. Quando não casa,
+  // o badge NÃO degrada pra outline dessaturado: fica saturado em cinza neutro
+  // com ícone Globe, preservando o texto salvo em `admin_leads.source`.
+  // Lead sem origem (source nulo) continua sem badge nenhum.
+  const resolvedOrigin: ResolvedOrigin | null = origin
+    ? {
+        name: origin.name,
+        color: origin.color || UNKNOWN_ORIGIN_COLOR,
+        icon: origin.icon || UNKNOWN_ORIGIN_ICON,
+        known: true,
+        catalog: origin,
+      }
+    : resolveOrigin(lead.source, []);
 
   const formatCurrency = (v: number) =>
     `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
@@ -181,19 +197,13 @@ export function AdminLeadCard({ lead, origin, responsible, onClick }: AdminLeadC
 
         {/* Etiquetas: origem, segmento e previsão de fechamento */}
         <div className="flex flex-wrap items-center gap-1.5">
-          {origin ? (
-            <Badge
-              className="text-[10px] px-1.5 py-0 h-5 font-normal text-white border-0 gap-1 max-w-full"
-              style={{ backgroundColor: origin.color || '#6B7280' }}
-            >
-              <OriginIcon name={origin.icon || 'Globe'} className="h-2.5 w-2.5 shrink-0" />
-              <span className="min-w-0 truncate">{origin.name}</span>
-            </Badge>
-          ) : lead.source ? (
-            <Badge variant="muted" className="text-[10px] px-1.5 py-0 h-5 font-normal max-w-full">
-              <span className="min-w-0 truncate">{lead.source}</span>
-            </Badge>
-          ) : null}
+          {resolvedOrigin && (
+            <ResolvedOriginBadge
+              origin={resolvedOrigin}
+              className="text-[10px] px-1.5 py-0 h-5 font-normal"
+              iconClassName="h-2.5 w-2.5"
+            />
+          )}
 
           {segments.map((segment) => (
             <Badge

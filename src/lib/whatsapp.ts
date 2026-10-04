@@ -30,9 +30,17 @@ const SOURCE_LABELS: Record<string, string> = {
   ig: "Instagram",
   chatgpt: "ChatGPT",
   openai: "ChatGPT",
+  perplexity: "Perplexity",
+  gemini: "Gemini",
+  copilot: "Copilot",
+  claude: "Claude",
   google: "Google",
+  duckduckgo: "DuckDuckGo",
+  yahoo: "Yahoo",
+  ecosia: "Ecosia",
   facebook: "Facebook",
   fb: "Facebook",
+  threads: "Threads",
   youtube: "YouTube",
   yt: "YouTube",
   tiktok: "TikTok",
@@ -97,22 +105,174 @@ function readUtmSource(): string | null {
   return null;
 }
 
+/** Lê o utm_medium pelo mesmo caminho do utm_source (sessionStorage, fallback URL). */
+function readUtmMedium(): string | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as UtmParams;
+      if (parsed.utm_medium) return parsed.utm_medium;
+    }
+  } catch {
+    // ignora
+  }
+  try {
+    if (typeof window !== "undefined") {
+      const fromUrl = new URLSearchParams(window.location.search).get("utm_medium");
+      if (fromUrl) return fromUrl;
+    }
+  } catch {
+    // ignora
+  }
+  return null;
+}
+
 /** Capitaliza a primeira letra (fallback p/ origem fora do mapa). */
 function capitalize(value: string): string {
   if (!value) return value;
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-/** utm_source cru → nome amigável (ou capitalizado se fora do mapa). */
+/**
+ * Normaliza um utm_source cru pra uma chave de lookup estável, tolerando o
+ * valor vir como HOST (e não como palavra solta) — é o caso real do ChatGPT,
+ * que manda utm_source=chatgpt.com e não "chatgpt".
+ *
+ * Passos: tira protocolo/path, tira prefixo de redirecionador comum
+ * (l./lm./m./out., tipo l.instagram.com, lm.facebook.com), tira "www.", e por
+ * fim usa o primeiro rótulo do domínio como chave (google.com → google,
+ * chatgpt.com → chatgpt). "youtu.be" tem alias dedicado porque o primeiro
+ * rótulo ("youtu") não bate com a chave "youtube" já mapeada.
+ */
+function normalizeSourceKey(raw: string): string {
+  let v = raw.trim().toLowerCase();
+  if (!v) return v;
+
+  v = v.replace(/^https?:\/\//, "");
+  v = v.split(/[/?#]/)[0]; // só o host, sem path/query
+
+  // prefixo de redirecionador (só remove se sobrar domínio de verdade depois)
+  v = v.replace(/^(l|lm|m|out)\.(?=[^.]+\.)/, "");
+  v = v.replace(/^www\./, "");
+
+  const HOST_ALIASES: Record<string, string> = {
+    "youtu.be": "youtube",
+    "wa.me": "whatsapp",
+  };
+  if (HOST_ALIASES[v]) return HOST_ALIASES[v];
+
+  if (v.includes(".")) {
+    const label = v.split(".")[0];
+    return label || v;
+  }
+  return v;
+}
+
+/**
+ * utm_source cru → nome amigável pra MENSAGEM de WhatsApp ("...que achei no
+ * *ChatGPT*"). Fora do mapa, capitaliza o valor original (não o normalizado)
+ * — é só texto de copy, não precisa casar em catálogo nenhum.
+ */
 export function friendlyOriginLabel(rawSource: string): string {
-  const key = rawSource.trim().toLowerCase();
-  return SOURCE_LABELS[key] ?? capitalize(rawSource.trim());
+  const trimmed = rawSource.trim();
+  const key = normalizeSourceKey(trimmed);
+  return SOURCE_LABELS[key] ?? capitalize(trimmed);
 }
 
 /** Origem amigável do visitante atual, ou null se não houver utm_source. */
 export function getLeadOriginLabel(): string | null {
   const source = readUtmSource();
   return source ? friendlyOriginLabel(source) : null;
+}
+
+// ── Origem gravada em companies.origin (dado, não copy) ───────────────────────
+//
+// friendlyOriginLabel()/getLeadOriginLabel() acima alimentam a MENSAGEM de
+// WhatsApp e podem devolver qualquer texto (é só copy: "achei no *Chatgpt*").
+// resolveCompanyOriginKey() é outra coisa: o valor dela é uma CHAVE CANÔNICA
+// ESTÁVEL (`company_origins.utm_key`), não o nome da origem. O nome exibido/
+// gravado é resolvido depois, em runtime, contra o catálogo vindo da RPC
+// `get_signup_origins()` — nunca hardcoded aqui. Hardcoded, se o CEO renomear
+// uma origem no painel, o site continua gravando o nome antigo (a trigger do
+// banco propaga o nome novo pro histórico, mas o client nunca manda o nome
+// novo): foi assim que "Chatgpt.com" e "Site" sujos foram gravados em
+// produção. Por isso as duas funções não compartilham resultado, só a leitura
+// de UTM.
+
+/**
+ * Chave canônica de origem, estável mesmo que o nome da origem no catálogo
+ * `company_origins` seja renomeado pelo painel admin. Bate 1:1 com
+ * `company_origins.utm_key`.
+ */
+export type OriginUtmKey = 'paid' | 'search' | 'ai' | 'social' | 'video' | 'messaging' | 'other';
+
+const PAID_MEDIUMS = new Set([
+  "cpc",
+  "ppc",
+  "paid",
+  "paid_social",
+  "display",
+  "paidsearch",
+]);
+
+const PAID_SOURCE_HINTS = new Set([
+  "google_ads",
+  "googleads",
+  "gads",
+  "meta_ads",
+  "fbads",
+  "facebook_ads",
+]);
+
+/**
+ * Chave canônica de origem a ser casada contra `company_origins.utm_key` (via
+ * catálogo carregado em runtime, ex.: `get_signup_origins()`). Nunca o texto
+ * cru da UTM, e nunca o NOME da origem — quem traduz chave → nome é o
+ * catálogo.
+ *
+ * Ordem de resolução:
+ *   1. Mídia paga ganha de tudo (utm_medium=cpc/ppc/paid/... ou utm_source de
+ *      gerenciador de anúncio) → 'paid', de propósito: tráfego pago é
+ *      atribuído pela UTM, não é "escolha" da pessoa no cadastro.
+ *   2. utm_source normalizado mapeado pra um balde conhecido do catálogo.
+ *   3. utm_source presente mas não reconhecido → 'other' (nunca o texto cru).
+ *   4. Sem utm_source nenhum → null (sem sinal, sem origem).
+ */
+export function resolveCompanyOriginKey(): OriginUtmKey | null {
+  const rawSource = readUtmSource();
+  const rawMedium = readUtmMedium();
+
+  const normalizedMedium = rawMedium?.trim().toLowerCase() ?? "";
+  const normalizedSource = rawSource ? normalizeSourceKey(rawSource) : "";
+
+  if (PAID_MEDIUMS.has(normalizedMedium) || PAID_SOURCE_HINTS.has(normalizedSource)) {
+    return "paid";
+  }
+
+  if (!rawSource) return null;
+  if (!normalizedSource) return "other";
+
+  if (["google", "bing", "duckduckgo", "yahoo", "ecosia", "site"].includes(normalizedSource)) {
+    return "search";
+  }
+  if (
+    ["chatgpt", "openai", "perplexity", "gemini", "copilot", "claude"].includes(
+      normalizedSource,
+    )
+  ) {
+    return "ai";
+  }
+  if (["instagram", "ig", "facebook", "fb", "threads"].includes(normalizedSource)) {
+    return "social";
+  }
+  if (["youtube", "yt"].includes(normalizedSource)) {
+    return "video";
+  }
+  if (["whatsapp", "wa"].includes(normalizedSource)) {
+    return "messaging";
+  }
+
+  return "other";
 }
 
 // ── Fragmento da mensagem, por LOCALE ─────────────────────────────────────────

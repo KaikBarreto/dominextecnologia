@@ -24,6 +24,8 @@ import {
 } from '@/hooks/useAdminTasks';
 import { TaskCreateDialog, type TaskAdminOption } from '@/components/admin/tasks/TaskCreateDialog';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
+import { resolveOrigin } from '@/utils/companyOriginCatalog';
+import { ResolvedOriginBadge } from '@/components/admin/OriginBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSegment } from '@/utils/companySegments';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
@@ -296,7 +298,9 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
     updateTask.mutate({ id: task.id, status: task.status === 'resolvido' ? 'novo' : 'resolvido' });
   };
 
-  const originInfo = lead.source ? origins.find(o => o.name === lead.source) : null;
+  // Régua única de origem (case-insensitive, com trim) — ver
+  // src/utils/companyOriginCatalog.ts.
+  const originInfo = resolveOrigin(lead.source, origins);
   const segmentInfos = (lead.segments?.length ? lead.segments : lead.segment ? [lead.segment] : [])
     .map(getSegment)
     .filter((segment): segment is NonNullable<ReturnType<typeof getSegment>> => Boolean(segment));
@@ -430,12 +434,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
                       <span className="text-[11px] text-muted-foreground/70">Origem</span>
                       <div className="mt-0.5">
                         {originInfo ? (
-                          <Badge className="border-0 flex items-center gap-1 w-fit" style={{ backgroundColor: originInfo.color || '#6B7280', color: '#fff' }}>
-                            <OriginIcon name={originInfo.icon || 'Globe'} className="h-3 w-3" />
-                            {lead.source}
-                          </Badge>
-                        ) : lead.source ? (
-                          <Badge variant="muted">{lead.source}</Badge>
+                          <ResolvedOriginBadge origin={originInfo} className="w-fit" />
                         ) : (
                           <span className="text-sm text-muted-foreground/40 italic">—</span>
                         )}

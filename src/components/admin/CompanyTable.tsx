@@ -21,6 +21,8 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getSelectableSegments, getSegment } from '@/utils/companySegments';
+import { resolveOrigin, UNKNOWN_ORIGIN_COLOR, type CatalogOrigin } from '@/utils/companyOriginCatalog';
+import { ResolvedOriginBadge } from '@/components/admin/OriginBadge';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 import { SelfServiceBadge } from '@/components/admin/company-lead/SelfServiceBadge';
 import { LeadWhatsAppButton } from '@/components/admin/company-lead/LeadWhatsAppButton';
@@ -141,10 +143,10 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
     return 'bg-red-600 text-white';
   };
 
-  const getOriginData = (originName: string | null) => {
-    if (!originName) return null;
-    return origins?.find(o => o.name === originName) || null;
-  };
+  // Origem: resolução única (case-insensitive, com trim). Fora do catálogo não
+  // vira mais "N/A" — vira badge cinza com o texto salvo. Ver
+  // src/utils/companyOriginCatalog.ts.
+  const originList = (origins || []) as CatalogOrigin[];
 
   return (
     <div className="space-y-4">
@@ -182,7 +184,11 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
             ) : (
               paginated.map((company) => {
                 const masterName = company.contact_name || masterUserMap.get(company.id) || 'N/A';
-                const originData = getOriginData(company.origin);
+                const originData = resolveOrigin(company.origin, originList);
+                // Origem salva fora do catálogo: preserva o valor como opção
+                // extra, senão o Select abriria vazio e o dado se perderia no
+                // primeiro salvamento.
+                const originUnlisted = originData && !originData.known ? originData.name : null;
                 return (
                   <TableRow key={company.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/empresas/${company.id}`)}>
                     {/* Status - inline select */}
@@ -216,7 +222,7 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
                     {/* Origin - inline select */}
                     <TableCell onClick={(e) => e.stopPropagation()} className="py-6 overflow-visible">
                       <Select
-                        value={company.origin || ''}
+                        value={originData ? originData.name : ''}
                         onValueChange={(value) => updateCompanyMutation.mutate({ id: company.id, field: 'origin', value })}
                         disabled={updatingField?.id === company.id && updatingField?.field === 'origin'}
                       >
@@ -225,15 +231,18 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
                             {updatingField?.id === company.id && updatingField?.field === 'origin' ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
                             ) : originData ? (
-                              <Badge className="text-white border-0" style={{ backgroundColor: originData.color || '#6B7280' }}>
-                                {originData.name}
-                              </Badge>
+                              <ResolvedOriginBadge origin={originData} />
                             ) : 'N/A'}
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="py-2">
-                          {origins?.map((o) => (
-                            <SelectItem key={o.id} value={o.name} className="py-3">
+                          {originUnlisted && (
+                            <SelectItem value={originUnlisted} className="py-3">
+                              <Badge className="text-white border-0" style={{ backgroundColor: UNKNOWN_ORIGIN_COLOR }}>{originUnlisted}</Badge>
+                            </SelectItem>
+                          )}
+                          {originList.map((o) => (
+                            <SelectItem key={o.id || o.name} value={o.name} className="py-3">
                               <Badge className="text-white border-0" style={{ backgroundColor: o.color || '#6B7280' }}>{o.name}</Badge>
                             </SelectItem>
                           ))}

@@ -1126,23 +1126,35 @@ export type Database = {
         Row: {
           color: string | null
           created_at: string | null
+          description: string | null
           icon: string | null
           id: string
           name: string
+          show_in_signup: boolean
+          sort_order: number
+          utm_key: string | null
         }
         Insert: {
           color?: string | null
           created_at?: string | null
+          description?: string | null
           icon?: string | null
           id?: string
           name: string
+          show_in_signup?: boolean
+          sort_order?: number
+          utm_key?: string | null
         }
         Update: {
           color?: string | null
           created_at?: string | null
+          description?: string | null
           icon?: string | null
           id?: string
           name?: string
+          show_in_signup?: boolean
+          sort_order?: number
+          utm_key?: string | null
         }
         Relationships: []
       }
@@ -11861,13 +11873,6 @@ export type Database = {
       get_instance_recommendation: { Args: never; Returns: Json }
       get_landing_whatsapp_numbers: { Args: never; Returns: string[] }
       get_lead_capture_form: { Args: { p_short_code: string }; Returns: Json }
-      get_public_registration_modules: {
-        Args: { p_codes: string[] }
-        Returns: {
-          code: string
-          name: string
-        }[]
-      }
       get_nfse_emissions_paged: {
         Args: {
           p_date_end?: string
@@ -11969,6 +11974,13 @@ export type Database = {
       get_profile_company_id: { Args: { _user_id: string }; Returns: string }
       get_public_os: { Args: { p_os_id: string }; Returns: Json }
       get_public_os_by_code: { Args: { p_code: string }; Returns: Json }
+      get_public_registration_modules: {
+        Args: { p_codes: string[] }
+        Returns: {
+          code: string
+          name: string
+        }[]
+      }
       get_quote_by_token: {
         Args: { _token: string }
         Returns: {
@@ -12044,6 +12056,17 @@ export type Database = {
         }
       }
       get_rating_with_os_by_token: { Args: { p_token: string }; Returns: Json }
+      get_signup_origins: {
+        Args: never
+        Returns: {
+          color: string
+          description: string
+          icon: string
+          name: string
+          show_in_signup: boolean
+          utm_key: string
+        }[]
+      }
       get_stock_access: { Args: { p_stock_id: string }; Returns: Json }
       get_stock_balance_at_date: {
         Args: { p_at: string; p_stock_ids?: string[] }

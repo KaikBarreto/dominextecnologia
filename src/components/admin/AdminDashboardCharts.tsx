@@ -10,6 +10,9 @@ import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addWeeks } fr
 import { ptBR } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  resolveOrigin, NO_ORIGIN_LABEL, NO_ORIGIN_COLOR, type CatalogOrigin,
+} from '@/utils/companyOriginCatalog';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 const FUNNEL_GRADIENTS = [
@@ -57,21 +60,23 @@ export function AdminDashboardCharts({ companies, transactions, startDate, endDa
     },
   });
 
-  const originColorMap: Record<string, string> = {};
-  (companyOrigins || []).forEach((o: any) => { originColorMap[(o.name || '').toLowerCase()] = o.color || '#6B7280'; });
-
   // Origem dos clientes (período)
   const filteredCompanies = companies.filter((c: any) => {
     const d = new Date(c.created_at);
     return d >= startDate && d <= endDate;
   });
+  // Resolução única (case-insensitive, com trim) em
+  // src/utils/companyOriginCatalog.ts. Origem fora do catálogo deixa de ganhar
+  // cor sorteada do ciclo da paleta: vai pro cinza neutro, igual ao badge das
+  // outras telas. Empresa SEM origem continua sendo "Não informado" (cinza
+  // claro), que é um estado diferente de origem não reconhecida.
   const originData = filteredCompanies.reduce((acc: any[], c: any) => {
-    const raw = c.origin || 'Não informado';
-    const matched = (companyOrigins || []).find((o: any) => o.name?.toLowerCase() === raw.toLowerCase());
-    const origin = matched ? matched.name : raw;
-    const existing = acc.find((it) => it.name === origin);
+    const resolved = resolveOrigin(c.origin, companyOrigins as CatalogOrigin[]);
+    const name = resolved ? resolved.name : NO_ORIGIN_LABEL;
+    const color = resolved ? resolved.color : NO_ORIGIN_COLOR;
+    const existing = acc.find((it) => it.name === name);
     if (existing) existing.value += 1;
-    else acc.push({ name: origin, value: 1, color: originColorMap[origin.toLowerCase()] || COLORS[acc.length % COLORS.length] });
+    else acc.push({ name, value: 1, color });
     return acc;
   }, []).sort((a: any, b: any) => b.value - a.value);
 

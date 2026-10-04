@@ -31,6 +31,8 @@ import { AdminNfseTierControl } from '@/components/admin/AdminNfseTierControl';
 import { AdminWhatsappTierControl } from '@/components/admin/AdminWhatsappTierControl';
 import { getSegment } from '@/utils/companySegments';
 import { useSubscriptionModules } from '@/components/admin/ModuleGrid';
+import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
+import { OriginBadge } from '@/components/admin/OriginBadge';
 
 export default function AdminCompanyDetail() {
   const { id } = useParams();
@@ -78,15 +80,10 @@ export default function AdminCompanyDetail() {
     enabled: !!id,
   });
 
-  const { data: originData } = useQuery({
-    queryKey: ['company-origin', company?.origin],
-    queryFn: async () => {
-      if (!company?.origin) return null;
-      const { data } = await supabase.from('company_origins').select('*').eq('name', company.origin).maybeSingle();
-      return data;
-    },
-    enabled: !!company?.origin,
-  });
+  // Origem: catálogo pelo hook compartilhado (a query antiga casava por nome
+  // EXATO e, quando não casava, cuspia o texto cru na tela). Resolução única em
+  // `resolveOrigin` — ver src/utils/companyOriginCatalog.ts.
+  const { origins: originCatalog } = useCompanyOrigins();
 
   // Closer (salesperson_id) + SDR (sdr_id) — nomes via view enxuta.
   const { data: salesTeam } = useQuery({
@@ -318,15 +315,15 @@ export default function AdminCompanyDetail() {
                 </div>
                 <div>
                   <span className="text-xs text-muted-foreground uppercase tracking-wider">Origem</span>
-                  {originData ? (
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <Badge className="text-xs text-white border-0" style={{ backgroundColor: originData.color || undefined }}>
-                        {originData.name}
-                      </Badge>
-                    </div>
-                  ) : (
-                    <p className="font-medium">{company.origin || 'N/A'}</p>
-                  )}
+                  <div className="mt-0.5 flex items-center gap-2 min-w-0">
+                    <OriginBadge
+                      name={company.origin}
+                      origins={originCatalog}
+                      className="text-xs"
+                      iconClassName="h-3 w-3"
+                      emptyFallback={<p className="font-medium">N/A</p>}
+                    />
+                  </div>
                 </div>
                 <div className="min-w-0">
                   <span className="text-xs text-muted-foreground uppercase tracking-wider">Segmento</span>

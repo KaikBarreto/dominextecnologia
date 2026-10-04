@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
 import { useAdminLeads, useAdminCrmStages, useAdminCrmPipelines, type AdminLead } from '@/hooks/useAdminCrm';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
+import { resolveOrigin } from '@/utils/companyOriginCatalog';
 import { AdminLeadFormDialog } from '@/components/admin/AdminLeadFormDialog';
 import { AdminLeadDetailModal } from '@/components/admin/AdminLeadDetailModal';
 import { AdminLeadCard } from '@/components/admin/AdminLeadCard';
@@ -492,9 +493,12 @@ function CrmTab() {
     setLossDialogOpen(false);
   };
 
+  // Casa `admin_leads.source` (texto) com o catálogo pela régua única
+  // (case-insensitive, com trim). Devolve só a linha do catálogo: quando não
+  // casa, quem pinta o badge resolve o fallback cinza. Ver
+  // src/utils/companyOriginCatalog.ts.
   const getOriginInfo = (sourceName: string | null) => {
-    if (!sourceName) return null;
-    return origins.find(o => o.name === sourceName);
+    return resolveOrigin(sourceName, origins)?.catalog ?? null;
   };
 
   const getInitials = (name: string) => {

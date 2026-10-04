@@ -48,6 +48,7 @@ import { CompanyKanbanBoard } from '@/components/admin/CompanyKanbanBoard';
 import { differenceInDays, format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
+import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { StatCarousel } from '@/components/mobile/StatCarousel';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
@@ -163,14 +164,10 @@ export default function AdminCompanies() {
     return map;
   }, [masterUsers]);
 
-  const { data: origins } = useQuery({
-    queryKey: ['company-origins'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('company_origins').select('*').order('name');
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Catálogo de origens pelo hook compartilhado: a query local usava a MESMA
+  // queryKey ('company-origins') com outra ordenação, então a ordem da lista
+  // mudava conforme qual tela montasse primeiro.
+  const { origins } = useCompanyOrigins();
 
   const { data: salespeople = [] } = useQuery({
     queryKey: ['salespeople-basic-map'],
@@ -267,7 +264,11 @@ export default function AdminCompanies() {
     return (companies as CompanyLite[]).filter((c) => {
       const matchSearch = !search || fuzzyIncludes(c.name, search) || fuzzyIncludes(c.email, search) || fuzzyIncludes(c.cnpj, search);
       const matchStatus = statusFilter.length === 0 || statusFilter.includes(c.subscription_status);
-      const matchOrigin = originFilter.length === 0 || (c.origin != null && originFilter.includes(c.origin));
+      // Case-insensitive, com trim: as opções do filtro vêm do catálogo e o
+      // valor salvo pode estar com outra capitalização ("Whatsapp" x "WhatsApp").
+      const originKey = (c.origin ?? '').trim().toLowerCase();
+      const matchOrigin = originFilter.length === 0
+        || (!!originKey && originFilter.some((f) => f.trim().toLowerCase() === originKey));
       const matchPlan = planFilter.length === 0 || (c.subscription_plan != null && planFilter.includes(c.subscription_plan));
       let matchExp = true;
       if (expirationFilter.length > 0) {

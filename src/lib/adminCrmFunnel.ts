@@ -13,6 +13,10 @@
 // leads vêm de `admin_leads` (stage_id pode ser null), etapas de `admin_crm_stages`
 // e cores de `company_origins` (color pode ser null).
 
+import {
+  resolveOrigin, NO_ORIGIN_LABEL, NO_ORIGIN_COLOR,
+} from '@/utils/companyOriginCatalog';
+
 export interface FunnelLead {
   stage_id: string | null;
   source?: string | null;
@@ -58,23 +62,9 @@ export interface BuildFunnelOpts {
   allTime: boolean;
 }
 
-export const UNINFORMED_ORIGIN = 'Não informado';
-export const UNINFORMED_COLOR = '#9CA3AF';
-
-// Paleta determinística pra origens que vierem nos leads mas não estiverem
-// cadastradas em company_origins. Escolhida por hash estável do nome.
-const FALLBACK_PALETTE = [
-  '#6366F1',
-  '#0EA5E9',
-  '#10B981',
-  '#F59E0B',
-  '#EF4444',
-  '#8B5CF6',
-  '#EC4899',
-  '#14B8A6',
-  '#F97316',
-  '#84CC16',
-];
+// Lead sem source. Estado diferente de "origem não reconhecida".
+export const UNINFORMED_ORIGIN = NO_ORIGIN_LABEL;
+export const UNINFORMED_COLOR = NO_ORIGIN_COLOR;
 
 function hashString(s: string): number {
   let h = 0;
@@ -82,10 +72,6 @@ function hashString(s: string): number {
     h = (h * 31 + s.charCodeAt(i)) | 0;
   }
   return Math.abs(h);
-}
-
-function fallbackColor(name: string): string {
-  return FALLBACK_PALETTE[hashString(name) % FALLBACK_PALETTE.length];
 }
 
 export function buildFunnelData(
@@ -109,12 +95,6 @@ export function buildFunnelData(
   const stagePositionById = new Map<string, number>();
   validStages.forEach((s) => stagePositionById.set(s.id, s.position));
 
-  // Mapa nome de origem (lowercase) -> cor cadastrada.
-  const originColorByName = new Map<string, string>();
-  origins.forEach((o) => {
-    if (o?.name) originColorByName.set(o.name.toLowerCase(), o.color || UNINFORMED_COLOR);
-  });
-
   // Filtra leads: remove perdidos; se !allTime, mantém só created_at no intervalo.
   // Também descarta leads cuja stage_id não está nas válidas (defensivo: stage
   // inexistente/órfã/null não deve aparecer no funil cumulativo).
@@ -131,23 +111,16 @@ export function buildFunnelData(
     return true;
   });
 
-  // Normaliza source -> { originName exibido, key lowercase }.
-  // Casa com origins cadastradas pelo nome (case-insensitive) pra manter a
-  // capitalização canônica da origem cadastrada; null/'' vira "Não informado".
-  const canonicalOriginName = new Map<string, string>(); // lowercaseKey -> displayName
-  origins.forEach((o) => {
-    if (o?.name) canonicalOriginName.set(o.name.toLowerCase(), o.name);
-  });
-
-  const resolveOrigin = (source?: string | null): { name: string; color: string } => {
-    const raw = (source ?? '').trim();
-    if (!raw) {
-      return { name: UNINFORMED_ORIGIN, color: UNINFORMED_COLOR };
-    }
-    const key = raw.toLowerCase();
-    const display = canonicalOriginName.get(key) ?? raw;
-    const color = originColorByName.get(key) ?? fallbackColor(display);
-    return { name: display, color };
+  // Normaliza source pela régua ÚNICA do painel master
+  // (src/utils/companyOriginCatalog.ts): casa case-insensitive com trim,
+  // mantendo a capitalização canônica da origem cadastrada.
+  //  - source null/''  → "Não informado" (cinza claro);
+  //  - fora do catálogo → o texto salvo em cinza neutro (#6B7280), nunca mais
+  //    uma cor sorteada por hash, que dava à banda a cara de origem cadastrada.
+  const resolveBandOrigin = (source?: string | null): { name: string; color: string } => {
+    const resolved = resolveOrigin(source, origins);
+    if (!resolved) return { name: UNINFORMED_ORIGIN, color: UNINFORMED_COLOR };
+    return { name: resolved.name, color: resolved.color };
   };
 
   // Ordem estável de origens pra empilhamento consistente entre etapas:
@@ -172,7 +145,7 @@ export function buildFunnelData(
   // Pré-calcula posição de cada lead filtrado (sabemos que existe).
   const leadPos = filteredLeads.map((l) => ({
     pos: stagePositionById.get(l.stage_id!)!,
-    origin: resolveOrigin(l.source),
+    origin: resolveBandOrigin(l.source),
   }));
 
   // firstStageCount = count da 1ª stage válida (top do funil).

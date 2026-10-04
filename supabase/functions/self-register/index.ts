@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 import { provisionAsaasCustomer } from '../_shared/asaas-customer.ts';
 import { isValidBrazilianPhone } from '../_shared/phone-validation.ts';
+import { canonicalizeCompanyOrigin } from '../_shared/company-origin.ts';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const trim = (v: unknown, max = 255) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -193,6 +194,11 @@ Deno.serve(async (req) => {
     const company_phone = trim(raw.company_phone, 30);
     const contact_name = trim(raw.contact_name, 200);
     const password = typeof raw.password === 'string' ? raw.password : '';
+    // Origem de captação — texto CRU vindo do client (o cadastro público lê do
+    // `?origem=` da URL). NÃO é o que vai pro banco: logo antes do insert ele
+    // passa por canonicalizeCompanyOrigin (catálogo `company_origins`), que
+    // devolve a grafia oficial, 'Outros' pro que não casa e null pro ausente.
+    // Use `canonicalOrigin` daqui pra baixo, nunca `origin`.
     const origin = trim(raw.origin, 100);
     // Segmento de atuação — OPCIONAL na edge (backward-compat). Persistido em
     // companies.segment; o trigger espelha pro company_settings.segment (que o
@@ -486,6 +492,24 @@ Deno.serve(async (req) => {
       if (sdr?.id) sdrId = sdr.id;
     }
 
+    // ── Origem de captação: canonizada contra o catálogo ─────────────────────────
+    // O `?origem=` da URL é público: qualquer pessoa digita qualquer coisa, e
+    // links de campanha antigos já publicados mandam valores que nunca existiram
+    // no catálogo (foi assim que entraram as empresas com "Site", rótulo que não
+    // é origem nenhuma e suja o relatório de atribuição do painel master).
+    // A validação só consegue fechar AQUI: a edge tem service role e vê as 12
+    // origens, enquanto o client só recebe 9 pela RPC `get_signup_origins` —
+    // BNI, Parceiro e Prospecção Ativa chegam apenas por link de vendedor e têm
+    // que continuar passando. Regras e decisão do caso de falha do catálogo
+    // estão documentadas em _shared/company-origin.ts.
+    const canonicalOrigin = await canonicalizeCompanyOrigin(supabaseAdmin, origin, '[self-register]');
+    if (origin && canonicalOrigin !== origin) {
+      // Texto cru é do client: quebras de linha viram espaço pra ninguém
+      // conseguir forjar linha de log.
+      const safeOrigin = origin.replace(/[\r\n\t]+/g, ' ');
+      console.log(`[self-register] Origem "${safeOrigin}" canonizada para ${canonicalOrigin === null ? 'null' : `"${canonicalOrigin}"`}.`);
+    }
+
     // Create company
     const { data: company, error: companyError } = await supabaseAdmin
       .from('companies')
@@ -495,7 +519,7 @@ Deno.serve(async (req) => {
         email: company_email,
         phone: company_phone || null,
         contact_name,
-        origin: origin || null,
+        origin: canonicalOrigin,
         segment: segment || null,
         address: company_address || null,
         subscription_status,
@@ -627,7 +651,10 @@ Deno.serve(async (req) => {
       user_metadata: {
         full_name: contact_name,
         company_id: company.id,
-        origin: origin || 'Cadastro Direto',
+        // Mesmo valor canônico gravado em companies.origin. Antes caía num
+        // 'Cadastro Direto' que não existe no catálogo — mais um rótulo
+        // inventado, só que escondido dentro dos metadados do usuário.
+        origin: canonicalOrigin,
       },
     });
 

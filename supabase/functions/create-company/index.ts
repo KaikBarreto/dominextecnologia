@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { provisionAsaasCustomer } from '../_shared/asaas-customer.ts'
 import { isValidBrazilianPhone } from '../_shared/phone-validation.ts'
+import { canonicalizeCompanyOrigin } from '../_shared/company-origin.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -99,6 +100,17 @@ Deno.serve(async (req) => {
       finalNotes = finalNotes ? `${finalNotes}\n\n${noteText}` : noteText
     }
 
+    // Origem de captação: mesma canonização do cadastro público (catálogo
+    // `company_origins`). Aqui o risco é menor, porque quem chama é o painel
+    // master e a origem vem de um Select alimentado pela própria tabela, mas é o
+    // mesmo campo e o mesmo relatório: deixar um dos dois caminhos sem trava é
+    // garantir que daqui a seis meses alguém precise redescobrir qual era qual.
+    const canonicalOrigin = await canonicalizeCompanyOrigin(
+      supabaseAdmin,
+      typeof origin === 'string' ? origin : '',
+      '[create-company]',
+    )
+
     // 1. Create the company
     const { data: company, error: companyError } = await supabaseAdmin
       .from('companies')
@@ -116,7 +128,7 @@ Deno.serve(async (req) => {
         subscription_expires_at: subscription_expires_at || null,
         billing_cycle: billing_cycle || 'monthly',
         max_users: max_users || 5,
-        origin: origin || null,
+        origin: canonicalOrigin,
         salesperson_id: salesperson_id || null,
         sdr_id: sdr_id || null,
         segment: segment || null,
