@@ -70,9 +70,13 @@ import {
 } from "../_shared/db-write.ts";
 import {
   computeLtvRollback,
+  renewalExpirationAnchor,
+  resolveEffectiveBillingCycle,
   retryableRethrow,
   RetryableWebhookError,
+  shouldDeactivateAfterReversal,
   splitRenewalCompanyUpdate,
+  type ReversalPaymentSnapshot,
   webhookResponseFor,
 } from "../_shared/asaas-webhook-renewal.ts";
 
@@ -431,6 +435,65 @@ async function recordRefundOrChargeback(
 }
 
 /**
+ * Alerta idempotente da reversão e da decisão de acesso. A chave lógica é o
+ * payment_id: reentregas e a sequência REQUESTED/DISPUTE do mesmo chargeback
+ * não podem inundar o painel nem esconder qual foi a primeira ação aplicada.
+ */
+async function alertPaymentReversalOnce(
+  supabase: any,
+  paymentId: string,
+  kind: "refund" | "chargeback",
+  companyId: string | null,
+  companyName: string,
+  deactivated: boolean,
+  protectedByAnotherPayment: boolean,
+): Promise<void> {
+  // UUID determinístico: fecha inclusive a corrida de dois eventos simultâneos.
+  // O primeiro INSERT ganha; os demais batem no PK (23505), tratado como sucesso.
+  const digest = new Uint8Array(await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`subscription_payment_reversed:${paymentId}`),
+  ));
+  digest[6] = (digest[6] & 0x0f) | 0x50; // UUID v5-like (nome determinístico)
+  digest[8] = (digest[8] & 0x3f) | 0x80;
+  const hex = Array.from(digest.slice(0, 16), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const notificationId = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+
+  const label = kind === "refund" ? "Estorno" : "Chargeback";
+  const accessAction = deactivated
+    ? "empresa desativada imediatamente"
+    : protectedByAnotherPayment
+    ? "acesso preservado por existir outro pagamento válido"
+    : "acesso não alterado porque este pagamento não liberou a assinatura";
+  const alerted = await tryWrite(
+    "alerta idempotente de estorno/chargeback (admin_notifications)",
+    supabase.from("admin_notifications").insert({
+      id: notificationId,
+      type: "subscription_payment_reversed",
+      title: `${label} de assinatura exige revisão`,
+      message: `${label} do pagamento ${paymentId} para ${companyName}: ${accessAction}. Revise LTV e período contratado.`,
+      data: {
+        payment_id: paymentId,
+        company_id: companyId,
+        kind,
+        access_action: deactivated
+          ? "deactivated"
+          : protectedByAnotherPayment
+          ? "protected_by_other_payment"
+          : "unchanged_not_access_granting",
+      },
+    }),
+    {
+      ignoreCodes: ["23505"],
+      recovery: { notification_id: notificationId, payment_id: paymentId, company_id: companyId, kind },
+    },
+  );
+  if (!alerted) {
+    throw new RetryableWebhookError(`alerta de estorno/chargeback não gravado (${paymentId})`);
+  }
+}
+
+/**
  * Caminho central de ATIVAÇÃO/RENOVAÇÃO a partir de um pagamento confirmado.
  * Recebe a company já resolvida e o objeto payment (ou um pseudo-payment do Pix Automático).
  * Idempotente: usa credit_ltv_once_for_payment como mutex + UPSERT ON CONFLICT nos lançamentos.
@@ -505,10 +568,11 @@ async function processConfirmedPayment(
   //  - NÃO estende vencimento nem credita LTV aqui — só CRIA a linha pro mutex reivindicar.
   //  - 1ª venda intacta: nela a linha JÁ existe (linkada pelo PAYMENT_CREATED), então
   //    o SELECT abaixo acha e este bloco vira no-op.
+  let paymentBillingCycle: unknown = null;
   {
     const { data: existingRow, error: existErr } = await supabase
       .from("subscription_payments")
-      .select("id")
+      .select("id, billing_cycle")
       .eq("asaas_payment_id", opts.asaasPaymentId)
       .maybeSingle();
 
@@ -525,13 +589,16 @@ async function processConfirmedPayment(
         `checagem de subscription_payments falhou (${opts.asaasPaymentId}): ${existErr.message}`,
         existErr,
       );
-    } else if (!existingRow) {
+    } else if (existingRow) {
+      paymentBillingCycle = existingRow.billing_cycle;
+    } else {
       // Sem linha pra este pay_* → renovação recorrente que nunca materializou.
       // Cria a linha de renovação. O `type` real (primeira_venda vs renovacao) é
       // reconfirmado logo abaixo por detectIsFirstSale; aqui gravamos 'renovacao'
       // porque, se a linha não existe, a 1ª venda (que sempre cria a linha PENDING)
       // já passou — é sempre um ciclo posterior.
       const materializedBillingCycle = company.billing_cycle === "yearly" ? "yearly" : "monthly";
+      paymentBillingCycle = materializedBillingCycle;
       const nowIso = new Date().toISOString();
       // FATAL (pede re-entrega). Mesmo motivo do `existErr` acima: sem esta
       // linha, o mutex não tem o que reivindicar e a renovação inteira vira
@@ -673,12 +740,16 @@ async function processConfirmedPayment(
   //    origem (self-register) grava a âncora = HOJE e aqui, na 1ª venda, re-ancoramos
   //    em agora → sempre +1 mês (mensal) / +1 ano (anual) exatos a partir do pagamento.
   //    Espelha o activate-subscription (que ancora em new Date()).
-  //  - RENOVAÇÃO: ancora no subscription_expires_at vigente (assim pagar adiantado
-  //    NÃO perde dias — o próximo ciclo continua do vencimento atual).
-  const billingCycle = company.billing_cycle === "yearly" ? "yearly" : "monthly";
-  const baseExpiration = isFirstSale
-    ? new Date().toISOString()
-    : (company.subscription_expires_at ?? new Date().toISOString());
+  //  - RENOVAÇÃO: ancora em max(subscription_expires_at vigente, agora). Assim
+  //    pagamento atrasado recebe o ciclo inteiro a partir de hoje e pagamento
+  //    antecipado NÃO perde dias acumulados no vencimento atual.
+  const billingCycle = resolveEffectiveBillingCycle(paymentBillingCycle, company.billing_cycle);
+  const nowIso = new Date().toISOString();
+  const baseExpiration = renewalExpirationAnchor(
+    company.subscription_expires_at,
+    nowIso,
+    isFirstSale,
+  );
   const { data: nextExpiration, error: expError } = await supabase.rpc("compute_next_expiration", {
     p_current: baseExpiration,
     p_cycle: billingCycle,
@@ -1159,29 +1230,47 @@ async function resolveCompany(
 ): Promise<{ company: any; matchedBy: string } | null> {
   // 1) por subscription/authorization id
   if (payment.subscription) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("companies")
       .select(COMPANY_COLS)
       .eq("asaas_subscription_id", payment.subscription)
       .maybeSingle();
+    if (error) {
+      throw new RetryableWebhookError(
+        `resolveCompany por subscription falhou: ${error.message}`,
+        error,
+      );
+    }
     if (data) return { company: data, matchedBy: "asaas_subscription_id" };
   }
   // 2) por externalReference (= company_id)
   if (payment.externalReference) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("companies")
       .select(COMPANY_COLS)
       .eq("id", payment.externalReference)
       .maybeSingle();
+    if (error) {
+      throw new RetryableWebhookError(
+        `resolveCompany por externalReference falhou: ${error.message}`,
+        error,
+      );
+    }
     if (data) return { company: data, matchedBy: "externalReference" };
   }
   // 3) por asaas_customer_id
   if (payment.customer) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("companies")
       .select(COMPANY_COLS)
       .eq("asaas_customer_id", payment.customer)
       .maybeSingle();
+    if (error) {
+      throw new RetryableWebhookError(
+        `resolveCompany por customer falhou: ${error.message}`,
+        error,
+      );
+    }
     if (data) return { company: data, matchedBy: "asaas_customer_id" };
   }
   // 4) por CPF/CNPJ (fallback FM1). cpfCnpj pode vir no payment ou no customer embutido.
@@ -1191,10 +1280,16 @@ async function resolveCompany(
   if (docDigits.length >= 11) {
     // companies.cnpj pode estar mascarado no banco → normaliza ambos os lados.
     // Sem coluna gerada de dígitos, casamos via regexp_replace no PostgREST.
-    const { data: candidates } = await supabase
+    const { data: candidates, error } = await supabase
       .from("companies")
       .select(COMPANY_COLS)
       .not("cnpj", "is", null);
+    if (error) {
+      throw new RetryableWebhookError(
+        `resolveCompany por CPF/CNPJ falhou: ${error.message}`,
+        error,
+      );
+    }
     const match = (candidates ?? []).find(
       (c: any) => digitsOnly(c.cnpj) === docDigits,
     );
@@ -1587,25 +1682,94 @@ Deno.serve(async (req) => {
     if (event === "PAYMENT_REFUNDED" || event.startsWith("PAYMENT_CHARGEBACK")) {
       const resolved = await resolveCompany(supabase, payment);
       const kind = event === "PAYMENT_REFUNDED" ? "refund" : "chargeback";
+      const localStatus = kind === "refund" ? "REFUNDED" : "CHARGEBACK";
+
+      // A linha local diz se ESTE pagamento realmente ganhou o mutex e liberou
+      // acesso. Falha de leitura é retryable: assumir "não achei" deixaria uma
+      // assinatura gratuita; assumir a company errada poderia bloquear outro tenant.
+      const { data: reversedPayment, error: reversedError } = await supabase
+        .from("subscription_payments")
+        .select("id, company_id, asaas_payment_id, status, due_date, paid_at, ltv_credited_at")
+        .eq("asaas_payment_id", payment.id)
+        .maybeSingle();
+      if (reversedError) {
+        throw new RetryableWebhookError(
+          `leitura do pagamento revertido falhou (${payment.id}): ${reversedError.message}`,
+          reversedError,
+        );
+      }
+
+      const reversalCompanyId: string | null =
+        reversedPayment?.company_id ?? resolved?.company?.id ?? null;
+      const companyName = resolved?.company?.id === reversalCompanyId
+        ? resolved.company.name
+        : "empresa vinculada ao pagamento";
+      let otherPayments: ReversalPaymentSnapshot[] = [];
+      if (reversedPayment?.company_id && reversedPayment.ltv_credited_at) {
+        const { data, error } = await supabase
+          .from("subscription_payments")
+          .select("asaas_payment_id, status, due_date, paid_at, ltv_credited_at")
+          .eq("company_id", reversedPayment.company_id)
+          .neq("id", reversedPayment.id);
+        if (error) {
+          throw new RetryableWebhookError(
+            `leitura de pagamentos substitutos falhou (${payment.id}): ${error.message}`,
+            error,
+          );
+        }
+        otherPayments = data ?? [];
+      }
+
+      const shouldDeactivate = shouldDeactivateAfterReversal(reversedPayment, otherPayments);
+      const protectedByAnotherPayment = !!reversedPayment?.ltv_credited_at && !shouldDeactivate;
       await recordRefundOrChargeback(
         supabase,
         payment,
-        resolved?.company?.id ?? null,
-        resolved?.company?.name ?? "empresa não identificada",
+        reversalCompanyId,
+        companyName,
         kind,
       );
-      // Atualiza status do pagamento local (sem desativar automaticamente — decisão manual do admin).
+
       // FATAL (pede re-entrega): é o estado que diz que o dinheiro voltou.
       // Idempotente (grava um valor fixo) e sem mutex — re-entregar conserta.
       await applyWrite(
         `status de ${kind} no pagamento (subscription_payments)`,
         supabase
           .from("subscription_payments")
-          .update({ status, updated_at: new Date().toISOString() })
+          .update({ status: localStatus, updated_at: new Date().toISOString() })
           .eq("asaas_payment_id", payment.id),
         { rethrow: retryableRethrow(`status de ${kind} no pagamento`) },
       );
-      return json({ received: true, recorded: kind });
+
+      // Política fail-closed: se o pagamento revertido foi o que liberou o
+      // acesso e não há outro confirmado do mesmo ciclo ou posterior, corta
+      // imediatamente. Não mexemos em LTV/vencimento: são histórico e mutex.
+      if (shouldDeactivate && reversalCompanyId) {
+        await applyWrite(
+          "desativação por estorno/chargeback (companies)",
+          supabase
+            .from("companies")
+            .update({ subscription_status: "inactive" })
+            .eq("id", reversalCompanyId),
+          { rethrow: retryableRethrow("desativação por estorno/chargeback") },
+        );
+      }
+
+      await alertPaymentReversalOnce(
+        supabase,
+        payment.id,
+        kind,
+        reversalCompanyId,
+        companyName,
+        shouldDeactivate && !!reversalCompanyId,
+        protectedByAnotherPayment,
+      );
+      return json({
+        received: true,
+        recorded: kind,
+        access_deactivated: shouldDeactivate && !!reversalCompanyId,
+        protected_by_another_payment: protectedByAnotherPayment,
+      });
     }
 
     // ---------- PAYMENT_OVERDUE ----------

@@ -1,97 +1,169 @@
 import type { ReactNode } from "react";
 import { createElement } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { differenceInDays, parseISO } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { TrialExpired } from "@/components/TrialExpired";
 import { SubscriptionExpired } from "@/components/SubscriptionExpired";
 
-/**
- * Decisão ÚNICA de bloqueio por assinatura do tenant. Fonte da verdade tanto do
- * `SubscriptionGate` (montado no AppLayout) quanto de telas que vivem FORA do
- * layout e precisam bloquear o usuário autenticado de um tenant inadimplente /
- * desativado (ex.: `/os-tecnico/:id` no modo técnico logado).
- *
- * Regras (espelham o EcoSistema):
- * - Admin Auctus (super_admin/vendedores) NÃO tem assinatura de tenant — nunca bloqueia.
- * - Empresa DESATIVADA (`subscription_status === 'inactive'`) → bloqueia NA HORA,
- *   sem carência, independente de vencimento (incidente ENGETEC).
- * - Trial/nunca-comprou → bloqueia ao vencer (daysOverdue > 0).
- * - Assinatura paga → carência de 1 dia (daysOverdue > 1).
- *
- * Retorna `{ blocked, screen }`. `screen` é a tela cheia de ativação/renovação
- * (que empurra pro `/checkout`); `null` quando não há bloqueio.
- */
-export function useSubscriptionBlock(): { blocked: boolean; screen: ReactNode | null } {
-  const { profile, isAdminUser } = useAuth();
-  const companyId = profile?.company_id;
+export const SUBSCRIPTION_GRACE_DAYS = 1;
+export const SUBSCRIPTION_REVALIDATE_MS = 60 * 1000;
 
-  const { data: company } = useQuery({
+export type SubscriptionAccessStatus =
+  | "checking"
+  | "allowed"
+  | "trial_expired"
+  | "subscription_expired"
+  | "payment_required"
+  | "unavailable";
+
+export interface SubscriptionCompanyStatus {
+  subscription_expires_at: string | null;
+  subscription_status: string;
+  subscription_value: number | null;
+  subscription_plan: string | null;
+  payment_lock_bypass: boolean;
+}
+
+export interface SubscriptionAccessDecision {
+  status: Exclude<SubscriptionAccessStatus, "checking">;
+  expirationDate?: string;
+}
+
+export interface SubscriptionBlockResult {
+  blocked: boolean;
+  screen: ReactNode | null;
+  status: SubscriptionAccessStatus;
+  retry: () => void;
+}
+
+function utcCalendarDay(value: Date): number | null {
+  if (Number.isNaN(value.getTime())) return null;
+  return Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate());
+}
+
+function daysOverdue(expirationValue: string, now: Date): number | null {
+  const expirationDay = utcCalendarDay(new Date(expirationValue));
+  const today = utcCalendarDay(now);
+  if (expirationDay === null || today === null) return null;
+  return Math.floor((today - expirationDay) / 86_400_000);
+}
+
+/**
+ * Regra pura que espelha `tenant_subscription_allows_access` no banco.
+ * Datas são comparadas por dia UTC para que navegador e Postgres tomem a mesma
+ * decisão, independentemente do fuso do dispositivo.
+ */
+export function decideSubscriptionAccess(
+  company: SubscriptionCompanyStatus,
+  now = new Date(),
+): SubscriptionAccessDecision {
+  const status = company.subscription_status;
+  const expirationDate = company.subscription_expires_at ?? undefined;
+
+  if (status === "inactive") {
+    const neverPurchased = !company.subscription_value && !company.subscription_plan;
+    return {
+      status: neverPurchased ? "trial_expired" : "subscription_expired",
+      expirationDate,
+    };
+  }
+
+  if (status === "pending_payment") {
+    return company.payment_lock_bypass
+      ? { status: "allowed" }
+      : { status: "payment_required" };
+  }
+
+  if (status === "testing") {
+    if (!expirationDate) return { status: "trial_expired" };
+    const overdue = daysOverdue(expirationDate, now);
+    if (overdue === null) return { status: "unavailable" };
+    return overdue > 0
+      ? { status: "trial_expired", expirationDate }
+      : { status: "allowed" };
+  }
+
+  // Status desconhecido falha fechado. Somente `active` representa uma
+  // assinatura paga válida; ausência de vencimento em active é plano sem termo.
+  if (status !== "active") return { status: "unavailable" };
+  if (!expirationDate) return { status: "allowed" };
+
+  const overdue = daysOverdue(expirationDate, now);
+  if (overdue === null) return { status: "unavailable" };
+  return overdue > SUBSCRIPTION_GRACE_DAYS
+    ? { status: "subscription_expired", expirationDate }
+    : { status: "allowed" };
+}
+
+/**
+ * Fonte única do bloqueio por assinatura no frontend. A consulta revalida a
+ * cada minuto e falha fechado no primeiro carregamento e em qualquer erro.
+ * Admin Auctus e visitantes anônimos não estão sujeitos à assinatura do tenant;
+ * usuário autenticado sem company_id é estado inválido e falha fechado.
+ */
+export function useSubscriptionBlock(): SubscriptionBlockResult {
+  const { user, loading, profile, isAdminUser } = useAuth();
+  const companyId = profile?.company_id;
+  const shouldCheck = !!user && !!companyId && !isAdminUser;
+
+  const { data: company, error, isPending, refetch } = useQuery({
     queryKey: ["subscription-gate-status", companyId],
     queryFn: async () => {
       if (!companyId) return null;
-      const { data, error } = await supabase
+      const { data, error: queryError } = await supabase
         .from("companies")
-        .select("subscription_expires_at, subscription_status, subscription_value, subscription_plan")
+        .select(
+          "subscription_expires_at, subscription_status, subscription_value, subscription_plan, payment_lock_bypass",
+        )
         .eq("id", companyId)
         .single();
-      if (error) throw error;
-      return data;
+      if (queryError) throw queryError;
+      return data as SubscriptionCompanyStatus;
     },
-    enabled: !!companyId && !isAdminUser,
-    staleTime: 60 * 1000,
+    enabled: shouldCheck,
+    staleTime: 30 * 1000,
+    refetchInterval: SUBSCRIPTION_REVALIDATE_MS,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: "always",
+    retry: 1,
   });
 
-  // Admin Auctus ou sem empresa carregada → nunca bloqueia.
-  if (isAdminUser || !company) {
-    return { blocked: false, screen: null };
+  const retry = () => {
+    void refetch();
+  };
+
+  if (loading) {
+    return { blocked: true, screen: null, status: "checking", retry };
   }
 
-  const isDeactivated = company.subscription_status === "inactive";
-  const isTesting = company.subscription_status === "testing";
-  // Nunca comprou: ex-trial cujo status virou inactive zerando valor/plano.
-  const neverPurchased = !company.subscription_value && !company.subscription_plan;
-
-  // Empresa DESATIVADA: trava imediata, sem carência e sem depender de data.
-  // Vem ANTES do early-return por falta de `subscription_expires_at`, pra que
-  // uma empresa inactive com `expires_at` null também bloqueie.
-  if (isDeactivated) {
-    // As telas formatam a data com parseISO — passamos a data real quando existe,
-    // senão "hoje" (string ISO) pra não quebrar o format() com null.
-    const safeDate = company.subscription_expires_at ?? new Date().toISOString();
-    const screen = neverPurchased
-      ? createElement(TrialExpired, { expirationDate: safeDate })
-      : createElement(SubscriptionExpired, { expirationDate: safeDate });
-    return { blocked: true, screen };
+  if (!user || isAdminUser) {
+    return { blocked: false, screen: null, status: "allowed", retry };
   }
 
-  // Sem data de expiração e ainda ativa → não há vencimento pra avaliar.
-  if (!company.subscription_expires_at) {
-    return { blocked: false, screen: null };
+  if (!companyId) {
+    return { blocked: true, screen: null, status: "unavailable", retry };
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const expirationDate = parseISO(company.subscription_expires_at);
-  expirationDate.setHours(0, 0, 0, 0);
-  const daysOverdue = differenceInDays(today, expirationDate);
-
-  // Teste/nunca-comprou: precisa ATIVAR (bloqueia ao vencer).
-  if ((isTesting || neverPurchased) && daysOverdue > 0) {
-    return {
-      blocked: true,
-      screen: createElement(TrialExpired, { expirationDate: company.subscription_expires_at }),
-    };
+  if (isPending) {
+    return { blocked: true, screen: null, status: "checking", retry };
   }
 
-  // Já tinha plano/valor: precisa RENOVAR (carência de 1 dia).
-  if (!isTesting && !neverPurchased && daysOverdue > 1) {
-    return {
-      blocked: true,
-      screen: createElement(SubscriptionExpired, { expirationDate: company.subscription_expires_at }),
-    };
+  if (error || !company) {
+    return { blocked: true, screen: null, status: "unavailable", retry };
   }
 
-  return { blocked: false, screen: null };
+  const decision = decideSubscriptionAccess(company);
+  if (decision.status === "allowed") {
+    return { blocked: false, screen: null, status: "allowed", retry };
+  }
+
+  const safeDate = decision.expirationDate ?? new Date().toISOString();
+  const screen = decision.status === "trial_expired"
+    ? createElement(TrialExpired, { expirationDate: safeDate })
+    : decision.status === "subscription_expired"
+      ? createElement(SubscriptionExpired, { expirationDate: safeDate })
+      : null;
+
+  return { blocked: true, screen, status: decision.status, retry };
 }

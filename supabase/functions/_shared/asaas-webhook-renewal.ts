@@ -86,8 +86,50 @@ export function webhookResponseFor(error: unknown): WebhookResponsePlan {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// 2) O UPDATE DA RENOVAÇÃO, PARTIDO EM DOIS
+// 2) DATA/CICLO EFETIVOS + UPDATE DA RENOVAÇÃO
 // ───────────────────────────────────────────────────────────────────────────
+
+export type EffectiveBillingCycle = "monthly" | "yearly";
+
+function normalizeBillingCycle(value: unknown): EffectiveBillingCycle | null {
+  if (value === "monthly") return "monthly";
+  // `annual` existiu em cadastros antigos; para duração ele equivale a yearly.
+  if (value === "yearly" || value === "annual") return "yearly";
+  return null;
+}
+
+/**
+ * O ciclo gravado no pagamento é a fonte da verdade do período comprado.
+ * A company é apenas fallback para linhas antigas/incompletas; na dúvida final,
+ * mensal é o fallback seguro (nunca concede um ano por dado inválido).
+ */
+export function resolveEffectiveBillingCycle(
+  paymentCycle: unknown,
+  companyCycle: unknown,
+): EffectiveBillingCycle {
+  return normalizeBillingCycle(paymentCycle) ?? normalizeBillingCycle(companyCycle) ?? "monthly";
+}
+
+/**
+ * Âncora do próximo período: primeira venda parte do pagamento; renovação
+ * parte de max(vencimento atual, agora). Assim atraso não reduz o novo período
+ * e pagamento antecipado não perde dias acumulados.
+ */
+export function renewalExpirationAnchor(
+  currentExpiration: unknown,
+  nowIso: string,
+  isFirstSale: boolean,
+): string {
+  const nowMs = Date.parse(nowIso);
+  if (!Number.isFinite(nowMs)) {
+    throw new TypeError("nowIso inválido para calcular a âncora da renovação");
+  }
+  if (isFirstSale || typeof currentExpiration !== "string") return nowIso;
+
+  const currentMs = Date.parse(currentExpiration);
+  if (!Number.isFinite(currentMs) || currentMs < nowMs) return nowIso;
+  return currentExpiration;
+}
 
 /** Campos de `companies` que a renovação lê pra montar o update. */
 export interface RenewalCompanySnapshot {
@@ -203,8 +245,53 @@ export function splitRenewalCompanyUpdate(
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// 3) DEVOLUÇÃO DO MUTEX
+// 3) ESTORNO/CHARGEBACK + DEVOLUÇÃO DO MUTEX
 // ───────────────────────────────────────────────────────────────────────────
+
+export interface ReversalPaymentSnapshot {
+  asaas_payment_id?: string | null;
+  status?: unknown;
+  due_date?: string | null;
+  paid_at?: string | null;
+  ltv_credited_at?: string | null;
+}
+
+function validPaymentStatus(status: unknown): boolean {
+  return status === "CONFIRMED" || status === "RECEIVED" || status === "RECEIVED_IN_CASH";
+}
+
+function validDateMs(value: unknown): number | null {
+  if (typeof value !== "string") return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/**
+ * Só corta acesso quando o pagamento revertido efetivamente ganhou o mutex e
+ * não existe outro pagamento confirmado do mesmo ciclo ou posterior. O outro
+ * pagamento não precisa ter ganho o mutex: uma cobrança alternativa do mesmo
+ * ciclo pode ter sido deduplicada justamente porque a revertida ganhou primeiro.
+ * Sem evidência comparável de substituição, falha fechado para impedir acesso
+ * gratuito. O chamador preserva LTV/vencimento como histórico e só inativa.
+ */
+export function shouldDeactivateAfterReversal(
+  reversed: ReversalPaymentSnapshot | null | undefined,
+  otherPayments: ReversalPaymentSnapshot[],
+): boolean {
+  if (!reversed?.ltv_credited_at) return false;
+
+  const reversedDue = validDateMs(reversed.due_date);
+  const reversedPaid = validDateMs(reversed.paid_at);
+  const hasReplacement = otherPayments.some((candidate) => {
+    if (!validPaymentStatus(candidate.status)) return false;
+    const candidateDue = validDateMs(candidate.due_date);
+    if (reversedDue !== null && candidateDue !== null) return candidateDue >= reversedDue;
+    const candidatePaid = validDateMs(candidate.paid_at);
+    return reversedPaid !== null && candidatePaid !== null && candidatePaid >= reversedPaid;
+  });
+
+  return !hasReplacement;
+}
 
 /**
  * Novo LTV depois de desfazer um crédito. Centavo-safe e nunca negativo.

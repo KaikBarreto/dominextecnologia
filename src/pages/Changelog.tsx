@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.18',
+    date: '4 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Pagamento confirmado libera o acesso automaticamente',
+        description: 'Depois da confirmação do pagamento, o sistema agora espera a renovação ser concluída antes de informar sucesso. Assim, o cliente não recebe uma mensagem de liberação enquanto a assinatura ainda está sendo processada.',
+        category: 'correcao',
+      },
+      {
+        title: 'Cada renovação entrega todo o período contratado',
+        description: 'Quando uma assinatura vencida é paga, o novo período começa no dia do pagamento. Quem renova antes do vencimento mantém os dias que ainda tinha, sem perder tempo já contratado.',
+        category: 'correcao',
+      },
+      {
+        title: 'Controle de acesso por assinatura mais seguro',
+        description: 'Empresas com assinatura vencida ou inativa ficam com o uso pausado conforme a regra do plano, e o acesso volta somente depois que o pagamento for realmente confirmado e aplicado.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.28.17',
     date: '4 de outubro de 2026',
     type: 'patch',

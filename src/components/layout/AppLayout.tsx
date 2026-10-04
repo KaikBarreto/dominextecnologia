@@ -27,7 +27,6 @@ import { MobileSidebar } from './MobileSidebar';
 import { MobileBottomNav } from './MobileBottomNav';
 import { SystemFooter } from './SystemFooter';
 import { VersionUpdateNotification } from '@/components/pwa/VersionUpdateNotification';
-import { SubscriptionGate } from '@/components/SubscriptionGate';
 import { NotificationsBell } from '@/components/notifications/NotificationsBell';
 import { AdminNotificationBell } from '@/components/admin/AdminNotificationBell';
 import { AppLanguageSwitcher } from '@/components/i18n/AppLanguageSwitcher';
@@ -136,15 +135,13 @@ export function AppLayout() {
           onOpenChange={setTasksDrawerOpen}
         />
       )}
-      <SubscriptionGate>
-        {isCompactViewport ? (
-          <MobileTabletShell isAdminUser={isAdminUser} />
-        ) : useTopbar ? (
-          <TopbarShell />
-        ) : (
-          <SidebarShell />
-        )}
-      </SubscriptionGate>
+      {isCompactViewport ? (
+        <MobileTabletShell isAdminUser={isAdminUser} />
+      ) : useTopbar ? (
+        <TopbarShell />
+      ) : (
+        <SidebarShell />
+      )}
     </>
   );
 }

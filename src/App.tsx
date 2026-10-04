@@ -2,11 +2,10 @@ import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLocaleProvider } from "@/contexts/AppLocaleContext";
-import { supabase } from "@/integrations/supabase/client";
 import { useForcedLogout } from "@/hooks/useForcedLogout";
 import { useCompanyModules, type ModuleCode } from "@/hooks/useCompanyModules";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
@@ -24,6 +23,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { useMarketingViewport } from "@/hooks/useMarketingViewport";
 import { localizedSegmentModuleRoutes } from "@/utils/localizedMarketingRoutes";
 import { useToast } from "@/hooks/use-toast";
+import { SubscriptionGate } from "@/components/SubscriptionGate";
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -267,9 +267,8 @@ function useDefaultRoute() {
 
 // Protected Route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading, profile, roles, signOut, isAdminUser } = useAuth();
+  const { user, loading, profile, roles, signOut } = useAuth();
   const { toast } = useToast();
-  const location = useLocation();
   useForcedLogout();
 
   // Bloqueio de conta desativada (profiles.is_active = false). A coluna tem
@@ -277,36 +276,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // bloqueamos quando o profile JÁ carregou e veio explicitamente false —
   // `is_active` undefined/null (estado parcial) é tratado como ativo.
   // super_admin nunca é bloqueado.
-  const isSuperAdmin = roles.includes('super_admin' as any);
+  const isSuperAdmin = roles.includes('super_admin');
   const isDeactivated =
     !!user && !!profile && profile.is_active === false && !isSuperAdmin;
-
-  // Status da assinatura da empresa do usuário logado. Espelha o EcoSistema:
-  // empresa com `pending_payment` (criada via link de venda, aguardando o 1º
-  // pagamento) fica travada no /checkout em QUALQUER navegação — não só no
-  // login. Admin Auctus (super_admin/vendedores) e qualquer usuário SEM empresa
-  // (company_id null) não têm assinatura de tenant: a query não roda e nunca
-  // redireciona. React Query revalida na próxima navegação / a cada 60s, então
-  // quando o webhook marca `active` o cliente é liberado sozinho.
-  const companyId = profile?.company_id;
-  const checkSubscription = !!user && !!companyId && !isAdminUser;
-  const { data: companyStatus, isLoading: companyLoading } = useQuery({
-    queryKey: ['protected-route-company-status', companyId],
-    queryFn: async () => {
-      if (!companyId) return null;
-      const { data, error } = await supabase
-        .from('companies')
-        // `payment_lock_bypass`: exceção por empresa que libera o uso mesmo
-        // estando `pending_payment` (ligada manualmente só pra empresa específica).
-        .select('subscription_status, payment_lock_bypass')
-        .eq('id', companyId)
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    enabled: checkSubscription,
-    staleTime: 60 * 1000,
-  });
 
   React.useEffect(() => {
     if (isDeactivated) {
@@ -325,27 +297,17 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // Enquanto o signOut da conta desativada não conclui, não renderiza o app.
   if (isDeactivated) return <Navigate to="/login" replace />;
 
-  // Espera a query da company carregar antes de decidir — evita piscar o app
-  // pra só depois redirecionar pro checkout. Com staleTime de 60s isso só pesa
-  // na 1ª navegação. Só bloqueia o render quando a query está REALMENTE ativa
-  // (usuário de tenant); admin/sem-empresa nunca segura aqui.
-  if (checkSubscription && companyLoading) return <LoadingSpinner />;
-
-  // Pagamento pendente → trava no /checkout (única rota liberada pro pendente).
-  // Exceção: empresas com `payment_lock_bypass === true` usam o sistema normal
-  // mesmo pendentes (liberação manual pontual). `as any` porque a coluna pode
-  // ainda não estar nos types regenerados. Futuros pendentes seguem travados.
-  const hasPaymentLockBypass =
-    (companyStatus as any)?.payment_lock_bypass === true;
-  if (
-    companyStatus?.subscription_status === 'pending_payment' &&
-    !hasPaymentLockBypass &&
-    location.pathname !== '/checkout'
-  ) {
-    return <Navigate to="/checkout" replace />;
-  }
-
   return <>{children}</>;
+}
+
+// Rotas autenticadas do produto passam pelo mesmo gate. Checkout usa somente
+// ProtectedRoute; admins são liberados pelo hook antes de consultar o tenant.
+function SubscriptionProtectedRoute({ children }: { children: React.ReactNode }) {
+  return (
+    <ProtectedRoute>
+      <SubscriptionGate>{children}</SubscriptionGate>
+    </ProtectedRoute>
+  );
 }
 
 // Permission-gated route — redirects to default route if no access
@@ -699,7 +661,7 @@ const AppRoutes = () => (
     <Route path="/pagar/:code" element={<PublicCheckout />} />
     {/* Autorização pública de assinatura/Pix Automático — SEM auth/PermissionRoute */}
     <Route path="/assinar/:code" element={<PublicSubscriptionCheckout />} />
-    <Route path="/proposta" element={<ProtectedRoute><ProposalSimulator /></ProtectedRoute>} />
+    <Route path="/proposta" element={<SubscriptionProtectedRoute><ProposalSimulator /></SubscriptionProtectedRoute>} />
     <Route path="/proposta/:token" element={<ProposalPublic />} />
     {/* Public customer portal */}
     <Route path="/portal/:token" element={<CustomerPortal />} />
@@ -714,9 +676,9 @@ const AppRoutes = () => (
     {/* Protected Routes */}
     <Route
       element={
-        <ProtectedRoute>
+        <SubscriptionProtectedRoute>
           <AppLayout />
-        </ProtectedRoute>
+        </SubscriptionProtectedRoute>
       }
     >
       {/* Telas do app — cada uma responde em TODOS os slugs de idioma (pt-br +
@@ -822,11 +784,11 @@ const AppRoutes = () => (
     {/* Domiflix — fullscreen layout próprio */}
     <Route
       element={
-        <ProtectedRoute>
+        <SubscriptionProtectedRoute>
           <div className="domiflix-app min-h-screen">
             <DomiflixLayout />
           </div>
-        </ProtectedRoute>
+        </SubscriptionProtectedRoute>
       }
     >
       <Route path="/domiflix" element={<DomiflixHome />} />
@@ -839,11 +801,11 @@ const AppRoutes = () => (
         bottom nav / footer) para imersão total no vídeo. */}
     <Route
       path="/domiflix/assistir/:titleSlug/:episodeNumber"
-      element={<ProtectedRoute><DomiflixWatch /></ProtectedRoute>}
+      element={<SubscriptionProtectedRoute><DomiflixWatch /></SubscriptionProtectedRoute>}
     />
     <Route
       path="/domiflix/assistir/:titleSlug/:episodeNumber/:startSeconds"
-      element={<ProtectedRoute><DomiflixWatch /></ProtectedRoute>}
+      element={<SubscriptionProtectedRoute><DomiflixWatch /></SubscriptionProtectedRoute>}
     />
 
     {/* Legacy OS share link: /:uuid -> /os-tecnico/:uuid?modo=cliente */}

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.28.17";
+export const APP_VERSION = "1.28.18";
 
-export const VERSION_NOTES = "Os botões do editor de fluxograma voltaram a responder ao clique, e tanto o fluxograma quanto o organograma já abrem com a primeira caixa pronta no meio da tela. A tela de Processos passou a se chamar Fluxograma.";
+export const VERSION_NOTES = "O acesso por assinatura ficou mais seguro: vencimentos são respeitados, pagamentos confirmados liberam o sistema automaticamente e cada renovação entrega todo o período contratado.";

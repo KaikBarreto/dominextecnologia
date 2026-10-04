@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -29,6 +29,7 @@ import logoWhite from "@/assets/logo-white-horizontal.png";
 import logoBlack from "@/assets/logo-black-horizontal.png";
 import { useWhiteLabel } from "@/hooks/useWhiteLabel";
 import { PriceAmount } from "@/components/ui/PriceAmount";
+import { hasSubscriptionActivationAdvanced } from "@/lib/subscriptionActivation";
 
 type PaymentMethod = "pix" | "boleto" | "card" | null;
 
@@ -89,6 +90,7 @@ interface SubscriptionPlan {
 
 export default function Checkout() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const isRenewal = searchParams.get("mode") === "renewal";
   // Plano TRAVADO pelo link de venda (?bloqueado=1 vindo do cadastro): o cliente
@@ -308,29 +310,50 @@ export default function Checkout() {
     ? addMonths(new Date(), remainingPromoMonths).toISOString()
     : null;
 
-  const activateAndRedirect = async (paymentId: string | null) => {
+  const activateAndRedirect = async (_paymentId: string | null) => {
     if (activatedRef.current) return;
     activatedRef.current = true;
     try {
-      if (isRenewal) {
-        await supabase.functions.invoke("confirm-sale-payment", {
-          body: { company_id: companyData!.id, payment_id: paymentId ?? undefined },
-        });
-      } else {
-        await supabase.functions.invoke("activate-subscription", {
-          body: {
-            company_id: companyData!.id,
-            plan_code: selectedPlan,
-            billing_cycle: billingCycle,
-            payment_id: paymentId ?? undefined,
-          },
-        });
+      // `activate-subscription` e `confirm-sale-payment` são operações exclusivas
+      // do painel master. O checkout do tenant não pode chamá-las nem fingir que
+      // deram certo: a fonte da verdade é o webhook autenticado da Asaas.
+      const before = {
+        subscription_status: companyData?.subscription_status ?? null,
+        subscription_expires_at: companyData?.subscription_expires_at ?? null,
+      };
+      let activated = false;
+
+      for (let attempt = 0; attempt < 24; attempt += 1) {
+        const { data, error } = await supabase
+          .from('companies')
+          .select('subscription_status, subscription_expires_at')
+          .eq('id', companyData!.id)
+          .single();
+
+        if (!error && hasSubscriptionActivationAdvanced(before, data)) {
+          activated = true;
+          break;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 2_000));
       }
-    } catch (err) {
-      console.error("Activation error:", err);
-    } finally {
+
+      if (!activated) {
+        throw new Error('O pagamento foi confirmado, mas a liberação ainda não foi concluída.');
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['subscription-gate-status', companyData!.id] }),
+        queryClient.invalidateQueries({ queryKey: ['protected-route-company-status', companyData!.id] }),
+        queryClient.invalidateQueries({ queryKey: ['checkout-company', companyData!.id] }),
+      ]);
       setPaymentSuccess(true);
       setTimeout(() => { window.location.href = "/dashboard"; }, 3000);
+    } catch (err) {
+      activatedRef.current = false;
+      console.error("Subscription activation wait error:", err);
+      toast.error(
+        "Pagamento confirmado. A liberação está demorando mais que o normal; aguarde um instante e tente entrar novamente.",
+      );
     }
   };
 

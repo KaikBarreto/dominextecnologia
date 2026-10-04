@@ -30,6 +30,7 @@ import {
 } from "../_shared/asaas-client.ts";
 import { authorizeAsaasCompany } from "../_shared/asaas-auth.ts";
 import { applyWrite, tryWriteReturning, WriteWarnings } from "../_shared/db-write.ts";
+import { resolveChargeTerms, type ChargeTerms } from "./billing-rules.ts";
 
 class ValidationError extends Error {}
 
@@ -120,7 +121,16 @@ Deno.serve(async (req) => {
     const warnings = new WriteWarnings();
 
     const body: CreatePaymentRequest = await req.json();
-    const { company_id, billing_type, amount, description, cpf_cnpj, pix_recurring, billing_cycle, plan_code } = body;
+    const {
+      company_id,
+      billing_type,
+      amount,
+      description,
+      cpf_cnpj,
+      pix_recurring,
+      billing_cycle: requestedBillingCycle,
+      plan_code,
+    } = body;
 
     if (!company_id) throw new ValidationError("company_id é obrigatório.");
     if (!billing_type) throw new ValidationError("Forma de pagamento é obrigatória.");
@@ -138,10 +148,6 @@ Deno.serve(async (req) => {
         { status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
-
-    // monthly→MONTHLY / yearly→YEARLY (subscription); PIX Automático usa ANNUALLY.
-    const asaasCycle = billing_cycle === "yearly" ? "YEARLY" : "MONTHLY";
-    const cycleForDb = billing_cycle === "yearly" ? "yearly" : "monthly";
 
     // ========== IDEMPOTÊNCIA: reusar cobrança PENDING < 30min ==========
     const { data: existingPending } = await supabase
@@ -245,6 +251,7 @@ Deno.serve(async (req) => {
     // Fail-closed: sem base efetiva computável, REJEITA (não deixa passar).
     // Tolerância: só centavos de arredondamento (max(2% do esperado, R$ 0,02)),
     // nunca a diferença entre planos.
+    let chargeTerms: ChargeTerms;
     {
       // Valor efetivo mensal da empresa = fonte da verdade.
       const cp = Number(company.custom_price) || 0;
@@ -342,21 +349,30 @@ Deno.serve(async (req) => {
       //  - Cartão: SEMPRE mensal (base).
       //  - PIX/boleto anual à vista: round(base × 12 × 0,8) (−20%).
       //  - PIX/boleto mensal: base.
-      const expected = billing_type === "CREDIT_CARD"
-        ? monthlyBase
-        : (billing_cycle === "yearly" ? Math.round(monthlyBase * 12 * 0.8) : monthlyBase);
+      chargeTerms = resolveChargeTerms(
+        billing_type,
+        requestedBillingCycle,
+        monthlyBase,
+        amount,
+      );
+      const expected = chargeTerms.expectedAmount;
 
       // Tolerância só pra centavos de arredondamento — nunca "outro plano".
       const tolerance = Math.max(expected * 0.02, 0.02);
       if (Math.abs(amount - expected) > tolerance) {
         console.error(
           `[valor] divergência: amount=${amount} esperado=${expected} base=${monthlyBase} ` +
-            `(método=${billing_type}, ciclo=${billing_cycle}, plan_code=${plan_code ?? "-"}, ` +
+            `(método=${billing_type}, ciclo=${chargeTerms.billingCycle}, plan_code=${plan_code ?? "-"}, ` +
             `plano=${company.subscription_plan}, customPrice=${hasActiveCustomPrice})`,
         );
         throw new ValidationError("Valor de cobrança inválido.");
       }
     }
+
+    // A partir daqui, payload e persistência usam somente o ciclo normalizado.
+    // Em especial, CREDIT_CARD nunca propaga `yearly` controlado pelo cliente.
+    const asaasCycle = chargeTerms.asaasCycle;
+    const cycleForDb = chargeTerms.billingCycle;
 
     // --- CPF/CNPJ: da request, senão da empresa ---
     const providedCpfCnpj = cpf_cnpj?.replace(/\D/g, "") || "";
@@ -534,7 +550,7 @@ Deno.serve(async (req) => {
     // PIX AUTOMÁTICO recorrente
     // ===================================================================
     if (billing_type === "PIX" && pix_recurring) {
-      const asaasFrequency = billing_cycle === "yearly" ? "ANNUALLY" : "MONTHLY";
+      const asaasFrequency = chargeTerms.pixAutomaticFrequency;
       await cancelExistingSubscriptions(asaasCustomerId!);
 
       const contractId = `DMX-${company_id.substring(0, 8)}-${Date.now().toString(36)}`.substring(0, 35);
@@ -733,16 +749,11 @@ Deno.serve(async (req) => {
     if (billing_type === "CREDIT_CARD" && body.card_number) {
       await cancelExistingSubscriptions(asaasCustomerId!);
 
-      // B9 (revisado): no CARTÃO a cobrança é SEMPRE mensal recorrente, sem
-      // desconto anual e sem parcelamento. Ignoramos o billing_cycle escolhido:
-      // forçamos cycle = MONTHLY e value = preço mensal base. O front já envia
-      // `amount` como o mensal cheio (sem aplicar os 20% do anual), mas, por
-      // segurança server-side, derivamos o mensal do amount caso venha anual
-      // (amount / 12 quando o ciclo é yearly), garantindo que nunca cobremos o
-      // anual cheio de uma vez no cartão.
-      const monthlyCardValue = billing_cycle === "yearly"
-        ? Math.round((amount / 12) * 100) / 100
-        : amount;
+      // B9: cartão é SEMPRE mensal recorrente, sem desconto anual e sem
+      // parcelamento. `resolveChargeTerms` normaliza o ciclo e usa como valor do
+      // gateway a base mensal da empresa reconciliada acima, nunca um cálculo a
+      // partir de `billing_cycle`/`amount` controlados pelo cliente.
+      const monthlyCardValue = chargeTerms.gatewayAmount;
 
       // nextDueDate = HOJE (BRT): o cartão foi informado agora, então a 1ª cobrança
       // deve ser debitada IMEDIATAMENTE. Com dueDateStr (+N dias) a Asaas agendava a

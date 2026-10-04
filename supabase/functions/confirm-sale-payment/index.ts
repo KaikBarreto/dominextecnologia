@@ -36,10 +36,44 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 import { asaas, AsaasApiError } from "../_shared/asaas-client.ts";
 import { applyWrite, tryWrite, WriteWarnings } from "../_shared/db-write.ts";
+import {
+  renewalExpirationAnchor,
+  resolveEffectiveBillingCycle,
+} from "../_shared/asaas-webhook-renewal.ts";
 
 interface ConfirmRequest {
   company_id: string;
   payment_id?: string;
+}
+
+interface CompanySnapshot {
+  id: string;
+  name: string;
+  subscription_status: string;
+  subscription_plan: string | null;
+  subscription_value: number | null;
+  subscription_expires_at: string | null;
+  billing_cycle: string | null;
+  ltv: number | null;
+  origin: string | null;
+  salesperson_id: string | null;
+  asaas_customer_id: string | null;
+  pending_subscription_value: number | null;
+  custom_price: number | null;
+  custom_price_months: number | null;
+  custom_price_payments_made: number | null;
+  custom_price_permanent: boolean | null;
+}
+
+interface SubscriptionPaymentSnapshot {
+  id: string;
+  asaas_payment_id: string | null;
+  amount: number;
+  ltv_credited_at: string | null;
+  billing_type: string | null;
+  billing_cycle: string | null;
+  status: string;
+  paid_at: string | null;
 }
 
 /** Busca o pagamento na Asaas (pra valor/netValue/billingType). Não-fatal. */
@@ -161,7 +195,7 @@ Deno.serve(async (req) => {
     const warnings = new WriteWarnings();
 
     // ===== 1) Company =====
-    const { data: company, error: companyError } = await supabase
+    const { data: companyData, error: companyError } = await supabase
       .from("companies")
       .select(
         "id, name, subscription_status, subscription_plan, subscription_value, subscription_expires_at, " +
@@ -170,20 +204,21 @@ Deno.serve(async (req) => {
       )
       .eq("id", company_id)
       .maybeSingle();
+    const company = companyData as unknown as CompanySnapshot | null;
 
     if (companyError || !company) {
       return json({ error: "Empresa não encontrada." }, 404);
     }
 
     // ===== 2) Idempotência precoce: subscription_payment já com ltv_credited_at? =====
-    let subscriptionPayment: any = null;
+    let subscriptionPayment: SubscriptionPaymentSnapshot | null = null;
     if (payment_id) {
       const { data: sp } = await supabase
         .from("subscription_payments")
-        .select("id, asaas_payment_id, amount, ltv_credited_at, billing_type, status, paid_at")
+        .select("id, asaas_payment_id, amount, ltv_credited_at, billing_type, billing_cycle, status, paid_at")
         .eq("asaas_payment_id", payment_id)
         .maybeSingle();
-      subscriptionPayment = sp;
+      subscriptionPayment = sp as unknown as SubscriptionPaymentSnapshot | null;
     }
     if (subscriptionPayment?.ltv_credited_at) {
       return json({ success: true, already_processed: true, company_id });
@@ -210,7 +245,7 @@ Deno.serve(async (req) => {
     // ===== POLÍTICA DE FALHA DE ESCRITA (incidente "supabase-js não lança", 2026-09-19) =====
     // O `supabase-js` devolve `{ error }` em vez de lançar. Toda escrita daqui pra
     // baixo passa por applyWrite (fatal) ou tryWrite (aviso + linha de recuperação).
-    // A linha que divide as duas é o MUTEX `credit_ltv_once_for_payment` (passo 5):
+    // A linha que divide as duas é o MUTEX `credit_ltv_once_for_payment` (passo 6):
     //
     //   ANTES do mutex  → applyWrite (falha = 500). Nada irreversível aconteceu, o
     //     mutex segue NÃO reivindicado, e o asaas-webhook — que é a fonte da verdade
@@ -244,43 +279,30 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ===== 5) Ganha a corrida do crédito de LTV (mutex idempotente) =====
-    // GATING (FURO 1): SEM payment_id NÃO há linha-mutex confiável (a RPC usa
-    // subscription_payments.asaas_payment_id como chave de reivindicação). Nesse caso
-    // NÃO somos winner e PULAMOS todo efeito não-idempotente (extensão de vencimento e
-    // company_payments). O webhook chegará com o pay_* real e aplicará a renovação 1x.
-    // COM payment_id: só é winner quem ganha a reivindicação atômica do LTV (TRUE).
-    const idempotencyKey = payment_id ?? `link_${company_id}_${new Date().toISOString().split("T")[0]}`;
-    let isWinner = false;
-    if (payment_id) {
-      const { data: claimed, error: ltvError } = await supabase.rpc("credit_ltv_once_for_payment", {
-        p_asaas_payment_id: payment_id,
-        p_company_id: company_id,
-        p_amount: paymentAmount,
-      });
-      if (ltvError) {
-        console.error("credit_ltv_once_for_payment falhou:", ltvError.message);
-        return json({ error: "Erro ao confirmar pagamento." }, 500);
-      }
-      isWinner = !!claimed;
-    } else {
-      // Sem payment_id: marcamos status (idempotente) e devolvemos sucesso, mas NÃO
-      // estendemos o vencimento — o webhook é a fonte da verdade da renovação.
+    // Sem pay_* não existe mutex confiável. Mantém o contrato anterior: no-op
+    // imediato e delega a extensão ao webhook, sem sequer calcular um período que
+    // esta chamada não está autorizada a aplicar.
+    if (!payment_id) {
       console.log(
         `[confirm-sale] sem payment_id para company ${company_id}: ` +
           `extensão de vencimento DELEGADA ao webhook (no-op idempotente aqui).`,
       );
-    }
-    if (!isWinner) {
       return json({ success: true, already_processed: true, company_id });
     }
 
-    // ===== 6) primeira_venda vs renovacao =====
-    const { count: priorCount } = await supabase
+    // ===== 5) Prepara classificação, ciclo e vencimento (ainda pré-mutex) =====
+    // Leituras/RPC podem falhar transitoriamente. Fazê-las antes de reivindicar o
+    // mutex permite retentativa real; depois do mutex, um 500 seria descartado como
+    // already_processed e não repararia a renovação.
+    const { count: priorCount, error: priorCountError } = await supabase
       .from("company_payments")
       .select("id", { count: "exact", head: true })
       .eq("company_id", company_id)
       .in("type", ["primeira_venda", "renovacao"]);
+    if (priorCountError) {
+      console.error("classificação do pagamento falhou:", priorCountError.message);
+      return json({ error: "Não foi possível classificar o pagamento." }, 500);
+    }
     const isFirstSale = (priorCount ?? 0) === 0 && (Number(company.ltv) || 0) === 0;
     const paymentType = isFirstSale ? "primeira_venda" : "renovacao";
     const financialCategory = isFirstSale ? "first_sale" : "renewal";
@@ -288,16 +310,52 @@ Deno.serve(async (req) => {
       ? `Primeira Venda - ${company.name} (Asaas ${payment_id ?? "link"})`
       : `Renovação - ${company.name} (Asaas ${payment_id ?? "link"})`;
 
-    // ===== 7) Atualiza vencimento + status active + pending + custom price =====
-    const billingCycle = company.billing_cycle === "yearly" ? "yearly" : "monthly";
-    const baseExpiration = company.subscription_expires_at ?? new Date().toISOString();
-    const { data: nextExpiration } = await supabase.rpc("compute_next_expiration", {
+    const billingCycle = resolveEffectiveBillingCycle(
+      subscriptionPayment?.billing_cycle,
+      company.billing_cycle,
+    );
+    const nowIso = new Date().toISOString();
+    const baseExpiration = renewalExpirationAnchor(
+      company.subscription_expires_at,
+      nowIso,
+      isFirstSale,
+    );
+    const { data: nextExpiration, error: expirationError } = await supabase.rpc("compute_next_expiration", {
       p_current: baseExpiration,
       p_cycle: billingCycle,
     });
-    const newExpiration: string = nextExpiration ?? baseExpiration;
+    if (expirationError || !nextExpiration) {
+      console.error(
+        `compute_next_expiration falhou (${billingCycle}, base ${baseExpiration}):`,
+        expirationError?.message ?? "sem data de retorno",
+      );
+      return json({ error: "Não foi possível calcular o novo vencimento." }, 500);
+    }
+    const newExpiration: string = nextExpiration;
 
-    const companyUpdate: Record<string, any> = {
+    // ===== 6) Ganha a corrida do crédito de LTV (mutex idempotente) =====
+    // GATING (FURO 1): SEM payment_id NÃO há linha-mutex confiável (a RPC usa
+    // subscription_payments.asaas_payment_id como chave de reivindicação). Nesse caso
+    // NÃO somos winner e PULAMOS todo efeito não-idempotente (extensão de vencimento e
+    // company_payments). O webhook chegará com o pay_* real e aplicará a renovação 1x.
+    // COM payment_id: só é winner quem ganha a reivindicação atômica do LTV (TRUE).
+    const idempotencyKey = payment_id;
+    const { data: claimed, error: ltvError } = await supabase.rpc("credit_ltv_once_for_payment", {
+      p_asaas_payment_id: payment_id,
+      p_company_id: company_id,
+      p_amount: paymentAmount,
+    });
+    if (ltvError) {
+      console.error("credit_ltv_once_for_payment falhou:", ltvError.message);
+      return json({ error: "Erro ao confirmar pagamento." }, 500);
+    }
+    const isWinner = !!claimed;
+    if (!isWinner) {
+      return json({ success: true, already_processed: true, company_id });
+    }
+
+    // ===== 7) Atualiza vencimento + status active + pending + custom price =====
+    const companyUpdate: Record<string, unknown> = {
       subscription_status: "active",
       subscription_expires_at: newExpiration,
     };

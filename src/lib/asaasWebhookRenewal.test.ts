@@ -7,8 +7,11 @@ import { resolve } from 'node:path';
 import {
   computeLtvRollback,
   isRetryableWebhookError,
+  renewalExpirationAnchor,
+  resolveEffectiveBillingCycle,
   RetryableWebhookError,
   retryableRethrow,
+  shouldDeactivateAfterReversal,
   splitRenewalCompanyUpdate,
   webhookResponseFor,
 } from '../../supabase/functions/_shared/asaas-webhook-renewal';
@@ -16,6 +19,10 @@ import { findUncheckedWrites } from './edgeWriteAudit';
 
 const webhookSource = readFileSync(
   resolve(process.cwd(), 'supabase/functions/asaas-webhook/index.ts'),
+  'utf8',
+);
+const confirmSaleSource = readFileSync(
+  resolve(process.cwd(), 'supabase/functions/confirm-sale-payment/index.ts'),
   'utf8',
 );
 
@@ -178,6 +185,106 @@ describe('o UPDATE da renovação, partido em VITAL x EXTRAS', () => {
     // A diferença importa: `[]` mandaria REMOVER todos os módulos do cliente.
     const { downgrade } = splitRenewalCompanyUpdate({ pending_plan_code: 'basico' }, vencimento);
     expect(downgrade).toEqual({ planCode: 'basico', explicitModules: null });
+  });
+});
+
+describe('período efetivamente comprado', () => {
+  const now = '2026-10-04T12:00:00.000Z';
+
+  it('renovação atrasada ancora em agora e entrega o ciclo inteiro', () => {
+    expect(renewalExpirationAnchor('2026-09-01T00:00:00.000Z', now, false)).toBe(now);
+  });
+
+  it('pagamento antecipado preserva todos os dias restantes', () => {
+    const future = '2026-11-19T03:00:00.000Z';
+    expect(renewalExpirationAnchor(future, now, false)).toBe(future);
+  });
+
+  it('primeira venda ignora janela de teste e ancora no pagamento', () => {
+    expect(renewalExpirationAnchor('2026-10-07T12:00:00.000Z', now, true)).toBe(now);
+  });
+
+  it('data corrente inválida cai com segurança em agora', () => {
+    expect(renewalExpirationAnchor('data-quebrada', now, false)).toBe(now);
+  });
+
+  it('ciclo do pagamento vence o snapshot divergente da company', () => {
+    expect(resolveEffectiveBillingCycle('yearly', 'monthly')).toBe('yearly');
+    expect(resolveEffectiveBillingCycle('monthly', 'yearly')).toBe('monthly');
+  });
+
+  it('ciclo ausente usa company e dado totalmente inválido nunca concede um ano', () => {
+    expect(resolveEffectiveBillingCycle(null, 'yearly')).toBe('yearly');
+    expect(resolveEffectiveBillingCycle('???', '???')).toBe('monthly');
+    expect(resolveEffectiveBillingCycle('annual', 'monthly')).toBe('yearly');
+  });
+
+  it('webhook e confirmação manual usam a mesma âncora e o ciclo do pagamento', () => {
+    for (const source of [webhookSource, confirmSaleSource]) {
+      expect(source).toContain('renewalExpirationAnchor(');
+      expect(source).toContain('resolveEffectiveBillingCycle(');
+    }
+    expect(webhookSource).toContain('.select("id, billing_cycle")');
+    expect(confirmSaleSource).toContain('billing_type, billing_cycle, status');
+  });
+});
+
+describe('estorno/chargeback: política de acesso', () => {
+  const reversed = {
+    status: 'CONFIRMED',
+    due_date: '2026-10-19',
+    paid_at: '2026-10-04T10:00:00.000Z',
+    ltv_credited_at: '2026-10-04T10:00:01.000Z',
+  };
+
+  it('não bloqueia se o pagamento revertido nunca liberou acesso', () => {
+    expect(shouldDeactivateAfterReversal({ ...reversed, ltv_credited_at: null }, [])).toBe(false);
+  });
+
+  it('bloqueia imediatamente quando o pagamento revertido era o único válido', () => {
+    expect(shouldDeactivateAfterReversal(reversed, [])).toBe(true);
+  });
+
+  it('preserva acesso com outro pagamento confirmado do mesmo ciclo ou posterior', () => {
+    const valid = (due_date: string) => ({
+      status: 'CONFIRMED',
+      due_date,
+      paid_at: '2026-10-05T10:00:00.000Z',
+      ltv_credited_at: '2026-10-05T10:00:01.000Z',
+    });
+    expect(shouldDeactivateAfterReversal(reversed, [valid('2026-10-19')])).toBe(false);
+    expect(shouldDeactivateAfterReversal(reversed, [valid('2026-11-19')])).toBe(false);
+  });
+
+  it('pagamento anterior ou estornado não protege acesso', () => {
+    expect(shouldDeactivateAfterReversal(reversed, [{
+      status: 'CONFIRMED',
+      due_date: '2026-09-19',
+      ltv_credited_at: '2026-09-01T00:00:00.000Z',
+    }])).toBe(true);
+    expect(shouldDeactivateAfterReversal(reversed, [{
+      status: 'REFUNDED',
+      due_date: '2026-11-19',
+      ltv_credited_at: '2026-11-01T00:00:00.000Z',
+    }])).toBe(true);
+  });
+
+  it('cobrança alternativa confirmada protege mesmo deduplicada pelo mutex', () => {
+    expect(shouldDeactivateAfterReversal(reversed, [{
+      status: 'CONFIRMED',
+      due_date: '2026-10-19',
+      ltv_credited_at: null,
+    }])).toBe(false);
+  });
+
+  it('fonte real corta acesso por escrita retryable e deduplica o alerta por payment_id', () => {
+    const deactivation = aoRedor('desativação por estorno/chargeback (companies)', 300, 1000);
+    expect(deactivation).toContain('applyWrite');
+    expect(deactivation).toContain('retryableRethrow');
+    expect(webhookSource).toContain('subscription_payment_reversed:${paymentId}');
+    expect(webhookSource).toContain('id: notificationId');
+    expect(webhookSource).toContain('ignoreCodes: ["23505"]');
+    expect(webhookSource).toContain('status: localStatus');
   });
 });
 
@@ -345,6 +452,17 @@ describe('asaas-webhook — a fronteira fatal x não-fatal, no fonte real', () =
   it('o catch de topo decide a resposta pelo tipo do erro, não por reflexo', () => {
     expect(webhookSource).toContain('webhookResponseFor(error)');
     expect(webhookSource).not.toContain('return json({ received: true, error: (error as Error).message })');
+  });
+
+  it('resolveCompany não confunde falha transitória de leitura com empresa inexistente', () => {
+    const inicio = webhookSource.indexOf('async function resolveCompany');
+    const fim = webhookSource.indexOf('async function recordUnmatchedPayment', inicio);
+    const trecho = webhookSource.slice(inicio, fim);
+    expect(trecho.match(/new RetryableWebhookError/g)).toHaveLength(4);
+    expect(trecho).toContain('resolveCompany por subscription falhou');
+    expect(trecho).toContain('resolveCompany por externalReference falhou');
+    expect(trecho).toContain('resolveCompany por customer falhou');
+    expect(trecho).toContain('resolveCompany por CPF/CNPJ falhou');
   });
 
   it('a autenticação do webhook continua fail-closed (não afrouxar junto)', () => {

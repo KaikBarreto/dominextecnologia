@@ -60,6 +60,9 @@
 - Toda mudanca de schema exige nova migration e revisao dos tipos gerados quando aplicavel.
 - Edge function privilegiada deve validar `Authorization` e permissao/role antes de agir.
 - PWA/offline e contrato: mutacoes precisam ser idempotentes, com retry seguro e IDs client-side quando necessario.
+- Vigencia de assinatura deve ser aplicada no gate visual e tambem no servidor/RLS dos dados criticos; indisponibilidade ou estado desconhecido falha fechado.
+- Valor, ciclo e periodo de assinatura devem ser reconciliados no servidor a partir do pagamento persistido, nunca confiados ao payload do cliente ou a snapshot desatualizado da empresa.
+- Checkout so pode anunciar liberacao depois que o webhook de pagamento persistir o novo status/vencimento; confirmacao visual do gateway, sozinha, nao concede acesso.
 - Nao escrever em `src/TMP/`; e area gitignored de migracao antiga.
 - Nao bumpar versao nem alterar changelog de cliente sem fluxo de Release Manager.
 - Aplicacao de migration/deploy de edge function e trabalho tecnico, nao handoff manual para o CEO sem necessidade real.
