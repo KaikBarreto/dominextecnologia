@@ -848,24 +848,25 @@ function renderPaymentPage(
 
   const topY = 56;
   const blockHeight = 60;
-  const monthlyWidth = 80;
-  const annualWidth = CONTENT_WIDTH - monthlyWidth - 6;
-  const annualX = MARGIN + monthlyWidth + 6;
+  const annualWidth = 112;
+  const monthlyWidth = CONTENT_WIDTH - annualWidth - 6;
+  const annualX = MARGIN;
+  const monthlyX = MARGIN + annualWidth + 6;
 
   // Card mensal.
   setFillColor(doc, CARD);
-  doc.roundedRect(MARGIN, topY, monthlyWidth, blockHeight, 3, 3, 'F');
+  doc.roundedRect(monthlyX, topY, monthlyWidth, blockHeight, 3, 3, 'F');
   setTextColor(doc, MUTED);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
-  doc.text('MENSAL', MARGIN + 7, topY + 10, { charSpace: 1.2 });
-  drawBigMoney(doc, displayFont, input.totals.monthly, MARGIN + 7, topY + 22, 19, 9, WHITE, '/mês');
+  doc.text('MENSAL', monthlyX + 7, topY + 10, { charSpace: 1.2 });
+  drawBigMoney(doc, displayFont, input.totals.monthly, monthlyX + 7, topY + 22, 15, 8, WHITE, '/mês');
   setTextColor(doc, MUTED);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.text(
     doc.splitTextToSize('Cobrança recorrente, sem fidelidade. Cancele quando quiser.', monthlyWidth - 14),
-    MARGIN + 7,
+    monthlyX + 7,
     topY + 31,
   );
 
@@ -878,7 +879,7 @@ function renderPaymentPage(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
   doc.text('ANUAL · 20% DE DESCONTO', annualX + 7, topY + 10, { charSpace: 0.7 });
-  drawBigMoney(doc, displayFont, input.totals.yearlyDiscounted, annualX + 7, topY + 22, 19, 9, WHITE, '/ano');
+  drawBigMoney(doc, displayFont, input.totals.yearlyDiscounted, annualX + 7, topY + 22, 23, 10, WHITE, '/ano');
 
   const miniPillY = topY + 28;
   const miniPillH = 6.2;

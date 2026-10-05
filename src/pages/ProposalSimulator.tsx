@@ -104,18 +104,18 @@ function ProposalPrice({
 }) {
   return (
     <div className="space-y-2 border-t border-border/40 pt-5">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-600">
+        Plano anual · 20% de desconto
+      </p>
       <p className="text-3xl font-bold tracking-tight lg:text-4xl">
-        {money(monthly)}<span className="text-base font-normal text-muted-foreground">/mês</span>
+        {money(yearlyDiscounted)}<span className="text-base font-semibold text-muted-foreground">/ano</span>
       </p>
-      <p className="text-sm">
+      <p className="text-sm text-muted-foreground">
         <span className="text-destructive line-through">{money(yearlyFull)}</span>{' '}
-        <span className="font-semibold">{money(yearlyDiscounted)}/ano</span>
-        {' '}<span className="text-muted-foreground">(20% de desconto)</span>
+        <span className="font-medium text-emerald-600">Economize {money(savings)} no plano anual</span>
       </p>
-      <p className="text-sm font-medium text-emerald-600">
-        {money(savings)} de economia no plano anual
-      </p>
-      <p className="text-sm text-muted-foreground">3x de {money(pixInstallment)} no Pix</p>
+      <p className="text-sm text-muted-foreground">Em até 3x de {money(pixInstallment)} no Pix</p>
+      <p className="pt-1 text-base font-bold">Opção mensal: {money(monthly)}/mês</p>
       <p className="text-xs text-muted-foreground">
         O valor apresentado considera somente os planos escolhidos por unidade.
       </p>
