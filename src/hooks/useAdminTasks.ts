@@ -96,8 +96,10 @@ interface UseAdminTasksOptions {
   /**
    * Quando `false` (default), esconde tarefas com `due_date` futura (> hoje) que
    * ainda não foram resolvidas. Tarefas sem due_date (NULL) e tarefas resolvidas
-   * sempre aparecem. Motivação: cada lead novo gera 10 follow-ups escalonados no
-   * futuro — sem o filtro o quadro vira poluição.
+   * sempre aparecem. Motivação: a automação de CS gera 15 check-ups escalonados
+   * em D+2..D+30 na primeira venda — sem o filtro o quadro vira poluição.
+   * (A cadência de 10 follow-ups por lead foi removida em 2026-10-05; as
+   * concluídas continuam no histórico.)
    */
   showFuture?: boolean;
 }
@@ -105,7 +107,7 @@ interface UseAdminTasksOptions {
 /**
  * Busca texto livre HÍBRIDA, 100% server-side (não pode depender de filtro
  * client-side: admin_tasks pode passar de 1000 rows e o PostgREST trunca em
- * ~1000, escondendo follow-ups além da 1ª página). Casa em:
+ * ~1000, escondendo tarefas além da 1ª página). Casa em:
  *  - title + description da própria tarefa, E
  *  - crm_lead_id ∈ leads (admin_leads) cujo nome ATUAL (company_name /
  *    contact_name / title) casa o termo.

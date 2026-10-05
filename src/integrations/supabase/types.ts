@@ -90,21 +90,6 @@ export type Database = {
         }
         Relationships: []
       }
-      admin_crm_followup_template: {
-        Row: {
-          offset_days: number
-          step: number
-        }
-        Insert: {
-          offset_days: number
-          step: number
-        }
-        Update: {
-          offset_days?: number
-          step?: number
-        }
-        Relationships: []
-      }
       admin_crm_labels: {
         Row: {
           color: string
