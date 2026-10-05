@@ -10,8 +10,9 @@
 //
 // Valor mensal calculado server-side (NUNCA confia no front):
 //   - Plano pronto (start/avancado/master): subscription_plans.price[plan_code].
-//   - Personalizado: soma dos preços dos módulos escolhidos + extra_users × 50.
-//     `basic` é SEMPRE incluso e obrigatório no personalizado.
+//   - Personalizado: soma dos preços dos módulos escolhidos + extra_users × preço
+//     do `extra_user` no catálogo ativo.
+//     `basic` e `customer_portal` são SEMPRE inclusos e obrigatórios.
 //
 // Decisão upgrade vs downgrade vs igual (compara com o VALOR EFETIVO atual da empresa:
 // custom_price se promoção ativa, senão subscription_value — NUNCA pending):
@@ -50,8 +51,11 @@ import { applyWrite, tryWrite, WriteWarnings } from "../_shared/db-write.ts";
 
 class ValidationError extends Error {}
 
-const EXTRA_USER_PRICE = 50;
 const BASE_MODULE = "basic";
+const CUSTOMER_PORTAL_MODULE = "customer_portal";
+const EXTRA_USER_MODULE = "extra_user";
+const CUSTOM_PLAN_INCLUDED_USERS = 2;
+const MAX_SUBSCRIPTION_USERS = 999;
 
 interface ChangePlanRequest {
   company_id: string;
@@ -131,16 +135,37 @@ Deno.serve(async (req) => {
       .single();
     if (companyError || !company) throw new ValidationError("Empresa não encontrada.");
 
-    // --- Catálogo de preços (server-side) ---
-    const { data: modulesCatalog } = await supabase
-      .from("subscription_modules")
-      .select("code, price")
-      .eq("is_active", true);
-    const modulePriceByCode = new Map<string, number>(
-      (modulesCatalog ?? []).map((m) => [m.code, Number(m.price) || 0]),
-    );
-
     const isCustom = plan_code === "personalizado";
+
+    // --- Catálogo de preços (server-side) ---
+    // O personalizado depende do catálogo ativo para TODOS os valores, inclusive
+    // usuário adicional. Se a leitura ou o preço de `extra_user` falhar, não há
+    // preço seguro para persistir nem enviar ao gateway: falha fechado.
+    let modulePriceByCode = new Map<string, number>();
+    let extraUserPrice = 0;
+    if (isCustom) {
+      const { data: modulesCatalog, error: modulesCatalogError } = await supabase
+        .from("subscription_modules")
+        .select("code, price")
+        .eq("is_active", true);
+      if (modulesCatalogError) {
+        throw new ValidationError("Não foi possível consultar os preços dos módulos. Tente novamente mais tarde.");
+      }
+
+      modulePriceByCode = new Map<string, number>(
+        (modulesCatalog ?? []).map((m) => [m.code, Number(m.price)]),
+      );
+      extraUserPrice = modulePriceByCode.get(EXTRA_USER_MODULE) ?? Number.NaN;
+      if (!Number.isFinite(extraUserPrice) || extraUserPrice <= 0) {
+        throw new ValidationError("O preço do usuário adicional não está configurado corretamente. Tente novamente mais tarde.");
+      }
+
+      const basePrice = modulePriceByCode.get(BASE_MODULE) ?? Number.NaN;
+      const customerPortalPrice = modulePriceByCode.get(CUSTOMER_PORTAL_MODULE) ?? Number.NaN;
+      if (!Number.isFinite(basePrice) || basePrice <= 0 || customerPortalPrice !== 0) {
+        throw new ValidationError("Os módulos obrigatórios do plano personalizado não estão configurados corretamente.");
+      }
+    }
 
     // Plano pronto: precisa existir.
     let planRow: { code: string; price: number; max_users: number; included_modules: string[] } | null = null;
@@ -166,14 +191,20 @@ Deno.serve(async (req) => {
     let targetModules: string[];
     let targetMaxUsers: number;
     let targetMonthlyValue: number;
-    const targetExtraUsers = isCustom ? Math.max(0, Number(extra_users) || 0) : 0;
+    const targetExtraUsers = isCustom
+      ? Math.min(
+        MAX_SUBSCRIPTION_USERS - CUSTOM_PLAN_INCLUDED_USERS,
+        Math.max(0, Math.floor(Number(extra_users) || 0)),
+      )
+      : 0;
 
     if (isCustom) {
-      // Personalizado: `basic` sempre incluso/obrigatório. Filtra códigos válidos
-      // (presentes no catálogo ativo) e ignora extra_user como módulo (é via contador).
-      const chosen = new Set<string>([BASE_MODULE]);
+      // Personalizado: `basic` e `customer_portal` sempre inclusos/obrigatórios,
+      // independentemente do payload. Filtra códigos válidos (presentes no catálogo
+      // ativo) e ignora extra_user como módulo (é via contador).
+      const chosen = new Set<string>([BASE_MODULE, CUSTOMER_PORTAL_MODULE]);
       for (const code of custom_modules ?? []) {
-        if (code === "extra_user") continue;
+        if (code === EXTRA_USER_MODULE) continue;
         if (modulePriceByCode.has(code)) chosen.add(code);
       }
       targetModules = Array.from(chosen);
@@ -182,10 +213,10 @@ Deno.serve(async (req) => {
         (sum, code) => sum + (modulePriceByCode.get(code) ?? 0),
         0,
       );
-      targetMonthlyValue = modulesPrice + targetExtraUsers * EXTRA_USER_PRICE;
+      targetMonthlyValue = modulesPrice + targetExtraUsers * extraUserPrice;
       // No personalizado, companies.max_users JÁ é o total (não soma extra por cima).
       // Base de 2 usuários (igual ao subscription_plans.personalizado.max_users) + extras.
-      targetMaxUsers = 2 + targetExtraUsers;
+      targetMaxUsers = CUSTOM_PLAN_INCLUDED_USERS + targetExtraUsers;
     } else {
       targetModules = planRow!.included_modules;
       targetMaxUsers = planRow!.max_users;

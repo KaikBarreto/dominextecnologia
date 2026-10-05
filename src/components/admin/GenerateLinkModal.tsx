@@ -126,7 +126,13 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
 
   // Catálogo de módulos (modo Personalizado).
   const { data: allModules = [] } = useSubscriptionModules();
-  const suggestedModulesPrice = sumModulesPrice(allModules, customModules);
+  const suggestedModulesPrice = sumModulesPrice(
+    allModules,
+    customModules,
+    undefined,
+    undefined,
+    Number(customMaxUsers),
+  );
   const finalCustomPlanPrice = useCustomPrice && customPriceValue
     ? parseFloat(customPriceValue) || 0
     : suggestedModulesPrice;
@@ -527,7 +533,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
                     <Sparkles className="h-4 w-4 text-primary" />Módulos do plano
                   </Label>
                   <span className="text-xs text-muted-foreground">
-                    Sugerido: R$ {suggestedModulesPrice.toFixed(2)}/mês
+                    Módulos + usuários: R$ {suggestedModulesPrice.toFixed(2)}/mês
                   </span>
                 </div>
                 <ModuleGrid

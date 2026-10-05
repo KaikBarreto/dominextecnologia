@@ -35,7 +35,14 @@ import {
 } from '@/hooks/usePublicSubscriptionPlans';
 import { cn } from '@/lib/utils';
 import {
+  CUSTOMER_PORTAL_MODULE_CODE,
+  EXTRA_USER_MODULE_CODE,
+  REQUIRED_CUSTOM_MODULE_CODES,
+  isRequiredCustomModule,
+} from '@/lib/subscriptionCatalog';
+import {
   MAX_PROPOSAL_UNITS,
+  MAX_PROPOSAL_USERS,
   BASE_MODULE_CODE,
   CUSTOM_PLAN_CODE,
   CUSTOM_PLAN_INCLUDED_USERS,
@@ -233,7 +240,9 @@ export default function ProposalSimulator() {
   const modulePickerUnit = units.find((unit) => unit.id === modulePickerUnitId);
   const availableModules = modulePickerUnit
     ? modules.filter(
-        (module) => module.code !== BASE_MODULE_CODE && !modulePickerUnit.moduleCodes.includes(module.code),
+        (module) => module.code !== EXTRA_USER_MODULE_CODE
+          && !isRequiredCustomModule(module.code)
+          && !modulePickerUnit.moduleCodes.includes(module.code),
       )
     : [];
 
@@ -241,11 +250,25 @@ export default function ProposalSimulator() {
     setUnits((current) => current.map((unit) => (unit.id === id ? { ...unit, ...patch } : unit)));
   }
 
+  function adjustUnitUsers(id: string, amount: number) {
+    setUnits((current) => current.map((unit) => (
+      unit.id === id
+        ? {
+            ...unit,
+            users: Math.min(
+              MAX_PROPOSAL_USERS,
+              Math.max(CUSTOM_PLAN_INCLUDED_USERS, unit.users + amount),
+            ),
+          }
+        : unit
+    )));
+  }
+
   function changePlan(unit: ProposalUnit, planCode: string) {
     if (planCode === CUSTOM_PLAN_CODE) {
       updateUnit(unit.id, {
         planCode,
-        moduleCodes: [BASE_MODULE_CODE],
+        moduleCodes: [...REQUIRED_CUSTOM_MODULE_CODES],
         users: CUSTOM_PLAN_INCLUDED_USERS,
       });
       return;
@@ -259,6 +282,7 @@ export default function ProposalSimulator() {
   }
 
   function toggleModule(unit: ProposalUnit, moduleCode: string) {
+    if (isRequiredCustomModule(moduleCode) || moduleCode === EXTRA_USER_MODULE_CODE) return;
     const selected = unit.moduleCodes.includes(moduleCode);
     updateUnit(unit.id, {
       moduleCodes: selected
@@ -469,18 +493,27 @@ export default function ProposalSimulator() {
                           <div className="space-y-5 border-t border-border/40 pt-5">
                             <div className="space-y-2">
                               <Label>Módulos</Label>
-                              <div className="flex items-center gap-3 rounded-lg bg-emerald-600 p-3 text-white">
-                                <Check className="h-4 w-4 shrink-0" />
-                                <div className="min-w-0">
-                                  <p className="text-sm font-semibold">
-                                    {modules.find((module) => module.code === BASE_MODULE_CODE)?.name ?? 'Módulo Básico'}
-                                  </p>
-                                  <p className="text-xs text-white/75">Sempre incluso</p>
-                                </div>
-                              </div>
+                              {REQUIRED_CUSTOM_MODULE_CODES.map((moduleCode) => {
+                                const requiredModule = modules.find((module) => module.code === moduleCode);
+                                return (
+                                  <div key={moduleCode} className="flex items-center gap-3 rounded-lg bg-emerald-600 p-3 text-white">
+                                    <Check className="h-4 w-4 shrink-0" />
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-semibold">
+                                        {requiredModule?.name ?? (moduleCode === BASE_MODULE_CODE ? 'Módulo Básico' : 'Portal do Cliente')}
+                                      </p>
+                                      <p className="text-xs text-white/75">
+                                        {moduleCode === CUSTOMER_PORTAL_MODULE_CODE ? 'Grátis e incluso em todos os planos' : 'Sempre incluso'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                               <div className="space-y-2">
                                 {modules.filter(
-                                  (module) => module.code !== BASE_MODULE_CODE && unit.moduleCodes.includes(module.code),
+                                  (module) => module.code !== EXTRA_USER_MODULE_CODE
+                                    && !isRequiredCustomModule(module.code)
+                                    && unit.moduleCodes.includes(module.code),
                                 ).map((module) => (
                                   <div key={module.code} className="flex items-start gap-3 rounded-lg border border-border/60 bg-card p-3">
                                     <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
@@ -506,7 +539,9 @@ export default function ProposalSimulator() {
                                   className="w-full"
                                   onClick={() => setModulePickerUnitId(unit.id)}
                                   disabled={modules.filter(
-                                    (module) => module.code !== BASE_MODULE_CODE && !unit.moduleCodes.includes(module.code),
+                                    (module) => module.code !== EXTRA_USER_MODULE_CODE
+                                      && !isRequiredCustomModule(module.code)
+                                      && !unit.moduleCodes.includes(module.code),
                                   ).length === 0}
                                 >
                                   <Plus className="mr-2 h-4 w-4" />
@@ -531,7 +566,7 @@ export default function ProposalSimulator() {
                                     size="icon"
                                     className="h-9 w-9"
                                     disabled={unit.users <= CUSTOM_PLAN_INCLUDED_USERS}
-                                    onClick={() => updateUnit(unit.id, { users: Math.max(CUSTOM_PLAN_INCLUDED_USERS, unit.users - 1) })}
+                                    onClick={() => adjustUnitUsers(unit.id, -1)}
                                     aria-label="Diminuir usuários"
                                   >
                                     <Minus className="h-4 w-4" />
@@ -542,7 +577,8 @@ export default function ProposalSimulator() {
                                     variant="outline"
                                     size="icon"
                                     className="h-9 w-9"
-                                    onClick={() => updateUnit(unit.id, { users: Math.min(999, unit.users + 1) })}
+                                    disabled={unit.users >= MAX_PROPOSAL_USERS}
+                                    onClick={() => adjustUnitUsers(unit.id, 1)}
                                     aria-label="Aumentar usuários"
                                   >
                                     <Plus className="h-4 w-4" />

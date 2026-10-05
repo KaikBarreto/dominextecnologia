@@ -265,9 +265,9 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   const handlePlanChange = useCallback((v: string) => {
     updateField('subscription_plan', v);
     if (v === 'personalizado') {
-      // Preço sugerido = soma dos módulos marcados. max_users continua manual.
+      // Preço sugerido = módulos + usuários acima dos 2 inclusos.
       if (!formData.use_custom_price) {
-        updateField('subscription_value', String(sumModulesPrice(allModules, selectedModules, nfseTiers, Number(formData.nfse_tier))));
+        updateField('subscription_value', String(sumModulesPrice(allModules, selectedModules, nfseTiers, Number(formData.nfse_tier), Number(formData.max_users))));
       }
       return;
     }
@@ -277,15 +277,15 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       if (p.price != null && !formData.use_custom_price) updateField('subscription_value', String(p.price));
       if (p.max_users != null) updateField('max_users', String(p.max_users));
     }
-  }, [plans, allModules, selectedModules, nfseTiers, formData.nfse_tier, updateField, formData.use_custom_price]);
+  }, [plans, allModules, selectedModules, nfseTiers, formData.nfse_tier, formData.max_users, updateField, formData.use_custom_price]);
 
   // ========== Nível de NFS-e -> recalcula preço sugerido ==========
   const updateNfseTier = useCallback((value: string) => {
     updateField('nfse_tier', value);
     if (!formData.use_custom_price) {
-      updateField('subscription_value', String(sumModulesPrice(allModules, selectedModules, nfseTiers, Number(value))));
+      updateField('subscription_value', String(sumModulesPrice(allModules, selectedModules, nfseTiers, Number(value), Number(formData.max_users))));
     }
-  }, [allModules, selectedModules, nfseTiers, formData.use_custom_price, updateField]);
+  }, [allModules, selectedModules, nfseTiers, formData.max_users, formData.use_custom_price, updateField]);
 
   // ========== Toggle de módulo (plano Personalizado) ==========
   const handleToggleModule = useCallback((code: string) => {
@@ -294,16 +294,38 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code],
       );
       if (!formData.use_custom_price) {
-        updateField('subscription_value', String(sumModulesPrice(allModules, next, nfseTiers, Number(formData.nfse_tier))));
+        updateField('subscription_value', String(sumModulesPrice(allModules, next, nfseTiers, Number(formData.nfse_tier), Number(formData.max_users))));
       }
       return next;
     });
-  }, [allModules, nfseTiers, formData.nfse_tier, formData.use_custom_price, updateField]);
+  }, [allModules, nfseTiers, formData.nfse_tier, formData.max_users, formData.use_custom_price, updateField]);
+
+  const handleMaxUsersChange = useCallback((value: string) => {
+    updateField('max_users', value);
+    if (formData.subscription_plan === 'personalizado' && !formData.use_custom_price) {
+      updateField(
+        'subscription_value',
+        String(sumModulesPrice(
+          allModules,
+          selectedModules,
+          nfseTiers,
+          Number(formData.nfse_tier),
+          Number(value),
+        )),
+      );
+    }
+  }, [allModules, selectedModules, nfseTiers, formData.nfse_tier, formData.subscription_plan, formData.use_custom_price, updateField]);
 
   const isPersonalizado = formData.subscription_plan === 'personalizado';
-  const suggestedModulesPrice = sumModulesPrice(allModules, selectedModules, nfseTiers, Number(formData.nfse_tier));
+  const suggestedModulesPrice = sumModulesPrice(
+    allModules,
+    selectedModules,
+    nfseTiers,
+    Number(formData.nfse_tier),
+    Number(formData.max_users),
+  );
   // Preço de referência exibido nos hints: plano padrão usa o preço do plano;
-  // personalizado usa a soma dos módulos marcados.
+  // personalizado usa a soma dos módulos e usuários excedentes.
   const referencePlanPrice = (() => {
     if (isPersonalizado) return suggestedModulesPrice;
     const p = plans.find((pl: any) => pl.code === formData.subscription_plan);
@@ -347,7 +369,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         : null;
       const planObj = plans.find((p: any) => p.code === formData.subscription_plan);
       const originalPlanPrice = formData.subscription_plan === 'personalizado'
-        ? sumModulesPrice(allModules, selectedModules, nfseTiers, Number(formData.nfse_tier))
+        ? sumModulesPrice(allModules, selectedModules, nfseTiers, Number(formData.nfse_tier), Number(formData.max_users))
         : (planObj?.price ?? null);
       const modulesPayload = formData.subscription_plan === 'personalizado'
         ? withBaseModules(selectedModules)
@@ -799,7 +821,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Máx. Usuários</Label>
-                      <NumericInput value={formData.max_users} onValueChange={v => updateField('max_users', v)} />
+                      <NumericInput value={formData.max_users} onValueChange={handleMaxUsersChange} />
                     </div>
                   </div>
 
@@ -851,7 +873,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Máx. Usuários</Label>
-                    <NumericInput value={formData.max_users} onValueChange={v => updateField('max_users', v)} />
+                    <NumericInput value={formData.max_users} onValueChange={handleMaxUsersChange} />
                   </div>
                 </div>
               )}

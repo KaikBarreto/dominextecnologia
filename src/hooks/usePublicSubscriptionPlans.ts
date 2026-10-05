@@ -1,6 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { ModuleCode } from '@/hooks/useCompanyModules';
+import {
+  BASE_SUBSCRIPTION_MODULE_CODE,
+  CUSTOMER_PORTAL_MODULE_CODE,
+  resolveExtraUserPrice,
+} from '@/lib/subscriptionCatalog';
 
 export interface PublicSubscriptionPlan {
   id: string;
@@ -66,10 +71,29 @@ export function usePublicSubscriptionCatalog() {
         code: module.code,
         name: module.name,
         description: module.description ?? null,
-        price: Math.max(0, Number(module.price) || 0),
+        price: module.price === null ? Number.NaN : Number(module.price),
         type: module.type ?? 'module',
       })) as PublicSubscriptionModule[];
-      const extraUserPrice = allModules.find((module) => module.code === 'extra_user')?.price ?? 0;
+      const pricesAreValid = allModules.every(
+        (module) => Number.isFinite(module.price) && module.price >= 0,
+      );
+      const basePrice = allModules.find(
+        (module) => module.code === BASE_SUBSCRIPTION_MODULE_CODE,
+      )?.price;
+      const customerPortalPrice = allModules.find(
+        (module) => module.code === CUSTOMER_PORTAL_MODULE_CODE,
+      )?.price;
+      const extraUserPrice = resolveExtraUserPrice(allModules);
+      if (
+        !pricesAreValid
+        || typeof basePrice !== 'number'
+        || !Number.isFinite(basePrice)
+        || basePrice <= 0
+        || customerPortalPrice !== 0
+        || extraUserPrice === null
+      ) {
+        throw new Error('O catálogo comercial não está configurado corretamente.');
+      }
 
       return {
         plans,

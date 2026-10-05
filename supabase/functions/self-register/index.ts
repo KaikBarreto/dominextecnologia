@@ -146,6 +146,10 @@ const PLAN_CODE_ALIASES: Record<string, string> = {
   enterprise: 'master',
 };
 
+const REQUIRED_PERSONALIZED_MODULE_CODES = ['basic', 'customer_portal'] as const;
+const EXTRA_USER_MODULE_CODE = 'extra_user';
+const CUSTOM_PLAN_INCLUDED_USERS = 2;
+
 Deno.serve(async (req) => {
   const corsResp = handleCors(req);
   if (corsResp) return corsResp;
@@ -173,8 +177,14 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    let raw: any;
-    try { raw = await req.json(); } catch {
+    let raw: Record<string, unknown>;
+    try {
+      const parsedBody: unknown = await req.json();
+      if (!parsedBody || typeof parsedBody !== 'object' || Array.isArray(parsedBody)) {
+        throw new Error('invalid_json_object');
+      }
+      raw = parsedBody as Record<string, unknown>;
+    } catch {
       // Body ilegível → não dá pra ler locale do body; tenta a query string.
       let queryLocale: Locale = DEFAULT_LOCALE;
       try { queryLocale = resolveLocale(new URL(req.url).searchParams.get('locale')); } catch { /* url inválida → default */ }
@@ -313,7 +323,7 @@ Deno.serve(async (req) => {
     // Check if email already exists
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
     const existingUser = existingUsers?.users?.find(
-      (u: any) => u.email?.toLowerCase() === company_email.toLowerCase()
+      (u) => u.email?.toLowerCase() === company_email.toLowerCase()
     );
 
     if (existingUser) {
@@ -375,25 +385,75 @@ Deno.serve(async (req) => {
     }
     const subscription_status = isSale ? 'pending_payment' : 'testing';
 
-    // Plano personalizado: preço = soma dos módulos do catálogo (sempre inclui
-    // o módulo base). Sanitiza os códigos contra subscription_modules ativos.
-    // 'basic' é o módulo raiz de todos os planos (catálogo não tem flag base).
-    const BASE_MODULE_CODES = ['basic'];
+    // Plano personalizado: preço = soma dos módulos ativos do catálogo. Basic
+    // e Portal do Cliente são obrigatórios mesmo quando um link antigo os omite.
+    // Não confiamos no payload para preço nem para conceder módulo inexistente.
     let personalizadoModules: { code: string; price: number | null }[] = [];
+    let personalizadoExtraUserPrice = 0;
     if (isPersonalizado) {
-      const requested = Array.from(new Set([...BASE_MODULE_CODES, ...requestedModules]));
-      const { data: catalog } = await supabaseAdmin
+      const requested = Array.from(new Set([
+        ...REQUIRED_PERSONALIZED_MODULE_CODES,
+        ...requestedModules.filter((code) => code !== EXTRA_USER_MODULE_CODE),
+      ]));
+      const { data: catalog, error: catalogError } = await supabaseAdmin
         .from('subscription_modules')
         .select('code, price')
         .eq('is_active', true)
-        .in('code', requested);
-      personalizadoModules = catalog || [];
+        .in('code', [...requested, EXTRA_USER_MODULE_CODE]);
+
+      if (catalogError) {
+        console.error('[self-register] Falha ao validar módulos do plano personalizado:', catalogError.message);
+        return new Response(
+          JSON.stringify({ error: t.internalError }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const activeCatalog = catalog || [];
+      personalizadoModules = activeCatalog.filter((module) => module.code !== EXTRA_USER_MODULE_CODE);
+      const catalogCodes = new Set(personalizadoModules.map((module) => module.code));
+      const missingRequired = REQUIRED_PERSONALIZED_MODULE_CODES.filter((code) => !catalogCodes.has(code));
+      if (missingRequired.length > 0) {
+        console.error(
+          `[self-register] Catálogo incompleto para plano personalizado: ${missingRequired.join(', ')}. Rejeitando cadastro${isSale ? ' de venda' : ''} (fail-closed).`,
+        );
+        return new Response(
+          JSON.stringify({ error: t.internalError }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const invalidPriceModules = activeCatalog.filter((module) => {
+        if (module.price === null) return true;
+        const price = Number(module.price);
+        if (!Number.isFinite(price) || price < 0) return true;
+        if (module.code === 'basic') return price <= 0;
+        if (module.code === 'customer_portal') return price !== 0;
+        if (module.code === EXTRA_USER_MODULE_CODE) return price <= 0;
+        return false;
+      });
+      const hasExtraUserPrice = activeCatalog.some((module) => module.code === EXTRA_USER_MODULE_CODE);
+      if (invalidPriceModules.length > 0 || !hasExtraUserPrice) {
+        console.error(
+          `[self-register] Preços inválidos no catálogo do plano personalizado: ${invalidPriceModules.map((module) => module.code).join(', ') || EXTRA_USER_MODULE_CODE}. Rejeitando cadastro (fail-closed).`,
+        );
+        return new Response(
+          JSON.stringify({ error: t.internalError }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      personalizadoExtraUserPrice = Number(
+        activeCatalog.find((module) => module.code === EXTRA_USER_MODULE_CODE)?.price,
+      );
     }
-    const personalizadoSum = personalizadoModules.reduce((acc, m) => acc + (Number(m.price) || 0), 0);
+    const personalizedUsers = isPersonalizado ? (maxUsersOverride ?? CUSTOM_PLAN_INCLUDED_USERS) : 0;
+    const personalizedExtraUsers = Math.max(0, personalizedUsers - CUSTOM_PLAN_INCLUDED_USERS);
+    const personalizadoSum = personalizadoModules.reduce((acc, module) => acc + Number(module.price), 0)
+      + personalizedExtraUsers * personalizadoExtraUserPrice;
 
     const planPrice = isPersonalizado ? personalizadoSum : planDefaults.price;
     const finalPrice = lockedPrice ?? planPrice;
-    const finalMaxUsers = isPersonalizado ? (maxUsersOverride || 5) : planDefaults.max_users;
+    const finalMaxUsers = isPersonalizado ? personalizedUsers : planDefaults.max_users;
 
     // Vencimento inicial (subscription_expires_at).
     //
@@ -549,6 +609,25 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Os módulos obrigatórios fazem parte do contrato do Personalizado. Se a
+    // gravação falhar, desfaz a empresa antes de criar usuário ou recurso externo.
+    if (isPersonalizado) {
+      const { error: modulesError } = await supabaseAdmin
+        .from('company_modules')
+        .insert(personalizadoModules.map((module) => ({ company_id: company.id, module_code: module.code })));
+      if (modulesError) {
+        console.error('[self-register] Falha ao gravar módulos obrigatórios do plano personalizado:', modulesError.message);
+        const { error: rollbackError } = await supabaseAdmin.from('companies').delete().eq('id', company.id);
+        if (rollbackError) {
+          console.error('[self-register] Falha ao desfazer empresa após erro de módulos:', rollbackError.message);
+        }
+        return new Response(
+          JSON.stringify({ error: t.internalError }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // ── Aviso IN-APP do rodízio pro vendedor sorteado — BEST-EFFORT, NÃO-FATAL ───
     // Só quando o lead é self-service E o rodízio de fato atribuiu um vendedor.
     // Insere UMA linha em admin_notifications (type='new_lead') dirigida ao
@@ -604,18 +683,6 @@ Deno.serve(async (req) => {
         }
       } catch (notifErr) {
         console.error('[self-register] Aviso: exceção ao notificar vendedor do rodízio (não-fatal):', notifErr);
-      }
-    }
-
-    // Plano personalizado: grava os módulos contratados (à la carte).
-    // NÃO-FATAL: status testing já libera tudo via trial; se falhar, o admin
-    // Auctus pode reativar pelo painel.
-    if (isPersonalizado && personalizadoModules.length > 0) {
-      const { error: modulesError } = await supabaseAdmin
-        .from('company_modules')
-        .insert(personalizadoModules.map(m => ({ company_id: company.id, module_code: m.code })));
-      if (modulesError) {
-        console.error('Aviso: falha ao gravar módulos do plano personalizado (não-fatal):', modulesError);
       }
     }
 

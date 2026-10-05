@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.19',
+    date: '5 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Usuários ajustáveis normalmente na proposta',
+        description: 'Os botões de aumentar e diminuir usuários no plano personalizado voltaram a responder corretamente, inclusive quando usados rapidamente. Os dois usuários inclusos e os adicionais agora entram no valor da mesma forma na proposta, na contratação e na troca de plano.',
+        category: 'correcao',
+      },
+      {
+        title: 'Portal do Cliente sempre incluído',
+        description: 'O Portal do Cliente passou a aparecer como item gratuito e obrigatório em todos os planos. No plano personalizado, ele e o Módulo Básico não podem mais ser removidos por engano.',
+        category: 'correcao',
+      },
+      {
+        title: 'Valores consistentes no plano personalizado',
+        description: 'Módulos e usuários adicionais agora seguem o mesmo catálogo de valores em todas as telas e links comerciais, evitando diferenças entre o que foi apresentado e o que será contratado.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.28.18',
     date: '4 de outubro de 2026',
     type: 'patch',

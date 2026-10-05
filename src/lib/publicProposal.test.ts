@@ -8,6 +8,7 @@ import {
   parsePublicProposal,
   serializePublicProposal,
 } from './publicProposal';
+import { CUSTOMER_PORTAL_MODULE_CODE } from './subscriptionCatalog';
 
 describe('publicProposal', () => {
   it('abre com uma matriz no plano inicial quando a URL está vazia', () => {
@@ -52,9 +53,17 @@ describe('publicProposal', () => {
 
     expect(parsed.units[0]).toMatchObject({
       planCode: CUSTOM_PLAN_CODE,
-      moduleCodes: ['basic', 'crm', 'rh'],
+      moduleCodes: ['basic', CUSTOMER_PORTAL_MODULE_CODE, 'crm', 'rh'],
       users: 7,
     });
+  });
+
+  it('restaura módulos obrigatórios quando o link personalizado tenta removê-los', () => {
+    const parsed = parsePublicProposal(
+      new URLSearchParams('k=1&l1=personalizado&m1=crm,extra_user&u1=2'),
+    );
+
+    expect(parsed.units[0].moduleCodes).toEqual(['basic', CUSTOMER_PORTAL_MODULE_CODE, 'crm']);
   });
 
   it('limita URLs adulteradas e rejeita código de plano inválido', () => {
@@ -101,6 +110,7 @@ describe('publicProposal', () => {
       [],
       [
         { code: 'basic', price: 197 },
+        { code: CUSTOMER_PORTAL_MODULE_CODE, price: 0 },
         { code: 'crm', price: 50 },
         { code: 'rh', price: 100 },
       ],

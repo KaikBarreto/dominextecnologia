@@ -184,6 +184,28 @@ describe('confirm-sale-payment — a fronteira fatal x não-fatal', () => {
 describe('change-subscription-plan — valor antes de histórico', () => {
   const src = edgeSource('change-subscription-plan');
 
+  it('calcula usuário adicional pelo catálogo ativo e falha fechado sem preço válido', () => {
+    expect(src).not.toContain('const EXTRA_USER_PRICE');
+    expect(src).toContain('.eq("is_active", true)');
+    expect(src).toContain('modulePriceByCode.get(EXTRA_USER_MODULE)');
+    expect(src).toContain('!Number.isFinite(extraUserPrice) || extraUserPrice <= 0');
+    expect(src).toContain('targetExtraUsers * extraUserPrice');
+    expect(src).toContain('O preço do usuário adicional não está configurado corretamente.');
+  });
+
+  it('força basic e customer_portal no personalizado sem confiar no payload', () => {
+    expect(src).toContain('const CUSTOMER_PORTAL_MODULE = "customer_portal"');
+    expect(src).toContain('new Set<string>([BASE_MODULE, CUSTOMER_PORTAL_MODULE])');
+    expect(src).toContain('!Number.isFinite(basePrice) || basePrice <= 0 || customerPortalPrice !== 0');
+    expect(src).toContain('Os módulos obrigatórios do plano personalizado não estão configurados corretamente.');
+  });
+
+  it('normaliza usuários extras como inteiro e respeita o limite total', () => {
+    expect(src).toContain('Math.floor(Number(extra_users) || 0)');
+    expect(src).toContain('MAX_SUBSCRIPTION_USERS - CUSTOM_PLAN_INCLUDED_USERS');
+    expect(src).toContain('targetMaxUsers = CUSTOM_PLAN_INCLUDED_USERS + targetExtraUsers');
+  });
+
   it('o downgrade grava os pending_* (FATAL) ANTES de registrar o histórico', () => {
     // O furo original: o histórico registrava "downgrade agendado" mesmo quando os
     // `pending_*` não eram gravados. O webhook de renovação não achava nada e o

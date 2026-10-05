@@ -1,12 +1,18 @@
 import { calculateYearlyPrice } from '@/utils/subscriptionPricing';
+import {
+  BASE_SUBSCRIPTION_MODULE_CODE,
+  CUSTOM_PLAN_INCLUDED_USERS,
+  EXTRA_USER_MODULE_CODE,
+  withRequiredCustomModules,
+} from '@/lib/subscriptionCatalog';
 
 export const MAX_PROPOSAL_UNITS = 20;
 export const MAX_PROPOSAL_USERS = 999;
 export const DEFAULT_PROPOSAL_PLAN = 'start';
 export const DEFAULT_UNIT_NAME = 'Matriz';
 export const CUSTOM_PLAN_CODE = 'personalizado';
-export const BASE_MODULE_CODE = 'basic';
-export const CUSTOM_PLAN_INCLUDED_USERS = 2;
+export const BASE_MODULE_CODE = BASE_SUBSCRIPTION_MODULE_CODE;
+export { CUSTOM_PLAN_INCLUDED_USERS };
 
 export interface ProposalUnit {
   id: string;
@@ -61,13 +67,13 @@ function cleanModuleCode(value: string): string | null {
   return /^[a-z0-9_-]+$/.test(code) ? code : null;
 }
 
-export function ensureBaseModule(codes: string[]): string[] {
+export function ensureRequiredProposalModules(codes: string[]): string[] {
   const unique = new Set<string>();
   codes.slice(0, 30).forEach((value) => {
     const code = cleanModuleCode(value);
-    if (code && code !== BASE_MODULE_CODE) unique.add(code);
+    if (code && code !== EXTRA_USER_MODULE_CODE) unique.add(code);
   });
-  return [BASE_MODULE_CODE, ...unique];
+  return withRequiredCustomModules(Array.from(unique));
 }
 
 function cleanUsers(value: string | number | null | undefined): number {
@@ -84,13 +90,13 @@ export function createProposalUnit(
   name = DEFAULT_UNIT_NAME,
   planCode = DEFAULT_PROPOSAL_PLAN,
   moduleCodes: string[] = [BASE_MODULE_CODE],
-  users = CUSTOM_PLAN_INCLUDED_USERS,
+  users: string | number | null | undefined = CUSTOM_PLAN_INCLUDED_USERS,
 ): ProposalUnit {
   return {
     id: makeUnitId(),
     name: cleanText(name, 80) || DEFAULT_UNIT_NAME,
     planCode: cleanPlanCode(planCode),
-    moduleCodes: ensureBaseModule(moduleCodes),
+    moduleCodes: ensureRequiredProposalModules(moduleCodes),
     users: cleanUsers(users),
   };
 }
@@ -129,7 +135,7 @@ export function serializePublicProposal(state: PublicProposalState): URLSearchPa
     params.set(`t${position}`, cleanText(unit.name, 80) || defaultUnitName(position));
     params.set(`l${position}`, cleanPlanCode(unit.planCode));
     if (unit.planCode === CUSTOM_PLAN_CODE) {
-      params.set(`m${position}`, ensureBaseModule(unit.moduleCodes).join(','));
+      params.set(`m${position}`, ensureRequiredProposalModules(unit.moduleCodes).join(','));
       params.set(`u${position}`, String(cleanUsers(unit.users)));
     }
   });
@@ -150,7 +156,7 @@ export function calculateProposalTotals(
   );
   const monthlyPrices = units.map((unit) => {
     if (unit.planCode !== CUSTOM_PLAN_CODE) return priceByCode.get(unit.planCode) ?? 0;
-    const modulesTotal = ensureBaseModule(unit.moduleCodes).reduce(
+    const modulesTotal = ensureRequiredProposalModules(unit.moduleCodes).reduce(
       (total, code) => total + (modulePriceByCode.get(code) ?? 0),
       0,
     );

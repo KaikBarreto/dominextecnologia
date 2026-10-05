@@ -31,10 +31,18 @@ import { useNfseQuota } from '@/hooks/useNfseQuota';
 import { useNfseTierChange } from '@/hooks/useNfseTierChange';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import {
+  BASE_SUBSCRIPTION_MODULE_CODE,
+  CUSTOMER_PORTAL_MODULE_CODE,
+  CUSTOM_PLAN_INCLUDED_USERS,
+  EXTRA_USER_MODULE_CODE,
+  REQUIRED_CUSTOM_MODULE_CODES,
+  isRequiredCustomModule,
+  resolveExtraUserPrice,
+} from '@/lib/subscriptionCatalog';
 
-const EXTRA_USER_PRICE = 50;
-const BASE_USERS = 2; // usuários inclusos no personalizado
-const BASE_MODULE = 'basic';
+const BASE_USERS = CUSTOM_PLAN_INCLUDED_USERS;
+const BASE_MODULE = BASE_SUBSCRIPTION_MODULE_CODE;
 
 interface CatalogModule {
   code: string;
@@ -114,7 +122,11 @@ export function ModulesManagementCard({
 
   // Catálogo de módulos (preço + descrição). Read de catálogo — fronteira via hook
   // não é necessária; é leitura pública de billing.
-  const { data: catalogModules = [] } = useQuery({
+  const {
+    data: catalogModules = [],
+    isLoading: isCatalogLoading,
+    isError: isCatalogError,
+  } = useQuery({
     queryKey: ['subscription-modules'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -127,7 +139,7 @@ export function ModulesManagementCard({
         code: m.code,
         name: m.name,
         description: m.description ?? null,
-        price: Number(m.price) || 0,
+        price: m.price === null ? Number.NaN : Number(m.price),
         type: m.type,
       })) as CatalogModule[];
     },
@@ -172,13 +184,27 @@ export function ModulesManagementCard({
     [allPlans],
   );
 
-  // Módulos selecionáveis no personalizado (exclui base e extra_user "módulo").
+  // Módulos selecionáveis no personalizado. Básico e Portal do Cliente são
+  // obrigatórios; extra_user é preço do contador, não um módulo marcável.
   const selectableModules = useMemo(
-    () => catalogModules.filter((m) => m.code !== BASE_MODULE && m.code !== 'extra_user'),
+    () => catalogModules.filter(
+      (module) => !isRequiredCustomModule(module.code) && module.code !== EXTRA_USER_MODULE_CODE,
+    ),
     [catalogModules],
   );
 
   const baseModule = catalogModules.find((m) => m.code === BASE_MODULE);
+  const customerPortalModule = catalogModules.find((m) => m.code === CUSTOMER_PORTAL_MODULE_CODE);
+  const extraUserPrice = useMemo(() => resolveExtraUserPrice(catalogModules), [catalogModules]);
+  const catalogPricesValid = catalogModules.every(
+    (module) => Number.isFinite(module.price) && module.price >= 0,
+  );
+  const customPricingReady = !isCatalogLoading
+    && !isCatalogError
+    && catalogPricesValid
+    && Boolean(baseModule && baseModule.price > 0)
+    && Boolean(customerPortalModule && customerPortalModule.price === 0)
+    && extraUserPrice !== null;
 
   // Inicializa estado ao abrir: módulos atuais + extras atuais + ciclo atual.
   // `opts` permite deep-link (?addModule / ?addUsers) pré-configurar o modal.
@@ -187,15 +213,17 @@ export function ModulesManagementCard({
     opts?: { tab?: 'plans' | 'custom'; preselectModule?: string | null; focusUsers?: boolean },
   ) => {
     if (next) {
-      const baseModules = moduleCodes.filter((c) => c !== 'extra_user');
-      // Pré-marca o módulo do deep-link (sem duplicar e ignorando basic/extra_user).
+      const optionalModules = moduleCodes.filter(
+        (code) => !isRequiredCustomModule(code) && code !== EXTRA_USER_MODULE_CODE,
+      );
+      // Pré-marca o módulo do deep-link (sem duplicar e ignorando os obrigatórios/extra_user).
       const withPreselect =
         opts?.preselectModule &&
-        opts.preselectModule !== BASE_MODULE &&
-        opts.preselectModule !== 'extra_user' &&
-        !baseModules.includes(opts.preselectModule)
-          ? [...baseModules, opts.preselectModule]
-          : baseModules;
+        !isRequiredCustomModule(opts.preselectModule) &&
+        opts.preselectModule !== EXTRA_USER_MODULE_CODE &&
+        !optionalModules.includes(opts.preselectModule)
+          ? [...optionalModules, opts.preselectModule]
+          : optionalModules;
       setCustomModules(withPreselect);
       // Quando o foco é usuários e ainda não há extras, sobe pra 1 (sugestão).
       setCustomExtraUsers(opts?.focusUsers && extraUsers === 0 ? 1 : extraUsers);
@@ -240,14 +268,15 @@ export function ModulesManagementCard({
     }
   }, [open, focusUsers, activeTab]);
 
-  // Preço mensal do personalizado: basic (sempre) + módulos escolhidos + extras × 50.
+  // Preço mensal do personalizado: módulos obrigatórios + escolhidos + extras,
+  // todos com preço vindo do mesmo catálogo usado pelo servidor.
   const customMonthly = useMemo(() => {
-    const chosen = new Set<string>([BASE_MODULE, ...customModules]);
+    const chosen = new Set<string>([...REQUIRED_CUSTOM_MODULE_CODES, ...customModules]);
     const modulesPrice = catalogModules
       .filter((m) => chosen.has(m.code))
       .reduce((sum, m) => sum + m.price, 0);
-    return modulesPrice + customExtraUsers * EXTRA_USER_PRICE;
-  }, [customModules, customExtraUsers, catalogModules]);
+    return modulesPrice + customExtraUsers * (extraUserPrice ?? 0);
+  }, [customModules, customExtraUsers, catalogModules, extraUserPrice]);
 
   const toggleModule = (code: string) => {
     setCustomModules((prev) =>
@@ -395,10 +424,10 @@ export function ModulesManagementCard({
 
     // Módulos a exibir no painel (exclui o módulo básico, que é sempre incluso)
     const summaryModuleCodes = isCustomTab
-      ? customModules
+      ? [CUSTOMER_PORTAL_MODULE_CODE, ...customModules]
       : (presetPlans.find((p) => p.code === selectedPlan)?.included_modules ?? []);
     const summaryModules = catalogModules.filter(
-      (m) => summaryModuleCodes.includes(m.code as any) && m.code !== BASE_MODULE,
+      (m) => summaryModuleCodes.includes(m.code) && m.code !== BASE_MODULE,
     );
 
     // Usuários
@@ -411,7 +440,9 @@ export function ModulesManagementCard({
 
     // Diferença vs plano atual (só mensal faz sentido comparar direto)
     const priceDiff = summaryMonthly - effectiveValue;
-    const hasSomethingSelected = isCustomTab ? customMonthly > 0 : !!selectedPlan;
+    const hasSomethingSelected = isCustomTab
+      ? customMonthly > 0 && customPricingReady
+      : !!selectedPlan;
 
     // CTA — mantém o fluxo existente sem criar modal de pagamento
     const handleApply = () => {
@@ -467,7 +498,9 @@ export function ModulesManagementCard({
                   <span className="text-sm font-medium truncate">{m.name}</span>
                 </div>
                 <span className="text-sm font-semibold text-foreground shrink-0">
-                  +R$ {formatBRL(m.price)}
+                  {isCustomTab && m.code === CUSTOMER_PORTAL_MODULE_CODE
+                    ? tBilling.planSummaryIncluded
+                    : `+R$ ${formatBRL(m.price)}`}
                 </span>
               </div>
             ))}
@@ -488,7 +521,7 @@ export function ModulesManagementCard({
           </div>
           <span className="text-xs text-muted-foreground shrink-0">
             {summaryExtraUsers > 0
-              ? `${BASE_USERS} base + ${summaryExtraUsers}${isCustomTab ? ` (+R$ ${formatBRL(summaryExtraUsers * EXTRA_USER_PRICE)})` : ''}`
+              ? `${BASE_USERS} base + ${summaryExtraUsers}${isCustomTab ? ` (+R$ ${formatBRL(summaryExtraUsers * (extraUserPrice ?? 0))})` : ''}`
               : tBilling.planSummaryUsersIncluded}
           </span>
         </div>
@@ -683,7 +716,9 @@ export function ModulesManagementCard({
                   {presetPlans.map((p) => {
                     const isCurrent = plan === p.code;
                     const isSelected = selectedPlan === p.code;
-                    const planModules = catalogModules.filter((m) => p.included_modules.includes(m.code as any));
+                    const planModules = catalogModules.filter(
+                      (module) => p.included_modules.some((code) => code === module.code),
+                    );
                     const yearly = calculateYearlyPrice(p.price);
                     return (
                       <button
@@ -764,6 +799,23 @@ export function ModulesManagementCard({
                     </div>
                     <span className="text-sm font-semibold">R$ {formatBRL(baseModule.price)}</span>
                   </div>
+                )}
+
+                {customerPortalModule && (
+                  <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-emerald-600 text-white">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{customerPortalModule.name}</p>
+                      <p className="text-[11px] text-white/80">Grátis e incluso em todos os planos</p>
+                    </div>
+                    <span className="text-sm font-semibold">R$ {formatBRL(customerPortalModule.price)}</span>
+                  </div>
+                )}
+
+                {!isCatalogLoading && !customPricingReady && (
+                  <NoticeBanner variant="destructive">
+                    Não foi possível validar o catálogo de preços. Tente novamente antes de alterar o plano.
+                  </NoticeBanner>
                 )}
 
                 <div className="space-y-1.5">
@@ -864,7 +916,8 @@ export function ModulesManagementCard({
                     <div className="min-w-0">
                       <p className="text-sm font-medium">{BASE_USERS + customExtraUsers} usuários</p>
                       <p className="text-[11px] text-muted-foreground">
-                        {BASE_USERS} inclusos + {customExtraUsers} extra{customExtraUsers !== 1 ? 's' : ''} (R$ {formatBRL(EXTRA_USER_PRICE)}/cada)
+                        {BASE_USERS} inclusos + {customExtraUsers} extra{customExtraUsers !== 1 ? 's' : ''}{' '}
+                        ({extraUserPrice === null ? 'preço indisponível' : `R$ ${formatBRL(extraUserPrice)}/cada`})
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -878,6 +931,7 @@ export function ModulesManagementCard({
                       <span className="w-6 text-center font-bold">{customExtraUsers}</span>
                       <Button
                         variant="outline" size="icon" className="h-8 w-8"
+                        disabled={!customPricingReady}
                         onClick={() => setCustomExtraUsers((v) => v + 1)}
                       >
                         <Plus className="h-4 w-4" />

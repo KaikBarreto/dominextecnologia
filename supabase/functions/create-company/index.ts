@@ -8,6 +8,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const REQUIRED_PERSONALIZED_MODULE_CODES = ['basic', 'customer_portal'] as const
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -92,6 +94,56 @@ Deno.serve(async (req) => {
       })
     }
 
+    // Sanitiza os módulos antes de criar o tenant. O Personalizado sempre inclui
+    // Basic e Portal do Cliente, mesmo quando o painel ou um payload antigo omite.
+    // Planos prontos preservam o comportamento anterior e não recebem extras.
+    const isPersonalizado = typeof subscription_plan === 'string'
+      && subscription_plan.trim().toLowerCase() === 'personalizado'
+    const requestedModuleCodes = Array.isArray(modules)
+      ? [...new Set(
+        modules
+          .filter((module: unknown): module is string => typeof module === 'string')
+          .map((module: string) => module.trim().slice(0, 50))
+          .filter(Boolean),
+      )]
+      : []
+    const moduleCodesToValidate = isPersonalizado
+      ? [...new Set([...REQUIRED_PERSONALIZED_MODULE_CODES, ...requestedModuleCodes])]
+      : requestedModuleCodes
+    let validModuleCodes: string[] = []
+
+    if (moduleCodesToValidate.length > 0) {
+      const { data: catalog, error: catalogError } = await supabaseAdmin
+        .from('subscription_modules')
+        .select('code')
+        .eq('is_active', true)
+        .in('code', moduleCodesToValidate)
+
+      if (catalogError) {
+        console.error('[create-company] Falha ao validar módulos:', catalogError.message)
+        if (isPersonalizado) {
+          return new Response(JSON.stringify({ error: 'Não foi possível validar os módulos obrigatórios do plano personalizado.' }), {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+      } else {
+        validModuleCodes = (catalog || []).map((item: { code: string }) => item.code)
+      }
+
+      if (isPersonalizado) {
+        const validCodes = new Set(validModuleCodes)
+        const missingRequired = REQUIRED_PERSONALIZED_MODULE_CODES.filter((code) => !validCodes.has(code))
+        if (missingRequired.length > 0) {
+          console.error(`[create-company] Catálogo incompleto para plano personalizado: ${missingRequired.join(', ')}`)
+          return new Response(JSON.stringify({ error: 'Os módulos obrigatórios do plano personalizado não estão disponíveis.' }), {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+      }
+    }
+
     // Observação automática de valor personalizado: o frontend manda a nota
     // pronta (valor, "até quando", quem deu) e a edge anexa às observações.
     let finalNotes: string | null = notes || null
@@ -145,27 +197,24 @@ Deno.serve(async (req) => {
       throw new Error(`Erro ao criar empresa: ${companyError.message}`)
     }
 
-    // 1a. Módulos do plano Personalizado (à la carte) — sanitiza contra o
-    //     catálogo ativo antes de gravar em company_modules.
-    if (Array.isArray(modules) && modules.length > 0) {
-      try {
-        const requested = [...new Set(modules.filter((m: unknown) => typeof m === 'string'))]
-        const { data: catalog } = await supabaseAdmin
-          .from('subscription_modules')
-          .select('code')
-          .eq('is_active', true)
-          .in('code', requested)
-        const validCodes = (catalog || []).map((c: { code: string }) => c.code)
-        if (validCodes.length > 0) {
-          const { error: modulesError } = await supabaseAdmin
-            .from('company_modules')
-            .insert(validCodes.map((code: string) => ({ company_id: company.id, module_code: code })))
-          if (modulesError) {
-            console.error('Aviso: falha ao gravar company_modules (não-fatal):', modulesError)
+    // 1a. Grava apenas códigos ativos e previamente validados. No Personalizado,
+    //     falha e desfaz o tenant se o contrato de módulos não puder ser salvo.
+    if (validModuleCodes.length > 0) {
+      const { error: modulesError } = await supabaseAdmin
+        .from('company_modules')
+        .insert(validModuleCodes.map((code: string) => ({ company_id: company.id, module_code: code })))
+      if (modulesError) {
+        console.error('[create-company] Falha ao gravar company_modules:', modulesError.message)
+        if (isPersonalizado) {
+          const { error: rollbackError } = await supabaseAdmin.from('companies').delete().eq('id', company.id)
+          if (rollbackError) {
+            console.error('[create-company] Falha ao desfazer empresa após erro de módulos:', rollbackError.message)
           }
+          return new Response(JSON.stringify({ error: 'Não foi possível configurar os módulos obrigatórios da empresa.' }), {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
         }
-      } catch (modErr) {
-        console.error('Aviso: exceção ao gravar company_modules (não-fatal):', modErr)
       }
     }
 

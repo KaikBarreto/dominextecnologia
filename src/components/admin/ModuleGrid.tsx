@@ -4,6 +4,14 @@ import { Badge } from '@/components/ui/badge';
 import { Check, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NfseTier } from '@/hooks/useNfseTiers';
+import {
+  CUSTOM_PLAN_INCLUDED_USERS,
+  EXTRA_USER_MODULE_CODE,
+  REQUIRED_CUSTOM_MODULE_CODES,
+  isRequiredCustomModule,
+  resolveExtraUserPrice,
+  withRequiredCustomModules,
+} from '@/lib/subscriptionCatalog';
 
 /**
  * Grade de módulos do plano Personalizado (painel master Auctus).
@@ -13,14 +21,12 @@ import type { NfseTier } from '@/hooks/useNfseTiers';
  * Catálogo SEMPRE vem de subscription_modules (nunca hardcode de preço/nome).
  */
 
-// O catálogo não tem flag is_base_module: 'basic' é o módulo raiz incluído em
-// TODOS os planos (ver subscription_plans.included_modules). Identificador
-// estrutural, não dado de catálogo.
-export const BASE_MODULE_CODES = ['basic'];
+// Módulos obrigatórios do Personalizado. O básico é a raiz paga e o Portal do
+// Cliente é gratuito por política comercial; nenhum dos dois pode ser removido.
+export const BASE_MODULE_CODES = [...REQUIRED_CUSTOM_MODULE_CODES];
 
-// 'extra_user' é um adicional por usuário, não um recurso marcável — o limite
-// de usuários é controlado pelo campo "Máx. Usuários" (Dominex não soma
-// usuário extra no preço, diferente do EcoSistema).
+// 'extra_user' é um adicional calculado pelo contador de usuários, não um
+// recurso marcável. O preço vem do catálogo no fluxo de cobrança/server-side.
 const HIDDEN_MODULE_CODES = ['extra_user'];
 
 export interface SubscriptionModule {
@@ -49,11 +55,11 @@ export function useSubscriptionModules() {
 
 /** Garante que os módulos base estão sempre presentes na seleção. */
 export function withBaseModules(selected: string[]): string[] {
-  return Array.from(new Set([...BASE_MODULE_CODES, ...selected]));
+  return withRequiredCustomModules(selected);
 }
 
 /**
- * Soma dos preços dos módulos selecionados (base sempre incluso).
+ * Soma dos preços dos módulos selecionados e dos usuários excedentes.
  *
  * O módulo de Notas (code `nfe`) tem preço variável por NÍVEL (nfse_tiers).
  * Quando `nfseTiers`/`nfseTier` são informados, o preço do `nfe` vem do nível
@@ -64,10 +70,12 @@ export function sumModulesPrice(
   selected: string[],
   nfseTiers?: NfseTier[],
   nfseTier?: number,
+  totalUsers = CUSTOM_PLAN_INCLUDED_USERS,
 ): number {
   const set = new Set(withBaseModules(selected));
   let price = 0;
   for (const m of modules) {
+    if (m.code === EXTRA_USER_MODULE_CODE) continue;
     if (!set.has(m.code)) continue;
     if (m.code === 'nfe' && nfseTiers?.length) {
       const t = nfseTiers.find(x => x.tier === (nfseTier ?? 1));
@@ -76,7 +84,9 @@ export function sumModulesPrice(
       price += Number(m.price) || 0;
     }
   }
-  return price;
+  const extraUsers = Math.max(0, Math.floor(totalUsers) - CUSTOM_PLAN_INCLUDED_USERS);
+  const extraUserPrice = resolveExtraUserPrice(modules) ?? 0;
+  return price + extraUsers * extraUserPrice;
 }
 
 interface ModuleGridProps {
@@ -97,7 +107,7 @@ export function ModuleGrid({ modules, selected, onToggle, disabled = false }: Mo
   return (
     <div className="space-y-2">
       {gridModules.map(mod => {
-        const isBase = BASE_MODULE_CODES.includes(mod.code);
+        const isBase = isRequiredCustomModule(mod.code);
         const isChecked = isBase || selected.includes(mod.code);
         const isLocked = isBase || disabled;
         return (
