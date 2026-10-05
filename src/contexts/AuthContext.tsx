@@ -25,6 +25,7 @@ interface AuthContextType {
   adminPermissions: string[];
   isAdminUser: boolean;
   loading: boolean;
+  profileLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
@@ -53,6 +54,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [hasPermissionRecord, setHasPermissionRecord] = useState(false);
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  // A sessão do Supabase chega antes do perfil/roles/permissões. Mantemos esse
+  // carregamento separado para consumidores que não podem interpretar
+  // `profile === null` como estado definitivo durante a hidratação inicial.
+  const [profileLoading, setProfileLoading] = useState(true);
   const queryClient = useQueryClient();
 
   // Race protection: guarda o userId atual para descartar resultados de
@@ -67,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const loadingFallback = setTimeout(() => {
       console.warn('[Auth] onAuthStateChange did not fire within 5s — releasing loading state');
       setLoading(false);
+      setProfileLoading(false);
     }, 5000);
 
     // IMPORTANTE: callback é SÍNCRONO. A doc do Supabase é explícita:
@@ -85,12 +91,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       (event, session) => {
         clearTimeout(loadingFallback);
 
+        const nextUserId = session?.user?.id ?? null;
+        const userChanged = currentUserIdRef.current !== nextUserId;
         setSession(session);
         setUser(session?.user ?? null);
-        currentUserIdRef.current = session?.user?.id ?? null;
+        currentUserIdRef.current = nextUserId;
 
         if (session?.user) {
           const userId = session.user.id;
+          if (userChanged) {
+            setProfileLoading(true);
+          }
           // Defer pra fora do callback — não segurar o lock do GoTrue.
           setTimeout(() => {
             fetchUserData(userId).catch((err) => {
@@ -110,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               );
           }
         } else if (event === 'SIGNED_OUT' || !session) {
+          setProfileLoading(false);
           setProfile(null);
           setRoles([]);
           setPermissions([]);
@@ -199,6 +211,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
+    } finally {
+      if (isStillCurrent()) {
+        setProfileLoading(false);
+      }
     }
   };
 
@@ -283,6 +299,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPermissions([]);
     setHasPermissionRecord(false);
     setAdminPermissions([]);
+    setProfileLoading(false);
   };
 
   const hasRole = (role: AppRole) => roles.includes(role);
@@ -329,6 +346,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         adminPermissions,
         isAdminUser,
         loading,
+        profileLoading,
         signIn,
         signInWithGoogle,
         signUp,

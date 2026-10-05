@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.28.19";
+export const APP_VERSION = "1.28.20";
 
-export const VERSION_NOTES = "A proposta e o plano personalizado agora aplicam corretamente os usuários inclusos, os adicionais e os módulos obrigatórios em todos os caminhos de contratação.";
+export const VERSION_NOTES = "Ao abrir ou atualizar o sistema, a validação da assinatura agora aguarda o carregamento completo da conta e não exibe mais um bloqueio indevido por alguns instantes.";

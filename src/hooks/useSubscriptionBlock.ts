@@ -103,7 +103,7 @@ export function decideSubscriptionAccess(
  * usuário autenticado sem company_id é estado inválido e falha fechado.
  */
 export function useSubscriptionBlock(): SubscriptionBlockResult {
-  const { user, loading, profile, isAdminUser } = useAuth();
+  const { user, loading, profileLoading, profile, isAdminUser } = useAuth();
   const companyId = profile?.company_id;
   const shouldCheck = !!user && !!companyId && !isAdminUser;
 
@@ -133,7 +133,7 @@ export function useSubscriptionBlock(): SubscriptionBlockResult {
     void refetch();
   };
 
-  if (loading) {
+  if (loading || profileLoading) {
     return { blocked: true, screen: null, status: "checking", retry };
   }
 

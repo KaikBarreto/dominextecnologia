@@ -9,6 +9,7 @@ const { authState, from, single } = vi.hoisted(() => ({
     loading: false,
     profile: null as { company_id: string | null } | null,
     isAdminUser: false,
+    profileLoading: false,
   },
   from: vi.fn(),
   single: vi.fn(),
@@ -119,6 +120,7 @@ describe("useSubscriptionBlock", () => {
     authState.loading = false;
     authState.profile = null;
     authState.isAdminUser = false;
+    authState.profileLoading = false;
     from.mockClear();
     single.mockReset();
   });
@@ -130,6 +132,18 @@ describe("useSubscriptionBlock", () => {
     });
 
     expect(result.current.status).toBe("unavailable");
+    expect(result.current.blocked).toBe(true);
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("mantém loading enquanto o perfil autenticado ainda está sendo hidratado", () => {
+    authState.user = { id: "usuario" };
+    authState.profileLoading = true;
+    const { result } = renderHook(() => useSubscriptionBlock(), {
+      wrapper: queryWrapper(),
+    });
+
+    expect(result.current.status).toBe("checking");
     expect(result.current.blocked).toBe(true);
     expect(from).not.toHaveBeenCalled();
   });

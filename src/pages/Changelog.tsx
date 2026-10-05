@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.20',
+    date: '5 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Abertura do sistema sem aviso indevido de assinatura',
+        description: 'Ao entrar ou atualizar uma página, o sistema agora aguarda o carregamento completo da conta antes de validar a assinatura. Com isso, a mensagem de acesso pausado não aparece mais por alguns instantes para empresas com assinatura regular.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.28.19',
     date: '5 de outubro de 2026',
     type: 'patch',
