@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.21',
+    date: '6 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Total de entradas e saídas no relatório de fluxo de caixa',
+        description: 'Ao exportar o fluxo de caixa em Excel, PDF ou CSV, o arquivo agora mostra no topo quanto entrou e quanto saiu no período, em linhas separadas. Antes aparecia apenas o resultado final, e era preciso somar os valores por fora para saber cada lado.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.28.20',
     date: '5 de outubro de 2026',
     type: 'patch',

@@ -76,7 +76,11 @@ export interface DfcGroupLine<T extends DfcTransaction = DfcTransaction> {
 export interface DfcResult<T extends DfcTransaction = DfcTransaction> {
   /** Saldo-base das contas + acumulado realizado anterior a `range.from`. */
   openingBalance: number;
-  /** Soma dos tres fluxos dentro do periodo. */
+  /** Soma das entradas realizadas dentro do periodo. Sempre positiva ou zero. */
+  totalInflow: number;
+  /** Soma das saidas realizadas dentro do periodo. Sempre negativa ou zero. */
+  totalOutflow: number;
+  /** Soma dos tres fluxos dentro do periodo. Equivale a `totalInflow + totalOutflow`. */
   netChange: number;
   /** `openingBalance + netChange`. */
   closingBalance: number;
@@ -201,6 +205,8 @@ export function calculateDfc<T extends DfcTransaction>(
 
   const normalizedBaseBalance = amountToCents(baseBalance) ?? 0;
   let openingCents = baseBalance < 0 ? -normalizedBaseBalance : normalizedBaseBalance;
+  let inflowCents = 0;
+  let outflowCents = 0;
 
   for (const rawTransaction of transactions ?? []) {
     const prepared = prepareTransaction(rawTransaction);
@@ -211,6 +217,9 @@ export function calculateDfc<T extends DfcTransaction>(
       continue;
     }
     if (normalizedRange.to && prepared.paidDate > normalizedRange.to) continue;
+
+    if (prepared.signedCents >= 0) inflowCents += prepared.signedCents;
+    else outflowCents += prepared.signedCents;
 
     const group = resolveGroup(rawTransaction.dfc_group);
     const categoryName = resolveCategoryName(rawTransaction.category);
@@ -245,6 +254,8 @@ export function calculateDfc<T extends DfcTransaction>(
 
   return {
     openingBalance: centsToMoney(openingCents),
+    totalInflow: centsToMoney(inflowCents),
+    totalOutflow: centsToMoney(outflowCents),
     netChange: centsToMoney(netChangeCents),
     closingBalance: centsToMoney(openingCents + netChangeCents),
     groups,

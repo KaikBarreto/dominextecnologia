@@ -223,6 +223,41 @@ describe('calculateDfc — metodo direto', () => {
     expect(result.groups.map((group) => group.key)).toEqual(DFC_GROUP_KEYS);
   });
 
+  it('separa o total de entradas do total de saidas dentro do periodo', () => {
+    const result = calculateDfc(
+      [
+        movement({ id: 'anterior-in', amount: 1_000, paid_date: '2026-08-10' }),
+        movement({ id: 'in-a', amount: 500, category: 'Vendas' }),
+        movement({ id: 'in-b', amount: 57.99, category: 'Servicos' }),
+        movement({ id: 'out-a', transaction_type: 'saida', amount: 300, category: 'Fornecedores' }),
+        movement({
+          id: 'out-b',
+          transaction_type: 'saida',
+          amount: 87.96,
+          category: 'Equipamentos',
+          dfc_group: 'investimento',
+        }),
+        movement({ id: 'cancelado', amount: 999, cancelled_at: '2026-09-20' }),
+        movement({ id: 'transferencia', amount: 999, transfer_pair_id: 'par' }),
+        movement({ id: 'posterior', amount: 999, paid_date: '2026-10-05' }),
+      ],
+      { from: '2026-09-01', to: '2026-09-30' },
+    );
+
+    expect(result.totalInflow).toBe(557.99);
+    expect(result.totalOutflow).toBe(-387.96);
+    // `netChange` vem da soma em centavos, nao da soma dos dois floats acima.
+    expect(result.netChange).toBe(170.03);
+    expect(result.totalInflow + result.totalOutflow).toBeCloseTo(result.netChange, 2);
+  });
+
+  it('devolve totais zerados quando nao ha movimento realizado no periodo', () => {
+    const result = calculateDfc([], { from: '2026-09-01', to: '2026-09-30' }, 1_000);
+
+    expect(result.totalInflow).toBe(0);
+    expect(result.totalOutflow).toBe(0);
+  });
+
   it('rejeita range invalido em vez de produzir um relatorio silenciosamente errado', () => {
     expect(() => calculateDfc([], { from: '2026-02-30' })).toThrow(TypeError);
     expect(() => calculateDfc([], { from: '2026-10-01', to: '2026-09-30' })).toThrow(RangeError);

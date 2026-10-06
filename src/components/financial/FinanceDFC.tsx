@@ -269,6 +269,8 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
       locale,
       currency,
       openingBalance: report.openingBalance,
+      totalInflow: report.totalInflow,
+      totalOutflow: report.totalOutflow,
       netChange: report.netChange,
       closingBalance: report.closingBalance,
       movements,

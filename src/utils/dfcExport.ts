@@ -16,6 +16,10 @@ export interface DfcExportData {
   locale?: string;
   currency?: string;
   openingBalance: number;
+  /** Soma das entradas realizadas no periodo. Positiva ou zero. */
+  totalInflow: number;
+  /** Soma das saidas realizadas no periodo. Negativa ou zero. */
+  totalOutflow: number;
   netChange: number;
   closingBalance: number;
   movements: DfcExportMovement[];
@@ -35,6 +39,8 @@ export function buildDfcExportRows(data: DfcExportData): Array<Array<string | nu
   return [
     ['DFC Gerencial — somente realizado'],
     ['Período', data.periodLabel],
+    ['Total de entradas', data.totalInflow],
+    ['Total de saídas', data.totalOutflow],
     ['Saldo inicial', data.openingBalance],
     ['Variação líquida', data.netChange],
     ['Saldo final', data.closingBalance],
@@ -105,13 +111,21 @@ export async function exportDfcPdf(data: DfcExportData, filename: string): Promi
     doc.setFontSize(9);
     doc.setTextColor(90);
     doc.text(`Somente realizado · ${data.periodLabel}`, 14, 21);
+    // Entrada e saída do período abrem o cabeçalho porque são a leitura mais
+    // procurada do relatório; os saldos ficam na linha de baixo. As cores
+    // seguem o relatório de movimentações (verde entra, vermelho sai).
+    doc.setTextColor(22, 163, 74);
+    doc.text(`Total de entradas: ${money(data.totalInflow, data)}`, 14, 29);
+    doc.setTextColor(220, 38, 38);
+    doc.text(`Total de saídas: ${money(data.totalOutflow, data)}`, 80, 29);
+
     doc.setTextColor(30);
-    doc.text(`Saldo inicial: ${money(data.openingBalance, data)}`, 14, 29);
-    doc.text(`Variação líquida: ${money(data.netChange, data)}`, 80, 29);
-    doc.text(`Saldo final: ${money(data.closingBalance, data)}`, 154, 29);
+    doc.text(`Saldo inicial: ${money(data.openingBalance, data)}`, 14, 35);
+    doc.text(`Variação líquida: ${money(data.netChange, data)}`, 80, 35);
+    doc.text(`Saldo final: ${money(data.closingBalance, data)}`, 154, 35);
 
     autoTable(doc, {
-      startY: 35,
+      startY: 41,
       head: [TABLE_HEADERS],
       body: data.movements.map((movement) => [
         movement.activity,
