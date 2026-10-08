@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.22',
+    date: '8 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Converter orçamento em Ordem de Serviço',
+        description: 'A opção "Converter em OS" do orçamento aprovado voltou a funcionar. Antes ela apresentava erro e nada era criado. Agora a ordem de serviço nasce já com o cliente, o valor e a descrição do orçamento, os materiais saem do estoque automaticamente e o orçamento passa a aparecer como convertido.',
+        category: 'correcao',
+      },
+      {
+        title: 'Baixa de estoque em quatro situações que falhavam',
+        description: 'Voltaram a funcionar: a saída de materiais ao converter um orçamento, a entrada de produtos pela importação de nota fiscal, o cadastro de um item novo já com quantidade inicial e o ajuste manual da quantidade de um item.',
+        category: 'correcao',
+      },
+      {
+        title: 'Orçamento não fica mais travado',
+        description: 'Se o lançamento financeiro gerado na aprovação for excluído, ou se a ordem de serviço criada a partir do orçamento for apagada, o orçamento volta sozinho para a situação anterior e pode ser aprovado ou convertido de novo. Antes ele ficava preso, sem nenhuma opção disponível.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.28.21',
     date: '6 de outubro de 2026',
     type: 'patch',

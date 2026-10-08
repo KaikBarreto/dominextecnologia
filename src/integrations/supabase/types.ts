@@ -7909,6 +7909,7 @@ export type Database = {
           card_discount_rate: number
           card_installments: number
           company_id: string
+          converted_to_os_id: string | null
           created_at: string
           created_by: string | null
           customer_id: string | null
@@ -7951,6 +7952,7 @@ export type Database = {
           card_discount_rate?: number
           card_installments?: number
           company_id: string
+          converted_to_os_id?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
@@ -7993,6 +7995,7 @@ export type Database = {
           card_discount_rate?: number
           card_installments?: number
           company_id?: string
+          converted_to_os_id?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
@@ -8034,6 +8037,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_converted_to_os_id_fkey"
+            columns: ["converted_to_os_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
             referencedColumns: ["id"]
           },
           {
@@ -9106,6 +9116,7 @@ export type Database = {
           pmoc_conformity_notes: string | null
           pmoc_conformity_status: string | null
           public_short_code: string | null
+          quote_id: string | null
           recurrence_end_date: string | null
           recurrence_group_id: string | null
           recurrence_indeterminate: boolean
@@ -9181,6 +9192,7 @@ export type Database = {
           pmoc_conformity_notes?: string | null
           pmoc_conformity_status?: string | null
           public_short_code?: string | null
+          quote_id?: string | null
           recurrence_end_date?: string | null
           recurrence_group_id?: string | null
           recurrence_indeterminate?: boolean
@@ -9256,6 +9268,7 @@ export type Database = {
           pmoc_conformity_notes?: string | null
           pmoc_conformity_status?: string | null
           public_short_code?: string | null
+          quote_id?: string | null
           recurrence_end_date?: string | null
           recurrence_group_id?: string | null
           recurrence_indeterminate?: boolean
@@ -9340,6 +9353,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_orders_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
           {
