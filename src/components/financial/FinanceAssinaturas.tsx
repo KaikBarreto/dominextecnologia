@@ -30,6 +30,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { FABButton } from '@/components/mobile/FABButton';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { SubscriptionDialog } from '@/components/financial/SubscriptionDialog';
 import { CategorySelectField } from '@/components/financial/CategorySelectField';
 import { CostCenterSelect } from '@/components/financial/CostCenterSelect';
@@ -473,6 +475,7 @@ function EditSubscriptionModal({
 export function FinanceAssinaturas() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.subscriptions;
+  const isMobile = useIsMobile();
 
   // ── Aba "Arquivadas" ──────────────────────────────────────────────────────
   // Arquivar é reversível de propósito (não excluímos a linha: ela é o único
@@ -591,7 +594,7 @@ export function FinanceAssinaturas() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className={cn('space-y-4', isMobile && 'pb-24')}>
       {/* ── Resumo MRR ─────────────────────────────────────────────────────── */}
       {activeCount > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
@@ -664,10 +667,12 @@ export function FinanceAssinaturas() {
             )}
           </Button>
         </div>
-        <Button size="sm" onClick={() => setDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t.newButton}
-        </Button>
+        {!isMobile && (
+          <Button size="sm" onClick={() => setDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t.newButton}
+          </Button>
+        )}
       </div>
 
       {/* ── Lista ─────────────────────────────────────────────────────────── */}
@@ -1033,6 +1038,14 @@ export function FinanceAssinaturas() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {isMobile && (
+        <FABButton
+          icon={<Plus className="h-5 w-5" />}
+          label={t.newButton}
+          onClick={() => setDialogOpen(true)}
+        />
+      )}
     </div>
   );
 }

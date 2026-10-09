@@ -17,6 +17,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { FABButton } from '@/components/mobile/FABButton';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { ChargeDialog } from '@/components/financial/ChargeDialog';
 import { useChargeActions } from '@/components/financial/useChargeActions';
 import {
@@ -28,6 +30,7 @@ import { buildCheckoutUrl } from '@/hooks/useTenantCharges';
 import { useCustomers } from '@/hooks/useCustomers';
 import { classifyTenantChargeStatus } from '@/utils/tenantChargeStatus';
 import { formatBRL } from '@/utils/currency';
+import { kpiValueSizeClass } from './kpiChipSize';
 import {
   Copy,
   RotateCcw,
@@ -77,6 +80,7 @@ export function FinanceCobrancas() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.central;
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   // Editar/excluir cobrança: MESMO motor da ficha do cliente
   // (`useChargeActions`). Sem filtro de cliente aqui — busca TODAS as cobranças
@@ -137,6 +141,15 @@ export function FinanceCobrancas() {
     }
     return { pending, paid, overdue };
   }, [charges]);
+
+  // Cards de totais — vira faixa rolável no mobile, grid de 3 no desktop.
+  const cardTotals = [
+    { key: 'pending', label: t.cards.pending, value: totals.pending, color: 'bg-warning', icon: <DollarSign className="h-4 w-4 text-white sm:h-5 sm:w-5" /> },
+    { key: 'paid', label: t.cards.paid, value: totals.paid, color: 'bg-success', icon: <TrendingUp className="h-4 w-4 text-white sm:h-5 sm:w-5" /> },
+    { key: 'overdue', label: t.cards.overdue, value: totals.overdue, color: 'bg-destructive', icon: <AlertCircle className="h-4 w-4 text-white sm:h-5 sm:w-5" /> },
+  ];
+  // Dinheiro não trunca: a fonte degrada pelo maior valor do conjunto.
+  const cardValueSizeClass = kpiValueSizeClass(cardTotals.map((card) => formatBRL(card.value)));
 
   // Filtro por status + busca por nome de cliente
   const filtered = useMemo(() => {
@@ -275,49 +288,40 @@ export function FinanceCobrancas() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className={cn('space-y-4', isMobile && 'pb-24')}>
       {/* ── Aviso persistente: cobrança alterada/excluída no gateway, mas o
           lançamento no Financeiro ficou para trás. NÃO some sozinho — só
           quando o usuário dispensa. */}
       <ChargeFinanceWarningBanner actions={actions} />
 
-      {/* ── Cards de totais ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {/* A receber */}
-        <div className="flex items-center justify-between gap-3 rounded-xl bg-warning px-4 py-4 text-white">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium uppercase tracking-wider text-white/80">{t.cards.pending}</p>
-            <p className="mt-1 truncate text-lg font-bold text-white sm:text-xl">
-              {formatBRL(totals.pending)}
-            </p>
-          </div>
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20">
-            <DollarSign className="h-5 w-5 text-white" />
-          </span>
-        </div>
-        {/* Recebido */}
-        <div className="flex items-center justify-between gap-3 rounded-xl bg-success px-4 py-4 text-white">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium uppercase tracking-wider text-white/80">{t.cards.paid}</p>
-            <p className="mt-1 truncate text-lg font-bold text-white sm:text-xl">
-              {formatBRL(totals.paid)}
-            </p>
-          </div>
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20">
-            <TrendingUp className="h-5 w-5 text-white" />
-          </span>
-        </div>
-        {/* Vencido */}
-        <div className="flex items-center justify-between gap-3 rounded-xl bg-destructive px-4 py-4 text-white">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium uppercase tracking-wider text-white/80">{t.cards.overdue}</p>
-            <p className="mt-1 truncate text-lg font-bold text-white sm:text-xl">
-              {formatBRL(totals.overdue)}
-            </p>
-          </div>
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20">
-            <AlertCircle className="h-5 w-5 text-white" />
-          </span>
+      {/* ── Cards de totais ───────────────────────────────────────────────────
+          MOBILE: faixa rolável (mesma régua de Contas a pagar/receber) — três
+          cards de largura inteira empilhados comiam meia tela antes da lista.
+          O valor desce pra uma linha própria e a fonte degrada pelo maior do
+          conjunto, pra nenhum número ser cortado. `scroll-pl-3` existe porque o
+          `snap-start` alinha pelo scrollport e ignora o `px-3`.
+          DESKTOP (sm+) continua idêntico: grid de 3, ícone à direita. */}
+      <div className="relative -mx-3 sm:mx-0">
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-background to-transparent sm:hidden" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-background to-transparent sm:hidden" />
+        <div className="flex snap-x scroll-pl-3 gap-2 overflow-x-auto px-3 pb-1 scrollbar-none sm:grid sm:grid-cols-3 sm:gap-3 sm:scroll-pl-0 sm:px-0">
+          {cardTotals.map(({ key, label, value, icon, color }) => (
+            <div
+              key={key}
+              className={cn(
+                'grid min-w-[168px] snap-start grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1 rounded-xl p-3 text-white sm:gap-y-0 sm:px-4 sm:py-4',
+                color,
+              )}
+            >
+              <p className="col-start-1 row-start-1 min-w-0 truncate text-xs font-medium uppercase tracking-wider text-white/80">{label}</p>
+              <span className="col-start-2 row-start-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 sm:row-span-2 sm:h-10 sm:w-10">
+                {icon}
+              </span>
+              <p className={cn('col-span-2 row-start-2 min-w-0 truncate font-bold text-white sm:col-span-1 sm:col-start-1 sm:mt-1 sm:text-xl', cardValueSizeClass)}>
+                {formatBRL(value)}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -334,10 +338,12 @@ export function FinanceCobrancas() {
           />
         </div>
         {/* Botão nova cobrança */}
-        <Button size="sm" onClick={() => setDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t.newButton}
-        </Button>
+        {!isMobile && (
+          <Button size="sm" onClick={() => setDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t.newButton}
+          </Button>
+        )}
       </div>
 
       {/* Pills de filtro de status */}
@@ -648,6 +654,14 @@ export function FinanceCobrancas() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {isMobile && (
+        <FABButton
+          icon={<Plus className="h-5 w-5" />}
+          label={t.newButton}
+          onClick={() => setDialogOpen(true)}
+        />
+      )}
     </div>
   );
 }

@@ -185,6 +185,8 @@ export const finance = {
         totalReceived: 'Total Recebido',
       },
       search: 'Buscar por nome, descrição, categoria ou valor...',
+      /** Placeholder curto pra tela estreita (<640px) — o longo era cortado no meio. */
+      searchShort: 'Buscar conta...',
       filters: {
         pending: 'Pendentes',
         overdue: 'Vencidas',
@@ -1612,6 +1614,7 @@ export const finance = {
         totalReceived: 'Total Received',
       },
       search: 'Search by name, description, category or amount...',
+      searchShort: 'Search account...',
       filters: {
         pending: 'Pending',
         overdue: 'Overdue',
@@ -2951,6 +2954,7 @@ export const finance = {
         totalReceived: 'Total Cobrado',
       },
       search: 'Buscar por nombre, descripción, categoría o importe...',
+      searchShort: 'Buscar cuenta...',
       filters: {
         pending: 'Pendientes',
         overdue: 'Vencidas',
@@ -4291,6 +4295,7 @@ export const finance = {
         totalReceived: 'Total encaissé',
       },
       search: 'Rechercher par nom, description, catégorie ou montant...',
+      searchShort: 'Rechercher un compte...',
       filters: {
         pending: 'En attente',
         overdue: 'Échus',

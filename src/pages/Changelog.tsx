@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.23',
+    date: '9 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Financeiro mais fácil de usar no celular',
+        description: 'Em Contas a pagar e a receber, os valores dos cartões de resumo não aparecem mais cortados: o número diminui sozinho quando é grande, em vez de virar reticências. Cada conta da lista também ganhou espaço — o valor subiu para a linha do nome e a descrição agora ocupa duas linhas, então nome do cliente, categoria e situação deixam de ficar espremidos.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Botão de criar sempre ao alcance do polegar',
+        description: 'No celular, "Nova conta", "Nova cobrança" e "Nova assinatura" passaram a ser um botão flutuante no canto da tela, que acompanha você enquanto rola a lista. Antes ocupavam uma linha inteira no topo e sumiam assim que a página descia.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Resumo de Cobranças ocupando menos espaço',
+        description: 'Os três cartões de totais da tela de Cobranças viraram uma faixa que desliza para o lado no celular, em vez de três blocos empilhados. A lista de cobranças agora já aparece assim que a tela abre.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Situação "Pendente" com cor de verdade',
+        description: 'O selo de contas pendentes era cinza e se misturava ao fundo, enquanto "Vencida" e "Paga" eram coloridos. Agora ele tem cor própria e dá para bater o olho e identificar a situação de cada conta.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.28.22',
     date: '8 de outubro de 2026',
     type: 'patch',

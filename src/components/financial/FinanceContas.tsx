@@ -16,13 +16,15 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Search, Info, Layers, List, CalendarDays, FileDown, FileText, FileSpreadsheet, SlidersHorizontal, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn, fuzzyIncludes } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile, useMediaBreakpoint } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
+import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
+import { kpiValueSizeClass } from './kpiChipSize';
 import type { FinancialTransaction } from '@/types/database';
 import { format, isBefore, addDays, startOfDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -190,6 +192,9 @@ export function FinanceContas({
    */
   const batchGroupIdRef = useRef<string | null>(null);
   const isMobile = useIsMobile();
+  // `isMobile` é <1024 (shell). `isNarrow` é o celular de verdade (<640), onde
+  // o placeholder longo da busca não cabe — num tablet de 800px ele cabe.
+  const isNarrow = useMediaBreakpoint(640);
   // `timezone`: fuso da empresa. É ele que define o "hoje" de `paid_date`, que
   // por sua vez decide o MÊS da despesa no regime de Caixa da DRE.
   const { locale, currency, timezone } = useAppLocaleContext();
@@ -931,22 +936,32 @@ export function FinanceContas({
     { value: 'receber', label: fin.accounts.subTabs.receivable, icon: <ArrowUpCircle className="h-3.5 w-3.5" /> },
   ];
 
+  // `shortLabel` é o rótulo do chip no MOBILE: "Total Vencido"/"Próximos 7 dias"
+  // não cabem em 144px e viravam reticências. As chaves curtas já existem nos
+  // 4 idiomas (summaryCards.overdue/next7/pending/paid/received).
   const kpis = subTab === 'todas'
     ? [
-        { label: 'A pagar', value: summary.aPagar, icon: ArrowDownCircle, color: 'bg-destructive' },
-        { label: 'A receber', value: summary.aReceber, icon: ArrowUpCircle, color: 'bg-success' },
-        { label: fin.accounts.summaryCards.totalOverdue, value: summary.vencido, icon: AlertTriangle, color: 'bg-rose-700' },
-        { label: fin.accounts.summaryCards.next7Full, value: summary.prox7, icon: Clock, color: 'bg-primary' },
+        { label: 'A pagar', shortLabel: 'A pagar', value: summary.aPagar, icon: ArrowDownCircle, color: 'bg-destructive' },
+        { label: 'A receber', shortLabel: 'A receber', value: summary.aReceber, icon: ArrowUpCircle, color: 'bg-success' },
+        { label: fin.accounts.summaryCards.totalOverdue, shortLabel: fin.accounts.summaryCards.overdue, value: summary.vencido, icon: AlertTriangle, color: 'bg-rose-700' },
+        { label: fin.accounts.summaryCards.next7Full, shortLabel: fin.accounts.summaryCards.next7, value: summary.prox7, icon: Clock, color: 'bg-primary' },
       ]
     : [
-        { label: fin.accounts.summaryCards.totalPending, value: summary.pendente, icon: Clock, color: 'bg-warning' },
-        { label: fin.accounts.summaryCards.totalOverdue, value: summary.vencido, icon: AlertTriangle, color: 'bg-destructive' },
-        { label: fin.accounts.summaryCards.next7Full, value: summary.prox7, icon: DollarSign, color: 'bg-primary' },
-        { label: subTab === 'receber' ? fin.accounts.summaryCards.totalReceived : fin.accounts.summaryCards.totalPaid, value: summary.pago, icon: CheckCircle2, color: 'bg-success' },
+        { label: fin.accounts.summaryCards.totalPending, shortLabel: fin.accounts.summaryCards.pending, value: summary.pendente, icon: Clock, color: 'bg-warning' },
+        { label: fin.accounts.summaryCards.totalOverdue, shortLabel: fin.accounts.summaryCards.overdue, value: summary.vencido, icon: AlertTriangle, color: 'bg-destructive' },
+        { label: fin.accounts.summaryCards.next7Full, shortLabel: fin.accounts.summaryCards.next7, value: summary.prox7, icon: DollarSign, color: 'bg-primary' },
+        { label: subTab === 'receber' ? fin.accounts.summaryCards.totalReceived : fin.accounts.summaryCards.totalPaid, shortLabel: subTab === 'receber' ? fin.accounts.summaryCards.received : fin.accounts.summaryCards.paid, value: summary.pago, icon: CheckCircle2, color: 'bg-success' },
       ];
 
+  // Valor do chip NUNCA é cortado: a fonte degrada pelo MAIOR valor do
+  // conjunto (ver `kpiChipSize.ts`). No desktop volta pro `text-lg` de sempre.
+  const kpiSizeClass = kpiValueSizeClass(kpis.map((kpi) => fmt(kpi.value)));
+
   return (
-    <div className="space-y-5">
+    // `pb-24` no mobile = respiro do FAB de "Nova Conta" (fixo a 96px do fundo),
+    // pra ele nunca cobrir a última linha da lista. Mesmo padrão que Categorias
+    // e Centro de Custo já usam — fica no componente, não no Finance.tsx.
+    <div className="space-y-5 pb-24 lg:pb-0">
       {/* A navegação fica em uma linha própria para preservar uma busca ampla
           também em notebooks. A toolbar quebra em blocos tocáveis no mobile. */}
       <div className="space-y-3">
@@ -981,7 +996,7 @@ export function FinanceContas({
           <div className="relative min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder={fin.accounts.search}
+              placeholder={isNarrow ? fin.accounts.searchShort : fin.accounts.search}
               className="h-10 pl-10"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
@@ -1042,24 +1057,43 @@ export function FinanceContas({
               />
             )}
           </FilterButton>
-            <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} size="sm" className="order-4 col-span-3 h-10 w-full gap-2 shrink-0 bg-foreground text-background hover:bg-foreground/90 sm:order-none sm:col-span-1 sm:h-9 sm:w-auto">
-              <Plus className="h-4 w-4" /> {fin.accounts.header.newButton}
-            </Button>
+            {/* No mobile "Nova Conta" virou FAB (fim do componente): ocupava uma
+                linha inteira de toolbar e saía da tela ao rolar a lista. Sem ele
+                a 2ª linha fica com os 3 controles da régua (Exportar, Filtros,
+                lista/calendário). Desktop segue com o botão inline. */}
+            {!isMobile && (
+              <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} size="sm" className="order-4 col-span-3 h-10 w-full gap-2 shrink-0 bg-foreground text-background hover:bg-foreground/90 sm:order-none sm:col-span-1 sm:h-9 sm:w-auto">
+                <Plus className="h-4 w-4" /> {fin.accounts.header.newButton}
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* KPIs saturados, iguais ao padrão da visão geral do Financeiro. */}
+      {/* KPIs saturados, iguais ao padrão da visão geral do Financeiro.
+          MOBILE: o valor desce pra uma linha inteira abaixo do ícone+rótulo —
+          no layout antigo (tudo na mesma linha) sobravam 88px pro número e
+          "R$ 9.980,00" virava "R$ 9.98…". Degradê nas bordas sinaliza que a
+          faixa rola (mesmo padrão do StatCarousel/visão geral), senão o 3º chip
+          aparece serrado no canto. DESKTOP (sm+) segue idêntico: grid de cards
+          com ícone à esquerda e rótulo sobre o valor. */}
       <div className="relative -mx-3 sm:mx-0">
-        <div className="flex snap-x gap-2 overflow-x-auto px-3 pb-1 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-4 scrollbar-none">
-          {kpis.map(({ label, value, icon: Icon, color }) => (
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-background to-transparent sm:hidden" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-background to-transparent sm:hidden" />
+        {/* `scroll-pl-3`: sem ele o snap-start alinha o 1º chip com a borda do
+            scrollport IGNORANDO o `px-3` — a faixa nascia com scrollLeft=12 e o
+            chip colava na borda da tela, desalinhado da lista logo abaixo
+            (medido no browser em 390px). */}
+        <div className="flex snap-x scroll-pl-3 gap-2 overflow-x-auto px-3 pb-1 sm:grid sm:grid-cols-2 sm:scroll-pl-0 sm:px-0 lg:grid-cols-4 scrollbar-none">
+          {kpis.map(({ label, shortLabel, value, icon: Icon, color }) => (
             <Card key={label} className={cn('min-w-[168px] snap-start border-0 text-white shadow-none', color)}>
-              <CardContent className="flex items-center gap-3 p-4">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20"><Icon className="h-4 w-4" /></span>
-                <div className="min-w-0">
-                  <p className="truncate text-[11px] font-medium uppercase tracking-wider text-white/80">{label}</p>
-                  <p className="truncate text-lg font-bold tabular-nums">{fmt(value)}</p>
-                </div>
+              <CardContent className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1 p-3 sm:gap-y-0 sm:p-4">
+                <span className="col-start-1 row-start-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 sm:row-span-2 sm:h-9 sm:w-9"><Icon className="h-4 w-4" /></span>
+                <p className="col-start-2 row-start-1 min-w-0 truncate text-[11px] font-medium uppercase tracking-wider text-white/80">
+                  <span className="sm:hidden">{shortLabel}</span>
+                  <span className="hidden sm:inline">{label}</span>
+                </p>
+                <p className={cn('col-span-2 row-start-2 min-w-0 truncate font-bold tabular-nums sm:col-span-1 sm:col-start-2 sm:text-lg', kpiSizeClass)}>{fmt(value)}</p>
               </CardContent>
             </Card>
           ))}
@@ -1197,6 +1231,12 @@ export function FinanceContas({
               // e um toque no (i) explica o porquê (tooltip não funciona no toque).
               const batchReason = batchEnabled ? batchReasonFor(t) : null;
               const received = Number(t.amount_received ?? 0);
+              // Contraparte da linha. Funcionário manda sozinho; sem ele,
+              // cliente e fornecedor podem coexistir (mesma regra de antes).
+              const parties = (t.employee
+                ? [t.employee.name]
+                : [t.customer?.name, t.supplier?.name]
+              ).filter((name): name is string => !!name);
               const receiptBreakdown = t.transaction_type === 'entrada' && status === 'paga'
                 ? receiptBreakdowns.get(t.id)
                 : undefined;
@@ -1240,7 +1280,12 @@ export function FinanceContas({
                   <MobileListItem
                     actions={itemActions}
                     className={cn(
-                      'transition-transform active:scale-[0.98]',
+                      // Respiro menor que o padrão do primitivo (px-4/gap-4) e
+                      // alinhado ao topo: em 390px as 4 colunas (seleção, ícone,
+                      // texto, valor+menu) deixavam ~105px pro nome e TUDO virava
+                      // reticências. Com px-3/gap-3 e o valor movido pra linha do
+                      // título, o texto passa a ter ~210px.
+                      'items-start gap-3 px-3 transition-transform active:scale-[0.98]',
                       overdue && 'bg-destructive/5',
                       partial && 'bg-warning/5',
                     )}
@@ -1269,56 +1314,65 @@ export function FinanceContas({
                             )}
                           </span>
                         )}
-                        <div className={cn('flex h-10 w-10 items-center justify-center rounded-full text-white shrink-0', statusColor)}>
+                        <div className={cn('flex h-9 w-9 items-center justify-center rounded-full text-white shrink-0', statusColor)}>
                           {t.payroll_kind === 'salary'
-                            ? <Users className="h-5 w-5" />
+                            ? <Users className="h-4 w-4" />
                             : status === 'paga'
-                              ? <Check className="h-5 w-5" />
+                              ? <Check className="h-4 w-4" />
                               : status === 'vencida'
-                                ? <AlertTriangle className="h-5 w-5" />
+                                ? <AlertTriangle className="h-4 w-4" />
                                 : status === 'parcial'
-                                  ? <Receipt className="h-5 w-5" />
-                                  : <Clock className="h-5 w-5" />}
+                                  ? <Receipt className="h-4 w-4" />
+                                  : <Clock className="h-4 w-4" />}
                         </div>
                       </div>
                     }
                     title={
-                      <div className="flex items-center gap-1.5">
-                        {isExpanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-                        <span className="truncate">{t.description}</span>
+                      // O valor sobe pra linha do nome (padrão de app de banco).
+                      // `whitespace-normal` cancela o `truncate` do primitivo:
+                      // nome longo quebra em até 2 linhas em vez de virar "…".
+                      <div className="flex items-start gap-1.5">
+                        {isExpanded ? <ChevronDown className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                        <span className="min-w-0 flex-1 whitespace-normal break-words leading-snug line-clamp-2">{t.description}</span>
+                        <span className={cn('shrink-0 whitespace-nowrap text-sm font-semibold tabular-nums', t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive')}>
+                          {fmt(receiptBreakdown ? receiptBreakdown.net : Number(t.amount))}
+                        </span>
                       </div>
                     }
                     subtitle={
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span>{t.due_date ? format(parseLocalDate(t.due_date), 'dd/MM/yyyy', { locale: ptBR }) : fin.accounts.table.noDueDate}</span>
-                          {t.employee && <span className="truncate">{t.employee.name}</span>}
-                          {!t.employee && t.customer && <span className="truncate">{t.customer.name}</span>}
-                          {!t.employee && t.supplier && <span className="truncate">{t.supplier.name}</span>}
+                      // Sem o valor disputando espaço, estas linhas ficam com a
+                      // largura inteira do conteúdo — status e categoria ganham
+                      // uma linha própria em vez de serem espremidos na lateral.
+                      <div className="flex min-w-0 flex-col gap-1 whitespace-normal">
+                        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                          <span className="tabular-nums">{t.due_date ? format(parseLocalDate(t.due_date), 'dd/MM/yyyy', { locale: ptBR }) : fin.accounts.table.noDueDate}</span>
+                          {/* O "·" mora DENTRO do span do nome: solto, ele
+                              sobrava pendurado no fim da linha quando o nome
+                              quebrava pra linha de baixo. */}
+                          {parties.map((name) => (
+                            <span key={name} className="max-w-full truncate">
+                              <span aria-hidden="true" className="text-muted-foreground/50">· </span>{name}
+                            </span>
+                          ))}
                         </div>
-                        {t.category && <FinancialCategoryPill name={t.category} category={categoriesByName.get(t.category)} size="sm" className="w-fit" />}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {status === 'paga' ? (
+                            <Badge className="bg-success text-white text-[10px] px-1.5 py-0">{fin.accounts.status.paid}</Badge>
+                          ) : status === 'vencida' ? (
+                            <Badge className="bg-destructive text-white text-[10px] px-1.5 py-0">{fin.accounts.status.overdue}</Badge>
+                          ) : status === 'parcial' ? (
+                            <Badge className="bg-warning text-white text-[10px] px-1.5 py-0">{fin.accounts.status.partial}</Badge>
+                          ) : (
+                            <Badge className="bg-slate-500 text-white text-[10px] px-1.5 py-0">{fin.accounts.status.pending}</Badge>
+                          )}
+                          {t.category && <FinancialCategoryPill name={t.category} category={categoriesByName.get(t.category)} size="sm" />}
+                        </div>
                         {partial && <span className="text-warning text-[11px]">{fin.accounts.table.received}: {fmt(received)} {fin.accounts.table.of} {fmt(Number(t.amount))}</span>}
-                      </div>
-                    }
-                    trailing={
-                      <div className="flex flex-col items-end gap-1">
-                        {receiptBreakdown ? (
-                          <div className="flex flex-col items-end text-[10px] leading-4 whitespace-nowrap tabular-nums">
-                            <span className="text-muted-foreground">{fin.accounts.table.gross}: <strong className="font-medium text-foreground">{fmt(receiptBreakdown.gross)}</strong></span>
-                            <span className="text-muted-foreground">{fin.accounts.table.fee}: <strong className="font-medium text-destructive">− {fmt(receiptBreakdown.fee)}</strong></span>
-                            <span className="font-semibold text-success">{fin.accounts.table.net}: {fmt(receiptBreakdown.net)}</span>
-                          </div>
-                        ) : (
-                          <span className={cn('font-semibold text-sm whitespace-nowrap tabular-nums', t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive')}>{fmt(t.amount)}</span>
-                        )}
-                        {status === 'paga' ? (
-                          <Badge className="bg-success text-white text-[10px] px-1.5 py-0">{fin.accounts.status.paid}</Badge>
-                        ) : status === 'vencida' ? (
-                          <Badge className="bg-destructive text-white text-[10px] px-1.5 py-0">{fin.accounts.status.overdue}</Badge>
-                        ) : status === 'parcial' ? (
-                          <Badge className="bg-warning text-white text-[10px] px-1.5 py-0">{fin.accounts.status.partial}</Badge>
-                        ) : (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{fin.accounts.status.pending}</Badge>
+                        {receiptBreakdown && (
+                          // O líquido já está lá em cima, na linha do título.
+                          <span className="text-[11px] tabular-nums">
+                            {fin.accounts.table.gross}: {fmt(receiptBreakdown.gross)} · {fin.accounts.table.fee}: <span className="text-destructive">− {fmt(receiptBreakdown.fee)}</span>
+                          </span>
                         )}
                       </div>
                     }
@@ -1464,7 +1518,7 @@ export function FinanceContas({
                         ) : status === 'parcial' ? (
                           <Badge className="bg-warning text-white">{fin.accounts.status.partial}</Badge>
                         ) : (
-                          <Badge variant="secondary">{fin.accounts.status.pending}</Badge>
+                          <Badge className="bg-slate-500 text-white">{fin.accounts.status.pending}</Badge>
                         )}
                       </TableCell>
                       <TableCell>
@@ -1763,6 +1817,17 @@ export function FinanceContas({
         initialName={payDespAccountInitialName}
         onCreated={(account) => setPayDespAccountId(account.id)}
       />
+
+      {/* FAB de "Nova Conta" no mobile (no desktop o botão continua na toolbar).
+          Some enquanto a barra de seleção do lote está na tela: as duas moram no
+          mesmo offset de 96px e o FAB cobriria o botão de pagar selecionadas. */}
+      {isMobile && !(batchEnabled && selectedRows.length > 0) && (
+        <FABButton
+          icon={<Plus className="h-5 w-5" />}
+          label={fin.accounts.header.newButton}
+          onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }}
+        />
+      )}
 
     </div>
   );
