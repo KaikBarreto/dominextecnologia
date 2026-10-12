@@ -208,6 +208,10 @@ function buildHtml(baseHtml, html, head) {
       /<meta property="og:url" content="[\s\S]*?" \/>/,
       `<meta property="og:url" content="${attr(head.ogUrl)}" />`
     )
+    .replace(
+      /<meta property="og:type" content="[\s\S]*?" \/>/,
+      `<meta property="og:type" content="${attr(head.ogType || 'website')}" />`
+    )
     // og:locale — o shell crava pt_BR em todas; reescreve pelo locale da rota
     // (pt_BR/en_US/es_ES/fr_FR). Só emite se a rota forneceu (compat defensivo).
     .replace(
@@ -216,6 +220,35 @@ function buildHtml(baseHtml, html, head) {
         ? `<meta property="og:locale" content="${attr(head.ogLocale)}" />`
         : '$&'
     );
+
+  // Capa social específica do artigo. Páginas comuns preservam a imagem global.
+  if (head.ogImage) {
+    out = out
+      .replace(
+        /<meta property="og:image" content="[\s\S]*?">/,
+        `<meta property="og:image" content="${attr(head.ogImage)}">`
+      )
+      .replace(
+        /<meta property="og:image:alt" content="[\s\S]*?" \/>/,
+        `<meta property="og:image:alt" content="${attr(head.ogImageAlt || head.ogTitle)}" />`
+      )
+      .replace(
+        /<meta name="twitter:image" content="[\s\S]*?">/,
+        `<meta name="twitter:image" content="${attr(head.ogImage)}">`
+      );
+  }
+
+  if (head.ogType === 'article') {
+    const articleMeta = [
+      head.articlePublishedTime
+        ? `<meta property="article:published_time" content="${attr(head.articlePublishedTime)}" />`
+        : '',
+      head.articleModifiedTime
+        ? `<meta property="article:modified_time" content="${attr(head.articleModifiedTime)}" />`
+        : '',
+    ].filter(Boolean).join('\n  ');
+    if (articleMeta) out = out.replace(/<\/head>/i, `  ${articleMeta}\n</head>`);
+  }
 
   // JSON-LD por-rota. Em páginas internas (segmento/módulo/institucional) removemos
   // os blocos GLOBAIS específicos da home (FAQPage e SoftwareApplication) pra não
@@ -317,6 +350,9 @@ async function main() {
 
   // Itera cada TAREFA (rota base × idioma): ~25 rotas × 4 idiomas = ~100 páginas.
   const results = [];
+  // Título e descrição reais de cada rota/idioma alimentam o llms.txt. Isso
+  // impede títulos em português dentro do índice inglês/espanhol/francês.
+  const titlesByBaseLocale = new Map();
   // Mapa basePath → (locale → description) para o llms.txt per-locale.
   // Alimentado durante o loop; passado pro generateArtifacts.
   const descriptionsByBaseLocale = new Map();
@@ -331,6 +367,10 @@ async function main() {
         descriptionsByBaseLocale.set(task.basePath, new Map());
       }
       descriptionsByBaseLocale.get(task.basePath).set(task.locale, head.description);
+      if (!titlesByBaseLocale.has(task.basePath)) {
+        titlesByBaseLocale.set(task.basePath, new Map());
+      }
+      titlesByBaseLocale.get(task.basePath).set(task.locale, head.title);
       const finalHtml = buildHtml(baseHtml, html, head);
       const outPath = outPathForTask(task);
       mkdirSync(dirname(outPath), { recursive: true });
@@ -396,7 +436,9 @@ async function main() {
       tasks: SSG_TASKS,
       siteUrl: SITE_URL,
       distDir: DIST,
+      titlesByBaseLocale,
       descriptionsByBaseLocale,
+      posts: blogData.posts,
     })
   );
 

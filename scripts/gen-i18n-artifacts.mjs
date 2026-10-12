@@ -46,64 +46,108 @@ function xmlEsc(text) {
     .replace(/'/g, '&apos;');
 }
 
-// ── Índice GEO (llms.txt): título + descrição de 1 linha por path base ──────────
-// Textos em pt-br (o conteúdo das páginas de idioma ainda é pt-br nesta fase; a
-// URL é a única coisa que muda por idioma). Sem travessão.
-const LLMS_SECTIONS = [
+// ── Índice GEO (llms.txt) ─────────────────────────────────────────────────────
+// O arquivo é um índice curto e factual, não uma cópia do site. Títulos e
+// descrições vêm do próprio head renderizado; posts vêm da mesma consulta usada
+// no SSG. Assim não existe tradução fictícia nem URL de artigo ausente.
+const LLMS_ROUTE_GROUPS = [
   {
-    title: 'Páginas principais',
-    entries: [
-      ['/', 'Home', 'visão geral do Dominex, planos, recursos e perguntas frequentes.'],
-      ['/sistema-para-refrigeracao', 'Sistema para Refrigeração', 'gestão de OS e PMOC para empresas de refrigeração e climatização.'],
-      ['/sistema-para-eletricistas', 'Sistema para Eletricistas', 'ordens de serviço e equipes de campo para instalações elétricas.'],
-      ['/sistema-para-energia-solar', 'Sistema para Energia Solar', 'gestão de instalações e manutenção de energia solar.'],
-      ['/sistema-para-provedores', 'Sistema para Provedores', 'OS e campo para provedores de internet e telecomunicações.'],
-      ['/sistema-para-cftv', 'Sistema para CFTV', 'gestão de instalações de CFTV e segurança eletrônica.'],
-      ['/sistema-para-construcao-civil', 'Sistema para Construção Civil', 'controle de equipes e serviços na construção civil.'],
-      ['/sistema-para-elevadores', 'Sistema para Elevadores', 'manutenção e contratos recorrentes para empresas de elevadores.'],
-      ['/sistema-para-limpeza-conservacao', 'Sistema para Limpeza e Conservação', 'gestão de equipes de limpeza e conservação predial.'],
-      ['/sistema-para-dedetizacao', 'Sistema para Dedetização', 'ordens de serviço e contratos para empresas de dedetização.'],
-      ['/sistema-para-assistencia-tecnica', 'Sistema para Assistência Técnica (TI)', 'gestão de OS de entrada de aparelho, diagnóstico, orçamento por link e estoque de peças para lojas de informática e assistência técnica.'],
+    key: 'company',
+    paths: ['/', '/quem-somos'],
+  },
+  {
+    key: 'industries',
+    paths: [
+      '/sistema-para-refrigeracao',
+      '/sistema-para-eletricistas',
+      '/sistema-para-energia-solar',
+      '/sistema-para-provedores',
+      '/sistema-para-cftv',
+      '/sistema-para-construcao-civil',
+      '/sistema-para-elevadores',
+      '/sistema-para-limpeza-conservacao',
+      '/sistema-para-dedetizacao',
+      '/sistema-para-assistencia-tecnica',
     ],
   },
   {
-    title: 'Módulos',
-    entries: [
-      ['/os-digital', 'Ordem de Serviço Digital', 'ordens de serviço digitais com fotos, checklist e assinatura, no celular do técnico.'],
-      ['/sistema-pmoc', 'PMOC', 'geração automática de plano de manutenção por equipamento e calendário PMOC conforme a Lei 13.589/2018.'],
-      ['/sistema-crm', 'CRM e Vendas', 'funil de vendas em kanban, do lead ao contrato, com conversão direta em ordem de serviço.'],
-      ['/controle-financeiro', 'Financeiro', 'controle de contas a pagar e a receber, fluxo de caixa e DRE para empresas de serviço.'],
-      ['/ponto-e-folha', 'Ponto e Folha', 'ponto eletrônico com selfie e geolocalização, banco de horas e folha de pagamento para equipes de campo.'],
-      ['/emissao-de-nfse', 'NFS-e', 'emissão de nota fiscal de serviço por cliente, com conformidade municipal, sem sistema à parte.'],
-      ['/portal-do-cliente', 'Portal do Cliente', 'área onde o cliente acompanha a ordem de serviço, vê o histórico e aprova o orçamento por link.'],
-      ['/controle-de-estoque', 'Estoque', 'controle de peças e materiais com baixa automática por ordem de serviço e inventário.'],
-      ['/orcamentos-e-contratos', 'Orçamentos e Contratos', 'orçamentos profissionais por link, contratos recorrentes que geram as ordens de serviço sozinhos.'],
-      ['/rastreamento-de-equipes', 'Rastreamento e Agenda', 'localização da equipe em tempo real no mapa, agenda do dia e check-in validado pelo endereço do cliente.'],
-      ['/area-do-tecnico', 'Área do Técnico', 'app instalável no celular com OS, ferramentas de cálculo técnico e catálogo de equipamentos para o técnico em campo.'],
+    key: 'product',
+    paths: [
+      '/os-digital',
+      '/sistema-pmoc',
+      '/sistema-crm',
+      '/controle-financeiro',
+      '/ponto-e-folha',
+      '/emissao-de-nfse',
+      '/portal-do-cliente',
+      '/controle-de-estoque',
+      '/orcamentos-e-contratos',
+      '/rastreamento-de-equipes',
+      '/area-do-tecnico',
     ],
   },
-  {
-    title: 'Blog e conteúdo',
-    entries: [
-      ['/blog', 'Blog', 'artigos práticos sobre ordem de serviço, PMOC, gestão de equipe e como tirar a operação de campo do papel.'],
-    ],
-  },
-  {
-    title: 'Institucional',
-    entries: [
-      ['/quem-somos', 'Quem somos', 'história e propósito da Dominex, gestão para empresas de serviço e equipes de campo.'],
-      ['/privacidade', 'Política de Privacidade', 'como a Dominex trata os dados pessoais, conforme a LGPD.'],
-      ['/termos', 'Termos de Uso', 'condições de cadastro, uso do serviço e responsabilidades na plataforma Dominex.'],
-    ],
-  },
+  { key: 'resources', paths: ['/blog'] },
+  { key: 'legal', paths: ['/privacidade', '/termos'] },
 ];
 
-/** Cabeçalho do llms.txt (mesmo texto do índice pt-br atual). Sem travessão. */
-const LLMS_HEADER = `# Dominex
-
-> Sistema de ordem de serviço, PMOC e gestão para empresas de refrigeração, climatização e equipes de campo.
-
-O Dominex é um software web para empresas que prestam serviços técnicos em campo. Centraliza ordens de serviço digitais, agenda da equipe, rastreamento dos técnicos, contratos de manutenção e o calendário PMOC. O técnico atende pelo app (PWA) com check-in, fotos, checklist e assinatura digital. Atende refrigeração e climatização, elétrica, energia solar, provedores, CFTV, construção civil, elevadores, limpeza, dedetização e assistência técnica de informática (celular, notebook e PC). Teste grátis por 14 dias, sem cartão de crédito.`;
+const LLMS_COPY = {
+  'pt-br': {
+    language: 'Português do Brasil',
+    summary: 'Software de gestão de serviços de campo, ordens de serviço digitais, manutenção, equipes e operações técnicas.',
+    intro: 'O Dominex é uma plataforma web para empresas de serviços técnicos. Centraliza ordens de serviço, agenda e despacho, acompanhamento de equipes, contratos de manutenção, PMOC, CRM, financeiro, estoque e experiência do cliente. O aplicativo do técnico funciona como PWA e permite check-in, fotos, checklists e assinatura digital.',
+    sections: { company: 'Sobre a Dominex', industries: 'Soluções por segmento', product: 'Produto e módulos', resources: 'Recursos', articles: 'Artigos do blog', legal: 'Políticas', discovery: 'Descoberta e atualização', ai: 'Orientação para sistemas de IA' },
+    updated: 'Atualizado',
+    languageLabel: 'Idioma',
+    website: 'Site oficial',
+    sitemap: 'Sitemap das páginas',
+    blogSitemap: 'Sitemap dos artigos',
+    sitemapDesc: 'Sitemap XML das páginas públicas de produto, segmentos e institucionais.',
+    blogSitemapDesc: 'Sitemap XML de todos os artigos publicados e suas alternativas de idioma.',
+    aiNote: 'Use a URL canônica de cada página ao citar a Dominex. Para recursos, preços, disponibilidade e requisitos legais, confirme sempre a informação na página oficial mais específica e atualizada.',
+  },
+  en: {
+    language: 'English',
+    summary: 'Field service management software for digital work orders, maintenance, teams and technical operations.',
+    intro: 'Dominex is a web platform for technical service businesses. It brings together work orders, scheduling and dispatch, field team tracking, maintenance contracts, CRM, finance, inventory and customer experience. The technician app is a PWA with check-in, photos, checklists and digital signatures.',
+    sections: { company: 'About Dominex', industries: 'Industry solutions', product: 'Product and modules', resources: 'Resources', articles: 'Blog articles', legal: 'Policies', discovery: 'Discovery and updates', ai: 'Guidance for AI systems' },
+    updated: 'Updated',
+    languageLabel: 'Language',
+    website: 'Official website',
+    sitemap: 'Website sitemap',
+    blogSitemap: 'Blog sitemap',
+    sitemapDesc: 'XML sitemap for public product, industry and institutional pages.',
+    blogSitemapDesc: 'XML sitemap for every published blog article and its language alternatives.',
+    aiNote: 'Use each page’s canonical URL when citing Dominex. For features, pricing, availability and legal requirements, verify the information on the most specific and recently updated official page.',
+  },
+  es: {
+    language: 'Español',
+    summary: 'Software de gestión de servicios de campo, órdenes de trabajo digitales, mantenimiento, equipos y operaciones técnicas.',
+    intro: 'Dominex es una plataforma web para empresas de servicios técnicos. Centraliza órdenes de trabajo, agenda y despacho, seguimiento de equipos, contratos de mantenimiento, CRM, finanzas, inventario y experiencia del cliente. La aplicación del técnico es una PWA con check-in, fotos, listas de verificación y firma digital.',
+    sections: { company: 'Sobre Dominex', industries: 'Soluciones por sector', product: 'Producto y módulos', resources: 'Recursos', articles: 'Artículos del blog', legal: 'Políticas', discovery: 'Descubrimiento y actualizaciones', ai: 'Orientación para sistemas de IA' },
+    updated: 'Actualizado',
+    languageLabel: 'Idioma',
+    website: 'Sitio web oficial',
+    sitemap: 'Mapa del sitio',
+    blogSitemap: 'Mapa de artículos',
+    sitemapDesc: 'Mapa XML de las páginas públicas de producto, sectores e institucionales.',
+    blogSitemapDesc: 'Mapa XML de todos los artículos publicados y sus alternativas de idioma.',
+    aiNote: 'Utiliza la URL canónica de cada página al citar Dominex. Para funciones, precios, disponibilidad y requisitos legales, verifica la información en la página oficial más específica y actualizada.',
+  },
+  fr: {
+    language: 'Français',
+    summary: 'Logiciel de gestion des services terrain, bons de travail numériques, maintenance, équipes et opérations techniques.',
+    intro: 'Dominex est une plateforme web pour les entreprises de services techniques. Elle centralise les bons de travail, la planification et la répartition, le suivi des équipes, les contrats de maintenance, le CRM, les finances, les stocks et l’expérience client. L’application technicien est une PWA avec check-in, photos, listes de contrôle et signature numérique.',
+    sections: { company: 'À propos de Dominex', industries: 'Solutions par secteur', product: 'Produit et modules', resources: 'Ressources', articles: 'Articles du blog', legal: 'Politiques', discovery: 'Découverte et mises à jour', ai: 'Conseils pour les systèmes d’IA' },
+    updated: 'Mis à jour',
+    languageLabel: 'Langue',
+    website: 'Site officiel',
+    sitemap: 'Plan du site',
+    blogSitemap: 'Plan des articles',
+    sitemapDesc: 'Plan XML des pages publiques consacrées au produit, aux secteurs et à l’entreprise.',
+    blogSitemapDesc: 'Plan XML de tous les articles publiés et de leurs versions linguistiques.',
+    aiNote: 'Utilisez l’URL canonique de chaque page pour citer Dominex. Pour les fonctionnalités, les tarifs, la disponibilité et les exigences légales, vérifiez les informations sur la page officielle la plus précise et la plus récente.',
+  },
+};
 
 /**
  * URL absoluta localizada de um path base num locale. Prefere a URL EXATA das
@@ -124,21 +168,92 @@ function absUrlFor(siteUrl, basePath, locale, urlByBaseLocale) {
  * locale gerada pelo SSG (conteúdo real do módulo/segmento traduzido) em vez
  * do texto pt-br fixo do LLMS_SECTIONS. Fallback: texto pt-br do LLMS_SECTIONS.
  */
-function buildLlmsTxt(siteUrl, locale, urlByBaseLocale, descriptionsByBaseLocale) {
-  const lines = [LLMS_HEADER, ''];
-  for (const section of LLMS_SECTIONS) {
-    lines.push(`## ${section.title}`, '');
-    for (const [basePath, title, desc] of section.entries) {
+function oneLine(value) {
+  return String(value ?? '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function cleanPageTitle(value) {
+  return oneLine(value).replace(/\s+(?:—|\|)\s+Dominex.*$/i, '').trim() || 'Dominex';
+}
+
+function blogPostUrl(siteUrl, post) {
+  const locale = post.locale || 'pt-br';
+  return locale === 'pt-br'
+    ? `${siteUrl}/blog/${post.slug}`
+    : `${siteUrl}/${locale}/blog/${post.slug}`;
+}
+
+function buildLlmsTxt(
+  siteUrl,
+  locale,
+  urlByBaseLocale,
+  titlesByBaseLocale,
+  descriptionsByBaseLocale,
+  posts,
+) {
+  const copy = LLMS_COPY[locale] || LLMS_COPY['pt-br'];
+  const date = today();
+  const lines = [
+    '# Dominex',
+    '',
+    `> ${copy.summary}`,
+    '',
+    copy.intro,
+    '',
+    `- ${copy.website}: ${absUrlFor(siteUrl, '/', locale, urlByBaseLocale)}`,
+    `- ${copy.languageLabel}: ${copy.language}`,
+    `- ${copy.updated}: ${date}`,
+    '',
+  ];
+
+  for (const group of LLMS_ROUTE_GROUPS) {
+    lines.push(`## ${copy.sections[group.key]}`, '');
+    for (const basePath of group.paths) {
       const url = absUrlFor(siteUrl, basePath, locale, urlByBaseLocale);
-      // Prefere a metaDescription do locale gerada pelo SSG; fallback ao pt-br fixo.
-      const localeDesc =
+      const rawTitle =
+        titlesByBaseLocale?.get(basePath)?.get(locale) ??
+        titlesByBaseLocale?.get(basePath)?.get('pt-br') ??
+        'Dominex';
+      const description =
         descriptionsByBaseLocale?.get(basePath)?.get(locale) ??
         descriptionsByBaseLocale?.get(basePath)?.get('pt-br') ??
-        desc;
-      lines.push(`- [${title}](${url}): ${localeDesc}`);
+        '';
+      lines.push(`- [${cleanPageTitle(rawTitle)}](${url}): ${oneLine(description)}`);
     }
     lines.push('');
+
+    if (group.key === 'resources') {
+      const localizedPosts = (Array.isArray(posts) ? posts : [])
+        .filter((post) => (post.locale || 'pt-br') === locale && post.slug && post.title)
+        .sort((a, b) => String(b.published_at || '').localeCompare(String(a.published_at || '')));
+      if (localizedPosts.length > 0) {
+        lines.push(`## ${copy.sections.articles}`, '');
+        for (const post of localizedPosts) {
+          const description = oneLine(post.meta_description || post.excerpt || '');
+          lines.push(
+            `- [${oneLine(post.title)}](${blogPostUrl(siteUrl, post)})${description ? `: ${description}` : ''}`,
+          );
+        }
+        lines.push('');
+      }
+    }
   }
+
+  lines.push(
+    `## ${copy.sections.discovery}`,
+    '',
+    `- [${copy.sitemap}](${siteUrl}/sitemap.xml): ${copy.sitemapDesc}`,
+    `- [${copy.blogSitemap}](${siteUrl}/blog-sitemap.xml): ${copy.blogSitemapDesc}`,
+    '',
+    `## ${copy.sections.ai}`,
+    '',
+    copy.aiNote,
+    '',
+  );
+
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
 }
 
@@ -155,11 +270,19 @@ const HREFLANG = { 'pt-br': 'pt-BR', en: 'en', es: 'es', fr: 'fr' };
  * sempre fresca (pega post publicado pós-build, no idioma certo, com hreflang).
  * Colocá-los também no estático duplicaria URLs e ficaria defasado.
  *
- * `descriptionsByBaseLocale` = Map basePath → (locale → description) gerado
- * pelo ssg.mjs durante a renderização das páginas; permite que o llms.txt emita
- * a descrição do módulo/segmento no idioma certo em vez de pt-br fixo.
+ * `titlesByBaseLocale`/`descriptionsByBaseLocale` vêm do head realmente
+ * renderizado. `posts` é a mesma lista publicada usada no prerender do blog.
+ * Com isso cada llms.txt contém apenas URLs, títulos e artigos existentes no
+ * próprio idioma.
  */
-export function generateArtifacts({ tasks, siteUrl, distDir, descriptionsByBaseLocale }) {
+export function generateArtifacts({
+  tasks,
+  siteUrl,
+  distDir,
+  titlesByBaseLocale,
+  descriptionsByBaseLocale,
+  posts = [],
+}) {
   const lastmod = today();
 
   // Agrupa as tasks por path base pra montar os <alternate> recíprocos.
@@ -228,7 +351,14 @@ export function generateArtifacts({ tasks, siteUrl, distDir, descriptionsByBaseL
   // ── llms.txt por idioma ─────────────────────────────────────────────────────
   const locales = ['pt-br', 'en', 'es', 'fr'];
   for (const locale of locales) {
-    const content = buildLlmsTxt(siteUrl, locale, urlByBaseLocale, descriptionsByBaseLocale);
+    const content = buildLlmsTxt(
+      siteUrl,
+      locale,
+      urlByBaseLocale,
+      titlesByBaseLocale,
+      descriptionsByBaseLocale,
+      posts,
+    );
     const outPath = locale === 'pt-br' ? join(distDir, 'llms.txt') : join(distDir, locale, 'llms.txt');
     mkdirSync(dirname(outPath), { recursive: true });
     writeFileSync(outPath, content, 'utf8');

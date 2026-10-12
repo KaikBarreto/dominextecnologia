@@ -753,6 +753,7 @@ export type Database = {
       }
       companies: {
         Row: {
+          acquisition_attribution: Json | null
           address: string | null
           address_number: string | null
           asaas_customer_id: string | null
@@ -809,6 +810,7 @@ export type Database = {
           zip_code: string | null
         }
         Insert: {
+          acquisition_attribution?: Json | null
           address?: string | null
           address_number?: string | null
           asaas_customer_id?: string | null
@@ -865,6 +867,7 @@ export type Database = {
           zip_code?: string | null
         }
         Update: {
+          acquisition_attribution?: Json | null
           address?: string | null
           address_number?: string | null
           asaas_customer_id?: string | null

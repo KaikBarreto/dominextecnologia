@@ -18,7 +18,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useToast } from '@/hooks/use-toast';
 import { phoneMask, cepMask } from '@/utils/masks';
 import { cn } from '@/lib/utils';
-import { captureUtmParams, resolveCompanyOriginKey, type OriginUtmKey } from '@/lib/whatsapp';
+import { captureUtmParams, getAcquisitionAttribution, resolveCompanyOriginKey, type OriginUtmKey } from '@/lib/whatsapp';
 import { trackSignupConversion } from '@/lib/gtag';
 import logoWhite from '@/assets/logo-horizontal-verde.png';
 import DarkVeil from '@/components/ui/DarkVeil';
@@ -128,6 +128,7 @@ export default function Registration() {
   const t = messages.registration;
   const [step, setStep] = useState(1);
   const [selectedOrigin, setSelectedOrigin] = useState('');
+  const [utmOriginKey, setUtmOriginKey] = useState<OriginUtmKey | null>(() => resolveCompanyOriginKey());
   // Segmento de atuação — obrigatório no cadastro da empresa. Só a Dominex
   // (painel admin) pode alterar depois; o tenant não edita nas Configurações.
   const [companySegment, setCompanySegment] = useState('');
@@ -213,6 +214,9 @@ export default function Registration() {
   // persiste em sessionStorage antes de qualquer navegação interna.
   useEffect(() => {
     captureUtmParams(window.location.search);
+    // Referral de IA sem UTM é inferido durante a captura; recalcula a chave
+    // para o primeiro render de quem entrou diretamente em /cadastro.
+    setUtmOriginKey(resolveCompanyOriginKey());
   }, []);
 
   // Catálogo de origens — RPC pública (fonte: `company_origins`), com fallback
@@ -269,7 +273,6 @@ export default function Registration() {
   // auto-avançar — a pessoa confirma no Continuar.
   const segmentFromUrl = searchParams.get('segmento');
   const refCode = searchParams.get('ref'); // referral_code de indicação
-  const utmOriginKey = resolveCompanyOriginKey();
   const utmOriginName = utmOriginKey
     ? originCatalog.find((o) => o.utm_key === utmOriginKey)?.name ?? null
     : null;
@@ -389,6 +392,9 @@ export default function Registration() {
           terms_version: TERMS_VERSION,
           company_address: formattedAddress || null,
           origin: selectedOrigin || null,
+          // First/last touch da sessão (UTMs, referral de IA, página e idioma),
+          // sem IP nem URL completa de origem. A edge sanitiza antes de persistir.
+          acquisition_attribution: getAcquisitionAttribution(),
           segment: companySegment || null,
           // Idioma atual → a edge devolve a mensagem de erro no mesmo idioma.
           locale,
@@ -417,7 +423,7 @@ export default function Registration() {
         let msg = t.toastErrorFallback;
         // FunctionsHttpError: `error.context` é a Response da edge (não { body }).
         // Lê o JSON de erro pra extrair a mensagem real (ex.: e-mail duplicado).
-        const ctx = (error as any)?.context;
+        const ctx = (error as { context?: Response & { body?: unknown } })?.context;
         try {
           if (ctx && typeof ctx.json === 'function') {
             const parsed = await ctx.clone().json();
@@ -462,7 +468,7 @@ export default function Registration() {
         setTimeout(() => navigate(target), 500);
       }
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       const msg = error?.message || t.toastErrorFallback;
       // Detecção de e-mail duplicado tolerante a idioma: a edge devolve a
       // mensagem no idioma do body; cobrimos pt/en/es/fr por substring. Se não

@@ -57,7 +57,6 @@ import { localizePath } from '@/lib/i18n/paths';
 import { isLocalizableSlugKey, slugFor } from '@/lib/i18n/slugRegistry';
 
 import '@/index.css';
-/* eslint-enable import/first */
 
 /** Metadados de <head> de uma rota renderizada (injetados no HTML pelo ssg.mjs). */
 export interface SsgHead {
@@ -74,6 +73,12 @@ export interface SsgHead {
   ogTitle: string;
   ogDescription: string;
   ogUrl: string;
+  /** Tipo e imagem social específicos; posts usam article + capa própria. */
+  ogType?: 'website' | 'article';
+  ogImage?: string;
+  ogImageAlt?: string;
+  articlePublishedTime?: string | null;
+  articleModifiedTime?: string | null;
   /**
    * Valor da meta `og:locale` desta página (pt_BR, en_US, es_ES, fr_FR). O shell
    * (index.html) cravava `pt_BR` em todas as páginas; o ssg.mjs reescreve pelo
@@ -124,6 +129,7 @@ export interface SsgRenderResult {
 
 /** Domínio canônico do site público (www) — espelha o alvo do plano. */
 export const SITE_URL = 'https://www.dominex.app';
+const ORGANIZATION_ID = `${SITE_URL}/#organization`;
 
 /**
  * Path pt-br → path COM o slug do idioma, quando o path for de segmento/módulo.
@@ -749,6 +755,29 @@ export interface RenderBlogPostOptions {
 /** Imagem OG padrão do site (espelha o default do BlogPost). */
 const DEFAULT_OG_IMAGE = `${SITE_URL}/images/og-social.jpg`;
 
+/** Schema correto: a marca assina como Organization; autores nominais são Person. */
+function blogArticleAuthor(name?: string | null) {
+  const authorName = (name || 'Dominex').trim() || 'Dominex';
+  const isOrganization = /^(dominex|equipe dominex|dominex team)$/i.test(authorName);
+  return isOrganization
+    ? {
+        '@type': 'Organization',
+        '@id': ORGANIZATION_ID,
+        name: 'Dominex',
+        url: SITE_URL,
+        logo: `${SITE_URL}/images/dominex-author-avatar.jpg`,
+      }
+    : { '@type': 'Person', name: authorName };
+}
+
+function absolutePublicUrl(value?: string | null): string {
+  try {
+    return new URL(value || DEFAULT_OG_IMAGE, SITE_URL).toString();
+  } catch {
+    return DEFAULT_OG_IMAGE;
+  }
+}
+
 /**
  * Monta o bloco hreflang de um post a partir das versões PUBLICADAS do mesmo
  * translation_group. Um <link> por idioma existente (com o SLUG daquela versão) +
@@ -811,23 +840,25 @@ export function renderBlogPost(
   const title = post.meta_title || post.title;
   const description = post.meta_description || post.excerpt || '';
   const fullTitle = `${title} — Blog Dominex`;
-  const image = post.cover_image_url || DEFAULT_OG_IMAGE;
+  const image = absolutePublicUrl(post.cover_image_url);
 
   // JSON-LD: Breadcrumb (Início > Blog > post) + Article. Removemos os globais da
   // home (stripGlobalJsonLd) pra não herdar FAQ/oferta da home no post.
   const articleLd = {
     '@context': 'https://schema.org',
-    '@type': 'Article',
+    '@type': 'BlogPosting',
     headline: title,
     description,
     image,
     inLanguage: getLocaleDef(locale).htmlLang,
     datePublished: post.published_at || post.created_at,
     dateModified: post.updated_at || post.published_at || post.created_at,
-    author: { '@type': 'Organization', name: post.author_name || 'Dominex' },
+    author: blogArticleAuthor(post.author_name),
     publisher: {
       '@type': 'Organization',
+      '@id': ORGANIZATION_ID,
       name: 'Dominex',
+      url: SITE_URL,
       logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo-horizontal-verde.png` },
     },
     mainEntityOfPage: { '@type': 'WebPage', '@id': pageUrl },
@@ -862,6 +893,11 @@ export function renderBlogPost(
     ogTitle: fullTitle,
     ogDescription: description,
     ogUrl: pageUrl,
+    ogType: 'article',
+    ogImage: image,
+    ogImageAlt: post.title,
+    articlePublishedTime: post.published_at || post.created_at,
+    articleModifiedTime: post.updated_at || post.published_at || post.created_at,
     ogLocale: getLocaleDef(locale).ogLocale,
     jsonLd,
     stripGlobalJsonLd: true,

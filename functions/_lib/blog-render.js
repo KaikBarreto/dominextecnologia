@@ -25,9 +25,17 @@
 
 const SITE_URL = 'https://www.dominex.app';
 const DEFAULT_OG_IMAGE = `${SITE_URL}/images/og-social.jpg`;
+const ORGANIZATION_ID = `${SITE_URL}/#organization`;
 
 // Locales suportados + hreflang code. pt-br é o default (URL sem prefixo).
 const HREFLANG = { 'pt-br': 'pt-BR', en: 'en', es: 'es', fr: 'fr' };
+const OG_LOCALE = { 'pt-br': 'pt_BR', en: 'en_US', es: 'es_ES', fr: 'fr_FR' };
+const BREADCRUMB_LABELS = {
+  'pt-br': { home: 'Início', blog: 'Blog' },
+  en: { home: 'Home', blog: 'Blog' },
+  es: { home: 'Inicio', blog: 'Blog' },
+  fr: { home: 'Accueil', blog: 'Blog' },
+};
 const VALID_LOCALES = Object.keys(HREFLANG);
 
 /** URL absoluta localizada de um post (pt-br sem prefixo, outros com /xx/). */
@@ -35,6 +43,39 @@ function postUrl(locale, slug) {
   return locale === 'pt-br'
     ? `${SITE_URL}/blog/${slug}`
     : `${SITE_URL}/${locale}/blog/${slug}`;
+}
+
+/** Converte capa relativa em URL absoluta, como OG e JSON-LD exigem. */
+function absoluteUrl(value) {
+  try {
+    return new URL(value || DEFAULT_OG_IMAGE, SITE_URL).toString();
+  } catch {
+    return DEFAULT_OG_IMAGE;
+  }
+}
+
+/** Dominex é organização; nomes editoriais individuais são pessoas. */
+function articleAuthor(name) {
+  const authorName = String(name || 'Dominex').trim() || 'Dominex';
+  const isOrganization = /^(dominex|equipe dominex|dominex team)$/i.test(authorName);
+  return isOrganization
+    ? {
+        '@type': 'Organization',
+        '@id': ORGANIZATION_ID,
+        name: 'Dominex',
+        url: SITE_URL,
+        logo: `${SITE_URL}/images/dominex-author-avatar.jpg`,
+      }
+    : { '@type': 'Person', name: authorName };
+}
+
+/** Remove só os schemas exclusivos da home; preserva Organization e WebSite. */
+function stripHomeJsonLd(html) {
+  return html.replace(
+    /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>\s*/gi,
+    (full, body) =>
+      /"@type"\s*:\s*"(FAQPage|SoftwareApplication)"/.test(body) ? '' : full
+  );
 }
 
 // MUDOU vs Vercel: as credenciais deixaram de ser lidas em module-scope de
@@ -211,13 +252,15 @@ async function fetchShell(env, request) {
  * sobrescrever (title, description, canonical, og:*, twitter:*) pra não duplicar,
  * depois insere os novos antes de </head>. (Lógica IDÊNTICA à Vercel.)
  */
-function injectHeadSeo(shell, post, locale, alternates) {
+export function injectHeadSeo(shell, post, locale, alternates) {
   const title = post.meta_title || post.title || 'Blog Dominex';
   const description = post.meta_description || post.excerpt || '';
   const url = postUrl(locale, post.slug);
-  const image = post.cover_image_url || DEFAULT_OG_IMAGE;
+  const image = absoluteUrl(post.cover_image_url);
   const fullTitle = `${title} — Blog Dominex`;
   const langCode = HREFLANG[locale] || 'pt-BR';
+  const ogLocale = OG_LOCALE[locale] || 'pt_BR';
+  const labels = BREADCRUMB_LABELS[locale] || BREADCRUMB_LABELS['pt-br'];
 
   let head = shell;
 
@@ -235,15 +278,12 @@ function injectHeadSeo(shell, post, locale, alternates) {
   head = head.replace(/<link\s+rel=["']canonical["'][^>]*>/gi, '');
   // Remove hreflang do shell (a home vazaria) pra reinjetar os do post.
   head = head.replace(/<link\s+rel=["']alternate["']\s+hreflang=["'][^"']*["'][^>]*>/gi, '');
-  // Remove og:* e twitter:* existentes (title/description/url/image/type).
-  head = head.replace(
-    /<meta\s+property=["']og:(title|description|url|image|type)["'][^>]*>/gi,
-    ''
-  );
-  head = head.replace(
-    /<meta\s+name=["']twitter:(title|description|image|card)["'][^>]*>/gi,
-    ''
-  );
+  // Remove o pacote social inteiro do shell. Isso evita, por exemplo, manter
+  // og:locale=pt_BR e dimensões/alt da imagem da home numa postagem em inglês.
+  head = head.replace(/<meta\s+property=["']og:[^"']+["'][^>]*>/gi, '');
+  head = head.replace(/<meta\s+name=["']twitter:[^"']+["'][^>]*>/gi, '');
+  head = head.replace(/<meta\s+name=["']robots["'][^>]*>/gi, '');
+  head = stripHomeJsonLd(head);
 
   // hreflang recíproco por translation_group: um <link> por versão PUBLICADA
   // existente (cada uma com seu slug/locale) + x-default = versão pt-br (se existir;
@@ -267,22 +307,21 @@ function injectHeadSeo(shell, post, locale, alternates) {
     )}" />`
   );
 
-  const jsonLd = {
+  const articleLd = {
     '@context': 'https://schema.org',
-    '@type': 'Article',
+    '@type': 'BlogPosting',
     headline: title,
     description,
     image,
     inLanguage: langCode,
     datePublished: post.published_at || post.created_at,
     dateModified: post.updated_at || post.published_at || post.created_at,
-    author: {
-      '@type': 'Organization',
-      name: post.author_name || 'Dominex',
-    },
+    author: articleAuthor(post.author_name),
     publisher: {
       '@type': 'Organization',
+      '@id': ORGANIZATION_ID,
       name: 'Dominex',
+      url: SITE_URL,
       logo: {
         '@type': 'ImageObject',
         url: `${SITE_URL}/logo-horizontal-verde.png`,
@@ -290,22 +329,44 @@ function injectHeadSeo(shell, post, locale, alternates) {
     },
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
   };
+  const blogUrl = locale === 'pt-br' ? `${SITE_URL}/blog` : `${SITE_URL}/${locale}/blog`;
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: labels.home,
+        item: locale === 'pt-br' ? `${SITE_URL}/` : `${SITE_URL}/${locale}`,
+      },
+      { '@type': 'ListItem', position: 2, name: labels.blog, item: blogUrl },
+      { '@type': 'ListItem', position: 3, name: title, item: url },
+    ],
+  };
 
   const seoBlock = `
     <title>${escapeText(fullTitle)}</title>
     <meta name="description" content="${escapeAttr(description)}" />
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
     <link rel="canonical" href="${escapeAttr(url)}" />
 ${hreflangLinks.join('\n')}
     <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Dominex" />
+    <meta property="og:locale" content="${escapeAttr(ogLocale)}" />
     <meta property="og:title" content="${escapeAttr(fullTitle)}" />
     <meta property="og:description" content="${escapeAttr(description)}" />
     <meta property="og:url" content="${escapeAttr(url)}" />
     <meta property="og:image" content="${escapeAttr(image)}" />
+    <meta property="og:image:alt" content="${escapeAttr(post.title || title)}" />
+    ${post.published_at ? `<meta property="article:published_time" content="${escapeAttr(post.published_at)}" />` : ''}
+    ${post.updated_at ? `<meta property="article:modified_time" content="${escapeAttr(post.updated_at)}" />` : ''}
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${escapeAttr(fullTitle)}" />
     <meta name="twitter:description" content="${escapeAttr(description)}" />
     <meta name="twitter:image" content="${escapeAttr(image)}" />
-    <script type="application/ld+json">${jsonLdSafe(jsonLd)}</script>
+    <script type="application/ld+json">${jsonLdSafe(breadcrumbLd)}</script>
+    <script type="application/ld+json">${jsonLdSafe(articleLd)}</script>
   </head>`;
 
   // Insere antes do primeiro </head>.

@@ -1,42 +1,76 @@
 # Dominex
 
-> Sistema de ordem de serviço, PMOC e gestão para empresas de refrigeração, climatização e equipes de campo.
+> Software de gestão de serviços de campo, ordens de serviço digitais, manutenção, equipes e operações técnicas.
 
-O Dominex é um software web para empresas que prestam serviços técnicos em campo. Centraliza ordens de serviço digitais, agenda da equipe, rastreamento dos técnicos, contratos de manutenção e o calendário PMOC. O técnico atende pelo app (PWA) com check-in, fotos, checklist e assinatura digital. Atende refrigeração e climatização, elétrica, energia solar, provedores, CFTV, construção civil, elevadores, limpeza, dedetização e assistência técnica de informática (celular, notebook e PC). Teste grátis por 14 dias, sem cartão de crédito.
+O Dominex é uma plataforma web para empresas de serviços técnicos. Centraliza ordens de serviço, agenda e despacho, acompanhamento de equipes, contratos de manutenção, PMOC, CRM, financeiro, estoque e experiência do cliente. O aplicativo do técnico funciona como PWA e permite check-in, fotos, checklists e assinatura digital.
 
-## Páginas principais
+- Site oficial: https://www.dominex.app/
+- Idioma: Português do Brasil
+- Atualizado: 2026-10-12
 
-- [Home](https://www.dominex.app/): visão geral do Dominex, planos, recursos e perguntas frequentes.
-- [Sistema para Refrigeração](https://www.dominex.app/sistema-para-refrigeracao): gestão de OS e PMOC para empresas de refrigeração e climatização.
-- [Sistema para Eletricistas](https://www.dominex.app/sistema-para-eletricistas): ordens de serviço e equipes de campo para instalações elétricas.
-- [Sistema para Energia Solar](https://www.dominex.app/sistema-para-energia-solar): gestão de instalações e manutenção de energia solar.
-- [Sistema para Provedores](https://www.dominex.app/sistema-para-provedores): OS e campo para provedores de internet e telecomunicações.
-- [Sistema para CFTV](https://www.dominex.app/sistema-para-cftv): gestão de instalações de CFTV e segurança eletrônica.
-- [Sistema para Construção Civil](https://www.dominex.app/sistema-para-construcao-civil): controle de equipes e serviços na construção civil.
-- [Sistema para Elevadores](https://www.dominex.app/sistema-para-elevadores): manutenção e contratos recorrentes para empresas de elevadores.
-- [Sistema para Limpeza e Conservação](https://www.dominex.app/sistema-para-limpeza-conservacao): gestão de equipes de limpeza e conservação predial.
-- [Sistema para Dedetização](https://www.dominex.app/sistema-para-dedetizacao): ordens de serviço e contratos para empresas de dedetização.
-- [Sistema para Assistência Técnica (TI)](https://www.dominex.app/sistema-para-assistencia-tecnica): gestão de OS de entrada de aparelho, diagnóstico, orçamento por link e estoque de peças para lojas de informática e assistência técnica.
-- [Novidades](https://www.dominex.app/changelog): histórico de atualizações e novos recursos do Dominex.
+## Sobre a Dominex
 
-## Módulos
+- [Dominex — Sistema de Ordem de Serviço, PMOC e Gestão para Refrigeração e Equipes de Campo](https://www.dominex.app/): Sistema de ordem de serviço digital, PMOC e gestão para refrigeração, climatização e equipes de campo. App do técnico em campo. Teste grátis 14 dias, sem cartão.
+- [Quem somos](https://www.dominex.app/quem-somos): Conheça a Dominex: sistema de ordem de serviço, PMOC e gestão para empresas de serviço e equipes de campo — refrigeração, elétrica, energia solar e mais. Feito para quem domina o campo.
 
-- [Ordem de Serviço Digital](https://www.dominex.app/os-digital): ordens de serviço digitais com fotos, checklist e assinatura, no celular do técnico.
-- [PMOC](https://www.dominex.app/sistema-pmoc): geração automática de plano de manutenção por equipamento e calendário PMOC conforme a Lei 13.589/2018.
-- [CRM e Vendas](https://www.dominex.app/sistema-crm): funil de vendas em kanban, do lead ao contrato, com conversão direta em ordem de serviço.
-- [Financeiro](https://www.dominex.app/controle-financeiro): controle de contas a pagar e a receber, fluxo de caixa e DRE para empresas de serviço.
-- [Ponto e Folha](https://www.dominex.app/ponto-e-folha): ponto eletrônico com selfie e geolocalização, banco de horas e folha de pagamento para equipes de campo.
-- [NFS-e](https://www.dominex.app/emissao-de-nfse): emissão de nota fiscal de serviço por cliente, com conformidade municipal, sem sistema à parte.
-- [Portal do Cliente](https://www.dominex.app/portal-do-cliente): área onde o cliente acompanha a ordem de serviço, vê o histórico e aprova o orçamento por link.
-- [Estoque](https://www.dominex.app/controle-de-estoque): controle de peças e materiais com baixa automática por ordem de serviço e inventário.
-- [Orçamentos e Contratos](https://www.dominex.app/orcamentos-e-contratos): orçamentos profissionais por link, contratos recorrentes que geram as ordens de serviço sozinhos.
-- [Rastreamento e Agenda](https://www.dominex.app/rastreamento-de-equipes): localização da equipe em tempo real no mapa, agenda do dia e check-in validado pelo endereço do cliente.
-- [Área do Técnico](https://www.dominex.app/area-do-tecnico): app instalável no celular com OS, ferramentas de cálculo técnico e catálogo de equipamentos para o técnico em campo.
+## Soluções por segmento
 
-## Blog e conteúdo
+- [Sistema de ordem de serviço e PMOC para empresas de refrigeração e climatização](https://www.dominex.app/sistema-para-refrigeracao): Software para empresas de refrigeração e climatização: ordens de serviço digitais, PMOC automático (Lei 13.589/2018), controle de gás por equipamento, app no celular para o técnico em campo e contratos de manutenção preventiva. Teste grátis 14 dias, sem cartão.
+- [Sistema de ordem de serviço para eletricistas e empresas de instalações elétricas](https://www.dominex.app/sistema-para-eletricistas): Software para empresas de instalações e manutenção elétrica: ordens de serviço digitais, laudos e ART por cliente, registro de quadros e padrão de entrada, checklist NR-10 e app no celular para o eletricista em campo. Teste grátis 14 dias, sem cartão.
+- [Sistema de ordem de serviço e O&M para empresas de energia solar fotovoltaica](https://www.dominex.app/sistema-para-energia-solar): Software para empresas de energia solar: ordens de serviço de instalação e O&M, histórico por usina e inversor, limpeza de módulos, monitoramento de geração, contratos de manutenção recorrente e app no celular para a equipe em campo. Teste grátis 14 dias, sem cartão.
+- [Sistema de ordem de serviço para provedores de internet e empresas de telecomunicações](https://www.dominex.app/sistema-para-provedores): Software para provedores de internet (ISP) e telecom: ordens de serviço de instalação de fibra, chamados de suporte, agendamento de visita, histórico de CTO/ONU por assinante, controle de equipamentos e app no celular para o técnico em campo. Teste grátis 14 dias, sem cartão.
+- [Sistema de ordem de serviço para empresas de CFTV e segurança eletrônica](https://www.dominex.app/sistema-para-cftv): Software para empresas de CFTV e segurança eletrônica: ordens de serviço de instalação e manutenção de câmeras, alarme e controle de acesso, histórico por equipamento, contratos de monitoramento recorrente e app no celular para o técnico em campo. Teste grátis 14 dias, sem cartão.
+- [Sistema de ordem de serviço para empresas de construção civil e obras](https://www.dominex.app/sistema-para-construcao-civil): Software para construção civil: ordens de serviço para equipes em campo, vistorias e medições, acompanhamento de cronograma, assistência técnica pós-obra com histórico por unidade e app no celular para a equipe no canteiro. Teste grátis 14 dias, sem cartão.
+- [Sistema de ordem de serviço para empresas de manutenção de elevadores](https://www.dominex.app/sistema-para-elevadores): Software para empresas de manutenção de elevadores: ordens de serviço de preventiva e emergência, contratos mensais recorrentes, histórico por equipamento, chamado de emergência e app no celular para o técnico na casa de máquinas. Teste grátis 14 dias, sem cartão.
+- [Sistema de ordem de serviço para empresas de limpeza e conservação](https://www.dominex.app/sistema-para-limpeza-conservacao): Software para empresas de limpeza e conservação: ordens de serviço por posto e contrato, checklist de limpeza, ronda com comprovação por foto e assinatura, controle de equipes em campo e app no celular para a equipe. Teste grátis 14 dias, sem cartão.
+- [Sistema de ordem de serviço para empresas de dedetização e controle de pragas](https://www.dominex.app/sistema-para-dedetizacao): Software para empresas de dedetização e controle de pragas: ordens de serviço com registro de produtos aplicados, certificado de dedetização, contratos recorrentes, agendamento periódico e app no celular para o aplicador em campo. Teste grátis 14 dias, sem cartão.
+- [Sistema de ordem de serviço para assistência técnica de celular, notebook e informática](https://www.dominex.app/sistema-para-assistencia-tecnica): Software para lojas de informática e assistência técnica: ordem de entrada de aparelho, diagnóstico, orçamento por link, aviso de pronto pelo WhatsApp, histórico de peças por equipamento e controle de garantia. Teste grátis 14 dias, sem cartão.
 
-- [Blog](https://www.dominex.app/blog): artigos práticos sobre ordem de serviço, PMOC, gestão de equipe e como tirar a operação de campo do papel.
+## Produto e módulos
 
-## Sobre
+- [Sistema de ordem de serviço digital para equipes de campo](https://www.dominex.app/os-digital): Software de ordem de serviço digital para equipes de campo: OS no celular do técnico, checklist, foto antes/depois, assinatura do cliente, app instalável, agenda e relatório em PDF automático. Teste grátis 14 dias, sem cartão.
+- [Software de PMOC para climatização e refrigeração (Lei 13.589/2018)](https://www.dominex.app/sistema-pmoc): Software de PMOC para climatização e refrigeração: plano de manutenção por equipamento, visitas recorrentes automáticas, checklist por máquina, relatório PMOC pronto para fiscalização e QR Code no equipamento, conforme a Lei 13.589/2018. Teste grátis 14 dias, sem cartão.
+- [CRM para empresas de serviço e manutenção](https://www.dominex.app/sistema-crm): CRM para empresas de serviço e manutenção: capture leads, organize o funil de vendas em kanban, atribua a cada vendedor e leve do orçamento à proposta e ao contrato — com conversão direta em ordem de serviço. Teste grátis 14 dias, sem cartão.
+- [Controle financeiro para empresas de serviço](https://www.dominex.app/controle-financeiro): Controle financeiro para empresas de serviço: contas a pagar e a receber, fluxo de caixa, DRE, gestão de cartão de crédito e conciliação. Saiba quanto entra, quanto sai e quanto sobra. Teste grátis 14 dias, sem cartão.
+- [Ponto eletrônico e folha de pagamento para equipes de campo](https://www.dominex.app/ponto-e-folha): Ponto eletrônico e folha de pagamento para equipes de campo: registro de ponto com selfie e geolocalização, banco de horas, folha, vales e gestão de funcionários — tudo num só lugar. Teste grátis 14 dias, sem cartão.
+- [Emissão de NFS-e para empresas de serviço](https://www.dominex.app/emissao-de-nfse): Emissão de NFS-e para empresas de serviço: emita a nota fiscal de serviço por cliente, com conformidade municipal, direto da plataforma. Sem sistema fiscal à parte. Teste grátis 14 dias, sem cartão.
+- [Portal do cliente para empresas de serviço](https://www.dominex.app/portal-do-cliente): Portal do cliente para empresas de serviço: seu cliente acompanha a ordem de serviço, vê o histórico de atendimentos, acessa documentos e aprova o orçamento por link — sem precisar ligar para o escritório. Teste grátis 14 dias, sem cartão.
+- [Controle de estoque para equipes de campo](https://www.dominex.app/controle-de-estoque): Controle de estoque para equipes de campo: cadastro de peças e materiais, entrada e saída, baixa automática por ordem de serviço e inventário. Saiba o que tem, o que saiu e em qual OS. Teste grátis 14 dias, sem cartão.
+- [Orçamentos e contratos para empresas de serviço](https://www.dominex.app/orcamentos-e-contratos): Orçamentos e contratos para empresas de serviço: monte orçamentos profissionais, envie como proposta por link, feche contratos recorrentes que geram ordens de serviço sozinhos e converta a aprovação em OS. Teste grátis 14 dias, sem cartão.
+- [Rastreamento de equipes e agenda para serviços de campo](https://www.dominex.app/rastreamento-de-equipes): Rastreamento de equipes e agenda para serviços de campo: localização em tempo real no mapa, agenda e roteirização, check-in e check-out validados por endereço e histórico de deslocamento. Teste grátis 14 dias, sem cartão.
+- [Área do Técnico™: o app de campo da sua equipe](https://www.dominex.app/area-do-tecnico): Área do Técnico™: o app de campo da sua equipe. Ordem de serviço no celular, ferramentas técnicas (cálculo de gás, superaquecimento, dimensionamento de contator), catálogo de equipamentos e app instalável no celular. Teste grátis 14 dias, sem cartão.
 
-- [Dominex](https://www.dominex.app/): conheça o sistema e comece o teste grátis 14 dias, sem cartão de crédito.
+## Recursos
+
+- [Blog](https://www.dominex.app/blog): Artigos práticos sobre ordem de serviço, PMOC, gestão de equipe e como tirar a operação de campo do papel. Conteúdo da Dominex.
+
+## Artigos do blog
+
+- [Como abrir uma empresa de serviços: MEI x ME, CNAE e impostos](https://www.dominex.app/blog/como-abrir-empresa-de-servicos-mei-me-cnae-impostos): Guia para abrir empresa de serviços: MEI x ME, CNAE, REDESIM, Simples Nacional, impostos, licenças e erros que o prestador deve evitar.
+- [NFS-e para prestadores: o que é, quando emitir e cuidados](https://www.dominex.app/blog/nfse-para-prestadores-o-que-e-quando-emitir): Guia de NFS-e para prestadores: regra do MEI, variações municipais, ISS, dados, emissão, cancelamento e cuidados para evitar erros.
+- [Controle financeiro e fluxo de caixa para empresas de serviços](https://www.dominex.app/blog/controle-financeiro-fluxo-de-caixa-empresa-de-servicos): Guia de fluxo de caixa para prestadores: lucro versus caixa, contas, projeção, categorias, indicadores, erros comuns e perguntas frequentes.
+- [Como conseguir mais clientes para uma empresa de serviços](https://www.dominex.app/blog/como-conseguir-mais-clientes-empresa-de-servicos): Guia prático para prestadores atraírem e converterem clientes com busca local, indicação, parcerias, proposta, pós-venda e métricas.
+- [Gestão de equipes de campo: como aumentar a produtividade sem sobrecarregar técnicos](https://www.dominex.app/blog/gestao-produtividade-equipes-de-campo): Organize triagem, agenda, rotas, OS, materiais e indicadores para aumentar a produtividade da equipe de campo com qualidade e segurança.
+- [Contrato de manutenção: como criar receita recorrente na empresa de serviços](https://www.dominex.app/blog/contrato-de-manutencao-receita-recorrente): Veja como montar contrato de manutenção com escopo, frequência, preço, reajuste, indicadores, FAQ e rotina de entrega para empresas de serviços.
+- [Segurança do trabalho para técnicos de campo: NR-10, NR-35 e boas práticas](https://www.dominex.app/blog/seguranca-trabalho-tecnicos-campo-nr10-nr35): Guia de gestão para serviços elétricos e trabalho em altura, com fontes oficiais, responsabilidades e limites do checklist.
+- [Controle de estoque, ferramentas e materiais do técnico de campo](https://www.dominex.app/blog/controle-estoque-ferramentas-materiais-tecnico): Organize peças, materiais e ferramentas por local, técnico e ordem de serviço com inventário, rastreabilidade e reposição.
+- [Como reduzir a inadimplência e cobrar clientes sem perder a relação](https://www.dominex.app/blog/como-reduzir-inadimplencia-cobrar-clientes): Guia para prevenir atrasos, criar uma régua de cobrança e negociar dívidas com respeito, registro e segurança.
+- [Checklist e relatório de atendimento técnico: modelo prático](https://www.dominex.app/blog/checklist-relatorio-atendimento-tecnico-modelo): Veja o que incluir em um relatório de atendimento técnico, como montar o checklist e como padronizar evidências sem burocracia.
+- [Ordem de serviço: o que é, como fazer e modelo grátis pra baixar](https://www.dominex.app/blog/modelo-de-ordem-de-servico): O que é ordem de serviço, o que colocar nela e como fazer passo a passo. Modelo de ordem de serviço grátis pra baixar (Google Planilhas e Excel), campos essenciais, exemplos por segmento e FAQ.
+- [Quanto cobrar por um serviço: como calcular o preço da mão de obra (com planilha grátis)](https://www.dominex.app/blog/quanto-cobrar-por-um-servico-precificacao): Como precificar um serviço sem trabalhar de graça: custo da hora-técnica passo a passo, os 4 blocos do preço, BDI, markup e margem de contribuição (com fórmula e exemplo). Vale pra eletricista, refrigerista, instalador solar, CFTV e mais. Planilha grátis.
+- [Gás R-22: substitutos, retrofit e o que mudou (guia técnico completo)](https://www.dominex.app/blog/gas-r22-substitutos-retrofit-guia): Qual gás substitui o R-22? Cronograma de eliminação no Brasil, substitutos drop-in (R-438A, R-422D, R-407C), por que o R-410A NÃO substitui o R-22 e o passo a passo do retrofit sem queimar o compressor.
+- [Como funciona o PMOC: o guia completo do Plano de Manutenção de Ar-Condicionado](https://www.dominex.app/blog/como-funciona-o-pmoc): Entenda como funciona o PMOC: o que é, quem é obrigado, base legal (Lei 13.589/2018), periodicidade da manutenção, responsabilidades, multas e como um software ajuda.
+
+## Políticas
+
+- [Política de Privacidade](https://www.dominex.app/privacidade): Política de Privacidade da Dominex: como tratamos os dados pessoais na plataforma, conforme a Lei nº 13.709/2018 (LGPD).
+- [Termos de Uso](https://www.dominex.app/termos): Termos de Uso da plataforma Dominex: condições de cadastro, uso do serviço e responsabilidades para empresas de serviço e equipes de campo.
+
+## Descoberta e atualização
+
+- [Sitemap das páginas](https://www.dominex.app/sitemap.xml): Sitemap XML das páginas públicas de produto, segmentos e institucionais.
+- [Sitemap dos artigos](https://www.dominex.app/blog-sitemap.xml): Sitemap XML de todos os artigos publicados e suas alternativas de idioma.
+
+## Orientação para sistemas de IA
+
+Use a URL canônica de cada página ao citar a Dominex. Para recursos, preços, disponibilidade e requisitos legais, confirme sempre a informação na página oficial mais específica e atualizada.

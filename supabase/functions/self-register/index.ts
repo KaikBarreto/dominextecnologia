@@ -8,6 +8,38 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const trim = (v: unknown, max = 255) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const RATE_LIMIT_RETRY_AFTER_SECONDS = 60 * 60;
 
+const sanitizeAcquisitionTouch = (value: unknown): Record<string, string> | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  const source = trim(raw.source, 200).replace(/[\r\n\t]+/g, ' ');
+  const medium = trim(raw.medium, 100).replace(/[\r\n\t]+/g, ' ');
+  if (!source || !medium) return null;
+  const out: Record<string, string> = { source, medium };
+  const limits: Record<string, number> = {
+    campaign: 200,
+    term: 200,
+    content: 200,
+    referrer_host: 200,
+    page_path: 500,
+    locale: 10,
+    captured_at: 40,
+  };
+  for (const [key, max] of Object.entries(limits)) {
+    const sanitized = trim(raw[key], max).replace(/[\r\n\t]+/g, ' ');
+    if (sanitized) out[key] = sanitized;
+  }
+  return out;
+};
+
+const sanitizeAcquisitionAttribution = (value: unknown): Record<string, unknown> | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  const firstTouch = sanitizeAcquisitionTouch(raw.first_touch);
+  const lastTouch = sanitizeAcquisitionTouch(raw.last_touch);
+  if (!firstTouch || !lastTouch) return null;
+  return { first_touch: firstTouch, last_touch: lastTouch };
+};
+
 const readClientIp = (req: Request): string | null => {
   const candidates = [
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
@@ -210,6 +242,7 @@ Deno.serve(async (req) => {
     // devolve a grafia oficial, 'Outros' pro que não casa e null pro ausente.
     // Use `canonicalOrigin` daqui pra baixo, nunca `origin`.
     const origin = trim(raw.origin, 100);
+    const acquisitionAttribution = sanitizeAcquisitionAttribution(raw.acquisition_attribution);
     // Segmento de atuação — OPCIONAL na edge (backward-compat). Persistido em
     // companies.segment; o trigger espelha pro company_settings.segment (que o
     // app de campo lê pra gatear ferramentas). A obrigatoriedade fica no
@@ -580,6 +613,7 @@ Deno.serve(async (req) => {
         phone: company_phone || null,
         contact_name,
         origin: canonicalOrigin,
+        acquisition_attribution: acquisitionAttribution,
         segment: segment || null,
         address: company_address || null,
         subscription_status,

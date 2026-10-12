@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { LOCALES, type LocaleCode } from "@/lib/i18n/locales";
+import { notifyIndexNow, publicBlogPostUrl } from "@/lib/indexNow";
 
 function slugify(text: string) {
   return text
@@ -259,6 +260,15 @@ export default function AdminBlogEditor() {
     onSuccess: (data, status) => {
       queryClient.invalidateQueries({ queryKey: ["blog-posts-admin"] });
       toast.success(status === "published" ? "Artigo publicado!" : "Rascunho salvo!");
+      if (status === "published") {
+        void notifyIndexNow([
+          publicBlogPostUrl((data.locale as LocaleCode) || locale, data.slug),
+        ]).then((indexingAccepted) => {
+          if (!indexingAccepted) {
+            toast.info("Artigo publicado. A indexação automática será tentada novamente no próximo envio.");
+          }
+        });
+      }
       clearDraft();
       if (isNew) navigate(`/admin/blog/${data.id}`, { replace: true });
     },

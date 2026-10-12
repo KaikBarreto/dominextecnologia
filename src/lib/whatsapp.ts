@@ -23,6 +23,7 @@ import { localeFromPath, stripLocale } from "@/lib/i18n/paths";
 import { resolveSlug } from "@/lib/i18n/slugRegistry";
 
 const SESSION_KEY = "dominex_utm_params";
+const ATTRIBUTION_KEY = "dominex_acquisition_attribution";
 
 // utm_source cru → nome amigável exibido na mensagem.
 const SOURCE_LABELS: Record<string, string> = {
@@ -59,6 +60,77 @@ const UTM_KEYS = [
 
 type UtmParams = Partial<Record<(typeof UTM_KEYS)[number], string>>;
 
+export interface AcquisitionTouch {
+  source: string;
+  medium: string;
+  campaign?: string;
+  term?: string;
+  content?: string;
+  referrer_host?: string;
+  page_path: string;
+  locale: LocaleCode;
+  captured_at: string;
+}
+
+export interface AcquisitionAttribution {
+  first_touch: AcquisitionTouch;
+  last_touch: AcquisitionTouch;
+}
+
+function safeValue(value: string | null, max = 200): string | undefined {
+  const normalized = value?.trim().replace(/[\r\n\t]+/g, ' ').slice(0, max);
+  return normalized || undefined;
+}
+
+function externalReferrerHost(): string | null {
+  try {
+    if (typeof document === 'undefined' || !document.referrer) return null;
+    const referrer = new URL(document.referrer);
+    if (typeof window !== 'undefined' && referrer.origin === window.location.origin) return null;
+    return referrer.hostname.toLowerCase().replace(/^www\./, '').slice(0, 200) || null;
+  } catch {
+    return null;
+  }
+}
+
+function sourceFromReferrer(host: string | null): { source: string; medium: string } | null {
+  if (!host) return null;
+  if (/(^|\.)chatgpt\.com$|(^|\.)openai\.com$/.test(host)) return { source: 'chatgpt.com', medium: 'ai_referral' };
+  if (/(^|\.)perplexity\.ai$/.test(host)) return { source: 'perplexity.ai', medium: 'ai_referral' };
+  if (/(^|\.)gemini\.google\.com$/.test(host)) return { source: 'gemini', medium: 'ai_referral' };
+  if (/(^|\.)copilot\.microsoft\.com$/.test(host)) return { source: 'copilot', medium: 'ai_referral' };
+  if (/(^|\.)claude\.ai$/.test(host)) return { source: 'claude', medium: 'ai_referral' };
+  if (/(^|\.)google\.[a-z.]+$/.test(host)) return { source: 'google', medium: 'organic' };
+  if (/(^|\.)bing\.com$/.test(host)) return { source: 'bing', medium: 'organic' };
+  if (/(^|\.)duckduckgo\.com$/.test(host)) return { source: 'duckduckgo', medium: 'organic' };
+  return { source: host, medium: 'referral' };
+}
+
+function readAttribution(): AcquisitionAttribution | null {
+  try {
+    const raw = sessionStorage.getItem(ATTRIBUTION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AcquisitionAttribution;
+    return parsed?.first_touch && parsed?.last_touch ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function readStoredUtm(): UtmParams {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    return raw ? (JSON.parse(raw) as UtmParams) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Atribuição first/last touch sanitizada para persistência no cadastro. */
+export function getAcquisitionAttribution(): AcquisitionAttribution | null {
+  return readAttribution();
+}
+
 /**
  * Captura os utm_* da URL atual e persiste em sessionStorage.
  * Idempotente: só sobrescreve se a URL atual realmente trouxer utm_source
@@ -70,14 +142,48 @@ export function captureUtmParams(search?: string): void {
     const params = new URLSearchParams(
       search ?? (typeof window !== "undefined" ? window.location.search : "")
     );
-    if (!params.get("utm_source")) return; // nada novo pra capturar
-
-    const captured: UtmParams = {};
+    const fromUrl: UtmParams = {};
     UTM_KEYS.forEach((key) => {
       const val = params.get(key);
-      if (val) captured[key] = val;
+      if (val) fromUrl[key] = val;
     });
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(captured));
+    const referrerHost = externalReferrerHost();
+    const inferred = sourceFromReferrer(referrerHost);
+    const explicitSource = safeValue(params.get('utm_source'));
+    const stored = readStoredUtm();
+    let captured = stored;
+
+    // Mantém compatibilidade com a resolução de origem existente e também
+    // reconhece referrals de IA que não adicionam UTM.
+    if (explicitSource) {
+      captured = fromUrl;
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(captured));
+    } else if (!stored.utm_source && inferred) {
+      captured = { ...fromUrl, utm_source: inferred.source };
+      if (!captured.utm_medium) captured.utm_medium = inferred.medium;
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(captured));
+    }
+
+    const existing = readAttribution();
+    const source = explicitSource || captured.utm_source || inferred?.source || (existing ? null : 'direct');
+    if (!source) return;
+
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : '/';
+    const touch: AcquisitionTouch = {
+      source,
+      medium: safeValue(captured.utm_medium || null) || inferred?.medium || (source === 'direct' ? 'none' : 'referral'),
+      ...(safeValue(captured.utm_campaign || null) ? { campaign: safeValue(captured.utm_campaign || null) } : {}),
+      ...(safeValue(captured.utm_term || null) ? { term: safeValue(captured.utm_term || null) } : {}),
+      ...(safeValue(captured.utm_content || null) ? { content: safeValue(captured.utm_content || null) } : {}),
+      ...(referrerHost ? { referrer_host: referrerHost } : {}),
+      page_path: pathname.slice(0, 500),
+      locale: localeFromPath(pathname),
+      captured_at: new Date().toISOString(),
+    };
+    sessionStorage.setItem(
+      ATTRIBUTION_KEY,
+      JSON.stringify({ first_touch: existing?.first_touch || touch, last_touch: touch }),
+    );
   } catch {
     // sessionStorage indisponível (modo privado/SSR) — ignora silenciosamente.
   }
