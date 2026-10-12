@@ -29,6 +29,8 @@
 // leitura, filtrando status=eq.published. Nenhum dado sensível.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { stripDuplicateLeadingTitle } from '../functions/_lib/blog-content.js';
+
 const SITE_URL = 'https://www.dominex.app';
 const DEFAULT_OG_IMAGE = `${SITE_URL}/images/og-social.jpg`;
 const ORGANIZATION_ID = `${SITE_URL}/#organization`;
@@ -407,6 +409,7 @@ function injectBody(shell, post, related, locale) {
   if (post.published_at) meta.push(escapeText(String(post.published_at).slice(0, 10)));
 
   const relatedHtml = renderRelatedHtml(related, locale);
+  const content = stripDuplicateLeadingTitle(post.content || '', post.title || '');
 
   // <article> com o conteúdo + "Leia também". O React substitui o innerHTML do
   // #root no mount; os crawlers sem JS leem este markup (incluindo os links
@@ -416,7 +419,7 @@ function injectBody(shell, post, related, locale) {
       ${post.category ? `<span>${escapeText(post.category)}</span>` : ''}
       <h1>${escapeText(post.title || '')}</h1>
       ${meta.length ? `<p>${meta.join(' · ')}</p>` : ''}
-      <div>${post.content || ''}</div>
+      <div>${content}</div>
       ${relatedHtml}
     </article>`;
 

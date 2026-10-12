@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { injectHeadSeo as injectCloudflareHead } from '../../functions/_lib/blog-render.js';
 import { injectHeadSeo as injectVercelHead } from '../../api/blog-post.js';
+import { stripDuplicateLeadingTitle } from '../../functions/_lib/blog-content.js';
 
 const shell = `<!doctype html>
 <html lang="pt-BR"><head>
@@ -58,5 +59,10 @@ describe('SEO do render dinâmico do blog', () => {
   it('marca um autor nominal como Person', () => {
     const html = injectCloudflareHead(shell, { ...post, author_name: 'Ana Silva' }, 'en', alternates);
     expect(html).toContain('"author":{"@type":"Person","name":"Ana Silva"}');
+  });
+
+  it('mantém somente o H1 do layout no HTML dinâmico para crawlers', () => {
+    const content = '<h1>Field Service Guide</h1><p>Direct answer.</p>';
+    expect(stripDuplicateLeadingTitle(content, post.title)).toBe('<p>Direct answer.</p>');
   });
 });
