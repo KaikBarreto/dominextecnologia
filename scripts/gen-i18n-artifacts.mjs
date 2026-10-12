@@ -159,7 +159,7 @@ function absUrlFor(siteUrl, basePath, locale, urlByBaseLocale) {
   if (fromTasks) return fromTasks;
   const base = basePath === '/' ? '' : basePath;
   if (locale === 'pt-br') return `${siteUrl}${base || '/'}`;
-  return `${siteUrl}/${locale}${base}`;
+  return base ? `${siteUrl}/${locale}${base}` : `${siteUrl}/${locale}/`;
 }
 
 /**

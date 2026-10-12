@@ -33,10 +33,13 @@ export function stripLocale(pathname: string): string {
 /**
  * Aplica o prefixo do locale a um path (que deve estar SEM prefixo, base pt-br).
  * localizePath('/blog','es') → '/es/blog'; localizePath('/blog','pt-br') → '/blog';
- * localizePath('/','fr') → '/fr'. Preserva query/hash se vierem no path.
+ * localizePath('/','fr') → '/fr/'. A barra final nas homes internacionais
+ * espelha a URL efetivamente servida pelo Cloudflare Pages (`<locale>/index.html`)
+ * e evita que canonical, hreflang, sitemap e links internos apontem para um 308.
+ * Preserva query/hash se vierem no path.
  */
 export function localizePath(path: string, locale: LocaleCode): string {
   const base = stripLocale(path);
   if (locale === DEFAULT_LOCALE) return base;
-  return base === '/' ? `/${locale}` : `/${locale}${base}`;
+  return base === '/' ? `/${locale}/` : `/${locale}${base}`;
 }
