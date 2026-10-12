@@ -320,6 +320,12 @@ ${hreflangLinks.join('\n')}
 function renderRelatedHtml(related, locale) {
   if (!Array.isArray(related) || related.length === 0) return '';
   const prefix = locale === 'pt-br' ? '/blog' : `/${locale}/blog`;
+  const heading = {
+    'pt-br': 'Leia também',
+    en: 'Related articles',
+    es: 'Artículos relacionados',
+    fr: 'Articles associés',
+  }[locale] || 'Leia também';
   const cards = related
     .map((p) => {
       const cover = p.cover_image_url
@@ -338,7 +344,7 @@ function renderRelatedHtml(related, locale) {
     })
     .join('\n        ');
   return `<section>
-        <h2>Leia também</h2>
+        <h2>${heading}</h2>
         ${cards}
       </section>`;
 }
@@ -424,8 +430,9 @@ export async function renderBlogPost({ env, request, slug, rawLocale }) {
 
   if (!post) {
     // Post inexistente NESSE idioma/erro → shell puro; a SPA mostra o 404 amigável
-    // de /blog/:slug (NUNCA cai no pt-br). 200 pra não travar a hidratação do SPA.
-    return new Response(shell, { status: 200, headers: htmlHeaders });
+    // de /blog/:slug (NUNCA cai no pt-br). O status 404 evita soft 404 nos crawlers
+    // sem impedir que o React hidrate a página amigável no navegador.
+    return new Response(shell, { status: 404, headers: htmlHeaders });
   }
 
   // Versões traduzidas (translation_group) pro hreflang recíproco.
