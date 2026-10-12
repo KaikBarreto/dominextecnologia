@@ -53,7 +53,7 @@ const fr: SegmentContentMap = {
       { value: '50k+', label: "ordres de travail par mois sur la plateforme" },
       { value: 'Auto', label: 'plans de maintenance préventive générés par équipement' },
       { value: '100%', label: 'sur le téléphone du technicien sur le terrain' },
-      { value: '4,9/5', label: 'satisfaction des entreprises qui l\'utilisent' },
+      { value: "5,0/5", label: "sur Google, avec 26 avis" },
     ],
     pains: [
       {
@@ -232,7 +232,7 @@ const fr: SegmentContentMap = {
       { value: '50k+', label: 'ordres de travail par mois sur la plateforme' },
       { value: 'Sécurité', label: 'checklist à chaque visite' },
       { value: '100%', label: "sur le téléphone de l'électricien sur le terrain" },
-      { value: '4,9/5', label: 'satisfaction des entreprises qui l\'utilisent' },
+      { value: "5,0/5", label: "sur Google, avec 26 avis" },
     ],
     pains: [
       {
@@ -420,7 +420,7 @@ const fr: SegmentContentMap = {
       { value: '50k+', label: 'ordres de travail par mois sur la plateforme' },
       { value: 'O&M', label: 'maintenance des centrales avec historique par équipement' },
       { value: '100%', label: "sur le téléphone de l'équipe sur le terrain" },
-      { value: '4,9/5', label: 'satisfaction des entreprises qui l\'utilisent' },
+      { value: "5,0/5", label: "sur Google, avec 26 avis" },
     ],
     pains: [
       {
@@ -599,7 +599,7 @@ const fr: SegmentContentMap = {
       { value: '50k+', label: 'ordres de travail par mois sur la plateforme' },
       { value: 'Fibre', label: 'installation et support avec historique par abonné' },
       { value: '100%', label: 'sur le téléphone du technicien sur le terrain' },
-      { value: '4,9/5', label: 'satisfaction des entreprises qui l\'utilisent' },
+      { value: "5,0/5", label: "sur Google, avec 26 avis" },
     ],
     pains: [
       {
@@ -778,7 +778,7 @@ const fr: SegmentContentMap = {
       { value: '50k+', label: 'ordres de travail par mois sur la plateforme' },
       { value: 'Vidéo', label: 'installation et maintenance avec historique par équipement' },
       { value: '100%', label: 'sur le téléphone du technicien sur le terrain' },
-      { value: '4,9/5', label: 'satisfaction des entreprises qui l\'utilisent' },
+      { value: "5,0/5", label: "sur Google, avec 26 avis" },
     ],
     pains: [
       {
@@ -957,7 +957,7 @@ const fr: SegmentContentMap = {
       { value: '50k+', label: 'ordres de travail par mois sur la plateforme' },
       { value: 'Chantier', label: 'équipes terrain et inspections avec preuve photo' },
       { value: '100%', label: "sur le téléphone de l'équipe sur le chantier" },
-      { value: '4,9/5', label: 'satisfaction des entreprises qui l\'utilisent' },
+      { value: "5,0/5", label: "sur Google, avec 26 avis" },
     ],
     pains: [
       {
@@ -1136,7 +1136,7 @@ const fr: SegmentContentMap = {
       { value: '50k+', label: 'ordres de travail par mois sur la plateforme' },
       { value: 'Mensuel', label: 'contrats préventifs générant les ordres tout seuls' },
       { value: '100%', label: 'sur le téléphone du technicien en salle des machines' },
-      { value: '4,9/5', label: 'satisfaction des entreprises qui l\'utilisent' },
+      { value: "5,0/5", label: "sur Google, avec 26 avis" },
     ],
     pains: [
       {
@@ -1315,7 +1315,7 @@ const fr: SegmentContentMap = {
       { value: '50k+', label: 'ordres de travail par mois sur la plateforme' },
       { value: 'Site', label: 'prestation par contrat avec preuve photo' },
       { value: '100%', label: "sur le téléphone de l'équipe sur le terrain" },
-      { value: '4,9/5', label: 'satisfaction des entreprises qui l\'utilisent' },
+      { value: "5,0/5", label: "sur Google, avec 26 avis" },
     ],
     pains: [
       {
@@ -1494,7 +1494,7 @@ const fr: SegmentContentMap = {
       { value: '50k+', label: 'ordres de travail par mois sur la plateforme' },
       { value: 'Attestation', label: 'émise à chaque visite' },
       { value: '100%', label: "sur le téléphone de l'applicateur sur le terrain" },
-      { value: '4,9/5', label: 'satisfaction des entreprises qui l\'utilisent' },
+      { value: "5,0/5", label: "sur Google, avec 26 avis" },
     ],
     pains: [
       {
@@ -1673,7 +1673,7 @@ const fr: SegmentContentMap = {
       { value: '50k+', label: `bons d'intervention par mois sur la plateforme` },
       { value: 'Devis', label: `approuvé par lien sans que le client vienne à l'atelier` },
       { value: '100%', label: `sur le téléphone du technicien au poste de travail` },
-      { value: '4,9/5', label: `satisfaction des ateliers qui utilisent la solution` },
+      { value: "5,0/5", label: "sur Google, avec 26 avis" },
     ],
     pains: [
       {

@@ -807,6 +807,11 @@ export const enOverrides: MessagesOverride = {
     heroHighlight: 'run the field',
     subtitle: 'Work orders, preventive maintenance, team management and how to take your operation off paper.',
     searchPlaceholder: 'Search articles...',
+    metaTitle: 'Blog — Dominex | Field Service Management',
+    metaDescription:
+      'Practical articles on work orders, maintenance plans, team management and how to bring your field operation under control. Content by Dominex.',
+    allCategories: 'All',
+    categoriesAriaLabel: 'Blog categories',
 
     resultsSingular: (query: string) => `result for “${query}”`,
     resultsPlural: (query: string) => `results for “${query}”`,
@@ -840,6 +845,12 @@ export const enOverrides: MessagesOverride = {
     minSuffix: 'min',
 
     // ── Post page chrome ────────────────────────────────────────────────────
+    backToBlog: 'Back to blog',
+    postNotFoundTitle: 'Article not found',
+    postNotFoundBody: 'This article may have been removed or the address is incorrect.',
+    shareSuccess: 'Link copied!',
+    shareError: 'Could not copy the link.',
+
     commentCount: (n: number) => `${n} comment${n === 1 ? '' : 's'}`,
 
     commentsTitle: (n: number) => `Comments (${n})`,

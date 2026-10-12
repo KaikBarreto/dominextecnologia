@@ -5,7 +5,7 @@
 # ORDEM DE PRECEDÊNCIA no Pages (do maior pro menor):
 #   1) Assets estáticos do build (ex.: /blog/<slug-do-build>/index.html)
 #   2) Pages Functions (functions/blog/[slug].js, functions/[lang]/blog/[slug].js,
-#      functions/api/*)
+#      functions/blog-sitemap.xml.js, functions/api/*)
 #   3) _redirects (este arquivo)
 # Ou seja: posts prerenderizados no build são servidos estáticos; posts novos/
 # editados pós-build caem nas Functions dinâmicas; e só o que sobra cai aqui.
@@ -13,7 +13,7 @@
 # DECISÃO: o roteamento de /blog/:slug e /:lang/blog/:slug NÃO usa mais rewrite com
 # query string (parte NÃO confiável do _redirects do Cloudflare). Em vez disso, as
 # rotas dinâmicas das Functions extraem slug/locale de context.params. Aqui ficam
-# só regras SEM query string (apex→www, sitemap path-fixo, SPA fallback) — todas
+# só regras SEM query string (apex→www e SPA fallback) — todas
 # confiáveis no Pages.
 # Regras são avaliadas de cima pra baixo; a 1ª que casa vence.
 
@@ -22,8 +22,9 @@
 #    redirects 30x (comportamento padrão/confiável pra 301).
 https://dominex.app/*   https://www.dominex.app/:splat   301!
 
-# 2) Sitemap dinâmico do blog: path FIXO, SEM query string → rewrite 200 confiável.
-/blog-sitemap.xml       /api/blog-sitemap                200
+# 2) Sitemap dinâmico do blog é servido diretamente pela Pages Function
+#    functions/blog-sitemap.xml.js. Reescrever para outra Function aqui faria o
+#    caminho cair no fallback da SPA em produção.
 
 # 3) SPA fallback — TODO o resto vira index.html (a SPA roteia no cliente).
 #    Fica por último de propósito: assets, Functions e as regras acima têm

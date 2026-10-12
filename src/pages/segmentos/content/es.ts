@@ -53,7 +53,7 @@ const es: SegmentContentMap = {
       { value: '50k+', label: 'órdenes de trabajo al mes en la plataforma' },
       { value: 'Auto', label: 'planes de mantenimiento preventivo generados por equipo' },
       { value: '100%', label: 'en el teléfono de tu técnico en campo' },
-      { value: '4.9/5', label: 'satisfacción de las empresas que lo usan' },
+      { value: "5,0/5", label: "en Google, con 26 opiniones" },
     ],
     pains: [
       {
@@ -232,7 +232,7 @@ const es: SegmentContentMap = {
       { value: '50k+', label: 'órdenes de trabajo al mes en la plataforma' },
       { value: 'Seguridad', label: 'checklist en cada visita' },
       { value: '100%', label: 'en el teléfono de tu electricista en campo' },
-      { value: '4.9/5', label: 'satisfacción de las empresas que lo usan' },
+      { value: "5,0/5", label: "en Google, con 26 opiniones" },
     ],
     pains: [
       {
@@ -420,7 +420,7 @@ const es: SegmentContentMap = {
       { value: '50k+', label: 'órdenes de trabajo al mes en la plataforma' },
       { value: 'O&M', label: 'mantenimiento de sitios con historial por equipo' },
       { value: '100%', label: 'en el teléfono de tu cuadrilla en campo' },
-      { value: '4.9/5', label: 'satisfacción de las empresas que lo usan' },
+      { value: "5,0/5", label: "en Google, con 26 opiniones" },
     ],
     pains: [
       {
@@ -599,7 +599,7 @@ const es: SegmentContentMap = {
       { value: '50k+', label: 'órdenes de trabajo al mes en la plataforma' },
       { value: 'Fibra', label: 'instalación y soporte con historial por abonado' },
       { value: '100%', label: 'en el teléfono de tu técnico en campo' },
-      { value: '4.9/5', label: 'satisfacción de las empresas que lo usan' },
+      { value: "5,0/5", label: "en Google, con 26 opiniones" },
     ],
     pains: [
       {
@@ -778,7 +778,7 @@ const es: SegmentContentMap = {
       { value: '50k+', label: 'órdenes de trabajo al mes en la plataforma' },
       { value: 'CCTV', label: 'instalación y mantenimiento con historial por equipo' },
       { value: '100%', label: 'en el teléfono de tu técnico en campo' },
-      { value: '4.9/5', label: 'satisfacción de las empresas que lo usan' },
+      { value: "5,0/5", label: "en Google, con 26 opiniones" },
     ],
     pains: [
       {
@@ -957,7 +957,7 @@ const es: SegmentContentMap = {
       { value: '50k+', label: 'órdenes de trabajo al mes en la plataforma' },
       { value: 'Obra', label: 'cuadrillas de campo e inspecciones con registro fotográfico' },
       { value: '100%', label: 'en el teléfono de tu cuadrilla en la obra' },
-      { value: '4.9/5', label: 'satisfacción de las empresas que lo usan' },
+      { value: "5,0/5", label: "en Google, con 26 opiniones" },
     ],
     pains: [
       {
@@ -1136,7 +1136,7 @@ const es: SegmentContentMap = {
       { value: '50k+', label: 'órdenes de trabajo al mes en la plataforma' },
       { value: 'Mensual', label: 'contratos preventivos generando órdenes por su cuenta' },
       { value: '100%', label: 'en el teléfono de tu técnico en la sala de máquinas' },
-      { value: '4.9/5', label: 'satisfacción de las empresas que lo usan' },
+      { value: "5,0/5", label: "en Google, con 26 opiniones" },
     ],
     pains: [
       {
@@ -1315,7 +1315,7 @@ const es: SegmentContentMap = {
       { value: '50k+', label: 'órdenes de trabajo al mes en la plataforma' },
       { value: 'Sitio', label: 'servicio por contrato con prueba fotográfica' },
       { value: '100%', label: 'en el teléfono de tu cuadrilla en campo' },
-      { value: '4.9/5', label: 'satisfacción de las empresas que lo usan' },
+      { value: "5,0/5", label: "en Google, con 26 opiniones" },
     ],
     pains: [
       {
@@ -1494,7 +1494,7 @@ const es: SegmentContentMap = {
       { value: '50k+', label: 'órdenes de trabajo al mes en la plataforma' },
       { value: 'Certificado', label: 'emitido en cada visita' },
       { value: '100%', label: 'en el teléfono de tu aplicador en campo' },
-      { value: '4.9/5', label: 'satisfacción de las empresas que lo usan' },
+      { value: "5,0/5", label: "en Google, con 26 opiniones" },
     ],
     pains: [
       {
@@ -1673,7 +1673,7 @@ const es: SegmentContentMap = {
       { value: '50k+', label: 'órdenes de trabajo por mes en la plataforma' },
       { value: 'Presupuesto', label: 'aprobado por enlace sin que el cliente venga al taller' },
       { value: '100%', label: 'en el teléfono del técnico en el banco de trabajo' },
-      { value: '4,9/5', label: 'satisfacción de los talleres que lo usan' },
+      { value: "5,0/5", label: "en Google, con 26 opiniones" },
     ],
     pains: [
       {

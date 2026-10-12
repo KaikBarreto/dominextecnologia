@@ -52,7 +52,7 @@ const en: SegmentContentMap = {
       { value: '50k+', label: 'work orders per month on the platform' },
       { value: 'Auto', label: 'preventive maintenance plans generated per unit' },
       { value: '100%', label: 'on your tech phone out in the field' },
-      { value: '4.9/5', label: 'satisfaction from the companies that use it' },
+      { value: "5.0/5", label: "on Google, from 26 reviews" },
     ],
     pains: [
       {
@@ -231,7 +231,7 @@ const en: SegmentContentMap = {
       { value: '50k+', label: 'work orders per month on the platform' },
       { value: 'Safety', label: 'checklist on every single visit' },
       { value: '100%', label: 'on your electrician phone in the field' },
-      { value: '4.9/5', label: 'satisfaction from the companies that use it' },
+      { value: "5.0/5", label: "on Google, from 26 reviews" },
     ],
     pains: [
       {
@@ -419,7 +419,7 @@ const en: SegmentContentMap = {
       { value: '50k+', label: 'work orders per month on the platform' },
       { value: 'O&M', label: 'site maintenance with history per piece of equipment' },
       { value: '100%', label: 'on your crew phone in the field' },
-      { value: '4.9/5', label: 'satisfaction from the companies that use it' },
+      { value: "5.0/5", label: "on Google, from 26 reviews" },
     ],
     pains: [
       {
@@ -598,7 +598,7 @@ const en: SegmentContentMap = {
       { value: '50k+', label: 'work orders per month on the platform' },
       { value: 'Fiber', label: 'install and support with per-subscriber history' },
       { value: '100%', label: 'on your tech phone in the field' },
-      { value: '4.9/5', label: 'satisfaction from the companies that use it' },
+      { value: "5.0/5", label: "on Google, from 26 reviews" },
     ],
     pains: [
       {
@@ -777,7 +777,7 @@ const en: SegmentContentMap = {
       { value: '50k+', label: 'work orders per month on the platform' },
       { value: 'CCTV', label: 'install and maintenance with history per device' },
       { value: '100%', label: 'on your tech phone in the field' },
-      { value: '4.9/5', label: 'satisfaction from the companies that use it' },
+      { value: "5.0/5", label: "on Google, from 26 reviews" },
     ],
     pains: [
       {
@@ -956,7 +956,7 @@ const en: SegmentContentMap = {
       { value: '50k+', label: 'work orders per month on the platform' },
       { value: 'Site', label: 'field crews and inspections with photo records' },
       { value: '100%', label: 'on your crew phone on the job site' },
-      { value: '4.9/5', label: 'satisfaction from the companies that use it' },
+      { value: "5.0/5", label: "on Google, from 26 reviews" },
     ],
     pains: [
       {
@@ -1135,7 +1135,7 @@ const en: SegmentContentMap = {
       { value: '50k+', label: 'work orders per month on the platform' },
       { value: 'Monthly', label: 'preventive contracts generating work orders on their own' },
       { value: '100%', label: 'on your tech phone in the machine room' },
-      { value: '4.9/5', label: 'satisfaction from the companies that use it' },
+      { value: "5.0/5", label: "on Google, from 26 reviews" },
     ],
     pains: [
       {
@@ -1314,7 +1314,7 @@ const en: SegmentContentMap = {
       { value: '50k+', label: 'work orders per month on the platform' },
       { value: 'Site', label: 'service per contract with photo proof' },
       { value: '100%', label: 'on your crew phone in the field' },
-      { value: '4.9/5', label: 'satisfaction from the companies that use it' },
+      { value: "5.0/5", label: "on Google, from 26 reviews" },
     ],
     pains: [
       {
@@ -1493,7 +1493,7 @@ const en: SegmentContentMap = {
       { value: '50k+', label: 'work orders per month on the platform' },
       { value: 'Certificate', label: 'issued on every single visit' },
       { value: '100%', label: 'on your applicator phone in the field' },
-      { value: '4.9/5', label: 'satisfaction from the companies that use it' },
+      { value: "5.0/5", label: "on Google, from 26 reviews" },
     ],
     pains: [
       {
@@ -1672,7 +1672,7 @@ const en: SegmentContentMap = {
       { value: '50k+', label: 'work orders per month on the platform' },
       { value: 'Quote', label: 'approved by link without the customer coming in' },
       { value: '100%', label: 'on the technician phone at the bench' },
-      { value: '4.9/5', label: 'satisfaction from the shops that use it' },
+      { value: "5.0/5", label: "on Google, from 26 reviews" },
     ],
     pains: [
       {

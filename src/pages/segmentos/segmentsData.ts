@@ -164,7 +164,7 @@ const refrigeracao: SegmentData = {
     { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
     { value: 'PMOC', label: 'gerado automático pela Lei 13.589/2018' },
     { value: '100%', label: 'no celular do técnico em campo' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   pains: [
@@ -356,7 +356,7 @@ const eletricistas: SegmentData = {
     { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
     { value: 'NR-10', label: 'checklist de segurança em cada visita' },
     { value: '100%', label: 'no celular do eletricista em campo' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   pains: [
@@ -557,7 +557,7 @@ const energiaSolar: SegmentData = {
     { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
     { value: 'O&M', label: 'manutenção de usinas com histórico por equipamento' },
     { value: '100%', label: 'no celular da equipe em campo' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   pains: [
@@ -748,7 +748,7 @@ const provedores: SegmentData = {
     { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
     { value: 'Fibra', label: 'instalação e suporte com histórico por assinante' },
     { value: '100%', label: 'no celular do técnico em campo' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   pains: [
@@ -939,7 +939,7 @@ const cftv: SegmentData = {
     { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
     { value: 'CFTV', label: 'instalação e manutenção com histórico por equipamento' },
     { value: '100%', label: 'no celular do técnico em campo' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   pains: [
@@ -1131,7 +1131,7 @@ const construcaoCivil: SegmentData = {
     { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
     { value: 'Obra', label: 'equipes de campo e vistorias com registro fotográfico' },
     { value: '100%', label: 'no celular da equipe no canteiro' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   pains: [
@@ -1323,7 +1323,7 @@ const elevadores: SegmentData = {
     { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
     { value: 'Mensal', label: 'contratos de preventiva gerando OS sozinhos' },
     { value: '100%', label: 'no celular do técnico na casa de máquinas' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   pains: [
@@ -1514,7 +1514,7 @@ const limpezaConservacao: SegmentData = {
     { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
     { value: 'Posto', label: 'serviço por contrato com comprovação fotográfica' },
     { value: '100%', label: 'no celular da equipe em campo' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   pains: [
@@ -1705,7 +1705,7 @@ const dedetizacao: SegmentData = {
     { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
     { value: 'Certificado', label: 'de dedetização gerado em cada visita' },
     { value: '100%', label: 'no celular do aplicador em campo' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   pains: [
@@ -1896,7 +1896,7 @@ const tiAssistencia: SegmentData = {
     { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
     { value: 'Orçamento', label: 'aprovado por link, sem o cliente vir à loja' },
     { value: '100%', label: 'no celular do técnico na bancada' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   pains: [

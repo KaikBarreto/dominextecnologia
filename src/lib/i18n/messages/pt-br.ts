@@ -880,6 +880,11 @@ export const ptBr = {
     heroHighlight: 'domina o campo',
     subtitle: 'Ordem de serviço, PMOC, gestão de equipe e como tirar a operação do papel.',
     searchPlaceholder: 'Buscar artigos...',
+    metaTitle: 'Blog — Dominex | Gestão para equipes de campo',
+    metaDescription:
+      'Artigos práticos sobre ordem de serviço, PMOC, gestão de equipe e como tirar a operação de campo do papel. Conteúdo da Dominex.',
+    allCategories: 'Todos',
+    categoriesAriaLabel: 'Categorias do blog',
 
     // Linha de resultado da busca: "N resultado(s) para “q”"
     resultsSingular: (query: string) => `resultado para “${query}”`,
@@ -922,6 +927,12 @@ export const ptBr = {
     minSuffix: 'min',
 
     // ── Chrome da página de post individual (BlogPost.tsx) ─────────────────
+    backToBlog: 'Voltar ao blog',
+    postNotFoundTitle: 'Artigo não encontrado',
+    postNotFoundBody: 'Esse artigo pode ter sido removido ou o endereço está errado.',
+    shareSuccess: 'Link copiado!',
+    shareError: 'Não foi possível copiar o link.',
+
     // Contagem inline no rodapé do artigo: "N comentário(s)"
     commentCount: (n: number) => `${n} comentário${n === 1 ? '' : 's'}`,
 
