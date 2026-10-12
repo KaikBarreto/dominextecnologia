@@ -38,8 +38,8 @@ export const ptBr = {
     pricing: 'Preços',
     blog: 'Blog',
     login: 'Entrar',
-    signup: 'Falar com o Maicon',
-    trialSticky: 'Falar com o Maicon no WhatsApp',
+    signup: 'Falar no WhatsApp',
+    trialSticky: 'Falar no WhatsApp',
     openMenu: 'Menu',
     openMenuAria: 'Abrir menu',
     closeMenuAria: 'Fechar menu',
@@ -123,7 +123,7 @@ export const ptBr = {
   // Reutilizado por SegmentLandingPage e ModuleLandingPage. Só o "chrome"
   // (headings/labels de seção/CTAs); o conteúdo dos itens vem de content/<locale>.
   pageChrome: {
-    ctaTrial: 'Falar com o Maicon no WhatsApp',
+    ctaTrial: 'Falar no WhatsApp',
     seePlans: 'Ver planos',
     seeAllPlans: 'Ver todos os planos',
     faqHeading: 'Perguntas frequentes',
@@ -133,7 +133,7 @@ export const ptBr = {
     pricing: {
       heading: 'Planos para cada fase da sua operação',
       subtitle:
-        'Conheça os recursos de cada plano e fale com o Maicon para receber uma proposta adequada à sua operação.',
+        'Conheça os recursos de cada plano e fale no WhatsApp para receber uma proposta adequada à sua operação.',
     },
     // Só do SEGMENTO (no módulo essas seções vêm do data.*).
     segment: {
@@ -158,7 +158,7 @@ export const ptBr = {
         'Sistema de ordem de serviço, PMOC e gestão para refrigeração e equipes de campo. Domine a execução do seu negócio.',
       subtitle:
         'Chega de planilha, WhatsApp e retrabalho. O Dominex centraliza suas OS, rastreia sua equipe e entrega dados reais para você crescer.',
-      ctaPrimary: 'Falar com o Maicon no WhatsApp',
+      ctaPrimary: 'Falar no WhatsApp',
       ctaSecondary: 'Ver planos',
       videoUnsupported: 'Seu navegador não suporta vídeo HTML5.',
       videoLabel: 'Demonstração do Dominex',
@@ -187,7 +187,7 @@ export const ptBr = {
     features: {
       heading: 'Tudo que sua operação precisa, em um só lugar',
       subheading: 'Do chamado ao faturamento, o Dominex cobre cada etapa do serviço',
-      cta: 'Falar com o Maicon no WhatsApp',
+      cta: 'Falar no WhatsApp',
       items: [
         {
           title: 'Ordens de serviço digitais',
@@ -323,10 +323,10 @@ export const ptBr = {
     },
     pricing: {
       heading: 'Planos que crescem com a sua operação',
-      contactForPricing: 'Os valores são informados pelo Maicon no WhatsApp, conforme a necessidade da sua empresa.',
+      contactForPricing: 'Os valores são informados pelo WhatsApp, conforme a necessidade da sua empresa.',
       mostPopular: '⭐ Mais popular',
       featuresLabel: 'Recursos',
-      ctaTrial: 'Falar com o Maicon',
+      ctaTrial: 'Falar no WhatsApp',
       enterpriseBadge: 'Enterprise',
       plans: {
         start: {
@@ -434,7 +434,7 @@ export const ptBr = {
       heading: 'Comece hoje. Resultados em dias.',
       subtitle:
         '14 dias grátis, sem cartão, sem burocracia. Configure em minutos e veja sua equipe ganhar produtividade.',
-      ctaPrimary: 'Falar com o Maicon no WhatsApp',
+      ctaPrimary: 'Falar no WhatsApp',
       ctaSecondary: 'Tirar dúvidas pelo WhatsApp',
     },
   },
@@ -446,7 +446,7 @@ export const ptBr = {
     heroTitleHighlight: 'domina a operação',
     heroSubtitle:
       'A Dominex existe para tirar da papelada o trabalho de quem presta serviço de campo. Um sistema só, no celular e no computador, pra conduzir a operação do orçamento ao recibo.',
-    ctaTrial: 'Falar com o Maicon no WhatsApp',
+    ctaTrial: 'Falar no WhatsApp',
     ctaPricing: 'Ver planos',
     missionTitle: 'Nossa missão',
     missionP1Strong: 'ordem de serviço, PMOC e gestão',
@@ -703,7 +703,7 @@ export const ptBr = {
 
     // Plano personalizado (link de venda)
     customPlanTitle: 'Seu plano personalizado',
-    customPlanMonthly: 'Condição comercial informada diretamente pelo Maicon.',
+    customPlanMonthly: 'Condição comercial informada diretamente pelo WhatsApp.',
     customPlanPromoSuffix: (months: string) => ` pelos primeiros ${months} meses`,
 
     // Toasts / validações (título + descrição)
@@ -901,8 +901,8 @@ export const ptBr = {
 
     // CTA inline (mobile) da listagem
     ctaMobileTitle: 'Tire sua operação do papel',
-    ctaMobileBody: 'Fale com o Maicon e veja como a Dominex funciona na sua operação.',
-    ctaTrialNoCard: 'Falar com o Maicon no WhatsApp',
+    ctaMobileBody: 'Fale no WhatsApp e veja como a Dominex funciona na sua operação.',
+    ctaTrialNoCard: 'Falar no WhatsApp',
 
     // Sidebar (BlogSidebar)
     sidebar: {
@@ -910,7 +910,7 @@ export const ptBr = {
       ctaTitle: 'Quer tirar a operação do papel?',
       ctaBody:
         'A Dominex coloca ordem de serviço, PMOC e equipe no celular do técnico, sem caderno e sem grupo de WhatsApp.',
-      ctaButton: 'Falar com o Maicon',
+      ctaButton: 'Falar no WhatsApp',
       noCard: 'Atendimento direto pelo WhatsApp.',
       mostRead: 'Mais lidos',
       // Sufixo de leituras: "1.234 leituras"
@@ -953,8 +953,8 @@ export const ptBr = {
     // CTA final do artigo
     postCtaTitle: 'Pronto pra tirar a operação do papel?',
     postCtaBody:
-      'Fale com o Maicon e veja como a Dominex funciona na sua operação.',
-    postCtaButton: 'Falar com o Maicon no WhatsApp',
+      'Fale no WhatsApp e veja como a Dominex funciona na sua operação.',
+    postCtaButton: 'Falar no WhatsApp',
 
     // Índice de navegação do artigo (BlogTableOfContents)
     tocLabel: 'Neste artigo',

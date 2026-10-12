@@ -78,7 +78,7 @@ export const frOverrides: MessagesOverride = {
     doLogin: 'Se connecter',
 
     customPlanTitle: 'Votre offre personnalisée',
-    customPlanMonthly: 'Les conditions commerciales sont communiquées directement par Maicon.',
+    customPlanMonthly: 'Les conditions commerciales sont communiquées directement sur WhatsApp.',
     customPlanPromoSuffix: (months: string) => ` pendant les ${months} premiers mois`,
 
     toastCepNotFound: 'Code postal introuvable',
@@ -236,8 +236,8 @@ export const frOverrides: MessagesOverride = {
     pricing: 'Tarifs',
     blog: 'Blog',
     login: 'Se connecter',
-    signup: 'Parler à Maicon',
-    trialSticky: 'Parler à Maicon sur WhatsApp',
+    signup: 'Discuter sur WhatsApp',
+    trialSticky: 'Discuter sur WhatsApp',
     openMenu: 'Menu',
     openMenuAria: 'Ouvrir le menu',
     closeMenuAria: 'Fermer le menu',
@@ -313,7 +313,7 @@ export const frOverrides: MessagesOverride = {
   },
 
   pageChrome: {
-    ctaTrial: 'Parler à Maicon sur WhatsApp',
+    ctaTrial: 'Discuter sur WhatsApp',
     seePlans: 'Voir les tarifs',
     seeAllPlans: 'Voir tous les tarifs',
     faqHeading: 'Questions fréquentes',
@@ -322,7 +322,7 @@ export const frOverrides: MessagesOverride = {
     pricing: {
       heading: 'Des offres pour chaque étape de votre activité',
       subtitle:
-        'Découvrez chaque offre et parlez à Maicon pour recevoir une proposition adaptée à votre activité.',
+        'Découvrez chaque offre et discutez sur WhatsApp pour recevoir une proposition adaptée à votre activité.',
     },
     segment: {
       painsHeading: 'Les tracas du quotidien, résolus',
@@ -344,7 +344,7 @@ export const frOverrides: MessagesOverride = {
         'Logiciel d’ordres de travail, de maintenance et de gestion pour les équipes CVC et d’intervention sur le terrain. Maîtrisez le fonctionnement de votre entreprise.',
       subtitle:
         'Fini les feuilles de calcul, les fils de discussion et les reprises. Dominex centralise vos ordres de travail, suit votre équipe et fournit des données réelles pour vous aider à grandir.',
-      ctaPrimary: 'Parler à Maicon sur WhatsApp',
+      ctaPrimary: 'Discuter sur WhatsApp',
       ctaSecondary: 'Voir les tarifs',
       videoUnsupported: 'Votre navigateur ne prend pas en charge la vidéo HTML5.',
       videoLabel: 'Démo Dominex',
@@ -373,7 +373,7 @@ export const frOverrides: MessagesOverride = {
     features: {
       heading: 'Tout ce dont votre opération a besoin, au même endroit',
       subheading: 'De l’appel de service à la facturation, Dominex couvre chaque étape du travail',
-      cta: 'Parler à Maicon sur WhatsApp',
+      cta: 'Discuter sur WhatsApp',
       items: [
         {
           title: 'Ordres de travail numériques',
@@ -508,10 +508,10 @@ export const frOverrides: MessagesOverride = {
     },
     pricing: {
       heading: 'Des offres qui grandissent avec votre opération',
-      contactForPricing: 'Maicon communique les tarifs sur WhatsApp selon les besoins de votre entreprise.',
+      contactForPricing: 'Les tarifs sont communiqués sur WhatsApp selon les besoins de votre entreprise.',
       mostPopular: '⭐ Le plus populaire',
       featuresLabel: 'Fonctionnalités',
-      ctaTrial: 'Parler à Maicon',
+      ctaTrial: 'Discuter sur WhatsApp',
       enterpriseBadge: 'Entreprise',
       plans: {
         start: {
@@ -587,7 +587,7 @@ export const frOverrides: MessagesOverride = {
         },
         {
           q: 'Puis-je personnaliser les formulaires, checklists et rapports ?',
-          a: 'Oui. Vous créez des modèles de checklist par type de service, définissez les champs obligatoires, les photos, la signature et les réponses vidéo. Avec les offres Pro et Business, le technicien peut enregistrer un court clip (jusqu\’à 15 secondes) comme réponse de checklist, directement depuis son téléphone sur le terrain, et le client voit la vidéo dans le lien de l\’ordre de travail. Les rapports d\’ordre de travail sont générés en PDF avec votre marque, vos couleurs et votre logo.',
+          a: 'Oui. Vous créez des modèles de checklist par type de service, définissez les champs obligatoires, les photos, la signature et les réponses vidéo. Avec les offres Pro et Business, le technicien peut enregistrer un court clip (jusqu’à 15 secondes) comme réponse de checklist, directement depuis son téléphone sur le terrain, et le client voit la vidéo dans le lien de l’ordre de travail. Les rapports d’ordre de travail sont générés en PDF avec votre marque, vos couleurs et votre logo.',
         },
         {
           q: 'Y a-t-il un CRM et un pipeline de ventes intégrés ?',
@@ -619,7 +619,7 @@ export const frOverrides: MessagesOverride = {
       heading: 'Commencez aujourd’hui. Des résultats en quelques jours.',
       subtitle:
         '14 jours gratuits, sans carte, sans paperasse. Une mise en place en quelques minutes et regardez votre équipe gagner en productivité.',
-      ctaPrimary: 'Parler à Maicon sur WhatsApp',
+      ctaPrimary: 'Discuter sur WhatsApp',
       ctaSecondary: 'Poser vos questions sur WhatsApp',
     },
   },
@@ -630,7 +630,7 @@ export const frOverrides: MessagesOverride = {
     heroTitleHighlight: 'maîtrisez l’opération',
     heroSubtitle:
       'Dominex existe pour sortir le travail d’intervention de la paperasse. Un seul système, sur mobile et ordinateur, pour piloter l’opération du devis à l’encaissement.',
-    ctaTrial: 'Parler à Maicon sur WhatsApp',
+    ctaTrial: 'Discuter sur WhatsApp',
     ctaPricing: 'Voir les tarifs',
     missionTitle: 'Notre mission',
     missionP1Strong: 'ordres de travail, maintenance et gestion',
@@ -825,15 +825,15 @@ export const frOverrides: MessagesOverride = {
     emptyCategory: 'Aucun article dans cette catégorie.',
 
     ctaMobileTitle: 'Sortez votre activité du papier',
-    ctaMobileBody: 'Parlez à Maicon et découvrez comment Dominex s’adapte à votre activité.',
-    ctaTrialNoCard: 'Parler à Maicon sur WhatsApp',
+    ctaMobileBody: 'Discutez sur WhatsApp et découvrez comment Dominex s’adapte à votre activité.',
+    ctaTrialNoCard: 'Discuter sur WhatsApp',
 
     sidebar: {
       eyebrow: 'Pour les équipes de terrain',
       ctaTitle: 'Envie de sortir votre activité du papier ?',
       ctaBody:
         'Dominex met les ordres de travail, la maintenance et l’équipe dans la poche du technicien, sans carnet et sans groupe WhatsApp.',
-      ctaButton: 'Parler à Maicon',
+      ctaButton: 'Discuter sur WhatsApp',
       noCard: 'Échange direct sur WhatsApp.',
       mostRead: 'Les plus lus',
       reads: 'lectures',
@@ -868,8 +868,8 @@ export const frOverrides: MessagesOverride = {
 
     postCtaTitle: 'Prêt à sortir votre activité du papier ?',
     postCtaBody:
-      'Parlez à Maicon et découvrez comment Dominex s’adapte à votre activité.',
-    postCtaButton: 'Parler à Maicon sur WhatsApp',
+      'Discutez sur WhatsApp et découvrez comment Dominex s’adapte à votre activité.',
+    postCtaButton: 'Discuter sur WhatsApp',
 
     tocLabel: 'Dans cet article',
 

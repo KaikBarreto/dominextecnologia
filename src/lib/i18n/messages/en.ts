@@ -78,7 +78,7 @@ export const enOverrides: MessagesOverride = {
     doLogin: 'Log in',
 
     customPlanTitle: 'Your custom plan',
-    customPlanMonthly: 'Commercial terms are shared directly by Maicon.',
+    customPlanMonthly: 'Commercial terms are shared directly on WhatsApp.',
     customPlanPromoSuffix: (months: string) => ` for the first ${months} months`,
 
     toastCepNotFound: 'Postal code not found',
@@ -236,8 +236,8 @@ export const enOverrides: MessagesOverride = {
     pricing: 'Pricing',
     blog: 'Blog',
     login: 'Log in',
-    signup: 'Talk to Maicon',
-    trialSticky: 'Talk to Maicon on WhatsApp',
+    signup: 'Chat on WhatsApp',
+    trialSticky: 'Chat on WhatsApp',
     openMenu: 'Menu',
     openMenuAria: 'Open menu',
     closeMenuAria: 'Close menu',
@@ -313,7 +313,7 @@ export const enOverrides: MessagesOverride = {
   },
 
   pageChrome: {
-    ctaTrial: 'Talk to Maicon on WhatsApp',
+    ctaTrial: 'Chat on WhatsApp',
     seePlans: 'See plans',
     seeAllPlans: 'See all plans',
     faqHeading: 'Frequently asked questions',
@@ -322,7 +322,7 @@ export const enOverrides: MessagesOverride = {
     pricing: {
       heading: 'Plans for every stage of your operation',
       subtitle:
-        'Explore each plan and talk to Maicon for a proposal tailored to your operation.',
+        'Explore each plan and chat on WhatsApp for a proposal tailored to your operation.',
     },
     segment: {
       painsHeading: 'The daily headaches, solved',
@@ -344,7 +344,7 @@ export const enOverrides: MessagesOverride = {
         'Work order, maintenance and management software for HVAC and field service teams. Master how your business runs.',
       subtitle:
         'No more spreadsheets, chat threads and rework. Dominex centralizes your work orders, tracks your team and delivers real data so you can grow.',
-      ctaPrimary: 'Talk to Maicon on WhatsApp',
+      ctaPrimary: 'Chat on WhatsApp',
       ctaSecondary: 'See plans',
       videoUnsupported: 'Your browser does not support HTML5 video.',
       videoLabel: 'Dominex demo',
@@ -373,7 +373,7 @@ export const enOverrides: MessagesOverride = {
     features: {
       heading: 'Everything your operation needs, in one place',
       subheading: 'From the service call to invoicing, Dominex covers every step of the job',
-      cta: 'Talk to Maicon on WhatsApp',
+      cta: 'Chat on WhatsApp',
       items: [
         {
           title: 'Digital work orders',
@@ -508,10 +508,10 @@ export const enOverrides: MessagesOverride = {
     },
     pricing: {
       heading: 'Plans that grow with your operation',
-      contactForPricing: 'Maicon shares pricing on WhatsApp based on your company’s needs.',
+      contactForPricing: 'Pricing is shared on WhatsApp based on your company’s needs.',
       mostPopular: '⭐ Most popular',
       featuresLabel: 'Features',
-      ctaTrial: 'Talk to Maicon',
+      ctaTrial: 'Chat on WhatsApp',
       enterpriseBadge: 'Enterprise',
       plans: {
         start: {
@@ -619,7 +619,7 @@ export const enOverrides: MessagesOverride = {
       heading: 'Start today. Results in days.',
       subtitle:
         '14 days free, no card, no red tape. Set up in minutes and watch your team gain productivity.',
-      ctaPrimary: 'Talk to Maicon on WhatsApp',
+      ctaPrimary: 'Chat on WhatsApp',
       ctaSecondary: 'Ask questions on WhatsApp',
     },
   },
@@ -630,7 +630,7 @@ export const enOverrides: MessagesOverride = {
     heroTitleHighlight: 'master the operation',
     heroSubtitle:
       'Dominex exists to take field service work out of the paperwork. One system, on mobile and desktop, to run the operation from quote to receipt.',
-    ctaTrial: 'Talk to Maicon on WhatsApp',
+    ctaTrial: 'Chat on WhatsApp',
     ctaPricing: 'See plans',
     missionTitle: 'Our mission',
     missionP1Strong: 'work order, maintenance and management',
@@ -824,15 +824,15 @@ export const enOverrides: MessagesOverride = {
     emptyCategory: 'No articles in this category.',
 
     ctaMobileTitle: 'Take your operation off paper',
-    ctaMobileBody: 'Talk to Maicon and see how Dominex fits your operation.',
-    ctaTrialNoCard: 'Talk to Maicon on WhatsApp',
+    ctaMobileBody: 'Chat on WhatsApp and see how Dominex fits your operation.',
+    ctaTrialNoCard: 'Chat on WhatsApp',
 
     sidebar: {
       eyebrow: 'For field teams',
       ctaTitle: 'Want to take your operation off paper?',
       ctaBody:
         'Dominex puts work orders, maintenance and your team in the technician’s pocket, no notebook and no WhatsApp group.',
-      ctaButton: 'Talk to Maicon',
+      ctaButton: 'Chat on WhatsApp',
       noCard: 'Direct support on WhatsApp.',
       mostRead: 'Most read',
       reads: 'reads',
@@ -867,8 +867,8 @@ export const enOverrides: MessagesOverride = {
 
     postCtaTitle: 'Ready to take your operation off paper?',
     postCtaBody:
-      'Talk to Maicon and see how Dominex fits your operation.',
-    postCtaButton: 'Talk to Maicon on WhatsApp',
+      'Chat on WhatsApp and see how Dominex fits your operation.',
+    postCtaButton: 'Chat on WhatsApp',
 
     tocLabel: 'In this article',
 

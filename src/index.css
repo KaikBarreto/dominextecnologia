@@ -777,6 +777,176 @@ body:has([data-app-overlay][data-state="open"], [data-vaul-drawer][data-state="o
   margin: 0 auto;
 }
 
+/* Editorial do blog: quebra o ritmo de “título + parede de texto” com imagens,
+   resumos visuais e leituras externas. O HTML vem do CMS, por isso as classes
+   são deliberadamente estáveis e independentes do Tailwind. */
+.blog-content > .lead {
+  margin: 0 0 2rem;
+  padding: 1.1rem 1.2rem;
+  border-left: 4px solid #00c597;
+  border-radius: 0 14px 14px 0;
+  background: linear-gradient(90deg, rgba(0, 197, 151, 0.1), rgba(0, 197, 151, 0.025));
+  font-size: 1.08em;
+  line-height: 1.75;
+}
+
+.blog-content .blog-editorial-figure {
+  position: relative;
+  margin: 2.25rem 0;
+  overflow: hidden;
+  border: 1px solid rgba(0, 197, 151, 0.2);
+  border-radius: 18px;
+  background: #03110d;
+  box-shadow: 0 22px 55px rgba(0, 34, 26, 0.14);
+}
+
+.blog-content .blog-editorial-figure img {
+  display: block;
+  width: 100%;
+  margin: 0;
+  aspect-ratio: 40 / 21;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+.blog-content .blog-editorial-figure figcaption {
+  margin: 0;
+  padding: 0.85rem 1rem 0.95rem;
+  color: rgba(255, 255, 255, 0.72);
+  background: linear-gradient(135deg, #041a14, #06251d);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.blog-content .blog-pattern {
+  --pattern-accent: #00c597;
+  margin: 2.25rem 0 2.75rem;
+  padding: 1.35rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--pattern-accent) 28%, transparent);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--pattern-accent) 15%, transparent), transparent 42%),
+    linear-gradient(145deg, rgba(1, 28, 21, 0.98), rgba(2, 14, 11, 0.98));
+  color: #fff;
+  box-shadow: 0 18px 44px rgba(0, 31, 23, 0.14);
+}
+
+.blog-content .blog-pattern--decision,
+.blog-content .blog-pattern--warning {
+  --pattern-accent: #f8b84e;
+}
+
+.blog-content .blog-pattern--compare,
+.blog-content .blog-pattern--formula {
+  --pattern-accent: #64d8ff;
+}
+
+.blog-content .blog-pattern--script {
+  --pattern-accent: #9ae66e;
+}
+
+.blog-content .blog-pattern__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.65rem;
+  margin: 0 0 0.65rem;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--pattern-accent) 45%, transparent);
+  border-radius: 999px;
+  color: var(--pattern-accent);
+  background: color-mix(in srgb, var(--pattern-accent) 10%, transparent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.blog-content .blog-pattern__title {
+  margin: 0 0 1rem;
+  color: #fff;
+  font-size: clamp(1.2rem, 3vw, 1.55rem);
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+}
+
+.blog-content .blog-pattern__items {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.blog-content .blog-pattern__items li {
+  position: relative;
+  margin: 0;
+  padding: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.055);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.blog-content .blog-pattern__items li::before {
+  display: block;
+  width: 1.65rem;
+  height: 1.65rem;
+  margin-bottom: 0.55rem;
+  border-radius: 0.5rem;
+  color: #001b14;
+  background: var(--pattern-accent);
+  content: counter(list-item, decimal-leading-zero);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.65rem;
+  text-align: center;
+}
+
+.blog-content .blog-pattern--warning .blog-pattern__items li {
+  border-left: 3px solid var(--pattern-accent);
+}
+
+.blog-content .blog-pattern--script .blog-pattern__items li {
+  font-style: italic;
+}
+
+.blog-content .blog-pattern--formula .blog-pattern__items li {
+  text-align: center;
+  font-weight: 700;
+}
+
+.blog-content .blog-pattern__source {
+  margin: 1rem 0 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.blog-content .blog-pattern__source a {
+  color: var(--pattern-accent);
+  font-weight: 700;
+  text-decoration-color: color-mix(in srgb, var(--pattern-accent) 45%, transparent);
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  .blog-content .blog-pattern {
+    padding: 1.05rem;
+  }
+
+  .blog-content .blog-pattern__items {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── Organograma (React Flow): contraste dos controles de zoom ──────────────
    O colorMode do React Flow já ajusta boa parte, mas garantimos legibilidade
    nos DOIS temas amarrando os botões aos tokens semânticos do app (fundo card,

@@ -9,7 +9,7 @@ import type { LocaleCode } from '@/lib/i18n/locales';
 import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 
 // Configuração não textual dos planos. Valores comerciais não ficam no site:
-// cada CTA abre uma conversa com o Maicon para uma proposta adequada à operação.
+// cada CTA abre uma conversa comercial para uma proposta adequada à operação.
 const PLAN_CONFIG = [
   { code: 'start', popular: false },
   { code: 'avancado', popular: true },
