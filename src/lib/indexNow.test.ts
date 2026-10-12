@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { notifyIndexNow, publicBlogPostUrl } from '@/lib/indexNow';
-import { normalizePublicBlogUrls } from '../../functions/_lib/indexnow.js';
+import { normalizePublicBlogUrls, submitIndexNow } from '../../functions/_lib/indexnow.js';
 
 describe('IndexNow', () => {
   afterEach(() => vi.restoreAllMocks());
@@ -27,5 +27,21 @@ describe('IndexNow', () => {
       method: 'POST',
       body: JSON.stringify({ urls: [url] }),
     }));
+  });
+
+  it('tenta o Bing quando o agregador IndexNow recusa o egress', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response('', { status: 403 }))
+      .mockResolvedValueOnce(new Response('', { status: 202 }));
+
+    await expect(submitIndexNow([
+      'https://www.dominex.app/blog/meu-artigo',
+    ])).resolves.toEqual({
+      ok: true,
+      status: 202,
+      body: { accepted: true, submitted: 1 },
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1][0]).toBe('https://www.bing.com/indexnow');
   });
 });
