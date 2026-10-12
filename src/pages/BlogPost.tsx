@@ -32,6 +32,7 @@ import { useBlogTheme } from '@/components/blog/useBlogTheme';
 import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 import { COMPANY_WHATSAPP_NUMBER } from '@/components/landing/whatsappNumbers';
 import { BLOG_AUTHOR_AVATAR } from '@/components/blog/blogShared';
+import { stripDuplicateLeadingTitle } from '@/lib/blogContent';
 
 // Página pública. NUNCA herda o white-label do tenant logado: restaura o brand
 // Dominex em toda a subárvore (espelha Landing.tsx / QuemSomos.tsx).
@@ -500,7 +501,10 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                 ref={contentRef}
                 className="blog-content prose prose-sm max-w-none prose-headings:text-neutral-900 prose-a:text-primary prose-strong:text-neutral-900 prose-img:rounded-xl sm:prose-base dark:prose-invert dark:prose-headings:text-white dark:prose-strong:text-white"
                 dangerouslySetInnerHTML={{
-                  __html: replaceRegistrationCtas(post.content || '', t.postCtaButton),
+                  __html: replaceRegistrationCtas(
+                    stripDuplicateLeadingTitle(post.content || '', post.title),
+                    t.postCtaButton,
+                  ),
                 }}
               />
 
