@@ -28,9 +28,7 @@ const DOMINEX_BRAND_VARS = {
   '--gradient-brand': 'linear-gradient(135deg, hsl(160 100% 39%) 0%, hsl(160 85% 45%) 100%)',
 } as CSSProperties;
 
-const META_TITLE = 'Blog — Dominex | Gestão para equipes de campo';
-const META_DESCRIPTION =
-  'Artigos práticos sobre ordem de serviço, PMOC, gestão de equipe e como tirar a operação de campo do papel. Conteúdo da Dominex.';
+const ALL_CATEGORIES = '__all__';
 
 type BlogPostRow = BlogPostCardData;
 
@@ -53,7 +51,7 @@ export interface BlogProps {
 }
 
 export default function Blog({ initialPosts, initialCategories }: BlogProps = {}) {
-  const [activeCategory, setActiveCategory] = useState('Todos');
+  const [activeCategory, setActiveCategory] = useState(ALL_CATEGORIES);
   const [search, setSearch] = useState('');
   const { theme, toggleTheme } = useBlogTheme();
   // Idioma da URL: sob /es/blog só posts es, sob /blog só pt-br. O SSG injeta os
@@ -63,10 +61,14 @@ export default function Blog({ initialPosts, initialCategories }: BlogProps = {}
   const t = messages.blog;
 
   useEffect(() => {
-    document.title = META_TITLE;
+    setActiveCategory(ALL_CATEGORIES);
+  }, [locale]);
+
+  useEffect(() => {
+    document.title = t.metaTitle;
     const meta = document.querySelector('meta[name="description"]');
     const prevDesc = meta?.getAttribute('content') ?? null;
-    if (meta) meta.setAttribute('content', META_DESCRIPTION);
+    if (meta) meta.setAttribute('content', t.metaDescription);
 
     captureUtmParams(window.location.search);
     document.documentElement.classList.add('landing-scrollbar');
@@ -76,7 +78,7 @@ export default function Blog({ initialPosts, initialCategories }: BlogProps = {}
       document.documentElement.classList.remove('landing-scrollbar');
       if (meta && prevDesc !== null) meta.setAttribute('content', prevDesc);
     };
-  }, []);
+  }, [t.metaDescription, t.metaTitle]);
 
   const { data: posts = initialPosts ?? [], isLoading } = useQuery({
     queryKey: ['blog-posts-public', locale],
@@ -118,7 +120,7 @@ export default function Blog({ initialPosts, initialCategories }: BlogProps = {}
   const matched = useMemo(() => {
     if (!posts) return [];
     if (!isSearching) {
-      return activeCategory === 'Todos'
+      return activeCategory === ALL_CATEGORIES
         ? posts
         : posts.filter((p) => p.category === activeCategory);
     }
@@ -129,15 +131,16 @@ export default function Blog({ initialPosts, initialCategories }: BlogProps = {}
     });
   }, [posts, activeCategory, search, isSearching]);
 
-  const allCategories = ['Todos', ...(categoryColors ?? []).map((c) => c.name)];
+  const allCategories = [ALL_CATEGORIES, ...(categoryColors ?? []).map((c) => c.name)];
 
-  // Destaque só na vista padrão ("Todos", sem busca): o post mais recente.
-  const showFeatured = activeCategory === 'Todos' && !isSearching && (posts?.length ?? 0) > 0;
+  // Destaque só na vista padrão (todas as categorias, sem busca): o post mais recente.
+  const showFeatured =
+    activeCategory === ALL_CATEGORIES && !isSearching && (posts?.length ?? 0) > 0;
   const featured = showFeatured ? posts[0] : undefined;
   const gridPosts = showFeatured ? matched.slice(1) : matched;
 
   const getCategoryColor = (catName: string) =>
-    catName === 'Todos'
+    catName === ALL_CATEGORIES
       ? undefined
       : (categoryColors ?? []).find((c) => c.name === catName)?.color;
 
@@ -186,7 +189,7 @@ export default function Blog({ initialPosts, initialCategories }: BlogProps = {}
           {/* Chips de categorias (filtro). Some durante a busca. */}
           {!isSearching && allCategories.length > 1 && (
             <nav
-              aria-label="Categorias do blog"
+              aria-label={t.categoriesAriaLabel}
               className="mb-10 flex flex-wrap justify-center gap-2"
             >
               {allCategories.map((cat) => {
@@ -203,7 +206,7 @@ export default function Blog({ initialPosts, initialCategories }: BlogProps = {}
                         borderColor: catColor || 'hsl(160 100% 39%)',
                       }}
                     >
-                      {cat}
+                      {cat === ALL_CATEGORIES ? t.allCategories : cat}
                     </button>
                   );
                 }
@@ -213,7 +216,7 @@ export default function Blog({ initialPosts, initialCategories }: BlogProps = {}
                     onClick={() => setActiveCategory(cat)}
                     className="h-9 rounded-full border border-neutral-300 bg-transparent px-4 text-sm font-medium text-neutral-600 transition-colors hover:border-neutral-400 hover:text-neutral-900 dark:border-white/15 dark:text-white/70 dark:hover:border-white/30 dark:hover:text-white"
                   >
-                    {cat}
+                    {cat === ALL_CATEGORIES ? t.allCategories : cat}
                   </button>
                 );
               })}
@@ -251,7 +254,7 @@ export default function Blog({ initialPosts, initialCategories }: BlogProps = {}
             <div className="lg:col-span-2">
               {!isSearching && (
                 <h2 className="mb-6 text-lg font-bold text-neutral-900 dark:text-white">
-                  {activeCategory === 'Todos' ? t.recent : activeCategory}
+                  {activeCategory === ALL_CATEGORIES ? t.recent : activeCategory}
                 </h2>
               )}
 

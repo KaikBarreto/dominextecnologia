@@ -807,6 +807,11 @@ export const esOverrides: MessagesOverride = {
     heroHighlight: 'domina el campo',
     subtitle: 'Órdenes de trabajo, mantenimiento preventivo, gestión de equipo y cómo sacar tu operación del papel.',
     searchPlaceholder: 'Buscar artículos...',
+    metaTitle: 'Blog — Dominex | Gestión para equipos de campo',
+    metaDescription:
+      'Artículos prácticos sobre órdenes de servicio, gestión de equipos y cómo llevar el control de tu operación de campo. Contenido de Dominex.',
+    allCategories: 'Todas',
+    categoriesAriaLabel: 'Categorías del blog',
 
     resultsSingular: (query: string) => `resultado para “${query}”`,
     resultsPlural: (query: string) => `resultados para “${query}”`,
@@ -840,6 +845,12 @@ export const esOverrides: MessagesOverride = {
     minSuffix: 'min',
 
     // ── Chrome de la página de post ─────────────────────────────────────────
+    backToBlog: 'Volver al blog',
+    postNotFoundTitle: 'Artículo no encontrado',
+    postNotFoundBody: 'Este artículo puede haber sido eliminado o la dirección es incorrecta.',
+    shareSuccess: '¡Enlace copiado!',
+    shareError: 'No se pudo copiar el enlace.',
+
     commentCount: (n: number) => `${n} comentario${n === 1 ? '' : 's'}`,
 
     commentsTitle: (n: number) => `Comentarios (${n})`,

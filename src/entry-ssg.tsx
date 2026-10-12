@@ -299,6 +299,13 @@ interface RouteEntry {
   faq?: RawFaq[];
 }
 
+const BREADCRUMB_LABELS: Record<LocaleCode, { home: string; blog: string }> = {
+  'pt-br': { home: 'Início', blog: 'Blog' },
+  en: { home: 'Home', blog: 'Blog' },
+  es: { home: 'Inicio', blog: 'Blog' },
+  fr: { home: 'Accueil', blog: 'Blog' },
+};
+
 // ── JSON-LD por rota ──────────────────────────────────────────────────────────
 // Serializamos com a MESMA proteção do api/blog-post.js: a única sequência
 // perigosa dentro de <script> é "</", escapada pra "<\/" (válido em JSON, inócuo
@@ -310,8 +317,8 @@ function jsonLdScript(obj: unknown): string {
   return `<script type="application/ld+json">${json}</script>`;
 }
 
-/** BreadcrumbList: Início > Página. `homeUrl`/`pageUrl` são absolutos do idioma. */
-function breadcrumbLd(homeUrl: string, pageUrl: string, name: string) {
+/** BreadcrumbList localizado: home > página, com URLs absolutas do idioma. */
+function breadcrumbLd(homeUrl: string, pageUrl: string, name: string, locale: LocaleCode) {
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -319,7 +326,7 @@ function breadcrumbLd(homeUrl: string, pageUrl: string, name: string) {
       {
         '@type': 'ListItem',
         position: 1,
-        name: 'Início',
+        name: BREADCRUMB_LABELS[locale].home,
         item: homeUrl,
       },
       {
@@ -342,11 +349,6 @@ function softwareAppLd(pageUrl: string, name: string, description: string) {
     operatingSystem: 'Web',
     description,
     url: pageUrl,
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: '4.9',
-      reviewCount: '3000',
-    },
     creator: {
       '@type': 'Organization',
       name: 'Auctus',
@@ -373,7 +375,7 @@ function faqPageLd(faq: RawFaq[] | undefined) {
  * JSON-LD LOCALIZADO da HOME (só en/es/fr). Substitui os blocos globais do shell
  * (SoftwareApplication + FAQPage, que são pt-br) por versões no idioma da página:
  *   - SoftwareApplication: name "Dominex", description = metaDescription localizada
- *     da home; URL/rating iguais aos das demais rotas (softwareAppLd).
+ *     da home e URL canônica do idioma (softwareAppLd).
  *   - FAQPage: montado a partir de MESSAGES[locale].home.faq.items ({ q, a }) já
  *     traduzido e generalizado (sem PMOC-lei/NFS-e/ISS).
  * Organization e WebSite do shell NÃO são tocados aqui (ficam, são site-wide). A
@@ -400,11 +402,16 @@ function buildHomeJsonLd(locale: LocaleCode, homeUrl: string): string {
  * BreadcrumbList + SoftwareApplication + FAQPage (quando há FAQ). A home não passa
  * por aqui (mantém os blocos globais do index.html).
  */
-function buildRouteJsonLd(homeUrl: string, pageUrl: string, entry: RouteEntry): string {
+function buildRouteJsonLd(
+  homeUrl: string,
+  pageUrl: string,
+  entry: RouteEntry,
+  locale: LocaleCode,
+): string {
   const blocks: string[] = [];
   const name = entry.breadcrumbName ?? entry.title;
 
-  blocks.push(jsonLdScript(breadcrumbLd(homeUrl, pageUrl, name)));
+  blocks.push(jsonLdScript(breadcrumbLd(homeUrl, pageUrl, name, locale)));
   blocks.push(jsonLdScript(softwareAppLd(pageUrl, entry.title, entry.description)));
 
   const faqLd = faqPageLd(entry.faq);
@@ -674,9 +681,11 @@ export function renderRoute(
   if (isNonDefaultHome) {
     jsonLd = buildHomeJsonLd(locale, homeUrl);
   } else if (entry.kind === 'segment' || entry.kind === 'module') {
-    jsonLd = buildRouteJsonLd(homeUrl, pageUrl, entry);
+    jsonLd = buildRouteJsonLd(homeUrl, pageUrl, entry, locale);
   } else if (entry.kind === 'institutional') {
-    jsonLd = jsonLdScript(breadcrumbLd(homeUrl, pageUrl, entry.breadcrumbName ?? entry.title));
+    jsonLd = jsonLdScript(
+      breadcrumbLd(homeUrl, pageUrl, entry.breadcrumbName ?? entry.title, locale),
+    );
   }
 
   const head: SsgHead = {
@@ -738,7 +747,7 @@ export interface RenderBlogPostOptions {
 }
 
 /** Imagem OG padrão do site (espelha o default do BlogPost). */
-const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
+const DEFAULT_OG_IMAGE = `${SITE_URL}/images/og-social.jpg`;
 
 /**
  * Monta o bloco hreflang de um post a partir das versões PUBLICADAS do mesmo
@@ -819,7 +828,7 @@ export function renderBlogPost(
     publisher: {
       '@type': 'Organization',
       name: 'Dominex',
-      logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` },
+      logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo-horizontal-verde.png` },
     },
     mainEntityOfPage: { '@type': 'WebPage', '@id': pageUrl },
   };
@@ -828,8 +837,18 @@ export function renderBlogPost(
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Início', item: homeUrl },
-      { '@type': 'ListItem', position: 2, name: 'Blog', item: blogUrl },
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: BREADCRUMB_LABELS[locale].home,
+        item: homeUrl,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: BREADCRUMB_LABELS[locale].blog,
+        item: blogUrl,
+      },
       { '@type': 'ListItem', position: 3, name: title, item: pageUrl },
     ],
   };

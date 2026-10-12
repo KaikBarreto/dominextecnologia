@@ -304,6 +304,12 @@ ${hreflangLinks.join('\n')}
 function renderRelatedHtml(related, locale) {
   if (!Array.isArray(related) || related.length === 0) return '';
   const prefix = locale === 'pt-br' ? '/blog' : `/${locale}/blog`;
+  const heading = {
+    'pt-br': 'Leia também',
+    en: 'Related articles',
+    es: 'Artículos relacionados',
+    fr: 'Articles associés',
+  }[locale] || 'Leia também';
   const cards = related
     .map((p) => {
       const cover = p.cover_image_url
@@ -322,7 +328,7 @@ function renderRelatedHtml(related, locale) {
     })
     .join('\n        ');
   return `<section>
-        <h2>Leia também</h2>
+        <h2>${heading}</h2>
         ${cards}
       </section>`;
 }
@@ -403,8 +409,9 @@ export default async function handler(req, res) {
 
   if (!post) {
     // Post inexistente NESSE idioma/erro → shell puro; a SPA mostra o 404 amigável
-    // de /blog/:slug (NUNCA cai no pt-br). 200 pra não travar a hidratação do SPA.
-    res.status(200).send(shell);
+    // de /blog/:slug (NUNCA cai no pt-br). O status 404 evita soft 404 nos crawlers
+    // sem impedir o navegador de renderizar/hidratar o corpo da resposta.
+    res.status(404).send(shell);
     return;
   }
 

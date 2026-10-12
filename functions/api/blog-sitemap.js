@@ -7,8 +7,9 @@
 //   • `process.env.VITE_SUPABASE_*`  →  `env.VITE_SUPABASE_*` (dentro da lib).
 //   • `res.status().setHeader().send(xml)`  →  `return new Response(xml, {...})`.
 //
-// Servido em /blog-sitemap.xml via regra 200 do public/_redirects (path fixo, SEM
-// query string — portanto confiável no Cloudflare) e referenciado no robots.txt.
+// Compatibilidade para chamadas diretas em /api/blog-sitemap. A URL pública
+// /blog-sitemap.xml é servida por functions/blog-sitemap.xml.js, sem depender de
+// rewrite entre rotas de Functions, e é referenciada no robots.txt.
 // A montagem do XML/hreflang recíproco é IDÊNTICA à Vercel.
 // ─────────────────────────────────────────────────────────────────────────────
 

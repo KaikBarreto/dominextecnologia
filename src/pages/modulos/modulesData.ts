@@ -175,7 +175,7 @@ const osDigital: ModuleData = {
     { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
     { value: 'Zero papel', label: 'OS criada, executada e fechada no app' },
     { value: 'No celular', label: 'OS executada pelo técnico em campo' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   painsHeading: 'A OS em papel custa caro todo dia',
@@ -294,7 +294,7 @@ const pmoc: ModuleData = {
     { value: 'Lei 13.589', label: 'PMOC em conformidade com a legislação federal' },
     { value: 'Por máquina', label: 'plano de manutenção individual por equipamento' },
     { value: 'Auto', label: 'visitas recorrentes geradas pelo sistema' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   painsHeading: 'O PMOC não pode ser feito na correria',
@@ -415,7 +415,7 @@ const crm: ModuleData = {
     { value: 'Funil', label: 'oportunidades organizadas em kanban' },
     { value: 'Lead → OS', label: 'do primeiro contato à ordem de serviço' },
     { value: 'Por vendedor', label: 'atribuição e acompanhamento individual' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   painsHeading: 'Lead que não vira venda é dinheiro na mesa',
@@ -534,7 +534,7 @@ const financeiro: ModuleData = {
     { value: 'A pagar/receber', label: 'contas organizadas e com vencimento' },
     { value: 'Fluxo de caixa', label: 'entradas e saídas em tempo real' },
     { value: 'DRE', label: 'resultado do mês fechado automaticamente' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   painsHeading: 'Decidir no chute custa o lucro do mês',
@@ -653,7 +653,7 @@ const pontoFolha: ModuleData = {
     { value: 'Selfie + GPS', label: 'ponto registrado de onde o técnico está' },
     { value: 'Banco de horas', label: 'extras e faltas calculados sozinhos' },
     { value: 'Folha + vales', label: 'fechamento do mês por funcionário' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   painsHeading: 'Controlar a jornada de quem vive na rua é difícil',
@@ -772,7 +772,7 @@ const nfse: ModuleData = {
     { value: 'NFS-e', label: 'nota fiscal de serviço emitida na plataforma' },
     { value: 'Por cliente', label: 'emissão amarrada ao cadastro do cliente' },
     { value: 'Municipal', label: 'conformidade com a prefeitura do município' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   painsHeading: 'A nota fiscal não pode ser um sistema à parte',
@@ -891,7 +891,7 @@ const portalCliente: ModuleData = {
     { value: 'Por link', label: 'cliente acessa sem instalar nada' },
     { value: 'Acompanha a OS', label: 'status e histórico em tempo real' },
     { value: 'Aprova orçamento', label: 'sem telefonema, sem e-mail perdido' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   painsHeading: 'O telefone toca o dia todo com a mesma pergunta',
@@ -1010,7 +1010,7 @@ const estoque: ModuleData = {
     { value: 'Entrada/saída', label: 'movimentação de peças sob controle' },
     { value: 'Baixa por OS', label: 'consumo lançado na ordem de serviço' },
     { value: 'Inventário', label: 'saldo real conferido quando você quiser' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   painsHeading: 'Estoque no escuro trava o atendimento',
@@ -1129,7 +1129,7 @@ const orcamentosContratos: ModuleData = {
     { value: 'Proposta por link', label: 'cliente aprova de onde estiver' },
     { value: 'Recorrente', label: 'contrato que gera as OS sozinho' },
     { value: 'Aprovou → OS', label: 'orçamento vira ordem de serviço' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   painsHeading: 'Orçamento e contrato no improviso travam a receita',
@@ -1248,7 +1248,7 @@ const rastreamentoAgenda: ModuleData = {
     { value: 'Tempo real', label: 'equipe no mapa enquanto trabalha' },
     { value: 'Check-in/out', label: 'validados pelo endereço do cliente' },
     { value: 'Agenda', label: 'rota do dia organizada por técnico' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   painsHeading: 'Não saber onde a equipe está custa caro',
@@ -1367,7 +1367,7 @@ const areaTecnico: ModuleData = {
     { value: 'PWA', label: 'app instalável no celular do técnico' },
     { value: 'Ferramentas', label: 'cálculos técnicos no bolso da equipe' },
     { value: 'No bolso', label: 'tudo no celular do técnico, em campo' },
-    { value: '4,9/5', label: 'satisfação das empresas que usam' },
+    { value: "5,0/5", label: "no Google, com 26 opiniões" },
   ],
 
   painsHeading: 'O técnico precisa de tudo no campo, não no escritório',

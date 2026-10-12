@@ -20,7 +20,7 @@ import {
   Newspaper,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { enUS, es, fr, ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { captureUtmParams } from '@/lib/whatsapp';
 import LandingFooter from '@/components/landing/LandingFooter';
@@ -46,7 +46,20 @@ const DOMINEX_BRAND_VARS = {
 
 // Domínio canônico do site público (com www — é o que o projeto usa).
 const SITE_URL = 'https://www.dominex.app';
-const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
+const DEFAULT_OG_IMAGE = `${SITE_URL}/images/og-social.jpg`;
+const DATE_LOCALES = { 'pt-br': ptBR, en: enUS, es, fr } as const;
+const DATE_FORMATS = {
+  'pt-br': "dd 'de' MMMM 'de' yyyy",
+  en: 'MMMM d, yyyy',
+  es: "d 'de' MMMM 'de' yyyy",
+  fr: 'd MMMM yyyy',
+} as const;
+const COMMENT_DATE_FORMATS = {
+  'pt-br': "dd/MM/yyyy 'às' HH:mm",
+  en: 'MM/dd/yyyy, h:mm a',
+  es: "dd/MM/yyyy 'a las' HH:mm",
+  fr: "dd/MM/yyyy 'à' HH:mm",
+} as const;
 
 /**
  * Artigos são administrados como HTML e podem conter CTAs antigas de cadastro.
@@ -191,9 +204,13 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
   });
 
   const { data: categoryColors = [] } = useQuery({
-    queryKey: ['blog-categories-with-colors'],
+    queryKey: ['blog-categories-with-colors', locale],
     queryFn: async () => {
-      const { data } = await supabase.from('blog_categories').select('name, color').order('name');
+      const { data } = await supabase
+        .from('blog_categories')
+        .select('name, color')
+        .eq('locale', locale)
+        .order('name');
       return (data || []).map((c) => ({
         name: c.name,
         color: c.color || 'hsl(160 100% 39%)',
@@ -342,7 +359,7 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
       publisher: {
         '@type': 'Organization',
         name: 'Dominex',
-        logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` },
+        logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo-horizontal-verde.png` },
       },
       mainEntityOfPage: { '@type': 'WebPage', '@id': url },
     });
@@ -362,9 +379,9 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
   const handleShare = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
-      toast.success('Link copiado!');
+      toast.success(t.shareSuccess);
     } catch {
-      toast.error('Não foi possível copiar o link.');
+      toast.error(t.shareError);
     }
   };
 
@@ -383,13 +400,13 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
       <div style={DOMINEX_BRAND_VARS}>
         <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-neutral-50 px-4 text-center text-neutral-900 dark:bg-[hsl(0,0%,4%)] dark:text-white">
           <Newspaper className="h-12 w-12 text-neutral-300 dark:text-white/20" />
-          <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Artigo não encontrado</h1>
+          <h1 className="text-xl font-bold text-neutral-900 dark:text-white">{t.postNotFoundTitle}</h1>
           <p className="max-w-sm text-neutral-600 dark:text-white/50">
-            Esse artigo pode ter sido removido ou o endereço está errado.
+            {t.postNotFoundBody}
           </p>
           <Link to={toLocale('/blog')}>
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-              Voltar ao blog
+              {t.backToBlog}
             </Button>
           </Link>
         </div>
@@ -428,7 +445,7 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                 className="mb-6 inline-flex items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-primary dark:text-white/50"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
-                Voltar ao blog
+                {t.backToBlog}
               </Link>
 
               {post.cover_image_url && (
@@ -451,7 +468,9 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                 {post.published_at && (
                   <span className="flex items-center gap-1 text-sm text-neutral-500 dark:text-white/40">
                     <Calendar className="h-3.5 w-3.5" />
-                    {format(new Date(post.published_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                    {format(new Date(post.published_at), DATE_FORMATS[locale], {
+                      locale: DATE_LOCALES[locale],
+                    })}
                   </span>
                 )}
                 {post.author_name && (
@@ -564,8 +583,8 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                           {comment.author_name}
                         </span>
                         <span className="text-xs text-neutral-400 dark:text-white/35">
-                          {format(new Date(comment.created_at), "dd/MM/yyyy 'às' HH:mm", {
-                            locale: ptBR,
+                          {format(new Date(comment.created_at), COMMENT_DATE_FORMATS[locale], {
+                            locale: DATE_LOCALES[locale],
                           })}
                         </span>
                       </div>

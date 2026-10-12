@@ -808,6 +808,11 @@ export const frOverrides: MessagesOverride = {
     heroHighlight: 'maîtrisent le terrain',
     subtitle: 'Ordres de travail, maintenance préventive, gestion d’équipe et comment sortir votre activité du papier.',
     searchPlaceholder: 'Rechercher des articles...',
+    metaTitle: 'Blog — Dominex | Gestion pour les équipes terrain',
+    metaDescription:
+      'Articles pratiques sur les bons de travail, la gestion des équipes et comment maîtriser votre opération terrain. Contenu Dominex.',
+    allCategories: 'Toutes',
+    categoriesAriaLabel: 'Catégories du blog',
 
     resultsSingular: (query: string) => `résultat pour « ${query} »`,
     resultsPlural: (query: string) => `résultats pour « ${query} »`,
@@ -841,6 +846,12 @@ export const frOverrides: MessagesOverride = {
     minSuffix: 'min',
 
     // ── Chrome de la page de post ────────────────────────────────────────────
+    backToBlog: 'Retour au blog',
+    postNotFoundTitle: 'Article introuvable',
+    postNotFoundBody: 'Cet article a peut-être été supprimé ou son adresse est incorrecte.',
+    shareSuccess: 'Lien copié !',
+    shareError: 'Impossible de copier le lien.',
+
     commentCount: (n: number) => `${n} commentaire${n === 1 ? '' : 's'}`,
 
     commentsTitle: (n: number) => `Commentaires (${n})`,
