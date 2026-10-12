@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Calendar,
-  User,
   Share2,
   ArrowLeft,
   ArrowRight,
@@ -32,6 +31,7 @@ import BlogNavbar from '@/components/blog/BlogNavbar';
 import { useBlogTheme } from '@/components/blog/useBlogTheme';
 import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 import { COMPANY_WHATSAPP_NUMBER } from '@/components/landing/whatsappNumbers';
+import { BLOG_AUTHOR_AVATAR } from '@/components/blog/blogShared';
 
 // Página pública. NUNCA herda o white-label do tenant logado: restaura o brand
 // Dominex em toda a subárvore (espelha Landing.tsx / QuemSomos.tsx).
@@ -474,8 +474,12 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                   </span>
                 )}
                 {post.author_name && (
-                  <span className="flex items-center gap-1 text-sm text-neutral-500 dark:text-white/40">
-                    <User className="h-3.5 w-3.5" />
+                  <span className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-white/40">
+                    <img
+                      src={BLOG_AUTHOR_AVATAR}
+                      alt="Dominex"
+                      className="h-5 w-5 rounded-full border border-primary/25 object-cover"
+                    />
                     {post.author_name}
                   </span>
                 )}

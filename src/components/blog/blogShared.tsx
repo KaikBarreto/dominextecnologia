@@ -6,7 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { Link } from 'react-router-dom';
-import { Calendar, User, Newspaper } from 'lucide-react';
+import { Calendar, Newspaper } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useLocale } from '@/lib/i18n';
@@ -14,6 +14,7 @@ import { localizeInternal } from '@/lib/i18n/localizeInternal';
 
 /** Verde da marca, fonte única quando uma categoria não tem cor própria. */
 export const BRAND_GREEN = 'hsl(160 100% 39%)';
+export const BLOG_AUTHOR_AVATAR = '/images/dominex-author-avatar.jpg';
 
 export type CategoryColor = { name: string; color: string };
 
@@ -84,13 +85,6 @@ export function CategoryBadge({
   );
 }
 
-/** Iniciais do autor pro avatar (ex.: "Equipe Dominex" → "ED"). */
-function authorInitials(name?: string | null) {
-  if (!name) return 'D';
-  const parts = name.trim().split(/\s+/).slice(0, 2);
-  return parts.map((p) => p.charAt(0).toUpperCase()).join('') || 'D';
-}
-
 /** Capa do card (imagem real ou placeholder verde com ícone). */
 function CardCover({
   post,
@@ -126,9 +120,12 @@ function CardMeta({ post }: { post: BlogPostCardData }) {
   const date = shortDate(post.published_at);
   return (
     <div className="mt-3 flex items-center gap-2 text-xs text-neutral-500 dark:text-white/45">
-      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
-        {authorInitials(post.author_name)}
-      </span>
+      <img
+        src={BLOG_AUTHOR_AVATAR}
+        alt="Dominex"
+        className="h-6 w-6 rounded-full border border-primary/25 object-cover"
+        loading="lazy"
+      />
       <span className="truncate font-medium text-neutral-600 dark:text-white/60">
         {post.author_name || t.defaultAuthor}
       </span>
@@ -228,8 +225,13 @@ export function MostReadItem({
         <h4 className="line-clamp-2 text-sm font-semibold leading-snug text-neutral-800 transition-colors group-hover:text-primary dark:text-white/85">
           {post.title}
         </h4>
-        <p className="mt-1 flex items-center gap-1 text-[11px] text-neutral-500 dark:text-white/40">
-          <User className="h-3 w-3" />
+        <p className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-500 dark:text-white/40">
+          <img
+            src={BLOG_AUTHOR_AVATAR}
+            alt="Dominex"
+            className="h-4 w-4 rounded-full border border-primary/20 object-cover"
+            loading="lazy"
+          />
           {post.author_name || messages.blog.defaultAuthor}
         </p>
       </div>
