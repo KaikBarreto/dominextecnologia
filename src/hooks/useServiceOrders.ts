@@ -78,13 +78,18 @@ export interface ServiceOrderUpdate extends Partial<ServiceOrderInput> {
   recurrence_weekdays?: number[] | null;
 }
 
-export function useServiceOrders() {
+interface UseServiceOrdersOptions {
+  /** Carrega o histórico completo. Desative em consumidores que usam apenas mutations. */
+  loadServiceOrders?: boolean;
+}
+
+export function useServiceOrders({ loadServiceOrders = true }: UseServiceOrdersOptions = {}) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const serviceOrdersQuery = useQuery({
-    queryKey: ['service-orders'],
+    queryKey: ['service-orders', user?.id ?? 'anon'],
     queryFn: async () => {
       // Fetch all service orders (paginated to avoid 1000 row limit)
       let allData: any[] = [];
@@ -99,7 +104,8 @@ export function useServiceOrders() {
             equipment:equipment(id, name, brand, model),
             form_template:form_templates(id, name),
             service_type:service_types(id, name, color, number_prefix),
-            contract:contracts(id, is_pmoc)
+            contract:contracts(id, is_pmoc),
+            assignees:service_order_assignees(user_id)
           `)
           .order('created_at', { ascending: false })
           .range(from, from + pageSize - 1);
@@ -109,38 +115,6 @@ export function useServiceOrders() {
         if (!data || data.length < pageSize) break;
         from += pageSize;
       }
-
-      // Fetch all assignees with pagination (Supabase has 1000 row default limit)
-      const orderIds = allData.map((o: any) => o.id);
-      let allAssignees: any[] = [];
-      if (orderIds.length > 0) {
-        // Paginate in chunks to avoid both URL length issues and the 1000 row limit
-        const chunkSize = 200; // chunk of order IDs per query
-        for (let i = 0; i < orderIds.length; i += chunkSize) {
-          const chunk = orderIds.slice(i, i + chunkSize);
-          let aFrom = 0;
-          const aPageSize = 1000;
-          while (true) {
-            const { data: assignees, error: aErr } = await supabase
-              .from('service_order_assignees')
-              .select('service_order_id, user_id')
-              .in('service_order_id', chunk)
-              .range(aFrom, aFrom + aPageSize - 1);
-            if (aErr) break;
-            allAssignees = allAssignees.concat(assignees || []);
-            if (!assignees || assignees.length < aPageSize) break;
-            aFrom += aPageSize;
-          }
-        }
-      }
-
-      // Attach assignees to each order
-      const assigneeMap = new Map<string, string[]>();
-      allAssignees.forEach((a: any) => {
-        const list = assigneeMap.get(a.service_order_id) || [];
-        list.push(a.user_id);
-        assigneeMap.set(a.service_order_id, list);
-      });
 
       // Lookup batch dos perfis dos criadores (preenche `created_by_profile` no front
       // — usado pelo avatar da coluna "Criador" da lista de OS e pelo tooltip
@@ -167,7 +141,12 @@ export function useServiceOrders() {
       }
 
       allData.forEach((order: any) => {
-        order._assignee_user_ids = assigneeMap.get(order.id) || [];
+        // A relação vem embutida em cada página de OS. Isso preserva o histórico
+        // completo e elimina o fan-out de consultas por blocos de IDs.
+        order._assignee_user_ids = (order.assignees || []).map(
+          (assignee: { user_id: string }) => assignee.user_id
+        );
+        delete order.assignees;
         order.created_by_profile = order.created_by ? profileMap.get(order.created_by) ?? null : null;
         // Apply snapshot fallback for deleted entities
         const snap = order.snapshot_data;
@@ -179,6 +158,10 @@ export function useServiceOrders() {
 
       return allData as unknown as (ServiceOrder & { customer: any; equipment: any; form_template: any; _assignee_user_ids?: string[] })[];
     },
+    // Evita refetch completo ao alternar rapidamente entre telas que compartilham
+    // este hook. As mutações abaixo continuam invalidando a chave imediatamente.
+    staleTime: 30_000,
+    enabled: loadServiceOrders && !!user?.id,
   });
 
   const createServiceOrder = useMutation({

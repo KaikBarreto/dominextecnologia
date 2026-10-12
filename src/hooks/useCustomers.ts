@@ -6,6 +6,11 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 
+// Clientes alimentam selects em várias telas. A lista muda apenas por mutations
+// locais (que já invalidam o prefixo `customers`), então refazer o fetch-all a
+// cada montagem/foco só multiplica custo sem melhorar a consistência percebida.
+const CUSTOMERS_STALE_TIME_MS = 5 * 60 * 1000;
+
 export interface CustomerInput {
   name: string;
   customer_type: CustomerType;
@@ -35,7 +40,12 @@ export interface CustomerInput {
   longitude?: number;
 }
 
-export function useCustomers() {
+interface UseCustomersOptions {
+  /** Carrega a lista completa. Desative em consumidores que usam apenas mutations. */
+  loadCustomers?: boolean;
+}
+
+export function useCustomers({ loadCustomers = true }: UseCustomersOptions = {}) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, loading } = useAuth();
@@ -52,7 +62,9 @@ export function useCustomers() {
       );
       return data;
     },
-    enabled: !loading,
+    enabled: loadCustomers && !!user?.id && !loading,
+    staleTime: CUSTOMERS_STALE_TIME_MS,
+    refetchOnWindowFocus: false,
     retry: 3,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });

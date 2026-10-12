@@ -25,7 +25,7 @@ import { getErrorMessage } from '@/utils/errorMessages';
 export function useContractDetail(contractId: string | undefined) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { updateServiceOrder } = useServiceOrders();
+  const { updateServiceOrder } = useServiceOrders({ loadServiceOrders: false });
 
   const { data: contract, isLoading } = useQuery({
     queryKey: ['contract-detail', contractId],

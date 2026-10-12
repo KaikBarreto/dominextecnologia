@@ -95,7 +95,7 @@ export function PessoasStep({
   const { locale } = useAppLocaleContext();
   const s = MESSAGES[locale].app.nfse.stepper;
   const m = s.pessoas.manual;
-  const { updateCustomer } = useCustomers();
+  const { updateCustomer } = useCustomers({ loadCustomers: false });
   const [showIntermediario, setShowIntermediario] = useState(!!intermediario);
   const [completarOpen, setCompletarOpen] = useState(false);
 

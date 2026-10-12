@@ -81,7 +81,7 @@ export function LancarNotaDespesaDialog({
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.nfse.recebidas.lancarDespesaDialog;
   const { toast } = useToast();
-  const { createTransaction } = useFinancial();
+  const { createTransaction } = useFinancial({ loadTransactions: false });
   const { suppliers } = useSuppliers();
 
   // Só NF-e tem XML/`<cobr>` pra ler. NFS-e nem entra na query (id null desliga).

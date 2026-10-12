@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.28.23";
+export const APP_VERSION = "1.28.24";
 
-export const VERSION_NOTES = "O Financeiro ficou bem mais confortável no celular: os valores dos cartões de resumo não aparecem mais cortados, cada conta da lista ganhou espaço para mostrar cliente, categoria e situação sem apertar, o botão de criar virou um botão flutuante que acompanha a rolagem e o selo Pendente passou a ter cor própria.";
+export const VERSION_NOTES = "O sistema ficou mais rápido ao abrir o Dashboard, as Ordens de Serviço, o Financeiro e os cadastros. As telas agora evitam recarregamentos e consultas repetidas sem limitar o histórico disponível.";

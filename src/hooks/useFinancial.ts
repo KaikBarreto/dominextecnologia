@@ -288,7 +288,61 @@ export function buildReceiptFeeRow(args: {
  */
 const EMPTY_TRANSACTIONS: TransactionWithRelations[] = [];
 
-export function useFinancial() {
+export interface FinancialSummary {
+  totalEntradas: number;
+  totalSaidas: number;
+  saldo: number;
+  aPagar: number;
+  aReceber: number;
+}
+
+type FinancialSummaryRow = Pick<
+  FinancialTransaction,
+  'transaction_type' | 'amount' | 'is_paid' | 'transfer_pair_id'
+>;
+
+/**
+ * Resume o ledger completo que `useFinancial` já carrega.
+ *
+ * Importante: a fonte precisa conter mães E filhas. Recebimentos parciais e
+ * tarifas são eventos contábeis reais; removê-los daqui faria caixa e resultado
+ * divergirem. Transferências internas são o oposto: as duas pernas só movem
+ * dinheiro entre contas, então ficam fora do resultado pelo vínculo estrutural
+ * `transfer_pair_id` (nunca pelo texto livre da categoria).
+ */
+export function summarizeFinancialTransactions(rows: FinancialSummaryRow[]): FinancialSummary {
+  const summary: FinancialSummary = {
+    totalEntradas: 0,
+    totalSaidas: 0,
+    saldo: 0,
+    aPagar: 0,
+    aReceber: 0,
+  };
+
+  rows.forEach((transaction) => {
+    if (transaction.transfer_pair_id) return;
+
+    const amount = Number(transaction.amount);
+    if (transaction.transaction_type === 'entrada') {
+      if (transaction.is_paid) summary.totalEntradas += amount;
+      else summary.aReceber += amount;
+      return;
+    }
+
+    if (transaction.is_paid) summary.totalSaidas += amount;
+    else summary.aPagar += amount;
+  });
+
+  summary.saldo = summary.totalEntradas - summary.totalSaidas;
+  return summary;
+}
+
+interface UseFinancialOptions {
+  /** Carrega o ledger completo. Desative em consumidores que usam apenas mutations. */
+  loadTransactions?: boolean;
+}
+
+export function useFinancial({ loadTransactions = true }: UseFinancialOptions = {}) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -305,7 +359,7 @@ export function useFinancial() {
   };
 
   const transactionsQuery = useQuery({
-    queryKey: ['financial-transactions'],
+    queryKey: ['financial-transactions', user?.id ?? 'anon'],
     queryFn: async () => {
       const data = await fetchAllPaginated<FinancialTransaction & { customer: any; supplier: any; account: any; employee: any }>(
         () => supabase
@@ -359,53 +413,12 @@ export function useFinancial() {
         creator: t.created_by ? creatorsMap.get(t.created_by) ?? null : null,
       })) as TransactionWithRelations[];
     },
-  });
-
-  const summaryQuery = useQuery({
-    queryKey: ['financial-summary'],
-    queryFn: async () => {
-      const data = await fetchAllPaginated<{ transaction_type: string; amount: number; is_paid: boolean; transfer_pair_id: string | null }>(
-        () => supabase
-          .from('financial_transactions')
-          // `transfer_pair_id` é obrigatório no select: sem ele o filtro de
-          // movimento interno abaixo vira no-op silencioso.
-          .select('transaction_type, amount, is_paid, transfer_pair_id')
-      );
-      
-      const summary = {
-        totalEntradas: 0,
-        totalSaidas: 0,
-        saldo: 0,
-        aPagar: 0,
-        aReceber: 0,
-      };
-
-      data?.forEach((t) => {
-        // Movimento interno (transferência entre contas e pagamento de fatura de
-        // cartão) não é receita nem despesa: é balanço, não resultado. As duas
-        // pernas do par carregam o mesmo `transfer_pair_id`; somá-las inflaria
-        // Entradas e Saídas com dinheiro que só trocou de bolso. Mesmo critério
-        // ESTRUTURAL usado no DRE — nunca por nome de categoria (texto livre).
-        if (t.transfer_pair_id) return;
-        if (t.transaction_type === 'entrada') {
-          if (t.is_paid) {
-            summary.totalEntradas += Number(t.amount);
-          } else {
-            summary.aReceber += Number(t.amount);
-          }
-        } else {
-          if (t.is_paid) {
-            summary.totalSaidas += Number(t.amount);
-          } else {
-            summary.aPagar += Number(t.amount);
-          }
-        }
-      });
-
-      summary.saldo = summary.totalEntradas - summary.totalSaidas;
-      
-      return summary;
-    },
+    // O ledger é invalidado explicitamente pelas mutações financeiras. A janela
+    // curta evita refetch em alternâncias rápidas, mas mantém o refresh ao voltar
+    // depois dela — importante para baixas externas confirmadas por webhook.
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+    enabled: loadTransactions && !!user?.id,
   });
 
   const createTransaction = useMutation({
@@ -1095,6 +1108,14 @@ export function useFinancial() {
   // nenhuma outra linha.
   const transactionsWithChildren = transactionsQuery.data ?? EMPTY_TRANSACTIONS;
 
+  // O resumo vinha de uma SEGUNDA leitura paginada do ledger inteiro. Derivar
+  // da mesma coleção já carregada elimina essa duplicação e garante snapshot
+  // único entre lista e cards, sem mudar a semântica contábil.
+  const summary = useMemo(
+    () => summarizeFinancialTransactions(transactionsWithChildren),
+    [transactionsWithChildren]
+  );
+
   // Padrão das LISTAGENS: só as raízes. A filha aparece dentro do detalhe da
   // mãe (diálogo de transações relacionadas), nunca como linha solta. Este é o
   // corte de APRESENTAÇÃO que antes vivia — erradamente — dentro da query.
@@ -1114,9 +1135,9 @@ export function useFinancial() {
      * evento de caixa da mãe, que segue no banco com o valor cheio.
      */
     transactionsWithChildren,
-    summary: summaryQuery.data ?? { totalEntradas: 0, totalSaidas: 0, saldo: 0, aPagar: 0, aReceber: 0 },
-    isLoading: transactionsQuery.isLoading || summaryQuery.isLoading,
-    error: transactionsQuery.error || summaryQuery.error,
+    summary,
+    isLoading: transactionsQuery.isLoading,
+    error: transactionsQuery.error,
     createTransaction,
     /** Série de REPETIÇÃO (N lançamentos do mesmo valor) num insert só. */
     createTransactionsBatch,

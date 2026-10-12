@@ -31,48 +31,55 @@ export const ROLE_COLORS: Record<AppRole, string> = {
   super_admin: 'bg-purple-600 text-white',
 };
 
+const USERS_STALE_TIME_MS = 5 * 60 * 1000;
+
 export function useUsers() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, profile, profileLoading } = useAuth();
 
   const { data: users = [], isLoading, error } = useQuery({
-    queryKey: ['users', user?.id],
+    queryKey: ['users', user?.id, profile?.company_id ?? 'no-company'],
     queryFn: async () => {
-      if (!user?.id) return [];
-
-      // Get current user's company_id
-      const { data: myProfile } = await supabase
-        .from('profiles')
-        .select('company_id')
-        .eq('user_id', user.id)
-        .single();
+      if (!user?.id || !profile) return [];
 
       // Get profiles filtered by company
       let query = supabase.from('profiles').select('*').order('full_name');
-      if (myProfile?.company_id) {
-        query = query.eq('company_id', myProfile.company_id);
+      if (profile.company_id) {
+        query = query.eq('company_id', profile.company_id);
       }
       const { data: profiles, error: profilesError } = await query;
       if (profilesError) throw profilesError;
 
-      // Get all roles (may fail if user doesn't have permission)
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('*');
+      // Restringe roles aos usuários efetivamente exibidos. Além de transferir
+      // menos linhas, evita o `.find()` quadrático ao montar a lista.
+      const profileUserIds = (profiles || []).map((item) => item.user_id);
+      const { data: roles } = profileUserIds.length > 0
+        ? await supabase
+            .from('user_roles')
+            .select('user_id, role')
+            .in('user_id', profileUserIds)
+        : { data: [] };
+      const roleByUserId = new Map<string, AppRole>();
+      (roles || []).forEach((item) => {
+        // Preserva a semântica anterior do `.find()`: se um usuário legado tiver
+        // mais de uma role, a primeira linha recebida continua prevalecendo.
+        if (!roleByUserId.has(item.user_id)) roleByUserId.set(item.user_id, item.role);
+      });
 
       // Merge profiles with their roles
       const usersWithRoles: UserWithRole[] = (profiles || []).map(profile => {
-        const userRole = roles?.find(r => r.user_id === profile.user_id);
         return {
           ...profile,
-          role: userRole?.role,
+          role: roleByUserId.get(profile.user_id),
         };
       });
 
       return usersWithRoles;
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !profileLoading && !!profile,
+    staleTime: USERS_STALE_TIME_MS,
+    refetchOnWindowFocus: false,
   });
 
   // Check if current user has admin/gestor role
@@ -88,6 +95,8 @@ export function useUsers() {
       return data?.role || null;
     },
     enabled: !!user?.id,
+    staleTime: USERS_STALE_TIME_MS,
+    refetchOnWindowFocus: false,
   });
 
   // Check if any admin exists
@@ -103,6 +112,9 @@ export function useUsers() {
       if (error) return false;
       return data && data.length > 0;
     },
+    enabled: !!user?.id,
+    staleTime: USERS_STALE_TIME_MS,
+    refetchOnWindowFocus: false,
   });
 
   // Check user permissions for fn:manage_users or all permissions
@@ -118,6 +130,8 @@ export function useUsers() {
       return (data?.permissions as string[]) || [];
     },
     enabled: !!user?.id,
+    staleTime: USERS_STALE_TIME_MS,
+    refetchOnWindowFocus: false,
   });
 
   // Curinga '*' = Acesso Total dinâmico (libera tudo, inclusive gerir usuários).
@@ -154,6 +168,8 @@ export function useUsers() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['currentUserRole'] });
       queryClient.invalidateQueries({ queryKey: ['hasAdmin'] });
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['technicians'] });
       toast({ title: 'Role atualizada com sucesso!' });
     },
     onError: (error) => {
@@ -175,6 +191,8 @@ export function useUsers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['technicians'] });
       toast({ title: 'Perfil atualizado com sucesso!' });
     },
     onError: (error) => {

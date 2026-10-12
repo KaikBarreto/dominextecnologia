@@ -10,7 +10,7 @@ import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
-  subDays, differenceInDays, format, startOfISOWeek,
+  subDays, differenceInDays, differenceInCalendarDays, format, startOfISOWeek,
   eachDayOfInterval, eachMonthOfInterval,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -26,7 +26,8 @@ import { DashboardTopTechnicians, type TechnicianPerf } from '@/components/dashb
 import { DashboardOSByType } from '@/components/dashboard/DashboardOSByType';
 import { DashboardLiveMap } from '@/components/dashboard/DashboardLiveMap';
 import { useLiveTechnicianLocations } from '@/hooks/useLiveTechnicianLocations';
-import { DateRangeFilter, useDateRangeFilter, type DateRange } from '@/components/ui/DateRangeFilter';
+import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
+import { todayInTz } from '@/lib/timezone';
 
 function getGreeting(t: (typeof MESSAGES)['pt-br']['app']['dashboard']['greeting']) {
   const h = new Date().getHours();
@@ -35,43 +36,92 @@ function getGreeting(t: (typeof MESSAGES)['pt-br']['app']['dashboard']['greeting
   return t.evening;
 }
 
+function parseDashboardDate(value: unknown): Date | null {
+  if (!value) return null;
+  const raw = String(value);
+  // Datas financeiras/operacionais sem hora são calendário da empresa. Meio-dia
+  // local impede o parser UTC de deslocar o primeiro/último dia do filtro.
+  const parsed = new Date(raw.length === 10 ? `${raw}T12:00:00` : raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function filterByRange<T extends Record<string, any>>(items: T[], field: string, start: Date, end: Date) {
   return items.filter(item => {
-    const d = new Date(item[field]);
+    const d = parseDashboardDate(item[field]);
+    if (!d) return false;
     return d >= start && d <= end;
   });
 }
 
 export default function Dashboard() {
   const { profile, user } = useAuth();
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.dashboard;
-  const { data: stats, isLoading } = useDashboardStats();
   // Posições GPS AO VIVO dos técnicos (carga inicial + canal realtime, compartilhado
   // com o Mapa ao Vivo). Substitui o antigo posicionamento no endereço do cliente.
   const { technicians: liveLocations } = useLiveTechnicianLocations();
   const isMobile = useIsMobile();
 
   const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
+  const { data: stats, isLoading } = useDashboardStats(range);
 
-  const start = range.from ?? startOfMonth(new Date());
-  const end = range.to ?? endOfMonth(new Date());
+  const isAllPeriod = !range.from || !range.to;
+  const fallbackRange = useMemo(() => {
+    const now = new Date();
+    return { start: startOfMonth(now), end: endOfMonth(now) };
+  }, []);
+
+  // O preset "Todo o período" não tem bounds explícitos. Depois do fetch-all,
+  // deriva apenas o eixo visual; a query continua inequivocamente no modo all.
+  const allPeriodRange = useMemo(() => {
+    if (!isAllPeriod || !stats) return null;
+
+    let earliest = Number.POSITIVE_INFINITY;
+    let latest = Number.NEGATIVE_INFINITY;
+    const include = (value: unknown) => {
+      const date = parseDashboardDate(value);
+      if (!date) return;
+      const timestamp = date.getTime();
+      earliest = Math.min(earliest, timestamp);
+      latest = Math.max(latest, timestamp);
+    };
+    stats.allOS.forEach((serviceOrder) => {
+      include(serviceOrder.scheduled_date);
+    });
+    stats.allFinancial.forEach((transaction) => {
+      include(transaction.transaction_date);
+    });
+
+    if (!Number.isFinite(earliest) || !Number.isFinite(latest)) return null;
+    return {
+      start: startOfDay(new Date(earliest)),
+      end: endOfDay(new Date(latest)),
+    };
+  }, [isAllPeriod, stats]);
+
+  const start = range.from ? startOfDay(range.from) : allPeriodRange?.start ?? fallbackRange.start;
+  const end = range.to ? endOfDay(range.to) : allPeriodRange?.end ?? fallbackRange.end;
 
   const prevRange = useMemo(() => {
-    const diff = differenceInDays(end, start) + 1;
-    return { start: subDays(start, diff), end: subDays(start, 1) };
+    const diff = differenceInCalendarDays(end, start) + 1;
+    return {
+      start: startOfDay(subDays(start, diff)),
+      end: endOfDay(subDays(start, 1)),
+    };
   }, [start, end]);
 
   // Filtered OS
   const filteredOS = useMemo(() => {
     if (!stats?.allOS) return [];
+    if (isAllPeriod) return stats.allOS;
     return filterByRange(stats.allOS, 'scheduled_date', start, end);
-  }, [stats?.allOS, start, end]);
+  }, [stats?.allOS, isAllPeriod, start, end]);
 
   const prevFilteredOS = useMemo(() => {
     if (!stats?.allOS) return [];
+    if (isAllPeriod) return [];
     return filterByRange(stats.allOS, 'scheduled_date', prevRange.start, prevRange.end);
-  }, [stats?.allOS, prevRange]);
+  }, [stats?.allOS, isAllPeriod, prevRange]);
 
   // Status counts
   const statusCounts = useMemo(() => {
@@ -88,8 +138,7 @@ export default function Dashboard() {
     const totalWithResult = osAbertas + osConcluidas;
     const taxaConclusao = totalWithResult > 0 ? Math.round((osConcluidas / totalWithResult) * 100) : 0;
 
-    const today = new Date();
-    const todayStr = format(today, 'yyyy-MM-dd');
+    const todayStr = todayInTz(timezone);
     const emCampoSet = new Set<string>();
     (stats?.allOS ?? []).forEach((os: any) => {
       if ((os.status === 'em_andamento' || os.status === 'a_caminho') && os.technician_id && os.scheduled_date === todayStr) {
@@ -105,11 +154,15 @@ export default function Dashboard() {
     // (mesmo do DRE), nunca por nome de categoria (texto livre quebra calado).
     const isInternalTransfer = (t: any) => !!t.transfer_pair_id;
 
-    const filteredFin = stats?.allFinancial ? filterByRange(stats.allFinancial, 'transaction_date', start, end) : [];
+    const filteredFin = stats?.allFinancial
+      ? (isAllPeriod ? stats.allFinancial : filterByRange(stats.allFinancial, 'transaction_date', start, end))
+      : [];
     let faturamento = 0;
     filteredFin.forEach((t: any) => { if (t.transaction_type === 'entrada' && !isInternalTransfer(t)) faturamento += Number(t.amount); });
 
-    const prevFin = stats?.allFinancial ? filterByRange(stats.allFinancial, 'transaction_date', prevRange.start, prevRange.end) : [];
+    const prevFin = stats?.allFinancial && !isAllPeriod
+      ? filterByRange(stats.allFinancial, 'transaction_date', prevRange.start, prevRange.end)
+      : [];
     let prevFaturamento = 0;
     prevFin.forEach((t: any) => { if (t.transaction_type === 'entrada' && !isInternalTransfer(t)) prevFaturamento += Number(t.amount); });
 
@@ -129,7 +182,7 @@ export default function Dashboard() {
       trendOS,
       trendFaturamento,
     };
-  }, [statusCounts, stats, start, end, prevRange, prevFilteredOS]);
+  }, [statusCounts, stats, isAllPeriod, start, end, prevRange, prevFilteredOS, timezone]);
 
   // Cash flow data — segue o período do datepicker (start..end), mas o fim
   // efetivo é CLAMPADO a HOJE pra não mostrar futuro vazio (ex.: "Este ano"
@@ -140,8 +193,9 @@ export default function Dashboard() {
     if (!stats?.allFinancial) return { data: [], totalEntradas: 0, totalSaidas: 0 };
 
     // Clampa o fim a hoje (fim do dia) pra cortar meses/dias futuros vazios.
-    const hoje = endOfDay(new Date());
+    const hoje = endOfDay(new Date(`${todayInTz(timezone)}T12:00:00`));
     const effEnd = end > hoje ? hoje : end;
+    if (start > effEnd) return { data: [], totalEntradas: 0, totalSaidas: 0 };
 
     const byDay = differenceInDays(effEnd, start) <= 31;
     const keyOf = (d: Date) =>
@@ -160,7 +214,9 @@ export default function Dashboard() {
       // fatura entram e saem da própria empresa. Contá-las dobrava as duas
       // linhas do gráfico (entrada numa conta + saída na outra, mesmo valor).
       if (t.transfer_pair_id) return;
-      const key = keyOf(new Date(t.transaction_date));
+      const transactionDate = parseDashboardDate(t.transaction_date);
+      if (!transactionDate) return;
+      const key = keyOf(transactionDate);
       const cur = buckets.get(key);
       if (!cur) return;
       const amount = Number(t.amount);
@@ -173,7 +229,7 @@ export default function Dashboard() {
       totalEntradas,
       totalSaidas,
     };
-  }, [stats?.allFinancial, start, end]);
+  }, [stats?.allFinancial, start, end, timezone]);
 
   // OS Evolution data
   const evolutionData = useMemo(() => {
@@ -183,8 +239,8 @@ export default function Dashboard() {
     const buildGroup = (keyFn: (d: Date) => string) => {
       const map = new Map<string, { total: number; concluidas: number }>();
       filtered.forEach((os: any) => {
-        if (!os.scheduled_date) return;
-        const d = new Date(os.scheduled_date);
+        const d = parseDashboardDate(os.scheduled_date);
+        if (!d) return;
         const key = keyFn(d);
         if (!map.has(key)) map.set(key, { total: 0, concluidas: 0 });
         const cur = map.get(key)!;
@@ -204,15 +260,15 @@ export default function Dashboard() {
   // Critical OS
   const criticalOS = useMemo((): CriticalOS[] => {
     if (!stats?.allOS) return [];
-    const today = new Date();
+    const today = new Date(`${todayInTz(timezone)}T12:00:00`);
     const serviceTypeMap = new Map(
       (stats.serviceTypes ?? []).map((st: any) => [st.id, st.name])
     );
     return (stats.allOS as any[])
       .filter(os => {
-        if (!os.scheduled_date) return false;
+        const scheduled = parseDashboardDate(os.scheduled_date);
+        if (!scheduled) return false;
         if (['concluida', 'cancelada'].includes(os.status)) return false;
-        const scheduled = new Date(os.scheduled_date);
         return scheduled < startOfDay(today);
       })
       .map(os => ({
@@ -220,14 +276,14 @@ export default function Dashboard() {
         orderNumber: os.order_number,
         customerName: os.customer?.name || t.critical.customerFallback,
         location: [os.customer?.city, os.customer?.state].filter(Boolean).join(', '),
-        daysOverdue: differenceInDays(today, new Date(os.scheduled_date)),
+        daysOverdue: differenceInDays(today, parseDashboardDate(os.scheduled_date)!),
         hasTechnician: !!os.technician_id,
         osType: (os.service_type_id && serviceTypeMap.get(os.service_type_id))
           || osTypeLabels[os.os_type as keyof typeof osTypeLabels]
           || os.os_type,
       }))
       .sort((a, b) => b.daysOverdue - a.daysOverdue);
-  }, [stats?.allOS, stats?.serviceTypes, t.critical.customerFallback]);
+  }, [stats?.allOS, stats?.serviceTypes, t.critical.customerFallback, timezone]);
 
   // Top technicians
   const topTechnicians = useMemo((): TechnicianPerf[] => {
@@ -294,7 +350,7 @@ export default function Dashboard() {
   // (sem inventar coordenada) — entra assim que o 1º ponto chegar via realtime.
   const techsInField = useMemo(() => {
     if (!stats?.allOS || !stats.profiles) return [];
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const todayStr = todayInTz(timezone);
     const profileMap = new Map(stats.profiles.map((p: any) => [p.user_id, p]));
     const liveByUser = new Map(liveLocations.map((l) => [l.user_id, l]));
     const seen = new Set<string>();
@@ -323,7 +379,7 @@ export default function Dashboard() {
         };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null);
-  }, [stats?.allOS, stats?.profiles, liveLocations, t.liveMap.technicianFallback]);
+  }, [stats?.allOS, stats?.profiles, liveLocations, t.liveMap.technicianFallback, timezone]);
 
   const firstName = profile?.full_name?.split(' ')[0] || t.greeting.fallbackName;
 

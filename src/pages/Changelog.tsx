@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.28.24',
+    date: '12 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Dashboard e listagens mais rápidos',
+        description: 'O Dashboard, as Ordens de Serviço, o Financeiro e os cadastros passaram a evitar recarregamentos e buscas repetidas. A abertura e a troca entre telas ficam mais leves, inclusive para empresas com bastante histórico, sem esconder registros antigos quando você precisar consultá-los.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.28.23',
     date: '9 de outubro de 2026',
     type: 'patch',

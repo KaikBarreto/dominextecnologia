@@ -37,7 +37,7 @@ export function QuickCustomerDialog({
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.cobrar.quickCustomer;
   const { toast } = useToast();
-  const { createCustomer } = useCustomers();
+  const { createCustomer } = useCustomers({ loadCustomers: false });
 
   const [name, setName] = useState(initialName);
   const [document, setDocument] = useState('');

@@ -177,7 +177,14 @@ export default function ContractDetail() {
   const navigate = useNavigate();
   const { id, isResolving: isResolvingId } = useResolveContractId(routeParam);
   const { contract, isLoading, cancelOccurrenceOs, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
-  const { createTransactionsBatch } = useFinancial();
+  const {
+    createTransactionsBatch,
+    markAsPaid: markTxPaid,
+    deleteTransaction,
+    updateTransaction,
+    updateTransactionsBatch,
+    deleteTransactionsBatch,
+  } = useFinancial({ loadTransactions: false });
   const { activeCostCenters } = useCostCenters();
   const { accounts } = useFinancialAccounts();
   const { settings: companySettings } = useCompanySettings();
@@ -507,8 +514,6 @@ export default function ContractDetail() {
     [occPagination.paginatedItems],
   );
   const { activitiesByOrderId } = useServiceOrderActivities(occVisibleOsIds);
-
-  const { markAsPaid: markTxPaid, deleteTransaction, updateTransaction, updateTransactionsBatch, deleteTransactionsBatch } = useFinancial();
 
   // Seleção resolvida contra a lista viva: id de parcela já excluída some
   // sozinho da contagem, sem deixar "3 selecionadas" fantasma na barra.

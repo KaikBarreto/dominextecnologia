@@ -95,7 +95,7 @@ function LeadWonRevenueFlow({ open, onOpenChange, context }: FlowProps) {
   const t = MESSAGES[locale].app.finance.leadRevenue;
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { createTransaction } = useFinancial();
+  const { createTransaction } = useFinancial({ loadTransactions: false });
 
   const [step, setStep] = useState<'ask' | 'form'>('ask');
 

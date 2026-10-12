@@ -200,7 +200,7 @@ export function FinanceContas({
   const { locale, currency, timezone } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const fmt = (v: number) => formatMoney(v, currency, locale);
-  const { deleteTransaction, payTransactionsBatch } = useFinancial();
+  const { deleteTransaction, payTransactionsBatch } = useFinancial({ loadTransactions: false });
   const { hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
   // Quem não gerencia configuração não vê o "+" de criar conta/categoria na
   // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem

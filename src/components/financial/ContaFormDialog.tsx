@@ -39,7 +39,7 @@ interface ContaFormDialogProps {
 type Recurrence = 'unica' | 'mensal' | 'semanal' | 'anual';
 
 export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', editingTransaction }: ContaFormDialogProps) {
-  const { createTransaction, updateTransaction } = useFinancial();
+  const { createTransaction, updateTransaction } = useFinancial({ loadTransactions: false });
   const { locale } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const t = fin.contaForm;

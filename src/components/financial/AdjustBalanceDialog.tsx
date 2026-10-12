@@ -33,7 +33,7 @@ interface AdjustBalanceDialogProps {
  */
 export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalanceDialogProps) {
   const { balances } = useFinancialAccounts();
-  const { createTransaction } = useFinancial();
+  const { createTransaction } = useFinancial({ loadTransactions: false });
   const { toast } = useToast();
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.adjustBalance;

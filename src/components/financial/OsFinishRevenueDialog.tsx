@@ -77,7 +77,7 @@ function OsFinishRevenueFlow({ open, onOpenChange, context }: FlowProps) {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.osRevenue;
   const queryClient = useQueryClient();
-  const { createTransaction } = useFinancial();
+  const { createTransaction } = useFinancial({ loadTransactions: false });
 
   const [step, setStep] = useState<'ask' | 'form'>('ask');
 

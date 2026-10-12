@@ -338,7 +338,7 @@ export function TransactionListPanel({
   const { toast } = useToast();
   // Fronteira do Supabase pro "desfazer lote" (RPC `undo_payment_group`).
   // Mesma query já em cache do react-query: não dispara busca nova.
-  const { undoPaymentGroup } = useFinancial();
+  const { undoPaymentGroup } = useFinancial({ loadTransactions: false });
 
   // A filtragem precisa acontecer DENTRO do painel, depois que ele conhece o
   // filtro de conta. Se o parent remover as compras antes de passá-las, marcar
