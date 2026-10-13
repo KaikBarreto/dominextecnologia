@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.31.2',
+    date: '13 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Bandeiras na seleção de moeda',
+        description: 'A lista de moedas nas Configurações agora mostra uma bandeira ao lado de cada opção, facilitando a identificação. Quando uma moeda é usada por vários países, a opção selecionada prioriza a bandeira do país da empresa.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.31.1',
     date: '13 de outubro de 2026',
     type: 'patch',

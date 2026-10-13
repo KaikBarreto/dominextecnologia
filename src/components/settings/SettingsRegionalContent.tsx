@@ -20,7 +20,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useToast } from '@/hooks/use-toast';
 import { MESSAGES } from '@/lib/i18n';
 import { LOCALES, getLocaleDef, type LocaleCode } from '@/lib/i18n/locales';
-import { CURRENCIES, currencyLabel } from '@/lib/i18n/currencies';
+import { CURRENCIES, currencyFlag, currencyLabel } from '@/lib/i18n/currencies';
 import {
   DEFAULT_COUNTRY_CODE,
   getCountryDef,
@@ -416,12 +416,27 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
           </Label>
           <Select value={currency} onValueChange={setCurrency} disabled={!canSave || !isAdmin}>
             <SelectTrigger>
-              <SelectValue>{currencyLabel(currency)}</SelectValue>
+              <SelectValue>
+                <span className="flex items-center gap-2">
+                  <span aria-hidden="true" className="text-base leading-none">
+                    {currencyFlag(
+                      currency,
+                      getCountryDef(countryCode).currency === currency ? countryCode : undefined,
+                    )}
+                  </span>
+                  {currencyLabel(currency)}
+                </span>
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {CURRENCIES.map((c) => (
                 <SelectItem key={c.code} value={c.code}>
-                  {currencyLabel(c.code)}
+                  <span className="flex items-center gap-2">
+                    <span aria-hidden="true" className="text-base leading-none">
+                      {currencyFlag(c.code)}
+                    </span>
+                    {currencyLabel(c.code)}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>

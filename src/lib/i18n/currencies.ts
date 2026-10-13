@@ -6,6 +6,8 @@
 // moedas num select). O valor SALVO é sempre o código ISO 4217.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { countryFlag } from './countries';
+
 export interface CurrencyDef {
   /** Código ISO 4217 (ex.: 'BRL'). É o valor salvo em company_settings.currency. */
   code: string;
@@ -41,6 +43,31 @@ export const CURRENCIES: CurrencyDef[] = [
 
 const CURRENCY_BY_CODE = new Map(CURRENCIES.map((c) => [c.code, c]));
 
+/** País/região representativo usado apenas para a bandeira do seletor. */
+const CURRENCY_FLAG_COUNTRY: Record<string, string> = {
+  BRL: 'BR',
+  CVE: 'CV',
+  AOA: 'AO',
+  MZN: 'MZ',
+  STN: 'ST',
+  XOF: 'GW',
+  USD: 'US',
+  EUR: 'EU',
+  GBP: 'GB',
+  MXN: 'MX',
+  ARS: 'AR',
+  CLP: 'CL',
+  COP: 'CO',
+  PEN: 'PE',
+  UYU: 'UY',
+  PYG: 'PY',
+  BOB: 'BO',
+  CAD: 'CA',
+  CHF: 'CH',
+  JPY: 'JP',
+  AUD: 'AU',
+};
+
 /** Busca a moeda pelo código, ou monta um fallback exibível pra códigos fora da lista. */
 export function getCurrencyDef(code: string | null | undefined): CurrencyDef {
   const c = code ? CURRENCY_BY_CODE.get(code) : undefined;
@@ -56,4 +83,13 @@ export function currencyLabel(code: string | null | undefined): string {
   return c.symbol && c.symbol !== c.code
     ? `${c.code} — ${c.name} (${c.symbol})`
     : `${c.code} — ${c.name}`;
+}
+
+/** Bandeira da moeda; quando informado, o país da empresa tem prioridade. */
+export function currencyFlag(
+  code: string | null | undefined,
+  companyCountryCode?: string | null,
+): string {
+  const currencyCode = code?.toUpperCase() || '';
+  return countryFlag(companyCountryCode || CURRENCY_FLAG_COUNTRY[currencyCode] || '');
 }

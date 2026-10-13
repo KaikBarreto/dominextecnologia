@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.31.1";
+export const APP_VERSION = "1.31.2";
 
-export const VERSION_NOTES = "A atividade comercial dos vendedores agora também registra e acompanha quantos testes foram iniciados em cada período.";
+export const VERSION_NOTES = "A seleção de moeda nas Configurações agora mostra bandeiras para facilitar a identificação de cada opção e respeita o país da empresa nas moedas compartilhadas.";

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getCurrencyDef } from '@/lib/i18n/currencies';
+import { currencyFlag, getCurrencyDef } from '@/lib/i18n/currencies';
 import {
   countryFromLanguageTag,
   getCountryDef,
@@ -57,5 +57,13 @@ describe('defaults regionais por país', () => {
     const inputValue = currencyMask('123456', 'CVE', 'pt-br');
     expect(inputValue).toContain('CVE');
     expect(parseCurrency(inputValue)).toBe(1234.56);
+  });
+
+  it('exibe a bandeira correspondente no seletor de moedas', () => {
+    expect(currencyFlag('BRL')).toBe('🇧🇷');
+    expect(currencyFlag('CVE')).toBe('🇨🇻');
+    expect(currencyFlag('EUR')).toBe('🇪🇺');
+    expect(currencyFlag('USD', 'TL')).toBe('🇹🇱');
+    expect(currencyFlag('ZZZ')).toBe('🌐');
   });
 });
