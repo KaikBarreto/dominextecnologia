@@ -11534,6 +11534,7 @@ export type Database = {
     Functions: {
       _assert_super_admin: { Args: never; Returns: undefined }
       _cs_checkup_responsavel: { Args: never; Returns: string }
+      _trial_followup_responsavel: { Args: never; Returns: string }
       _recalculate_employee_movement_balances: {
         Args: { p_employee_id: string }
         Returns: undefined
@@ -11763,8 +11764,16 @@ export type Database = {
         Args: { _pipeline_id: string }
         Returns: string
       }
-      cs_criar_checkup_semanal: {
+      cs_criar_checkup_quinzenal: {
         Args: { p_dia?: string; p_dry_run?: boolean }
+        Returns: Json
+      }
+      cs_criar_followups_trial_diarios: {
+        Args: {
+          p_company_id?: string
+          p_dry_run?: boolean
+          p_min_due_date?: string
+        }
         Returns: Json
       }
       current_salesperson_id: { Args: never; Returns: string }
