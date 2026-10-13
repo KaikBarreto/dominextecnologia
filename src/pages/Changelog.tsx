@@ -42,9 +42,9 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.31.0',
+    version: '1.30.1',
     date: '13 de outubro de 2026',
-    type: 'minor',
+    type: 'patch',
     changes: [
       {
         title: 'Estoque exclusivo dentro da ficha do cliente',
