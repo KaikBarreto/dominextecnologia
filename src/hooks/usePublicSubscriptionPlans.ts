@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { ModuleCode } from '@/hooks/useCompanyModules';
 import {
   BASE_SUBSCRIPTION_MODULE_CODE,
-  CUSTOMER_PORTAL_MODULE_CODE,
+  FREE_BASE_MODULE_CODES,
   resolveExtraUserPrice,
 } from '@/lib/subscriptionCatalog';
 
@@ -80,16 +80,16 @@ export function usePublicSubscriptionCatalog() {
       const basePrice = allModules.find(
         (module) => module.code === BASE_SUBSCRIPTION_MODULE_CODE,
       )?.price;
-      const customerPortalPrice = allModules.find(
-        (module) => module.code === CUSTOMER_PORTAL_MODULE_CODE,
-      )?.price;
+      const freeBaseModulesAreValid = FREE_BASE_MODULE_CODES.every(
+        (code) => allModules.find((module) => module.code === code)?.price === 0,
+      );
       const extraUserPrice = resolveExtraUserPrice(allModules);
       if (
         !pricesAreValid
         || typeof basePrice !== 'number'
         || !Number.isFinite(basePrice)
         || basePrice <= 0
-        || customerPortalPrice !== 0
+        || !freeBaseModulesAreValid
         || extraUserPrice === null
       ) {
         throw new Error('O catálogo comercial não está configurado corretamente.');

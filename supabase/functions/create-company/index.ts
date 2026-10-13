@@ -8,7 +8,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const REQUIRED_PERSONALIZED_MODULE_CODES = ['basic', 'customer_portal'] as const
+const REQUIRED_PERSONALIZED_MODULE_CODES = [
+  'basic',
+  'customer_portal',
+  'pricing_advanced',
+  'video_questions',
+] as const
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -95,7 +100,8 @@ Deno.serve(async (req) => {
     }
 
     // Sanitiza os módulos antes de criar o tenant. O Personalizado sempre inclui
-    // Basic e Portal do Cliente, mesmo quando o painel ou um payload antigo omite.
+    // Basic, Portal do Cliente, Precificação Avançada e Perguntas em Vídeo,
+    // mesmo quando o painel ou um payload antigo omite.
     // Planos prontos preservam o comportamento anterior e não recebem extras.
     const isPersonalizado = typeof subscription_plan === 'string'
       && subscription_plan.trim().toLowerCase() === 'personalizado'

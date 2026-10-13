@@ -39,7 +39,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   const [selectedSalesperson, setSelectedSalesperson] = useState(''); // Closer (quem fechou)
   const [selectedSdr, setSelectedSdr] = useState(''); // SDR (quem agendou - opcional)
   const [linkType, setLinkType] = useState<'teste' | 'venda'>('teste');
-  const [trialDays, setTrialDays] = useState(14);
+  const [trialDays, setTrialDays] = useState(7);
   const [generatedLink, setGeneratedLink] = useState('');
   const [copied, setCopied] = useState(false);
 
@@ -157,7 +157,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
       params.append('sdr', sdr?.referral_code || selectedSdr);
     }
     params.append('tipo', linkType);
-    if (linkType === 'teste' && trialDays !== 14) params.append('dias', String(trialDays));
+    if (linkType === 'teste' && trialDays !== 7) params.append('dias', String(trialDays));
 
     if (planMode === 'plano' && selectedPlanCode) {
       params.append('plano', selectedPlanCode);
@@ -214,7 +214,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
     setSelectedSalesperson('');
     setSelectedSdr('');
     setLinkType('teste');
-    setTrialDays(14);
+    setTrialDays(7);
     setGeneratedLink('');
     setCopied(false);
     setPlanMode('livre');
@@ -289,8 +289,8 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="3">3 dias</SelectItem>
-                  <SelectItem value="7">7 dias</SelectItem>
-                  <SelectItem value="14">14 dias (padrão)</SelectItem>
+                  <SelectItem value="7">7 dias (padrão)</SelectItem>
+                  <SelectItem value="14">14 dias</SelectItem>
                   <SelectItem value="30">30 dias</SelectItem>
                 </SelectContent>
               </Select>

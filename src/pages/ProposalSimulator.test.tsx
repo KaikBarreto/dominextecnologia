@@ -12,8 +12,8 @@ vi.mock('@/hooks/usePublicSubscriptionPlans', () => ({
         name: 'Start',
         description: null,
         price: 197,
-        maxUsers: 2,
-        includedModules: ['basic'],
+        maxUsers: 5,
+        includedModules: ['basic', 'customer_portal', 'pricing_advanced', 'video_questions'],
       }],
       modules: [{
         id: 'basic',
@@ -29,8 +29,22 @@ vi.mock('@/hooks/usePublicSubscriptionPlans', () => ({
         description: null,
         price: 0,
         type: 'module',
+      }, {
+        id: 'pricing-advanced',
+        code: 'pricing_advanced',
+        name: 'Precificação Avançada',
+        description: null,
+        price: 0,
+        type: 'module',
+      }, {
+        id: 'video-questions',
+        code: 'video_questions',
+        name: 'Perguntas em Vídeo',
+        description: null,
+        price: 0,
+        type: 'module',
       }],
-      extraUserPrice: 50,
+      extraUserPrice: 20,
     },
     isLoading: false,
     isError: false,
@@ -56,7 +70,7 @@ describe('ProposalSimulator', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('4 usuários', { exact: true })).toBeInTheDocument();
+      expect(screen.getByText('7 usuários', { exact: true })).toBeInTheDocument();
     });
     expect(screen.getByText('Portal do Cliente')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Remover Portal do Cliente' })).not.toBeInTheDocument();

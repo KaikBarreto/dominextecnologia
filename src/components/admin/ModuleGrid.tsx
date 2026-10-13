@@ -21,8 +21,9 @@ import {
  * Catálogo SEMPRE vem de subscription_modules (nunca hardcode de preço/nome).
  */
 
-// Módulos obrigatórios do Personalizado. O básico é a raiz paga e o Portal do
-// Cliente é gratuito por política comercial; nenhum dos dois pode ser removido.
+// Módulos obrigatórios do Personalizado. O básico é a raiz paga; Portal do
+// Cliente, Precificação Avançada e Perguntas em Vídeo são recursos gratuitos da
+// base. Nenhum deles pode ser removido.
 export const BASE_MODULE_CODES = [...REQUIRED_CUSTOM_MODULE_CODES];
 
 // 'extra_user' é um adicional calculado pelo contador de usuários, não um

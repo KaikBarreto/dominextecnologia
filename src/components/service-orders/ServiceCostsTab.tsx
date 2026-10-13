@@ -24,7 +24,6 @@ import { readPastedCents } from '@/lib/money-paste-mask';
 import { LaborCalculatorModal } from '@/components/service-orders/LaborCalculatorModal';
 import { ExtraCostModal } from '@/components/service-orders/ExtraCostModal';
 import { LinkedResourcesSection } from '@/components/service-orders/LinkedResourcesSection';
-import { useCompanyModules } from '@/hooks/useCompanyModules';
 
 /** Número salvo → texto do campo. Vazio quando 0/nulo (nunca "0" travado) e vírgula como separador. */
 const toNumericText = (n?: number | null) => (!n ? '' : String(n).replace('.', ','));
@@ -34,8 +33,6 @@ export function ServiceCostsTab() {
   const tsc = MESSAGES[locale].app.crm.serviceCosts;
   const fmt = (v: number) => formatMoney(v, currency, locale);
 
-  const { hasModule } = useCompanyModules();
-  const hasPricing = hasModule('pricing_advanced');
   const isMobile = useIsMobile();
   const { serviceTypes } = useServiceTypes();
   const [serviceId, setServiceId] = useState<string>('');
@@ -244,9 +241,9 @@ export function ServiceCostsTab() {
                   variant="underline"
                   tabs={[
                     { value: 'mao_de_obra', label: tsc.tabLabor },
-                    ...(hasPricing ? [{ value: 'recursos', label: tsc.tabResources }] : []),
+                    { value: 'recursos', label: tsc.tabResources },
                     { value: 'materiais', label: tsc.tabMaterials },
-                    ...(hasPricing ? [{ value: 'resumo', label: tsc.tabSummary }] : []),
+                    { value: 'resumo', label: tsc.tabSummary },
                   ]}
                   activeTab={costsTab}
                   onTabChange={setCostsTab}
@@ -255,9 +252,9 @@ export function ServiceCostsTab() {
                 <div className="flex gap-1 border-b overflow-x-auto no-scrollbar">
                   {[
                     { value: 'mao_de_obra', label: tsc.tabLabor },
-                    ...(hasPricing ? [{ value: 'recursos', label: tsc.tabResources }] : []),
+                    { value: 'recursos', label: tsc.tabResources },
                     { value: 'materiais', label: tsc.tabMaterials },
-                    ...(hasPricing ? [{ value: 'resumo', label: tsc.tabSummary }] : []),
+                    { value: 'resumo', label: tsc.tabSummary },
                   ].map((tab) => (
                     <button
                       key={tab.value}
@@ -363,22 +360,19 @@ export function ServiceCostsTab() {
                 </div>
               </TabsContent>
 
-              {hasPricing && (
-                <TabsContent value="recursos" className="mt-4">
-                  <LinkedResourcesSection
-                    serviceId={serviceId}
-                    serviceHours={hours}
-                    onTotalChange={setLinkedResourcesTotal}
-                  />
-                </TabsContent>
-              )}
+              <TabsContent value="recursos" className="mt-4">
+                <LinkedResourcesSection
+                  serviceId={serviceId}
+                  serviceHours={hours}
+                  onTotalChange={setLinkedResourcesTotal}
+                />
+              </TabsContent>
 
               <TabsContent value="materiais" className="mt-4">
                 <ServiceMaterialsList serviceId={serviceId} />
               </TabsContent>
 
-              {hasPricing && (
-                <TabsContent value="resumo" className="mt-4">
+              <TabsContent value="resumo" className="mt-4">
                   <Card className="border-0 bg-background/80 shadow-sm">
                     <CardContent className="p-4 space-y-4">
                       <div className="flex items-center gap-2">
@@ -457,8 +451,7 @@ export function ServiceCostsTab() {
                       </div>
                     </CardContent>
                   </Card>
-                </TabsContent>
-              )}
+              </TabsContent>
             </Tabs>
           )}
         </CardContent>

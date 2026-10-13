@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES, type Messages } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
-import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -304,8 +303,6 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     { key: 'review' as StepKey, label: tq.stepReview },
   ];
   const fmt = (v: number) => formatMoney(Math.round(v * 100) / 100, currency, locale);
-  const { hasModule } = useCompanyModules();
-  const hasPricing = hasModule('pricing_advanced');
   const { customers } = useCustomers();
   const { createQuote, updateQuote, quotes } = useQuotes();
   const { templates } = useProposalTemplates();
@@ -978,7 +975,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const mutating = createQuote.isPending || updateQuote.isPending;
 
   // ─── BDI config block (reused inside the Services step) ─────────────────────
-  const bdiConfigBlock = hasPricing && (
+  const bdiConfigBlock = (
     <section className="space-y-3">
       <div className="flex items-center gap-2">
         <SectionHeader icon={<Calculator className="h-4 w-4 text-primary" />} title={tq.bdiHeader} />
@@ -1019,50 +1016,17 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   // ─── Reusable summary block (review step) ───────────────────────────────────
   const summaryBlock = (
     <section className="space-y-3">
-      {hasPricing && bdiDanger && (
+      {bdiDanger && (
         <NoticeBanner variant="destructive" icon={AlertTriangle}>
           {tq.bdiAlertDanger}
         </NoticeBanner>
       )}
-      {hasPricing && bdiWarning && !bdiDanger && (
+      {bdiWarning && !bdiDanger && (
         <NoticeBanner variant="warning" icon={AlertTriangle}>
           {tq.bdiAlertWarning}
         </NoticeBanner>
       )}
-      {hasPricing ? (
-        <BDISummaryCard data={{ ...bdi, cardInstallments: cardInstallmentsCfg }} />
-      ) : (
-        <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700">
-          <CardContent className="p-4 space-y-3">
-            <p className="text-sm font-medium text-white flex items-center gap-2">
-              <Calculator className="h-4 w-4 text-emerald-400" /> {tq.reviewSummaryTitle}
-            </p>
-            <Separator className="bg-slate-700" />
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-slate-400">{tq.reviewSubtotalServices}</span>
-                <span className="text-sm text-white">{fmt(serviceItems.reduce((s, i) => s + (i.total_price || 0), 0))}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-slate-400">{tq.reviewSubtotalMaterials}</span>
-                <span className="text-sm text-white">{fmt(materialItems.reduce((s, i) => s + (i.total_price || 0), 0))}</span>
-              </div>
-              {discountAmount > 0 && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-400">{tq.reviewDiscount}</span>
-                  <span className="text-sm text-destructive">− {fmt(discountAmount)}</span>
-                </div>
-              )}
-              <div className="flex justify-between items-center pt-2 border-t border-slate-700">
-                <span className="text-sm font-medium text-white">{tq.reviewTotal}</span>
-                <span className="text-sm font-bold text-emerald-400">
-                  {fmt(items.reduce((s, i) => s + (i.total_price || 0), 0) - discountAmount)}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <BDISummaryCard data={{ ...bdi, cardInstallments: cardInstallmentsCfg }} />
     </section>
   );
 
@@ -1160,7 +1124,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
           {currentStepKey === 'services' && (
             <div className="space-y-5">
               {bdiConfigBlock}
-              {hasPricing && <Separator />}
+              <Separator />
 
               <section className="space-y-3">
                 <SectionHeader icon={<Wrench className="h-4 w-4 text-primary" />} title={tq.servicesHeader} />
@@ -1427,24 +1391,20 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                 />
               </section>
 
-              {hasPricing && (
-                <>
-                  <Separator />
-                  <section className="space-y-2">
-                    <SectionHeader icon={<MapPin className="h-4 w-4 text-primary" />} title={tq.displacementHeader} />
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <NumericInput value={distanceKm ? String(distanceKm) : ''}
-                        onValueChange={v => setDistanceKm(Number(v) || 0)}
-                        className="h-9 w-28" placeholder={tq.displacementPlaceholder} />
-                      {bdi.displacementCost > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          = <span className="font-semibold text-foreground">{fmt(bdi.displacementCost)}</span>
-                        </span>
-                      )}
-                    </div>
-                  </section>
-                </>
-              )}
+              <Separator />
+              <section className="space-y-2">
+                <SectionHeader icon={<MapPin className="h-4 w-4 text-primary" />} title={tq.displacementHeader} />
+                <div className="flex items-center gap-2 flex-wrap">
+                  <NumericInput value={distanceKm ? String(distanceKm) : ''}
+                    onValueChange={v => setDistanceKm(Number(v) || 0)}
+                    className="h-9 w-28" placeholder={tq.displacementPlaceholder} />
+                  {bdi.displacementCost > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      = <span className="font-semibold text-foreground">{fmt(bdi.displacementCost)}</span>
+                    </span>
+                  )}
+                </div>
+              </section>
             </div>
           )}
 

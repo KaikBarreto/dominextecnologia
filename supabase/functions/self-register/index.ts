@@ -156,19 +156,19 @@ const resolveLocale = (v: unknown): Locale => {
 
 // ÚLTIMO fallback de specs de plano — a fonte da verdade é subscription_plans
 // (lida via service role logo abaixo). Só usado se a query ao catálogo falhar.
-// PREÇOS SINCRONIZADOS com o catálogo real (migration 20260613180000, decisão CEO
-// 2026-06-13): Essencial(start) R$197 / Pro(avancado) R$447 / Business(master) R$697.
-// Usuários: Start 5 / Avançado 10 / Master 15 (decisão CEO 2026-06-12).
+// PREÇOS SINCRONIZADOS com o catálogo real: Essencial(start) R$197 /
+// Pro(avancado) R$547 / Business(master) R$847. A base inclui 5 usuários;
+// Pro inclui 5 adicionais e Business, 10, a R$20 cada.
 // IMPORTANTE: fallback defasado subcobrava (incidente: avancado cobrado como R$197).
 // Mantê-lo em dia é obrigatório; num link de VENDA a query ao catálogo é EXIGIDA
 // (fail-closed abaixo) pra nunca subcobrar silenciosamente com um default velho.
 const PLAN_DEFAULTS: Record<string, { price: number; max_users: number; name: string }> = {
   start: { price: 197, max_users: 5, name: 'Essencial' },
   starter: { price: 197, max_users: 5, name: 'Essencial' },
-  avancado: { price: 447, max_users: 10, name: 'Pro' },
-  pro: { price: 447, max_users: 10, name: 'Pro' },
-  master: { price: 697, max_users: 15, name: 'Business' },
-  enterprise: { price: 697, max_users: 15, name: 'Business' },
+  avancado: { price: 547, max_users: 10, name: 'Pro' },
+  pro: { price: 547, max_users: 10, name: 'Pro' },
+  master: { price: 847, max_users: 15, name: 'Business' },
+  enterprise: { price: 847, max_users: 15, name: 'Business' },
 };
 
 // Aliases legados aceitos em links antigos → código real em subscription_plans.
@@ -178,9 +178,14 @@ const PLAN_CODE_ALIASES: Record<string, string> = {
   enterprise: 'master',
 };
 
-const REQUIRED_PERSONALIZED_MODULE_CODES = ['basic', 'customer_portal'] as const;
+const FREE_BASE_MODULE_CODES = [
+  'customer_portal',
+  'pricing_advanced',
+  'video_questions',
+] as const;
+const REQUIRED_PERSONALIZED_MODULE_CODES = ['basic', ...FREE_BASE_MODULE_CODES] as const;
 const EXTRA_USER_MODULE_CODE = 'extra_user';
-const CUSTOM_PLAN_INCLUDED_USERS = 2;
+const CUSTOM_PLAN_INCLUDED_USERS = 5;
 
 Deno.serve(async (req) => {
   const corsResp = handleCors(req);
@@ -419,7 +424,8 @@ Deno.serve(async (req) => {
     const subscription_status = isSale ? 'pending_payment' : 'testing';
 
     // Plano personalizado: preço = soma dos módulos ativos do catálogo. Basic
-    // e Portal do Cliente são obrigatórios mesmo quando um link antigo os omite.
+    // Portal do Cliente, Precificação Avançada e Perguntas em Vídeo são
+    // obrigatórios mesmo quando um link antigo os omite.
     // Não confiamos no payload para preço nem para conceder módulo inexistente.
     let personalizadoModules: { code: string; price: number | null }[] = [];
     let personalizadoExtraUserPrice = 0;
@@ -461,7 +467,7 @@ Deno.serve(async (req) => {
         const price = Number(module.price);
         if (!Number.isFinite(price) || price < 0) return true;
         if (module.code === 'basic') return price <= 0;
-        if (module.code === 'customer_portal') return price !== 0;
+        if (FREE_BASE_MODULE_CODES.some((code) => code === module.code)) return price !== 0;
         if (module.code === EXTRA_USER_MODULE_CODE) return price <= 0;
         return false;
       });
@@ -503,7 +509,7 @@ Deno.serve(async (req) => {
     // TESTE: expira em HOJE + trialDays (janela real do teste grátis).
     const expirationDate = new Date();
     if (!isSale) {
-      const trialDays = trialDaysOverride || 14;
+      const trialDays = trialDaysOverride || 7;
       expirationDate.setDate(expirationDate.getDate() + trialDays);
     }
 
@@ -622,7 +628,7 @@ Deno.serve(async (req) => {
         subscription_expires_at: expirationDate.toISOString(),
         billing_cycle: billingCycle,
         max_users: finalMaxUsers,
-        trial_days: isSale ? 0 : (trialDaysOverride || 14),
+        trial_days: isSale ? 0 : (trialDaysOverride || 7),
         salesperson_id: salespersonId,
         sdr_id: sdrId,
         // Lead que se cadastrou sozinho (sem vendedor no link), distribuído por rodízio.

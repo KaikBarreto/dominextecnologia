@@ -53,10 +53,9 @@ export default function ChecklistDetail() {
     setTemplateServices,
   } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
-  const { hasModule, isLoading: modulesLoading, maxVideoQuestions } = useCompanyModules();
+  const { hasModule, isLoading: modulesLoading } = useCompanyModules();
   const { locale } = useAppLocaleContext();
   const tC = MESSAGES[locale].app.os.checklists;
-  const canUseVideo = hasModule('video_questions');
   // Frequência por pergunta só aparece com o módulo Contratos ativo. Sem ele, a
   // tela fica idêntica ao padrão (zero poluição). Gate reusa useCompanyModules.
   // Espera o boot dos módulos pra NÃO piscar "ausente" pra quem TEM o módulo.
@@ -65,10 +64,6 @@ export default function ChecklistDetail() {
 
   const template = templates.find(t => t.id === id) as (FormTemplate & { questions: FormQuestion[] }) | undefined;
   const serviceTypeIds = ((template as any)?.service_type_ids ?? []) as string[];
-
-  // Mensagem do limite de perguntas de vídeo do plano (pluralizada, traduzida).
-  const videoLimitMessage = () =>
-    (maxVideoQuestions === 1 ? tC.videoLimitSingular : tC.videoLimitPlural).replace('{n}', String(maxVideoQuestions));
 
   const [draggedQuestionId, setDraggedQuestionId] = useState<string | null>(null);
   const [dragOverQuestionId, setDragOverQuestionId] = useState<string | null>(null);
@@ -179,24 +174,6 @@ export default function ChecklistDetail() {
   const handleSaveQuestion = () => {
     if (!qForm.question?.trim()) return;
     const effectiveTypes = qForm.answer_types || [];
-
-    // Gate de vídeo por MODELO: se esta pergunta vai virar vídeo, respeita o
-    // limite do plano. Conta as OUTRAS perguntas de vídeo do checklist (exclui a
-    // que está sendo editada). O técnico em campo nunca é bloqueado por isto.
-    const willBeVideo = effectiveTypes.includes('video');
-    if (willBeVideo) {
-      const othersVideo = (template?.questions || []).filter(
-        (q) => q.id !== editingQuestion?.id && q.question_type === 'video',
-      ).length;
-      if (othersVideo >= maxVideoQuestions) {
-        toast({
-          variant: 'destructive',
-          title: 'Limite de perguntas de vídeo',
-          description: videoLimitMessage(),
-        });
-        return;
-      }
-    }
 
     const answerTypes = effectiveTypes.length > 1 ? effectiveTypes : null;
     const primaryType = effectiveTypes[0] || qForm.question_type || 'boolean';
@@ -683,11 +660,7 @@ export default function ChecklistDetail() {
             <Label>{tC.questionTypesLabel}</Label>
             <p className="text-xs text-muted-foreground">{tC.questionTypesNote}</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {QUESTION_TYPES
-                // Sem o módulo, "Vídeo" some do seletor — a menos que a pergunta
-                // em edição já seja de vídeo (não some a opção já escolhida).
-                .filter((t) => t.value !== 'video' || canUseVideo || selectedAnswerTypes.includes('video'))
-                .map((t) => {
+              {QUESTION_TYPES.map((t) => {
                 const QIcon = t.icon;
                 const isSelected = selectedAnswerTypes.includes(t.value);
                 return (

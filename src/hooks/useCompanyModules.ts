@@ -30,7 +30,7 @@ export type ModuleCode =
  * SidebarMenuContent e nas guards de rota). Porte do EcoSistema, mas ADAPTADO:
  * - No Dominex o gate de tela hoje é feito por `moduleKey` no menu (só `crm` e
  *   `rh` gateiam telas inteiras) + checagens inline de `hasModule(...)` dentro
- *   das páginas (pricing_advanced, customer_portal, white_label, finance_advanced).
+ *   das páginas (customer_portal, white_label, finance_advanced).
  * - Telas não-mapeadas são liberadas por padrão (`hasScreen` retorna true),
  *   espelhando o comportamento do EcoSistema.
  *
@@ -90,7 +90,6 @@ export interface SubscriptionPlan {
   max_users: number;
   included_modules: ModuleCode[];
   is_active: boolean;
-  max_video_questions: number;
 }
 
 export function useCompanyModules() {
@@ -142,7 +141,7 @@ export function useCompanyModules() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('subscription_plans')
-        .select('id, code, name, description, price, max_users, included_modules, is_active, max_video_questions')
+        .select('id, code, name, description, price, max_users, included_modules, is_active')
         .eq('is_active', true)
         .order('price');
       if (error) throw error;
@@ -159,7 +158,6 @@ export function useCompanyModules() {
             )
           : [],
         is_active: p.is_active ?? false,
-        max_video_questions: Number(p.max_video_questions) || 0,
       })) as SubscriptionPlan[];
     },
     staleTime: 30 * 60 * 1000,
@@ -239,17 +237,6 @@ export function useCompanyModules() {
       : planMaxUsers + extraUsers;
   const canAddUser = currentUserCount < maxUsers;
 
-  // Limite de perguntas de VÍDEO que um modelo de checklist de OS pode ter.
-  // É um teto de configuração (por plano), não uma cota de runtime.
-  // Regras: super_admin e trial ativo liberam no teto Business (3);
-  // demais casos usam subscription_plans.max_video_questions do plano ativo
-  // (start=0, avancado=1, master=3, personalizado=0). Sem plano ⇒ 0.
-  const maxVideoQuestions = (() => {
-    if (hasRole('super_admin')) return 3;
-    if (isTrialActive) return 3;
-    return allPlans.find((p) => p.code === plan)?.max_video_questions ?? 0;
-  })();
-
   // Valor efetivo cobrado hoje (usa custom_price se promoção ativa) e o
   // próximo valor agendado (pending). Reaproveita os helpers canônicos.
   const pricingFields = {
@@ -280,10 +267,6 @@ export function useCompanyModules() {
 
     // --- Telas ---
     hasScreen,
-
-    // --- Perguntas de vídeo na OS (teto por plano) ---
-    // Contrato consumido por outro módulo: hasModule('video_questions') + maxVideoQuestions.
-    maxVideoQuestions,
 
     // --- Precificação ---
     subscriptionValue,

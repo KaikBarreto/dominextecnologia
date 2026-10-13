@@ -191,13 +191,13 @@ const HOME_TITLES: Record<LocaleCode, string> = {
 };
 const HOME_DESCRIPTIONS: Record<LocaleCode, string> = {
   'pt-br':
-    'Sistema de ordem de serviço digital, PMOC e gestão para refrigeração, climatização e equipes de campo. App do técnico em campo. Teste grátis 14 dias, sem cartão.',
+    'Sistema de ordem de serviço digital, PMOC e gestão para refrigeração, climatização e equipes de campo. App do técnico em campo. Teste grátis 7 dias, sem cartão.',
   en:
-    'Digital work order software and management for service companies and field teams. Scheduling, technician app, customers and reports in one place. Free 14-day trial, no card required.',
+    'Digital work order software and management for service companies and field teams. Scheduling, technician app, customers and reports in one place. Free 7-day trial, no card required.',
   es:
-    'Software de órdenes de servicio digital y gestión para empresas de servicio y equipos de campo. Agenda, app del técnico, clientes e informes en un solo lugar. Prueba gratis de 14 días, sin tarjeta.',
+    'Software de órdenes de servicio digital y gestión para empresas de servicio y equipos de campo. Agenda, app del técnico, clientes e informes en un solo lugar. Prueba gratis de 7 días, sin tarjeta.',
   fr:
-    'Logiciel de bons de travail numériques et gestion pour les entreprises de service et les équipes terrain. Planning, application du technicien, clients et rapports au même endroit. Essai gratuit de 14 jours, sans carte.',
+    'Logiciel de bons de travail numériques et gestion pour les entreprises de service et les équipes terrain. Planning, application du technicien, clients et rapports au même endroit. Essai gratuit de 7 jours, sans carte.',
 };
 
 // ── Meta keywords da HOME por locale ─────────────────────────────────────────

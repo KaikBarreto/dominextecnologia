@@ -57,7 +57,7 @@ const en: ModuleContentMap = {
     slug: 'digital-work-order-software',
     metaTitle: 'Digital Work Order Software for Field Service Teams | Dominex',
     metaDescription:
-      'Digital work order software for field service teams: work orders on the technician\'s phone, checklists, before and after photos, customer signature, installable app, scheduling, and an automatic PDF report. Free 14-day trial, no credit card.',
+      'Digital work order software for field service teams: work orders on the technician\'s phone, checklists, before and after photos, customer signature, installable app, scheduling, and an automatic PDF report. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'Digital Work Orders',
       h1: 'Digital work order software for field service teams',
@@ -135,7 +135,7 @@ const en: ModuleContentMap = {
       { icon: Calendar, title: 'Scheduling and dispatch', desc: 'See the day\'s queue and assign each job to the nearest technician, with no scheduling clashes.' },
       { icon: FileSignature, title: 'Automatic report', desc: 'A branded PDF ready the moment the job is done, with photos, checklist, and signature.' },
       { icon: BarChart3, title: 'Status dashboard', desc: 'Open, in progress, and completed work orders on a live view of your operation.' },
-      { icon: Smartphone, title: 'Video response in the checklist', desc: 'On Pro and Business plans, the technician records a short clip (up to 15 s) as a checklist answer, right in the field. The customer sees the video in the work order link.' },
+      { icon: Smartphone, title: 'Video response in the checklist', desc: 'Every plan, including Essential, lets the technician record short clips (up to 15 s) as checklist answers in the field. The customer sees the videos in the work order link.' },
     ],
     testimonialsHeading: 'Nobody who went digital goes back to paper',
     testimonials: [
@@ -150,12 +150,12 @@ const en: ModuleContentMap = {
       { q: 'Does the system generate work order reports automatically?', a: 'Yes. When the work order is finished, the PDF report with your logo and colors is ready, with the completed checklist, photos, and signature. You send it to the customer right away.' },
       { q: 'Can I use different checklists per service type?', a: 'Yes. You create checklist templates by service type (installation, preventive, corrective) and the technician follows the right steps on every visit.' },
       { q: 'How do I hand out work orders to my team?', a: 'On the dashboard you see the day\'s queue and assign each work order to the technician in charge, tracking the status (open, in progress, completed) in real time.' },
-      { q: 'Can the technician answer a checklist item with a video?', a: 'Yes, on Pro and Business plans. The technician records a short clip of up to 15 seconds straight from their phone in the field, as the answer to a checklist question. The video is saved to the work order and the customer can watch it in the work order link.' },
-      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 14 days, no credit card. You set up your company in minutes and start opening work orders in the app.' },
+      { q: 'Can the technician answer a checklist item with a video?', a: 'Yes, on every plan, including Essential. The technician records short clips of up to 15 seconds straight from their phone in the field as answers to checklist questions. The videos are saved to the work order and the customer can watch them in the work order link.' },
+      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 7 days, no credit card. You set up your company in minutes and start opening work orders in the app.' },
     ],
     finalCta: {
       title: 'Move your work orders to digital',
-      subtitle: 'Free for 14 days, no credit card. Take work orders off paper and put your field team in control.',
+      subtitle: 'Free for 7 days, no credit card. Take work orders off paper and put your field team in control.',
     },
   },
 
@@ -166,7 +166,7 @@ const en: ModuleContentMap = {
     slug: 'hvac-maintenance-plan-software',
     metaTitle: 'HVAC Preventive Maintenance Plan Software | Dominex',
     metaDescription:
-      'HVAC preventive maintenance plan software: a maintenance plan per unit of equipment, automatic recurring visits, a checklist per machine, an audit-ready maintenance report, and a QR code on each unit. Free 14-day trial, no credit card.',
+      'HVAC preventive maintenance plan software: a maintenance plan per unit of equipment, automatic recurring visits, a checklist per machine, an audit-ready maintenance report, and a QR code on each unit. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'Automatic Maintenance Plans',
       h1: 'HVAC preventive maintenance plan software',
@@ -259,11 +259,11 @@ const en: ModuleContentMap = {
       { q: 'Is there a QR code on the equipment?', a: 'Yes. You stick a QR code on the machine and the technician, on scanning it, lands straight on that unit\'s record, with its history and the next scheduled visit.' },
       { q: 'Does the maintenance report come out with my branding?', a: 'Yes. The maintenance record and compliance report come out as a PDF with your logo and colors, with the responsible technician\'s signature, ready to hand to the customer and to an auditor.' },
       { q: 'Does it work for refrigeration as well as air conditioning?', a: 'Yes. It works for HVAC and refrigeration companies that maintain split, multi-split, VRF, chiller, cold room, fan coil, and self-contained units, with a plan and history per unit.' },
-      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 14 days, no credit card. You register the equipment, set up the contract, and the maintenance plan is generated automatically.' },
+      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 7 days, no credit card. You register the equipment, set up the contract, and the maintenance plan is generated automatically.' },
     ],
     finalCta: {
       title: 'Generate the maintenance plan with no side spreadsheet',
-      subtitle: 'Free for 14 days, no credit card. Register the equipment and have the maintenance plan ready for any audit.',
+      subtitle: 'Free for 7 days, no credit card. Register the equipment and have the maintenance plan ready for any audit.',
     },
   },
 
@@ -274,7 +274,7 @@ const en: ModuleContentMap = {
     slug: 'field-service-crm',
     metaTitle: 'CRM for Service and Maintenance Companies | Dominex',
     metaDescription:
-      'CRM for service and maintenance companies: capture leads, organize your sales pipeline on a kanban board, assign each deal to a rep, and go from quote to proposal to contract, with direct conversion into a work order. Free 14-day trial, no credit card.',
+      'CRM for service and maintenance companies: capture leads, organize your sales pipeline on a kanban board, assign each deal to a rep, and go from quote to proposal to contract, with direct conversion into a work order. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'CRM & Sales',
       h1: 'CRM for service and maintenance companies',
@@ -366,11 +366,11 @@ const en: ModuleContentMap = {
       { q: 'Does the CRM connect with quotes and contracts?', a: 'Yes. From the opportunity you build the quote, turn it into a proposal sent by link, and close it as a contract, all tied to the opportunity, with no loose files.' },
       { q: 'When I close the sale, do I need to re-enter the customer for the work order?', a: 'No. The won opportunity becomes a work order with one click, carrying the customer, the address, and the sold scope. Sales and the field work with the same data.' },
       { q: 'Can I track the conversion rate?', a: 'Yes. You track the pipeline, see how many opportunities advance by stage, and spot where deals tend to stall.' },
-      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 14 days, no credit card. You add your leads and start organizing the sales pipeline right away.' },
+      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 7 days, no credit card. You add your leads and start organizing the sales pipeline right away.' },
     ],
     finalCta: {
       title: 'Organize your pipeline and close more',
-      subtitle: 'Free for 14 days, no credit card. Capture your leads, organize the pipeline, and go from lead to contract.',
+      subtitle: 'Free for 7 days, no credit card. Capture your leads, organize the pipeline, and go from lead to contract.',
     },
   },
 
@@ -381,7 +381,7 @@ const en: ModuleContentMap = {
     slug: 'field-service-financial-software',
     metaTitle: 'Financial Management Software for Service Companies | Dominex',
     metaDescription:
-      'Financial management software for service companies: accounts payable and receivable, cash flow, income statement, credit card management, and reconciliation. Know how much comes in, how much goes out, and how much is left. Free 14-day trial, no credit card.',
+      'Financial management software for service companies: accounts payable and receivable, cash flow, income statement, credit card management, and reconciliation. Know how much comes in, how much goes out, and how much is left. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'Finance',
       h1: 'Financial management software for service companies',
@@ -473,11 +473,11 @@ const en: ModuleContentMap = {
       { q: 'How does Dominex handle the credit card?', a: 'The card expense enters as forecast (not as a payment), and what actually becomes a payment is the aggregated bill. That way your account balance never appears lower than it really is.' },
       { q: 'Can I control accounts payable and receivable with due dates?', a: 'Yes. Each account has a due date, category, and customer or supplier. The system organizes them by date and alerts you to what is coming due.' },
       { q: 'Can I track the balance of several accounts and cash boxes?', a: 'Yes. You track the balance of each cash box and bank account of the company and reconcile what was forecast with what actually came in and out.' },
-      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 14 days, no credit card. You enter your accounts and see the cash flow and the month\'s result right away.' },
+      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 7 days, no credit card. You enter your accounts and see the cash flow and the month\'s result right away.' },
     ],
     finalCta: {
       title: 'Know whether the month closed in the black',
-      subtitle: 'Free for 14 days, no credit card. Organize the accounts, see the cash flow, and close the income statement without a spreadsheet.',
+      subtitle: 'Free for 7 days, no credit card. Organize the accounts, see the cash flow, and close the income statement without a spreadsheet.',
     },
   },
 
@@ -488,7 +488,7 @@ const en: ModuleContentMap = {
     slug: 'time-tracking-payroll-software',
     metaTitle: 'Time Tracking and Payroll for Field Teams | Dominex',
     metaDescription:
-      'Time tracking and payroll for field teams: clock in with a selfie and geolocation, an overtime balance, payroll, advances, and employee management, all in one place. Free 14-day trial, no credit card.',
+      'Time tracking and payroll for field teams: clock in with a selfie and geolocation, an overtime balance, payroll, advances, and employee management, all in one place. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'Time Tracking & Payroll (HR)',
       h1: 'Time tracking and payroll for field teams',
@@ -580,11 +580,11 @@ const en: ModuleContentMap = {
       { q: 'Can I close payroll in the system?', a: 'Yes. The close consolidates salary, the overtime balance, and advances, deducting the advances automatically. The pay slip comes out ready.' },
       { q: 'How do advances work?', a: 'Each advance is recorded and deducted automatically from the paycheck. The employee statement shows each entry in and out with the right sign.' },
       { q: 'Where is employee data kept?', a: 'In the employee record, which centralizes salary, role, advances, and statement. You see each person\'s financial picture in a single place.' },
-      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 14 days, no credit card. You register the team and start clocking time and closing payroll right away.' },
+      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 7 days, no credit card. You register the team and start clocking time and closing payroll right away.' },
     ],
     finalCta: {
       title: 'Control the hours of people who live on the road',
-      subtitle: 'Free for 14 days, no credit card. Clock time with a selfie and location and close payroll without a spreadsheet.',
+      subtitle: 'Free for 7 days, no credit card. Clock time with a selfie and location and close payroll without a spreadsheet.',
     },
   },
 
@@ -595,7 +595,7 @@ const en: ModuleContentMap = {
     slug: 'service-invoice-software',
     metaTitle: 'Electronic Service Invoicing Software for Service Companies | Dominex',
     metaDescription:
-      'Electronic service invoicing software for service companies: issue the service invoice per customer straight from the platform, with the customer data pulled automatically. No separate billing software. Free 14-day trial, no credit card.',
+      'Electronic service invoicing software for service companies: issue the service invoice per customer straight from the platform, with the customer data pulled automatically. No separate billing software. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'Service Invoicing',
       h1: 'Electronic service invoicing software for service companies',
@@ -687,11 +687,11 @@ const en: ModuleContentMap = {
       { q: 'Does the invoice pull customer data automatically?', a: 'Yes. Issuance uses the data from the customer record you already have on the platform, with nothing retyped.' },
       { q: 'Can I track the invoices I have issued?', a: 'Yes. The invoices are recorded and organized by customer, with a history of what has already been issued, helping you control billing and avoid duplicates.' },
       { q: 'Can I send the invoice to the customer?', a: 'Yes. Once issued, the invoice is available on the customer record and ready to send, so the customer receives the billing document without any manual rework.' },
-      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 14 days, no credit card. You enable the invoicing module and issue the service invoice from the customer record.' },
+      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 7 days, no credit card. You enable the invoicing module and issue the service invoice from the customer record.' },
     ],
     finalCta: {
       title: 'Issue the service invoice where you already work',
-      subtitle: 'Free for 14 days, no credit card. Issue the service invoice per customer, with no separate system.',
+      subtitle: 'Free for 7 days, no credit card. Issue the service invoice per customer, with no separate system.',
     },
   },
 
@@ -702,7 +702,7 @@ const en: ModuleContentMap = {
     slug: 'customer-portal-software',
     metaTitle: 'Customer Portal for Service Companies | Dominex',
     metaDescription:
-      'Customer portal for service companies: your customer tracks the work order, sees the service history, accesses documents, and approves the quote by link, without having to call the office. Free 14-day trial, no credit card.',
+      'Customer portal for service companies: your customer tracks the work order, sees the service history, accesses documents, and approves the quote by link, without having to call the office. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'Customer Portal',
       h1: 'Customer portal for service companies',
@@ -794,11 +794,11 @@ const en: ModuleContentMap = {
       { q: 'Can the customer approve a quote through the portal?', a: 'Yes. The quote arrives by link and the customer approves it straight in the portal, with a record of when they approved. The approval does not get lost on WhatsApp.' },
       { q: 'Does the customer see the service history and documents?', a: 'Yes. The full work order history, with dates and what was done, plus reports and documents, stays available in the portal for reference at any time.' },
       { q: 'Does each customer see only their own data?', a: 'Yes. In the portal, each customer accesses only their own jobs and documents.' },
-      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 14 days, no credit card. You enable the portal and share the link with your customers.' },
+      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 7 days, no credit card. You enable the portal and share the link with your customers.' },
     ],
     finalCta: {
       title: 'Give the customer autonomy and your team some quiet',
-      subtitle: 'Free for 14 days, no credit card. Let the customer track the work order and approve the quote on their own.',
+      subtitle: 'Free for 7 days, no credit card. Let the customer track the work order and approve the quote on their own.',
     },
   },
 
@@ -809,7 +809,7 @@ const en: ModuleContentMap = {
     slug: 'inventory-management-software',
     metaTitle: 'Inventory Management Software for Field Teams | Dominex',
     metaDescription:
-      'Inventory management software for field teams: register parts and materials, log stock in and out, deduct automatically per work order, and run inventory counts. Know what you have, what went out, and on which work order. Free 14-day trial, no credit card.',
+      'Inventory management software for field teams: register parts and materials, log stock in and out, deduct automatically per work order, and run inventory counts. Know what you have, what went out, and on which work order. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'Inventory',
       h1: 'Inventory management software for field teams',
@@ -901,11 +901,11 @@ const en: ModuleContentMap = {
       { q: 'How does the inventory count work?', a: 'You run the physical count whenever you want, compare it with the system balance, and adjust the discrepancy. Stock goes back to reflecting reality.' },
       { q: 'Is the balance updated in real time?', a: 'Yes. Every stock in and out updates the balance instantly, so you check stock and see what you really have.' },
       { q: 'Can I see the parts that are running out?', a: 'Yes. You see the parts with a low balance and restock before they run out on the job.' },
-      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 14 days, no credit card. You register your parts and start controlling stock in, stock out, and deductions per work order.' },
+      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 7 days, no credit card. You register your parts and start controlling stock in, stock out, and deductions per work order.' },
     ],
     finalCta: {
       title: 'Stop missing jobs for lack of a part',
-      subtitle: 'Free for 14 days, no credit card. Control your stock and deduct automatically on every work order.',
+      subtitle: 'Free for 7 days, no credit card. Control your stock and deduct automatically on every work order.',
     },
   },
 
@@ -916,7 +916,7 @@ const en: ModuleContentMap = {
     slug: 'quotes-contracts-software',
     metaTitle: 'Quotes and Contracts Software for Service Companies | Dominex',
     metaDescription:
-      'Quotes and contracts software for service companies: build professional quotes, send them as a proposal by link, close recurring contracts that generate work orders on their own, and turn approval into a work order. Free 14-day trial, no credit card.',
+      'Quotes and contracts software for service companies: build professional quotes, send them as a proposal by link, close recurring contracts that generate work orders on their own, and turn approval into a work order. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'Quotes & Contracts',
       h1: 'Quotes and contracts software for service companies',
@@ -1008,11 +1008,11 @@ const en: ModuleContentMap = {
       { q: 'Do the contracts generate work orders on their own?', a: 'Yes. Once the contract is set up with the recurrence, the work orders are generated by the system at the agreed interval, with no need to remember, so no SLA gets missed out of forgetfulness.' },
       { q: 'Does the approved quote become a work order?', a: 'Yes. With one click, the approved quote becomes a work order, carrying the sold scope out to the field. Sales and operations work with the same data.' },
       { q: 'Do the quotes and contracts stay linked to the customer?', a: 'Yes. Each quote and contract stays in the customer\'s history, organized, for reference and tracking.' },
-      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 14 days, no credit card. You build your first quote and send the proposal by link right away.' },
+      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 7 days, no credit card. You build your first quote and send the proposal by link right away.' },
     ],
     finalCta: {
       title: 'Make the proposal professional and automate the contract',
-      subtitle: 'Free for 14 days, no credit card. Build branded quotes and let the contract generate the work orders on its own.',
+      subtitle: 'Free for 7 days, no credit card. Build branded quotes and let the contract generate the work orders on its own.',
     },
   },
 
@@ -1023,7 +1023,7 @@ const en: ModuleContentMap = {
     slug: 'team-gps-tracking-software',
     metaTitle: 'Team GPS Tracking and Scheduling for Field Services | Dominex',
     metaDescription:
-      'Team GPS tracking and scheduling for field services: real-time location on the map, scheduling and routing, check-in and check-out validated by address, and travel history. Free 14-day trial, no credit card.',
+      'Team GPS tracking and scheduling for field services: real-time location on the map, scheduling and routing, check-in and check-out validated by address, and travel history. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'GPS Tracking & Scheduling',
       h1: 'Team GPS tracking and scheduling for field services',
@@ -1115,11 +1115,11 @@ const en: ModuleContentMap = {
       { q: 'Is there a travel history?', a: 'Yes. The history keeps the key points of the day\'s route, so you check where the team went and justify the time in the field.' },
       { q: 'Does routing help do more jobs per day?', a: 'Yes. By assigning to the nearest technician and organizing the route, the team crosses town for nothing less often and serves more customers on the same day.' },
       { q: 'Does the customer get a predictable time?', a: 'Yes. With an organized schedule, you give the customer a more predictable service window and reduce missed visits.' },
-      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 14 days, no credit card. You register the team and follow the live map and the day\'s schedule right away.' },
+      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 7 days, no credit card. You register the team and follow the live map and the day\'s schedule right away.' },
     ],
     finalCta: {
       title: 'See your field team on the map',
-      subtitle: 'Free for 14 days, no credit card. Follow the team in real time, organize the schedule, and prove every visit.',
+      subtitle: 'Free for 7 days, no credit card. Follow the team in real time, organize the schedule, and prove every visit.',
     },
   },
 
@@ -1130,7 +1130,7 @@ const en: ModuleContentMap = {
     slug: 'field-technician-app',
     metaTitle: 'Field Technician App: your team\'s field app | Dominex',
     metaDescription:
-      'The Technician App: your team\'s field app. Work orders on the phone, technical tools (refrigerant charge, superheat, contactor sizing), an equipment catalog, and an installable app on the phone. Free 14-day trial, no credit card.',
+      'The Technician App: your team\'s field app. Work orders on the phone, technical tools (refrigerant charge, superheat, contactor sizing), an equipment catalog, and an installable app on the phone. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'Technician App',
       h1: 'The Technician App: your team\'s field app',
@@ -1222,11 +1222,11 @@ const en: ModuleContentMap = {
       { q: 'Can the technician run the work order in the app?', a: 'Yes. They open the complete work order (customer, address, equipment, history), fill out the checklist, take photos, collect the signature, and close the job, all from the phone.' },
       { q: 'Does the team use everything straight from the phone, in the field?', a: 'Yes. The work order, the calculation tools, and the equipment catalog stay on the technician\'s phone, ready to use at the customer. They run the work order, do the calculations, and check the catalog in the field, without going back to the office or carrying printed manuals.' },
       { q: 'Do the calculation tools work for refrigeration and air conditioning?', a: 'Yes. The refrigerant charge, superheat, and pressure curve calculators are aimed at the day-to-day of refrigeration and air conditioning, and the contactor sizing supports installation and equipment startup.' },
-      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 14 days, no credit card. Your team installs the Technician App on their phone and starts working in the field right away.' },
+      { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 7 days, no credit card. Your team installs the Technician App on their phone and starts working in the field right away.' },
     ],
     finalCta: {
       title: 'Put the whole field on your team\'s phone',
-      subtitle: 'Free for 14 days, no credit card. Work orders, technical tools, and the catalog in the Technician App, on your team\'s phone.',
+      subtitle: 'Free for 7 days, no credit card. Work orders, technical tools, and the catalog in the Technician App, on your team\'s phone.',
     },
   },
 };

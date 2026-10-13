@@ -58,7 +58,7 @@ import {
  *
  * Regras:
  *  - PT-BR sempre, copy dor-primeiro, marca = Dominex (NUNCA Auctus).
- *  - CTA principal NÃO muda: "Teste grátis 14 dias, sem cartão".
+ *  - CTA principal NÃO muda: "Teste grátis 7 dias, sem cartão".
  *  - Nota fiscal é sempre NFS-e (serviço), NUNCA NF-e.
  */
 
@@ -161,7 +161,7 @@ const osDigital: ModuleData = {
   metaTitle:
     'Sistema de ordem de serviço digital para equipes de campo | Dominex',
   metaDescription:
-    'Software de ordem de serviço digital para equipes de campo: OS no celular do técnico, checklist, foto antes/depois, assinatura do cliente, app instalável, agenda e relatório em PDF automático. Teste grátis 14 dias, sem cartão.',
+    'Software de ordem de serviço digital para equipes de campo: OS no celular do técnico, checklist, foto antes/depois, assinatura do cliente, app instalável, agenda e relatório em PDF automático. Teste grátis 7 dias, sem cartão.',
 
   hero: {
     eyebrow: 'Ordem de Serviço Digital',
@@ -260,12 +260,12 @@ const osDigital: ModuleData = {
     { q: 'O sistema gera relatório de ordem de serviço automaticamente?', a: 'Sim. Ao finalizar a OS, o relatório em PDF com a sua logo e cores sai pronto, com checklist preenchido, fotos e assinatura. Você envia ao cliente na hora.' },
     { q: 'Dá para usar checklists diferentes por tipo de serviço?', a: 'Sim. Você cria modelos de checklist por tipo de atendimento (instalação, preventiva, corretiva) e o técnico segue o passo a passo certo em cada visita.' },
     { q: 'Como distribuo as ordens de serviço para a equipe?', a: 'No painel você vê a fila do dia e atribui cada OS ao técnico responsável, acompanhando o status (aberta, em andamento, concluída) em tempo real.' },
-    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você configura a empresa em minutos e já começa a abrir ordens de serviço no app.' },
+    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você configura a empresa em minutos e já começa a abrir ordens de serviço no app.' },
   ],
 
   finalCta: {
     title: 'Coloque a ordem de serviço no digital',
-    subtitle: '14 dias grátis, sem cartão. Tire a OS do papel e ponha sua equipe de campo no controle.',
+    subtitle: '7 dias grátis, sem cartão. Tire a OS do papel e ponha sua equipe de campo no controle.',
   },
 };
 
@@ -280,7 +280,7 @@ const pmoc: ModuleData = {
   metaTitle:
     'Software de PMOC para climatização e refrigeração (Lei 13.589/2018) | Dominex',
   metaDescription:
-    'Software de PMOC para climatização e refrigeração: plano de manutenção por equipamento, visitas recorrentes automáticas, checklist por máquina, relatório PMOC pronto para fiscalização e QR Code no equipamento, conforme a Lei 13.589/2018. Teste grátis 14 dias, sem cartão.',
+    'Software de PMOC para climatização e refrigeração: plano de manutenção por equipamento, visitas recorrentes automáticas, checklist por máquina, relatório PMOC pronto para fiscalização e QR Code no equipamento, conforme a Lei 13.589/2018. Teste grátis 7 dias, sem cartão.',
 
   hero: {
     eyebrow: 'PMOC automático',
@@ -380,12 +380,12 @@ const pmoc: ModuleData = {
     { q: 'Tem QR Code no equipamento?', a: 'Sim. Você cola um QR Code na máquina e o técnico, ao escanear, cai direto no registro daquele equipamento, com histórico e a próxima visita PMOC.' },
     { q: 'O relatório PMOC sai com a minha marca?', a: 'Sim. A planilha PMOC e o relatório de conformidade saem em PDF com a sua logo e cores, com a assinatura do responsável técnico, prontos para entregar ao cliente e à fiscalização.' },
     { q: 'Serve para refrigeração além de climatização?', a: 'Sim. Funciona para empresas de climatização e refrigeração que mantêm split, multi-split, VRF, chiller, câmara fria, fancoil e self-contained, com plano e histórico por equipamento.' },
-    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você cadastra os equipamentos, monta o contrato e o PMOC é gerado automaticamente.' },
+    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você cadastra os equipamentos, monta o contrato e o PMOC é gerado automaticamente.' },
   ],
 
   finalCta: {
     title: 'Gere o PMOC sem planilha paralela',
-    subtitle: '14 dias grátis, sem cartão. Cadastre os equipamentos e tenha o PMOC pronto para a fiscalização.',
+    subtitle: '7 dias grátis, sem cartão. Cadastre os equipamentos e tenha o PMOC pronto para a fiscalização.',
   },
 };
 
@@ -401,7 +401,7 @@ const crm: ModuleData = {
   metaTitle:
     'CRM para empresas de serviço e manutenção | Dominex',
   metaDescription:
-    'CRM para empresas de serviço e manutenção: capture leads, organize o funil de vendas em kanban, atribua a cada vendedor e leve do orçamento à proposta e ao contrato — com conversão direta em ordem de serviço. Teste grátis 14 dias, sem cartão.',
+    'CRM para empresas de serviço e manutenção: capture leads, organize o funil de vendas em kanban, atribua a cada vendedor e leve do orçamento à proposta e ao contrato — com conversão direta em ordem de serviço. Teste grátis 7 dias, sem cartão.',
 
   hero: {
     eyebrow: 'CRM & Vendas',
@@ -500,12 +500,12 @@ const crm: ModuleData = {
     { q: 'O CRM se conecta com orçamentos e contratos?', a: 'Sim. A partir da oportunidade você monta o orçamento, transforma em proposta enviada por link e fecha em contrato — tudo amarrado à oportunidade, sem arquivo solto.' },
     { q: 'Quando fecho a venda, preciso recadastrar o cliente para a OS?', a: 'Não. A oportunidade ganha vira ordem de serviço com um clique, levando cliente, endereço e o escopo vendido. O comercial e o campo trabalham com os mesmos dados.' },
     { q: 'Dá para acompanhar a taxa de conversão?', a: 'Sim. Você acompanha o pipeline, vê quantas oportunidades avançam por etapa e identifica onde o negócio costuma travar.' },
-    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você cadastra seus leads e já começa a organizar o funil de vendas.' },
+    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você cadastra seus leads e já começa a organizar o funil de vendas.' },
   ],
 
   finalCta: {
     title: 'Organize seu funil e feche mais',
-    subtitle: '14 dias grátis, sem cartão. Capture seus leads, organize o pipeline e leve do lead ao contrato.',
+    subtitle: '7 dias grátis, sem cartão. Capture seus leads, organize o pipeline e leve do lead ao contrato.',
   },
 };
 
@@ -520,7 +520,7 @@ const financeiro: ModuleData = {
   metaTitle:
     'Controle financeiro para empresas de serviço | Dominex',
   metaDescription:
-    'Controle financeiro para empresas de serviço: contas a pagar e a receber, fluxo de caixa, DRE, gestão de cartão de crédito e conciliação. Saiba quanto entra, quanto sai e quanto sobra. Teste grátis 14 dias, sem cartão.',
+    'Controle financeiro para empresas de serviço: contas a pagar e a receber, fluxo de caixa, DRE, gestão de cartão de crédito e conciliação. Saiba quanto entra, quanto sai e quanto sobra. Teste grátis 7 dias, sem cartão.',
 
   hero: {
     eyebrow: 'Financeiro',
@@ -619,12 +619,12 @@ const financeiro: ModuleData = {
     { q: 'Como o Dominex trata o cartão de crédito?', a: 'A despesa de cartão entra como prevista (não como pagamento), e quem de fato vira pagamento é a fatura agregada. Assim o saldo da sua conta nunca aparece menor do que realmente é.' },
     { q: 'Consigo controlar contas a pagar e a receber com vencimento?', a: 'Sim. Cada conta tem vencimento, categoria e cliente ou fornecedor. O sistema organiza por data e avisa o que está perto de vencer.' },
     { q: 'Dá para acompanhar o saldo de várias contas e caixas?', a: 'Sim. Você acompanha o saldo de cada caixa e conta bancária da empresa e concilia o que foi previsto com o que de fato entrou e saiu.' },
-    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você lança suas contas e já enxerga o fluxo de caixa e o resultado do mês.' },
+    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você lança suas contas e já enxerga o fluxo de caixa e o resultado do mês.' },
   ],
 
   finalCta: {
     title: 'Saiba se o mês fechou no azul',
-    subtitle: '14 dias grátis, sem cartão. Organize as contas, veja o fluxo de caixa e feche o DRE sem planilha.',
+    subtitle: '7 dias grátis, sem cartão. Organize as contas, veja o fluxo de caixa e feche o DRE sem planilha.',
   },
 };
 
@@ -639,7 +639,7 @@ const pontoFolha: ModuleData = {
   metaTitle:
     'Ponto eletrônico e folha de pagamento para equipes de campo | Dominex',
   metaDescription:
-    'Ponto eletrônico e folha de pagamento para equipes de campo: registro de ponto com selfie e geolocalização, banco de horas, folha, vales e gestão de funcionários — tudo num só lugar. Teste grátis 14 dias, sem cartão.',
+    'Ponto eletrônico e folha de pagamento para equipes de campo: registro de ponto com selfie e geolocalização, banco de horas, folha, vales e gestão de funcionários — tudo num só lugar. Teste grátis 7 dias, sem cartão.',
 
   hero: {
     eyebrow: 'Ponto & Folha (RH)',
@@ -738,12 +738,12 @@ const pontoFolha: ModuleData = {
     { q: 'Dá para fechar a folha de pagamento no sistema?', a: 'Sim. O fechamento consolida salário, banco de horas e vales, descontando os vales automaticamente. O recibo de pagamento sai pronto.' },
     { q: 'Como funcionam os vales?', a: 'Cada vale é registrado e descontado automaticamente no pagamento do salário. O extrato do funcionário mostra cada entrada e saída com o sinal correto.' },
     { q: 'Onde ficam os dados dos funcionários?', a: 'No cadastro de funcionários, que centraliza salário, função, vales e extrato. Você enxerga a vida financeira de cada um num lugar só.' },
-    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você cadastra a equipe e já começa a registrar o ponto e fechar a folha.' },
+    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você cadastra a equipe e já começa a registrar o ponto e fechar a folha.' },
   ],
 
   finalCta: {
     title: 'Controle a jornada de quem vive na rua',
-    subtitle: '14 dias grátis, sem cartão. Registre o ponto com selfie e localização e feche a folha sem planilha.',
+    subtitle: '7 dias grátis, sem cartão. Registre o ponto com selfie e localização e feche a folha sem planilha.',
   },
 };
 
@@ -758,7 +758,7 @@ const nfse: ModuleData = {
   metaTitle:
     'Emissão de NFS-e para empresas de serviço | Dominex',
   metaDescription:
-    'Emissão de NFS-e para empresas de serviço: emita a nota fiscal de serviço por cliente, com conformidade municipal, direto da plataforma. Sem sistema fiscal à parte. Teste grátis 14 dias, sem cartão.',
+    'Emissão de NFS-e para empresas de serviço: emita a nota fiscal de serviço por cliente, com conformidade municipal, direto da plataforma. Sem sistema fiscal à parte. Teste grátis 7 dias, sem cartão.',
 
   hero: {
     eyebrow: 'NFS-e',
@@ -857,12 +857,12 @@ const nfse: ModuleData = {
     { q: 'A nota puxa os dados do cliente automaticamente?', a: 'Sim. A emissão usa os dados do cadastro do cliente que você já tem na plataforma, sem redigitar nada.' },
     { q: 'Consigo acompanhar as notas que emiti?', a: 'Sim. As NFS-e ficam registradas e organizadas por cliente, com o histórico do que já foi emitido, ajudando a controlar o faturamento e a evitar duplicidade.' },
     { q: 'Todos os municípios são suportados?', a: 'A cobertura é municipal e o sistema verifica seu município antes de emitir. Algumas cidades mantêm emissor próprio fora do padrão nacional; nesses casos o sistema sinaliza a situação na verificação de cobertura.' },
-    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você ativa o módulo de notas e emite a NFS-e pelo cadastro do cliente.' },
+    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você ativa o módulo de notas e emite a NFS-e pelo cadastro do cliente.' },
   ],
 
   finalCta: {
     title: 'Emita a NFS-e onde você já trabalha',
-    subtitle: '14 dias grátis, sem cartão. Emita a nota fiscal de serviço por cliente, sem sistema à parte.',
+    subtitle: '7 dias grátis, sem cartão. Emita a nota fiscal de serviço por cliente, sem sistema à parte.',
   },
 };
 
@@ -877,7 +877,7 @@ const portalCliente: ModuleData = {
   metaTitle:
     'Portal do cliente para empresas de serviço | Dominex',
   metaDescription:
-    'Portal do cliente para empresas de serviço: seu cliente acompanha a ordem de serviço, vê o histórico de atendimentos, acessa documentos e aprova o orçamento por link — sem precisar ligar para o escritório. Teste grátis 14 dias, sem cartão.',
+    'Portal do cliente para empresas de serviço: seu cliente acompanha a ordem de serviço, vê o histórico de atendimentos, acessa documentos e aprova o orçamento por link — sem precisar ligar para o escritório. Teste grátis 7 dias, sem cartão.',
 
   hero: {
     eyebrow: 'Portal do Cliente',
@@ -976,12 +976,12 @@ const portalCliente: ModuleData = {
     { q: 'Dá para o cliente aprovar orçamento pelo portal?', a: 'Sim. O orçamento chega por link e o cliente aprova direto no portal, com registro de quando aprovou. A aprovação não se perde no WhatsApp.' },
     { q: 'O cliente vê o histórico e os documentos dos atendimentos?', a: 'Sim. Todo o histórico de OS, com datas e o que foi feito, mais os relatórios e documentos, fica disponível no portal para consulta a qualquer momento.' },
     { q: 'Cada cliente vê só os próprios dados?', a: 'Sim. No portal, cada cliente acessa apenas os próprios atendimentos e documentos.' },
-    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você ativa o portal e compartilha o link com seus clientes.' },
+    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você ativa o portal e compartilha o link com seus clientes.' },
   ],
 
   finalCta: {
     title: 'Dê autonomia ao cliente e sossego à equipe',
-    subtitle: '14 dias grátis, sem cartão. Deixe o cliente acompanhar a OS e aprovar o orçamento sozinho.',
+    subtitle: '7 dias grátis, sem cartão. Deixe o cliente acompanhar a OS e aprovar o orçamento sozinho.',
   },
 };
 
@@ -996,7 +996,7 @@ const estoque: ModuleData = {
   metaTitle:
     'Controle de estoque para equipes de campo | Dominex',
   metaDescription:
-    'Controle de estoque para equipes de campo: cadastro de peças e materiais, entrada e saída, baixa automática por ordem de serviço e inventário. Saiba o que tem, o que saiu e em qual OS. Teste grátis 14 dias, sem cartão.',
+    'Controle de estoque para equipes de campo: cadastro de peças e materiais, entrada e saída, baixa automática por ordem de serviço e inventário. Saiba o que tem, o que saiu e em qual OS. Teste grátis 7 dias, sem cartão.',
 
   hero: {
     eyebrow: 'Estoque',
@@ -1095,12 +1095,12 @@ const estoque: ModuleData = {
     { q: 'Como funciona o inventário?', a: 'Você faz a contagem física quando quiser, compara com o saldo do sistema e ajusta a divergência. O estoque volta a refletir a realidade.' },
     { q: 'O saldo fica atualizado em tempo real?', a: 'Sim. Toda entrada e saída atualiza o saldo na hora, então você consulta o estoque e vê o que tem de verdade.' },
     { q: 'Dá para ver as peças que estão acabando?', a: 'Sim. Você enxerga as peças com saldo baixo e repõe antes de faltar no atendimento.' },
-    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você cadastra suas peças e já começa a controlar entradas, saídas e baixas por OS.' },
+    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você cadastra suas peças e já começa a controlar entradas, saídas e baixas por OS.' },
   ],
 
   finalCta: {
     title: 'Pare de furar atendimento por falta de peça',
-    subtitle: '14 dias grátis, sem cartão. Controle o estoque e dê baixa automática a cada ordem de serviço.',
+    subtitle: '7 dias grátis, sem cartão. Controle o estoque e dê baixa automática a cada ordem de serviço.',
   },
 };
 
@@ -1115,7 +1115,7 @@ const orcamentosContratos: ModuleData = {
   metaTitle:
     'Orçamentos e contratos para empresas de serviço | Dominex',
   metaDescription:
-    'Orçamentos e contratos para empresas de serviço: monte orçamentos profissionais, envie como proposta por link, feche contratos recorrentes que geram ordens de serviço sozinhos e converta a aprovação em OS. Teste grátis 14 dias, sem cartão.',
+    'Orçamentos e contratos para empresas de serviço: monte orçamentos profissionais, envie como proposta por link, feche contratos recorrentes que geram ordens de serviço sozinhos e converta a aprovação em OS. Teste grátis 7 dias, sem cartão.',
 
   hero: {
     eyebrow: 'Orçamentos & Contratos',
@@ -1214,12 +1214,12 @@ const orcamentosContratos: ModuleData = {
     { q: 'Os contratos geram ordens de serviço sozinhos?', a: 'Sim. Cadastrado o contrato com a recorrência, as OS são geradas pelo sistema no intervalo combinado, sem você precisar lembrar — nenhum SLA fura por esquecimento.' },
     { q: 'O orçamento aprovado vira ordem de serviço?', a: 'Sim. Com um clique, o orçamento aprovado vira ordem de serviço, levando o escopo vendido para o campo. Comercial e operação trabalham com os mesmos dados.' },
     { q: 'Os orçamentos e contratos ficam ligados ao cliente?', a: 'Sim. Cada orçamento e contrato fica no histórico do cliente, organizado, para consulta e acompanhamento.' },
-    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você monta seu primeiro orçamento e já envia a proposta por link.' },
+    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você monta seu primeiro orçamento e já envia a proposta por link.' },
   ],
 
   finalCta: {
     title: 'Profissionalize a proposta e automatize o contrato',
-    subtitle: '14 dias grátis, sem cartão. Monte orçamentos com a sua marca e deixe o contrato gerar as OS sozinho.',
+    subtitle: '7 dias grátis, sem cartão. Monte orçamentos com a sua marca e deixe o contrato gerar as OS sozinho.',
   },
 };
 
@@ -1234,7 +1234,7 @@ const rastreamentoAgenda: ModuleData = {
   metaTitle:
     'Rastreamento de equipes e agenda para serviços de campo | Dominex',
   metaDescription:
-    'Rastreamento de equipes e agenda para serviços de campo: localização em tempo real no mapa, agenda e roteirização, check-in e check-out validados por endereço e histórico de deslocamento. Teste grátis 14 dias, sem cartão.',
+    'Rastreamento de equipes e agenda para serviços de campo: localização em tempo real no mapa, agenda e roteirização, check-in e check-out validados por endereço e histórico de deslocamento. Teste grátis 7 dias, sem cartão.',
 
   hero: {
     eyebrow: 'Rastreamento & Agenda',
@@ -1333,12 +1333,12 @@ const rastreamentoAgenda: ModuleData = {
     { q: 'Tem histórico de deslocamento?', a: 'Sim. O histórico guarda os pontos-chave do percurso do dia, para você conferir por onde a equipe passou e justificar o tempo em campo.' },
     { q: 'A roteirização ajuda a fazer mais atendimentos por dia?', a: 'Sim. Ao distribuir pelo técnico mais próximo e organizar a rota, a equipe atravessa menos a cidade à toa e atende mais clientes no mesmo dia.' },
     { q: 'O cliente ganha previsibilidade de horário?', a: 'Sim. Com a agenda organizada, você dá ao cliente uma janela de atendimento mais previsível e reduz visitas furadas.' },
-    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você cadastra a equipe e já acompanha o mapa ao vivo e a agenda do dia.' },
+    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você cadastra a equipe e já acompanha o mapa ao vivo e a agenda do dia.' },
   ],
 
   finalCta: {
     title: 'Veja sua equipe de campo no mapa',
-    subtitle: '14 dias grátis, sem cartão. Acompanhe a equipe em tempo real, organize a agenda e comprove cada visita.',
+    subtitle: '7 dias grátis, sem cartão. Acompanhe a equipe em tempo real, organize a agenda e comprove cada visita.',
   },
 };
 
@@ -1353,7 +1353,7 @@ const areaTecnico: ModuleData = {
   metaTitle:
     'Área do Técnico™: o app de campo da sua equipe | Dominex',
   metaDescription:
-    'Área do Técnico™: o app de campo da sua equipe. Ordem de serviço no celular, ferramentas técnicas (cálculo de gás, superaquecimento, dimensionamento de contator), catálogo de equipamentos e app instalável no celular. Teste grátis 14 dias, sem cartão.',
+    'Área do Técnico™: o app de campo da sua equipe. Ordem de serviço no celular, ferramentas técnicas (cálculo de gás, superaquecimento, dimensionamento de contator), catálogo de equipamentos e app instalável no celular. Teste grátis 7 dias, sem cartão.',
 
   hero: {
     eyebrow: 'Área do Técnico™',
@@ -1452,12 +1452,12 @@ const areaTecnico: ModuleData = {
     { q: 'O técnico consegue executar a ordem de serviço pelo app?', a: 'Sim. Ele abre a OS completa (cliente, endereço, equipamento, histórico), preenche o checklist, tira fotos, colhe a assinatura e fecha o serviço, tudo do celular.' },
     { q: 'A equipe usa tudo direto do celular, em campo?', a: 'Sim. A ordem de serviço, as ferramentas de cálculo e o catálogo de equipamentos ficam no celular do técnico, prontos para usar no cliente. Ele executa a OS, faz os cálculos e consulta o catálogo em campo, sem voltar ao escritório nem carregar manual impresso.' },
     { q: 'As ferramentas de cálculo servem para refrigeração e climatização?', a: 'Sim. As calculadoras de gás, superaquecimento e curvas de pressão são voltadas ao dia a dia de refrigeração e climatização, e o dimensionamento de contator atende instalação e partida de equipamentos.' },
-    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Sua equipe instala a Área do Técnico™ no celular e já começa a trabalhar no campo.' },
+    { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Sua equipe instala a Área do Técnico™ no celular e já começa a trabalhar no campo.' },
   ],
 
   finalCta: {
     title: 'Ponha o campo inteiro no celular da equipe',
-    subtitle: '14 dias grátis, sem cartão. OS, ferramentas técnicas e catálogo na Área do Técnico™, no celular da equipe.',
+    subtitle: '7 dias grátis, sem cartão. OS, ferramentas técnicas e catálogo na Área do Técnico™, no celular da equipe.',
   },
 
   // EXCLUSIVO desta landing: seletor de nicho + ferramentas reais do técnico na

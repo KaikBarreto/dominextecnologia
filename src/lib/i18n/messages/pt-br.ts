@@ -323,7 +323,8 @@ export const ptBr = {
     },
     pricing: {
       heading: 'Planos que crescem com a sua operação',
-      contactForPricing: 'Os valores são informados pelo WhatsApp, conforme a necessidade da sua empresa.',
+      contactForPricing: 'Valores mensais claros, com 5 usuários na base e R$ 20 por usuário adicional.',
+      perMonth: '/mês',
       mostPopular: '⭐ Mais popular',
       featuresLabel: 'Recursos',
       ctaTrial: 'Falar no WhatsApp',
@@ -338,6 +339,8 @@ export const ptBr = {
             'App para técnicos',
             'Agenda e calendário',
             'Portal do cliente',
+            'Precificação avançada (BDI)',
+            'Perguntas em vídeo nos checklists',
             'Relatórios básicos',
             'Suporte por email',
           ],
@@ -354,7 +357,6 @@ export const ptBr = {
             'DRE e relatórios financeiros',
             'Gestão de Contratos e PMOC',
           ],
-          videoChecklist: 'até 1 vídeo por checklist',
         },
         master: {
           name: 'Business',
@@ -364,11 +366,9 @@ export const ptBr = {
             '15 usuários inclusos',
             'CRM / Funil de vendas',
             'Emissão de NFS-e (Nota Fiscal de Serviço)',
-            'Precificação avançada (BDI)',
             'White Label (sua marca)',
             'Suporte prioritário',
           ],
-          videoChecklist: 'até 3 vídeos por checklist',
         },
         enterprise: {
           name: 'Plano Enterprise',
@@ -390,7 +390,7 @@ export const ptBr = {
         },
         {
           q: 'Como funciona o teste grátis?',
-          a: 'São 14 dias com acesso completo ao plano escolhido, sem precisar de cartão de crédito. Você pode cancelar a qualquer momento e seus dados ficam preservados caso decida assinar depois.',
+          a: 'São 7 dias com acesso completo ao plano escolhido, sem precisar de cartão de crédito. Você pode cancelar a qualquer momento e seus dados ficam preservados caso decida assinar depois.',
         },
         {
           q: 'Os dados das ordens de serviço ficam guardados para sempre?',
@@ -402,7 +402,7 @@ export const ptBr = {
         },
         {
           q: 'Posso personalizar formulários, checklists e relatórios?',
-          a: 'Sim. Você cria templates de checklists por tipo de serviço, define campos obrigatórios, fotos, assinatura e resposta em vídeo. Nos planos Pro e Business o técnico pode gravar um clipe curto (até 15 segundos) como resposta de checklist, direto do celular em campo, e o cliente vê o vídeo no link da OS. Os relatórios de OS são gerados em PDF com a sua marca, cores e logotipo.',
+          a: 'Sim. Em todos os planos, inclusive no Essencial, você cria templates de checklists por tipo de serviço, define campos obrigatórios, fotos, assinatura e respostas em vídeo. O técnico pode gravar clipes curtos (até 15 segundos) direto do celular em campo, e o cliente vê os vídeos no link da OS. Os relatórios de OS são gerados em PDF com a sua marca, cores e logotipo.',
         },
         {
           q: 'Tem CRM e funil de vendas integrado?',
@@ -433,7 +433,7 @@ export const ptBr = {
     ctaFinal: {
       heading: 'Comece hoje. Resultados em dias.',
       subtitle:
-        '14 dias grátis, sem cartão, sem burocracia. Configure em minutos e veja sua equipe ganhar produtividade.',
+        '7 dias grátis, sem cartão, sem burocracia. Configure em minutos e veja sua equipe ganhar produtividade.',
       ctaPrimary: 'Falar no WhatsApp',
       ctaSecondary: 'Tirar dúvidas pelo WhatsApp',
     },
@@ -486,7 +486,7 @@ export const ptBr = {
     ],
     finalCtaTitle: 'Experimente a Dominex na sua operação',
     finalCtaSubtitle:
-      'São 14 dias grátis, sem cartão de crédito. Cadastre sua equipe e comece a emitir ordem de serviço hoje mesmo.',
+      'São 7 dias grátis, sem cartão de crédito. Cadastre sua equipe e comece a emitir ordem de serviço hoje mesmo.',
   },
 
   // ── Política de Privacidade (texto jurídico — validar antes de oficializar) ─
@@ -588,7 +588,7 @@ export const ptBr = {
       'Informe imediatamente qualquer acesso não autorizado à sua conta.',
     ],
     s4Title: '4. Período de Teste',
-    s4P: 'Oferecemos um período gratuito de 14 dias com acesso ao plano selecionado. Ao término do período, a conta é suspensa automaticamente caso não haja assinatura ativa. Os dados são mantidos por 90 dias adicionais para eventual reativação.',
+    s4P: 'Oferecemos um período gratuito de 7 dias com acesso ao plano selecionado. Ao término do período, a conta é suspensa automaticamente caso não haja assinatura ativa. Os dados são mantidos por 90 dias adicionais para eventual reativação.',
     s5Title: '5. Propriedade dos Dados',
     s5Pre: 'Os dados inseridos na plataforma (clientes, ordens de serviço, funcionários, financeiro) são de propriedade da empresa-usuária. O Dominex os processa exclusivamente para prestar o serviço contratado, nos termos da ',
     s5Link: 'Política de Privacidade',
@@ -624,7 +624,7 @@ export const ptBr = {
     // Logo + header
     logoTagline: 'Domine a execução do seu negócio.',
     title: 'Cadastro',
-    subtitle: 'Teste grátis por 14 dias · Sem compromisso · Acesso total',
+    subtitle: 'Teste grátis por 7 dias · Sem compromisso · Acesso total',
 
     // Rótulos das etapas (stepper). "steps" = versão completa (5 passos);
     // "stepsNoOrigin" = quando a origem vem da URL e a etapa Origem some.
@@ -680,7 +680,7 @@ export const ptBr = {
     passwordPlaceholder: 'Crie sua senha',
     confirmPassword: 'Confirmar Senha*',
     confirmPasswordPlaceholder: 'Repita a senha',
-    trialLine1: '14 dias grátis com acesso total',
+    trialLine1: '7 dias grátis com acesso total',
     trialLine2: 'Sem cartão de crédito, sem compromisso',
 
     // Aviso de aceite dos termos (etapa Acesso, junto ao botão Criar Conta).

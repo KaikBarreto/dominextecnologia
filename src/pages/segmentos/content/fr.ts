@@ -41,7 +41,7 @@ const fr: SegmentContentMap = {
     metaTitle:
       "Logiciel d'ordres de travail et de maintenance pour les entreprises de réfrigération et de climatisation | Dominex",
     metaDescription:
-      "Logiciel pour les entreprises de réfrigération et de climatisation : ordres de travail numériques, plans de maintenance préventive automatisés, suivi du fluide frigorigène par équipement, application mobile pour vos techniciens sur le terrain et contrats de maintenance récurrents. Essai gratuit de 14 jours, sans carte bancaire.",
+      "Logiciel pour les entreprises de réfrigération et de climatisation : ordres de travail numériques, plans de maintenance préventive automatisés, suivi du fluide frigorigène par équipement, application mobile pour vos techniciens sur le terrain et contrats de maintenance récurrents. Essai gratuit de 7 jours, sans carte bancaire.",
     hero: {
       eyebrow: 'Pour les entreprises de réfrigération et de climatisation',
       h1: "Logiciel d'ordres de travail et de maintenance pour les entreprises de réfrigération et de climatisation",
@@ -202,13 +202,13 @@ const fr: SegmentContentMap = {
       },
       {
         q: 'Comment démarrer ? Faut-il une carte bancaire ?',
-        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos équipements et commencez à ouvrir des ordres de travail tout de suite. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
+        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos équipements et commencez à ouvrir des ordres de travail tout de suite. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
       },
     ],
     finalCta: {
       title: 'Prenez le contrôle de votre exploitation de réfrigération',
       subtitle:
-        "Gratuit pendant 14 jours, sans carte bancaire, sans tracas. Enregistrez vos équipements, construisez votre planning de maintenance et donnez le contrôle à votre équipe terrain.",
+        "Gratuit pendant 7 jours, sans carte bancaire, sans tracas. Enregistrez vos équipements, construisez votre planning de maintenance et donnez le contrôle à votre équipe terrain.",
     },
   },
 
@@ -220,7 +220,7 @@ const fr: SegmentContentMap = {
     metaTitle:
       "Logiciel d'ordres de travail pour électriciens et entreprises d'électricité | Dominex",
     metaDescription:
-      "Logiciel pour les entreprises d'installation et de maintenance électrique : ordres de travail numériques, rapports et attestations par client, relevés de tableaux et de branchement, checklists de sécurité et application mobile pour vos électriciens sur le terrain. Essai gratuit de 14 jours, sans carte bancaire.",
+      "Logiciel pour les entreprises d'installation et de maintenance électrique : ordres de travail numériques, rapports et attestations par client, relevés de tableaux et de branchement, checklists de sécurité et application mobile pour vos électriciens sur le terrain. Essai gratuit de 7 jours, sans carte bancaire.",
     hero: {
       eyebrow: "Pour les électriciens et les entreprises d'électricité",
       h1: "Logiciel d'ordres de travail pour les entreprises d'électricité",
@@ -390,13 +390,13 @@ const fr: SegmentContentMap = {
       },
       {
         q: 'Comment démarrer ? Faut-il une carte bancaire ?',
-        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos clients et commencez à ouvrir des ordres de travail. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
+        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos clients et commencez à ouvrir des ordres de travail. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
       },
     ],
     finalCta: {
       title: 'Prenez le contrôle de votre exploitation électrique',
       subtitle:
-        "Gratuit pendant 14 jours, sans carte bancaire, sans tracas. Enregistrez vos clients, organisez vos rapports et attestations et faites passer votre équipe terrain au numérique.",
+        "Gratuit pendant 7 jours, sans carte bancaire, sans tracas. Enregistrez vos clients, organisez vos rapports et attestations et faites passer votre équipe terrain au numérique.",
     },
   },
 
@@ -408,7 +408,7 @@ const fr: SegmentContentMap = {
     metaTitle:
       "Logiciel d'ordres de travail et d'exploitation-maintenance pour les entreprises d'énergie solaire | Dominex",
     metaDescription:
-      "Logiciel pour les entreprises d'énergie solaire : ordres de travail d'installation et d'exploitation-maintenance, historique par centrale et onduleur, nettoyage des modules, suivi de production, contrats de maintenance récurrents et application mobile pour votre équipe terrain. Essai gratuit de 14 jours, sans carte bancaire.",
+      "Logiciel pour les entreprises d'énergie solaire : ordres de travail d'installation et d'exploitation-maintenance, historique par centrale et onduleur, nettoyage des modules, suivi de production, contrats de maintenance récurrents et application mobile pour votre équipe terrain. Essai gratuit de 7 jours, sans carte bancaire.",
     hero: {
       eyebrow: "Pour les installateurs et les entreprises d'énergie solaire",
       h1: "Logiciel d'ordres de travail et d'exploitation-maintenance pour les entreprises d'énergie solaire",
@@ -569,13 +569,13 @@ const fr: SegmentContentMap = {
       },
       {
         q: 'Comment démarrer ? Faut-il une carte bancaire ?',
-        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos centrales et commencez à ouvrir des ordres de travail. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
+        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos centrales et commencez à ouvrir des ordres de travail. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
       },
     ],
     finalCta: {
       title: "Organisez l'installation et l'exploitation-maintenance de vos centrales",
       subtitle:
-        "Gratuit pendant 14 jours, sans carte bancaire, sans tracas. Enregistrez vos centrales, automatisez vos contrats de maintenance et faites passer votre équipe terrain au numérique.",
+        "Gratuit pendant 7 jours, sans carte bancaire, sans tracas. Enregistrez vos centrales, automatisez vos contrats de maintenance et faites passer votre équipe terrain au numérique.",
     },
   },
 
@@ -587,7 +587,7 @@ const fr: SegmentContentMap = {
     metaTitle:
       "Logiciel d'ordres de travail pour les fournisseurs d'accès internet et les télécoms | Dominex",
     metaDescription:
-      "Logiciel pour les fournisseurs d'accès internet (FAI) et les télécoms : ordres de travail d'installation fibre, tickets de support, planification des visites, historique du point de raccordement et de l'ONT par abonné, suivi des équipements et application mobile pour vos techniciens sur le terrain. Essai gratuit de 14 jours, sans carte bancaire.",
+      "Logiciel pour les fournisseurs d'accès internet (FAI) et les télécoms : ordres de travail d'installation fibre, tickets de support, planification des visites, historique du point de raccordement et de l'ONT par abonné, suivi des équipements et application mobile pour vos techniciens sur le terrain. Essai gratuit de 7 jours, sans carte bancaire.",
     hero: {
       eyebrow: "Pour les fournisseurs d'accès internet et les télécoms",
       h1: "Logiciel d'ordres de travail pour les fournisseurs d'accès internet et les télécoms",
@@ -748,13 +748,13 @@ const fr: SegmentContentMap = {
       },
       {
         q: 'Comment démarrer ? Faut-il une carte bancaire ?',
-        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos abonnés et commencez à ouvrir des ordres de travail. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
+        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos abonnés et commencez à ouvrir des ordres de travail. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
       },
     ],
     finalCta: {
       title: "Prenez le contrôle du terrain de votre réseau",
       subtitle:
-        "Gratuit pendant 14 jours, sans carte bancaire, sans tracas. Enregistrez vos abonnés, organisez vos installations fibre et faites passer votre équipe de support au numérique.",
+        "Gratuit pendant 7 jours, sans carte bancaire, sans tracas. Enregistrez vos abonnés, organisez vos installations fibre et faites passer votre équipe de support au numérique.",
     },
   },
 
@@ -766,7 +766,7 @@ const fr: SegmentContentMap = {
     metaTitle:
       "Logiciel d'ordres de travail pour les entreprises de vidéosurveillance et de sécurité électronique | Dominex",
     metaDescription:
-      "Logiciel pour les entreprises de vidéosurveillance et de sécurité électronique : ordres de travail d'installation et de maintenance de caméras, alarmes et contrôle d'accès, historique par équipement, contrats de télésurveillance récurrents et application mobile pour vos techniciens sur le terrain. Essai gratuit de 14 jours, sans carte bancaire.",
+      "Logiciel pour les entreprises de vidéosurveillance et de sécurité électronique : ordres de travail d'installation et de maintenance de caméras, alarmes et contrôle d'accès, historique par équipement, contrats de télésurveillance récurrents et application mobile pour vos techniciens sur le terrain. Essai gratuit de 7 jours, sans carte bancaire.",
     hero: {
       eyebrow: 'Pour les entreprises de vidéosurveillance et de sécurité électronique',
       h1: "Logiciel d'ordres de travail pour les entreprises de vidéosurveillance et de sécurité électronique",
@@ -927,13 +927,13 @@ const fr: SegmentContentMap = {
       },
       {
         q: 'Comment démarrer ? Faut-il une carte bancaire ?',
-        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos clients et commencez à ouvrir des ordres de travail. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
+        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos clients et commencez à ouvrir des ordres de travail. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
       },
     ],
     finalCta: {
       title: 'Prenez le contrôle de votre exploitation de sécurité',
       subtitle:
-        "Gratuit pendant 14 jours, sans carte bancaire, sans tracas. Enregistrez le parc de chaque client, automatisez vos contrats de télésurveillance et faites passer votre équipe au numérique.",
+        "Gratuit pendant 7 jours, sans carte bancaire, sans tracas. Enregistrez le parc de chaque client, automatisez vos contrats de télésurveillance et faites passer votre équipe au numérique.",
     },
   },
 
@@ -945,7 +945,7 @@ const fr: SegmentContentMap = {
     metaTitle:
       "Logiciel d'ordres de travail pour les entreprises de construction et les chantiers | Dominex",
     metaDescription:
-      "Logiciel pour la construction : ordres de travail pour les équipes terrain, inspections et métrés, suivi de planning, service après-vente avec historique par lot et application mobile pour votre équipe sur le chantier. Essai gratuit de 14 jours, sans carte bancaire.",
+      "Logiciel pour la construction : ordres de travail pour les équipes terrain, inspections et métrés, suivi de planning, service après-vente avec historique par lot et application mobile pour votre équipe sur le chantier. Essai gratuit de 7 jours, sans carte bancaire.",
     hero: {
       eyebrow: 'Pour les constructeurs et les entreprises de construction',
       h1: "Logiciel d'ordres de travail pour les entreprises de construction",
@@ -1106,13 +1106,13 @@ const fr: SegmentContentMap = {
       },
       {
         q: 'Comment démarrer ? Faut-il une carte bancaire ?',
-        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos chantiers et commencez à attribuer des ordres de travail. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
+        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos chantiers et commencez à attribuer des ordres de travail. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
       },
     ],
     finalCta: {
       title: 'Donnez le contrôle à vos équipes de chantier',
       subtitle:
-        "Gratuit pendant 14 jours, sans carte bancaire, sans tracas. Organisez inspections, métrés et service après-vente et faites passer vos équipes terrain au numérique.",
+        "Gratuit pendant 7 jours, sans carte bancaire, sans tracas. Organisez inspections, métrés et service après-vente et faites passer vos équipes terrain au numérique.",
     },
   },
 
@@ -1124,7 +1124,7 @@ const fr: SegmentContentMap = {
     metaTitle:
       "Logiciel d'ordres de travail pour les entreprises de maintenance d'ascenseurs | Dominex",
     metaDescription:
-      "Logiciel pour les entreprises de maintenance d'ascenseurs : ordres de travail préventifs et d'urgence, contrats mensuels récurrents, historique par appareil, interventions d'urgence et application mobile pour vos techniciens en salle des machines. Essai gratuit de 14 jours, sans carte bancaire.",
+      "Logiciel pour les entreprises de maintenance d'ascenseurs : ordres de travail préventifs et d'urgence, contrats mensuels récurrents, historique par appareil, interventions d'urgence et application mobile pour vos techniciens en salle des machines. Essai gratuit de 7 jours, sans carte bancaire.",
     hero: {
       eyebrow: "Pour les entreprises de maintenance d'ascenseurs",
       h1: "Logiciel d'ordres de travail pour les entreprises de maintenance d'ascenseurs",
@@ -1285,13 +1285,13 @@ const fr: SegmentContentMap = {
       },
       {
         q: 'Comment démarrer ? Faut-il une carte bancaire ?',
-        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos ascenseurs et commencez à ouvrir des ordres de travail. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
+        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos ascenseurs et commencez à ouvrir des ordres de travail. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
       },
     ],
     finalCta: {
       title: "Prenez le contrôle de votre maintenance d'ascenseurs",
       subtitle:
-        "Gratuit pendant 14 jours, sans carte bancaire, sans tracas. Enregistrez vos ascenseurs, automatisez le préventif mensuel et faites passer votre équipe terrain au numérique.",
+        "Gratuit pendant 7 jours, sans carte bancaire, sans tracas. Enregistrez vos ascenseurs, automatisez le préventif mensuel et faites passer votre équipe terrain au numérique.",
     },
   },
 
@@ -1303,7 +1303,7 @@ const fr: SegmentContentMap = {
     metaTitle:
       "Logiciel d'ordres de travail pour les entreprises de nettoyage et de propreté | Dominex",
     metaDescription:
-      "Logiciel pour les entreprises de nettoyage et de propreté : ordres de travail par site et par contrat, checklists de nettoyage, rondes avec preuve photo et signature, contrôle des équipes terrain et application mobile pour votre équipe. Essai gratuit de 14 jours, sans carte bancaire.",
+      "Logiciel pour les entreprises de nettoyage et de propreté : ordres de travail par site et par contrat, checklists de nettoyage, rondes avec preuve photo et signature, contrôle des équipes terrain et application mobile pour votre équipe. Essai gratuit de 7 jours, sans carte bancaire.",
     hero: {
       eyebrow: 'Pour les entreprises de nettoyage et de propreté',
       h1: "Logiciel d'ordres de travail pour les entreprises de nettoyage et de propreté",
@@ -1464,13 +1464,13 @@ const fr: SegmentContentMap = {
       },
       {
         q: 'Comment démarrer ? Faut-il une carte bancaire ?',
-        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos contrats et sites et commencez à ouvrir des ordres de travail. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
+        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos contrats et sites et commencez à ouvrir des ordres de travail. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
       },
     ],
     finalCta: {
       title: 'Prouvez chaque nettoyage et protégez vos contrats',
       subtitle:
-        "Gratuit pendant 14 jours, sans carte bancaire, sans tracas. Enregistrez vos sites, organisez les routines et faites passer vos équipes terrain au numérique avec preuve à l'appui.",
+        "Gratuit pendant 7 jours, sans carte bancaire, sans tracas. Enregistrez vos sites, organisez les routines et faites passer vos équipes terrain au numérique avec preuve à l'appui.",
     },
   },
 
@@ -1482,7 +1482,7 @@ const fr: SegmentContentMap = {
     metaTitle:
       "Logiciel d'ordres de travail pour les entreprises de lutte antiparasitaire | Dominex",
     metaDescription:
-      "Logiciel pour les entreprises de lutte antiparasitaire : ordres de travail avec traçabilité des produits appliqués, attestations de prestation, contrats récurrents, planification périodique et application mobile pour vos applicateurs sur le terrain. Essai gratuit de 14 jours, sans carte bancaire.",
+      "Logiciel pour les entreprises de lutte antiparasitaire : ordres de travail avec traçabilité des produits appliqués, attestations de prestation, contrats récurrents, planification périodique et application mobile pour vos applicateurs sur le terrain. Essai gratuit de 7 jours, sans carte bancaire.",
     hero: {
       eyebrow: 'Pour les entreprises de lutte antiparasitaire',
       h1: "Logiciel d'ordres de travail pour les entreprises de lutte antiparasitaire",
@@ -1643,13 +1643,13 @@ const fr: SegmentContentMap = {
       },
       {
         q: 'Comment démarrer ? Faut-il une carte bancaire ?',
-        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos clients et commencez à ouvrir des ordres de travail. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
+        a: "Créez simplement votre compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes, enregistrez vos clients et commencez à ouvrir des ordres de travail. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.",
       },
     ],
     finalCta: {
       title: 'Prenez le contrôle de votre exploitation de lutte antiparasitaire',
       subtitle:
-        "Gratuit pendant 14 jours, sans carte bancaire, sans tracas. Enregistrez vos clients, émettez l'attestation automatiquement et automatisez vos contrats de retraitement.",
+        "Gratuit pendant 7 jours, sans carte bancaire, sans tracas. Enregistrez vos clients, émettez l'attestation automatiquement et automatisez vos contrats de retraitement.",
     },
   },
 
@@ -1661,7 +1661,7 @@ const fr: SegmentContentMap = {
     metaTitle:
       `Logiciel de bon d'intervention pour ateliers de réparation de téléphone, ordinateur et informatique | Dominex`,
     metaDescription:
-      `Logiciel pour ateliers de service technique : entrée d'appareil, diagnostic, devis par lien, avis de prêt, inventaire de pièces avec déduction automatique et suivi de garantie. Essai gratuit 14 jours, sans carte bancaire.`,
+      `Logiciel pour ateliers de service technique : entrée d'appareil, diagnostic, devis par lien, avis de prêt, inventaire de pièces avec déduction automatique et suivi de garantie. Essai gratuit 7 jours, sans carte bancaire.`,
     hero: {
       eyebrow: `Pour les ateliers d'informatique et de service technique`,
       h1: `Logiciel de bon d'intervention pour ateliers de réparation de téléphone, ordinateur et informatique`,
@@ -1810,13 +1810,13 @@ const fr: SegmentContentMap = {
       },
       {
         q: `Comment démarrer ? Faut-il une carte bancaire ?`,
-        a: `Créez simplement votre compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous configurez votre atelier en quelques minutes, enregistrez les appareils et commencez à ouvrir des bons. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.`,
+        a: `Créez simplement votre compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous configurez votre atelier en quelques minutes, enregistrez les appareils et commencez à ouvrir des bons. Annulez quand vous voulez, vos données sont préservées si vous décidez de vous abonner.`,
       },
     ],
     finalCta: {
       title: `Prenez le contrôle de votre atelier de réparation`,
       subtitle:
-        `Gratuit pendant 14 jours, sans carte bancaire, sans tracas. Enregistrez les appareils, organisez votre inventaire de pièces et offrez à vos clients la transparence qu'ils attendent.`,
+        `Gratuit pendant 7 jours, sans carte bancaire, sans tracas. Enregistrez les appareils, organisez votre inventaire de pièces et offrez à vos clients la transparence qu'ils attendent.`,
     },
   },
 };

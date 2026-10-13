@@ -57,7 +57,7 @@ const es: ModuleContentMap = {
     slug: 'software-ordenes-de-trabajo',
     metaTitle: 'Software de órdenes de trabajo para equipos de campo | Dominex',
     metaDescription:
-      'Software de órdenes de trabajo digitales para equipos de campo: órdenes en el móvil del técnico, listas de verificación, fotos de antes y después, firma del cliente, app instalable, agenda e informe PDF automático. Prueba gratis 14 días, sin tarjeta.',
+      'Software de órdenes de trabajo digitales para equipos de campo: órdenes en el móvil del técnico, listas de verificación, fotos de antes y después, firma del cliente, app instalable, agenda e informe PDF automático. Prueba gratis 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Órdenes de trabajo digitales',
       h1: 'Software de órdenes de trabajo para equipos de campo',
@@ -135,7 +135,7 @@ const es: ModuleContentMap = {
       { icon: Calendar, title: 'Agenda y despacho', desc: 'Ve la cola del día y asigna cada trabajo al técnico más cercano, sin choques de horario.' },
       { icon: FileSignature, title: 'Informe automático', desc: 'Un PDF con tu marca listo en cuanto el trabajo termina, con fotos, lista de verificación y firma.' },
       { icon: BarChart3, title: 'Panel de estados', desc: 'Órdenes abiertas, en ejecución y finalizadas en una vista en vivo de tu operación.' },
-      { icon: Smartphone, title: 'Respuesta en video en la lista de verificación', desc: 'En los planes Pro y Business, el técnico graba un clip corto (hasta 15 s) como respuesta de lista de verificación, en campo. El cliente ve el video en el enlace de la orden.' },
+      { icon: Smartphone, title: 'Respuesta en video en la lista de verificación', desc: 'Todos los planes, incluido Esencial, permiten que el técnico grabe clips cortos (hasta 15 s) como respuestas de la lista de verificación en campo. El cliente ve los videos en el enlace de la orden.' },
     ],
     testimonialsHeading: 'Quien pasó a digital no vuelve al papel',
     testimonials: [
@@ -150,12 +150,12 @@ const es: ModuleContentMap = {
       { q: '¿El sistema genera informes de órdenes automáticamente?', a: 'Sí. Cuando la orden termina, el informe PDF con tu logo y colores queda listo, con la lista de verificación completa, las fotos y la firma. Se lo envías al cliente de inmediato.' },
       { q: '¿Puedo usar listas de verificación distintas por tipo de servicio?', a: 'Sí. Creas plantillas de lista por tipo de servicio (instalación, preventivo, correctivo) y el técnico sigue los pasos correctos en cada visita.' },
       { q: '¿Cómo reparto las órdenes a mi equipo?', a: 'En el panel ves la cola del día y asignas cada orden al técnico responsable, siguiendo el estado (abierta, en ejecución, finalizada) en tiempo real.' },
-      { q: '¿El técnico puede responder la lista de verificación con video?', a: 'Sí, en los planes Pro y Business. El técnico graba un clip corto de hasta 15 segundos directo desde su móvil en campo, como respuesta a una pregunta de la lista de verificación. El video queda guardado en la orden y el cliente puede verlo en el enlace de la orden de trabajo.' },
-      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 14 días, sin tarjeta de crédito. Configuras tu empresa en minutos y empiezas a abrir órdenes en la app.' },
+      { q: '¿El técnico puede responder la lista de verificación con video?', a: 'Sí, en todos los planes, incluido Esencial. El técnico graba clips cortos de hasta 15 segundos directo desde su móvil en campo, como respuesta a preguntas de la lista de verificación. Los videos quedan guardados en la orden y el cliente puede verlos en el enlace de la orden de trabajo.' },
+      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 7 días, sin tarjeta de crédito. Configuras tu empresa en minutos y empiezas a abrir órdenes en la app.' },
     ],
     finalCta: {
       title: 'Pasa tus órdenes de trabajo a digital',
-      subtitle: 'Gratis durante 14 días, sin tarjeta de crédito. Saca las órdenes del papel y pon a tu equipo de campo en control.',
+      subtitle: 'Gratis durante 7 días, sin tarjeta de crédito. Saca las órdenes del papel y pon a tu equipo de campo en control.',
     },
   },
 
@@ -166,7 +166,7 @@ const es: ModuleContentMap = {
     slug: 'software-mantenimiento-preventivo-hvac',
     metaTitle: 'Software de plan de mantenimiento preventivo HVAC | Dominex',
     metaDescription:
-      'Software de plan de mantenimiento preventivo HVAC: un plan de mantenimiento por unidad de equipo, visitas recurrentes automáticas, una lista de verificación por máquina, un informe listo para auditoría y un código QR en cada unidad. Prueba gratis 14 días, sin tarjeta.',
+      'Software de plan de mantenimiento preventivo HVAC: un plan de mantenimiento por unidad de equipo, visitas recurrentes automáticas, una lista de verificación por máquina, un informe listo para auditoría y un código QR en cada unidad. Prueba gratis 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Planes de mantenimiento automáticos',
       h1: 'Software de plan de mantenimiento preventivo HVAC',
@@ -259,11 +259,11 @@ const es: ModuleContentMap = {
       { q: '¿Hay un código QR en el equipo?', a: 'Sí. Pegas un código QR en la máquina y el técnico, al escanearlo, llega directo al registro de esa unidad, con su historial y la próxima visita programada.' },
       { q: '¿El informe de mantenimiento sale con mi marca?', a: 'Sí. El registro de mantenimiento y el informe de conformidad salen como PDF con tu logo y colores, con la firma del técnico responsable, listos para entregar al cliente y a un auditor.' },
       { q: '¿Funciona tanto para refrigeración como para aire acondicionado?', a: 'Sí. Funciona para empresas de HVAC y refrigeración que dan mantenimiento a unidades split, multisplit, VRF, chiller, cámara frigorífica, fan coil y autocontenidas, con un plan e historial por unidad.' },
-      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 14 días, sin tarjeta de crédito. Registras los equipos, configuras el contrato y el plan de mantenimiento se genera automáticamente.' },
+      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 7 días, sin tarjeta de crédito. Registras los equipos, configuras el contrato y el plan de mantenimiento se genera automáticamente.' },
     ],
     finalCta: {
       title: 'Genera el plan de mantenimiento sin hoja de cálculo aparte',
-      subtitle: 'Gratis durante 14 días, sin tarjeta de crédito. Registra los equipos y ten el plan de mantenimiento listo para cualquier auditoría.',
+      subtitle: 'Gratis durante 7 días, sin tarjeta de crédito. Registra los equipos y ten el plan de mantenimiento listo para cualquier auditoría.',
     },
   },
 
@@ -274,7 +274,7 @@ const es: ModuleContentMap = {
     slug: 'crm-servicios-campo',
     metaTitle: 'CRM para empresas de servicios y mantenimiento | Dominex',
     metaDescription:
-      'CRM para empresas de servicios y mantenimiento: capta leads, organiza tu embudo de ventas en un tablero kanban, asigna cada oportunidad a un vendedor y avanza de presupuesto a propuesta y contrato, con conversión directa en orden de trabajo. Prueba gratis 14 días, sin tarjeta.',
+      'CRM para empresas de servicios y mantenimiento: capta leads, organiza tu embudo de ventas en un tablero kanban, asigna cada oportunidad a un vendedor y avanza de presupuesto a propuesta y contrato, con conversión directa en orden de trabajo. Prueba gratis 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'CRM y ventas',
       h1: 'CRM para empresas de servicios y mantenimiento',
@@ -366,11 +366,11 @@ const es: ModuleContentMap = {
       { q: '¿El CRM se conecta con presupuestos y contratos?', a: 'Sí. Desde la oportunidad armas el presupuesto, lo conviertes en propuesta enviada por enlace y lo cierras como contrato, todo atado a la oportunidad, sin archivos sueltos.' },
       { q: 'Cuando cierro la venta, ¿tengo que volver a ingresar el cliente para la orden de trabajo?', a: 'No. La oportunidad ganada se convierte en orden de trabajo con un clic, llevando el cliente, la dirección y el alcance vendido. Ventas y campo trabajan con los mismos datos.' },
       { q: '¿Puedo seguir la tasa de conversión?', a: 'Sí. Sigues el embudo, ves cuántas oportunidades avanzan por etapa y detectas dónde suelen estancarse los negocios.' },
-      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 14 días, sin tarjeta de crédito. Agregas tus leads y empiezas a organizar el embudo de ventas de inmediato.' },
+      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 7 días, sin tarjeta de crédito. Agregas tus leads y empiezas a organizar el embudo de ventas de inmediato.' },
     ],
     finalCta: {
       title: 'Organiza tu embudo y cierra más',
-      subtitle: 'Gratis durante 14 días, sin tarjeta de crédito. Capta tus leads, organiza el embudo y ve del lead al contrato.',
+      subtitle: 'Gratis durante 7 días, sin tarjeta de crédito. Capta tus leads, organiza el embudo y ve del lead al contrato.',
     },
   },
 
@@ -381,7 +381,7 @@ const es: ModuleContentMap = {
     slug: 'software-financiero-servicios',
     metaTitle: 'Software financiero para empresas de servicios | Dominex',
     metaDescription:
-      'Software de gestión financiera para empresas de servicios: cuentas por pagar y por cobrar, flujo de caja, estado de resultados, gestión de tarjeta de crédito y conciliación. Sabe cuánto entra, cuánto sale y cuánto queda. Prueba gratis 14 días, sin tarjeta.',
+      'Software de gestión financiera para empresas de servicios: cuentas por pagar y por cobrar, flujo de caja, estado de resultados, gestión de tarjeta de crédito y conciliación. Sabe cuánto entra, cuánto sale y cuánto queda. Prueba gratis 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Finanzas',
       h1: 'Software financiero para empresas de servicios',
@@ -473,11 +473,11 @@ const es: ModuleContentMap = {
       { q: '¿Cómo maneja Dominex la tarjeta de crédito?', a: 'El gasto de la tarjeta entra como previsión (no como pago), y lo que realmente se convierte en pago es la factura agregada. Así el saldo de tu cuenta nunca aparece más bajo de lo que realmente es.' },
       { q: '¿Puedo controlar cuentas por pagar y por cobrar con vencimientos?', a: 'Sí. Cada cuenta tiene un vencimiento, categoría y cliente o proveedor. El sistema las organiza por fecha y te avisa de lo que está por vencer.' },
       { q: '¿Puedo seguir el saldo de varias cuentas y cajas?', a: 'Sí. Sigues el saldo de cada caja y cuenta bancaria de la empresa y concilias lo previsto con lo que realmente entró y salió.' },
-      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 14 días, sin tarjeta de crédito. Ingresas tus cuentas y ves el flujo de caja y el resultado del mes de inmediato.' },
+      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 7 días, sin tarjeta de crédito. Ingresas tus cuentas y ves el flujo de caja y el resultado del mes de inmediato.' },
     ],
     finalCta: {
       title: 'Sabe si el mes cerró en positivo',
-      subtitle: 'Gratis durante 14 días, sin tarjeta de crédito. Organiza las cuentas, ve el flujo de caja y cierra el estado de resultados sin hoja de cálculo.',
+      subtitle: 'Gratis durante 7 días, sin tarjeta de crédito. Organiza las cuentas, ve el flujo de caja y cierra el estado de resultados sin hoja de cálculo.',
     },
   },
 
@@ -488,7 +488,7 @@ const es: ModuleContentMap = {
     slug: 'software-control-horario-nomina',
     metaTitle: 'Control horario y nómina para equipos de campo | Dominex',
     metaDescription:
-      'Control horario y nómina para equipos de campo: fichaje con selfi y geolocalización, un balance de horas extra, nómina, anticipos y gestión de empleados, todo en un solo lugar. Prueba gratis 14 días, sin tarjeta.',
+      'Control horario y nómina para equipos de campo: fichaje con selfi y geolocalización, un balance de horas extra, nómina, anticipos y gestión de empleados, todo en un solo lugar. Prueba gratis 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Control horario y nómina (RRHH)',
       h1: 'Control horario y nómina para equipos de campo',
@@ -580,11 +580,11 @@ const es: ModuleContentMap = {
       { q: '¿Puedo cerrar la nómina en el sistema?', a: 'Sí. El cierre consolida salario, el balance de horas extra y los anticipos, descontando los anticipos automáticamente. El recibo de pago sale listo.' },
       { q: '¿Cómo funcionan los anticipos?', a: 'Cada anticipo se registra y se descuenta automáticamente del recibo. El extracto del empleado muestra cada movimiento de entrada y salida con el signo correcto.' },
       { q: '¿Dónde se guardan los datos de los empleados?', a: 'En la ficha del empleado, que centraliza salario, cargo, anticipos y extracto. Ves la imagen financiera de cada persona en un solo lugar.' },
-      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 14 días, sin tarjeta de crédito. Registras al equipo y empiezas a fichar el horario y cerrar la nómina de inmediato.' },
+      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 7 días, sin tarjeta de crédito. Registras al equipo y empiezas a fichar el horario y cerrar la nómina de inmediato.' },
     ],
     finalCta: {
       title: 'Controla las horas de quien vive en la carretera',
-      subtitle: 'Gratis durante 14 días, sin tarjeta de crédito. Ficha el horario con selfi y ubicación y cierra la nómina sin hoja de cálculo.',
+      subtitle: 'Gratis durante 7 días, sin tarjeta de crédito. Ficha el horario con selfi y ubicación y cierra la nómina sin hoja de cálculo.',
     },
   },
 
@@ -595,7 +595,7 @@ const es: ModuleContentMap = {
     slug: 'software-facturacion-servicios',
     metaTitle: 'Software de facturación de servicios para empresas de servicios | Dominex',
     metaDescription:
-      'Software de facturación de servicios electrónica para empresas de servicios: emite la factura de servicio por cliente directo desde la plataforma, con los datos del cliente cargados automáticamente. Sin software de facturación aparte. Prueba gratis 14 días, sin tarjeta.',
+      'Software de facturación de servicios electrónica para empresas de servicios: emite la factura de servicio por cliente directo desde la plataforma, con los datos del cliente cargados automáticamente. Sin software de facturación aparte. Prueba gratis 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Facturación de servicios',
       h1: 'Software de facturación de servicios para empresas de servicios',
@@ -687,11 +687,11 @@ const es: ModuleContentMap = {
       { q: '¿La factura carga los datos del cliente automáticamente?', a: 'Sí. La emisión usa los datos de la ficha del cliente que ya tienes en la plataforma, sin reescribir nada.' },
       { q: '¿Puedo seguir las facturas que he emitido?', a: 'Sí. Las facturas quedan registradas y organizadas por cliente, con un historial de lo que ya se emitió, ayudándote a controlar la facturación y evitar duplicados.' },
       { q: '¿Puedo enviar la factura al cliente?', a: 'Sí. Una vez emitida, la factura queda disponible en la ficha del cliente y lista para enviar, para que el cliente reciba el documento de facturación sin ningún retrabajo manual.' },
-      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 14 días, sin tarjeta de crédito. Activas el módulo de facturación y emites la factura de servicio desde la ficha del cliente.' },
+      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 7 días, sin tarjeta de crédito. Activas el módulo de facturación y emites la factura de servicio desde la ficha del cliente.' },
     ],
     finalCta: {
       title: 'Emite la factura de servicio donde ya trabajas',
-      subtitle: 'Gratis durante 14 días, sin tarjeta de crédito. Emite la factura de servicio por cliente, sin sistema aparte.',
+      subtitle: 'Gratis durante 7 días, sin tarjeta de crédito. Emite la factura de servicio por cliente, sin sistema aparte.',
     },
   },
 
@@ -702,7 +702,7 @@ const es: ModuleContentMap = {
     slug: 'portal-del-cliente',
     metaTitle: 'Portal del cliente para empresas de servicios | Dominex',
     metaDescription:
-      'Portal del cliente para empresas de servicios: tu cliente sigue la orden de trabajo, ve el historial de servicios, accede a los documentos y aprueba el presupuesto por enlace, sin tener que llamar a la oficina. Prueba gratis 14 días, sin tarjeta.',
+      'Portal del cliente para empresas de servicios: tu cliente sigue la orden de trabajo, ve el historial de servicios, accede a los documentos y aprueba el presupuesto por enlace, sin tener que llamar a la oficina. Prueba gratis 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Portal del cliente',
       h1: 'Portal del cliente para empresas de servicios',
@@ -794,11 +794,11 @@ const es: ModuleContentMap = {
       { q: '¿El cliente puede aprobar un presupuesto a través del portal?', a: 'Sí. El presupuesto llega por enlace y el cliente lo aprueba directo en el portal, con registro de cuándo aprobó. La aprobación no se pierde en WhatsApp.' },
       { q: '¿El cliente ve el historial de servicios y los documentos?', a: 'Sí. El historial completo de órdenes, con fechas y lo que se hizo, más informes y documentos, queda disponible en el portal para consulta en cualquier momento.' },
       { q: '¿Cada cliente ve solo sus propios datos?', a: 'Sí. En el portal, cada cliente accede solo a sus propios trabajos y documentos.' },
-      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 14 días, sin tarjeta de crédito. Activas el portal y compartes el enlace con tus clientes.' },
+      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 7 días, sin tarjeta de crédito. Activas el portal y compartes el enlace con tus clientes.' },
     ],
     finalCta: {
       title: 'Dale autonomía al cliente y calma a tu equipo',
-      subtitle: 'Gratis durante 14 días, sin tarjeta de crédito. Deja que el cliente siga la orden de trabajo y apruebe el presupuesto por su cuenta.',
+      subtitle: 'Gratis durante 7 días, sin tarjeta de crédito. Deja que el cliente siga la orden de trabajo y apruebe el presupuesto por su cuenta.',
     },
   },
 
@@ -809,7 +809,7 @@ const es: ModuleContentMap = {
     slug: 'software-gestion-inventario',
     metaTitle: 'Software de gestión de inventario para equipos de campo | Dominex',
     metaDescription:
-      'Software de gestión de inventario para equipos de campo: registra piezas y materiales, registra entradas y salidas de stock, descuenta automáticamente por orden de trabajo y realiza inventarios físicos. Sabe qué tienes, qué salió y en qué orden. Prueba gratis 14 días, sin tarjeta.',
+      'Software de gestión de inventario para equipos de campo: registra piezas y materiales, registra entradas y salidas de stock, descuenta automáticamente por orden de trabajo y realiza inventarios físicos. Sabe qué tienes, qué salió y en qué orden. Prueba gratis 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Inventario',
       h1: 'Software de gestión de inventario para equipos de campo',
@@ -901,11 +901,11 @@ const es: ModuleContentMap = {
       { q: '¿Cómo funciona el inventario físico?', a: 'Haces el conteo físico cuando quieras, lo comparas con el saldo del sistema y ajustas la discrepancia. El stock vuelve a reflejar la realidad.' },
       { q: '¿El saldo se actualiza en tiempo real?', a: 'Sí. Cada entrada y salida de stock actualiza el saldo al instante, así consultas el stock y ves lo que realmente tienes.' },
       { q: '¿Puedo ver las piezas que se están agotando?', a: 'Sí. Ves las piezas con saldo bajo y repones antes de que se acaben en el trabajo.' },
-      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 14 días, sin tarjeta de crédito. Registras tus piezas y empiezas a controlar entradas, salidas y descuentos por orden de trabajo.' },
+      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 7 días, sin tarjeta de crédito. Registras tus piezas y empiezas a controlar entradas, salidas y descuentos por orden de trabajo.' },
     ],
     finalCta: {
       title: 'Deja de perder trabajos por falta de una pieza',
-      subtitle: 'Gratis durante 14 días, sin tarjeta de crédito. Controla tu stock y descuenta automáticamente en cada orden de trabajo.',
+      subtitle: 'Gratis durante 7 días, sin tarjeta de crédito. Controla tu stock y descuenta automáticamente en cada orden de trabajo.',
     },
   },
 
@@ -916,7 +916,7 @@ const es: ModuleContentMap = {
     slug: 'software-presupuestos-contratos',
     metaTitle: 'Software de presupuestos y contratos para empresas de servicios | Dominex',
     metaDescription:
-      'Software de presupuestos y contratos para empresas de servicios: crea presupuestos profesionales, envíalos como propuesta por enlace, cierra contratos recurrentes que generan órdenes de trabajo solos y convierte la aprobación en orden de trabajo. Prueba gratis 14 días, sin tarjeta.',
+      'Software de presupuestos y contratos para empresas de servicios: crea presupuestos profesionales, envíalos como propuesta por enlace, cierra contratos recurrentes que generan órdenes de trabajo solos y convierte la aprobación en orden de trabajo. Prueba gratis 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Presupuestos y contratos',
       h1: 'Software de presupuestos y contratos para empresas de servicios',
@@ -1008,11 +1008,11 @@ const es: ModuleContentMap = {
       { q: '¿Los contratos generan órdenes de trabajo solos?', a: 'Sí. Una vez configurado el contrato con la recurrencia, las órdenes de trabajo se generan por el sistema en el intervalo acordado, sin necesidad de recordar, para que ningún SLA se incumpla por olvido.' },
       { q: '¿El presupuesto aprobado se convierte en orden de trabajo?', a: 'Sí. Con un clic, el presupuesto aprobado se convierte en orden de trabajo, llevando el alcance vendido al campo. Ventas y operaciones trabajan con los mismos datos.' },
       { q: '¿Los presupuestos y contratos quedan vinculados al cliente?', a: 'Sí. Cada presupuesto y contrato queda en el historial del cliente, organizado, para consulta y seguimiento.' },
-      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 14 días, sin tarjeta de crédito. Armas tu primer presupuesto y envías la propuesta por enlace de inmediato.' },
+      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 7 días, sin tarjeta de crédito. Armas tu primer presupuesto y envías la propuesta por enlace de inmediato.' },
     ],
     finalCta: {
       title: 'Vuelve profesional la propuesta y automatiza el contrato',
-      subtitle: 'Gratis durante 14 días, sin tarjeta de crédito. Crea presupuestos con tu marca y deja que el contrato genere las órdenes de trabajo solo.',
+      subtitle: 'Gratis durante 7 días, sin tarjeta de crédito. Crea presupuestos con tu marca y deja que el contrato genere las órdenes de trabajo solo.',
     },
   },
 
@@ -1023,7 +1023,7 @@ const es: ModuleContentMap = {
     slug: 'software-gps-equipos',
     metaTitle: 'Rastreo GPS de equipos y agenda para servicios de campo | Dominex',
     metaDescription:
-      'Rastreo GPS de equipos y agenda para servicios de campo: ubicación en tiempo real en el mapa, agenda y ruteo, check-in y check-out validados por dirección e historial de recorridos. Prueba gratis 14 días, sin tarjeta.',
+      'Rastreo GPS de equipos y agenda para servicios de campo: ubicación en tiempo real en el mapa, agenda y ruteo, check-in y check-out validados por dirección e historial de recorridos. Prueba gratis 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Rastreo GPS y agenda',
       h1: 'Rastreo GPS de equipos y agenda para servicios de campo',
@@ -1115,11 +1115,11 @@ const es: ModuleContentMap = {
       { q: '¿Hay un historial de recorridos?', a: 'Sí. El historial guarda los puntos clave de la ruta del día, así verificas por dónde fue el equipo y justificas el tiempo en campo.' },
       { q: '¿El ruteo ayuda a hacer más trabajos por día?', a: 'Sí. Al asignar al técnico más cercano y organizar la ruta, el equipo cruza la ciudad en vano menos veces y atiende a más clientes el mismo día.' },
       { q: '¿El cliente recibe una hora predecible?', a: 'Sí. Con una agenda organizada, le das al cliente una ventana de servicio más predecible y reduces las visitas fallidas.' },
-      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 14 días, sin tarjeta de crédito. Registras al equipo y sigues el mapa en vivo y la agenda del día de inmediato.' },
+      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 7 días, sin tarjeta de crédito. Registras al equipo y sigues el mapa en vivo y la agenda del día de inmediato.' },
     ],
     finalCta: {
       title: 'Ve a tu equipo de campo en el mapa',
-      subtitle: 'Gratis durante 14 días, sin tarjeta de crédito. Sigue al equipo en tiempo real, organiza la agenda y prueba cada visita.',
+      subtitle: 'Gratis durante 7 días, sin tarjeta de crédito. Sigue al equipo en tiempo real, organiza la agenda y prueba cada visita.',
     },
   },
 
@@ -1130,7 +1130,7 @@ const es: ModuleContentMap = {
     slug: 'app-tecnico-campo',
     metaTitle: 'App del técnico: la app de campo de tu equipo | Dominex',
     metaDescription:
-      'La App del técnico: la app de campo de tu equipo. Órdenes de trabajo en el móvil, herramientas técnicas (carga de refrigerante, sobrecalentamiento, dimensionado de contactor), un catálogo de equipos y una app instalable en el móvil. Prueba gratis 14 días, sin tarjeta.',
+      'La App del técnico: la app de campo de tu equipo. Órdenes de trabajo en el móvil, herramientas técnicas (carga de refrigerante, sobrecalentamiento, dimensionado de contactor), un catálogo de equipos y una app instalable en el móvil. Prueba gratis 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'App del técnico',
       h1: 'La App del técnico: la app de campo de tu equipo',
@@ -1222,11 +1222,11 @@ const es: ModuleContentMap = {
       { q: '¿El técnico puede ejecutar la orden de trabajo en la app?', a: 'Sí. Abre la orden completa (cliente, dirección, equipo, historial), completa la lista de verificación, toma fotos, recoge la firma y cierra el trabajo, todo desde el móvil.' },
       { q: '¿El equipo usa todo directo desde el móvil, en campo?', a: 'Sí. La orden de trabajo, las herramientas de cálculo y el catálogo de equipos quedan en el móvil del técnico, listos para usar en el cliente. Ejecuta la orden, hace los cálculos y consulta el catálogo en campo, sin volver a la oficina ni cargar manuales impresos.' },
       { q: '¿Las herramientas de cálculo funcionan para refrigeración y aire acondicionado?', a: 'Sí. Las calculadoras de carga de refrigerante, sobrecalentamiento y curva de presión están orientadas al día a día de la refrigeración y el aire acondicionado, y el dimensionado de contactor apoya la instalación y el arranque de equipos.' },
-      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 14 días, sin tarjeta de crédito. Tu equipo instala la App del técnico en su móvil y empieza a trabajar en campo de inmediato.' },
+      { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 7 días, sin tarjeta de crédito. Tu equipo instala la App del técnico en su móvil y empieza a trabajar en campo de inmediato.' },
     ],
     finalCta: {
       title: 'Pon todo el campo en el móvil de tu equipo',
-      subtitle: 'Gratis durante 14 días, sin tarjeta de crédito. Órdenes de trabajo, herramientas técnicas y catálogo en la App del técnico, en el móvil de tu equipo.',
+      subtitle: 'Gratis durante 7 días, sin tarjeta de crédito. Órdenes de trabajo, herramientas técnicas y catálogo en la App del técnico, en el móvil de tu equipo.',
     },
   },
 };

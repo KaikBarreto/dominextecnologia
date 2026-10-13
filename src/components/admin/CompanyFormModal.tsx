@@ -215,7 +215,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       });
       setAddr(parseAddress(company.address));
     } else {
-      const defaultExpires = format(addDays(new Date(), 14), 'yyyy-MM-dd');
+      const defaultExpires = format(addDays(new Date(), 7), 'yyyy-MM-dd');
       setFormData({
         name: '', cnpj: '', email: '', phone: '', contact_name: '',
         subscription_status: 'testing', subscription_plan: 'start', subscription_value: '0',
@@ -257,7 +257,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   const handleStatusChange = useCallback((v: string) => {
     updateField('subscription_status', v);
     const date = new Date();
-    date.setDate(date.getDate() + (v === 'testing' ? 14 : 30));
+    date.setDate(date.getDate() + (v === 'testing' ? 7 : 30));
     updateField('subscription_expires_at', format(date, 'yyyy-MM-dd'));
   }, [updateField]);
 
@@ -265,7 +265,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   const handlePlanChange = useCallback((v: string) => {
     updateField('subscription_plan', v);
     if (v === 'personalizado') {
-      // Preço sugerido = módulos + usuários acima dos 2 inclusos.
+      // Preço sugerido = módulos + usuários acima dos 5 inclusos.
       if (!formData.use_custom_price) {
         updateField('subscription_value', String(sumModulesPrice(allModules, selectedModules, nfseTiers, Number(formData.nfse_tier), Number(formData.max_users))));
       }

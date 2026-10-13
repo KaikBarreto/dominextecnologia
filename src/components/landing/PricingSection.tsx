@@ -8,12 +8,12 @@ import { localizeHash } from '@/lib/i18n/localizeHash';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 
-// Configuração não textual dos planos. Valores comerciais não ficam no site:
-// cada CTA abre uma conversa comercial para uma proposta adequada à operação.
+// Os preços dos planos prontos espelham o catálogo comercial. O personalizado
+// continua sob consulta e cada CTA abre a conversa com o time comercial.
 const PLAN_CONFIG = [
-  { code: 'start', popular: false },
-  { code: 'avancado', popular: true },
-  { code: 'master', popular: false },
+  { code: 'start', popular: false, monthlyPrice: 197 },
+  { code: 'avancado', popular: true, monthlyPrice: 547 },
+  { code: 'master', popular: false, monthlyPrice: 847 },
 ] as const;
 
 // Fragmento específico do CTA Enterprise (plano Personalizado), por locale.
@@ -37,8 +37,7 @@ export default function PricingSection() {
   // Junta config visual + texto i18n (nome/desc/features) por code.
   const plans = PLAN_CONFIG.map((cfg) => {
     const copy = t.plans[cfg.code];
-    const videoChecklist = 'videoChecklist' in copy ? (copy as { videoChecklist?: string }).videoChecklist : undefined;
-    return { ...cfg, name: copy.name, desc: copy.desc, features: copy.features, videoChecklist, cta: t.ctaTrial };
+    return { ...cfg, name: copy.name, desc: copy.desc, features: copy.features, cta: t.ctaTrial };
   });
   const customPlan = {
     name: t.plans.enterprise.name,
@@ -83,7 +82,11 @@ export default function PricingSection() {
                 )}
 
                 <h3 className="text-xl font-bold text-white break-words">{plan.name}</h3>
-                <p className="text-sm text-white/55 mb-5">{plan.desc}</p>
+                <p className="text-sm text-white/55">{plan.desc}</p>
+                <p className="mb-5 mt-4 text-white">
+                  <span className="text-3xl font-bold tracking-tight">R$ {plan.monthlyPrice}</span>
+                  <span className="ml-1 text-sm text-white/55">{t.perMonth}</span>
+                </p>
 
                 <div className="flex items-center gap-2 mb-3">
                   <div className="flex-1 h-px bg-white/10" />
@@ -99,12 +102,6 @@ export default function PricingSection() {
                     </li>
                   ))}
                 </ul>
-
-                {plan.videoChecklist && (
-                  <p className="text-sm font-semibold mb-6 break-words hyphens-auto text-new-feature-gradient">
-                    {plan.videoChecklist}
-                  </p>
-                )}
 
                 <Button
                   className={cn(

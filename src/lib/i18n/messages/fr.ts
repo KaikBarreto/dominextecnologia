@@ -17,7 +17,7 @@ export const frOverrides: MessagesOverride = {
   registration: {
     logoTagline: 'Maîtrisez la gestion de votre activité.',
     title: 'Inscription',
-    subtitle: 'Essai gratuit de 14 jours · Sans engagement · Accès complet',
+    subtitle: 'Essai gratuit de 7 jours · Sans engagement · Accès complet',
 
     steps: {
       data: 'Infos',
@@ -66,7 +66,7 @@ export const frOverrides: MessagesOverride = {
     passwordPlaceholder: 'Créez votre mot de passe',
     confirmPassword: 'Confirmer le mot de passe*',
     confirmPasswordPlaceholder: 'Répétez le mot de passe',
-    trialLine1: '14 jours gratuits avec accès complet',
+    trialLine1: '7 jours gratuits avec accès complet',
     trialLine2: 'Sans carte bancaire, sans engagement',
 
     back: 'Retour',
@@ -508,7 +508,8 @@ export const frOverrides: MessagesOverride = {
     },
     pricing: {
       heading: 'Des offres qui grandissent avec votre opération',
-      contactForPricing: 'Les tarifs sont communiqués sur WhatsApp selon les besoins de votre entreprise.',
+      contactForPricing: 'Des tarifs mensuels clairs, avec 5 utilisateurs inclus et 20 R$ par utilisateur supplémentaire.',
+      perMonth: '/mois',
       mostPopular: '⭐ Le plus populaire',
       featuresLabel: 'Fonctionnalités',
       ctaTrial: 'Discuter sur WhatsApp',
@@ -523,6 +524,8 @@ export const frOverrides: MessagesOverride = {
             'Application pour les techniciens',
             'Agenda et calendrier',
             'Portail client',
+            'Tarification avancée (marge)',
+            'Questions vidéo dans les checklists',
             'Rapports de base',
             'Support par e-mail',
           ],
@@ -539,7 +542,6 @@ export const frOverrides: MessagesOverride = {
             'Compte de résultat et rapports financiers',
             'Gestion des contrats et plans de maintenance',
           ],
-          videoChecklist: 'jusqu\'à 1 vidéo par checklist',
         },
         master: {
           name: 'Business',
@@ -549,11 +551,9 @@ export const frOverrides: MessagesOverride = {
             '15 utilisateurs inclus',
             'CRM / Pipeline de ventes',
             'Émission de NFS-e (Facture de Service)',
-            'Tarification avancée (marge)',
             'Marque blanche (votre marque)',
             'Support prioritaire',
           ],
-          videoChecklist: 'jusqu\'à 3 vidéos par checklist',
         },
         enterprise: {
           name: 'Offre Entreprise',
@@ -575,7 +575,7 @@ export const frOverrides: MessagesOverride = {
         },
         {
           q: 'Comment fonctionne l’essai gratuit ?',
-          a: 'Ce sont 14 jours avec un accès complet à l’offre que vous choisissez, sans carte bancaire requise. Vous pouvez annuler à tout moment et vos données sont conservées si vous décidez de vous abonner plus tard.',
+          a: 'Ce sont 7 jours avec un accès complet à l’offre que vous choisissez, sans carte bancaire requise. Vous pouvez annuler à tout moment et vos données sont conservées si vous décidez de vous abonner plus tard.',
         },
         {
           q: 'Les données des ordres de travail sont-elles conservées indéfiniment ?',
@@ -587,7 +587,7 @@ export const frOverrides: MessagesOverride = {
         },
         {
           q: 'Puis-je personnaliser les formulaires, checklists et rapports ?',
-          a: 'Oui. Vous créez des modèles de checklist par type de service, définissez les champs obligatoires, les photos, la signature et les réponses vidéo. Avec les offres Pro et Business, le technicien peut enregistrer un court clip (jusqu’à 15 secondes) comme réponse de checklist, directement depuis son téléphone sur le terrain, et le client voit la vidéo dans le lien de l’ordre de travail. Les rapports d’ordre de travail sont générés en PDF avec votre marque, vos couleurs et votre logo.',
+          a: 'Oui. Toutes les offres, y compris Essentiel, permettent de créer des modèles de checklist par type de service et de définir les champs obligatoires, les photos, les signatures et les réponses vidéo. Le technicien peut enregistrer de courts clips (jusqu’à 15 secondes) depuis son téléphone sur le terrain, et le client voit les vidéos dans le lien de l’ordre de travail. Les rapports d’ordre de travail sont générés en PDF avec votre marque, vos couleurs et votre logo.',
         },
         {
           q: 'Y a-t-il un CRM et un pipeline de ventes intégrés ?',
@@ -618,7 +618,7 @@ export const frOverrides: MessagesOverride = {
     ctaFinal: {
       heading: 'Commencez aujourd’hui. Des résultats en quelques jours.',
       subtitle:
-        '14 jours gratuits, sans carte, sans paperasse. Une mise en place en quelques minutes et regardez votre équipe gagner en productivité.',
+        '7 jours gratuits, sans carte, sans paperasse. Une mise en place en quelques minutes et regardez votre équipe gagner en productivité.',
       ctaPrimary: 'Discuter sur WhatsApp',
       ctaSecondary: 'Poser vos questions sur WhatsApp',
     },
@@ -670,7 +670,7 @@ export const frOverrides: MessagesOverride = {
     ],
     finalCtaTitle: 'Essayez Dominex dans votre opération',
     finalCtaSubtitle:
-      'C’est 14 jours gratuits, sans carte bancaire. Enregistrez votre équipe et commencez à émettre des ordres de travail dès aujourd’hui.',
+      'C’est 7 jours gratuits, sans carte bancaire. Enregistrez votre équipe et commencez à émettre des ordres de travail dès aujourd’hui.',
   },
 
   // Le texte légal ci-dessous est une traduction AUTOMATIQUE, GÉNÉRALISÉE. Il
@@ -773,7 +773,7 @@ export const frOverrides: MessagesOverride = {
       'Signalez immédiatement tout accès non autorisé à votre compte.',
     ],
     s4Title: '4. Période d’essai',
-    s4P: 'Nous offrons une période gratuite de 14 jours avec accès à l’offre sélectionnée. À la fin de la période, le compte est automatiquement suspendu s’il n’y a pas d’abonnement actif. Les données sont conservées 90 jours supplémentaires en vue d’une éventuelle réactivation.',
+    s4P: 'Nous offrons une période gratuite de 7 jours avec accès à l’offre sélectionnée. À la fin de la période, le compte est automatiquement suspendu s’il n’y a pas d’abonnement actif. Les données sont conservées 90 jours supplémentaires en vue d’une éventuelle réactivation.',
     s5Title: '5. Propriété des données',
     s5Pre: 'Les données saisies dans la plateforme (clients, ordres de travail, employés, finances) appartiennent à l’entreprise cliente. Dominex les traite exclusivement pour fournir le service souscrit, selon les termes de la ',
     s5Link: 'Politique de confidentialité',

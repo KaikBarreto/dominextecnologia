@@ -58,7 +58,7 @@ const fr: ModuleContentMap = {
     slug: 'logiciel-ordres-de-travail',
     metaTitle: 'Logiciel d\'ordres de travail pour les équipes de terrain | Dominex',
     metaDescription:
-      'Logiciel d\'ordres de travail pour les équipes de terrain : l\'ordre de travail sur le téléphone du technicien, checklists, photos avant et après, signature du client, application installable, planification et rapport PDF automatique. Essai gratuit de 14 jours, sans carte bancaire.',
+      'Logiciel d\'ordres de travail pour les équipes de terrain : l\'ordre de travail sur le téléphone du technicien, checklists, photos avant et après, signature du client, application installable, planification et rapport PDF automatique. Essai gratuit de 7 jours, sans carte bancaire.',
     hero: {
       eyebrow: 'Ordres de travail numériques',
       h1: 'Logiciel d\'ordres de travail pour les équipes de terrain',
@@ -136,7 +136,7 @@ const fr: ModuleContentMap = {
       { icon: Calendar, title: 'Planification et répartition', desc: 'Voyez la file du jour et affectez chaque intervention au technicien le plus proche, sans conflit d\'horaire.' },
       { icon: FileSignature, title: 'Rapport automatique', desc: 'Un PDF à votre image prêt dès la fin de l\'intervention, avec photos, checklist et signature.' },
       { icon: BarChart3, title: 'Tableau de bord des statuts', desc: 'Ordres de travail ouverts, en cours et terminés en vue en direct de votre opération.' },
-      { icon: Smartphone, title: 'Réponse vidéo dans la checklist', desc: 'Avec les offres Pro et Business, le technicien enregistre un court clip (jusqu\'à 15 s) comme réponse de checklist, sur le terrain. Le client voit la vidéo dans le lien de l\'ordre de travail.' },
+      { icon: Smartphone, title: 'Réponse vidéo dans la checklist', desc: 'Toutes les offres, y compris Essentiel, permettent au technicien d’enregistrer de courts clips (jusqu\'à 15 s) comme réponses de checklist sur le terrain. Le client voit les vidéos dans le lien de l\'ordre de travail.' },
     ],
     testimonialsHeading: 'Personne ne revient au papier après être passé au numérique',
     testimonials: [
@@ -151,12 +151,12 @@ const fr: ModuleContentMap = {
       { q: 'Le système génère-t-il les rapports d\'ordre de travail automatiquement ?', a: 'Oui. Une fois l\'ordre de travail terminé, le rapport PDF à votre logo et à vos couleurs est prêt, avec la checklist complétée, les photos et la signature. Vous l\'envoyez au client aussitôt.' },
       { q: 'Puis-je utiliser des checklists différentes par type de service ?', a: 'Oui. Vous créez des modèles de checklist par type de service (installation, préventif, correctif) et le technicien suit les bonnes étapes à chaque visite.' },
       { q: 'Comment répartir les ordres de travail à mon équipe ?', a: 'Sur le tableau de bord, vous voyez la file du jour et affectez chaque ordre de travail au technicien responsable, en suivant le statut (ouvert, en cours, terminé) en temps réel.' },
-      { q: 'Le technicien peut-il répondre à une question de checklist par vidéo ?', a: 'Oui, avec les offres Pro et Business. Le technicien enregistre un court clip de 15 secondes maximum directement depuis son téléphone sur le terrain, en guise de réponse à une question de checklist. La vidéo est sauvegardée dans l\'ordre de travail et le client peut la visionner via le lien de l\'ordre de travail.' },
-      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes et commencez à ouvrir des ordres de travail dans l\'application.' },
+      { q: 'Le technicien peut-il répondre à une question de checklist par vidéo ?', a: 'Oui, avec toutes les offres, y compris Essentiel. Le technicien enregistre de courts clips de 15 secondes maximum directement depuis son téléphone sur le terrain, en guise de réponses aux questions de checklist. Les vidéos sont sauvegardées dans l\'ordre de travail et le client peut les visionner via le lien de l\'ordre de travail.' },
+      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes et commencez à ouvrir des ordres de travail dans l\'application.' },
     ],
     finalCta: {
       title: 'Passez vos ordres de travail au numérique',
-      subtitle: 'Gratuit pendant 14 jours, sans carte bancaire. Sortez les ordres de travail du papier et donnez le contrôle à votre équipe de terrain.',
+      subtitle: 'Gratuit pendant 7 jours, sans carte bancaire. Sortez les ordres de travail du papier et donnez le contrôle à votre équipe de terrain.',
     },
   },
 
@@ -167,7 +167,7 @@ const fr: ModuleContentMap = {
     slug: 'logiciel-maintenance-preventive-cvc',
     metaTitle: 'Logiciel de plan de maintenance préventive CVC | Dominex',
     metaDescription:
-      'Logiciel de plan de maintenance préventive CVC : un plan de maintenance par unité d\'équipement, visites récurrentes automatiques, une checklist par machine, un rapport de maintenance prêt pour l\'audit et un QR code sur chaque unité. Essai gratuit de 14 jours, sans carte bancaire.',
+      'Logiciel de plan de maintenance préventive CVC : un plan de maintenance par unité d\'équipement, visites récurrentes automatiques, une checklist par machine, un rapport de maintenance prêt pour l\'audit et un QR code sur chaque unité. Essai gratuit de 7 jours, sans carte bancaire.',
     hero: {
       eyebrow: 'Plans de maintenance automatiques',
       h1: 'Logiciel de plan de maintenance préventive CVC',
@@ -260,11 +260,11 @@ const fr: ModuleContentMap = {
       { q: 'Y a-t-il un QR code sur l\'équipement ?', a: 'Oui. Vous collez un QR code sur la machine et le technicien, en le scannant, arrive directement sur le registre de cette unité, avec son historique et la prochaine visite planifiée.' },
       { q: 'Le rapport de maintenance sort-il à mon image ?', a: 'Oui. Le registre de maintenance et le rapport de conformité sortent en PDF à votre logo et à vos couleurs, avec la signature du technicien responsable, prêts à remettre au client et à un auditeur.' },
       { q: 'Est-ce que ça fonctionne autant pour la réfrigération que pour la climatisation ?', a: 'Oui. Cela fonctionne pour les entreprises de CVC et de réfrigération qui entretiennent des unités split, multi-split, VRF, groupe d\'eau glacée, chambre froide, ventilo-convecteur et monobloc, avec un plan et un historique par unité.' },
-      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous enregistrez les équipements, configurez le contrat et le plan de maintenance est généré automatiquement.' },
+      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous enregistrez les équipements, configurez le contrat et le plan de maintenance est généré automatiquement.' },
     ],
     finalCta: {
       title: 'Générez le plan de maintenance sans tableur à part',
-      subtitle: 'Gratuit pendant 14 jours, sans carte bancaire. Enregistrez les équipements et disposez du plan de maintenance prêt pour tout audit.',
+      subtitle: 'Gratuit pendant 7 jours, sans carte bancaire. Enregistrez les équipements et disposez du plan de maintenance prêt pour tout audit.',
     },
   },
 
@@ -275,7 +275,7 @@ const fr: ModuleContentMap = {
     slug: 'crm-services-terrain',
     metaTitle: 'CRM pour les entreprises de services et de maintenance | Dominex',
     metaDescription:
-      'CRM pour les entreprises de services et de maintenance : captez des leads, organisez votre pipeline commercial sur un tableau kanban, affectez chaque affaire à un commercial et passez du devis à la proposition au contrat, avec conversion directe en ordre de travail. Essai gratuit de 14 jours, sans carte bancaire.',
+      'CRM pour les entreprises de services et de maintenance : captez des leads, organisez votre pipeline commercial sur un tableau kanban, affectez chaque affaire à un commercial et passez du devis à la proposition au contrat, avec conversion directe en ordre de travail. Essai gratuit de 7 jours, sans carte bancaire.',
     hero: {
       eyebrow: 'CRM et ventes',
       h1: 'CRM pour les entreprises de services et de maintenance',
@@ -367,11 +367,11 @@ const fr: ModuleContentMap = {
       { q: 'Le CRM se connecte-t-il aux devis et aux contrats ?', a: 'Oui. À partir de l\'opportunité, vous construisez le devis, le transformez en proposition envoyée par lien et le concluez en contrat, le tout rattaché à l\'opportunité, sans fichiers isolés.' },
       { q: 'Quand je conclus la vente, dois-je ressaisir le client pour l\'ordre de travail ?', a: 'Non. L\'opportunité gagnée devient un ordre de travail en un clic, portant le client, l\'adresse et le périmètre vendu. Les ventes et le terrain travaillent avec les mêmes données.' },
       { q: 'Puis-je suivre le taux de conversion ?', a: 'Oui. Vous suivez le pipeline, voyez combien d\'opportunités avancent par stade et repérez où les affaires ont tendance à caler.' },
-      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous ajoutez vos leads et commencez à organiser le pipeline commercial aussitôt.' },
+      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous ajoutez vos leads et commencez à organiser le pipeline commercial aussitôt.' },
     ],
     finalCta: {
       title: 'Organisez votre pipeline et concluez davantage',
-      subtitle: 'Gratuit pendant 14 jours, sans carte bancaire. Captez vos leads, organisez le pipeline et passez du lead au contrat.',
+      subtitle: 'Gratuit pendant 7 jours, sans carte bancaire. Captez vos leads, organisez le pipeline et passez du lead au contrat.',
     },
   },
 
@@ -382,7 +382,7 @@ const fr: ModuleContentMap = {
     slug: 'logiciel-financier-services',
     metaTitle: 'Logiciel de gestion financière pour les entreprises de services | Dominex',
     metaDescription:
-      'Logiciel de gestion financière pour les entreprises de services : comptes à payer et à recevoir, trésorerie, compte de résultat, gestion de carte bancaire et rapprochement. Sachez combien entre, combien sort et combien il reste. Essai gratuit de 14 jours, sans carte bancaire.',
+      'Logiciel de gestion financière pour les entreprises de services : comptes à payer et à recevoir, trésorerie, compte de résultat, gestion de carte bancaire et rapprochement. Sachez combien entre, combien sort et combien il reste. Essai gratuit de 7 jours, sans carte bancaire.',
     hero: {
       eyebrow: 'Finance',
       h1: 'Logiciel de gestion financière pour les entreprises de services',
@@ -474,11 +474,11 @@ const fr: ModuleContentMap = {
       { q: 'Comment Dominex gère-t-il la carte bancaire ?', a: 'La dépense par carte entre en prévision (non comme un paiement), et ce qui devient réellement un paiement est le relevé agrégé. Ainsi le solde de votre compte n\'apparaît jamais plus bas qu\'il ne l\'est réellement.' },
       { q: 'Puis-je gérer les comptes à payer et à recevoir avec leurs échéances ?', a: 'Oui. Chaque compte a une échéance, une catégorie et un client ou fournisseur. Le système les organise par date et vous alerte sur ce qui arrive à terme.' },
       { q: 'Puis-je suivre le solde de plusieurs comptes et caisses ?', a: 'Oui. Vous suivez le solde de chaque caisse et compte bancaire de l\'entreprise et rapprochez ce qui était prévu de ce qui est réellement entré et sorti.' },
-      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous saisissez vos comptes et voyez la trésorerie et le résultat du mois aussitôt.' },
+      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous saisissez vos comptes et voyez la trésorerie et le résultat du mois aussitôt.' },
     ],
     finalCta: {
       title: 'Sachez si le mois s\'est clôturé dans le vert',
-      subtitle: 'Gratuit pendant 14 jours, sans carte bancaire. Organisez les comptes, voyez la trésorerie et clôturez le compte de résultat sans tableur.',
+      subtitle: 'Gratuit pendant 7 jours, sans carte bancaire. Organisez les comptes, voyez la trésorerie et clôturez le compte de résultat sans tableur.',
     },
   },
 
@@ -489,7 +489,7 @@ const fr: ModuleContentMap = {
     slug: 'logiciel-pointage-paie',
     metaTitle: 'Pointage et paie pour les équipes de terrain | Dominex',
     metaDescription:
-      'Pointage et paie pour les équipes de terrain : pointage avec selfie et géolocalisation, solde d\'heures, paie, avances et gestion des salariés, le tout au même endroit. Essai gratuit de 14 jours, sans carte bancaire.',
+      'Pointage et paie pour les équipes de terrain : pointage avec selfie et géolocalisation, solde d\'heures, paie, avances et gestion des salariés, le tout au même endroit. Essai gratuit de 7 jours, sans carte bancaire.',
     hero: {
       eyebrow: 'Pointage et paie (RH)',
       h1: 'Pointage et paie pour les équipes de terrain',
@@ -581,11 +581,11 @@ const fr: ModuleContentMap = {
       { q: 'Puis-je clôturer la paie dans le système ?', a: 'Oui. La clôture consolide salaire, solde d\'heures et avances, en déduisant les avances automatiquement. Le bulletin de paie sort prêt.' },
       { q: 'Comment fonctionnent les avances ?', a: 'Chaque avance est enregistrée et déduite automatiquement du bulletin de paie. Le relevé du salarié affiche chaque entrée et sortie avec le bon signe.' },
       { q: 'Où sont conservées les données des salariés ?', a: 'Dans la fiche du salarié, qui centralise salaire, poste, avances et relevé. Vous voyez la situation financière de chaque personne en un seul endroit.' },
-      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous enregistrez l\'équipe et commencez à pointer les heures et à clôturer la paie aussitôt.' },
+      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous enregistrez l\'équipe et commencez à pointer les heures et à clôturer la paie aussitôt.' },
     ],
     finalCta: {
       title: 'Contrôlez les heures de gens qui vivent sur la route',
-      subtitle: 'Gratuit pendant 14 jours, sans carte bancaire. Pointez les heures avec selfie et localisation et clôturez la paie sans tableur.',
+      subtitle: 'Gratuit pendant 7 jours, sans carte bancaire. Pointez les heures avec selfie et localisation et clôturez la paie sans tableur.',
     },
   },
 
@@ -596,7 +596,7 @@ const fr: ModuleContentMap = {
     slug: 'logiciel-facturation-services',
     metaTitle: 'Logiciel de facturation de services pour les entreprises de services | Dominex',
     metaDescription:
-      'Logiciel de facturation de services pour les entreprises de services : émettez la facture de service par client directement depuis la plateforme, avec les données du client reprises automatiquement. Sans logiciel de facturation séparé. Essai gratuit de 14 jours, sans carte bancaire.',
+      'Logiciel de facturation de services pour les entreprises de services : émettez la facture de service par client directement depuis la plateforme, avec les données du client reprises automatiquement. Sans logiciel de facturation séparé. Essai gratuit de 7 jours, sans carte bancaire.',
     hero: {
       eyebrow: 'Facturation de services',
       h1: 'Logiciel de facturation de services pour les entreprises de services',
@@ -688,11 +688,11 @@ const fr: ModuleContentMap = {
       { q: 'La facture reprend-elle les données du client automatiquement ?', a: 'Oui. L\'émission utilise les données de la fiche client que vous avez déjà sur la plateforme, sans rien ressaisir.' },
       { q: 'Puis-je suivre les factures que j\'ai émises ?', a: 'Oui. Les factures sont enregistrées et organisées par client, avec un historique de ce qui a déjà été émis, vous aidant à contrôler la facturation et à éviter les doublons.' },
       { q: 'Puis-je envoyer la facture au client ?', a: 'Oui. Une fois émise, la facture est disponible sur la fiche client et prête à envoyer, si bien que le client reçoit le document de facturation sans reprise manuelle.' },
-      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous activez le module de facturation et émettez la facture de service depuis la fiche client.' },
+      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous activez le module de facturation et émettez la facture de service depuis la fiche client.' },
     ],
     finalCta: {
       title: 'Émettez la facture de service là où vous travaillez déjà',
-      subtitle: 'Gratuit pendant 14 jours, sans carte bancaire. Émettez la facture de service par client, sans système à part.',
+      subtitle: 'Gratuit pendant 7 jours, sans carte bancaire. Émettez la facture de service par client, sans système à part.',
     },
   },
 
@@ -703,7 +703,7 @@ const fr: ModuleContentMap = {
     slug: 'portail-client',
     metaTitle: 'Portail client pour les entreprises de services | Dominex',
     metaDescription:
-      'Portail client pour les entreprises de services : votre client suit l\'ordre de travail, voit l\'historique des interventions, accède aux documents et approuve le devis par lien, sans avoir à appeler le bureau. Essai gratuit de 14 jours, sans carte bancaire.',
+      'Portail client pour les entreprises de services : votre client suit l\'ordre de travail, voit l\'historique des interventions, accède aux documents et approuve le devis par lien, sans avoir à appeler le bureau. Essai gratuit de 7 jours, sans carte bancaire.',
     hero: {
       eyebrow: 'Portail client',
       h1: 'Portail client pour les entreprises de services',
@@ -795,11 +795,11 @@ const fr: ModuleContentMap = {
       { q: 'Le client peut-il approuver un devis via le portail ?', a: 'Oui. Le devis arrive par lien et le client l\'approuve directement dans le portail, avec l\'enregistrement de la date d\'approbation. L\'approbation ne se perd pas dans la messagerie.' },
       { q: 'Le client voit-il l\'historique des interventions et les documents ?', a: 'Oui. L\'historique complet des ordres de travail, avec les dates et ce qui a été fait, plus les rapports et documents, reste disponible dans le portail pour consultation à tout moment.' },
       { q: 'Chaque client ne voit-il que ses propres données ?', a: 'Oui. Dans le portail, chaque client accède uniquement à ses propres interventions et documents.' },
-      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous activez le portail et partagez le lien avec vos clients.' },
+      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous activez le portail et partagez le lien avec vos clients.' },
     ],
     finalCta: {
       title: 'Donnez de l\'autonomie au client et de la tranquillité à votre équipe',
-      subtitle: 'Gratuit pendant 14 jours, sans carte bancaire. Laissez le client suivre l\'ordre de travail et approuver le devis tout seul.',
+      subtitle: 'Gratuit pendant 7 jours, sans carte bancaire. Laissez le client suivre l\'ordre de travail et approuver le devis tout seul.',
     },
   },
 
@@ -810,7 +810,7 @@ const fr: ModuleContentMap = {
     slug: 'logiciel-gestion-stock',
     metaTitle: 'Logiciel de gestion de stock pour les équipes de terrain | Dominex',
     metaDescription:
-      'Logiciel de gestion de stock pour les équipes de terrain : enregistrez pièces et matériaux, consignez les entrées et sorties de stock, déduisez automatiquement par ordre de travail et réalisez des inventaires. Sachez ce que vous avez, ce qui est sorti et sur quel ordre de travail. Essai gratuit de 14 jours, sans carte bancaire.',
+      'Logiciel de gestion de stock pour les équipes de terrain : enregistrez pièces et matériaux, consignez les entrées et sorties de stock, déduisez automatiquement par ordre de travail et réalisez des inventaires. Sachez ce que vous avez, ce qui est sorti et sur quel ordre de travail. Essai gratuit de 7 jours, sans carte bancaire.',
     hero: {
       eyebrow: 'Stock',
       h1: 'Logiciel de gestion de stock pour les équipes de terrain',
@@ -902,11 +902,11 @@ const fr: ModuleContentMap = {
       { q: 'Comment fonctionne l\'inventaire ?', a: 'Vous réalisez le comptage physique quand vous voulez, le comparez au solde du système et ajustez l\'écart. Le stock revient à refléter la réalité.' },
       { q: 'Le solde est-il mis à jour en temps réel ?', a: 'Oui. Chaque entrée et sortie de stock met le solde à jour instantanément, si bien que vous consultez le stock et voyez ce que vous avez réellement.' },
       { q: 'Puis-je voir les pièces qui sont en train de manquer ?', a: 'Oui. Vous voyez les pièces au solde bas et réapprovisionnez avant qu\'elles ne manquent sur l\'intervention.' },
-      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous enregistrez vos pièces et commencez à contrôler entrées, sorties et déductions par ordre de travail.' },
+      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous enregistrez vos pièces et commencez à contrôler entrées, sorties et déductions par ordre de travail.' },
     ],
     finalCta: {
       title: 'Cessez de rater des interventions faute de pièce',
-      subtitle: 'Gratuit pendant 14 jours, sans carte bancaire. Contrôlez votre stock et déduisez automatiquement sur chaque ordre de travail.',
+      subtitle: 'Gratuit pendant 7 jours, sans carte bancaire. Contrôlez votre stock et déduisez automatiquement sur chaque ordre de travail.',
     },
   },
 
@@ -917,7 +917,7 @@ const fr: ModuleContentMap = {
     slug: 'logiciel-devis-contrats',
     metaTitle: 'Logiciel de devis et contrats pour les entreprises de services | Dominex',
     metaDescription:
-      'Logiciel de devis et contrats pour les entreprises de services : créez des devis professionnels, envoyez-les en proposition par lien, concluez des contrats récurrents qui génèrent les ordres de travail tout seuls et transformez l\'approbation en ordre de travail. Essai gratuit de 14 jours, sans carte bancaire.',
+      'Logiciel de devis et contrats pour les entreprises de services : créez des devis professionnels, envoyez-les en proposition par lien, concluez des contrats récurrents qui génèrent les ordres de travail tout seuls et transformez l\'approbation en ordre de travail. Essai gratuit de 7 jours, sans carte bancaire.',
     hero: {
       eyebrow: 'Devis et contrats',
       h1: 'Logiciel de devis et contrats pour les entreprises de services',
@@ -1009,11 +1009,11 @@ const fr: ModuleContentMap = {
       { q: 'Les contrats génèrent-ils les ordres de travail tout seuls ?', a: 'Oui. Une fois le contrat configuré avec la récurrence, les ordres de travail sont générés par le système à l\'intervalle convenu, sans avoir à s\'en souvenir, si bien qu\'aucun engagement de service n\'est manqué par oubli.' },
       { q: 'Le devis approuvé devient-il un ordre de travail ?', a: 'Oui. En un clic, le devis approuvé devient un ordre de travail, portant le périmètre vendu sur le terrain. Ventes et opérations travaillent avec les mêmes données.' },
       { q: 'Les devis et contrats restent-ils liés au client ?', a: 'Oui. Chaque devis et contrat reste dans l\'historique du client, organisé, pour consultation et suivi.' },
-      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous construisez votre premier devis et envoyez la proposition par lien aussitôt.' },
+      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous construisez votre premier devis et envoyez la proposition par lien aussitôt.' },
     ],
     finalCta: {
       title: 'Rendez la proposition professionnelle et automatisez le contrat',
-      subtitle: 'Gratuit pendant 14 jours, sans carte bancaire. Créez des devis à votre image et laissez le contrat générer les ordres de travail tout seul.',
+      subtitle: 'Gratuit pendant 7 jours, sans carte bancaire. Créez des devis à votre image et laissez le contrat générer les ordres de travail tout seul.',
     },
   },
 
@@ -1024,7 +1024,7 @@ const fr: ModuleContentMap = {
     slug: 'logiciel-gps-equipes',
     metaTitle: 'Géolocalisation GPS des équipes et planification pour les services de terrain | Dominex',
     metaDescription:
-      'Géolocalisation GPS des équipes et planification pour les services de terrain : localisation en temps réel sur la carte, planification et optimisation d\'itinéraire, pointage d\'arrivée et de départ validé par l\'adresse et historique des déplacements. Essai gratuit de 14 jours, sans carte bancaire.',
+      'Géolocalisation GPS des équipes et planification pour les services de terrain : localisation en temps réel sur la carte, planification et optimisation d\'itinéraire, pointage d\'arrivée et de départ validé par l\'adresse et historique des déplacements. Essai gratuit de 7 jours, sans carte bancaire.',
     hero: {
       eyebrow: 'Géolocalisation GPS et planification',
       h1: 'Géolocalisation GPS des équipes et planification pour les services de terrain',
@@ -1116,11 +1116,11 @@ const fr: ModuleContentMap = {
       { q: 'Y a-t-il un historique des déplacements ?', a: 'Oui. L\'historique conserve les points clés de l\'itinéraire du jour, si bien que vous vérifiez où l\'équipe est allée et justifiez le temps sur le terrain.' },
       { q: 'L\'optimisation d\'itinéraire aide-t-elle à faire plus d\'interventions par jour ?', a: 'Oui. En affectant au technicien le plus proche et en organisant l\'itinéraire, l\'équipe traverse moins souvent la ville pour rien et sert plus de clients le même jour.' },
       { q: 'Le client obtient-il un horaire prévisible ?', a: 'Oui. Avec un planning organisé, vous donnez au client un créneau de service plus prévisible et réduisez les visites manquées.' },
-      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Vous enregistrez l\'équipe et suivez la carte en direct et le planning du jour aussitôt.' },
+      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous enregistrez l\'équipe et suivez la carte en direct et le planning du jour aussitôt.' },
     ],
     finalCta: {
       title: 'Voyez votre équipe de terrain sur la carte',
-      subtitle: 'Gratuit pendant 14 jours, sans carte bancaire. Suivez l\'équipe en temps réel, organisez le planning et prouvez chaque visite.',
+      subtitle: 'Gratuit pendant 7 jours, sans carte bancaire. Suivez l\'équipe en temps réel, organisez le planning et prouvez chaque visite.',
     },
   },
 
@@ -1131,7 +1131,7 @@ const fr: ModuleContentMap = {
     slug: 'app-technicien-terrain',
     metaTitle: 'Application technicien : l\'app de terrain de votre équipe | Dominex',
     metaDescription:
-      'L\'application technicien : l\'app de terrain de votre équipe. Ordres de travail sur le téléphone, outils techniques (charge de frigorigène, surchauffe, dimensionnement de contacteur), un catalogue d\'équipements et une application installable sur le téléphone. Essai gratuit de 14 jours, sans carte bancaire.',
+      'L\'application technicien : l\'app de terrain de votre équipe. Ordres de travail sur le téléphone, outils techniques (charge de frigorigène, surchauffe, dimensionnement de contacteur), un catalogue d\'équipements et une application installable sur le téléphone. Essai gratuit de 7 jours, sans carte bancaire.',
     hero: {
       eyebrow: 'Application technicien',
       h1: 'Application technicien : l\'app de terrain de votre équipe',
@@ -1223,11 +1223,11 @@ const fr: ModuleContentMap = {
       { q: 'Le technicien peut-il exécuter l\'ordre de travail dans l\'application ?', a: 'Oui. Il ouvre l\'ordre de travail complet (client, adresse, équipement, historique), remplit la checklist, prend des photos, recueille la signature et clôture l\'intervention, le tout depuis le téléphone.' },
       { q: 'L\'équipe utilise-t-elle tout directement depuis le téléphone, sur le terrain ?', a: 'Oui. L\'ordre de travail, les outils de calcul et le catalogue d\'équipements restent sur le téléphone du technicien, prêts à l\'emploi chez le client. Il exécute l\'ordre de travail, fait les calculs et consulte le catalogue sur le terrain, sans retourner au bureau ni transporter des manuels imprimés.' },
       { q: 'Les outils de calcul fonctionnent-ils pour la réfrigération et la climatisation ?', a: 'Oui. Les calculateurs de charge de frigorigène, de surchauffe et de courbe de pression sont destinés au quotidien de la réfrigération et de la climatisation, et le dimensionnement de contacteur accompagne l\'installation et la mise en service des équipements.' },
-      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 14 jours, sans carte bancaire. Votre équipe installe l\'application technicien sur son téléphone et commence à travailler sur le terrain aussitôt.' },
+      { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Votre équipe installe l\'application technicien sur son téléphone et commence à travailler sur le terrain aussitôt.' },
     ],
     finalCta: {
       title: 'Mettez tout le terrain sur le téléphone de votre équipe',
-      subtitle: 'Gratuit pendant 14 jours, sans carte bancaire. Ordres de travail, outils techniques et catalogue dans l\'application technicien, sur le téléphone de votre équipe.',
+      subtitle: 'Gratuit pendant 7 jours, sans carte bancaire. Ordres de travail, outils techniques et catalogue dans l\'application technicien, sur le téléphone de votre équipe.',
     },
   },
 };

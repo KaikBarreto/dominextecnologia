@@ -40,7 +40,7 @@ const en: SegmentContentMap = {
     metaTitle:
       'Work order and maintenance software for refrigeration and HVAC companies | Dominex',
     metaDescription:
-      'Software for refrigeration and HVAC companies: digital work orders, automated preventive maintenance plans, refrigerant tracking per unit, a mobile app for your techs in the field and recurring maintenance contracts. Free 14-day trial, no credit card.',
+      'Software for refrigeration and HVAC companies: digital work orders, automated preventive maintenance plans, refrigerant tracking per unit, a mobile app for your techs in the field and recurring maintenance contracts. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'For refrigeration and air conditioning companies',
       h1: 'Work order and maintenance software for refrigeration and HVAC companies',
@@ -201,13 +201,13 @@ const en: SegmentContentMap = {
       },
       {
         q: 'How do I get started? Do I need a credit card?',
-        a: 'Just create your account and use it free for 14 days, no credit card. You set up your company in minutes, register your units and start opening work orders right away. Cancel anytime, and your data is preserved if you decide to subscribe.',
+        a: 'Just create your account and use it free for 7 days, no credit card. You set up your company in minutes, register your units and start opening work orders right away. Cancel anytime, and your data is preserved if you decide to subscribe.',
       },
     ],
     finalCta: {
       title: 'Take control of your refrigeration operation',
       subtitle:
-        'Free for 14 days, no credit card, no hassle. Register your units, build your maintenance schedule and put your field crew in control.',
+        'Free for 7 days, no credit card, no hassle. Register your units, build your maintenance schedule and put your field crew in control.',
     },
   },
 
@@ -219,7 +219,7 @@ const en: SegmentContentMap = {
     metaTitle:
       'Work order software for electricians and electrical service companies | Dominex',
     metaDescription:
-      'Software for electrical install and maintenance companies: digital work orders, reports and certificates per customer, panel and service-entrance records, safety checklists and a mobile app for your electricians in the field. Free 14-day trial, no credit card.',
+      'Software for electrical install and maintenance companies: digital work orders, reports and certificates per customer, panel and service-entrance records, safety checklists and a mobile app for your electricians in the field. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'For electricians and electrical service companies',
       h1: 'Work order software for electrical service companies',
@@ -389,13 +389,13 @@ const en: SegmentContentMap = {
       },
       {
         q: 'How do I get started? Do I need a credit card?',
-        a: 'Just create your account and use it free for 14 days, no credit card. You set up your company in minutes, register your customers and start opening work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
+        a: 'Just create your account and use it free for 7 days, no credit card. You set up your company in minutes, register your customers and start opening work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
       },
     ],
     finalCta: {
       title: 'Put your electrical operation in control',
       subtitle:
-        'Free for 14 days, no credit card, no hassle. Register your customers, organize your reports and certificates and move your field crew to digital.',
+        'Free for 7 days, no credit card, no hassle. Register your customers, organize your reports and certificates and move your field crew to digital.',
     },
   },
 
@@ -407,7 +407,7 @@ const en: SegmentContentMap = {
     metaTitle:
       'Work order and O&M software for solar energy companies | Dominex',
     metaDescription:
-      'Software for solar energy companies: install and O&M work orders, history per site and inverter, module cleaning, generation follow-up, recurring maintenance contracts and a mobile app for your field crew. Free 14-day trial, no credit card.',
+      'Software for solar energy companies: install and O&M work orders, history per site and inverter, module cleaning, generation follow-up, recurring maintenance contracts and a mobile app for your field crew. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'For solar installers and energy companies',
       h1: 'Work order and O&M software for solar energy companies',
@@ -568,13 +568,13 @@ const en: SegmentContentMap = {
       },
       {
         q: 'How do I get started? Do I need a credit card?',
-        a: 'Just create your account and use it free for 14 days, no credit card. You set up your company in minutes, register your sites and start opening work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
+        a: 'Just create your account and use it free for 7 days, no credit card. You set up your company in minutes, register your sites and start opening work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
       },
     ],
     finalCta: {
       title: 'Organize the install and O&M of your sites',
       subtitle:
-        'Free for 14 days, no credit card, no hassle. Register your sites, automate your maintenance contracts and move your field crew to digital.',
+        'Free for 7 days, no credit card, no hassle. Register your sites, automate your maintenance contracts and move your field crew to digital.',
     },
   },
 
@@ -586,7 +586,7 @@ const en: SegmentContentMap = {
     metaTitle:
       'Work order software for internet service providers and telecom companies | Dominex',
     metaDescription:
-      'Software for internet service providers (ISP) and telecom: fiber install work orders, support tickets, visit scheduling, per-subscriber CTO and ONU history, equipment tracking and a mobile app for your techs in the field. Free 14-day trial, no credit card.',
+      'Software for internet service providers (ISP) and telecom: fiber install work orders, support tickets, visit scheduling, per-subscriber CTO and ONU history, equipment tracking and a mobile app for your techs in the field. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'For internet service providers and telecom companies',
       h1: 'Work order software for internet service providers and telecom',
@@ -747,13 +747,13 @@ const en: SegmentContentMap = {
       },
       {
         q: 'How do I get started? Do I need a credit card?',
-        a: 'Just create your account and use it free for 14 days, no credit card. You set up your company in minutes, register your subscribers and start opening work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
+        a: 'Just create your account and use it free for 7 days, no credit card. You set up your company in minutes, register your subscribers and start opening work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
       },
     ],
     finalCta: {
       title: 'Put your ISP in control of the field',
       subtitle:
-        'Free for 14 days, no credit card, no hassle. Register your subscribers, organize your fiber installs and move your support crew to digital.',
+        'Free for 7 days, no credit card, no hassle. Register your subscribers, organize your fiber installs and move your support crew to digital.',
     },
   },
 
@@ -765,7 +765,7 @@ const en: SegmentContentMap = {
     metaTitle:
       'Work order software for CCTV and security system companies | Dominex',
     metaDescription:
-      'Software for CCTV and electronic security companies: install and maintenance work orders for cameras, alarms and access control, history per device, recurring monitoring contracts and a mobile app for your techs in the field. Free 14-day trial, no credit card.',
+      'Software for CCTV and electronic security companies: install and maintenance work orders for cameras, alarms and access control, history per device, recurring monitoring contracts and a mobile app for your techs in the field. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'For CCTV and electronic security companies',
       h1: 'Work order software for CCTV and security system companies',
@@ -926,13 +926,13 @@ const en: SegmentContentMap = {
       },
       {
         q: 'How do I get started? Do I need a credit card?',
-        a: 'Just create your account and use it free for 14 days, no credit card. You set up your company in minutes, register your customers and start opening work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
+        a: 'Just create your account and use it free for 7 days, no credit card. You set up your company in minutes, register your customers and start opening work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
       },
     ],
     finalCta: {
       title: 'Put your security operation in control',
       subtitle:
-        'Free for 14 days, no credit card, no hassle. Register each customer setup, automate your monitoring contracts and move your crew to digital.',
+        'Free for 7 days, no credit card, no hassle. Register each customer setup, automate your monitoring contracts and move your crew to digital.',
     },
   },
 
@@ -944,7 +944,7 @@ const en: SegmentContentMap = {
     metaTitle:
       'Work order software for construction companies and job sites | Dominex',
     metaDescription:
-      'Software for construction: work orders for field crews, inspections and measurements, schedule follow-up, post-handover warranty service with per-unit history and a mobile app for your crew on the job site. Free 14-day trial, no credit card.',
+      'Software for construction: work orders for field crews, inspections and measurements, schedule follow-up, post-handover warranty service with per-unit history and a mobile app for your crew on the job site. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'For builders and construction companies',
       h1: 'Work order software for construction companies',
@@ -1105,13 +1105,13 @@ const en: SegmentContentMap = {
       },
       {
         q: 'How do I get started? Do I need a credit card?',
-        a: 'Just create your account and use it free for 14 days, no credit card. You set up your company in minutes, register your sites and start assigning work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
+        a: 'Just create your account and use it free for 7 days, no credit card. You set up your company in minutes, register your sites and start assigning work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
       },
     ],
     finalCta: {
       title: 'Put your job site crews in control',
       subtitle:
-        'Free for 14 days, no credit card, no hassle. Organize inspections, measurements and post-handover warranty service and move your field crews to digital.',
+        'Free for 7 days, no credit card, no hassle. Organize inspections, measurements and post-handover warranty service and move your field crews to digital.',
     },
   },
 
@@ -1123,7 +1123,7 @@ const en: SegmentContentMap = {
     metaTitle:
       'Work order software for elevator maintenance companies | Dominex',
     metaDescription:
-      'Software for elevator maintenance companies: preventive and emergency work orders, recurring monthly contracts, per-unit history, emergency callouts and a mobile app for your techs in the machine room. Free 14-day trial, no credit card.',
+      'Software for elevator maintenance companies: preventive and emergency work orders, recurring monthly contracts, per-unit history, emergency callouts and a mobile app for your techs in the machine room. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'For elevator maintenance companies',
       h1: 'Work order software for elevator maintenance companies',
@@ -1284,13 +1284,13 @@ const en: SegmentContentMap = {
       },
       {
         q: 'How do I get started? Do I need a credit card?',
-        a: 'Just create your account and use it free for 14 days, no credit card. You set up your company in minutes, register your elevators and start opening work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
+        a: 'Just create your account and use it free for 7 days, no credit card. You set up your company in minutes, register your elevators and start opening work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
       },
     ],
     finalCta: {
       title: 'Put your elevator maintenance in control',
       subtitle:
-        'Free for 14 days, no credit card, no hassle. Register your elevators, automate the monthly preventive and move your field crew to digital.',
+        'Free for 7 days, no credit card, no hassle. Register your elevators, automate the monthly preventive and move your field crew to digital.',
     },
   },
 
@@ -1302,7 +1302,7 @@ const en: SegmentContentMap = {
     metaTitle:
       'Work order software for cleaning and janitorial companies | Dominex',
     metaDescription:
-      'Software for cleaning and janitorial companies: work orders per site and contract, cleaning checklists, rounds with photo and signature proof, field crew control and a mobile app for your crew. Free 14-day trial, no credit card.',
+      'Software for cleaning and janitorial companies: work orders per site and contract, cleaning checklists, rounds with photo and signature proof, field crew control and a mobile app for your crew. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'For cleaning and janitorial companies',
       h1: 'Work order software for cleaning and janitorial companies',
@@ -1463,13 +1463,13 @@ const en: SegmentContentMap = {
       },
       {
         q: 'How do I get started? Do I need a credit card?',
-        a: 'Just create your account and use it free for 14 days, no credit card. You set up your company in minutes, register your contracts and sites and start opening work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
+        a: 'Just create your account and use it free for 7 days, no credit card. You set up your company in minutes, register your contracts and sites and start opening work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
       },
     ],
     finalCta: {
       title: 'Prove every cleaning and protect your contracts',
       subtitle:
-        'Free for 14 days, no credit card, no hassle. Register your sites, organize the routines and move your field crews to digital with proof.',
+        'Free for 7 days, no credit card, no hassle. Register your sites, organize the routines and move your field crews to digital with proof.',
     },
   },
 
@@ -1481,7 +1481,7 @@ const en: SegmentContentMap = {
     metaTitle:
       'Work order software for pest control companies | Dominex',
     metaDescription:
-      'Software for pest control companies: work orders with a record of products applied, service certificates, recurring contracts, periodic scheduling and a mobile app for your applicators in the field. Free 14-day trial, no credit card.',
+      'Software for pest control companies: work orders with a record of products applied, service certificates, recurring contracts, periodic scheduling and a mobile app for your applicators in the field. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'For pest control companies',
       h1: 'Work order software for pest control companies',
@@ -1642,13 +1642,13 @@ const en: SegmentContentMap = {
       },
       {
         q: 'How do I get started? Do I need a credit card?',
-        a: 'Just create your account and use it free for 14 days, no credit card. You set up your company in minutes, register your customers and start opening work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
+        a: 'Just create your account and use it free for 7 days, no credit card. You set up your company in minutes, register your customers and start opening work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
       },
     ],
     finalCta: {
       title: 'Put your pest control operation in control',
       subtitle:
-        'Free for 14 days, no credit card, no hassle. Register your customers, issue the certificate automatically and automate your re-treatment contracts.',
+        'Free for 7 days, no credit card, no hassle. Register your customers, issue the certificate automatically and automate your re-treatment contracts.',
     },
   },
 
@@ -1660,7 +1660,7 @@ const en: SegmentContentMap = {
     metaTitle:
       'Work order software for IT repair shops, cell phone and laptop service centers | Dominex',
     metaDescription:
-      'Software for IT repair shops and tech service centers: device intake work order, diagnosis, quote by link, ready notification, parts inventory with automatic deduction and warranty tracking. Free 14-day trial, no credit card.',
+      'Software for IT repair shops and tech service centers: device intake work order, diagnosis, quote by link, ready notification, parts inventory with automatic deduction and warranty tracking. Free 7-day trial, no credit card.',
     hero: {
       eyebrow: 'For IT repair shops and tech service centers',
       h1: 'Work order software for IT repair shops, cell phone and laptop service centers',
@@ -1809,13 +1809,13 @@ const en: SegmentContentMap = {
       },
       {
         q: 'How do I get started? Do I need a credit card?',
-        a: 'Just create your account and use it free for 14 days, no credit card. You set up your shop in minutes, register the devices and start opening work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
+        a: 'Just create your account and use it free for 7 days, no credit card. You set up your shop in minutes, register the devices and start opening work orders. Cancel anytime, and your data is preserved if you decide to subscribe.',
       },
     ],
     finalCta: {
       title: 'Put your tech repair shop in control',
       subtitle:
-        'Free for 14 days, no credit card, no hassle. Register the devices, organize your parts inventory and give your customers the transparency they expect.',
+        'Free for 7 days, no credit card, no hassle. Register the devices, organize your parts inventory and give your customers the transparency they expect.',
     },
   },
 };

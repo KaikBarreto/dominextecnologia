@@ -1,11 +1,17 @@
 export const BASE_SUBSCRIPTION_MODULE_CODE = 'basic';
 export const CUSTOMER_PORTAL_MODULE_CODE = 'customer_portal';
 export const EXTRA_USER_MODULE_CODE = 'extra_user';
-export const CUSTOM_PLAN_INCLUDED_USERS = 2;
+export const CUSTOM_PLAN_INCLUDED_USERS = 5;
+
+export const FREE_BASE_MODULE_CODES = [
+  CUSTOMER_PORTAL_MODULE_CODE,
+  'pricing_advanced',
+  'video_questions',
+] as const;
 
 export const REQUIRED_CUSTOM_MODULE_CODES = [
   BASE_SUBSCRIPTION_MODULE_CODE,
-  CUSTOMER_PORTAL_MODULE_CODE,
+  ...FREE_BASE_MODULE_CODES,
 ] as const;
 
 export function isRequiredCustomModule(code: string): boolean {

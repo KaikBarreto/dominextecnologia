@@ -35,7 +35,6 @@ import {
 } from '@/hooks/usePublicSubscriptionPlans';
 import { cn } from '@/lib/utils';
 import {
-  CUSTOMER_PORTAL_MODULE_CODE,
   EXTRA_USER_MODULE_CODE,
   REQUIRED_CUSTOM_MODULE_CODES,
   isRequiredCustomModule,
@@ -66,6 +65,7 @@ const MODULE_LABELS: Record<string, string> = {
   crm: 'CRM e Kanban',
   nfe: 'Emissão de notas fiscais',
   pricing_advanced: 'Precificação avançada e BDI',
+  video_questions: 'Perguntas em vídeo nos checklists',
   white_label: 'Sistema com a sua marca',
 };
 
@@ -76,7 +76,7 @@ const PLAN_ACCENTS: Record<string, { icon: typeof Zap; className: string }> = {
 };
 
 const PROPOSAL_BENEFITS = [
-  '14 dias grátis, sem cartão',
+  '7 dias grátis, sem cartão',
   'Implantação guiada e tutoriais completos',
   'Suporte humano pelo WhatsApp',
   'Atualizações e melhorias contínuas',
@@ -500,10 +500,10 @@ export default function ProposalSimulator() {
                                     <Check className="h-4 w-4 shrink-0" />
                                     <div className="min-w-0">
                                       <p className="text-sm font-semibold">
-                                        {requiredModule?.name ?? (moduleCode === BASE_MODULE_CODE ? 'Módulo Básico' : 'Portal do Cliente')}
+                                        {requiredModule?.name ?? MODULE_LABELS[moduleCode] ?? 'Recurso da base'}
                                       </p>
                                       <p className="text-xs text-white/75">
-                                        {moduleCode === CUSTOMER_PORTAL_MODULE_CODE ? 'Grátis e incluso em todos os planos' : 'Sempre incluso'}
+                                        {moduleCode === BASE_MODULE_CODE ? 'Sempre incluso' : 'Grátis e incluso em todos os planos'}
                                       </p>
                                     </div>
                                   </div>

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.28.23";
+export const APP_VERSION = "1.29.0";
 
-export const VERSION_NOTES = "O Financeiro ficou bem mais confortável no celular: os valores dos cartões de resumo não aparecem mais cortados, cada conta da lista ganhou espaço para mostrar cliente, categoria e situação sem apertar, o botão de criar virou um botão flutuante que acompanha a rolagem e o selo Pendente passou a ter cor própria.";
+export const VERSION_NOTES = "Os planos Dominex foram atualizados: o teste grátis agora dura 7 dias, todos começam com 5 usuários, cada usuário adicional custa R$ 20 e Precificação Avançada e Perguntas em Vídeo passaram a fazer parte do Essencial.";

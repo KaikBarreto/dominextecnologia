@@ -130,10 +130,6 @@ export const MODULE_INFO: Record<string, { name: string; description: string }> 
     name: 'Financeiro Avançado',
     description: 'DRE - Demonstrativo de Resultado, Contas a Pagar e a Receber',
   },
-  pricing_advanced: {
-    name: 'Precificação Avançada',
-    description: 'BDI, Custos Globais de recursos, precificação detalhada de serviços e orçamentos',
-  },
   customer_portal: {
     name: 'Portal do Cliente',
     description: 'Área exclusiva para o cliente acompanhar OS e equipamentos',

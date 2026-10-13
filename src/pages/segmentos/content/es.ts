@@ -41,7 +41,7 @@ const es: SegmentContentMap = {
     metaTitle:
       'Software de órdenes de trabajo y mantenimiento para empresas de refrigeración y climatización | Dominex',
     metaDescription:
-      'Software para empresas de refrigeración y climatización: órdenes de trabajo digitales, planes de mantenimiento preventivo automáticos, control de refrigerante por equipo, app móvil para tus técnicos en campo y contratos de mantenimiento recurrentes. Prueba gratis de 14 días, sin tarjeta.',
+      'Software para empresas de refrigeración y climatización: órdenes de trabajo digitales, planes de mantenimiento preventivo automáticos, control de refrigerante por equipo, app móvil para tus técnicos en campo y contratos de mantenimiento recurrentes. Prueba gratis de 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Para empresas de refrigeración y aire acondicionado',
       h1: 'Software de órdenes de trabajo y mantenimiento para empresas de refrigeración y climatización',
@@ -202,13 +202,13 @@ const es: SegmentContentMap = {
       },
       {
         q: '¿Cómo empiezo? ¿Necesito una tarjeta de crédito?',
-        a: 'Solo crea tu cuenta y úsalo gratis por 14 días, sin tarjeta. Configuras tu empresa en minutos, registras tus equipos y empiezas a abrir órdenes de trabajo de inmediato. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
+        a: 'Solo crea tu cuenta y úsalo gratis por 7 días, sin tarjeta. Configuras tu empresa en minutos, registras tus equipos y empiezas a abrir órdenes de trabajo de inmediato. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
       },
     ],
     finalCta: {
       title: 'Toma el control de tu operación de refrigeración',
       subtitle:
-        'Gratis por 14 días, sin tarjeta, sin complicaciones. Registra tus equipos, arma tu agenda de mantenimiento y pon a tu cuadrilla de campo bajo control.',
+        'Gratis por 7 días, sin tarjeta, sin complicaciones. Registra tus equipos, arma tu agenda de mantenimiento y pon a tu cuadrilla de campo bajo control.',
     },
   },
 
@@ -220,7 +220,7 @@ const es: SegmentContentMap = {
     metaTitle:
       'Software de órdenes de trabajo para electricistas y empresas de servicios eléctricos | Dominex',
     metaDescription:
-      'Software para empresas de instalación y mantenimiento eléctrico: órdenes de trabajo digitales, reportes y certificados por cliente, registro de tableros y acometidas, checklists de seguridad y app móvil para tus electricistas en campo. Prueba gratis de 14 días, sin tarjeta.',
+      'Software para empresas de instalación y mantenimiento eléctrico: órdenes de trabajo digitales, reportes y certificados por cliente, registro de tableros y acometidas, checklists de seguridad y app móvil para tus electricistas en campo. Prueba gratis de 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Para electricistas y empresas de servicios eléctricos',
       h1: 'Software de órdenes de trabajo para empresas de servicios eléctricos',
@@ -390,13 +390,13 @@ const es: SegmentContentMap = {
       },
       {
         q: '¿Cómo empiezo? ¿Necesito una tarjeta de crédito?',
-        a: 'Solo crea tu cuenta y úsalo gratis por 14 días, sin tarjeta. Configuras tu empresa en minutos, registras tus clientes y empiezas a abrir órdenes de trabajo. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
+        a: 'Solo crea tu cuenta y úsalo gratis por 7 días, sin tarjeta. Configuras tu empresa en minutos, registras tus clientes y empiezas a abrir órdenes de trabajo. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
       },
     ],
     finalCta: {
       title: 'Pon tu operación eléctrica bajo control',
       subtitle:
-        'Gratis por 14 días, sin tarjeta, sin complicaciones. Registra tus clientes, organiza tus reportes y certificados y lleva a tu cuadrilla de campo a lo digital.',
+        'Gratis por 7 días, sin tarjeta, sin complicaciones. Registra tus clientes, organiza tus reportes y certificados y lleva a tu cuadrilla de campo a lo digital.',
     },
   },
 
@@ -408,7 +408,7 @@ const es: SegmentContentMap = {
     metaTitle:
       'Software de órdenes de trabajo y O&M para empresas de energía solar | Dominex',
     metaDescription:
-      'Software para empresas de energía solar: órdenes de instalación y O&M, historial por sitio e inversor, limpieza de módulos, seguimiento de generación, contratos de mantenimiento recurrentes y app móvil para tu cuadrilla de campo. Prueba gratis de 14 días, sin tarjeta.',
+      'Software para empresas de energía solar: órdenes de instalación y O&M, historial por sitio e inversor, limpieza de módulos, seguimiento de generación, contratos de mantenimiento recurrentes y app móvil para tu cuadrilla de campo. Prueba gratis de 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Para instaladores solares y empresas de energía',
       h1: 'Software de órdenes de trabajo y O&M para empresas de energía solar',
@@ -569,13 +569,13 @@ const es: SegmentContentMap = {
       },
       {
         q: '¿Cómo empiezo? ¿Necesito una tarjeta de crédito?',
-        a: 'Solo crea tu cuenta y úsalo gratis por 14 días, sin tarjeta. Configuras tu empresa en minutos, registras tus sitios y empiezas a abrir órdenes de trabajo. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
+        a: 'Solo crea tu cuenta y úsalo gratis por 7 días, sin tarjeta. Configuras tu empresa en minutos, registras tus sitios y empiezas a abrir órdenes de trabajo. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
       },
     ],
     finalCta: {
       title: 'Organiza la instalación y el O&M de tus sitios',
       subtitle:
-        'Gratis por 14 días, sin tarjeta, sin complicaciones. Registra tus sitios, automatiza tus contratos de mantenimiento y lleva a tu cuadrilla de campo a lo digital.',
+        'Gratis por 7 días, sin tarjeta, sin complicaciones. Registra tus sitios, automatiza tus contratos de mantenimiento y lleva a tu cuadrilla de campo a lo digital.',
     },
   },
 
@@ -587,7 +587,7 @@ const es: SegmentContentMap = {
     metaTitle:
       'Software de órdenes de trabajo para proveedores de internet y empresas de telecomunicaciones | Dominex',
     metaDescription:
-      'Software para proveedores de internet (ISP) y telecomunicaciones: órdenes de instalación de fibra, tickets de soporte, agendamiento de visitas, historial de CTO y ONU por abonado, control de equipos y app móvil para tus técnicos en campo. Prueba gratis de 14 días, sin tarjeta.',
+      'Software para proveedores de internet (ISP) y telecomunicaciones: órdenes de instalación de fibra, tickets de soporte, agendamiento de visitas, historial de CTO y ONU por abonado, control de equipos y app móvil para tus técnicos en campo. Prueba gratis de 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Para proveedores de internet y empresas de telecomunicaciones',
       h1: 'Software de órdenes de trabajo para proveedores de internet y telecom',
@@ -748,13 +748,13 @@ const es: SegmentContentMap = {
       },
       {
         q: '¿Cómo empiezo? ¿Necesito una tarjeta de crédito?',
-        a: 'Solo crea tu cuenta y úsalo gratis por 14 días, sin tarjeta. Configuras tu empresa en minutos, registras tus abonados y empiezas a abrir órdenes de trabajo. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
+        a: 'Solo crea tu cuenta y úsalo gratis por 7 días, sin tarjeta. Configuras tu empresa en minutos, registras tus abonados y empiezas a abrir órdenes de trabajo. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
       },
     ],
     finalCta: {
       title: 'Pon tu ISP al control del campo',
       subtitle:
-        'Gratis por 14 días, sin tarjeta, sin complicaciones. Registra tus abonados, organiza tus instalaciones de fibra y lleva a tu cuadrilla de soporte a lo digital.',
+        'Gratis por 7 días, sin tarjeta, sin complicaciones. Registra tus abonados, organiza tus instalaciones de fibra y lleva a tu cuadrilla de soporte a lo digital.',
     },
   },
 
@@ -766,7 +766,7 @@ const es: SegmentContentMap = {
     metaTitle:
       'Software de órdenes de trabajo para empresas de CCTV y sistemas de seguridad | Dominex',
     metaDescription:
-      'Software para empresas de CCTV y seguridad electrónica: órdenes de instalación y mantenimiento de cámaras, alarmas y control de acceso, historial por equipo, contratos de monitoreo recurrentes y app móvil para tus técnicos en campo. Prueba gratis de 14 días, sin tarjeta.',
+      'Software para empresas de CCTV y seguridad electrónica: órdenes de instalación y mantenimiento de cámaras, alarmas y control de acceso, historial por equipo, contratos de monitoreo recurrentes y app móvil para tus técnicos en campo. Prueba gratis de 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Para empresas de CCTV y seguridad electrónica',
       h1: 'Software de órdenes de trabajo para empresas de CCTV y sistemas de seguridad',
@@ -927,13 +927,13 @@ const es: SegmentContentMap = {
       },
       {
         q: '¿Cómo empiezo? ¿Necesito una tarjeta de crédito?',
-        a: 'Solo crea tu cuenta y úsalo gratis por 14 días, sin tarjeta. Configuras tu empresa en minutos, registras tus clientes y empiezas a abrir órdenes de trabajo. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
+        a: 'Solo crea tu cuenta y úsalo gratis por 7 días, sin tarjeta. Configuras tu empresa en minutos, registras tus clientes y empiezas a abrir órdenes de trabajo. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
       },
     ],
     finalCta: {
       title: 'Pon tu operación de seguridad bajo control',
       subtitle:
-        'Gratis por 14 días, sin tarjeta, sin complicaciones. Registra la instalación de cada cliente, automatiza tus contratos de monitoreo y lleva a tu cuadrilla a lo digital.',
+        'Gratis por 7 días, sin tarjeta, sin complicaciones. Registra la instalación de cada cliente, automatiza tus contratos de monitoreo y lleva a tu cuadrilla a lo digital.',
     },
   },
 
@@ -945,7 +945,7 @@ const es: SegmentContentMap = {
     metaTitle:
       'Software de órdenes de trabajo para empresas constructoras y obras | Dominex',
     metaDescription:
-      'Software para construcción: órdenes de trabajo para cuadrillas de campo, inspecciones y mediciones, seguimiento del cronograma, servicio de garantía posentrega con historial por unidad y app móvil para tu cuadrilla en la obra. Prueba gratis de 14 días, sin tarjeta.',
+      'Software para construcción: órdenes de trabajo para cuadrillas de campo, inspecciones y mediciones, seguimiento del cronograma, servicio de garantía posentrega con historial por unidad y app móvil para tu cuadrilla en la obra. Prueba gratis de 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Para constructoras y empresas de construcción',
       h1: 'Software de órdenes de trabajo para empresas constructoras',
@@ -1106,13 +1106,13 @@ const es: SegmentContentMap = {
       },
       {
         q: '¿Cómo empiezo? ¿Necesito una tarjeta de crédito?',
-        a: 'Solo crea tu cuenta y úsalo gratis por 14 días, sin tarjeta. Configuras tu empresa en minutos, registras tus obras y empiezas a asignar órdenes de trabajo. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
+        a: 'Solo crea tu cuenta y úsalo gratis por 7 días, sin tarjeta. Configuras tu empresa en minutos, registras tus obras y empiezas a asignar órdenes de trabajo. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
       },
     ],
     finalCta: {
       title: 'Pon a tus cuadrillas de obra bajo control',
       subtitle:
-        'Gratis por 14 días, sin tarjeta, sin complicaciones. Organiza inspecciones, mediciones y servicio de garantía posentrega y lleva a tus cuadrillas de campo a lo digital.',
+        'Gratis por 7 días, sin tarjeta, sin complicaciones. Organiza inspecciones, mediciones y servicio de garantía posentrega y lleva a tus cuadrillas de campo a lo digital.',
     },
   },
 
@@ -1124,7 +1124,7 @@ const es: SegmentContentMap = {
     metaTitle:
       'Software de órdenes de trabajo para empresas de mantenimiento de ascensores | Dominex',
     metaDescription:
-      'Software para empresas de mantenimiento de ascensores: órdenes de trabajo preventivas y de emergencia, contratos mensuales recurrentes, historial por unidad, llamados de emergencia y app móvil para tus técnicos en la sala de máquinas. Prueba gratis de 14 días, sin tarjeta.',
+      'Software para empresas de mantenimiento de ascensores: órdenes de trabajo preventivas y de emergencia, contratos mensuales recurrentes, historial por unidad, llamados de emergencia y app móvil para tus técnicos en la sala de máquinas. Prueba gratis de 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Para empresas de mantenimiento de ascensores',
       h1: 'Software de órdenes de trabajo para empresas de mantenimiento de ascensores',
@@ -1285,13 +1285,13 @@ const es: SegmentContentMap = {
       },
       {
         q: '¿Cómo empiezo? ¿Necesito una tarjeta de crédito?',
-        a: 'Solo crea tu cuenta y úsalo gratis por 14 días, sin tarjeta. Configuras tu empresa en minutos, registras tus ascensores y empiezas a abrir órdenes de trabajo. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
+        a: 'Solo crea tu cuenta y úsalo gratis por 7 días, sin tarjeta. Configuras tu empresa en minutos, registras tus ascensores y empiezas a abrir órdenes de trabajo. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
       },
     ],
     finalCta: {
       title: 'Pon tu mantenimiento de ascensores bajo control',
       subtitle:
-        'Gratis por 14 días, sin tarjeta, sin complicaciones. Registra tus ascensores, automatiza el preventivo mensual y lleva a tu cuadrilla de campo a lo digital.',
+        'Gratis por 7 días, sin tarjeta, sin complicaciones. Registra tus ascensores, automatiza el preventivo mensual y lleva a tu cuadrilla de campo a lo digital.',
     },
   },
 
@@ -1303,7 +1303,7 @@ const es: SegmentContentMap = {
     metaTitle:
       'Software de órdenes de trabajo para empresas de limpieza y conservación | Dominex',
     metaDescription:
-      'Software para empresas de limpieza y conservación: órdenes de trabajo por sitio y contrato, checklists de limpieza, rondas con prueba de foto y firma, control de cuadrillas de campo y app móvil para tu equipo. Prueba gratis de 14 días, sin tarjeta.',
+      'Software para empresas de limpieza y conservación: órdenes de trabajo por sitio y contrato, checklists de limpieza, rondas con prueba de foto y firma, control de cuadrillas de campo y app móvil para tu equipo. Prueba gratis de 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Para empresas de limpieza y conservación',
       h1: 'Software de órdenes de trabajo para empresas de limpieza y conservación',
@@ -1464,13 +1464,13 @@ const es: SegmentContentMap = {
       },
       {
         q: '¿Cómo empiezo? ¿Necesito una tarjeta de crédito?',
-        a: 'Solo crea tu cuenta y úsalo gratis por 14 días, sin tarjeta. Configuras tu empresa en minutos, registras tus contratos y sitios y empiezas a abrir órdenes de trabajo. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
+        a: 'Solo crea tu cuenta y úsalo gratis por 7 días, sin tarjeta. Configuras tu empresa en minutos, registras tus contratos y sitios y empiezas a abrir órdenes de trabajo. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
       },
     ],
     finalCta: {
       title: 'Prueba cada limpieza y protege tus contratos',
       subtitle:
-        'Gratis por 14 días, sin tarjeta, sin complicaciones. Registra tus sitios, organiza las rutinas y lleva a tus cuadrillas de campo a lo digital con prueba.',
+        'Gratis por 7 días, sin tarjeta, sin complicaciones. Registra tus sitios, organiza las rutinas y lleva a tus cuadrillas de campo a lo digital con prueba.',
     },
   },
 
@@ -1482,7 +1482,7 @@ const es: SegmentContentMap = {
     metaTitle:
       'Software de órdenes de trabajo para empresas de control de plagas | Dominex',
     metaDescription:
-      'Software para empresas de control de plagas: órdenes de trabajo con registro de productos aplicados, certificados de servicio, contratos recurrentes, agendamiento periódico y app móvil para tus aplicadores en campo. Prueba gratis de 14 días, sin tarjeta.',
+      'Software para empresas de control de plagas: órdenes de trabajo con registro de productos aplicados, certificados de servicio, contratos recurrentes, agendamiento periódico y app móvil para tus aplicadores en campo. Prueba gratis de 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Para empresas de control de plagas',
       h1: 'Software de órdenes de trabajo para empresas de control de plagas',
@@ -1643,13 +1643,13 @@ const es: SegmentContentMap = {
       },
       {
         q: '¿Cómo empiezo? ¿Necesito una tarjeta de crédito?',
-        a: 'Solo crea tu cuenta y úsalo gratis por 14 días, sin tarjeta. Configuras tu empresa en minutos, registras tus clientes y empiezas a abrir órdenes de trabajo. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
+        a: 'Solo crea tu cuenta y úsalo gratis por 7 días, sin tarjeta. Configuras tu empresa en minutos, registras tus clientes y empiezas a abrir órdenes de trabajo. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
       },
     ],
     finalCta: {
       title: 'Pon tu operación de control de plagas bajo control',
       subtitle:
-        'Gratis por 14 días, sin tarjeta, sin complicaciones. Registra tus clientes, emite el certificado automáticamente y automatiza tus contratos de retratamiento.',
+        'Gratis por 7 días, sin tarjeta, sin complicaciones. Registra tus clientes, emite el certificado automáticamente y automatiza tus contratos de retratamiento.',
     },
   },
 
@@ -1661,7 +1661,7 @@ const es: SegmentContentMap = {
     metaTitle:
       'Software de orden de trabajo para talleres de reparación de celular, laptop e informática | Dominex',
     metaDescription:
-      'Software para talleres de servicio técnico: registro de entrada de equipo, diagnóstico, presupuesto por enlace, aviso de listo, inventario de piezas con descuento automático y control de garantía. Prueba gratis 14 días, sin tarjeta.',
+      'Software para talleres de servicio técnico: registro de entrada de equipo, diagnóstico, presupuesto por enlace, aviso de listo, inventario de piezas con descuento automático y control de garantía. Prueba gratis 7 días, sin tarjeta.',
     hero: {
       eyebrow: 'Para talleres de informática y servicio técnico',
       h1: 'Software de orden de trabajo para talleres de reparación de celular, laptop e informática',
@@ -1810,13 +1810,13 @@ const es: SegmentContentMap = {
       },
       {
         q: '¿Cómo empiezo? ¿Necesito una tarjeta de crédito?',
-        a: 'Solo crea tu cuenta y úsala gratis por 14 días, sin tarjeta. Configuras tu taller en minutos, registras los equipos y empiezas a abrir órdenes. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
+        a: 'Solo crea tu cuenta y úsala gratis por 7 días, sin tarjeta. Configuras tu taller en minutos, registras los equipos y empiezas a abrir órdenes. Cancela cuando quieras, y tus datos se conservan si decides suscribirte.',
       },
     ],
     finalCta: {
       title: 'Pon tu taller de reparación bajo control',
       subtitle:
-        'Gratis por 14 días, sin tarjeta, sin complicaciones. Registra los equipos, organiza el inventario de piezas y dale a tu cliente la transparencia que espera.',
+        'Gratis por 7 días, sin tarjeta, sin complicaciones. Registra los equipos, organiza el inventario de piezas y dale a tu cliente la transparencia que espera.',
     },
   },
 };

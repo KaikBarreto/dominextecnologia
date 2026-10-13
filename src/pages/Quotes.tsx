@@ -70,8 +70,8 @@ import type { FinancialTransaction } from '@/types/database';
 const ALL_SIDEBAR_TAB_KEYS = [
   { value: 'quotes', labelKey: 'tabQuotes' as const, icon: FileText },
   { value: 'service-costs', labelKey: 'tabServiceCosts' as const, icon: DollarSign },
-  { value: 'global-costs', labelKey: 'tabGlobalCosts' as const, icon: Boxes, module: 'pricing_advanced' as const },
-  { value: 'pricing', labelKey: 'tabPricing' as const, icon: Settings2, module: 'pricing_advanced' as const },
+  { value: 'global-costs', labelKey: 'tabGlobalCosts' as const, icon: Boxes },
+  { value: 'pricing', labelKey: 'tabPricing' as const, icon: Settings2 },
 ];
 
 // Mapeia LocaleCode → locale do date-fns (sem dependência do contexto fora do render).
@@ -155,7 +155,6 @@ function QuotesList() {
   const { locale, currency } = useAppLocaleContext();
   const tq = MESSAGES[locale].app.crm.quotes;
   const { hasModule } = useCompanyModules();
-  const hasPricing = hasModule('pricing_advanced');
   const hasCobrancas = hasModule('cobrancas');
   const { isActive: isPaymentActive } = useTenantPaymentAccount();
   const showChargeAction = hasCobrancas && isPaymentActive;
@@ -724,9 +723,9 @@ function QuotesList() {
                 <SortableTableHead sortKey="quote_number" sortConfig={sortConfig} onSort={handleSort}>{tq.colNumber}</SortableTableHead>
                 <SortableTableHead sortKey="customers.name" sortConfig={sortConfig} onSort={handleSort}>{tq.colCustomer}</SortableTableHead>
                 <SortableTableHead sortKey="created_at" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">{tq.colDate}</SortableTableHead>
-                {hasPricing && <SortableTableHead sortKey="total_cost" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">{tq.colCost}</SortableTableHead>}
+                <SortableTableHead sortKey="total_cost" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">{tq.colCost}</SortableTableHead>
                 <SortableTableHead sortKey="final_price" sortConfig={sortConfig} onSort={handleSort}>{tq.colValue}</SortableTableHead>
-                {hasPricing && <TableHead className="hidden lg:table-cell">{tq.colMargin}</TableHead>}
+                <TableHead className="hidden lg:table-cell">{tq.colMargin}</TableHead>
                 <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>{tq.colStatus}</SortableTableHead>
                 <TableHead className="text-right">{tq.colActions}</TableHead>
               </TableRow>
@@ -753,23 +752,19 @@ function QuotesList() {
                   <TableCell className="hidden md:table-cell text-muted-foreground text-xs">
                     {format(new Date(q.created_at), 'dd/MM/yy', { locale: DATE_FNS_LOCALES[locale] })}
                   </TableCell>
-                  {hasPricing && (
-                    <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
-                      {cost > 0 ? formatMoney(cost, currency, locale) : '—'}
-                    </TableCell>
-                  )}
+                  <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
+                    {cost > 0 ? formatMoney(cost, currency, locale) : '—'}
+                  </TableCell>
                   <TableCell className="font-semibold">
                     {formatMoney(price, currency, locale)}
                   </TableCell>
-                  {hasPricing && (
-                    <TableCell className="hidden lg:table-cell">
-                      {margin !== null ? (
-                        <Badge variant={margin >= 20 ? 'success' : margin >= 0 ? 'warning' : 'destructive'} className="text-[10px]">
-                          {margin}%
-                        </Badge>
-                      ) : '—'}
-                    </TableCell>
-                  )}
+                  <TableCell className="hidden lg:table-cell">
+                    {margin !== null ? (
+                      <Badge variant={margin >= 20 ? 'success' : margin >= 0 ? 'warning' : 'destructive'} className="text-[10px]">
+                        {margin}%
+                      </Badge>
+                    ) : '—'}
+                  </TableCell>
                   <TableCell>
                     {/* Selo de status saturado + texto branco (mesma régua do mobile). */}
                     <Badge
@@ -1014,13 +1009,11 @@ function QuotesList() {
 
 export default function Quotes() {
   const [activeTab, setActiveTab] = useState('quotes');
-  const { hasModule } = useCompanyModules();
   const isMobile = useIsMobile();
   const { locale } = useAppLocaleContext();
   const tq = MESSAGES[locale].app.crm.quotes;
 
   const sidebarTabs = ALL_SIDEBAR_TAB_KEYS
-    .filter(t => !t.module || hasModule(t.module))
     .map(t => ({ value: t.value, label: tq[t.labelKey], icon: t.icon }));
 
   return (
@@ -1038,8 +1031,8 @@ export default function Quotes() {
       >
         {activeTab === 'quotes' && <QuotesList />}
         {activeTab === 'service-costs' && <ServiceCostsTab />}
-        {activeTab === 'global-costs' && hasModule('pricing_advanced') && <GlobalCostsTab />}
-        {activeTab === 'pricing' && hasModule('pricing_advanced') && <PricingTab />}
+        {activeTab === 'global-costs' && <GlobalCostsTab />}
+        {activeTab === 'pricing' && <PricingTab />}
       </SettingsSidebarLayout>
     </div>
   );

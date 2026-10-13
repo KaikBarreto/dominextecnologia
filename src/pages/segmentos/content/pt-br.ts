@@ -37,7 +37,7 @@ const ptBr: SegmentContentMap = {
     metaTitle:
       'Sistema de ordem de serviço e PMOC para empresas de refrigeração e climatização | Dominex',
     metaDescription:
-      'Software para empresas de refrigeração e climatização: ordens de serviço digitais, PMOC automático (Lei 13.589/2018), controle de gás por equipamento, app no celular para o técnico em campo e contratos de manutenção preventiva. Teste grátis 14 dias, sem cartão.',
+      'Software para empresas de refrigeração e climatização: ordens de serviço digitais, PMOC automático (Lei 13.589/2018), controle de gás por equipamento, app no celular para o técnico em campo e contratos de manutenção preventiva. Teste grátis 7 dias, sem cartão.',
     hero: {
       eyebrow: 'Para empresas de refrigeração e ar-condicionado',
       h1: 'Sistema de ordem de serviço e PMOC para empresas de refrigeração e climatização',
@@ -198,13 +198,13 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'Como começo a usar? Precisa de cartão?',
-        a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra os equipamentos e já começa a abrir OS. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
+        a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra os equipamentos e já começa a abrir OS. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
       },
     ],
     finalCta: {
       title: 'Domine sua operação de refrigeração',
       subtitle:
-        '14 dias grátis, sem cartão, sem burocracia. Cadastre seus equipamentos, gere o PMOC e coloque sua equipe de campo no controle.',
+        '7 dias grátis, sem cartão, sem burocracia. Cadastre seus equipamentos, gere o PMOC e coloque sua equipe de campo no controle.',
     },
   },
 
@@ -215,7 +215,7 @@ const ptBr: SegmentContentMap = {
     metaTitle:
       'Sistema de ordem de serviço para eletricistas e empresas de instalações elétricas | Dominex',
     metaDescription:
-      'Software para empresas de instalações e manutenção elétrica: ordens de serviço digitais, laudos e ART por cliente, registro de quadros e padrão de entrada, checklist NR-10 e app no celular para o eletricista em campo. Teste grátis 14 dias, sem cartão.',
+      'Software para empresas de instalações e manutenção elétrica: ordens de serviço digitais, laudos e ART por cliente, registro de quadros e padrão de entrada, checklist NR-10 e app no celular para o eletricista em campo. Teste grátis 7 dias, sem cartão.',
     hero: {
       eyebrow: 'Para eletricistas e empresas de instalações elétricas',
       h1: 'Sistema de ordem de serviço para empresas de instalações elétricas',
@@ -385,13 +385,13 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'Como começo a usar? Precisa de cartão?',
-        a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra seus clientes e já começa a abrir ordens de serviço. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
+        a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra seus clientes e já começa a abrir ordens de serviço. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
       },
     ],
     finalCta: {
       title: 'Coloque sua operação elétrica no controle',
       subtitle:
-        '14 dias grátis, sem cartão, sem burocracia. Cadastre seus clientes, organize laudos e ARTs e ponha sua equipe de campo no digital.',
+        '7 dias grátis, sem cartão, sem burocracia. Cadastre seus clientes, organize laudos e ARTs e ponha sua equipe de campo no digital.',
     },
   },
 
@@ -402,7 +402,7 @@ const ptBr: SegmentContentMap = {
     metaTitle:
       'Sistema de ordem de serviço e O&M para empresas de energia solar fotovoltaica | Dominex',
     metaDescription:
-      'Software para empresas de energia solar: ordens de serviço de instalação e O&M, histórico por usina e inversor, limpeza de módulos, monitoramento de geração, contratos de manutenção recorrente e app no celular para a equipe em campo. Teste grátis 14 dias, sem cartão.',
+      'Software para empresas de energia solar: ordens de serviço de instalação e O&M, histórico por usina e inversor, limpeza de módulos, monitoramento de geração, contratos de manutenção recorrente e app no celular para a equipe em campo. Teste grátis 7 dias, sem cartão.',
     hero: {
       eyebrow: 'Para integradores e empresas de energia solar',
       h1: 'Sistema de ordem de serviço e O&M para empresas de energia solar',
@@ -563,13 +563,13 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'Como começo a usar? Precisa de cartão?',
-        a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra as usinas e já começa a abrir ordens de serviço. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
+        a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra as usinas e já começa a abrir ordens de serviço. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
       },
     ],
     finalCta: {
       title: 'Organize a instalação e o O&M das suas usinas',
       subtitle:
-        '14 dias grátis, sem cartão, sem burocracia. Cadastre suas usinas, automatize os contratos de manutenção e ponha sua equipe de campo no digital.',
+        '7 dias grátis, sem cartão, sem burocracia. Cadastre suas usinas, automatize os contratos de manutenção e ponha sua equipe de campo no digital.',
     },
   },
 
@@ -580,7 +580,7 @@ const ptBr: SegmentContentMap = {
     metaTitle:
       'Sistema de ordem de serviço para provedores de internet e empresas de telecomunicações | Dominex',
     metaDescription:
-      'Software para provedores de internet (ISP) e telecom: ordens de serviço de instalação de fibra, chamados de suporte, agendamento de visita, histórico de CTO/ONU por assinante, controle de equipamentos e app no celular para o técnico em campo. Teste grátis 14 dias, sem cartão.',
+      'Software para provedores de internet (ISP) e telecom: ordens de serviço de instalação de fibra, chamados de suporte, agendamento de visita, histórico de CTO/ONU por assinante, controle de equipamentos e app no celular para o técnico em campo. Teste grátis 7 dias, sem cartão.',
     hero: {
       eyebrow: 'Para provedores de internet e empresas de telecom',
       h1: 'Sistema de ordem de serviço para provedores de internet e telecomunicações',
@@ -741,13 +741,13 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'Como começo a usar? Precisa de cartão?',
-        a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra os assinantes e já começa a abrir ordens de serviço. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
+        a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra os assinantes e já começa a abrir ordens de serviço. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
       },
     ],
     finalCta: {
       title: 'Coloque seu provedor no controle do campo',
       subtitle:
-        '14 dias grátis, sem cartão, sem burocracia. Cadastre seus assinantes, organize as instalações de fibra e ponha sua equipe de suporte no digital.',
+        '7 dias grátis, sem cartão, sem burocracia. Cadastre seus assinantes, organize as instalações de fibra e ponha sua equipe de suporte no digital.',
     },
   },
 
@@ -758,7 +758,7 @@ const ptBr: SegmentContentMap = {
     metaTitle:
       'Sistema de ordem de serviço para empresas de CFTV e segurança eletrônica | Dominex',
     metaDescription:
-      'Software para empresas de CFTV e segurança eletrônica: ordens de serviço de instalação e manutenção de câmeras, alarme e controle de acesso, histórico por equipamento, contratos de monitoramento recorrente e app no celular para o técnico em campo. Teste grátis 14 dias, sem cartão.',
+      'Software para empresas de CFTV e segurança eletrônica: ordens de serviço de instalação e manutenção de câmeras, alarme e controle de acesso, histórico por equipamento, contratos de monitoramento recorrente e app no celular para o técnico em campo. Teste grátis 7 dias, sem cartão.',
     hero: {
       eyebrow: 'Para empresas de CFTV e segurança eletrônica',
       h1: 'Sistema de ordem de serviço para empresas de CFTV e segurança eletrônica',
@@ -919,13 +919,13 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'Como começo a usar? Precisa de cartão?',
-        a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra os clientes e já começa a abrir ordens de serviço. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
+        a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra os clientes e já começa a abrir ordens de serviço. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
       },
     ],
     finalCta: {
       title: 'Coloque sua operação de segurança no controle',
       subtitle:
-        '14 dias grátis, sem cartão, sem burocracia. Cadastre o parque de cada cliente, automatize os contratos de monitoramento e ponha sua equipe no digital.',
+        '7 dias grátis, sem cartão, sem burocracia. Cadastre o parque de cada cliente, automatize os contratos de monitoramento e ponha sua equipe no digital.',
     },
   },
 
@@ -936,7 +936,7 @@ const ptBr: SegmentContentMap = {
     metaTitle:
       'Sistema de ordem de serviço para empresas de construção civil e obras | Dominex',
     metaDescription:
-      'Software para construção civil: ordens de serviço para equipes em campo, vistorias e medições, acompanhamento de cronograma, assistência técnica pós-obra com histórico por unidade e app no celular para a equipe no canteiro. Teste grátis 14 dias, sem cartão.',
+      'Software para construção civil: ordens de serviço para equipes em campo, vistorias e medições, acompanhamento de cronograma, assistência técnica pós-obra com histórico por unidade e app no celular para a equipe no canteiro. Teste grátis 7 dias, sem cartão.',
     hero: {
       eyebrow: 'Para construtoras e empresas de obras',
       h1: 'Sistema de ordem de serviço para empresas de construção civil',
@@ -1097,13 +1097,13 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'Como começo a usar? Precisa de cartão?',
-        a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra suas obras e já começa a distribuir ordens de serviço. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
+        a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra suas obras e já começa a distribuir ordens de serviço. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
       },
     ],
     finalCta: {
       title: 'Coloque suas equipes de obra no controle',
       subtitle:
-        '14 dias grátis, sem cartão, sem burocracia. Organize vistorias, medições e a assistência pós-obra e ponha suas equipes de campo no digital.',
+        '7 dias grátis, sem cartão, sem burocracia. Organize vistorias, medições e a assistência pós-obra e ponha suas equipes de campo no digital.',
     },
   },
 
@@ -1114,7 +1114,7 @@ const ptBr: SegmentContentMap = {
     metaTitle:
       'Sistema de ordem de serviço para empresas de manutenção de elevadores | Dominex',
     metaDescription:
-      'Software para empresas de manutenção de elevadores: ordens de serviço de preventiva e emergência, contratos mensais recorrentes, histórico por equipamento, chamado de emergência e app no celular para o técnico na casa de máquinas. Teste grátis 14 dias, sem cartão.',
+      'Software para empresas de manutenção de elevadores: ordens de serviço de preventiva e emergência, contratos mensais recorrentes, histórico por equipamento, chamado de emergência e app no celular para o técnico na casa de máquinas. Teste grátis 7 dias, sem cartão.',
     hero: {
       eyebrow: 'Para empresas de manutenção de elevadores',
       h1: 'Sistema de ordem de serviço para empresas de manutenção de elevadores',
@@ -1275,13 +1275,13 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'Como começo a usar? Precisa de cartão?',
-        a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra os elevadores e já começa a abrir ordens de serviço. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
+        a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra os elevadores e já começa a abrir ordens de serviço. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
       },
     ],
     finalCta: {
       title: 'Coloque a manutenção dos elevadores no controle',
       subtitle:
-        '14 dias grátis, sem cartão, sem burocracia. Cadastre seus elevadores, automatize a preventiva mensal e ponha sua equipe de campo no digital.',
+        '7 dias grátis, sem cartão, sem burocracia. Cadastre seus elevadores, automatize a preventiva mensal e ponha sua equipe de campo no digital.',
     },
   },
 
@@ -1292,7 +1292,7 @@ const ptBr: SegmentContentMap = {
     metaTitle:
       'Sistema de ordem de serviço para empresas de limpeza e conservação | Dominex',
     metaDescription:
-      'Software para empresas de limpeza e conservação: ordens de serviço por posto e contrato, checklist de limpeza, ronda com comprovação por foto e assinatura, controle de equipes em campo e app no celular para a equipe. Teste grátis 14 dias, sem cartão.',
+      'Software para empresas de limpeza e conservação: ordens de serviço por posto e contrato, checklist de limpeza, ronda com comprovação por foto e assinatura, controle de equipes em campo e app no celular para a equipe. Teste grátis 7 dias, sem cartão.',
     hero: {
       eyebrow: 'Para empresas de limpeza e conservação',
       h1: 'Sistema de ordem de serviço para empresas de limpeza e conservação',
@@ -1453,13 +1453,13 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'Como começo a usar? Precisa de cartão?',
-        a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra os contratos e postos e já começa a abrir ordens de serviço. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
+        a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra os contratos e postos e já começa a abrir ordens de serviço. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
       },
     ],
     finalCta: {
       title: 'Comprove cada limpeza e proteja seus contratos',
       subtitle:
-        '14 dias grátis, sem cartão, sem burocracia. Cadastre seus postos, organize as rotinas e ponha suas equipes de campo no digital com comprovação.',
+        '7 dias grátis, sem cartão, sem burocracia. Cadastre seus postos, organize as rotinas e ponha suas equipes de campo no digital com comprovação.',
     },
   },
 
@@ -1470,7 +1470,7 @@ const ptBr: SegmentContentMap = {
     metaTitle:
       'Sistema de ordem de serviço para empresas de dedetização e controle de pragas | Dominex',
     metaDescription:
-      'Software para empresas de dedetização e controle de pragas: ordens de serviço com registro de produtos aplicados, certificado de dedetização, contratos recorrentes, agendamento periódico e app no celular para o aplicador em campo. Teste grátis 14 dias, sem cartão.',
+      'Software para empresas de dedetização e controle de pragas: ordens de serviço com registro de produtos aplicados, certificado de dedetização, contratos recorrentes, agendamento periódico e app no celular para o aplicador em campo. Teste grátis 7 dias, sem cartão.',
     hero: {
       eyebrow: 'Para empresas de dedetização e controle de pragas',
       h1: 'Sistema de ordem de serviço para empresas de dedetização e controle de pragas',
@@ -1631,13 +1631,13 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'Como começo a usar? Precisa de cartão?',
-        a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra os clientes e já começa a abrir ordens de serviço. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
+        a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você configura sua empresa em minutos, cadastra os clientes e já começa a abrir ordens de serviço. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
       },
     ],
     finalCta: {
       title: 'Coloque seu controle de pragas no controle',
       subtitle:
-        '14 dias grátis, sem cartão, sem burocracia. Cadastre seus clientes, emita o certificado automaticamente e automatize os contratos de reaplicação.',
+        '7 dias grátis, sem cartão, sem burocracia. Cadastre seus clientes, emita o certificado automaticamente e automatize os contratos de reaplicação.',
     },
   },
 
@@ -1648,7 +1648,7 @@ const ptBr: SegmentContentMap = {
     metaTitle:
       'Sistema de ordem de serviço para assistência técnica de celular, notebook e informática | Dominex',
     metaDescription:
-      'Software para lojas de informática e assistência técnica: ordem de entrada de aparelho, diagnóstico, orçamento por link, aviso de pronto pelo WhatsApp, histórico de peças por equipamento e controle de garantia. Teste grátis 14 dias, sem cartão.',
+      'Software para lojas de informática e assistência técnica: ordem de entrada de aparelho, diagnóstico, orçamento por link, aviso de pronto pelo WhatsApp, histórico de peças por equipamento e controle de garantia. Teste grátis 7 dias, sem cartão.',
     hero: {
       eyebrow: 'Para lojas de informática e assistência técnica',
       h1: 'Sistema de ordem de serviço para assistência técnica de celular, notebook e PC',
@@ -1797,13 +1797,13 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'Como começo a usar? Precisa de cartão?',
-        a: 'É só criar a conta e usar 14 dias grátis, sem cartão de crédito. Você configura sua loja em minutos, cadastra os aparelhos e já começa a abrir OS. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
+        a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você configura sua loja em minutos, cadastra os aparelhos e já começa a abrir OS. Cancela quando quiser e seus dados ficam preservados se decidir assinar.',
       },
     ],
     finalCta: {
       title: 'Coloque sua assistência técnica no controle',
       subtitle:
-        '14 dias grátis, sem cartão, sem burocracia. Cadastre os aparelhos, organize o estoque de peças e dê ao cliente a transparência que ele espera.',
+        '7 dias grátis, sem cartão, sem burocracia. Cadastre os aparelhos, organize o estoque de peças e dê ao cliente a transparência que ele espera.',
     },
   },
 };

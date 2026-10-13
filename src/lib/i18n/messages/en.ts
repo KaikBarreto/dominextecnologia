@@ -17,7 +17,7 @@ export const enOverrides: MessagesOverride = {
   registration: {
     logoTagline: 'Master how your business runs.',
     title: 'Sign up',
-    subtitle: '14-day free trial · No commitment · Full access',
+    subtitle: '7-day free trial · No commitment · Full access',
 
     steps: {
       data: 'Details',
@@ -66,7 +66,7 @@ export const enOverrides: MessagesOverride = {
     passwordPlaceholder: 'Create your password',
     confirmPassword: 'Confirm Password*',
     confirmPasswordPlaceholder: 'Repeat the password',
-    trialLine1: '14 days free with full access',
+    trialLine1: '7 days free with full access',
     trialLine2: 'No credit card, no commitment',
 
     back: 'Back',
@@ -508,7 +508,8 @@ export const enOverrides: MessagesOverride = {
     },
     pricing: {
       heading: 'Plans that grow with your operation',
-      contactForPricing: 'Pricing is shared on WhatsApp based on your company’s needs.',
+      contactForPricing: 'Clear monthly pricing, with 5 users included and R$20 per additional user.',
+      perMonth: '/month',
       mostPopular: '⭐ Most popular',
       featuresLabel: 'Features',
       ctaTrial: 'Chat on WhatsApp',
@@ -523,6 +524,8 @@ export const enOverrides: MessagesOverride = {
             'App for technicians',
             'Schedule and calendar',
             'Client portal',
+            'Advanced pricing (markup)',
+            'Video questions in checklists',
             'Basic reports',
             'Email support',
           ],
@@ -539,7 +542,6 @@ export const enOverrides: MessagesOverride = {
             'Income statement and financial reports',
             'Contract and maintenance-plan management',
           ],
-          videoChecklist: 'up to 1 video per checklist',
         },
         master: {
           name: 'Business',
@@ -549,11 +551,9 @@ export const enOverrides: MessagesOverride = {
             '15 users included',
             'CRM / Sales pipeline',
             'NFS-e issuance (Service Invoice)',
-            'Advanced pricing (markup)',
             'White label (your brand)',
             'Priority support',
           ],
-          videoChecklist: 'up to 3 videos per checklist',
         },
         enterprise: {
           name: 'Enterprise Plan',
@@ -575,7 +575,7 @@ export const enOverrides: MessagesOverride = {
         },
         {
           q: 'How does the free trial work?',
-          a: 'It is 14 days with full access to the plan you choose, with no credit card required. You can cancel at any time and your data is preserved if you decide to subscribe later.',
+          a: 'It is 7 days with full access to the plan you choose, with no credit card required. You can cancel at any time and your data is preserved if you decide to subscribe later.',
         },
         {
           q: 'Is work order data stored forever?',
@@ -587,7 +587,7 @@ export const enOverrides: MessagesOverride = {
         },
         {
           q: 'Can I customize forms, checklists and reports?',
-          a: 'Yes. You create checklist templates per service type, define required fields, photos, signature and video responses. On the Pro and Business plans, the technician can record a short clip (up to 15 seconds) as a checklist answer, straight from their phone in the field, and the customer sees the video in the work order link. Work order reports are generated as PDFs with your brand, colors and logo.',
+          a: 'Yes. Every plan, including Essential, lets you create checklist templates per service type and define required fields, photos, signatures and video responses. The technician can record short clips (up to 15 seconds) from their phone in the field, and the customer sees the videos in the work order link. Work order reports are generated as PDFs with your brand, colors and logo.',
         },
         {
           q: 'Is there an integrated CRM and sales pipeline?',
@@ -618,7 +618,7 @@ export const enOverrides: MessagesOverride = {
     ctaFinal: {
       heading: 'Start today. Results in days.',
       subtitle:
-        '14 days free, no card, no red tape. Set up in minutes and watch your team gain productivity.',
+        '7 days free, no card, no red tape. Set up in minutes and watch your team gain productivity.',
       ctaPrimary: 'Chat on WhatsApp',
       ctaSecondary: 'Ask questions on WhatsApp',
     },
@@ -670,7 +670,7 @@ export const enOverrides: MessagesOverride = {
     ],
     finalCtaTitle: 'Try Dominex in your operation',
     finalCtaSubtitle:
-      'It is 14 days free, with no credit card. Register your team and start issuing work orders today.',
+      'It is 7 days free, with no credit card. Register your team and start issuing work orders today.',
   },
 
   // Legal text below is an AUTOMATIC, GENERALIZED translation. Needs professional
@@ -772,7 +772,7 @@ export const enOverrides: MessagesOverride = {
       'Report any unauthorized access to your account immediately.',
     ],
     s4Title: '4. Trial Period',
-    s4P: 'We offer a free 14-day period with access to the selected plan. When the period ends, the account is automatically suspended if there is no active subscription. Data is kept for an additional 90 days for possible reactivation.',
+    s4P: 'We offer a free 7-day period with access to the selected plan. When the period ends, the account is automatically suspended if there is no active subscription. Data is kept for an additional 90 days for possible reactivation.',
     s5Title: '5. Data Ownership',
     s5Pre: 'The data entered into the platform (clients, work orders, employees, finance) is owned by the client company. Dominex processes it exclusively to provide the contracted service, under the terms of the ',
     s5Link: 'Privacy Policy',

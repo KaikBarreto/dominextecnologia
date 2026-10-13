@@ -12,7 +12,8 @@
 //   - Plano pronto (start/avancado/master): subscription_plans.price[plan_code].
 //   - Personalizado: soma dos preços dos módulos escolhidos + extra_users × preço
 //     do `extra_user` no catálogo ativo.
-//     `basic` e `customer_portal` são SEMPRE inclusos e obrigatórios.
+//     A base (`basic`, Portal do Cliente, Precificação Avançada e Perguntas em
+//     Vídeo) é SEMPRE inclusa e obrigatória.
 //
 // Decisão upgrade vs downgrade vs igual (compara com o VALOR EFETIVO atual da empresa:
 // custom_price se promoção ativa, senão subscription_value — NUNCA pending):
@@ -38,7 +39,7 @@
 //
 // Sincronização de company_modules (só em upgrade/igual):
 //   - Plano pronto → included_modules do plano.
-//   - Personalizado → custom_modules (com `basic` garantido).
+//   - Personalizado → custom_modules (com todos os recursos-base garantidos).
 //
 // Auth: própria empresa OU super_admin (authorizeAsaasCompany). Escrita via service_role.
 // PT-BR nas mensagens. Espelha o modelo do EcoSistema adaptado ao schema Dominex.
@@ -54,7 +55,13 @@ class ValidationError extends Error {}
 const BASE_MODULE = "basic";
 const CUSTOMER_PORTAL_MODULE = "customer_portal";
 const EXTRA_USER_MODULE = "extra_user";
-const CUSTOM_PLAN_INCLUDED_USERS = 2;
+const FREE_BASE_MODULES = [
+  CUSTOMER_PORTAL_MODULE,
+  "pricing_advanced",
+  "video_questions",
+] as const;
+const BASE_INCLUDED_MODULES = [BASE_MODULE, ...FREE_BASE_MODULES] as const;
+const CUSTOM_PLAN_INCLUDED_USERS = 5;
 const MAX_SUBSCRIPTION_USERS = 999;
 
 interface ChangePlanRequest {
@@ -161,8 +168,10 @@ Deno.serve(async (req) => {
       }
 
       const basePrice = modulePriceByCode.get(BASE_MODULE) ?? Number.NaN;
-      const customerPortalPrice = modulePriceByCode.get(CUSTOMER_PORTAL_MODULE) ?? Number.NaN;
-      if (!Number.isFinite(basePrice) || basePrice <= 0 || customerPortalPrice !== 0) {
+      const freeBaseModulesAreValid = FREE_BASE_MODULES.every(
+        (code) => modulePriceByCode.get(code) === 0,
+      );
+      if (!Number.isFinite(basePrice) || basePrice <= 0 || !freeBaseModulesAreValid) {
         throw new ValidationError("Os módulos obrigatórios do plano personalizado não estão configurados corretamente.");
       }
     }
@@ -199,10 +208,10 @@ Deno.serve(async (req) => {
       : 0;
 
     if (isCustom) {
-      // Personalizado: `basic` e `customer_portal` sempre inclusos/obrigatórios,
+      // Personalizado: todos os recursos-base são inclusos/obrigatórios,
       // independentemente do payload. Filtra códigos válidos (presentes no catálogo
       // ativo) e ignora extra_user como módulo (é via contador).
-      const chosen = new Set<string>([BASE_MODULE, CUSTOMER_PORTAL_MODULE]);
+      const chosen = new Set<string>(BASE_INCLUDED_MODULES);
       for (const code of custom_modules ?? []) {
         if (code === EXTRA_USER_MODULE) continue;
         if (modulePriceByCode.has(code)) chosen.add(code);
@@ -215,7 +224,7 @@ Deno.serve(async (req) => {
       );
       targetMonthlyValue = modulesPrice + targetExtraUsers * extraUserPrice;
       // No personalizado, companies.max_users JÁ é o total (não soma extra por cima).
-      // Base de 2 usuários (igual ao subscription_plans.personalizado.max_users) + extras.
+      // Base de 5 usuários (igual ao subscription_plans.personalizado.max_users) + extras.
       targetMaxUsers = CUSTOM_PLAN_INCLUDED_USERS + targetExtraUsers;
     } else {
       targetModules = planRow!.included_modules;

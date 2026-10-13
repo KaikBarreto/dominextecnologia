@@ -34,7 +34,7 @@ export const SIGNUP_CONVERSION_LABEL = '0ldjCNWn4Y8dELj3hPJE';
 /**
  * Moeda do valor reportado. O snippet que o Google gerou vinha com `EUR`
  * porque a CONTA do Ads foi aberta em euro (Portugal). Aqui mandamos `BRL`,
- * que é a moeda real do negócio: os planos são R$ 197 / R$ 447 / R$ 697.
+ * que é a moeda real do negócio: os planos são R$ 197 / R$ 547 / R$ 847.
  *
  * O Google aceita moeda diferente da conta e converte pela taxa do dia, então
  * isto não quebra nada. Mas o relatório e a COBRANÇA da conta continuam em
@@ -46,7 +46,7 @@ export const CONVERSION_CURRENCY = 'BRL';
 
 /**
  * Valor atribuído a um cadastro novo. Simbólico de propósito: o cadastro é
- * teste grátis de 14 dias sem cartão, ninguém pagou nada ainda, então não
+ * teste grátis de 7 dias sem cartão, ninguém pagou nada ainda, então não
  * existe receita real pra reportar nesse instante.
  *
  * Como todas as conversões saem com o mesmo valor, o número não influencia o

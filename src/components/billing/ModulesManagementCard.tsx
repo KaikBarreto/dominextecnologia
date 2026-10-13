@@ -33,9 +33,9 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import {
   BASE_SUBSCRIPTION_MODULE_CODE,
-  CUSTOMER_PORTAL_MODULE_CODE,
   CUSTOM_PLAN_INCLUDED_USERS,
   EXTRA_USER_MODULE_CODE,
+  FREE_BASE_MODULE_CODES,
   REQUIRED_CUSTOM_MODULE_CODES,
   isRequiredCustomModule,
   resolveExtraUserPrice,
@@ -184,7 +184,7 @@ export function ModulesManagementCard({
     [allPlans],
   );
 
-  // Módulos selecionáveis no personalizado. Básico e Portal do Cliente são
+  // Módulos selecionáveis no personalizado. Os recursos da base são
   // obrigatórios; extra_user é preço do contador, não um módulo marcável.
   const selectableModules = useMemo(
     () => catalogModules.filter(
@@ -194,7 +194,12 @@ export function ModulesManagementCard({
   );
 
   const baseModule = catalogModules.find((m) => m.code === BASE_MODULE);
-  const customerPortalModule = catalogModules.find((m) => m.code === CUSTOMER_PORTAL_MODULE_CODE);
+  const freeBaseModules = catalogModules.filter((module) =>
+    FREE_BASE_MODULE_CODES.some((code) => code === module.code),
+  );
+  const freeBaseModulesAreValid = FREE_BASE_MODULE_CODES.every(
+    (code) => catalogModules.find((module) => module.code === code)?.price === 0,
+  );
   const extraUserPrice = useMemo(() => resolveExtraUserPrice(catalogModules), [catalogModules]);
   const catalogPricesValid = catalogModules.every(
     (module) => Number.isFinite(module.price) && module.price >= 0,
@@ -203,7 +208,7 @@ export function ModulesManagementCard({
     && !isCatalogError
     && catalogPricesValid
     && Boolean(baseModule && baseModule.price > 0)
-    && Boolean(customerPortalModule && customerPortalModule.price === 0)
+    && freeBaseModulesAreValid
     && extraUserPrice !== null;
 
   // Inicializa estado ao abrir: módulos atuais + extras atuais + ciclo atual.
@@ -424,7 +429,7 @@ export function ModulesManagementCard({
 
     // Módulos a exibir no painel (exclui o módulo básico, que é sempre incluso)
     const summaryModuleCodes = isCustomTab
-      ? [CUSTOMER_PORTAL_MODULE_CODE, ...customModules]
+      ? [...FREE_BASE_MODULE_CODES, ...customModules]
       : (presetPlans.find((p) => p.code === selectedPlan)?.included_modules ?? []);
     const summaryModules = catalogModules.filter(
       (m) => summaryModuleCodes.includes(m.code) && m.code !== BASE_MODULE,
@@ -498,7 +503,7 @@ export function ModulesManagementCard({
                   <span className="text-sm font-medium truncate">{m.name}</span>
                 </div>
                 <span className="text-sm font-semibold text-foreground shrink-0">
-                  {isCustomTab && m.code === CUSTOMER_PORTAL_MODULE_CODE
+                  {isCustomTab && isRequiredCustomModule(m.code)
                     ? tBilling.planSummaryIncluded
                     : `+R$ ${formatBRL(m.price)}`}
                 </span>
@@ -801,16 +806,16 @@ export function ModulesManagementCard({
                   </div>
                 )}
 
-                {customerPortalModule && (
-                  <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-emerald-600 text-white">
+                {freeBaseModules.map((module) => (
+                  <div key={module.code} className="flex items-center gap-2.5 p-2.5 rounded-lg bg-emerald-600 text-white">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{customerPortalModule.name}</p>
+                      <p className="text-sm font-medium">{module.name}</p>
                       <p className="text-[11px] text-white/80">Grátis e incluso em todos os planos</p>
                     </div>
-                    <span className="text-sm font-semibold">R$ {formatBRL(customerPortalModule.price)}</span>
+                    <span className="text-sm font-semibold">R$ {formatBRL(module.price)}</span>
                   </div>
-                )}
+                ))}
 
                 {!isCatalogLoading && !customPricingReady && (
                   <NoticeBanner variant="destructive">

@@ -7,11 +7,13 @@ const edgeSource = (name: 'self-register' | 'create-company') =>
 
 describe('provisionamento do plano personalizado', () => {
   it.each(['self-register', 'create-company'] as const)(
-    '%s força Basic e Portal do Cliente sem confiar no payload',
+    '%s força todos os recursos-base sem confiar no payload',
     (name) => {
       const source = edgeSource(name);
 
-      expect(source).toContain("const REQUIRED_PERSONALIZED_MODULE_CODES = ['basic', 'customer_portal'] as const");
+      for (const code of ['basic', 'customer_portal', 'pricing_advanced', 'video_questions']) {
+        expect(source).toContain(`'${code}'`);
+      }
       expect(source).toContain('...REQUIRED_PERSONALIZED_MODULE_CODES');
       expect(source).toContain(".from('subscription_modules')");
       expect(source).toContain(".eq('is_active', true)");
@@ -27,12 +29,20 @@ describe('provisionamento do plano personalizado', () => {
     expect(source).toContain('const planPrice = isPersonalizado ? personalizadoSum : planDefaults.price');
     expect(source).toContain('Catálogo incompleto para plano personalizado');
     expect(source).toContain("if (module.code === 'basic') return price <= 0");
-    expect(source).toContain("if (module.code === 'customer_portal') return price !== 0");
+    expect(source).toContain('FREE_BASE_MODULE_CODES.some((code) => code === module.code)');
     expect(source).toContain('if (module.code === EXTRA_USER_MODULE_CODE) return price <= 0');
     expect(source).toContain('personalizedUsers - CUSTOM_PLAN_INCLUDED_USERS');
     expect(source).toContain('personalizedExtraUsers * personalizadoExtraUserPrice');
     expect(source).toContain('Preços inválidos no catálogo do plano personalizado');
     expect(source).toContain('status: 503');
+  });
+
+  it('self-register usa 7 dias como teste padrão e 5 usuários como base', () => {
+    const source = edgeSource('self-register');
+
+    expect(source).toContain('const CUSTOM_PLAN_INCLUDED_USERS = 5');
+    expect(source).toContain('const trialDays = trialDaysOverride || 7');
+    expect(source).toContain('trial_days: isSale ? 0 : (trialDaysOverride || 7)');
   });
 
   it('create-company só injeta obrigatórios no Personalizado e preserva planos prontos', () => {

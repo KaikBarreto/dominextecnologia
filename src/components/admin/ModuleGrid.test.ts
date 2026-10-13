@@ -14,15 +14,17 @@ describe('preço do plano personalizado no painel master', () => {
   const catalog = [
     moduleRow('basic', 197),
     moduleRow('customer_portal', 0),
-    moduleRow('extra_user', 50),
+    moduleRow('pricing_advanced', 0),
+    moduleRow('video_questions', 0),
+    moduleRow('extra_user', 20),
     moduleRow('crm', 100),
   ];
 
-  it('inclui dois usuários e cobra os excedentes pelo catálogo', () => {
-    expect(sumModulesPrice(catalog, ['basic', 'customer_portal'], undefined, undefined, 5)).toBe(347);
+  it('inclui cinco usuários e cobra os excedentes pelo catálogo', () => {
+    expect(sumModulesPrice(catalog, ['basic', 'customer_portal'], undefined, undefined, 5)).toBe(197);
   });
 
   it('soma módulos opcionais sem tratar extra_user como módulo marcável', () => {
-    expect(sumModulesPrice(catalog, ['crm', 'extra_user'], undefined, undefined, 3)).toBe(347);
+    expect(sumModulesPrice(catalog, ['crm', 'extra_user'], undefined, undefined, 6)).toBe(317);
   });
 });

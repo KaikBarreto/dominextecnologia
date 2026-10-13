@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.29.0',
+    date: '13 de outubro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Novos planos com mais usuários incluídos',
+        description: 'O Essencial continua por R$ 197 ao mês e agora parte de 5 usuários. O Pro passa a custar R$ 547 ao mês com 10 usuários, e o Business, R$ 847 ao mês com 15 usuários. Acima desses limites, cada usuário adicional custa R$ 20 ao mês.',
+        category: 'recurso',
+      },
+      {
+        title: 'Precificação e vídeo disponíveis desde o Essencial',
+        description: 'Precificação Avançada, incluindo o cálculo de BDI, e Perguntas em Vídeo agora fazem parte de todos os planos, sem bloqueio ou limite diferente por plano.',
+        category: 'recurso',
+      },
+      {
+        title: 'Teste grátis agora é de 7 dias',
+        description: 'O site, o cadastro, o simulador de propostas e os links comerciais passaram a seguir o novo período padrão de 7 dias grátis.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.28.23',
     date: '9 de outubro de 2026',
     type: 'patch',

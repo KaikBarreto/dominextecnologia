@@ -17,7 +17,7 @@ export const esOverrides: MessagesOverride = {
   registration: {
     logoTagline: 'Domina la ejecución de tu negocio.',
     title: 'Registro',
-    subtitle: 'Prueba gratis por 14 días · Sin compromiso · Acceso total',
+    subtitle: 'Prueba gratis por 7 días · Sin compromiso · Acceso total',
 
     steps: {
       data: 'Datos',
@@ -66,7 +66,7 @@ export const esOverrides: MessagesOverride = {
     passwordPlaceholder: 'Crea tu contraseña',
     confirmPassword: 'Confirmar Contraseña*',
     confirmPasswordPlaceholder: 'Repite la contraseña',
-    trialLine1: '14 días gratis con acceso total',
+    trialLine1: '7 días gratis con acceso total',
     trialLine2: 'Sin tarjeta de crédito, sin compromiso',
 
     back: 'Volver',
@@ -508,7 +508,8 @@ export const esOverrides: MessagesOverride = {
     },
     pricing: {
       heading: 'Planes que crecen con tu operación',
-      contactForPricing: 'Los valores se informan por WhatsApp según las necesidades de tu empresa.',
+      contactForPricing: 'Precios mensuales claros, con 5 usuarios incluidos y R$ 20 por usuario adicional.',
+      perMonth: '/mes',
       mostPopular: '⭐ Más popular',
       featuresLabel: 'Funciones',
       ctaTrial: 'Hablar por WhatsApp',
@@ -523,6 +524,8 @@ export const esOverrides: MessagesOverride = {
             'App para técnicos',
             'Agenda y calendario',
             'Portal del cliente',
+            'Precios avanzados (markup)',
+            'Preguntas en video en los checklists',
             'Informes básicos',
             'Soporte por correo',
           ],
@@ -539,7 +542,6 @@ export const esOverrides: MessagesOverride = {
             'Estado de resultados e informes financieros',
             'Gestión de contratos y planes de mantenimiento',
           ],
-          videoChecklist: 'hasta 1 video por checklist',
         },
         master: {
           name: 'Business',
@@ -549,11 +551,9 @@ export const esOverrides: MessagesOverride = {
             '15 usuarios incluidos',
             'CRM / Embudo de ventas',
             'Emisión de NFS-e (Factura de Servicio)',
-            'Precios avanzados (markup)',
             'Marca blanca (tu marca)',
             'Soporte prioritario',
           ],
-          videoChecklist: 'hasta 3 videos por checklist',
         },
         enterprise: {
           name: 'Plan Enterprise',
@@ -575,7 +575,7 @@ export const esOverrides: MessagesOverride = {
         },
         {
           q: '¿Cómo funciona la prueba gratuita?',
-          a: 'Son 14 días con acceso completo al plan que elijas, sin necesidad de tarjeta de crédito. Puedes cancelar en cualquier momento y tus datos se conservan si decides suscribirte después.',
+          a: 'Son 7 días con acceso completo al plan que elijas, sin necesidad de tarjeta de crédito. Puedes cancelar en cualquier momento y tus datos se conservan si decides suscribirte después.',
         },
         {
           q: '¿Los datos de las órdenes de trabajo se guardan para siempre?',
@@ -587,7 +587,7 @@ export const esOverrides: MessagesOverride = {
         },
         {
           q: '¿Puedo personalizar formularios, checklists e informes?',
-          a: 'Sí. Creas plantillas de checklist por tipo de servicio, defines campos obligatorios, fotos, firma y respuestas en video. En los planes Pro y Business el técnico puede grabar un clip corto (hasta 15 segundos) como respuesta de checklist, directo desde su teléfono en el campo, y el cliente ve el video en el enlace de la orden de trabajo. Los informes de las órdenes de trabajo se generan como PDF con tu marca, colores y logo.',
+          a: 'Sí. Todos los planes, incluido Esencial, permiten crear plantillas de checklist por tipo de servicio y definir campos obligatorios, fotos, firmas y respuestas en video. El técnico puede grabar clips cortos (hasta 15 segundos) desde su teléfono en el campo, y el cliente ve los videos en el enlace de la orden de trabajo. Los informes de las órdenes de trabajo se generan como PDF con tu marca, colores y logo.',
         },
         {
           q: '¿Hay un CRM y embudo de ventas integrado?',
@@ -618,7 +618,7 @@ export const esOverrides: MessagesOverride = {
     ctaFinal: {
       heading: 'Empieza hoy. Resultados en días.',
       subtitle:
-        '14 días gratis, sin tarjeta, sin trámites. Configúralo en minutos y mira a tu equipo ganar productividad.',
+        '7 días gratis, sin tarjeta, sin trámites. Configúralo en minutos y mira a tu equipo ganar productividad.',
       ctaPrimary: 'Hablar por WhatsApp',
       ctaSecondary: 'Resolver dudas por WhatsApp',
     },
@@ -670,7 +670,7 @@ export const esOverrides: MessagesOverride = {
     ],
     finalCtaTitle: 'Prueba Dominex en tu operación',
     finalCtaSubtitle:
-      'Son 14 días gratis, sin tarjeta de crédito. Registra a tu equipo y empieza a emitir órdenes de trabajo hoy.',
+      'Son 7 días gratis, sin tarjeta de crédito. Registra a tu equipo y empieza a emitir órdenes de trabajo hoy.',
   },
 
   // El texto legal de abajo es una traducción AUTOMÁTICA y GENERALIZADA. Necesita
@@ -772,7 +772,7 @@ export const esOverrides: MessagesOverride = {
       'Reporta de inmediato cualquier acceso no autorizado a tu cuenta.',
     ],
     s4Title: '4. Período de Prueba',
-    s4P: 'Ofrecemos un período gratuito de 14 días con acceso al plan seleccionado. Cuando el período termina, la cuenta se suspende automáticamente si no hay una suscripción activa. Los datos se conservan por 90 días adicionales para una posible reactivación.',
+    s4P: 'Ofrecemos un período gratuito de 7 días con acceso al plan seleccionado. Cuando el período termina, la cuenta se suspende automáticamente si no hay una suscripción activa. Los datos se conservan por 90 días adicionales para una posible reactivación.',
     s5Title: '5. Propiedad de los Datos',
     s5Pre: 'Los datos ingresados en la plataforma (clientes, órdenes de trabajo, empleados, finanzas) son propiedad de la empresa cliente. Dominex los trata exclusivamente para prestar el servicio contratado, según los términos de la ',
     s5Link: 'Política de Privacidad',
