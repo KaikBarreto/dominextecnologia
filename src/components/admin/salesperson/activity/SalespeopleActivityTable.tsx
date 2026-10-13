@@ -59,7 +59,7 @@ export function SalespeopleActivityTable({ rows, isMobile }: Props) {
               onClick={() => goTo(r.id)}
               leading={<SalespersonAvatar name={r.name} photoUrl={r.photoUrl} size="md" />}
               title={r.name}
-              subtitle={`${r.counters.contacts} contatos • ${r.counters.meetings_scheduled} agendadas • ${r.filledPeriodsLabel} períodos`}
+              subtitle={`${r.counters.contacts} contatos • ${r.counters.meetings_scheduled} agendadas • ${r.counters.trials_started} testes • ${r.filledPeriodsLabel} períodos`}
               trailing={
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <Badge variant={coverageBadgeVariant(r.coveragePercent)} className="text-[10px] px-2 py-0.5">
@@ -90,6 +90,7 @@ export function SalespeopleActivityTable({ rows, isMobile }: Props) {
               <TableHead className="text-right">Contatos</TableHead>
               <TableHead className="text-right">Reuniões agend.</TableHead>
               <TableHead className="text-right">Reuniões realiz.</TableHead>
+              <TableHead className="text-right">Testes iniciados</TableHead>
               <TableHead className="text-right">Vendas</TableHead>
               <TableHead className="text-right">Períodos</TableHead>
               <TableHead className="text-right">Sem registro</TableHead>
@@ -123,6 +124,7 @@ export function SalespeopleActivityTable({ rows, isMobile }: Props) {
                 <TableCell className="text-right tabular-nums">{r.counters.contacts}</TableCell>
                 <TableCell className="text-right tabular-nums">{r.counters.meetings_scheduled}</TableCell>
                 <TableCell className="text-right tabular-nums">{r.counters.meetings_held}</TableCell>
+                <TableCell className="text-right tabular-nums">{r.counters.trials_started}</TableCell>
                 <TableCell className="text-right tabular-nums">{r.counters.sales_count}</TableCell>
                 <TableCell className="text-right tabular-nums">{r.filledPeriodsLabel}</TableCell>
                 <TableCell className="text-right tabular-nums">{r.missingDaysCount}</TableCell>

@@ -102,6 +102,7 @@ function hasAnyActivity(counters: ActivityCounters): boolean {
     counters.contacts > 0 ||
     counters.meetings_scheduled > 0 ||
     counters.meetings_held > 0 ||
+    counters.trials_started > 0 ||
     counters.sales_count > 0
   );
 }

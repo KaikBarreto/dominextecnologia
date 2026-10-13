@@ -22,6 +22,7 @@ function buildInput(overrides: Partial<ActivityArtInput> = {}): ActivityArtInput
     contacts: 40,
     meetingsScheduled: 4,
     meetingsHeld: 2,
+    trialsStarted: 1,
     salesCount: 1,
     notes: null,
     dayContacts: 140,

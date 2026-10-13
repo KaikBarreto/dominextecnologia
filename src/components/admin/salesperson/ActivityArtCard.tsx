@@ -35,6 +35,7 @@ export interface ActivityArtCardProps {
   contacts: number;
   meetingsScheduled: number;
   meetingsHeld: number;
+  trialsStarted: number;
   salesCount: number;
   notes: string | null;
   /** Acumulado do DIA (manhã + tarde) — é o que compara com a meta. */
@@ -221,6 +222,7 @@ export function ActivityArtCard({
   contacts,
   meetingsScheduled,
   meetingsHeld,
+  trialsStarted,
   salesCount,
   notes,
   dayContacts,
@@ -340,6 +342,9 @@ export function ActivityArtCard({
         </div>
         <div style={{ display: 'flex', gap: 20 }}>
           <StatCell label="Reuniões realizadas" value={meetingsHeld} />
+          <StatCell label="Testes iniciados" value={trialsStarted} />
+        </div>
+        <div style={{ display: 'flex', gap: 20 }}>
           <StatCell label="Vendas" value={salesCount} />
         </div>
       </div>

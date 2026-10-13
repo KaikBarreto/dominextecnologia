@@ -18,11 +18,12 @@
 import { eachDayOfInterval, isWeekend } from 'date-fns';
 import type { ActivityPeriod } from '@/utils/activityArtFormat';
 
-/** Os 4 contadores do diário. Mesmos nomes das colunas, de propósito. */
+/** Os 5 contadores do diário. Mesmos nomes das colunas, de propósito. */
 export interface ActivityCounters {
   contacts: number;
   meetings_scheduled: number;
   meetings_held: number;
+  trials_started: number;
   sales_count: number;
 }
 
@@ -43,6 +44,7 @@ export const ZERO_COUNTERS: ActivityCounters = {
   contacts: 0,
   meetings_scheduled: 0,
   meetings_held: 0,
+  trials_started: 0,
   sales_count: 0,
 };
 
@@ -108,6 +110,7 @@ export function sumActivity(rows: readonly DailyActivityRow[]): ActivityCounters
       contacts: acc.contacts + (row.contacts || 0),
       meetings_scheduled: acc.meetings_scheduled + (row.meetings_scheduled || 0),
       meetings_held: acc.meetings_held + (row.meetings_held || 0),
+      trials_started: acc.trials_started + (row.trials_started || 0),
       sales_count: acc.sales_count + (row.sales_count || 0),
     }),
     { ...ZERO_COUNTERS },
@@ -182,7 +185,9 @@ function rate(numerator: number, denominator: number): number | null {
   return Number.isFinite(pct) ? pct : null;
 }
 
-export function conversionRates(counters: ActivityCounters): ConversionRates {
+export function conversionRates(
+  counters: Pick<ActivityCounters, 'contacts' | 'meetings_scheduled' | 'meetings_held' | 'sales_count'>,
+): ConversionRates {
   return {
     contactToScheduled: rate(counters.meetings_scheduled, counters.contacts),
     scheduledToHeld: rate(counters.meetings_held, counters.meetings_scheduled),
@@ -316,6 +321,7 @@ export interface ActivitySeriesPoint {
   contacts: number;
   meetings_scheduled: number;
   meetings_held: number;
+  trials_started: number;
   sales_count: number;
 }
 
@@ -337,6 +343,7 @@ export function buildDailySeries(
       contacts: day?.contacts ?? 0,
       meetings_scheduled: day?.meetings_scheduled ?? 0,
       meetings_held: day?.meetings_held ?? 0,
+      trials_started: day?.trials_started ?? 0,
       sales_count: day?.sales_count ?? 0,
     };
   });

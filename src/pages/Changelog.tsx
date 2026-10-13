@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.31.1',
+    date: '13 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Testes iniciados na atividade comercial',
+        description: 'O diário dos vendedores ganhou o campo “Testes iniciados” nos registros da manhã e da tarde. O número também aparece nos totais, no histórico, no relatório por vendedor, na exportação em Excel e na arte compartilhável do período.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.31.0',
     date: '13 de outubro de 2026',
     type: 'minor',

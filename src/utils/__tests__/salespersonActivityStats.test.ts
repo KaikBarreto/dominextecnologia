@@ -27,7 +27,7 @@ let seq = 0;
 function row(
   activity_date: string,
   period: ActivityPeriod,
-  counters: Partial<Pick<DailyActivityRow, 'contacts' | 'meetings_scheduled' | 'meetings_held' | 'sales_count'>> = {},
+  counters: Partial<Pick<DailyActivityRow, 'contacts' | 'meetings_scheduled' | 'meetings_held' | 'trials_started' | 'sales_count'>> = {},
 ): DailyActivityRow {
   seq += 1;
   return {
@@ -38,6 +38,7 @@ function row(
     contacts: 0,
     meetings_scheduled: 0,
     meetings_held: 0,
+    trials_started: 0,
     sales_count: 0,
     notes: null,
     created_at: `${activity_date}T12:00:00Z`,
@@ -97,12 +98,12 @@ describe('businessDaysBetween', () => {
 });
 
 describe('sumActivity e buildDayTotals', () => {
-  it('soma os quatro contadores', () => {
+  it('soma os cinco contadores', () => {
     const total = sumActivity([
-      row('2026-09-28', 'morning', { contacts: 120, meetings_scheduled: 3, meetings_held: 2, sales_count: 1 }),
-      row('2026-09-28', 'afternoon', { contacts: 90, meetings_scheduled: 2, meetings_held: 1, sales_count: 0 }),
+      row('2026-09-28', 'morning', { contacts: 120, meetings_scheduled: 3, meetings_held: 2, trials_started: 1, sales_count: 1 }),
+      row('2026-09-28', 'afternoon', { contacts: 90, meetings_scheduled: 2, meetings_held: 1, trials_started: 2, sales_count: 0 }),
     ]);
-    expect(total).toEqual({ contacts: 210, meetings_scheduled: 5, meetings_held: 3, sales_count: 1 });
+    expect(total).toEqual({ contacts: 210, meetings_scheduled: 5, meetings_held: 3, trials_started: 3, sales_count: 1 });
   });
 
   it('consolida por dia, conta períodos preenchidos e ordena do mais recente pro mais antigo', () => {
@@ -276,7 +277,7 @@ describe('buildDailySeries', () => {
     ]);
     expect(series.map((p) => p.contacts)).toEqual([210, 0, 0, 30]);
     expect(series[0].sales_count).toBe(1);
-    expect(series[1]).toMatchObject({ contacts: 0, meetings_scheduled: 0, meetings_held: 0, sales_count: 0 });
+    expect(series[1]).toMatchObject({ contacts: 0, meetings_scheduled: 0, meetings_held: 0, trials_started: 0, sales_count: 0 });
   });
 
   it('sem dia útil no intervalo, série vazia', () => {

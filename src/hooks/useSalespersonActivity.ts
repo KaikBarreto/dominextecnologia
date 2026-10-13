@@ -3,7 +3,7 @@
 //
 // O diário é o registro, por DIA e por PERÍODO (manhã/tarde), de quantos
 // contatos/prospecções o vendedor fez, quantas reuniões agendou, quantas
-// realizou e quantas vendas fechou.
+// realizou, quantos testes iniciou e quantas vendas fechou.
 //
 // ⚠️ A trava de retroativo NÃO está aqui. Ela vive na RLS de
 // `public.salesperson_daily_activity`: o vendedor só consegue INSERT/UPDATE com
@@ -45,6 +45,7 @@ export const ACTIVITY_METRIC_LABEL = {
   contacts: 'Contatos / Prospecções',
   meetings_scheduled: 'Reuniões agendadas',
   meetings_held: 'Reuniões realizadas',
+  trials_started: 'Testes iniciados',
   sales_count: 'Vendas',
 } as const;
 
@@ -110,6 +111,7 @@ export interface UpsertDailyActivityPayload {
   contacts: number;
   meetings_scheduled: number;
   meetings_held: number;
+  trials_started: number;
   sales_count: number;
   notes?: string | null;
 }
@@ -151,6 +153,7 @@ export function useUpsertDailyActivity() {
             contacts: payload.contacts,
             meetings_scheduled: payload.meetings_scheduled,
             meetings_held: payload.meetings_held,
+            trials_started: payload.trials_started,
             sales_count: payload.sales_count,
             notes: payload.notes?.trim() ? payload.notes.trim() : null,
             created_by: user?.id ?? null,

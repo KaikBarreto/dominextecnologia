@@ -63,6 +63,10 @@ function MetricsList({ counters, dense }: { counters: typeof ZERO_COUNTERS; dens
         <dd className="shrink-0 font-medium tabular-nums">{counters.meetings_held}</dd>
       </div>
       <div className="flex items-center justify-between gap-2">
+        <dt className="truncate text-muted-foreground">{ACTIVITY_METRIC_LABEL.trials_started}</dt>
+        <dd className="shrink-0 font-medium tabular-nums">{counters.trials_started}</dd>
+      </div>
+      <div className="flex items-center justify-between gap-2">
         <dt className="truncate text-muted-foreground">{ACTIVITY_METRIC_LABEL.sales_count}</dt>
         <dd className="shrink-0 font-medium tabular-nums">{counters.sales_count}</dd>
       </div>
@@ -118,7 +122,7 @@ export function ActivityHistoryTable({ rows, range, todayKey, goals }: ActivityH
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{ACTIVITY_METRIC_LABEL.contacts}</CardTitle></CardHeader>
           <CardContent><div className="text-2xl font-bold tabular-nums">{totals.contacts}</div></CardContent>
@@ -130,6 +134,10 @@ export function ActivityHistoryTable({ rows, range, todayKey, goals }: ActivityH
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{ACTIVITY_METRIC_LABEL.meetings_held}</CardTitle></CardHeader>
           <CardContent><div className="text-2xl font-bold tabular-nums">{totals.meetings_held}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{ACTIVITY_METRIC_LABEL.trials_started}</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-bold tabular-nums">{totals.trials_started}</div></CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{ACTIVITY_METRIC_LABEL.sales_count}</CardTitle></CardHeader>

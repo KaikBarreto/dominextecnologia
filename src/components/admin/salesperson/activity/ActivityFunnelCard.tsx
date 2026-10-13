@@ -9,6 +9,8 @@ interface Props {
   rates: ConversionRates;
 }
 
+type FunnelMetric = 'contacts' | 'meetings_scheduled' | 'meetings_held' | 'sales_count';
+
 const STAGE_COLOR = {
   contacts: '#0EA5E9',
   meetings_scheduled: '#8B5CF6',
@@ -33,7 +35,7 @@ export function ActivityFunnelCard({ counters, rates }: Props) {
   // não dividir por zero e ainda assim desenhar alguma barra.
   const base = counters.contacts || Math.max(counters.meetings_scheduled, counters.meetings_held, counters.sales_count, 1);
 
-  const stages: Array<{ key: keyof ActivityCounters; rate: number | null; afterLabel?: string }> = [
+  const stages: Array<{ key: FunnelMetric; rate: number | null }> = [
     { key: 'contacts', rate: null },
     { key: 'meetings_scheduled', rate: rates.contactToScheduled },
     { key: 'meetings_held', rate: rates.scheduledToHeld },

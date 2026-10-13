@@ -31,6 +31,7 @@ interface FieldsState {
   contacts: string;
   meetings_scheduled: string;
   meetings_held: string;
+  trials_started: string;
   sales_count: string;
   notes: string;
 }
@@ -39,6 +40,7 @@ const EMPTY_FIELDS: FieldsState = {
   contacts: '',
   meetings_scheduled: '',
   meetings_held: '',
+  trials_started: '',
   sales_count: '',
   notes: '',
 };
@@ -49,6 +51,7 @@ function fieldsFromRow(row: DailyActivityRow | null): FieldsState {
     contacts: String(row.contacts ?? 0),
     meetings_scheduled: String(row.meetings_scheduled ?? 0),
     meetings_held: String(row.meetings_held ?? 0),
+    trials_started: String(row.trials_started ?? 0),
     sales_count: String(row.sales_count ?? 0),
     notes: row.notes ?? '',
   };
@@ -107,6 +110,7 @@ export function DailyActivityPeriodCard({
         contacts: num(fields.contacts),
         meetings_scheduled: num(fields.meetings_scheduled),
         meetings_held: num(fields.meetings_held),
+        trials_started: num(fields.trials_started),
         sales_count: num(fields.sales_count),
         notes: fields.notes,
       },
@@ -119,6 +123,7 @@ export function DailyActivityPeriodCard({
       num(fields.contacts) === 0 &&
       num(fields.meetings_scheduled) === 0 &&
       num(fields.meetings_held) === 0 &&
+      num(fields.trials_started) === 0 &&
       num(fields.sales_count) === 0;
     if (allZero) {
       setConfirmZeroOpen(true);
@@ -138,6 +143,7 @@ export function DailyActivityPeriodCard({
     contacts: row?.contacts ?? 0,
     meetingsScheduled: row?.meetings_scheduled ?? 0,
     meetingsHeld: row?.meetings_held ?? 0,
+    trialsStarted: row?.trials_started ?? 0,
     salesCount: row?.sales_count ?? 0,
     notes: row?.notes ?? null,
     dayContacts,
@@ -195,6 +201,17 @@ export function DailyActivityPeriodCard({
                 />
               </div>
               <div className="space-y-1.5">
+                <Label htmlFor={`${period}-trials-started`} className="text-xs">
+                  {ACTIVITY_METRIC_LABEL.trials_started}
+                </Label>
+                <NumericInput
+                  id={`${period}-trials-started`}
+                  value={fields.trials_started}
+                  onValueChange={(v) => setFields((f) => ({ ...f, trials_started: v }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor={`${period}-sales`} className="text-xs">
                   {ACTIVITY_METRIC_LABEL.sales_count}
                 </Label>
@@ -257,6 +274,10 @@ export function DailyActivityPeriodCard({
                 <dd className="font-semibold tabular-nums">{row?.meetings_held ?? 0}</dd>
               </div>
               <div>
+                <dt className="text-xs text-muted-foreground">{ACTIVITY_METRIC_LABEL.trials_started}</dt>
+                <dd className="font-semibold tabular-nums">{row?.trials_started ?? 0}</dd>
+              </div>
+              <div className="col-span-2">
                 <dt className="text-xs text-muted-foreground">{ACTIVITY_METRIC_LABEL.sales_count}</dt>
                 <dd className="font-semibold tabular-nums">{row?.sales_count ?? 0}</dd>
               </div>

@@ -54,6 +54,7 @@ const METRIC_LABEL: Record<keyof ActivityCounters, string> = {
   contacts: 'Contatos / Prospecções',
   meetings_scheduled: 'Reuniões agendadas',
   meetings_held: 'Reuniões realizadas',
+  trials_started: 'Testes iniciados',
   sales_count: 'Vendas',
 };
 
@@ -99,6 +100,7 @@ export function buildSalespersonActivityExcelSheets(
       'Contatos',
       'Reuniões agendadas',
       'Reuniões realizadas',
+      'Testes iniciados',
       'Vendas',
       'Períodos preenchidos',
       'Dias sem registro',
@@ -113,6 +115,7 @@ export function buildSalespersonActivityExcelSheets(
       row.counters.contacts,
       row.counters.meetings_scheduled,
       row.counters.meetings_held,
+      row.counters.trials_started,
       row.counters.sales_count,
       row.filledPeriodsLabel,
       row.missingDaysCount,
@@ -135,7 +138,7 @@ export function buildSalespersonActivityExcelSheets(
 
   return [
     { name: 'Resumo', rows: resumoRows, widths: [34, 20] },
-    { name: 'Por vendedor', rows: porVendedorRows, widths: [24, 12, 18, 18, 10, 18, 16, 14, 12, 24, 24, 18] },
+    { name: 'Por vendedor', rows: porVendedorRows, widths: [24, 12, 18, 18, 16, 10, 18, 16, 14, 12, 24, 24, 18] },
     { name: 'Dias sem registro', rows: diasSemRegistroRows, widths: [24, 28] },
   ];
 }

@@ -4,12 +4,12 @@ import { buildSalespersonActivityExcelSheets } from './salespersonActivityExport
 describe('buildSalespersonActivityExcelSheets', () => {
   const baseInput = {
     periodLabel: '01/09/2026 a 30/09/2026',
-    totals: { contacts: 400, meetings_scheduled: 10, meetings_held: 6, sales_count: 2 },
+    totals: { contacts: 400, meetings_scheduled: 10, meetings_held: 6, trials_started: 4, sales_count: 2 },
     rates: { contactToScheduled: 2.5, scheduledToHeld: 60, heldToSale: null },
     perSalesperson: [
       {
         name: 'Maicon',
-        counters: { contacts: 400, meetings_scheduled: 10, meetings_held: 6, sales_count: 2 },
+        counters: { contacts: 400, meetings_scheduled: 10, meetings_held: 6, trials_started: 4, sales_count: 2 },
         filledPeriodsLabel: '18/40',
         missingDaysCount: 2,
         partialDaysCount: 1,
@@ -30,6 +30,7 @@ describe('buildSalespersonActivityExcelSheets', () => {
     const resumo = sheets.find((s) => s.name === 'Resumo')!;
     expect(resumo.rows).toContainEqual(['Período', '01/09/2026 a 30/09/2026']);
     expect(resumo.rows).toContainEqual(['Contatos / Prospecções', 400]);
+    expect(resumo.rows).toContainEqual(['Testes iniciados', 4]);
     expect(resumo.rows).toContainEqual(['Contato → Reunião agendada', '2.5%']);
     expect(resumo.rows).toContainEqual(['Reunião realizada → Venda', '—']);
   });
@@ -38,7 +39,7 @@ describe('buildSalespersonActivityExcelSheets', () => {
     const sheets = buildSalespersonActivityExcelSheets(baseInput);
     const porVendedor = sheets.find((s) => s.name === 'Por vendedor')!;
     expect(porVendedor.rows[1]).toEqual([
-      'Maicon', 400, 10, 6, 2, '18/40', 2, 1, '92.5%', '15/20', '10/20', '62.5%',
+      'Maicon', 400, 10, 6, 4, 2, '18/40', 2, 1, '92.5%', '15/20', '10/20', '62.5%',
     ]);
   });
 

@@ -8460,6 +8460,7 @@ export type Database = {
           period: string
           sales_count: number
           salesperson_id: string
+          trials_started: number
           updated_at: string
         }
         Insert: {
@@ -8474,6 +8475,7 @@ export type Database = {
           period: string
           sales_count?: number
           salesperson_id: string
+          trials_started?: number
           updated_at?: string
         }
         Update: {
@@ -8488,6 +8490,7 @@ export type Database = {
           period?: string
           sales_count?: number
           salesperson_id?: string
+          trials_started?: number
           updated_at?: string
         }
         Relationships: [

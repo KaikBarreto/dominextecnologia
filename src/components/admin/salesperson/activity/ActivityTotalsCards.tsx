@@ -1,4 +1,4 @@
-import { Phone, CalendarClock, CheckCircle2, DollarSign } from 'lucide-react';
+import { Phone, CalendarClock, CheckCircle2, DollarSign, FlaskConical } from 'lucide-react';
 import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCarousel';
 import type { ActivityCounters } from '@/utils/salespersonActivityStats';
 
@@ -35,6 +35,13 @@ export function ActivityTotalsCards({ counters, loading }: Props) {
       count: counters.meetings_held,
       icon: <CheckCircle2 className="h-4 w-4" />,
       accentColor: '#00C597',
+    },
+    {
+      key: 'trials_started',
+      label: 'Testes iniciados',
+      count: counters.trials_started,
+      icon: <FlaskConical className="h-4 w-4" />,
+      accentColor: '#EAB308',
     },
     {
       key: 'sales_count',

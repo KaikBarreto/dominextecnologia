@@ -12,7 +12,7 @@ function row(
   salesperson_id: string,
   activity_date: string,
   period: 'morning' | 'afternoon',
-  counters: Partial<Pick<DailyActivityRow, 'contacts' | 'meetings_scheduled' | 'meetings_held' | 'sales_count'>> = {},
+  counters: Partial<Pick<DailyActivityRow, 'contacts' | 'meetings_scheduled' | 'meetings_held' | 'trials_started' | 'sales_count'>> = {},
 ): DailyActivityRow {
   seq += 1;
   return {
@@ -23,6 +23,7 @@ function row(
     contacts: 0,
     meetings_scheduled: 0,
     meetings_held: 0,
+    trials_started: 0,
     sales_count: 0,
     notes: null,
     created_at: `${activity_date}T12:00:00Z`,
@@ -53,14 +54,14 @@ const exVendedor: SalespersonActivityLite = {
 describe('buildSalespersonActivityAggregates', () => {
   it('soma contadores, cobertura e aderência por vendedor', () => {
     const rows = [
-      row('sp-maicon', '2026-09-28', 'morning', { contacts: 120, meetings_scheduled: 3 }),
+      row('sp-maicon', '2026-09-28', 'morning', { contacts: 120, meetings_scheduled: 3, trials_started: 2 }),
       row('sp-maicon', '2026-09-28', 'afternoon', { contacts: 90, meetings_scheduled: 3 }), // dia bate as 2 metas (210 contatos, 6 reuniões)
       row('sp-maicon', '2026-09-29', 'morning', { contacts: 50 }), // dia parcial, não bate meta
     ];
 
     const [agg] = buildSalespersonActivityAggregates([maicon], rows, FROM, TO, TODAY);
 
-    expect(agg.counters).toEqual({ contacts: 260, meetings_scheduled: 6, meetings_held: 0, sales_count: 0 });
+    expect(agg.counters).toEqual({ contacts: 260, meetings_scheduled: 6, meetings_held: 0, trials_started: 2, sales_count: 0 });
     expect(agg.businessDaysCount).toBe(5);
     expect(agg.missingDaysCount).toBe(3); // 30/09, 01/10, 02/10 sem nenhum período
     expect(agg.partialDaysCount).toBe(1); // 29/09 só manhã

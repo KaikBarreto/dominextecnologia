@@ -173,7 +173,7 @@ export function CommercialActivityTab({ salespeople, range, enabled, isMobile }:
     return (
       <div className="space-y-4">
         <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
-          {Array.from({ length: 4 }).map((_, i) => (
+          {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-20 w-full rounded-xl" />
           ))}
         </div>
