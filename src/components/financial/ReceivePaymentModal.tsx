@@ -18,6 +18,7 @@ import { todayInTz } from '@/lib/timezone';
 import { isPaidDateAllowedInTz } from '@/lib/dre-regime';
 import { filterAccountsForReceivable } from '@/lib/financial-account-filter';
 import { buildAccountOptions } from '@/components/financial/accountSelectOptions';
+import { formatMoney } from '@/lib/format';
 
 export interface ReceivePaymentResult {
   account_id: string;
@@ -59,10 +60,6 @@ interface ReceivePaymentModalProps {
 }
 
 // Payment methods are now built from locale keys inside the component.
-
-function fmt(v: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
-}
 
 /**
  * Soma N dias a uma data YYYY-MM-DD e devolve YYYY-MM-DD (sem deslocar timezone).
@@ -106,7 +103,8 @@ export function ReceivePaymentModal({
 }: ReceivePaymentModalProps) {
   // `timezone`: fuso da empresa. `paid_date` define o MÊS da movimentação no
   // regime de Caixa, então o "hoje" tem que ser o da empresa.
-  const { locale, timezone } = useAppLocaleContext();
+  const { locale, currency, timezone } = useAppLocaleContext();
+  const fmt = (value: number) => formatMoney(value, currency, locale);
   const t = MESSAGES[locale].app.finance.receivePayment;
   const { accounts } = useFinancialAccounts();
   // Quem não gerencia configuração não vê o "+" de criar conta/categoria na

@@ -9,6 +9,13 @@
 
 import { mapBrowserLang } from './detectLocale';
 import { DEFAULT_LOCALE, type LocaleCode } from './locales';
+import {
+  DEFAULT_COUNTRY_CODE,
+  countryFromLanguageTag,
+  countryFromTimezone,
+  getCountryDef,
+  type CountryCode,
+} from './countries';
 
 /** Moeda/fuso default por idioma (ISO 4217 + nome IANA, nunca offset fixo). */
 export const LOCALE_REGIONAL_DEFAULTS: Record<
@@ -25,30 +32,8 @@ export const LOCALE_REGIONAL_DEFAULTS: Record<
 export const DEFAULT_CURRENCY = LOCALE_REGIONAL_DEFAULTS[DEFAULT_LOCALE].currency;
 export const DEFAULT_TIMEZONE = LOCALE_REGIONAL_DEFAULTS[DEFAULT_LOCALE].timezone;
 
-// Moeda inferida pela REGIÃO do BCP-47 (parte após o hífen), não pelo idioma.
-// Ex.: es-MX → MXN (não EUR), en-GB → GBP, pt-PT → EUR. Best-effort: região
-// desconhecida cai na moeda do locale detectado.
-const REGION_CURRENCY: Record<string, string> = {
-  BR: 'BRL',
-  PT: 'EUR',
-  US: 'USD',
-  GB: 'GBP',
-  CA: 'CAD',
-  AU: 'AUD',
-  ES: 'EUR',
-  MX: 'MXN',
-  AR: 'ARS',
-  CL: 'CLP',
-  CO: 'COP',
-  FR: 'EUR',
-  BE: 'EUR',
-  CH: 'CHF',
-  DE: 'EUR',
-  IT: 'EUR',
-};
-
 /**
- * Detecta idioma/moeda/fuso a partir da máquina do usuário. Best-effort e
+ * Detecta país/idioma/moeda/fuso a partir da máquina do usuário. Best-effort e
  * defensivo (try/catch, SSR-safe): serve pra PRÉ-preencher o Regional no
  * cadastro/1º acesso; o usuário confirma ou sobrescreve.
  *
@@ -58,17 +43,20 @@ const REGION_CURRENCY: Record<string, string> = {
  *             cai na moeda do idioma detectado.
  */
 export function detectRegionalFromMachine(): {
+  countryCode: CountryCode;
   language: LocaleCode;
   currency: string;
   timezone: string;
 } {
   let language: LocaleCode = DEFAULT_LOCALE;
   let timezone = DEFAULT_TIMEZONE;
+  let languageTag: string | null = null;
 
   // Idioma pela linguagem do navegador (reusa o mapeamento do site).
   try {
     if (typeof navigator !== 'undefined') {
-      language = mapBrowserLang(navigator.language);
+      languageTag = navigator.language;
+      language = mapBrowserLang(languageTag);
     }
   } catch {
     language = DEFAULT_LOCALE;
@@ -82,19 +70,18 @@ export function detectRegionalFromMachine(): {
     timezone = DEFAULT_TIMEZONE;
   }
 
-  // Moeda: primeiro pela região do BCP-47, senão pela do idioma detectado.
-  let currency = LOCALE_REGIONAL_DEFAULTS[language].currency;
-  try {
-    if (typeof navigator !== 'undefined' && navigator.language) {
-      const parts = navigator.language.split('-');
-      const region = parts.length > 1 ? parts[parts.length - 1].toUpperCase() : null;
-      if (region && REGION_CURRENCY[region]) {
-        currency = REGION_CURRENCY[region];
-      }
-    }
-  } catch {
-    currency = LOCALE_REGIONAL_DEFAULTS[language].currency;
-  }
+  // País: região explícita do BCP-47 ganha. Sem região, usa um fuso inequívoco.
+  // Se nenhum sinal for confiável, mantém BR por compatibilidade com a base.
+  const countryCode =
+    countryFromLanguageTag(languageTag) ??
+    countryFromTimezone(timezone) ??
+    DEFAULT_COUNTRY_CODE;
+  const countryDefaults = getCountryDef(countryCode);
 
-  return { language, currency, timezone };
+  return {
+    countryCode,
+    language: countryDefaults.language ?? language,
+    currency: countryDefaults.currency,
+    timezone,
+  };
 }

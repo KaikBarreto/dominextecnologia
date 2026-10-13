@@ -4,6 +4,7 @@ import { formatMovementType } from '@/utils/employeeCalculations';
 import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
 import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { formatMoney } from '@/lib/format';
 import { pdfDownloadAssets } from '@/utils/pdfDownloadButton';
 import { safeTimeZone } from '@/lib/timezone';
 
@@ -150,7 +151,7 @@ export function generateReceiptHTML(data: ReceiptData): string {
   const t = MESSAGES[locale].app.employees.receiptGenerator;
   const kind = data.kind ?? 'pagamento';
   const isVale = kind === 'vale';
-  const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const fmt = (value: number) => formatMoney(value, companySettings?.currency || 'BRL', locale);
 
   const headerHTML = renderHeader(companySettings);
   const dominexFooter = buildDominexFooter(whiteLabel);
@@ -337,7 +338,7 @@ export function generateExtractHTMLWithHeader(
 ): string {
   const tz = safeTimeZone(timeZone);
   const t = MESSAGES[locale].app.employees.receiptGenerator;
-  const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const fmt = (value: number) => formatMoney(value, companySettings?.currency || 'BRL', locale);
   const bcp47 = locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR';
   const sorted = [...movements].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   const headerHTML = renderHeader(companySettings);

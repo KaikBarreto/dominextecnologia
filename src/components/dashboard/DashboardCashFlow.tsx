@@ -5,22 +5,12 @@ import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, Respon
 import { motion } from 'framer-motion';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { formatMoney, formatNumber, toBcp47 } from '@/lib/format';
+import { formatMoney, formatNumber, getCurrencySymbol } from '@/lib/format';
 
 interface CashFlowData {
   data: Array<{ label: string; entradas: number; saidas: number }>;
   totalEntradas: number;
   totalSaidas: number;
-}
-
-/** Símbolo da moeda no locale (ex.: 'R$', '$', '€') — pro eixo Y compacto. */
-function currencySymbol(currency: string, locale: string): string {
-  try {
-    const parts = new Intl.NumberFormat(locale, { style: 'currency', currency }).formatToParts(0);
-    return parts.find((p) => p.type === 'currency')?.value ?? currency;
-  } catch {
-    return currency;
-  }
 }
 
 const tooltipStyle = {
@@ -35,8 +25,7 @@ const tooltipStyle = {
 export function DashboardCashFlow({ data, isLoading }: { data: CashFlowData; isLoading: boolean }) {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.dashboard.cashFlow;
-  const bcp47 = toBcp47(locale);
-  const symbol = currencySymbol(currency, bcp47);
+  const symbol = getCurrencySymbol(currency, locale);
   const saldo = data.totalEntradas - data.totalSaidas;
 
   const formatYAxis = (value: number) => {

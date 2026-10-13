@@ -24,7 +24,6 @@ import {
   Landmark, Wallet, LayoutDashboard, Calculator, Loader2, SlidersHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatBRL } from '@/utils/currency';
 import { idealForeground } from '@/lib/colorContrast';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { FinancialTransaction } from '@/types/database';
@@ -50,10 +49,12 @@ function AccountDistributionTooltip({
   active,
   payload,
   totalDonut,
+  formatValue,
 }: {
   active?: boolean;
   payload?: any[];
   totalDonut: number;
+  formatValue: (value: number) => string;
 }) {
   if (!active || !payload?.length) return null;
   const item = payload[0];
@@ -63,7 +64,7 @@ function AccountDistributionTooltip({
     <div className="rounded-lg border bg-popover px-2.5 py-1.5 text-xs shadow-md">
       <p className="font-semibold text-popover-foreground">{item.payload?.name}</p>
       <p className="tabular-nums text-muted-foreground">
-        R$ {formatBRL(value)} · {pct.toFixed(1)}%
+        {formatValue(value)} · {pct.toFixed(1)}%
       </p>
     </div>
   );
@@ -608,7 +609,7 @@ export function FinanceMovimentacoes({
                               ))}
                             </Pie>
                             <Tooltip
-                              content={<AccountDistributionTooltip totalDonut={totalDonut} />}
+                              content={<AccountDistributionTooltip totalDonut={totalDonut} formatValue={fmt} />}
                             />
                           </PieChart>
                         </ResponsiveContainer>

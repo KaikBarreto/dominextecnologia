@@ -39,6 +39,7 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { formatMoney, getCurrencySymbol } from '@/lib/format';
 import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { ToolDisclaimer } from './ToolDisclaimer';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -2287,11 +2288,6 @@ function useEnergiaConfig(): [EnergiaConfig, (next: EnergiaConfig) => void] {
   return [cfg, update];
 }
 
-/** Moeda BR. */
-function brl(v: number): string {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
 /** kWh com vírgula decimal (2 casas máx, sem zeros à toa). */
 function kwh(v: number): string {
   return `${v.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} kWh`;
@@ -2313,7 +2309,9 @@ function kwh(v: number): string {
  * gasto/h = kWh/h × tarifa; gasto/mês = kWh/mês × tarifa.
  */
 function ConsumoEnergia({ model }: { model: EquipmentModel }) {
-  const { locale } = useAppLocaleContext();
+  const { locale, currency } = useAppLocaleContext();
+  const money = (value: number) => formatMoney(value, currency, locale);
+  const currencySymbol = getCurrencySymbol(currency, locale);
   const t = MESSAGES[locale].app.technicianTools.catalog;
   const [cfg, setCfg] = useEnergiaConfig();
   const [open, setOpen] = useState(false);
@@ -2391,7 +2389,9 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
           <PopoverContent align="end" className="w-64 space-y-3">
             <p className="text-sm font-medium text-foreground">{t.rateAndUsage}</p>
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">{t.rate}</label>
+              <label className="text-xs text-muted-foreground">
+                {t.rate.replace('{currency}', currencySymbol)}
+              </label>
               <Input
                 inputMode="decimal"
                 value={tarifaStr}
@@ -2433,7 +2433,7 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
               <span className="shrink-0 whitespace-nowrap text-right font-medium text-foreground">
                 {kwh(kwhHora)}/h
                 {gastoHora != null && (
-                  <span className="ml-1 text-muted-foreground">· {brl(gastoHora)}</span>
+                  <span className="ml-1 text-muted-foreground">· {money(gastoHora)}</span>
                 )}
               </span>
             </div>
@@ -2451,7 +2451,7 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
               <span className="shrink-0 whitespace-nowrap text-right font-medium text-foreground">
                 {kwh(kwhMes)}
                 {gastoMes != null && (
-                  <span className="ml-1 text-muted-foreground">· {brl(gastoMes)}</span>
+                  <span className="ml-1 text-muted-foreground">· {money(gastoMes)}</span>
                 )}
               </span>
             </div>

@@ -32,8 +32,15 @@ import { ModuleGrid, useSubscriptionModules, withBaseModules, sumModulesPrice, B
 import { useNfseTiers } from '@/hooks/useNfseTiers';
 import { buildCustomPriceNote, appendNote } from '@/utils/customPriceNote';
 import { NumericInput } from '@/components/ui/numeric-input';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { isValidBrazilianPhone } from '@/lib/phone-validation';
+import {
+  DEFAULT_COUNTRY_CODE,
+  getCountryDef,
+  getCountryOptions,
+  type CountryCode,
+} from '@/lib/i18n/countries';
 
 interface Props {
   open: boolean;
@@ -71,6 +78,12 @@ function buildAddress(addr: { logradouro: string; numero: string; complemento: s
     addr.cep,
   ].filter(Boolean);
   return parts.join(', ');
+}
+
+function isValidCompanyPhone(value: string, countryCode: CountryCode): boolean {
+  if (countryCode === 'BR') return isValidBrazilianPhone(value);
+  const digits = value.replace(/\D/g, '');
+  return /^[+\d\s().-]+$/.test(value) && digits.length >= 7 && digits.length <= 15;
 }
 
 export default function CompanyFormModal({ open, onOpenChange, company, onSuccess }: Props) {
@@ -153,9 +166,24 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     },
   });
 
+  const { data: existingRegional } = useQuery({
+    queryKey: ['admin-company-regional', company?.id],
+    enabled: open && !!company?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('company_settings')
+        .select('country_code')
+        .eq('company_id', company.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // ========== Form state ==========
   const [formData, setFormData] = useState({
     name: '', cnpj: '', email: '', phone: '', contact_name: '',
+    country_code: DEFAULT_COUNTRY_CODE as CountryCode,
     subscription_status: 'testing', subscription_plan: 'start', subscription_value: '0',
     subscription_expires_at: '', billing_cycle: 'monthly', max_users: '5', notes: '',
     origin: '', salesperson_id: '', sdr_id: '', segment: '',
@@ -165,6 +193,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     custom_price_months: '3',
     nfse_tier: '1',
   });
+  const countryOptions = useMemo(() => getCountryOptions('pt-br'), []);
 
   const [showGenerateLink, setShowGenerateLink] = useState(false);
 
@@ -193,6 +222,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         email: company.email || '',
         phone: company.phone ? phoneMask(company.phone) : '',
         contact_name: company.contact_name || '',
+        country_code: DEFAULT_COUNTRY_CODE,
         subscription_status: company.subscription_status || 'testing',
         subscription_plan: company.subscription_plan || 'start',
         subscription_value: String(company.subscription_value || 0),
@@ -218,6 +248,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       const defaultExpires = format(addDays(new Date(), 7), 'yyyy-MM-dd');
       setFormData({
         name: '', cnpj: '', email: '', phone: '', contact_name: '',
+        country_code: DEFAULT_COUNTRY_CODE,
         subscription_status: 'testing', subscription_plan: 'start', subscription_value: '0',
         subscription_expires_at: defaultExpires, billing_cycle: 'monthly', max_users: '5',
         notes: '', origin: '', salesperson_id: '', sdr_id: '', segment: '',
@@ -230,6 +261,22 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     setSelectedModules([...BASE_MODULE_CODES]);
     setActiveTab('basic');
   }, [company, open]);
+
+  // A configuração regional chega por uma consulta separada. Atualiza apenas
+  // os campos que dependem dela para não apagar edições já iniciadas no modal.
+  useEffect(() => {
+    if (!open || !company || !existingRegional?.country_code) return;
+
+    const countryCode = getCountryDef(existingRegional.country_code).code;
+    const initialPhone = company.phone ? phoneMask(company.phone) : '';
+    setFormData(prev => ({
+      ...prev,
+      country_code: countryCode,
+      phone: prev.phone === initialPhone && company.phone
+        ? (countryCode === 'BR' ? initialPhone : company.phone)
+        : prev.phone,
+    }));
+  }, [company, existingRegional?.country_code, open]);
 
   // Origem: casamento case-insensitive contra o catálogo (régua única em
   // src/utils/companyOriginCatalog.ts). O Select exibe o nome canônico do
@@ -361,7 +408,9 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     mutationFn: async () => {
       const address = buildAddress(addr);
       const cleanPhone = formData.phone.replace(/\D/g, '');
-      const cleanCnpj = formData.cnpj.replace(/\D/g, '');
+      const cleanCnpj = formData.country_code === 'BR'
+        ? formData.cnpj.replace(/\D/g, '')
+        : formData.cnpj.trim();
 
       const customPriceVal = formData.use_custom_price ? parseFloat(formData.subscription_value) || 0 : null;
       const customPriceMonthsVal = formData.use_custom_price && !formData.custom_price_permanent
@@ -463,6 +512,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
             company_cnpj: cleanCnpj || null,
             company_email: formData.email || null,
             company_phone: cleanPhone || null,
+            country_code: formData.country_code,
             company_address: address || null,
             contact_name: formData.contact_name || null,
             notes: formData.notes || null,
@@ -517,8 +567,8 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     if (tab === 'basic') {
       if (!formData.name.trim()) return { valid: false, error: 'Nome da empresa é obrigatório' };
       if (!formData.email.trim()) return { valid: false, error: 'Email é obrigatório' };
-      if (formData.phone.trim() && !isValidBrazilianPhone(formData.phone)) {
-        return { valid: false, error: 'Informe um telefone válido com DDD' };
+      if (formData.phone.trim() && !isValidCompanyPhone(formData.phone, formData.country_code)) {
+        return { valid: false, error: 'Informe um telefone válido, com código do país quando necessário' };
       }
     }
     if (tab === 'commercial') {
@@ -591,6 +641,23 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
               <Input value={formData.name} onChange={e => updateField('name', e.target.value)} placeholder="Nome da empresa" />
             </div>
 
+            {!isEditing && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2"><MapPin className="h-4 w-4" />País da empresa *</Label>
+                <SearchableSelect
+                  options={countryOptions}
+                  value={formData.country_code}
+                  onValueChange={(value) => updateField('country_code', getCountryDef(value).code)}
+                  placeholder="Selecione o país"
+                  searchPlaceholder="Buscar país ou moeda"
+                  emptyMessage="Nenhum país encontrado."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Define os padrões iniciais de idioma, moeda e fuso horário do tenant.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label className="flex items-center gap-2"><User className="h-4 w-4" />Nome do Responsável</Label>
               <Input value={formData.contact_name} onChange={e => updateField('contact_name', e.target.value)} placeholder="Nome do responsável" />
@@ -605,20 +672,30 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                 <Label className="flex items-center gap-2"><Phone className="h-4 w-4" />Telefone</Label>
                 <Input
                   value={formData.phone}
-                  onChange={e => updateField('phone', phoneMask(e.target.value))}
-                  maxLength={15}
-                  placeholder="(00) 00000-0000"
-                  aria-invalid={formData.phone.trim() && !isValidBrazilianPhone(formData.phone) ? true : undefined}
+                  onChange={e => updateField(
+                    'phone',
+                    formData.country_code === 'BR'
+                      ? phoneMask(e.target.value)
+                      : e.target.value.replace(/[^\d+()\s.-]/g, '').slice(0, 24),
+                  )}
+                  maxLength={formData.country_code === 'BR' ? 15 : 24}
+                  placeholder={formData.country_code === 'BR' ? '(00) 00000-0000' : '+238 000 00 00'}
+                  aria-invalid={formData.phone.trim() && !isValidCompanyPhone(formData.phone, formData.country_code) ? true : undefined}
                 />
-                {formData.phone.trim() && !isValidBrazilianPhone(formData.phone) && (
-                  <p className="text-xs text-destructive">Informe um telefone válido com DDD</p>
+                {formData.phone.trim() && !isValidCompanyPhone(formData.phone, formData.country_code) && (
+                  <p className="text-xs text-destructive">Informe um telefone válido, com código do país quando necessário</p>
                 )}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="flex items-center gap-2"><FileText className="h-4 w-4" />CNPJ/CPF</Label>
-              <Input value={formData.cnpj} onChange={e => updateField('cnpj', cpfCnpjMask(e.target.value))} maxLength={18} placeholder="00.000.000/0000-00" />
+              <Label className="flex items-center gap-2"><FileText className="h-4 w-4" />{formData.country_code === 'BR' ? 'CNPJ/CPF' : 'Documento fiscal'}</Label>
+              <Input
+                value={formData.cnpj}
+                onChange={e => updateField('cnpj', formData.country_code === 'BR' ? cpfCnpjMask(e.target.value) : e.target.value.slice(0, 40))}
+                maxLength={formData.country_code === 'BR' ? 18 : 40}
+                placeholder={formData.country_code === 'BR' ? '00.000.000/0000-00' : 'Número de identificação fiscal'}
+              />
             </div>
 
             <Accordion type="single" collapsible className="w-full">
@@ -631,20 +708,24 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                 <AccordionContent className="pb-4 space-y-3">
                   <div className="grid grid-cols-3 gap-3">
                     <div className="col-span-1 space-y-1">
-                      <Label className="text-xs">CEP</Label>
-                      <CepLookup
-                        value={addr.cep}
-                        onChange={(v) => updateAddr('cep', v)}
-                        onAddressFound={(data) => {
-                          setAddr(prev => ({
-                            ...prev,
-                            logradouro: data.logradouro || prev.logradouro,
-                            bairro: data.bairro || prev.bairro,
-                            cidade: data.cidade || prev.cidade,
-                            estado: data.estado || prev.estado,
-                          }));
-                        }}
-                      />
+                      <Label className="text-xs">{formData.country_code === 'BR' ? 'CEP' : 'Código postal'}</Label>
+                      {formData.country_code === 'BR' ? (
+                        <CepLookup
+                          value={addr.cep}
+                          onChange={(v) => updateAddr('cep', v)}
+                          onAddressFound={(data) => {
+                            setAddr(prev => ({
+                              ...prev,
+                              logradouro: data.logradouro || prev.logradouro,
+                              bairro: data.bairro || prev.bairro,
+                              cidade: data.cidade || prev.cidade,
+                              estado: data.estado || prev.estado,
+                            }));
+                          }}
+                        />
+                      ) : (
+                        <Input value={addr.cep} onChange={(e) => updateAddr('cep', e.target.value.slice(0, 16))} />
+                      )}
                     </div>
                     <div className="col-span-2 space-y-1">
                       <Label className="text-xs">Logradouro</Label>
@@ -671,8 +752,8 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                       <Input value={addr.cidade} onChange={e => updateAddr('cidade', e.target.value)} />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Estado</Label>
-                      <Input value={addr.estado} onChange={e => updateAddr('estado', e.target.value)} maxLength={2} placeholder="UF" />
+                      <Label className="text-xs">{formData.country_code === 'BR' ? 'Estado' : 'Ilha/Região'}</Label>
+                      <Input value={addr.estado} onChange={e => updateAddr('estado', e.target.value)} maxLength={formData.country_code === 'BR' ? 2 : 80} placeholder={formData.country_code === 'BR' ? 'UF' : 'Região'} />
                     </div>
                   </div>
                 </AccordionContent>

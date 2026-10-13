@@ -60,6 +60,7 @@ export interface CompanySettings {
   // Idioma padrão da empresa (fallback do idioma pessoal do usuário), moeda de
   // operação (ISO 4217) e fuso horário (nome IANA). Defaults no banco:
   // pt-br / BRL / America/Sao_Paulo. Lidos via useAppLocaleContext/useCompanyRegional.
+  country_code?: string | null;
   language?: LocaleCode | null;
   currency?: string | null;
   timezone?: string | null;

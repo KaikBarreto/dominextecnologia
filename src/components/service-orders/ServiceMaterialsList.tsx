@@ -16,8 +16,8 @@ import {
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useInventory } from '@/hooks/useInventory';
 import { useServiceMaterials } from '@/hooks/useServiceMaterials';
-import { formatBRL } from '@/utils/currency';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { formatMoney } from '@/lib/format';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 interface Props {
@@ -25,7 +25,8 @@ interface Props {
 }
 
 export function ServiceMaterialsList({ serviceId }: Props) {
-  const { locale } = useAppLocaleContext();
+  const { locale, currency } = useAppLocaleContext();
+  const money = (value: number) => formatMoney(value, currency, locale);
   const t = MESSAGES[locale].app.os.serviceMaterials;
   const { items } = useInventory();
   const { materials, createMaterial, updateMaterial, deleteMaterial, totalCost } = useServiceMaterials(serviceId);
@@ -123,7 +124,7 @@ export function ServiceMaterialsList({ serviceId }: Props) {
           </div>
           <div className="text-right">
             <p className="text-xs text-muted-foreground">{t.totalLabel}</p>
-            <p className="text-sm font-semibold text-foreground">R$ {formatBRL(totalCost)}</p>
+            <p className="text-sm font-semibold text-foreground">{money(totalCost)}</p>
           </div>
         </div>
 
@@ -208,7 +209,7 @@ export function ServiceMaterialsList({ serviceId }: Props) {
                         onChange={(e) => updateMaterial.mutate({ id: m.id, purchase_price: Number(e.target.value) || 0 } as any)}
                       />
                     </TableCell>
-                    <TableCell className="text-sm font-semibold">R$ {formatBRL(Number(m.subtotal ?? 0))}</TableCell>
+                    <TableCell className="text-sm font-semibold">{money(Number(m.subtotal ?? 0))}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="destructive-ghost"

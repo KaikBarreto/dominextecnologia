@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.30.0',
+    date: '13 de outubro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Idioma, moeda e horário de acordo com o país da empresa',
+        description: 'Ao escolher o país, a Dominex sugere o idioma, a moeda e o fuso horário mais adequados. Uma empresa de Cabo Verde, por exemplo, já começa com valores em escudos cabo-verdianos e horários locais. Cada opção continua podendo ser ajustada separadamente nas Configurações.',
+        category: 'recurso',
+      },
+      {
+        title: 'Valores na moeda usada pela operação',
+        description: 'Orçamentos, contratos, Financeiro, Estoque, Ordens de Serviço, custos de funcionários, recibos e relatórios agora seguem a moeda definida pela empresa. Documentos e páginas compartilhadas com o cliente também apresentam a mesma moeda.',
+        category: 'recurso',
+      },
+      {
+        title: 'Idioma pessoal sem alterar os demais usuários',
+        description: 'A empresa pode definir um idioma padrão para novos acessos, e cada pessoa continua livre para escolher o próprio idioma. Trocar a preferência pessoal não muda a configuração dos colegas nem a moeda da empresa.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.29.0',
     date: '13 de outubro de 2026',
     type: 'minor',

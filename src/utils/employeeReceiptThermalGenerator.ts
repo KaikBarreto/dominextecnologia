@@ -5,6 +5,7 @@ import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { safeTimeZone } from '@/lib/timezone';
+import { formatMoney } from '@/lib/format';
 
 // ---------------------------------------------------------------------------
 // Recibo térmico (80mm) de funcionário — pagamento ou vale.
@@ -12,11 +13,6 @@ import { safeTimeZone } from '@/lib/timezone';
 //  - schema do Dominex (CompanySettings) + flags show_*_in_documents
 //  - rodapé com a marca Dominex (some em white-label)
 // ---------------------------------------------------------------------------
-
-const formatReceiptCurrency = (value: number): string => {
-  const rounded = Math.round(((value ?? 0) + Number.EPSILON) * 100) / 100;
-  return `R$ ${rounded.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-};
 
 const sanitizeSlug = (s: string): string =>
   (s || '')
@@ -283,6 +279,8 @@ const renderReceipt = async (doc: jsPDF, params: GenerateEmployeeThermalReceiptP
   const locale = params.locale ?? 'pt-br';
   const t = MESSAGES[locale].app.employees.thermalGenerator;
   const isVale = kind === 'vale';
+  const formatReceiptCurrency = (value: number) =>
+    formatMoney(Math.round(((value ?? 0) + Number.EPSILON) * 100) / 100, company?.currency || 'BRL', locale);
   const bcp47 = locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR';
 
   let y = 8;

@@ -105,6 +105,7 @@ import { todayInTz, dateInTz } from '@/lib/timezone';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { formatMoney } from '@/lib/format';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { readPastedCents } from '@/lib/money-paste-mask';
 
@@ -149,7 +150,8 @@ const FREQUENCY_MONTHS = FINANCE_FREQUENCY_MONTHS;
 
 export default function ContractDetail() {
   const isMobile = useIsMobile();
-  const { locale, timezone } = useAppLocaleContext();
+  const { locale, currency, timezone } = useAppLocaleContext();
+  const money = (value: number) => formatMoney(value, currency, locale);
   const tContracts = MESSAGES[locale].app.pmoc.contracts;
   const td = MESSAGES[locale].app.pmoc.contractDetail;
   const fin = MESSAGES[locale].app.finance;
@@ -1971,19 +1973,19 @@ export default function ContractDetail() {
               <Card className="min-w-0 border-0 bg-primary text-primary-foreground shadow-none">
                 <CardContent className="p-3 sm:p-4 min-w-0">
                   <p className="text-xs text-primary-foreground/75 uppercase tracking-wider truncate">{td.financial.kpiPlanned}</p>
-                  <p className="mt-1 text-base sm:text-lg font-bold break-words tabular-nums">R$ {formatBRL(totalReceivable)}</p>
+                  <p className="mt-1 text-base sm:text-lg font-bold break-words tabular-nums">{money(totalReceivable)}</p>
                 </CardContent>
               </Card>
               <Card className="min-w-0 border-0 bg-success text-white shadow-none">
                 <CardContent className="p-3 sm:p-4 min-w-0">
                   <p className="text-xs text-white/75 uppercase tracking-wider truncate">{td.financial.kpiReceived}</p>
-                  <p className="mt-1 text-base sm:text-lg font-bold break-words tabular-nums">R$ {formatBRL(totalPaid)}</p>
+                  <p className="mt-1 text-base sm:text-lg font-bold break-words tabular-nums">{money(totalPaid)}</p>
                 </CardContent>
               </Card>
               <Card className="min-w-0 border-0 bg-warning text-white shadow-none">
                 <CardContent className="p-3 sm:p-4 min-w-0">
                   <p className="text-xs text-white/75 uppercase tracking-wider truncate">{td.financial.kpiPending}</p>
-                  <p className="mt-1 text-base sm:text-lg font-bold break-words tabular-nums">R$ {formatBRL(totalPending)}</p>
+                  <p className="mt-1 text-base sm:text-lg font-bold break-words tabular-nums">{money(totalPending)}</p>
                 </CardContent>
               </Card>
               <Card className={cn(
@@ -1996,7 +1998,7 @@ export default function ContractDetail() {
                   <p className={cn(
                     'mt-1 text-base sm:text-lg font-bold break-words tabular-nums',
                     'text-white',
-                  )}>R$ {formatBRL(totalOverdue)}</p>
+                  )}>{money(totalOverdue)}</p>
                 </CardContent>
               </Card>
             </div>
@@ -2300,7 +2302,7 @@ export default function ContractDetail() {
                           <NoticeBanner variant="warning">{chargeBlockedReason}</NoticeBanner>
                         )}
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <span className="font-semibold break-words">R$ {formatBRL(Number(t.amount))}</span>
+                          <span className="font-semibold break-words">{money(Number(t.amount))}</span>
                           <div className="flex items-center gap-1 self-end sm:self-auto shrink-0">
                             {/* Cobrar online / ver a cobrança que já existe.
                                 Gate: módulo de cobranças + conta de recebimento
@@ -2360,8 +2362,8 @@ export default function ContractDetail() {
                       );
                     })}
                     <div className="flex flex-col gap-1 border-t pt-2 text-sm sm:flex-row sm:justify-between">
-                      <span className="text-muted-foreground break-words">{td.financial.totalLabel}: R$ {formatBRL(totalReceivable)}</span>
-                      <span className="text-muted-foreground break-words">{td.financial.receivedLabel}: R$ {formatBRL(totalPaid)}</span>
+                      <span className="text-muted-foreground break-words">{td.financial.totalLabel}: {money(totalReceivable)}</span>
+                      <span className="text-muted-foreground break-words">{td.financial.receivedLabel}: {money(totalPaid)}</span>
                     </div>
                     <div className="min-w-0 overflow-x-auto">
                       <DataTablePagination page={recPagination.page} totalPages={recPagination.totalPages} totalItems={recPagination.totalItems} from={recPagination.from} to={recPagination.to} pageSize={recPagination.pageSize} onPageChange={recPagination.setPage} onPageSizeChange={recPagination.setPageSize} />
@@ -2568,8 +2570,8 @@ export default function ContractDetail() {
               <p className="break-words">
                 {td.financial.repetitionSummary
                   .replace('{count}', String(recReceivablePlan.length))
-                  .replace('{amount}', `R$ ${formatBRL(recReceivablePlan[0].amount)}`)
-                  .replace('{total}', `R$ ${formatBRL(repetitionTotal(recReceivablePlan[0].amount, recReceivablePlan.length))}`)}
+                  .replace('{amount}', money(recReceivablePlan[0].amount))
+                  .replace('{total}', money(repetitionTotal(recReceivablePlan[0].amount, recReceivablePlan.length)))}
               </p>
               {/* Com contínuo, "somando X" é só o LOTE INICIAL. A tela tem que
                   dizer até quando as parcelas já estão criadas e que o resto

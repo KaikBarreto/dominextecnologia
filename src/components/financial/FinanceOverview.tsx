@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, getCurrencySymbol } from '@/lib/format';
 
 // formatCurrency e formatCurrencyShort estão inline no componente (usam currency do contexto).
 
@@ -65,9 +65,7 @@ export function FinanceOverview({ transactions, summary, isLoading = false, onNa
     const abs = Math.abs(value);
     if (abs < 1_000) return formatCurrency(value);
     const sign = value < 0 ? '-' : '';
-    // Pega símbolo da moeda via Intl (sem cravar "R$")
-    const sym = new Intl.NumberFormat(locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR', { style: 'currency', currency, currencyDisplay: 'narrowSymbol' })
-      .formatToParts(0).find((p) => p.type === 'currency')?.value ?? currency;
+    const sym = getCurrencySymbol(currency, locale);
     if (abs >= 1_000_000) return `${sign}${sym} ${(abs / 1_000_000).toFixed(1)}M`;
     return `${sign}${sym} ${(abs / 1_000).toFixed(1)}k`;
   };
@@ -414,7 +412,7 @@ export function FinanceOverview({ transactions, summary, isLoading = false, onNa
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="month" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: isMobile ? 10 : 12 }} />
-                <YAxis tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: isMobile ? 10 : 12 }} />
+                <YAxis tickFormatter={(v: number) => formatCurrencyShort(v)} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: isMobile ? 10 : 12 }} />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 <Legend wrapperStyle={isMobile ? { fontSize: 11 } : undefined} />
                 <Bar dataKey="entradas" name={ov.charts.revenueBar} fill="url(#finov-grad-success-vertical)" radius={[4, 4, 0, 0]} />

@@ -18,6 +18,8 @@ interface AppLocaleContextValue {
   locale: LocaleCode;
   /** Moeda da empresa (ISO 4217). Default BRL. */
   currency: string;
+  /** País da empresa (ISO 3166-1 alpha-2). Default BR. */
+  countryCode: string;
   /** Fuso da empresa (nome IANA). Default America/Sao_Paulo. */
   timezone: string;
   /** true enquanto qualquer fonte (idioma do user / settings da empresa) carrega. */
@@ -42,7 +44,7 @@ function prefersReducedMotion(): boolean {
 
 export function AppLocaleProvider({ children }: { children: React.ReactNode }) {
   const { locale, isLoading: langLoading, setUserLanguage } = useAppLocale();
-  const { currency, timezone, isLoading: regionalLoading } = useCompanyRegional();
+  const { countryCode, currency, timezone, isLoading: regionalLoading } = useCompanyRegional();
 
   // ── locale visível (o que o contexto expõe aos consumidores) ──────────────
   const [displayLocale, setDisplayLocale] = useState<LocaleCode>(locale);
@@ -127,12 +129,13 @@ export function AppLocaleProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AppLocaleContextValue>(
     () => ({
       locale: displayLocale,
+      countryCode,
       currency,
       timezone,
       isLoading: langLoading || regionalLoading,
       setUserLanguage,
     }),
-    [displayLocale, currency, timezone, langLoading, regionalLoading, setUserLanguage],
+    [displayLocale, countryCode, currency, timezone, langLoading, regionalLoading, setUserLanguage],
   );
 
   // ── véu de transição (portal sobre tudo) ──────────────────────────────────
@@ -164,6 +167,7 @@ export function AppLocaleProvider({ children }: { children: React.ReactNode }) {
  *  não pode quebrar a página — cai em pt-br/BRL/São Paulo. */
 const APP_LOCALE_FALLBACK: AppLocaleContextValue = {
   locale: 'pt-br',
+  countryCode: 'BR',
   currency: 'BRL',
   timezone: 'America/Sao_Paulo',
   isLoading: false,
@@ -187,11 +191,13 @@ export function useAppLocaleContext(): AppLocaleContextValue {
 // ─────────────────────────────────────────────────────────────────────────────
 export function PublicAppLocaleProvider({
   language,
+  countryCode,
   currency,
   timezone,
   children,
 }: {
   language?: string | null;
+  countryCode?: string | null;
   currency?: string | null;
   timezone?: string | null;
   children: React.ReactNode;
@@ -201,12 +207,13 @@ export function PublicAppLocaleProvider({
   const value = useMemo<AppLocaleContextValue>(
     () => ({
       locale: isLocale(language) ? language : 'pt-br',
+      countryCode: countryCode || 'BR',
       currency: currency || 'BRL',
       timezone: timezone || 'America/Sao_Paulo',
       isLoading: false,
       setUserLanguage: async () => {},
     }),
-    [language, currency, timezone],
+    [language, countryCode, currency, timezone],
   );
   useEffect(() => {
     if (typeof document !== 'undefined') {

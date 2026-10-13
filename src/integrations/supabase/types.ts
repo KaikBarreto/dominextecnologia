@@ -1250,6 +1250,7 @@ export type Database = {
           city: string | null
           company_id: string | null
           complement: string | null
+          country_code: string
           created_at: string
           currency: string
           disc_show_result_to_employee: boolean
@@ -1298,6 +1299,7 @@ export type Database = {
           city?: string | null
           company_id?: string | null
           complement?: string | null
+          country_code?: string
           created_at?: string
           currency?: string
           disc_show_result_to_employee?: boolean
@@ -1346,6 +1348,7 @@ export type Database = {
           city?: string | null
           company_id?: string | null
           complement?: string | null
+          country_code?: string
           created_at?: string
           currency?: string
           disc_show_result_to_employee?: boolean

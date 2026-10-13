@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES, type Messages } from '@/lib/i18n/messages';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, getCurrencySymbol } from '@/lib/format';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -303,6 +303,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     { key: 'review' as StepKey, label: tq.stepReview },
   ];
   const fmt = (v: number) => formatMoney(Math.round(v * 100) / 100, currency, locale);
+  const currencySymbol = getCurrencySymbol(currency, locale);
   const { customers } = useCustomers();
   const { createQuote, updateQuote, quotes } = useQuotes();
   const { templates } = useProposalTemplates();
@@ -1419,7 +1420,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="valor">R$</SelectItem>
+                      <SelectItem value="valor">{currencySymbol}</SelectItem>
                       <SelectItem value="percentual">%</SelectItem>
                     </SelectContent>
                   </Select>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -26,13 +26,20 @@ import { SystemFooter } from '@/components/layout/SystemFooter';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
 import { StepTransition } from '@/components/ui/step-transition';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { getSelectableSegments } from '@/utils/companySegments';
 import { ORIGIN_OPTIONS } from '@/utils/companyOrigins';
 import { SelectableCardGrid, type SelectableCardOption } from '@/components/registration/SelectableCardGrid';
 import { useLocale } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
 import LanguageSelector from '@/components/i18n/LanguageSelector';
-import { detectRegionalFromMachine, DEFAULT_CURRENCY, DEFAULT_TIMEZONE } from '@/lib/i18n/regionalDefaults';
+import { detectRegionalFromMachine } from '@/lib/i18n/regionalDefaults';
+import {
+  DEFAULT_COUNTRY_CODE,
+  getCountryDef,
+  getCountryOptions,
+  type CountryCode,
+} from '@/lib/i18n/countries';
 import { TermsOfServiceModal } from '@/components/TermsOfServiceModal';
 import { TERMS_VERSION } from '@/data/termsOfUse';
 import { isValidBrazilianPhone } from '@/lib/phone-validation';
@@ -68,6 +75,13 @@ const EMPTY_ADDRESS: AddressData = {
 
 // Regex de e-mail — mesma do validador do react-hook-form abaixo.
 const EMAIL_REGEX = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+
+/** Brasil mantém a validação estrita atual; demais países seguem o limite E.164. */
+function isValidCompanyPhone(value: string, countryCode: CountryCode): boolean {
+  if (countryCode === 'BR') return isValidBrazilianPhone(value);
+  const digits = value.replace(/\D/g, '');
+  return digits.length >= 7 && digits.length <= 15;
+}
 
 // ── Catálogo de origens da etapa Origem ───────────────────────────────────────
 //
@@ -126,6 +140,14 @@ export default function Registration() {
   // (que devolve a mensagem de erro no idioma). `t` = grupo de strings do cadastro.
   const { locale, messages } = useLocale();
   const t = messages.registration;
+  const [countryCode, setCountryCode] = useState<CountryCode>(() => {
+    try {
+      return detectRegionalFromMachine().countryCode;
+    } catch {
+      return DEFAULT_COUNTRY_CODE;
+    }
+  });
+  const countryOptions = useMemo(() => getCountryOptions(locale), [locale]);
   const [step, setStep] = useState(1);
   const [selectedOrigin, setSelectedOrigin] = useState('');
   const [utmOriginKey, setUtmOriginKey] = useState<OriginUtmKey | null>(() => resolveCompanyOriginKey());
@@ -151,6 +173,7 @@ export default function Registration() {
 
   // Autofill por CEP via ViaCEP. Opcional: erro não bloqueia nada, só não preenche.
   const handleCepLookup = async (rawCep: string) => {
+    if (countryCode !== 'BR') return;
     const digits = rawCep.replace(/\D/g, '');
     if (digits.length !== 8) return;
     setCepLoading(true);
@@ -365,19 +388,11 @@ export default function Registration() {
     mutationFn: async (data: RegistrationFormData) => {
       // Endereço opcional → formata só se o usuário preencheu (espelha o Eco).
       const formattedAddress = addressData.logradouro
-        ? `${addressData.logradouro}${addressData.numero ? `, ${addressData.numero}` : ''}${addressData.complemento ? ` - ${addressData.complemento}` : ''}${addressData.bairro ? ` - ${addressData.bairro}` : ''}${addressData.cidade ? ` - ${addressData.cidade}` : ''}${addressData.uf ? `/${addressData.uf}` : ''}${addressData.cep ? ` - CEP: ${addressData.cep}` : ''}`
+        ? `${addressData.logradouro}${addressData.numero ? `, ${addressData.numero}` : ''}${addressData.complemento ? ` - ${addressData.complemento}` : ''}${addressData.bairro ? ` - ${addressData.bairro}` : ''}${addressData.cidade ? ` - ${addressData.cidade}` : ''}${addressData.uf ? `${countryCode === 'BR' ? '/' : ', '}${addressData.uf}` : ''}${addressData.cep ? ` - ${countryCode === 'BR' ? 'CEP' : 'Postal'}: ${addressData.cep}` : ''}`
         : '';
-      // Seed regional (idioma/moeda/fuso) a partir da detecção da máquina.
-      // Defensivo: se a detecção falhar, cai nos defaults pt-br/BRL/São Paulo.
-      // O IDIOMA da empresa e do 1º usuário = o idioma ESCOLHIDO no cadastro
-      // (a página é i18n); moeda/fuso vêm da máquina. Não toca em nada de billing.
-      let regional: { currency: string; timezone: string };
-      try {
-        const detected = detectRegionalFromMachine();
-        regional = { currency: detected.currency, timezone: detected.timezone };
-      } catch {
-        regional = { currency: DEFAULT_CURRENCY, timezone: DEFAULT_TIMEZONE };
-      }
+      // País confirmado no formulário define os defaults DO TENANT. O idioma
+      // pessoal do primeiro usuário continua sendo o idioma escolhido na página.
+      const regional = getCountryDef(countryCode);
       const { data: result, error } = await supabase.functions.invoke('self-register', {
         body: {
           company_name: data.company_name,
@@ -398,10 +413,12 @@ export default function Registration() {
           segment: companySegment || null,
           // Idioma atual → a edge devolve a mensagem de erro no mesmo idioma.
           locale,
-          // Seed regional do tenant: idioma escolhido no cadastro + moeda/fuso da máquina.
-          language: locale,
+          // País + defaults regionais do tenant. A edge revalida tudo.
+          country_code: countryCode,
+          language: regional.language,
           currency: regional.currency,
           timezone: regional.timezone,
+          user_language: locale,
           // Link/affiliate params
           link_type: linkType || null,
           locked_plan: lockedPlan,
@@ -672,6 +689,22 @@ export default function Registration() {
                     </div>
 
                     <div>
+                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">
+                        {t.country}
+                      </Label>
+                      <SearchableSelect
+                        options={countryOptions}
+                        value={countryCode}
+                        onValueChange={(value) => setCountryCode(getCountryDef(value).code)}
+                        placeholder={t.countryPlaceholder}
+                        searchPlaceholder={t.countrySearchPlaceholder}
+                        emptyMessage={t.countryEmpty}
+                        className="mt-1 border-primary/30 bg-primary/[0.08] text-white hover:bg-primary/[0.12] hover:text-white"
+                      />
+                      <p className="mt-1 text-xs text-white/50">{t.countryHint}</p>
+                    </div>
+
+                    <div>
                       <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.contactName}</Label>
                       <div className="relative mt-1">
                         <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
@@ -735,11 +768,15 @@ export default function Registration() {
                           <Input
                             {...register('company_phone', {
                               required: t.errorPhoneRequired,
-                              validate: (value) => isValidBrazilianPhone(value) || t.errorPhoneInvalid,
-                              onChange: (e) => { e.target.value = phoneMask(e.target.value); },
+                              validate: (value) => isValidCompanyPhone(value, countryCode) || t.errorPhoneInvalid,
+                              onChange: (e) => {
+                                e.target.value = countryCode === 'BR'
+                                  ? phoneMask(e.target.value)
+                                  : e.target.value.replace(/[^\d+()\s.-]/g, '').slice(0, 24);
+                              },
                             })}
                             placeholder={t.phonePlaceholder}
-                            maxLength={15}
+                            maxLength={countryCode === 'BR' ? 15 : 24}
                             className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                           />
                         </div>
@@ -769,16 +806,22 @@ export default function Registration() {
                               <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.cep}</Label>
                               <div className="relative mt-1">
                                 <Input
-                                  inputMode="numeric"
+                                  inputMode={countryCode === 'BR' ? 'numeric' : 'text'}
                                   value={addressData.cep}
                                   onChange={(e) => {
-                                    const masked = cepMask(e.target.value);
-                                    setAddressData((prev) => ({ ...prev, cep: masked }));
-                                    if (masked.replace(/\D/g, '').length === 8) handleCepLookup(masked);
+                                    const next = countryCode === 'BR'
+                                      ? cepMask(e.target.value)
+                                      : e.target.value.slice(0, 16);
+                                    setAddressData((prev) => ({ ...prev, cep: next }));
+                                    if (countryCode === 'BR' && next.replace(/\D/g, '').length === 8) {
+                                      handleCepLookup(next);
+                                    }
                                   }}
-                                  onBlur={(e) => handleCepLookup(e.target.value)}
+                                  onBlur={(e) => {
+                                    if (countryCode === 'BR') handleCepLookup(e.target.value);
+                                  }}
                                   placeholder={t.cepPlaceholder}
-                                  maxLength={9}
+                                  maxLength={countryCode === 'BR' ? 9 : 16}
                                   className="bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary pr-9"
                                 />
                                 {cepLoading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-white/50" />}
@@ -840,10 +883,18 @@ export default function Registration() {
                               <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.state}</Label>
                               <Input
                                 value={addressData.uf}
-                                onChange={(e) => setAddressData((prev) => ({ ...prev, uf: e.target.value.toUpperCase().slice(0, 2) }))}
+                                onChange={(e) => setAddressData((prev) => ({
+                                  ...prev,
+                                  uf: countryCode === 'BR'
+                                    ? e.target.value.toUpperCase().slice(0, 2)
+                                    : e.target.value.slice(0, 80),
+                                }))}
                                 placeholder={t.statePlaceholder}
-                                maxLength={2}
-                                className="mt-1 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary uppercase"
+                                maxLength={countryCode === 'BR' ? 2 : 80}
+                                className={cn(
+                                  'mt-1 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary',
+                                  countryCode === 'BR' && 'uppercase',
+                                )}
                               />
                             </div>
                           </div>

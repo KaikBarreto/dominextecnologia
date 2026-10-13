@@ -5,7 +5,6 @@ import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { useOsStatuses } from '@/hooks/useOsStatuses';
 import { useProfiles } from '@/hooks/useProfiles';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
-import { formatBRL } from '@/utils/currency';
 import { osStatusLabels } from '@/types/database';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -18,6 +17,7 @@ import { format, differenceInMinutes, differenceInCalendarDays, getDay, parseISO
 import { ptBR } from 'date-fns/locale';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney, getCurrencySymbol } from '@/lib/format';
 import { KPICard } from '@/components/dashboard/KPICard';
 
 const REPORT_SURFACE = 'border-0 bg-muted/20 shadow-none rounded-2xl';
@@ -43,7 +43,9 @@ const LOCALE_TO_BCP47: Record<string, string> = {
 };
 
 export function OsReportDashboard() {
-  const { locale } = useAppLocaleContext();
+  const { locale, currency } = useAppLocaleContext();
+  const money = (value: number) => formatMoney(value, currency, locale);
+  const currencySymbol = getCurrencySymbol(currency, locale);
   const t = MESSAGES[locale].app.os.report;
 
   const { serviceOrders } = useServiceOrders();
@@ -247,7 +249,7 @@ export function OsReportDashboard() {
         <KPICard
           title={t.kpiBilling}
           value={kpis.revenue}
-          formattedValue={`R$ ${formatBRL(kpis.revenue)}`}
+          formattedValue={money(kpis.revenue)}
           icon={DollarSign}
           bgClass="bg-warning"
           delay={3}
@@ -416,8 +418,8 @@ export function OsReportDashboard() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                     <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={24} />
-                    <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip formatter={(v: number) => [`R$ ${formatBRL(v)}`, t.tooltipBilling]} />
+                    <YAxis tickFormatter={(v) => `${currencySymbol}${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(v: number) => [money(v), t.tooltipBilling]} />
                     <Bar dataKey="revenue" fill="url(#os-grad-revenue-vertical)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -508,7 +510,7 @@ export function OsReportDashboard() {
                   <TableRow key={i}>
                     <TableCell className="text-sm font-medium">{c.name}</TableCell>
                     <TableCell className="text-center">{c.count}</TableCell>
-                    <TableCell className="text-right text-sm">R$ {formatBRL(c.value)}</TableCell>
+                    <TableCell className="text-right text-sm">{money(c.value)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

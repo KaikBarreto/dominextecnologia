@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Globe, Coins, Clock, Loader2, CheckCircle2, User, Brain } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Globe, Coins, Clock, Loader2, CheckCircle2, User, Brain, MapPin } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
@@ -21,6 +21,12 @@ import { useToast } from '@/hooks/use-toast';
 import { MESSAGES } from '@/lib/i18n';
 import { LOCALES, getLocaleDef, type LocaleCode } from '@/lib/i18n/locales';
 import { CURRENCIES, currencyLabel } from '@/lib/i18n/currencies';
+import {
+  DEFAULT_COUNTRY_CODE,
+  getCountryDef,
+  getCountryOptions,
+  type CountryCode,
+} from '@/lib/i18n/countries';
 import { getTimezoneOptions } from '@/lib/i18n/timezones';
 import {
   DEFAULT_CURRENCY,
@@ -68,10 +74,10 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
   };
 
   const [language, setLanguage] = useState<LocaleCode>('pt-br');
+  const [countryCode, setCountryCode] = useState<CountryCode>(DEFAULT_COUNTRY_CODE);
   const [currency, setCurrency] = useState<string>(DEFAULT_CURRENCY);
   const [timezone, setTimezone] = useState<string>(DEFAULT_TIMEZONE);
   const [discShowResult, setDiscShowResult] = useState<boolean>(true);
-  const [hadData, setHadData] = useState(false);
 
   // Guards do auto-save (mesmo padrão do Settings.tsx: baseline + anti-eco).
   const loadedRef = useRef(false);
@@ -79,6 +85,9 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
   const lastSavedRef = useRef<string>('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [suggestCountry, setSuggestCountry] = useState<CountryCode | null>(null);
+
+  const countryOptions = useMemo(() => getCountryOptions(userLocale), [userLocale]);
 
   // Opções de fuso em 2 seções: "Mais usados" (5) + "Todos os fusos".
   // Memo via ref: a lista não muda em runtime — evita recomputar a cada render.
@@ -93,6 +102,7 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
   useEffect(() => {
     if (!settings) return;
     const snapshot = JSON.stringify({
+      country_code: settings.country_code || DEFAULT_COUNTRY_CODE,
       language: settings.language || 'pt-br',
       currency: settings.currency || DEFAULT_CURRENCY,
       timezone: settings.timezone || DEFAULT_TIMEZONE,
@@ -100,13 +110,11 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
     });
     if (loadedRef.current && snapshot === lastSavedRef.current) return;
     hydratingRef.current = true;
+    setCountryCode(getCountryDef(settings.country_code).code);
     setLanguage((settings.language as LocaleCode) || 'pt-br');
     setCurrency(settings.currency || DEFAULT_CURRENCY);
     setTimezone(settings.timezone || DEFAULT_TIMEZONE);
     setDiscShowResult(settings.disc_show_result_to_employee ?? true);
-    // "Já tem dados" = a empresa tem OS/registros; usamos a existência de settings
-    // como proxy pra decidir se mostramos o aviso de troca de moeda.
-    setHadData(!!settings.currency);
     requestAnimationFrame(() => { hydratingRef.current = false; });
   }, [settings]);
 
@@ -116,6 +124,7 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
     loadedRef.current = true;
     if (!lastSavedRef.current) {
       lastSavedRef.current = JSON.stringify({
+        country_code: settings?.country_code || DEFAULT_COUNTRY_CODE,
         language: settings?.language || 'pt-br',
         currency: settings?.currency || DEFAULT_CURRENCY,
         timezone: settings?.timezone || DEFAULT_TIMEZONE,
@@ -126,17 +135,18 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
 
   const buildPayload = useCallback(
     () => ({
+      country_code: countryCode,
       language,
       currency,
       timezone,
       disc_show_result_to_employee: discShowResult,
     }),
-    [language, currency, timezone, discShowResult],
+    [countryCode, language, currency, timezone, discShowResult],
   );
 
   // Auto-save com debounce.
   useEffect(() => {
-    if (!loadedRef.current || hydratingRef.current) return;
+    if (!loadedRef.current || hydratingRef.current || suggestCountry) return;
     const json = JSON.stringify(buildPayload());
     const dirty = json !== lastSavedRef.current;
     setIsDirty(dirty);
@@ -145,27 +155,59 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
     timerRef.current = setTimeout(() => {
       lastSavedRef.current = json;
       setIsDirty(false);
-      updateSettings.mutate(buildPayload() as any);
+      updateSettings.mutate(buildPayload());
     }, AUTO_SAVE_DELAY);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [buildPayload, updateSettings]);
+  }, [buildPayload, suggestCountry, updateSettings]);
 
   // Flush no unmount (troca de aba / saída).
   const flushRef = useRef<() => void>(() => {});
   flushRef.current = () => {
-    if (!loadedRef.current || hydratingRef.current) return;
+    if (!loadedRef.current || hydratingRef.current || suggestCountry) return;
     if (timerRef.current) clearTimeout(timerRef.current);
     const json = JSON.stringify(buildPayload());
     if (json === lastSavedRef.current) return;
     lastSavedRef.current = json;
     setIsDirty(false);
-    updateSettings.mutate(buildPayload() as any);
+    updateSettings.mutate(buildPayload());
   };
   useEffect(() => () => { flushRef.current?.(); }, []);
 
-  // Trocar idioma: SUGERE aplicar os padrões daquele idioma (moeda + fuso),
-  // sobrescrevível. Nunca força — o usuário confirma pelo botão.
+  // Idioma, país, moeda e fuso são independentes. Trocar o país oferece os
+  // defaults daquele mercado em uma única confirmação; nunca converte valores.
   const [suggestLocale, setSuggestLocale] = useState<LocaleCode | null>(null);
+  const handleCountryChange = (next: string) => {
+    const country = getCountryDef(next);
+    if (country.code === countryCode) return;
+    setCountryCode(country.code);
+    setSuggestLocale(null);
+    if (
+      country.language !== language ||
+      country.currency !== currency ||
+      country.timezone !== timezone
+    ) {
+      setSuggestCountry(country.code);
+    } else {
+      setSuggestCountry(null);
+    }
+  };
+
+  const applyCountryDefaults = (code: CountryCode) => {
+    const defaults = getCountryDef(code);
+    setLanguage(defaults.language);
+    setCurrency(defaults.currency);
+    setTimezone(defaults.timezone);
+    setSuggestCountry(null);
+    toast({
+      title: t.companyCard.countryDefaultsApplied.replace(
+        '{country}',
+        countryOptions.find((option) => option.value === code)?.label ?? code,
+      ),
+    });
+  };
+
+  // A troca manual de idioma mantém a sugestão histórica de moeda/fuso, mas a
+  // pessoa pode manter os valores do país/empresa sem qualquer alteração.
   const handleLanguageChange = (next: LocaleCode) => {
     if (next === language) return;
     setLanguage(next);
@@ -185,8 +227,6 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
     setSuggestLocale(null);
     toast({ title: t.companyCard.localeDefaultsApplied.replace('{locale}', getLocaleDef(loc).label) });
   };
-
-  const currencyChanged = hadData && !!settings?.currency && currency !== settings.currency;
 
   const saveStatus = (() => {
     if (updateSettings.isPending) {
@@ -279,6 +319,47 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {/* País da empresa — fonte dos defaults regionais, não trava overrides. */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-primary" />
+            {t.companyCard.countryLabel}
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            {t.companyCard.countryHint}
+          </p>
+          <SearchableSelect
+            options={countryOptions}
+            value={countryCode}
+            onValueChange={handleCountryChange}
+            placeholder={t.companyCard.countryPlaceholder}
+            searchPlaceholder={t.companyCard.countrySearchPlaceholder}
+            emptyMessage={t.companyCard.countryEmpty}
+            disabled={!canSave || !isAdmin}
+          />
+
+          {suggestCountry && (
+            <div className="flex flex-col gap-2 rounded-md border bg-muted p-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-foreground">
+                {t.companyCard.countryDefaultsPrompt.replace(
+                  '{country}',
+                  countryOptions.find((option) => option.value === suggestCountry)?.label ?? suggestCountry,
+                )}
+              </p>
+              <div className="flex shrink-0 gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setSuggestCountry(null)}>
+                  {t.companyCard.keepCurrent}
+                </Button>
+                <Button size="sm" onClick={() => applyCountryDefaults(suggestCountry)}>
+                  {t.companyCard.useDefaults}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <Separator />
+
         {/* Idioma padrão da empresa */}
         <div className="space-y-2">
           <Label className="flex items-center gap-2">
@@ -345,13 +426,10 @@ export function SettingsRegionalContent({ isAdmin = false }: SettingsRegionalCon
               ))}
             </SelectContent>
           </Select>
-          {currencyChanged ? (
-            <NoticeBanner variant="warning">{t.companyCard.currencyChangedWarning}</NoticeBanner>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              {t.companyCard.currencyHint}
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground">
+            {t.companyCard.currencyHint}
+          </p>
+          <NoticeBanner variant="warning">{t.companyCard.currencyChangedWarning}</NoticeBanner>
         </div>
 
         <Separator />

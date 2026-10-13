@@ -27,7 +27,6 @@ import { centsFromPastedAmount } from '@/lib/money-paste-mask';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { MonthlyCostCalculatorModal, MonthlyCostBreakdown } from '@/components/service-orders/MonthlyCostCalculatorModal';
-import { formatBRL } from '@/utils/currency';
 import { useEmployeeWorkHours } from '@/hooks/useEmployeeWorkHours';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -48,7 +47,8 @@ interface EmployeeFormDialogProps {
 export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isPending, onCreateForDisc }: EmployeeFormDialogProps) {
   const { toast } = useToast();
   const { users } = useUsers();
-  const { locale } = useAppLocaleContext();
+  const { locale, currency } = useAppLocaleContext();
+  const maskCurrency = (value: string) => currencyMask(value, currency, locale);
   const t = MESSAGES[locale].app.employees.form;
   const tv = MESSAGES[locale].app.employees.form.validations;
   const isEditing = !!employee;
@@ -129,8 +129,8 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         setPhone(employee?.phone || '');
         setEmail(employee?.email || '');
         setPosition(employee?.position || '');
-        setSalary(employee?.salary ? currencyMask(String(Math.round(employee.salary * 100))) : '');
-        setMonthlyCost(employee?.monthly_cost ? currencyMask(String(Math.round(employee.monthly_cost * 100))) : '');
+        setSalary(employee?.salary ? currencyMask(String(Math.round(employee.salary * 100)), currency, locale) : '');
+        setMonthlyCost(employee?.monthly_cost ? currencyMask(String(Math.round(employee.monthly_cost * 100)), currency, locale) : '');
         setMonthlyCostBreakdown(employee?.monthly_cost_breakdown ?? null);
         setHireDate(employee?.hire_date || '');
         setAddress(employee?.address || '');
@@ -143,7 +143,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         setEmploymentRegime(employee?.employment_regime ?? 'informal');
         setDependentsCount(String(employee?.dependents_count ?? 0));
         setVtEnabled(employee?.vt_enabled ?? false);
-        setVtMonthlyValue(employee?.vt_monthly_value ? currencyMask(String(Math.round(employee.vt_monthly_value * 100))) : '');
+        setVtMonthlyValue(employee?.vt_monthly_value ? currencyMask(String(Math.round(employee.vt_monthly_value * 100)), currency, locale) : '');
         setCbo(employee?.cbo ?? '');
         setMatricula(employee?.matricula ?? '');
       }
@@ -171,7 +171,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
     const cents = centsFromPastedAmount(text);
     if (cents == null) return;
     e.preventDefault();
-    setter(currencyMask(String(cents)));
+    setter(maskCurrency(String(cents)));
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -400,12 +400,12 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>{t.fields.salary}</Label>
-            <Input value={salary} onChange={e => setSalary(currencyMask(e.target.value))} onPaste={handleCurrencyFieldPaste(setSalary)} placeholder="R$ 0,00" />
+            <Input value={salary} onChange={e => setSalary(maskCurrency(e.target.value))} onPaste={handleCurrencyFieldPaste(setSalary)} placeholder={maskCurrency('0')} />
           </div>
           <div className="space-y-1.5">
             <Label>{t.fields.monthlyCost}</Label>
             <div className="flex gap-1">
-              <Input value={monthlyCost} onChange={e => setMonthlyCost(currencyMask(e.target.value))} onPaste={handleCurrencyFieldPaste(setMonthlyCost)} placeholder="R$ 0,00" />
+              <Input value={monthlyCost} onChange={e => setMonthlyCost(maskCurrency(e.target.value))} onPaste={handleCurrencyFieldPaste(setMonthlyCost)} placeholder={maskCurrency('0')} />
               <Button type="button" variant="outline" size="sm" className="h-10 px-2 shrink-0" onClick={() => setShowCostCalc(true)} title={t.fields.monthlyCostHint}>
                 <Calculator className="h-4 w-4 mr-1" />
                 {t.fields.calculateButton}
@@ -480,9 +480,9 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
                 <Label className="text-xs text-muted-foreground">{t.clt.vtMonthlyLabel}</Label>
                 <Input
                   value={vtMonthlyValue}
-                  onChange={e => setVtMonthlyValue(currencyMask(e.target.value))}
+                  onChange={e => setVtMonthlyValue(maskCurrency(e.target.value))}
                   onPaste={handleCurrencyFieldPaste(setVtMonthlyValue)}
-                  placeholder="R$ 0,00"
+                  placeholder={maskCurrency('0')}
                 />
               </div>
             )}
@@ -693,11 +693,11 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         initialBreakdown={monthlyCostBreakdown}
         defaultMonthlyHours={resolvedMonthlyHours}
         onApply={(totalCost, breakdown) => {
-          setMonthlyCost(currencyMask(String(Math.round(totalCost * 100))));
+          setMonthlyCost(maskCurrency(String(Math.round(totalCost * 100))));
           setMonthlyCostBreakdown(breakdown);
           // Also update salary from breakdown base salary if it was set
           if (breakdown.baseSalary > 0 && parseCurrency(salary) === 0) {
-            setSalary(currencyMask(String(Math.round(breakdown.baseSalary * 100))));
+            setSalary(maskCurrency(String(Math.round(breakdown.baseSalary * 100))));
           }
         }}
       />

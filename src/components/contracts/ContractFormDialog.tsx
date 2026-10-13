@@ -97,7 +97,7 @@ import {
 } from '@/lib/contract-billing';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { todayInTz } from '@/lib/timezone';
-import { formatBRL } from '@/utils/currency';
+import { formatMoney } from '@/lib/format';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -219,7 +219,7 @@ function newEnvRow(): EnvRow {
 }
 
 export function ContractFormDialog({ open, onOpenChange, onCreated, editContract, defaultCustomerId }: ContractFormDialogProps) {
-  const { locale, timezone } = useAppLocaleContext();
+  const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.contracts.contractForm;
 
   const { createContract, updateContract, createContractInstallments } = useContracts();
@@ -4083,9 +4083,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                         {finPlan.length > 1
                           ? tFin.summaryLine
                               .replace('{count}', String(finPlan.length))
-                              .replace('{amount}', `R$ ${formatBRL(finPlan[0].amount)}`)
-                              .replace('{total}', `R$ ${formatBRL(repetitionTotal(finPlan[0].amount, finPlan.length))}`)
-                          : tFin.summaryLineSingle.replace('{amount}', `R$ ${formatBRL(finPlan[0].amount)}`)}
+                              .replace('{amount}', formatMoney(finPlan[0].amount, currency, locale))
+                              .replace('{total}', formatMoney(repetitionTotal(finPlan[0].amount, finPlan.length), currency, locale))
+                          : tFin.summaryLineSingle.replace('{amount}', formatMoney(finPlan[0].amount, currency, locale))}
                       </p>
                       {finRangeText && (
                         <p className="text-xs text-muted-foreground break-words">{finRangeText}</p>
@@ -4335,9 +4335,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                   {finPlan.length > 1
                                     ? tFin.summaryLine
                                         .replace('{count}', String(finPlan.length))
-                                        .replace('{amount}', `R$ ${formatBRL(finPlan[0].amount)}`)
-                                        .replace('{total}', `R$ ${formatBRL(repetitionTotal(finPlan[0].amount, finPlan.length))}`)
-                                    : tFin.summaryLineSingle.replace('{amount}', `R$ ${formatBRL(finPlan[0].amount)}`)}
+                                        .replace('{amount}', formatMoney(finPlan[0].amount, currency, locale))
+                                        .replace('{total}', formatMoney(repetitionTotal(finPlan[0].amount, finPlan.length), currency, locale))
+                                    : tFin.summaryLineSingle.replace('{amount}', formatMoney(finPlan[0].amount, currency, locale))}
                                 </strong>
                               </span>
                               {finRangeText && (

@@ -200,11 +200,7 @@ export default function Inventory() {
     new Set(items.map((i) => i.category).filter((c): c is string => Boolean(c && c.trim()))),
   ).sort();
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
+  const formatCurrency = (value: number) => formatMoney(value, currency, locale);
 
   const handleEdit = (item: InventoryItem, e?: React.MouseEvent) => {
     e?.stopPropagation();

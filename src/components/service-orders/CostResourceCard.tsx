@@ -3,7 +3,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Pencil, Trash2, Car, Wrench, Gift, HardHat, Package } from 'lucide-react';
-import { formatBRL } from '@/utils/currency';
 import type { CostResource } from '@/hooks/useCostResources';
 import { useCostResourceItems } from '@/hooks/useCostResources';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
@@ -19,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { formatMoney } from '@/lib/format';
 
 interface CostResourceCardProps {
   resource: CostResource;
@@ -35,7 +35,8 @@ const categoryIcons = {
 };
 
 export function CostResourceCard({ resource, onEdit, onDelete }: CostResourceCardProps) {
-  const { locale } = useAppLocaleContext();
+  const { locale, currency } = useAppLocaleContext();
+  const money = (value: number) => formatMoney(value, currency, locale);
   const tCR = MESSAGES[locale].app.os.costResources;
   const { data: items = [] } = useCostResourceItems(resource.id);
   const Icon = categoryIcons[resource.category] || Package;
@@ -112,10 +113,10 @@ export function CostResourceCard({ resource, onEdit, onDelete }: CostResourceCar
                   <div key={item.id} className="space-y-0.5">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground truncate">{item.name}</span>
-                      <span className="text-foreground font-medium">R$ {formatBRL(item.value)}</span>
+                      <span className="text-foreground font-medium">{money(item.value)}</span>
                     </div>
                     <p className="text-xs text-muted-foreground pl-1">
-                      R$ {formatBRL(unitCost)}/un × {qty} un
+                      {money(unitCost)}/un × {qty} un
                     </p>
                   </div>
                 );
@@ -126,7 +127,7 @@ export function CostResourceCard({ resource, onEdit, onDelete }: CostResourceCar
                     {item.name}
                     {!item.is_monthly && <span className="text-xs ml-1">(anual ÷12)</span>}
                   </span>
-                  <span className="text-foreground font-medium">R$ {formatBRL(item.value)}</span>
+                  <span className="text-foreground font-medium">{money(item.value)}</span>
                 </div>
               );
             })}
@@ -144,13 +145,13 @@ export function CostResourceCard({ resource, onEdit, onDelete }: CostResourceCar
           {isGift ? (
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-primary">{tCR.giftCostLabel}</span>
-              <span className="text-lg font-bold text-primary">R$ {formatBRL(totalValue)}</span>
+              <span className="text-lg font-bold text-primary">{money(totalValue)}</span>
             </div>
           ) : (
             <>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{tCR.monthlyTotalLabel}</span>
-                <span className="font-semibold text-foreground">R$ {formatBRL(totalValue)}</span>
+                <span className="font-semibold text-foreground">{money(totalValue)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{tCR.monthlyHoursLabel}</span>
@@ -158,7 +159,7 @@ export function CostResourceCard({ resource, onEdit, onDelete }: CostResourceCar
               </div>
               <div className="flex justify-between items-center pt-1 border-t border-dashed border-border">
                 <span className="text-sm font-medium text-primary">{tCR.hourlyCostLabel}</span>
-                <span className="text-lg font-bold text-primary">R$ {formatBRL(hourlyRate)}/h</span>
+                <span className="text-lg font-bold text-primary">{money(hourlyRate)}/h</span>
               </div>
             </>
           )}

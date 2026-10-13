@@ -15,6 +15,47 @@ const REQUIRED_PERSONALIZED_MODULE_CODES = [
   'video_questions',
 ] as const
 
+const COUNTRY_REGIONAL_DEFAULTS: Record<string, { language: string; currency: string; timezone: string }> = {
+  BR: { language: 'pt-br', currency: 'BRL', timezone: 'America/Sao_Paulo' },
+  CV: { language: 'pt-br', currency: 'CVE', timezone: 'Atlantic/Cape_Verde' },
+  PT: { language: 'pt-br', currency: 'EUR', timezone: 'Europe/Lisbon' },
+  AO: { language: 'pt-br', currency: 'AOA', timezone: 'Africa/Luanda' },
+  MZ: { language: 'pt-br', currency: 'MZN', timezone: 'Africa/Maputo' },
+  ST: { language: 'pt-br', currency: 'STN', timezone: 'Africa/Sao_Tome' },
+  GW: { language: 'pt-br', currency: 'XOF', timezone: 'Africa/Bissau' },
+  TL: { language: 'pt-br', currency: 'USD', timezone: 'Asia/Dili' },
+  US: { language: 'en', currency: 'USD', timezone: 'America/New_York' },
+  GB: { language: 'en', currency: 'GBP', timezone: 'Europe/London' },
+  CA: { language: 'en', currency: 'CAD', timezone: 'America/Toronto' },
+  AU: { language: 'en', currency: 'AUD', timezone: 'Australia/Sydney' },
+  ES: { language: 'es', currency: 'EUR', timezone: 'Europe/Madrid' },
+  MX: { language: 'es', currency: 'MXN', timezone: 'America/Mexico_City' },
+  AR: { language: 'es', currency: 'ARS', timezone: 'America/Argentina/Buenos_Aires' },
+  CL: { language: 'es', currency: 'CLP', timezone: 'America/Santiago' },
+  CO: { language: 'es', currency: 'COP', timezone: 'America/Bogota' },
+  PE: { language: 'es', currency: 'PEN', timezone: 'America/Lima' },
+  UY: { language: 'es', currency: 'UYU', timezone: 'America/Montevideo' },
+  PY: { language: 'es', currency: 'PYG', timezone: 'America/Asuncion' },
+  BO: { language: 'es', currency: 'BOB', timezone: 'America/La_Paz' },
+  FR: { language: 'fr', currency: 'EUR', timezone: 'Europe/Paris' },
+  BE: { language: 'fr', currency: 'EUR', timezone: 'Europe/Brussels' },
+  CH: { language: 'fr', currency: 'CHF', timezone: 'Europe/Zurich' },
+  DE: { language: 'en', currency: 'EUR', timezone: 'Europe/Berlin' },
+  IT: { language: 'en', currency: 'EUR', timezone: 'Europe/Rome' },
+  JP: { language: 'en', currency: 'JPY', timezone: 'Asia/Tokyo' },
+}
+
+const resolveCountryCode = (value: unknown): string => {
+  const normalized = typeof value === 'string' ? value.trim().toUpperCase() : ''
+  return COUNTRY_REGIONAL_DEFAULTS[normalized] ? normalized : 'BR'
+}
+
+const isValidInternationalPhone = (phone: string): boolean => {
+  if (!/^[+\d\s().-]+$/.test(phone)) return false
+  const digits = phone.replace(/\D/g, '')
+  return digits.length >= 7 && digits.length <= 15
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -62,6 +103,7 @@ Deno.serve(async (req) => {
       company_cnpj,
       company_email,
       company_phone,
+      country_code,
       company_address,
       contact_name,
       notes,
@@ -85,6 +127,9 @@ Deno.serve(async (req) => {
       nfse_tier,
     } = body
 
+    const countryCode = resolveCountryCode(country_code)
+    const regionalDefaults = COUNTRY_REGIONAL_DEFAULTS[countryCode]
+
     if (!company_name || !admin_email || !admin_password) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
         status: 400,
@@ -92,8 +137,11 @@ Deno.serve(async (req) => {
       })
     }
 
-    if (company_phone && !isValidBrazilianPhone(company_phone)) {
-      return new Response(JSON.stringify({ error: 'Informe um telefone válido com DDD' }), {
+    const phoneIsValid = !company_phone || (countryCode === 'BR'
+      ? isValidBrazilianPhone(company_phone)
+      : isValidInternationalPhone(company_phone))
+    if (!phoneIsValid) {
+      return new Response(JSON.stringify({ error: 'Informe um telefone válido, com código do país quando necessário' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -301,16 +349,44 @@ Deno.serve(async (req) => {
         is_active: true,
       })
 
-    // 6. Create company_settings row for this company
-    await supabaseAdmin
+    // 6. O trigger de companies normalmente já cria esta linha. Upsert evita a
+    // inserção redundante/erro UNIQUE e aplica os defaults regionais do país.
+    const { error: settingsError } = await supabaseAdmin
       .from('company_settings')
-      .insert({
+      .upsert({
         company_id: company.id,
         name: company_name,
         document: company_cnpj || null,
         phone: company_phone || null,
         email: company_email || admin_email,
+        country_code: countryCode,
+        language: regionalDefaults.language,
+        currency: regionalDefaults.currency,
+        timezone: regionalDefaults.timezone,
+      }, { onConflict: 'company_id' })
+    if (settingsError) {
+      console.error('[create-company] Falha ao configurar regional:', settingsError.message)
+      const { error: userRollbackError } = await supabaseAdmin.auth.admin.deleteUser(userId)
+      if (userRollbackError) {
+        console.error('[create-company] Falha ao desfazer usuário após erro regional:', userRollbackError.message)
+      }
+      await supabaseAdmin.from('companies').delete().eq('id', company.id)
+      return new Response(JSON.stringify({ error: 'Não foi possível configurar os padrões regionais da empresa.' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
+    }
+
+    // O primeiro usuário herda o idioma do país até escolher outro no app.
+    const { error: preferenceError } = await supabaseAdmin
+      .from('user_preferences')
+      .upsert(
+        { user_id: userId, language: regionalDefaults.language },
+        { onConflict: 'user_id' },
+      )
+    if (preferenceError) {
+      console.error('[create-company] Aviso: falha ao semear idioma do administrador:', preferenceError.message)
+    }
 
     // 7. Seed default financial categories
     const defaultCategories = [

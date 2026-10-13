@@ -85,6 +85,7 @@ function useOgMeta(company: CompanySettings | null, locale: LocaleCode) {
 
 interface CompanyLocale {
   language: string | null;
+  countryCode: string | null;
   currency: string | null;
   timezone: string | null;
 }
@@ -166,6 +167,7 @@ function ProposalPublicContent({
           // Repassa o idioma/moeda/fuso da empresa para o PublicAppLocaleProvider pai.
           onLocaleReady({
             language: payload.company.language ?? null,
+            countryCode: payload.company.country_code ?? null,
             currency: payload.company.currency ?? null,
             timezone: payload.company.timezone ?? null,
           });
@@ -181,8 +183,10 @@ function ProposalPublicContent({
               _fingerprint: getViewerFingerprint() || undefined,
               _user_agent: navigator.userAgent,
             })
-            .then(() => { /* contador atualizado server-side; nada a fazer aqui */ })
-            .catch(() => { /* silencioso: tracking nunca quebra a proposta */ });
+            .then(
+              () => { /* contador atualizado server-side; nada a fazer aqui */ },
+              () => { /* silencioso: tracking nunca quebra a proposta */ },
+            );
         }
         if (q.proposal_template_id) {
           const { data: tpl } = await supabase
@@ -383,6 +387,7 @@ export default function ProposalPublic() {
   // valores reais da empresa (idioma/moeda/fuso).
   const [companyLocale, setCompanyLocale] = useState<CompanyLocale>({
     language: null,
+    countryCode: null,
     currency: null,
     timezone: null,
   });
@@ -391,6 +396,7 @@ export default function ProposalPublic() {
   return (
     <PublicAppLocaleProvider
       language={companyLocale.language}
+      countryCode={companyLocale.countryCode}
       currency={companyLocale.currency}
       timezone={companyLocale.timezone}
     >

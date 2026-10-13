@@ -253,11 +253,32 @@ export function iconChipClassFor(type: string): string {
   return badgeClassFor(type).replace(/ hover:[^ ]+/g, '');
 }
 
-export function currencyMask(value: string): string {
+export function currencyMask(
+  value: string,
+  currency = 'BRL',
+  locale: 'pt-br' | 'en' | 'es' | 'fr' = 'pt-br',
+): string {
   const digits = value.replace(/\D/g, '');
   if (!digits) return '';
   const num = parseInt(digits) / 100;
-  return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const bcp47 = locale === 'pt-br'
+    ? 'pt-BR'
+    : locale === 'en'
+      ? 'en-US'
+      : locale === 'es'
+        ? 'es-ES'
+        : 'fr-FR';
+  try {
+    return num.toLocaleString(bcp47, {
+      style: 'currency',
+      currency,
+      currencyDisplay: currency === 'CVE' ? 'code' : 'symbol',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  } catch {
+    return num.toLocaleString(bcp47, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
 }
 
 export function parseCurrency(value: string): number {

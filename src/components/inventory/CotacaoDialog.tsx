@@ -8,9 +8,9 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { cn } from '@/lib/utils';
 import { unitLabel } from '@/lib/inventoryUnits';
 import { useIsCompact } from '@/hooks/use-mobile';
-import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useLocaleFormatters } from '@/lib/format/hooks';
+import { getCurrencySymbol } from '@/lib/format';
 import { useCompraCotacoes } from '@/hooks/useCompraCotacoes';
 import type { CotacaoRow } from '@/hooks/useCompraCotacoes';
 import type { CompraMaterial } from '@/hooks/useCompras';
@@ -62,9 +62,9 @@ function toInput(n: number): string {
 export function CotacaoDialog({
   open, onOpenChange, compraId, materials, cotacao, availableSuppliers = [],
 }: CotacaoDialogProps) {
-  const { locale } = useAppLocaleContext();
+  const { money, currency, locale } = useLocaleFormatters();
   const t = MESSAGES[locale].app.inventory.cotacaoDialog;
-  const { money } = useLocaleFormatters();
+  const currencySymbol = getCurrencySymbol(currency, locale);
   const isCompact = useIsCompact();
   const { loadPrices, savePrices, createCotacaoWithPrices } = useCompraCotacoes(compraId);
 
@@ -249,7 +249,7 @@ export function CotacaoDialog({
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">{t.table.unitPrice}</label>
                     <div className="flex items-center gap-1">
-                      <span className="text-sm text-muted-foreground">R$</span>
+                      <span className="text-sm text-muted-foreground">{currencySymbol}</span>
                       <Input
                         inputMode="decimal"
                         className="h-9 text-right"
@@ -263,7 +263,7 @@ export function CotacaoDialog({
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">{t.table.lineTotal}</label>
                     <div className="flex items-center gap-1">
-                      <span className="text-sm text-muted-foreground">R$</span>
+                      <span className="text-sm text-muted-foreground">{currencySymbol}</span>
                       <Input
                         inputMode="decimal"
                         className="h-9 text-right"
@@ -304,7 +304,7 @@ export function CotacaoDialog({
                     </td>
                     <td className="p-1">
                       <div className="flex items-center gap-1">
-                        <span className="pl-1 text-xs text-muted-foreground">R$</span>
+                        <span className="pl-1 text-xs text-muted-foreground">{currencySymbol}</span>
                         <Input
                           inputMode="decimal"
                           className={cn('h-9 text-right')}
@@ -317,7 +317,7 @@ export function CotacaoDialog({
                     </td>
                     <td className="p-1">
                       <div className="flex items-center gap-1">
-                        <span className="pl-1 text-xs text-muted-foreground">R$</span>
+                        <span className="pl-1 text-xs text-muted-foreground">{currencySymbol}</span>
                         <Input
                           inputMode="decimal"
                           className={cn('h-9 text-right')}

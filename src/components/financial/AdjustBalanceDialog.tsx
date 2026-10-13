@@ -8,13 +8,12 @@ import { ArrowDownCircle, ArrowUpCircle, Loader2 } from 'lucide-react';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useFinancialAccounts, type FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { useToast } from '@/hooks/use-toast';
-import { formatBRL } from '@/utils/currency';
 import { ADJUSTMENT_CATEGORY } from '@/lib/finance-constants';
 import { cn } from '@/lib/utils';
-import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { todayInTz } from '@/lib/timezone';
+import { useLocaleFormatters } from '@/lib/format/hooks';
 
 interface AdjustBalanceDialogProps {
   open: boolean;
@@ -35,7 +34,7 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
   const { balances } = useFinancialAccounts();
   const { createTransaction } = useFinancial();
   const { toast } = useToast();
-  const { locale, timezone } = useAppLocaleContext();
+  const { locale, timezone, money, number } = useLocaleFormatters();
   const t = MESSAGES[locale].app.finance.adjustBalance;
 
   // Saldo atual derivado das transações (fallback no saldo inicial).
@@ -43,7 +42,7 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
     ? (balances[account.id] ?? Number(account.initial_balance ?? 0))
     : 0;
 
-  // Novo saldo desejado, em reais (não centavos — o input usa máscara BRL).
+  // Novo saldo desejado, na moeda da empresa (não centavos).
   const [targetBalance, setTargetBalance] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   // Trava de reentrância síncrona: duplo-clique não pode gerar dois ajustes.
@@ -59,7 +58,7 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, account?.id]);
 
-  // Máscara de moeda BRL: mesmo padrão do AccountFormDialog (dígitos → centavos).
+  // Máscara monetária: mesmo padrão do AccountFormDialog (dígitos → centavos).
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
     setTargetBalance(parseInt(raw || '0', 10) / 100);
@@ -72,7 +71,7 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
   };
 
   const targetDisplay = targetBalance
-    ? targetBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    ? number(targetBalance, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '';
 
   const delta = targetBalance - currentBalance;
@@ -111,7 +110,7 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
       });
       toast({
         title: t.toastSuccess,
-        description: t.toastSuccessDesc.replace('{amount}', `R$ ${formatBRL(targetBalance)}`),
+        description: t.toastSuccessDesc.replace('{amount}', money(targetBalance)),
       });
       onOpenChange(false);
     } catch {
@@ -154,7 +153,7 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
           <div className="rounded-lg border bg-muted/30 px-4 py-3 flex items-center justify-between">
             <span className="text-sm text-muted-foreground">{t.currentBalanceLabel}</span>
             <span className={cn('text-base font-bold tabular-nums', currentBalance >= 0 ? 'text-success' : 'text-destructive')}>
-              R$ {formatBRL(currentBalance)}
+              {money(currentBalance)}
             </span>
           </div>
 
@@ -186,7 +185,7 @@ export function AdjustBalanceDialog({ open, onOpenChange, account }: AdjustBalan
             >
               {t.adjustEntryPrefix}{' '}
               <span className="font-bold">
-                {isEntrada ? '+' : '−'}R$ {formatBRL(Math.abs(delta))}
+                {isEntrada ? '+' : '−'}{money(Math.abs(delta))}
               </span>{' '}
               ({isEntrada ? t.directionEntrada : t.directionSaida}).
             </NoticeBanner>

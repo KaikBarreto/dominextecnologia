@@ -16,10 +16,7 @@ import { useFinancial } from '@/hooks/useFinancial';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import type { Supplier } from '@/hooks/useSuppliers';
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}
+import { formatMoney } from '@/lib/format';
 
 /**
  * Ficha do fornecedor: dados de cadastro + histórico de gastos
@@ -40,7 +37,8 @@ interface SupplierDetailDialogProps {
 }
 
 export function SupplierDetailDialog({ supplier, open, onOpenChange }: SupplierDetailDialogProps) {
-  const { locale } = useAppLocaleContext();
+  const { locale, currency } = useAppLocaleContext();
+  const formatCurrency = (value: number) => formatMoney(value, currency, locale);
   const t = MESSAGES[locale].app.customers.suppliers.detail;
   const { transactions, isLoading } = useFinancial();
 

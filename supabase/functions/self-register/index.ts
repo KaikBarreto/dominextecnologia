@@ -8,6 +8,17 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const trim = (v: unknown, max = 255) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const RATE_LIMIT_RETRY_AFTER_SECONDS = 60 * 60;
 
+const isValidInternationalPhone = (phone: string): boolean => {
+  // Fora do Brasil aceitamos uma representacao internacional legivel, mas
+  // rejeitamos letras/outros caracteres e respeitamos o teto de 15 digitos do
+  // E.164. A formatacao original e preservada no cadastro.
+  if (!/^[+\d\s().-]+$/.test(phone)) return false;
+  const sanitized = phone.replace(/[\s().-]/g, '');
+  if (!/^\+?\d+$/.test(sanitized)) return false;
+  const digits = sanitized.replace(/\D/g, '');
+  return digits.length >= 7 && digits.length <= 15;
+};
+
 const sanitizeAcquisitionTouch = (value: unknown): Record<string, string> | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const raw = value as Record<string, unknown>;
@@ -93,7 +104,7 @@ const MESSAGES: Record<Locale, {
     invalidJson: 'JSON inválido',
     requiredFields: 'Campos obrigatórios: nome da empresa, contato, e-mail, telefone e senha',
     invalidEmail: 'E-mail inválido',
-    invalidPhone: 'Informe um telefone válido com DDD',
+    invalidPhone: 'Informe um telefone válido com código de país e DDD',
     invalidPassword: 'Senha deve ter entre 8 e 128 caracteres',
     rateLimited: 'Muitas tentativas de cadastro. Aguarde e tente novamente.',
     emailAlreadyRegistered: 'Este email já está cadastrado. Faça login ou use outro email.',
@@ -106,7 +117,7 @@ const MESSAGES: Record<Locale, {
     invalidJson: 'Invalid JSON',
     requiredFields: 'Required fields: company name, contact, email, phone and password',
     invalidEmail: 'Invalid email',
-    invalidPhone: 'Enter a valid Brazilian phone number with area code',
+    invalidPhone: 'Enter a valid phone number with country and area code',
     invalidPassword: 'Password must be between 8 and 128 characters',
     rateLimited: 'Too many registration attempts. Wait and try again.',
     emailAlreadyRegistered: 'This email is already registered. Log in or use another email.',
@@ -119,7 +130,7 @@ const MESSAGES: Record<Locale, {
     invalidJson: 'JSON inválido',
     requiredFields: 'Campos obligatorios: nombre de la empresa, contacto, correo electrónico, teléfono y contraseña',
     invalidEmail: 'Correo electrónico inválido',
-    invalidPhone: 'Introduce un teléfono brasileño válido con código de área',
+    invalidPhone: 'Introduce un teléfono válido con código de país y área',
     invalidPassword: 'La contraseña debe tener entre 8 y 128 caracteres',
     rateLimited: 'Demasiados intentos de registro. Espera e inténtalo de nuevo.',
     emailAlreadyRegistered: 'Este correo electrónico ya está registrado. Inicia sesión o usa otro correo.',
@@ -132,7 +143,7 @@ const MESSAGES: Record<Locale, {
     invalidJson: 'JSON invalide',
     requiredFields: 'Champs obligatoires : nom de l\'entreprise, contact, e-mail, téléphone et mot de passe',
     invalidEmail: 'E-mail invalide',
-    invalidPhone: 'Saisissez un numéro brésilien valide avec indicatif régional',
+    invalidPhone: 'Saisissez un numéro valide avec indicatif pays et régional',
     invalidPassword: 'Le mot de passe doit contenir entre 8 et 128 caractères',
     rateLimited: 'Trop de tentatives d’inscription. Patientez puis réessayez.',
     emailAlreadyRegistered: 'Cet e-mail est déjà enregistré. Connectez-vous ou utilisez un autre e-mail.',
@@ -152,6 +163,63 @@ const resolveLocale = (v: unknown): Locale => {
   const base = norm.split('-')[0];
   if (SUPPORTED_LOCALES.includes(base as Locale)) return base as Locale;
   return DEFAULT_LOCALE;
+};
+
+type RegionalDefaults = {
+  language: Locale;
+  currency: string;
+  timezone: string;
+};
+
+const DEFAULT_COUNTRY_CODE = 'BR';
+
+// Mercados lusofonos prioritarios + paises ja inferidos pelo catalogo regional
+// do frontend. Sao apenas defaults: campos regionais explicitos e validos do
+// cliente continuam tendo precedencia.
+const COUNTRY_REGIONAL_DEFAULTS: Record<string, RegionalDefaults> = {
+  BR: { language: 'pt-br', currency: 'BRL', timezone: 'America/Sao_Paulo' },
+  CV: { language: 'pt-br', currency: 'CVE', timezone: 'Atlantic/Cape_Verde' },
+  PT: { language: 'pt-br', currency: 'EUR', timezone: 'Europe/Lisbon' },
+  AO: { language: 'pt-br', currency: 'AOA', timezone: 'Africa/Luanda' },
+  MZ: { language: 'pt-br', currency: 'MZN', timezone: 'Africa/Maputo' },
+  ST: { language: 'pt-br', currency: 'STN', timezone: 'Africa/Sao_Tome' },
+  GW: { language: 'pt-br', currency: 'XOF', timezone: 'Africa/Bissau' },
+  TL: { language: 'pt-br', currency: 'USD', timezone: 'Asia/Dili' },
+  US: { language: 'en', currency: 'USD', timezone: 'America/New_York' },
+  GB: { language: 'en', currency: 'GBP', timezone: 'Europe/London' },
+  CA: { language: 'en', currency: 'CAD', timezone: 'America/Toronto' },
+  AU: { language: 'en', currency: 'AUD', timezone: 'Australia/Sydney' },
+  ES: { language: 'es', currency: 'EUR', timezone: 'Europe/Madrid' },
+  MX: { language: 'es', currency: 'MXN', timezone: 'America/Mexico_City' },
+  AR: { language: 'es', currency: 'ARS', timezone: 'America/Argentina/Buenos_Aires' },
+  CL: { language: 'es', currency: 'CLP', timezone: 'America/Santiago' },
+  CO: { language: 'es', currency: 'COP', timezone: 'America/Bogota' },
+  PE: { language: 'es', currency: 'PEN', timezone: 'America/Lima' },
+  UY: { language: 'es', currency: 'UYU', timezone: 'America/Montevideo' },
+  PY: { language: 'es', currency: 'PYG', timezone: 'America/Asuncion' },
+  BO: { language: 'es', currency: 'BOB', timezone: 'America/La_Paz' },
+  FR: { language: 'fr', currency: 'EUR', timezone: 'Europe/Paris' },
+  BE: { language: 'fr', currency: 'EUR', timezone: 'Europe/Brussels' },
+  CH: { language: 'fr', currency: 'CHF', timezone: 'Europe/Zurich' },
+  DE: { language: 'en', currency: 'EUR', timezone: 'Europe/Berlin' },
+  IT: { language: 'en', currency: 'EUR', timezone: 'Europe/Rome' },
+  JP: { language: 'en', currency: 'JPY', timezone: 'Asia/Tokyo' },
+};
+
+const resolveCountryCode = (v: unknown): string => {
+  const normalized = typeof v === 'string' ? v.trim().toUpperCase() : '';
+  return /^[A-Z]{2}$/.test(normalized) && COUNTRY_REGIONAL_DEFAULTS[normalized]
+    ? normalized
+    : DEFAULT_COUNTRY_CODE;
+};
+
+const resolveOptionalLocale = (v: unknown): Locale | null => {
+  if (typeof v !== 'string' || !v.trim()) return null;
+  const normalized = v.trim().toLowerCase().replace('_', '-');
+  if (SUPPORTED_LOCALES.includes(normalized as Locale)) return normalized as Locale;
+  if (normalized === 'pt' || normalized.startsWith('pt-')) return 'pt-br';
+  const base = normalized.split('-')[0];
+  return SUPPORTED_LOCALES.includes(base as Locale) ? base as Locale : null;
 };
 
 // ÚLTIMO fallback de specs de plano — a fonte da verdade é subscription_plans
@@ -241,6 +309,10 @@ Deno.serve(async (req) => {
     const company_phone = trim(raw.company_phone, 30);
     const contact_name = trim(raw.contact_name, 200);
     const password = typeof raw.password === 'string' ? raw.password : '';
+    // Ausente ou fora do formato ISO alpha-2 cai em BR, preservando clientes
+    // antigos. O mesmo valor dirige a validacao de telefone e os defaults
+    // regionais, e depois e persistido em company_settings.
+    const countryCode = resolveCountryCode(raw.country_code);
     // Origem de captação — texto CRU vindo do client (o cadastro público lê do
     // `?origem=` da URL). NÃO é o que vai pro banco: logo antes do insert ele
     // passa por canonicalizeCompanyOrigin (catálogo `company_origins`), que
@@ -263,24 +335,32 @@ Deno.serve(async (req) => {
     // Usada abaixo pra carimbar a evidência de aceite (LGPD) em consent_records.
     const terms_version = trim(raw.terms_version, 20) || '1.0';
 
-    // ── Seed REGIONAL do tenant (idioma/moeda/fuso) ─────────────────────────────
+    // ── Seed REGIONAL do tenant (pais/idioma/moeda/fuso) ───────────────────────
     // OPCIONAL e NÃO-FATAL. Vive em company_settings (as colunas regionais NÃO
     // existem em companies) + user_preferences.language do 1º usuário. Nada aqui
     // toca em plano/cobrança/comissão/vencimento. Backward-compat: cadastro antigo
-    // sem estes campos cai nos defaults pt-br/BRL/America/Sao_Paulo.
-    //   • language → validado contra os 4 locales suportados (reusa resolveLocale).
-    //   • currency → string curta (validação leve); default BRL.
-    //   • timezone → string curta (validação leve); default America/Sao_Paulo.
-    const regionalLanguage: Locale = resolveLocale(raw.language);
+    // sem estes campos cai em BR e, portanto, pt-br/BRL/America/Sao_Paulo.
+    // Campos regionais explicitos e validos ganham dos defaults por pais.
+    const countryRegionalDefaults = COUNTRY_REGIONAL_DEFAULTS[countryCode]
+      ?? COUNTRY_REGIONAL_DEFAULTS[DEFAULT_COUNTRY_CODE];
+    const regionalLanguage: Locale = resolveOptionalLocale(raw.language)
+      ?? countryRegionalDefaults.language;
     const regionalCurrency = (() => {
       const c = trim(raw.currency, 10).toUpperCase();
-      return c && /^[A-Z]{3}$/.test(c) ? c : 'BRL';
+      return c && /^[A-Z]{3}$/.test(c) ? c : countryRegionalDefaults.currency;
     })();
     const regionalTimezone = (() => {
       const tz = trim(raw.timezone, 64);
-      // Validação leve: nome IANA plausível (Região/Cidade). Senão, default.
-      return tz && /^[A-Za-z_]+\/[A-Za-z0-9_+\-/]+$/.test(tz) ? tz : 'America/Sao_Paulo';
+      // Validacao leve: nome IANA plausivel (Regiao/Cidade). Senao, default do pais.
+      return tz && /^[A-Za-z_]+\/[A-Za-z0-9_+\-/]+$/.test(tz) ? tz : countryRegionalDefaults.timezone;
     })();
+    // Preferencia pessoal separada do default da empresa. Frontends antigos nao
+    // mandam user_language e continuam herdando regionalLanguage.
+    const hasExplicitUserLanguage = typeof raw.user_language === 'string'
+      && raw.user_language.trim().length > 0;
+    const userLanguage: Locale = hasExplicitUserLanguage
+      ? resolveLocale(raw.user_language)
+      : regionalLanguage;
 
     // Affiliate/sales link params
     const linkType = trim(raw.link_type, 20); // 'teste' | 'venda'
@@ -317,7 +397,10 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    if (!isValidBrazilianPhone(company_phone)) {
+    const isPhoneValid = countryCode === 'BR'
+      ? isValidBrazilianPhone(company_phone)
+      : isValidInternationalPhone(company_phone);
+    if (!isPhoneValid) {
       return new Response(JSON.stringify({ error: t.invalidPhone }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -838,7 +921,7 @@ Deno.serve(async (req) => {
       console.error('[self-register] Aviso: exceção ao registrar aceite de termos (não-fatal):', consentErr);
     }
 
-    // ── Seed REGIONAL (idioma/moeda/fuso) — NÃO-FATAL ───────────────────────────
+    // ── Seed REGIONAL (pais/idioma/moeda/fuso) — NÃO-FATAL ─────────────────────
     // A company_settings já foi criada pelo TRIGGER (identidade em 2 tabelas) no
     // insert de companies. Aqui só damos UPDATE das colunas regionais + gravamos
     // o idioma do 1º usuário em user_preferences (own-row upsert). NADA de billing.
@@ -848,6 +931,7 @@ Deno.serve(async (req) => {
       const { error: settingsRegionalError } = await supabaseAdmin
         .from('company_settings')
         .update({
+          country_code: countryCode,
           language: regionalLanguage,
           currency: regionalCurrency,
           timezone: regionalTimezone,
@@ -864,7 +948,7 @@ Deno.serve(async (req) => {
       const { error: prefLangError } = await supabaseAdmin
         .from('user_preferences')
         .upsert(
-          { user_id: newUser.user.id, language: regionalLanguage },
+          { user_id: newUser.user.id, language: userLanguage },
           { onConflict: 'user_id' }
         );
       if (prefLangError) {

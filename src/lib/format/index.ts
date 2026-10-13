@@ -94,7 +94,7 @@ export function formatNumber(
  * Descobre os separadores de MILHAR (group) e DECIMAL (decimal) reais do locale,
  * perguntando ao próprio Intl. É a peça que torna o parse locale-aware.
  *
- * fr-FR → { group: ' ' (narrow no-break space), decimal: ',' }
+ * fr-FR → { group: U+202F (narrow no-break space), decimal: ',' }
  * pt-BR → { group: '.', decimal: ',' }
  * en-US → { group: ',', decimal: '.' }
  */
@@ -144,16 +144,16 @@ export function parseNumber(input: string, locale: LocaleCode): number | null {
 
   // 1) Remove separador de MILHAR do locale (inclui variações de espaço).
   if (group) {
-    // Espaços (regular, NBSP  , narrow  , thin  ) contam todos
+    // Espaços (regular, NBSP, narrow NBSP e thin space) contam todos
     // como agrupamento quando o locale usa espaço (fr).
-    if (/\s| | | /.test(group)) {
-      s = s.replace(/[\s   ]/g, '');
+    if (/[\s\u00a0\u202f\u2009]/.test(group)) {
+      s = s.replace(/[\s\u00a0\u202f\u2009]/g, '');
     } else {
       s = s.split(group).join('');
     }
   }
   // Higieniza qualquer espaço remanescente (ex.: "R$ 10").
-  s = s.replace(/[\s   ]/g, '');
+  s = s.replace(/[\s\u00a0\u202f\u2009]/g, '');
 
   // 2) Converte separador DECIMAL do locale pra ponto.
   if (decimal && decimal !== '.') {
@@ -189,10 +189,28 @@ export function formatMoney(value: number, currency: string, locale: LocaleCode)
     return new Intl.NumberFormat(toBcp47(locale), {
       style: 'currency',
       currency,
+      // Algumas versões de ICU representam CVE com um símbolo invisível e usam
+      // "$" como separador decimal em pt-CV. Exibir o código evita ambiguidade
+      // e mantém o round-trip do parser seguro ("CVE 1.234,56").
+      currencyDisplay: currency === 'CVE' ? 'code' : 'symbol',
     }).format(value);
   } catch {
     // currency inválida ou ambiente sem Intl full: fallback só numérico.
     return formatNumber(value, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+}
+
+/** Símbolo curto da moeda para prefixos de input/eixos; CVE usa o código ISO. */
+export function getCurrencySymbol(currency: string, locale: LocaleCode): string {
+  try {
+    const parts = new Intl.NumberFormat(toBcp47(locale), {
+      style: 'currency',
+      currency,
+      currencyDisplay: currency === 'CVE' ? 'code' : 'narrowSymbol',
+    }).formatToParts(0);
+    return parts.find((part) => part.type === 'currency')?.value ?? currency;
+  } catch {
+    return currency;
   }
 }
 

@@ -717,6 +717,7 @@ export function TransactionListPanel({
         title,
         rows: buildExportRows(),
         locale,
+        currency,
         timezone,
       });
     } catch (e: any) {
@@ -726,7 +727,7 @@ export function TransactionListPanel({
 
   const handleExportExcel = async () => {
     try {
-      await generateMovimentacoesExcel({ title, rows: buildExportRows(), locale, timezone });
+      await generateMovimentacoesExcel({ title, rows: buildExportRows(), locale, currency, timezone });
     } catch (e: any) {
       toast({ variant: 'destructive', title: fin.transactionList.toastExcelError, description: getErrorMessage(e) });
     }

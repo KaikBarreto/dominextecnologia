@@ -20,6 +20,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { CostCenterSelect } from '@/components/financial/CostCenterSelect';
 import { useCostCenters } from '@/hooks/useCostCenters';
+import { formatMoney } from '@/lib/format';
 
 export interface MovementCashAccount {
   id: string;
@@ -58,7 +59,9 @@ export function EmployeeMovementModal({
   const [accountId, setAccountId] = useState('');
   const [costCenterId, setCostCenterId] = useState<string | null>(null);
   const { toast } = useToast();
-  const { locale } = useAppLocaleContext();
+  const { locale, currency } = useAppLocaleContext();
+  const money = (value: number) => formatMoney(value, currency, locale);
+  const maskCurrency = (value: string) => currencyMask(value, currency, locale);
   const t = MESSAGES[locale].app.employees.movementModal;
   const fin = MESSAGES[locale].app.finance;
   const { activeCostCenters } = useCostCenters();
@@ -107,10 +110,10 @@ export function EmployeeMovementModal({
       !faltaPreFilled &&
       !amount
     ) {
-      setAmount(currencyMask(String(Math.round(suggestedDailyValue * 100))));
+      setAmount(currencyMask(String(Math.round(suggestedDailyValue * 100)), currency, locale));
       setFaltaPreFilled(true);
     }
-  }, [open, type, salary, suggestedDailyValue, draft.showResumePrompt, faltaPreFilled, amount]);
+  }, [open, type, salary, suggestedDailyValue, draft.showResumePrompt, faltaPreFilled, amount, currency, locale]);
 
   // Colar um valor pronto (ex. "4.550" de planilha) NÃO pode passar pela
   // regra de centavos comum: daria R$ 45,50 (100x menor). Ver
@@ -122,7 +125,7 @@ export function EmployeeMovementModal({
     const cents = centsFromPastedAmount(text);
     if (cents == null) return;
     e.preventDefault();
-    setAmount(currencyMask(String(cents)));
+    setAmount(maskCurrency(String(cents)));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -147,13 +150,13 @@ export function EmployeeMovementModal({
       if (faltaMode === 'salario') {
         if (applyDSR) {
           finalAmount = baseValue * 2;
-          finalDescription = `${description || 'Falta'} + DSR (${currencyMask(String(Math.round(baseValue * 100)))} × 2)`;
+          finalDescription = `${description || 'Falta'} + DSR (${maskCurrency(String(Math.round(baseValue * 100)))} × 2)`;
         }
       } else if (faltaMode === 'banco') {
         if (applyDSR) {
           // DSR portion is financial (1 day salary), work portion goes to bank
           finalAmount = baseValue; // bank hours deduction (1 work day)
-          finalDescription = `${description || 'Falta'} — ${dailyHours.toFixed(1)}h banco + DSR R$ ${suggestedDailyValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+          finalDescription = `${description || 'Falta'} — ${dailyHours.toFixed(1)}h banco + DSR ${money(suggestedDailyValue)}`;
         }
       }
     }
@@ -217,7 +220,7 @@ export function EmployeeMovementModal({
       <form id="employee-movement-form" onSubmit={handleSubmit} className="space-y-4 p-1">
         <div className="rounded-lg bg-muted p-3 text-sm">
           {t.currentBalance}: <span className={currentBalance >= 0 ? 'text-green-600 font-semibold' : 'text-destructive font-semibold'}>
-            {currentBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            {money(currentBalance)}
           </span>
         </div>
 
@@ -282,11 +285,11 @@ export function EmployeeMovementModal({
 
         <div className="space-y-1.5">
           <Label>{t.amountLabel}</Label>
-          <Input value={amount} onChange={e => setAmount(currencyMask(e.target.value))} onPaste={handleAmountPaste} placeholder="R$ 0,00" required />
+          <Input value={amount} onChange={e => setAmount(maskCurrency(e.target.value))} onPaste={handleAmountPaste} placeholder={maskCurrency('0')} required />
           {type === 'falta' && salary > 0 && (
             <p className="text-xs text-muted-foreground">
               {t.absenceSuggestion
-                .replace('{value}', suggestedDailyValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))
+                .replace('{value}', money(suggestedDailyValue))
                 .replace('{dailyHours}', dailyHours.toFixed(1))
                 .replace('{monthlyHours}', String(Math.round(monthlyHours)))}
             </p>
@@ -324,15 +327,15 @@ export function EmployeeMovementModal({
                   <>
                     <div className="flex justify-between">
                       <span>{t.absence.summaryDayMissed}</span>
-                      <span>{baseValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                      <span>{money(baseValue)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>{t.absence.summaryDsrLoss}</span>
-                      <span>{baseValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                      <span>{money(baseValue)}</span>
                     </div>
                     <div className="flex justify-between font-semibold border-t pt-1 mt-1">
                       <span>{t.absence.summaryTotalDiscount}</span>
-                      <span className="text-destructive">{(baseValue * 2).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                      <span className="text-destructive">{money(baseValue * 2)}</span>
                     </div>
                   </>
                 ) : (
@@ -343,12 +346,12 @@ export function EmployeeMovementModal({
                     </div>
                     <div className="flex justify-between">
                       <span>{t.absence.summaryDsrFinancial}</span>
-                      <span>{suggestedDailyValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                      <span>{money(suggestedDailyValue)}</span>
                     </div>
                     <div className="flex justify-between font-semibold border-t pt-1 mt-1">
                       <span>{t.absence.summaryTotal}</span>
                       <span className="text-destructive">
-                        {dailyHours.toFixed(1)}h + {suggestedDailyValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        {dailyHours.toFixed(1)}h + {money(suggestedDailyValue)}
                       </span>
                     </div>
                   </>
@@ -365,7 +368,7 @@ export function EmployeeMovementModal({
               <span>{t.absence.summaryTotalDiscount2}</span>
               <span className="text-destructive">
                 {faltaMode === 'salario'
-                  ? baseValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                  ? money(baseValue)
                   : `${dailyHours.toFixed(1)}h`
                 }
               </span>

@@ -8,6 +8,7 @@ import type { MovimentacaoReportRow } from '@/utils/movimentacoesReportHtmlGener
 import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { safeTimeZone, todayInTz } from '@/lib/timezone';
+import { formatMoney } from '@/lib/format';
 
 /**
  * Relatório PDF A4 paginado (real) das Movimentações financeiras.
@@ -33,15 +34,14 @@ interface MovimentacoesPdfData {
   rows: MovimentacaoReportRow[];
   /** Locale do usuário que gera o documento. Padrão: 'pt-br'. */
   locale?: LocaleCode;
+  /** Moeda ISO 4217 da empresa. Padrão legado: BRL. */
+  currency?: string | null;
   /**
    * Fuso DA EMPRESA (`useAppLocaleContext().timezone`). Entra por parâmetro
    * porque util não chama hook. Ausente ou inválido cai em America/Sao_Paulo.
    */
   timezone?: string | null;
 }
-
-const formatCurrencyBR = (value: number): string =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 /**
  * Formata um dia de CALENDÁRIO (YYYY-MM-DD, coluna `date` do banco) como
@@ -133,6 +133,7 @@ const MARGIN = 14; // mm
 export async function generateMovimentacoesReportPdf(data: MovimentacoesPdfData): Promise<void> {
   const { company, whiteLabel, title, rows, timezone } = data;
   const locale = data.locale ?? 'pt-br';
+  const formatCurrencyBR = (value: number) => formatMoney(value, data.currency || 'BRL', locale);
   const t = MESSAGES[locale].app.finance.movimentacoesGenerator;
 
   // Abre a janela ANTES do await (gesto do usuário → driblar popup-blocker).

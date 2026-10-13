@@ -2,6 +2,7 @@ import type { MovimentacaoReportRow } from '@/utils/movimentacoesReportHtmlGener
 import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { todayInTz } from '@/lib/timezone';
+import { formatMoney } from '@/lib/format';
 
 /**
  * Gera um `.xlsx` das Movimentações financeiras com as mesmas colunas do PDF.
@@ -9,9 +10,6 @@ import { todayInTz } from '@/lib/timezone';
  * O `xlsx` (SheetJS) é importado de forma lazy (`await import`) pra não pesar o
  * bundle inicial — só carrega quando o usuário clica em "Exportar → Excel".
  */
-
-const formatCurrencyBR = (value: number): string =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 /**
  * Formata um dia de CALENDÁRIO (YYYY-MM-DD, coluna `date` do banco) como
@@ -40,6 +38,8 @@ interface GenerateMovimentacoesExcelParams {
   rows: MovimentacaoReportRow[];
   /** Locale do usuário que gera o documento. Padrão: 'pt-br'. */
   locale?: LocaleCode;
+  /** Moeda ISO 4217 da empresa. Padrão legado: BRL. */
+  currency?: string | null;
   /**
    * Fuso DA EMPRESA (`useAppLocaleContext().timezone`). Entra por parâmetro
    * porque util não chama hook. Ausente ou inválido cai em America/Sao_Paulo.
@@ -47,8 +47,9 @@ interface GenerateMovimentacoesExcelParams {
   timezone?: string | null;
 }
 
-export async function generateMovimentacoesExcel({ title, rows, locale: rawLocale, timezone }: GenerateMovimentacoesExcelParams): Promise<void> {
+export async function generateMovimentacoesExcel({ title, rows, locale: rawLocale, currency, timezone }: GenerateMovimentacoesExcelParams): Promise<void> {
   const locale = rawLocale ?? 'pt-br';
+  const formatCurrencyBR = (value: number) => formatMoney(value, currency || 'BRL', locale);
   const t = MESSAGES[locale].app.finance.movimentacoesGenerator;
   const XLSX = await import('xlsx');
 

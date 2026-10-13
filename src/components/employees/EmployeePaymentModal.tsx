@@ -18,6 +18,7 @@ import { calculateEmployeeCost, defaultCostInput } from '@/utils/employeeCostPro
 import type { HoleriteSnapshot } from '@/utils/holeriteHtmlGenerator';
 import { CostCenterSelect } from '@/components/financial/CostCenterSelect';
 import { useCostCenters } from '@/hooks/useCostCenters';
+import { formatMoney } from '@/lib/format';
 
 export interface PaymentPayload {
   valeDiscount: number;
@@ -70,9 +71,10 @@ export function EmployeePaymentModal({
   vtMonthlyValue,
   paymentDate,
 }: EmployeePaymentModalProps) {
-  const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const { accounts, balances } = useFinancialAccounts();
-  const { locale } = useAppLocaleContext();
+  const { locale, currency } = useAppLocaleContext();
+  const fmt = (value: number) => formatMoney(value, currency, locale);
+  const maskCurrency = (value: string) => currencyMask(value, currency, locale);
   const t = MESSAGES[locale].app.employees.paymentModal;
   const fin = MESSAGES[locale].app.finance;
   const { activeCostCenters } = useCostCenters();
@@ -127,7 +129,7 @@ export function EmployeePaymentModal({
   // Reset state when modal opens
   const handleOpenChange = (o: boolean) => {
     if (o) {
-      setValeDiscountStr(balance.totalVales > 0 ? currencyMask(String(Math.round(balance.totalVales * 100))) : '');
+      setValeDiscountStr(balance.totalVales > 0 ? maskCurrency(String(Math.round(balance.totalVales * 100))) : '');
       setAccountId(defaultAccountId);
       setCostCenterId(null);
       setDescription('');
@@ -145,7 +147,7 @@ export function EmployeePaymentModal({
     const cents = centsFromPastedAmount(text);
     if (cents == null) return;
     e.preventDefault();
-    setValeDiscountStr(currencyMask(String(cents)));
+    setValeDiscountStr(maskCurrency(String(cents)));
   };
 
   const valeDiscount = useMemo(() => {
@@ -281,7 +283,7 @@ export function EmployeePaymentModal({
                 <Label>{t.advanceDiscount.label}</Label>
                 <Input
                   value={valeDiscountStr}
-                  onChange={e => setValeDiscountStr(currencyMask(e.target.value))}
+                  onChange={e => setValeDiscountStr(maskCurrency(e.target.value))}
                   onPaste={handleValeDiscountPaste}
                   placeholder={fmt(balance.totalVales)}
                 />

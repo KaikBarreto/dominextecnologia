@@ -3,13 +3,7 @@ import type { LocaleCode } from '@/lib/i18n/locales';
 import { safeTimeZone } from '@/lib/timezone';
 import { escapeHtml, safeImageUrl } from "./escapeHtml";
 import { pdfDownloadAssets } from '@/utils/pdfDownloadButton';
-
-const formatCurrencyBR = (value: number): string => {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value);
-};
+import { formatMoney } from '@/lib/format';
 
 export interface DreExportCategory {
   name: string;
@@ -67,6 +61,8 @@ export interface DreReportData {
   regime?: 'caixa' | 'competencia';
   /** Locale do usuário que está gerando o documento. Padrão: 'pt-br'. */
   locale?: LocaleCode;
+  /** Moeda ISO 4217 da empresa. Padrão legado: BRL. */
+  currency?: string | null;
   /**
    * Fuso DA EMPRESA (`useAppLocaleContext().timezone`). Entra por parâmetro
    * porque util não chama hook. Ausente ou inválido cai em America/Sao_Paulo.
@@ -76,6 +72,7 @@ export interface DreReportData {
 
 export const generateDreHtml = (data: DreReportData) => {
   const locale = data.locale ?? 'pt-br';
+  const formatCurrencyBR = (value: number) => formatMoney(value, data.currency || 'BRL', locale);
   const t = MESSAGES[locale].app.finance.dreGenerator;
   const regime = data.regime ?? 'caixa';
   const regimeLabel = regime === 'caixa' ? t.regimeCash : t.regimeAccrual;

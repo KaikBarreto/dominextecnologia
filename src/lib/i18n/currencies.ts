@@ -17,6 +17,11 @@ export interface CurrencyDef {
 
 export const CURRENCIES: CurrencyDef[] = [
   { code: 'BRL', name: 'Real brasileiro', symbol: 'R$' },
+  { code: 'CVE', name: 'Escudo cabo-verdiano', symbol: 'Esc' },
+  { code: 'AOA', name: 'Kwanza angolano', symbol: 'Kz' },
+  { code: 'MZN', name: 'Metical moçambicano', symbol: 'MT' },
+  { code: 'STN', name: 'Dobra são-tomense', symbol: 'Db' },
+  { code: 'XOF', name: 'Franco CFA da África Ocidental', symbol: 'CFA' },
   { code: 'USD', name: 'Dólar americano', symbol: 'US$' },
   { code: 'EUR', name: 'Euro', symbol: '€' },
   { code: 'GBP', name: 'Libra esterlina', symbol: '£' },

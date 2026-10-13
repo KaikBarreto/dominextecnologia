@@ -128,6 +128,7 @@ interface CompanySettings {
   white_label_logo_url?: string | null;
   white_label_icon_url?: string | null;
   language?: string | null;
+  country_code?: string | null;
   currency?: string | null;
   timezone?: string | null;
 }
@@ -375,6 +376,7 @@ export default function CustomerPortal() {
   return (
     <PublicAppLocaleProvider
       language={companySettings?.language}
+      countryCode={companySettings?.country_code}
       currency={companySettings?.currency}
       timezone={companySettings?.timezone}
     >

@@ -10,6 +10,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useInventory } from '@/hooks/useInventory';
 import { readPastedCents } from '@/lib/money-paste-mask';
+import { useLocaleFormatters } from '@/lib/format/hooks';
 import type { QuoteItem } from '@/hooks/useQuotes';
 
 // Colar valor pronto (ex. "4.550" de uma planilha) num `<input type="number">`
@@ -38,6 +39,7 @@ function ServiceInputRow({
   serviceTypes: { id: string; name: string }[];
   onAdd: (item: QuoteItem) => void;
 }) {
+  const { money } = useLocaleFormatters();
   const [serviceId, setServiceId] = useState('');
   const [description, setDescription] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -106,7 +108,7 @@ function ServiceInputRow({
         />
       </TableCell>
       <TableCell className="font-medium text-sm whitespace-nowrap">
-        R$ {total.toFixed(2)}
+        {money(total)}
       </TableCell>
       <TableCell>
         <TooltipProvider>
@@ -140,6 +142,7 @@ function MaterialInputRow({
   inventoryItems: { id: string; name: string; sale_price: number | null; cost_price: number | null }[];
   onAdd: (item: QuoteItem) => void;
 }) {
+  const { money } = useLocaleFormatters();
   const [inventoryId, setInventoryId] = useState('');
   const [description, setDescription] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -212,7 +215,7 @@ function MaterialInputRow({
         />
       </TableCell>
       <TableCell className="font-medium text-sm whitespace-nowrap">
-        R$ {total.toFixed(2)}
+        {money(total)}
       </TableCell>
       <TableCell>
         <TooltipProvider>
@@ -238,6 +241,7 @@ function MaterialInputRow({
 
 /* ─── Main ─── */
 export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTableProps) {
+  const { money } = useLocaleFormatters();
   const { serviceTypes } = useServiceTypes();
   const { items: inventoryItems } = useInventory();
 
@@ -319,8 +323,8 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                     <TableRow key={idx}>
                       <TableCell className="text-xs font-medium">{item.description}</TableCell>
                       <TableCell className="text-xs">{item.quantity}</TableCell>
-                      <TableCell className="text-xs">R$ {(item.unit_price || 0).toFixed(2)}</TableCell>
-                      <TableCell className="text-xs font-medium">R$ {(item.total_price || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-xs">{money(item.unit_price || 0)}</TableCell>
+                      <TableCell className="text-xs font-medium">{money(item.total_price || 0)}</TableCell>
                       <TableCell>
                         {!readOnly && (
                           <Button
@@ -344,7 +348,7 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                     Subtotal Serviços
                   </TableCell>
                   <TableCell className="text-xs font-bold text-foreground">
-                    R$ {servicesSubtotal.toFixed(2)}
+                    {money(servicesSubtotal)}
                   </TableCell>
                   <TableCell />
                 </TableRow>
@@ -395,8 +399,8 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                     <TableRow key={idx}>
                       <TableCell className="text-xs font-medium">{item.description}</TableCell>
                       <TableCell className="text-xs">{item.quantity}</TableCell>
-                      <TableCell className="text-xs">R$ {(item.unit_price || 0).toFixed(2)}</TableCell>
-                      <TableCell className="text-xs font-medium">R$ {(item.total_price || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-xs">{money(item.unit_price || 0)}</TableCell>
+                      <TableCell className="text-xs font-medium">{money(item.total_price || 0)}</TableCell>
                       <TableCell>
                         {!readOnly && (
                           <Button
@@ -420,7 +424,7 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                     Subtotal Materiais
                   </TableCell>
                   <TableCell className="text-xs font-bold text-foreground">
-                    R$ {materialsSubtotal.toFixed(2)}
+                    {money(materialsSubtotal)}
                   </TableCell>
                   <TableCell />
                 </TableRow>
@@ -435,12 +439,12 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
         <div className="flex flex-col items-end gap-1 pt-3 border-t">
           {serviceItems.length > 0 && materialItems.length > 0 && (
             <>
-              <span className="text-xs text-muted-foreground">Serviços: R$ {servicesSubtotal.toFixed(2)}</span>
-              <span className="text-xs text-muted-foreground">Materiais: R$ {materialsSubtotal.toFixed(2)}</span>
+              <span className="text-xs text-muted-foreground">Serviços: {money(servicesSubtotal)}</span>
+              <span className="text-xs text-muted-foreground">Materiais: {money(materialsSubtotal)}</span>
             </>
           )}
           <span className="text-sm font-bold text-foreground">
-            Subtotal: R$ {(servicesSubtotal + materialsSubtotal).toFixed(2)}
+            Subtotal: {money(servicesSubtotal + materialsSubtotal)}
           </span>
         </div>
       )}

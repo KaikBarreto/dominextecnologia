@@ -883,6 +883,7 @@ export function FinanceContas({
         title: exportTitle,
         rows: buildExportRows(),
         locale,
+        currency,
         timezone,
       });
     } catch (error) {
@@ -892,7 +893,7 @@ export function FinanceContas({
 
   const handleExportExcel = async () => {
     try {
-      await generateMovimentacoesExcel({ title: exportTitle, rows: buildExportRows(), locale, timezone });
+      await generateMovimentacoesExcel({ title: exportTitle, rows: buildExportRows(), locale, currency, timezone });
     } catch (error) {
       toast({ variant: 'destructive', title: 'Não foi possível gerar o Excel', description: getErrorMessage(error) });
     }

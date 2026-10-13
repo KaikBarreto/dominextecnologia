@@ -74,6 +74,7 @@ interface MonthlyCostCalculatorModalProps {
 }
 
 function CurrencyField({ label, value, onChange, hint }: { label: string; value: string; onChange: (v: string) => void; hint?: string }) {
+  const { locale, currency } = useAppLocaleContext();
   // Máscara de centavos (dígito a dígito, os 2 últimos são os centavos):
   // DIGITAR não muda. Mas colar um valor pronto (ex. "4.550" copiado de
   // planilha) pela mesma regra de dígitos daria R$ 45,50 — 100x menor (o
@@ -85,16 +86,16 @@ function CurrencyField({ label, value, onChange, hint }: { label: string; value:
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const cents = readPastedCents(e);
     if (cents == null) return;
-    onChange(currencyMask(String(cents)));
+    onChange(currencyMask(String(cents), currency, locale));
   };
   return (
     <div className="space-y-1">
       <Label className="text-xs">{label}</Label>
       <Input
         value={value}
-        onChange={e => onChange(currencyMask(e.target.value))}
+        onChange={e => onChange(currencyMask(e.target.value, currency, locale))}
         onPaste={handlePaste}
-        placeholder="R$ 0,00"
+        placeholder={currencyMask('0', currency, locale).replace(/\u00a0/g, ' ')}
         className="h-8 text-sm"
       />
       {hint && <p className="text-[10px] text-muted-foreground">{hint}</p>}
@@ -158,7 +159,9 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
     delete (b as any).periculosidade;
     delete (b as any).periculosidadeMode;
     setBd(b);
-    const fmtCurrency = (v: number) => v > 0 ? currencyMask(String(Math.round(v * 100))) : '';
+    const fmtCurrency = (v: number) => v > 0
+      ? currencyMask(String(Math.round(v * 100)), currency, locale)
+      : '';
     setSalaryDisplay(fmtCurrency(b.baseSalary));
     setPlanoSaudeDisplay(fmtCurrency(b.planoSaude));
     setPlanoOdontoDisplay(fmtCurrency(b.planoOdonto));

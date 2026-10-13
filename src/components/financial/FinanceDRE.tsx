@@ -610,6 +610,7 @@ export function FinanceDRE({
       result: row.result,
     })),
     locale,
+    currency,
     timezone,
   });
 

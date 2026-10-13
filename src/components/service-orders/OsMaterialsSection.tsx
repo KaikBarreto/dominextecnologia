@@ -4,8 +4,8 @@ import { formatQty } from '@/components/inventory/InventoryMaterialSelect';
 import { useInventory } from '@/hooks/useInventory';
 import { useStocks } from '@/hooks/useStocks';
 import { useOsMaterials, type OsMaterialLine } from '@/hooks/useOsMaterials';
-import { formatBRL } from '@/utils/currency';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { formatMoney } from '@/lib/format';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 interface OsMaterialsSectionProps {
@@ -20,7 +20,8 @@ interface OsMaterialsSectionProps {
  * (OsConsumptionSummaryDialog).
  */
 export function OsMaterialsSection({ serviceOrderId, className }: OsMaterialsSectionProps) {
-  const { locale } = useAppLocaleContext();
+  const { locale, currency } = useAppLocaleContext();
+  const money = (value: number) => formatMoney(value, currency, locale);
   const t = MESSAGES[locale].app.os.stockConsumption;
   const { items } = useInventory();
   const { stocks } = useStocks();
@@ -67,7 +68,7 @@ export function OsMaterialsSection({ serviceOrderId, className }: OsMaterialsSec
                 {notCommitted && <p className="text-xs text-warning">{t.sectionPending}</p>}
               </div>
               {lineCost != null && (
-                <p className="shrink-0 font-semibold text-foreground">R$ {formatBRL(lineCost)}</p>
+                <p className="shrink-0 font-semibold text-foreground">{money(lineCost)}</p>
               )}
             </div>
           );
@@ -75,7 +76,7 @@ export function OsMaterialsSection({ serviceOrderId, className }: OsMaterialsSec
         {hasCost && (
           <div className="flex items-center justify-between border-t pt-2 text-sm font-semibold text-foreground">
             <span>{t.sectionTotal}</span>
-            <span>R$ {formatBRL(totalCost)}</span>
+            <span>{money(totalCost)}</span>
           </div>
         )}
       </CardContent>
