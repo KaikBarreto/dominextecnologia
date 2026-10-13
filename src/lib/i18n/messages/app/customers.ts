@@ -122,6 +122,7 @@ export const customers = {
       tabTickets: 'Chamados',
       tabContracts: 'Contratos',
       tabFinancial: 'Financeiro',
+      tabStock: 'Estoque',
 
       // Ações no header
       actions: 'Ações',
@@ -290,6 +291,8 @@ export const customers = {
       txnPending: 'Pendente',
       viewDetails: 'Ver detalhes',
       financeChargeBadge: 'Cobrança',
+      newExpense: 'Lançar despesa',
+      expensePaidByCustomerBadge: 'Pago pelo cliente',
 
       // Switcher de cliente
       switcherSearch: 'Buscar cliente...',

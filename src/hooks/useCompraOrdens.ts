@@ -204,6 +204,7 @@ export function useCompraOrdens(compraId: string | null): UseCompraOrdensResult 
         const { data, error } = await supabase
           .from('inventory')
           .select('id, name, unit')
+          .is('customer_id', null)
           .in('id', inventoryIds);
         if (error) throw error;
         invRows = data ?? [];

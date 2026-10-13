@@ -164,6 +164,7 @@ type DbRow = Record<string, unknown>;
 interface PagedBuilder {
   select(columns: string): PagedBuilder;
   eq(column: string, value: unknown): PagedBuilder;
+  is(column: string, value: null): PagedBuilder;
   order(column: string, options?: { ascending?: boolean }): PagedBuilder;
   range(
     from: number,
@@ -934,7 +935,7 @@ async function collectSheets({
           const items = await fetchAllPaged(
             'inventory',
             'id, name, sku, category, unit, supplier, description, cost_price, sale_price, min_quantity, quantity',
-            { orderBy: ['name', 'id'], onPage },
+            { orderBy: ['name', 'id'], onPage, refine: (query) => query.is('customer_id', null) },
           );
 
           // A RLS de SELECT de inventory_stock_levels já filtra por
@@ -1017,7 +1018,7 @@ async function collectSheets({
             'inventory_movements',
             'id, created_at, movement_type, inventory_id, stock_id, quantity, unit_cost, ' +
               'stock_before, stock_after, supplier_id, service_order_id, notes',
-            { orderBy: ['created_at', 'id'], onPage },
+            { orderBy: ['created_at', 'id'], onPage, refine: (query) => query.is('customer_id', null) },
           ),
         );
         sheets.push({

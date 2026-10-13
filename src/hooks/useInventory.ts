@@ -74,6 +74,9 @@ export function useInventory() {
       const { data, error } = await supabase
         .from('inventory')
         .select('*')
+        // Materiais alocados a clientes têm catálogo e saldo próprios. Eles só
+        // aparecem na ficha/OS daquele cliente, nunca no estoque da prestadora.
+        .is('customer_id', null)
         .order('name');
 
       if (error) throw error;

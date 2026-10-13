@@ -3013,6 +3013,69 @@ export type Database = {
           },
         ]
       }
+      customer_paid_expenses: {
+        Row: {
+          amount: number
+          category: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          description: string
+          expense_date: string
+          id: string
+          notes: string | null
+          updated_at: string
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          description: string
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          description?: string
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_paid_expenses_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_paid_expenses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -5842,15 +5905,19 @@ export type Database = {
       }
       inventory: {
         Row: {
+          archived_at: string | null
           category: string | null
+          client_request_id: string | null
           company_id: string
           cost_price: number | null
           created_at: string
+          customer_id: string | null
           description: string | null
           group_id: string | null
           id: string
           min_quantity: number | null
           name: string
+          notes: string | null
           quantity: number | null
           sale_price: number | null
           sku: string | null
@@ -5860,15 +5927,19 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           category?: string | null
+          client_request_id?: string | null
           company_id: string
           cost_price?: number | null
           created_at?: string
+          customer_id?: string | null
           description?: string | null
           group_id?: string | null
           id?: string
           min_quantity?: number | null
           name: string
+          notes?: string | null
           quantity?: number | null
           sale_price?: number | null
           sku?: string | null
@@ -5878,15 +5949,19 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           category?: string | null
+          client_request_id?: string | null
           company_id?: string
           cost_price?: number | null
           created_at?: string
+          customer_id?: string | null
           description?: string | null
           group_id?: string | null
           id?: string
           min_quantity?: number | null
           name?: string
+          notes?: string | null
           quantity?: number | null
           sale_price?: number | null
           sku?: string | null
@@ -5901,6 +5976,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
           {
@@ -6087,6 +6169,7 @@ export type Database = {
           company_id: string | null
           created_at: string
           created_by: string | null
+          customer_id: string | null
           id: string
           inventory_id: string
           movement_type: string
@@ -6105,6 +6188,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           created_by?: string | null
+          customer_id?: string | null
           id?: string
           inventory_id: string
           movement_type: string
@@ -6123,6 +6207,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           created_by?: string | null
+          customer_id?: string | null
           id?: string
           inventory_id?: string
           movement_type?: string
@@ -6137,6 +6222,13 @@ export type Database = {
           unit_cost?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_movements_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inventory_movements_inventory_id_fkey"
             columns: ["inventory_id"]
@@ -9631,6 +9723,7 @@ export type Database = {
         Row: {
           company_id: string
           created_at: string
+          customer_id: string | null
           id: string
           is_default: boolean
           name: string
@@ -9640,6 +9733,7 @@ export type Database = {
         Insert: {
           company_id: string
           created_at?: string
+          customer_id?: string | null
           id?: string
           is_default?: boolean
           name: string
@@ -9649,13 +9743,22 @@ export type Database = {
         Update: {
           company_id?: string
           created_at?: string
+          customer_id?: string | null
           id?: string
           is_default?: boolean
           name?: string
           sort_order?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "stocks_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscription_cancellation_requests: {
         Row: {
@@ -11484,6 +11587,10 @@ export type Database = {
         Args: { p_asaas_payment_id: string; p_net?: number; p_paid_at?: string }
         Returns: Json
       }
+      archive_customer_stock_item: {
+        Args: { p_inventory_id: string }
+        Returns: undefined
+      }
       archive_employee: { Args: { p_employee_id: string }; Returns: boolean }
       archive_tenant_subscription: {
         Args: { p_company_id: string; p_subscription_id: string }
@@ -11592,6 +11699,20 @@ export type Database = {
           p_proof_hash: string
         }
         Returns: Json
+      }
+      create_customer_stock_item: {
+        Args: {
+          p_client_request_id: string
+          p_cost_price: number | null
+          p_customer_id: string
+          p_initial_quantity: number
+          p_min_quantity: number | null
+          p_name: string
+          p_notes: string | null
+          p_sku: string | null
+          p_unit: string
+        }
+        Returns: string
       }
       create_employee_face_enrollment_link: {
         Args: { p_employee_id: string }
@@ -12313,80 +12434,44 @@ export type Database = {
         Args: { p_contract_id: string }
         Returns: string
       }
-      register_inventory_movement:
-        | {
-            Args: {
-              p_inventory_id: string
-              p_movement_type: string
-              p_notes?: string
-              p_quantity: number
-              p_related_movement_id?: string
-              p_service_order_id?: string
-              p_supplier_id?: string
-              p_unit_cost?: number
-            }
-            Returns: {
-              client_request_id: string | null
-              company_id: string | null
-              created_at: string
-              created_by: string | null
-              id: string
-              inventory_id: string
-              movement_type: string
-              notes: string | null
-              quantity: number
-              related_movement_id: string | null
-              service_order_id: string | null
-              stock_after: number | null
-              stock_before: number | null
-              stock_id: string
-              supplier_id: string | null
-              unit_cost: number | null
-            }
-            SetofOptions: {
-              from: "*"
-              to: "inventory_movements"
-              isOneToOne: true
-              isSetofReturn: false
-            }
-          }
-        | {
-            Args: {
-              p_inventory_id: string
-              p_movement_type: string
-              p_notes?: string
-              p_quantity: number
-              p_related_movement_id?: string
-              p_service_order_id?: string
-              p_stock_id?: string
-              p_supplier_id?: string
-              p_unit_cost?: number
-            }
-            Returns: {
-              client_request_id: string | null
-              company_id: string | null
-              created_at: string
-              created_by: string | null
-              id: string
-              inventory_id: string
-              movement_type: string
-              notes: string | null
-              quantity: number
-              related_movement_id: string | null
-              service_order_id: string | null
-              stock_after: number | null
-              stock_before: number | null
-              stock_id: string
-              supplier_id: string | null
-              unit_cost: number | null
-            }
-            SetofOptions: {
-              from: "*"
-              to: "inventory_movements"
-              isOneToOne: true
-              isSetofReturn: false
-            }
-          }
+      register_inventory_movement: {
+        Args: {
+          p_inventory_id: string
+          p_movement_type: string
+          p_notes?: string
+          p_quantity: number
+          p_related_movement_id?: string
+          p_service_order_id?: string
+          p_stock_id?: string
+          p_supplier_id?: string
+          p_unit_cost?: number
+        }
+        Returns: {
+          client_request_id: string | null
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          id: string
+          inventory_id: string
+          movement_type: string
+          notes: string | null
+          quantity: number
+          related_movement_id: string | null
+          service_order_id: string | null
+          stock_after: number | null
+          stock_before: number | null
+          stock_id: string
+          supplier_id: string | null
+          unit_cost: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "inventory_movements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       register_manual_company_payment: {
         Args: {
           p_amount: number
@@ -12623,6 +12708,45 @@ export type Database = {
       unresolve_billing_reminder: {
         Args: { p_transaction_id: string }
         Returns: undefined
+      }
+      update_customer_stock_item: {
+        Args: {
+          p_cost_price: number | null
+          p_inventory_id: string
+          p_min_quantity: number | null
+          p_name: string
+          p_notes: string | null
+          p_sku: string | null
+          p_unit: string
+        }
+        Returns: {
+          archived_at: string | null
+          category: string | null
+          client_request_id: string | null
+          company_id: string
+          cost_price: number | null
+          created_at: string
+          customer_id: string | null
+          description: string | null
+          group_id: string | null
+          id: string
+          min_quantity: number | null
+          name: string
+          notes: string | null
+          quantity: number | null
+          sale_price: number | null
+          sku: string | null
+          supplier: string | null
+          supplier_id: string | null
+          unit: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "inventory"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       update_tenant_charge_local: {
         Args: {

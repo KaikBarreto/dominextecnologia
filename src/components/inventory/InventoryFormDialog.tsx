@@ -82,7 +82,7 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
   const stocksSectionReady = stockLevelsLoaded && !stocksLoading;
 
   const getNextSequentialSku = async (): Promise<string> => {
-    const { data, error } = await supabase.from('inventory').select('sku, created_at').ilike('sku', 'EST-%').order('created_at', { ascending: false }).limit(200);
+    const { data, error } = await supabase.from('inventory').select('sku, created_at').is('customer_id', null).ilike('sku', 'EST-%').order('created_at', { ascending: false }).limit(200);
     if (error) throw error;
     let max = 0;
     for (const row of data ?? []) {

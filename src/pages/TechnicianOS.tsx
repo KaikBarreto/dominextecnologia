@@ -4754,11 +4754,13 @@ function TechnicianOSInner() {
             open={consumeStockOpen}
             onOpenChange={setConsumeStockOpen}
             serviceOrderId={resolvedOsId}
+            customerId={serviceOrder?.customer_id ?? null}
           />
           <OsConsumptionSummaryDialog
             open={consumptionSummaryOpen}
             onOpenChange={setConsumptionSummaryOpen}
             serviceOrderId={resolvedOsId}
+            customerId={serviceOrder?.customer_id ?? null}
             onConfirm={handleConfirmConsumptionAndFinish}
             isConfirming={finishing || confirmingConsumption}
           />

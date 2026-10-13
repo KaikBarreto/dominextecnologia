@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { formatQty } from '@/components/inventory/InventoryMaterialSelect';
 import { useInventory } from '@/hooks/useInventory';
+import { useCustomerStock } from '@/hooks/useCustomerStock';
 import { useStocks } from '@/hooks/useStocks';
 import {
   clearSummaryDraft,
@@ -22,13 +24,25 @@ interface OsConsumptionSummaryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   serviceOrderId: string;
+  customerId?: string | null;
   /** Monta o payload final — quem chama a RPC e finaliza a OS é a tela do técnico. */
   onConfirm: (lines: CommitLineInput[]) => void | Promise<void>;
   isConfirming?: boolean;
 }
 
-function parseQty(raw: string): number {
+// eslint-disable-next-line react-refresh/only-export-components
+export function parseQty(raw: string): number {
   return parseFloat(raw.replace(',', '.')) || 0;
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function hasInvalidSummaryQuantity(
+  lines: OsMaterialLine[],
+  quantities: Record<string, string>,
+): boolean {
+  return lines.some((line) => (
+    parseQty(quantities[line.id] ?? String(line.quantity).replace('.', ',')) <= 0
+  ));
 }
 
 /**
@@ -41,13 +55,23 @@ export function OsConsumptionSummaryDialog({
   open,
   onOpenChange,
   serviceOrderId,
+  customerId,
   onConfirm,
   isConfirming = false,
 }: OsConsumptionSummaryDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.stockConsumption;
   const { items, getQuantityForStock } = useInventory();
-  const { stocks } = useStocks();
+  const {
+    items: customerItems,
+    getQuantityForStock: getCustomerQuantityForStock,
+    isError: isCustomerStockError,
+    refetch: refetchCustomerStock,
+  } = useCustomerStock(customerId);
+  const customerStockUnavailable = !!customerId && isCustomerStockError;
+  // Inclui o estoque deste cliente para resolver nome e saldo no resumo, sem
+  // tornar estoques de outros clientes visíveis.
+  const { stocks, customerStock } = useStocks(customerId);
   const { lines, pendingLines, flushPending } = useOsMaterials(serviceOrderId);
 
   const [quantities, setQuantities] = useState<Record<string, string>>({});
@@ -75,6 +99,10 @@ export function OsConsumptionSummaryDialog({
     () => lines.filter((l) => !removedIds.has(l.id)),
     [lines, removedIds],
   );
+  const hasInvalidQuantity = useMemo(
+    () => hasInvalidSummaryQuantity(displayLines, quantities),
+    [displayLines, quantities],
+  );
 
   /**
    * Delta total por par `material|estoque`, somando todas as linhas do resumo.
@@ -92,9 +120,15 @@ export function OsConsumptionSummaryDialog({
   }, [displayLines, quantities]);
 
   const materialName = (line: OsMaterialLine) =>
-    line.material?.name ?? items.find((i) => i.id === line.inventory_id)?.name ?? '—';
+    line.material?.name
+      ?? customerItems.find((i) => i.id === line.inventory_id)?.name
+      ?? items.find((i) => i.id === line.inventory_id)?.name
+      ?? '—';
   const materialUnit = (line: OsMaterialLine) =>
-    line.material?.unit || items.find((i) => i.id === line.inventory_id)?.unit || t.sectionUnit;
+    line.material?.unit
+      || customerItems.find((i) => i.id === line.inventory_id)?.unit
+      || items.find((i) => i.id === line.inventory_id)?.unit
+      || t.sectionUnit;
   const stockName = (line: OsMaterialLine) =>
     line.stock?.name ?? stocks.find((s) => s.id === line.stock_id)?.name ?? '—';
 
@@ -107,7 +141,7 @@ export function OsConsumptionSummaryDialog({
   };
 
   const handleConfirmClick = async () => {
-    if (busy || isConfirming) return;
+    if (busy || isConfirming || hasInvalidQuantity || customerStockUnavailable) return;
     setBusy(true);
     try {
       // Última chance de sincronizar o que ficou preso no aparelho antes de
@@ -152,17 +186,31 @@ export function OsConsumptionSummaryDialog({
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="flex-1"
+            className="min-h-11 flex-1"
             disabled={confirming}
           >
             {t.summaryBtnBack}
           </Button>
-          <Button onClick={handleConfirmClick} disabled={confirming} className="flex-1">
+          <Button
+            onClick={handleConfirmClick}
+            disabled={confirming || hasInvalidQuantity || customerStockUnavailable}
+            className="min-h-11 flex-1"
+          >
             {confirming ? t.summaryBtnConfirming : t.summaryBtnConfirm}
           </Button>
         </div>
       }
     >
+      {customerStockUnavailable && (
+        <NoticeBanner variant="destructive" title="Não foi possível conferir o saldo do cliente">
+          <div className="space-y-3">
+            <p>A finalização ficou bloqueada para evitar uma baixa em local incorreto.</p>
+            <Button type="button" variant="outline" className="min-h-11 bg-background text-foreground hover:bg-muted hover:text-foreground" onClick={() => void refetchCustomerStock()}>
+              Tentar novamente
+            </Button>
+          </div>
+        </NoticeBanner>
+      )}
       {displayLines.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">{t.summaryEmptyAll}</p>
       ) : (
@@ -171,7 +219,12 @@ export function OsConsumptionSummaryDialog({
             const unit = materialUnit(line);
             const qtyStr = quantities[line.id] ?? String(line.quantity).replace('.', ',');
             const qty = parseQty(qtyStr);
-            const currentBalance = getQuantityForStock(line.inventory_id, line.stock_id);
+            const invalidQuantity = qty <= 0;
+            const quantityId = `os-consumption-summary-quantity-${line.id}`;
+            const quantityErrorId = `${quantityId}-error`;
+            const currentBalance = customerStock?.id === line.stock_id
+              ? getCustomerQuantityForStock(line.inventory_id, line.stock_id)
+              : getQuantityForStock(line.inventory_id, line.stock_id);
             // O saldo resultante é do PAR (material + estoque), não da linha
             // isolada. O mesmo material pode estar lançado em duas linhas de
             // propósito; calcular cada uma sozinha contra o saldo atual mostra
@@ -182,7 +235,13 @@ export function OsConsumptionSummaryDialog({
             const resultingNegative = resulting < 0;
 
             return (
-              <div key={line.id} className="space-y-2 rounded-lg border p-3">
+              <div
+                key={line.id}
+                className={cn(
+                  'space-y-2 rounded-lg border p-3',
+                  invalidQuantity && 'border-destructive/60 bg-destructive/5',
+                )}
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{materialName(line)}</p>
@@ -192,7 +251,7 @@ export function OsConsumptionSummaryDialog({
                     type="button"
                     variant="destructive-ghost"
                     size="icon"
-                    className="h-8 w-8 shrink-0"
+                    className="h-11 w-11 shrink-0"
                     onClick={() => handleRemove(line.id)}
                     disabled={confirming}
                     aria-label={t.removeAria.replace('{material}', materialName(line))}
@@ -204,6 +263,10 @@ export function OsConsumptionSummaryDialog({
                 <div className="flex items-center gap-2">
                   <div className="min-w-0 flex-1">
                     <NumericInput
+                      id={quantityId}
+                      aria-label={`${t.fieldQuantity}: ${materialName(line)}`}
+                      aria-invalid={invalidQuantity}
+                      aria-describedby={invalidQuantity ? quantityErrorId : undefined}
                       decimal
                       value={qtyStr}
                       onValueChange={(v) => handleQtyChange(line.id, v)}
@@ -212,6 +275,12 @@ export function OsConsumptionSummaryDialog({
                   </div>
                   <span className="shrink-0 text-xs text-muted-foreground">{unit}</span>
                 </div>
+
+                {invalidQuantity && (
+                  <p id={quantityErrorId} role="alert" className="text-xs font-medium text-destructive">
+                    {t.errNoQuantity}
+                  </p>
+                )}
 
                 {line.pending ? (
                   <p className="text-xs text-warning">{t.summaryPendingHint}</p>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, Megaphone, CheckSquare, CheckCircle2, ChevronDown, Pencil, Eye, Wallet, RotateCcw, Handshake } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, Megaphone, CheckSquare, CheckCircle2, ChevronDown, Pencil, Eye, Wallet, RotateCcw, Handshake } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -78,10 +78,15 @@ import { classifyTenantChargeStatus } from '@/utils/tenantChargeStatus';
 import { formatOSNumber } from '@/lib/osNumber';
 import type { LucideIcon } from 'lucide-react';
 import { phoneMask } from '@/utils/masks';
+import { CustomerStockTab } from '@/components/customers/CustomerStockTab';
+import { CustomerExpenseDialog } from '@/components/customers/CustomerExpenseDialog';
+import { useCustomerPaidExpenses, type CustomerPaidExpense } from '@/hooks/useCustomerPaidExpenses';
 
-type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos' | 'cobrancas';
+type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos' | 'cobrancas' | 'estoque';
 
 type FinanceSubTab = 'tudo' | 'a_vencer' | 'pagas';
+
+const CUSTOMER_DETAIL_TABS: TabKey[] = ['geral', 'equipamentos', 'historico', 'tarefas', 'financeiro', 'chamados', 'contratos', 'cobrancas', 'estoque'];
 
 /**
  * Datas financeiras vêm como 'YYYY-MM-DD'. Ancoramos ao meio-dia para comparar
@@ -125,6 +130,7 @@ export default function CustomerDetail() {
   // quem tem a permissão explícita pode excluir lançamento. Editar não tem
   // trava própria — quem já vê a aba pode editar, igual à tela geral.
   const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
+  const canManageFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:manage_finance'));
   const { hasModule } = useCompanyModules();
   const hasPortal = hasModule('customer_portal');
   const hasCobrancas = hasModule('cobrancas');
@@ -132,7 +138,14 @@ export default function CustomerDetail() {
   const { isActive: isPaymentActive } = useTenantPaymentAccount();
   const showCobrancasTab = hasCobrancas && isPaymentActive;
   const locationState = (window.history.state?.usr as { tab?: string } | undefined);
-  const [activeTab, setActiveTab] = useState<TabKey>((locationState?.tab as TabKey) || 'geral');
+  const [activeTab, setActiveTab] = useState<TabKey>(() => {
+    const requested = locationState?.tab;
+    if (!requested || !CUSTOMER_DETAIL_TABS.includes(requested as TabKey)) return 'geral';
+    if (requested === 'financeiro' && !canViewCustomerFinancial) return 'geral';
+    if (requested === 'chamados' && !hasPortal) return 'geral';
+    if (requested === 'cobrancas' && !showCobrancasTab) return 'geral';
+    return requested as TabKey;
+  });
   const { customers, isLoading, updateCustomer, deleteCustomer } = useCustomers();
 
   // Resolve o cliente a partir do param da rota (UUID antigo OU código curto).
@@ -157,6 +170,16 @@ export default function CustomerDetail() {
 
   const { contacts, createContact, updateContact, deleteContact } = useCustomerContacts(id);
   const { activeOrigins } = useCustomerOrigins();
+  const {
+    expenses: customerPaidExpenses,
+    isLoading: customerPaidExpensesLoading,
+    isError: customerPaidExpensesIsError,
+    error: customerPaidExpensesError,
+    refetch: refetchCustomerPaidExpenses,
+    createExpense: createCustomerPaidExpense,
+    updateExpense: updateCustomerPaidExpense,
+    voidExpense: voidCustomerPaidExpense,
+  } = useCustomerPaidExpenses(id);
 
   const [equipFormOpen, setEquipFormOpen] = useState(false);
   const [editingEquipment, setEditingEquipment] = useState<any | null>(null);
@@ -184,6 +207,9 @@ export default function CustomerDetail() {
   // Edição de lançamento manual (aba Financeiro) — mesmo formulário do Financeiro geral.
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [txnFormOpen, setTxnFormOpen] = useState(false);
+  const [customerExpenseOpen, setCustomerExpenseOpen] = useState(false);
+  const [editingCustomerExpense, setEditingCustomerExpense] = useState<CustomerPaidExpense | null>(null);
+  const [voidingCustomerExpense, setVoidingCustomerExpense] = useState<CustomerPaidExpense | null>(null);
   // Exclusão de lançamento — mesma checagem de "tem relacionados" (parcelas,
   // orçamento vinculado) do Financeiro geral, via RelatedTransactionsDialog.
   const [pendingDeleteTxn, setPendingDeleteTxn] = useState<FinancialTransaction | null>(null);
@@ -289,6 +315,13 @@ export default function CustomerDetail() {
       t => !t.is_paid && t.due_date && parseLocalFinanceDate(t.due_date) >= today,
     );
   }, [manualCustomerTransactions, financeSubTab]);
+  // Gastos pagos pelo próprio cliente são histórico operacional: aparecem em
+  // Tudo e Pagas, nunca em A vencer, e não entram em nenhum total financeiro.
+  const filteredCustomerPaidExpenses = useMemo(() => {
+    if (financeSubTab === 'a_vencer') return [];
+    if (financeSubTab === 'pagas') return customerPaidExpenses.filter((expense) => !expense.voided_at);
+    return customerPaidExpenses;
+  }, [customerPaidExpenses, financeSubTab]);
   const customerContracts = contracts.filter(c => c.customer_id === id);
 
   // Cobranças do cliente (hook só faz a query quando showCobrancasTab e id
@@ -423,11 +456,11 @@ export default function CustomerDetail() {
     });
   };
 
-  // Linha única da aba Financeiro: lançamento manual OU cobrança (nunca as
-  // duas juntas pro mesmo dinheiro — ver filtro de `tenant_charge_id` acima).
+  // Linha única da aba Financeiro: lançamento, cobrança ou gasto custeado pelo
+  // cliente. O terceiro é apenas histórico e não participa do financeiro.
   type FinanceRow = {
     id: string;
-    kind: 'transaction' | 'charge';
+    kind: 'transaction' | 'charge' | 'customer_paid_expense';
     description: string;
     amount: number;
     transaction_type: 'entrada' | 'saida';
@@ -435,6 +468,7 @@ export default function CustomerDetail() {
     is_paid: boolean;
     txn?: FinancialTransaction;
     charge?: TenantCharge;
+    customerExpense?: CustomerPaidExpense;
   };
   const financeRows = useMemo<FinanceRow[]>(() => {
     const txnRows: FinanceRow[] = filteredCustomerTransactions.map((tx) => ({
@@ -457,9 +491,20 @@ export default function CustomerDetail() {
       is_paid: classifyTenantChargeStatus(c.status) === 'paid',
       charge: c,
     }));
-    return [...txnRows, ...chargeRows].sort((a, b) => b.transaction_date.localeCompare(a.transaction_date));
+    const customerExpenseRows: FinanceRow[] = filteredCustomerPaidExpenses.map((expense) => ({
+      id: `customer-expense:${expense.id}`,
+      kind: 'customer_paid_expense',
+      description: expense.description,
+      amount: expense.amount,
+      transaction_type: 'saida',
+      transaction_date: expense.expense_date,
+      is_paid: !expense.voided_at,
+      customerExpense: expense,
+    }));
+    return [...txnRows, ...chargeRows, ...customerExpenseRows]
+      .sort((a, b) => b.transaction_date.localeCompare(a.transaction_date));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredCustomerTransactions, filteredCustomerCharges]);
+  }, [filteredCustomerTransactions, filteredCustomerCharges, filteredCustomerPaidExpenses]);
 
   /**
    * "Salvar" do lançamento editado aqui dentro. Usa o MESMO motor do Financeiro
@@ -484,11 +529,26 @@ export default function CustomerDetail() {
   });
 
   const handleTxnSubmit = async (data: any) => {
-    // Esta tela só EDITA; criar lançamento avulso continua no Financeiro geral.
-    if (!editingTransaction) return null;
-    const result = await submitTransaction(data, editingTransaction);
-    setEditingTransaction(null);
+    if (editingTransaction) {
+      const result = await submitTransaction(data, editingTransaction);
+      setEditingTransaction(null);
+      return result;
+    }
+    // Despesa paga pela prestadora segue o motor financeiro normal. O vínculo
+    // do cliente é carimbado mesmo se um draft antigo tentar limpá-lo.
+    const result = await createTransaction.mutateAsync({
+      ...data,
+      transaction_type: 'saida',
+      customer_id: id,
+    });
     return result;
+  };
+
+  const handleCustomerExpenseSubmit = async (input: Parameters<typeof createCustomerPaidExpense.mutateAsync>[0]) => {
+    if (editingCustomerExpense) {
+      return updateCustomerPaidExpense.mutateAsync({ id: editingCustomerExpense.id, ...input });
+    }
+    return createCustomerPaidExpense.mutateAsync(input);
   };
 
   // Excluir um lançamento passa pela MESMA checagem de "tem relacionados"
@@ -540,6 +600,7 @@ export default function CustomerDetail() {
       { key: 'equipamentos', label: t.tabEquipment },
       { key: 'historico', label: t.tabHistory },
       { key: 'tarefas', label: t.tabTasks },
+      { key: 'estoque', label: t.tabStock },
     ];
     if (hasPortal) {
       allTabs.push({ key: 'chamados', label: t.tabTickets });
@@ -1033,6 +1094,10 @@ export default function CustomerDetail() {
         </div>
       )}
 
+      {activeTab === 'estoque' && id && (
+        <CustomerStockTab customerId={id} customerName={customer.name} />
+      )}
+
       {activeTab === 'equipamentos' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -1468,13 +1533,60 @@ export default function CustomerDetail() {
           <ChargeFinanceWarningBanner actions={chargeActions} />
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">{t.financialHeading}</h2>
-            {showCobrancasTab && (
-              <Button className="hidden lg:flex" onClick={() => setChargeDialogOpen(true)}>
-                <Wallet className="mr-2 h-4 w-4" />
-                {t.chargeNewButton}
-              </Button>
-            )}
+            <div className="hidden flex-wrap justify-end gap-2 lg:flex">
+              {canManageFinance && (
+                <>
+                  <Button variant="outline" onClick={() => { setEditingTransaction(null); setTxnFormOpen(true); }}>
+                    <DollarSign className="mr-2 h-4 w-4" />
+                    Despesa da empresa
+                  </Button>
+                  <Button onClick={() => { setEditingCustomerExpense(null); setCustomerExpenseOpen(true); }}>
+                    <Wallet className="mr-2 h-4 w-4" />
+                    Gasto pago pelo cliente
+                  </Button>
+                </>
+              )}
+              {showCobrancasTab && (
+                <Button variant="outline" onClick={() => setChargeDialogOpen(true)}>
+                  <Wallet className="mr-2 h-4 w-4" />
+                  {t.chargeNewButton}
+                </Button>
+              )}
+            </div>
           </div>
+
+          {isMobile && canManageFinance && (
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" className="h-auto min-h-11 whitespace-normal" onClick={() => { setEditingTransaction(null); setTxnFormOpen(true); }}>
+                Despesa da empresa
+              </Button>
+              <Button className="h-auto min-h-11 whitespace-normal" onClick={() => { setEditingCustomerExpense(null); setCustomerExpenseOpen(true); }}>
+                Pago pelo cliente
+              </Button>
+            </div>
+          )}
+
+          {customerPaidExpensesLoading && (
+            <div className="space-y-2" aria-label="Carregando gastos pagos pelo cliente">
+              <Skeleton className="h-4 w-56" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          )}
+
+          {customerPaidExpensesIsError && (
+            <div role="alert" className="flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+                <div>
+                  <p className="font-semibold text-foreground">Não foi possível carregar os gastos pagos pelo cliente</p>
+                  <p className="text-sm text-muted-foreground">{getErrorMessage(customerPaidExpensesError)}</p>
+                </div>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => void refetchCustomerPaidExpenses()}>
+                Tentar novamente
+              </Button>
+            </div>
+          )}
 
           {/* Subabas: Tudo / A vencer / Pagas — mobile usa pills scrolláveis, desktop botões */}
           {isMobile ? (
@@ -1547,20 +1659,27 @@ export default function CustomerDetail() {
                             {row.kind === 'charge' && (
                               <p className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">{t.financeChargeBadge}</p>
                             )}
+                            {row.kind === 'customer_paid_expense' && (
+                              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">{t.expensePaidByCustomerBadge}</p>
+                            )}
                           </TableCell>
                           <TableCell>
-                            <span className={row.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}>
-                              {row.transaction_type === 'entrada' ? '+' : '-'} {formatCurrency(row.amount)}
+                            <span className={row.kind === 'customer_paid_expense' ? 'text-foreground' : row.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}>
+                              {row.kind === 'customer_paid_expense' ? '' : row.transaction_type === 'entrada' ? '+ ' : '- '}{formatCurrency(row.amount)}
                             </span>
                           </TableCell>
                           <TableCell className="hidden sm:table-cell">
-                            {format(new Date(row.transaction_date), 'dd/MM/yyyy', { locale: ptBR })}
+                            {format(parseLocalFinanceDate(row.transaction_date), 'dd/MM/yyyy', { locale: ptBR })}
                           </TableCell>
                           <TableCell>
                             {row.kind === 'charge' ? (
                               <span className={cn('inline-flex items-center text-xs px-2 py-0.5 rounded-full font-semibold', chargeStatusClass(row.charge!.status))}>
                                 {chargeStatusLabel(row.charge!.status)}
                               </span>
+                            ) : row.kind === 'customer_paid_expense' ? (
+                              <Badge variant={row.customerExpense?.voided_at ? 'secondary' : 'default'}>
+                                {row.customerExpense?.voided_at ? 'Cancelado' : t.expensePaidByCustomerBadge}
+                              </Badge>
                             ) : (
                               <Badge variant={row.is_paid ? 'default' : 'secondary'}>
                                 {row.is_paid ? t.txnPaid : t.txnPending}
@@ -1576,8 +1695,24 @@ export default function CustomerDetail() {
                                   { label: tCustomers.delete, icon: Trash2, variant: 'delete', onClick: () => requestDeleteTxn(row.txn!), hidden: !canDeleteFinance },
                                 ]}
                               />
-                            ) : (
+                            ) : row.kind === 'charge' ? (
                               <RowActionsMenu actions={chargeMenuActions(row.charge!)} />
+                            ) : (
+                              <RowActionsMenu actions={[
+                                {
+                                  label: row.customerExpense?.voided_at || !canManageFinance ? 'Consultar' : tCustomers.edit,
+                                  icon: row.customerExpense?.voided_at || !canManageFinance ? Eye : Edit,
+                                  variant: row.customerExpense?.voided_at || !canManageFinance ? 'default' : 'edit',
+                                  onClick: () => { setEditingCustomerExpense(row.customerExpense!); setCustomerExpenseOpen(true); },
+                                },
+                                {
+                                  label: 'Cancelar registro',
+                                  icon: Trash2,
+                                  variant: 'delete',
+                                  hidden: !canManageFinance || !!row.customerExpense?.voided_at,
+                                  onClick: () => setVoidingCustomerExpense(row.customerExpense!),
+                                },
+                              ]} />
                             )}
                           </TableCell>
                         </TableRow>
@@ -1959,8 +2094,47 @@ export default function CustomerDetail() {
         transaction={editingTransaction}
         onSubmit={handleTxnSubmit}
         isLoading={createTransaction.isPending || updateTransaction.isPending || deleteTransaction.isPending}
-        defaultType={editingTransaction?.transaction_type ?? 'entrada'}
+        defaultType={editingTransaction?.transaction_type ?? 'saida'}
+        prefill={!editingTransaction && id ? { customer_id: id, transaction_type: 'saida' } : undefined}
+        lockCustomer={!editingTransaction}
       />
+
+      <CustomerExpenseDialog
+        open={customerExpenseOpen}
+        onOpenChange={(open) => {
+          setCustomerExpenseOpen(open);
+          if (!open) setEditingCustomerExpense(null);
+        }}
+        expense={editingCustomerExpense}
+        readOnly={!!editingCustomerExpense && (!canManageFinance || !!editingCustomerExpense.voided_at)}
+        onSubmit={handleCustomerExpenseSubmit}
+        isLoading={createCustomerPaidExpense.isPending || updateCustomerPaidExpense.isPending}
+      />
+
+      <AlertDialog open={!!voidingCustomerExpense} onOpenChange={(open) => { if (!open) setVoidingCustomerExpense(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar este gasto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O registro continuará visível no histórico como cancelado e não poderá ser reativado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={voidCustomerPaidExpense.isPending}
+              onClick={async () => {
+                if (!voidingCustomerExpense) return;
+                await voidCustomerPaidExpense.mutateAsync(voidingCustomerExpense.id);
+                setVoidingCustomerExpense(null);
+              }}
+            >
+              {voidCustomerPaidExpense.isPending ? 'Cancelando...' : 'Cancelar registro'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Excluir lançamento — mesma checagem de relacionados do Financeiro geral */}
       <RelatedTransactionsDialog

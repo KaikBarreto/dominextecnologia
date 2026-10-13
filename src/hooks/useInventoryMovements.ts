@@ -57,6 +57,8 @@ export function useInventoryMovements() {
       const { data, error } = await supabase
         .from('inventory_movements')
         .select('*')
+        // Kardex geral não mistura materiais que pertencem ao estoque de cliente.
+        .is('customer_id', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

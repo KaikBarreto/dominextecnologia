@@ -13,6 +13,8 @@ interface InventoryMaterialSelectProps {
   onValueChange: (inventoryId: string) => void;
   disabled?: boolean;
   className?: string;
+  /** ID do trigger para associação com o Label externo. */
+  id?: string;
 }
 
 /**
@@ -38,6 +40,7 @@ export function InventoryMaterialSelect({
   onValueChange,
   disabled,
   className,
+  id,
 }: InventoryMaterialSelectProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.stockConsumption;
@@ -94,6 +97,7 @@ export function InventoryMaterialSelect({
 
   return (
     <SearchableSelect
+      id={id}
       groups={groups}
       value={value}
       onValueChange={onValueChange}

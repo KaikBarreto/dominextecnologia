@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.31.0',
+    date: '13 de outubro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Estoque exclusivo dentro da ficha do cliente',
+        description: 'Cada cliente pode ter seu próprio cadastro de materiais, com entradas, saídas, saldo mínimo e histórico completo. Esse estoque fica separado dos materiais pertencentes à prestadora.',
+        category: 'recurso',
+      },
+      {
+        title: 'Consumo do estoque do cliente nas Ordens de Serviço',
+        description: 'Quando o cliente possui materiais cadastrados, o técnico pode escolher esse estoque ao registrar o consumo da OS. A baixa acontece somente na finalização e aparece no histórico do material.',
+        category: 'recurso',
+      },
+      {
+        title: 'Gastos pagos diretamente pelo cliente',
+        description: 'Na aba Financeiro da ficha do cliente, agora é possível registrar compras e despesas que foram pagas pelo próprio cliente. Elas ficam no histórico para consulta, sem alterar contas, caixa, banco ou DRE da prestadora.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.30.0',
     date: '13 de outubro de 2026',
     type: 'minor',

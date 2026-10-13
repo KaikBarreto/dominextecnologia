@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.30.0";
+export const APP_VERSION = "1.31.0";
 
-export const VERSION_NOTES = "A Dominex agora adapta idioma, moeda e fuso horário ao país de cada empresa. Os valores operacionais aparecem na moeda escolhida em orçamentos, financeiro, contratos, estoque, Ordens de Serviço, RH e relatórios.";
+export const VERSION_NOTES = "A ficha do cliente agora tem estoque próprio, histórico de materiais e consumo integrado às Ordens de Serviço. Também é possível registrar gastos pagos diretamente pelo cliente sem movimentar o financeiro da prestadora.";

@@ -8,24 +8,44 @@ export type Stock = Tables<'stocks'>;
 export type StockInsert = TablesInsert<'stocks'>;
 export type StockUpdate = TablesUpdate<'stocks'>;
 
-export function useStocks() {
+/**
+ * Defesa adicional no client: estoque geral é compartilhado; estoque de cliente
+ * só pode aparecer na OS daquele próprio cliente.
+ */
+export function filterStocksForCustomer(stocks: Stock[], customerId?: string | null): Stock[] {
+  return stocks.filter((stock) => stock.customer_id == null || (!!customerId && stock.customer_id === customerId));
+}
+
+export function useStocks(customerId?: string | null) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: stocks = [], isLoading } = useQuery({
-    queryKey: ['stocks'],
+    queryKey: ['stocks', customerId ?? 'general'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Sem customerId, a fronteira padrão devolve somente os estoques gerais e
+      // preserva os consumidores atuais. Na OS, inclui gerais + o estoque do
+      // cliente informado. A RLS continua aplicando a ACL de usuário por local.
+      let query = supabase
         .from('stocks')
         .select('*')
         .order('sort_order')
         .order('name');
+
+      query = customerId
+        ? query.or(`customer_id.is.null,customer_id.eq.${customerId}`)
+        : query.or('customer_id.is.null');
+
+      const { data, error } = await query;
       if (error) throw error;
-      return data as Stock[];
+      return filterStocksForCustomer((data ?? []) as unknown as Stock[], customerId);
     },
   });
 
   const defaultStock = stocks.find((s) => s.is_default) ?? stocks[0] ?? null;
+  const customerStock = customerId
+    ? stocks.find((s) => s.customer_id === customerId) ?? null
+    : null;
 
   const createStock = useMutation({
     mutationFn: async (name: string) => {
@@ -145,6 +165,7 @@ export function useStocks() {
   return {
     stocks,
     defaultStock,
+    customerStock,
     isLoading,
     createStock,
     renameStock,

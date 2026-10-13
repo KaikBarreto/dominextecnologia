@@ -279,6 +279,12 @@ export function useOsMaterials(serviceOrderId?: string | null) {
     queryClient.invalidateQueries({ queryKey: ['inventory'] });
     queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
     queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
+    // O consumo pode ter saído do estoque alocado ao cliente. Esses três
+    // caches alimentam, respectivamente, o seletor da OS e a aba Estoque da
+    // ficha do cliente; sem invalidá-los a baixa só aparecia após recarregar.
+    queryClient.invalidateQueries({ queryKey: ['customer-stock-inventory'] });
+    queryClient.invalidateQueries({ queryKey: ['customer-stock-levels'] });
+    queryClient.invalidateQueries({ queryKey: ['customer-stock-management'] });
   }, [queryClient, osId]);
 
   /**

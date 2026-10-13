@@ -774,6 +774,8 @@ interface TransactionFormDialogProps {
    * Hoje só o fluxo "receita ao finalizar OS" usa.
    */
   prefill?: Partial<TransactionFormData> & { service_order_id?: string; customer_id?: string };
+  /** Impede trocar o cliente em fluxos ancorados numa ficha específica. */
+  lockCustomer?: boolean;
   /** Exige e mostra vencimento quando `Já foi pago/recebido` estiver desligado. */
   requireDueDateWhenUnpaid?: boolean;
 }
@@ -786,6 +788,7 @@ export function TransactionFormDialog({
   isLoading,
   defaultType = 'entrada',
   prefill,
+  lockCustomer = false,
   requireDueDateWhenUnpaid = false,
 }: TransactionFormDialogProps) {
   // `timezone`: fuso da empresa. Manda no "hoje" de `transaction_date` e
@@ -1329,6 +1332,7 @@ export function TransactionFormDialog({
           onValueChange={field.onChange}
           placeholder={tf.customerPlaceholder}
           searchPlaceholder={tf.customerSearchPlaceholder}
+          disabled={lockCustomer}
         />
         <FormMessage />
       </FormItem>
