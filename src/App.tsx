@@ -224,6 +224,7 @@ const LoadingSpinner = () => <PageLoading />;
 // Determine the default authenticated route based on permissions
 function useDefaultRoute() {
   const { hasScreenAccess, isAdminUser, hasAdminScreenAccess, roles } = useAuth();
+  const { hasScreen } = useCompanyModules();
 
   // Admin panel users (master + vendedores) land on the admin panel.
   if (isAdminUser) {
@@ -256,7 +257,7 @@ function useDefaultRoute() {
     ['screen:dashboard', '/dashboard'],
   ];
   for (const [key, path] of appCandidates) {
-    if (hasScreenAccess(key)) return path;
+    if (hasScreenAccess(key) && hasScreen(key)) return path;
   }
 
   // Fallback seguro: /perfil renderiza <Profile /> direto, fora de qualquer
@@ -313,12 +314,13 @@ function SubscriptionProtectedRoute({ children }: { children: React.ReactNode })
 // Permission-gated route — redirects to default route if no access
 function PermissionRoute({ screenKey, children }: { screenKey: string; children: React.ReactNode }) {
   const { hasScreenAccess, loading, user, roles, permissions, adminPermissions } = useAuth();
+  const { hasScreen, isLoading: modulesLoading } = useCompanyModules();
   const defaultRoute = useDefaultRoute();
 
-  if (loading) return <LoadingSpinner />;
+  if (loading || modulesLoading) return <LoadingSpinner />;
   // If user is authenticated but permissions/roles haven't loaded yet, show spinner instead of redirecting
   if (user && roles.length === 0 && permissions.length === 0 && adminPermissions.length === 0) return <LoadingSpinner />;
-  if (!hasScreenAccess(screenKey)) return <Navigate to={defaultRoute} replace />;
+  if (!hasScreenAccess(screenKey) || !hasScreen(screenKey)) return <Navigate to={defaultRoute} replace />;
 
   return <>{children}</>;
 }

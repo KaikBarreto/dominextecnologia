@@ -513,13 +513,25 @@ export const esOverrides: MessagesOverride = {
     },
     pricing: {
       heading: 'Planes que crecen con tu operación',
-      contactForPricing: 'Precios mensuales claros, con 5 usuarios incluidos y R$ 20 por usuario adicional.',
+      contactForPricing: 'Planes desde R$ 97/mes, con opciones para equipos de 3 a 15 usuarios.',
       perMonth: '/mes',
       mostPopular: '⭐ Más popular',
       featuresLabel: 'Funciones',
       ctaTrial: 'Hablar por WhatsApp',
       enterpriseBadge: 'Enterprise',
       plans: {
+        excecao: {
+          name: 'EXCEPCIÓN',
+          desc: 'Operación esencial y ágil para equipos pequeños',
+          features: [
+            'Órdenes de Servicio y Rastreo',
+            'Agenda y Tareas',
+            'Clientes',
+            'Equipos',
+            '3 usuarios incluidos',
+            'Sin Presupuestos, Portal del Cliente ni Finanzas',
+          ],
+        },
         start: {
           name: 'Esencial',
           desc: 'Gestión básica para equipos pequeños',

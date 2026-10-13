@@ -513,13 +513,25 @@ export const enOverrides: MessagesOverride = {
     },
     pricing: {
       heading: 'Plans that grow with your operation',
-      contactForPricing: 'Clear monthly pricing, with 5 users included and R$20 per additional user.',
+      contactForPricing: 'Plans from R$97/month, with options for teams of 3 to 15 users.',
       perMonth: '/month',
       mostPopular: '⭐ Most popular',
       featuresLabel: 'Features',
       ctaTrial: 'Chat on WhatsApp',
       enterpriseBadge: 'Enterprise',
       plans: {
+        excecao: {
+          name: 'EXCEPTION',
+          desc: 'A lean essential operation for small teams',
+          features: [
+            'Work Orders and Tracking',
+            'Schedule and Tasks',
+            'Customers',
+            'Equipment',
+            '3 users included',
+            'No Quotes, Customer Portal or Finance',
+          ],
+        },
         start: {
           name: 'Essential',
           desc: 'Basic management for small teams',

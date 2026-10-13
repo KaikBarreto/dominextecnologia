@@ -16,7 +16,7 @@ import { SelfServiceBadge } from '@/components/admin/company-lead/SelfServiceBad
 import { LeadWhatsAppButton } from '@/components/admin/company-lead/LeadWhatsAppButton';
 
 const PLAN_LABELS: Record<string, string> = {
-  starter: 'Starter', pro: 'Pro', enterprise: 'Enterprise',
+  excecao: 'EXCEÇÃO', starter: 'Starter', pro: 'Pro', enterprise: 'Enterprise',
 };
 
 interface CompanyKanbanCardProps {

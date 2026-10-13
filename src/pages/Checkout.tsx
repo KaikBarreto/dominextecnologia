@@ -8,7 +8,7 @@ import { addMonths, differenceInDays } from "date-fns";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useIsDark } from "@/hooks/useIsDark";
-import { Check, ArrowRight, Clock, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Check, ArrowRight, Clock, AlertTriangle, CheckCircle2, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +46,13 @@ function detectCardErrorSection(message: string): "card" | "holder" | "address" 
 // As feature lists vivem aqui (subscription_plans.included_modules está vazio no
 // Dominex; os planos prontos descrevem o que está incluso de forma estática).
 const PLAN_FEATURES: Record<string, string[]> = {
+  excecao: [
+    "Ordens de Serviço e Rastreamento",
+    "Agenda e Tarefas",
+    "Clientes",
+    "Equipamentos",
+    "Sem Orçamentos, Portal do Cliente e Financeiro",
+  ],
   start: [
     "Ordens de Serviço",
     "Agenda",
@@ -669,12 +676,16 @@ export default function Checkout() {
                       </div>
 
                       <div className="space-y-2.5 flex-1">
-                        {features.map((f) => (
-                          <div key={f} className="flex items-center gap-2.5 text-sm">
-                            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
-                            <span>{f}</span>
-                          </div>
-                        ))}
+                        {features.map((f, index) => {
+                          const isLimitation = plan.code === 'excecao' && index === features.length - 1;
+                          const FeatureIcon = isLimitation ? X : CheckCircle2;
+                          return (
+                            <div key={f} className="flex items-center gap-2.5 text-sm">
+                              <FeatureIcon className={cn("h-4 w-4 shrink-0", isLimitation ? "text-rose-500" : "text-emerald-500")} />
+                              <span className={cn(isLimitation && "text-muted-foreground")}>{f}</span>
+                            </div>
+                          );
+                        })}
                         <div className="flex items-center gap-2.5 text-sm">
                           <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
                           <span className="font-medium">{plan.max_users} usuário{plan.max_users > 1 ? "s" : ""}</span>

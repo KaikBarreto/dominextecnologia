@@ -43,6 +43,7 @@ interface CompanyTableProps {
 }
 
 const PLAN_LABELS: Record<string, string> = {
+  excecao: 'EXCEÇÃO',
   start: 'Start',
   starter: 'Start',
   avancado: 'Avançado',

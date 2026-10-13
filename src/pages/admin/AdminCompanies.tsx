@@ -74,6 +74,7 @@ type CompanyLite = {
 
 // Display dos planos (renomeados 2026-06; os CODES start/avancado/master ficam).
 const PLAN_LABELS: Record<string, string> = {
+  excecao: 'EXCEÇÃO',
   start: 'Essencial',
   starter: 'Essencial',
   avancado: 'Pro',

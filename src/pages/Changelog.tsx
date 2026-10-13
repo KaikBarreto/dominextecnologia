@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.31.0',
+    date: '13 de outubro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Novo plano EXCEÇÃO para equipes menores',
+        description: 'A Dominex agora tem uma opção de R$ 97 ao mês para operações com até 3 usuários. O plano inclui Ordens de Serviço e rastreamento, agenda e tarefas, clientes e equipamentos, sem acesso a Orçamentos, Portal do Cliente e Financeiro.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.30.1',
     date: '13 de outubro de 2026',
     type: 'patch',

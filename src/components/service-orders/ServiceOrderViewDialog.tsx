@@ -31,6 +31,7 @@ import { formatOSNumberDigits } from '@/lib/osNumber';
 import { OsMaterialsSection } from './OsMaterialsSection';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOsRevenueSummary } from '@/hooks/useOsRevenueSummary';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
 
 interface OSPhoto {
   id: string;
@@ -89,7 +90,8 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
   // a OS": sem isso o usuário não tem como saber se já lançou. Valor financeiro
   // só pra quem enxerga o Financeiro — técnico não vê.
   const { hasScreenAccess } = useAuth();
-  const canSeeFinance = hasScreenAccess('screen:finance');
+  const { hasScreen } = useCompanyModules();
+  const canSeeFinance = hasScreenAccess('screen:finance') && hasScreen('screen:finance');
   const osRevenue = useOsRevenueSummary(canSeeFinance ? serviceOrderId : null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [loading, setLoading] = useState(true);

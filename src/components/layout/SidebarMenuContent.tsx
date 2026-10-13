@@ -183,7 +183,7 @@ export function SidebarMenuContent() {
   // Localiza um path do app pro slug do idioma do usuário (raiz traduzida, resto
   // preservado). Paths fora do registro (admin, domiflix) voltam intactos.
   const L = (path: string) => localizeAppPath(path, locale);
-  const { hasModule } = useCompanyModules();
+  const { hasModule, hasScreen } = useCompanyModules();
   const { settings } = useCompanySettings();
   const { logoUrl, iconUrl, enabled: wlEnabled, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
   const location = useLocation();
@@ -252,6 +252,7 @@ export function SidebarMenuContent() {
   const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string; requiresTechTools?: boolean }>(items: T[]): T[] => {
     return items.filter(item => {
       if (item.screenKey && !hasScreenAccess(item.screenKey)) return false;
+      if (item.screenKey && !hasScreen(item.screenKey)) return false;
       if (item.moduleKey && !hasModule(item.moduleKey)) return false;
       if (item.requiresSegment && settings?.segment !== item.requiresSegment) return false;
       if (item.requiresTechTools && !segmentHasTechTools(settings?.segment)) return false;

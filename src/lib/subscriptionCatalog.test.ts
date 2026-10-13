@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  EXCEPTION_PLAN_CODE,
   REQUIRED_CUSTOM_MODULE_CODES,
+  planAllowsScreen,
   resolveExtraUserPrice,
   withRequiredCustomModules,
 } from './subscriptionCatalog';
@@ -33,4 +35,11 @@ describe('subscriptionCatalog', () => {
       expect(resolveExtraUserPrice([{ code: 'extra_user', price }])).toBeNull();
     },
   );
+
+  it('limita Orçamentos e Financeiro somente no plano Exceção', () => {
+    expect(planAllowsScreen(EXCEPTION_PLAN_CODE, 'screen:quotes')).toBe(false);
+    expect(planAllowsScreen(EXCEPTION_PLAN_CODE, 'screen:finance')).toBe(false);
+    expect(planAllowsScreen(EXCEPTION_PLAN_CODE, 'screen:service_orders')).toBe(true);
+    expect(planAllowsScreen('start', 'screen:quotes')).toBe(true);
+  });
 });

@@ -125,13 +125,14 @@ export default function CustomerDetail() {
   const finTxn = MESSAGES[locale].app.finance.transactionList;
   const isMobile = useIsMobile();
   const { isAdminOrGestor, hasPermission, hasPermissionRecord } = useAuth();
-  const canViewCustomerFinancial = isAdminOrGestor() || hasPermission('fn:view_customer_financial');
+  const { hasModule, hasScreen } = useCompanyModules();
+  const canViewCustomerFinancial = hasScreen('screen:finance')
+    && (isAdminOrGestor() || hasPermission('fn:view_customer_financial'));
   // Mesma regra do Financeiro geral (TransactionListPanel): só admin/gestor ou
   // quem tem a permissão explícita pode excluir lançamento. Editar não tem
   // trava própria — quem já vê a aba pode editar, igual à tela geral.
   const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
   const canManageFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:manage_finance'));
-  const { hasModule } = useCompanyModules();
   const hasPortal = hasModule('customer_portal');
   const hasCobrancas = hasModule('cobrancas');
   const canCreateOpportunity = hasModule('crm');

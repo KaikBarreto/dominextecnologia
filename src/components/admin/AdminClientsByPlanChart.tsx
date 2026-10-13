@@ -7,7 +7,7 @@ const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', curren
 
 // Display dos planos (renomeados 2026-06; os CODES start/avancado/master ficam).
 const PLAN_LABELS: Record<string, string> = {
-  start: 'Essencial', basico: 'Básico', avancado: 'Pro', master: 'Business', personalizado: 'Personalizado',
+  excecao: 'EXCEÇÃO', start: 'Essencial', basico: 'Básico', avancado: 'Pro', master: 'Business', personalizado: 'Personalizado',
 };
 
 interface Props {

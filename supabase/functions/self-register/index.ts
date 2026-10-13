@@ -231,6 +231,7 @@ const resolveOptionalLocale = (v: unknown): Locale | null => {
 // Mantê-lo em dia é obrigatório; num link de VENDA a query ao catálogo é EXIGIDA
 // (fail-closed abaixo) pra nunca subcobrar silenciosamente com um default velho.
 const PLAN_DEFAULTS: Record<string, { price: number; max_users: number; name: string }> = {
+  excecao: { price: 97, max_users: 3, name: 'EXCEÇÃO' },
   start: { price: 197, max_users: 5, name: 'Essencial' },
   starter: { price: 197, max_users: 5, name: 'Essencial' },
   avancado: { price: 547, max_users: 10, name: 'Pro' },

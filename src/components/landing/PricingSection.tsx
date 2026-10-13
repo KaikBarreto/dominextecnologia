@@ -1,4 +1,4 @@
-import { Check, ArrowRight } from 'lucide-react';
+import { Check, ArrowRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,7 @@ import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 // Os preços dos planos prontos espelham o catálogo comercial. O personalizado
 // continua sob consulta e cada CTA abre a conversa com o time comercial.
 const PLAN_CONFIG = [
+  { code: 'excecao', popular: false, monthlyPrice: 97 },
   { code: 'start', popular: false, monthlyPrice: 197 },
   { code: 'avancado', popular: true, monthlyPrice: 547 },
   { code: 'master', popular: false, monthlyPrice: 847 },
@@ -58,7 +59,7 @@ export default function PricingSection() {
           {t.contactForPricing}
         </p>
 
-        <div className="grid md:grid-cols-3 gap-5 items-stretch">
+        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5 items-stretch">
           {plans.map((plan) => (
               <div
                 key={plan.code}
@@ -95,12 +96,16 @@ export default function PricingSection() {
                 </div>
 
                 <ul className="space-y-2.5 mb-4 flex-1">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-white/60">
-                      <Check className="h-4 w-4 text-emerald-500 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
+                  {plan.features.map((f, index) => {
+                    const isLimitation = plan.code === 'excecao' && index === plan.features.length - 1;
+                    const FeatureIcon = isLimitation ? X : Check;
+                    return (
+                      <li key={f} className={cn('flex items-center gap-2 text-sm', isLimitation ? 'text-white/45' : 'text-white/60')}>
+                        <FeatureIcon className={cn('h-4 w-4 shrink-0', isLimitation ? 'text-rose-400' : 'text-emerald-500')} />
+                        {f}
+                      </li>
+                    );
+                  })}
                 </ul>
 
                 <Button

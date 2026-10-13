@@ -7,6 +7,7 @@ import {
   hasActiveCustomPrice,
   getNextSubscriptionValue,
 } from '@/utils/subscriptionPricing';
+import { planAllowsScreen } from '@/lib/subscriptionCatalog';
 
 export type ModuleCode =
   | 'basic'
@@ -216,6 +217,8 @@ export function useCompanyModules() {
   // Acesso por tela. Tela não-mapeada é liberada (default true), espelhando o
   // EcoSistema. Super_admin e trial caem no `hasModule` (que já libera tudo).
   const hasScreen = (screenId: string): boolean => {
+    if (hasRole('super_admin')) return true;
+    if (!planAllowsScreen(plan, screenId)) return false;
     const moduleCode = SCREEN_TO_MODULE_MAP[screenId];
     if (!moduleCode) return true;
     return hasModule(moduleCode);

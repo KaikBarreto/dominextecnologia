@@ -70,6 +70,7 @@ const MODULE_LABELS: Record<string, string> = {
 };
 
 const PLAN_ACCENTS: Record<string, { icon: typeof Zap; className: string }> = {
+  excecao: { icon: Zap, className: 'bg-slate-700 text-white' },
   start: { icon: Zap, className: 'bg-emerald-600 text-white' },
   avancado: { icon: Building2, className: 'bg-blue-600 text-white' },
   master: { icon: Crown, className: 'bg-amber-500 text-white' },
@@ -91,6 +92,14 @@ function money(value: number) {
 }
 
 function planModules(plan: PublicSubscriptionPlan): string[] {
+  if (plan.code === 'excecao') {
+    return [
+      'Ordens de Serviço e rastreamento',
+      'Agenda e tarefas',
+      'Equipamentos',
+      'Clientes',
+    ];
+  }
   return plan.includedModules
     .map((code) => MODULE_LABELS[code])
     .filter((label): label is string => Boolean(label));
@@ -130,7 +139,7 @@ function ProposalPrice({
   );
 }
 
-function PlanFeatureList({ modules, users }: { modules: string[]; users: number }) {
+function PlanFeatureList({ modules, users, planCode }: { modules: string[]; users: number; planCode: string }) {
   return (
     <div className="space-y-2.5">
       {modules.map((label) => (
@@ -143,6 +152,12 @@ function PlanFeatureList({ modules, users }: { modules: string[]; users: number 
         <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
         <span>{users} {users === 1 ? 'usuário' : 'usuários'} inclusos</span>
       </p>
+      {planCode === 'excecao' && (
+        <p className="flex items-start gap-2 text-sm text-muted-foreground">
+          <X className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
+          <span>Sem Orçamentos, Portal do Cliente e Financeiro</span>
+        </p>
+      )}
     </div>
   );
 }
@@ -641,7 +656,7 @@ export default function ProposalSimulator() {
                               <p className="shrink-0 text-sm font-semibold">{money(view.monthly)}/mês</p>
                             )}
                           </div>
-                          <PlanFeatureList modules={view.modules} users={view.users} />
+                          <PlanFeatureList modules={view.modules} users={view.users} planCode={view.code} />
                         </article>
                       );
                     })

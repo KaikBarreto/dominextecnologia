@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useCanLaunchOsRevenue } from '@/hooks/useCanLaunchOsRevenue';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { fetchOsRevenueTotals } from '@/hooks/useOsRevenueSummary';
 import type { OsFinishRevenueDialogProps } from '@/components/financial/OsFinishRevenueDialog';
 
@@ -44,6 +45,8 @@ export interface UseOsFinishRevenuePromptResult {
 export function useOsFinishRevenuePrompt(): UseOsFinishRevenuePromptResult {
   const { settings } = useCompanySettings();
   const canLaunch = useCanLaunchOsRevenue();
+  const { hasScreen } = useCompanyModules();
+  const planAllowsFinance = hasScreen('screen:finance');
 
   const [open, setOpen] = useState(false);
   // O contexto NÃO é limpo ao fechar de propósito: zerar na hora mataria a
@@ -67,6 +70,7 @@ export function useOsFinishRevenuePrompt(): UseOsFinishRevenuePromptResult {
         if (!ctx?.serviceOrderId) return;
         if (!promptEnabled) return;
         if (!canLaunch) return;
+        if (!planAllowsFinance) return;
 
         const totals = await fetchOsRevenueTotals(ctx.serviceOrderId);
         // `null` = a consulta FALHOU. Na dúvida, não abre: melhor não perguntar
@@ -83,7 +87,7 @@ export function useOsFinishRevenuePrompt(): UseOsFinishRevenuePromptResult {
         }
       }
     },
-    [promptEnabled, canLaunch],
+    [promptEnabled, canLaunch, planAllowsFinance],
   );
 
   const onOpenChange = useCallback((next: boolean) => {

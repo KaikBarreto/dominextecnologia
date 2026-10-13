@@ -133,7 +133,7 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
  */
 export const TopNavbar = memo(() => {
   const { user, profile, roles, hasScreenAccess, hasAdminScreenAccess, isAdminUser, signOut } = useAuth();
-  const { hasModule } = useCompanyModules();
+  const { hasModule, hasScreen } = useCompanyModules();
   const { locale } = useAppLocaleContext();
   const shellT = MESSAGES[locale].app.shell;
   const accountT = shellT.account;
@@ -162,6 +162,7 @@ export const TopNavbar = memo(() => {
   const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode }>(items: T[]): T[] => {
     return items.filter((item) => {
       if (item.screenKey && !hasScreenAccess(item.screenKey)) return false;
+      if (item.screenKey && !hasScreen(item.screenKey)) return false;
       if (item.moduleKey && !hasModule(item.moduleKey)) return false;
       return true;
     });

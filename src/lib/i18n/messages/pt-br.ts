@@ -323,13 +323,25 @@ export const ptBr = {
     },
     pricing: {
       heading: 'Planos que crescem com a sua operação',
-      contactForPricing: 'Valores mensais claros, com 5 usuários na base e R$ 20 por usuário adicional.',
+      contactForPricing: 'Planos a partir de R$ 97/mês, com opções para equipes de 3 a 15 usuários.',
       perMonth: '/mês',
       mostPopular: '⭐ Mais popular',
       featuresLabel: 'Recursos',
       ctaTrial: 'Falar no WhatsApp',
       enterpriseBadge: 'Enterprise',
       plans: {
+        excecao: {
+          name: 'EXCEÇÃO',
+          desc: 'Operação essencial e enxuta para equipes pequenas',
+          features: [
+            'Ordens de Serviço e Rastreamento',
+            'Agenda e Tarefas',
+            'Clientes',
+            'Equipamentos',
+            '3 usuários inclusos',
+            'Sem Orçamentos, Portal do Cliente e Financeiro',
+          ],
+        },
         start: {
           name: 'Essencial',
           desc: 'Gestão básica para pequenas equipes',
