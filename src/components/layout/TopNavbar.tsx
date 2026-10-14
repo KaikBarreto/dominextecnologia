@@ -28,6 +28,7 @@ import {
   Moon,
   HelpCircle,
   Clapperboard,
+  Handshake,
   Video,
   Crown,
 } from 'lucide-react';
@@ -109,6 +110,7 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'CRM/Tarefas', icon: Target, path: '/admin/crm', screenKey: 'admin_crm' },
   { title: 'Empresas', icon: Building2, path: '/admin/empresas', screenKey: 'admin_empresas' },
   { title: 'Vendedores', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
+  { title: 'Afiliados', icon: Handshake, path: '/admin/afiliados', screenKey: 'admin_afiliados' },
   { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro', screenKey: 'admin_financeiro' },
   { title: 'Domiflix', icon: Clapperboard, path: '/admin/domiflix', masterOnly: true },
 ];
@@ -132,7 +134,10 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
  * - Visível só em xl: (≥1280px). Abaixo disso, o header mobile/tablet entra em ação.
  */
 export const TopNavbar = memo(() => {
-  const { user, profile, roles, hasScreenAccess, hasAdminScreenAccess, isAdminUser, signOut } = useAuth();
+  const { user, profile, roles, hasScreenAccess, hasAdminScreenAccess, isAdminUser, linkedAffiliateId, signOut } = useAuth();
+  // Afiliado é parceiro externo: não é `isAdminUser`, mas também não tem tela
+  // de tenant nenhuma. Renderiza o menu admin, que o filtro reduz a "Afiliados".
+  const showAdminMenu = isAdminUser || !!linkedAffiliateId;
   const { hasModule, hasScreen } = useCompanyModules();
   const { locale } = useAppLocaleContext();
   const shellT = MESSAGES[locale].app.shell;
@@ -172,7 +177,7 @@ export const TopNavbar = memo(() => {
     ? adminMenuItems
     : adminMenuItems.filter((item) => !item.masterOnly && item.screenKey && hasAdminScreenAccess(item.screenKey));
 
-  const visibleItems = isAdminUser
+  const visibleItems = showAdminMenu
     ? filteredAdminMenu
     : filterByAccess(tenantMenuItems)
         .map((item) => (item.children ? { ...item, children: filterByAccess(item.children) } : item))
@@ -199,7 +204,7 @@ export const TopNavbar = memo(() => {
     filteredAdminMenu.find((m) => m.path === '/admin/empresas')?.path ??
     filteredAdminMenu[0]?.path ??
     '/admin/empresas';
-  const logoTarget = isAdminUser ? adminHomePath : L('/dashboard');
+  const logoTarget = showAdminMenu ? adminHomePath : L('/dashboard');
 
   return (
     <>

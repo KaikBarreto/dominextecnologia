@@ -9,6 +9,7 @@ import {
   Target,
   Building2,
   Briefcase,
+  Handshake,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -67,6 +68,22 @@ const adminNavItems: NavItem[] = [
   { icon: Menu, label: 'Menu', bottomNavKey: 'menu', action: 'openMore' },
 ];
 
+/**
+ * "Afiliados" NÃO entra em `adminNavItems`: a barra tem 5 slots e o 5º é o
+ * "Menu", que nunca pode ser empurrado pra fora. Pro master os 5 clássicos
+ * continuam; o item entra só quando sobra slot — o que é exatamente o caso do
+ * AFILIADO-ONLY (parceiro externo), cuja barra ficaria com o "Menu" sozinho.
+ * No desktop/drawer o item aparece normalmente (`SidebarMenuContent`,
+ * `TopNavbar`, `MoreMenuDrawer`).
+ */
+const affiliateNavItem: NavItem = {
+  icon: Handshake,
+  label: 'Afiliados',
+  path: '/admin/afiliados',
+  screenKey: 'admin_afiliados',
+};
+const BOTTOM_NAV_SLOTS = 5;
+
 const triggerHaptic = () => {
   if ('vibrate' in navigator) navigator.vibrate(10);
 };
@@ -74,7 +91,11 @@ const triggerHaptic = () => {
 export function MobileBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAdminUser, hasAdminScreenAccess } = useAuth();
+  const { isAdminUser, hasAdminScreenAccess, linkedAffiliateId } = useAuth();
+  // Afiliado é parceiro externo: não é `isAdminUser` e não tem tela de tenant
+  // nenhuma, então a barra do tenant (Início/OS/Agenda/Clientes) seria 4 becos
+  // sem saída. Ele usa a barra do painel, reduzida pelo filtro de permissão.
+  const showAdminNav = isAdminUser || !!linkedAffiliateId;
   const { locale } = useAppLocaleContext();
   const shellT = MESSAGES[locale].app.shell;
   const [moreOpen, setMoreOpen] = useState(false);
@@ -98,13 +119,23 @@ export function MobileBottomNav() {
 
   // Monta a lista de itens conforme o contexto.
   let navItems: NavItem[];
-  if (isAdminUser) {
+  if (showAdminNav) {
     // Segurança/permissão: vendedor com permissões admin parciais só vê as
     // telas a que tem acesso (mesma régua do AdminSidebarNav). O slot Menu não
     // tem screenKey, então sempre permanece.
     const filtered = adminNavItems
       .filter((item) => !item.screenKey || hasAdminScreenAccess(item.screenKey))
       .map((item) => ({ ...item })); // cópia: nunca mutar os objetos compartilhados
+    // "Afiliados" só ocupa slot quando sobra um (ver `affiliateNavItem`): entra
+    // ANTES do "Menu", que é sempre o último e nunca sai da barra.
+    if (
+      hasAdminScreenAccess(affiliateNavItem.screenKey!) &&
+      filtered.length < BOTTOM_NAV_SLOTS
+    ) {
+      const menuIndex = filtered.findIndex((item) => item.action === 'openMore');
+      const insertAt = menuIndex === -1 ? filtered.length : menuIndex;
+      filtered.splice(insertAt, 0, { ...affiliateNavItem });
+    }
     // Fallback do FAB: se Empresas (o `special` original) foi filtrado por falta
     // de permissão, promovemos o primeiro item navegável que sobrou a FAB
     // central pra barra nunca ficar sem botão de destaque.

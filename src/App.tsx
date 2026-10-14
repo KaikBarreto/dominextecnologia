@@ -198,6 +198,8 @@ const AdminCRM = React.lazy(() => import("./pages/admin/AdminCRM"));
 const AdminSettings = React.lazy(() => import("./pages/admin/AdminSettings"));
 const AdminSalespeople = React.lazy(() => import("./pages/admin/AdminSalespeople"));
 const AdminSalespersonDetail = React.lazy(() => import("./pages/admin/AdminSalespersonDetail"));
+const AdminAffiliates = React.lazy(() => import("./pages/admin/AdminAffiliates"));
+const AdminAffiliateDetail = React.lazy(() => import("./pages/admin/AdminAffiliateDetail"));
 const AdminDomiflix = React.lazy(() => import("./pages/admin/AdminDomiflix"));
 const AdminCobrancas = React.lazy(() => import("./pages/admin/AdminCobrancas"));
 
@@ -223,8 +225,16 @@ const LoadingSpinner = () => <PageLoading />;
 
 // Determine the default authenticated route based on permissions
 function useDefaultRoute() {
-  const { hasScreenAccess, isAdminUser, hasAdminScreenAccess, roles } = useAuth();
+  const { hasScreenAccess, isAdminUser, hasAdminScreenAccess, roles, linkedAffiliateId } = useAuth();
   const { hasScreen } = useCompanyModules();
+
+  // Afiliado externo: roteado ANTES de qualquer checagem de tenant (espelha o
+  // `landingRoute.ts` do EcoSistema). Ele não é admin, não tem company_id e
+  // nenhuma tela do app — sem isto cairia no fallback /perfil. Admin que por
+  // acaso também tenha ficha de afiliado segue no painel normal.
+  if (linkedAffiliateId && !isAdminUser) {
+    return '/admin/afiliados';
+  }
 
   // Admin panel users (master + vendedores) land on the admin panel.
   if (isAdminUser) {
@@ -233,6 +243,10 @@ function useDefaultRoute() {
       ['admin_dashboard', '/admin/dashboard'],
       ['admin_crm', '/admin/crm'],
       ['admin_vendedores', '/admin/vendedores'],
+      // Sem esta linha, um admin do painel com SÓ `admin_afiliados` cairia no
+      // fallback /admin/empresas, seria redirecionado de volta pro defaultRoute
+      // e entraria em loop de redirect (incidente `default_route_permission_loop`).
+      ['admin_afiliados', '/admin/afiliados'],
       ['admin_financeiro', '/admin/financeiro'],
       ['admin_configuracoes', '/admin/configuracoes'],
     ];
@@ -313,13 +327,24 @@ function SubscriptionProtectedRoute({ children }: { children: React.ReactNode })
 
 // Permission-gated route — redirects to default route if no access
 function PermissionRoute({ screenKey, children }: { screenKey: string; children: React.ReactNode }) {
-  const { hasScreenAccess, loading, user, roles, permissions, adminPermissions } = useAuth();
+  const {
+    hasScreenAccess, loading, user, roles, permissions, adminPermissions,
+    linkedAffiliateId, affiliateLoading,
+  } = useAuth();
   const { hasScreen, isLoading: modulesLoading } = useCompanyModules();
   const defaultRoute = useDefaultRoute();
 
   if (loading || modulesLoading) return <LoadingSpinner />;
+  // Espera a detecção de vínculo de afiliado: sem isto o `defaultRoute` do
+  // afiliado ainda não existe e ele seria mandado pro fallback /perfil.
+  if (user && affiliateLoading) return <LoadingSpinner />;
   // If user is authenticated but permissions/roles haven't loaded yet, show spinner instead of redirecting
-  if (user && roles.length === 0 && permissions.length === 0 && adminPermissions.length === 0) return <LoadingSpinner />;
+  // ⚠️ Não vale pro afiliado externo (sem role / user_permissions /
+  // admin_permissions por definição): ele ficaria preso no spinner em vez de
+  // ser redirecionado pro painel de afiliados. O login manda todo usuário sem
+  // empresa pra /dashboard (Auth.tsx), então ESTE é o caminho que o afiliado
+  // percorre logo depois de entrar.
+  if (user && !linkedAffiliateId && roles.length === 0 && permissions.length === 0 && adminPermissions.length === 0) return <LoadingSpinner />;
   if (!hasScreenAccess(screenKey) || !hasScreen(screenKey)) return <Navigate to={defaultRoute} replace />;
 
   return <>{children}</>;
@@ -373,6 +398,11 @@ function LegacyTechnicianToolsRedirect() {
 // Admin-screen-gated route — protege rotas /admin/* via admin_permissions.
 // super_admin sempre passa (hasAdminScreenAccess retorna true). Vendedor admin
 // só passa se a screenKey estiver listada em admin_permissions.
+//
+// Exceção única: o AFILIADO vinculado (`affiliates.user_id = auth.uid()`). Ele
+// é parceiro externo e NÃO é admin — `hasAdminScreenAccess` o libera APENAS em
+// `admin_afiliados` (ver AuthContext). Qualquer outra rota /admin/* continua
+// caindo no redirect pro `defaultRoute`, que pra ele é /admin/afiliados.
 function AdminScreenRoute({
   screenKey,
   masterOnly = false,
@@ -390,12 +420,21 @@ function AdminScreenRoute({
   masterOnly?: boolean;
   children: React.ReactNode;
 }) {
-  const { hasAdminScreenAccess, loading, user, roles, permissions, adminPermissions } = useAuth();
+  const {
+    hasAdminScreenAccess, loading, user, roles, permissions, adminPermissions,
+    linkedAffiliateId, affiliateLoading,
+  } = useAuth();
   const defaultRoute = useDefaultRoute();
 
   if (loading) return <LoadingSpinner />;
-  // Espera permissions/roles carregarem antes de decidir redirect (evita flicker e race)
-  if (user && roles.length === 0 && permissions.length === 0 && adminPermissions.length === 0) return <LoadingSpinner />;
+  // Espera a detecção de vínculo de afiliado antes de decidir qualquer redirect.
+  if (user && affiliateLoading) return <LoadingSpinner />;
+  // Espera permissions/roles carregarem antes de decidir redirect (evita flicker e race).
+  // ⚠️ A heurística "tudo vazio = ainda hidratando" NÃO vale pro afiliado
+  // externo: ele não tem role, nem `user_permissions`, nem `admin_permissions`
+  // — ficaria preso neste spinner pra sempre. Com o vínculo já resolvido
+  // (linha acima), um afiliado confirmado passa direto pro gate de tela.
+  if (user && !linkedAffiliateId && roles.length === 0 && permissions.length === 0 && adminPermissions.length === 0) return <LoadingSpinner />;
   if (masterOnly && !roles.includes("super_admin")) return <Navigate to={defaultRoute} replace />;
   if (!hasAdminScreenAccess(screenKey)) return <Navigate to={defaultRoute} replace />;
 
@@ -436,10 +475,14 @@ function ModuleRoute({ moduleKey, children }: { moduleKey: ModuleCode; children:
 
 // Public Route wrapper (redirects authenticated users)
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, affiliateLoading } = useAuth();
   const defaultRoute = useDefaultRoute();
-  
+
   if (loading) return <LoadingSpinner />;
+  // `affiliateLoading` é sempre false sem usuário logado, então o cadastro
+  // público (único consumidor deste wrapper) não fica esperando nada. Só o
+  // usuário JÁ logado espera, pra não ser mandado pro destino errado.
+  if (user && affiliateLoading) return <LoadingSpinner />;
   if (user) return <Navigate to={defaultRoute} replace />;
   
   return <>{children}</>;
@@ -768,6 +811,10 @@ const AppRoutes = () => (
       <Route path="/admin/crm" element={<AdminScreenRoute screenKey="admin_crm"><AdminCRM /></AdminScreenRoute>} />
       <Route path="/admin/vendedores" element={<AdminScreenRoute screenKey="admin_vendedores"><AdminSalespeople /></AdminScreenRoute>} />
       <Route path="/admin/vendedores/:id" element={<AdminScreenRoute screenKey="admin_vendedores"><AdminSalespersonDetail /></AdminScreenRoute>} />
+      {/* Programa de Afiliados. Única tela do painel que também abre pra um
+          usuário NÃO-admin: o afiliado vinculado (ver AdminScreenRoute). */}
+      <Route path="/admin/afiliados" element={<AdminScreenRoute screenKey="admin_afiliados"><AdminAffiliates /></AdminScreenRoute>} />
+      <Route path="/admin/afiliados/:id" element={<AdminScreenRoute screenKey="admin_afiliados"><AdminAffiliateDetail /></AdminScreenRoute>} />
       <Route path="/admin/configuracoes" element={<AdminScreenRoute screenKey="admin_configuracoes"><AdminSettings /></AdminScreenRoute>} />
       <Route path="/admin/domiflix" element={<AdminScreenRoute screenKey="admin_domiflix"><AdminDomiflix /></AdminScreenRoute>} />
       <Route path="/admin/cobrancas" element={<AdminScreenRoute screenKey="admin_cobrancas"><AdminCobrancas /></AdminScreenRoute>} />

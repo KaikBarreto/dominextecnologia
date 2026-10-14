@@ -33,6 +33,15 @@ export interface CatalogOrigin {
   description?: string | null;
   show_in_signup?: boolean;
   sort_order?: number;
+  /**
+   * Chave estável da origem (`company_origins.utm_key`). Além das chaves de
+   * atribuição automática por UTM (`OriginUtmKey` em `src/lib/whatsapp.ts`),
+   * o catálogo também guarda chaves de canais MANUAIS como `'affiliate'` —
+   * nunca devolvidas por `resolveCompanyOriginKey()`, só usadas pra achar a
+   * origem certa por chave estável em vez de nome (editável pelo CEO). Por
+   * isso o tipo aqui é `string`, mais largo que `OriginUtmKey`.
+   */
+  utm_key?: string | null;
 }
 
 export interface ResolvedOrigin {
@@ -96,6 +105,47 @@ export function isUnlistedOrigin(
 ): boolean {
   const resolved = resolveOrigin(name, origins);
   return !!resolved && !resolved.known;
+}
+
+// ── Programa de Afiliados: resolução por utm_key, nunca por nome ─────────────
+//
+// A origem "Afiliado" é só mais uma linha de `company_origins` (seed da Fase 1,
+// 2026-10-14, `utm_key = 'affiliate'`, `show_in_signup = false` — não é card no
+// cadastro público, só chega por link). Comparar pelo NOME quebra silenciosamente
+// se o CEO renomear a origem no painel (o catálogo é editável); só o `utm_key` é
+// estável. Fonte única: qualquer tela que precise saber "esta é a origem de
+// afiliado?" ou "qual o nome atual dela?" usa as duas funções abaixo.
+
+/** Chave estável da origem do Programa de Afiliados no catálogo. */
+export const AFFILIATE_ORIGIN_UTM_KEY = 'affiliate';
+/** Fallback só pra quando o catálogo ainda não carregou a linha do seed
+ *  (não deveria acontecer em produção — a migration garante a linha). */
+const AFFILIATE_ORIGIN_FALLBACK_NAME = 'Afiliado';
+
+/** Nome canônico ATUAL da origem "Afiliado", resolvido pelo `utm_key`. */
+export function resolveAffiliateOriginName(
+  origins: Pick<CatalogOrigin, 'name' | 'utm_key'>[] | null | undefined,
+): string {
+  const match = (origins || []).find((o) => o?.utm_key === AFFILIATE_ORIGIN_UTM_KEY);
+  return match?.name || AFFILIATE_ORIGIN_FALLBACK_NAME;
+}
+
+/**
+ * `true` quando o nome de origem informado é a origem de afiliado do catálogo.
+ * Resolve por `utm_key` quando o catálogo carregado traz essa coluna; cai no
+ * nome canônico (ou no fallback) só se a origem estiver fora do catálogo
+ * carregado (query sem a coluna, ou catálogo ainda não resolvido).
+ */
+export function isAffiliateOriginName(
+  originName: string | null | undefined,
+  origins: Pick<CatalogOrigin, 'name' | 'utm_key'>[] | null | undefined,
+): boolean {
+  const raw = (originName ?? '').trim();
+  if (!raw) return false;
+  const wanted = key(raw);
+  const match = (origins || []).find((o) => o?.name && key(o.name) === wanted);
+  if (match) return match.utm_key === AFFILIATE_ORIGIN_UTM_KEY;
+  return key(resolveAffiliateOriginName(origins)) === wanted;
 }
 
 /** Ordena o catálogo pelo que o painel master configurou (ordem, depois nome). */

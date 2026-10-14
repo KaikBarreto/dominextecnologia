@@ -118,6 +118,7 @@ Deno.serve(async (req) => {
       origin,
       salesperson_id,
       sdr_id,
+      affiliate_id,
       segment,
       custom_price,
       custom_price_permanent,
@@ -217,6 +218,27 @@ Deno.serve(async (req) => {
       '[create-company]',
     )
 
+    // Afiliado vinculado (Programa de Afiliados): o painel master só lista
+    // afiliados ATIVOS no select (useAffiliates()), mas nunca confiamos no
+    // client puro — valida aqui que o id existe e segue ativo antes de gravar.
+    // Resolve só por uuid: quem chama esta edge é o painel, que sempre manda o
+    // id real (slug é só pro link público / self-register).
+    let validAffiliateId: string | null = null
+    if (typeof affiliate_id === 'string' && affiliate_id.trim()) {
+      const { data: affiliateRow, error: affiliateError } = await supabaseAdmin
+        .from('affiliates')
+        .select('id, is_active')
+        .eq('id', affiliate_id.trim())
+        .maybeSingle()
+      if (affiliateError) {
+        console.error('[create-company] Falha ao validar affiliate_id; gravando null (não-fatal):', affiliateError.message)
+      } else if (affiliateRow?.is_active === true) {
+        validAffiliateId = affiliateRow.id
+      } else {
+        console.log(`[create-company] affiliate_id "${affiliate_id}" não encontrado ou inativo — gravando null.`)
+      }
+    }
+
     // 1. Create the company
     const { data: company, error: companyError } = await supabaseAdmin
       .from('companies')
@@ -237,6 +259,7 @@ Deno.serve(async (req) => {
         origin: canonicalOrigin,
         salesperson_id: salesperson_id || null,
         sdr_id: sdr_id || null,
+        affiliate_id: validAffiliateId,
         segment: segment || null,
         custom_price: custom_price ?? null,
         custom_price_permanent: custom_price_permanent ?? true,

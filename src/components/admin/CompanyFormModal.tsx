@@ -18,10 +18,11 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import {
   Loader2, Building2, CreditCard, KeyRound, RefreshCw, Copy, Check,
   Mail, Lock, User, Phone, FileText, MapPin, StickyNote, Calendar,
-  Tag, Briefcase, Link2, Layers,
+  Tag, Briefcase, Link2, Layers, Handshake,
 } from 'lucide-react';
 import { getSelectableSegments } from '@/utils/companySegments';
-import { resolveOrigin, UNKNOWN_ORIGIN_COLOR, type CatalogOrigin } from '@/utils/companyOriginCatalog';
+import { resolveOrigin, UNKNOWN_ORIGIN_COLOR, isAffiliateOriginName, type CatalogOrigin } from '@/utils/companyOriginCatalog';
+import { useAffiliates } from '@/hooks/useAffiliateData';
 import { Switch } from '@/components/ui/switch';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator, isPasswordStrong } from '@/components/PasswordStrengthIndicator';
@@ -114,12 +115,22 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     queryFn: async () => {
       const { data, error } = await supabase
         .from('company_origins')
-        .select('id, name, color')
+        // utm_key entra pra resolver a origem "Afiliado" por chave estável
+        // (nunca por nome — ver src/utils/companyOriginCatalog.ts).
+        .select('id, name, color, utm_key')
         .order('name');
       if (error) throw error;
       return data || [];
     },
   });
+
+  // Afiliados ativos (Programa de Afiliados) — só entram no select quando a
+  // origem escolhida é a de afiliado.
+  const { data: affiliates = [] } = useAffiliates();
+  const activeAffiliates = useMemo(
+    () => affiliates.filter((a) => a.is_active !== false),
+    [affiliates],
+  );
 
   const { data: salespeople = [] } = useQuery({
     queryKey: ['salespeople-basic-form'],
@@ -133,9 +144,6 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       return data || [];
     },
   });
-
-  // SDRs = vendedores ativos com role 'sdr'. Closer mostra TODOS (inclusive sdr).
-  const sdrs = salespeople.filter((s: any) => s.role === 'sdr');
 
   // Catálogo de módulos (plano Personalizado).
   const { data: allModules = [] } = useSubscriptionModules();
@@ -186,7 +194,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     country_code: DEFAULT_COUNTRY_CODE as CountryCode,
     subscription_status: 'testing', subscription_plan: 'start', subscription_value: '0',
     subscription_expires_at: '', billing_cycle: 'monthly', max_users: '5', notes: '',
-    origin: '', salesperson_id: '', sdr_id: '', segment: '',
+    origin: '', salesperson_id: '', affiliate_id: '', segment: '',
     admin_email: '', admin_password: '',
     use_custom_price: false,
     custom_price_permanent: true,
@@ -234,7 +242,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         notes: company.notes || '',
         origin: company.origin || '',
         salesperson_id: company.salesperson_id || '',
-        sdr_id: company.sdr_id || '',
+        affiliate_id: company.affiliate_id || '',
         segment: company.segment || '',
         admin_email: '',
         admin_password: '',
@@ -251,7 +259,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         country_code: DEFAULT_COUNTRY_CODE,
         subscription_status: 'testing', subscription_plan: 'start', subscription_value: '0',
         subscription_expires_at: defaultExpires, billing_cycle: 'monthly', max_users: '5',
-        notes: '', origin: '', salesperson_id: '', sdr_id: '', segment: '',
+        notes: '', origin: '', salesperson_id: '', affiliate_id: '', segment: '',
         admin_email: '', admin_password: '',
         use_custom_price: false, custom_price_permanent: true, custom_price_months: '3',
         nfse_tier: '1',
@@ -285,6 +293,22 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   const resolvedOrigin = resolveOrigin(formData.origin, origins as CatalogOrigin[]);
   const unlistedOrigin = resolvedOrigin && !resolvedOrigin.known ? resolvedOrigin.name : null;
   const originValue = resolvedOrigin ? resolvedOrigin.name : 'none';
+
+  // Afiliado só aparece (e só é salvo) quando a origem selecionada é a origem
+  // de afiliado do catálogo — resolvida por `utm_key`, nunca por nome
+  // hardcoded (o catálogo é editável pelo CEO).
+  const isAffiliateOriginSelected = isAffiliateOriginName(formData.origin, origins as CatalogOrigin[]);
+
+  // Troca de origem: quando deixa de ser "Afiliado", limpa o afiliado
+  // vinculado — senão fica um vínculo fantasma gerando comissão pra quem não
+  // indicou a venda.
+  const handleOriginChange = useCallback((v: string) => {
+    const newOrigin = v === 'none' ? '' : v;
+    updateField('origin', newOrigin);
+    if (!isAffiliateOriginName(newOrigin, origins as CatalogOrigin[])) {
+      updateField('affiliate_id', '');
+    }
+  }, [updateField, origins]);
 
   // Edição: carrega os módulos já contratados na grade.
   useEffect(() => {
@@ -423,17 +447,23 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       const modulesPayload = formData.subscription_plan === 'personalizado'
         ? withBaseModules(selectedModules)
         : null;
+      // Guarda de consistência: só grava affiliate_id quando a origem atual é
+      // de fato a de afiliado (cobre o caso de dado antigo/inconsistente em
+      // edição — o select só aparece quando isAffiliateOriginSelected, mas o
+      // state pode carregar um valor órfão de um registro salvo antes desta
+      // trava existir).
+      const affiliateIdToSave = isAffiliateOriginSelected ? (formData.affiliate_id || null) : null;
 
-      // Observação automática de valor personalizado: quem deu = closer
+      // Observação automática de valor personalizado: quem deu = vendedor
       // selecionado > admin logado > 'Admin'.
       let customPriceNote: string | null = null;
       if (formData.use_custom_price && customPriceVal != null) {
-        const closer = salespeople.find((s: any) => s.id === formData.salesperson_id);
+        const vendedor = salespeople.find((s: any) => s.id === formData.salesperson_id);
         customPriceNote = buildCustomPriceNote({
           price: customPriceVal,
           permanent: formData.custom_price_permanent,
           months: customPriceMonthsVal,
-          grantedBy: closer?.name || profile?.full_name || 'Admin',
+          grantedBy: vendedor?.name || profile?.full_name || 'Admin',
         });
       }
 
@@ -465,7 +495,8 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           notes: notesToSave,
           origin: formData.origin || null,
           salesperson_id: formData.salesperson_id || null,
-          sdr_id: formData.sdr_id || null,
+          sdr_id: null, // descontinuado (2026-10-14): a coluna segue no banco pelo histórico, mas nunca é preenchida de novo
+          affiliate_id: affiliateIdToSave,
           segment: formData.segment || null,
           custom_price: customPriceVal,
           custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
@@ -528,7 +559,8 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
             max_users: parseInt(formData.max_users) || 5,
             origin: formData.origin || null,
             salesperson_id: formData.salesperson_id || null,
-            sdr_id: formData.sdr_id || null,
+            sdr_id: null, // descontinuado (2026-10-14): a coluna segue no banco pelo histórico, mas nunca é preenchida de novo
+            affiliate_id: affiliateIdToSave,
             segment: formData.segment || null,
             custom_price: customPriceVal,
             custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
@@ -980,7 +1012,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Origem</Label>
-                <Select value={originValue} onValueChange={v => updateField('origin', v === 'none' ? '' : v)}>
+                <Select value={originValue} onValueChange={handleOriginChange}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Nenhuma</SelectItem>
@@ -1035,33 +1067,34 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
 
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2"><Briefcase className="h-4 w-4" />Closer (Quem fechou)</Label>
-                <Select value={formData.salesperson_id || 'none'} onValueChange={v => updateField('salesperson_id', v === 'none' ? '' : v)}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {salespeople.map((s: any) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2"><Briefcase className="h-4 w-4" />SDR (Quem agendou - Opcional)</Label>
-                <Select value={formData.sdr_id || 'none'} onValueChange={v => updateField('sdr_id', v === 'none' ? '' : v)}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {sdrs.map((s: any) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2"><Briefcase className="h-4 w-4" />Vendedor</Label>
+              <Select value={formData.salesperson_id || 'none'} onValueChange={v => updateField('salesperson_id', v === 'none' ? '' : v)}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {salespeople.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
+            {/* Afiliado — só quando a origem é a origem de afiliado do catálogo */}
+            {isAffiliateOriginSelected && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2"><Handshake className="h-4 w-4" />Afiliado</Label>
+                <Select value={formData.affiliate_id || 'none'} onValueChange={v => updateField('affiliate_id', v === 'none' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {activeAffiliates.map((af) => (
+                      <SelectItem key={af.id} value={af.id}>{af.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </TabsContent>
 
           {/* ============ ACESSO (apenas criação) ============ */}

@@ -397,11 +397,33 @@ describe('asaas-webhook — a fronteira fatal x não-fatal, no fonte real', () =
   });
 
   it('na dúvida sobre comissão já existente, NÃO paga (pagar em dobro não volta)', () => {
-    const i = webhookSource.indexOf('if (isFirstSale && company.salesperson_id)');
+    // A âncora carrega o `!company.affiliate_id` desde 2026-10-14 (programa de
+    // afiliados): empresa que veio por afiliado não gera comissão de vendedor.
+    const i = webhookSource.indexOf(
+      'if (isFirstSale && company.salesperson_id && !company.affiliate_id)',
+    );
+    // Sem isto, um rename da linha faz `indexOf` devolver -1, o `slice` devolve
+    // string vazia e o teste falha com "expected '' to contain ..." — que parece
+    // regressão da REGRA quando é só a âncora perdida. Falha explícita é melhor.
+    expect(i, 'âncora do bloco de comissão não encontrada no fonte do webhook').toBeGreaterThan(-1);
     const trecho = webhookSource.slice(i, i + 1600);
     expect(trecho).toContain('error: existingSaleErr');
     expect(trecho).toContain('if (existingSaleErr)');
     expect(trecho).toContain('} else if (!existingSale) {');
+  });
+
+  it('afiliado zera vendedor: empresa com affiliate_id não gera comissão de vendedor', () => {
+    // Trava a regra criada em 2026-10-14. Sem a guarda `!company.affiliate_id`, a
+    // MESMA venda sai do caixa duas vezes (comissão do afiliado + do closer/SDR).
+    // Mesma guarda server-side existe na RPC register_manual_company_payment.
+    expect(webhookSource).toContain(
+      'if (isFirstSale && company.salesperson_id && !company.affiliate_id)',
+    );
+    // O `affiliate_id` tem que estar no SELECT da company, senão a guarda lê
+    // `undefined` e nunca dispara (falha silenciosa que pagaria em dobro).
+    const colsIdx = webhookSource.indexOf('COMPANY_COLS');
+    expect(colsIdx, 'COMPANY_COLS não encontrado no fonte do webhook').toBeGreaterThan(-1);
+    expect(webhookSource.slice(colsIdx, colsIdx + 600)).toContain('affiliate_id');
   });
 
   it.each([

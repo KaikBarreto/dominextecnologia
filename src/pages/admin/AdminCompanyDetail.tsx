@@ -1,7 +1,7 @@
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check, XCircle, Package, Users, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check, XCircle, Package, Users, RefreshCw, Handshake } from 'lucide-react';
 import { SelfServiceBadge } from '@/components/admin/company-lead/SelfServiceBadge';
 import { LeadWhatsAppButton } from '@/components/admin/company-lead/LeadWhatsAppButton';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ import { getSegment } from '@/utils/companySegments';
 import { useSubscriptionModules } from '@/components/admin/ModuleGrid';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { OriginBadge } from '@/components/admin/OriginBadge';
+import { useAffiliate } from '@/hooks/useAffiliateData';
 
 export default function AdminCompanyDetail() {
   const { id } = useParams();
@@ -85,22 +86,26 @@ export default function AdminCompanyDetail() {
   // `resolveOrigin` — ver src/utils/companyOriginCatalog.ts.
   const { origins: originCatalog } = useCompanyOrigins();
 
-  // Closer (salesperson_id) + SDR (sdr_id) — nomes via view enxuta.
+  // Vendedor (salesperson_id) — nome via view enxuta.
   const { data: salesTeam } = useQuery({
-    queryKey: ['company-sales-team', company?.salesperson_id, company?.sdr_id],
+    queryKey: ['company-sales-team', company?.salesperson_id],
     queryFn: async () => {
-      const ids = [company?.salesperson_id, company?.sdr_id].filter(Boolean) as string[];
+      const ids = [company?.salesperson_id].filter(Boolean) as string[];
       if (ids.length === 0) return {} as Record<string, string>;
       const { data } = await supabase.from('salespeople_basic').select('id, name').in('id', ids);
       const map: Record<string, string> = {};
       (data || []).forEach((s: any) => { if (s?.id) map[s.id] = s.name; });
       return map;
     },
-    enabled: !!company && (!!company.salesperson_id || !!company.sdr_id),
+    enabled: !!company && !!company.salesperson_id,
   });
 
-  const closerName = company?.salesperson_id ? (salesTeam?.[company.salesperson_id] || null) : null;
-  const sdrName = company?.sdr_id ? (salesTeam?.[company.sdr_id] || null) : null;
+  const salespersonName = company?.salesperson_id ? (salesTeam?.[company.salesperson_id] || null) : null;
+
+  // Afiliado vinculado (Programa de Afiliados) — só busca quando a empresa tem
+  // affiliate_id. useAffiliate aceita uuid ou slug; aqui é sempre uuid (coluna
+  // companies.affiliate_id).
+  const { data: companyAffiliate } = useAffiliate(company?.affiliate_id ?? undefined);
   const segmentData = getSegment(company?.segment);
 
   // ===== Recorrência automática (Asaas) =====
@@ -341,15 +346,32 @@ export default function AdminCompanyDetail() {
               </div>
             </div>
             <div className="border-t pt-3 mt-3">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Closer (Quem fechou)</span>
-                  <p className="font-medium">{closerName || 'N/A'}</p>
+              <div className={cn('grid gap-4', company.affiliate_id ? 'grid-cols-2' : 'grid-cols-1')}>
+                <div className="min-w-0">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Vendedor</span>
+                  <p className="font-medium truncate">{salespersonName || 'N/A'}</p>
                 </div>
-                <div>
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">SDR (Quem agendou)</span>
-                  <p className="font-medium">{sdrName || 'N/A'}</p>
-                </div>
+                {/* Afiliado só aparece quando a venda tem um vinculado — "N/A"
+                    aqui poluiria um conceito que não se aplica à maioria das
+                    vendas (diretas/por vendedor). */}
+                {company.affiliate_id && (
+                  <div className="min-w-0">
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">Afiliado</span>
+                    <p className="font-medium min-w-0">
+                      {companyAffiliate ? (
+                        <Link
+                          to={`/admin/afiliados/${company.affiliate_id}`}
+                          className="inline-flex items-center gap-1.5 min-w-0 text-primary hover:underline"
+                        >
+                          <Handshake className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{companyAffiliate.name}</span>
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">Carregando...</span>
+                      )}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
             {/* Notes */}

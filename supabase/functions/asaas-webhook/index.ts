@@ -1226,7 +1226,18 @@ async function processConfirmedPayment(
   // — assim não há duplicação. Este bloco já está GATED pelo mutex: processConfirmedPayment
   // retorna cedo (linha do `if (!ltvClaimed) return`) quando o pagamento já foi processado,
   // então a comissão também roda no máximo 1x por pagamento.
-  if (isFirstSale && company.salesperson_id) {
+  // [AFILIADO ZERA VENDEDOR] Se a empresa veio por um afiliado, a venda é dele e
+  // NÃO gera comissão de vendedor. Mesma guarda server-side da RPC
+  // public.register_manual_company_payment (seção 7), pelo mesmo motivo: sem ela
+  // a mesma venda sai do caixa duas vezes (afiliado + closer/SDR).
+  if (isFirstSale && company.salesperson_id && company.affiliate_id) {
+    console.log(
+      `[afiliado zera vendedor] company ${companyId} tem affiliate_id=${company.affiliate_id}, ` +
+        `sem comissão de vendedor (a venda é remunerada pelo programa de afiliados).`,
+    );
+  }
+
+  if (isFirstSale && company.salesperson_id && !company.affiliate_id) {
     // Esta leitura é a ÚNICA trava contra comissão em dobro. Com o `error`
     // descartado, um SELECT recusado devolvia `undefined` — indistinguível de
     // "não existe" — e o INSERT rodava por cima de uma comissão já paga. Na
@@ -1371,6 +1382,11 @@ async function processConfirmedPayment(
 const COMPANY_COLS =
   "id, name, cnpj, subscription_status, subscription_plan, subscription_value, subscription_expires_at, " +
   "billing_cycle, ltv, origin, salesperson_id, sdr_id, asaas_customer_id, asaas_subscription_id, " +
+  // [AFILIADO ZERA VENDEDOR] affiliate_id decide se a venda gera comissão de
+  // VENDEDOR. Empresa indicada por afiliado já é remunerada pelo programa de
+  // afiliados (trigger trg_affiliate_commission_on_payment em company_payments);
+  // pagar o closer/SDR também seria pagar a MESMA venda duas vezes.
+  "affiliate_id, " +
   "pending_subscription_value, pending_plan_code, pending_billing_cycle, pending_modules, pending_max_users, pending_nfse_tier, pending_whatsapp_tier, " +
   "custom_price, custom_price_months, custom_price_payments_made, " +
   // [LEAD SELF-SERVICE] status da comissão: segura ('pending_work') quando é lead

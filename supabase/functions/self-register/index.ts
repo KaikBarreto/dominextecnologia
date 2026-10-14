@@ -3,6 +3,7 @@ import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 import { provisionAsaasCustomer } from '../_shared/asaas-customer.ts';
 import { isValidBrazilianPhone } from '../_shared/phone-validation.ts';
 import { canonicalizeCompanyOrigin } from '../_shared/company-origin.ts';
+import { resolveAffiliateId, resolveAffiliateOriginName } from '../_shared/affiliate-resolver.ts';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const trim = (v: unknown, max = 255) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -382,8 +383,18 @@ Deno.serve(async (req) => {
     const billingCycle = (raw.billing_cycle === 'yearly' ? 'yearly' : 'monthly') as 'monthly' | 'yearly';
     const promoMonths = typeof raw.promo_months === 'number' && raw.promo_months > 0 ? raw.promo_months : null;
     const trialDaysOverride = typeof raw.trial_days === 'number' && raw.trial_days > 0 ? raw.trial_days : null;
-    const referralCode = trim(raw.referral_code, 50); // closer (vendedor que fechou)
-    const sdrReferralCode = trim(raw.sdr_referral_code, 50); // SDR que agendou (opcional)
+    const referralCode = trim(raw.referral_code, 50); // vendedor que fechou
+    // Afiliado (Programa de Afiliados): slug OU uuid cru vindo do `?afiliado=`
+    // da URL (propagado por Registration.tsx). Resolvido mais abaixo, depois
+    // da validação dos campos obrigatórios — nunca confiamos neste valor cru.
+    const affiliateRef = trim(raw.affiliate_id, 100);
+    // Campo "SDR" descontinuado em 2026-10-14 por decisão do CEO (simplificação
+    // Closer+SDR → só "Vendedor"). A coluna companies.sdr_id segue no banco pelo
+    // histórico, mas não é mais preenchida. Leitura tolerante: se um link antigo
+    // ainda mandar sdr_referral_code, só ignora (não quebra o cadastro).
+    if (raw.sdr_referral_code) {
+      console.log('[self-register] sdr_referral_code recebido e ignorado (campo descontinuado).');
+    }
 
     if (!company_name || !contact_name || !company_email || !company_phone || !password) {
       return new Response(
@@ -661,20 +672,6 @@ Deno.serve(async (req) => {
       promoNote = `Este cliente pagará ${formattedPrice}${endDateText} por conta de uma promoção dada por: ${promoterName}`;
     }
 
-    // Lookup do SDR (sdr_id) via referral_code — opcional. Aceita qualquer vendedor
-    // ativo cujo referral_code bata (a regra de "ser SDR" é aplicada na origem do link;
-    // aqui só resolvemos o id). Se não vier ou não bater → sdr_id permanece null.
-    let sdrId: string | null = null;
-    if (sdrReferralCode) {
-      const { data: sdr } = await supabaseAdmin
-        .from('salespeople')
-        .select('id')
-        .eq('referral_code', sdrReferralCode)
-        .eq('is_active', true)
-        .maybeSingle();
-      if (sdr?.id) sdrId = sdr.id;
-    }
-
     // ── Origem de captação: canonizada contra o catálogo ─────────────────────────
     // O `?origem=` da URL é público: qualquer pessoa digita qualquer coisa, e
     // links de campanha antigos já publicados mandam valores que nunca existiram
@@ -693,6 +690,20 @@ Deno.serve(async (req) => {
       console.log(`[self-register] Origem "${safeOrigin}" canonizada para ${canonicalOrigin === null ? 'null' : `"${canonicalOrigin}"`}.`);
     }
 
+    // ── Afiliado (Programa de Afiliados) ─────────────────────────────────────────
+    // `affiliateRef` é PÚBLICO (slug ou uuid da URL): resolve contra `affiliates`
+    // exigindo `is_active = true` — nunca grava um id sem confirmar que existe e
+    // segue ativo. Não resolveu (link torto, afiliado desativado) → null, logado,
+    // NUNCA quebra o cadastro.
+    const resolvedAffiliateId = await resolveAffiliateId(supabaseAdmin, affiliateRef, '[self-register]');
+    // Quando o afiliado resolveu, a origem gravada é SEMPRE a de afiliado — a
+    // fonte autoritativa é este lookup por `utm_key` (service role, vê as 12
+    // origens), não o `?origem=` que o client mandou (pode vir desatualizado
+    // de um link antigo gerado antes de uma renomeação no catálogo).
+    const finalOrigin = resolvedAffiliateId
+      ? await resolveAffiliateOriginName(supabaseAdmin, '[self-register]')
+      : canonicalOrigin;
+
     // Create company
     const { data: company, error: companyError } = await supabaseAdmin
       .from('companies')
@@ -702,7 +713,8 @@ Deno.serve(async (req) => {
         email: company_email,
         phone: company_phone || null,
         contact_name,
-        origin: canonicalOrigin,
+        origin: finalOrigin,
+        affiliate_id: resolvedAffiliateId,
         acquisition_attribution: acquisitionAttribution,
         segment: segment || null,
         address: company_address || null,
@@ -714,7 +726,7 @@ Deno.serve(async (req) => {
         max_users: finalMaxUsers,
         trial_days: isSale ? 0 : (trialDaysOverride || 7),
         salesperson_id: salespersonId,
-        sdr_id: sdrId,
+        sdr_id: null, // campo descontinuado (2026-10-14) — nunca mais preenchido, histórico preservado
         // Lead que se cadastrou sozinho (sem vendedor no link), distribuído por rodízio.
         // false quando o link trouxe vendedor (comportamento anterior preservado).
         is_self_service: isSelfService,
@@ -845,7 +857,7 @@ Deno.serve(async (req) => {
         // Mesmo valor canônico gravado em companies.origin. Antes caía num
         // 'Cadastro Direto' que não existe no catálogo — mais um rótulo
         // inventado, só que escondido dentro dos metadados do usuário.
-        origin: canonicalOrigin,
+        origin: finalOrigin,
       },
     });
 

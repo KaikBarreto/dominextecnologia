@@ -52,7 +52,6 @@ export function RegisterCompanyPaymentModal({ company, open, onOpenChange }: Reg
           observations: z.string().optional(),
           cpf_cnpj: z.string().optional(),
           closer_id: z.string().optional(),
-          sdr_id: z.string().optional(),
         })
         .superRefine((data, ctx) => {
           const amount = parsePtBrAmount(data.payment_value);
@@ -82,7 +81,6 @@ export function RegisterCompanyPaymentModal({ company, open, onOpenChange }: Reg
       observations: '',
       cpf_cnpj: '',
       closer_id: NONE_VALUE,
-      sdr_id: NONE_VALUE,
     }),
     [company?.subscription_value],
   );
@@ -96,7 +94,11 @@ export function RegisterCompanyPaymentModal({ company, open, onOpenChange }: Reg
 
   const selectedType = form.watch('type');
 
-  // Closer = todos os vendedores ativos; SDR = só role 'sdr' (mesma regra do CompanyFormModal).
+  // Vendedor = todos os vendedores ativos (mesma régua do CompanyFormModal).
+  // O campo SDR saiu em 2026-10-14 por decisão do CEO (simplificação Closer+SDR
+  // → só "Vendedor"): o `p_sdr_id` da RPC deixa de ser enviado, então o split
+  // 80/20 não acontece mais em venda nova e o vendedor leva 100%. A coluna
+  // `salesperson_sales.sdr_id` segue no banco pelo histórico já creditado.
   const { data: salespeople = [] } = useQuery({
     queryKey: ['salespeople-basic-form'],
     queryFn: async () => {
@@ -110,7 +112,6 @@ export function RegisterCompanyPaymentModal({ company, open, onOpenChange }: Reg
     },
     enabled: open,
   });
-  const sdrs = salespeople.filter((s: any) => s.role === 'sdr');
 
   const onSubmit = (data: FormData) => {
     registerPayment.mutate(
@@ -122,7 +123,6 @@ export function RegisterCompanyPaymentModal({ company, open, onOpenChange }: Reg
         notes: data.observations || undefined,
         cpfCnpj: data.type === 'venda' ? (data.cpf_cnpj || '').replace(/\D/g, '') || undefined : undefined,
         closerId: data.type === 'venda' && data.closer_id !== NONE_VALUE ? data.closer_id : undefined,
-        sdrId: data.type === 'venda' && data.sdr_id !== NONE_VALUE ? data.sdr_id : undefined,
       },
       {
         onSuccess: () => {
@@ -268,46 +268,26 @@ export function RegisterCompanyPaymentModal({ company, open, onOpenChange }: Reg
                   )} />
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField control={form.control} name="closer_id" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Closer (quem fechou)</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value={NONE_VALUE}>Nenhum</SelectItem>
-                          {salespeople.map((s: any) => (
-                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-
-                  <FormField control={form.control} name="sdr_id" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SDR (quem agendou)</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value={NONE_VALUE}>Nenhum</SelectItem>
-                          {sdrs.map((s: any) => (
-                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                </div>
+                <FormField control={form.control} name="closer_id" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Vendedor</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={NONE_VALUE}>Nenhum</SelectItem>
+                        {salespeople.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
 
                 <p className="text-xs text-muted-foreground">
-                  Comissão creditada apenas na 1ª venda da empresa: 100% do valor pago para o closer (mensal), ou 80% closer e 20% SDR quando há SDR. Plano anual: 20% do valor, com o mesmo split.
+                  Comissão creditada apenas na 1ª venda da empresa: 100% do valor pago para o vendedor (mensal) ou 20% do valor (plano anual). Venda que veio de um afiliado não gera comissão de vendedor.
                 </p>
               </div>
             )}

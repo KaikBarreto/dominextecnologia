@@ -10,6 +10,9 @@ const { authState, from, single } = vi.hoisted(() => ({
     profile: null as { company_id: string | null } | null,
     isAdminUser: false,
     profileLoading: false,
+    linkedAffiliateId: null as string | null,
+    // `false` = detecção de afiliado já concluiu (o usuário não é afiliado).
+    affiliateLoading: false,
   },
   from: vi.fn(),
   single: vi.fn(),
@@ -121,6 +124,8 @@ describe("useSubscriptionBlock", () => {
     authState.profile = null;
     authState.isAdminUser = false;
     authState.profileLoading = false;
+    authState.linkedAffiliateId = null;
+    authState.affiliateLoading = false;
     from.mockClear();
     single.mockReset();
   });
@@ -161,6 +166,44 @@ describe("useSubscriptionBlock", () => {
     await waitFor(() => expect(result.current.status).toBe("unavailable"));
     expect(result.current.blocked).toBe(true);
     expect(single).toHaveBeenCalledTimes(2);
+  });
+
+  it("libera o afiliado vinculado, que não tem assinatura de tenant", () => {
+    authState.user = { id: "afiliado" };
+    authState.linkedAffiliateId = "afiliado-1";
+    const { result } = renderHook(() => useSubscriptionBlock(), {
+      wrapper: queryWrapper(),
+    });
+
+    expect(result.current.status).toBe("allowed");
+    expect(result.current.blocked).toBe(false);
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("mantém o fail-closed de quem não é admin nem afiliado e não tem empresa", () => {
+    authState.user = { id: "usuario" };
+    authState.linkedAffiliateId = null;
+    const { result } = renderHook(() => useSubscriptionBlock(), {
+      wrapper: queryWrapper(),
+    });
+
+    expect(result.current.status).toBe("unavailable");
+    expect(result.current.blocked).toBe(true);
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("não decide nada enquanto a detecção de afiliado não concluiu", () => {
+    authState.user = { id: "talvez-afiliado" };
+    authState.affiliateLoading = true;
+    const { result } = renderHook(() => useSubscriptionBlock(), {
+      wrapper: queryWrapper(),
+    });
+
+    // Nem libera (abriria janela pra qualquer usuário sem empresa) nem joga o
+    // afiliado na tela de erro.
+    expect(result.current.status).toBe("checking");
+    expect(result.current.blocked).toBe(true);
+    expect(from).not.toHaveBeenCalled();
   });
 
   it("não consulta assinatura para admin", () => {

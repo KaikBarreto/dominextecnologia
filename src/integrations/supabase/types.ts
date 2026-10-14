@@ -570,6 +570,178 @@ export type Database = {
           },
         ]
       }
+      affiliate_commissions: {
+        Row: {
+          affiliate_id: string
+          affiliate_payment_id: string | null
+          base_amount: number
+          commission_amount: number
+          company_id: string | null
+          company_payment_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          pct_applied: number
+          reference_month: string | null
+          status: string
+        }
+        Insert: {
+          affiliate_id: string
+          affiliate_payment_id?: string | null
+          base_amount: number
+          commission_amount: number
+          company_id?: string | null
+          company_payment_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: string
+          pct_applied: number
+          reference_month?: string | null
+          status?: string
+        }
+        Update: {
+          affiliate_id?: string
+          affiliate_payment_id?: string | null
+          base_amount?: number
+          commission_amount?: number
+          company_id?: string | null
+          company_payment_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          pct_applied?: number
+          reference_month?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_commissions_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_commissions_affiliate_payment_id_fkey"
+            columns: ["affiliate_payment_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_commissions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_commissions_company_payment_id_fkey"
+            columns: ["company_payment_id"]
+            isOneToOne: false
+            referencedRelation: "company_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_payments: {
+        Row: {
+          admin_transaction_id: string | null
+          affiliate_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          paid_at: string
+          payment_method: string | null
+          reference_month: string | null
+          total_amount: number
+        }
+        Insert: {
+          admin_transaction_id?: string | null
+          affiliate_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          paid_at?: string
+          payment_method?: string | null
+          reference_month?: string | null
+          total_amount: number
+        }
+        Update: {
+          admin_transaction_id?: string | null
+          affiliate_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          paid_at?: string
+          payment_method?: string | null
+          reference_month?: string | null
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_payments_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string | null
+          first_payment_pct: number
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          recurring_months: number | null
+          recurring_pct: number
+          slug: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          first_payment_pct?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          recurring_months?: number | null
+          recurring_pct?: number
+          slug?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          first_payment_pct?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          recurring_months?: number | null
+          recurring_pct?: number
+          slug?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       app_feature_flags: {
         Row: {
           contract_allowlist: string[]
@@ -756,6 +928,7 @@ export type Database = {
           acquisition_attribution: Json | null
           address: string | null
           address_number: string | null
+          affiliate_id: string | null
           asaas_customer_id: string | null
           asaas_subscription_id: string | null
           billing_cycle: string | null
@@ -802,10 +975,10 @@ export type Database = {
           segment: string | null
           state: string | null
           street_number: string | null
-          subscription_expires_at: string | null
           subscription_card_brand: string | null
           subscription_card_last4: string | null
           subscription_card_updated_at: string | null
+          subscription_expires_at: string | null
           subscription_plan: string | null
           subscription_status: string
           subscription_value: number | null
@@ -818,6 +991,7 @@ export type Database = {
           acquisition_attribution?: Json | null
           address?: string | null
           address_number?: string | null
+          affiliate_id?: string | null
           asaas_customer_id?: string | null
           asaas_subscription_id?: string | null
           billing_cycle?: string | null
@@ -864,10 +1038,10 @@ export type Database = {
           segment?: string | null
           state?: string | null
           street_number?: string | null
-          subscription_expires_at?: string | null
           subscription_card_brand?: string | null
           subscription_card_last4?: string | null
           subscription_card_updated_at?: string | null
+          subscription_expires_at?: string | null
           subscription_plan?: string | null
           subscription_status?: string
           subscription_value?: number | null
@@ -880,6 +1054,7 @@ export type Database = {
           acquisition_attribution?: Json | null
           address?: string | null
           address_number?: string | null
+          affiliate_id?: string | null
           asaas_customer_id?: string | null
           asaas_subscription_id?: string | null
           billing_cycle?: string | null
@@ -926,10 +1101,10 @@ export type Database = {
           segment?: string | null
           state?: string | null
           street_number?: string | null
-          subscription_expires_at?: string | null
           subscription_card_brand?: string | null
           subscription_card_last4?: string | null
           subscription_card_updated_at?: string | null
+          subscription_expires_at?: string | null
           subscription_plan?: string | null
           subscription_status?: string
           subscription_value?: number | null
@@ -939,6 +1114,13 @@ export type Database = {
           zip_code?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "companies_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "companies_nfse_tier_fkey"
             columns: ["nfse_tier"]
@@ -2993,41 +3175,6 @@ export type Database = {
           },
         ]
       }
-      customer_portals: {
-        Row: {
-          created_at: string
-          customer_id: string
-          id: string
-          is_active: boolean
-          is_public: boolean
-          token: string
-        }
-        Insert: {
-          created_at?: string
-          customer_id: string
-          id?: string
-          is_active?: boolean
-          is_public?: boolean
-          token?: string
-        }
-        Update: {
-          created_at?: string
-          customer_id?: string
-          id?: string
-          is_active?: boolean
-          is_public?: boolean
-          token?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "customer_portals_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: true
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       customer_paid_expenses: {
         Row: {
           amount: number
@@ -3086,6 +3233,41 @@ export type Database = {
             foreignKeyName: "customer_paid_expenses_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_portals: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          is_active: boolean
+          is_public: boolean
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          is_active?: boolean
+          is_public?: boolean
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          is_active?: boolean
+          is_public?: boolean
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_portals_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -8156,6 +8338,13 @@ export type Database = {
             foreignKeyName: "quotes_converted_to_os_id_fkey"
             columns: ["converted_to_os_id"]
             isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
+          },
+          {
+            foreignKeyName: "quotes_converted_to_os_id_fkey"
+            columns: ["converted_to_os_id"]
+            isOneToOne: false
             referencedRelation: "service_orders"
             referencedColumns: ["id"]
           },
@@ -9851,8 +10040,8 @@ export type Database = {
           requested_by: string | null
           resets_billing_anchor: boolean
           source_billing_cycle: string
-          source_nfse_tier: number | null
           source_monthly_value: number
+          source_nfse_tier: number | null
           source_period_value: number
           source_plan_code: string | null
           source_subscription_value: number
@@ -9889,8 +10078,8 @@ export type Database = {
           requested_by?: string | null
           resets_billing_anchor?: boolean
           source_billing_cycle: string
-          source_nfse_tier?: number | null
           source_monthly_value: number
+          source_nfse_tier?: number | null
           source_period_value: number
           source_plan_code?: string | null
           source_subscription_value: number
@@ -9927,8 +10116,8 @@ export type Database = {
           requested_by?: string | null
           resets_billing_anchor?: boolean
           source_billing_cycle?: string
-          source_nfse_tier?: number | null
           source_monthly_value?: number
+          source_nfse_tier?: number | null
           source_period_value?: number
           source_plan_code?: string | null
           source_subscription_value?: number
@@ -10115,6 +10304,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_payments_subscription_change_request_id_fkey"
+            columns: ["subscription_change_request_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_change_requests"
             referencedColumns: ["id"]
           },
         ]
@@ -11675,9 +11871,13 @@ export type Database = {
       }
     }
     Functions: {
+      _affiliates_resolve_slug: {
+        Args: { p_id: string; p_name: string; p_self_id?: string }
+        Returns: string
+      }
+      _affiliates_slugify: { Args: { p_name: string }; Returns: string }
       _assert_super_admin: { Args: never; Returns: undefined }
       _cs_checkup_responsavel: { Args: never; Returns: string }
-      _trial_followup_responsavel: { Args: never; Returns: string }
       _recalculate_employee_movement_balances: {
         Args: { p_employee_id: string }
         Returns: undefined
@@ -11703,6 +11903,7 @@ export type Database = {
         }
         Returns: Json
       }
+      _trial_followup_responsavel: { Args: never; Returns: string }
       accept_terms_of_service: {
         Args: { p_version?: string }
         Returns: undefined
@@ -11715,9 +11916,22 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: undefined
       }
+      affiliate_commission_base: {
+        Args: { p_company_id: string; p_paid: number }
+        Returns: number
+      }
       allowed_punch_actions: {
         Args: { p_company_id: string; p_date: string; p_employee_id: string }
         Returns: string[]
+      }
+      apply_subscription_upgrade_payment: {
+        Args: {
+          p_asaas_payment_id: string
+          p_billing_type?: string
+          p_paid_amount: number
+          p_request_id: string
+        }
+        Returns: Json
       }
       apply_tenant_charge_installment_payment: {
         Args: {
@@ -11796,6 +12010,7 @@ export type Database = {
       can_bootstrap_admin: { Args: never; Returns: boolean }
       can_delete_finance: { Args: { _user_id: string }; Returns: boolean }
       can_edit_os: { Args: { _user_id: string }; Returns: boolean }
+      can_manage_affiliates: { Args: never; Returns: boolean }
       can_manage_billing_reminder: {
         Args: { p_transaction_id: string; p_user_id: string }
         Returns: boolean
@@ -11815,6 +12030,10 @@ export type Database = {
       }
       company_has_module: {
         Args: { p_company_id: string; p_module_code: string }
+        Returns: boolean
+      }
+      company_plan_allows_product_area: {
+        Args: { p_area: string; p_company_id: string }
         Returns: boolean
       }
       company_today: { Args: { p_company_id: string }; Returns: string }
@@ -11850,13 +12069,13 @@ export type Database = {
       create_customer_stock_item: {
         Args: {
           p_client_request_id: string
-          p_cost_price: number | null
+          p_cost_price: number
           p_customer_id: string
           p_initial_quantity: number
-          p_min_quantity: number | null
+          p_min_quantity: number
           p_name: string
-          p_notes: string | null
-          p_sku: string | null
+          p_notes: string
+          p_sku: string
           p_unit: string
         }
         Returns: string
@@ -11919,6 +12138,7 @@ export type Database = {
         }
         Returns: Json
       }
+      current_affiliate_id: { Args: never; Returns: string }
       current_salesperson_id: { Args: never; Returns: string }
       delete_company_payment_with_rollback: {
         Args: { p_payment_id: string }
@@ -12277,6 +12497,7 @@ export type Database = {
           card_discount_rate: number
           card_installments: number
           company_id: string
+          converted_to_os_id: string | null
           created_at: string
           created_by: string | null
           customer_id: string | null
@@ -12494,6 +12715,55 @@ export type Database = {
           p_year: number
         }
         Returns: string
+      }
+      pay_affiliate_balance: {
+        Args: {
+          p_affiliate_id: string
+          p_commission_ids?: string[]
+          p_payment_method?: string
+          p_reference_month?: string
+        }
+        Returns: {
+          admin_transaction_id: string | null
+          affiliate_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          paid_at: string
+          payment_method: string | null
+          reference_month: string | null
+          total_amount: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "affiliate_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      pay_affiliate_month: {
+        Args: {
+          p_affiliate_id: string
+          p_payment_method?: string
+          p_reference_month: string
+        }
+        Returns: {
+          admin_transaction_id: string | null
+          affiliate_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          paid_at: string
+          payment_method: string | null
+          reference_month: string | null
+          total_amount: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "affiliate_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       pay_credit_card_bill: {
         Args: {
@@ -12739,6 +13009,7 @@ export type Database = {
         Returns: {
           company_id: string
           created_at: string
+          customer_id: string | null
           id: string
           is_default: boolean
           name: string
@@ -12805,6 +13076,10 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: Json
       }
+      tenant_subscription_allows_access: {
+        Args: { _at?: string; _company_id: string }
+        Returns: boolean
+      }
       tombstone_tenant_subscription_if_empty: {
         Args: {
           p_company_id: string
@@ -12827,6 +13102,7 @@ export type Database = {
           company_id: string | null
           created_at: string
           created_by: string | null
+          customer_id: string | null
           id: string
           inventory_id: string
           movement_type: string
@@ -12866,12 +13142,12 @@ export type Database = {
       }
       update_customer_stock_item: {
         Args: {
-          p_cost_price: number | null
+          p_cost_price: number
           p_inventory_id: string
-          p_min_quantity: number | null
+          p_min_quantity: number
           p_name: string
-          p_notes: string | null
-          p_sku: string | null
+          p_notes: string
+          p_sku: string
           p_unit: string
         }
         Returns: {

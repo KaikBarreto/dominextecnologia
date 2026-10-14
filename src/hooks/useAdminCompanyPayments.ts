@@ -37,7 +37,6 @@ export interface RegisterCompanyPaymentInput {
   notes?: string;
   cpfCnpj?: string;
   closerId?: string;
-  sdrId?: string;
 }
 
 const RPC_ERROR_MESSAGES: Record<string, string> = {
@@ -154,7 +153,9 @@ export function useAdminCompanyPayments(companyId: string | undefined) {
         p_notes: input.notes || undefined,
         p_cpf_cnpj: input.cpfCnpj || undefined,
         p_closer_id: input.closerId || undefined,
-        p_sdr_id: input.sdrId || undefined,
+        // `p_sdr_id` não é mais enviado (CEO, 2026-10-14: fim do Closer+SDR no
+        // registro de pagamento). A RPC tem `p_sdr_id uuid DEFAULT NULL`, então
+        // omitir é seguro e o vendedor leva 100% da comissão da 1ª venda.
       });
       if (error) throw error;
       return data;

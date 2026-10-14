@@ -101,9 +101,17 @@ export function decideSubscriptionAccess(
  * cada minuto e falha fechado no primeiro carregamento e em qualquer erro.
  * Admin Auctus e visitantes anônimos não estão sujeitos à assinatura do tenant;
  * usuário autenticado sem company_id é estado inválido e falha fechado.
+ *
+ * ÚNICA exceção ao fail-closed sem company_id: o AFILIADO vinculado
+ * (`affiliates.user_id = auth.uid()`). É parceiro externo, não pertence a
+ * tenant nenhum e por isso não tem assinatura pra validar — mesma isenção do
+ * admin Auctus. Sem isso ele cairia em `unavailable` ("Não foi possível validar
+ * sua assinatura") e nunca chegaria em `/admin/afiliados`. A isenção vale SÓ
+ * pra quem tem vínculo confirmado; enquanto a detecção não resolve o estado é
+ * `checking`, nunca liberado.
  */
 export function useSubscriptionBlock(): SubscriptionBlockResult {
-  const { user, loading, profileLoading, profile, isAdminUser } = useAuth();
+  const { user, loading, profileLoading, profile, isAdminUser, linkedAffiliateId, affiliateLoading } = useAuth();
   const companyId = profile?.company_id;
   const shouldCheck = !!user && !!companyId && !isAdminUser;
 
@@ -141,7 +149,19 @@ export function useSubscriptionBlock(): SubscriptionBlockResult {
     return { blocked: false, screen: null, status: "allowed", retry };
   }
 
+  // Afiliado vinculado: parceiro externo, sem assinatura de tenant pra checar.
+  if (linkedAffiliateId) {
+    return { blocked: false, screen: null, status: "allowed", retry };
+  }
+
   if (!companyId) {
+    // Só agora a detecção de afiliado importa. Enquanto ela não concluir não
+    // decidimos nada: "não é afiliado" por omissão abriria uma janela em que
+    // QUALQUER usuário sem company passaria (ou, no sentido oposto, jogaria o
+    // afiliado na tela de erro por um instante).
+    if (affiliateLoading) {
+      return { blocked: true, screen: null, status: "checking", retry };
+    }
     return { blocked: true, screen: null, status: "unavailable", retry };
   }
 

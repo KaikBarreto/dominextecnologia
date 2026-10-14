@@ -32,6 +32,7 @@ import {
   HelpCircle,
   Clapperboard,
   HeartPulse,
+  Handshake,
   Newspaper,
   Video,
   Crown,
@@ -140,6 +141,7 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'CRM/Tarefas', icon: Target, path: '/admin/crm', screenKey: 'admin_crm' },
   { title: 'Empresas', icon: Building2, path: '/admin/empresas', screenKey: 'admin_empresas' },
   { title: 'Vendedores', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
+  { title: 'Afiliados', icon: Handshake, path: '/admin/afiliados', screenKey: 'admin_afiliados' },
   { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro', screenKey: 'admin_financeiro' },
   { title: 'Health Score', icon: HeartPulse, path: '/admin/health-score', screenKey: 'admin_health_score' },
   { title: 'Cobranças', icon: CreditCard, path: '/admin/cobrancas', screenKey: 'admin_cobrancas' },
@@ -166,7 +168,9 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
  * Conteúdo do sidebar — compartilhado entre o `<Sidebar />` desktop e o
  * `<MobileSidebar />` (sheet do tablet).
  *
- * Decide internamente entre menu de tenant e menu admin via `useAuth().isAdminUser`.
+ * Decide internamente entre menu de tenant e menu admin via `useAuth().isAdminUser`
+ * (+ `linkedAffiliateId`: afiliado externo também usa o menu admin, reduzido a
+ * uma única tela pelo filtro de `hasAdminScreenAccess`).
  * `useSidebar()` é opcional (try/catch) porque dentro do mobile sheet não há
  * `SidebarProvider` — nesse caso assumimos `expanded`.
  *
@@ -175,7 +179,12 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
  * Abaixo do dropdown, botões Configurações + Sair lado a lado.
  */
 export function SidebarMenuContent() {
-  const { user, profile, roles, hasScreenAccess, hasAdminScreenAccess, isAdminUser, signOut } = useAuth();
+  const { user, profile, roles, hasScreenAccess, hasAdminScreenAccess, isAdminUser, linkedAffiliateId, signOut } = useAuth();
+  // Qual MENU renderizar. O afiliado é parceiro externo: NÃO é `isAdminUser`
+  // (não tem linha em `admin_permissions`), mas também não tem tela de tenant
+  // nenhuma — sem isto o menu dele viria vazio. `hasAdminScreenAccess` o libera
+  // só em `admin_afiliados`, então o filtro abaixo deixa exatamente 1 item.
+  const showAdminMenu = isAdminUser || !!linkedAffiliateId;
   const { locale } = useAppLocaleContext();
   const shellT = MESSAGES[locale].app.shell;
   const accountT = shellT.account;
@@ -276,7 +285,7 @@ export function SidebarMenuContent() {
     filteredAdminMenu[0]?.path ??
     '/admin/empresas';
 
-  const activeMenu = isAdminUser
+  const activeMenu = showAdminMenu
     ? filteredAdminMenu
     : filterByAccess(tenantMenuItems)
         .map(item => (item.children ? { ...item, children: filterByAccess(item.children) } : item))
@@ -306,7 +315,7 @@ export function SidebarMenuContent() {
       <TooltipProvider delayDuration={200}>
         {/* Logo */}
         <NavLink
-          to={isAdminUser ? adminHomePath : L('/dashboard')}
+          to={showAdminMenu ? adminHomePath : L('/dashboard')}
           className="nav-logo-area relative h-16 flex items-center justify-center border-b border-border shrink-0 overflow-hidden bg-white dark:bg-sidebar px-2"
         >
           {showLogoLoading ? (

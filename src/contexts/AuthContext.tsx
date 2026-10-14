@@ -24,6 +24,24 @@ interface AuthContextType {
   hasPermissionRecord: boolean;
   adminPermissions: string[];
   isAdminUser: boolean;
+  /**
+   * Id da ficha em `affiliates` vinculada a este usuário (`affiliates.user_id`),
+   * ou null. Afiliado é parceiro EXTERNO: ele NUNCA é admin (`isAdminUser`
+   * continua false) e NUNCA ganha linha em `admin_permissions` — no SQL,
+   * `is_admin_user()` é `is_super_admin OR tem QUALQUER linha em
+   * admin_permissions`, então uma linha lá abriria TODAS as policies amplas do
+   * painel (companies, company_payments, admin_financial_transactions,
+   * salespeople) pra ele. O acesso dele é por VÍNCULO, isolado pelas policies
+   * de self-scope (`current_affiliate_id()`).
+   */
+  linkedAffiliateId: string | null;
+  /**
+   * `true` = ainda NÃO sabemos se este usuário é afiliado (hidratação do
+   * perfil/roles/admin_permissions em curso, ou a consulta de vínculo em vôo).
+   * Nunca conclua "não é afiliado" com isto `true` — é o que evita redirect
+   * errado e piscada (incidente `default_route_permission_loop`).
+   */
+  affiliateLoading: boolean;
   loading: boolean;
   profileLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -53,6 +71,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   //             role pra não trancar técnicos antigos que dependem disso.
   const [hasPermissionRecord, setHasPermissionRecord] = useState(false);
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const [linkedAffiliateId, setLinkedAffiliateId] = useState<string | null>(null);
+  // Começa `false` (= "ainda não resolvido"); vira `true` no fim do
+  // fetchUserData, tanto quando a consulta roda quanto quando ela é pulada por
+  // o usuário não ser elegível. Resetado a cada troca de usuário.
+  const [affiliateResolved, setAffiliateResolved] = useState(false);
   const [loading, setLoading] = useState(true);
   // A sessão do Supabase chega antes do perfil/roles/permissões. Mantemos esse
   // carregamento separado para consumidores que não podem interpretar
@@ -101,6 +124,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userId = session.user.id;
           if (userChanged) {
             setProfileLoading(true);
+            // Vínculo de afiliado é por usuário: zera e volta pro estado
+            // "não resolvido" antes de qualquer gate decidir algo.
+            setLinkedAffiliateId(null);
+            setAffiliateResolved(false);
           }
           // Defer pra fora do callback — não segurar o lock do GoTrue.
           setTimeout(() => {
@@ -127,6 +154,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setPermissions([]);
           setHasPermissionRecord(false);
           setAdminPermissions([]);
+          setLinkedAffiliateId(null);
+          setAffiliateResolved(false);
         }
 
         // Soltar skeleton imediatamente. UI já tem session/user; profile/roles
@@ -199,8 +228,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .select('permission')
         .eq('user_id', userId);
 
+      const adminPerms = (adminPermData ?? []).map((r: any) => r.permission as string);
       if (isStillCurrent()) {
-        setAdminPermissions((adminPermData ?? []).map((r: any) => r.permission as string));
+        setAdminPermissions(adminPerms);
+      }
+
+      // --- Vínculo de afiliado (parceiro externo) -----------------------
+      // CUSTO: esta é uma 5ª consulta por sessão e SÓ pode rodar pra quem
+      // PODE ser afiliado. Afiliado não é master, não tem linha em
+      // `admin_permissions` (seria "admin" no SQL — ver comentário de
+      // `linkedAffiliateId`) e não pertence a nenhum tenant. Usuário de tenant
+      // e admin do painel não pagam nada por isto.
+      //
+      // Usamos as variáveis LOCAIS (profileData/rolesData/adminPerms), não o
+      // state: o state é assíncrono e ainda não refletiu estas queries.
+      const isMasterNow = (rolesData ?? []).some((r: any) => r.role === 'super_admin');
+      const couldBeAffiliate =
+        !isMasterNow && adminPerms.length === 0 && !(profileData as any)?.company_id;
+
+      if (couldBeAffiliate) {
+        // `affiliates` ainda não está em `types.ts` (regeneração em outra
+        // tarefa) — o cast cai quando os tipos chegarem.
+        const { data: affiliateData } = await (supabase as any)
+          .from('affiliates')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+        if (isStillCurrent()) {
+          setLinkedAffiliateId((affiliateData as { id: string } | null)?.id ?? null);
+        }
+      } else if (isStillCurrent()) {
+        setLinkedAffiliateId(null);
+      }
+      if (isStillCurrent()) {
+        setAffiliateResolved(true);
       }
     };
 
@@ -214,6 +275,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       if (isStillCurrent()) {
         setProfileLoading(false);
+        // Mesmo em timeout/erro declaramos a detecção resolvida: com
+        // `linkedAffiliateId` null o gate FECHA (mostra o erro retriável) em
+        // vez de prender o usuário num spinner eterno. Se o fetch em vôo
+        // terminar depois e achar o vínculo, o id entra e libera.
+        setAffiliateResolved(true);
       }
     }
   };
@@ -299,6 +365,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPermissions([]);
     setHasPermissionRecord(false);
     setAdminPermissions([]);
+    setLinkedAffiliateId(null);
+    setAffiliateResolved(false);
     setProfileLoading(false);
   };
 
@@ -328,9 +396,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Master (super_admin) sees every admin screen; vendedores see only what's in admin_permissions.
   const isMaster = roles.includes('super_admin' as AppRole);
+  // Afiliado NUNCA entra aqui: ele não é admin (ver `linkedAffiliateId`).
   const isAdminUser = isMaster || adminPermissions.length > 0;
+  const affiliateLoading = !!user && !affiliateResolved;
   const hasAdminScreenAccess = (key: string) => {
     if (isMaster) return true;
+    // Afiliado externo entra no painel por VÍNCULO, sem `admin_permissions`.
+    // A liberação é de UMA tela e só dela — qualquer outra `key` continua
+    // caindo no `adminPermissions.includes`, que pro afiliado é sempre falso
+    // (array vazio, pré-condição da própria detecção de vínculo).
+    if (key === 'admin_afiliados' && !!linkedAffiliateId) return true;
     return adminPermissions.includes(key);
   };
 
@@ -345,6 +420,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         hasPermissionRecord,
         adminPermissions,
         isAdminUser,
+        linkedAffiliateId,
+        affiliateLoading,
         loading,
         profileLoading,
         signIn,

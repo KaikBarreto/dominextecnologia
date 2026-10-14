@@ -22,6 +22,7 @@ import {
   Briefcase,
   CreditCard,
   HeartPulse,
+  Handshake,
   Newspaper,
   Building2,
   Map,
@@ -121,6 +122,7 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'CRM/Tarefas', icon: Target, path: '/admin/crm', screenKey: 'admin_crm' },
   { title: 'Empresas', icon: Building2, path: '/admin/empresas', screenKey: 'admin_empresas' },
   { title: 'Vendedores', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
+  { title: 'Afiliados', icon: Handshake, path: '/admin/afiliados', screenKey: 'admin_afiliados' },
   { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro', screenKey: 'admin_financeiro' },
   // ⚠️ ESTE ARRAY TEM QUE ESPELHAR `adminMenuItems` de `SidebarMenuContent.tsx`.
   // Ele é a ÚNICA porta do painel admin no celular (o bottom nav só tem 4 slots
@@ -269,7 +271,12 @@ function MoreMenuHeader() {
 function MoreMenuList({ onClose }: { onClose: () => void }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, hasScreenAccess, hasAdminScreenAccess, isAdminUser, roles } = useAuth();
+  const { user, hasScreenAccess, hasAdminScreenAccess, isAdminUser, linkedAffiliateId, roles } = useAuth();
+  // Afiliado é parceiro externo: não é `isAdminUser`, mas também não tem tela
+  // de tenant nenhuma. Renderiza o menu admin, que o filtro reduz a "Afiliados".
+  // Este drawer é a porta principal do painel no celular — sem isto o afiliado
+  // ficaria sem navegação nenhuma no mobile.
+  const showAdminMenu = isAdminUser || !!linkedAffiliateId;
   const { hasModule, hasScreen } = useCompanyModules();
   const { settings } = useCompanySettings();
   const { locale } = useAppLocaleContext();
@@ -306,7 +313,7 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
     // Aplicado por `path` pra independer de screenKey/masterOnly.
     .filter((item) => item.path !== '/admin/domiflix' || podeAcessarDomiflixAdmin(user?.email));
 
-  const visibleItems = isAdminUser
+  const visibleItems = showAdminMenu
     ? filteredAdminMenu
     : filterByAccess(tenantMenuItems)
         .map((item) => (item.children ? { ...item, children: filterByAccess(item.children) } : item))
@@ -327,7 +334,10 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
     label: string;
     onClick: () => void;
     hoverVariant?: HoverVariant;
-  }> = isAdminUser
+    // Atalhos de conta do TENANT (perfil, assinatura, tutoriais...). Painel
+    // admin não tem nenhum — e o afiliado externo também não, porque esses
+    // destinos pressupõem empresa (assinatura, Domiflix do tenant).
+  }> = showAdminMenu
     ? []
     : [
         { icon: UserCircle, label: accountT.profile, onClick: () => handleNavigate(L('/perfil')) },

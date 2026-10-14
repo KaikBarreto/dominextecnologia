@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +23,8 @@ import { ModuleGrid, useSubscriptionModules, withBaseModules, sumModulesPrice, B
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { readPastedCents } from '@/lib/money-paste-mask';
+import { useAffiliates } from '@/hooks/useAffiliateData';
+import { resolveAffiliateOriginName, type CatalogOrigin } from '@/utils/companyOriginCatalog';
 
 interface Props {
   open: boolean;
@@ -36,8 +38,8 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   const isMobile = useIsMobile();
 
   const [selectedOrigin, setSelectedOrigin] = useState('');
-  const [selectedSalesperson, setSelectedSalesperson] = useState(''); // Closer (quem fechou)
-  const [selectedSdr, setSelectedSdr] = useState(''); // SDR (quem agendou - opcional)
+  const [selectedSalesperson, setSelectedSalesperson] = useState(''); // Vendedor
+  const [selectedAffiliate, setSelectedAffiliate] = useState(''); // Afiliado (opcional)
   const [linkType, setLinkType] = useState<'teste' | 'venda'>('teste');
   const [trialDays, setTrialDays] = useState(7);
   const [generatedLink, setGeneratedLink] = useState('');
@@ -83,12 +85,22 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('company_origins')
-        .select('id, name, color, icon')
+        // utm_key entra pra resolver a origem "Afiliado" por chave estável
+        // quando um afiliado é escolhido (nunca por nome hardcoded).
+        .select('id, name, color, icon, utm_key')
         .order('name');
       if (error) throw error;
       return data || [];
     },
   });
+
+  // Afiliados ativos (Programa de Afiliados). Escolher um dá prioridade sobre
+  // a origem manual — mesma régua de "vendedor" injetando o param no link.
+  const { data: affiliates = [] } = useAffiliates();
+  const activeAffiliates = useMemo(
+    () => affiliates.filter((a) => a.is_active !== false),
+    [affiliates],
+  );
 
   const { data: salespeople = [] } = useQuery({
     queryKey: ['salespeople-basic-link'],
@@ -102,9 +114,6 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
       return data || [];
     },
   });
-
-  // SDRs = vendedores ativos com role 'sdr'. Closer mostra TODOS (inclusive sdr).
-  const sdrs = salespeople.filter((s: any) => s.role === 'sdr');
 
   const { data: plans = [] } = useQuery({
     queryKey: ['subscription-plans-link'],
@@ -147,14 +156,20 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
     const baseUrl = window.location.origin;
     const params = new URLSearchParams();
 
-    if (selectedOrigin) params.append('origem', selectedOrigin);
+    // Afiliado tem prioridade sobre a origem manual: quando um afiliado é
+    // escolhido, injeta origem=<nome canônico>&afiliado=<slug ou id>.
+    // Registration.tsx lê `afiliado` e manda affiliate_id pro self-register,
+    // que resolve slug/uuid e grava companies.affiliate_id.
+    if (selectedAffiliate) {
+      params.append('origem', resolveAffiliateOriginName(origins as CatalogOrigin[]));
+      const aff = activeAffiliates.find((a) => a.id === selectedAffiliate);
+      params.append('afiliado', aff?.slug?.trim() || selectedAffiliate);
+    } else if (selectedOrigin) {
+      params.append('origem', selectedOrigin);
+    }
     if (selectedSalesperson) {
       const sp = salespeople.find((s: any) => s.id === selectedSalesperson);
       params.append('vendedor', sp?.referral_code || selectedSalesperson);
-    }
-    if (selectedSdr) {
-      const sdr = salespeople.find((s: any) => s.id === selectedSdr);
-      params.append('sdr', sdr?.referral_code || selectedSdr);
     }
     params.append('tipo', linkType);
     if (linkType === 'teste' && trialDays !== 7) params.append('dias', String(trialDays));
@@ -212,7 +227,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   const handleClose = () => {
     setSelectedOrigin('');
     setSelectedSalesperson('');
-    setSelectedSdr('');
+    setSelectedAffiliate('');
     setLinkType('teste');
     setTrialDays(7);
     setGeneratedLink('');
@@ -315,9 +330,9 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label>Closer (Quem fechou)</Label>
+            <Label>Vendedor</Label>
             <Select value={selectedSalesperson} onValueChange={setSelectedSalesperson}>
-              <SelectTrigger><SelectValue placeholder="Selecione o closer" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Selecione o vendedor" /></SelectTrigger>
               <SelectContent>
                 {salespeople.map((s: any) => (
                   <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
@@ -327,19 +342,20 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label>SDR (Quem agendou - Opcional)</Label>
-            <Select value={selectedSdr} onValueChange={setSelectedSdr}>
-              <SelectTrigger><SelectValue placeholder="Selecione o SDR" /></SelectTrigger>
+            <Label>Afiliado (opcional)</Label>
+            <Select value={selectedAffiliate} onValueChange={setSelectedAffiliate}>
+              <SelectTrigger><SelectValue placeholder="Selecione um afiliado" /></SelectTrigger>
               <SelectContent>
-                {sdrs.length === 0 ? (
-                  <SelectItem value="__none__" disabled>Nenhum SDR cadastrado</SelectItem>
-                ) : (
-                  sdrs.map((s: any) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))
-                )}
+                {activeAffiliates.map((af) => (
+                  <SelectItem key={af.id} value={af.id}>{af.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
+            {selectedAffiliate && (
+              <p className="text-xs text-muted-foreground">
+                A origem do link será definida como <strong>{resolveAffiliateOriginName(origins as CatalogOrigin[])}</strong>.
+              </p>
+            )}
           </div>
         </TabsContent>
 
@@ -662,9 +678,11 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
               <p className="text-xs font-medium">Resumo do Link:</p>
               <div className="text-xs text-muted-foreground space-y-0.5">
                 <p>• Tipo: {linkType === 'teste' ? `Teste (${trialDays} dias)` : 'Venda direta'}</p>
-                {selectedOrigin && <p>• Origem: {selectedOrigin}</p>}
-                {selectedSalesperson && <p>• Closer: {salespeople.find((s: any) => s.id === selectedSalesperson)?.name}</p>}
-                {selectedSdr && <p>• SDR: {salespeople.find((s: any) => s.id === selectedSdr)?.name}</p>}
+                {(selectedAffiliate || selectedOrigin) && (
+                  <p>• Origem: {selectedAffiliate ? resolveAffiliateOriginName(origins as CatalogOrigin[]) : selectedOrigin}</p>
+                )}
+                {selectedSalesperson && <p>• Vendedor: {salespeople.find((s: any) => s.id === selectedSalesperson)?.name}</p>}
+                {selectedAffiliate && <p>• Afiliado: {activeAffiliates.find((a) => a.id === selectedAffiliate)?.name}</p>}
                 {planMode === 'plano' && selectedPlan && (
                   <>
                     <p>• Plano: {selectedPlan.name} ({billingCycle === 'yearly' ? 'Anual' : 'Mensal'})</p>

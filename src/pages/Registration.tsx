@@ -29,6 +29,7 @@ import { StepTransition } from '@/components/ui/step-transition';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { getSelectableSegments } from '@/utils/companySegments';
 import { ORIGIN_OPTIONS } from '@/utils/companyOrigins';
+import { resolveAffiliateOriginName } from '@/utils/companyOriginCatalog';
 import { SelectableCardGrid, type SelectableCardOption } from '@/components/registration/SelectableCardGrid';
 import { useLocale } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
@@ -112,7 +113,14 @@ interface ResolvedSignupOrigin {
   color: string;
   description: string | null;
   show_in_signup: boolean;
-  utm_key: OriginUtmKey | null;
+  /**
+   * `string`, não `OriginUtmKey`: o catálogo também guarda chaves de canais
+   * MANUAIS (ex.: `'affiliate'`, Programa de Afiliados) que `OriginUtmKey`
+   * nunca inclui — essa união é só o conjunto que `resolveCompanyOriginKey()`
+   * consegue INFERIR de UTM de tráfego orgânico/pago. Usar `OriginUtmKey`
+   * aqui rejeitaria `'affiliate'` em tempo de compilação.
+   */
+  utm_key: string | null;
 }
 
 /** Ícone lucide por nome. Cai no `Globe` se o nome vindo do banco não existir mais. */
@@ -259,7 +267,7 @@ export default function Registration() {
         color: r.color,
         description: r.description,
         show_in_signup: r.show_in_signup,
-        utm_key: (r.utm_key as OriginUtmKey | null) ?? null,
+        utm_key: r.utm_key ?? null,
       }));
     },
     staleTime: 5 * 60 * 1000,
@@ -296,9 +304,28 @@ export default function Registration() {
   // auto-avançar — a pessoa confirma no Continuar.
   const segmentFromUrl = searchParams.get('segmento');
   const refCode = searchParams.get('ref'); // referral_code de indicação
+  // Afiliado (Programa de Afiliados): slug OU uuid, propagado pelo "Gerar Link"
+  // do painel master (GenerateLinkModal). A origem é TRAVADA na de afiliado —
+  // prioridade sobre qualquer `?origem=` manual, mesma régua de prioridade do
+  // link (ver handleGenerateLink lá). affiliate_id vai cru no body do
+  // self-register, que resolve slug/uuid e grava companies.affiliate_id.
+  const affiliateParam = searchParams.get('afiliado');
   const utmOriginName = utmOriginKey
     ? originCatalog.find((o) => o.utm_key === utmOriginKey)?.name ?? null
     : null;
+  // Nome canônico da origem "Afiliado" — resolvido pelo `utm_key` estável, nunca
+  // por nome hardcoded (o CEO pode renomear a origem no painel).
+  // `get_signup_origins()` devolve `show_in_signup = true` OR `utm_key IS NOT NULL`
+  // (ver 20261004120300_company_origins_utm_key_e_revoke_anon.sql), e a linha de
+  // afiliado tem `utm_key = 'affiliate'` — então ela CHEGA aqui e a resolução por
+  // chave funciona, mesmo com `show_in_signup = false` (que só a impede de virar
+  // card clicável na etapa Origem, ver `signupOriginCards` acima).
+  // O fallback literal "Afiliado" segue existindo pro caso de a RPC falhar e o
+  // catálogo cair no `FALLBACK_SIGNUP_ORIGINS` estático.
+  // De todo modo, o valor que VAI PRO BANCO é decidido no servidor: a edge
+  // self-register (service role, vê as 12 origens) sobrescreve a origem quando o
+  // affiliate_id resolve. O nome aqui é UX — rótulo do passo pulado.
+  const affiliateOriginName = affiliateParam ? resolveAffiliateOriginName(originCatalog) : null;
   // `?origem=Site` é o rótulo GENÉRICO das CTAs da landing: diz apenas "veio do
   // site", não existe no catálogo de origens e por isso nunca deveria ir pro
   // banco. Quando ele é o ÚNICO sinal de origem (sem UTM, sem `ref`, sem
@@ -310,7 +337,9 @@ export default function Registration() {
   // Lê `vendedor` direto do searchParams porque `referrer` só é declarado abaixo.
   const genericSiteOriginOnly =
     explicitOrigin === 'Site' && !utmOriginName && !refCode && !searchParams.get('vendedor');
-  const originFromUrl = genericSiteOriginOnly
+  const originFromUrl = affiliateOriginName
+    ? affiliateOriginName
+    : genericSiteOriginOnly
     ? null
     : ((explicitOrigin && explicitOrigin !== 'Site' ? explicitOrigin : null) ??
       utmOriginName ??
@@ -328,8 +357,7 @@ export default function Registration() {
   const lockedCycle = (searchParams.get('ciclo') as 'monthly' | 'yearly' | null) || null;
   const promoMonths = searchParams.get('meses_promo');
   const trialDaysParam = searchParams.get('dias');
-  const referrer = searchParams.get('vendedor'); // referral_code do closer
-  const sdrReferrer = searchParams.get('sdr'); // referral_code do SDR (opcional)
+  const referrer = searchParams.get('vendedor'); // referral_code do vendedor
   // Pula a etapa Origem quando a origem veio de algum param de URL
   // (origem explícita/UTM, indicação `ref` ou vendedor) — EXCETO em dois casos:
   //   • a origem é uma opção do catálogo (ex.: ?origem=Indicação): a etapa fica
@@ -428,7 +456,9 @@ export default function Registration() {
           promo_months: promoMonths ? parseInt(promoMonths) : null,
           trial_days: trialDaysParam ? parseInt(trialDaysParam) : null,
           referral_code: referrer || null,
-          sdr_referral_code: sdrReferrer || null,
+          // Afiliado (Programa de Afiliados): slug OU uuid cru — a edge resolve
+          // e exige is_active=true, nunca confia neste valor pra gravar direto.
+          affiliate_id: affiliateParam || null,
           // Plano personalizado (módulos à la carte do link)
           modules: isCustomPlan && lockedModuleCodes?.length ? lockedModuleCodes : null,
           max_users: lockedUsersParam ? parseInt(lockedUsersParam) : null,
