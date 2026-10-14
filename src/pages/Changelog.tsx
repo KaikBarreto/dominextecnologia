@@ -42,9 +42,9 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.32.0',
+    version: '1.31.4',
     date: '14 de outubro de 2026',
-    type: 'minor',
+    type: 'patch',
     changes: [
       {
         title: 'Upgrade com cobrança proporcional',
