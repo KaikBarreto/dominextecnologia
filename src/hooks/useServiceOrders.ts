@@ -11,6 +11,51 @@ export interface ServiceOrderEquipmentItem {
   form_template_id?: string;
 }
 
+/** Linha plana do payload de escopo que chega do formulário de OS: uma linha
+ * por par equipamento×template. Equipamento sem checklist vem com
+ * `form_template_id` undefined; checklist avulso vem com `equipment_id`
+ * undefined. */
+export interface RawScopeItem {
+  equipment_id?: string;
+  form_template_id?: string;
+}
+
+/** Formato aceito pela RPC `sync_service_order_scope` / `edit_service_order_scope`:
+ * um item por equipamento (ou `null` para o grupo de avulsos), com a lista
+ * deduplicada de templates daquele grupo. */
+export interface GroupedScopeItem {
+  equipment_id: string | null;
+  form_template_ids: string[];
+}
+
+/**
+ * Agrupa o payload plano de `equipment_items` (uma linha por par
+ * equipamento×template) no formato esperado pelas RPCs de escopo de OS.
+ * - Todos os itens avulsos (`equipment_id` ausente) colapsam em UM grupo
+ *   `{ equipment_id: null, form_template_ids: [...] }`.
+ * - Equipamento sem nenhum template vira `{ equipment_id: X, form_template_ids: [] }`.
+ * - `form_template_ids` é deduplicado dentro de cada grupo.
+ */
+export function groupScopeItems(items: RawScopeItem[]): GroupedScopeItem[] {
+  const order: Array<string | null> = [];
+  const map = new Map<string | null, string[]>();
+  for (const item of items) {
+    const key = item.equipment_id ?? null;
+    if (!map.has(key)) {
+      map.set(key, []);
+      order.push(key);
+    }
+    const list = map.get(key)!;
+    if (item.form_template_id && !list.includes(item.form_template_id)) {
+      list.push(item.form_template_id);
+    }
+  }
+  return order.map(key => ({
+    equipment_id: key,
+    form_template_ids: map.get(key)!,
+  }));
+}
+
 export interface ServiceOrderInput {
   customer_id: string;
   equipment_id?: string;
@@ -376,17 +421,18 @@ export function useServiceOrders() {
         }
       }
 
-      // Sync equipment items if provided
+      // Sync equipment items if provided. Via RPC atômica (nunca delete+insert
+      // direto do client): a RPC também limpa respostas órfãs em
+      // `form_responses` quando um checklist sai do escopo — o delete+insert
+      // antigo deixava respostas fantasma aparecendo no relatório/link público.
+      // `[]` é um valor válido ("limpar o escopo inteiro"), não "não fazer nada".
       if (equipment_items !== undefined) {
-        await supabase.from('service_order_equipment').delete().eq('service_order_id', id);
-        if (equipment_items.length > 0) {
-          const rows = equipment_items.map(item => ({
-            service_order_id: id,
-            equipment_id: item.equipment_id || null,
-            form_template_id: item.form_template_id || null,
-          }));
-          await supabase.from('service_order_equipment').insert(rows);
-        }
+        const scopeItems = groupScopeItems(equipment_items);
+        const { error: scopeError } = await supabase.rpc('sync_service_order_scope' as any, {
+          _service_order_id: id,
+          _items: scopeItems as any,
+        });
+        if (scopeError) throw scopeError;
       }
 
       // Fire-and-forget WhatsApp dispatch on real status transitions.

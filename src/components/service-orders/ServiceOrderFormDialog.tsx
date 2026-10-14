@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { useForm } from 'react-hook-form';
@@ -101,6 +101,19 @@ const STEPS = [
   { key: 'details' as const },
 ];
 
+/**
+ * Assinatura estável do escopo (conjunto de pares equipamento×checklist) de uma
+ * OS, pra detectar se o usuário REALMENTE mexeu no escopo antes de mandar
+ * `equipment_items` no save. Importa quem está no conjunto, não a ordem.
+ */
+export const scopeSignature = (
+  items: Array<{ equipment_id?: string | null; form_template_id?: string | null }>,
+): string =>
+  items
+    .map(i => `${i.equipment_id ?? ''}::${i.form_template_id ?? ''}`)
+    .sort()
+    .join('|');
+
 export function ServiceOrderFormDialog({
   open, onOpenChange, serviceOrder, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId, defaultStatus,
   defaultDescription, defaultAssigneeUserIds,
@@ -124,6 +137,20 @@ export function ServiceOrderFormDialog({
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
   const [equipmentTemplateMap, setEquipmentTemplateMap] = useState<Record<string, string[]>>({});
   const [selectedStandaloneTemplateIds, setSelectedStandaloneTemplateIds] = useState<string[]>([]);
+  // Trava contra corrida: `loadExistingEquipmentItems` é assíncrono e só popula os
+  // estados acima quando termina. Se o usuário salvar ANTES disso, os estados
+  // ainda estão vazios — mandar `equipment_items: []` nesse momento apagaria o
+  // escopo real da OS (equipamentos + checklists) e as respostas já preenchidas.
+  // `scopeLoaded` vira true no `finally` do load (inclusive quando a OS não tem
+  // nenhuma linha de escopo — "carregou e está vazio" é informação válida).
+  const [scopeLoaded, setScopeLoaded] = useState(false);
+  // Assinatura do escopo COMO VEIO DO BANCO. O save só manda `equipment_items`
+  // quando ela difere da assinatura montada na tela — ou seja, quando o usuário
+  // mexeu de fato no escopo. Sem isso, editar só a data dispararia a RPC
+  // `sync_service_order_scope` à toa, e quem tem permissão de mexer na OS mas
+  // não de editar escopo (técnico sem `fn:edit_os`) tomaria erro num save que
+  // nem encosta em equipamento/checklist.
+  const loadedScopeSigRef = useRef<string | null>(null);
   // Equipamentos com o painel de checklists expandido (chevron) na etapa 2.
   const [expandedEquipmentIds, setExpandedEquipmentIds] = useState<string[]>([]);
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
@@ -294,31 +321,42 @@ export function ServiceOrderFormDialog({
 
   // Load existing equipment items when editing
   const loadExistingEquipmentItems = async (osId: string) => {
-    const { data } = await supabase
-      .from('service_order_equipment')
-      .select('equipment_id, form_template_id')
-      .eq('service_order_id', osId);
-    if (data && data.length > 0) {
-      const eqIdSet = new Set<string>();
-      const templateMap: Record<string, string[]> = {};
-      const standaloneIds: string[] = [];
-      data.forEach((item: any) => {
-        if (item.equipment_id) {
-          eqIdSet.add(item.equipment_id);
-          if (item.form_template_id) {
-            if (!templateMap[item.equipment_id]) templateMap[item.equipment_id] = [];
-            if (!templateMap[item.equipment_id].includes(item.form_template_id)) {
-              templateMap[item.equipment_id].push(item.form_template_id);
+    try {
+      const { data, error } = await supabase
+        .from('service_order_equipment')
+        .select('equipment_id, form_template_id')
+        .eq('service_order_id', osId);
+      // Leitura falhou: NÃO liberar `scopeLoaded`. Com a trava fechada o save
+      // manda `equipment_items: undefined` (não encosta no escopo) em vez de
+      // assumir "a OS não tem escopo" e apagar tudo.
+      if (error) return;
+      loadedScopeSigRef.current = scopeSignature((data as any[]) ?? []);
+      if (data && data.length > 0) {
+        const eqIdSet = new Set<string>();
+        const templateMap: Record<string, string[]> = {};
+        const standaloneIds: string[] = [];
+        data.forEach((item: any) => {
+          if (item.equipment_id) {
+            eqIdSet.add(item.equipment_id);
+            if (item.form_template_id) {
+              if (!templateMap[item.equipment_id]) templateMap[item.equipment_id] = [];
+              if (!templateMap[item.equipment_id].includes(item.form_template_id)) {
+                templateMap[item.equipment_id].push(item.form_template_id);
+              }
             }
+          } else if (item.form_template_id) {
+            standaloneIds.push(item.form_template_id);
           }
-        } else if (item.form_template_id) {
-          standaloneIds.push(item.form_template_id);
-        }
-      });
-      const eqIds = Array.from(eqIdSet);
-      if (eqIds.length > 0) setSelectedEquipmentIds(eqIds);
-      if (Object.keys(templateMap).length > 0) setEquipmentTemplateMap(templateMap);
-      if (standaloneIds.length > 0) setSelectedStandaloneTemplateIds(standaloneIds);
+        });
+        const eqIds = Array.from(eqIdSet);
+        if (eqIds.length > 0) setSelectedEquipmentIds(eqIds);
+        if (Object.keys(templateMap).length > 0) setEquipmentTemplateMap(templateMap);
+        if (standaloneIds.length > 0) setSelectedStandaloneTemplateIds(standaloneIds);
+      }
+      // Só aqui, com a leitura confirmada: destrava o envio de `equipment_items`.
+      setScopeLoaded(true);
+    } catch {
+      // Idem: exceção de rede mantém a trava fechada.
     }
   };
 
@@ -328,6 +366,8 @@ export function ServiceOrderFormDialog({
       setSelectedEquipmentIds(serviceOrder?.equipment_id ? [serviceOrder.equipment_id] : []);
       setEquipmentTemplateMap({});
       setSelectedStandaloneTemplateIds([]);
+      setScopeLoaded(false);
+      loadedScopeSigRef.current = null;
       setExpandedEquipmentIds([]);
       setRequireClientSignature(false);
       setCustomerMode('existing');
@@ -652,7 +692,17 @@ export function ServiceOrderFormDialog({
         || selectedStandaloneTemplateIds[0]
         || (data.form_template_id === 'none' ? undefined : (data.form_template_id || undefined)),
       assignee_user_ids: selectedAssigneeUserIds,
-      equipment_items: equipItems.length > 0 ? equipItems : undefined,
+      // Duas travas antes de mandar o escopo:
+      // 1) `scopeLoaded` evita apagar o escopo real da OS (equipamentos +
+      //    checklists + respostas já preenchidas) numa corrida: salvar antes de
+      //    `loadExistingEquipmentItems` terminar mandaria `[]` e destruiria tudo.
+      // 2) assinatura igual à do banco = usuário não mexeu no escopo; mandar
+      //    `undefined` deixa a RPC de escopo de fora do save (ver comentário do
+      //    `loadedScopeSigRef`). Mudou de verdade — inclusive pra vazio — vai.
+      equipment_items:
+        scopeLoaded && scopeSignature(equipItems) !== loadedScopeSigRef.current
+          ? equipItems
+          : undefined,
       generate_nps_survey: generateNpsSurvey,
       ...serviceAddressPayload,
     };
