@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.31.8',
+    date: '14 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Condições personalizadas nas propostas',
+        description: 'O simulador agora permite ajustar o desconto anual de 0% a 40% e escolher de 3 a 6 parcelas no Pix. O total, a economia e as parcelas são recalculados automaticamente e seguem no link compartilhado e no PDF.',
+        category: 'recurso',
+      },
+      {
+        title: 'Resumo comercial mais claro e completo',
+        description: 'A proposta agora destaca o valor cheio e o valor final no formato “de/por”, mostra a economia em negrito e apresenta corretamente a Área do Técnico, o Módulo Básico, o Financeiro unificado e a Integração com o WhatsApp.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.31.7',
     date: '14 de outubro de 2026',
     type: 'patch',

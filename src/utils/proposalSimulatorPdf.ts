@@ -44,6 +44,8 @@ export interface ProposalPdfTotals {
   yearlyDiscounted: number;
   savings: number;
   pixInstallment: number;
+  discountPercent: number;
+  installments: number;
 }
 
 export interface GenerateProposalPdfInput {
@@ -137,7 +139,7 @@ function money(value: number): string {
   // vão visível sempre que o valor aparece dentro de texto corrido/quebrado manualmente.
   // Como a quebra de linha aqui é sempre manual (nunca depende do navegador), um espaço
   // comum resolve sem efeito colateral.
-  return formatted.replace(/ /g, ' ');
+  return formatted.replace(/\u00a0/g, ' ');
 }
 
 /** Separa um valor monetário em parte inteira ("R$ 1.234") e parte decimal (",56"). */
@@ -844,7 +846,10 @@ function renderPaymentPage(
 ) {
   const label = `${pad2(internalPage)} / ${pad2(totalPagesLabel)}`;
   addDarkPage(doc);
-  addSectionHeader(doc, displayFont, 'Como pagar', ['no ano sai', '20% mais barato.'], label);
+  const annualTitle = input.totals.discountPercent > 0
+    ? ['no ano sai', `${input.totals.discountPercent}% mais barato.`]
+    : ['condições de', 'pagamento.'];
+  addSectionHeader(doc, displayFont, 'Como pagar', annualTitle, label);
 
   const topY = 56;
   const blockHeight = 60;
@@ -878,7 +883,14 @@ function renderPaymentPage(
   setTextColor(doc, GREEN);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
-  doc.text('ANUAL · 20% DE DESCONTO', annualX + 7, topY + 10, { charSpace: 0.7 });
+  doc.text(
+    input.totals.discountPercent > 0
+      ? `ANUAL · ${input.totals.discountPercent}% DE DESCONTO`
+      : 'ANUAL · SEM DESCONTO',
+    annualX + 7,
+    topY + 10,
+    { charSpace: 0.7 },
+  );
   drawBigMoney(doc, displayFont, input.totals.yearlyDiscounted, annualX + 7, topY + 22, 23, 10, WHITE, '/ano');
 
   const miniPillY = topY + 28;
@@ -886,7 +898,7 @@ function renderPaymentPage(
   const miniLabels = [
     money(input.totals.monthly).replace(/,00$/, ''),
     '× 12',
-    '× 0,8',
+    `× ${(1 - input.totals.discountPercent / 100).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}`,
     `= ${money(input.totals.yearlyDiscounted).replace(/,00$/, '')}`,
   ];
   doc.setFont('helvetica', 'bold');
@@ -911,7 +923,7 @@ function renderPaymentPage(
     { text: 'Equivale a ', bold: false },
     { text: `${money(input.totals.yearlyDiscounted / 12)}/mês`, bold: true },
     { text: ' e pode ser pago em ', bold: false },
-    { text: `até 3× de ${money(input.totals.pixInstallment)} no Pix`, bold: true },
+    { text: `até ${input.totals.installments}× de ${money(input.totals.pixInstallment)} no Pix`, bold: true },
     { text: '.', bold: false },
   ];
   drawRichParagraph(doc, equivRuns, annualX + 7, topY + 42, annualWidth - 14, 7.5, 4.2);
@@ -932,7 +944,7 @@ function renderPaymentPage(
   const cardGap = 4;
   const cardWidth = (CONTENT_WIDTH - cardGap * 2) / 3;
   const paymentCards = [
-    { title: 'pix', desc: 'À vista no mensal ou no anual, com confirmação na hora.', highlight: `Anual em até 3× de ${money(input.totals.pixInstallment)}` },
+    { title: 'pix', desc: 'À vista no mensal ou no anual, com confirmação na hora.', highlight: `Anual em até ${input.totals.installments}× de ${money(input.totals.pixInstallment)}` },
     { title: 'cartão', desc: 'Recorrência automática no mensal ou parcelamento do anual na bandeira.', highlight: 'Sem preocupação com vencimento' },
     { title: 'boleto', desc: 'Vencimento combinado, enviado por e-mail e WhatsApp antes de vencer.', highlight: 'Mensal ou anual' },
   ];

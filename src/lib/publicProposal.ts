@@ -1,8 +1,8 @@
-import { calculateYearlyPrice } from '@/utils/subscriptionPricing';
 import {
   BASE_SUBSCRIPTION_MODULE_CODE,
   CUSTOM_PLAN_INCLUDED_USERS,
   EXTRA_USER_MODULE_CODE,
+  isRetiredProposalModule,
   withRequiredCustomModules,
 } from '@/lib/subscriptionCatalog';
 
@@ -12,6 +12,12 @@ export const DEFAULT_PROPOSAL_PLAN = 'start';
 export const DEFAULT_UNIT_NAME = 'Matriz';
 export const CUSTOM_PLAN_CODE = 'personalizado';
 export const BASE_MODULE_CODE = BASE_SUBSCRIPTION_MODULE_CODE;
+export const DEFAULT_PROPOSAL_DISCOUNT_PERCENT = 20;
+export const MIN_PROPOSAL_DISCOUNT_PERCENT = 0;
+export const MAX_PROPOSAL_DISCOUNT_PERCENT = 40;
+export const DEFAULT_PROPOSAL_INSTALLMENTS = 3;
+export const MIN_PROPOSAL_INSTALLMENTS = 3;
+export const MAX_PROPOSAL_INSTALLMENTS = 6;
 export { CUSTOM_PLAN_INCLUDED_USERS };
 
 export interface ProposalUnit {
@@ -26,6 +32,8 @@ export interface PublicProposalState {
   clientName: string;
   units: ProposalUnit[];
   pricesHidden: boolean;
+  discountPercent: number;
+  installments: number;
 }
 
 export interface ProposalPlanPrice {
@@ -44,6 +52,13 @@ export interface ProposalTotals {
   yearlyDiscounted: number;
   savings: number;
   pixInstallment: number;
+  discountPercent: number;
+  installments: number;
+}
+
+export interface ProposalCalculationOptions {
+  discountPercent?: number;
+  installments?: number;
 }
 
 function makeUnitId(): string {
@@ -71,7 +86,7 @@ export function ensureRequiredProposalModules(codes: string[]): string[] {
   const unique = new Set<string>();
   codes.slice(0, 30).forEach((value) => {
     const code = cleanModuleCode(value);
-    if (code && code !== EXTRA_USER_MODULE_CODE) unique.add(code);
+    if (code && code !== EXTRA_USER_MODULE_CODE && !isRetiredProposalModule(code)) unique.add(code);
   });
   return withRequiredCustomModules(Array.from(unique));
 }
@@ -80,6 +95,35 @@ function cleanUsers(value: string | number | null | undefined): number {
   const parsed = typeof value === 'number' ? value : Number.parseInt(value ?? '', 10);
   if (!Number.isFinite(parsed)) return CUSTOM_PLAN_INCLUDED_USERS;
   return Math.min(Math.max(Math.trunc(parsed), CUSTOM_PLAN_INCLUDED_USERS), MAX_PROPOSAL_USERS);
+}
+
+function cleanIntegerInRange(
+  value: string | number | null | undefined,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
+  const parsed = typeof value === 'number' ? value : Number.parseInt(value ?? '', 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(Math.max(Math.trunc(parsed), min), max);
+}
+
+export function cleanProposalDiscount(value: string | number | null | undefined): number {
+  return cleanIntegerInRange(
+    value,
+    DEFAULT_PROPOSAL_DISCOUNT_PERCENT,
+    MIN_PROPOSAL_DISCOUNT_PERCENT,
+    MAX_PROPOSAL_DISCOUNT_PERCENT,
+  );
+}
+
+export function cleanProposalInstallments(value: string | number | null | undefined): number {
+  return cleanIntegerInRange(
+    value,
+    DEFAULT_PROPOSAL_INSTALLMENTS,
+    MIN_PROPOSAL_INSTALLMENTS,
+    MAX_PROPOSAL_INSTALLMENTS,
+  );
 }
 
 export function defaultUnitName(position: number): string {
@@ -104,6 +148,8 @@ export function createProposalUnit(
 export function parsePublicProposal(searchParams: URLSearchParams): PublicProposalState {
   const clientName = cleanText(searchParams.get('c'), 120);
   const pricesHidden = searchParams.get('p') === '1';
+  const discountPercent = cleanProposalDiscount(searchParams.get('d'));
+  const installments = cleanProposalInstallments(searchParams.get('x'));
   const rawCount = Number.parseInt(searchParams.get('k') ?? '', 10);
   const count = Number.isFinite(rawCount)
     ? Math.min(Math.max(rawCount, 1), MAX_PROPOSAL_UNITS)
@@ -120,7 +166,7 @@ export function parsePublicProposal(searchParams: URLSearchParams): PublicPropos
     );
   });
 
-  return { clientName, units, pricesHidden };
+  return { clientName, units, pricesHidden, discountPercent, installments };
 }
 
 export function serializePublicProposal(state: PublicProposalState): URLSearchParams {
@@ -129,6 +175,14 @@ export function serializePublicProposal(state: PublicProposalState): URLSearchPa
 
   if (state.clientName.trim()) params.set('c', state.clientName.trim().slice(0, 120));
   params.set('k', String(Math.max(units.length, 1)));
+  const discountPercent = cleanProposalDiscount(state.discountPercent);
+  const installments = cleanProposalInstallments(state.installments);
+  if (discountPercent !== DEFAULT_PROPOSAL_DISCOUNT_PERCENT) {
+    params.set('d', String(discountPercent));
+  }
+  if (installments !== DEFAULT_PROPOSAL_INSTALLMENTS) {
+    params.set('x', String(installments));
+  }
 
   (units.length > 0 ? units : [createProposalUnit()]).forEach((unit, index) => {
     const position = index + 1;
@@ -149,7 +203,10 @@ export function calculateProposalTotals(
   plans: ProposalPlanPrice[],
   modules: ProposalModulePrice[] = [],
   extraUserPrice = 0,
+  options: ProposalCalculationOptions = {},
 ): ProposalTotals {
+  const discountPercent = cleanProposalDiscount(options.discountPercent);
+  const installments = cleanProposalInstallments(options.installments);
   const priceByCode = new Map(plans.map((plan) => [plan.code, Math.max(0, plan.price)]));
   const modulePriceByCode = new Map(
     modules.map((module) => [module.code, Math.max(0, module.price)]),
@@ -166,7 +223,7 @@ export function calculateProposalTotals(
   const monthly = monthlyPrices.reduce((total, value) => total + value, 0);
   const yearlyFull = monthly * 12;
   const yearlyDiscounted = monthlyPrices.reduce(
-    (total, value) => total + calculateYearlyPrice(value),
+    (total, value) => total + Math.round(value * 12 * (1 - discountPercent / 100)),
     0,
   );
 
@@ -175,6 +232,8 @@ export function calculateProposalTotals(
     yearlyFull,
     yearlyDiscounted,
     savings: yearlyFull - yearlyDiscounted,
-    pixInstallment: yearlyDiscounted / 3,
+    pixInstallment: yearlyDiscounted / installments,
+    discountPercent,
+    installments,
   };
 }

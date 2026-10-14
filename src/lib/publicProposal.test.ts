@@ -19,6 +19,8 @@ describe('publicProposal', () => {
 
     expect(state.clientName).toBe('');
     expect(state.pricesHidden).toBe(false);
+    expect(state.discountPercent).toBe(20);
+    expect(state.installments).toBe(3);
     expect(state.units).toHaveLength(1);
     expect(state.units[0]).toMatchObject({ name: 'Matriz', planCode: DEFAULT_PROPOSAL_PLAN });
   });
@@ -27,6 +29,8 @@ describe('publicProposal', () => {
     const state = {
       clientName: 'Grupo Clima Forte',
       pricesHidden: true,
+      discountPercent: 35,
+      installments: 6,
       units: [
         createProposalUnit('Matriz', 'master'),
         createProposalUnit('Filial Norte', 'avancado'),
@@ -37,6 +41,8 @@ describe('publicProposal', () => {
 
     expect(parsed.clientName).toBe(state.clientName);
     expect(parsed.pricesHidden).toBe(true);
+    expect(parsed.discountPercent).toBe(35);
+    expect(parsed.installments).toBe(6);
     expect(parsed.units.map(({ name, planCode }) => ({ name, planCode }))).toEqual([
       { name: 'Matriz', planCode: 'master' },
       { name: 'Filial Norte', planCode: 'avancado' },
@@ -47,6 +53,8 @@ describe('publicProposal', () => {
     const state = {
       clientName: 'Grupo Personalizado',
       pricesHidden: false,
+      discountPercent: 20,
+      installments: 3,
       units: [
         createProposalUnit('Matriz', CUSTOM_PLAN_CODE, ['basic', 'crm', 'rh'], 7),
       ],
@@ -63,11 +71,31 @@ describe('publicProposal', () => {
 
   it('restaura módulos obrigatórios quando o link personalizado tenta removê-los', () => {
     const parsed = parsePublicProposal(
-      new URLSearchParams('k=1&l1=personalizado&m1=crm,extra_user&u1=2'),
+      new URLSearchParams('k=1&l1=personalizado&m1=crm,extra_user,finance_advanced&u1=2'),
     );
 
     expect(parsed.units[0].moduleCodes).toEqual([...REQUIRED_CUSTOM_MODULE_CODES, 'crm']);
     expect(parsed.units[0].users).toBe(5);
+  });
+
+  it('remove o Financeiro Avançado aposentado de links e cálculos antigos', () => {
+    const unit = createProposalUnit(
+      'Matriz',
+      CUSTOM_PLAN_CODE,
+      ['basic', 'finance_advanced'],
+      5,
+    );
+
+    expect(unit.moduleCodes).not.toContain('finance_advanced');
+    expect(calculateProposalTotals(
+      [unit],
+      [],
+      [
+        { code: 'basic', price: 197 },
+        { code: 'finance_advanced', price: 150 },
+      ],
+      20,
+    ).monthly).toBe(197);
   });
 
   it('limita URLs adulteradas e rejeita código de plano inválido', () => {
@@ -97,7 +125,36 @@ describe('publicProposal', () => {
       yearlyDiscounted: 13382,
       savings: 3346,
       pixInstallment: 13382 / 3,
+      discountPercent: 20,
+      installments: 3,
     });
+  });
+
+  it('recalcula desconto, economia e parcelas com condições personalizadas', () => {
+    const units = [createProposalUnit('Matriz', 'start')];
+
+    expect(calculateProposalTotals(
+      units,
+      [{ code: 'start', price: 100 }],
+      [],
+      0,
+      { discountPercent: 40, installments: 6 },
+    )).toEqual({
+      monthly: 100,
+      yearlyFull: 1200,
+      yearlyDiscounted: 720,
+      savings: 480,
+      pixInstallment: 120,
+      discountPercent: 40,
+      installments: 6,
+    });
+  });
+
+  it('limita condições adulteradas da URL aos intervalos comerciais', () => {
+    const parsed = parsePublicProposal(new URLSearchParams('d=99&x=1'));
+
+    expect(parsed.discountPercent).toBe(40);
+    expect(parsed.installments).toBe(3);
   });
 
   it('não deixa preço negativo contaminar o orçamento', () => {
@@ -126,5 +183,24 @@ describe('publicProposal', () => {
     expect(totals.monthly).toBe(367);
     expect(totals.yearlyFull).toBe(4404);
     expect(totals.yearlyDiscounted).toBe(3523);
+  });
+
+  it('cobra o nível comercial de WhatsApp no plano personalizado', () => {
+    const units = [
+      createProposalUnit('Matriz', CUSTOM_PLAN_CODE, ['basic', 'whatsapp'], 5),
+    ];
+
+    expect(calculateProposalTotals(
+      units,
+      [],
+      [
+        { code: 'basic', price: 197 },
+        { code: CUSTOMER_PORTAL_MODULE_CODE, price: 0 },
+        { code: 'pricing_advanced', price: 0 },
+        { code: 'video_questions', price: 0 },
+        { code: 'whatsapp', price: 49 },
+      ],
+      20,
+    ).monthly).toBe(246);
   });
 });

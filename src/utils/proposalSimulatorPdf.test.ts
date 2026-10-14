@@ -71,6 +71,8 @@ describe('proposalSimulatorPdf', () => {
           yearlyDiscounted: 4320,
           savings: 1080,
           pixInstallment: 1440,
+          discountPercent: 20,
+          installments: 3,
         },
         issuedAt: new Date(2026, 8, 29, 12),
       });
@@ -105,7 +107,7 @@ describe('proposalSimulatorPdf', () => {
             yearlyDiscounted: 4320,
           },
         ],
-        totals: { monthly: 450, yearlyFull: 5400, yearlyDiscounted: 4320, savings: 1080, pixInstallment: 1440 },
+        totals: { monthly: 450, yearlyFull: 5400, yearlyDiscounted: 4320, savings: 1080, pixInstallment: 1440, discountPercent: 20, installments: 3 },
         issuedAt,
       });
 
@@ -132,7 +134,7 @@ describe('proposalSimulatorPdf', () => {
             yearlyDiscounted: 6624,
           },
         ],
-        totals: { monthly: 1080, yearlyFull: 12960, yearlyDiscounted: 10368, savings: 2592, pixInstallment: 3456 },
+        totals: { monthly: 1080, yearlyFull: 12960, yearlyDiscounted: 10368, savings: 2592, pixInstallment: 3456, discountPercent: 20, installments: 3 },
         issuedAt,
       });
 
@@ -164,6 +166,8 @@ describe('proposalSimulatorPdf', () => {
           yearlyDiscounted: 53760,
           savings: 13440,
           pixInstallment: 17920,
+          discountPercent: 20,
+          installments: 3,
         },
         issuedAt,
       });

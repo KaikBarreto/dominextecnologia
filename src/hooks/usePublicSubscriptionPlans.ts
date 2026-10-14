@@ -4,7 +4,9 @@ import type { ModuleCode } from '@/hooks/useCompanyModules';
 import {
   BASE_SUBSCRIPTION_MODULE_CODE,
   FREE_BASE_MODULE_CODES,
+  WHATSAPP_MODULE_CODE,
   resolveExtraUserPrice,
+  resolveProposalWhatsappPrice,
 } from '@/lib/subscriptionCatalog';
 
 export interface PublicSubscriptionPlan {
@@ -36,7 +38,7 @@ export function usePublicSubscriptionCatalog() {
   return useQuery({
     queryKey: ['public-subscription-catalog'],
     queryFn: async () => {
-      const [plansResult, modulesResult] = await Promise.all([
+      const [plansResult, modulesResult, whatsappTiersResult] = await Promise.all([
         supabase
           .from('subscription_plans')
           .select('id, code, name, description, price, max_users, included_modules')
@@ -48,10 +50,16 @@ export function usePublicSubscriptionCatalog() {
           .select('id, code, name, description, price, type')
           .eq('is_active', true)
           .order('sort_order'),
+        supabase
+          .from('whatsapp_tiers')
+          .select('tier, price')
+          .gt('price', 0)
+          .order('tier'),
       ]);
 
       if (plansResult.error) throw plansResult.error;
       if (modulesResult.error) throw modulesResult.error;
+      if (whatsappTiersResult.error) throw whatsappTiersResult.error;
 
       const plans = (plansResult.data ?? []).map((plan) => ({
         id: plan.id,
@@ -66,14 +74,20 @@ export function usePublicSubscriptionCatalog() {
             )
           : [],
       })) as PublicSubscriptionPlan[];
-      const allModules = (modulesResult.data ?? []).map((module) => ({
-        id: module.id,
-        code: module.code,
-        name: module.name,
-        description: module.description ?? null,
-        price: module.price === null ? Number.NaN : Number(module.price),
-        type: module.type ?? 'module',
-      })) as PublicSubscriptionModule[];
+      const proposalWhatsappTier = resolveProposalWhatsappPrice(whatsappTiersResult.data ?? []);
+      const allModules = (modulesResult.data ?? []).map((module) => {
+        const catalogPrice = module.price === null ? Number.NaN : Number(module.price);
+        return {
+          id: module.id,
+          code: module.code,
+          name: module.name,
+          description: module.description ?? null,
+          price: module.code === WHATSAPP_MODULE_CODE
+            ? (proposalWhatsappTier?.price ?? Number.NaN)
+            : catalogPrice,
+          type: module.type ?? 'module',
+        };
+      }) as PublicSubscriptionModule[];
       const pricesAreValid = allModules.every(
         (module) => Number.isFinite(module.price) && module.price >= 0,
       );

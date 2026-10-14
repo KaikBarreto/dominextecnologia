@@ -38,14 +38,21 @@ import {
   EXTRA_USER_MODULE_CODE,
   REQUIRED_CUSTOM_MODULE_CODES,
   isRequiredCustomModule,
+  isRetiredProposalModule,
 } from '@/lib/subscriptionCatalog';
 import {
   MAX_PROPOSAL_UNITS,
   MAX_PROPOSAL_USERS,
+  MAX_PROPOSAL_DISCOUNT_PERCENT,
+  MAX_PROPOSAL_INSTALLMENTS,
+  MIN_PROPOSAL_DISCOUNT_PERCENT,
+  MIN_PROPOSAL_INSTALLMENTS,
   BASE_MODULE_CODE,
   CUSTOM_PLAN_CODE,
   CUSTOM_PLAN_INCLUDED_USERS,
   calculateProposalTotals,
+  cleanProposalDiscount,
+  cleanProposalInstallments,
   createProposalUnit,
   defaultUnitName,
   parsePublicProposal,
@@ -60,14 +67,25 @@ const MODULE_LABELS: Record<string, string> = {
   basic: 'Gestão completa de serviços e equipes',
   customer_portal: 'Portal do cliente',
   rh: 'Funcionários, ponto e RH',
-  finance_advanced: 'Financeiro avançado, DRE e DFC',
   contracts: 'Contratos e PMOC',
   crm: 'CRM e Kanban',
   nfe: 'Emissão de notas fiscais',
-  pricing_advanced: 'Precificação avançada e BDI',
+  pricing_advanced: 'Orçamentos e Precificação',
   video_questions: 'Perguntas em vídeo nos checklists',
   white_label: 'Sistema com a sua marca',
+  whatsapp: 'Integração com o WhatsApp',
 };
+
+const BASE_MODULE_BENEFITS = [
+  MODULE_LABELS.basic,
+  'Área do Técnico™',
+];
+
+const BASE_MODULE_DESCRIPTION = [
+  'OS, agenda, clientes, equipamentos, estoque e financeiro.',
+  'Também inclui Área do Técnico™, Portal do Cliente, Orçamentos e Precificação',
+  'e perguntas em vídeo nos checklists.',
+].join(' ');
 
 const PLAN_ACCENTS: Record<string, { icon: typeof Zap; className: string }> = {
   excecao: { icon: Zap, className: 'bg-slate-700 text-white' },
@@ -77,7 +95,6 @@ const PLAN_ACCENTS: Record<string, { icon: typeof Zap; className: string }> = {
 };
 
 const PROPOSAL_BENEFITS = [
-  '7 dias grátis, sem cartão',
   'Implantação guiada e tutoriais completos',
   'Suporte humano pelo WhatsApp',
   'Atualizações e melhorias contínuas',
@@ -91,6 +108,23 @@ function money(value: number) {
   return `R$ ${formatBRL(value)}`;
 }
 
+function moduleBenefits(
+  moduleCodes: string[],
+  catalogModules: Array<{ code: string; name: string }> = [],
+): string[] {
+  const catalogNames = new Map(catalogModules.map((module) => [module.code, module.name]));
+  return moduleCodes.flatMap((code) => {
+    if (isRetiredProposalModule(code)) return [];
+    if (code === BASE_MODULE_CODE) return BASE_MODULE_BENEFITS;
+    const label = MODULE_LABELS[code] ?? catalogNames.get(code);
+    return label ? [label] : [];
+  });
+}
+
+function moduleDisplayName(module: { code: string; name: string }): string {
+  return MODULE_LABELS[module.code] ?? module.name;
+}
+
 function planModules(plan: PublicSubscriptionPlan): string[] {
   if (plan.code === 'excecao') {
     return [
@@ -100,9 +134,7 @@ function planModules(plan: PublicSubscriptionPlan): string[] {
       'Clientes',
     ];
   }
-  return plan.includedModules
-    .map((code) => MODULE_LABELS[code])
-    .filter((label): label is string => Boolean(label));
+  return moduleBenefits(plan.includedModules);
 }
 
 function ProposalPrice({
@@ -111,26 +143,37 @@ function ProposalPrice({
   yearlyDiscounted,
   savings,
   pixInstallment,
+  discountPercent,
+  installments,
 }: {
   monthly: number;
   yearlyFull: number;
   yearlyDiscounted: number;
   savings: number;
   pixInstallment: number;
+  discountPercent: number;
+  installments: number;
 }) {
   return (
     <div className="space-y-2 border-t border-border/40 pt-5">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-600">
-        Plano anual · 20% de desconto
+        Plano anual · {discountPercent > 0 ? `${discountPercent}% de desconto` : 'sem desconto'}
       </p>
+      {discountPercent > 0 && (
+        <p className="text-sm text-muted-foreground">
+          de <span className="text-destructive line-through">{money(yearlyFull)}</span>
+        </p>
+      )}
       <p className="text-3xl font-bold tracking-tight lg:text-4xl">
+        <span className="mr-1 text-base font-semibold text-muted-foreground">por</span>
         {money(yearlyDiscounted)}<span className="text-base font-semibold text-muted-foreground">/ano</span>
       </p>
-      <p className="text-sm text-muted-foreground">
-        <span className="text-destructive line-through">{money(yearlyFull)}</span>{' '}
-        <span className="font-medium text-emerald-600">Economize {money(savings)} no plano anual</span>
+      <p className="text-sm font-bold text-emerald-600">
+        Economize {money(savings)} no plano anual
       </p>
-      <p className="text-sm text-muted-foreground">Em até 3x de {money(pixInstallment)} no Pix</p>
+      <p className="text-sm text-muted-foreground">
+        Em até {installments}x de {money(pixInstallment)} no Pix
+      </p>
       <p className="pt-1 text-base font-bold">Opção mensal: {money(monthly)}/mês</p>
       <p className="text-xs text-muted-foreground">
         O valor apresentado considera somente os planos escolhidos por unidade.
@@ -168,6 +211,9 @@ export default function ProposalSimulator() {
   const [clientName, setClientName] = useState(initialState.clientName);
   const [units, setUnits] = useState<ProposalUnit[]>(initialState.units);
   const [pricesHidden, setPricesHidden] = useState(initialState.pricesHidden);
+  const [discountPercent, setDiscountPercent] = useState(initialState.discountPercent);
+  const [installments, setInstallments] = useState(initialState.installments);
+  const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'proposal' | 'structure'>('proposal');
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     try {
@@ -183,6 +229,10 @@ export default function ProposalSimulator() {
   const { data: catalog, isLoading, isError } = usePublicSubscriptionCatalog();
   const plans = useMemo(() => catalog?.plans ?? [], [catalog?.plans]);
   const modules = useMemo(() => catalog?.modules ?? [], [catalog?.modules]);
+  const proposalModules = useMemo(
+    () => modules.filter((module) => !isRetiredProposalModule(module.code)),
+    [modules],
+  );
   const extraUserPrice = catalog?.extraUserPrice ?? 0;
 
   useEffect(() => {
@@ -205,10 +255,10 @@ export default function ProposalSimulator() {
       return;
     }
     setSearchParams(
-      serializePublicProposal({ clientName, units, pricesHidden }),
+      serializePublicProposal({ clientName, units, pricesHidden, discountPercent, installments }),
       { replace: true },
     );
-  }, [clientName, pricesHidden, setSearchParams, units]);
+  }, [clientName, discountPercent, installments, pricesHidden, setSearchParams, units]);
 
   useEffect(() => {
     if (plans.length === 0) return;
@@ -227,13 +277,19 @@ export default function ProposalSimulator() {
 
   const unitViews = useMemo(() => units.map((unit) => {
     if (unit.planCode === CUSTOM_PLAN_CODE) {
-      const selectedModules = modules.filter((module) => unit.moduleCodes.includes(module.code));
-      const monthly = calculateProposalTotals([unit], plans, modules, extraUserPrice).monthly;
+      const selectedModules = proposalModules.filter((module) => unit.moduleCodes.includes(module.code));
+      const monthly = calculateProposalTotals(
+        [unit],
+        plans,
+        proposalModules,
+        extraUserPrice,
+        { discountPercent, installments },
+      ).monthly;
       return {
         unit,
         code: CUSTOM_PLAN_CODE,
         name: 'Personalizado',
-        modules: selectedModules.map((module) => MODULE_LABELS[module.code] ?? module.name),
+        modules: moduleBenefits(unit.moduleCodes, selectedModules),
         users: unit.users,
         monthly,
       };
@@ -247,14 +303,20 @@ export default function ProposalSimulator() {
       users: plan?.maxUsers ?? 0,
       monthly: plan?.price ?? 0,
     };
-  }), [extraUserPrice, modules, plans, units]);
+  }), [discountPercent, extraUserPrice, installments, plans, proposalModules, units]);
   const totals = useMemo(
-    () => calculateProposalTotals(units, plans, modules, extraUserPrice),
-    [extraUserPrice, modules, plans, units],
+    () => calculateProposalTotals(
+      units,
+      plans,
+      proposalModules,
+      extraUserPrice,
+      { discountPercent, installments },
+    ),
+    [discountPercent, extraUserPrice, installments, plans, proposalModules, units],
   );
   const modulePickerUnit = units.find((unit) => unit.id === modulePickerUnitId);
   const availableModules = modulePickerUnit
-    ? modules.filter(
+    ? proposalModules.filter(
         (module) => module.code !== EXTRA_USER_MODULE_CODE
           && !isRequiredCustomModule(module.code)
           && !modulePickerUnit.moduleCodes.includes(module.code),
@@ -297,7 +359,11 @@ export default function ProposalSimulator() {
   }
 
   function toggleModule(unit: ProposalUnit, moduleCode: string) {
-    if (isRequiredCustomModule(moduleCode) || moduleCode === EXTRA_USER_MODULE_CODE) return;
+    if (
+      isRequiredCustomModule(moduleCode)
+      || isRetiredProposalModule(moduleCode)
+      || moduleCode === EXTRA_USER_MODULE_CODE
+    ) return;
     const selected = unit.moduleCodes.includes(moduleCode);
     updateUnit(unit.id, {
       moduleCodes: selected
@@ -344,7 +410,13 @@ export default function ProposalSimulator() {
         clientName,
         logoUrl: logoWhite,
         units: unitViews.map((view) => {
-          const unitTotals = calculateProposalTotals([view.unit], plans, modules, extraUserPrice);
+          const unitTotals = calculateProposalTotals(
+            [view.unit],
+            plans,
+            proposalModules,
+            extraUserPrice,
+            { discountPercent, installments },
+          );
           return {
             name: view.unit.name,
             planName: view.name,
@@ -508,24 +580,17 @@ export default function ProposalSimulator() {
                           <div className="space-y-5 border-t border-border/40 pt-5">
                             <div className="space-y-2">
                               <Label>Módulos</Label>
-                              {REQUIRED_CUSTOM_MODULE_CODES.map((moduleCode) => {
-                                const requiredModule = modules.find((module) => module.code === moduleCode);
-                                return (
-                                  <div key={moduleCode} className="flex items-center gap-3 rounded-lg bg-emerald-600 p-3 text-white">
-                                    <Check className="h-4 w-4 shrink-0" />
-                                    <div className="min-w-0">
-                                      <p className="text-sm font-semibold">
-                                        {requiredModule?.name ?? MODULE_LABELS[moduleCode] ?? 'Recurso da base'}
-                                      </p>
-                                      <p className="text-xs text-white/75">
-                                        {moduleCode === BASE_MODULE_CODE ? 'Sempre incluso' : 'Grátis e incluso em todos os planos'}
-                                      </p>
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                              <div className="flex items-start gap-3 rounded-lg bg-emerald-600 p-3 text-white">
+                                <Check className="mt-0.5 h-4 w-4 shrink-0" />
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold">Módulo Básico</p>
+                                  <p className="mt-0.5 text-xs leading-relaxed text-white/80">
+                                    {BASE_MODULE_DESCRIPTION}
+                                  </p>
+                                </div>
+                              </div>
                               <div className="space-y-2">
-                                {modules.filter(
+                                {proposalModules.filter(
                                   (module) => module.code !== EXTRA_USER_MODULE_CODE
                                     && !isRequiredCustomModule(module.code)
                                     && unit.moduleCodes.includes(module.code),
@@ -533,7 +598,7 @@ export default function ProposalSimulator() {
                                   <div key={module.code} className="flex items-start gap-3 rounded-lg border border-border/60 bg-card p-3">
                                     <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
                                     <div className="min-w-0 flex-1">
-                                      <p className="text-sm font-semibold">{module.name}</p>
+                                      <p className="text-sm font-semibold">{moduleDisplayName(module)}</p>
                                       {module.description && <p className="mt-0.5 text-xs text-muted-foreground">{module.description}</p>}
                                     </div>
                                     <Button
@@ -542,7 +607,7 @@ export default function ProposalSimulator() {
                                       size="icon"
                                       className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
                                       onClick={() => toggleModule(unit, module.code)}
-                                      aria-label={`Remover ${module.name}`}
+                                      aria-label={`Remover ${moduleDisplayName(module)}`}
                                     >
                                       <X className="h-4 w-4" />
                                     </Button>
@@ -553,7 +618,7 @@ export default function ProposalSimulator() {
                                   variant="outline"
                                   className="w-full"
                                   onClick={() => setModulePickerUnitId(unit.id)}
-                                  disabled={modules.filter(
+                                  disabled={proposalModules.filter(
                                     (module) => module.code !== EXTRA_USER_MODULE_CODE
                                       && !isRequiredCustomModule(module.code)
                                       && !unit.moduleCodes.includes(module.code),
@@ -617,6 +682,7 @@ export default function ProposalSimulator() {
                 </Button>
               </section>
 
+              <div className="space-y-3">
               <section className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border/40 print:shadow-none" aria-label="Prévia da proposta">
                 <div className="bg-neutral-950 px-5 py-5 text-white sm:px-7">
                   <p className="text-xs font-medium uppercase tracking-[0.18em] text-white/55">Proposta Dominex</p>
@@ -669,6 +735,8 @@ export default function ProposalSimulator() {
                       yearlyDiscounted={totals.yearlyDiscounted}
                       savings={totals.savings}
                       pixInstallment={totals.pixInstallment}
+                      discountPercent={totals.discountPercent}
+                      installments={totals.installments}
                     />
                   )}
 
@@ -682,6 +750,65 @@ export default function ProposalSimulator() {
                   </div>
                 </div>
               </section>
+
+              <div className="text-center print:hidden">
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+                  aria-expanded={moreOptionsOpen}
+                  aria-controls="proposal-more-options"
+                  onClick={() => setMoreOptionsOpen((open) => !open)}
+                >
+                  {moreOptionsOpen ? 'Ocultar opções' : 'Mais opções'}
+                </button>
+
+                {moreOptionsOpen && (
+                  <div
+                    id="proposal-more-options"
+                    className="mt-3 grid gap-4 rounded-xl border border-border/50 bg-card p-4 text-left shadow-sm sm:grid-cols-2"
+                  >
+                    <div className="space-y-2">
+                      <Label htmlFor="proposal-discount">Desconto anual</Label>
+                      <div className="relative">
+                        <Input
+                          id="proposal-discount"
+                          type="number"
+                          min={MIN_PROPOSAL_DISCOUNT_PERCENT}
+                          max={MAX_PROPOSAL_DISCOUNT_PERCENT}
+                          step={1}
+                          value={discountPercent}
+                          onChange={(event) => setDiscountPercent(cleanProposalDiscount(event.target.value))}
+                          className="pr-9"
+                        />
+                        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">%</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">De 0% a 40% sobre o valor anual.</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="proposal-installments">Parcelas no Pix</Label>
+                      <Select
+                        value={String(installments)}
+                        onValueChange={(value) => setInstallments(cleanProposalInstallments(value))}
+                      >
+                        <SelectTrigger id="proposal-installments">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from(
+                            { length: MAX_PROPOSAL_INSTALLMENTS - MIN_PROPOSAL_INSTALLMENTS + 1 },
+                            (_, index) => MIN_PROPOSAL_INSTALLMENTS + index,
+                          ).map((value) => (
+                            <SelectItem key={value} value={String(value)}>{value}x</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">Escolha entre 3x e 6x.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              </div>
             </div>
           </TabsContent>
 
@@ -748,7 +875,7 @@ export default function ProposalSimulator() {
               >
                 <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
                 <span className="min-w-0">
-                  <span className="block text-sm font-semibold">{module.name}</span>
+                  <span className="block text-sm font-semibold">{moduleDisplayName(module)}</span>
                   {module.description && <span className="mt-0.5 block text-xs text-muted-foreground">{module.description}</span>}
                 </span>
               </button>
