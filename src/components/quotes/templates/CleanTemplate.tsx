@@ -97,15 +97,21 @@ export function CleanTemplate(props: ProposalTemplateProps) {
     if (rows.length === 0) return null;
     const total = sumTotal(rows);
     return (
-      <div className="mt-7 clean-block">
+      <div className="mt-7 clean-block" data-pdf-keep>
         <div className="flex items-center gap-2 mb-2.5">
           <span className="h-3.5 w-1 rounded-full" style={{ background: primary, ...colorAdjust }} />
           <h3 className="text-[13px] font-bold uppercase tracking-[0.14em]" style={{ color: primary }}>{title}</h3>
         </div>
         <div className="clean-table-wrap rounded-lg" style={{ border: '1px solid #e5e7eb' }}>
-          <table className="clean-table w-full text-[13px]" style={{ borderCollapse: 'collapse' }}>
+          <table className="clean-table w-full text-[13px]" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: '40%' }} />
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '22%' }} />
+            </colgroup>
             <thead>
-              <tr style={{ background: '#f8fafc' }}>
+              <tr style={{ background: '#f8fafc' }} data-pdf-keep>
                 <th className="text-left font-semibold px-4 py-2.5" style={{ color: '#475569', borderBottom: '1px solid #e5e7eb' }}>{t.cleanColItem}</th>
                 <th className="text-right font-semibold px-3 py-2.5 whitespace-nowrap" style={{ color: '#475569', borderBottom: '1px solid #e5e7eb' }}>{t.cleanColUnitPrice}</th>
                 <th className="text-right font-semibold px-3 py-2.5 whitespace-nowrap" style={{ color: '#475569', borderBottom: '1px solid #e5e7eb' }}>{t.cleanColQty}</th>
@@ -114,7 +120,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
             </thead>
             <tbody>
               {rows.map((item, i) => (
-                <tr key={item.id ?? i} style={{ background: i % 2 === 1 ? '#fafbfc' : '#fff' }}>
+                <tr key={item.id ?? i} style={{ background: i % 2 === 1 ? '#fafbfc' : '#fff' }} data-pdf-keep>
                   <td className="px-4 py-3 align-top" style={{ color: '#0f172a', borderBottom: '1px solid #f1f5f9' }}>
                     <span className="font-medium break-words" style={{ overflowWrap: 'anywhere' }}>{item.description}</span>
                     {item.details?.trim() && (
@@ -134,7 +140,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
                   </td>
                 </tr>
               ))}
-              <tr style={{ background: '#f8fafc' }}>
+              <tr style={{ background: '#f8fafc' }} data-pdf-keep>
                 <td className="px-4 py-2.5 text-right font-semibold uppercase tracking-wide text-[11px]" colSpan={3} style={{ color: '#64748b' }}>
                   {title}
                 </td>
@@ -158,17 +164,17 @@ export function CleanTemplate(props: ProposalTemplateProps) {
         .clean-page { width: 100%; max-width: 794px; background: #ffffff; color: #0f172a; padding: 48px 52px; }
         /* Tabela contida: em telas estreitas rola só a tabela, sem estourar a página. */
         .clean-table-wrap { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
-        .clean-table { min-width: 480px; }
+        .clean-table { min-width: 600px; }
         @media (max-width: 640px) {
           .clean-page { padding: 28px 16px; }
-          /* Reduz paddings/fonte no mobile pra caber sem cortar valores. */
-          .clean-table { font-size: 12px; min-width: 0; }
+          /* Mantém colunas legíveis; no mobile a própria tabela rola na horizontal. */
+          .clean-table { font-size: 12px; min-width: 600px; }
           .clean-table th, .clean-table td { padding-left: 8px !important; padding-right: 8px !important; }
         }
         @media print {
           .clean-page { padding: 48px 52px; }
           .clean-table-wrap { overflow: visible !important; }
-          .clean-table { min-width: 0 !important; }
+          .clean-table { min-width: 600px !important; }
           .clean-block { break-inside: avoid; }
           .clean-table thead { display: table-header-group; }
           .clean-table tr { break-inside: avoid; }
@@ -223,7 +229,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
 
         {/* ── Abertura (mensagem de saudação, se ligada e com texto) ── */}
         {aberturaText && (
-          <p className="mt-6 text-sm leading-relaxed whitespace-pre-wrap clean-block break-words" style={{ color: '#334155', overflowWrap: 'anywhere' }}>
+          <p className="mt-6 text-sm leading-relaxed whitespace-pre-wrap clean-block break-words" style={{ color: '#334155', overflowWrap: 'anywhere' }} data-pdf-keep>
             {aberturaText}
           </p>
         )}
@@ -242,7 +248,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
 
         {/* ── Totais ── */}
         {hasItems && (
-          <div className="mt-7 flex justify-end">
+          <div className="mt-7 flex justify-end" data-pdf-keep>
             <div className="w-full sm:w-80 space-y-2">
               {d.serviceItems.length > 0 && (
                 <Row label={t.cleanTotalServices} value={money(servicesTotal)} />
@@ -280,7 +286,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
             if (sec.key === 'pagamento') {
               if (!hasPaymentOptions) return null;
               return (
-                <div key={sec.key} className="mt-9 clean-block">
+                <div key={sec.key} className="mt-9 clean-block" data-pdf-keep>
                   <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: primary }}>{t.cleanPaymentTitle}</p>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     {pixValue !== null && (
@@ -320,13 +326,13 @@ export function CleanTemplate(props: ProposalTemplateProps) {
             // `encerramento` é mensagem corrida, sem título nem card.
             if (sec.key === 'encerramento') {
               return (
-                <p key={sec.key} className="mt-9 text-sm leading-relaxed whitespace-pre-wrap clean-block break-words" style={{ color: '#334155', overflowWrap: 'anywhere' }}>
+                <p key={sec.key} className="mt-9 text-sm leading-relaxed whitespace-pre-wrap clean-block break-words" style={{ color: '#334155', overflowWrap: 'anywhere' }} data-pdf-keep>
                   {text}
                 </p>
               );
             }
             return (
-              <div key={sec.key} className="mt-9 clean-block">
+              <div key={sec.key} className="mt-9 clean-block" data-pdf-keep>
                 {title && (
                   <p className="text-[11px] font-bold uppercase tracking-[0.18em] mb-3" style={{ color: primary }}>{title}</p>
                 )}
@@ -338,7 +344,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
           })}
 
         {/* ── Rodapé: profissional/marca do tenant ── */}
-        <div className="mt-10 pt-6 clean-block" style={{ borderTop: '1px solid #e5e7eb' }}>
+        <div className="mt-10 pt-6 clean-block" style={{ borderTop: '1px solid #e5e7eb' }} data-pdf-keep>
           <p className="text-[11px] uppercase tracking-[0.18em] font-semibold" style={{ color: '#94a3b8' }}>{t.cleanFooterPrepared}</p>
           <div className="mt-2 flex items-center gap-3 flex-wrap">
             {d.logoUrl ? (

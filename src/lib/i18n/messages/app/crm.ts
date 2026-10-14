@@ -501,6 +501,7 @@ export const crm = {
       viewViewedCount: 'Visualizada {count}×',
       viewShareWhatsApp: 'WhatsApp',
       viewDownloadPDF: 'PDF',
+      viewPDFError: 'Não foi possível gerar o PDF. Tente novamente.',
       // Mensagem do WhatsApp share (moeda formatada pelo caller via formatMoney)
       whatsAppMsg: 'Olá! Segue a proposta #{number} no valor de {value}.\n\nAcesse: {url}',
 
@@ -1621,6 +1622,7 @@ export const crm = {
       viewViewedCount: 'Viewed {count}×',
       viewShareWhatsApp: 'WhatsApp',
       viewDownloadPDF: 'PDF',
+      viewPDFError: 'Could not generate the PDF. Please try again.',
       whatsAppMsg: 'Hi! Here is proposal #{number} for {value}.\n\nAccess it at: {url}',
 
       formTitleNew: 'New Quote',
@@ -2702,6 +2704,7 @@ export const crm = {
       viewViewedCount: 'Visto {count}×',
       viewShareWhatsApp: 'WhatsApp',
       viewDownloadPDF: 'PDF',
+      viewPDFError: 'No fue posible generar el PDF. Inténtalo de nuevo.',
       whatsAppMsg: '¡Hola! Te comparto la propuesta #{number} por valor de {value}.\n\nAccede aquí: {url}',
 
       formTitleNew: 'Nuevo Presupuesto',
@@ -3781,6 +3784,7 @@ export const crm = {
       viewViewedCount: 'Consulté {count}×',
       viewShareWhatsApp: 'WhatsApp',
       viewDownloadPDF: 'PDF',
+      viewPDFError: 'Impossible de générer le PDF. Veuillez réessayer.',
       whatsAppMsg: 'Bonjour ! Voici la proposition #{number} pour un montant de {value}.\n\nAccédez-y ici : {url}',
 
       formTitleNew: 'Nouveau Devis',

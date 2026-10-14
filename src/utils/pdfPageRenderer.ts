@@ -15,6 +15,23 @@
 const A4_WIDTH_PX = 794;   // A4 at 96 DPI
 const A4_HEIGHT_PX = 1123; // A4 at 96 DPI
 
+export interface RenderElementToPdfOptions {
+  pageMarginTopPx?: number;
+  pageMarginBottomPx?: number;
+  /**
+   * Viewport usado pelo html2canvas para avaliar media queries. Ausente mantém
+   * o comportamento histórico dos relatórios (acompanha janelas estreitas).
+   */
+  windowWidthPx?: number;
+  /** CSS adicional aplicado por último somente ao clone offscreen. */
+  cloneCss?: string;
+  /**
+   * Relatórios ampliam thumbnails por padrão. Documentos já diagramados (como
+   * propostas) podem desligar isso para preservar logos e imagens do template.
+   */
+  enlargeImages?: boolean;
+}
+
 async function waitForImages(root: HTMLElement): Promise<void> {
   const imgs = Array.from(root.querySelectorAll('img'));
   await Promise.all(
@@ -43,7 +60,7 @@ async function waitForImages(root: HTMLElement): Promise<void> {
  */
 export async function renderElementToPdfBlob(
   reportElement: HTMLElement,
-  opts?: { pageMarginTopPx?: number; pageMarginBottomPx?: number },
+  opts?: RenderElementToPdfOptions,
 ): Promise<Blob> {
   const html2canvas = (await import('html2canvas-pro')).default;
   const { jsPDF } = await import('jspdf');
@@ -134,14 +151,24 @@ export async function renderElementToPdfBlob(
       if (!enlarged.has(el)) enlarged.set(el, el.style.cssText);
       el.style.cssText += ';width:auto!important;max-width:480px!important;height:auto!important;max-height:340px!important;object-fit:contain!important;display:block!important;margin:8px auto!important;border-radius:6px!important;';
     };
-    clone.querySelectorAll('img').forEach(img => {
-      const el = img as HTMLImageElement;
-      // Skip the company logo (usually small, in header) — keep its inline sizing.
-      // Skip the photo gallery (grid object-cover): enlarging overflows the grid
-      // cell and overlaps neighbors — the gallery already sizes itself correctly.
-      if (el.closest('[data-pdf-logo]') || el.closest('[data-pdf-gallery]') || el.alt?.toLowerCase().includes('logo')) return;
-      enlargeThumb(el);
-    });
+    if (opts?.enlargeImages !== false) {
+      clone.querySelectorAll('img').forEach(img => {
+        const el = img as HTMLImageElement;
+        // Skip the company logo (usually small, in header) — keep its inline sizing.
+        // Skip the photo gallery (grid object-cover): enlarging overflows the grid
+        // cell and overlaps neighbors — the gallery already sizes itself correctly.
+        if (el.closest('[data-pdf-logo]') || el.closest('[data-pdf-gallery]') || el.alt?.toLowerCase().includes('logo')) return;
+        enlargeThumb(el);
+      });
+    }
+
+    // Fica por ÚLTIMO no clone para conseguir sobrepor media queries responsivas
+    // dos documentos quando o caller precisa de uma diagramação fixa de PDF.
+    if (opts?.cloneCss) {
+      const callerStyle = document.createElement('style');
+      callerStyle.textContent = opts.cloneCss;
+      clone.appendChild(callerStyle);
+    }
 
     offscreen.appendChild(clone);
 
@@ -220,9 +247,11 @@ export async function renderElementToPdfBlob(
       // Ressalva conhecida e inofensiva: sobra uma divergência residual nas
       // classes `lg:` do rodapé de ações da OS. Ele é `print:hidden`, então o
       // renderer o REMOVE do clone e ele nem chega a ser medido ou desenhado.
-      windowWidth: typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth < A4_WIDTH_PX
-        ? window.innerWidth
-        : A4_WIDTH_PX,
+      windowWidth: opts?.windowWidthPx ?? (
+        typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth < A4_WIDTH_PX
+          ? window.innerWidth
+          : A4_WIDTH_PX
+      ),
       height: clone.scrollHeight,
       windowHeight: clone.scrollHeight,
     });
@@ -392,8 +421,12 @@ export async function renderElementToPdfBlob(
  * Gera o PDF do relatório e dispara o download (`pdf.save`), preservando o
  * comportamento histórico usado por OSReport e outros geradores.
  */
-export async function generateReportPDF(reportElement: HTMLElement, filename: string): Promise<void> {
-  const blob = await renderElementToPdfBlob(reportElement);
+export async function generateReportPDF(
+  reportElement: HTMLElement,
+  filename: string,
+  opts?: RenderElementToPdfOptions,
+): Promise<void> {
+  const blob = await renderElementToPdfBlob(reportElement, opts);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

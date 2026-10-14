@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.31.6',
+    date: '14 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Propostas e PDFs com layout correto',
+        description: 'A visualização interna das propostas agora mantém as informações bem distribuídas, sem comprimir o nome dos serviços. Ao baixar, conteúdos maiores são divididos automaticamente em páginas A4 completas, sem cortar linhas ou esconder o restante da proposta.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.31.5',
     date: '14 de outubro de 2026',
     type: 'patch',

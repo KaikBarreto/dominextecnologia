@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.31.5";
+export const APP_VERSION = "1.31.6";
 
-export const VERSION_NOTES = "Upgrades agora podem usar o cartão já cadastrado para pagar a diferença proporcional imediatamente, com confirmação explícita e outras formas de pagamento sempre disponíveis.";
+export const VERSION_NOTES = "A visualização e o PDF das propostas agora preservam o layout correto, distribuem o conteúdo em páginas A4 e evitam cortes nas informações.";

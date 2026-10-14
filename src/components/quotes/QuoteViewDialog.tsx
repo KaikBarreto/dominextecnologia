@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import type { Quote } from '@/hooks/useQuotes';
-import { Download, Share2, Eye, CreditCard } from 'lucide-react';
+import { Download, Share2, Eye, CreditCard, Loader2 } from 'lucide-react';
 import { ChargeDialog } from '@/components/financial/ChargeDialog';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
@@ -20,11 +20,11 @@ const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
   fr: frLocale,
 };
 import { ProposalRenderer } from './ProposalRenderer';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas-pro';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { generateProposalPDF, PROPOSAL_PDF_WIDTH_PX } from '@/utils/proposalPdf';
+import { useToast } from '@/hooks/use-toast';
 
 interface QuoteViewDialogProps {
   open: boolean;
@@ -42,20 +42,24 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
   const { isActive: isPaymentActive } = useTenantPaymentAccount();
   const showChargeAction = hasModule('cobrancas') && isPaymentActive;
   const [chargeOpen, setChargeOpen] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const { toast } = useToast();
 
   if (!quote) return null;
 
   const templateSlug = quote.proposal_templates?.slug ?? 'classico';
 
   const handlePDF = async () => {
-    if (!printRef.current) return;
-    const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`proposta-${quote.quote_number}.pdf`);
+    if (!printRef.current || isGeneratingPDF) return;
+    setIsGeneratingPDF(true);
+    try {
+      await generateProposalPDF(printRef.current, `proposta-${quote.quote_number}.pdf`);
+    } catch (error) {
+      console.error('Falha ao gerar PDF da proposta', error);
+      toast({ variant: 'destructive', title: tq.viewPDFError });
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   const handleWhatsApp = () => {
@@ -96,19 +100,29 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
         <Button variant="outline" size="sm" onClick={handleWhatsApp}>
           <Share2 className="h-4 w-4 mr-1.5" /> {tq.viewShareWhatsApp}
         </Button>
-        <Button variant="outline" size="sm" onClick={handlePDF}>
-          <Download className="h-4 w-4 mr-1.5" /> {tq.viewDownloadPDF}
+        <Button variant="outline" size="sm" onClick={handlePDF} disabled={isGeneratingPDF}>
+          {isGeneratingPDF ? (
+            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4 mr-1.5" />
+          )}
+          {tq.viewDownloadPDF}
         </Button>
       </div>
 
-      <div className="rounded-lg overflow-hidden border">
-        <ProposalRenderer
-          ref={printRef}
-          quote={quote}
-          company={company ?? null}
-          templateSlug={templateSlug}
-          customization={company?.proposal_customization}
-        />
+      <div className="rounded-lg overflow-x-auto border bg-white">
+        <div
+          className={isMobile ? undefined : 'mx-auto max-w-none'}
+          style={isMobile ? undefined : { width: `${PROPOSAL_PDF_WIDTH_PX}px`, minWidth: `${PROPOSAL_PDF_WIDTH_PX}px` }}
+        >
+          <ProposalRenderer
+            ref={printRef}
+            quote={quote}
+            company={company ?? null}
+            templateSlug={templateSlug}
+            customization={company?.proposal_customization}
+          />
+        </div>
       </div>
     </div>
   );
@@ -144,7 +158,10 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="max-w-none max-h-[90vh] overflow-y-auto"
+          style={{ width: 'calc(100vw - 2rem)', maxWidth: '56rem' }}
+        >
           <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
           {content}
         </DialogContent>
