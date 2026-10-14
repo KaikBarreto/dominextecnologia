@@ -22,6 +22,8 @@ export const PROPOSAL_PDF_CLONE_CSS = `
     padding: 48px 52px !important;
   }
   .pdf-clone .clean-table-wrap { overflow: visible !important; }
+  .pdf-clone .clean-table-wrap { display: block !important; }
+  .pdf-clone .clean-items-mobile { display: none !important; }
   .pdf-clone .clean-table { min-width: 600px !important; }
 
   .pdf-clone .vg-page,
@@ -38,6 +40,9 @@ export const PROPOSAL_PDF_CLONE_CSS = `
 export const PROPOSAL_PDF_OPTIONS: RenderElementToPdfOptions = {
   windowWidthPx: PROPOSAL_PDF_WIDTH_PX,
   enlargeImages: false,
+  // Evita uma segunda folha só para o rodapé nas propostas curtas. Se exigir
+  // redução maior que 12%, mantém a paginação para preservar a leitura.
+  singlePageMinScale: 0.88,
   cloneCss: PROPOSAL_PDF_CLONE_CSS,
 };
 

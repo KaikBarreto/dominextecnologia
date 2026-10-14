@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.31.7',
+    date: '14 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Propostas melhores no celular e em uma página',
+        description: 'A opção Visualizar agora organiza os serviços em cartões no celular, sem apertar ou cortar os textos. Ao baixar, propostas curtas saem completas em uma única página, tanto pela tela de orçamentos quanto pelo link enviado ao cliente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.31.6',
     date: '14 de outubro de 2026',
     type: 'patch',

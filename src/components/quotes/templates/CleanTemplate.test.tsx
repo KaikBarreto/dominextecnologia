@@ -49,10 +49,14 @@ describe('CleanTemplate', () => {
     const table = container.querySelector('.clean-table') as HTMLTableElement;
     const columns = Array.from(table.querySelectorAll('col')) as HTMLTableColElement[];
     const rows = Array.from(table.querySelectorAll('tr'));
+    const mobileCard = container.querySelector('.clean-item-card');
 
     expect(table.style.tableLayout).toBe('fixed');
     expect(columns.map((column) => column.style.width)).toEqual(['40%', '22%', '16%', '22%']);
     expect(rows.every((row) => row.hasAttribute('data-pdf-keep'))).toBe(true);
+    expect(mobileCard?.textContent).toContain('Manutenção corretiva');
+    expect(mobileCard?.textContent).toContain('Valor unitário');
+    expect(mobileCard?.textContent).toContain('Subtotal');
     expect(table.textContent).toContain('Manutenção corretiva');
   });
 });

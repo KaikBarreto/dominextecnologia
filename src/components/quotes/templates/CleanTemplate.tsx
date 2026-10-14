@@ -151,6 +151,42 @@ export function CleanTemplate(props: ProposalTemplateProps) {
             </tbody>
           </table>
         </div>
+        <div className="clean-items-mobile">
+          {rows.map((item, i) => (
+            <article
+              key={item.id ?? i}
+              className="clean-item-card rounded-lg p-4"
+              style={{ border: '1px solid #e5e7eb', background: '#ffffff' }}
+            >
+              <p className="text-sm font-bold leading-snug break-words" style={{ color: '#0f172a', overflowWrap: 'anywhere' }}>
+                {item.description}
+              </p>
+              {item.details?.trim() && (
+                <p className="text-xs leading-relaxed mt-1 whitespace-pre-wrap break-words" style={{ color: '#64748b', overflowWrap: 'anywhere' }}>
+                  {item.details}
+                </p>
+              )}
+              <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
+                <div>
+                  <dt className="font-medium" style={{ color: '#64748b' }}>{t.cleanColUnitPrice}</dt>
+                  <dd className="mt-1 tabular-nums font-semibold" style={{ color: '#334155' }}>{money(item.unit_price || 0)}</dd>
+                </div>
+                <div className="text-right">
+                  <dt className="font-medium" style={{ color: '#64748b' }}>{t.cleanColQty}</dt>
+                  <dd className="mt-1 tabular-nums font-semibold" style={{ color: '#334155' }}>{item.quantity}</dd>
+                </div>
+                <div className="col-span-2 flex items-center justify-between pt-3" style={{ borderTop: '1px solid #f1f5f9' }}>
+                  <dt className="font-semibold" style={{ color: '#64748b' }}>{t.cleanColSubtotal}</dt>
+                  <dd className="tabular-nums text-sm font-bold" style={{ color: '#0f172a' }}>{money(item.total_price || 0)}</dd>
+                </div>
+              </dl>
+            </article>
+          ))}
+          <div className="flex items-center justify-between rounded-lg px-4 py-3 text-xs" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}>
+            <span className="font-semibold uppercase tracking-wide" style={{ color: '#64748b' }}>{title}</span>
+            <span className="tabular-nums text-sm font-bold" style={{ color: '#0f172a' }}>{money(total)}</span>
+          </div>
+        </div>
       </div>
     );
   };
@@ -165,15 +201,21 @@ export function CleanTemplate(props: ProposalTemplateProps) {
         /* Tabela contida: em telas estreitas rola só a tabela, sem estourar a página. */
         .clean-table-wrap { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
         .clean-table { min-width: 600px; }
+        .clean-items-mobile { display: none; }
         @media (max-width: 640px) {
-          .clean-page { padding: 28px 16px; }
-          /* Mantém colunas legíveis; no mobile a própria tabela rola na horizontal. */
-          .clean-table { font-size: 12px; min-width: 600px; }
-          .clean-table th, .clean-table td { padding-left: 8px !important; padding-right: 8px !important; }
+          .clean-page { padding: 24px 16px 32px; }
+          .clean-header { display: flex; flex-direction: column; gap: 22px; }
+          .clean-company { gap: 12px; }
+          .clean-company-name { font-size: 18px !important; }
+          .clean-document-meta { text-align: left !important; }
+          .clean-table-wrap { display: none; }
+          .clean-items-mobile { display: grid; gap: 10px; }
         }
         @media print {
           .clean-page { padding: 48px 52px; }
           .clean-table-wrap { overflow: visible !important; }
+          .clean-table-wrap { display: block !important; }
+          .clean-items-mobile { display: none !important; }
           .clean-table { min-width: 600px !important; }
           .clean-block { break-inside: avoid; }
           .clean-table thead { display: table-header-group; }
@@ -183,13 +225,13 @@ export function CleanTemplate(props: ProposalTemplateProps) {
 
       <section className="clean-page">
         {/* ── Cabeçalho: empresa ── */}
-        <div className="flex items-start justify-between gap-6 flex-wrap">
-          <div className="min-w-0 flex items-start gap-4">
+        <div className="clean-header flex items-start justify-between gap-6 flex-wrap">
+          <div className="clean-company min-w-0 flex items-start gap-4">
             {d.logoUrl ? (
               <img src={d.logoUrl} alt={d.companyName} className="h-14 w-auto object-contain shrink-0" crossOrigin="anonymous" />
             ) : null}
             <div className="min-w-0">
-              <p className="text-xl font-black leading-tight" style={{ color: '#0f172a' }}>{d.companyName}</p>
+              <p className="clean-company-name text-xl font-black leading-tight" style={{ color: '#0f172a' }}>{d.companyName}</p>
               {company?.document && <p className="text-xs mt-1" style={{ color: '#64748b' }}>CNPJ {company.document}</p>}
               <div className="text-xs mt-1 leading-relaxed" style={{ color: '#64748b' }}>
                 {company?.phone && <p>{company.phone}</p>}
@@ -198,7 +240,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
               </div>
             </div>
           </div>
-          <div className="text-right shrink-0">
+          <div className="clean-document-meta text-right shrink-0">
             <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: primary }}>{t.cleanDocTitle}</p>
             <p className="text-sm font-semibold mt-1" style={{ color: '#0f172a' }}>{t.cleanQuoteNumber} {quote.quote_number}</p>
             {validUntil && (

@@ -11,6 +11,7 @@ import type { CompanySettings } from '@/hooks/useCompanySettings';
 import { PublicAppLocaleProvider, useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { getLocaleDef, type LocaleCode } from '@/lib/i18n/locales';
+import { generateProposalPDF } from '@/utils/proposalPdf';
 
 // Fingerprint estável por navegador, guardado em localStorage. Serve só pro
 // dedupe de refresh (a RPC ignora visitas do mesmo fingerprint em 30min). Não é
@@ -110,7 +111,9 @@ function ProposalPublicContent({
   const [templateSlug, setTemplateSlug] = useState('classico');
   const [loading, setLoading] = useState(true);
   const [responding, setResponding] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [done, setDone] = useState(false);
+  const proposalRef = useRef<HTMLDivElement>(null);
   /** short_code da cobrança vinculada (null = sem cobrança). Usado no CTA "Pagar". */
   const [chargeShortCode, setChargeShortCode] = useState<string | null>(null);
   // Mensagem amigável exibida quando a resposta NÃO persistiu agora:
@@ -252,6 +255,19 @@ function ProposalPublicContent({
     setResponding(false);
   };
 
+  const downloadPDF = async () => {
+    if (!proposalRef.current || !quote || isGeneratingPDF) return;
+    setIsGeneratingPDF(true);
+    try {
+      await generateProposalPDF(proposalRef.current, `proposta-${quote.quote_number}.pdf`);
+    } catch (error) {
+      console.error('Falha ao gerar PDF público da proposta', error);
+      window.alert(tp.downloadPDFError);
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -284,10 +300,16 @@ function ProposalPublicContent({
               size="lg"
               className="fixed right-4 z-50 gap-2 rounded-full shadow-2xl bg-slate-900 text-white hover:bg-slate-800 hover:text-white print:hidden"
               style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
-              onClick={() => window.print()}
+              onClick={downloadPDF}
+              disabled={isGeneratingPDF}
               title={tp.downloadPDFHint}
             >
-              <Download className="h-5 w-5" /> {tp.downloadPDF}
+              {isGeneratingPDF ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Download className="h-5 w-5" />
+              )}
+              {tp.downloadPDF}
             </Button>
           </TooltipTrigger>
           <TooltipContent side="left" className="max-w-xs text-center">
@@ -297,7 +319,7 @@ function ProposalPublicContent({
       </TooltipProvider>
 
       <div className="max-w-3xl mx-auto py-8 px-4">
-        <div className="print-area proposal-public-pages shadow-xl rounded-xl overflow-hidden">
+        <div ref={proposalRef} className="print-area proposal-public-pages shadow-xl rounded-xl overflow-hidden">
           <ProposalRenderer quote={quote} company={company} templateSlug={templateSlug} customization={company?.proposal_customization} />
         </div>
 

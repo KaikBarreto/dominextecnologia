@@ -28,6 +28,7 @@ describe('generateProposalPDF', () => {
     expect(PROPOSAL_PDF_OPTIONS).toMatchObject({
       windowWidthPx: PROPOSAL_PDF_WIDTH_PX,
       enlargeImages: false,
+      singlePageMinScale: 0.88,
     });
     expect(PROPOSAL_PDF_CLONE_CSS).toContain('.clean-page');
     expect(PROPOSAL_PDF_CLONE_CSS).toContain('min-height: 1123px');

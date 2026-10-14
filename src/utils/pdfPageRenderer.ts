@@ -19,6 +19,12 @@ export interface RenderElementToPdfOptions {
   pageMarginTopPx?: number;
   pageMarginBottomPx?: number;
   /**
+   * Se o documento ultrapassar uma folha por pouco, reduz tudo uniformemente
+   * até este limite para evitar uma segunda página quase vazia. Ex.: `0.88`
+   * permite reduzir no máximo 12%. Ausente mantém a paginação normal.
+   */
+  singlePageMinScale?: number;
+  /**
    * Viewport usado pelo html2canvas para avaliar media queries. Ausente mantém
    * o comportamento histórico dos relatórios (acompanha janelas estreitas).
    */
@@ -30,6 +36,22 @@ export interface RenderElementToPdfOptions {
    * propostas) podem desligar isso para preservar logos e imagens do template.
    */
   enlargeImages?: boolean;
+}
+
+/**
+ * Retorna a escala necessária para acomodar um pequeno excedente em uma folha.
+ * `null` significa que o conteúdo já cabe ou que a redução ficaria ilegível.
+ */
+export function getSinglePageFitScale(
+  contentHeight: number,
+  pageHeight: number,
+  minScale?: number,
+): number | null {
+  if (!minScale || minScale <= 0 || contentHeight <= pageHeight || pageHeight <= 0) return null;
+
+  const safeMinScale = Math.min(1, minScale);
+  const scale = pageHeight / contentHeight;
+  return scale >= safeMinScale ? scale : null;
 }
 
 async function waitForImages(root: HTMLElement): Promise<void> {
@@ -342,6 +364,48 @@ export async function renderElementToPdfBlob(
     const contentHeight = applyCap
       ? Math.min(fullCanvas.height, Math.ceil(contentBottom + marginBottom))
       : fullCanvas.height;
+
+    // Propostas curtas às vezes excedem o A4 apenas pelo rodapé atômico. Nesse
+    // caso, uma redução uniforme e limitada é mais legível que criar uma página
+    // 2 contendo somente o rodapé. Documentos realmente longos continuam no
+    // fluxo paginado abaixo.
+    const singlePageScale = getSinglePageFitScale(
+      contentHeight,
+      pageHeightPx,
+      opts?.singlePageMinScale,
+    );
+    if (singlePageScale !== null) {
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = fullCanvas.width;
+      pageCanvas.height = pageHeightPx;
+      const ctx = pageCanvas.getContext('2d')!;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+
+      const fittedWidth = fullCanvas.width * singlePageScale;
+      const fittedHeight = contentHeight * singlePageScale;
+      const offsetX = (pageCanvas.width - fittedWidth) / 2;
+      ctx.drawImage(
+        fullCanvas,
+        0, 0, fullCanvas.width, contentHeight,
+        offsetX, 0, fittedWidth, fittedHeight,
+      );
+
+      const imgData = pageCanvas.toDataURL('image/jpeg', 0.92);
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidthMm, pdfHeightMm);
+
+      const scaleXmm = pdfWidthMm / pageCanvas.width;
+      const scaleYmm = pdfHeightMm / pageCanvas.height;
+      for (const lt of linkTargets) {
+        const x = (offsetX + lt.box.left * singlePageScale) * scaleXmm;
+        const y = lt.box.top * singlePageScale * scaleYmm;
+        const w = (lt.box.right - lt.box.left) * singlePageScale * scaleXmm;
+        const h = Math.max(2, (lt.box.bottom - lt.box.top) * singlePageScale * scaleYmm);
+        pdf.link(x, y, w, h, { url: lt.url });
+      }
+
+      return pdf.output('blob');
+    }
 
     let cursorY = 0;
     let pageIndex = 0;
