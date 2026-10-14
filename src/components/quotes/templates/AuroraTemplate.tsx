@@ -1,4 +1,5 @@
 import type { ProposalTemplateProps } from './types';
+import { getProposalSections } from './types';
 import { formatDateTime } from '@/lib/format';
 import { useLocaleFormatters } from '@/lib/format/hooks';
 import { MESSAGES } from '@/lib/i18n';
@@ -11,6 +12,8 @@ import {
   formatValidUntil,
   hasDisplacement,
   hasGifts,
+  resolveSectionText,
+  scaledLogoHeightPx,
   buildScopeRows,
   paginateScope,
   SCOPE_ITEMS_FIRST_PAGE,
@@ -52,6 +55,11 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
   const showDisplacement = flagOn(customization?.show_displacement) && hasDisplacement(quote);
   const showGifts = flagOn(customization?.show_gifts) && hasGifts(quote);
   const validUntil = formatValidUntil(quote, locale, timezone);
+
+  // ── Seção "Quem somos": texto do orçamento > customText da empresa > frase
+  // automática padrão (mesma precedência do Clean, ver shared.ts). ──
+  const sobreCustomText = getProposalSections(customization).find((s) => s.key === 'sobre')?.customText;
+  const sobreText = resolveSectionText('sobre', quote, sobreCustomText);
 
   // ── Paginação do Escopo ── (ver Vanguarda; total dinâmico).
   const scopeRows = buildScopeRows(d, {
@@ -153,7 +161,13 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
         <div className="relative z-10 flex items-start justify-between gap-4">
           <div className="min-w-0">
             {d.logoUrl ? (
-              <img src={d.logoUrl} alt={d.companyName} className="h-12 w-auto object-contain" crossOrigin="anonymous" />
+              <img
+                src={d.logoUrl}
+                alt={d.companyName}
+                className="w-auto object-contain"
+                style={{ height: scaledLogoHeightPx(48, customization?.logo_scale) }}
+                crossOrigin="anonymous"
+              />
             ) : null}
             <p className="text-lg font-bold mt-3 leading-tight" style={{ color: CREAM }}>{d.companyName}</p>
             {company?.document && <p className="text-[11px] text-white/45 mt-0.5">CNPJ {company.document}</p>}
@@ -204,11 +218,15 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
       <section className="au-page">
         <Kicker label={t.kickerAbout} />
         <h2 className="text-3xl sm:text-4xl font-black tracking-tight mt-2 text-white">{t.headingAbout}</h2>
-        <p className="text-[15px] text-white/65 leading-[1.9] mt-5 max-w-[620px]">
-          {t.aboutText1}{t.aboutText1 ? ' ' : ''}<span className="font-semibold text-white">{d.companyName}</span>{' '}
-          {t.aboutText2}{' '}
-          <span className="font-semibold text-white">{d.clientName}</span>{t.aboutText3}
-        </p>
+        {sobreText ? (
+          <p className="text-[15px] text-white/65 leading-[1.9] mt-5 max-w-[620px] whitespace-pre-line">{sobreText}</p>
+        ) : (
+          <p className="text-[15px] text-white/65 leading-[1.9] mt-5 max-w-[620px]">
+            {t.aboutText1}{t.aboutText1 ? ' ' : ''}<span className="font-semibold text-white">{d.companyName}</span>{' '}
+            {t.aboutText2}{' '}
+            <span className="font-semibold text-white">{d.clientName}</span>{t.aboutText3}
+          </p>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10">
           {[
@@ -360,7 +378,13 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', ...colorAdjust }}
         >
           {d.logoUrl ? (
-            <img src={d.logoUrl} alt={d.companyName} className="h-11 w-auto object-contain mx-auto mb-3" crossOrigin="anonymous" />
+            <img
+              src={d.logoUrl}
+              alt={d.companyName}
+              className="w-auto object-contain mx-auto mb-3"
+              style={{ height: scaledLogoHeightPx(44, customization?.logo_scale) }}
+              crossOrigin="anonymous"
+            />
           ) : (
             <p className="font-black text-xl" style={{ color: CREAM }}>{d.companyName}</p>
           )}

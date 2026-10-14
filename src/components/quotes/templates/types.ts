@@ -2,11 +2,14 @@ import type { Quote, QuoteItem } from '@/hooks/useQuotes';
 import type { CompanySettings } from '@/hooks/useCompanySettings';
 
 /**
- * Uma seção CONFIGURÁVEL da proposta (só o template Clean respeita hoje).
- * `key` identifica a seção; `enabled` liga/desliga; `order` define a posição na
- * lista de seções pós-Totais; `customText` é o texto DEFAULT da empresa (aplicado
- * quando o orçamento não trouxer texto próprio). `pagamento` não tem `customText`
- * (é o bloco calculado de formas de pagamento).
+ * Uma seção CONFIGURÁVEL da proposta. `key` identifica a seção; `enabled`
+ * liga/desliga (hoje só o Clean respeita o enabled/ordem — Aurora, Prisma e
+ * Vanguarda sempre mostram a seção "Quem somos" fixa); `order` define a
+ * posição na lista de seções pós-Totais (idem, só o Clean reordena);
+ * `customText` é o texto DEFAULT da empresa (aplicado quando o orçamento não
+ * trouxer texto próprio) — este os 4 templates respeitam, pelo menos para a
+ * seção `sobre`. `pagamento` não tem `customText` (é o bloco calculado de
+ * formas de pagamento).
  */
 export interface ProposalSection {
   key: string;
@@ -44,6 +47,13 @@ export interface ProposalCustomization {
   header_bg?: string;
   /** Logo específico da proposta. Quando definido, vence o logo da empresa. */
   logo_url?: string;
+  /**
+   * Escala do logo em PERCENTUAL sobre a altura-base atual de cada posição
+   * (capa/cabeçalho e rodapé/fechamento), por template. `100` = tamanho de
+   * hoje; `undefined`/ausente também é tamanho de hoje (toda a base atual).
+   * Faixa sugerida: 50 a 200.
+   */
+  logo_scale?: number;
   /** Mostra "Página XX/YY" no rodapé de cada folha A4. Default: desligado. */
   show_pagination?: boolean;
   /** Mostra a linha de deslocamento no bloco de Investimento. Default: ligado. */

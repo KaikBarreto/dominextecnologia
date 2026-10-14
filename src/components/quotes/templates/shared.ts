@@ -117,6 +117,33 @@ export function buildProposalData(
 export const sumTotal = (rows: QuoteItem[]) => rows.reduce((s, i) => s + (i.total_price || 0), 0);
 
 /**
+ * Altura do logo (em px) escalada proporcionalmente por `logo_scale` (%).
+ * `baseHeightPx` é a altura de HOJE daquela posição/template (ex.: 56 para o
+ * antigo `h-14` do cabeçalho do Clean). `logoScale` ausente/undefined
+ * preserva a altura-base intacta (100% = tamanho de hoje) — nenhuma empresa
+ * que nunca configurou o campo pode ter a proposta mudada por um default
+ * errado aqui.
+ */
+export function scaledLogoHeightPx(baseHeightPx: number, logoScale?: number): number {
+  // `proposal_customization` é JSONB livre: o slider do painel manda 50–200, mas
+  // nada impede um valor torto chegar aqui (config editada à mão, string "120"
+  // vinda do banco, campo zerado por um save antigo). Sem esta guarda:
+  //   NaN  -> `height: NaNpx` é inválido, o navegador cai em `auto` e o logo
+  //           estoura a capa inteira (o PDF clona isso);
+  //   0/-1 -> logo some sem erro nenhum, e ninguém descobre até o cliente
+  //           receber a proposta.
+  // `null`/`undefined` são tratados ANTES do Number(): `Number(null)` é 0, que
+  // é finito e cairia no clamp em 50% — ou seja, uma config com `logo_scale: null`
+  // encolheria o logo de quem nunca configurou nada. "Não configurado" tem que
+  // valer 100%, que é o tamanho de hoje.
+  // Depois disso, `Number.isFinite` cobre NaN, Infinity e string não-numérica; o
+  // clamp usa a MESMA faixa do slider, pra UI e render nunca discordarem.
+  const raw = logoScale == null ? 100 : Number(logoScale);
+  const pct = Number.isFinite(raw) ? Math.min(200, Math.max(50, raw)) : 100;
+  return baseHeightPx * (pct / 100);
+}
+
+/**
  * Itens do Escopo por folha A4. A 1ª folha do escopo divide espaço com o
  * cabeçalho da seção (kicker + título) → cabe um pouco menos. Valores afinados
  * pra cada card de item (~70–80px) + headers de grupo + linha de subtotal numa
@@ -160,6 +187,30 @@ export const hasDisplacement = (quote: Pick<Quote, 'displacement_cost' | 'distan
 
 /** A proposta inclui brindes (cortesias)? */
 export const hasGifts = (quote: Pick<Quote, 'include_gifts'>) => quote.include_gifts === true;
+
+/**
+ * Resolve o texto efetivo de uma seção de texto configurável: texto do
+ * ORÇAMENTO (quando a `key` tiver um campo próprio no orçamento) > `customText`
+ * da empresa > vazio. Hoje só `informacoes` (quote.terms) e `observacoes`
+ * (quote.notes) têm campo próprio no orçamento; as demais chaves (`sobre`,
+ * `garantia`, `encerramento`, `abertura`) dependem só do `customText`.
+ *
+ * Compartilhado por TODOS os templates — nasceu no Clean e foi extraído pra
+ * cá quando Aurora/Prisma/Vanguarda passaram a honrar `customText` na seção
+ * `sobre`, pra garantir que os 4 usem exatamente a mesma regra (nenhum
+ * campo do orçamento vaza pra uma seção que não é a dele).
+ */
+export function resolveSectionText(
+  key: string,
+  quote: Pick<Quote, 'terms' | 'notes'>,
+  customText?: string,
+): string {
+  const fromQuote =
+    key === 'informacoes' ? quote.terms :
+    key === 'observacoes' ? quote.notes :
+    null;
+  return (fromQuote?.trim() || customText?.trim() || '');
+}
 
 /**
  * Uma linha do Escopo já achatada: o item + a qual grupo pertence + o número

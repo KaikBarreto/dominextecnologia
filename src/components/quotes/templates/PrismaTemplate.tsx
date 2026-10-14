@@ -1,4 +1,5 @@
 import type { ProposalTemplateProps } from './types';
+import { getProposalSections } from './types';
 import { formatDateTime } from '@/lib/format';
 import { useLocaleFormatters } from '@/lib/format/hooks';
 import { MESSAGES } from '@/lib/i18n';
@@ -11,6 +12,8 @@ import {
   formatValidUntil,
   hasDisplacement,
   hasGifts,
+  resolveSectionText,
+  scaledLogoHeightPx,
   buildScopeRows,
   paginateScope,
   SCOPE_ITEMS_FIRST_PAGE,
@@ -48,6 +51,11 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
   const showDisplacement = flagOn(customization?.show_displacement) && hasDisplacement(quote);
   const showGifts = flagOn(customization?.show_gifts) && hasGifts(quote);
   const validUntil = formatValidUntil(quote, locale, timezone);
+
+  // ── Seção "Quem somos": texto do orçamento > customText da empresa > frase
+  // automática padrão (mesma precedência do Clean, ver shared.ts). ──
+  const sobreCustomText = getProposalSections(customization).find((s) => s.key === 'sobre')?.customText;
+  const sobreText = resolveSectionText('sobre', quote, sobreCustomText);
 
   // ── Paginação do Escopo ── (ver Vanguarda; total dinâmico).
   const scopeRows = buildScopeRows(d, {
@@ -145,7 +153,13 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
             <p className="text-[11px] text-white/40 mt-0.5">{t.proposalFooter} {quote.quote_number}</p>
           </div>
           {d.logoUrl ? (
-            <img src={d.logoUrl} alt={d.companyName} className="h-11 w-auto object-contain shrink-0" crossOrigin="anonymous" />
+            <img
+              src={d.logoUrl}
+              alt={d.companyName}
+              className="w-auto object-contain shrink-0"
+              style={{ height: scaledLogoHeightPx(44, customization?.logo_scale) }}
+              crossOrigin="anonymous"
+            />
           ) : (
             <p className="text-sm font-bold text-white/85 text-right max-w-[160px]">{d.companyName}</p>
           )}
@@ -185,11 +199,15 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
       <section className="pr-page">
         <PrKicker label={t.kickerAbout} />
         <h2 className="text-3xl sm:text-4xl font-black tracking-tight mt-3 text-white uppercase">{t.headingAbout}</h2>
-        <p className="text-[15px] text-white/65 leading-[1.9] mt-6 max-w-[620px]">
-          {t.aboutText1}{t.aboutText1 ? ' ' : ''}<span className="font-semibold text-white">{d.companyName}</span>{' '}
-          {t.aboutText2}{' '}
-          <span className="font-semibold text-white">{d.clientName}</span>{t.aboutText3}
-        </p>
+        {sobreText ? (
+          <p className="text-[15px] text-white/65 leading-[1.9] mt-6 max-w-[620px] whitespace-pre-line">{sobreText}</p>
+        ) : (
+          <p className="text-[15px] text-white/65 leading-[1.9] mt-6 max-w-[620px]">
+            {t.aboutText1}{t.aboutText1 ? ' ' : ''}<span className="font-semibold text-white">{d.companyName}</span>{' '}
+            {t.aboutText2}{' '}
+            <span className="font-semibold text-white">{d.clientName}</span>{t.aboutText3}
+          </p>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-px mt-12" style={{ background: 'rgba(255,255,255,0.1)', ...colorAdjust }}>
           {[
@@ -320,7 +338,13 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
 
         <div className="mt-12 pt-6 px-2" style={{ borderTop: '1px solid rgba(255,255,255,0.12)', ...colorAdjust }}>
           {d.logoUrl ? (
-            <img src={d.logoUrl} alt={d.companyName} className="h-11 w-auto object-contain mx-auto mb-3" crossOrigin="anonymous" />
+            <img
+              src={d.logoUrl}
+              alt={d.companyName}
+              className="w-auto object-contain mx-auto mb-3"
+              style={{ height: scaledLogoHeightPx(44, customization?.logo_scale) }}
+              crossOrigin="anonymous"
+            />
           ) : (
             <p className="font-black text-xl text-white uppercase">{d.companyName}</p>
           )}

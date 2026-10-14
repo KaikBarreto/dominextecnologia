@@ -30,6 +30,7 @@ export interface CompanySettings {
     show_pagination?: boolean;
     show_displacement?: boolean;
     show_gifts?: boolean;
+    logo_scale?: number;
     sections?: Array<{ key: string; enabled: boolean; order: number; customText?: string }>;
   };
   white_label_enabled?: boolean;

@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.31.9',
+    date: '14 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Seu próprio texto de apresentação na proposta',
+        description: 'O texto que você escreve em "Sobre a empresa" nas configurações da proposta agora aparece em todos os modelos, e não só em um deles. Escreva do seu jeito o que a sua empresa faz. Deixando em branco, a proposta continua usando o texto padrão de antes.',
+        category: 'recurso',
+      },
+      {
+        title: 'Tamanho do logo ajustável na proposta',
+        description: 'Agora dá para aumentar ou diminuir o seu logo na proposta, de 50% a 200%, com prévia na hora. O ajuste vale para a capa e o fechamento nos quatro modelos e também no PDF enviado ao cliente. Sem mexer em nada, a proposta continua exatamente como está hoje.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.31.8',
     date: '14 de outubro de 2026',
     type: 'patch',

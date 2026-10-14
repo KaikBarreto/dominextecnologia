@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { Check, Save, Loader2, Upload, Trash2, ImageIcon, LayoutTemplate, Palette, Eye, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Gem, AudioLines, Pyramid, FileText, ListChecks } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -163,8 +164,10 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
     show_pagination: true,
     show_displacement: true,
     show_gifts: true,
+    logo_scale: 100,
   });
-  // Seções configuráveis da proposta (só o Clean respeita). Materializa o default
+  // Seções configuráveis da proposta (ligar/desligar/reordenar só o Clean
+  // respeita; o customText da seção "sobre" vale nos 4 modelos). Materializa o default
   // completo quando a empresa não tem nada salvo (getProposalSections mescla).
   const [sections, setSections] = useState<ProposalSection[]>(() => getProposalSections(existing));
 
@@ -179,6 +182,8 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
         // Default LIGADO em config antiga sem o campo (undefined → true).
         show_displacement: existing.show_displacement ?? true,
         show_gifts: existing.show_gifts ?? true,
+        // Default 100% em config antiga sem o campo (undefined → tamanho de hoje).
+        logo_scale: existing.logo_scale ?? 100,
       });
     }
     setSections(getProposalSections(existing));
@@ -199,6 +204,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
     show_pagination: existing?.show_pagination ?? true,
     show_displacement: existing?.show_displacement ?? true,
     show_gifts: existing?.show_gifts ?? true,
+    logo_scale: existing?.logo_scale ?? 100,
     sections: getProposalSections(existing),
   });
 
@@ -246,6 +252,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
         show_pagination: existing?.show_pagination ?? true,
         show_displacement: existing?.show_displacement ?? true,
         show_gifts: existing?.show_gifts ?? true,
+        logo_scale: existing?.logo_scale ?? 100,
       });
       setSections(getProposalSections(existing));
       return;
@@ -498,6 +505,25 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
                     )}
                   </div>
                 </div>
+
+                {/* Tamanho do logo — percentual aplicado proporcionalmente sobre a
+                    altura-base de hoje, em cada posição (capa/cabeçalho e rodapé/
+                    fechamento). 100% = tamanho de hoje (default quando ausente). */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between gap-4">
+                    <Label className="text-xs text-muted-foreground">{tp.logoScaleTitle}</Label>
+                    <span className="text-xs font-semibold tabular-nums text-foreground">{colors.logo_scale ?? 100}%</span>
+                  </div>
+                  <Slider
+                    value={[colors.logo_scale ?? 100]}
+                    onValueChange={([v]) => setColors(prev => ({ ...prev, logo_scale: v }))}
+                    min={50}
+                    max={200}
+                    step={10}
+                    aria-label={tp.logoScaleTitle}
+                  />
+                  <p className="text-xs text-muted-foreground">{tp.logoScaleSubtitle}</p>
+                </div>
               </div>
 
               <Separator />
@@ -589,8 +615,9 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
 
               <Separator />
 
-              {/* Seções da proposta — ligar/desligar, reordenar (setas) e texto
-                  padrão. Só o modelo Clean respeita; reflete no preview ao vivo. */}
+              {/* Seções da proposta — ligar/desligar e reordenar (setas) só o
+                  modelo Clean respeita. O texto padrão da seção "Sobre a
+                  empresa" já vale nos 4 modelos. Reflete no preview ao vivo. */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <ListChecks className="h-4 w-4 text-primary shrink-0" />

@@ -665,6 +665,8 @@ export const crm = {
       logoUpload: 'Enviar logo',
       logoChange: 'Trocar logo',
       logoRemove: 'Remover (usar logo da empresa)',
+      logoScaleTitle: 'Tamanho do logo',
+      logoScaleSubtitle: 'Ajusta o tamanho do logo na proposta, mantendo a proporção.',
       colorsSectionTitle: 'Personalizar Cores',
       colorPrimary: 'Cor Primária',
       colorAccent: 'Cor de Destaque',
@@ -678,7 +680,8 @@ export const crm = {
       switchYes: 'Sim',
       switchNo: 'Não',
 
-      // ── Seções configuráveis da proposta (só no modelo Clean) ──
+      // ── Seções configuráveis da proposta (ligar/desligar/reordenar só no
+      // modelo Clean; o texto da seção "Sobre a empresa" já vale nos 4) ──
       sectionsSectionTitle: 'Seções da proposta',
       sectionsSectionSubtitle: 'Ligue, desligue e reordene as seções. O texto vira o padrão de todos os orçamentos, quando o orçamento não tiver o seu próprio.',
       sectionMoveUp: 'Mover para cima',
@@ -1781,6 +1784,8 @@ export const crm = {
       logoUpload: 'Upload logo',
       logoChange: 'Change logo',
       logoRemove: 'Remove (use company logo)',
+      logoScaleTitle: 'Logo size',
+      logoScaleSubtitle: 'Adjusts the logo size in the proposal, keeping its proportions.',
       colorsSectionTitle: 'Customize Colors',
       colorPrimary: 'Primary Color',
       colorAccent: 'Accent Color',
@@ -1794,7 +1799,8 @@ export const crm = {
       switchYes: 'Yes',
       switchNo: 'No',
 
-      // ── Configurable proposal sections (Clean template only) ──
+      // ── Configurable proposal sections (on/off + reorder: Clean only;
+      // the "About the company" section text already applies to all 4) ──
       sectionsSectionTitle: 'Proposal sections',
       sectionsSectionSubtitle: 'Turn sections on or off and reorder them. The text becomes the default for all quotes, when the quote has no text of its own.',
       sectionMoveUp: 'Move up',
@@ -2864,6 +2870,8 @@ export const crm = {
       logoUpload: 'Subir logo',
       logoChange: 'Cambiar logo',
       logoRemove: 'Eliminar (usar logo de la empresa)',
+      logoScaleTitle: 'Tamaño del logo',
+      logoScaleSubtitle: 'Ajusta el tamaño del logo en la propuesta, manteniendo su proporción.',
       colorsSectionTitle: 'Personalizar Colores',
       colorPrimary: 'Color Primario',
       colorAccent: 'Color de Acento',
@@ -2877,7 +2885,8 @@ export const crm = {
       switchYes: 'Sí',
       switchNo: 'No',
 
-      // ── Secciones configurables de la propuesta (solo plantilla Clean) ──
+      // ── Secciones configurables de la propuesta (activar/desactivar y
+      // reordenar solo en Clean; el texto de "Sobre la empresa" ya aplica en los 4) ──
       sectionsSectionTitle: 'Secciones de la propuesta',
       sectionsSectionSubtitle: 'Activa, desactiva y reordena las secciones. El texto se vuelve el predeterminado de todos los presupuestos, cuando el presupuesto no tiene su propio texto.',
       sectionMoveUp: 'Mover arriba',
@@ -3945,6 +3954,8 @@ export const crm = {
       logoUpload: 'Envoyer le logo',
       logoChange: 'Changer le logo',
       logoRemove: 'Supprimer (utiliser le logo de l\'entreprise)',
+      logoScaleTitle: 'Taille du logo',
+      logoScaleSubtitle: 'Ajuste la taille du logo dans la proposition, en conservant ses proportions.',
       colorsSectionTitle: 'Personnaliser les Couleurs',
       colorPrimary: 'Couleur Principale',
       colorAccent: 'Couleur d\'Accent',
@@ -3958,7 +3969,9 @@ export const crm = {
       switchYes: 'Oui',
       switchNo: 'Non',
 
-      // ── Sections configurables de la proposition (modèle Clean uniquement) ──
+      // ── Sections configurables de la proposition (activer/désactiver et
+      // réordonner uniquement sur Clean ; le texte de « À propos de l'entreprise »
+      // s'applique déjà aux 4) ──
       sectionsSectionTitle: 'Sections de la proposition',
       sectionsSectionSubtitle: 'Activez, désactivez et réordonnez les sections. Le texte devient la valeur par défaut de tous les devis, lorsque le devis n`a pas son propre texte.',
       sectionMoveUp: 'Monter',

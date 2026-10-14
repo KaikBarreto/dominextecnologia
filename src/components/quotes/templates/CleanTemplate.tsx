@@ -9,6 +9,8 @@ import {
   flagOn,
   formatValidUntil,
   hasDisplacement,
+  resolveSectionText as resolveSectionTextShared,
+  scaledLogoHeightPx,
   sumTotal,
 } from './shared';
 import type { QuoteItem } from '@/hooks/useQuotes';
@@ -85,13 +87,9 @@ export function CleanTemplate(props: ProposalTemplateProps) {
   };
 
   // Resolve o texto efetivo de uma seção de texto (quote > empresa > vazio).
-  const resolveSectionText = (key: string, customText?: string): string => {
-    const fromQuote =
-      key === 'informacoes' ? quote.terms :
-      key === 'observacoes' ? quote.notes :
-      null;
-    return (fromQuote?.trim() || customText?.trim() || '');
-  };
+  // Implementação compartilhada em shared.ts (os 4 templates usam a mesma).
+  const resolveSectionText = (key: string, customText?: string): string =>
+    resolveSectionTextShared(key, quote, customText);
 
   const ItemsTable = ({ title, rows }: { title: string; rows: QuoteItem[] }) => {
     if (rows.length === 0) return null;
@@ -229,7 +227,13 @@ export function CleanTemplate(props: ProposalTemplateProps) {
         <div className="clean-header flex items-start justify-between gap-6 flex-wrap">
           <div className="clean-company min-w-0 flex items-start gap-4">
             {d.logoUrl ? (
-              <img src={d.logoUrl} alt={d.companyName} className="h-14 w-auto object-contain shrink-0" crossOrigin="anonymous" />
+              <img
+                src={d.logoUrl}
+                alt={d.companyName}
+                className="w-auto object-contain shrink-0"
+                style={{ height: scaledLogoHeightPx(56, customization?.logo_scale) }}
+                crossOrigin="anonymous"
+              />
             ) : null}
             <div className="min-w-0">
               <p className="clean-company-name text-xl font-black leading-tight" style={{ color: '#0f172a' }}>{d.companyName}</p>
@@ -391,7 +395,13 @@ export function CleanTemplate(props: ProposalTemplateProps) {
           <p className="text-[11px] uppercase tracking-[0.18em] font-semibold" style={{ color: '#94a3b8' }}>{t.cleanFooterPrepared}</p>
           <div className="mt-2 flex items-center gap-3 flex-wrap">
             {d.logoUrl ? (
-              <img src={d.logoUrl} alt={d.companyName} className="h-8 w-auto object-contain" crossOrigin="anonymous" />
+              <img
+                src={d.logoUrl}
+                alt={d.companyName}
+                className="w-auto object-contain"
+                style={{ height: scaledLogoHeightPx(32, customization?.logo_scale) }}
+                crossOrigin="anonymous"
+              />
             ) : null}
             <div>
               <p className="text-sm font-bold" style={{ color: '#0f172a' }}>{d.companyName}</p>
