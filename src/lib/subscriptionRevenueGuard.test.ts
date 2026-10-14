@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8');
 const edge = (name: string) => read(`supabase/functions/${name}/index.ts`);
 const migration = read('supabase/migrations/20261014110000_subscription_upgrade_proration.sql');
+const savedCardMigration = read('supabase/migrations/20261014150000_subscription_saved_card_token.sql');
 
 describe('guardas de receita da assinatura', () => {
   it('upgrade de plano ativo cria cotação e não aplica entitlement antes do checkout', () => {
@@ -43,6 +44,62 @@ describe('guardas de receita da assinatura', () => {
     expect(src).toContain('billing_type === "CREDIT_CARD"');
     expect(src).toContain('requestRow.resets_billing_anchor === true');
     expect(src).toContain('deve ser paga à vista por Pix ou boleto');
+  });
+
+  it('cartão salvo usa token do Vault somente no upgrade e nunca confia em token do browser', () => {
+    const src = edge('create-asaas-payment');
+    expect(src).toContain('use_saved_card?: boolean');
+    expect(src).toContain('purpose !== "upgrade" || billing_type !== "CREDIT_CARD"');
+    expect(src).toContain('vault_read_subscription_card_token');
+    expect(src).toContain('paymentPayload.creditCardToken = await readSavedCardToken');
+    expect(src).toContain('paymentPayload.remoteIp = clientIp');
+    expect(src).toContain('company.payment_method === "credit_card"');
+    expect(src).toContain('company.asaas_subscription_id.startsWith("sub_")');
+  });
+
+  it('token do cartão fica no Vault e as RPCs são exclusivas de service_role', () => {
+    expect(savedCardMigration).toContain('subscription_card_last4');
+    expect(savedCardMigration).toContain('vault_upsert_subscription_card_token');
+    expect(savedCardMigration).toContain('vault_read_subscription_card_token');
+    expect(savedCardMigration).not.toMatch(/ADD COLUMN IF NOT EXISTS[^;]*(card_token|credit_card_token)/i);
+    expect(savedCardMigration).toMatch(
+      /REVOKE ALL ON FUNCTION public\.vault_read_subscription_card_token\(UUID\)[\s\S]*FROM PUBLIC, anon, authenticated;/,
+    );
+    expect(savedCardMigration).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.vault_read_subscription_card_token\(UUID\)[\s\S]*TO service_role;/,
+    );
+  });
+
+  it('checkout oferece cobrança explícita no cartão salvo sem cobrar ao abrir a tela', () => {
+    const checkout = read('src/pages/Checkout.tsx');
+    const layout = read('src/components/checkout/CheckoutLayout.tsx');
+    expect(checkout).toContain('createSavedCardPayment');
+    expect(checkout).toContain('onPayWithSavedCard={savedCardAvailable ? handleSavedCardPayment : undefined}');
+    expect(layout).toContain('Pagar R$ {finalPrice.toFixed(2).replace(".", ",")} agora');
+    expect(layout).toContain('onClick={onPayWithSavedCard}');
+    expect(layout).toContain('Nenhuma cobrança acontece sem sua confirmação.');
+  });
+
+  it('Pix Automático nasce ativo em venda e renovação, mas não na cobrança avulsa do upgrade', () => {
+    const checkout = read('src/pages/Checkout.tsx');
+    const hook = read('src/hooks/useAsaasPayment.ts');
+    const pixView = read('src/components/checkout/PixPaymentView.tsx');
+    expect(checkout).toContain('const [pixRecurring, setPixRecurring] = useState(true)');
+    expect(checkout).toContain('recurring: isUpgrade ? false : pixRecurring');
+    expect(hook).toContain('pix_recurring: options?.recurring ?? true');
+    expect(pixView).toContain('isRecurring = true');
+    expect(pixView).toContain('checked={isRecurring}');
+  });
+
+  it('cartão cria recorrência mensal por padrão e upgrade cobra somente o pro-rata avulso', () => {
+    const payment = edge('create-asaas-payment');
+    const upgradeBranch = payment.indexOf('if (upgradeRequest)');
+    const recurringCardBranch = payment.indexOf('if (billing_type === "CREDIT_CARD" && body.card_number)');
+    expect(upgradeBranch).toBeGreaterThan(-1);
+    expect(payment.slice(upgradeBranch, recurringCardBranch)).toContain('asaas.post(`/payments`, paymentPayload)');
+    expect(payment.slice(recurringCardBranch)).toContain('asaas.post(`/subscriptions`, subscriptionPayload)');
+    expect(payment.slice(recurringCardBranch)).toContain('cycle: "MONTHLY"');
+    expect(payment.slice(recurringCardBranch)).toContain('nextDueDate: todayBRT');
   });
 
   it('webhook processa upgrade antes da renovação comum', () => {

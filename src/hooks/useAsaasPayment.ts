@@ -218,6 +218,41 @@ export function useAsaasPayment() {
     [],
   );
 
+  const createSavedCardPayment = useCallback(
+    async (
+      companyId: string,
+      amount: number,
+      options: SubscriptionPaymentOptions & { purpose: "upgrade"; changeRequestId: string },
+    ): Promise<PaymentResult> => {
+      setIsCreating(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("create-asaas-payment", {
+          body: {
+            company_id: companyId,
+            billing_type: "CREDIT_CARD",
+            amount,
+            description: options.description,
+            billing_cycle: options.billingCycle ?? "monthly",
+            purpose: "upgrade",
+            change_request_id: options.changeRequestId,
+            use_saved_card: true,
+          },
+        });
+        if (error) {
+          throw new Error(await extractErrorMessage(error, data, "Erro ao cobrar o cartão cadastrado."));
+        }
+        if (!data?.success) throw new Error(data?.error || "Erro ao cobrar o cartão cadastrado.");
+        setPaymentData(data);
+        return data as PaymentResult;
+      } catch (err: unknown) {
+        throw err instanceof Error ? err : new Error("Erro ao cobrar o cartão cadastrado.");
+      } finally {
+        setIsCreating(false);
+      }
+    },
+    [],
+  );
+
   const checkPaymentStatus = useCallback(async (paymentId: string): Promise<CheckPaymentResult> => {
     setIsChecking(true);
     try {
@@ -300,6 +335,7 @@ export function useAsaasPayment() {
     createPixPayment,
     createBoletoPayment,
     createCardPayment,
+    createSavedCardPayment,
     checkPaymentStatus,
     cancelPayment,
     startPolling,

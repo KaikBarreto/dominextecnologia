@@ -124,6 +124,7 @@ export default function Checkout() {
     createPixPayment,
     createBoletoPayment,
     createCardPayment,
+    createSavedCardPayment,
     cancelPayment,
     startPolling,
     stopPolling,
@@ -140,6 +141,7 @@ export default function Checkout() {
   const [pixRecurring, setPixRecurring] = useState(true);
   const [cardErrorMessage, setCardErrorMessage] = useState<string | null>(null);
   const [cardErrorSection, setCardErrorSection] = useState<"card" | "holder" | "address" | null>(null);
+  const [savedCardErrorMessage, setSavedCardErrorMessage] = useState<string | null>(null);
   const activatedRef = useRef(false);
 
   const { data: companyData, isLoading: companyLoading } = useQuery({
@@ -365,6 +367,12 @@ export default function Checkout() {
     return yearlyPrice;
   };
   const finalPrice = getEffectiveFinalPrice(paymentMethod);
+  const savedCardAvailable = isUpgrade &&
+    !upgradeQuote?.resets_billing_anchor &&
+    companyData?.payment_method === "credit_card" &&
+    typeof companyData?.asaas_subscription_id === "string" &&
+    companyData.asaas_subscription_id.startsWith("sub_") &&
+    /^\d{4}$/.test(companyData?.subscription_card_last4 ?? "");
 
   // Personalizado: recursos = módulos contratados; demais planos = lista estática.
   const targetIsCustom = isUpgrade
@@ -482,6 +490,7 @@ export default function Checkout() {
     setPaymentMethod(method);
     setCardErrorMessage(null);
     setCardErrorSection(null);
+    setSavedCardErrorMessage(null);
 
     const amount = getEffectiveFinalPrice(method);
     const description = isUpgrade
@@ -552,6 +561,46 @@ export default function Checkout() {
     }
   };
 
+  const handleSavedCardPayment = async () => {
+    if (!companyData?.id || !currentPlan || !changeRequestId || !upgradeQuote || !savedCardAvailable) return;
+    setIsCreatingPayment(true);
+    setSavedCardErrorMessage(null);
+    setCardErrorMessage(null);
+    setCardErrorSection(null);
+
+    try {
+      const data = await createSavedCardPayment(companyData.id, upgradeQuote.amount_due, {
+        billingCycle: upgradeQuote.target_billing_cycle,
+        description: `Upgrade Dominex - ${currentPlan.name}`,
+        purpose: "upgrade",
+        changeRequestId,
+      });
+      const status = data.status?.toUpperCase() ?? "PENDING";
+      if (["REFUSED", "DECLINED", "FAILED", "CANCELLED", "CHARGEBACK"].includes(status)) {
+        throw new Error(
+          "O cartão cadastrado não aprovou esta cobrança. Escolha outra forma de pagamento ou informe outro cartão.",
+        );
+      }
+      setPaymentMethod("card");
+      setPaymentData(data);
+      if (status === "CONFIRMED" || status === "RECEIVED") {
+        await activateAndRedirect(data.payment_id ?? null);
+      } else if (data.payment_id) {
+        startPolling(data.payment_id, () => activateAndRedirect(data.payment_id ?? null));
+      } else {
+        throw new Error("A cobrança foi criada, mas ainda não foi possível confirmar o pagamento.");
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error
+        ? err.message
+        : "Não foi possível cobrar o cartão cadastrado. Escolha outra forma de pagamento.";
+      setSavedCardErrorMessage(message);
+      toast.error(message);
+    } finally {
+      setIsCreatingPayment(false);
+    }
+  };
+
   // "Voltar" da tela de PIX/boleto/cartão: limpa o estado e, se uma cobrança já
   // tinha sido gerada na Asaas (PIX e boleto nascem como cobrança REAL), pede o
   // cancelamento dela — senão ela fica pendente e órfã na conta pra sempre.
@@ -576,6 +625,7 @@ export default function Checkout() {
     setPixRecurring(true);
     setCardErrorMessage(null);
     setCardErrorSection(null);
+    setSavedCardErrorMessage(null);
     stopPolling();
 
     if (pendingPaymentId && !looksPaid) {
@@ -642,6 +692,10 @@ export default function Checkout() {
           allowCardPayment={!isUpgrade || !upgradeQuote?.resets_billing_anchor}
           cardErrorMessage={cardErrorMessage}
           cardErrorSection={cardErrorSection}
+          savedCardLast4={savedCardAvailable ? companyData?.subscription_card_last4 : null}
+          savedCardBrand={savedCardAvailable ? companyData?.subscription_card_brand : null}
+          savedCardErrorMessage={savedCardErrorMessage}
+          onPayWithSavedCard={savedCardAvailable ? handleSavedCardPayment : undefined}
           hasCustomPrice={!isUpgrade && hasCustomPrice}
           originalPrice={hasCustomPrice ? (companyData?.subscription_value || planPrice) : undefined}
           customPriceEndDate={customPriceEndDate}

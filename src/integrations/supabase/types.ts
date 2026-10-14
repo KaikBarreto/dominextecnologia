@@ -803,6 +803,9 @@ export type Database = {
           state: string | null
           street_number: string | null
           subscription_expires_at: string | null
+          subscription_card_brand: string | null
+          subscription_card_last4: string | null
+          subscription_card_updated_at: string | null
           subscription_plan: string | null
           subscription_status: string
           subscription_value: number | null
@@ -862,6 +865,9 @@ export type Database = {
           state?: string | null
           street_number?: string | null
           subscription_expires_at?: string | null
+          subscription_card_brand?: string | null
+          subscription_card_last4?: string | null
+          subscription_card_updated_at?: string | null
           subscription_plan?: string | null
           subscription_status?: string
           subscription_value?: number | null
@@ -921,6 +927,9 @@ export type Database = {
           state?: string | null
           street_number?: string | null
           subscription_expires_at?: string | null
+          subscription_card_brand?: string | null
+          subscription_card_last4?: string | null
+          subscription_card_updated_at?: string | null
           subscription_plan?: string | null
           subscription_status?: string
           subscription_value?: number | null
@@ -12913,8 +12922,20 @@ export type Database = {
         Args: { _key: string; _user_id: string }
         Returns: boolean
       }
+      vault_delete_subscription_card_token: {
+        Args: { p_company_id: string }
+        Returns: boolean
+      }
       vault_delete_tenant_secret: { Args: { p_name: string }; Returns: boolean }
+      vault_read_subscription_card_token: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
       vault_read_tenant_secret: { Args: { p_name: string }; Returns: string }
+      vault_upsert_subscription_card_token: {
+        Args: { p_company_id: string; p_token: string }
+        Returns: boolean
+      }
       vault_upsert_tenant_secret: {
         Args: { p_name: string; p_secret: string }
         Returns: string

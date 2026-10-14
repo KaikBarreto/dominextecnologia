@@ -18,6 +18,7 @@ import { useWhiteLabel } from "@/hooks/useWhiteLabel";
 import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
 import { MESSAGES } from "@/lib/i18n/messages";
 import { PAYMENT_METHOD_COLORS } from "./paymentMethodTheme";
+import type { CardData } from "@/hooks/useAsaasPayment";
 
 type PaymentMethod = "pix" | "boleto" | "card" | null;
 
@@ -130,7 +131,7 @@ interface CheckoutLayoutProps {
   paymentData: PaymentData | null;
   isCreatingPayment: boolean;
   onPaymentMethodSelect: (method: PaymentMethod) => void;
-  onCreatePayment: (method: PaymentMethod, cardData?: any) => void;
+  onCreatePayment: (method: PaymentMethod, cardData?: CardData & { totalAmount?: number }) => void;
   onClearPayment: () => void;
   paymentSuccess?: boolean;
   nextDueDate?: string | null;
@@ -149,6 +150,11 @@ interface CheckoutLayoutProps {
   /** Erro do cartão (mostra na seção certa do form). */
   cardErrorMessage?: string | null;
   cardErrorSection?: "card" | "holder" | "address" | null;
+  /** Cartão tokenizado da assinatura; somente metadados seguros chegam à UI. */
+  savedCardLast4?: string | null;
+  savedCardBrand?: string | null;
+  savedCardErrorMessage?: string | null;
+  onPayWithSavedCard?: () => void;
   /** Promoção temporária (custom_price). */
   hasCustomPrice?: boolean;
   originalPrice?: number;
@@ -223,6 +229,10 @@ export function CheckoutLayout({
   allowCardPayment = true,
   cardErrorMessage,
   cardErrorSection,
+  savedCardLast4,
+  savedCardBrand,
+  savedCardErrorMessage,
+  onPayWithSavedCard,
   hasCustomPrice,
   originalPrice,
   customPriceEndDate,
@@ -237,6 +247,7 @@ export function CheckoutLayout({
   const navigate = useNavigate();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.common.checkout;
+  const [showAlternativePaymentMethods, setShowAlternativePaymentMethods] = useState(false);
   // O logo Dominex deste layout vive no painel esquerdo de fundo fixo escuro
   // (`bg-gray-950`), que não muda com o tema — por isso usa sempre o logo
   // branco (proposital), sem depender de useIsDark.
@@ -267,6 +278,8 @@ export function CheckoutLayout({
   const isPixMethodSelected = paymentMethod === "pix";
   const isBoletoMethodSelected = paymentMethod === "boleto";
   const isUpgrade = checkoutMode === "upgrade";
+  const hasSavedCard = isUpgrade && allowCardPayment && /^\d{4}$/.test(savedCardLast4 ?? "") &&
+    typeof onPayWithSavedCard === "function";
 
   if (isLoading) {
     return (
@@ -496,6 +509,65 @@ export function CheckoutLayout({
                     esconderia as outras formas antes de o pagador vê-las. */}
                 {!paymentMethod && (
                   <div className="space-y-5">
+                    {hasSavedCard && !showAlternativePaymentMethods ? (
+                      <div className="space-y-5">
+                        <div className="rounded-2xl border border-primary/25 bg-primary/[0.04] p-5 shadow-sm">
+                          <div className="flex items-start gap-4">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+                              <CreditCardIcon className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-semibold text-foreground">
+                                  {savedCardBrand || "Cartão"} •••• {savedCardLast4}
+                                </p>
+                                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                                  Cartão cadastrado
+                                </span>
+                              </div>
+                              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                                Ao confirmar, o valor proporcional será debitado agora neste cartão.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {savedCardErrorMessage && (
+                          <NoticeBanner variant="warning" icon={AlertTriangle}>
+                            {savedCardErrorMessage}
+                          </NoticeBanner>
+                        )}
+
+                        <Button
+                          className="h-12 w-full text-base font-semibold shadow-sm"
+                          disabled={isCreatingPayment}
+                          onClick={onPayWithSavedCard}
+                        >
+                          {isCreatingPayment ? (
+                            <>
+                              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                              Processando cobrança...
+                            </>
+                          ) : (
+                            <>Pagar R$ {finalPrice.toFixed(2).replace(".", ",")} agora</>
+                          )}
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          className="w-full text-muted-foreground"
+                          disabled={isCreatingPayment}
+                          onClick={() => setShowAlternativePaymentMethods(true)}
+                        >
+                          Escolher outra forma de pagamento
+                        </Button>
+
+                        <p className="text-center text-xs leading-relaxed text-muted-foreground">
+                          A próxima renovação virá com o valor cheio atualizado. Nenhuma cobrança acontece sem sua confirmação.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
                     <div>
                       <Label className="text-sm font-semibold text-foreground">{t.labelCpfCnpj}</Label>
                       <Input
@@ -593,6 +665,8 @@ export function CheckoutLayout({
                         <p className="text-xs text-muted-foreground">{t.cpfCnpjRequired}</p>
                       )}
                     </div>
+                      </>
+                    )}
                   </div>
                 )}
 

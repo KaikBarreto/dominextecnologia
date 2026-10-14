@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.31.5',
+    date: '14 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Upgrade mais rápido com o cartão cadastrado',
+        description: 'Quando houver um cartão cadastrado, ele aparece como opção principal para pagar a diferença proporcional do upgrade na hora. A tela mostra o valor exato e os últimos dígitos antes da confirmação, sem cobrar nada automaticamente ao abrir.',
+        category: 'recurso',
+      },
+      {
+        title: 'Formas recorrentes mantidas por padrão',
+        description: 'Novas assinaturas e renovações continuam com Pix Automático ativado por padrão ou cartão recorrente mensal. No upgrade, somente a diferença proporcional é cobrada agora, sem criar uma segunda assinatura.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cartão protegido para cobranças futuras',
+        description: 'Os dados reutilizáveis do cartão ficam protegidos e nunca aparecem na tela. O sistema confere a empresa, a assinatura e a cotação antes de tentar qualquer cobrança.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.31.4',
     date: '14 de outubro de 2026',
     type: 'patch',

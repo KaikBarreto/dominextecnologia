@@ -32,6 +32,11 @@ import { authorizeAsaasCompany } from "../_shared/asaas-auth.ts";
 import { applyWrite, tryWriteReturning, WriteWarnings } from "../_shared/db-write.ts";
 import { resolveChargeTerms, type ChargeTerms } from "./billing-rules.ts";
 
+// A edge usa service_role sem schema gerado no runtime; manter o mesmo tipo
+// inferido por createClient() evita acoplar esta função aos tipos do frontend.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ServiceSupabaseClient = ReturnType<typeof createClient<any>>;
+
 class ValidationError extends Error {}
 
 interface CreatePaymentRequest {
@@ -48,6 +53,9 @@ interface CreatePaymentRequest {
   plan_code?: string;
   purpose?: "renewal" | "upgrade";
   change_request_id?: string;
+  // Upgrade com o cartão já tokenizado da assinatura. O browser envia apenas
+  // esta intenção; o token real é lido do Vault exclusivamente pela edge.
+  use_saved_card?: boolean;
   // Cartão
   card_holder_name?: string;
   card_holder_email?: string;
@@ -70,6 +78,148 @@ interface UpgradeChangeRequest {
   resets_billing_anchor: boolean;
 }
 
+function resolveClientIp(req: Request): string | null {
+  const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return forwarded || req.headers.get("cf-connecting-ip")?.trim() ||
+    req.headers.get("x-real-ip")?.trim() || null;
+}
+
+function cardNumberDigits(body: CreatePaymentRequest): string {
+  return body.card_number?.replace(/\D/g, "") ?? "";
+}
+
+function detectCardBrand(number: string): string {
+  if (/^4/.test(number)) return "Visa";
+  if (/^(5[1-5]|2(2[2-9]|[3-6]\d|7[01]|720))/.test(number)) return "Mastercard";
+  if (/^3[47]/.test(number)) return "American Express";
+  if (/^(636368|438935|504175|451416|636297|5067|4576|4011)/.test(number)) return "Elo";
+  if (/^(606282|3841)/.test(number)) return "Hipercard";
+  return "Cartão";
+}
+
+function buildCreditCard(body: CreatePaymentRequest) {
+  return {
+    holderName: body.card_holder_name,
+    number: cardNumberDigits(body),
+    expiryMonth: body.card_expiry_month,
+    expiryYear: body.card_expiry_year,
+    ccv: body.card_ccv,
+  };
+}
+
+function buildCreditCardHolderInfo(body: CreatePaymentRequest) {
+  return {
+    name: body.card_holder_name,
+    email: body.card_holder_email || "",
+    cpfCnpj: body.card_holder_cpf?.replace(/\D/g, ""),
+    phone: body.card_holder_phone?.replace(/\D/g, ""),
+    postalCode: body.card_holder_postal_code?.replace(/\D/g, ""),
+    addressNumber: body.card_holder_address_number,
+  };
+}
+
+interface TokenizedCard {
+  token: string;
+  last4: string;
+  brand: string;
+}
+
+interface PixAutomaticAuthorization {
+  id: string;
+  status?: string;
+  encodedImage?: string;
+  payload?: string;
+  immediateQrCode?: { expirationDate?: string };
+}
+
+async function tokenizeCard(
+  customerId: string,
+  body: CreatePaymentRequest,
+  remoteIp: string | null,
+): Promise<TokenizedCard | null> {
+  const number = cardNumberDigits(body);
+  if (!number || !remoteIp) return null;
+
+  try {
+    const tokenized = await asaas.post(`/creditCard/tokenizeCreditCard`, {
+      customer: customerId,
+      creditCard: buildCreditCard(body),
+      creditCardHolderInfo: buildCreditCardHolderInfo(body),
+      remoteIp,
+    });
+    const token = typeof tokenized?.creditCardToken === "string"
+      ? tokenized.creditCardToken
+      : typeof tokenized?.token === "string"
+      ? tokenized.token
+      : "";
+    if (!token) return null;
+    const returnedNumber = String(tokenized?.creditCardNumber ?? "").replace(/\D/g, "");
+    return {
+      token,
+      last4: (returnedNumber || number).slice(-4),
+      brand: String(tokenized?.creditCardBrand || tokenized?.brand || detectCardBrand(number)),
+    };
+  } catch (error) {
+    // Tokenização pode depender de habilitação comercial na conta Asaas. O
+    // checkout antigo continua funcional com os dados brutos nesta tentativa.
+    console.warn(
+      "[create-asaas-payment] Cartão aceito para tentativa atual, mas não foi possível tokenizá-lo para upgrades futuros:",
+      error instanceof Error ? error.message : "falha não identificada",
+    );
+    return null;
+  }
+}
+
+async function readSavedCardToken(
+  supabase: ServiceSupabaseClient,
+  companyId: string,
+): Promise<string> {
+  const { data, error } = await supabase.rpc("vault_read_subscription_card_token", {
+    p_company_id: companyId,
+  });
+  if (error || typeof data !== "string" || !data.trim()) {
+    console.error(
+      `[create-asaas-payment] Token do cartão da empresa ${companyId} indisponível no Vault.`,
+      error?.message ?? "segredo vazio",
+    );
+    throw new ValidationError(
+      "Não foi possível usar o cartão cadastrado. Escolha outra forma de pagamento ou informe o cartão novamente.",
+    );
+  }
+  return data;
+}
+
+async function persistSavedCardToken(
+  supabase: ServiceSupabaseClient,
+  companyId: string,
+  card: TokenizedCard,
+): Promise<void> {
+  try {
+    const { data, error } = await supabase.rpc("vault_upsert_subscription_card_token", {
+      p_company_id: companyId,
+      p_token: card.token,
+    });
+    if (error || data !== true) throw error ?? new Error("Vault não confirmou a gravação");
+
+    const { error: metadataError } = await supabase
+      .from("companies")
+      .update({
+        subscription_card_last4: card.last4,
+        subscription_card_brand: card.brand,
+        subscription_card_updated_at: new Date().toISOString(),
+      })
+      .eq("id", companyId);
+    if (metadataError) throw metadataError;
+  } catch (error) {
+    // A cobrança/assinatura já foi criada no gateway. Não induzimos retry e
+    // duplicidade por uma falha secundária ao guardar o cartão para o futuro.
+    console.error(
+      `[create-asaas-payment] Cobrança criada, mas o cartão da empresa ${companyId} não foi salvo para upgrades futuros:`,
+      error instanceof Error ? error.message : "falha não identificada",
+    );
+  }
+}
+
 /**
  * Grava em `companies` o vínculo da recorrência recém-criada na Asaas.
  *
@@ -80,10 +230,7 @@ interface UpgradeChangeRequest {
  * que torna o caso recuperável à mão.
  */
 async function linkRecurrenceToCompany(
-  // `any` de propósito: a assinatura genérica do SupabaseClient muda entre versões
-  // do supabase-js e não vale acoplar o helper a ela (mesma convenção de
-  // confirm-sale-payment). O que importa aqui é destruturar o `{ error }`.
-  supabase: any,
+  supabase: ServiceSupabaseClient,
   companyId: string,
   recurrenceId: string,
   paymentMethod: "pix" | "credit_card",
@@ -143,11 +290,17 @@ Deno.serve(async (req) => {
       plan_code,
       purpose,
       change_request_id,
+      use_saved_card,
     } = body;
 
     if (!company_id) throw new ValidationError("company_id é obrigatório.");
     if (!billing_type) throw new ValidationError("Forma de pagamento é obrigatória.");
     if (!amount || amount <= 0) throw new ValidationError("Valor da cobrança inválido.");
+    if (use_saved_card && (purpose !== "upgrade" || billing_type !== "CREDIT_CARD")) {
+      throw new ValidationError("O cartão cadastrado só pode ser usado para pagar um upgrade.");
+    }
+
+    const clientIp = resolveClientIp(req);
 
     // --- Auth: própria empresa OU super_admin ---
     const auth = await authorizeAsaasCompany(
@@ -639,6 +792,7 @@ Deno.serve(async (req) => {
     // ===================================================================
     if (upgradeRequest) {
       const externalReference = `upgrade:${upgradeRequest.id}:${company_id}`;
+      let newlyTokenizedCard: TokenizedCard | null = null;
       const paymentPayload: Record<string, unknown> = {
         customer: asaasCustomerId,
         billingType: billing_type,
@@ -649,28 +803,44 @@ Deno.serve(async (req) => {
       };
 
       if (billing_type === "CREDIT_CARD") {
-        if (!body.card_number) throw new ValidationError("Dados do cartão não informados.");
-        paymentPayload.creditCard = {
-          holderName: body.card_holder_name,
-          number: body.card_number.replace(/\D/g, ""),
-          expiryMonth: body.card_expiry_month,
-          expiryYear: body.card_expiry_year,
-          ccv: body.card_ccv,
-        };
-        paymentPayload.creditCardHolderInfo = {
-          name: body.card_holder_name,
-          email: body.card_holder_email || "",
-          cpfCnpj: body.card_holder_cpf?.replace(/\D/g, ""),
-          phone: body.card_holder_phone?.replace(/\D/g, ""),
-          postalCode: body.card_holder_postal_code?.replace(/\D/g, ""),
-          addressNumber: body.card_holder_address_number,
-        };
+        if (use_saved_card) {
+          const hasCardRecurrence = company.payment_method === "credit_card" &&
+            typeof company.asaas_subscription_id === "string" &&
+            company.asaas_subscription_id.startsWith("sub_") &&
+            /^\d{4}$/.test(company.subscription_card_last4 ?? "");
+          if (!hasCardRecurrence) {
+            throw new ValidationError(
+              "Este cartão não está mais disponível. Escolha outra forma de pagamento.",
+            );
+          }
+          if (!clientIp) {
+            throw new ValidationError(
+              "Não foi possível validar a origem do pagamento. Tente novamente ou escolha outra forma.",
+            );
+          }
+          paymentPayload.creditCardToken = await readSavedCardToken(supabase, company_id);
+          paymentPayload.remoteIp = clientIp;
+        } else {
+          if (!body.card_number) throw new ValidationError("Dados do cartão não informados.");
+          newlyTokenizedCard = await tokenizeCard(asaasCustomerId!, body, clientIp);
+          if (newlyTokenizedCard) {
+            paymentPayload.creditCardToken = newlyTokenizedCard.token;
+            paymentPayload.remoteIp = clientIp;
+          } else {
+            paymentPayload.creditCard = buildCreditCard(body);
+            paymentPayload.creditCardHolderInfo = buildCreditCardHolderInfo(body);
+            if (clientIp) paymentPayload.remoteIp = clientIp;
+          }
+        }
       } else {
         paymentPayload.interest = { value: 1, type: "PERCENTAGE" };
         paymentPayload.fine = { value: 2, type: "PERCENTAGE" };
       }
 
       const payment = await asaas.post(`/payments`, paymentPayload);
+      if (newlyTokenizedCard) {
+        await persistSavedCardToken(supabase, company_id, newlyTokenizedCard);
+      }
       let pixQrCode: string | null = null;
       let pixCopyPaste: string | null = null;
       let pixExpirationDate: string | null = null;
@@ -793,7 +963,7 @@ Deno.serve(async (req) => {
         },
       };
 
-      let authData: any;
+      let authData: PixAutomaticAuthorization;
       try {
         authData = await asaas.post(`/pix/automatic/authorizations`, authorizationPayload);
       } catch (e) {
@@ -984,7 +1154,8 @@ Deno.serve(async (req) => {
       // nextDueDate = HOJE (BRT): o cartão foi informado agora, então a 1ª cobrança
       // deve ser debitada IMEDIATAMENTE. Com dueDateStr (+N dias) a Asaas agendava a
       // cobrança pro futuro em vez de processar o cartão na hora (incidente CLIMATIZE).
-      const subscriptionData = await asaas.post(`/subscriptions`, {
+      const newlyTokenizedCard = await tokenizeCard(asaasCustomerId!, body, clientIp);
+      const subscriptionPayload: Record<string, unknown> = {
         customer: asaasCustomerId,
         billingType: "CREDIT_CARD",
         cycle: "MONTHLY",
@@ -992,24 +1163,21 @@ Deno.serve(async (req) => {
         nextDueDate: todayBRT,
         description: description || `Assinatura Dominex - ${company.name}`,
         externalReference: company_id,
-        creditCard: {
-          holderName: body.card_holder_name,
-          number: body.card_number?.replace(/\D/g, ""),
-          expiryMonth: body.card_expiry_month,
-          expiryYear: body.card_expiry_year,
-          ccv: body.card_ccv,
-        },
-        creditCardHolderInfo: {
-          name: body.card_holder_name,
-          email: body.card_holder_email || "",
-          cpfCnpj: body.card_holder_cpf?.replace(/\D/g, ""),
-          phone: body.card_holder_phone?.replace(/\D/g, ""),
-          postalCode: body.card_holder_postal_code?.replace(/\D/g, ""),
-          addressNumber: body.card_holder_address_number,
-        },
-      });
+      };
+      if (newlyTokenizedCard) {
+        subscriptionPayload.creditCardToken = newlyTokenizedCard.token;
+        subscriptionPayload.remoteIp = clientIp;
+      } else {
+        subscriptionPayload.creditCard = buildCreditCard(body);
+        subscriptionPayload.creditCardHolderInfo = buildCreditCardHolderInfo(body);
+        if (clientIp) subscriptionPayload.remoteIp = clientIp;
+      }
+      const subscriptionData = await asaas.post(`/subscriptions`, subscriptionPayload);
 
       await linkRecurrenceToCompany(supabase, company_id, subscriptionData.id, "credit_card");
+      if (newlyTokenizedCard) {
+        await persistSavedCardToken(supabase, company_id, newlyTokenizedCard);
+      }
 
       // sub_* não é payment.id — webhook PAYMENT_CREATED preenche pay_* depois e
       // PAYMENT_CONFIRMED/RECEIVED é quem confirma de fato (ativa a empresa + credita LTV
