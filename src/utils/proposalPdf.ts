@@ -1,4 +1,5 @@
 import { generateReportPDF, type RenderElementToPdfOptions } from '@/utils/pdfPageRenderer';
+import type { Quote } from '@/hooks/useQuotes';
 
 export const PROPOSAL_PDF_WIDTH_PX = 794;
 
@@ -45,6 +46,44 @@ export const PROPOSAL_PDF_OPTIONS: RenderElementToPdfOptions = {
   singlePageMinScale: 0.88,
   cloneCss: PROPOSAL_PDF_CLONE_CSS,
 };
+
+type ProposalFilenameQuote = Pick<Quote, 'created_at' | 'prospect_name' | 'customers'>;
+
+function sanitizeFilenamePart(value: string): string {
+  const withoutControlCharacters = Array.from(value.normalize('NFC'), (character) => (
+    character.charCodeAt(0) < 32 ? ' ' : character
+  )).join('');
+
+  return withoutControlCharacters
+    .replace(/[<>:"/\\|?*]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/[. ]+$/g, '')
+    .trim();
+}
+
+/**
+ * Nome amigável e seguro para compartilhamento, mantendo o nome do cliente como
+ * foi cadastrado e exibindo a data da proposta no fuso da empresa.
+ */
+export function buildProposalPdfFilename(
+  quote: ProposalFilenameQuote,
+  timezone = 'America/Sao_Paulo',
+): string {
+  const rawClientName = quote.customers?.name || quote.prospect_name || 'Cliente';
+  const clientName = sanitizeFilenamePart(rawClientName).slice(0, 120).trim() || 'Cliente';
+  const parsedDate = new Date(quote.created_at);
+  const proposalDate = Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+  const parts = new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    timeZone: timezone,
+  }).formatToParts(proposalDate);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value || '';
+  const month = part('month').replace(/\./g, '').toLocaleUpperCase('pt-BR');
+
+  return `Proposta - ${clientName} ${part('day')} ${month} ${part('year')}.pdf`;
+}
 
 /** Gera a proposta em largura A4 real e fatia conteúdos longos em várias folhas. */
 export function generateProposalPDF(element: HTMLElement, filename: string): Promise<void> {

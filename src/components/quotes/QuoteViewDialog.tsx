@@ -23,7 +23,7 @@ import { ProposalRenderer } from './ProposalRenderer';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
-import { generateProposalPDF, PROPOSAL_PDF_WIDTH_PX } from '@/utils/proposalPdf';
+import { buildProposalPdfFilename, generateProposalPDF, PROPOSAL_PDF_WIDTH_PX } from '@/utils/proposalPdf';
 import { useToast } from '@/hooks/use-toast';
 
 interface QuoteViewDialogProps {
@@ -36,7 +36,7 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
   const isMobile = useIsMobile();
   const { settings: company } = useCompanySettings();
   const printRef = useRef<HTMLDivElement>(null);
-  const { locale, currency } = useAppLocaleContext();
+  const { locale, currency, timezone } = useAppLocaleContext();
   const tq = MESSAGES[locale].app.crm.quotes;
   const { hasModule } = useCompanyModules();
   const { isActive: isPaymentActive } = useTenantPaymentAccount();
@@ -53,7 +53,7 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
     if (!printRef.current || isGeneratingPDF) return;
     setIsGeneratingPDF(true);
     try {
-      await generateProposalPDF(printRef.current, `proposta-${quote.quote_number}.pdf`);
+      await generateProposalPDF(printRef.current, buildProposalPdfFilename(quote, timezone));
     } catch (error) {
       console.error('Falha ao gerar PDF da proposta', error);
       toast({ variant: 'destructive', title: tq.viewPDFError });

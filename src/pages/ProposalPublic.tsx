@@ -11,7 +11,7 @@ import type { CompanySettings } from '@/hooks/useCompanySettings';
 import { PublicAppLocaleProvider, useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { getLocaleDef, type LocaleCode } from '@/lib/i18n/locales';
-import { generateProposalPDF } from '@/utils/proposalPdf';
+import { buildProposalPdfFilename, generateProposalPDF } from '@/utils/proposalPdf';
 
 // Fingerprint estável por navegador, guardado em localStorage. Serve só pro
 // dedupe de refresh (a RPC ignora visitas do mesmo fingerprint em 30min). Não é
@@ -103,7 +103,7 @@ function ProposalPublicContent({
   viewRecordedRef: React.MutableRefObject<boolean>;
   onLocaleReady: (l: CompanyLocale) => void;
 }) {
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const tp = MESSAGES[locale].app.crm.proposals;
 
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -259,7 +259,7 @@ function ProposalPublicContent({
     if (!proposalRef.current || !quote || isGeneratingPDF) return;
     setIsGeneratingPDF(true);
     try {
-      await generateProposalPDF(proposalRef.current, `proposta-${quote.quote_number}.pdf`);
+      await generateProposalPDF(proposalRef.current, buildProposalPdfFilename(quote, timezone));
     } catch (error) {
       console.error('Falha ao gerar PDF público da proposta', error);
       window.alert(tp.downloadPDFError);
