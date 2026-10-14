@@ -50,6 +50,7 @@ describe('CleanTemplate', () => {
     const columns = Array.from(table.querySelectorAll('col')) as HTMLTableColElement[];
     const rows = Array.from(table.querySelectorAll('tr'));
     const mobileCard = container.querySelector('.clean-item-card');
+    const documentMeta = container.querySelector('.clean-document-meta');
 
     expect(table.style.tableLayout).toBe('fixed');
     expect(columns.map((column) => column.style.width)).toEqual(['40%', '22%', '16%', '22%']);
@@ -57,6 +58,8 @@ describe('CleanTemplate', () => {
     expect(mobileCard?.textContent).toContain('Manutenção corretiva');
     expect(mobileCard?.textContent).toContain('Valor unitário');
     expect(mobileCard?.textContent).toContain('Subtotal');
+    expect(documentMeta?.textContent).toContain('Orçamento#142');
+    expect(documentMeta?.textContent).not.toContain('Orçamento nº');
     expect(table.textContent).toContain('Manutenção corretiva');
   });
 });
