@@ -1,10 +1,55 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
+  canReachAppShell,
   shouldReloadForChunkError,
   resetChunkErrorGuard,
   isStaleBundleError,
   shouldAutoHealStaleBundle,
 } from "@/lib/pwa";
+
+describe("canReachAppShell (proteção antes do reload)", () => {
+  it("libera a recarga somente quando recebe HTML com sucesso", async () => {
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => ({
+      ok: true,
+      headers: new Headers({ "content-type": "text/html; charset=utf-8" }),
+    }));
+
+    await expect(
+      canReachAppShell(fetcher, "https://www.dominex.app/admin/crm?tab=tarefas", 123),
+    ).resolves.toBe(true);
+
+    const [url, init] = fetcher.mock.calls[0];
+    expect(String(url)).toContain("tab=tarefas");
+    expect(String(url)).toContain("__dominex_reload_probe=123");
+    expect(init).toMatchObject({
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: { Accept: "text/html" },
+    });
+  });
+
+  it("adia quando o host responde erro ou conteúdo que não é HTML", async () => {
+    const unavailable = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => ({
+      ok: false,
+      headers: new Headers({ "content-type": "text/html" }),
+    }));
+    const wrongContent = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => ({
+      ok: true,
+      headers: new Headers({ "content-type": "application/json" }),
+    }));
+
+    await expect(canReachAppShell(unavailable, "https://www.dominex.app/", 123)).resolves.toBe(false);
+    await expect(canReachAppShell(wrongContent, "https://www.dominex.app/", 123)).resolves.toBe(false);
+  });
+
+  it("adia sem lançar erro quando a rede falha", async () => {
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      throw new TypeError("Failed to fetch");
+    });
+
+    await expect(canReachAppShell(fetcher, "https://www.dominex.app/", 123)).resolves.toBe(false);
+  });
+});
 
 // Storage falso em memória pra exercitar a lógica pura da trava anti-loop sem
 // depender do sessionStorage real nem disparar reload de verdade.

@@ -9,7 +9,9 @@
 //   4. `controllerchange` dispara → recarregamos a aba uma única vez para
 //      o usuário pegar o bundle JS novo. Se houver um modal/drawer aberto no
 //      momento, o reload é ADIADO até o modal fechar (ver reloadWhenSafe),
-//      pra não matar o que o usuário está preenchendo.
+//      pra não matar o que o usuário está preenchendo. Antes de recarregar,
+//      confirmamos que o shell HTML está acessível pela rede: uma oscilação da
+//      CDN não pode trocar uma sessão funcional pela tela ERR_FAILED do browser.
 //
 // Sem o reload no `controllerchange`, o JS continuaria sendo o do SW velho
 // (foi o que causou o incidente 1.8.10 — clientes presos a versão antiga
@@ -32,45 +34,112 @@ let reloadingForUpdate = false;
 // overlay/content enquanto abertos. Mesmo seletor usado no SwipeBackProvider.
 
 const MODAL_OPEN_SELECTOR = '[data-state="open"]';
-// Enquanto um reload está adiado, verificamos a cada 1.5s se o modal fechou.
-const RELOAD_POLL_INTERVAL_MS = 1500;
+// Enquanto um reload está adiado, verificamos periodicamente se o modal fechou
+// e se a rede voltou. Cinco segundos evita bombardear o host durante incidentes.
+const RELOAD_POLL_INTERVAL_MS = 5_000;
+const RELOAD_PROBE_TIMEOUT_MS = 8_000;
+const RELOAD_PROBE_PARAM = "__dominex_reload_probe";
 
 let pendingReloadTimer: ReturnType<typeof setInterval> | null = null;
+let reloadProbeInFlight = false;
 
 function hasOpenModal(): boolean {
   if (typeof document === "undefined") return false;
   return document.querySelector(MODAL_OPEN_SELECTOR) !== null;
 }
 
+type FetchLike = (
+  input: RequestInfo | URL,
+  init?: RequestInit,
+) => Promise<Pick<Response, "ok" | "headers">>;
+
+/**
+ * Confirma que o host consegue entregar HTML novo antes de abandonar a sessão
+ * atual. O parâmetro único impede resposta do HTTP cache; como este é um fetch
+ * comum (não uma navegação), o navigateFallback do Workbox não mascara uma
+ * falha de rede devolvendo o index.html precacheado.
+ */
+export async function canReachAppShell(
+  fetcher: FetchLike = window.fetch.bind(window),
+  currentHref: string = window.location.href,
+  now: number = Date.now(),
+  timeoutMs: number = RELOAD_PROBE_TIMEOUT_MS,
+): Promise<boolean> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const probeUrl = new URL(currentHref);
+    probeUrl.searchParams.set(RELOAD_PROBE_PARAM, String(now));
+
+    const response = await fetcher(probeUrl, {
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: { Accept: "text/html" },
+      signal: controller.signal,
+    });
+    const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+    return response.ok && contentType.includes("text/html");
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function stopPendingReloadPoll() {
+  if (pendingReloadTimer === null) return;
+  clearInterval(pendingReloadTimer);
+  pendingReloadTimer = null;
+}
+
+async function attemptSafeReload() {
+  if (hasOpenModal() || reloadProbeInFlight) return;
+
+  reloadProbeInFlight = true;
+  const hostReady = await canReachAppShell();
+  reloadProbeInFlight = false;
+
+  if (!hostReady) {
+    console.warn(
+      "Atualização pronta, mas o host não respondeu com HTML válido — recarga adiada.",
+    );
+    return;
+  }
+
+  // O usuário pode ter aberto um modal enquanto a sondagem estava em voo.
+  // Revalida antes do reload para não perder um formulário por essa corrida.
+  if (hasOpenModal()) return;
+
+  stopPendingReloadPoll();
+  window.location.reload();
+}
+
 // Centraliza a decisão "recarrega agora ou adia":
-//   - Sem modal aberto → reload imediato (comportamento de hoje, intocado).
-//   - Com modal aberto → agenda um polling leve que só roda enquanto adiado e
-//     recarrega assim que o último modal fechar.
+//   - Sem modal e com host acessível → recarrega.
+//   - Com modal aberto ou host indisponível → mantém a sessão atual e tenta de
+//     novo periodicamente. Assim concluir uma tarefa não derruba a página se a
+//     CDN estiver oscilando.
 //
 // A guarda anti-duplicação vive AQUI: se já há um adiamento em curso
 // (pendingReloadTimer != null) não abrimos um segundo. E reloadingForUpdate
 // continua sendo setado pelos chamadores ANTES de chamar isto, então nenhum
 // outro gatilho (controllerchange/chunk) dispara um reload concorrente.
 function reloadWhenSafe() {
-  if (!hasOpenModal()) {
-    window.location.reload();
+  if (pendingReloadTimer === null) {
+    pendingReloadTimer = setInterval(() => {
+      void attemptSafeReload();
+    }, RELOAD_POLL_INTERVAL_MS);
+  }
+
+  if (hasOpenModal()) {
+    console.warn(
+      "Atualização pronta, mas há um modal aberto — recarga adiada até fechar.",
+    );
     return;
   }
 
-  // Já existe um adiamento aguardando o modal fechar — não duplica o interval.
-  if (pendingReloadTimer !== null) return;
-
-  console.warn(
-    "Atualização pronta, mas há um modal aberto — recarrego assim que fechar.",
-  );
-  pendingReloadTimer = setInterval(() => {
-    if (hasOpenModal()) return; // ainda aberto: aguarda o próximo tick
-    if (pendingReloadTimer !== null) {
-      clearInterval(pendingReloadTimer);
-      pendingReloadTimer = null;
-    }
-    window.location.reload();
-  }, RELOAD_POLL_INTERVAL_MS);
+  void attemptSafeReload();
 }
 
 export async function registerServiceWorker() {
@@ -81,9 +150,9 @@ export async function registerServiceWorker() {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (reloadingForUpdate) return;
     reloadingForUpdate = true;
-    // Adia se houver modal aberto (não mata o formulário do usuário); recarrega
-    // na hora caso contrário. reloadingForUpdate já ficou true, então nenhum
-    // outro gatilho dispara reload concorrente enquanto este está pendente.
+    // Adia se houver modal aberto ou host indisponível. reloadingForUpdate já
+    // ficou true, então nenhum outro gatilho dispara reload concorrente enquanto
+    // este está pendente.
     reloadWhenSafe();
   });
 
@@ -350,6 +419,17 @@ export function autoHealStaleBundleIfNeeded(errorMessage: string): boolean {
 }
 
 export async function clearCachesAndReload() {
+  // Não apaga a proteção offline nem desregistra o SW antes de saber que o host
+  // está disponível. Era possível transformar uma oscilação transitória da CDN
+  // em ERR_FAILED justamente ao tentar recuperar um bundle antigo.
+  if (!(await canReachAppShell())) {
+    reloadingForUpdate = false;
+    console.warn(
+      "Limpeza de cache adiada: o host ainda não respondeu com HTML válido.",
+    );
+    return;
+  }
+
   try {
     // Clear all caches
     if ("caches" in window) {
@@ -363,23 +443,21 @@ export async function clearCachesAndReload() {
       await Promise.all(registrations.map((r) => r.unregister()));
     }
 
-    // Força revalidação do index.html no HTTP cache de disco do browser. Sem
-    // isso, o reload abaixo pode pegar HTML cacheado e referenciar bundles
-    // antigos mesmo com SW + CacheStorage zerados (foi o que fazia o botão
-    // do rodapé parecer "não funcionar" em iOS Safari e proxies agressivos).
-    try {
-      await fetch(window.location.pathname, {
-        cache: "reload",
-        credentials: "same-origin",
-      });
-    } catch {
-      /* offline / rede instável — segue pro reload mesmo assim */
+    // Confirma de novo após a limpeza: a rede pode cair entre a sondagem inicial
+    // e o unregister. Mesmo sem caches, manter o JS atual em memória é melhor do
+    // que navegar deliberadamente para ERR_FAILED.
+    if (!(await canReachAppShell())) {
+      reloadingForUpdate = false;
+      console.warn(
+        "Cache limpo, mas o host oscilou durante a recuperação — recarga adiada.",
+      );
+      return;
     }
 
-    // Reload limpo: sem SW, sem CacheStorage, com HTTP cache do HTML renovado.
+    // Reload limpo: sem SW/CacheStorage e com o HTML confirmado pela rede.
     window.location.reload();
   } catch (error) {
+    reloadingForUpdate = false;
     console.error("Erro ao limpar cache:", error);
-    window.location.reload();
   }
 }

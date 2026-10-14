@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.31.2";
+export const APP_VERSION = "1.31.3";
 
-export const VERSION_NOTES = "A seleção de moeda nas Configurações agora mostra bandeiras para facilitar a identificação de cada opção e respeita o país da empresa nas moedas compartilhadas.";
+export const VERSION_NOTES = "Atualizações do sistema agora aguardam uma conexão estável antes de recarregar a página, evitando que uma tarefa concluída interrompa o acesso durante oscilações da internet.";

@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.31.3',
+    date: '14 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Atualizações sem interromper tarefas em andamento',
+        description: 'Quando houver uma nova versão, o sistema agora confirma que a conexão está estável antes de recarregar. Se a internet oscilar, a página atual permanece aberta e tenta novamente depois, evitando a tela de site indisponível ao concluir uma tarefa ou fechar uma janela.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.31.2',
     date: '13 de outubro de 2026',
     type: 'patch',
