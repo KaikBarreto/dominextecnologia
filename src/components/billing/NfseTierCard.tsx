@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { FileText, ArrowUpCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +25,7 @@ interface NfseTierCardProps {
  * verdade do edge — aqui só exibimos o preço por nível, sem recomputar o total.
  */
 export function NfseTierCard({ companyId, hasNfeModule }: NfseTierCardProps) {
+  const navigate = useNavigate();
   const { tier: currentTier, unlimited, isLoading: quotaLoading } = useNfseQuota(companyId);
   const { tiers, isLoading: tiersLoading } = useNfseTiers();
   const { changeTier, isChanging } = useNfseTierChange();
@@ -42,6 +44,11 @@ export function NfseTierCard({ companyId, hasNfeModule }: NfseTierCardProps) {
     try {
       const res = await changeTier({ companyId, targetTier: selected });
       toast.success(res.message || 'Nível de Notas Fiscais atualizado!');
+      if (res.requires_payment && res.checkout_url) {
+        setOpen(false);
+        navigate(res.checkout_url);
+        return;
+      }
       if (res.asaas_warning) toast.warning(res.asaas_warning);
       setOpen(false);
       setSelected(null);
@@ -104,8 +111,8 @@ export function NfseTierCard({ companyId, hasNfeModule }: NfseTierCardProps) {
       >
         <div className="space-y-2.5 py-1">
           <p className="text-sm text-muted-foreground">
-            Escolha um nível acima do atual (Nível {currentTier}). O novo limite é liberado na hora e o
-            valor entra na próxima cobrança.
+            Escolha um nível acima do atual (Nível {currentTier}). Você paga a diferença proporcional
+            até o próximo vencimento; a nova cota é liberada após a confirmação.
           </p>
           {upgradeOptions.map((t) => {
             const isSel = selected === t.tier;

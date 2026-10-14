@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.31.3";
+export const APP_VERSION = "1.32.0";
 
-export const VERSION_NOTES = "Atualizações do sistema agora aguardam uma conexão estável antes de recarregar a página, evitando que uma tarefa concluída interrompa o acesso durante oscilações da internet.";
+export const VERSION_NOTES = "Upgrades agora cobram somente a diferença proporcional até o próximo vencimento; downgrades preservam o período pago e passam a valer na cobrança seguinte, sem reembolso.";

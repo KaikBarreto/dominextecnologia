@@ -117,6 +117,7 @@ interface PaymentData {
 }
 
 interface CheckoutLayoutProps {
+  checkoutMode?: "sale" | "renewal" | "upgrade";
   planName: string;
   planPrice: number;
   finalPrice: number;
@@ -143,6 +144,8 @@ interface CheckoutLayoutProps {
   onPixRecurringChange?: (value: boolean) => void;
   /** Anual no cartão pode parcelar em até 12x. */
   allowCardInstallments?: boolean;
+  /** Permite cartão entre as formas disponíveis deste checkout. */
+  allowCardPayment?: boolean;
   /** Erro do cartão (mostra na seção certa do form). */
   cardErrorMessage?: string | null;
   cardErrorSection?: "card" | "holder" | "address" | null;
@@ -154,6 +157,10 @@ interface CheckoutLayoutProps {
   /** Aviso de mudança de valor agendada (upgrade/downgrade). */
   pendingSubscriptionValue?: number | null;
   currentSubscriptionValue?: number | null;
+  currentPlanName?: string | null;
+  recurringPrice?: number | null;
+  prorationCredit?: number | null;
+  prorationTargetValue?: number | null;
 }
 
 // Simple CPF/CNPJ validation
@@ -188,6 +195,7 @@ const validateCNPJ = (cnpj: string): boolean => {
 };
 
 export function CheckoutLayout({
+  checkoutMode = "sale",
   planName,
   planPrice,
   finalPrice,
@@ -212,6 +220,7 @@ export function CheckoutLayout({
   pixRecurring,
   onPixRecurringChange,
   allowCardInstallments,
+  allowCardPayment = true,
   cardErrorMessage,
   cardErrorSection,
   hasCustomPrice,
@@ -220,6 +229,10 @@ export function CheckoutLayout({
   customPriceOriginal,
   pendingSubscriptionValue,
   currentSubscriptionValue,
+  currentPlanName,
+  recurringPrice,
+  prorationCredit,
+  prorationTargetValue,
 }: CheckoutLayoutProps) {
   const navigate = useNavigate();
   const { locale } = useAppLocaleContext();
@@ -253,6 +266,7 @@ export function CheckoutLayout({
   const isCardMethodSelected = paymentMethod === "card";
   const isPixMethodSelected = paymentMethod === "pix";
   const isBoletoMethodSelected = paymentMethod === "boleto";
+  const isUpgrade = checkoutMode === "upgrade";
 
   if (isLoading) {
     return (
@@ -314,11 +328,11 @@ export function CheckoutLayout({
               </div>
             )}
             <button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate(isUpgrade ? "/assinatura" : "/dashboard")}
               className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors text-sm -mt-4"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span>{t.backToSystem}</span>
+              <span>{isUpgrade ? "Voltar para assinatura" : t.backToSystem}</span>
             </button>
 
             <div className="space-y-6">
@@ -326,8 +340,13 @@ export function CheckoutLayout({
                 <p className="text-lg font-bold text-white">{companyName}</p>
               )}
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-widest">{t.subscriptionSummaryLabel}</p>
+                <p className="text-xs text-gray-400 uppercase tracking-widest">
+                  {isUpgrade ? "Resumo do upgrade" : t.subscriptionSummaryLabel}
+                </p>
                 <h2 className="text-2xl font-bold mt-1">{planName}</h2>
+                {isUpgrade && currentPlanName && (
+                  <p className="text-sm text-gray-400 mt-1">Seu plano atual: {currentPlanName}</p>
+                )}
               </div>
 
               <div className="space-y-1">
@@ -336,15 +355,26 @@ export function CheckoutLayout({
                     R$ {originalPrice.toFixed(2).replace(".", ",")}
                   </p>
                 )}
-                <div className="flex items-baseline gap-2">
+                {isUpgrade && (
+                  <p className="text-xs text-emerald-400 uppercase tracking-widest font-semibold">
+                    Cobrança proporcional hoje
+                  </p>
+                )}
+                <div className="flex items-baseline gap-2 tabular-nums">
                   <span className="text-4xl font-bold">
                     R$ {finalPrice.toFixed(2).replace(".", ",")}
                   </span>
                   {/* Cartão = sempre cobrança mensal recorrente, independente do
                       toggle anual (B9 revisado). PIX/boleto seguem o ciclo. */}
-                  <span className="text-gray-400">{paymentMethod === "card" ? t.billingMonthly : billingCycle === "yearly" ? t.billingYearly : t.billingMonthly}</span>
+                  {!isUpgrade && (
+                    <span className="text-gray-400">{paymentMethod === "card" ? t.billingMonthly : billingCycle === "yearly" ? t.billingYearly : t.billingMonthly}</span>
+                  )}
                 </div>
-                {paymentMethod === "card" ? (
+                {isUpgrade ? (
+                  <p className="text-sm text-gray-400">
+                    Você paga somente pelo período restante. O plano será liberado após a confirmação.
+                  </p>
+                ) : paymentMethod === "card" ? (
                   <p className="text-sm text-emerald-400">
                     {t.recurringMonthly}
                   </p>
@@ -364,8 +394,23 @@ export function CheckoutLayout({
                 {nextDueDate && (
                   <div className="flex items-center gap-2.5 text-sm bg-white/5 rounded-lg px-3 py-2.5">
                     <Calendar className="h-4 w-4 text-emerald-400 shrink-0" />
-                    <span>{t.nextDueDate} <span className="font-semibold">{format(new Date(nextDueDate), "dd/MM/yyyy")}</span></span>
+                    <span>
+                      {isUpgrade ? "Próxima renovação:" : t.nextDueDate}{" "}
+                      <span className="font-semibold">{format(new Date(nextDueDate), "dd/MM/yyyy")}</span>
+                      {isUpgrade && recurringPrice != null && (
+                        <> · <span className="font-semibold">R$ {recurringPrice.toFixed(2).replace(".", ",")}</span>/{billingCycle === "yearly" ? "ano" : "mês"}</>
+                      )}
+                    </span>
                   </div>
+                )}
+
+                {isUpgrade && prorationCredit != null && prorationCredit > 0 && (
+                  <NoticeBanner variant="success" icon={Sparkles}>
+                    Crédito do período já pago: R$ {prorationCredit.toFixed(2).replace(".", ",")}
+                    {prorationTargetValue != null
+                      ? ` sobre R$ ${prorationTargetValue.toFixed(2).replace(".", ",")} do novo período.`
+                      : "."}
+                  </NoticeBanner>
                 )}
 
                 {hasCustomPrice && customPriceEndDate && customPriceOriginal != null && (
@@ -415,8 +460,10 @@ export function CheckoutLayout({
                   <Check className="h-10 w-10 text-white" />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-2xl font-bold">{t.successTitle}</h3>
-                  <p className="text-muted-foreground">{t.successDesc}</p>
+                  <h3 className="text-2xl font-bold">{isUpgrade ? "Upgrade confirmado" : t.successTitle}</h3>
+                  <p className="text-muted-foreground">
+                    {isUpgrade ? "Seu novo plano e recursos já estão disponíveis." : t.successDesc}
+                  </p>
                 </div>
                 <p className="text-sm text-muted-foreground">{t.successRedirecting}</p>
                 <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
@@ -424,8 +471,10 @@ export function CheckoutLayout({
             ) : (
               <>
                 <div>
-                  <h2 className="text-xl font-semibold">{t.paymentTitle}</h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">{t.paymentSubtitle}</p>
+                  <h2 className="text-xl font-semibold">{isUpgrade ? "Confirme seu upgrade" : t.paymentTitle}</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {isUpgrade ? "Escolha como pagar o ajuste proporcional deste ciclo." : t.paymentSubtitle}
+                  </p>
                 </div>
 
                 {/* Seletor de forma de pagamento: SOME depois da escolha, junto
@@ -465,8 +514,8 @@ export function CheckoutLayout({
 
                     <div className="space-y-3">
                       <Label className="text-base font-semibold text-foreground">{t.paymentMethodLabel}</Label>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <Button
+                      <div className={cn("grid grid-cols-1 gap-3", allowCardPayment ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
+                        {allowCardPayment && <Button
                           variant="outline"
                           style={{ "--pm-color": PAYMENT_METHOD_COLORS.card } as React.CSSProperties}
                           className={cn(
@@ -491,7 +540,7 @@ export function CheckoutLayout({
                           )}>
                             {t.methodCardBadge}
                           </span>
-                        </Button>
+                        </Button>}
 
                         <Button
                           variant="outline"
@@ -535,6 +584,11 @@ export function CheckoutLayout({
                           </div>
                         </Button>
                       </div>
+                      {!allowCardPayment && isUpgrade && (
+                        <p className="text-xs text-muted-foreground">
+                          A mudança para o ciclo anual é paga à vista por Pix ou boleto.
+                        </p>
+                      )}
                       {!isCpfCnpjValid && cpfCnpj.length > 0 && !cpfCnpjError && (
                         <p className="text-xs text-muted-foreground">{t.cpfCnpjRequired}</p>
                       )}

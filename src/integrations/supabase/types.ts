@@ -791,8 +791,10 @@ export type Database = {
           pending_billing_cycle: string | null
           pending_max_users: number | null
           pending_modules: Json | null
+          pending_nfse_tier: number | null
           pending_plan_code: string | null
           pending_subscription_value: number | null
+          pending_whatsapp_tier: number | null
           phone: string | null
           ponto_kiosk_slug: string | null
           salesperson_id: string | null
@@ -848,8 +850,10 @@ export type Database = {
           pending_billing_cycle?: string | null
           pending_max_users?: number | null
           pending_modules?: Json | null
+          pending_nfse_tier?: number | null
           pending_plan_code?: string | null
           pending_subscription_value?: number | null
+          pending_whatsapp_tier?: number | null
           phone?: string | null
           ponto_kiosk_slug?: string | null
           salesperson_id?: string | null
@@ -905,8 +909,10 @@ export type Database = {
           pending_billing_cycle?: string | null
           pending_max_users?: number | null
           pending_modules?: Json | null
+          pending_nfse_tier?: number | null
           pending_plan_code?: string | null
           pending_subscription_value?: number | null
+          pending_whatsapp_tier?: number | null
           phone?: string | null
           ponto_kiosk_slug?: string | null
           salesperson_id?: string | null
@@ -9816,6 +9822,131 @@ export type Database = {
           },
         ]
       }
+      subscription_change_requests: {
+        Row: {
+          amount_due: number
+          applied_at: string | null
+          asaas_payment_id: string | null
+          change_kind: string
+          company_id: string
+          created_at: string
+          credit_amount: number
+          expires_at: string
+          id: string
+          next_renewal_at: string
+          paid_at: string | null
+          period_ends_at: string
+          period_started_at: string
+          remaining_ratio: number
+          request_fingerprint: string
+          requested_by: string | null
+          resets_billing_anchor: boolean
+          source_billing_cycle: string
+          source_nfse_tier: number | null
+          source_monthly_value: number
+          source_period_value: number
+          source_plan_code: string | null
+          source_subscription_value: number
+          source_whatsapp_tier: number | null
+          status: string
+          target_billing_cycle: string
+          target_extra_users: number
+          target_label: string | null
+          target_max_users: number
+          target_modules: string[]
+          target_monthly_value: number
+          target_nfse_tier: number | null
+          target_period_value: number
+          target_plan_code: string
+          target_whatsapp_tier: number | null
+          updated_at: string
+        }
+        Insert: {
+          amount_due: number
+          applied_at?: string | null
+          asaas_payment_id?: string | null
+          change_kind?: string
+          company_id: string
+          created_at?: string
+          credit_amount?: number
+          expires_at?: string
+          id?: string
+          next_renewal_at: string
+          paid_at?: string | null
+          period_ends_at: string
+          period_started_at: string
+          remaining_ratio: number
+          request_fingerprint: string
+          requested_by?: string | null
+          resets_billing_anchor?: boolean
+          source_billing_cycle: string
+          source_nfse_tier?: number | null
+          source_monthly_value: number
+          source_period_value: number
+          source_plan_code?: string | null
+          source_subscription_value: number
+          source_whatsapp_tier?: number | null
+          status?: string
+          target_billing_cycle: string
+          target_extra_users?: number
+          target_label?: string | null
+          target_max_users: number
+          target_modules?: string[]
+          target_monthly_value: number
+          target_nfse_tier?: number | null
+          target_period_value: number
+          target_plan_code: string
+          target_whatsapp_tier?: number | null
+          updated_at?: string
+        }
+        Update: {
+          amount_due?: number
+          applied_at?: string | null
+          asaas_payment_id?: string | null
+          change_kind?: string
+          company_id?: string
+          created_at?: string
+          credit_amount?: number
+          expires_at?: string
+          id?: string
+          next_renewal_at?: string
+          paid_at?: string | null
+          period_ends_at?: string
+          period_started_at?: string
+          remaining_ratio?: number
+          request_fingerprint?: string
+          requested_by?: string | null
+          resets_billing_anchor?: boolean
+          source_billing_cycle?: string
+          source_nfse_tier?: number | null
+          source_monthly_value?: number
+          source_period_value?: number
+          source_plan_code?: string | null
+          source_subscription_value?: number
+          source_whatsapp_tier?: number | null
+          status?: string
+          target_billing_cycle?: string
+          target_extra_users?: number
+          target_label?: string | null
+          target_max_users?: number
+          target_modules?: string[]
+          target_monthly_value?: number
+          target_nfse_tier?: number | null
+          target_period_value?: number
+          target_plan_code?: string
+          target_whatsapp_tier?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_change_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_history: {
         Row: {
           changed_by: string | null
@@ -9921,6 +10052,7 @@ export type Database = {
           pix_expiration_date: string | null
           pix_qr_code: string | null
           status: string
+          subscription_change_request_id: string | null
           type: string | null
           updated_at: string
         }
@@ -9942,6 +10074,7 @@ export type Database = {
           pix_expiration_date?: string | null
           pix_qr_code?: string | null
           status?: string
+          subscription_change_request_id?: string | null
           type?: string | null
           updated_at?: string
         }
@@ -9963,6 +10096,7 @@ export type Database = {
           pix_expiration_date?: string | null
           pix_qr_code?: string | null
           status?: string
+          subscription_change_request_id?: string | null
           type?: string | null
           updated_at?: string
         }

@@ -49,6 +49,14 @@ export interface CardData {
   installmentCount?: number;
 }
 
+interface SubscriptionPaymentOptions {
+  billingCycle?: BillingCycle;
+  description?: string;
+  purpose?: "renewal" | "upgrade";
+  planCode?: string;
+  changeRequestId?: string;
+}
+
 /**
  * Extrai mensagem amigável do erro de uma edge function. As edge functions do
  * Dominex devolvem `{ success: false, error: "..." }`. O `FunctionsHttpError`
@@ -91,7 +99,7 @@ export function useAsaasPayment() {
       companyId: string,
       amount: number,
       cpfCnpj?: string,
-      options?: { recurring?: boolean; billingCycle?: BillingCycle; description?: string; purpose?: string; planCode?: string },
+      options?: SubscriptionPaymentOptions & { recurring?: boolean },
     ): Promise<PaymentResult> => {
       setIsCreating(true);
       try {
@@ -106,6 +114,7 @@ export function useAsaasPayment() {
             billing_cycle: options?.billingCycle ?? "monthly",
             purpose: options?.purpose,
             plan_code: options?.planCode,
+            change_request_id: options?.changeRequestId,
           },
         });
         if (error) throw new Error(await extractErrorMessage(error, data, "Erro ao gerar PIX."));
@@ -128,7 +137,7 @@ export function useAsaasPayment() {
       companyId: string,
       amount: number,
       cpfCnpj?: string,
-      options?: { billingCycle?: BillingCycle; description?: string; purpose?: string; planCode?: string },
+      options?: SubscriptionPaymentOptions,
     ): Promise<PaymentResult> => {
       setIsCreating(true);
       try {
@@ -142,6 +151,7 @@ export function useAsaasPayment() {
             billing_cycle: options?.billingCycle ?? "monthly",
             purpose: options?.purpose,
             plan_code: options?.planCode,
+            change_request_id: options?.changeRequestId,
           },
         });
         if (error) throw new Error(await extractErrorMessage(error, data, "Erro ao gerar boleto."));
@@ -165,7 +175,7 @@ export function useAsaasPayment() {
       amount: number,
       cardData: CardData,
       cpfCnpj?: string,
-      options?: { billingCycle?: BillingCycle; description?: string; purpose?: string; planCode?: string },
+      options?: SubscriptionPaymentOptions,
     ): Promise<PaymentResult> => {
       setIsCreating(true);
       try {
@@ -179,6 +189,7 @@ export function useAsaasPayment() {
             billing_cycle: options?.billingCycle ?? "monthly",
             purpose: options?.purpose,
             plan_code: options?.planCode,
+            change_request_id: options?.changeRequestId,
             card_holder_name: cardData.holderName,
             card_holder_email: cardData.holderEmail,
             card_number: cardData.number,

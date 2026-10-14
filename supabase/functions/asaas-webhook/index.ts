@@ -59,6 +59,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
+  asaas,
   AsaasConfigError,
   listAnticipationsByPayment,
 } from "../_shared/asaas-client.ts";
@@ -491,6 +492,172 @@ async function alertPaymentReversalOnce(
   if (!alerted) {
     throw new RetryableWebhookError(`alerta de estorno/chargeback não gravado (${paymentId})`);
   }
+}
+
+function upgradeRequestIdFromExternalReference(externalReference: unknown): string | null {
+  if (typeof externalReference !== "string") return null;
+  const match = externalReference.match(
+    /^upgrade:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}):/i,
+  );
+  return match?.[1] ?? null;
+}
+
+type SupabaseClientInstance = ReturnType<typeof createClient>;
+
+interface UpgradeWebhookPayment {
+  id: string;
+  value?: number | string | null;
+  billingType?: string | null;
+  externalReference?: string | null;
+  netValue?: number | string | null;
+}
+
+async function resolveUpgradeRequestId(
+  supabase: SupabaseClientInstance,
+  payment: UpgradeWebhookPayment,
+): Promise<string | null> {
+  const fromReference = upgradeRequestIdFromExternalReference(payment?.externalReference);
+  if (fromReference) return fromReference;
+  if (!payment?.id) return null;
+  const { data, error } = await supabase
+    .from("subscription_payments")
+    .select("subscription_change_request_id")
+    .eq("asaas_payment_id", payment.id)
+    .maybeSingle();
+  if (error) {
+    throw new RetryableWebhookError(
+      `leitura da cotação de upgrade falhou (${payment.id}): ${error.message}`,
+      error,
+    );
+  }
+  return data?.subscription_change_request_id ?? null;
+}
+
+/**
+ * Upgrade nao e renovacao: recebe receita e troca entitlement, mas preserva o
+ * vencimento corrente (salvo mensal -> anual, cuja request reinicia a ancora).
+ * A RPC faz plano, modulos, LTV e lancamentos numa unica transacao idempotente.
+ */
+async function processConfirmedUpgradePayment(
+  supabase: SupabaseClientInstance,
+  payment: UpgradeWebhookPayment,
+  requestId: string,
+): Promise<{ processed: boolean; type: string; reason?: string }> {
+  const amount = Number(payment.value || 0);
+  if (!(amount > 0)) return { processed: false, type: "upgrade", reason: "valor inválido" };
+
+  const { data: result, error } = await supabase.rpc("apply_subscription_upgrade_payment", {
+    p_request_id: requestId,
+    p_asaas_payment_id: payment.id,
+    p_paid_amount: amount,
+    p_billing_type: payment.billingType || "PIX",
+  });
+  if (error) {
+    throw new RetryableWebhookError(
+      `aplicação do upgrade falhou (${payment.id}/${requestId}): ${error.message}`,
+      error,
+    );
+  }
+
+  if (result?.failed) {
+    await alertAdmin(
+      supabase,
+      "subscription_upgrade_reconciliation_required",
+      "Upgrade pago exige conciliação",
+      `O pagamento ${payment.id} foi confirmado, mas a assinatura mudou depois da cotação. ` +
+        `O upgrade não foi liberado automaticamente para evitar um entitlement incorreto.`,
+      { company_id: result.company_id, payment_id: payment.id, change_request_id: requestId, amount },
+    );
+    return { processed: false, type: "upgrade", reason: "assinatura de origem mudou" };
+  }
+
+  const { data: company, error: companyError } = await supabase
+    .from("companies")
+    .select("id, name, asaas_subscription_id")
+    .eq("id", result.company_id)
+    .single();
+  if (companyError || !company) {
+    throw new RetryableWebhookError(
+      `empresa do upgrade aplicado não encontrada (${result.company_id})`,
+      companyError,
+    );
+  }
+
+  // A cobrança atual foi avulsa. Agora a recorrência futura passa a refletir o
+  // preço/ciclo integral do alvo. `updatePendingPayments: true` é intencional:
+  // uma fatura de renovação já materializada também precisa vir pelo novo valor.
+  const recurrenceId = company.asaas_subscription_id as string | null;
+  if (recurrenceId) {
+    try {
+      let subscriptionId = recurrenceId.startsWith("sub_") ? recurrenceId : null;
+      if (!subscriptionId) {
+        const authorization = await asaas.get(
+          `/pix/automatic/authorizations/${encodeURIComponent(recurrenceId)}`,
+        );
+        subscriptionId = typeof authorization?.subscriptionId === "string"
+          ? authorization.subscriptionId
+          : null;
+      }
+      if (!subscriptionId?.startsWith("sub_")) {
+        throw new Error(`recorrência ${recurrenceId} sem subscription vinculada`);
+      }
+      const yearly = result.target_billing_cycle === "yearly";
+      const nextDueDate = typeof result.next_renewal_at === "string"
+        ? result.next_renewal_at.slice(0, 10)
+        : undefined;
+      await asaas.put(`/subscriptions/${subscriptionId}`, {
+        value: Number(yearly ? result.target_period_value : result.target_monthly_value),
+        cycle: yearly ? "YEARLY" : "MONTHLY",
+        ...(yearly ? { billingType: "UNDEFINED" } : {}),
+        ...(nextDueDate ? { nextDueDate } : {}),
+        updatePendingPayments: true,
+      });
+    } catch (updateError) {
+      console.error(`[upgrade] plano aplicado, mas recorrência ${recurrenceId} não sincronizou:`, updateError);
+      await alertAdmin(
+        supabase,
+        "subscription_upgrade_gateway_sync_failed",
+        "Upgrade aplicado com recorrência desatualizada",
+        `O upgrade de ${company.name} foi liberado, mas a recorrência ${recurrenceId} não recebeu o novo valor/ciclo.`,
+        {
+          company_id: company.id,
+          payment_id: payment.id,
+          change_request_id: requestId,
+          target_monthly_value: result.target_monthly_value,
+          target_period_value: result.target_period_value,
+          target_billing_cycle: result.target_billing_cycle,
+        },
+      );
+    }
+  }
+
+  const netValue = Number(payment.netValue ?? 0);
+  if (netValue > 0 && netValue < amount) {
+    const fee = Math.round((amount - netValue) * 100) / 100;
+    await tryWrite(
+      "tarifa Asaas do upgrade",
+      supabase.from("admin_financial_transactions").insert({
+        type: "expense",
+        category: "asaas_fee",
+        amount: fee,
+        description: `Tarifa Asaas - ${company.name} (upgrade)`,
+        reference_id: company.id,
+        reference_type: "asaas_fee",
+        asaas_transaction_id: `${payment.id}_fee`,
+        transaction_date: new Date().toISOString(),
+      }),
+      {
+        ignoreCodes: ["23505"],
+        recovery: { company_id: company.id, payment_id: payment.id, fee },
+      },
+    );
+  }
+
+  console.log(
+    `[upgrade] ${result.already_applied ? "já aplicado" : "aplicado"} ` +
+      `company=${company.id} request=${requestId} payment=${payment.id}`,
+  );
+  return { processed: !result.already_applied, type: "upgrade" };
 }
 
 /**
@@ -1204,7 +1371,7 @@ async function processConfirmedPayment(
 const COMPANY_COLS =
   "id, name, cnpj, subscription_status, subscription_plan, subscription_value, subscription_expires_at, " +
   "billing_cycle, ltv, origin, salesperson_id, sdr_id, asaas_customer_id, asaas_subscription_id, " +
-  "pending_subscription_value, pending_plan_code, pending_billing_cycle, pending_modules, pending_max_users, " +
+  "pending_subscription_value, pending_plan_code, pending_billing_cycle, pending_modules, pending_max_users, pending_nfse_tier, pending_whatsapp_tier, " +
   "custom_price, custom_price_months, custom_price_payments_made, " +
   // [LEAD SELF-SERVICE] status da comissão: segura ('pending_work') quando é lead
   // self-service ainda não trabalhado; senão 'confirmed'.
@@ -1689,7 +1856,7 @@ Deno.serve(async (req) => {
       // assinatura gratuita; assumir a company errada poderia bloquear outro tenant.
       const { data: reversedPayment, error: reversedError } = await supabase
         .from("subscription_payments")
-        .select("id, company_id, asaas_payment_id, status, due_date, paid_at, ltv_credited_at")
+        .select("id, company_id, asaas_payment_id, status, due_date, paid_at, ltv_credited_at, type, subscription_change_request_id")
         .eq("asaas_payment_id", payment.id)
         .maybeSingle();
       if (reversedError) {
@@ -1720,7 +1887,13 @@ Deno.serve(async (req) => {
         otherPayments = data ?? [];
       }
 
-      const shouldDeactivate = shouldDeactivateAfterReversal(reversedPayment, otherPayments);
+      // Estorno de upgrade nao derruba a assinatura inteira: o entitlement
+      // precisa de reversao assistida para nao remover dados/modulos em uso.
+      const isUpgradeReversal = reversedPayment?.type === "upgrade" ||
+        !!reversedPayment?.subscription_change_request_id;
+      const shouldDeactivate = isUpgradeReversal
+        ? false
+        : shouldDeactivateAfterReversal(reversedPayment, otherPayments);
       const protectedByAnotherPayment = !!reversedPayment?.ltv_credited_at && !shouldDeactivate;
       await recordRefundOrChargeback(
         supabase,
@@ -1729,6 +1902,17 @@ Deno.serve(async (req) => {
         companyName,
         kind,
       );
+
+      if (isUpgradeReversal && reversedPayment?.subscription_change_request_id) {
+        await applyWrite(
+          "marcação do upgrade revertido (subscription_change_requests)",
+          supabase
+            .from("subscription_change_requests")
+            .update({ status: "reversed" })
+            .eq("id", reversedPayment.subscription_change_request_id),
+          { rethrow: retryableRethrow("marcação do upgrade revertido") },
+        );
+      }
 
       // FATAL (pede re-entrega): é o estado que diz que o dinheiro voltou.
       // Idempotente (grava um valor fixo) e sem mutex — re-entregar conserta.
@@ -1820,6 +2004,12 @@ Deno.serve(async (req) => {
 
     // ---------- PAYMENT_RECEIVED / PAYMENT_CONFIRMED ----------
     if ((event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED") && isBeingPaid) {
+      const upgradeRequestId = await resolveUpgradeRequestId(supabase, payment);
+      if (upgradeRequestId) {
+        const result = await processConfirmedUpgradePayment(supabase, payment, upgradeRequestId);
+        return json({ received: true, ...result });
+      }
+
       const resolved = await resolveCompany(supabase, payment);
       if (!resolved?.company) {
         // PROIBIDO órfão silencioso (FM1): registra no ledger + alerta admin (idempotente).

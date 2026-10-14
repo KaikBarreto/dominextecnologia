@@ -93,6 +93,8 @@ describe('o UPDATE da renovação, partido em VITAL x EXTRAS', () => {
         pending_plan_code: 'basico',
         pending_billing_cycle: 'monthly',
         pending_max_users: 3,
+        pending_nfse_tier: 1,
+        pending_whatsapp_tier: 1,
         pending_modules: ['os', 'crm'],
         pending_subscription_value: 97,
       },
@@ -160,6 +162,8 @@ describe('o UPDATE da renovação, partido em VITAL x EXTRAS', () => {
         pending_plan_code: 'basico',
         pending_billing_cycle: 'monthly',
         pending_max_users: 3,
+        pending_nfse_tier: 1,
+        pending_whatsapp_tier: 1,
         pending_modules: ['os', 42, 'crm'],
         pending_subscription_value: 97,
       },
@@ -168,12 +172,16 @@ describe('o UPDATE da renovação, partido em VITAL x EXTRAS', () => {
     expect(extras.subscription_plan).toBe('basico');
     expect(extras.billing_cycle).toBe('monthly');
     expect(extras.max_users).toBe(3);
+    expect(extras.nfse_tier).toBe(1);
+    expect(extras.whatsapp_tier).toBe(1);
     for (const k of [
       'pending_plan_code',
       'pending_billing_cycle',
       'pending_max_users',
       'pending_modules',
+      'pending_nfse_tier',
       'pending_subscription_value',
+      'pending_whatsapp_tier',
     ]) {
       expect(extras[k], `pending não limpo: ${k}`).toBeNull();
     }

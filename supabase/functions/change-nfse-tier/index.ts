@@ -12,9 +12,9 @@
 // Entrada: { company_id, target_tier }
 //
 // Regra de negócio (espelha change-subscription-plan):
-//   - UPGRADE aplica IMEDIATAMENTE; downgrade é agendado no resto do sistema. Aqui só
-//     tratamos UPGRADE (o bloqueio de cota só oferece subir de nível). Downgrade de
-//     nível está FORA de escopo — rejeitamos com invalid_tier_change.
+//   - UPGRADE de tenant ativo cria cotação proporcional e só libera a cota após
+//     pagamento confirmado. Super admin mantém a concessão manual explícita.
+//   - Downgrade de nível está FORA de escopo — rejeitamos com invalid_tier_change.
 //   - Pré-requisito: a empresa precisa JÁ TER o módulo `nfe` (via plano OU company_modules).
 //     Se não tiver, isto não é troca de nível e sim CONTRATAÇÃO do módulo — devolvemos
 //     module_not_active e deixamos o fluxo normal de contratar módulo cuidar disso.
@@ -32,6 +32,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 import { asaas, AsaasConfigError, AsaasApiError } from "../_shared/asaas-client.ts";
 import { authorizeAsaasCompany } from "../_shared/asaas-auth.ts";
+import { createUpgradeRequest } from "../_shared/subscription-upgrade-request.ts";
 
 class ValidationError extends Error {
   code: string;
@@ -109,7 +110,7 @@ Deno.serve(async (req) => {
     const { data: company, error: companyError } = await supabase
       .from("companies")
       .select(
-        "id, name, nfse_tier, subscription_value, asaas_subscription_id, subscription_plan, subscription_status",
+        "id, name, nfse_tier, whatsapp_tier, subscription_value, subscription_expires_at, billing_cycle, max_users, extra_users, asaas_subscription_id, subscription_plan, subscription_status, custom_price, custom_price_months, custom_price_payments_made",
       )
       .eq("id", company_id)
       .single();
@@ -150,13 +151,60 @@ Deno.serve(async (req) => {
     const currentValue = Number(company.subscription_value) || 0;
     const newSubscriptionValue = Math.max(0, currentValue + delta);
 
+    // Tenant ativo paga a diferença proporcional antes de receber a cota maior.
+    // A concessão manual por super_admin continua imediata e auditável.
+    if (!auth.isSuperAdmin) {
+      const cp = Number(company.custom_price) || 0;
+      const cpMonths = Number(company.custom_price_months) || 0;
+      const cpMade = Number(company.custom_price_payments_made) || 0;
+      const sourceMonthlyValue = cp > 0 && cpMonths > 0 && cpMade < cpMonths ? cp : currentValue;
+      const { data: moduleRows, error: modulesError } = await supabase
+        .from("company_modules")
+        .select("module_code")
+        .eq("company_id", company_id);
+      if (modulesError) {
+        throw new ValidationError("module_check_failed", "Não foi possível preparar o upgrade de Notas Fiscais.");
+      }
+      const quote = await createUpgradeRequest(supabase, {
+        company,
+        requestedBy: auth.userId ?? null,
+        sourceMonthlyValue,
+        targetMonthlyValue: newSubscriptionValue,
+        targetModules: (moduleRows ?? []).map((row) => row.module_code),
+        targetMaxUsers: Number(company.max_users) || 1,
+        targetExtraUsers: Number(company.extra_users) || 0,
+        targetLabel: `Notas Fiscais · Nível ${targetTier}`,
+        fingerprintScope: `nfse-tier:${currentTier}->${targetTier}`,
+        targetNfseTier: targetTier,
+      });
+      if (quote) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            requires_payment: true,
+            change_request_id: quote.requestId,
+            checkout_url: quote.checkoutUrl,
+            amount_due: quote.amountDue,
+            message: "Upgrade preparado. Pague o ajuste proporcional para liberar a nova cota.",
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
+
     // --- Aplica upgrade IMEDIATO (service_role — RLS bloqueia o tenant direto) ---
+    const companyUpdate: Record<string, unknown> = {
+      nfse_tier: targetTier,
+      subscription_value: newSubscriptionValue,
+    };
+    if (!auth.isSuperAdmin && targetTier > currentTier) {
+      companyUpdate.custom_price = null;
+      companyUpdate.custom_price_months = null;
+      companyUpdate.custom_price_payments_made = 0;
+    }
     const { error: updErr } = await supabase
       .from("companies")
-      .update({
-        nfse_tier: targetTier,
-        subscription_value: newSubscriptionValue,
-      })
+      .update(companyUpdate)
       .eq("id", company_id);
     if (updErr) {
       throw new ValidationError("update_failed", "Não foi possível atualizar o nível de Notas Fiscais.");
@@ -209,7 +257,7 @@ Deno.serve(async (req) => {
         new_subscription_value: newSubscriptionValue,
         asaas_updated: asaasUpdated,
         ...(asaasWarning ? { asaas_warning: asaasWarning } : {}),
-        message: "Nível de Notas Fiscais atualizado! A cota maior já está liberada e o novo valor entra na próxima cobrança.",
+        message: "Nível de Notas Fiscais atualizado. O ajuste proporcional foi concedido e a nova cota já está liberada.",
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

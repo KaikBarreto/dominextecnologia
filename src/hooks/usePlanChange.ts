@@ -10,6 +10,8 @@ export interface ChangePlanInput {
   customModules?: string[];
   /** Só no personalizado: nº de usuários extras. */
   extraUsers?: number;
+  /** Nível de NFS-e escolhido quando o plano personalizado inclui o módulo. */
+  nfseTier?: number;
 }
 
 export interface ChangePlanResult {
@@ -23,6 +25,13 @@ export interface ChangePlanResult {
   modules?: string[];
   asaas_updated?: boolean;
   asaas_warning?: string | null;
+  requires_payment?: boolean;
+  change_request_id?: string;
+  checkout_url?: string;
+  amount_due?: number;
+  credit_amount?: number;
+  remaining_ratio?: number;
+  next_renewal_at?: string;
   /**
    * Pendências de gravação NÃO-fatais na edge (ex.: o histórico da assinatura não
    * gravou). O valor/plano já foi aplicado; isto existe pra que "sucesso com
@@ -37,8 +46,8 @@ export interface ChangePlanResult {
  * `change-subscription-plan` (service_role, valida posse).
  *
  * A edge decide upgrade vs downgrade vs igual server-side comparando com o valor
- * efetivo atual e aplica B1 (upgrade entra já na próxima cobrança, atualiza Asaas)
- * ou B2 (downgrade agenda o valor menor pro próximo ciclo, sem cortar acesso).
+ * efetivo atual. Upgrade ativo gera uma cotação proporcional e segue para o
+ * checkout; downgrade agenda o alvo para o próximo ciclo, sem cortar acesso.
  *
  * Invalida tudo que reflete o estado da assinatura no app e no painel master.
  */
@@ -46,7 +55,7 @@ export function usePlanChange() {
   const queryClient = useQueryClient();
 
   return useMutation<ChangePlanResult, Error, ChangePlanInput>({
-    mutationFn: async ({ companyId, planCode, billingCycle, customModules, extraUsers }) => {
+    mutationFn: async ({ companyId, planCode, billingCycle, customModules, extraUsers, nfseTier }) => {
       const { data, error } = await supabase.functions.invoke('change-subscription-plan', {
         body: {
           company_id: companyId,
@@ -54,6 +63,7 @@ export function usePlanChange() {
           billing_cycle: billingCycle,
           custom_modules: customModules ?? undefined,
           extra_users: extraUsers ?? undefined,
+          nfse_tier: nfseTier ?? undefined,
         },
       });
       if (error) {

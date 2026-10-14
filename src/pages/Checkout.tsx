@@ -30,6 +30,7 @@ import logoBlack from "@/assets/logo-black-horizontal.png";
 import { useWhiteLabel } from "@/hooks/useWhiteLabel";
 import { PriceAmount } from "@/components/ui/PriceAmount";
 import { hasSubscriptionActivationAdvanced } from "@/lib/subscriptionActivation";
+import { useSubscriptionUpgradeCheckout } from "@/hooks/useSubscriptionUpgradeCheckout";
 
 type PaymentMethod = "pix" | "boleto" | "card" | null;
 
@@ -100,6 +101,14 @@ export default function Checkout() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const isRenewal = searchParams.get("mode") === "renewal";
+  const isUpgrade = searchParams.get("mode") === "upgrade";
+  const changeRequestId = isUpgrade ? searchParams.get("change") : null;
+  const {
+    data: upgradeQuote,
+    isLoading: upgradeQuoteLoading,
+    isError: upgradeQuoteError,
+    getStatus: getUpgradeStatus,
+  } = useSubscriptionUpgradeCheckout(changeRequestId);
   // Plano TRAVADO pelo link de venda (?bloqueado=1 vindo do cadastro): o cliente
   // não escolhe nem troca de plano — cobra exatamente o plano/valor que o link
   // já gravou na empresa. Fecha a brecha de pagar o preço de um plano mais barato.
@@ -176,14 +185,22 @@ export default function Checkout() {
   // lista de recursos do resumo de pagamento).
   const { data: customModuleNames = [] } = useQuery({
     queryKey: ["checkout-custom-modules", companyData?.id],
-    enabled: !!companyData?.id && isCustomPlanCompany,
+    enabled: !!companyData?.id && (
+      isCustomPlanCompany ||
+      upgradeQuote?.target_plan_code === "personalizado" ||
+      (isRenewal && companyData?.pending_plan_code === "personalizado")
+    ),
     queryFn: async () => {
       const { data: cm, error: cmError } = await supabase
         .from("company_modules")
         .select("module_code")
         .eq("company_id", companyData!.id);
       if (cmError) throw cmError;
-      const codes = (cm ?? []).map((m) => m.module_code);
+      const codes = isUpgrade && upgradeQuote
+        ? upgradeQuote.target_modules
+        : isRenewal && Array.isArray(companyData?.pending_modules)
+        ? companyData.pending_modules.filter((code): code is string => typeof code === "string")
+        : (cm ?? []).map((m) => m.module_code);
       if (codes.length === 0) return [] as string[];
       const { data: mods, error: modsError } = await supabase
         .from("subscription_modules")
@@ -193,6 +210,15 @@ export default function Checkout() {
       return (mods ?? []).map((m) => m.name as string);
     },
   });
+
+  // Upgrade: a cotação server-side já trava plano, módulos, ciclo e valor.
+  useEffect(() => {
+    if (!isUpgrade || !upgradeQuote || plans.length === 0 || showCheckout) return;
+    if (upgradeQuote.company_id !== companyData?.id) return;
+    setSelectedPlan(upgradeQuote.target_plan_code);
+    setBillingCycle(upgradeQuote.target_billing_cycle);
+    setShowCheckout(true);
+  }, [isUpgrade, upgradeQuote, plans, showCheckout, companyData?.id]);
 
   // Pré-preenche CPF/CNPJ a partir do cadastro da empresa
   useEffect(() => {
@@ -204,11 +230,15 @@ export default function Checkout() {
   // Renovação: auto-seleciona o plano atual da empresa e pula pro pagamento
   useEffect(() => {
     if (isRenewal && companyData && plans.length > 0 && !showCheckout) {
-      const currentPlanCode = companyData.subscription_plan;
-      const matched = plans.find((p) => p.code === currentPlanCode);
+      const renewalPlanCode = companyData.pending_plan_code || companyData.subscription_plan;
+      const matched = plans.find((p) => p.code === renewalPlanCode);
       if (matched) {
-        setSelectedPlan(currentPlanCode);
-        setBillingCycle((companyData.billing_cycle as BillingCycle) || "monthly");
+        setSelectedPlan(renewalPlanCode);
+        setBillingCycle(
+          (companyData.pending_billing_cycle as BillingCycle) ||
+            (companyData.billing_cycle as BillingCycle) ||
+            "monthly",
+        );
         setShowCheckout(true);
       }
     }
@@ -218,7 +248,7 @@ export default function Checkout() {
   // não há card no catálogo pra escolher — pula a etapa de seleção e vai direto
   // pro pagamento com o plano/ciclo da própria empresa (mesma mecânica da renovação).
   useEffect(() => {
-    if (!isRenewal && isCustomPlanCompany && plans.length > 0 && !showCheckout) {
+    if (!isRenewal && !isUpgrade && isCustomPlanCompany && plans.length > 0 && !showCheckout) {
       const matched = plans.find((p) => p.code === "personalizado");
       if (matched) {
         setSelectedPlan("personalizado");
@@ -226,14 +256,14 @@ export default function Checkout() {
         setShowCheckout(true);
       }
     }
-  }, [isRenewal, isCustomPlanCompany, companyData, plans, showCheckout]);
+  }, [isRenewal, isUpgrade, isCustomPlanCompany, companyData, plans, showCheckout]);
 
   // Plano TRAVADO pelo link (?bloqueado=1): auto-seleciona o plano da PRÓPRIA
   // empresa (que o self-register já gravou a partir do link) e pula a etapa de
   // seleção, indo direto ao pagamento. Não há como o cliente trocar por um plano
   // mais barato. Vale pra qualquer plano (start/avancado/master/personalizado).
   useEffect(() => {
-    if (isPlanLocked && !isRenewal && companyData && plans.length > 0 && !showCheckout) {
+    if (isPlanLocked && !isRenewal && !isUpgrade && companyData && plans.length > 0 && !showCheckout) {
       const currentPlanCode = companyData.subscription_plan;
       const matched = plans.find((p) => p.code === currentPlanCode);
       if (matched) {
@@ -242,16 +272,23 @@ export default function Checkout() {
         setShowCheckout(true);
       }
     }
-  }, [isPlanLocked, isRenewal, companyData, plans, showCheckout]);
+  }, [isPlanLocked, isRenewal, isUpgrade, companyData, plans, showCheckout]);
 
   useEffect(() => () => stopPolling(), [stopPolling]);
+
+  useEffect(() => {
+    if (isUpgrade && upgradeQuote?.status === "applied") setPaymentSuccess(true);
+  }, [isUpgrade, upgradeQuote?.status]);
 
   const trialDaysLeft = companyData?.subscription_expires_at
     ? differenceInDays(new Date(companyData.subscription_expires_at), new Date())
     : null;
   const trialExpired = trialDaysLeft !== null && trialDaysLeft <= 0;
 
-  if (companyLoading || ((isRenewal || isCustomPlanCompany || isPlanLocked) && (!showCheckout || !selectedPlan))) {
+  const waitsForAutomaticCheckout = isRenewal ||
+    (isUpgrade && !upgradeQuoteError && !!upgradeQuote) ||
+    (!isUpgrade && (isCustomPlanCompany || isPlanLocked));
+  if (companyLoading || upgradeQuoteLoading || (waitsForAutomaticCheckout && (!showCheckout || !selectedPlan))) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-4xl space-y-8">
@@ -267,6 +304,38 @@ export default function Checkout() {
     );
   }
 
+  if (isUpgrade && (!changeRequestId || upgradeQuoteError || !upgradeQuote || upgradeQuote.company_id !== companyData?.id)) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Não foi possível abrir este upgrade</CardTitle>
+            <CardDescription>A cotação pode ter expirado ou não pertence a esta empresa.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button className="w-full" onClick={() => navigate("/assinatura")}>Voltar para minha assinatura</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isUpgrade && upgradeQuote && ["expired", "cancelled", "failed", "reversed"].includes(upgradeQuote.status)) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Cotação indisponível</CardTitle>
+            <CardDescription>Volte para sua assinatura e calcule novamente o upgrade.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button className="w-full" onClick={() => navigate("/assinatura")}>Recalcular upgrade</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const currentPlan = plans.find((p) => p.code === selectedPlan);
   const effectiveCompanyValue = companyData ? getEffectiveSubscriptionValue(companyData) : 0;
   const planPrice = currentPlan?.price || 0;
@@ -276,8 +345,11 @@ export default function Checkout() {
   // NUNCA o preço de catálogo (personalizado tem price R$ 0 no catálogo). No
   // plano travado, o valor foi definido pelo link e gravado na empresa, então é
   // ele que vale (impede pagar o preço de outro plano mais barato).
-  const renewalPrice = (isRenewal || isCustomPlanCompany || isPlanLocked)
-    ? (effectiveCompanyValue || planPrice)
+  const pendingRenewalPrice = isRenewal
+    ? Number(companyData?.pending_subscription_value) || 0
+    : 0;
+  const renewalPrice = (!isUpgrade && (isRenewal || isCustomPlanCompany || isPlanLocked))
+    ? (pendingRenewalPrice || effectiveCompanyValue || planPrice)
     : null;
   const basePrice = renewalPrice ?? planPrice;
 
@@ -287,7 +359,7 @@ export default function Checkout() {
   // cartão = SEMPRE cobrança mensal recorrente (mensal cheio, sem desconto,
   // sem parcelamento) — o ciclo anual não se aplica ao cartão.
   const getEffectiveFinalPrice = (method: PaymentMethod): number => {
-    if (isRenewal) return basePrice;
+    if (isUpgrade && upgradeQuote) return upgradeQuote.amount_due;
     if (method === "card") return basePrice; // mensal recorrente
     if (billingCycle !== "yearly") return basePrice;
     return yearlyPrice;
@@ -295,10 +367,19 @@ export default function Checkout() {
   const finalPrice = getEffectiveFinalPrice(paymentMethod);
 
   // Personalizado: recursos = módulos contratados; demais planos = lista estática.
-  const planFeatures = isCustomPlanCompany
+  const targetIsCustom = isUpgrade
+    ? upgradeQuote?.target_plan_code === "personalizado"
+    : isRenewal
+    ? selectedPlan === "personalizado"
+    : isCustomPlanCompany;
+  const planFeatures = targetIsCustom
     ? customModuleNames
     : (currentPlan ? (PLAN_FEATURES[currentPlan.code] ?? []) : []);
-  const maxUsers = (isRenewal || isCustomPlanCompany)
+  const maxUsers = isUpgrade && upgradeQuote
+    ? upgradeQuote.target_max_users
+    : isRenewal && Number(companyData?.pending_max_users) > 0
+    ? Number(companyData?.pending_max_users)
+    : (isRenewal || isCustomPlanCompany)
     ? (companyData?.max_users || currentPlan?.max_users || 5)
     : (currentPlan?.max_users || 5);
 
@@ -306,10 +387,14 @@ export default function Checkout() {
   const baseDate = companyData?.subscription_expires_at
     ? new Date(companyData.subscription_expires_at)
     : new Date();
-  const nextDueDate = addMonths(baseDate, billingCycle === "yearly" ? 12 : 1).toISOString();
+  const nextDueDate = isUpgrade && upgradeQuote
+    ? upgradeQuote.next_renewal_at
+    : addMonths(baseDate, billingCycle === "yearly" ? 12 : 1).toISOString();
 
   // Promoção temporária (custom_price)
-  const hasCustomPrice = companyData ? hasActiveCustomPrice(companyData) : false;
+  const hasCustomPrice = companyData
+    ? hasActiveCustomPrice(companyData) && pendingRenewalPrice <= 0
+    : false;
   const remainingPromoMonths = hasCustomPrice
     ? (companyData!.custom_price_months! - (companyData!.custom_price_payments_made || 0))
     : 0;
@@ -321,6 +406,33 @@ export default function Checkout() {
     if (activatedRef.current) return;
     activatedRef.current = true;
     try {
+      if (isUpgrade) {
+        let applied = false;
+        for (let attempt = 0; attempt < 24; attempt += 1) {
+          const status = await getUpgradeStatus();
+          if (status?.status === "applied") {
+            applied = true;
+            break;
+          }
+          if (["failed", "cancelled", "expired", "reversed"].includes(status?.status ?? "")) {
+            throw new Error("O pagamento foi confirmado, mas o upgrade precisa de revisão.");
+          }
+          await new Promise((resolve) => window.setTimeout(resolve, 2_000));
+        }
+        if (!applied) {
+          throw new Error("O pagamento foi confirmado, mas o upgrade ainda está sendo aplicado.");
+        }
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["my-company"] }),
+          queryClient.invalidateQueries({ queryKey: ["company-modules"] }),
+          queryClient.invalidateQueries({ queryKey: ["company-modules-info"] }),
+          queryClient.invalidateQueries({ queryKey: ["subscription-upgrade-checkout", changeRequestId] }),
+        ]);
+        setPaymentSuccess(true);
+        setTimeout(() => { window.location.href = "/assinatura"; }, 3000);
+        return;
+      }
+
       // `activate-subscription` e `confirm-sale-payment` são operações exclusivas
       // do painel master. O checkout do tenant não pode chamá-las nem fingir que
       // deram certo: a fonte da verdade é o webhook autenticado da Asaas.
@@ -372,22 +484,26 @@ export default function Checkout() {
     setCardErrorSection(null);
 
     const amount = getEffectiveFinalPrice(method);
-    const description = `Assinatura Dominex - ${currentPlan.name}`;
-    const purpose = isRenewal ? "renewal" : undefined;
+    const description = isUpgrade
+      ? `Upgrade Dominex - ${currentPlan.name}`
+      : `Assinatura Dominex - ${currentPlan.name}`;
+    const purpose = isUpgrade ? "upgrade" : isRenewal ? "renewal" : undefined;
     // Primeira venda: o cliente ESCOLHE o plano aqui, então enviamos o
     // `plan_code` selecionado pra validação server-side bater contra o preço
     // desse plano (e não contra o plano antigo guardado na empresa). Na
     // renovação não enviamos — a validação usa o valor efetivo da empresa.
-    const planCode = isRenewal ? undefined : (selectedPlan ?? undefined);
+    const planCode = (isRenewal || isUpgrade) ? undefined : (selectedPlan ?? undefined);
+    const changeRequestIdForPayment = isUpgrade ? (changeRequestId ?? undefined) : undefined;
 
     try {
       if (method === "pix") {
         const data = await createPixPayment(companyData.id, amount, cpfCnpj, {
-          recurring: pixRecurring,
+          recurring: isUpgrade ? false : pixRecurring,
           billingCycle,
           description,
           purpose,
           planCode,
+          changeRequestId: changeRequestIdForPayment,
         });
         setPaymentData(data);
         if (data.payment_id) startPolling(data.payment_id, () => activateAndRedirect(data.payment_id ?? null));
@@ -397,18 +513,19 @@ export default function Checkout() {
           description,
           purpose,
           planCode,
+          changeRequestId: changeRequestIdForPayment,
         });
         setPaymentData(data);
         if (data.payment_id) startPolling(data.payment_id, () => activateAndRedirect(data.payment_id ?? null));
       } else if (method === "card" && cardData) {
-        // Cartão = cobrança mensal recorrente sempre (B9 revisado). Enviamos
-        // billingCycle "monthly" e o valor mensal base, mesmo que o toggle
-        // anual esteja ligado (o anual só vale pra PIX/boleto à vista).
+        // Venda/renovação no cartão mantém recorrência mensal. No upgrade a
+        // mesma UI envia cobrança avulsa e a edge usa o ciclo da cotação.
         const data = await createCardPayment(companyData.id, amount, cardData, cpfCnpj, {
           billingCycle: "monthly",
           description,
           purpose,
           planCode,
+          changeRequestId: changeRequestIdForPayment,
         });
         setPaymentData(data);
         if (data.status === "CONFIRMED") {
@@ -476,6 +593,20 @@ export default function Checkout() {
 
   // ====== Tela de pagamento ======
   if (showCheckout && currentPlan) {
+    const sourcePlanName = isUpgrade && upgradeQuote
+      ? plans.find((plan) => plan.code === upgradeQuote.source_plan_code)?.name
+        ?? upgradeQuote.source_plan_code
+      : null;
+    const upgradeRecurringPrice = isUpgrade && upgradeQuote
+      ? (upgradeQuote.target_billing_cycle === "yearly"
+        ? upgradeQuote.target_period_value
+        : upgradeQuote.target_monthly_value)
+      : null;
+    const proratedTargetValue = isUpgrade && upgradeQuote
+      ? (upgradeQuote.resets_billing_anchor
+        ? upgradeQuote.target_period_value
+        : Math.round(upgradeQuote.target_period_value * upgradeQuote.remaining_ratio * 100) / 100)
+      : null;
     return (
       <motion.div
         key="checkout-payment"
@@ -484,10 +615,11 @@ export default function Checkout() {
         transition={{ duration: 0.4, ease: "easeOut" }}
       >
         <CheckoutLayout
-          planName={isRenewal ? `${currentPlan.name} (Renovação)` : currentPlan.name}
+          checkoutMode={isUpgrade ? "upgrade" : isRenewal ? "renewal" : "sale"}
+          planName={isUpgrade ? (upgradeQuote?.target_label || `Upgrade para ${currentPlan.name}`) : isRenewal ? `${currentPlan.name} (Renovação)` : currentPlan.name}
           planPrice={basePrice}
           finalPrice={finalPrice}
-          billingCycle={isRenewal ? ((companyData?.billing_cycle as BillingCycle) || "monthly") : billingCycle}
+          billingCycle={billingCycle}
           features={planFeatures}
           maxUsers={maxUsers}
           cpfCnpj={cpfCnpj}
@@ -504,17 +636,22 @@ export default function Checkout() {
           companyPhone={companyData?.phone || ""}
           companyAddress={companyData?.address || ""}
           userEmail={companyData?._userEmail || ""}
-          pixRecurring={pixRecurring}
-          onPixRecurringChange={handlePixRecurringChange}
+          pixRecurring={isUpgrade ? false : pixRecurring}
+          onPixRecurringChange={isUpgrade ? undefined : handlePixRecurringChange}
           allowCardInstallments={false}
+          allowCardPayment={!isUpgrade || !upgradeQuote?.resets_billing_anchor}
           cardErrorMessage={cardErrorMessage}
           cardErrorSection={cardErrorSection}
-          hasCustomPrice={hasCustomPrice}
+          hasCustomPrice={!isUpgrade && hasCustomPrice}
           originalPrice={hasCustomPrice ? (companyData?.subscription_value || planPrice) : undefined}
           customPriceEndDate={customPriceEndDate}
           customPriceOriginal={hasCustomPrice ? (companyData?.subscription_value || planPrice) : null}
-          pendingSubscriptionValue={companyData?.pending_subscription_value}
-          currentSubscriptionValue={companyData?.subscription_value}
+          pendingSubscriptionValue={isUpgrade ? null : companyData?.pending_subscription_value}
+          currentSubscriptionValue={isUpgrade ? null : companyData?.subscription_value}
+          currentPlanName={sourcePlanName}
+          recurringPrice={upgradeRecurringPrice}
+          prorationCredit={upgradeQuote?.credit_amount}
+          prorationTargetValue={proratedTargetValue}
         />
       </motion.div>
     );

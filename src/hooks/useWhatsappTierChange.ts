@@ -9,8 +9,12 @@ export interface ChangeWhatsappTierInput {
 
 export interface ChangeWhatsappTierResult {
   ok: boolean;
-  tier: number;
-  new_subscription_value: number;
+  tier?: number;
+  new_subscription_value?: number;
+  requires_payment?: boolean;
+  change_request_id?: string;
+  checkout_url?: string;
+  amount_due?: number;
   asaas_updated?: boolean;
   asaas_warning?: string;
   message: string;
@@ -21,10 +25,8 @@ export interface ChangeWhatsappTierResult {
  * `change-whatsapp-tier` (service_role, valida posse/super_admin). Clone de
  * useNfseTierChange.
  *
- * A edge aplica o upgrade imediatamente (cota maior já liberada), ajusta o valor
- * da assinatura (delta entre os preços dos níveis) e sincroniza o Asaas. Downgrade
- * está fora de escopo — a edge rejeita com `invalid_tier_change`. Se o módulo
- * `whatsapp` não estiver ativo, rejeita com `module_not_active`.
+ * Para tenant ativo, a edge cria uma cotação proporcional e a cota só aumenta
+ * depois do pagamento confirmado. Super admin pode fazer concessão manual.
  */
 export function useWhatsappTierChange() {
   const queryClient = useQueryClient();

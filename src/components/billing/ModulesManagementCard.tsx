@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -28,7 +29,6 @@ import { CancelSubscriptionModal } from '@/components/billing/CancelSubscription
 import { calculateYearlyPrice, calculateMonthlyEquivalent } from '@/utils/subscriptionPricing';
 import { useNfseTiers, formatTierLimit } from '@/hooks/useNfseTiers';
 import { useNfseQuota } from '@/hooks/useNfseQuota';
-import { useNfseTierChange } from '@/hooks/useNfseTierChange';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import {
@@ -90,6 +90,7 @@ export function ModulesManagementCard({
   focusUsers = false,
   onAutoOpenConsumed,
 }: ModulesManagementCardProps = {}) {
+  const navigate = useNavigate();
   const { profile, user, isAdminOrGestor } = useAuth();
   const companyId = profile?.company_id ?? null;
   const { locale } = useAppLocaleContext();
@@ -114,7 +115,6 @@ export function ModulesManagementCard({
   // NFS-e tier hooks
   const { tiers: nfseTiers, isLoading: nfseTiersLoading } = useNfseTiers();
   const { tier: currentNfseTier } = useNfseQuota(companyId);
-  const { changeTier: changeNfseTier } = useNfseTierChange();
   const [selectedNfseLevel, setSelectedNfseLevel] = useState<number>(1);
 
   // Cancel subscription modal state
@@ -299,16 +299,14 @@ export function ModulesManagementCard({
   // True quando o plano personalizado inclui o módulo de NF-e.
   const hasNfeInCustom = customModules.includes('nfe');
 
-  // Aplica de fato a mudança de plano via edge (após eventual redução de usuários).
-  // Se o plano personalizado inclui NF-e e o nível selecionado é diferente do atual,
-  // também chama a edge `change-nfse-tier` em seguida.
+  // Aplica a mudança via uma única edge. Plano, módulos, usuários e tier de NFS-e
+  // entram na mesma cotação para não liberar nenhum complemento fora do pagamento.
   const applyChange = (planCode: string, monthlyValue: number) => {
     if (!companyId) {
       toast.error('Empresa não encontrada.');
       return;
     }
     const isCustom = planCode === 'personalizado';
-    const needsTierChange = isCustom && hasNfeInCustom && selectedNfseLevel !== currentNfseTier && selectedNfseLevel > (currentNfseTier ?? 1);
     planChange.mutate(
       {
         companyId,
@@ -316,20 +314,17 @@ export function ModulesManagementCard({
         billingCycle,
         customModules: isCustom ? customModules : undefined,
         extraUsers: isCustom ? customExtraUsers : undefined,
+        nfseTier: isCustom && hasNfeInCustom ? selectedNfseLevel : undefined,
       },
       {
         onSuccess: async (result) => {
           toast.success(result.message);
-          if (result.asaas_warning) toast.warning(result.asaas_warning);
-          // Aplica upgrade de nível NFS-e se necessário (após o plano ser aceito).
-          if (needsTierChange) {
-            try {
-              const tierResult = await changeNfseTier({ companyId, targetTier: selectedNfseLevel });
-              if (tierResult.asaas_warning) toast.warning(tierResult.asaas_warning);
-            } catch (err) {
-              toast.warning(err instanceof Error ? err.message : 'Plano atualizado, mas não foi possível alterar o nível de NF-e. Tente novamente.');
-            }
+          if (result.requires_payment && result.checkout_url) {
+            setOpen(false);
+            navigate(result.checkout_url);
+            return;
           }
+          if (result.asaas_warning) toast.warning(result.asaas_warning);
           setOpen(false);
         },
         onError: (err) => {

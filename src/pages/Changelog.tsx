@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.32.0',
+    date: '14 de outubro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Upgrade com cobrança proporcional',
+        description: 'Ao aumentar o plano, os usuários ou os limites de Notas Fiscais e WhatsApp, você paga somente a diferença correspondente ao tempo restante até o próximo vencimento. A tela de pagamento mostra o ajuste, o crédito do período já pago e o valor cheio da próxima renovação antes da confirmação.',
+        category: 'recurso',
+      },
+      {
+        title: 'Downgrade sem surpresa na próxima cobrança',
+        description: 'Ao reduzir o plano, você continua com tudo o que já pagou até o fim do período atual. A redução entra na próxima cobrança pelo novo valor, sem reembolso do ciclo em andamento.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Proteção reforçada nas mudanças de assinatura',
+        description: 'Novos recursos e limites só são liberados depois da confirmação do pagamento. O valor, o ciclo e a empresa da cobrança são conferidos novamente antes de qualquer alteração na assinatura.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.31.3',
     date: '14 de outubro de 2026',
     type: 'patch',

@@ -142,6 +142,8 @@ export interface RenewalCompanySnapshot {
   pending_billing_cycle?: string | null;
   pending_max_users?: number | null;
   pending_modules?: unknown;
+  pending_nfse_tier?: number | null;
+  pending_whatsapp_tier?: number | null;
 }
 
 export interface RenewalUpdateSplit {
@@ -227,10 +229,18 @@ export function splitRenewalCompanyUpdate(
     if (company.pending_max_users !== null && company.pending_max_users !== undefined) {
       extras.max_users = company.pending_max_users;
     }
+    if (company.pending_nfse_tier !== null && company.pending_nfse_tier !== undefined) {
+      extras.nfse_tier = company.pending_nfse_tier;
+    }
+    if (company.pending_whatsapp_tier !== null && company.pending_whatsapp_tier !== undefined) {
+      extras.whatsapp_tier = company.pending_whatsapp_tier;
+    }
     extras.pending_plan_code = null;
     extras.pending_billing_cycle = null;
     extras.pending_max_users = null;
     extras.pending_modules = null;
+    extras.pending_nfse_tier = null;
+    extras.pending_whatsapp_tier = null;
     extras.pending_subscription_value = null;
 
     downgrade = {

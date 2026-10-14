@@ -39,6 +39,7 @@ import { applyWrite, tryWrite, WriteWarnings } from "../_shared/db-write.ts";
 import {
   renewalExpirationAnchor,
   resolveEffectiveBillingCycle,
+  splitRenewalCompanyUpdate,
 } from "../_shared/asaas-webhook-renewal.ts";
 
 interface ConfirmRequest {
@@ -59,6 +60,12 @@ interface CompanySnapshot {
   salesperson_id: string | null;
   asaas_customer_id: string | null;
   pending_subscription_value: number | null;
+  pending_plan_code: string | null;
+  pending_billing_cycle: string | null;
+  pending_modules: unknown;
+  pending_max_users: number | null;
+  pending_nfse_tier: number | null;
+  pending_whatsapp_tier: number | null;
   custom_price: number | null;
   custom_price_months: number | null;
   custom_price_payments_made: number | null;
@@ -67,6 +74,7 @@ interface CompanySnapshot {
 
 interface SubscriptionPaymentSnapshot {
   id: string;
+  company_id: string;
   asaas_payment_id: string | null;
   amount: number;
   ltv_credited_at: string | null;
@@ -150,6 +158,25 @@ async function activatePlanModules(
   }
 }
 
+async function syncPlanModulesExact(
+  supabase: ReturnType<typeof createClient>,
+  companyId: string,
+  moduleCodes: string[],
+  warnings: WriteWarnings,
+) {
+  await tryWrite(
+    "remoção dos módulos do downgrade confirmado",
+    supabase.from("company_modules").delete().eq("company_id", companyId),
+    { warnings, recovery: { company_id: companyId, modules: moduleCodes.join(",") } },
+  );
+  if (moduleCodes.length === 0) return;
+  await tryWrite(
+    "ativação dos módulos do downgrade confirmado",
+    supabase.from("company_modules").insert(moduleCodes.map((module_code) => ({ company_id: companyId, module_code }))),
+    { warnings, recovery: { company_id: companyId, modules: moduleCodes.join(",") } },
+  );
+}
+
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
@@ -200,6 +227,7 @@ Deno.serve(async (req) => {
       .select(
         "id, name, subscription_status, subscription_plan, subscription_value, subscription_expires_at, " +
           "billing_cycle, ltv, origin, salesperson_id, asaas_customer_id, pending_subscription_value, " +
+          "pending_plan_code, pending_billing_cycle, pending_modules, pending_max_users, pending_nfse_tier, pending_whatsapp_tier, " +
           "custom_price, custom_price_months, custom_price_payments_made, custom_price_permanent",
       )
       .eq("id", company_id)
@@ -215,10 +243,13 @@ Deno.serve(async (req) => {
     if (payment_id) {
       const { data: sp } = await supabase
         .from("subscription_payments")
-        .select("id, asaas_payment_id, amount, ltv_credited_at, billing_type, billing_cycle, status, paid_at")
+        .select("id, company_id, asaas_payment_id, amount, ltv_credited_at, billing_type, billing_cycle, status, paid_at")
         .eq("asaas_payment_id", payment_id)
         .maybeSingle();
       subscriptionPayment = sp as unknown as SubscriptionPaymentSnapshot | null;
+    }
+    if (subscriptionPayment && subscriptionPayment.company_id !== company_id) {
+      return json({ error: "O pagamento não pertence a esta empresa." }, 400);
     }
     if (subscriptionPayment?.ltv_credited_at) {
       return json({ success: true, already_processed: true, company_id });
@@ -355,29 +386,8 @@ Deno.serve(async (req) => {
     }
 
     // ===== 7) Atualiza vencimento + status active + pending + custom price =====
-    const companyUpdate: Record<string, unknown> = {
-      subscription_status: "active",
-      subscription_expires_at: newExpiration,
-    };
-    if (company.pending_subscription_value !== null && company.pending_subscription_value !== undefined) {
-      companyUpdate.subscription_value = company.pending_subscription_value;
-      companyUpdate.pending_subscription_value = null;
-    }
-    if (
-      company.custom_price !== null &&
-      company.custom_price !== undefined &&
-      company.custom_price_months !== null &&
-      company.custom_price_months !== undefined &&
-      !company.custom_price_permanent
-    ) {
-      const paymentsMade = (company.custom_price_payments_made || 0) + 1;
-      companyUpdate.custom_price_payments_made = paymentsMade;
-      if (paymentsMade >= company.custom_price_months) {
-        companyUpdate.custom_price = null;
-        companyUpdate.custom_price_months = null;
-        companyUpdate.custom_price_payments_made = 0;
-      }
-    }
+    const split = splitRenewalCompanyUpdate(company, newExpiration);
+    const companyUpdate: Record<string, unknown> = { ...split.vital, ...split.extras };
 
     // FATAL (apesar de pós-mutex): esta é A renovação. Se falhar, o cliente pagou e
     // NÃO recebeu acesso/vencimento novo. Não há reparo automático (mutex consumido),
@@ -387,8 +397,23 @@ Deno.serve(async (req) => {
       supabase.from("companies").update(companyUpdate).eq("id", company_id),
     );
 
-    // Ativa módulos do plano (idempotente).
-    await activatePlanModules(supabase, company_id, company.subscription_plan ?? null, warnings);
+    if (split.downgrade) {
+      let moduleCodes = split.downgrade.explicitModules;
+      if (moduleCodes === null) {
+        const { data: targetPlan } = await supabase
+          .from("subscription_plans")
+          .select("included_modules")
+          .eq("code", split.downgrade.planCode)
+          .maybeSingle();
+        moduleCodes = Array.isArray(targetPlan?.included_modules)
+          ? targetPlan.included_modules.filter((value): value is string => typeof value === "string")
+          : [];
+      }
+      await syncPlanModulesExact(supabase, company_id, moduleCodes, warnings);
+    } else {
+      // Ativa módulos do plano (idempotente).
+      await activatePlanModules(supabase, company_id, company.subscription_plan ?? null, warnings);
+    }
 
     // ===== 8) company_payments (guard por dia pra não duplicar com o webhook) =====
     const today = new Date();

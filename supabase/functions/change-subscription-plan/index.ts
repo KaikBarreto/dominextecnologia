@@ -18,10 +18,10 @@
 // Decisão upgrade vs downgrade vs igual (compara com o VALOR EFETIVO atual da empresa:
 // custom_price se promoção ativa, senão subscription_value — NUNCA pending):
 //
-//   B1 — UPGRADE (novo > atual): o preço novo entra JÁ na próxima cobrança.
-//        → subscription_value = novo (imediato); limpa pending_subscription_value;
-//          aplica plano/módulos/max_users/billing_cycle AGORA; sincroniza company_modules;
-//          atualiza a assinatura no Asaas (PUT /v3/subscriptions/{id}) se houver sub_*.
+//   B1 — UPGRADE (novo > atual): calcula a diferença proporcional até o vencimento.
+//        → cria cotação imutável; o checkout gera uma cobrança única; plano, módulos,
+//          usuários e novo valor recorrente só são aplicados pelo webhook após confirmação.
+//          Na renovação seguinte, cobra o valor integral do novo plano.
 //
 //   B2 — DOWNGRADE (novo < atual): paga o ciclo atual; o valor menor vale no próximo.
 //        → pending_subscription_value = novo; NÃO mexe em subscription_value nem no Asaas.
@@ -29,10 +29,7 @@
 //          O acesso atual é preservado integralmente. A INTENÇÃO de downgrade (plano +
 //          módulos + max_users + extra_users alvo) fica registrada em subscription_history
 //          (reason estruturado) para o webhook de renovação aplicar quando o ciclo virar.
-//          ⚠️ SINALIZAÇÃO: o webhook (asaas-webhook) ainda NÃO lê esse pending para trocar
-//          plano/módulos na renovação — hoje ele só atualiza o valor. Portanto, no MVP, o
-//          downgrade AGENDA o valor e registra a intenção, mas a troca efetiva de
-//          plano/módulos no próximo ciclo depende de um passo futuro no webhook.
+//          O webhook de renovação aplica os pending_* quando o próximo ciclo virar.
 //
 //   IGUAL (novo == atual): aplica plano/módulos/max_users/billing_cycle agora (reorganização
 //        sem mudança de preço — ex: trocar módulos mantendo o mesmo valor); limpa pending.
@@ -49,6 +46,11 @@ import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 import { asaas, AsaasConfigError, AsaasApiError } from "../_shared/asaas-client.ts";
 import { authorizeAsaasCompany } from "../_shared/asaas-auth.ts";
 import { applyWrite, tryWrite, WriteWarnings } from "../_shared/db-write.ts";
+import {
+  calculateUpgradeProration,
+  roundSubscriptionMoney,
+  subscriptionPeriodValue,
+} from "../_shared/subscription-proration.ts";
 
 class ValidationError extends Error {}
 
@@ -70,7 +72,10 @@ interface ChangePlanRequest {
   billing_cycle?: "monthly" | "yearly";
   custom_modules?: string[];
   extra_users?: number;
+  nfse_tier?: number;
 }
+
+const MIN_UPGRADE_CHARGE = 5;
 
 Deno.serve(async (req) => {
   const cors = handleCors(req);
@@ -91,6 +96,7 @@ Deno.serve(async (req) => {
       billing_cycle,
       custom_modules,
       extra_users,
+      nfse_tier,
     } = body;
 
     if (!company_id) throw new ValidationError("Empresa não informada.");
@@ -136,7 +142,7 @@ Deno.serve(async (req) => {
     const { data: company, error: companyError } = await supabase
       .from("companies")
       .select(
-        "id, name, subscription_plan, subscription_value, pending_subscription_value, max_users, extra_users, billing_cycle, asaas_subscription_id, custom_price, custom_price_months, custom_price_payments_made, subscription_status",
+        "id, name, subscription_plan, subscription_value, pending_subscription_value, max_users, extra_users, billing_cycle, asaas_subscription_id, custom_price, custom_price_months, custom_price_payments_made, subscription_status, subscription_expires_at, nfse_tier, whatsapp_tier",
       )
       .eq("id", company_id)
       .single();
@@ -236,6 +242,57 @@ Deno.serve(async (req) => {
       throw new ValidationError("Não foi possível calcular o valor do plano. Selecione ao menos um módulo.");
     }
 
+    // Tiers são parte do preço e do entitlement. O tier 1 de NFS-e já está
+    // embutido no módulo/plano; WhatsApp tier 1 é grátis. Preserva o nível pago
+    // quando o módulo continua no alvo e volta ao nível 1 quando ele é removido.
+    const currentNfseTier = Number(company.nfse_tier) || 1;
+    const currentWhatsappTier = Number(company.whatsapp_tier) || 1;
+    const [nfseAccess, whatsappAccess] = await Promise.all([
+      supabase.rpc("company_has_module", { p_company_id: company_id, p_module_code: "nfe" }),
+      supabase.rpc("company_has_module", { p_company_id: company_id, p_module_code: "whatsapp" }),
+    ]);
+    if (nfseAccess.error || whatsappAccess.error) {
+      throw new ValidationError(
+        "Não foi possível confirmar os módulos atuais para calcular o valor. Tente novamente.",
+      );
+    }
+    const currentlyHasNfse = nfseAccess.data;
+    const currentlyHasWhatsapp = whatsappAccess.data;
+    const requestedNfseTier = Number(nfse_tier);
+    if (Number.isFinite(requestedNfseTier) && ![1, 2, 3, 4].includes(requestedNfseTier)) {
+      throw new ValidationError("Nível de Notas Fiscais inválido.");
+    }
+    const targetNfseTier = targetModules.includes("nfe")
+      ? (Number.isFinite(requestedNfseTier) ? requestedNfseTier : currentlyHasNfse ? currentNfseTier : 1)
+      : 1;
+    const targetWhatsappTier = targetModules.includes("whatsapp") && currentlyHasWhatsapp
+      ? currentWhatsappTier
+      : 1;
+
+    if (targetNfseTier > 1) {
+      const { data: nfsePrices, error: nfsePriceError } = await supabase
+        .from("nfse_tiers")
+        .select("tier, price")
+        .in("tier", [1, targetNfseTier]);
+      if (nfsePriceError || !nfsePrices) {
+        throw new ValidationError("Não foi possível calcular o nível de Notas Fiscais.");
+      }
+      const byTier = new Map(nfsePrices.map((row) => [Number(row.tier), Number(row.price) || 0]));
+      if (!byTier.has(targetNfseTier)) throw new ValidationError("Nível de Notas Fiscais não encontrado.");
+      targetMonthlyValue += (byTier.get(targetNfseTier) ?? 0) - (byTier.get(1) ?? 0);
+    }
+    if (targetWhatsappTier > 1) {
+      const { data: whatsappPrice, error: whatsappPriceError } = await supabase
+        .from("whatsapp_tiers")
+        .select("price")
+        .eq("tier", targetWhatsappTier)
+        .maybeSingle();
+      if (whatsappPriceError || !whatsappPrice) {
+        throw new ValidationError("Não foi possível calcular o nível de WhatsApp.");
+      }
+      targetMonthlyValue += Number(whatsappPrice.price) || 0;
+    }
+
     // --- Valor EFETIVO atual (custom_price se promoção ativa, senão subscription_value) ---
     const cp = Number(company.custom_price) || 0;
     const cpMonths = Number(company.custom_price_months) || 0;
@@ -245,8 +302,21 @@ Deno.serve(async (req) => {
       ? cp
       : Number(company.subscription_value) || 0;
 
-    const isUpgrade = targetMonthlyValue > currentEffectiveValue;
-    const isDowngrade = targetMonthlyValue < currentEffectiveValue;
+    const currentCycle: "monthly" | "yearly" = company.billing_cycle === "yearly"
+      ? "yearly"
+      : "monthly";
+    // Reduzir o compromisso anual para mensal nunca entra no meio do contrato,
+    // mesmo que o plano alvo tenha preço mensal maior. A troca fica agendada.
+    const annualToMonthly = currentCycle === "yearly" && cycleForDb === "monthly";
+    let isUpgrade = targetMonthlyValue > currentEffectiveValue;
+    let isDowngrade = targetMonthlyValue < currentEffectiveValue;
+    if (annualToMonthly) {
+      isUpgrade = false;
+      isDowngrade = true;
+    } else if (currentCycle === "monthly" && cycleForDb === "yearly" && !isDowngrade) {
+      // Mensal -> anual cria um novo compromisso anual, ainda que seja o mesmo plano.
+      isUpgrade = true;
+    }
     const changeKind = isUpgrade ? "upgrade" : isDowngrade ? "downgrade" : "igual";
 
     // ===================================================================
@@ -271,10 +341,51 @@ Deno.serve(async (req) => {
             pending_billing_cycle: cycleForDb,
             pending_modules: targetModules,
             pending_max_users: targetMaxUsers,
+            pending_nfse_tier: targetNfseTier,
+            pending_whatsapp_tier: targetWhatsappTier,
           })
           .eq("id", company_id),
         { rethrow: () => new ValidationError("Não foi possível agendar a mudança de plano. Tente de novo.") },
       );
+
+      // A redução já vale na PRIMEIRA cobrança seguinte. Para subscriptions
+      // tradicionais, inclusive a subscription criada por uma autorização de Pix
+      // Automático, propagamos o alvo para cobranças futuras já materializadas.
+      // Entitlements continuam intactos até o webhook confirmar o pagamento.
+      let asaasUpdated = false;
+      let asaasWarning: string | null = null;
+      const recurrenceId: string | null = company.asaas_subscription_id ?? null;
+      if (recurrenceId) {
+        try {
+          let subscriptionId = recurrenceId.startsWith("sub_") ? recurrenceId : null;
+          if (!subscriptionId) {
+            const authorization = await asaas.get(
+              `/pix/automatic/authorizations/${encodeURIComponent(recurrenceId)}`,
+            );
+            subscriptionId = typeof authorization?.subscriptionId === "string"
+              ? authorization.subscriptionId
+              : null;
+          }
+
+          if (subscriptionId?.startsWith("sub_")) {
+            const yearly = cycleForDb === "yearly";
+            await asaas.put(`/subscriptions/${subscriptionId}`, {
+              value: subscriptionPeriodValue(targetMonthlyValue, cycleForDb),
+              cycle: yearly ? "YEARLY" : "MONTHLY",
+              ...(yearly ? { billingType: "UNDEFINED" } : {}),
+              updatePendingPayments: true,
+            });
+            asaasUpdated = true;
+          } else {
+            asaasWarning =
+              "O downgrade foi agendado, mas a cobrança automática futura precisa de conferência.";
+          }
+        } catch (e) {
+          asaasWarning =
+            "O downgrade foi agendado, mas não foi possível sincronizar a próxima cobrança com a operadora agora.";
+          console.error(`[change-plan] falha ao sincronizar downgrade da recorrência ${recurrenceId}:`, e);
+        }
+      }
 
       // Registra a INTENÇÃO de downgrade (plano + módulos + usuários alvo) pra um
       // passo futuro no webhook de renovação aplicar quando o ciclo virar.
@@ -314,12 +425,164 @@ Deno.serve(async (req) => {
           change_kind: "downgrade",
           scheduled_value: targetMonthlyValue,
           current_value: company.subscription_value ?? currentEffectiveValue,
+          asaas_updated: asaasUpdated,
+          asaas_warning: asaasWarning,
           message:
             "Downgrade agendado. Você mantém o plano atual até o fim do período já pago; o novo valor passa a valer na próxima cobrança.",
           ...warnings.toBody(),
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    // ===================================================================
+    // UPGRADE PROPORCIONAL: cria cotacao imutavel e NAO libera acesso.
+    // O checkout gera uma cobranca avulsa e o webhook aplica o alvo depois
+    // do dinheiro confirmado. Trial/conta inativa continua no fluxo de venda.
+    // ===================================================================
+    const periodEnd = company.subscription_expires_at
+      ? new Date(company.subscription_expires_at)
+      : null;
+    const now = new Date();
+    const canProrate = isUpgrade &&
+      company.subscription_status === "active" &&
+      periodEnd !== null &&
+      Number.isFinite(periodEnd.getTime()) &&
+      periodEnd.getTime() > now.getTime();
+
+    if (canProrate) {
+      const quote = calculateUpgradeProration({
+        now,
+        periodEnd: periodEnd!,
+        currentCycle,
+        targetCycle: cycleForDb,
+        currentMonthlyValue: currentEffectiveValue,
+        targetMonthlyValue,
+      });
+      const {
+        periodStart,
+        remainingRatio,
+        sourcePeriodValue,
+        targetPeriodValue,
+        resetsBillingAnchor,
+        creditAmount,
+        amountDue,
+        nextRenewalAt,
+      } = quote;
+
+      // Ajustes residuais menores que o piso do gateway sao concedidos como
+      // cortesia e seguem para a aplicacao imediata abaixo.
+      if (amountDue >= MIN_UPGRADE_CHARGE) {
+        const normalizedModules = [...targetModules].sort();
+        const fingerprint = [
+          company.subscription_plan ?? "",
+          plan_code,
+          currentCycle,
+          cycleForDb,
+          targetMonthlyValue.toFixed(2),
+          targetMaxUsers,
+          targetExtraUsers,
+          targetNfseTier,
+          targetWhatsappTier,
+          normalizedModules.join(","),
+          periodEnd!.toISOString(),
+        ].join("|");
+
+        // Libera o fingerprint de cotacoes que venceram antes da cobranca ser criada.
+        await applyWrite(
+          "expiração de cotação proporcional anterior",
+          supabase
+            .from("subscription_change_requests")
+            .update({ status: "expired" })
+            .eq("company_id", company_id)
+            .eq("request_fingerprint", fingerprint)
+            .eq("status", "pending")
+            .lte("expires_at", now.toISOString()),
+          { rethrow: () => new ValidationError("Não foi possível renovar a cotação do upgrade.") },
+        );
+
+        // Reabrir o mesmo upgrade nao cria varias cotacoes/cobrancas concorrentes.
+        const { data: existingRequest } = await supabase
+          .from("subscription_change_requests")
+          .select("id, amount_due, status, expires_at")
+          .eq("company_id", company_id)
+          .eq("request_fingerprint", fingerprint)
+          .in("status", ["pending", "payment_pending"])
+          .gt("expires_at", now.toISOString())
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        let requestId = existingRequest?.id ?? null;
+        if (!requestId) {
+          const { data: createdRequest, error: requestError } = await supabase
+            .from("subscription_change_requests")
+            .insert({
+              company_id,
+              requested_by: auth.userId ?? null,
+              source_plan_code: company.subscription_plan ?? null,
+              target_plan_code: plan_code,
+              source_billing_cycle: currentCycle,
+              target_billing_cycle: cycleForDb,
+              source_subscription_value: roundSubscriptionMoney(Number(company.subscription_value) || 0),
+              source_monthly_value: roundSubscriptionMoney(currentEffectiveValue),
+              target_monthly_value: roundSubscriptionMoney(targetMonthlyValue),
+              source_period_value: sourcePeriodValue,
+              target_period_value: targetPeriodValue,
+              credit_amount: creditAmount,
+              amount_due: amountDue,
+              remaining_ratio: Number(remainingRatio.toFixed(8)),
+              period_started_at: periodStart.toISOString(),
+              period_ends_at: periodEnd!.toISOString(),
+              next_renewal_at: nextRenewalAt.toISOString(),
+              resets_billing_anchor: resetsBillingAnchor,
+              target_modules: normalizedModules,
+              target_max_users: targetMaxUsers,
+              target_extra_users: targetExtraUsers,
+              source_nfse_tier: currentNfseTier,
+              target_nfse_tier: targetNfseTier,
+              source_whatsapp_tier: currentWhatsappTier,
+              target_whatsapp_tier: targetWhatsappTier,
+              request_fingerprint: fingerprint,
+              expires_at: new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString(),
+            })
+            .select("id")
+            .single();
+          if (requestError || !createdRequest) {
+            // Corrida do indice parcial: tenta reutilizar a request vencedora.
+            const { data: racedRequest } = await supabase
+              .from("subscription_change_requests")
+              .select("id")
+              .eq("company_id", company_id)
+              .eq("request_fingerprint", fingerprint)
+              .in("status", ["pending", "payment_pending"])
+              .maybeSingle();
+            if (!racedRequest) {
+              console.error("[change-plan] falha ao criar cotacao proporcional:", requestError);
+              throw new ValidationError("Não foi possível calcular o upgrade agora. Tente novamente.");
+            }
+            requestId = racedRequest.id;
+          } else {
+            requestId = createdRequest.id;
+          }
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            change_kind: "upgrade",
+            requires_payment: true,
+            change_request_id: requestId,
+            checkout_url: `/checkout?mode=upgrade&change=${requestId}`,
+            amount_due: amountDue,
+            credit_amount: creditAmount,
+            remaining_ratio: Number(remainingRatio.toFixed(8)),
+            next_renewal_at: nextRenewalAt.toISOString(),
+            message: "Upgrade preparado. Confirme o pagamento proporcional para liberar os novos recursos.",
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
     }
 
     // ===================================================================
@@ -339,7 +602,18 @@ Deno.serve(async (req) => {
       pending_billing_cycle: null,
       pending_modules: null,
       pending_max_users: null,
+      pending_nfse_tier: null,
+      pending_whatsapp_tier: null,
+      nfse_tier: targetNfseTier,
+      whatsapp_tier: targetWhatsappTier,
     };
+    if (isUpgrade) {
+      // O upgrade encerra qualquer promocao do plano anterior. Sem limpar estes
+      // campos, a proxima reconciliacao ainda enxergaria o preco promocional antigo.
+      companyUpdate.custom_price = null;
+      companyUpdate.custom_price_months = null;
+      companyUpdate.custom_price_payments_made = 0;
+    }
     // FATAL: define quanto o cliente passa a pagar. Roda ANTES de qualquer chamada
     // ao gateway (o PUT no Asaas está no passo 4), então falhar aqui não cobra nada.
     await applyWrite(
@@ -384,7 +658,7 @@ Deno.serve(async (req) => {
         previous_status: company.subscription_status ?? null,
         new_status: company.subscription_status ?? null,
         reason: changeKind === "upgrade"
-          ? "Upgrade de plano (valor novo na próxima cobrança)"
+          ? "Upgrade sem cobrança proporcional (trial, conta inativa ou ajuste abaixo de R$ 5)"
           : "Reorganização de módulos sem mudança de valor",
       }),
       {
@@ -438,7 +712,7 @@ Deno.serve(async (req) => {
         asaas_updated: asaasUpdated,
         asaas_warning: asaasWarning,
         message: changeKind === "upgrade"
-          ? "Plano atualizado! O novo valor já entra na próxima cobrança e os recursos estão liberados."
+          ? "Plano atualizado. O ajuste proporcional foi concedido e os recursos já estão liberados."
           : "Plano atualizado com sucesso.",
         ...warnings.toBody(),
       }),

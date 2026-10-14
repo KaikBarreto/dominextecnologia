@@ -9,8 +9,12 @@ export interface ChangeNfseTierInput {
 
 export interface ChangeNfseTierResult {
   ok: boolean;
-  tier: number;
-  new_subscription_value: number;
+  tier?: number;
+  new_subscription_value?: number;
+  requires_payment?: boolean;
+  change_request_id?: string;
+  checkout_url?: string;
+  amount_due?: number;
   asaas_updated?: boolean;
   asaas_warning?: string;
   message: string;
@@ -20,10 +24,8 @@ export interface ChangeNfseTierResult {
  * Sobe o NÍVEL do módulo de Notas Fiscais (NFS-e) do tenant via edge function
  * `change-nfse-tier` (service_role, valida posse/super_admin).
  *
- * A edge aplica o upgrade imediatamente (cota maior já liberada), ajusta o valor da
- * assinatura (delta entre os preços dos níveis) e sincroniza o Asaas. Downgrade está
- * fora de escopo — a edge rejeita com `invalid_tier_change`. Se o módulo `nfe` não
- * estiver ativo, rejeita com `module_not_active` (é caso de contratar o módulo).
+ * Para tenant ativo, a edge cria uma cotação proporcional e a cota só aumenta
+ * depois do pagamento confirmado. Super admin pode fazer concessão manual.
  *
  * Invalida o estado de módulos/assinatura e o medidor de cota (Fase 3).
  */
@@ -59,7 +61,7 @@ export function useNfseTierChange() {
       queryClient.invalidateQueries({ queryKey: ['company-modules-info', companyId] });
       queryClient.invalidateQueries({ queryKey: ['my-company'] });
       queryClient.invalidateQueries({ queryKey: ['subscription-history'] });
-      // Medidor de consumo de NFS-e (Fase 3) — atualiza o selo após o upgrade.
+      // Se houver checkout, o medidor só muda depois do webhook.
       queryClient.invalidateQueries({ queryKey: ['nfse-quota', companyId] });
     },
   });

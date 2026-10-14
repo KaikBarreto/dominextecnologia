@@ -46,6 +46,8 @@ interface CreatePaymentRequest {
   // pra validar o `amount` contra o preço desse plano (e não contra o plano
   // antigo guardado na empresa). Ausente em renovação.
   plan_code?: string;
+  purpose?: "renewal" | "upgrade";
+  change_request_id?: string;
   // Cartão
   card_holder_name?: string;
   card_holder_email?: string;
@@ -57,6 +59,15 @@ interface CreatePaymentRequest {
   card_holder_phone?: string;
   card_holder_postal_code?: string;
   card_holder_address_number?: string;
+}
+
+interface UpgradeChangeRequest {
+  id: string;
+  status: "pending" | "payment_pending" | "applied" | "expired" | "cancelled" | "failed" | "reversed";
+  expires_at: string;
+  amount_due: number;
+  target_billing_cycle: "monthly" | "yearly";
+  resets_billing_anchor: boolean;
 }
 
 /**
@@ -130,6 +141,8 @@ Deno.serve(async (req) => {
       pix_recurring,
       billing_cycle: requestedBillingCycle,
       plan_code,
+      purpose,
+      change_request_id,
     } = body;
 
     if (!company_id) throw new ValidationError("company_id é obrigatório.");
@@ -149,78 +162,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ========== IDEMPOTÊNCIA: reusar cobrança PENDING < 30min ==========
+    // A busca idempotente pode acontecer cedo, mas a reutilização só ocorre
+    // DEPOIS da reconciliação server-side abaixo. Uma cobrança antiga nunca pode
+    // pular a validação do valor/ciclo atualmente autorizado para a empresa.
     const { data: existingPending } = await supabase
       .from("subscription_payments")
-      .select("id, asaas_payment_id, created_at, billing_type, invoice_url, pix_qr_code, pix_copy_paste, pix_expiration_date, due_date, status, amount")
+      .select("id, asaas_payment_id, created_at, billing_type, invoice_url, pix_qr_code, pix_copy_paste, pix_expiration_date, due_date, status, amount, subscription_change_request_id")
       .eq("company_id", company_id)
       .eq("status", "PENDING")
       .order("created_at", { ascending: false })
       .limit(1);
-
-    if (existingPending && existingPending.length > 0) {
-      const existing = existingPending[0];
-      const minutesAgo = (Date.now() - new Date(existing.created_at).getTime()) / 1000 / 60;
-
-      // Pix Automático grava aut_* (não pay_*); detecta mudança de modo recorrente.
-      const existingIsPixAutomatic = existing.billing_type?.toUpperCase() === "PIX" &&
-        existing.asaas_payment_id && !existing.asaas_payment_id.startsWith("pay_");
-      const requestingPixAutomatic = billing_type === "PIX" && pix_recurring === true;
-      const recurringMismatch = billing_type === "PIX" && (existingIsPixAutomatic !== requestingPixAutomatic);
-      const amountMismatch = existing.amount !== amount;
-
-      if (minutesAgo < 30 && existing.billing_type?.toUpperCase() === billing_type && !recurringMismatch && !amountMismatch) {
-        // Para boleto, busca linha digitável e bankSlipUrl atuais.
-        let bankSlipUrl: string | null = null;
-        let identificationField: string | null = null;
-        if (billing_type === "BOLETO" && existing.asaas_payment_id) {
-          try {
-            const idFieldData = await asaas.get(`/payments/${existing.asaas_payment_id}/identificationField`);
-            identificationField = idFieldData.identificationField ?? null;
-            bankSlipUrl = idFieldData.bankSlipUrl ?? null;
-            if (!bankSlipUrl) {
-              const paymentInfo = await asaas.get(`/payments/${existing.asaas_payment_id}`);
-              bankSlipUrl = paymentInfo.bankSlipUrl ?? null;
-            }
-          } catch (e) {
-            console.error("Erro ao buscar dados do boleto existente:", e);
-          }
-        }
-
-        return new Response(
-          JSON.stringify({
-            success: true,
-            payment_id: existing.asaas_payment_id,
-            status: existing.status,
-            invoice_url: existing.invoice_url,
-            bank_slip_url: bankSlipUrl,
-            identification_field: identificationField,
-            pix_qr_code: existing.pix_qr_code,
-            pix_copy_paste: existing.pix_copy_paste,
-            pix_expiration_date: existing.pix_expiration_date,
-            due_date: existing.due_date,
-            local_payment_id: existing.id,
-            reused_existing: true,
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-
-      // Mudança de modo recorrente → invalida a antiga pra não ser reusada.
-      if (recurringMismatch && minutesAgo < 30) {
-        // FATAL: se esta linha não for invalidada, ela segue PENDING e disputa a
-        // reutilização com a cobrança que vamos criar logo abaixo. Ainda NÃO houve
-        // nenhuma chamada de criação no gateway neste ponto, então falhar aqui é
-        // barato: o usuário repete e nada foi cobrado.
-        await applyWrite(
-          "invalidação da cobrança anterior (subscription_payments CANCELLED)",
-          supabase
-            .from("subscription_payments")
-            .update({ status: "CANCELLED" })
-            .eq("id", existing.id),
-        );
-      }
-    }
 
     // --- Empresa ---
     const { data: company, error: companyError } = await supabase
@@ -252,13 +203,74 @@ Deno.serve(async (req) => {
     // Tolerância: só centavos de arredondamento (max(2% do esperado, R$ 0,02)),
     // nunca a diferença entre planos.
     let chargeTerms: ChargeTerms;
-    {
+    let upgradeRequest: UpgradeChangeRequest | null = null;
+
+    if (purpose === "upgrade") {
+      if (!change_request_id) {
+        throw new ValidationError("Cotação do upgrade não informada.");
+      }
+      const { data: requestRow, error: requestError } = await supabase
+        .from("subscription_change_requests")
+        .select("*")
+        .eq("id", change_request_id)
+        .eq("company_id", company_id)
+        .maybeSingle();
+      if (requestError || !requestRow) {
+        throw new ValidationError("Cotação do upgrade não encontrada.");
+      }
+      if (!["pending", "payment_pending"].includes(requestRow.status)) {
+        throw new ValidationError(
+          requestRow.status === "applied"
+            ? "Este upgrade já foi concluído."
+            : "Esta cotação de upgrade não está mais disponível.",
+        );
+      }
+      if (requestRow.status === "pending" && new Date(requestRow.expires_at).getTime() <= Date.now()) {
+        await applyWrite(
+          "expiração da cotação de upgrade",
+          supabase
+            .from("subscription_change_requests")
+            .update({ status: "expired" })
+            .eq("id", requestRow.id)
+            .eq("status", "pending"),
+        );
+        throw new ValidationError("Esta cotação expirou. Volte ao plano e calcule o upgrade novamente.");
+      }
+      const expected = Number(requestRow.amount_due) || 0;
+      if (!(expected > 0) || Math.abs(amount - expected) > 0.02) {
+        throw new ValidationError("O valor do upgrade mudou. Recarregue a página e tente novamente.");
+      }
+      if (
+        billing_type === "CREDIT_CARD" &&
+        requestRow.resets_billing_anchor === true &&
+        requestRow.target_billing_cycle === "yearly"
+      ) {
+        throw new ValidationError("A mudança para o ciclo anual deve ser paga à vista por Pix ou boleto.");
+      }
+      upgradeRequest = requestRow as UpgradeChangeRequest;
+      const upgradeCycle = requestRow.target_billing_cycle === "yearly" ? "yearly" : "monthly";
+      chargeTerms = {
+        billingCycle: upgradeCycle,
+        asaasCycle: upgradeCycle === "yearly" ? "YEARLY" : "MONTHLY",
+        pixAutomaticFrequency: upgradeCycle === "yearly" ? "ANNUALLY" : "MONTHLY",
+        expectedAmount: expected,
+        gatewayAmount: expected,
+      };
+    } else {
       // Valor efetivo mensal da empresa = fonte da verdade.
       const cp = Number(company.custom_price) || 0;
       const cpMonths = Number(company.custom_price_months) || 0;
       const cpMade = Number(company.custom_price_payments_made) || 0;
       const hasActiveCustomPrice = cp > 0 && cpMonths > 0 && cpMade < cpMonths;
-      const effectiveCompanyValue = hasActiveCustomPrice
+      const pendingRenewalValue = purpose === "renewal"
+        ? Number(company.pending_subscription_value) || 0
+        : 0;
+      // Se há downgrade agendado, a PRIMEIRA renovação seguinte já cobra o
+      // valor menor. Entitlements continuam atuais até o webhook confirmar esse
+      // pagamento e aplicar os campos pending_*.
+      const effectiveCompanyValue = pendingRenewalValue > 0
+        ? pendingRenewalValue
+        : hasActiveCustomPrice
         ? cp
         : Number(company.subscription_value) || 0;
 
@@ -349,9 +361,12 @@ Deno.serve(async (req) => {
       //  - Cartão: SEMPRE mensal (base).
       //  - PIX/boleto anual à vista: round(base × 12 × 0,8) (−20%).
       //  - PIX/boleto mensal: base.
+      const reconciledBillingCycle = purpose === "renewal" && company.pending_billing_cycle
+        ? company.pending_billing_cycle
+        : requestedBillingCycle;
       chargeTerms = resolveChargeTerms(
         billing_type,
-        requestedBillingCycle,
+        reconciledBillingCycle,
         monthlyBase,
         amount,
       );
@@ -373,6 +388,72 @@ Deno.serve(async (req) => {
     // Em especial, CREDIT_CARD nunca propaga `yearly` controlado pelo cliente.
     const asaasCycle = chargeTerms.asaasCycle;
     const cycleForDb = chargeTerms.billingCycle;
+
+    // ========== IDEMPOTÊNCIA: reusar cobrança PENDING < 30min ==========
+    // Só chegamos aqui depois de `amount` ter sido reconciliado com a fonte da
+    // verdade. Isso impede que uma cobrança pendente antiga/mais barata seja
+    // reaproveitada para renovar ou elevar uma assinatura atual.
+    if (existingPending && existingPending.length > 0) {
+      const existing = existingPending[0];
+      const minutesAgo = (Date.now() - new Date(existing.created_at).getTime()) / 1000 / 60;
+
+      // Pix Automático grava aut_* (não pay_*); detecta mudança de modo recorrente.
+      const existingIsPixAutomatic = existing.billing_type?.toUpperCase() === "PIX" &&
+        existing.asaas_payment_id && !existing.asaas_payment_id.startsWith("pay_");
+      const requestingPixAutomatic = billing_type === "PIX" && pix_recurring === true;
+      const recurringMismatch = billing_type === "PIX" && (existingIsPixAutomatic !== requestingPixAutomatic);
+      const amountMismatch = Math.abs(Number(existing.amount) - chargeTerms.expectedAmount) > 0.02;
+      const changeRequestMismatch = (existing.subscription_change_request_id ?? null) !==
+        (change_request_id ?? null);
+
+      if (minutesAgo < 30 && existing.billing_type?.toUpperCase() === billing_type && !recurringMismatch && !amountMismatch && !changeRequestMismatch) {
+        // Para boleto, busca linha digitável e bankSlipUrl atuais.
+        let bankSlipUrl: string | null = null;
+        let identificationField: string | null = null;
+        if (billing_type === "BOLETO" && existing.asaas_payment_id) {
+          try {
+            const idFieldData = await asaas.get(`/payments/${existing.asaas_payment_id}/identificationField`);
+            identificationField = idFieldData.identificationField ?? null;
+            bankSlipUrl = idFieldData.bankSlipUrl ?? null;
+            if (!bankSlipUrl) {
+              const paymentInfo = await asaas.get(`/payments/${existing.asaas_payment_id}`);
+              bankSlipUrl = paymentInfo.bankSlipUrl ?? null;
+            }
+          } catch (e) {
+            console.error("Erro ao buscar dados do boleto existente:", e);
+          }
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            payment_id: existing.asaas_payment_id,
+            status: existing.status,
+            invoice_url: existing.invoice_url,
+            bank_slip_url: bankSlipUrl,
+            identification_field: identificationField,
+            pix_qr_code: existing.pix_qr_code,
+            pix_copy_paste: existing.pix_copy_paste,
+            pix_expiration_date: existing.pix_expiration_date,
+            due_date: existing.due_date,
+            local_payment_id: existing.id,
+            reused_existing: true,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      // Mudança de modo recorrente → invalida a antiga pra não ser reusada.
+      if (recurringMismatch && minutesAgo < 30) {
+        await applyWrite(
+          "invalidação da cobrança anterior (subscription_payments CANCELLED)",
+          supabase
+            .from("subscription_payments")
+            .update({ status: "CANCELLED" })
+            .eq("id", existing.id),
+        );
+      }
+    }
 
     // --- CPF/CNPJ: da request, senão da empresa ---
     const providedCpfCnpj = cpf_cnpj?.replace(/\D/g, "") || "";
@@ -459,10 +540,12 @@ Deno.serve(async (req) => {
     const isFirstSale = company.subscription_status === "testing" ||
       company.subscription_status === "Testando" ||
       company.subscription_status === "trial";
-    const paymentType = isFirstSale ? "primeira_venda" : "renovacao";
+    const paymentType = upgradeRequest ? "upgrade" : isFirstSale ? "primeira_venda" : "renovacao";
 
     // --- Vencimento ---
-    const subscriptionExpiresAt = company.subscription_expires_at
+    const subscriptionExpiresAt = upgradeRequest
+      ? new Date()
+      : company.subscription_expires_at
       ? new Date(company.subscription_expires_at)
       : new Date();
     const dueDate = new Date(subscriptionExpiresAt);
@@ -532,8 +615,10 @@ Deno.serve(async (req) => {
     // Comparação ESTRITA: null/undefined (flag desligada/coluna ausente) não bloqueia
     // nada — o checkout da base inteira segue exatamente como hoje.
     if (company.billing_notifications_enabled === true) {
-      const creatingRecurring = (billing_type === "PIX" && pix_recurring === true) ||
-        (billing_type === "CREDIT_CARD" && !!body.card_number);
+      const creatingRecurring = !upgradeRequest && (
+        (billing_type === "PIX" && pix_recurring === true) ||
+        (billing_type === "CREDIT_CARD" && !!body.card_number)
+      );
       if (creatingRecurring) {
         console.log(
           `[create-asaas-payment] Empresa ${company_id} em modo e-mail: recusando criação de ` +
@@ -544,6 +629,147 @@ Deno.serve(async (req) => {
             "Para mudar a forma de pagamento, fale com o suporte.",
         );
       }
+    }
+
+    // ===================================================================
+    // UPGRADE: cobranca UNICA. Nunca cria/cancela recorrencia aqui.
+    // A recorrencia existente so muda de valor depois que o webhook aplica
+    // o upgrade. O externalReference carrega a request para recuperacao mesmo
+    // se a gravacao local falhar depois da cobranca nascer no gateway.
+    // ===================================================================
+    if (upgradeRequest) {
+      const externalReference = `upgrade:${upgradeRequest.id}:${company_id}`;
+      const paymentPayload: Record<string, unknown> = {
+        customer: asaasCustomerId,
+        billingType: billing_type,
+        value: upgradeRequest.amount_due,
+        dueDate: billing_type === "CREDIT_CARD" ? todayBRT : dueDateStr,
+        description: description || `Upgrade Dominex - ${company.name}`,
+        externalReference,
+      };
+
+      if (billing_type === "CREDIT_CARD") {
+        if (!body.card_number) throw new ValidationError("Dados do cartão não informados.");
+        paymentPayload.creditCard = {
+          holderName: body.card_holder_name,
+          number: body.card_number.replace(/\D/g, ""),
+          expiryMonth: body.card_expiry_month,
+          expiryYear: body.card_expiry_year,
+          ccv: body.card_ccv,
+        };
+        paymentPayload.creditCardHolderInfo = {
+          name: body.card_holder_name,
+          email: body.card_holder_email || "",
+          cpfCnpj: body.card_holder_cpf?.replace(/\D/g, ""),
+          phone: body.card_holder_phone?.replace(/\D/g, ""),
+          postalCode: body.card_holder_postal_code?.replace(/\D/g, ""),
+          addressNumber: body.card_holder_address_number,
+        };
+      } else {
+        paymentPayload.interest = { value: 1, type: "PERCENTAGE" };
+        paymentPayload.fine = { value: 2, type: "PERCENTAGE" };
+      }
+
+      const payment = await asaas.post(`/payments`, paymentPayload);
+      let pixQrCode: string | null = null;
+      let pixCopyPaste: string | null = null;
+      let pixExpirationDate: string | null = null;
+      let identificationField: string | null = null;
+
+      if (billing_type === "PIX") {
+        try {
+          const pixData = await asaas.get(`/payments/${payment.id}/pixQrCode`);
+          pixQrCode = pixData.encodedImage ?? null;
+          pixCopyPaste = pixData.payload ?? null;
+          const expiration = new Date();
+          expiration.setHours(expiration.getHours() + 24);
+          pixExpirationDate = expiration.toISOString();
+        } catch (error) {
+          console.error("[upgrade] erro ao buscar QR Code:", error);
+        }
+      }
+
+      if (billing_type === "BOLETO") {
+        try {
+          const boletoData = await asaas.get(`/payments/${payment.id}/identificationField`);
+          identificationField = boletoData.identificationField ?? null;
+        } catch (error) {
+          console.error("[upgrade] erro ao buscar linha digitável:", error);
+        }
+      }
+
+      const savedPayment = await tryWriteReturning<{ id: string }>(
+        "registro local da cobrança de upgrade (subscription_payments)",
+        supabase
+          .from("subscription_payments")
+          .insert({
+            company_id,
+            asaas_payment_id: payment.id,
+            asaas_customer_id: asaasCustomerId,
+            amount: Number(upgradeRequest.amount_due),
+            status: payment.status || "PENDING",
+            payment_method: billing_type.toLowerCase(),
+            billing_type,
+            billing_cycle: upgradeRequest.target_billing_cycle,
+            type: "upgrade",
+            pix_qr_code: pixQrCode,
+            pix_copy_paste: pixCopyPaste,
+            pix_expiration_date: pixExpirationDate,
+            invoice_url: payment.invoiceUrl,
+            due_date: billing_type === "CREDIT_CARD" ? todayBRT : dueDateStr,
+            subscription_change_request_id: upgradeRequest.id,
+          })
+          .select()
+          .single(),
+        {
+          warnings,
+          recovery: {
+            company_id,
+            change_request_id: upgradeRequest.id,
+            asaas_payment_id: payment.id,
+            amount: upgradeRequest.amount_due,
+          },
+        },
+      );
+
+      await tryWriteReturning<{ id: string }>(
+        "vínculo da cotação com a cobrança de upgrade",
+        supabase
+          .from("subscription_change_requests")
+          .update({ status: "payment_pending", asaas_payment_id: payment.id })
+          .eq("id", upgradeRequest.id)
+          .in("status", ["pending", "payment_pending"])
+          .select("id")
+          .single(),
+        {
+          warnings,
+          recovery: {
+            company_id,
+            change_request_id: upgradeRequest.id,
+            asaas_payment_id: payment.id,
+          },
+        },
+      );
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          payment_id: payment.id,
+          status: payment.status || "PENDING",
+          invoice_url: payment.invoiceUrl,
+          bank_slip_url: payment.bankSlipUrl,
+          identification_field: identificationField,
+          pix_qr_code: pixQrCode,
+          pix_copy_paste: pixCopyPaste,
+          pix_expiration_date: pixExpirationDate,
+          due_date: billing_type === "CREDIT_CARD" ? todayBRT : dueDateStr,
+          local_payment_id: savedPayment?.id,
+          ...warnings.toBody(),
+          change_request_id: upgradeRequest.id,
+          is_recurring: false,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     // ===================================================================

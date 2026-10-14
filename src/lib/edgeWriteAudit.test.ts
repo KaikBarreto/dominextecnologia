@@ -225,7 +225,7 @@ describe('change-subscription-plan — valor antes de histórico', () => {
     // verdade do gate de acesso, e a falha no Asaas vira `asaas_warning`. O que
     // não pode é o inverso: chamar o Asaas e gravar errado em silêncio.
     const update = src.indexOf('atualização da assinatura (companies)');
-    const put = src.indexOf('asaas.put(');
+    const put = src.indexOf('asaas.put(', update);
     expect(update).toBeGreaterThan(-1);
     expect(put).toBeGreaterThan(update);
     expect(src.slice(update - 200, update)).toContain('applyWrite');
@@ -259,11 +259,12 @@ describe('create-asaas-payment — a fronteira é a criação da cobrança no ga
     }
   });
 
-  it('o registro local da cobrança é NÃO-FATAL nas quatro formas de pagamento', () => {
+  it('o registro local da cobrança é NÃO-FATAL em todos os fluxos de pagamento', () => {
     // Depois da cobrança criada, um erro devolvido ao front faz o cliente tentar de
     // novo e gerar uma SEGUNDA cobrança. Cobrar duas vezes é pior que reconciliar.
     const labels = src.match(/registro local da cobrança[^"]*/g) ?? [];
-    expect(labels).toHaveLength(4);
+    // PIX automático, fallback PIX, cartão, avulsa e upgrade proporcional.
+    expect(labels).toHaveLength(5);
     for (const label of labels) {
       const i = src.indexOf(label);
       expect(src.slice(i - 200, i), label).toContain('tryWriteReturning');
@@ -273,7 +274,7 @@ describe('create-asaas-payment — a fronteira é a criação da cobrança no ga
 
   it('as respostas com local_payment_id carregam os avisos', () => {
     const respostas = src.match(/local_payment_id: savedPayment\?\.id,\s*\n\s*\.\.\.warnings\.toBody\(\),/g) ?? [];
-    expect(respostas).toHaveLength(4);
+    expect(respostas).toHaveLength(5);
   });
 });
 
