@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.32.4',
+    date: '15 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Faturar direto da ordem de serviço',
+        description: 'A ordem de serviço ganhou o botão Faturar. Ao clicar, você escolhe uma coisa ou outra: registrar que o dinheiro já entrou, ou gerar uma cobrança com PIX, boleto e link pronto para mandar ao cliente. O sistema passa a saber que aquela ordem já foi faturada, então a mesma venda não entra duas vezes no seu faturamento. Quem não usa faturamento não vê nada de diferente na tela.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.32.3',
     date: '15 de outubro de 2026',
     type: 'patch',
