@@ -10,27 +10,12 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import type { OsRevenueContext } from '@/hooks/useOsFinishRevenuePrompt';
+import { buildOsRevenuePrefill, resolveOsRevenueSuggestedAmount } from '@/lib/os-revenue';
 
 export interface OsFinishRevenueDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   context: OsRevenueContext | null;
-}
-
-type OsRevenueMessages = typeof MESSAGES['pt-br']['app']['finance']['osRevenue'];
-
-/**
- * Descrição que vai PARA O BANCO no lançamento. Sem travessão (régua de copy):
- * o separador é o ponto médio.
- */
-function buildDescription(t: OsRevenueMessages, ctx: OsRevenueContext): string {
-  const name = ctx.customerName?.trim() ?? '';
-  if (ctx.osNumber != null) {
-    return name
-      ? t.descriptionWithCustomer.replace('{number}', String(ctx.osNumber)).replace('{customer}', name)
-      : t.descriptionOsOnly.replace('{number}', String(ctx.osNumber));
-  }
-  return name ? `${t.descriptionFallback} · ${name}` : t.descriptionFallback;
 }
 
 /**
@@ -86,29 +71,17 @@ function OsFinishRevenueFlow({ open, onOpenChange, context }: FlowProps) {
     if (!open) setStep('ask');
   }, [open]);
 
-  const suggestedAmount =
-    typeof context.suggestedAmount === 'number' && Number.isFinite(context.suggestedAmount)
-      ? context.suggestedAmount
-      : null;
+  const suggestedAmount = resolveOsRevenueSuggestedAmount(context);
 
   /**
    * Pré-preenchimento do formulário. Memoizado porque `TransactionFormDialog`
    * usa o conteúdo do prefill pra montar os valores iniciais — objeto novo a
    * cada render seria trabalho repetido sem motivo.
    *
-   * `amount` é SUGESTÃO: o valor da OS pode não ser o que foi recebido, e o
-   * campo continua editável.
+   * Fórmula compartilhada com a ação manual "Faturar OS"
+   * (`OsBillingDialog`) — ver `src/lib/os-revenue.ts`.
    */
-  const prefill = useMemo(
-    () => ({
-      transaction_type: 'entrada' as const,
-      description: buildDescription(t, context),
-      amount: suggestedAmount ?? 0,
-      service_order_id: context.serviceOrderId,
-      ...(context.customerId ? { customer_id: context.customerId } : {}),
-    }),
-    [t, context, suggestedAmount],
-  );
+  const prefill = useMemo(() => buildOsRevenuePrefill(t, context), [t, context]);
 
   const handleTransactionSubmit = async (payload: any) => {
     const result = await createTransaction.mutateAsync(payload);

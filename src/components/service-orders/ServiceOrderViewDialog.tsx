@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Minus, Navigation, Copy, ClipboardList, CheckCircle, RotateCcw, Pause, Play, Pencil, Trash2, Link2, ChevronDown, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Minus, Navigation, Copy, ClipboardList, CheckCircle, RotateCcw, Pause, Play, Pencil, Trash2, Link2, ChevronDown, AlertTriangle, TrendingUp, Receipt } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +32,9 @@ import { OsMaterialsSection } from './OsMaterialsSection';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOsRevenueSummary } from '@/hooks/useOsRevenueSummary';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { useCanLaunchOsRevenue } from '@/hooks/useCanLaunchOsRevenue';
+import { OsBillingDialog } from './OsBillingDialog';
+import type { OsRevenueContext } from '@/hooks/useOsFinishRevenuePrompt';
 
 interface OSPhoto {
   id: string;
@@ -93,6 +96,13 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
   const { hasScreen } = useCompanyModules();
   const canSeeFinance = hasScreenAccess('screen:finance') && hasScreen('screen:finance');
   const osRevenue = useOsRevenueSummary(canSeeFinance ? serviceOrderId : null);
+  // Ação manual "Faturar OS" (lançar receita OU gerar cobrança). Gate único:
+  // `fn:os_finish_revenue` (a régua anti-default-allow de `useCanLaunchOsRevenue`
+  // já trata usuário legado sem permissão configurada como `false` — não mexer).
+  // Sem ela, nenhum botão novo aparece na tela (lei do CEO: nunca obrigatório).
+  const canLaunchRevenue = useCanLaunchOsRevenue();
+  const canSeeBilling = canSeeFinance && canLaunchRevenue;
+  const [billingOpen, setBillingOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [serviceOrder, setServiceOrder] = useState<ServiceOrder & { customer: any; equipment: any; form_template: any } | null>(null);
@@ -687,6 +697,19 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
             }
           });
         }
+        // "Faturar OS" — ação opcional (lançar receita OU gerar cobrança).
+        // Gate único: `canSeeBilling` (screen:finance + fn:os_finish_revenue).
+        // Sem ela, este item nem entra no array — nenhum botão novo aparece
+        // pra quem não tem a permissão (lei do CEO: nunca obrigatório).
+        if (canSeeBilling) {
+          actions.push({
+            key: 'billing',
+            icon: Receipt,
+            label: tv.actionBilling,
+            tone: 'success',
+            onClick: () => setBillingOpen(true),
+          });
+        }
         // Tema claro: fundo branco + ícone saturado + borda sutil colorida.
         // Tema escuro: fundo dessaturado colorido (pattern original).
         const toneClasses: Record<ActionTone, string> = {
@@ -758,6 +781,23 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
     </span>
   ) : tv.titleFallback;
 
+  // Contexto do diálogo "Faturar OS" — MESMA fonte que o prompt automático de
+  // fechamento já usa (osNumber/customerId/customerName/suggestedAmount).
+  const billingContext: OsRevenueContext | null =
+    canSeeBilling && serviceOrder
+      ? {
+          serviceOrderId: serviceOrder.id,
+          osNumber: serviceOrder.order_number,
+          customerId: serviceOrder.customer_id,
+          customerName: serviceOrder.customer?.name ?? null,
+          suggestedAmount: serviceOrder.total_value ?? null,
+        }
+      : null;
+
+  const billingDialog = canSeeBilling ? (
+    <OsBillingDialog open={billingOpen} onOpenChange={setBillingOpen} context={billingContext} />
+  ) : null;
+
   const previewModal = (
     <ImagePreviewModal
       src={previewPhoto || ''}
@@ -784,6 +824,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
           </DrawerContent>
         </Drawer>
         {previewModal}
+        {billingDialog}
       </>
     );
   }
@@ -807,6 +848,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         </DialogContent>
       </Dialog>
       {previewModal}
+      {billingDialog}
     </>
   );
 }

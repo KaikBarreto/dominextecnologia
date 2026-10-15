@@ -315,6 +315,9 @@ export const os = {
       actionDelete: 'Excluir',
       actionLinkCopied: 'Copiado!',
       actionLinkOs: 'Link OS',
+      // Ação opcional "Faturar OS" (lançar receita ou gerar cobrança) — só
+      // aparece pra quem tem a permissão `fn:os_finish_revenue`.
+      actionBilling: 'Faturar OS',
 
       // CTA principal
       ctaFillOs: 'Preencher OS',
@@ -1934,6 +1937,7 @@ export const os = {
       actionDelete: 'Delete',
       actionLinkCopied: 'Copied!',
       actionLinkOs: 'WO link',
+      actionBilling: 'Bill WO',
       ctaFillOs: 'Fill work order',
       ctaReport: 'Service report',
       toastLinkCopied: 'Link copied!',
@@ -3483,6 +3487,7 @@ export const os = {
       actionDelete: 'Eliminar',
       actionLinkCopied: '¡Copiado!',
       actionLinkOs: 'Enlace OT',
+      actionBilling: 'Facturar OT',
       ctaFillOs: 'Completar orden',
       ctaReport: 'Informe de servicio',
       toastLinkCopied: '¡Enlace copiado!',
@@ -5032,6 +5037,7 @@ export const os = {
       actionDelete: 'Supprimer',
       actionLinkCopied: 'Copié !',
       actionLinkOs: 'Lien BT',
+      actionBilling: 'Facturer le BT',
       ctaFillOs: 'Remplir le bon',
       ctaReport: 'Rapport de service',
       toastLinkCopied: 'Lien copié !',

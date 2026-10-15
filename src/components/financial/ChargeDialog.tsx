@@ -80,7 +80,14 @@ interface ChargeDialogProps {
    *      diferente; e cobrar menos daria baixa na parcela inteira);
    *    · não existe a opção "lançar no financeiro": o lançamento é a própria
    *      parcela do contrato, que a cobrança só passa a acompanhar. */
-  source?: { type: 'quote' | 'contract_installment'; id: string };
+  source?: { type: 'quote' | 'contract_installment' | 'service_order'; id: string };
+  /** Chamado depois de criar a cobrança com sucesso (normal OU órfã — os dois
+   *  já existem no Asaas). Quem chama usa isto pra invalidar os PRÓPRIOS
+   *  caches que não têm nada a ver com `useTenantCharges` (ex.: o estado de
+   *  faturamento da OS em `OsBillingDialog`). As invalidações genéricas de
+   *  Financeiro já saem de `useTenantCharges().create` — isto aqui é só o
+   *  complemento específico de quem chama. */
+  onCreated?: (result: CreateChargeResult) => void;
 }
 
 // Meios de pagamento efetivos (respeitam as flags allow_* da conta).
@@ -119,7 +126,7 @@ const METHOD_TO_SIMULATOR: Record<Exclude<BillingMethod, 'UNDEFINED'>, Simulator
   CREDIT_CARD: 'card',
 };
 
-export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustomer, presetAmount, presetDescription, presetDueDate, source }: ChargeDialogProps) {
+export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustomer, presetAmount, presetDescription, presetDueDate, source, onCreated }: ChargeDialogProps) {
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.cobrar;
   const fin = MESSAGES[locale].app.finance;
@@ -631,6 +638,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
         post_to_finance: isContractInstallment ? undefined : postToFinance,
       });
       setResult(chargeResult);
+      onCreated?.(chargeResult);
       toast({ title: t.success.title, description: t.success.description });
       // Falha em dinheiro nunca pode ser silenciosa: se a cobrança foi criada
       // mas o lançamento no Financeiro não, avisa com um toast à parte (some

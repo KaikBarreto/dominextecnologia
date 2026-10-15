@@ -1439,6 +1439,33 @@ export const finance = {
       linkErrorTitle: 'Receita lançada, mas sem vínculo com a oportunidade',
       linkErrorDesc: 'O lançamento foi criado no Financeiro. Como o vínculo não foi gravado, o sistema pode oferecer o lançamento de novo, confira antes de aceitar para não duplicar a receita.',
     },
+    // ── Faturar OS (OsBillingDialog) — ação manual, não obrigatória ────────
+    osBilling: {
+      dialogTitle: 'Faturar Ordem de Serviço',
+      osLabel: 'OS #{number}',
+      hint: 'Escolha como registrar o faturamento desta Ordem de Serviço.',
+      option: {
+        revenueTitle: 'Lançar receita',
+        revenueDescription: 'Dinheiro que já entrou por este serviço.',
+        chargeTitle: 'Gerar cobrança',
+        chargeDescription: 'PIX, boleto ou link de pagamento pelo Asaas, com vencimento.',
+      },
+      status: {
+        revenue: 'Receita de {value} já lançada nesta Ordem de Serviço.',
+        charge: 'Cobrança de {value} vence em {date}.',
+        viewRevenue: 'Ver lançamento',
+        viewCharge: 'Ver cobrança',
+      },
+      blocked: {
+        hasRevenue: 'Esta Ordem de Serviço já tem receita lançada. Para registrar outro recebimento deste serviço, use a tela de Financeiro.',
+        hasCharge: 'Esta Ordem de Serviço já tem uma cobrança ativa.',
+        noCustomer: 'Esta Ordem de Serviço não tem cliente cadastrado. Cadastre um cliente para gerar cobrança.',
+      },
+      errors: {
+        revenueBlockedByChargeTitle: 'Não foi possível lançar a receita',
+        revenueBlockedByChargeDescription: 'Esta Ordem de Serviço já tem uma cobrança ativa. Cancele a cobrança antes de lançar a receita manualmente.',
+      },
+    },
   },
 
   // ─── ENGLISH ──────────────────────────────────────────────────────────────
@@ -2778,6 +2805,32 @@ export const finance = {
       descriptionFallback: 'Revenue from won opportunity',
       linkErrorTitle: 'Revenue recorded, but not linked to the opportunity',
       linkErrorDesc: 'The entry was created in Finance. Since the link was not saved, the system may offer to record it again, check before accepting so the revenue is not duplicated.',
+    },
+    osBilling: {
+      dialogTitle: 'Bill Service Order',
+      osLabel: 'SO #{number}',
+      hint: 'Choose how to record the billing for this service order.',
+      option: {
+        revenueTitle: 'Record revenue',
+        revenueDescription: 'Money that already came in for this job.',
+        chargeTitle: 'Generate charge',
+        chargeDescription: 'PIX, bank slip or payment link via Asaas, with a due date.',
+      },
+      status: {
+        revenue: 'Revenue of {value} already recorded for this service order.',
+        charge: 'Charge of {value} due on {date}.',
+        viewRevenue: 'View entry',
+        viewCharge: 'View charge',
+      },
+      blocked: {
+        hasRevenue: 'This service order already has revenue recorded. To record another payment for this service, use the Finance screen.',
+        hasCharge: 'This service order already has an active charge.',
+        noCustomer: 'This service order has no customer. Add a customer to generate a charge.',
+      },
+      errors: {
+        revenueBlockedByChargeTitle: 'Could not record the revenue',
+        revenueBlockedByChargeDescription: 'This service order already has an active charge. Cancel the charge before recording revenue manually.',
+      },
     },
   },
 
@@ -4120,6 +4173,32 @@ export const finance = {
       linkErrorTitle: 'Ingreso registrado, pero sin vínculo con la oportunidad',
       linkErrorDesc: 'El registro se creó en Finanzas. Como el vínculo no se guardó, el sistema puede volver a ofrecer el registro, verifique antes de aceptar para no duplicar el ingreso.',
     },
+    osBilling: {
+      dialogTitle: 'Facturar orden de servicio',
+      osLabel: 'OS #{number}',
+      hint: 'Elija cómo registrar la facturación de esta orden de servicio.',
+      option: {
+        revenueTitle: 'Registrar ingreso',
+        revenueDescription: 'Dinero que ya entró por este servicio.',
+        chargeTitle: 'Generar cobro',
+        chargeDescription: 'PIX, pago de servicios o enlace de pago por Asaas, con vencimiento.',
+      },
+      status: {
+        revenue: 'Ingreso de {value} ya registrado en esta orden de servicio.',
+        charge: 'Cobro de {value} vence el {date}.',
+        viewRevenue: 'Ver registro',
+        viewCharge: 'Ver cobro',
+      },
+      blocked: {
+        hasRevenue: 'Esta orden de servicio ya tiene un ingreso registrado. Para registrar otro cobro de este servicio, usa la pantalla de Finanzas.',
+        hasCharge: 'Esta orden de servicio ya tiene un cobro activo.',
+        noCustomer: 'Esta orden de servicio no tiene cliente. Agregue un cliente para generar un cobro.',
+      },
+      errors: {
+        revenueBlockedByChargeTitle: 'No fue posible registrar el ingreso',
+        revenueBlockedByChargeDescription: 'Esta orden de servicio ya tiene un cobro activo. Cancele el cobro antes de registrar el ingreso manualmente.',
+      },
+    },
   },
 
   // ─── FRANÇAIS ─────────────────────────────────────────────────────────────
@@ -5460,6 +5539,32 @@ export const finance = {
       descriptionFallback: `Recette d'opportunité gagnée`,
       linkErrorTitle: `Recette enregistrée, mais sans lien avec l'opportunité`,
       linkErrorDesc: `L'écriture a été créée dans les Finances. Comme le lien n'a pas été enregistré, le système peut proposer de l'enregistrer à nouveau, vérifiez avant d'accepter pour ne pas dupliquer la recette.`,
+    },
+    osBilling: {
+      dialogTitle: `Facturer l'ordre de service`,
+      osLabel: 'OS #{number}',
+      hint: `Choisissez comment enregistrer la facturation de cet ordre de service.`,
+      option: {
+        revenueTitle: 'Enregistrer une recette',
+        revenueDescription: `Argent déjà encaissé pour cette intervention.`,
+        chargeTitle: 'Générer une facture',
+        chargeDescription: `PIX, bon de paiement ou lien de paiement via Asaas, avec une échéance.`,
+      },
+      status: {
+        revenue: `Recette de {value} déjà enregistrée pour cet ordre de service.`,
+        charge: `Facture de {value} échéance le {date}.`,
+        viewRevenue: `Voir l'écriture`,
+        viewCharge: 'Voir la facture',
+      },
+      blocked: {
+        hasRevenue: `Cet ordre de service a déjà une recette enregistrée. Pour enregistrer un autre encaissement pour ce service, utilisez l'écran Finances.`,
+        hasCharge: `Cet ordre de service a déjà une facture active.`,
+        noCustomer: `Cet ordre de service n'a pas de client. Ajoutez un client pour générer une facture.`,
+      },
+      errors: {
+        revenueBlockedByChargeTitle: `Impossible d'enregistrer la recette`,
+        revenueBlockedByChargeDescription: `Cet ordre de service a déjà une facture active. Annulez la facture avant d'enregistrer la recette manuellement.`,
+      },
     },
   },
 };

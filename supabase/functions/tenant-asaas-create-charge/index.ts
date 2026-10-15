@@ -13,10 +13,18 @@
 //   5. grava tenant_charges (idempotência por asaas_payment_id UNIQUE) + public_short_code.
 //
 // Origem da cobrança (source_type): 'avulso' (default histórico), 'quote'
-// (orçamento) e 'contract_installment' (parcela de contrato). A parcela de
-// contrato NÃO cria recebível espelho — ela JÁ É o recebível, então a cobrança
-// se liga à parcela existente (financial_transactions.tenant_charge_id). Criar
-// um lançamento novo ali dobraria a receita no DRE.
+// (orçamento), 'contract_installment' (parcela de contrato) e 'service_order'
+// (ordem de serviço). A parcela de contrato NÃO cria recebível espelho — ela JÁ
+// É o recebível, então a cobrança se liga à parcela existente
+// (financial_transactions.tenant_charge_id). Criar um lançamento novo ali
+// dobraria a receita no DRE.
+//
+// A ORDEM DE SERVIÇO, ao contrário, cria recebível (ela não é um lançamento
+// financeiro), e esse recebível nasce com `service_order_id` preenchido — é o
+// elo que faz a OS saber que já foi faturada. Como a OS também aceita receita
+// lançada à mão, as duas pontas precisam de trava: a receita manual é barrada
+// pelo trigger `trg_block_os_manual_revenue_when_charged` quando já existe
+// cobrança, e a cobrança é barrada aqui (bloco 0.2) quando já existe receita.
 //
 // Nunca retorna custo/margem interna.
 
@@ -106,15 +114,22 @@ function validateDueDate(due: string): { ok: true } | { ok: false; error: string
 }
 
 /** Origem da cobrança (allowlist estrita). 'avulso' é o default histórico. */
-type ChargeSourceType = "avulso" | "quote" | "contract_installment";
+type ChargeSourceType = "avulso" | "quote" | "contract_installment" | "service_order";
 const ALLOWED_SOURCE_TYPES: readonly ChargeSourceType[] = [
   "avulso",
   "quote",
   "contract_installment",
+  "service_order",
 ];
 
 /** Origens que EXIGEM source_id (o vínculo é a razão de existir da origem). */
-const SOURCE_TYPES_REQUIRING_ID: readonly ChargeSourceType[] = ["quote", "contract_installment"];
+const SOURCE_TYPES_REQUIRING_ID: readonly ChargeSourceType[] = [
+  "quote",
+  "contract_installment",
+  // Cobrança de OS sem OS não existe: sem o id, o recebível nasceria sem
+  // `service_order_id` e a OS nunca saberia que já foi faturada.
+  "service_order",
+];
 
 /** Status que NÃO contam como cobrança válida no dedupe por orçamento (cobra de novo). */
 const DEDUPE_DEAD_STATUSES: readonly string[] = [
@@ -131,11 +146,15 @@ interface CreateChargeInput {
   billing_type?: BillingType;
   description?: string;
   // Origem da cobrança (Onda D — Orçamento → Cobrança; Onda E — Parcela de
-  // contrato → Cobrança). Opcionais; default 'avulso'.
+  // contrato → Cobrança; Faturar OS — Ordem de serviço → Cobrança).
+  // Opcionais; default 'avulso'.
   //   'quote'                → source_id = quotes.id
   //   'contract_installment' → source_id = financial_transactions.id da PARCELA
   //                            já materializada pelo contrato (posse validada
   //                            no servidor, nunca confiando no client).
+  //   'service_order'        → source_id = service_orders.id (posse validada no
+  //                            servidor; o recebível gerado leva esse id em
+  //                            financial_transactions.service_order_id).
   source_type?: ChargeSourceType;
   source_id?: string | null;
   // Overrides opcionais por cobrança (caem no default da conta quando ausentes).
@@ -356,7 +375,9 @@ async function handleRequest(req: Request): Promise<Response> {
     return jsonResponse(req, {
       error: sourceType === "quote"
         ? "Informe o orçamento de origem da cobrança."
-        : "Informe a parcela do contrato que será cobrada.",
+        : sourceType === "service_order"
+          ? "Informe a ordem de serviço que será cobrada."
+          : "Informe a parcela do contrato que será cobrada.",
     }, 400);
   }
 
@@ -489,6 +510,76 @@ async function handleRequest(req: Request): Promise<Response> {
       // final não pega linha nenhuma e o usuário é avisado, em vez de uma das
       // duas cobranças roubar o vínculo em silêncio.
       contractInstallmentChargeId = parcel.tenant_charge_id ?? null;
+    }
+
+    // 0.2) ORDEM DE SERVIÇO — posse + guard anti-contagem-dupla, ANTES da Asaas.
+    //
+    //   Mesma razão do bloco 0.1: recusar DEPOIS de criar a cobrança deixaria
+    //   cobrança órfã viva no gateway (lei "gateway antes do banco" vale nos
+    //   dois sentidos — o que o banco vai recusar, a gente recusa antes de
+    //   tocar a Asaas). Roda antes do Vault, antes do cliente Asaas e antes do
+    //   POST /payments.
+    //
+    //   RLS NÃO cobre esta edge (o client é service-role e bypassa), então a
+    //   posse é reaplicada à mão com o company_id do PROFILE, nunca do payload.
+    if (sourceType === "service_order" && sourceId) {
+      const { data: osRow, error: osErr } = await supabase
+        .from("service_orders")
+        .select("id")
+        .eq("id", sourceId)
+        .eq("company_id", companyId) // posse: a OS tem que ser do tenant
+        .maybeSingle();
+
+      if (osErr) {
+        console.error("[create-charge] leitura da ordem de serviço falhou:", osErr.message);
+        return jsonResponse(req, {
+          error: "Não foi possível verificar a ordem de serviço. Tente novamente.",
+        }, 500);
+      }
+      // Mesma mensagem pra "não existe" e "é de outra empresa": nunca vaza a
+      // existência de dado de outro tenant (padrão de ensureAsaasCustomer).
+      if (!osRow) {
+        return jsonResponse(req, {
+          error: "A ordem de serviço não foi encontrada na sua empresa.",
+        }, 404);
+      }
+
+      // GUARD ANTI-CONTAGEM-DUPLA (direção cobrança ← receita). O par deste
+      // guard é o trigger trg_block_os_manual_revenue_when_charged, que barra a
+      // direção oposta no banco. Sem os dois, a mesma venda entra duas vezes no
+      // financeiro — o buraco que já existe hoje no orçamento.
+      //
+      //   `tenant_charge_id IS NULL` NÃO É OPCIONAL: o recebível que ESTA edge
+      //   gera também tem service_order_id preenchido. Sem o filtro, uma
+      //   retentativa (ou uma segunda cobrança legítima depois de um
+      //   cancelamento) veria o recebível da própria cobrança e se recusaria a
+      //   prosseguir para sempre.
+      const { data: manualRevenue, error: revenueErr } = await supabase
+        .from("financial_transactions")
+        .select("id")
+        .eq("company_id", companyId)
+        .eq("service_order_id", sourceId)
+        .eq("transaction_type", "entrada")
+        .is("cancelled_at", null)
+        .is("tenant_charge_id", null) // receita MANUAL, não o espelho de cobrança
+        .limit(1)
+        .maybeSingle();
+
+      if (revenueErr) {
+        console.error(
+          "[create-charge] leitura da receita da ordem de serviço falhou:",
+          revenueErr.message,
+        );
+        return jsonResponse(req, {
+          error: "Não foi possível verificar o faturamento da ordem de serviço. Tente novamente.",
+        }, 500);
+      }
+      if (manualRevenue) {
+        return jsonResponse(req, {
+          error:
+            "Esta ordem de serviço já tem uma receita lançada. Cancele a receita antes de gerar uma cobrança.",
+        }, 400);
+      }
     }
 
     // 1) Conta ativa + chave do Vault + configuração de lançamento financeiro +
@@ -819,6 +910,17 @@ async function handleRequest(req: Request): Promise<Response> {
           p_category: inputCategory ?? account.default_income_category ?? null,
           // Centro de custo escolhido NESTA cobrança. Sem default de conta.
           p_cost_center_id: inputCostCenterId,
+          // ELO DA OS → RECEBÍVEL. É o que faz a OS saber que já foi faturada
+          // (a tela da OS soma financial_transactions.service_order_id). Só a
+          // origem 'service_order' manda id; as outras mandam NULL e seguem
+          // exatamente como antes.
+          //
+          // A RPC revalida a posse por conta própria e levanta 42501 se a OS
+          // não for da empresa. Isso é inalcançável aqui (o bloco 0.2 já
+          // recusou antes de tocar a Asaas) e, se acontecer, cai no mesmo
+          // tratamento NÃO-FATAL dos outros erros de posse (centro de custo):
+          // a cobrança continua válida e o usuário recebe o aviso abaixo.
+          p_service_order_id: sourceType === "service_order" ? sourceId : null,
         });
         if (rpcErr) {
           // Loga sem vazar segredo (só mensagem pública do Postgres).
