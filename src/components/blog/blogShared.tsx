@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useLocale } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
+import { resolveWcagForeground } from '@/lib/colorContrast';
 
 /** Verde da marca, fonte única quando uma categoria não tem cor própria. */
 export const BRAND_GREEN = 'hsl(160 100% 39%)';
@@ -64,7 +65,13 @@ export function shortDate(published_at: string | null | undefined) {
   }
 }
 
-/** Badge de categoria SATURADO (preenchido na cor) + texto branco. Régua CEO. */
+/**
+ * Badge de categoria SATURADO (preenchido na cor). Régua CEO. O texto NÃO é
+ * branco fixo: medido em produção, as 7 cores de categoria reprovam 4,5:1
+ * WCAG com branco (ex.: amber #f59e0b mede 2,14:1) — `resolveWcagForeground`
+ * deriva o texto (branco ou escuro-neutro) a partir da cor de cada categoria,
+ * sem escurecer a cor em si.
+ */
 export function CategoryBadge({
   category,
   categoryColors,
@@ -77,8 +84,8 @@ export function CategoryBadge({
   const color = categoryColorOf(category, categoryColors);
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white ${className}`}
-      style={{ backgroundColor: color }}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${className}`}
+      style={{ backgroundColor: color, color: resolveWcagForeground(color) }}
     >
       {category}
     </span>
@@ -170,7 +177,7 @@ export function BlogPostCard({
             <CategoryBadge category={post.category} categoryColors={categoryColors} />
           )}
           {post.published_at && (
-            <span className="flex items-center gap-1 text-xs text-neutral-500 dark:text-white/40">
+            <span className="flex items-center gap-1 text-xs text-neutral-500 dark:text-white/50">
               <Calendar className="h-3 w-3" />
               {shortDate(post.published_at)}
             </span>
@@ -225,7 +232,7 @@ export function MostReadItem({
         <h4 className="line-clamp-2 text-sm font-semibold leading-snug text-neutral-800 transition-colors group-hover:text-primary dark:text-white/85">
           {post.title}
         </h4>
-        <p className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-500 dark:text-white/40">
+        <p className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-500 dark:text-white/50">
           <img
             src={BLOG_AUTHOR_AVATAR}
             alt="Dominex"

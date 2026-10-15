@@ -20,6 +20,7 @@ import ScrollSyncFeatures from '@/components/landing/ScrollSyncFeatures';
 import DeepDiveSection from '@/components/landing/DeepDiveSection';
 import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
+import { resolveWcagForeground } from '@/lib/colorContrast';
 import type { SegmentData } from './segmentsData';
 
 // Degradê de acento do segmento — MESMO usado no texto do H1. Preenche os
@@ -70,9 +71,14 @@ export default function SegmentLandingPage({ data }: { data: SegmentData }) {
   // --seg-accent: cor do segmento, escopo local desta página. NÃO toca nas CSS
   // vars globais de marca (DOMINEX_BRAND_VARS continua o verde para herança),
   // só dá um token de acento pros destaques deste nicho.
+  // --seg-accent-fg: texto legível por cima de --seg-accent quando ele é FUNDO
+  // (botões de CTA). Medido em produção: as 10 cores de segmento reprovam
+  // 4,5:1 WCAG com texto branco (ex.: cyan #06b6d4 mede 2,43:1) — nunca
+  // escurecemos a cor do segmento pra resolver isso, só derivamos o texto.
   const pageStyle = {
     ...DOMINEX_BRAND_VARS,
     ['--seg-accent' as string]: data.accentColor,
+    ['--seg-accent-fg' as string]: resolveWcagForeground(data.accentColor),
   } as CSSProperties;
 
   return (
@@ -172,9 +178,10 @@ function SegmentHero({ data }: { data: SegmentData }) {
         <div className="mt-9 flex flex-col sm:flex-row gap-4 justify-center">
           <Button
             size="lg"
-            className="text-white text-base px-8 py-6 w-full sm:w-auto border-0 transition-opacity hover:opacity-90 whitespace-normal h-auto text-center leading-tight"
+            className="text-base px-8 py-6 w-full sm:w-auto border-0 transition-opacity hover:opacity-90 whitespace-normal h-auto text-center leading-tight"
             style={{
               backgroundColor: 'var(--seg-accent)',
+              color: 'var(--seg-accent-fg)',
               boxShadow: '0 0 40px -8px color-mix(in srgb, var(--seg-accent) 60%, transparent)',
             }}
             asChild
@@ -392,8 +399,8 @@ function SegmentFeatures({ data }: { data: SegmentData }) {
       footer={
         <Button
           size="lg"
-          className="text-white font-semibold px-8 py-6 text-base rounded-xl border-0 transition-opacity hover:opacity-90 whitespace-normal h-auto text-center leading-tight"
-          style={{ backgroundColor: 'var(--seg-accent)' }}
+          className="font-semibold px-8 py-6 text-base rounded-xl border-0 transition-opacity hover:opacity-90 whitespace-normal h-auto text-center leading-tight"
+          style={{ backgroundColor: 'var(--seg-accent)', color: 'var(--seg-accent-fg)' }}
           asChild
         >
           <WhatsAppCtaLink>
@@ -466,9 +473,10 @@ function SegmentPricingCta({ data }: { data: SegmentData }) {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
               size="lg"
-              className="text-white px-8 py-6 text-base border-0 transition-opacity hover:opacity-90 whitespace-normal h-auto text-center leading-tight"
+              className="px-8 py-6 text-base border-0 transition-opacity hover:opacity-90 whitespace-normal h-auto text-center leading-tight"
               style={{
                 backgroundColor: 'var(--seg-accent)',
+                color: 'var(--seg-accent-fg)',
                 boxShadow: '0 0 40px -8px color-mix(in srgb, var(--seg-accent) 60%, transparent)',
               }}
               asChild
@@ -550,9 +558,10 @@ function SegmentFinalCta({ data }: { data: SegmentData }) {
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button
             size="lg"
-            className="text-white px-10 py-6 text-base border-0 transition-opacity hover:opacity-90 whitespace-normal h-auto text-center leading-tight"
+            className="px-10 py-6 text-base border-0 transition-opacity hover:opacity-90 whitespace-normal h-auto text-center leading-tight"
             style={{
               backgroundColor: 'var(--seg-accent)',
+              color: 'var(--seg-accent-fg)',
               boxShadow: '0 0 40px -8px color-mix(in srgb, var(--seg-accent) 60%, transparent)',
             }}
             asChild

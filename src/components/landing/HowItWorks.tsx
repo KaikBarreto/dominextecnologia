@@ -28,7 +28,13 @@ export default function HowItWorks() {
           {steps.map((s) => (
             <div key={s.num} className="relative text-center">
               <div className="inline-flex flex-col items-center">
-                <span className="text-5xl font-black text-primary/20 mb-4">{s.num}</span>
+                {/* Numeral puramente decorativo (a ordem já está no grid + no
+                    título) — aria-hidden tira do leitor de tela em vez de
+                    forçar contraste de texto nele. Subimos a opacidade de
+                    /20 (1,37:1) pra /[0.55] (~3,32:1) só pra bater o mínimo de
+                    texto grande (48px bold, limiar 3:1), sem virar texto
+                    "sério" que competiria com o título. */}
+                <span className="text-5xl font-black text-primary/[0.55] mb-4" aria-hidden="true">{s.num}</span>
                 <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 relative z-10">
                   <s.icon className="h-7 w-7 text-primary" />
                 </div>

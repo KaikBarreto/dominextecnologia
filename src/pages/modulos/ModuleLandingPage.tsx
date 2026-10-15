@@ -32,6 +32,7 @@ import ScrollSyncFeatures from '@/components/landing/ScrollSyncFeatures';
 import DeepDiveSection from '@/components/landing/DeepDiveSection';
 import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 import { getSiteSegments, getSegment } from '@/utils/companySegments';
+import { resolveWcagForeground } from '@/lib/colorContrast';
 import type { ModuleData } from './modulesData';
 import { TOOLS_BY_SEGMENT } from './tecnicoNicheTools';
 
@@ -438,8 +439,8 @@ function NicheSelect({
         >
           {selectedSeg ? (
             <Badge
-              className="cursor-pointer gap-1.5 border-0 text-white px-3 py-1.5 text-sm"
-              style={{ backgroundColor: selectedSeg.color }}
+              className="cursor-pointer gap-1.5 border-0 px-3 py-1.5 text-sm"
+              style={{ backgroundColor: selectedSeg.color, color: resolveWcagForeground(selectedSeg.color) }}
             >
               <selectedSeg.icon className="h-3.5 w-3.5" />
               <span className="truncate">{selectedSeg.label}</span>
@@ -468,9 +469,9 @@ function NicheSelect({
                   >
                     <span
                       className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
-                      style={{ backgroundColor: seg.color }}
+                      style={{ backgroundColor: seg.color, color: resolveWcagForeground(seg.color) }}
                     >
-                      <seg.icon className="h-3 w-3 text-white" />
+                      <seg.icon className="h-3 w-3" />
                     </span>
                     <span className="flex-1 whitespace-normal break-words leading-snug">
                       {seg.label}

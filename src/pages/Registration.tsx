@@ -706,23 +706,25 @@ export default function Registration() {
                 {step === 1 && (
                   <div className="space-y-4">
                     <div>
-                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.companyName}</Label>
+                      <Label htmlFor="reg-company-name" className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.companyName}</Label>
                       <div className="relative mt-1">
                         <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                         <Input
+                          id="reg-company-name" autoComplete="organization" aria-required="true" aria-invalid={!!errors.company_name} aria-describedby={errors.company_name ? "reg-company-name-error" : undefined}
                           {...register('company_name', { required: t.errorCompanyNameRequired })}
                           placeholder={t.companyNamePlaceholder}
                           className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                         />
                       </div>
-                      {errors.company_name && <p className="text-sm text-destructive mt-1">{errors.company_name.message}</p>}
+                      {errors.company_name && <p id="reg-company-name-error" role="alert" className="text-sm text-destructive mt-1">{errors.company_name.message}</p>}
                     </div>
 
                     <div>
-                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">
+                      <Label htmlFor="reg-country" className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">
                         {t.country}
                       </Label>
                       <SearchableSelect
+                        id="reg-country"
                         options={countryOptions}
                         value={countryCode}
                         onValueChange={(value) => setCountryCode(getCountryDef(value).code)}
@@ -735,24 +737,26 @@ export default function Registration() {
                     </div>
 
                     <div>
-                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.contactName}</Label>
+                      <Label htmlFor="reg-contact-name" className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.contactName}</Label>
                       <div className="relative mt-1">
                         <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                         <Input
+                          id="reg-contact-name" autoComplete="name" aria-required="true" aria-invalid={!!errors.contact_name} aria-describedby={errors.contact_name ? "reg-contact-name-error" : undefined}
                           {...register('contact_name', { required: t.errorContactNameRequired })}
                           placeholder={t.contactNamePlaceholder}
                           className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                         />
                       </div>
-                      {errors.contact_name && <p className="text-sm text-destructive mt-1">{errors.contact_name.message}</p>}
+                      {errors.contact_name && <p id="reg-contact-name-error" role="alert" className="text-sm text-destructive mt-1">{errors.contact_name.message}</p>}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.email}</Label>
+                        <Label htmlFor="reg-email" className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.email}</Label>
                         <div className="relative mt-1">
                           <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                           <Input
+                            id="reg-email" autoComplete="email" aria-required="true"
                             type="email"
                             {...register('company_email', {
                               required: t.errorEmailRequired,
@@ -777,8 +781,11 @@ export default function Registration() {
                               },
                             })}
                             placeholder={t.emailPlaceholder}
-                            aria-invalid={emailError ? true : undefined}
-                            aria-describedby={emailError ? 'company-email-error' : undefined}
+                            aria-invalid={emailError || errors.company_email ? true : undefined}
+                            aria-describedby={[
+                              errors.company_email ? 'reg-email-error' : null,
+                              emailError ? 'company-email-error' : null,
+                            ].filter(Boolean).join(' ') || undefined}
                             className={cn(
                               'pl-10 pr-9 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary',
                               emailError && 'border-destructive focus:border-destructive'
@@ -786,16 +793,17 @@ export default function Registration() {
                           />
                           {emailChecking && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-white/50" />}
                         </div>
-                        {errors.company_email && <p className="text-sm text-destructive mt-1">{errors.company_email.message}</p>}
+                        {errors.company_email && <p id="reg-email-error" role="alert" className="text-sm text-destructive mt-1">{errors.company_email.message}</p>}
                         {emailChecking && !emailError && <p className="text-xs text-white/50 mt-1">{t.emailChecking}</p>}
                         {emailError && <p id="company-email-error" className="text-xs text-destructive mt-1">{emailError}</p>}
                       </div>
 
                       <div>
-                        <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.phone}</Label>
+                        <Label htmlFor="reg-phone" className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.phone}</Label>
                         <div className="relative mt-1">
                           <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
                           <Input
+                            id="reg-phone" autoComplete="tel" aria-required="true" aria-invalid={!!errors.company_phone} aria-describedby={errors.company_phone ? "reg-phone-error" : undefined}
                             {...register('company_phone', {
                               required: t.errorPhoneRequired,
                               validate: (value) => isValidCompanyPhone(value, countryCode) || t.errorPhoneInvalid,
@@ -810,7 +818,7 @@ export default function Registration() {
                             className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                           />
                         </div>
-                        {errors.company_phone && <p className="text-sm text-destructive mt-1">{errors.company_phone.message}</p>}
+                        {errors.company_phone && <p id="reg-phone-error" role="alert" className="text-sm text-destructive mt-1">{errors.company_phone.message}</p>}
                       </div>
                     </div>
 
@@ -833,9 +841,10 @@ export default function Registration() {
                         <div className="space-y-4 pt-4">
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="sm:col-span-1">
-                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.cep}</Label>
+                              <Label htmlFor="reg-cep" className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.cep}</Label>
                               <div className="relative mt-1">
                                 <Input
+                                  id="reg-cep" autoComplete="postal-code"
                                   inputMode={countryCode === 'BR' ? 'numeric' : 'text'}
                                   value={addressData.cep}
                                   onChange={(e) => {
@@ -858,8 +867,9 @@ export default function Registration() {
                               </div>
                             </div>
                             <div className="sm:col-span-2">
-                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.street}</Label>
+                              <Label htmlFor="reg-street" className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.street}</Label>
                               <Input
+                                id="reg-street" autoComplete="address-line1"
                                 value={addressData.logradouro}
                                 onChange={(e) => setAddressData((prev) => ({ ...prev, logradouro: e.target.value }))}
                                 placeholder={t.streetPlaceholder}
@@ -870,8 +880,9 @@ export default function Registration() {
 
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
-                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.number}</Label>
+                              <Label htmlFor="reg-number" className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.number}</Label>
                               <Input
+                                id="reg-number" autoComplete="address-line2"
                                 value={addressData.numero}
                                 onChange={(e) => setAddressData((prev) => ({ ...prev, numero: e.target.value }))}
                                 placeholder={t.numberPlaceholder}
@@ -879,8 +890,9 @@ export default function Registration() {
                               />
                             </div>
                             <div className="sm:col-span-2">
-                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.complement}</Label>
+                              <Label htmlFor="reg-complement" className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.complement}</Label>
                               <Input
+                                id="reg-complement" autoComplete="address-line3"
                                 value={addressData.complemento}
                                 onChange={(e) => setAddressData((prev) => ({ ...prev, complemento: e.target.value }))}
                                 placeholder={t.complementPlaceholder}
@@ -890,8 +902,9 @@ export default function Registration() {
                           </div>
 
                           <div>
-                            <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.neighborhood}</Label>
+                            <Label htmlFor="reg-neighborhood" className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.neighborhood}</Label>
                             <Input
+                              id="reg-neighborhood" autoComplete="address-level3"
                               value={addressData.bairro}
                               onChange={(e) => setAddressData((prev) => ({ ...prev, bairro: e.target.value }))}
                               placeholder={t.neighborhoodPlaceholder}
@@ -901,8 +914,9 @@ export default function Registration() {
 
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="sm:col-span-2">
-                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.city}</Label>
+                              <Label htmlFor="reg-city" className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.city}</Label>
                               <Input
+                                id="reg-city" autoComplete="address-level2"
                                 value={addressData.cidade}
                                 onChange={(e) => setAddressData((prev) => ({ ...prev, cidade: e.target.value }))}
                                 placeholder={t.cityPlaceholder}
@@ -910,8 +924,9 @@ export default function Registration() {
                               />
                             </div>
                             <div>
-                              <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.state}</Label>
+                              <Label htmlFor="reg-state" className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.state}</Label>
                               <Input
+                                id="reg-state" autoComplete="address-level1"
                                 value={addressData.uf}
                                 onChange={(e) => setAddressData((prev) => ({
                                   ...prev,
@@ -974,24 +989,26 @@ export default function Registration() {
                     </div>
 
                     <div>
-                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.password}</Label>
+                      <Label htmlFor="reg-password" className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.password}</Label>
                       <div className="relative mt-1">
                         <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50 z-10" />
                         <PasswordInput
+                          id="reg-password" autoComplete="new-password" aria-required="true" aria-invalid={!!errors.password} aria-describedby={errors.password ? "reg-password-error" : undefined}
                           {...register('password', { required: t.errorPasswordRequired, validate: (v) => isPasswordStrong(v) || t.errorPasswordMinReqs })}
                           placeholder={t.passwordPlaceholder}
                           className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                         />
                       </div>
                       <PasswordStrengthIndicator password={passwordValue} />
-                      {errors.password && <p className="text-sm text-destructive mt-1">{errors.password.message}</p>}
+                      {errors.password && <p id="reg-password-error" role="alert" className="text-sm text-destructive mt-1">{errors.password.message}</p>}
                     </div>
 
                     <div>
-                      <Label className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.confirmPassword}</Label>
+                      <Label htmlFor="reg-confirm-password" className="text-xs font-normal uppercase tracking-[0.1em] text-white/60">{t.confirmPassword}</Label>
                       <div className="relative mt-1">
                         <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50 z-10" />
                         <PasswordInput
+                          id="reg-confirm-password" autoComplete="new-password" aria-required="true" aria-invalid={!!errors.confirm_password} aria-describedby={errors.confirm_password ? "reg-confirm-password-error" : undefined}
                           {...register('confirm_password', { required: t.errorConfirmPasswordRequired })}
                           placeholder={t.confirmPasswordPlaceholder}
                           matchAgainst={passwordValue}
@@ -999,7 +1016,7 @@ export default function Registration() {
                           className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
                         />
                       </div>
-                      {errors.confirm_password && <p className="text-sm text-destructive mt-1">{errors.confirm_password.message}</p>}
+                      {errors.confirm_password && <p id="reg-confirm-password-error" role="alert" className="text-sm text-destructive mt-1">{errors.confirm_password.message}</p>}
                     </div>
 
                     {/* Trial info — texto simples, sem card */}

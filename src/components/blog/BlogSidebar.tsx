@@ -54,7 +54,7 @@ export const BlogSidebar = ({ categoryColors = [] }: { categoryColors?: Category
           {t.ctaButton}
           <ArrowRight className="h-4 w-4" />
         </WhatsAppCtaLink>
-        <p className="mt-2 text-center text-[11px] text-neutral-500 dark:text-white/35">
+        <p className="mt-2 text-center text-[11px] text-neutral-500 dark:text-white/50">
           {t.noCard}
         </p>
       </div>
@@ -79,7 +79,7 @@ export const BlogSidebar = ({ categoryColors = [] }: { categoryColors?: Category
                   >
                     {post.title}
                   </Link>
-                  <p className="mt-1 flex items-center gap-1 text-xs text-neutral-500 dark:text-white/35">
+                  <p className="mt-1 flex items-center gap-1 text-xs text-neutral-500 dark:text-white/50">
                     <Eye className="h-3 w-3" />
                     {(post.view_count ?? 0).toLocaleString(locale)}{' '}
                     {(post.view_count ?? 0) === 1 ? tBlog.readsSingular : tBlog.readsPlural}
@@ -89,7 +89,7 @@ export const BlogSidebar = ({ categoryColors = [] }: { categoryColors?: Category
             ))}
           </ol>
         ) : (
-          <p className="text-sm text-neutral-500 dark:text-white/35">{t.empty}</p>
+          <p className="text-sm text-neutral-500 dark:text-white/50">{t.empty}</p>
         )}
       </div>
     </aside>

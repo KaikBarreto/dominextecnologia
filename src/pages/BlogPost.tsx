@@ -33,6 +33,7 @@ import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 import { COMPANY_WHATSAPP_NUMBER } from '@/components/landing/whatsappNumbers';
 import { BLOG_AUTHOR_AVATAR } from '@/components/blog/blogShared';
 import { stripDuplicateLeadingTitle } from '@/lib/blogContent';
+import { resolveWcagForeground } from '@/lib/colorContrast';
 
 // Página pública. NUNCA herda o white-label do tenant logado: restaura o brand
 // Dominex em toda a subárvore (espelha Landing.tsx / QuemSomos.tsx).
@@ -460,14 +461,14 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
               <div className="mb-4 flex flex-wrap items-center gap-3">
                 {post.category && (
                   <span
-                    className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white"
-                    style={{ backgroundColor: catColor }}
+                    className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                    style={{ backgroundColor: catColor, color: resolveWcagForeground(catColor) }}
                   >
                     {post.category}
                   </span>
                 )}
                 {post.published_at && (
-                  <span className="flex items-center gap-1 text-sm text-neutral-500 dark:text-white/40">
+                  <span className="flex items-center gap-1 text-sm text-neutral-500 dark:text-white/50">
                     <Calendar className="h-3.5 w-3.5" />
                     {format(new Date(post.published_at), DATE_FORMATS[locale], {
                       locale: DATE_LOCALES[locale],
@@ -475,7 +476,7 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                   </span>
                 )}
                 {post.author_name && (
-                  <span className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-white/40">
+                  <span className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-white/50">
                     <img
                       src={BLOG_AUTHOR_AVATAR}
                       alt="Dominex"
@@ -486,7 +487,7 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                 )}
                 <button
                   onClick={handleShare}
-                  className="ml-auto flex items-center gap-1.5 text-xs text-neutral-500 transition-colors hover:text-primary dark:text-white/40"
+                  className="ml-auto flex items-center gap-1.5 text-xs text-neutral-500 transition-colors hover:text-primary dark:text-white/50"
                 >
                   <Share2 className="h-3.5 w-3.5" />
                   Compartilhar
@@ -499,7 +500,16 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
 
               <div
                 ref={contentRef}
-                className="blog-content prose prose-sm max-w-none prose-headings:text-neutral-900 prose-a:text-primary prose-strong:text-neutral-900 prose-img:rounded-xl sm:prose-base dark:prose-invert dark:prose-headings:text-white dark:prose-strong:text-white"
+                // Link do corpo do artigo: NÃO usa text-primary puro no tema claro.
+                // Medido em produção: #00c785 (= hsl(var(--primary)) renderizado,
+                // o verde da marca) sobre #fafafa (fundo claro do blog) mede
+                // 2,12:1, reprova WCAG. Aqui o verde é cor de TEXTO sobre fundo
+                // claro (não um fundo de marca) — não há foreground pra derivar,
+                // então a correção é escurecer o PRÓPRIO tom do link (mesma
+                // família verde, hue 160) até passar de 4,5:1, só no tema claro.
+                // No tema escuro o verde original já mede ~8,96:1 contra o fundo
+                // quase preto, então ali o link continua com text-primary normal.
+                className="blog-content prose prose-sm max-w-none prose-headings:text-neutral-900 prose-a:text-[#007a52] prose-strong:text-neutral-900 prose-img:rounded-xl sm:prose-base dark:prose-invert dark:prose-headings:text-white dark:prose-strong:text-white dark:prose-a:text-primary"
                 dangerouslySetInnerHTML={{
                   __html: replaceRegistrationCtas(
                     stripDuplicateLeadingTitle(post.content || '', post.title),
@@ -522,7 +532,7 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                   <Heart className={`h-4 w-4 ${hasLiked ? 'fill-current text-white' : ''}`} />
                   <span className="text-sm font-medium">{post.likes_count || 0}</span>
                 </button>
-                <span className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-white/40">
+                <span className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-white/50">
                   <MessageCircle className="h-4 w-4" />
                   {t.commentCount(comments.length)}
                 </span>
@@ -555,7 +565,7 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                       className="border-neutral-300 bg-white text-neutral-900 placeholder:text-neutral-400 dark:border-white/15 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/40"
                     />
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-[11px] text-neutral-500 dark:text-white/35">
+                      <p className="text-[11px] text-neutral-500 dark:text-white/50">
                         {t.commentDisclaimer}
                       </p>
                       <Button
@@ -590,7 +600,7 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                         <span className="text-sm font-medium text-neutral-800 dark:text-white/85">
                           {comment.author_name}
                         </span>
-                        <span className="text-xs text-neutral-400 dark:text-white/35">
+                        <span className="text-xs text-neutral-400 dark:text-white/50">
                           {format(new Date(comment.created_at), COMMENT_DATE_FORMATS[locale], {
                             locale: DATE_LOCALES[locale],
                           })}
@@ -602,7 +612,12 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                     </div>
                   ))}
                   {comments.length === 0 && !commentSent && (
-                    <p className="py-6 text-center text-sm text-neutral-400 dark:text-white/35">
+                    // text-neutral-400 (#a3a3a3) sobre #fafafa media 2,41:1.
+                    // neutral-500 bate 4,54:1 (tom já usado no resto da página
+                    // pra texto de apoio). dark:white/35 sobre o fundo quase
+                    // preto do tema escuro do blog media só 3,15:1 — mesmo bug,
+                    // não medido no relatório mas corrigido junto; /50 bate 5,29:1.
+                    <p className="py-6 text-center text-sm text-neutral-500 dark:text-white/50">
                       {t.commentEmpty}
                     </p>
                   )}

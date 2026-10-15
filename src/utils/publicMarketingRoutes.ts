@@ -37,6 +37,7 @@ const EXACT_MARKETING_PATHS = new Set<string>([
   '/sistema-para-elevadores',
   '/sistema-para-limpeza-conservacao',
   '/sistema-para-dedetizacao',
+  '/sistema-para-assistencia-tecnica',
   // Módulos (SEO).
   '/os-digital',
   '/sistema-pmoc',
@@ -49,6 +50,18 @@ const EXACT_MARKETING_PATHS = new Set<string>([
   '/orcamentos-e-contratos',
   '/rastreamento-de-equipes',
   '/area-do-tecnico',
+]);
+
+/**
+ * Rotas PÚBLICAS de autenticação. Não são marketing (não entram no SSG nem no
+ * sitemap), mas são páginas públicas com formulário — bloquear o zoom de pinça
+ * nelas reprova WCAG 1.4.4 (Resize Text). Ficam separadas de
+ * EXACT_MARKETING_PATHS de propósito: aquela lista é espelho do SSG.
+ */
+const EXACT_PUBLIC_FORM_PATHS = new Set<string>([
+  '/login',
+  '/cadastro',
+  '/reset-password',
 ]);
 
 /**
@@ -74,4 +87,15 @@ export function isMarketingRoute(pathname: string): boolean {
   // Posts de blog também são marketing (pt-br e localizados).
   if (stripped.startsWith('/blog/')) return true;
   return false;
+}
+
+/**
+ * Diz se o pathname pode liberar o zoom de pinça: marketing OU página pública
+ * de formulário. É o que o runtime (useMarketingViewport) consome; o app logado
+ * e os portais continuam com o viewport fixo.
+ */
+export function allowsPinchZoom(pathname: string): boolean {
+  if (isMarketingRoute(pathname)) return true;
+  const raw = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  return EXACT_PUBLIC_FORM_PATHS.has(stripLocale(raw));
 }

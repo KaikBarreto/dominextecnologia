@@ -141,8 +141,10 @@ export default function PricingSection() {
 
             {/* CTA */}
             <div className="flex md:justify-end">
+              {/* #25D366 é a cor OFICIAL do WhatsApp (não alterar); branco por
+                  cima mede 1,98:1 (reprova WCAG). text-[#1a1a1a] mede 8,78:1. */}
               <Button
-                className="bg-[#25D366] hover:bg-[#1ebe5a] text-white font-semibold rounded-md w-full md:w-auto px-8 gap-2 whitespace-normal h-auto py-3 text-center leading-tight"
+                className="bg-[#25D366] hover:bg-[#1ebe5a] text-[#1a1a1a] font-semibold rounded-md w-full md:w-auto px-8 gap-2 whitespace-normal h-auto py-3 text-center leading-tight"
                 size="lg"
                 asChild
               >

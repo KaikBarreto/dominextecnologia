@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { idealForeground } from '@/lib/colorContrast';
+import { resolveWcagForeground } from '@/lib/colorContrast';
 
 /** Verde da marca Dominex (#00C597) — fallback do CTA fora de páginas de segmento. */
 const BRAND_GREEN = '#00C597';
@@ -72,15 +72,16 @@ const SEGMENT_VALUE_BY_SLUG: Record<string, string> = {
  * dela. A cor nunca é escurecida: o quadradinho do ícone e o card em hover usam
  * exatamente `seg.color` de companySegments (régua CEO: o usuário tem que ver a
  * cor saturada de verdade). O contraste é resolvido pela COR DO TEXTO, não pela
- * cor de fundo: `idealForeground` devolve branco na maioria e slate-escuro só
- * nos tons claros/quentes (amarelo solar #eab308, âmbar elétrica #f59e0b), os
- * únicos onde o branco ficaria ilegível. Os demais (inclusive construção e
- * dedetização) ganham texto branco direto sobre a cor pura.
+ * cor de fundo: `resolveWcagForeground` mede o contraste de verdade (fórmula
+ * WCAG) contra branco e contra escuro-neutro e devolve o que ganhar — medido
+ * em produção, TODAS as 10 cores de segmento reprovam 4,5:1 com texto branco
+ * (ex.: cyan #06b6d4 mede 2,43:1), então na prática o escuro-neutro
+ * (#1a1a1a, mesmo tom do --primary-foreground) ganha em todas.
  */
 function segmentAccent(slug: string): { bg: string; fg: string } {
   const value = SEGMENT_VALUE_BY_SLUG[slug];
   const bg = (value && getSegment(value)?.color) || '#06b6d4';
-  return { bg, fg: idealForeground(bg) };
+  return { bg, fg: resolveWcagForeground(bg) };
 }
 
 /**
@@ -243,7 +244,7 @@ export default function LandingNavbar() {
   // por cima — branco na maioria, escuro só nos acentos claros.
   const ctaSegment = SEGMENTS[canonicalPath.replace(/^\//, '')];
   const ctaBg = ctaSegment?.accentColor ?? BRAND_GREEN;
-  const ctaFg = idealForeground(ctaBg);
+  const ctaFg = resolveWcagForeground(ctaBg);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 25);
@@ -643,7 +644,7 @@ export default function LandingNavbar() {
               </Link>
             </Button>
             {/* Criar Conta — verde da marca na home/módulos; cor do segmento na
-                landing daquele segmento. Texto via idealForeground (contraste). */}
+                landing daquele segmento. Texto via resolveWcagForeground (contraste WCAG). */}
             <Button
               className="gap-2 hover:opacity-90 transition-opacity"
               style={{ backgroundColor: ctaBg, color: ctaFg }}

@@ -1,8 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // useMarketingViewport — alterna a meta viewport conforme a rota (acessibilidade).
 //
-// Site público de marketing → viewport ZOOMÁVEL (zoom de pinça liberado, passa no
-// Lighthouse a11y). Qualquer outra rota (sistema logado, OS pública, portais) →
+// Site público de marketing e páginas públicas de formulário (login, cadastro,
+// reset de senha) → viewport ZOOMÁVEL (zoom de pinça liberado, WCAG 1.4.4).
+// Qualquer outra rota (sistema logado, OS pública, portais) →
 // viewport FIXO, mantendo a sensação de app nativo (régua mobile-first).
 //
 // O index.html base já nasce com o viewport FIXO (default do app logado). Este
@@ -14,7 +15,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
-  isMarketingRoute,
+  allowsPinchZoom,
   MARKETING_VIEWPORT,
   APP_VIEWPORT,
 } from '@/utils/publicMarketingRoutes';
@@ -26,7 +27,7 @@ export function useMarketingViewport() {
     const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
     if (!meta) return;
 
-    const next = isMarketingRoute(pathname) ? MARKETING_VIEWPORT : APP_VIEWPORT;
+    const next = allowsPinchZoom(pathname) ? MARKETING_VIEWPORT : APP_VIEWPORT;
     // Só escreve se mudou (evita invalidar o viewport à toa a cada navegação).
     if (meta.getAttribute('content') !== next) {
       meta.setAttribute('content', next);

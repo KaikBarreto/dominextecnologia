@@ -16,6 +16,7 @@ import {
   type BlogPostCardData,
   type CategoryColor,
 } from '@/components/blog/blogShared';
+import { resolveWcagForeground } from '@/lib/colorContrast';
 
 // Página pública. NUNCA herda o white-label do tenant logado: restaura o brand
 // Dominex em toda a subárvore (espelha Landing.tsx / QuemSomos.tsx).
@@ -173,7 +174,7 @@ export default function Blog({ initialPosts, initialCategories }: BlogProps = {}
 
             {/* Busca */}
             <div className="relative mx-auto mt-8 max-w-md">
-              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400 dark:text-white/40" />
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400 dark:text-white/50" />
               <input
                 type="text"
                 value={search}
@@ -200,10 +201,11 @@ export default function Blog({ initialPosts, initialCategories }: BlogProps = {}
                     <button
                       key={cat}
                       onClick={() => setActiveCategory(cat)}
-                      className="h-9 rounded-full border px-4 text-sm font-semibold text-white transition-colors"
+                      className="h-9 rounded-full border px-4 text-sm font-semibold transition-colors"
                       style={{
                         backgroundColor: catColor || 'hsl(160 100% 39%)',
                         borderColor: catColor || 'hsl(160 100% 39%)',
+                        color: resolveWcagForeground(catColor || 'hsl(160 100% 39%)'),
                       }}
                     >
                       {cat === ALL_CATEGORIES ? t.allCategories : cat}
@@ -224,7 +226,7 @@ export default function Blog({ initialPosts, initialCategories }: BlogProps = {}
           )}
 
           {isSearching && (
-            <p className="mb-6 text-sm text-neutral-500 dark:text-white/40">
+            <p className="mb-6 text-sm text-neutral-500 dark:text-white/50">
               {matched.length}{' '}
               {matched.length === 1
                 ? t.resultsSingular(search.trim())

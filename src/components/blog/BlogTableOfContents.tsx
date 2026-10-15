@@ -250,7 +250,7 @@ export function BlogTableOfContents({
       className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pr-2"
     >
       <div className="mb-3 flex items-center justify-between gap-1.5">
-        <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-white/40">
+        <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-white/50">
           <List className="h-3.5 w-3.5" />
           {messages.blog.tocLabel}
         </p>
@@ -260,7 +260,7 @@ export function BlogTableOfContents({
           aria-expanded={true}
           aria-label="Recolher índice"
           title="Recolher índice"
-          className="-mr-1 flex h-6 w-6 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:text-white/40 dark:hover:bg-white/[0.06] dark:hover:text-white/80"
+          className="-mr-1 flex h-6 w-6 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:text-white/50 dark:hover:bg-white/[0.06] dark:hover:text-white/80"
         >
           <PanelLeftClose className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
