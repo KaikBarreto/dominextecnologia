@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.32.6',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nome do checklist deixa de se misturar com as perguntas ao rolar',
+        description: 'No celular, ao rolar a ordem de serviço, o nome do checklist fica fixo no topo para o técnico não se perder. Só que ele estava aparecendo sem fundo, com as letras se misturando às fotos e perguntas que passavam por trás, deixando a tela confusa. Agora a faixa é sempre sólida. E, quando a ordem era aberta pelo link curto, essa faixa chegava a sumir por completo atrás da barra verde do topo, o que também está resolvido.',
+        category: 'correcao',
+      },
+      {
+        title: 'Aviso certo quando o vídeo do checklist não é aceito',
+        description: 'Ao enviar um vídeo da galeria nas perguntas de checklist, o técnico recebia o aviso de que o vídeo precisava ter no máximo 30 segundos, mesmo em clipes de 28 segundos. O problema era outro: o arquivo estava pesado demais, o que acontece fácil com vídeos gravados em alta resolução no celular. Agora o aviso diz o tamanho real do arquivo, qual é o limite e sugere gravar pelo próprio botão do app, que gera um clipe bem mais leve.',
+        category: 'correcao',
+      },
+      {
+        title: 'Botão de gravar vídeo cabe na tela do celular',
+        description: 'O texto do botão de gravar vídeo era comprido demais e transbordava a borda, ficando por cima do que estava ao lado em telas estreitas. Os botões foram encurtados e agora o par gravar e galeria fica alinhado, com o aviso dos 30 segundos logo abaixo.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.32.5',
     date: '15 de outubro de 2026',
     type: 'patch',
