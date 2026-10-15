@@ -1443,7 +1443,7 @@ export const finance = {
     osBilling: {
       dialogTitle: 'Faturar Ordem de Serviço',
       osLabel: 'OS #{number}',
-      hint: 'Escolha como registrar o faturamento desta Ordem de Serviço.',
+      hint: 'Escolha como registrar o faturamento.',
       option: {
         revenueTitle: 'Lançar receita',
         revenueDescription: 'Dinheiro que já entrou por este serviço.',
@@ -2809,7 +2809,7 @@ export const finance = {
     osBilling: {
       dialogTitle: 'Bill Service Order',
       osLabel: 'SO #{number}',
-      hint: 'Choose how to record the billing for this service order.',
+      hint: 'Choose how to record the billing.',
       option: {
         revenueTitle: 'Record revenue',
         revenueDescription: 'Money that already came in for this job.',
@@ -4176,7 +4176,7 @@ export const finance = {
     osBilling: {
       dialogTitle: 'Facturar orden de servicio',
       osLabel: 'OS #{number}',
-      hint: 'Elija cómo registrar la facturación de esta orden de servicio.',
+      hint: 'Elija cómo registrar la facturación.',
       option: {
         revenueTitle: 'Registrar ingreso',
         revenueDescription: 'Dinero que ya entró por este servicio.',
@@ -5543,7 +5543,7 @@ export const finance = {
     osBilling: {
       dialogTitle: `Facturer l'ordre de service`,
       osLabel: 'OS #{number}',
-      hint: `Choisissez comment enregistrer la facturation de cet ordre de service.`,
+      hint: `Choisissez comment enregistrer la facturation.`,
       option: {
         revenueTitle: 'Enregistrer une recette',
         revenueDescription: `Argent déjà encaissé pour cette intervention.`,

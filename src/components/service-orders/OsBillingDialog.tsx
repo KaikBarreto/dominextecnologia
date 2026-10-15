@@ -24,7 +24,7 @@ import {
   getRevenueOptionDecision,
   getChargeOptionDecision,
   isOsRevenueBlockedByChargeError,
-  type OsBillingOptionDecision,
+  type OsBillingBlockReason,
 } from '@/lib/os-billing';
 
 export interface OsBillingDialogProps {
@@ -108,11 +108,20 @@ function OsBillingFlow({ open, onOpenChange, context }: FlowProps) {
   const revenueDecision = getRevenueOptionDecision(snapshot);
   const chargeDecision = getChargeOptionDecision(snapshot, { hasCustomer });
 
-  // `decision.reason` é sempre presente (possivelmente `null`) — ver o
-  // porquê em `OsBillingOptionDecision` (os-billing.ts).
-  function blockedLabel(decision: OsBillingOptionDecision): string | null {
-    return decision.reason ? t.blocked[decision.reason] : null;
-  }
+  /**
+   * Motivos de bloqueio a exibir, SEM repetição. As duas opções costumam cair
+   * pelo mesmo motivo ("já tem receita", "já tem cobrança") e dois banners
+   * idênticos lado a lado é ruído, não informação. A opção de cobrança só
+   * entra na conta quando ela chega a ser oferecida (`canOfferCharge`).
+   */
+  const blockedReasons = Array.from(
+    new Set(
+      [
+        revenueDecision.enabled ? null : revenueDecision.reason,
+        canOfferCharge && !chargeDecision.enabled ? chargeDecision.reason : null,
+      ].filter((r): r is OsBillingBlockReason => !!r),
+    ),
+  );
 
   const osNumberLabel =
     context.osNumber != null ? t.osLabel.replace('{number}', String(context.osNumber)) : null;
@@ -231,8 +240,14 @@ function OsBillingFlow({ open, onOpenChange, context }: FlowProps) {
                   : 'cursor-not-allowed border-border bg-muted/40 opacity-60',
               )}
             >
+              {/* `text-primary-foreground`, NUNCA `text-white` cravado: `bg-primary`
+                  é a cor de marca DO TENANT e pode ser clara. Medido no QA de
+                  15/10/2026 num tenant com primary rgb(224,224,224): branco em
+                  cima dava ~1.3:1 de contraste e o ícone sumia. O design system
+                  já resolve isso derivando o foreground da marca (ver o
+                  comentário de `--primary-foreground` em `src/index.css`). */}
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary">
-                <CreditCard className="h-5 w-5 text-white" />
+                <CreditCard className="h-5 w-5 text-primary-foreground" />
               </span>
               <span className="text-sm font-semibold text-foreground">{t.option.chargeTitle}</span>
               <span className="text-xs text-muted-foreground">{t.option.chargeDescription}</span>
@@ -240,23 +255,32 @@ function OsBillingFlow({ open, onOpenChange, context }: FlowProps) {
           )}
         </div>
 
-        {/* Motivo de cada opção desabilitada — nunca some em silêncio. */}
-        {!revenueDecision.enabled && (
-          <NoticeBanner variant="warning">{blockedLabel(revenueDecision)}</NoticeBanner>
-        )}
-        {canOfferCharge && !chargeDecision.enabled && (
-          <NoticeBanner variant="warning">{blockedLabel(chargeDecision)}</NoticeBanner>
-        )}
+        {/* Motivo de cada opção desabilitada — nunca some em silêncio, mas
+            TAMBÉM nunca repetido: quando as duas opções caem pelo mesmo motivo
+            (o caso comum, "já tem receita" / "já tem cobrança"), o aviso é UM
+            só. Sem o dedupe, o QA de 15/10/2026 mostrou o mesmo banner laranja
+            empilhado duas vezes, idêntico, embaixo das opções. */}
+        {blockedReasons.map((reason) => (
+          <NoticeBanner key={reason} variant="warning">
+            {t.blocked[reason]}
+          </NoticeBanner>
+        ))}
       </div>
     ) : null;
 
   return (
     <>
+      {/* Número da OS vai na DESCRIÇÃO, não no título. Medido no QA de
+          15/10/2026 a 390px: o header do drawer reserva `px-20` (80px) pro
+          botão "FECHAR", mas o botão rotulado ocupa 102px a partir da borda, e
+          título longo passa POR BAIXO do botão (colidia em x 288..302). Como a
+          reserva do primitivo é compartilhada por todos os drawers do app, a
+          correção aqui é manter o título curto. */}
       <ResponsiveModal
         open={open && step === 'choice'}
         onOpenChange={onOpenChange}
-        title={osNumberLabel ? `${t.dialogTitle} · ${osNumberLabel}` : t.dialogTitle}
-        description={t.hint}
+        title={t.dialogTitle}
+        description={osNumberLabel ? `${osNumberLabel} · ${t.hint}` : t.hint}
         className="sm:max-w-[560px]"
       >
         {content}

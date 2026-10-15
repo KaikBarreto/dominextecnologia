@@ -63,9 +63,19 @@ export function ResponsiveModal({
               nunca passe por baixo do botão FECHAR, mesmo em títulos longos.
               O botão fica absolute para não ocupar o fluxo e desalinhar o centro. */}
           {/* pt-7 dá folga do handle de arraste (que fica no topo do drawer) pro
-              botão FECHAR não encostar no topo. px-20 reserva espaço horizontal pro
-              botão rotulado — título centralizado quebra em 2 linhas antes de colidir. */}
-          <DrawerHeader className="relative shrink-0 px-20 pt-7 pb-3">
+              botão FECHAR não encostar no topo. O padding horizontal reserva espaço
+              pro botão rotulado — título centralizado quebra em 2 linhas antes de
+              colidir.
+
+              ⚠️ A reserva TEM que ser >= a pegada real do botão, medida da borda
+              da tela: `right-3` (12px) + largura do botão rotulado (~89px com
+              "FECHAR"/"CLOSE"/"CERRAR"/"FERMER") = ~102px. Estava `px-20` = 80px,
+              ou seja 22px A MENOS que o botão, e o título passava POR BAIXO dele.
+              Medido no QA de 15/10/2026 a 390px: título ocupando x 93..297 contra
+              o botão em x 288..377 — colidia até com título CURTO, em qualquer
+              drawer do app, não só no que estava sendo testado.
+              `px-28` = 112px deixa 10px de folga pra variação de fonte/idioma. */}
+          <DrawerHeader className="relative shrink-0 px-28 pt-7 pb-3">
             <DrawerTitle className="text-center">{title}</DrawerTitle>
             {description ? <DrawerDescription className="text-center mt-1">{description}</DrawerDescription> : null}
             <ModalCloseButton
