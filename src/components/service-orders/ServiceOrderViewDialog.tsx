@@ -794,7 +794,14 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         <DialogContent className="max-w-2xl max-h-[90vh] p-0">
           {/* pr-8 reserva espaço pro botão "FECHAR" que o DialogContent injeta no canto. */}
           <DialogHeader className="p-6 pb-0 pr-28"><DialogTitle>{title}</DialogTitle></DialogHeader>
-          <ScrollArea className="max-h-[calc(90vh-80px)]">
+          {/* `[&_[data-radix-scroll-area-viewport]>div]:!block` é obrigatório: o
+              ScrollArea do Radix embrulha o conteúdo num `display:table` inline, e
+              tabela de largura automática cresce até o max-content. A foto da
+              resposta do questionário (`aspect-[4/3]` + `w-full`) não resolve a
+              porcentagem no cálculo intrínseco, cai no tamanho natural do JPG e
+              estica a "coluna" pra ~110 mil px — o usuário via um retângulo cinza
+              gigante no lugar da foto. Com `block`, o 100% volta a valer o viewport. */}
+          <ScrollArea className="max-h-[calc(90vh-80px)] [&_[data-radix-scroll-area-viewport]>div]:!block">
             <div className="p-6 pt-4">{content}</div>
           </ScrollArea>
         </DialogContent>

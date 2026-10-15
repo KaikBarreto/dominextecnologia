@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.32.2";
+export const APP_VERSION = "1.32.3";
 
-export const VERSION_NOTES = "No teste de perfil comportamental, tocar na alternativa escolhida já leva para a próxima pergunta, deixando o teste mais rápido de responder.";
+export const VERSION_NOTES = "No computador, as fotos do checklist voltam a aparecer dentro da ordem de serviço, no lugar do quadrado cinza vazio.";

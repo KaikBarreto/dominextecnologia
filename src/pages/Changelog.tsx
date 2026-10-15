@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.32.3',
+    date: '15 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Fotos do checklist voltam a aparecer no detalhe da ordem de serviço',
+        description: 'No computador, as fotos tiradas pelo técnico nas perguntas do checklist apareciam como um quadrado cinza vazio dentro da ordem de serviço. Agora elas abrem normalmente, junto com a galeria de fotos da ordem, e continuam sendo ampliadas com um toque.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.32.2',
     date: '15 de outubro de 2026',
     type: 'patch',
