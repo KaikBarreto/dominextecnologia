@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.32.5',
+    date: '15 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastro pelo link público voltou a funcionar',
+        description: 'O link que você envia para o cliente preencher o próprio cadastro estava apresentando erro no momento de enviar, e nada do que era preenchido ficava salvo. A falha começou hoje mais cedo e já está corrigida, sem você precisar gerar um link novo nem mexer em nada. Quem tentou se cadastrar nesse período precisa preencher o formulário outra vez, porque os envios que deram erro não foram guardados.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.32.4',
     date: '15 de outubro de 2026',
     type: 'patch',

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.32.4";
+export const APP_VERSION = "1.32.5";
 
-export const VERSION_NOTES = "A ordem de serviço ganhou o botão Faturar: você escolhe entre registrar a receita ou gerar uma cobrança com PIX, boleto e link, sem risco de a mesma venda contar duas vezes.";
+export const VERSION_NOTES = "O link público de cadastro de clientes voltou a funcionar. Quem tentou se cadastrar enquanto ele estava com erro precisa enviar o formulário de novo, porque nada ficou salvo.";
