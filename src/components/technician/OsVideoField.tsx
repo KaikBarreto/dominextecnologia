@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Video, Square, X, RotateCcw, Upload, ImageIcon } from 'lucide-react';
+import { Video, Square, X, RotateCcw, Upload, ImageIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { OsVideoPlayer } from '@/components/technician/OsVideoPlayer';
+import { canCompressVideoInBrowser, compressVideoInBrowser } from '@/utils/videoCompress';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -22,8 +23,10 @@ const MAX_SECONDS = 30;
  * aviso claro. Subir este número exige subir ANTES o limite do projeto no Supabase.
  *
  * ⚠️ Este teto é de PESO, não de duração: um clipe de 28s gravado em 4K no iPhone
- * passa fácil de 50 MB. Por isso o aviso correspondente fala em MB (mostrando o
- * peso real do arquivo) e manda gravar pelo botão do app, que sai ~6 MB em 30s.
+ * passa dos 80 MB. Antes de recusar, o campo tenta RECOMPRIMIR no próprio
+ * navegador (ver `@/utils/videoCompress`) pra 720p a 1,5 Mbps, que é o mesmo
+ * ajuste do gravador do app (~6 MB em 30s). O aviso de recusa só aparece quando
+ * nem a compressão resolve, e aí fala em MB mostrando o peso real do arquivo.
  */
 const MAX_UPLOAD_MB = 50;
 const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
@@ -95,6 +98,9 @@ export function OsVideoField({
   const [recording, setRecording] = useState(false);
   const [remaining, setRemaining] = useState(MAX_SECONDS);
   const [pendingRemoval, setPendingRemoval] = useState(false);
+  // Fração 0..1 enquanto o navegador recomprime um vídeo pesado da galeria.
+  // null = não está comprimindo. Trava os botões e abre o overlay de progresso.
+  const [compressPct, setCompressPct] = useState<number | null>(null);
 
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -107,7 +113,7 @@ export function OsVideoField({
   // Input de galeria (sem capture, só galeria).
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
-  const disabled = uploading || readOnly;
+  const disabled = uploading || readOnly || compressPct !== null;
 
   // Garante que câmera/timers sejam liberados ao desmontar.
   useEffect(() => {
@@ -254,6 +260,28 @@ export function OsVideoField({
     // antes este caminho reclamava de "no máximo 30 segundos" num vídeo de 28s
     // que só era pesado demais — o técnico não tinha como entender nem resolver.
     if (file.size > MAX_UPLOAD_BYTES) {
+      // Antes de recusar, tenta ALIVIAR o arquivo no próprio navegador (720p a
+      // 1,5 Mbps — o mesmo ajuste do gravador do app). É o caminho normal pra
+      // vídeo de celular em 4K: 28s saem com ~88 MB e voltam com ~6 MB.
+      const picked = pickRecordingMime();
+      if (picked && canCompressVideoInBrowser()) {
+        setCompressPct(0);
+        let compressed: Awaited<ReturnType<typeof compressVideoInBrowser>> = null;
+        try {
+          compressed = await compressVideoInBrowser(file, {
+            mime: picked.mime,
+            ext: picked.ext,
+            onProgress: setCompressPct,
+          });
+        } finally {
+          setCompressPct(null);
+        }
+        if (compressed && compressed.blob.size <= MAX_UPLOAD_BYTES) {
+          await uploadClip(compressed.blob, compressed.ext);
+          return;
+        }
+      }
+      // Sem suporte, falhou, ou nem comprimido coube: volta pro aviso claro.
       toast({
         variant: 'destructive',
         title: t.toastFileTooLarge,
@@ -315,10 +343,39 @@ export function OsVideoField({
       )
     : null;
 
+  // Overlay de COMPRESSÃO (portal). Fica em tela cheia de propósito: o processo
+  // roda em tempo real lendo os quadros do vídeo e o iOS CONGELA esse loop se a
+  // tela sair de vista, então a tela precisa prender a atenção e avisar.
+  const compressOverlay = compressPct !== null
+    ? createPortal(
+        <div className="fixed inset-0 z-[200] bg-black/90 flex flex-col items-center justify-center gap-5 px-8 text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <div className="space-y-2">
+            <p className="text-lg font-semibold text-white">{t.compressingTitle}</p>
+            <p className="text-sm text-white/70">{t.compressingHint}</p>
+          </div>
+          <div className="w-full max-w-xs">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-white/15">
+              <div
+                className="h-full rounded-full bg-primary transition-[width] duration-200 ease-out"
+                style={{ width: `${Math.round(compressPct * 100)}%` }}
+              />
+            </div>
+            <p className="mt-2 text-sm font-semibold tabular-nums text-white">
+              {Math.round(compressPct * 100)}%
+            </p>
+          </div>
+        </div>,
+        document.body,
+      )
+    : null;
+
   return (
     <div className="space-y-2">
       {/* Overlay de gravação em tela cheia (portal) */}
       {recordingOverlay}
+      {/* Overlay de compressão do vídeo pesado da galeria (portal) */}
+      {compressOverlay}
 
       {/* Preview do clipe já anexado. */}
       {hasClip && !recording && (
