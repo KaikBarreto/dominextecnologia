@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { 
   ClipboardList, 
@@ -651,45 +651,56 @@ function TechnicianOSInner() {
   // O `headerRef` está SEMPRE no MESMO elemento exato: o container `sticky top-0
   // z-20` INCLUINDO o `paddingTop: env(safe-area-inset-top)` e todo o conteúdo —
   // `getBoundingClientRect().height` já é border-box (inclui padding).
-  const headerRef = useRef<HTMLDivElement | null>(null);
   // Default = 0 (não 96): com 0 o equipamento NÃO renderiza sticky com offset
   // ainda (os itens só ficam sticky depois que a altura > 0 chega — useStickyStuck
   // recebe headerHeight e o item suprime o fundo enquanto 0). Assim nunca há um
-  // frame pintado com offset 96 estranho. A 1ª medição (useLayoutEffect, antes do
+  // frame pintado com offset 96 estranho. A 1ª medição (callback ref, antes do
   // paint) já chega com a altura real.
   const [headerHeight, setHeaderHeight] = useState(0);
-  // useLayoutEffect mede SÍNCRONO após o layout e ANTES do paint: o primeiro frame
-  // visível já usa a altura real (sem flash com default). ResizeObserver com box
-  // 'border-box' remede a CADA mudança de altura — logo/nome async, quebra de
-  // linha, troca de modo, fonte, safe-area. Lê do entry quando disponível
-  // (borderBoxSize é a altura renderizada exata, mais firme que rect em transições).
-  useLayoutEffect(() => {
-    const el = headerRef.current;
+  const headerRoRef = useRef<ResizeObserver | null>(null);
+  // CALLBACK REF (não `useRef` + `useLayoutEffect` com lista de deps): o React
+  // chama esta função no commit EXATO em que o elemento entra (e com `null`
+  // quando sai), então a medição nunca depende de adivinhar quais estados
+  // remontam o header.
+  //
+  // A versão anterior media num `useLayoutEffect([status, isAuthenticated,
+  // company, loading])` e tinha um furo real, reproduzido no QA de 15/10/2026
+  // abrindo a OS pelo link amigável (`/os-tecnico/<slug>-<codigo>`): o efeito
+  // rodava enquanto a tela ainda mostrava um dos returns antecipados (skeleton /
+  // bloqueio de assinatura / "não encontrada"), achava `headerRef.current` nulo e
+  // saía sem observar NADA. Quando o header de verdade montava, nenhuma daquelas
+  // deps mudava — o efeito não rodava de novo e `headerHeight` ficava 0 PRA
+  // SEMPRE. Com 0, o cabeçalho de cada checklist gruda em `top: -1` e some ATRÁS
+  // da barra da OS (z-20), em vez de parar logo abaixo dela.
+  //
+  // `ceil` da altura fracionária (border-box). `offsetHeight` truncaria: header
+  // de 60,5px viraria 60 e o cabeçalho do equipamento grudaria 0,5px ABAIXO da
+  // base real → vão sub-pixel. `ceil` garante que o `top` nunca cai DENTRO da
+  // barra (1px de overlap intencional via `top: headerHeight - 1`).
+  // O ResizeObserver (box 'border-box') segue remedindo a cada mudança de altura
+  // — logo/nome async, quebra de linha, troca de modo, fonte, safe-area. Lê do
+  // entry quando disponível (borderBoxSize é a altura renderizada exata, mais
+  // firme que rect em transições).
+  const headerRef = useCallback((el: HTMLDivElement | null) => {
+    headerRoRef.current?.disconnect();
+    headerRoRef.current = null;
     if (!el) return;
-    // `ceil` da altura fracionária (border-box). `offsetHeight` truncaria: header
-    // de 60,5px viraria 60 e o cabeçalho do equipamento grudaria 0,5px ABAIXO da
-    // base real → vão sub-pixel. `ceil` garante que o `top` nunca cai DENTRO do
-    // laranja (1px de overlap intencional via `top: headerHeight - 1`).
-    const readHeight = (entry?: ResizeObserverEntry) => {
-      const bb = entry?.borderBoxSize?.[0];
-      const h = bb ? bb.blockSize : el.getBoundingClientRect().height;
-      return Math.ceil(h);
-    };
     const apply = (entry?: ResizeObserverEntry) => {
-      const h = readHeight(entry);
+      const bb = entry?.borderBoxSize?.[0];
+      const h = Math.ceil(bb ? bb.blockSize : el.getBoundingClientRect().height);
       // Só atualiza quando muda de verdade (evita re-render redundante e loop com
       // o ResizeObserver).
       setHeaderHeight((prev) => (prev === h ? prev : h));
     };
     apply();
+    if (typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver((entries) => apply(entries[0]));
     ro.observe(el, { box: 'border-box' });
-    return () => ro.disconnect();
-    // Re-mede ao trocar de MODO (report ↔ preenchimento montam headers distintos,
-    // ref novo) e quando a EMPRESA resolve (logo/nome async mudam a altura). O
-    // ResizeObserver pega mudanças contínuas; estas deps garantem re-attach quando
-    // o ELEMENTO em si é remontado/trocado.
-  }, [serviceOrder?.status, isAuthenticated, company, loading]);
+    headerRoRef.current = ro;
+  }, []);
+  // Solta o observer ao desmontar a tela (o callback ref já cobre troca de
+  // elemento; isto cobre o unmount da página inteira).
+  useEffect(() => () => headerRoRef.current?.disconnect(), []);
 
   // Overlay fullscreen da Área do Técnico™ (atalho a partir do FAB).
   // A tela de OS NÃO desmonta: ao fechar, o técnico volta exatamente onde estava.

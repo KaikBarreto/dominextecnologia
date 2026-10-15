@@ -13,8 +13,20 @@ import { MESSAGES } from '@/lib/i18n/messages';
 
 /** Duração máxima do clipe (segundos). */
 const MAX_SECONDS = 30;
-/** Teto de tamanho pro caminho de fallback (input file). ~40 MB. */
-const MAX_FALLBACK_BYTES = 40 * 1024 * 1024;
+/**
+ * Teto de TAMANHO do arquivo vindo da galeria/câmera nativa, em MB.
+ *
+ * Tem que casar com o limite REAL do Storage do projeto (hoje 50 MB globais, e o
+ * bucket `os-photos` não tem limite próprio) — se o cliente deixar passar mais do
+ * que o servidor aceita, o upload morre com erro genérico de rede em vez de um
+ * aviso claro. Subir este número exige subir ANTES o limite do projeto no Supabase.
+ *
+ * ⚠️ Este teto é de PESO, não de duração: um clipe de 28s gravado em 4K no iPhone
+ * passa fácil de 50 MB. Por isso o aviso correspondente fala em MB (mostrando o
+ * peso real do arquivo) e manda gravar pelo botão do app, que sai ~6 MB em 30s.
+ */
+const MAX_UPLOAD_MB = 50;
+const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
 
 interface OsVideoFieldProps {
   /** OS dona do vídeo — usado no path do bucket. */
@@ -227,21 +239,27 @@ export function OsVideoField({
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (file.size > MAX_FALLBACK_BYTES) {
-      toast({
-        variant: 'destructive',
-        title: t.toastFileTooLarge,
-        description: t.toastFileTooLargeDesc.replace('{n}', String(MAX_SECONDS)),
-      });
-      return;
-    }
-    // Best-effort: se der pra medir a duração, rejeita acima de ~35s.
+    // DURAÇÃO primeiro: é a regra que a tela anuncia ("clipe de até 30 segundos").
+    // Best-effort — se der pra medir, rejeita acima de ~35s.
     const durationOk = await checkDuration(file);
     if (durationOk === false) {
       toast({
         variant: 'destructive',
         title: t.toastTooLong,
         description: t.toastTooLongDesc.replace('{n}', String(MAX_SECONDS)),
+      });
+      return;
+    }
+    // Só depois o PESO. São recusas diferentes e o aviso tem que dizer qual é:
+    // antes este caminho reclamava de "no máximo 30 segundos" num vídeo de 28s
+    // que só era pesado demais — o técnico não tinha como entender nem resolver.
+    if (file.size > MAX_UPLOAD_BYTES) {
+      toast({
+        variant: 'destructive',
+        title: t.toastFileTooLarge,
+        description: t.toastFileTooLargeDesc
+          .replace('{size}', (file.size / (1024 * 1024)).toFixed(0))
+          .replace('{max}', String(MAX_UPLOAD_MB)),
       });
       return;
     }
@@ -330,19 +348,19 @@ export function OsVideoField({
             <Button
               variant="outline"
               size="sm"
-              className="w-full"
+              className="w-full min-w-0"
               onClick={startRecording}
               disabled={disabled}
             >
               {uploading ? (
                 <>
-                  <Upload className="h-3.5 w-3.5 mr-1.5 animate-pulse" />
-                  {t.btnUploading}
+                  <Upload className="h-3.5 w-3.5 mr-1.5 shrink-0 animate-pulse" />
+                  <span className="truncate">{t.btnUploading}</span>
                 </>
               ) : (
                 <>
-                  <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-                  {t.btnReRecord}
+                  <RotateCcw className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                  <span className="truncate">{t.btnReRecord}</span>
                 </>
               )}
             </Button>
@@ -356,10 +374,10 @@ export function OsVideoField({
                   onChange={handleFilePick}
                   disabled={disabled}
                 />
-                <Button variant="outline" size="sm" className="w-full" asChild disabled={disabled}>
+                <Button variant="outline" size="sm" className="w-full min-w-0" asChild disabled={disabled}>
                   <span>
-                    <ImageIcon className="h-3.5 w-3.5 mr-1.5" />
-                    {t.btnGallery}
+                    <ImageIcon className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                    <span className="truncate">{t.btnGallery}</span>
                   </span>
                 </Button>
               </label>
@@ -371,19 +389,19 @@ export function OsVideoField({
             <Button
               variant="outline"
               size="sm"
-              className="w-full"
+              className="w-full min-w-0"
               onClick={startRecording}
               disabled={disabled}
             >
               {uploading ? (
                 <>
-                  <Upload className="h-3.5 w-3.5 mr-1.5 animate-pulse" />
-                  {t.btnUploading}
+                  <Upload className="h-3.5 w-3.5 mr-1.5 shrink-0 animate-pulse" />
+                  <span className="truncate">{t.btnUploading}</span>
                 </>
               ) : (
                 <>
-                  <Video className="h-3.5 w-3.5 mr-1.5" />
-                  {t.btnRecord.replace('{n}', String(MAX_SECONDS))}
+                  <Video className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                  <span className="truncate">{t.btnRecord}</span>
                 </>
               )}
             </Button>
@@ -397,10 +415,10 @@ export function OsVideoField({
                   onChange={handleFilePick}
                   disabled={disabled}
                 />
-                <Button variant="outline" size="sm" className="w-full" asChild disabled={disabled}>
+                <Button variant="outline" size="sm" className="w-full min-w-0" asChild disabled={disabled}>
                   <span>
-                    <ImageIcon className="h-3.5 w-3.5 mr-1.5" />
-                    {t.btnGallery}
+                    <ImageIcon className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                    <span className="truncate">{t.btnGallery}</span>
                   </span>
                 </Button>
               </label>

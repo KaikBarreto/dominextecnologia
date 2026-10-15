@@ -1462,8 +1462,8 @@ export const os = {
 
     // ── Campo de vídeo da OS (OsVideoField) ───────────────────────────────
     osVideo: {
-      btnRecord: 'Gravar vídeo (até {n}s)',
-      btnReRecord: 'Regravar vídeo',
+      btnRecord: 'Gravar',
+      btnReRecord: 'Regravar',
       btnStop: 'Parar gravação',
       btnUploading: 'Enviando...',
       hintClip: 'Clipe curto de até {n} segundos. Precisa de conexão para enviar.',
@@ -1472,7 +1472,7 @@ export const os = {
       toastCameraError: 'Não foi possível acessar a câmera',
       toastCameraErrorDesc: 'Verifique a permissão da câmera e tente de novo.',
       toastFileTooLarge: 'Vídeo muito grande',
-      toastFileTooLargeDesc: 'O vídeo precisa ter no máximo {n} segundos. Grave um clipe mais curto.',
+      toastFileTooLargeDesc: 'Este vídeo tem {size} MB e o limite de envio é {max} MB. Grave o clipe pelo botão "Gravar vídeo" (fica bem mais leve) ou envie um vídeo em qualidade menor.',
       toastTooLong: 'Vídeo muito longo',
       toastTooLongDesc: 'O vídeo precisa ter no máximo {n} segundos.',
       modalRemoveTitle: 'Remover vídeo?',
@@ -3012,8 +3012,8 @@ export const os = {
 
     // ── Work order video field (OsVideoField) ─────────────────────────────
     osVideo: {
-      btnRecord: 'Record video (up to {n}s)',
-      btnReRecord: 'Re-record video',
+      btnRecord: 'Record',
+      btnReRecord: 'Re-record',
       btnStop: 'Stop recording',
       btnUploading: 'Uploading...',
       hintClip: 'Short clip up to {n} seconds. Requires connection to upload.',
@@ -3022,7 +3022,7 @@ export const os = {
       toastCameraError: 'Could not access the camera',
       toastCameraErrorDesc: 'Check camera permission and try again.',
       toastFileTooLarge: 'Video too large',
-      toastFileTooLargeDesc: 'The video must be at most {n} seconds. Record a shorter clip.',
+      toastFileTooLargeDesc: 'This video is {size} MB and the upload limit is {max} MB. Record the clip with the "Record video" button (much lighter) or send a lower-quality video.',
       toastTooLong: 'Video too long',
       toastTooLongDesc: 'The video must be at most {n} seconds.',
       modalRemoveTitle: 'Remove video?',
@@ -4562,8 +4562,8 @@ export const os = {
 
     // ── Campo de vídeo de la orden (OsVideoField) ─────────────────────────
     osVideo: {
-      btnRecord: 'Grabar vídeo (hasta {n}s)',
-      btnReRecord: 'Volver a grabar',
+      btnRecord: 'Grabar',
+      btnReRecord: 'Regrabar',
       btnStop: 'Detener grabación',
       btnUploading: 'Enviando...',
       hintClip: 'Clip corto de hasta {n} segundos. Necesita conexión para enviar.',
@@ -4572,7 +4572,7 @@ export const os = {
       toastCameraError: 'No se pudo acceder a la cámara',
       toastCameraErrorDesc: 'Verifica el permiso de cámara e inténtalo de nuevo.',
       toastFileTooLarge: 'Vídeo demasiado grande',
-      toastFileTooLargeDesc: 'El vídeo debe tener como máximo {n} segundos. Graba un clip más corto.',
+      toastFileTooLargeDesc: 'Este vídeo tiene {size} MB y el límite de envío es {max} MB. Graba el clip con el botón "Grabar vídeo" (es mucho más ligero) o envía un vídeo de menor calidad.',
       toastTooLong: 'Vídeo demasiado largo',
       toastTooLongDesc: 'El vídeo debe tener como máximo {n} segundos.',
       modalRemoveTitle: '¿Eliminar vídeo?',
@@ -6112,8 +6112,8 @@ export const os = {
 
     // ── Champ vidéo du bon (OsVideoField) ────────────────────────────────
     osVideo: {
-      btnRecord: `Enregistrer une vidéo (jusqu'à {n}s)`,
-      btnReRecord: 'Réenregistrer',
+      btnRecord: 'Filmer',
+      btnReRecord: 'Refilmer',
       btnStop: `Arrêter l'enregistrement`,
       btnUploading: 'Envoi en cours...',
       hintClip: `Clip court jusqu'à {n} secondes. Nécessite une connexion pour envoyer.`,
@@ -6122,7 +6122,7 @@ export const os = {
       toastCameraError: `Impossible d'accéder à la caméra`,
       toastCameraErrorDesc: `Vérifiez la permission de la caméra et réessayez.`,
       toastFileTooLarge: 'Vidéo trop grande',
-      toastFileTooLargeDesc: `La vidéo doit faire au maximum {n} secondes. Enregistrez un clip plus court.`,
+      toastFileTooLargeDesc: `Cette vidéo fait {size} Mo et la limite d'envoi est de {max} Mo. Enregistrez le clip avec le bouton « Enregistrer une vidéo » (bien plus léger) ou envoyez une vidéo de qualité inférieure.`,
       toastTooLong: 'Vidéo trop longue',
       toastTooLongDesc: `La vidéo doit faire au maximum {n} secondes.`,
       modalRemoveTitle: 'Supprimer la vidéo ?',

@@ -440,7 +440,7 @@ export function StickyFullBleedBg({
 export function equipmentChecklistHeaderClasses(
   stickyOn: boolean,
   isStuck: boolean,
-  _tone: EquipmentChecklistTone = 'app',
+  tone: EquipmentChecklistTone = 'app',
 ) {
   return {
     trigger: cn(
@@ -449,11 +449,22 @@ export function equipmentChecklistHeaderClasses(
       stickyOn && !isStuck && 'rounded-lg',
     ),
     // Sticky no WRAPPER (Header). z-10 < z-20 do header da tela (laranja), que
-    // sempre fica ACIMA. A cor/sombra/full-bleed do stuck vivem no fundo `fixed`
-    // do item (StickyFullBleedBg), então o Header fica "transparente" e SEM
-    // overflow-hidden (pra não clipar a foto nem o bleed). PDF/Imprimir: estático.
+    // sempre fica ACIMA. O full-bleed das CALHAS (fora da coluna) continua sendo
+    // o fundo `fixed` do item (StickyFullBleedBg) — ele é quem cobre a largura
+    // toda da viewport. Mas o Header NÃO pode mais depender SÓ dele: o `fixed` é
+    // posicionado por JS (useFollowStickyTop) e, se por qualquer motivo ele não
+    // pintar — um ancestral com `transform`/`filter` virando containing block, um
+    // repaint atrasado do WebKit no meio da rolagem com inércia, uma medição que
+    // não chegou —, o cabeçalho ficava TRANSPARENTE e o texto se misturava com as
+    // perguntas passando por trás (bug relatado pelo CEO em 15/10/2026 na OS
+    // #7878). Com `bg-card`/`bg-white` NO PRÓPRIO sticky, a coluna — que é onde o
+    // conteúdo de fato se sobrepõe — fica opaca pelo compositor, sem JS no meio.
+    // Mesma cor do fundo full-bleed, então não há emenda visível, e fora do stuck
+    // a cor é idêntica à do card/documento atrás (mudança invisível).
+    // SEM overflow-hidden (pra não clipar a foto nem o bleed). PDF/Imprimir: estático.
     header: cn(
       stickyOn && 'sticky z-10 print:static print:shadow-none transition-shadow',
+      stickyOn && (tone === 'document' ? 'bg-white' : 'bg-card'),
       // Fora do stuck mantém cantos arredondados pro visual de card.
       stickyOn && !isStuck && 'rounded-lg',
     ),
