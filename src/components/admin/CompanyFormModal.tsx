@@ -33,6 +33,7 @@ import { ModuleGrid, useSubscriptionModules, withBaseModules, sumModulesPrice, B
 import { useNfseTiers } from '@/hooks/useNfseTiers';
 import { buildCustomPriceNote, appendNote } from '@/utils/customPriceNote';
 import { NumericInput } from '@/components/ui/numeric-input';
+import { CUSTOM_PLAN_INCLUDED_USERS } from '@/lib/subscriptionCatalog';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { isValidBrazilianPhone } from '@/lib/phone-validation';
@@ -332,13 +333,28 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     updateField('subscription_expires_at', format(date, 'yyyy-MM-dd'));
   }, [updateField]);
 
+  // ========== Piso de usuários ==========
+  // Os usuários do plano são a BASE INCLUSA — o campo só sobe daí (usuário
+  // extra), nunca desce. No Personalizado a base é sempre 5; num plano pronto
+  // é o limite do próprio plano (o Exceção, por exemplo, nasce com 3).
+  const minUsers = useMemo(() => {
+    if (formData.subscription_plan === 'personalizado') return CUSTOM_PLAN_INCLUDED_USERS;
+    const planUsers = Number(plans.find((pl: any) => pl.code === formData.subscription_plan)?.max_users);
+    return planUsers > 0 ? planUsers : CUSTOM_PLAN_INCLUDED_USERS;
+  }, [formData.subscription_plan, plans]);
+
   // ========== Plan -> auto value & users ==========
   const handlePlanChange = useCallback((v: string) => {
     updateField('subscription_plan', v);
     if (v === 'personalizado') {
+      // Vindo de um plano com menos que a base (Exceção tem 3), sobe pro piso
+      // ANTES de sugerir o preço — senão o valor sairia calculado em cima de um
+      // número de usuários que o Personalizado não vende.
+      const users = Math.max(CUSTOM_PLAN_INCLUDED_USERS, Number(formData.max_users) || 0);
+      if (String(users) !== formData.max_users) updateField('max_users', String(users));
       // Preço sugerido = módulos + usuários acima dos 5 inclusos.
       if (!formData.use_custom_price) {
-        updateField('subscription_value', String(sumModulesPrice(allModules, selectedModules, nfseTiers, Number(formData.nfse_tier), Number(formData.max_users))));
+        updateField('subscription_value', String(sumModulesPrice(allModules, selectedModules, nfseTiers, Number(formData.nfse_tier), users)));
       }
       return;
     }
@@ -387,7 +403,15 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     }
   }, [allModules, selectedModules, nfseTiers, formData.nfse_tier, formData.subscription_plan, formData.use_custom_price, updateField]);
 
+  // Clampa no blur, não na digitação: limpar o campo pra digitar "15" passa por
+  // "1", e corrigir a cada tecla sequestraria o que o admin está escrevendo.
+  const handleMaxUsersBlur = useCallback(() => {
+    const parsed = parseInt(formData.max_users, 10);
+    if (!Number.isFinite(parsed) || parsed < minUsers) handleMaxUsersChange(String(minUsers));
+  }, [formData.max_users, minUsers, handleMaxUsersChange]);
+
   const isPersonalizado = formData.subscription_plan === 'personalizado';
+  const minUsersHint = `Mínimo ${minUsers} — ${minUsers} usuários já vêm inclusos no plano.`;
   const suggestedModulesPrice = sumModulesPrice(
     allModules,
     selectedModules,
@@ -441,8 +465,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         ? parseInt(formData.custom_price_months) || null
         : null;
       const planObj = plans.find((p: any) => p.code === formData.subscription_plan);
+      // Guarda final do piso: o campo já clampa no blur, mas o submit nunca
+      // pode gravar menos usuários do que a base inclusa do plano.
+      const maxUsersToSave = Math.max(minUsers, parseInt(formData.max_users, 10) || minUsers);
       const originalPlanPrice = formData.subscription_plan === 'personalizado'
-        ? sumModulesPrice(allModules, selectedModules, nfseTiers, Number(formData.nfse_tier), Number(formData.max_users))
+        ? sumModulesPrice(allModules, selectedModules, nfseTiers, Number(formData.nfse_tier), maxUsersToSave)
         : (planObj?.price ?? null);
       const modulesPayload = formData.subscription_plan === 'personalizado'
         ? withBaseModules(selectedModules)
@@ -491,7 +518,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           subscription_value: parseFloat(formData.subscription_value) || 0,
           subscription_expires_at: formData.subscription_expires_at || null,
           billing_cycle: formData.billing_cycle,
-          max_users: parseInt(formData.max_users) || 5,
+          max_users: maxUsersToSave,
           notes: notesToSave,
           origin: formData.origin || null,
           salesperson_id: formData.salesperson_id || null,
@@ -556,7 +583,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
               ? new Date(formData.subscription_expires_at).toISOString()
               : null,
             billing_cycle: formData.billing_cycle,
-            max_users: parseInt(formData.max_users) || 5,
+            max_users: maxUsersToSave,
             origin: formData.origin || null,
             salesperson_id: formData.salesperson_id || null,
             sdr_id: null, // descontinuado (2026-10-14): a coluna segue no banco pelo histórico, mas nunca é preenchida de novo
@@ -934,7 +961,13 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Máx. Usuários</Label>
-                      <NumericInput value={formData.max_users} onValueChange={handleMaxUsersChange} />
+                      <NumericInput
+                        id="company-max-users-custom"
+                        value={formData.max_users}
+                        onValueChange={handleMaxUsersChange}
+                        onBlur={handleMaxUsersBlur}
+                      />
+                      <p className="text-xs text-muted-foreground">{minUsersHint}</p>
                     </div>
                   </div>
 
@@ -986,7 +1019,13 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Máx. Usuários</Label>
-                    <NumericInput value={formData.max_users} onValueChange={handleMaxUsersChange} />
+                    <NumericInput
+                      id="company-max-users-default"
+                      value={formData.max_users}
+                      onValueChange={handleMaxUsersChange}
+                      onBlur={handleMaxUsersBlur}
+                    />
+                    <p className="text-xs text-muted-foreground">{minUsersHint}</p>
                   </div>
                 </div>
               )}

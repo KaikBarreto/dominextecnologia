@@ -3,9 +3,10 @@
 // Sobe o NÍVEL do add-on de Avisos de WhatsApp de um tenant e ajusta a cobrança.
 // Clone de change-nfse-tier.
 //
-// O add-on `whatsapp` tem 4 níveis, cada um com cota mensal e preço (placeholders
-// calibrados pelo CEO no catálogo whatsapp_tiers). companies.whatsapp_tier guarda
-// o nível atual, default 1.
+// O add-on `whatsapp` tem 2 níveis (reprecificação de 2026-10-15): nível 1
+// 'Grátis' (100 msgs/mês, R$0) e nível 2 'Integração Oficial' (ilimitado, R$150).
+// Acabou a escada de consumo — é um add-on único. O preço mora SÓ em
+// whatsapp_tiers.price. companies.whatsapp_tier guarda o nível atual, default 1.
 //
 // Entrada: { company_id, target_tier }
 //
@@ -38,7 +39,8 @@ class ValidationError extends Error {
   }
 }
 
-const VALID_TIERS = [1, 2, 3, 4, 5];
+// Dois níveis apenas: 1 = Grátis (entrada), 2 = Integração Oficial (add-on pago).
+const VALID_TIERS = [1, 2];
 
 interface ChangeWhatsappTierRequest {
   company_id: string;
@@ -67,7 +69,7 @@ Deno.serve(async (req) => {
     if (!VALID_TIERS.includes(targetTier)) {
       throw new ValidationError(
         "invalid_request",
-        "Nível inválido. Escolha um nível entre 1 e 4.",
+        "Nível inválido. Escolha o nível Grátis (1) ou a Integração Oficial (2).",
       );
     }
 
@@ -167,7 +169,9 @@ Deno.serve(async (req) => {
         targetModules: (moduleRows ?? []).map((row) => row.module_code),
         targetMaxUsers: Number(company.max_users) || 1,
         targetExtraUsers: Number(company.extra_users) || 0,
-        targetLabel: `Avisos de WhatsApp · Nível ${targetTier}`,
+        // Rótulo que o cliente lê no checkout. Com um único nível pago, "Nível 2"
+        // não diz nada — usa o mesmo nome que a proposta comercial usa.
+        targetLabel: 'Integração com o WhatsApp',
         fingerprintScope: `whatsapp-tier:${currentTier}->${targetTier}`,
         targetWhatsappTier: targetTier,
       });

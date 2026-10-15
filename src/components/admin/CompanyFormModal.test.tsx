@@ -165,3 +165,48 @@ describe('CompanyFormModal — campo "Valor (R$)" do plano personalizado sem pre
     expect(input.value).toBe('4.550,00');
   });
 });
+
+describe('CompanyFormModal — piso de usuários do plano', () => {
+  // Régua comercial: os usuários do plano são a BASE INCLUSA. O campo "Máx.
+  // Usuários" só sobe daí (usuário extra, cobrado), nunca desce — no plano
+  // Personalizado a base é 5. Em 15/10/2026 uma empresa foi cadastrada com 3
+  // porque o campo era livre; o piso virou regra (clamp no blur + no submit +
+  // trigger no banco).
+  const company = { subscription_plan: 'personalizado', subscription_value: 500, custom_price: 0 };
+
+  function blur(input: HTMLInputElement) {
+    // React 18 escuta `onBlur` via `focusout` (o `blur` nativo não borbulha).
+    act(() => {
+      input.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    });
+  }
+
+  it('digitar 3 usuários no Personalizado volta pro piso de 5 ao sair do campo', () => {
+    mount({ company });
+    clickTab('Comercial');
+    const input = q('#company-max-users-default') as HTMLInputElement;
+    expect(input).toBeTruthy();
+    typeInto(input, '3');
+    expect(input.value).toBe('3'); // durante a digitação não sequestra o campo
+    blur(input);
+    expect(input.value).toBe('5');
+  });
+
+  it('não mexe em valor acima do piso (usuário extra continua possível)', () => {
+    mount({ company });
+    clickTab('Comercial');
+    const input = q('#company-max-users-default') as HTMLInputElement;
+    typeInto(input, '12');
+    blur(input);
+    expect(input.value).toBe('12');
+  });
+
+  it('campo vazio cai no piso em vez de gravar 0', () => {
+    mount({ company });
+    clickTab('Comercial');
+    const input = q('#company-max-users-default') as HTMLInputElement;
+    typeInto(input, '');
+    blur(input);
+    expect(input.value).toBe('5');
+  });
+});
