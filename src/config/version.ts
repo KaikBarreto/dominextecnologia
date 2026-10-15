@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.32.6";
+export const APP_VERSION = "1.32.7";
 
-export const VERSION_NOTES = "No celular, o nome do checklist voltou a ficar com fundo sólido ao rolar a ordem de serviço, e o aviso de vídeo recusado agora diz o motivo certo: o arquivo está pesado demais, não longo demais.";
+export const VERSION_NOTES = "Vídeo gravado em alta resolução no celular não é mais recusado no checklist: o app reduz o tamanho do arquivo na hora, com o som preservado, e envia.";

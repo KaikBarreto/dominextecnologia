@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.32.7',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vídeo pesado da galeria agora é enviado, não recusado',
+        description: 'Vídeo gravado em alta resolução no celular fica pesado demais e era recusado no checklist, mesmo tendo poucos segundos. Agora, quando isso acontece, o próprio app reduz o tamanho do vídeo na hora e envia, sem o técnico precisar gravar de novo nem mexer na configuração da câmera. Aparece uma tela de progresso que leva mais ou menos o tempo do próprio vídeo, e o som é preservado. Se mesmo assim não der, o aviso continua explicando o tamanho do arquivo e o limite.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.32.6',
     date: '16 de outubro de 2026',
     type: 'patch',
