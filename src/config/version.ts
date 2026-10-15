@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.32.1";
+export const APP_VERSION = "1.32.2";
 
-export const VERSION_NOTES = "As configurações de cobranças do Asaas ficaram mais organizadas, com simulador agrupado, taxas de cartão claras por faixa de parcelas e uma tela mais leve.";
+export const VERSION_NOTES = "No teste de perfil comportamental, tocar na alternativa escolhida já leva para a próxima pergunta, deixando o teste mais rápido de responder.";

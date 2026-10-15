@@ -19,7 +19,7 @@
 // Fallback se foto falhar: SVG data-uri com iniciais do funcionário.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Loader2, Link2Off, Check, ArrowLeft, ArrowRight, CheckCircle2, Brain, MousePointerClick, Sparkles, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -312,6 +312,33 @@ export default function DiscAssessmentPublic() {
     setAnswers({ ...answers, [item.id]: value });
   };
 
+  // ── Auto-avanço nas perguntas de ALTERNATIVA ────────────────────────────────
+  // Escolheu a opção → grava e já pula pra próxima, com um respiro curto só pra
+  // o cartão verde aparecer antes da transição (feedback do que foi marcado).
+  // NÃO vale pra ESCALA (o slider muda de valor enquanto arrasta — avançar no
+  // meio do gesto roubaria a resposta) nem pra ÚLTIMA pergunta (enviar o teste
+  // tem que ser ato deliberado, no botão "Enviar").
+  const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current);
+    },
+    [],
+  );
+
+  const selectChoiceAnswer = (itemId: string, factor: DiscFactor) => {
+    setAnswers((a) => ({ ...a, [itemId]: factor }));
+    if (step >= total - 1) return;
+    if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current);
+    const from = step;
+    autoAdvanceRef.current = setTimeout(() => {
+      autoAdvanceRef.current = null;
+      // Se o usuário navegou no meio do respiro (ex.: tocou em "Voltar"), não
+      // sequestra a posição dele.
+      setStep((s) => (s === from ? Math.min(total - 1, s + 1) : s));
+    }, 260);
+  };
+
   // Ajuste 2: ao exibir uma pergunta de ESCALA sem resposta salva, grava Neutro (3)
   // como padrão. Perguntas de ALTERNATIVA NÃO recebem default — exigem escolha
   // ativa. Roda apenas para a pergunta ATUAL (não pré-preenche em massa) e só na
@@ -544,7 +571,7 @@ export default function DiscAssessmentPublic() {
                 prompt={tr.choiceItems[item.id as keyof typeof tr.choiceItems].prompt}
                 options={tr.choiceItems[item.id as keyof typeof tr.choiceItems].options}
                 value={current as DiscFactor | undefined}
-                onChange={(f) => setAnswers((a) => ({ ...a, [item.id]: f }))}
+                onChange={(f) => selectChoiceAnswer(item.id, f)}
                 seed={`${code ?? 'default'}|${item.id}`}
               />
             ) : (

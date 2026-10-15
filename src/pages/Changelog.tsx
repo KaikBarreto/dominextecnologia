@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.32.2',
+    date: '15 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Teste de perfil comportamental mais rápido de responder',
+        description: 'Nas perguntas de alternativa, basta tocar na opção escolhida que o teste já segue sozinho para a próxima pergunta, sem precisar tocar em Avançar. Nas perguntas de escala e na última pergunta, a confirmação continua manual para ninguém enviar sem querer.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.32.1',
     date: '15 de outubro de 2026',
     type: 'patch',
