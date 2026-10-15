@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.32.0',
+    date: '15 de outubro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Central de integração com WhatsApp',
+        description: 'A nova área reúne automações de Ordens de Serviço e cobranças, modelos de mensagem, atendimento, campanhas, histórico e custos. Até o número da empresa ser conectado, as funcionalidades aparecem identificadas e protegidas por bloqueio.',
+        category: 'recurso',
+      },
+      {
+        title: 'Mensagens de cobrança e OS configuráveis',
+        description: 'Agora é possível preparar mensagens para cobrança gerada, antes do vencimento, no vencimento e após o vencimento, além dos avisos da OS. As prévias mostram valor, vencimento, descrição e links clicáveis com os principais campos destacados.',
+        category: 'recurso',
+      },
+      {
+        title: 'Autorização de WhatsApp por cliente',
+        description: 'O cadastro do cliente ganhou uma opção para permitir ou bloquear avisos pelo WhatsApp. A autorização só pode ser ligada quando existe um celular válido e pode ser desligada individualmente a qualquer momento.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.31.9',
     date: '14 de outubro de 2026',
     type: 'patch',

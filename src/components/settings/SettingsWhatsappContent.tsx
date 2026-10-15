@@ -1,447 +1,348 @@
-import { useState, useRef, useCallback } from 'react';
-import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
-import { MESSAGES } from '@/lib/i18n';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch';
-import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  Wifi,
-  WifiOff,
-  QrCode,
-  AlertTriangle,
-  Loader2,
+  Bot,
   CheckCircle2,
-  Zap,
-  Bell,
+  Clock3,
+  CreditCard,
+  FileText,
+  History,
+  Link2,
+  Lock,
+  MessageSquareText,
+  Megaphone,
+  PlugZap,
+  Settings2,
+  type LucideIcon,
 } from 'lucide-react';
-import { Lock } from 'lucide-react';
-import { Wallet } from 'lucide-react';
-import { Calculator } from 'lucide-react';
-import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
-import { EmptyState } from '@/components/mobile/EmptyState';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { SettingsAsaasContent } from '@/components/settings/SettingsAsaasContent';
 import { SettingsAsaasSimulator } from '@/components/settings/SettingsAsaasSimulator';
-import { useWhatsappSettings } from '@/hooks/useWhatsappSettings';
-import { useWhatsappConnection } from '@/hooks/useWhatsappConnection';
-import { useWhatsappQuota } from '@/hooks/useWhatsappQuota';
+import { WhatsappAutomationSettings } from '@/components/settings/whatsapp/WhatsappAutomationSettings';
+import {
+  WhatsappHistoryPreview,
+  WhatsappInboxPreview,
+  WhatsappCampaignsPreview,
+  WhatsappTemplatesPreview,
+} from '@/components/settings/whatsapp/WhatsappCapabilityPreviews';
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
-import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { useWhatsappSettings } from '@/hooks/useWhatsappSettings';
+import { MESSAGES } from '@/lib/i18n';
+import type { LocaleCode } from '@/lib/i18n/locales';
+import {
+  DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES,
+  normalizeWhatsappAutomationPreferences,
+  type WhatsappAutomationPreferences,
+} from '@/lib/whatsappAutomation';
 
-// ─── Feature flag: quando o WhatsApp for liberado, trocar pra false ───────────
-const WHATSAPP_COMING_SOON = true;
-
-// ─── Subabas das Integrações (extensível) ────────────────────────────────────
 type IntegrationSubTab = 'whatsapp' | 'asaas' | 'simulador';
+type WhatsappSection = 'automations' | 'inbox' | 'templates' | 'campaigns' | 'history' | 'connection';
+
+const SHELL_COPY: Record<LocaleCode, {
+  preparationTitle: string;
+  preparationDescription: string;
+  noModuleTitle: string;
+  noModuleDescription: string;
+  readOnlyTitle: string;
+  readOnlyDescription: string;
+  connectionTitle: string;
+  connectionDescription: string;
+  pending: string;
+  stepProvider: string;
+  stepNumber: string;
+  stepTemplates: string;
+  readyNow: string;
+  futureStep: string;
+  readyDescription: string;
+  lockedSection: string;
+  saveSuccess: string;
+  sections: Record<WhatsappSection, string>;
+}> = {
+  'pt-br': {
+    preparationTitle: 'Conecte o WhatsApp para liberar as configurações',
+    preparationDescription: 'As outras áreas ficam visíveis, mas bloqueadas até a conexão oficial do número da empresa ser concluída.',
+    noModuleTitle: 'Prévia do módulo de WhatsApp',
+    noModuleDescription: 'Você pode conhecer toda a estrutura. Para salvar e ativar as automações, contrate o módulo de WhatsApp.',
+    readOnlyTitle: 'Configuração somente para leitura',
+    readOnlyDescription: 'Somente administradores, gestores ou usuários com permissão de configurações podem alterar estas regras.',
+    connectionTitle: 'Conexão com o WhatsApp',
+    connectionDescription: 'A configuração de mensagens está separada do provedor. Assim, ela continua válida com Meta direta ou parceiro oficial.',
+    pending: 'Provedor a definir',
+    stepProvider: 'Escolher Meta direta ou parceiro oficial',
+    stepNumber: 'Conectar o número da empresa',
+    stepTemplates: 'Aprovar e vincular os templates',
+    readyNow: 'Liberado após conectar',
+    futureStep: 'Etapa futura',
+    readyDescription: 'Automações, modelos, conteúdo e autorização por cliente.',
+    lockedSection: 'Conecte o WhatsApp para liberar esta área',
+    saveSuccess: 'Configurações de WhatsApp salvas.',
+    sections: { automations: 'Automações', inbox: 'Atendimento', templates: 'Modelos', campaigns: 'Campanhas', history: 'Histórico', connection: 'Conexão' },
+  },
+  en: {
+    preparationTitle: 'Connect WhatsApp to unlock settings',
+    preparationDescription: 'The other areas remain visible but locked until the company number is officially connected.',
+    noModuleTitle: 'WhatsApp module preview', noModuleDescription: 'You can explore the full structure. Subscribe to the WhatsApp module to save and enable automations.',
+    readOnlyTitle: 'Read-only settings', readOnlyDescription: 'Only administrators, managers or users with settings permission can change these rules.',
+    connectionTitle: 'WhatsApp connection', connectionDescription: 'Message settings are separate from the provider, so they remain valid with Meta direct or an official partner.',
+    pending: 'Provider to be defined', stepProvider: 'Choose Meta direct or an official partner', stepNumber: 'Connect the company number', stepTemplates: 'Approve and link templates',
+    readyNow: 'Unlocked after connecting', futureStep: 'Future step', readyDescription: 'Automations, templates, content and customer authorization.', lockedSection: 'Connect WhatsApp to unlock this area', saveSuccess: 'WhatsApp settings saved.',
+    sections: { automations: 'Automations', inbox: 'Inbox', templates: 'Templates', campaigns: 'Campaigns', history: 'History', connection: 'Connection' },
+  },
+  es: {
+    preparationTitle: 'Conecta WhatsApp para desbloquear la configuración', preparationDescription: 'Las demás áreas siguen visibles, pero bloqueadas hasta conectar oficialmente el número de la empresa.',
+    noModuleTitle: 'Vista previa del módulo de WhatsApp', noModuleDescription: 'Puedes conocer toda la estructura. Contrata el módulo para guardar y activar automatizaciones.',
+    readOnlyTitle: 'Configuración de solo lectura', readOnlyDescription: 'Solo administradores, gestores o usuarios con permiso pueden cambiar estas reglas.',
+    connectionTitle: 'Conexión con WhatsApp', connectionDescription: 'La configuración de mensajes está separada del proveedor y seguirá válida con Meta directa o un socio oficial.',
+    pending: 'Proveedor por definir', stepProvider: 'Elegir Meta directa o un socio oficial', stepNumber: 'Conectar el número de la empresa', stepTemplates: 'Aprobar y vincular las plantillas',
+    readyNow: 'Se desbloquea al conectar', futureStep: 'Etapa futura', readyDescription: 'Automatizaciones, plantillas, contenido y autorización por cliente.', lockedSection: 'Conecta WhatsApp para desbloquear esta área', saveSuccess: 'Configuración de WhatsApp guardada.',
+    sections: { automations: 'Automatizaciones', inbox: 'Atención', templates: 'Plantillas', campaigns: 'Campañas', history: 'Historial', connection: 'Conexión' },
+  },
+  fr: {
+    preparationTitle: 'Connectez WhatsApp pour déverrouiller les paramètres', preparationDescription: 'Les autres sections restent visibles mais verrouillées jusqu’à la connexion officielle du numéro de l’entreprise.',
+    noModuleTitle: 'Aperçu du module WhatsApp', noModuleDescription: 'Vous pouvez découvrir toute la structure. Souscrivez au module pour enregistrer et activer les automatisations.',
+    readOnlyTitle: 'Paramètres en lecture seule', readOnlyDescription: 'Seuls les administrateurs, gestionnaires ou utilisateurs autorisés peuvent modifier ces règles.',
+    connectionTitle: 'Connexion WhatsApp', connectionDescription: 'Les paramètres de message sont séparés du fournisseur et restent valables avec Meta direct ou un partenaire officiel.',
+    pending: 'Fournisseur à définir', stepProvider: 'Choisir Meta direct ou un partenaire officiel', stepNumber: 'Connecter le numéro de l’entreprise', stepTemplates: 'Approuver et lier les modèles',
+    readyNow: 'Déverrouillé après connexion', futureStep: 'Étape future', readyDescription: 'Automatisations, modèles, contenu et autorisation client.', lockedSection: 'Connectez WhatsApp pour déverrouiller cette section', saveSuccess: 'Paramètres WhatsApp enregistrés.',
+    sections: { automations: 'Automatisations', inbox: 'Assistance', templates: 'Modèles', campaigns: 'Campagnes', history: 'Historique', connection: 'Connexion' },
+  },
+};
 
 export function SettingsIntegrationContent() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.settings.integrations;
-
   const [activeSubTab, setActiveSubTab] = useState<IntegrationSubTab>('whatsapp');
 
   const subTabs = [
-    {
-      value: 'whatsapp' as IntegrationSubTab,
-      label: t.subTabs.whatsapp,
-      icon: <WhatsAppIcon className="h-4 w-4 shrink-0" />,
-    },
-    {
-      value: 'asaas' as IntegrationSubTab,
-      label: t.subTabs.asaas,
-      icon: <Wallet className="h-4 w-4 shrink-0" />,
-    },
-    // Simulador de venda: NÃO é escondido quando a Asaas está desconectada —
-    // ele roda com a tabela de referência e é argumento de venda do add-on.
-    {
-      value: 'simulador' as IntegrationSubTab,
-      label: t.subTabs.simulador,
-      icon: <Calculator className="h-4 w-4 shrink-0" />,
-    },
+    { value: 'whatsapp' as const, label: t.subTabs.whatsapp, icon: <WhatsAppIcon className="h-4 w-4 shrink-0" /> },
+    { value: 'asaas' as const, label: t.subTabs.asaas, icon: <CreditCard className="h-4 w-4 shrink-0" /> },
+    { value: 'simulador' as const, label: t.subTabs.simulador, icon: <Settings2 className="h-4 w-4 shrink-0" /> },
   ];
 
   return (
     <div className="space-y-4">
-      {/* Pills de subabas (extensível: WhatsApp + Recebimentos) */}
       <MobilePillTabs
         variant="underline"
         tabs={subTabs}
         activeTab={activeSubTab}
-        onTabChange={(v) => setActiveSubTab(v as IntegrationSubTab)}
-        renderSuffix={(tab) =>
-          WHATSAPP_COMING_SOON && tab.value === 'whatsapp' ? (
-            <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold leading-none bg-amber-500 text-white shrink-0 pointer-events-none">
-              {t.whatsapp.comingSoon.badge}
-            </span>
-          ) : null
-        }
+        onTabChange={(value) => setActiveSubTab(value as IntegrationSubTab)}
       />
 
-      <div>
-        {activeSubTab === 'whatsapp' && (
-          WHATSAPP_COMING_SOON ? <WhatsappComingSoonCard /> : <WhatsappContent />
-        )}
-        {activeSubTab === 'asaas' && <SettingsAsaasContent />}
-        {activeSubTab === 'simulador' && <SettingsAsaasSimulator />}
-      </div>
+      {activeSubTab === 'whatsapp' && <WhatsappContent />}
+      {activeSubTab === 'asaas' && <SettingsAsaasContent />}
+      {activeSubTab === 'simulador' && <SettingsAsaasSimulator />}
     </div>
   );
 }
 
-// ─── Card "Em breve" do WhatsApp ──────────────────────────────────────────────
-function WhatsappComingSoonCard() {
-  const { locale } = useAppLocaleContext();
-  const t = MESSAGES[locale].app.settings.integrations.whatsapp.comingSoon;
-
-  return (
-    <Card>
-      <CardContent className="flex flex-col items-center gap-4 py-10 px-6 text-center">
-        <div className="flex items-center justify-center w-14 h-14 rounded-full bg-[#25D366]">
-          <WhatsAppIcon className="h-7 w-7 text-white" />
-        </div>
-        <div className="space-y-1.5">
-          <h3 className="text-base font-semibold">{t.title}</h3>
-          <p className="text-sm text-muted-foreground max-w-sm">{t.description}</p>
-        </div>
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-500 text-white">
-          {t.badge}
-        </span>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── Conteúdo da subaba WhatsApp ──────────────────────────────────────────────
 function WhatsappContent() {
   const { locale } = useAppLocaleContext();
-  const t = MESSAGES[locale].app.settings.integrations.whatsapp;
-
-  const { settings, isLoading: loadingSettings, companyId, update } = useWhatsappSettings();
-  const { connect, isConnecting, qrCode, isError: connectionError, errorMessage } = useWhatsappConnection(companyId);
-  const { used, limit, unlimited, tierName, isLoading: loadingQuota } = useWhatsappQuota(companyId);
-
-  // Gate do add-on: sem o módulo 'whatsapp' contratado, o tenant vê o estado
-  // "recurso não contratado" (padrão do projeto) em vez do QR/toggles. O gate
-  // real de envio já é server-side (edge whatsapp-send via company_has_module).
+  const copy = SHELL_COPY[locale];
+  const { toast } = useToast();
+  const { isAdminOrGestor, hasPermission } = useAuth();
+  const canManage = isAdminOrGestor() || hasPermission('fn:manage_settings');
   const { hasModule, isLoading: modulesLoading } = useCompanyModules();
+  const { settings, isLoading, update } = useWhatsappSettings();
+  const [requestedSection, setRequestedSection] = useState<WhatsappSection | null>(null);
 
-  // Auto-save com debounce para os toggles
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const debouncedUpdate = useCallback(
-    (field: string, value: boolean) => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => {
-        update.mutate({ [field]: value } as any);
-      }, 800);
-    },
-    [update],
+  const persistedPreferences = useMemo(
+    () => normalizeWhatsappAutomationPreferences(settings?.automation_preferences),
+    [settings?.automation_preferences],
+  );
+  const [enabled, setEnabled] = useState(false);
+  const [preferences, setPreferences] = useState<WhatsappAutomationPreferences>(
+    DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES,
   );
 
-  const handleToggle = (field: string) => (checked: boolean) => {
-    debouncedUpdate(field, checked);
+  useEffect(() => {
+    setEnabled(settings?.enabled ?? false);
+    setPreferences(persistedPreferences);
+  }, [settings?.enabled, settings?.updated_at, persistedPreferences]);
+
+  const baseline = useMemo(
+    () => JSON.stringify({ enabled: settings?.enabled ?? false, preferences: persistedPreferences }),
+    [settings?.enabled, persistedPreferences],
+  );
+  const current = JSON.stringify({ enabled, preferences });
+  const isDirty = current !== baseline;
+  const moduleActive = hasModule('whatsapp');
+  const readOnly = !moduleActive || !canManage;
+  const isConnected = settings?.connection_status === 'connected';
+  const activeSection = isConnected ? (requestedSection ?? 'automations') : 'connection';
+
+  const handleSave = async () => {
+    try {
+      await update.mutateAsync({
+        enabled,
+        automation_preferences: preferences,
+        // Mantém compatibilidade com o motor atual até a troca do provedor.
+        trigger_a_caminho: preferences.os.events.a_caminho.enabled,
+        trigger_em_andamento: preferences.os.events.em_andamento.enabled,
+        trigger_concluida: preferences.os.events.concluida.enabled,
+      });
+      toast({ title: copy.saveSuccess });
+    } catch {
+      // O hook já mostra o erro traduzido e restaura o cache anterior.
+    }
   };
 
-  // ── Seção Conexão ─────────────────────────────────────────────────────────
-  const status = settings?.connection_status ?? 'disconnected';
-
-  const statusConfig = {
-    connected: {
-      label: t.connection.statusConnected,
-      className: 'bg-emerald-600 text-white',
-      icon: <Wifi className="h-3.5 w-3.5" />,
-    },
-    qr: {
-      label: t.connection.statusQr,
-      className: 'bg-amber-500 text-white',
-      icon: <QrCode className="h-3.5 w-3.5" />,
-    },
-    disconnected: {
-      label: t.connection.statusDisconnected,
-      className: 'bg-slate-500 text-white',
-      icon: <WifiOff className="h-3.5 w-3.5" />,
-    },
-    banned: {
-      label: t.connection.statusBanned,
-      className: 'bg-red-600 text-white',
-      icon: <AlertTriangle className="h-3.5 w-3.5" />,
-    },
-  } as const;
-
-  const currentStatus = statusConfig[status] ?? statusConfig.disconnected;
-
-  // Cota: percentual de uso
-  const usagePercent = limit != null && limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
-  const isNearLimit = !unlimited && limit != null && usagePercent >= 80;
-
-  if (loadingSettings || modulesLoading) {
+  if (isLoading || modulesLoading) {
     return (
-      <div className="flex items-center justify-center py-12 text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin mr-2" />
-        <span className="text-sm">{t.loading}</span>
+      <div className="space-y-4" aria-label="Carregando configurações do WhatsApp">
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-[560px] w-full" />
       </div>
     );
   }
 
-  // Add-on não contratado: estado dedicado, sem expor QR/toggles/cota.
-  if (!hasModule('whatsapp')) {
-    return (
-      <Card>
-        <CardContent className="p-0">
-          <EmptyState
-            icon={<Lock className="h-full w-full" />}
-            title={t.notContracted.title}
-            description={t.notContracted.description}
-          />
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {!moduleActive ? (
+        <NoticeBanner variant="warning" icon={Lock} title={copy.noModuleTitle}>
+          {copy.noModuleDescription}
+        </NoticeBanner>
+      ) : !canManage ? (
+        <NoticeBanner variant="neutral" icon={Lock} title={copy.readOnlyTitle}>
+          {copy.readOnlyDescription}
+        </NoticeBanner>
+      ) : (
+        <NoticeBanner variant="info" title={copy.preparationTitle}>
+          {copy.preparationDescription}
+        </NoticeBanner>
+      )}
 
-      {/* ── SEÇÃO: MASTER ON/OFF ─────────────────────────────────────────── */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <WhatsAppIcon className="h-5 w-5 text-[#25D366]" />
-              <div>
-                <CardTitle className="text-base">{t.masterToggle.title}</CardTitle>
-                <CardDescription className="text-sm">{t.masterToggle.description}</CardDescription>
-              </div>
-            </div>
-            <Switch
-              checked={settings?.enabled ?? false}
-              onCheckedChange={handleToggle('enabled')}
-              disabled={update.isPending}
-              aria-label={t.masterToggle.ariaLabel}
-            />
-          </div>
-        </CardHeader>
-      </Card>
+      <WhatsappSectionNav
+        active={activeSection}
+        isConnected={isConnected}
+        lockedLabel={copy.lockedSection}
+        onChange={setRequestedSection}
+        labels={copy.sections}
+      />
 
-      {/* ── SEÇÃO: CONEXÃO ───────────────────────────────────────────────── */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Wifi className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base">{t.connection.sectionTitle}</CardTitle>
-          </div>
-          <CardDescription>{t.connection.sectionDescription}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      {activeSection === 'automations' && (
+        <WhatsappAutomationSettings
+          locale={locale}
+          enabled={enabled}
+          preferences={preferences}
+          isSaving={update.isPending}
+          isDirty={isDirty}
+          readOnly={readOnly}
+          onEnabledChange={setEnabled}
+          onPreferencesChange={setPreferences}
+          onSave={handleSave}
+        />
+      )}
 
-          {/* Status badge + número conectado */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <span
-              className={cn(
-                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold',
-                currentStatus.className,
-              )}
-            >
-              {currentStatus.icon}
-              {currentStatus.label}
-            </span>
-
-            {status === 'connected' && settings?.connected_number && (
-              <span className="text-sm text-muted-foreground">
-                {settings.connected_number}
-              </span>
-            )}
-          </div>
-
-          {/* QR code (quando a edge retornar) */}
-          {qrCode && (
-            <div className="flex flex-col items-center gap-3 p-4 rounded-lg border bg-muted/20">
-              <p className="text-sm text-center text-muted-foreground">{t.connection.qrInstructions}</p>
-              <img
-                src={`data:image/png;base64,${qrCode}`}
-                alt="QR Code WhatsApp"
-                className="w-48 h-48 rounded-lg border bg-white"
-              />
-            </div>
-          )}
-
-          {/* Erro de conexão */}
-          {connectionError && (
-            <div className="flex items-start gap-2 rounded-md border border-border bg-card p-3">
-              <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-bold text-destructive">{t.connection.errorTitle}</p>
-                {errorMessage && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{errorMessage}</p>
-                )}
-                <p className="text-xs text-muted-foreground mt-0.5">{t.connection.errorHint}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Botão de conectar */}
-          {status !== 'connected' && (
-            <Button
-              onClick={connect}
-              disabled={isConnecting || status === 'banned'}
-              className="w-full sm:w-auto"
-            >
-              {isConnecting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t.connection.connecting}
-                </>
-              ) : (
-                <>
-                  <QrCode className="mr-2 h-4 w-4" />
-                  {t.connection.btnConnect}
-                </>
-              )}
-            </Button>
-          )}
-
-          {status === 'connected' && (
-            <div className="flex items-center gap-1.5 text-sm text-emerald-600">
-              <CheckCircle2 className="h-4 w-4" />
-              {t.connection.connectedDesc}
-            </div>
-          )}
-
-          {status === 'banned' && (
-            <p className="text-sm text-destructive">{t.connection.bannedDesc}</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ── SEÇÃO: GATILHOS ─────────────────────────────────────────────── */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base">{t.triggers.sectionTitle}</CardTitle>
-          </div>
-          <CardDescription>{t.triggers.sectionDescription}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="divide-y">
-            <TriggerRow
-              label={t.triggers.aCaminho.label}
-              description={t.triggers.aCaminho.description}
-              checked={settings?.trigger_a_caminho ?? false}
-              onCheckedChange={handleToggle('trigger_a_caminho')}
-              disabled={update.isPending}
-            />
-            <TriggerRow
-              label={t.triggers.emAndamento.label}
-              description={t.triggers.emAndamento.description}
-              checked={settings?.trigger_em_andamento ?? false}
-              onCheckedChange={handleToggle('trigger_em_andamento')}
-              disabled={update.isPending}
-            />
-            <TriggerRow
-              label={t.triggers.concluida.label}
-              description={t.triggers.concluida.description}
-              checked={settings?.trigger_concluida ?? false}
-              onCheckedChange={handleToggle('trigger_concluida')}
-              disabled={update.isPending}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ── SEÇÃO: PLANO / COTA ─────────────────────────────────────────── */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base">{t.quota.sectionTitle}</CardTitle>
-          </div>
-          <CardDescription>{t.quota.sectionDescription}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {loadingQuota ? (
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {t.loading}
-            </div>
-          ) : (
-            <>
-              {/* Tier atual */}
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">{t.quota.currentPlan}</span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-primary text-primary-foreground">
-                  {tierName || `Nível 1`}
-                </span>
-              </div>
-
-              <Separator />
-
-              {/* Barra de consumo */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{t.quota.usageLabel}</span>
-                  <span className={cn('font-semibold tabular-nums', isNearLimit && 'text-amber-600')}>
-                    {unlimited
-                      ? t.quota.unlimited
-                      : `${used.toLocaleString('pt-BR')} / ${limit?.toLocaleString('pt-BR')}`}
-                  </span>
-                </div>
-
-                {!unlimited && limit != null && (
-                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                    <div
-                      className={cn(
-                        'h-full rounded-full transition-all duration-500',
-                        usagePercent >= 100
-                          ? 'bg-destructive'
-                          : usagePercent >= 80
-                          ? 'bg-amber-500'
-                          : 'bg-emerald-500',
-                      )}
-                      style={{ width: `${usagePercent}%` }}
-                    />
-                  </div>
-                )}
-
-                {isNearLimit && (
-                  <p className="text-xs text-amber-600 flex items-center gap-1">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    {t.quota.nearLimitWarning}
-                  </p>
-                )}
-              </div>
-
-              <p className="text-xs text-muted-foreground">{t.quota.resetHint}</p>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      {activeSection === 'inbox' && <WhatsappInboxPreview />}
+      {activeSection === 'templates' && <WhatsappTemplatesPreview />}
+      {activeSection === 'campaigns' && <WhatsappCampaignsPreview />}
+      {activeSection === 'history' && <WhatsappHistoryPreview />}
+      {activeSection === 'connection' && <ConnectionCard copy={copy} />}
     </div>
   );
 }
 
-// ─── Linha de trigger (linha de tabela limpa) ──────────────────────────────
-interface TriggerRowProps {
-  label: string;
-  description: string;
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
-  disabled?: boolean;
+const SECTION_ICONS: Record<WhatsappSection, LucideIcon> = {
+  automations: Bot,
+  inbox: MessageSquareText,
+  templates: FileText,
+  campaigns: Megaphone,
+  history: History,
+  connection: PlugZap,
+};
+
+export function WhatsappSectionNav({
+  active,
+  isConnected,
+  lockedLabel,
+  onChange,
+  labels,
+}: {
+  active: WhatsappSection;
+  isConnected: boolean;
+  lockedLabel: string;
+  onChange: (section: WhatsappSection) => void;
+  labels: Record<WhatsappSection, string>;
+}) {
+  const sections = Object.keys(labels) as WhatsappSection[];
+  return (
+    <nav aria-label="Áreas da integração com WhatsApp" className="grid grid-cols-2 gap-2 rounded-lg border bg-muted/20 p-2 sm:grid-cols-3 lg:grid-cols-6">
+      {sections.map((section) => {
+        const Icon = SECTION_ICONS[section];
+        const selected = section === active;
+        const locked = section !== 'connection' && !isConnected;
+        return (
+          <button
+            key={section}
+            type="button"
+            onClick={() => onChange(section)}
+            disabled={locked}
+            aria-disabled={locked}
+            aria-current={selected ? 'page' : undefined}
+            title={locked ? lockedLabel : undefined}
+            className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+              selected
+                ? 'border-primary bg-primary text-white shadow-sm'
+                : locked
+                  ? 'cursor-not-allowed border-transparent bg-background text-muted-foreground/60'
+                  : 'border-transparent bg-background text-muted-foreground hover:border-border hover:text-foreground'
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            <span>{labels[section]}</span>
+            {locked && <Lock className="h-3.5 w-3.5" aria-hidden="true" />}
+          </button>
+        );
+      })}
+    </nav>
+  );
 }
 
-function TriggerRow({ label, description, checked, onCheckedChange, disabled }: TriggerRowProps) {
+function ConnectionCard({ copy }: { copy: (typeof SHELL_COPY)[LocaleCode] }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
-      <div className="min-w-0">
-        <p className="text-sm font-medium leading-tight">{label}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-      </div>
-      <Switch
-        checked={checked}
-        onCheckedChange={onCheckedChange}
-        disabled={disabled}
-        aria-label={label}
-      />
+    <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Link2 className="h-5 w-5 text-primary" />
+                {copy.connectionTitle}
+              </CardTitle>
+              <CardDescription className="mt-1 max-w-3xl">{copy.connectionDescription}</CardDescription>
+            </div>
+            <Badge variant="secondary"><Clock3 className="mr-1 h-3 w-3" />{copy.pending}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-3">
+            <ConnectionStep label={copy.stepProvider} status={copy.futureStep} />
+            <ConnectionStep label={copy.stepNumber} status={copy.futureStep} />
+            <ConnectionStep label={copy.stepTemplates} status={copy.futureStep} />
+          </div>
+          <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            {copy.readyNow}: {copy.readyDescription}
+          </div>
+        </CardContent>
+      </Card>
+  );
+}
+
+function ConnectionStep({ label, status }: { label: string; status: string }) {
+  return (
+    <div className="flex items-start gap-3 rounded-lg border px-3 py-3">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">•</span>
+      <span className="min-w-0">
+        <span className="block text-sm font-medium leading-tight">{label}</span>
+        <span className="mt-0.5 block text-xs text-muted-foreground">{status}</span>
+      </span>
     </div>
   );
 }

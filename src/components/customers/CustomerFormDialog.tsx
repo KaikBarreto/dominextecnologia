@@ -10,6 +10,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -30,6 +31,7 @@ import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import type { Customer, CustomerType } from '@/types/database';
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 
 
 const customerSchema = z.object({
@@ -41,6 +43,7 @@ const customerSchema = z.object({
   email: z.string().email('Email inválido').optional().or(z.literal('')),
   phone: z.string().optional(),
   celular: z.string().optional(),
+  whatsapp_notifications_enabled: z.boolean().default(false),
   birth_date: z.string().optional(),
   address: z.string().optional(),
   address_number: z.string().optional(),
@@ -62,6 +65,7 @@ type CustomerFormData = z.infer<typeof customerSchema>;
 const EMPTY_FORM: CustomerFormData = {
   name: '', customer_type: 'pj', company_name: '', nome_fantasia: '', document: '',
   email: '', phone: '', celular: '', birth_date: '', address: '', address_number: '',
+  whatsapp_notifications_enabled: false,
   complement: '', neighborhood: '', city: '', state: '', zip_code: '',
   notes: '', origin: '', inscricao_municipal: '', inscricao_estadual: '', ibge_municipality_code: '',
 };
@@ -136,6 +140,7 @@ export function CustomerFormDialog({
           email: customer?.email ?? '',
           phone: customer?.phone ?? '',
           celular: (customer as any)?.celular ?? '',
+          whatsapp_notifications_enabled: customer?.whatsapp_notifications_enabled ?? false,
           birth_date: (customer as any)?.birth_date ?? '',
           address: customer?.address ?? '',
           address_number: (customer as any)?.address_number ?? (customer as any)?.street_number ?? '',
@@ -189,6 +194,8 @@ export function CustomerFormDialog({
 
       const cleanedData = {
         ...data,
+        whatsapp_notifications_enabled:
+          data.whatsapp_notifications_enabled && (data.celular || '').replace(/\D/g, '').length >= 10,
         birth_date: data.birth_date || undefined,
         // Espelha o número do endereço na coluna fiscal usada pela emissão de NFS-e.
         street_number: data.address_number || undefined,
@@ -216,7 +223,7 @@ export function CustomerFormDialog({
       <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
         {t.cancel}
       </Button>
-      <Button type="submit" form="customer-form" disabled={isLoading || uploadingPhoto}>
+      <Button type="submit" form="customer-form" disabled={isLoading || uploadingPhoto} className="text-white">
         {(isLoading || uploadingPhoto) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         {customer ? t.save : t.create}
       </Button>
@@ -322,12 +329,46 @@ export function CustomerFormDialog({
                       <Input
                         placeholder="(00) 00000-0000"
                         value={field.value || ''}
-                        onChange={(e) => field.onChange(mobileMask(e.target.value))}
+                        onChange={(e) => {
+                          const masked = mobileMask(e.target.value);
+                          field.onChange(masked);
+                          if (masked.replace(/\D/g, '').length < 10) {
+                            form.setValue('whatsapp_notifications_enabled', false);
+                          }
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
+                <FormField control={form.control} name="whatsapp_notifications_enabled" render={({ field }) => {
+                  const hasMobile = (form.watch('celular') || '').replace(/\D/g, '').length >= 10;
+                  return (
+                    <FormItem className="sm:col-span-2 rounded-lg border bg-muted/20 px-4 py-3">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex min-w-0 gap-3">
+                          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#25D366]/15 text-[#128C7E]">
+                            <WhatsAppIcon className="h-4 w-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <FormLabel className="text-sm font-medium">{t.whatsappOptInTitle}</FormLabel>
+                            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                              {hasMobile ? t.whatsappOptInDescription : t.whatsappOptInPhoneHint}
+                            </p>
+                          </div>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={!hasMobile}
+                            aria-label={t.whatsappOptInTitle}
+                          />
+                        </FormControl>
+                      </div>
+                    </FormItem>
+                  );
+                }} />
                 <FormField control={form.control} name="email" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t.email}</FormLabel>

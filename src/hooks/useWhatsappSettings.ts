@@ -4,6 +4,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { getErrorMessage } from '@/utils/errorMessages';
+import type { WhatsappAutomationPreferences } from '@/lib/whatsappAutomation';
+import type { Json, TablesUpdate } from '@/integrations/supabase/types';
 
 export type WhatsappConnectionStatus = 'disconnected' | 'qr' | 'connected' | 'banned';
 
@@ -18,6 +20,7 @@ export interface WhatsappSettings {
   trigger_a_caminho: boolean;
   trigger_em_andamento: boolean;
   trigger_concluida: boolean;
+  automation_preferences: WhatsappAutomationPreferences | null;
   created_at: string;
   updated_at: string;
 }
@@ -29,6 +32,7 @@ export type WhatsappSettingsUpdate = Partial<
     | 'trigger_a_caminho'
     | 'trigger_em_andamento'
     | 'trigger_concluida'
+    | 'automation_preferences'
   >
 >;
 
@@ -52,32 +56,36 @@ export function useWhatsappSettings() {
         .eq('company_id', companyId)
         .maybeSingle();
       if (error) throw error;
-      return data as WhatsappSettings | null;
+      return data as unknown as WhatsappSettings | null;
     },
   });
 
   const update = useMutation({
     mutationFn: async (input: WhatsappSettingsUpdate) => {
       if (!companyId) throw new Error('Empresa não identificada.');
+      const payload: TablesUpdate<'company_whatsapp_settings'> = {
+        ...input,
+        automation_preferences: input.automation_preferences as unknown as Json,
+      };
       const current = queryClient.getQueryData<WhatsappSettings | null>(queryKey);
       if (current) {
         const { data, error } = await supabase
           .from('company_whatsapp_settings')
-          .update(input)
+          .update(payload)
           .eq('company_id', companyId)
           .select()
           .single();
         if (error) throw error;
-        return data as WhatsappSettings;
+        return data as unknown as WhatsappSettings;
       }
       // Sem linha: inserir
       const { data, error } = await supabase
         .from('company_whatsapp_settings')
-        .insert({ ...input, company_id: companyId })
+        .insert({ ...payload, company_id: companyId })
         .select()
         .single();
       if (error) throw error;
-      return data as WhatsappSettings;
+      return data as unknown as WhatsappSettings;
     },
     onMutate: async (input) => {
       await queryClient.cancelQueries({ queryKey });

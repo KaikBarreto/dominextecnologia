@@ -25,6 +25,7 @@ export interface CustomerInput {
   birth_date?: string;
   notes?: string;
   origin?: string;
+  whatsapp_notifications_enabled?: boolean;
   // Dados fiscais (tomador NFS-e) — todos opcionais
   inscricao_municipal?: string;
   inscricao_estadual?: string;

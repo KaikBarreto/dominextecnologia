@@ -1600,6 +1600,7 @@ export type Database = {
       }
       company_whatsapp_settings: {
         Row: {
+          automation_preferences: Json
           company_id: string
           connected_at: string | null
           connected_number: string | null
@@ -1614,6 +1615,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          automation_preferences?: Json
           company_id: string
           connected_at?: string | null
           connected_number?: string | null
@@ -1628,6 +1630,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          automation_preferences?: Json
           company_id?: string
           connected_at?: string | null
           connected_number?: string | null
@@ -3309,6 +3312,9 @@ export type Database = {
           state: string | null
           street_number: string | null
           updated_at: string
+          whatsapp_notifications_enabled: boolean
+          whatsapp_opt_in_at: string | null
+          whatsapp_opt_out_at: string | null
           zip_code: string | null
         }
         Insert: {
@@ -3346,6 +3352,9 @@ export type Database = {
           state?: string | null
           street_number?: string | null
           updated_at?: string
+          whatsapp_notifications_enabled?: boolean
+          whatsapp_opt_in_at?: string | null
+          whatsapp_opt_out_at?: string | null
           zip_code?: string | null
         }
         Update: {
@@ -3383,6 +3392,9 @@ export type Database = {
           state?: string | null
           street_number?: string | null
           updated_at?: string
+          whatsapp_notifications_enabled?: boolean
+          whatsapp_opt_in_at?: string | null
+          whatsapp_opt_out_at?: string | null
           zip_code?: string | null
         }
         Relationships: [

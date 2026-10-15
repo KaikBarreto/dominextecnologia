@@ -55,6 +55,9 @@ export interface Customer {
   notes?: string;
   photo_url?: string;
   origin?: string;
+  whatsapp_notifications_enabled?: boolean;
+  whatsapp_opt_in_at?: string | null;
+  whatsapp_opt_out_at?: string | null;
   // Dados fiscais (tomador NFS-e)
   inscricao_municipal?: string;
   inscricao_estadual?: string | null;
