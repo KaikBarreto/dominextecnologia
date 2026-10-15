@@ -837,7 +837,7 @@ export function ModulesManagementCard({
                           <div className="flex items-center justify-between gap-2">
                             <p className={cn('font-medium text-sm', checked && 'text-white')}>{m.name}</p>
                             <span className={cn('text-sm font-semibold shrink-0', checked ? 'text-white' : 'text-primary')}>
-                              R$ {formatBRL(m.price)}
+                              {m.price === 0 ? 'Grátis' : `R$ ${formatBRL(m.price)}`}
                             </span>
                           </div>
                           {m.description && (

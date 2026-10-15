@@ -1,7 +1,40 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { WhatsappSectionNav } from './SettingsWhatsappContent';
+import { AsaasContent, WhatsappSectionNav } from './SettingsWhatsappContent';
+
+vi.mock('@/contexts/AppLocaleContext', () => ({
+  useAppLocaleContext: () => ({ locale: 'pt-br' }),
+}));
+
+vi.mock('@/components/mobile/MobilePillTabs', () => ({
+  MobilePillTabs: ({ tabs, activeTab, onTabChange }: {
+    tabs: Array<{ value: string; label: string }>;
+    activeTab: string;
+    onTabChange: (value: string) => void;
+  }) => (
+    <div role="tablist">
+      {tabs.map((tab) => (
+        <button
+          key={tab.value}
+          role="tab"
+          aria-selected={activeTab === tab.value}
+          onClick={() => onTabChange(tab.value)}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  ),
+}));
+
+vi.mock('@/components/settings/SettingsAsaasContent', () => ({
+  SettingsAsaasContent: () => <div>Configuração da conta Asaas</div>,
+}));
+
+vi.mock('@/components/settings/SettingsAsaasSimulator', () => ({
+  SettingsAsaasSimulator: () => <div>Conteúdo do simulador Asaas</div>,
+}));
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -73,5 +106,36 @@ describe('WhatsappSectionNav', () => {
     const inbox = buttons.find((button) => button.textContent?.includes('Atendimento'));
     act(() => inbox?.click());
     expect(onChange).toHaveBeenCalledWith('inbox');
+  });
+});
+
+describe('AsaasContent', () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it('mantém o simulador dentro de Cobranças (Asaas)', () => {
+    act(() => root.render(<AsaasContent />));
+
+    expect(container.textContent).toContain('Configurações');
+    expect(container.textContent).toContain('Simulador');
+    expect(container.textContent).toContain('Configuração da conta Asaas');
+
+    const simulatorTab = [...container.querySelectorAll('button')]
+      .find((button) => button.textContent === 'Simulador');
+    act(() => simulatorTab?.click());
+
+    expect(container.textContent).toContain('Conteúdo do simulador Asaas');
+    expect(container.textContent).not.toContain('Configuração da conta Asaas');
   });
 });

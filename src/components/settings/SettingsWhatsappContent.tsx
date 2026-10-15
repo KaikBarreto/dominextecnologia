@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
+  ArrowRight,
   Bot,
   CheckCircle2,
   Clock3,
+  Calculator,
   CreditCard,
   FileText,
   History,
@@ -26,6 +29,7 @@ import {
 } from '@/components/settings/whatsapp/WhatsappCapabilityPreviews';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,13 +40,15 @@ import { useToast } from '@/hooks/use-toast';
 import { useWhatsappSettings } from '@/hooks/useWhatsappSettings';
 import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { WHATSAPP_MODULE_CODE } from '@/lib/subscriptionCatalog';
 import {
   DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES,
   normalizeWhatsappAutomationPreferences,
   type WhatsappAutomationPreferences,
 } from '@/lib/whatsappAutomation';
 
-type IntegrationSubTab = 'whatsapp' | 'asaas' | 'simulador';
+type IntegrationSubTab = 'whatsapp' | 'asaas';
+type AsaasSection = 'settings' | 'simulator';
 type WhatsappSection = 'automations' | 'inbox' | 'templates' | 'campaigns' | 'history' | 'connection';
 
 const SHELL_COPY: Record<LocaleCode, {
@@ -62,6 +68,7 @@ const SHELL_COPY: Record<LocaleCode, {
   futureStep: string;
   readyDescription: string;
   lockedSection: string;
+  contractModule: string;
   saveSuccess: string;
   sections: Record<WhatsappSection, string>;
 }> = {
@@ -82,6 +89,7 @@ const SHELL_COPY: Record<LocaleCode, {
     futureStep: 'Etapa futura',
     readyDescription: 'Automações, modelos, conteúdo e autorização por cliente.',
     lockedSection: 'Conecte o WhatsApp para liberar esta área',
+    contractModule: 'Contratar módulo',
     saveSuccess: 'Configurações de WhatsApp salvas.',
     sections: { automations: 'Automações', inbox: 'Atendimento', templates: 'Modelos', campaigns: 'Campanhas', history: 'Histórico', connection: 'Conexão' },
   },
@@ -92,7 +100,7 @@ const SHELL_COPY: Record<LocaleCode, {
     readOnlyTitle: 'Read-only settings', readOnlyDescription: 'Only administrators, managers or users with settings permission can change these rules.',
     connectionTitle: 'WhatsApp connection', connectionDescription: 'Message settings are separate from the provider, so they remain valid with Meta direct or an official partner.',
     pending: 'Provider to be defined', stepProvider: 'Choose Meta direct or an official partner', stepNumber: 'Connect the company number', stepTemplates: 'Approve and link templates',
-    readyNow: 'Unlocked after connecting', futureStep: 'Future step', readyDescription: 'Automations, templates, content and customer authorization.', lockedSection: 'Connect WhatsApp to unlock this area', saveSuccess: 'WhatsApp settings saved.',
+    readyNow: 'Unlocked after connecting', futureStep: 'Future step', readyDescription: 'Automations, templates, content and customer authorization.', lockedSection: 'Connect WhatsApp to unlock this area', contractModule: 'Add module', saveSuccess: 'WhatsApp settings saved.',
     sections: { automations: 'Automations', inbox: 'Inbox', templates: 'Templates', campaigns: 'Campaigns', history: 'History', connection: 'Connection' },
   },
   es: {
@@ -101,7 +109,7 @@ const SHELL_COPY: Record<LocaleCode, {
     readOnlyTitle: 'Configuración de solo lectura', readOnlyDescription: 'Solo administradores, gestores o usuarios con permiso pueden cambiar estas reglas.',
     connectionTitle: 'Conexión con WhatsApp', connectionDescription: 'La configuración de mensajes está separada del proveedor y seguirá válida con Meta directa o un socio oficial.',
     pending: 'Proveedor por definir', stepProvider: 'Elegir Meta directa o un socio oficial', stepNumber: 'Conectar el número de la empresa', stepTemplates: 'Aprobar y vincular las plantillas',
-    readyNow: 'Se desbloquea al conectar', futureStep: 'Etapa futura', readyDescription: 'Automatizaciones, plantillas, contenido y autorización por cliente.', lockedSection: 'Conecta WhatsApp para desbloquear esta área', saveSuccess: 'Configuración de WhatsApp guardada.',
+    readyNow: 'Se desbloquea al conectar', futureStep: 'Etapa futura', readyDescription: 'Automatizaciones, plantillas, contenido y autorización por cliente.', lockedSection: 'Conecta WhatsApp para desbloquear esta área', contractModule: 'Contratar módulo', saveSuccess: 'Configuración de WhatsApp guardada.',
     sections: { automations: 'Automatizaciones', inbox: 'Atención', templates: 'Plantillas', campaigns: 'Campañas', history: 'Historial', connection: 'Conexión' },
   },
   fr: {
@@ -110,7 +118,7 @@ const SHELL_COPY: Record<LocaleCode, {
     readOnlyTitle: 'Paramètres en lecture seule', readOnlyDescription: 'Seuls les administrateurs, gestionnaires ou utilisateurs autorisés peuvent modifier ces règles.',
     connectionTitle: 'Connexion WhatsApp', connectionDescription: 'Les paramètres de message sont séparés du fournisseur et restent valables avec Meta direct ou un partenaire officiel.',
     pending: 'Fournisseur à définir', stepProvider: 'Choisir Meta direct ou un partenaire officiel', stepNumber: 'Connecter le numéro de l’entreprise', stepTemplates: 'Approuver et lier les modèles',
-    readyNow: 'Déverrouillé après connexion', futureStep: 'Étape future', readyDescription: 'Automatisations, modèles, contenu et autorisation client.', lockedSection: 'Connectez WhatsApp pour déverrouiller cette section', saveSuccess: 'Paramètres WhatsApp enregistrés.',
+    readyNow: 'Déverrouillé après connexion', futureStep: 'Étape future', readyDescription: 'Automatisations, modèles, contenu et autorisation client.', lockedSection: 'Connectez WhatsApp pour déverrouiller cette section', contractModule: 'Ajouter le module', saveSuccess: 'Paramètres WhatsApp enregistrés.',
     sections: { automations: 'Automatisations', inbox: 'Assistance', templates: 'Modèles', campaigns: 'Campagnes', history: 'Historique', connection: 'Connexion' },
   },
 };
@@ -123,7 +131,6 @@ export function SettingsIntegrationContent() {
   const subTabs = [
     { value: 'whatsapp' as const, label: t.subTabs.whatsapp, icon: <WhatsAppIcon className="h-4 w-4 shrink-0" /> },
     { value: 'asaas' as const, label: t.subTabs.asaas, icon: <CreditCard className="h-4 w-4 shrink-0" /> },
-    { value: 'simulador' as const, label: t.subTabs.simulador, icon: <Settings2 className="h-4 w-4 shrink-0" /> },
   ];
 
   return (
@@ -136,13 +143,37 @@ export function SettingsIntegrationContent() {
       />
 
       {activeSubTab === 'whatsapp' && <WhatsappContent />}
-      {activeSubTab === 'asaas' && <SettingsAsaasContent />}
-      {activeSubTab === 'simulador' && <SettingsAsaasSimulator />}
+      {activeSubTab === 'asaas' && <AsaasContent />}
+    </div>
+  );
+}
+
+export function AsaasContent() {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.settings.integrations.subTabs;
+  const [activeSection, setActiveSection] = useState<AsaasSection>('settings');
+
+  const sections = [
+    { value: 'settings' as const, label: t.configuracao, icon: <Settings2 className="h-4 w-4 shrink-0" /> },
+    { value: 'simulator' as const, label: t.simulador, icon: <Calculator className="h-4 w-4 shrink-0" /> },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <MobilePillTabs
+        tabs={sections}
+        activeTab={activeSection}
+        onTabChange={(value) => setActiveSection(value as AsaasSection)}
+      />
+
+      {activeSection === 'settings' && <SettingsAsaasContent />}
+      {activeSection === 'simulator' && <SettingsAsaasSimulator />}
     </div>
   );
 }
 
 function WhatsappContent() {
+  const navigate = useNavigate();
   const { locale } = useAppLocaleContext();
   const copy = SHELL_COPY[locale];
   const { toast } = useToast();
@@ -205,7 +236,22 @@ function WhatsappContent() {
   return (
     <div className="space-y-4">
       {!moduleActive ? (
-        <NoticeBanner variant="warning" icon={Lock} title={copy.noModuleTitle}>
+        <NoticeBanner
+          variant="warning"
+          icon={Lock}
+          title={copy.noModuleTitle}
+          action={canManage ? (
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 gap-1.5 bg-white px-3 text-foreground hover:bg-white/90"
+              onClick={() => navigate(`/assinatura?addModule=${WHATSAPP_MODULE_CODE}`)}
+            >
+              {copy.contractModule}
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          ) : undefined}
+        >
           {copy.noModuleDescription}
         </NoticeBanner>
       ) : !canManage ? (

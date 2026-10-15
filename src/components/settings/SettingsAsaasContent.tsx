@@ -6,7 +6,6 @@ import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -50,7 +49,7 @@ import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Subaba "Recebimentos (Asaas)" das Integrações. Espelha o padrão do WhatsApp:
+// Área "Configurações" de Cobranças (Asaas). Espelha o padrão do WhatsApp:
 //   • Gate de add-on via hasModule('cobrancas') → estado "não contratado".
 //   • Estado DESATIVADO: campo pra colar a API key + botão Ativar (provision).
 //   • Estado ATIVO/PENDENTE: status + taxas informativas + botão desativar.
@@ -370,8 +369,8 @@ export function SettingsAsaasContent() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="pb-3">
+      <Card className="border-0 bg-transparent shadow-none">
+        <CardHeader className="px-0 pb-4 pt-0">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3 min-w-0">
               <img
@@ -398,7 +397,7 @@ export function SettingsAsaasContent() {
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5 p-0">
           {/* ── ESTADO DESATIVADO: colar a chave + ativar ─────────────────── */}
           {!showActiveState && (
             <div className="space-y-4">
@@ -438,7 +437,7 @@ export function SettingsAsaasContent() {
               </Button>
 
               {/* Guia sempre visível: como obter a chave na Asaas */}
-              <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
+              <div className="space-y-3 rounded-2xl bg-muted/40 p-4 sm:p-5">
                 <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                   <Info className="h-3.5 w-3.5 shrink-0 text-primary" />
                   {t.inactive.apiKeyGuide.guideTitle}
@@ -458,7 +457,7 @@ export function SettingsAsaasContent() {
                     </li>
                   ))}
                 </ol>
-                <p className="flex items-start gap-1.5 text-[11px] text-muted-foreground/80 italic border-t border-border/60 pt-2.5">
+                <p className="flex items-start gap-1.5 pt-1 text-[11px] italic text-muted-foreground/80">
                   <Info className="h-3 w-3 shrink-0 mt-0.5" />
                   {t.inactive.apiKeyGuide.sandboxHint}
                 </p>
@@ -497,8 +496,6 @@ export function SettingsAsaasContent() {
                 </NoticeBanner>
               )}
 
-              <Separator />
-
               {/* Taxas REAIS da conta Asaas do tenant (cobradas pela Asaas,
                   repasse puro). Antes eram strings fixas de i18n — e o Pix
                   aparecia como "R$ 0,00", que é falso. */}
@@ -522,42 +519,40 @@ export function SettingsAsaasContent() {
                 onSync={handleSyncFees}
               />
 
-              <Separator />
-
               {/* Toggle: lançar cobranças no Financeiro automaticamente */}
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-0.5 flex-1 min-w-0">
-                  <p className="text-sm font-medium leading-tight">{t.activeState.autoPostLabel}</p>
-                  <p className="text-xs text-muted-foreground">{t.activeState.autoPostDesc}</p>
+              <div className="space-y-4 rounded-2xl bg-muted/30 p-4 sm:p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-0.5 flex-1 min-w-0">
+                    <p className="text-sm font-medium leading-tight">{t.activeState.autoPostLabel}</p>
+                    <p className="text-xs text-muted-foreground">{t.activeState.autoPostDesc}</p>
+                  </div>
+                  <Switch
+                    checked={autoPostToFinance}
+                    onCheckedChange={handleAutoPostChange}
+                    disabled={setAutoPostToFinance.isPending}
+                    aria-label={t.activeState.autoPostLabel}
+                    className="shrink-0 mt-0.5"
+                  />
                 </div>
-                <Switch
-                  checked={autoPostToFinance}
-                  onCheckedChange={handleAutoPostChange}
-                  disabled={setAutoPostToFinance.isPending}
-                  aria-label={t.activeState.autoPostLabel}
-                  className="shrink-0 mt-0.5"
-                />
-              </div>
 
-              {/* Toggle: lançar taxa da Asaas como despesa */}
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-0.5 flex-1 min-w-0">
-                  <p className="text-sm font-medium leading-tight">{t.activeState.autoFeeLabel}</p>
-                  <p className="text-xs text-muted-foreground">{t.activeState.autoFeeDesc}</p>
+                {/* Toggle: lançar taxa da Asaas como despesa */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-0.5 flex-1 min-w-0">
+                    <p className="text-sm font-medium leading-tight">{t.activeState.autoFeeLabel}</p>
+                    <p className="text-xs text-muted-foreground">{t.activeState.autoFeeDesc}</p>
+                  </div>
+                  <Switch
+                    checked={autoPostFees}
+                    onCheckedChange={handleAutoFeeChange}
+                    disabled={setAutoPostFees.isPending}
+                    aria-label={t.activeState.autoFeeLabel}
+                    className="shrink-0 mt-0.5"
+                  />
                 </div>
-                <Switch
-                  checked={autoPostFees}
-                  onCheckedChange={handleAutoFeeChange}
-                  disabled={setAutoPostFees.isPending}
-                  aria-label={t.activeState.autoFeeLabel}
-                  className="shrink-0 mt-0.5"
-                />
               </div>
-
-              <Separator />
 
               {/* Seção: Multa e juros por atraso */}
-              <div className="space-y-3">
+              <section className="space-y-3 rounded-2xl bg-muted/30 p-4 sm:p-5">
                 <div className="space-y-0.5">
                   <p className="text-sm font-semibold">{t.activeState.lateFeesTitle}</p>
                   <p className="text-xs text-muted-foreground">{t.activeState.lateFeesDesc}</p>
@@ -635,12 +630,10 @@ export function SettingsAsaasContent() {
                     t.activeState.lateFeesSave
                   )}
                 </Button>
-              </div>
-
-              <Separator />
+              </section>
 
               {/* ── Seção: Preferências de cobrança ────────────────────── */}
-              <div className="space-y-3">
+              <section className="space-y-3 rounded-2xl bg-muted/30 p-4 sm:p-5">
                 <div className="space-y-0.5">
                   <p className="text-sm font-semibold">{t.activeState.chargePrefsTitle}</p>
                   <p className="text-xs text-muted-foreground">{t.activeState.chargePrefsDesc}</p>
@@ -782,12 +775,10 @@ export function SettingsAsaasContent() {
                     t.activeState.save
                   )}
                 </Button>
-              </div>
-
-              <Separator />
+              </section>
 
               {/* ── Seção: Desconto por antecipação ────────────────────── */}
-              <div className="space-y-3">
+              <section className="space-y-3 rounded-2xl bg-muted/30 p-4 sm:p-5">
                 <div className="space-y-0.5">
                   <p className="text-sm font-semibold">{t.activeState.discountTitle}</p>
                   <p className="text-xs text-muted-foreground">{t.activeState.discountDesc}</p>
@@ -870,12 +861,10 @@ export function SettingsAsaasContent() {
                     t.activeState.save
                   )}
                 </Button>
-              </div>
-
-              <Separator />
+              </section>
 
               {/* ── Seção: Lançamento no Financeiro ────────────────────── */}
-              <div className="space-y-3" ref={financeSectionRef}>
+              <section className="space-y-3 rounded-2xl bg-muted/30 p-4 sm:p-5" ref={financeSectionRef}>
                 <div className="space-y-0.5">
                   <p className="text-sm font-semibold">{t.activeState.financeConfigTitle}</p>
                   <p className="text-xs text-muted-foreground">{t.activeState.financeConfigDesc}</p>
@@ -1008,25 +997,25 @@ export function SettingsAsaasContent() {
                     t.activeState.save
                   )}
                 </Button>
+              </section>
+
+              <div className="rounded-2xl bg-destructive/5 p-4 sm:p-5">
+                <Button
+                  variant="destructive"
+                  onClick={() => setDeactivateDialogOpen(true)}
+                  disabled={deactivate.isPending}
+                  className="w-full sm:w-auto"
+                >
+                  {deactivate.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t.activeState.deactivating}
+                    </>
+                  ) : (
+                    t.activeState.deactivate
+                  )}
+                </Button>
               </div>
-
-              <Separator />
-
-              <Button
-                variant="destructive"
-                onClick={() => setDeactivateDialogOpen(true)}
-                disabled={deactivate.isPending}
-                className="w-full sm:w-auto"
-              >
-                {deactivate.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t.activeState.deactivating}
-                  </>
-                ) : (
-                  t.activeState.deactivate
-                )}
-              </Button>
             </div>
           )}
         </CardContent>

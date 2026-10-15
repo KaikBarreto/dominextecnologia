@@ -86,14 +86,6 @@ export function AsaasFeesCard({ data, syncedAt, isLoading, isSyncing, onSync }: 
   // ── Linha do boleto ────────────────────────────────────────────────────────
   const slipValue = bankSlip ? formatBRL(bankSlip.fixed) : t.feeBoletoValue;
 
-  // ── Linha do cartão (faixas + tarifa fixa) ─────────────────────────────────
-  const cardValue = card && cardIsReal
-    ? `${formatPercent(card.oneInstallment)} ${t.feeOneShot} · ${formatPercent(card.upToSix)} 2-6x · ${formatPercent(card.upToTwelve)} 7-12x · ${formatPercent(card.upToTwentyOne)} 13-21x`
-    : t.feeCardValue;
-  const cardNote = card && cardIsReal
-    ? `+ ${formatBRL(card.operationValue)} ${t.feePerCharge}`
-    : null;
-
   // ── Linha da antecipação ───────────────────────────────────────────────────
   const anticipationValue = anticipation
     ? [
@@ -151,7 +143,7 @@ export function AsaasFeesCard({ data, syncedAt, isLoading, isSyncing, onSync }: 
         </Button>
       </div>
 
-      <div className="rounded-lg border divide-y text-sm">
+      <div className="space-y-2 text-sm">
         <FeeRow
           label={t.feePix}
           value={pixValue}
@@ -165,13 +157,37 @@ export function AsaasFeesCard({ data, syncedAt, isLoading, isSyncing, onSync }: 
           isReference={!bankSlip}
           referenceTag={t.feeReferenceTag}
         />
-        <FeeRow
-          label={t.feeCard}
-          value={cardValue}
-          note={cardNote}
-          isReference={!cardIsReal && !cardIsOverride}
-          referenceTag={t.feeReferenceTag}
-        />
+        {card ? (
+          <div className="space-y-3 rounded-2xl bg-muted/30 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-medium text-foreground">{t.feeCard}</span>
+              {!cardIsReal && !cardIsOverride && (
+                <span className="inline-flex items-center rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                  {t.feeReferenceTag}
+                </span>
+              )}
+            </div>
+
+            <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <CardFeeRate label={t.feeCardOneInstallment} value={formatPercent(card.oneInstallment)} />
+              <CardFeeRate label={t.feeCardTwoToSix} value={formatPercent(card.upToSix)} />
+              <CardFeeRate label={t.feeCardSevenToTwelve} value={formatPercent(card.upToTwelve)} />
+              <CardFeeRate label={t.feeCardThirteenToTwentyOne} value={formatPercent(card.upToTwentyOne)} />
+            </dl>
+
+            <p className="text-xs text-muted-foreground">
+              + <span className="font-semibold tabular-nums text-foreground">{formatBRL(card.operationValue)}</span>{' '}
+              {t.feePerCharge}
+            </p>
+          </div>
+        ) : (
+          <FeeRow
+            label={t.feeCard}
+            value={t.feeCardValue}
+            isReference
+            referenceTag={t.feeReferenceTag}
+          />
+        )}
         <FeeRow
           label={t.feeAnticipation}
           value={anticipationValue}
@@ -202,6 +218,15 @@ export function AsaasFeesCard({ data, syncedAt, isLoading, isSyncing, onSync }: 
   );
 }
 
+function CardFeeRate({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-background px-3 py-2.5 shadow-sm">
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-base font-semibold tabular-nums text-foreground">{value}</dd>
+    </div>
+  );
+}
+
 function FeeRow({
   label,
   value,
@@ -216,9 +241,9 @@ function FeeRow({
   referenceTag: string;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3 px-3 py-2.5">
-      <span className="text-muted-foreground shrink-0">{label}</span>
-      <div className="text-right min-w-0">
+    <div className="flex flex-col gap-1 rounded-xl bg-muted/30 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <span className="shrink-0 text-muted-foreground">{label}</span>
+      <div className="min-w-0 text-left sm:text-right">
         <span className="font-medium tabular-nums break-words">{value}</span>
         {isReference && (
           <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold leading-none bg-amber-500 text-white align-middle">

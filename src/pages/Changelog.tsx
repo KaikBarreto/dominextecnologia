@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.32.1',
+    date: '15 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cobranças do Asaas mais organizadas',
+        description: 'O simulador agora fica dentro de Cobranças (Asaas), junto das configurações da conta. A tela ganhou agrupamentos mais leves e menos bordas para facilitar a leitura.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Taxas do cartão fáceis de comparar',
+        description: 'As taxas aparecem separadas para pagamento à vista, de 2 a 6, de 7 a 12 e de 13 a 21 parcelas. A tarifa fixa por cobrança também fica destacada separadamente.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Contratação do WhatsApp pelas configurações',
+        description: 'Empresas que ainda não possuem o módulo encontram um atalho direto para adicioná-lo pelo gerenciamento da assinatura.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.32.0',
     date: '15 de outubro de 2026',
     type: 'minor',

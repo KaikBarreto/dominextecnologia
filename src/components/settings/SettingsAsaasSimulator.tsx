@@ -33,7 +33,7 @@ import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Subaba "Simulador de venda" das Integrações.
+// Área "Simulador" dentro de Cobranças (Asaas).
 //
 // Equivalente ao Simulador de Vendas do painel da Asaas, dentro do Dominex:
 // o usuário digita o valor, escolhe o meio de pagamento e vê quanto sobra,
