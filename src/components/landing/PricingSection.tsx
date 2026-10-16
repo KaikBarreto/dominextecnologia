@@ -10,8 +10,9 @@ import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 
 // Os preços dos planos prontos espelham o catálogo comercial. O personalizado
 // continua sob consulta e cada CTA abre a conversa com o time comercial.
+// O EXCEÇÃO NÃO entra aqui: é plano de concessão, atribuído só pelo time
+// Dominex, e nunca deve aparecer em superfície pública ou de autoatendimento.
 const PLAN_CONFIG = [
-  { code: 'excecao', popular: false, monthlyPrice: 97 },
   { code: 'start', popular: false, monthlyPrice: 197 },
   { code: 'avancado', popular: true, monthlyPrice: 547 },
   { code: 'master', popular: false, monthlyPrice: 847 },
@@ -97,7 +98,7 @@ export default function PricingSection() {
 
                 <ul className="space-y-2.5 mb-4 flex-1">
                   {plan.features.map((f, index) => {
-                    const isLimitation = plan.code === 'excecao' && index === plan.features.length - 1;
+                    const isLimitation = false;
                     const FeatureIcon = isLimitation ? X : Check;
                     return (
                       <li key={f} className={cn('flex items-center gap-2 text-sm', isLimitation ? 'text-white/45' : 'text-white/60')}>

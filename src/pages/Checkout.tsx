@@ -31,6 +31,7 @@ import { useWhiteLabel } from "@/hooks/useWhiteLabel";
 import { PriceAmount } from "@/components/ui/PriceAmount";
 import { hasSubscriptionActivationAdvanced } from "@/lib/subscriptionActivation";
 import { useSubscriptionUpgradeCheckout } from "@/hooks/useSubscriptionUpgradeCheckout";
+import { EXCEPTION_PLAN_CODE } from '@/lib/subscriptionCatalog';
 
 type PaymentMethod = "pix" | "boleto" | "card" | null;
 
@@ -180,6 +181,10 @@ export default function Checkout() {
   // empresa (subscription_value / custom_price) e os recursos exibidos são os
   // módulos à la carte contratados (company_modules), não PLAN_FEATURES.
   const isCustomPlanCompany = companyData?.subscription_plan === "personalizado";
+  // O EXCEÇÃO é plano de concessão: só o time Dominex atribui, nunca é
+  // oferecido. Quem JÁ está nele continua enxergando o próprio plano, senão
+  // não conseguiria renovar sozinho.
+  const isExceptionPlanCompany = companyData?.subscription_plan === EXCEPTION_PLAN_CODE;
 
   // Nomes dos módulos contratados (só pra empresa personalizado — alimenta a
   // lista de recursos do resumo de pagamento).
@@ -788,9 +793,13 @@ export default function Checkout() {
             transition={{ duration: 0.4 }}
           >
             {/* 'personalizado' (R$ 0) não é comprável aqui: ele só nasce de link
-                de afiliado ou do painel admin. A renovação continua achando o
-                plano pelo plans.find (array completo). */}
-            {plans.filter((p) => p.code !== 'personalizado').map((plan, index, visiblePlans) => {
+                de afiliado ou do painel admin. O EXCEÇÃO é concessão do time e
+                nunca é oferecido a quem está escolhendo plano. Os dois seguem no
+                array completo, então a renovação continua achando pelo plans.find. */}
+            {plans
+              .filter((p) => p.code !== 'personalizado')
+              .filter((p) => p.code !== EXCEPTION_PLAN_CODE || isExceptionPlanCompany)
+              .map((plan, index, visiblePlans) => {
               const isSelected = selectedPlan === plan.code;
               const yp = calculateYearlyPrice(plan.price);
               const me = calculateMonthlyEquivalent(yp);
