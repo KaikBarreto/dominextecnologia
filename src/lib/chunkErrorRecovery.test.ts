@@ -178,6 +178,27 @@ describe("isStaleBundleError (classificador de bundle velho)", () => {
     ).toBe(true);
   });
 
+  it("TRUE no erro 'reading AppLayout' observado em produção", () => {
+    expect(
+      isStaleBundleError(
+        "Cannot read properties of undefined (reading 'AppLayout')",
+      ),
+    ).toBe(true);
+  });
+
+  it("TRUE nos demais exports nomeados usados por React.lazy", () => {
+    expect(
+      isStaleBundleError(
+        "Cannot read properties of undefined (reading 'DomiflixLayout')",
+      ),
+    ).toBe(true);
+    expect(
+      isStaleBundleError(
+        "undefined is not an object (evaluating 'm.TermsOfServiceModal')",
+      ),
+    ).toBe(true);
+  });
+
   it("TRUE na variante Safari 'undefined is not an object ... .default'", () => {
     expect(
       isStaleBundleError("undefined is not an object (evaluating 'm.default')"),
@@ -198,6 +219,11 @@ describe("isStaleBundleError (classificador de bundle velho)", () => {
   it("FALSE num erro de app comum (não é bundle velho)", () => {
     expect(isStaleBundleError("foo.bar is not a function")).toBe(false);
     expect(isStaleBundleError("Network request failed")).toBe(false);
+    expect(
+      isStaleBundleError(
+        "Cannot read properties of undefined (reading 'companyId')",
+      ),
+    ).toBe(false);
   });
 });
 

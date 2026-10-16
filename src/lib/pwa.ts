@@ -326,11 +326,11 @@ export function setupChunkErrorRecovery() {
 // fetch dynamically imported module" / MIME text/html). Mas existe um segundo
 // sintoma do MESMO problema (cliente com HTML+SW antigos após deploy) que NÃO
 // passa por lá: o React.lazy resolve o import como `undefined` e, ao ler
-// `.default`, o React JOGA um erro de RENDER — que sobe pro ErrorBoundary, não
-// vira unhandledrejection e não bate no regex de fetch. Assinatura clássica:
-// "Cannot read properties of undefined (reading 'default')". Foi o que deixou o
-// cliente (Davi/Engetec) preso na tela de erro: o botão fazia reload puro, que
-// não desregistra o SW nem limpa cache → recarregava e quebrava de novo.
+// `.default` ou um export nomeado no adaptador do lazy, o React JOGA um erro de
+// RENDER — que sobe pro ErrorBoundary, não vira unhandledrejection e não bate no
+// regex de fetch. Assinaturas observadas: "reading 'default'" e
+// "reading 'AppLayout'". A primeira deixou o cliente (Davi/Engetec) preso na
+// tela de erro; a segunda reapareceu depois em outro incidente de produção.
 //
 // Aqui adicionamos um classificador (isStaleBundleError) que cobre o
 // CHUNK_ERROR_RE existente MAIS essas assinaturas de render, e um auto-heal
@@ -341,15 +341,16 @@ export function setupChunkErrorRecovery() {
 // recarregar pra TODO usuário. Após o teto, deixamos a tela de erro aparecer
 // com o botão manual (que sempre executa a limpeza forte no clique).
 
-// Assinaturas do erro de RENDER (React.lazy lendo `.default` de undefined) e de
+// Assinaturas do erro de RENDER (React.lazy lendo um export de undefined) e de
 // falha de carregamento de chunk que NÃO são cobertas pelo CHUNK_ERROR_RE de
-// fetch. Cobrimos Chrome/Firefox e a variante do Safari ("undefined is not an
-// object").
+// fetch. Limitamos aos exports efetivamente usados nos adaptadores lazy para
+// não confundir um undefined comum da aplicação com bundle velho. Cobrimos
+// Chrome/Firefox e a variante do Safari ("undefined is not an object").
 const STALE_BUNDLE_RENDER_RE =
-  /Cannot read properties of undefined \(reading 'default'\)|undefined is not an object.*\.default|Loading chunk \d+ failed|Loading CSS chunk/i;
+  /Cannot read properties of undefined \(reading '(?:default|AppLayout|DomiflixLayout|TermsOfServiceModal)'\)|undefined is not an object.*\.(?:default|AppLayout|DomiflixLayout|TermsOfServiceModal)\b|Loading chunk \d+ failed|Loading CSS chunk/i;
 
 // Classificador puro: true se a mensagem é sintoma de bundle velho após deploy
-// (fetch de chunk OU render lendo `.default` de undefined). Reusa o
+// (fetch de chunk OU render lendo um export lazy de undefined). Reusa o
 // CHUNK_ERROR_RE de fetch pra não duplicar. Puro/sem efeito → testável.
 export function isStaleBundleError(message: string): boolean {
   const msg = String(message || "");
