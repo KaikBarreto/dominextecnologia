@@ -39,6 +39,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
+import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -460,12 +461,12 @@ function ConnectionCard({
           </CardTitle>
           <CardDescription className="mt-1 max-w-2xl">{copy.connectionDescription}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           {/* HIERARQUIA: o QR é a única ação possível hoje, então ele é o herói e
               ocupa a largura toda. A Meta Cloud API vira faixa secundária abaixo.
               Antes os dois dividiam 50/50, o que prometia uma escolha que não
               existe e ainda deixava meia tela vazia do lado desabilitado. */}
-          <section className="rounded-xl border bg-background p-4 shadow-sm sm:p-5">
+          <section>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex min-w-0 gap-3">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#25D366] text-white">
@@ -499,7 +500,7 @@ function ConnectionCard({
             )}
 
             {qrPayload?.qr && qrConnection?.status !== 'connected' && (
-              <div className="mt-4 flex flex-col items-center rounded-xl border bg-white p-4 text-slate-950">
+              <div className="mt-5 flex flex-col items-center rounded-xl bg-white p-4 text-slate-950">
                 {qrImageSrc ? (
                   <img src={qrImageSrc} alt="QR Code para conectar o WhatsApp" className="h-56 w-56" />
                 ) : (
@@ -516,7 +517,7 @@ function ConnectionCard({
                     mão procurando o menu certo. */}
                 <WhatsappPairingSteps className="mt-4" />
 
-                <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border bg-background p-3 text-sm leading-relaxed">
+                <label className="mt-5 flex cursor-pointer items-start gap-3 text-sm leading-relaxed">
                   <Checkbox checked={acceptedRisk} onCheckedChange={(value) => setAcceptedRisk(value === true)} className="mt-0.5" disabled={!canManage || !moduleActive} />
                   <span>
                     Entendo que toda automação de WhatsApp fora da API Oficial da Meta tem um risco, ainda que ínfimo, de bloqueio do número, justamente por se tratar de envio automatizado.
@@ -558,13 +559,13 @@ function ConnectionCard({
           </section>
 
           {/* Secundário de propósito: está desabilitado, então não disputa atenção
-              com a única ação possível. Uma faixa, não meia tela. */}
-          <section className="flex flex-wrap items-center gap-3 rounded-xl border bg-muted/30 p-4">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background text-primary shadow-sm">
-              <ShieldCheck className="h-4 w-4" />
-            </span>
+              com a única ação possível. Sem caixa: a separação vem de uma linha
+              e do espaço, não de mais uma moldura dentro do cartão. */}
+          <Separator />
+          <section className="flex gap-3">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-sm font-semibold">Meta Cloud API</h3>
                 <Badge variant="secondary" className="shrink-0">Em breve</Badge>
               </div>

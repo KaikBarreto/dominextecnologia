@@ -22,7 +22,7 @@ function InlineIcon({ icon: Icon, className }: { icon: LucideIcon; className?: s
   return (
     <span
       className={cn(
-        'mx-0.5 inline-flex h-5 w-5 shrink-0 translate-y-1 items-center justify-center rounded-md border bg-background',
+        'mx-0.5 inline-flex h-5 w-5 shrink-0 translate-y-1 items-center justify-center rounded-md bg-muted',
         className,
       )}
     >
@@ -63,7 +63,7 @@ export function WhatsappPairingSteps({ className }: { className?: string }) {
           {/* Coluna do número: círculo + linha que liga ao próximo, igual ao
               WhatsApp. A linha some no último item. */}
           <div className="flex flex-col items-center">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
               {index + 1}
             </span>
             {index < steps.length - 1 && <span className="w-px flex-1 bg-border" />}
