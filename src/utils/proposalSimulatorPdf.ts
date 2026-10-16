@@ -45,6 +45,7 @@ export interface ProposalPdfTotals {
   monthlyDiscountAmount: number;
   monthlyDiscount: ProposalDiscount;
   yearlyFull: number;
+  yearlyNegotiatedBase: number;
   yearlyDiscounted: number;
   annualDiscountAmount: number;
   annualDiscount: ProposalDiscount;
@@ -881,7 +882,7 @@ function renderPaymentPage(
   const label = `${pad2(internalPage)} / ${pad2(totalPagesLabel)}`;
   addDarkPage(doc);
   const annualTitle = input.totals.annualDiscountAmount > 0
-    ? ['duas condições,', 'cada uma com seu desconto.']
+    ? ['mensal negociado,', 'anual com benefício maior.']
     : ['condições de', 'pagamento.'];
   addSectionHeader(doc, displayFont, 'Como pagar', annualTitle, label);
 
@@ -926,7 +927,7 @@ function renderPaymentPage(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
   doc.text(
-    `ANUAL · ${proposalDiscountLabel(input.totals.annualDiscount, input.totals.annualDiscountAmount)}`,
+    `ANUAL · ${proposalDiscountLabel(input.totals.annualDiscount, input.totals.annualDiscountAmount)} ADICIONAL`,
     annualX + 7,
     topY + 10,
     { charSpace: 0.7 },
@@ -937,7 +938,7 @@ function renderPaymentPage(
   const miniPillH = 6.2;
   const miniLabels = input.totals.annualDiscountAmount > 0
     ? [
-        money(input.totals.yearlyFull).replace(/,00$/, ''),
+        money(input.totals.yearlyNegotiatedBase).replace(/,00$/, ''),
         `- ${input.totals.annualDiscount.mode === 'percent'
           ? `${input.totals.annualDiscount.value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`
           : money(input.totals.annualDiscountAmount).replace(/,00$/, '')}`,
@@ -977,7 +978,7 @@ function renderPaymentPage(
 
   // Badge de economia.
   const savingsLabel = input.totals.savings > 0
-    ? `Economia de ${money(input.totals.savings)}`
+    ? `Economia total vs. tabela: ${money(input.totals.savings)}`
     : 'Valor anual sem desconto';
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);

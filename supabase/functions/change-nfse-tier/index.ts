@@ -3,7 +3,7 @@
 // Sobe o NÍVEL do módulo de Notas Fiscais (NFS-e) de um tenant e ajusta a cobrança.
 //
 // O módulo `nfe` tem 4 níveis, cada um com cota mensal e preço:
-//   N1 → 200 notas/mês  → R$100
+//   N1 → 200 notas/mês  → R$150
 //   N2 → 500 notas/mês  → R$200
 //   N3 → 1000 notas/mês → R$300
 //   N4 → ilimitado      → R$400

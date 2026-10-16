@@ -64,6 +64,7 @@ export interface ProposalTotals {
   monthlyDiscountAmount: number;
   monthlyDiscount: ProposalDiscount;
   yearlyFull: number;
+  yearlyNegotiatedBase: number;
   yearlyDiscounted: number;
   annualDiscountAmount: number;
   annualDiscount: ProposalDiscount;
@@ -313,11 +314,18 @@ export function calculateProposalTotals(
   const monthlyFull = roundCurrency(monthlyPrices.reduce((total, value) => total + value, 0));
   const monthlyDiscountAmount = proposalDiscountAmount(monthlyFull, monthlyDiscount, 'monthly');
   const monthly = roundCurrency(monthlyFull - monthlyDiscountAmount);
-  // Os dois descontos partem do preço cheio. O anual nunca usa o mensal já
-  // descontado, evitando desconto composto ou conflito entre as condições.
+  // A condição mensal define o preço negociado. O benefício anual é aplicado
+  // UMA vez sobre 12 mensalidades já negociadas. Assim o anual é sempre uma
+  // condição melhor quando tem desconto, sem reinterpretar o desconto mensal
+  // como se ele fosse um segundo desconto anual concorrente.
   const yearlyFull = roundCurrency(monthlyFull * 12);
-  const annualDiscountAmount = proposalDiscountAmount(yearlyFull, annualDiscount, 'annual');
-  const yearlyDiscounted = roundCurrency(yearlyFull - annualDiscountAmount);
+  const yearlyNegotiatedBase = roundCurrency(monthly * 12);
+  const annualDiscountAmount = proposalDiscountAmount(
+    yearlyNegotiatedBase,
+    annualDiscount,
+    'annual',
+  );
+  const yearlyDiscounted = roundCurrency(yearlyNegotiatedBase - annualDiscountAmount);
 
   return {
     monthlyFull,
@@ -325,10 +333,11 @@ export function calculateProposalTotals(
     monthlyDiscountAmount,
     monthlyDiscount,
     yearlyFull,
+    yearlyNegotiatedBase,
     yearlyDiscounted,
     annualDiscountAmount,
     annualDiscount,
-    savings: annualDiscountAmount,
+    savings: roundCurrency(yearlyFull - yearlyDiscounted),
     pixInstallment: roundCurrency(yearlyDiscounted / installments),
     installments,
   };

@@ -151,6 +151,7 @@ describe('publicProposal', () => {
       annualDiscountAmount: 3345.6,
       annualDiscount: { mode: 'percent', value: 20 },
       savings: 3345.6,
+      yearlyNegotiatedBase: 16728,
       pixInstallment: 4460.8,
       installments: 3,
     });
@@ -175,16 +176,17 @@ describe('publicProposal', () => {
       monthlyDiscountAmount: 50,
       monthlyDiscount: { mode: 'percent', value: 50 },
       yearlyFull: 1200,
-      yearlyDiscounted: 720,
-      annualDiscountAmount: 480,
+      yearlyNegotiatedBase: 600,
+      yearlyDiscounted: 360,
+      annualDiscountAmount: 240,
       annualDiscount: { mode: 'percent', value: 40 },
-      savings: 480,
-      pixInstallment: 120,
+      savings: 840,
+      pixInstallment: 60,
       installments: 6,
     });
   });
 
-  it('calcula descontos nominais mensal e anual em bases independentes', () => {
+  it('aplica o desconto anual uma vez sobre as mensalidades já negociadas', () => {
     const totals = calculateProposalTotals(
       [createProposalUnit('Matriz', 'start')],
       [{ code: 'start', price: 100 }],
@@ -199,8 +201,29 @@ describe('publicProposal', () => {
     expect(totals.monthlyFull).toBe(100);
     expect(totals.monthly).toBe(70);
     expect(totals.yearlyFull).toBe(1200);
-    expect(totals.yearlyDiscounted).toBe(1100);
+    expect(totals.yearlyNegotiatedBase).toBe(840);
+    expect(totals.yearlyDiscounted).toBe(740);
+    expect(totals.savings).toBe(460);
     expect(totals.yearlyFull).toBe(totals.monthlyFull * 12);
+  });
+
+  it('leva R$ 547 para R$ 397 no mensal e R$ 3.811,20 no anual', () => {
+    const totals = calculateProposalTotals(
+      [createProposalUnit('Matriz', 'start')],
+      [{ code: 'start', price: 547 }],
+      [],
+      0,
+      {
+        monthlyDiscount: { mode: 'amount', value: 150 },
+        annualDiscount: { mode: 'percent', value: 20 },
+      },
+    );
+
+    expect(totals.monthly).toBe(397);
+    expect(totals.yearlyNegotiatedBase).toBe(4764);
+    expect(totals.annualDiscountAmount).toBe(952.8);
+    expect(totals.yearlyDiscounted).toBe(3811.2);
+    expect(totals.savings).toBe(2752.8);
   });
 
   it('limita condições adulteradas da URL aos intervalos comerciais', () => {
@@ -225,8 +248,9 @@ describe('publicProposal', () => {
 
     expect(totals.monthlyDiscountAmount).toBe(50);
     expect(totals.monthly).toBe(50);
-    expect(totals.annualDiscountAmount).toBe(480);
-    expect(totals.yearlyDiscounted).toBe(720);
+    expect(totals.yearlyNegotiatedBase).toBe(600);
+    expect(totals.annualDiscountAmount).toBe(240);
+    expect(totals.yearlyDiscounted).toBe(360);
   });
 
   it('não deixa preço negativo contaminar o orçamento', () => {

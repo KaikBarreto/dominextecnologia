@@ -58,6 +58,13 @@ vi.mock('@/hooks/usePublicSubscriptionPlans', () => ({
         price: 150,
         type: 'addon',
       }, {
+        id: 'nfe',
+        code: 'nfe',
+        name: 'Emissão de Notas Fiscais',
+        description: 'Emissão de NFS-e integrada ao sistema.',
+        price: 150,
+        type: 'module',
+      }, {
         id: 'whatsapp',
         code: 'whatsapp',
         name: 'Avisos de WhatsApp',
@@ -158,6 +165,22 @@ describe('ProposalSimulator', () => {
     });
   }, 30_000);
 
+  it('exibe e soma Notas Fiscais por R$ 150 no plano personalizado', async () => {
+    render(
+      <MemoryRouter initialEntries={['/proposta?l1=personalizado']}>
+        <ProposalSimulator />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar módulo' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Emissão de notas fiscais/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Remover Emissão de notas fiscais/i })).toBeInTheDocument();
+      expect(screen.getAllByText('R$ 347,00/mês')).toHaveLength(2);
+    });
+  }, 30_000);
+
   it('exibe Essencial, add-ons e usuário adicional na tabela de preços', () => {
     render(
       <MemoryRouter initialEntries={['/proposta']}>
@@ -171,6 +194,7 @@ describe('ProposalSimulator', () => {
     const priceTable = screen.getByRole('region', { name: 'Tabela de preços' });
     expect(within(priceTable).getByRole('row', { name: /^Essencial\b/ })).toHaveTextContent('R$ 197,00/mês');
     expect(within(priceTable).getByRole('row', { name: /Cobranças/ })).toHaveTextContent('R$ 150,00/mês');
+    expect(within(priceTable).getByRole('row', { name: /Emissão de notas fiscais/i })).toHaveTextContent('R$ 150,00/mês');
     expect(within(priceTable).getByRole('row', { name: /White Label/ })).toHaveTextContent('R$ 50,00/mês');
     expect(within(priceTable).getByRole('row', { name: /Usuário adicional/ })).toHaveTextContent('R$ 20,00/mês');
     expect(within(priceTable).queryByText('Sistema com sua marca')).not.toBeInTheDocument();
@@ -187,31 +211,60 @@ describe('ProposalSimulator', () => {
     expect(screen.queryByText('Financeiro Avançado')).not.toBeInTheDocument();
   });
 
-  it('calcula descontos mensal e anual de forma independente e alterna percentual ou reais', async () => {
+  it('usa o mensal negociado como base do desconto adicional no anual', async () => {
     render(
       <MemoryRouter initialEntries={['/proposta']}>
         <ProposalSimulator />
       </MemoryRouter>,
     );
 
-    expect(screen.queryByLabelText('Desconto anual')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Desconto adicional no anual')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Mais opções' }));
 
-    fireEvent.change(screen.getByLabelText('Desconto anual'), { target: { value: '40' } });
+    fireEvent.change(screen.getByLabelText('Desconto adicional no anual'), { target: { value: '40' } });
     fireEvent.click(screen.getByRole('radio', { name: 'Desconto mensal em reais' }));
     fireEvent.change(screen.getByLabelText('Desconto mensal'), { target: { value: '30' } });
     fireEvent.click(screen.getByRole('combobox', { name: 'Parcelas no Pix' }));
     fireEvent.click(await screen.findByRole('option', { name: '6x' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Plano anual · 40% de desconto')).toBeInTheDocument();
-      expect(screen.getByText('R$ 2.364,00')).toHaveClass('line-through', 'text-destructive');
-      expect(screen.getByText('Economize R$ 945,60 no plano anual')).toHaveClass('font-bold');
-      expect(screen.getByText('Em até 6x de R$ 236,40 no Pix')).toBeInTheDocument();
+      expect(screen.getByText('Plano anual · 40% de desconto adicional')).toBeInTheDocument();
+      expect(screen.getByText('R$ 2.004,00')).toHaveClass('line-through', 'text-destructive');
+      expect(screen.getByText('Economia total de R$ 1.161,60 versus a tabela anual')).toHaveClass('font-bold');
+      expect(screen.getByText('Em até 6x de R$ 200,40 no Pix')).toBeInTheDocument();
       expect(screen.getByText('Plano mensal · R$ 30,00 de desconto')).toBeInTheDocument();
       expect(screen.getByText('R$ 197,00')).toHaveClass('line-through', 'text-destructive');
       expect(screen.getByText('R$ 167,00/mês')).toBeInTheDocument();
     });
     expect(screen.getByRole('radio', { name: 'Desconto mensal em reais' })).toHaveAttribute('aria-checked', 'true');
   });
+
+  it('calcula R$ 3.811,20 no anual quando o mensal cai de R$ 547 para R$ 397', async () => {
+    render(
+      <MemoryRouter initialEntries={['/proposta']}>
+        <ProposalSimulator />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mais opções' }));
+
+    // O mock tem Essencial a R$ 197; acrescentamos Cobranças (R$ 150), NFS-e
+    // (R$ 150) e White Label (R$ 50) para reproduzir a base de R$ 547 da captura.
+    fireEvent.click(screen.getByRole('combobox', { name: 'Plano' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Personalizado' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar módulo' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Cobranças/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar módulo' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Emissão de notas fiscais/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar módulo' }));
+    fireEvent.click(await screen.findByRole('button', { name: /White Label/ }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Desconto mensal em reais' }));
+    fireEvent.change(screen.getByLabelText('Desconto mensal'), { target: { value: '150' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('R$ 397,00/mês')).toBeInTheDocument();
+      expect(screen.getByText('R$ 3.811,20', { exact: false })).toBeInTheDocument();
+      expect(screen.getByText('R$ 4.764,00')).toHaveClass('line-through', 'text-destructive');
+    });
+  }, 30_000);
 });

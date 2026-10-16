@@ -250,7 +250,7 @@ function DiscountField({
         }, period))}
       />
       <p className="text-xs text-muted-foreground">
-        Até {maxPercent}% do valor {period === 'annual' ? 'anual' : 'mensal'} cheio
+        Até {maxPercent}% {period === 'annual' ? 'da base anual negociada' : 'do valor mensal cheio'}
         {discount.mode === 'amount' ? ` (${money(maxAmount)})` : ''}.
       </p>
     </div>
@@ -262,7 +262,9 @@ function ProposalPrice({
 }: {
   totals: ProposalTotals;
 }) {
-  const annualLabel = discountLabel(totals.annualDiscount, totals.annualDiscountAmount);
+  const annualLabel = totals.annualDiscountAmount > 0
+    ? `${discountLabel(totals.annualDiscount, totals.annualDiscountAmount)} adicional`
+    : 'sem desconto adicional';
   const monthlyLabel = discountLabel(totals.monthlyDiscount, totals.monthlyDiscountAmount);
 
   return (
@@ -272,7 +274,8 @@ function ProposalPrice({
       </p>
       {totals.annualDiscountAmount > 0 && (
         <p className="text-sm text-muted-foreground">
-          de <span className="text-destructive line-through">{money(totals.yearlyFull)}</span>
+          de <span className="text-destructive line-through">{money(totals.yearlyNegotiatedBase)}</span>
+          {totals.monthlyDiscountAmount > 0 && ' (12 mensalidades negociadas)'}
         </p>
       )}
       <p className="text-3xl font-bold tracking-tight lg:text-4xl">
@@ -281,7 +284,7 @@ function ProposalPrice({
       </p>
       {totals.annualDiscountAmount > 0 && (
         <p className="text-sm font-bold text-emerald-600">
-          Economize {money(totals.savings)} no plano anual
+          Economia total de {money(totals.savings)} versus a tabela anual
         </p>
       )}
       <p className="text-sm text-muted-foreground">
@@ -299,7 +302,7 @@ function ProposalPrice({
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        Mensal e anual são calculados separadamente sobre seus valores cheios.
+        O mensal define a base negociada. O desconto anual é aplicado uma única vez sobre 12 mensalidades já negociadas.
       </p>
     </div>
   );
@@ -454,7 +457,7 @@ export default function ProposalSimulator() {
   useEffect(() => {
     if (isLoading) return;
     const annualMaximum = Math.round(
-      totals.yearlyFull * maxProposalDiscountPercent('annual'),
+      totals.yearlyNegotiatedBase * maxProposalDiscountPercent('annual'),
     ) / 100;
     const monthlyMaximum = Math.round(
       totals.monthlyFull * maxProposalDiscountPercent('monthly'),
@@ -465,7 +468,7 @@ export default function ProposalSimulator() {
     if (monthlyDiscount.mode === 'amount' && monthlyDiscount.value > monthlyMaximum) {
       setMonthlyDiscount({ mode: 'amount', value: monthlyMaximum });
     }
-  }, [annualDiscount, isLoading, monthlyDiscount, totals.monthlyFull, totals.yearlyFull]);
+  }, [annualDiscount, isLoading, monthlyDiscount, totals.monthlyFull, totals.yearlyNegotiatedBase]);
   const modulePickerUnit = units.find((unit) => unit.id === modulePickerUnitId);
   const availableModules = modulePickerUnit
     ? proposalModules.filter(
@@ -913,10 +916,10 @@ export default function ProposalSimulator() {
                   >
                     <DiscountField
                       id="proposal-annual-discount"
-                      label="Desconto anual"
+                      label="Desconto adicional no anual"
                       period="annual"
                       discount={annualDiscount}
-                      fullPrice={totals.yearlyFull}
+                      fullPrice={totals.yearlyNegotiatedBase}
                       onChange={setAnnualDiscount}
                     />
 
@@ -951,7 +954,7 @@ export default function ProposalSimulator() {
                     </div>
 
                     <p className="text-xs text-muted-foreground sm:col-span-2">
-                      Cada desconto é aplicado diretamente sobre o preço cheio da respectiva modalidade; um não altera a base de cálculo do outro.
+                      Primeiro definimos o mensal negociado. Depois, o desconto anual é aplicado uma única vez sobre 12 mensalidades nesse valor, garantindo que a condição anual seja melhor sem duplicar descontos.
                     </p>
                   </div>
                 )}

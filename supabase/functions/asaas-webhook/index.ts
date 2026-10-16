@@ -80,6 +80,9 @@ import {
   type ReversalPaymentSnapshot,
   webhookResponseFor,
 } from "../_shared/asaas-webhook-renewal.ts";
+import { resolveNfseRepricedRenewalAmount } from "../_shared/nfse-base-reprice.ts";
+
+const NFSE_BASE_REPRICE_REASON = "Reajuste do nível 1 de Notas Fiscais de R$ 100 para R$ 150";
 
 // CORS permissivo: a Asaas chama server-to-server (sem Origin), então NÃO usamos
 // o allowlist de origem do _shared/cors.ts aqui. asaas-access-token liberado no header.
@@ -1590,6 +1593,62 @@ async function recordUnmatchedPayment(supabase: any, payment: any): Promise<void
 }
 
 /**
+ * Fecha a última ponta do reajuste da NFS-e: assinaturas recorrentes `sub_*`
+ * já existentes na Asaas não são alteráveis por migration SQL. Quando a próxima
+ * cobrança nasce, sincronizamos assinatura e cobranças pendentes com o valor-base
+ * já reajustado em companies. O histórico gravado pela migration limita esta ação
+ * somente às empresas efetivamente afetadas pelo reajuste.
+ */
+async function syncNfseBaseRepriceRenewal(
+  supabase: any,
+  company: any,
+  payment: any,
+): Promise<number | null> {
+  const subscriptionId = typeof payment.subscription === "string"
+    ? payment.subscription
+    : null;
+  if (!subscriptionId?.startsWith("sub_")) return null;
+
+  const { data: repriceHistory, error: historyError } = await supabase
+    .from("subscription_history")
+    .select("id")
+    .eq("company_id", company.id)
+    .eq("reason", NFSE_BASE_REPRICE_REASON)
+    .limit(1)
+    .maybeSingle();
+  if (historyError) {
+    throw new RetryableWebhookError(
+      `falha ao confirmar reajuste de NFS-e da empresa ${company.id}: ${historyError.message}`,
+      historyError,
+    );
+  }
+  if (!repriceHistory) return null;
+
+  const expectedAmount = resolveNfseRepricedRenewalAmount(company, payment.billingType);
+  if (expectedAmount === null || Math.abs(Number(payment.value || 0) - expectedAmount) <= 0.02) {
+    return expectedAmount;
+  }
+
+  try {
+    await asaas.put(`/subscriptions/${subscriptionId}`, {
+      value: expectedAmount,
+      updatePendingPayments: true,
+    });
+  } catch (error) {
+    throw new RetryableWebhookError(
+      `falha ao sincronizar renovação reajustada da empresa ${company.id}`,
+      error,
+    );
+  }
+
+  console.log(
+    `[nfse-reprice] subscription ${subscriptionId} sincronizada de R$ ${Number(payment.value || 0).toFixed(2)} ` +
+      `para R$ ${expectedAmount.toFixed(2)} (company=${company.id}).`,
+  );
+  return expectedAmount;
+}
+
+/**
  * Lança a TAXA DE ANTECIPAÇÃO Asaas como despesa SEPARADA (category=asaas_anticipation_fee),
  * distinta da tarifa comum (asaas_fee). Disparado pelos eventos RECEIVABLE_ANTICIPATION_*.
  *
@@ -1822,14 +1881,15 @@ Deno.serve(async (req) => {
 
     // ---------- PAYMENT_CREATED: linka pay_* à subscription_payments ----------
     if (event === "PAYMENT_CREATED") {
+      const resolved = await resolveCompany(supabase, payment);
+      const repricedAmount = resolved?.company
+        ? await syncNfseBaseRepriceRenewal(supabase, resolved.company, payment)
+        : null;
+
       // Cartão recorrente grava subscription_payments com asaas_payment_id NULL; quando
       // o pay_* nasce, vinculamos pelo subscription para o webhook de pagamento achar depois.
       if (payment.subscription) {
-        const { data: company } = await supabase
-          .from("companies")
-          .select("id")
-          .eq("asaas_subscription_id", payment.subscription)
-          .maybeSingle();
+        const company = resolved?.company ?? null;
         if (company) {
           const { data: linkable } = await supabase
             .from("subscription_payments")
@@ -1850,7 +1910,11 @@ Deno.serve(async (req) => {
               "vínculo da cobrança à assinatura (subscription_payments)",
               supabase
                 .from("subscription_payments")
-                .update({ asaas_payment_id: payment.id, updated_at: new Date().toISOString() })
+                .update({
+                  asaas_payment_id: payment.id,
+                  ...(repricedAmount !== null ? { amount: repricedAmount } : {}),
+                  updated_at: new Date().toISOString(),
+                })
                 .eq("id", linkable.id),
               { rethrow: retryableRethrow("vínculo da cobrança à assinatura") },
             );

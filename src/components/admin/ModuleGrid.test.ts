@@ -20,6 +20,7 @@ describe('preço do plano personalizado no painel master', () => {
     moduleRow('video_questions', 0),
     moduleRow('extra_user', 20),
     moduleRow('crm', 100),
+    moduleRow('nfe', 150),
   ];
 
   it('inclui cinco usuários e cobra os excedentes pelo catálogo', () => {
@@ -32,5 +33,16 @@ describe('preço do plano personalizado no painel master', () => {
 
   it('soma Cobranças como add-on pago quando selecionado', () => {
     expect(sumModulesPrice(catalog, ['cobrancas'], undefined, undefined, 5)).toBe(347);
+  });
+
+  it('cobra R$ 150 pelo nível inicial de Notas Fiscais no cadastro', () => {
+    expect(sumModulesPrice(catalog, ['nfe'], undefined, undefined, 5)).toBe(347);
+    expect(sumModulesPrice(
+      catalog,
+      ['nfe'],
+      [{ tier: 1, name: 'Nível 1', monthlyLimit: 200, price: 150 }],
+      1,
+      5,
+    )).toBe(347);
   });
 });
