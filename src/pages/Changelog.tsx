@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.33.2',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cada arquivo enviado passa a registrar a empresa dona',
+        description: 'Continuando o reforço de isolamento entre empresas, todo arquivo enviado pelo sistema, como foto de cliente, foto de funcionário, foto de equipamento, comprovante financeiro e logo, passa a registrar a qual empresa pertence no momento do envio. É a base para que só a empresa dona consiga abrir, trocar ou apagar cada arquivo. Nada muda no uso do dia a dia.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.33.1',
     date: '16 de outubro de 2026',
     type: 'patch',

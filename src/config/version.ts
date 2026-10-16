@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.33.1";
+export const APP_VERSION = "1.33.2";
 
-export const VERSION_NOTES = "Correção de segurança: fotos e vídeos de ordem de serviço e selfies do ponto agora só podem ser lidos, trocados ou apagados por quem é da empresa dona deles.";
+export const VERSION_NOTES = "Todo arquivo enviado passa a registrar a empresa dona, base para que só ela consiga abrir, trocar ou apagar. Nada muda no uso do dia a dia.";
