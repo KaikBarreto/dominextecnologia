@@ -42,6 +42,45 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.35.7',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Novos clientes já nascem autorizados a receber avisos',
+        description: 'Antes era preciso ligar a opção cliente por cliente, e por isso quase ninguém recebia os avisos de serviço. Agora o cliente novo já nasce autorizado e pode pedir para parar a qualquer momento respondendo a mensagem. Os clientes já cadastrados não foram alterados.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Tela de automações do WhatsApp mais simples',
+        description: 'Os dois horários de envio agora aparecem lado a lado, a navegação entre as áreas seguiu o padrão do resto do sistema e ficou claro qual aviso está sendo editado. O lembrete para conectar o WhatsApp também deixou de aparecer para quem já conectou.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.35.6',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Descontos flexíveis nas propostas',
+        description: 'Agora é possível oferecer descontos diferentes para o plano mensal e para o anual, escolhendo entre percentual ou valor em reais. Cada condição é calculada separadamente sobre o preço cheio e a proposta em PDF já mostra os valores originais, os descontos e os totais finais.',
+        category: 'recurso',
+      },
+      {
+        title: 'Tabela completa de preços no simulador',
+        description: 'A nova aba Tabela reúne o plano Essencial, todos os módulos adicionais e o valor por usuário extra. O módulo de personalização também passou a aparecer pelo nome White Label, deixando a apresentação comercial mais direta.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cobranças como módulo adicional',
+        description: 'Contas, movimentações, DRE, DFC e relatórios continuam incluídos no Financeiro do plano Essencial. Já as cobranças online e as assinaturas recorrentes de clientes voltaram a fazer parte do módulo Cobranças, contratado separadamente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.35.4',
     date: '16 de outubro de 2026',
     type: 'patch',

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.35.5";
+export const APP_VERSION = "1.35.7";
 
-export const VERSION_NOTES = "Ajuste visual na tela de conexão do WhatsApp, com menos molduras e mais respiro entre os blocos.";
+export const VERSION_NOTES = "Clientes novos já nascem autorizados a receber os avisos por WhatsApp, e a tela de automações ficou mais simples de usar.";
