@@ -111,9 +111,11 @@ export function useWhatsappConnections() {
   const connectQr = useMutation({
     mutationFn: async (): Promise<WhatsappQrPayload> => {
       const { data, error } = await supabase.functions.invoke('whatsapp-connect', {
-        // Versão sobe junto com o texto do aceite. A 2026-10-16.2 acrescentou a
-        // recomendação de conectar um número reserva, e não o principal.
-        body: { accepted_risk: true, risk_terms_version: '2026-10-16.2' },
+        // Versão sobe junto com o texto do aceite. A 2026-10-16.3 reescreveu o
+        // aceite: o risco passou a ser atribuído à automação em si (qualquer
+        // envio automatizado fora da API Oficial da Meta), e a sugestão de
+        // número secundário virou recomendação, não exigência.
+        body: { accepted_risk: true, risk_terms_version: '2026-10-16.3' },
       });
       if (error) throw await edgeError(error, 'Não foi possível iniciar a conexão.');
       return data as WhatsappQrPayload;

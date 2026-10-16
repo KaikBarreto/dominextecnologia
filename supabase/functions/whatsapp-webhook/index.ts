@@ -268,12 +268,23 @@ Deno.serve(async (req) => {
       }
 
       if (connectionId) {
+        // `last_error` é LIDO PELO TENANT e renderizado como alarme vermelho.
+        // Antes gravávamos `Sessão ${state}` com o estado cru do Baileys, o que
+        // produzia "Sessão connecting" em tela: metade em inglês, e um alarme
+        // vermelho para um estado perfeitamente normal (esperando a leitura do
+        // QR). Estado intermediário não é erro: só desconexão de fato é.
         const connectionPatch: Record<string, unknown> = {
           status: newStatus,
           last_seen_at: new Date().toISOString(),
-          consecutive_failures: newStatus === "connected" ? 0 : 1,
-          last_error: newStatus === "connected" ? null : `Sessão ${String(state || "desconhecida")}`,
+          last_error: newStatus === "disconnected"
+            ? "O WhatsApp foi desconectado. Leia um QR Code novo para voltar a enviar."
+            : null,
         };
+        // Só zeramos o contador ao conectar. Escrever 1 aqui (como antes) em
+        // qualquer evento não-conectado apagava a contagem real de falhas de
+        // envio que o worker mantém, e podia tirar da pausa uma conexão que
+        // já tinha batido 3 falhas e deveria estar em 'attention'.
+        if (newStatus === "connected") connectionPatch.consecutive_failures = 0;
         if (phone) connectionPatch.display_number = phone;
         if (newStatus === "connected") connectionPatch.connected_at = new Date().toISOString();
         await supabase.from("whatsapp_connections").update(connectionPatch).eq("id", connectionId).eq("company_id", companyId);

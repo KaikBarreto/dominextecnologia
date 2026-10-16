@@ -16,7 +16,6 @@ import {
   RefreshCw,
   Settings2,
   ShieldCheck,
-  Smartphone,
   Unplug,
   type LucideIcon,
 } from 'lucide-react';
@@ -479,7 +478,7 @@ function ConnectionCard({
             <section className="rounded-xl bg-muted/35 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-background text-primary shadow-sm"><Smartphone className="h-5 w-5" /></span>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-background text-[#25D366] shadow-sm"><WhatsAppIcon className="h-5 w-5" /></span>
                   <div><h3 className="font-semibold">Conectar por QR Code</h3><p className="text-sm text-muted-foreground">Usa um número de WhatsApp da empresa.</p></div>
                 </div>
                 <Badge variant={qrReady ? 'default' : 'outline'}>
@@ -491,7 +490,7 @@ function ConnectionCard({
 
               {qrConnection?.display_number && <p className="mt-4 text-sm"><span className="text-muted-foreground">Número:</span> +{qrConnection.display_number}</p>}
               {qrConnection?.last_error && (
-                <p className="mt-3 flex gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{qrConnection.last_error}</p>
+                <NoticeBanner variant="destructive" className="mt-3">{qrConnection.last_error}</NoticeBanner>
               )}
 
               {qrPayload?.qr && qrConnection?.status !== 'connected' && (
@@ -507,15 +506,17 @@ function ConnectionCard({
 
               {!qrReady && (
                 <>
-                  {/* O bloqueio é improvável, mas quando acontece é o número que
-                      se perde. O aviso tem que vir ANTES do aceite, não depois. */}
-                  <NoticeBanner variant="warning" className="mt-4" title="Conecte um número reserva">
-                    Prefira um chip só para os avisos automáticos. Se o número for bloqueado, a empresa não perde o WhatsApp principal de atendimento.
+                  {/* Sugestão, não exigência: o aviso vem ANTES do aceite, mas em
+                      tom de recomendação. Quem decide qual número conectar é o cliente. */}
+                  <NoticeBanner variant="warning" className="mt-4" title="Pode ser melhor usar um número secundário">
+                    Se a empresa tiver um chip separado para os avisos automáticos, vale usar ele. Assim o WhatsApp principal de atendimento segue funcionando em qualquer cenário.
                   </NoticeBanner>
-                  <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-lg bg-amber-500/10 p-3 text-sm leading-relaxed">
+                  {/* Fundo branco de propósito: caixa dessaturada é proibida pela régua
+                      visual. Contraste vem da borda, não de um bege apagado. */}
+                  <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-lg border bg-background p-3 text-sm leading-relaxed">
                     <Checkbox checked={acceptedRisk} onCheckedChange={(value) => setAcceptedRisk(value === true)} className="mt-0.5" disabled={!canManage || !moduleActive} />
                     <span>
-                      Entendo que esta tecnologia não é oficial e pode sofrer desconexão ou bloqueio, mesmo com baixo volume, e que por isso devo conectar um número que a empresa possa perder sem parar o atendimento.
+                      Entendo que toda automação de WhatsApp fora da API Oficial da Meta tem um risco, ainda que ínfimo, de bloqueio do número, justamente por se tratar de envio automatizado.
                     </span>
                   </label>
                 </>
