@@ -1,4 +1,4 @@
-import { Clock, Eye, KeyboardIcon, Receipt, ShieldCheck, Wrench } from 'lucide-react';
+import { Clock, Receipt, ShieldCheck, Wrench } from 'lucide-react';
 
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,11 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import type {
   WhatsappAutomationPreferences,
-  WhatsappHumanBehavior,
   WhatsappSendWindow,
   WhatsappSendWindowGroup,
 } from '@/lib/whatsappAutomation';
@@ -146,7 +144,7 @@ export function WhatsappProtectionSettings({
   onPreferencesChange,
 }: WhatsappProtectionSettingsProps) {
   const copy = COPY[locale];
-  const { sendWindow, humanBehavior } = preferences;
+  const { sendWindow } = preferences;
 
   const updateWindow = (group: WhatsappSendWindowGroup, patch: Partial<WhatsappSendWindow>) => {
     onPreferencesChange({
@@ -158,9 +156,6 @@ export function WhatsappProtectionSettings({
     });
   };
 
-  const updateBehavior = (patch: Partial<WhatsappHumanBehavior>) => {
-    onPreferencesChange({ ...preferences, humanBehavior: { ...humanBehavior, ...patch } });
-  };
 
   return (
     <Card className="overflow-hidden">
@@ -180,51 +175,35 @@ export function WhatsappProtectionSettings({
             <span className="text-xs text-muted-foreground">{copy.timezoneNote}</span>
           </div>
 
-          <WindowEditor
-            icon={Wrench}
-            idPrefix="whatsapp-window-os"
-            title={copy.transactionalTitle}
-            hint={copy.transactionalHint}
-            copy={copy}
-            window={sendWindow.transactional}
-            readOnly={readOnly}
-            onChange={(patch) => updateWindow('transactional', patch)}
-          />
+          {/* Lado a lado no desktop: são duas configurações irmãs e comparáveis,
+              e empilhadas gastavam uma tela inteira de rolagem. */}
+          <div className="grid gap-5 lg:grid-cols-2 lg:gap-6">
+            <WindowEditor
+              icon={Wrench}
+              idPrefix="whatsapp-window-os"
+              title={copy.transactionalTitle}
+              hint={copy.transactionalHint}
+              copy={copy}
+              window={sendWindow.transactional}
+              readOnly={readOnly}
+              onChange={(patch) => updateWindow('transactional', patch)}
+            />
 
-          <WindowEditor
-            icon={Receipt}
-            idPrefix="whatsapp-window-billing"
-            title={copy.remindersTitle}
-            hint={copy.remindersHint}
-            copy={copy}
-            window={sendWindow.reminders}
-            readOnly={readOnly}
-            onChange={(patch) => updateWindow('reminders', patch)}
-          />
+            <WindowEditor
+              icon={Receipt}
+              idPrefix="whatsapp-window-billing"
+              title={copy.remindersTitle}
+              hint={copy.remindersHint}
+              copy={copy}
+              window={sendWindow.reminders}
+              readOnly={readOnly}
+              onChange={(patch) => updateWindow('reminders', patch)}
+            />
+          </div>
 
           <p className="text-xs text-muted-foreground">{copy.queueHint}</p>
         </section>
 
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold">{copy.behaviorTitle}</h3>
-
-          <BehaviorRow
-            icon={KeyboardIcon}
-            label={copy.typingLabel}
-            hint={copy.typingHint}
-            checked={humanBehavior.simulateTyping}
-            disabled={readOnly}
-            onCheckedChange={(simulateTyping) => updateBehavior({ simulateTyping })}
-          />
-          <BehaviorRow
-            icon={Eye}
-            label={copy.readLabel}
-            hint={copy.readHint}
-            checked={humanBehavior.markAsReadBeforeReply}
-            disabled={readOnly}
-            onCheckedChange={(markAsReadBeforeReply) => updateBehavior({ markAsReadBeforeReply })}
-          />
-        </section>
       </CardContent>
     </Card>
   );
@@ -265,7 +244,7 @@ function WindowEditor({
   );
 
   return (
-    <div className="space-y-3 rounded-lg border bg-background p-3 sm:p-4">
+    <div className="space-y-3">
       <div className="flex items-start gap-2">
         <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0">
@@ -350,41 +329,6 @@ function WindowEditor({
           <NoticeBanner variant="warning">{copy.daysEmpty}</NoticeBanner>
         )}
       </div>
-    </div>
-  );
-}
-
-function BehaviorRow({
-  icon: Icon,
-  label,
-  hint,
-  checked,
-  onCheckedChange,
-  disabled,
-}: {
-  icon: typeof Eye;
-  label: string;
-  hint: string;
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-3 rounded-lg border bg-background px-4 py-3">
-      <div className="flex min-w-0 items-start gap-2">
-        <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-        <div className="min-w-0">
-          <span className="block text-sm font-medium leading-tight">{label}</span>
-          <span className="mt-1 block text-xs leading-snug text-muted-foreground">{hint}</span>
-        </div>
-      </div>
-      <Switch
-        checked={checked}
-        onCheckedChange={onCheckedChange}
-        disabled={disabled}
-        aria-label={label}
-        className="mt-0.5 shrink-0"
-      />
     </div>
   );
 }

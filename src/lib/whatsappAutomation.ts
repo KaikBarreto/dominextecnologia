@@ -83,7 +83,7 @@ export const DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES: WhatsappAutomationPreferen
   },
   humanBehavior: {
     simulateTyping: true,
-    markAsReadBeforeReply: false,
+    markAsReadBeforeReply: true,
   },
   os: {
     includeLink: true,
@@ -195,18 +195,22 @@ function normalizeSendWindows(
   };
 }
 
+/**
+ * Decisão do CEO (16/10/2026): os dois sinais ficam SEMPRE ligados e saem da
+ * tela. Não existe mais escolha do tenant, nem respeito a valor já gravado.
+ *
+ * Por isso a função ignora `value` de propósito: uma empresa que salvou
+ * `markAsReadBeforeReply: false` antes desta mudança ficaria presa no desligado
+ * para sempre, já que o interruptor que religaria não existe mais na interface.
+ *
+ * Consequência conhecida e aceita: marcar a conversa como lida apaga o aviso de
+ * mensagem não lida no celular da equipe do tenant.
+ */
 function normalizeHumanBehavior(
-  value: unknown,
-  fallback: WhatsappHumanBehavior,
+  _value: unknown,
+  _fallback: WhatsappHumanBehavior,
 ): WhatsappHumanBehavior {
-  const input = isRecord(value) ? value : {};
-  return {
-    simulateTyping: readBoolean(input.simulateTyping, fallback.simulateTyping),
-    markAsReadBeforeReply: readBoolean(
-      input.markAsReadBeforeReply,
-      fallback.markAsReadBeforeReply,
-    ),
-  };
+  return { simulateTyping: true, markAsReadBeforeReply: true };
 }
 
 function normalizeRule(value: unknown, fallback: WhatsappAutomationRule): WhatsappAutomationRule {

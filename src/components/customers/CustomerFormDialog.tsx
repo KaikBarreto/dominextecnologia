@@ -44,7 +44,11 @@ const customerSchema = z.object({
   email: z.string().email('Email inválido').optional().or(z.literal('')),
   phone: z.string().optional(),
   celular: z.string().optional(),
-  whatsapp_notifications_enabled: z.boolean().default(false),
+  // Opt-out, não opt-in: aviso de OS é mensagem transacional que o cliente
+  // final espera receber, e o "PARAR" pelo WhatsApp continua disponível.
+  // O default do banco virou true; aqui precisa acompanhar, senão a tela
+  // manda `false` explícito e anula o default.
+  whatsapp_notifications_enabled: z.boolean().default(true),
   birth_date: z.string().optional(),
   address: z.string().optional(),
   address_number: z.string().optional(),
@@ -66,7 +70,7 @@ type CustomerFormData = z.infer<typeof customerSchema>;
 const EMPTY_FORM: CustomerFormData = {
   name: '', customer_type: 'pj', company_name: '', nome_fantasia: '', document: '',
   email: '', phone: '', celular: '', birth_date: '', address: '', address_number: '',
-  whatsapp_notifications_enabled: false,
+  whatsapp_notifications_enabled: true,
   complement: '', neighborhood: '', city: '', state: '', zip_code: '',
   notes: '', origin: '', inscricao_municipal: '', inscricao_estadual: '', ibge_municipality_code: '',
 };
@@ -141,7 +145,7 @@ export function CustomerFormDialog({
           email: customer?.email ?? '',
           phone: customer?.phone ?? '',
           celular: (customer as any)?.celular ?? '',
-          whatsapp_notifications_enabled: customer?.whatsapp_notifications_enabled ?? false,
+          whatsapp_notifications_enabled: customer?.whatsapp_notifications_enabled ?? true,
           birth_date: (customer as any)?.birth_date ?? '',
           address: customer?.address ?? '',
           address_number: (customer as any)?.address_number ?? (customer as any)?.street_number ?? '',

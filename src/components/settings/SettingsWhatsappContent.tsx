@@ -21,7 +21,6 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { SettingsAsaasContent } from '@/components/settings/SettingsAsaasContent';
 import { SettingsAsaasSimulator } from '@/components/settings/SettingsAsaasSimulator';
 import { WhatsappAutomationSettings } from '@/components/settings/whatsapp/WhatsappAutomationSettings';
@@ -38,6 +37,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -272,10 +272,11 @@ function WhatsappContent() {
         <NoticeBanner variant="neutral" icon={Lock} title={copy.readOnlyTitle}>
           {copy.readOnlyDescription}
         </NoticeBanner>
-      ) : activeSection !== 'connection' ? (
-        /* Na aba de Conexão este aviso diz exatamente o que o cartão logo abaixo
-           já diz, a 60px de distância. Repetir a mesma frase duas vezes gasta o
-           topo da tela e enfraquece as duas. */
+      ) : !isConnected && activeSection !== 'connection' ? (
+        /* Só faz sentido para quem AINDA não conectou. Ficava na tela mesmo com
+           o número já pareado, mandando conectar o que já estava conectado.
+           E na aba de Conexão ele repetia, a 60px de distância, exatamente o que
+           o cartão logo abaixo já diz. */
         <NoticeBanner variant="info" title={copy.preparationTitle}>
           {copy.preparationDescription}
         </NoticeBanner>
@@ -355,37 +356,41 @@ export function WhatsappSectionNav({
   labels: Record<WhatsappSection, string>;
 }) {
   const sections = Object.keys(labels) as WhatsappSection[];
+  const isLocked = (section: WhatsappSection) =>
+    section === 'inbox' || section === 'campaigns'
+    || (section !== 'connection' && !isConnected);
   return (
-    <nav aria-label="Áreas da integração com WhatsApp" className="grid grid-cols-2 gap-2 rounded-lg border bg-muted/20 p-2 sm:grid-cols-3 lg:grid-cols-6">
-      {sections.map((section) => {
+    /* Underline é o padrão de navegação por abas do sistema (mesmo componente
+       das abas WhatsApp/Cobranças logo acima). Antes era uma grade de pills com
+       borda dentro de uma caixa com borda, que somava mais duas molduras numa
+       tela que já tinha molduras demais. */
+    <MobilePillTabs
+      variant="underline"
+      tabs={sections.map((section) => {
         const Icon = SECTION_ICONS[section];
-        const selected = section === active;
-        const futureOnly = section === 'inbox' || section === 'campaigns';
-        const locked = futureOnly || (section !== 'connection' && !isConnected);
-        return (
-          <button
-            key={section}
-            type="button"
-            onClick={() => onChange(section)}
-            disabled={locked}
-            aria-disabled={locked}
-            aria-current={selected ? 'page' : undefined}
-            title={futureOnly ? 'Etapa futura' : locked ? lockedLabel : undefined}
-            className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-              selected
-                ? 'border-primary bg-primary text-white shadow-sm'
-                : locked
-                  ? 'cursor-not-allowed border-transparent bg-background text-muted-foreground/60'
-                  : 'border-transparent bg-background text-muted-foreground hover:border-border hover:text-foreground'
-            }`}
-          >
-            <Icon className="h-4 w-4" />
-            <span>{labels[section]}</span>
-            {locked && <Lock className="h-3.5 w-3.5" aria-hidden="true" />}
-          </button>
-        );
+        return { value: section, label: labels[section], icon: <Icon className="h-4 w-4 shrink-0" /> };
       })}
-    </nav>
+      activeTab={active}
+      onTabChange={(value) => {
+        const section = value as WhatsappSection;
+        // Aba bloqueada não navega. O MobilePillTabs não tem estado desabilitado,
+        // então o guarda fica aqui, e o cadeado ao lado do rótulo avisa por quê.
+        if (isLocked(section)) return;
+        onChange(section);
+      }}
+      renderSuffix={(tab) =>
+        isLocked(tab.value as WhatsappSection)
+          ? (
+            <span
+              className="ml-1 inline-flex items-center text-muted-foreground/70"
+              title={tab.value === 'inbox' || tab.value === 'campaigns' ? 'Etapa futura' : lockedLabel}
+            >
+              <Lock className="h-3 w-3" aria-hidden="true" />
+            </span>
+          )
+          : null
+      }
+    />
   );
 }
 

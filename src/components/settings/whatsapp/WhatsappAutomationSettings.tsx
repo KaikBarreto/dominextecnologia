@@ -4,6 +4,7 @@ import {
   Banknote,
   CalendarClock,
   CheckCircle2,
+  ChevronRight,
   Clock3,
   ExternalLink,
   Link2,
@@ -64,7 +65,8 @@ const COPY = {
     os: 'Ordens de serviço',
     billing: 'Cobranças',
     chooseEvent: 'Escolha quando enviar',
-    chooseEventHint: 'Selecione um evento para configurar o modelo e o conteúdo.',
+    chooseEventHint: 'Toque em um evento da lista para editar a mensagem dele aqui embaixo.',
+    editingBadge: 'Editando',
     eventEnabled: 'Enviar esta mensagem',
     template: 'Modelo da mensagem',
     templateHint: 'Os textos finais serão vinculados aos templates aprovados pelo provedor.',
@@ -104,7 +106,7 @@ const COPY = {
     title: 'Message automation', description: 'Choose which notifications are sent and how each message is built.',
     masterLabel: 'Enable automations', masterHint: 'Messages will only start after a provider is connected.',
     save: 'Save settings', saving: 'Saving…', saved: 'Settings saved', pending: 'Unsaved changes', flowsEnabled: 'active flows',
-    os: 'Work orders', billing: 'Charges', chooseEvent: 'Choose when to send', chooseEventHint: 'Select an event to configure its template and content.',
+    os: 'Work orders', billing: 'Charges', chooseEvent: 'Choose when to send', chooseEventHint: 'Tap an event in the list to edit its message below.', editingBadge: 'Editing',
     eventEnabled: 'Send this message', template: 'Message template', templateHint: 'Final texts will be linked to templates approved by the provider.',
     templates: { automatic: 'Automatic rotation · recommended', objective: 'Objective', cordial: 'Friendly', detailed: 'Detailed' },
     osLink: 'Include work order tracking link', billingContent: 'Charge information', amount: 'Amount', paymentLink: 'Payment link', createdBy: 'Created by', descriptionField: 'Description',
@@ -120,7 +122,7 @@ const COPY = {
     title: 'Automatización de mensajes', description: 'Define qué avisos se envían y cómo se compone cada mensaje.',
     masterLabel: 'Activar automatizaciones', masterHint: 'Los envíos solo comenzarán cuando se conecte un proveedor.',
     save: 'Guardar configuración', saving: 'Guardando…', saved: 'Configuración guardada', pending: 'Cambios sin guardar', flowsEnabled: 'flujos activos',
-    os: 'Órdenes de trabajo', billing: 'Cobros', chooseEvent: 'Elige cuándo enviar', chooseEventHint: 'Selecciona un evento para configurar el modelo y el contenido.',
+    os: 'Órdenes de trabajo', billing: 'Cobros', chooseEvent: 'Elige cuándo enviar', chooseEventHint: 'Toca un evento de la lista para editar su mensaje aquí abajo.', editingBadge: 'Editando',
     eventEnabled: 'Enviar este mensaje', template: 'Modelo del mensaje', templateHint: 'Los textos finales se vincularán a plantillas aprobadas por el proveedor.',
     templates: { automatic: 'Rotación automática · recomendada', objective: 'Objetiva', cordial: 'Cordial', detailed: 'Detallada' },
     osLink: 'Incluir enlace de seguimiento de la orden', billingContent: 'Información del cobro', amount: 'Importe', paymentLink: 'Enlace de pago', createdBy: 'Quién lo generó', descriptionField: 'Descripción',
@@ -136,7 +138,8 @@ const COPY = {
     title: 'Automatisation des messages', description: 'Définissez les notifications envoyées et le contenu de chaque message.',
     masterLabel: 'Activer les automatisations', masterHint: 'Les envois ne commenceront qu’après la connexion d’un fournisseur.',
     save: 'Enregistrer', saving: 'Enregistrement…', saved: 'Paramètres enregistrés', pending: 'Modifications non enregistrées', flowsEnabled: 'flux actifs',
-    os: 'Bons de travail', billing: 'Factures', chooseEvent: 'Choisir quand envoyer', chooseEventHint: 'Sélectionnez un événement pour configurer le modèle et le contenu.',
+    os: 'Bons de travail', billing: 'Factures', chooseEvent: 'Choisir quand envoyer', chooseEventHint: 'Touchez un événement de la liste pour modifier son message ci-dessous.',
+    editingBadge: 'Modification',
     eventEnabled: 'Envoyer ce message', template: 'Modèle du message', templateHint: 'Les textes finaux seront liés aux modèles approuvés par le fournisseur.',
     templates: { automatic: 'Rotation automatique · recommandée', objective: 'Direct', cordial: 'Cordial', detailed: 'Détaillé' },
     osLink: 'Inclure le lien de suivi du bon', billingContent: 'Informations de facturation', amount: 'Montant', paymentLink: 'Lien de paiement', createdBy: 'Créé par', descriptionField: 'Description',
@@ -314,21 +317,34 @@ export function WhatsappAutomationSettings({
                         setSelected(event);
                       }
                     }}
+                    /* O fundo cinza sozinho nao dizia que a linha estava
+                       selecionada nem que clicar seleciona: com um interruptor
+                       na direita, o clique parecia ser do interruptor. Agora a
+                       selecao tem faixa cheia a esquerda, icone saturado e o
+                       rotulo "Editando"; as nao selecionadas mostram a seta. */
                     className={cn(
-                      'flex w-full items-start gap-3 px-3 py-3 text-left transition-colors sm:px-4',
+                      'relative flex w-full items-start gap-3 py-3 pl-4 pr-3 text-left transition-colors sm:pl-5 sm:pr-4',
                       index > 0 && 'border-t',
-                      active ? 'bg-muted' : 'hover:bg-muted/50',
+                      active ? 'bg-muted' : 'cursor-pointer hover:bg-muted/50',
                     )}
                     aria-pressed={active}
                   >
+                    {active && (
+                      <span className="absolute inset-y-0 left-0 w-1 bg-primary" aria-hidden="true" />
+                    )}
                     <span className={cn(
-                      'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-background',
-                      active && 'border-primary text-primary',
+                      'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md',
+                      active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
                     )}>
                       {event.domain === 'os' ? <Wrench className="h-4 w-4" /> : <CalendarClock className="h-4 w-4" />}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium">{title}</span>
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium">{title}</span>
+                        {active
+                          ? <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">{copy.editingBadge}</Badge>
+                          : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" aria-hidden="true" />}
+                      </span>
                       <span className="block text-xs leading-relaxed text-muted-foreground">{description}</span>
                     </span>
                     <Switch

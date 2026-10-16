@@ -122,19 +122,17 @@ describe('WhatsappProtectionSettings', () => {
     expect(container.textContent).toContain('esses avisos nunca saem');
   });
 
-  it('liga a leitura prévia preservando o "digitando"', () => {
-    const onPreferencesChange = vi.fn();
-    render(DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES, onPreferencesChange);
+  it('não oferece mais interruptor de comportamento humano', () => {
+    render(DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES);
 
-    const leitura = container.querySelector(
-      '[aria-label="Marcar a conversa como lida antes de responder"]',
-    );
-    expect(leitura).toBeTruthy();
-    click(leitura);
-
-    const atualizado = onPreferencesChange.mock.calls[0][0];
-    expect(atualizado.humanBehavior.markAsReadBeforeReply).toBe(true);
-    expect(atualizado.humanBehavior.simulateTyping).toBe(true);
+    // Decisão do CEO: os dois sinais ficam sempre ligados e saem da tela.
+    expect(container.textContent).not.toContain('Comportamento humano');
+    expect(
+      container.querySelector('[aria-label="Marcar a conversa como lida antes de responder"]'),
+    ).toBeNull();
+    // Nenhum interruptor sobrou no card inteiro.
+    expect(container.querySelectorAll('[role="switch"]')).toHaveLength(0);
+    expect(container.textContent).not.toContain('digitando');
   });
 
   it('não deixa editar nada em modo somente leitura', () => {
@@ -143,9 +141,6 @@ describe('WhatsappProtectionSettings', () => {
 
     click(day(OS, 'Dom'));
     click(day(COBRANCA, 'Sáb'));
-    click(
-      container.querySelector('[aria-label="Marcar a conversa como lida antes de responder"]'),
-    );
 
     expect(onPreferencesChange).not.toHaveBeenCalled();
   });

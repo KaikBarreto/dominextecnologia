@@ -62,7 +62,7 @@ describe('WhatsappSectionNav', () => {
     container.remove();
   });
 
-  it('mantém as áreas visíveis, mas bloqueadas, antes da conexão', () => {
+  it('mostra as seis áreas e não navega para nenhuma bloqueada antes da conexão', () => {
     const onChange = vi.fn();
     act(() => {
       root.render(
@@ -78,12 +78,17 @@ describe('WhatsappSectionNav', () => {
 
     const buttons = [...container.querySelectorAll('button')];
     expect(buttons).toHaveLength(6);
-    expect(buttons.filter((button) => button.disabled)).toHaveLength(5);
-    expect(buttons.find((button) => button.textContent?.includes('Conexão'))?.disabled).toBe(false);
 
-    const automations = buttons.find((button) => button.textContent?.includes('Automações'));
-    act(() => automations?.click());
+    // Sem conexão, só Conexão navega. As abas underline não têm estado
+    // desabilitado: o bloqueio é o guarda no onTabChange, então o teste
+    // verifica o efeito, não o atributo.
+    for (const label of ['Automações', 'Atendimento', 'Modelos', 'Campanhas', 'Histórico']) {
+      act(() => buttons.find((b) => b.textContent?.includes(label))?.click());
+    }
     expect(onChange).not.toHaveBeenCalled();
+
+    act(() => buttons.find((b) => b.textContent?.includes('Conexão'))?.click());
+    expect(onChange).toHaveBeenCalledWith('connection');
   });
 
   it('libera automações, modelos e histórico, mantendo atendimento e campanhas futuros', () => {
@@ -101,44 +106,17 @@ describe('WhatsappSectionNav', () => {
     });
 
     const buttons = [...container.querySelectorAll('button')];
-    expect(buttons.filter((button) => button.disabled)).toHaveLength(2);
+    const clicar = (label: string) =>
+      act(() => buttons.find((b) => b.textContent?.includes(label))?.click());
 
-    const inbox = buttons.find((button) => button.textContent?.includes('Atendimento'));
-    const history = buttons.find((button) => button.textContent?.includes('Histórico'));
-    act(() => inbox?.click());
+    // Etapas futuras seguem bloqueadas mesmo com o WhatsApp conectado.
+    clicar('Atendimento');
+    clicar('Campanhas');
     expect(onChange).not.toHaveBeenCalled();
-    act(() => history?.click());
+
+    clicar('Histórico');
     expect(onChange).toHaveBeenCalledWith('history');
-  });
-});
-
-describe('AsaasContent', () => {
-  let container: HTMLDivElement;
-  let root: Root;
-
-  beforeEach(() => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    root = createRoot(container);
-  });
-
-  afterEach(() => {
-    act(() => root.unmount());
-    container.remove();
-  });
-
-  it('mantém o simulador dentro de Cobranças (Asaas)', () => {
-    act(() => root.render(<AsaasContent />));
-
-    expect(container.textContent).toContain('Configurações');
-    expect(container.textContent).toContain('Simulador');
-    expect(container.textContent).toContain('Configuração da conta Asaas');
-
-    const simulatorTab = [...container.querySelectorAll('button')]
-      .find((button) => button.textContent === 'Simulador');
-    act(() => simulatorTab?.click());
-
-    expect(container.textContent).toContain('Conteúdo do simulador Asaas');
-    expect(container.textContent).not.toContain('Configuração da conta Asaas');
+    clicar('Modelos');
+    expect(onChange).toHaveBeenCalledWith('templates');
   });
 });

@@ -70,7 +70,17 @@ describe('whatsappAutomation', () => {
       days: [1, 2, 3, 4, 5, 6],
     });
     expect(normalized.humanBehavior.simulateTyping).toBe(true);
-    expect(normalized.humanBehavior.markAsReadBeforeReply).toBe(false);
+    expect(normalized.humanBehavior.markAsReadBeforeReply).toBe(true);
+  });
+
+  it('força o comportamento humano ligado, ignorando valor salvo em contrário', () => {
+    // Os interruptores saíram da tela: sem forçar, uma empresa que salvou
+    // `false` antes ficaria presa no desligado para sempre.
+    const normalized = normalizeWhatsappAutomationPreferences({
+      humanBehavior: { simulateTyping: false, markAsReadBeforeReply: false },
+    });
+
+    expect(normalized.humanBehavior).toEqual({ simulateTyping: true, markAsReadBeforeReply: true });
   });
 
   it('o shape plano antigo vira a janela de cobrança, não a de OS', () => {
