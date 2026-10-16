@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.34.2',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ativação da integração com a Asaas corrigida',
+        description: 'Ao conectar uma conta Asaas, a chave era aceita, mas a ativação terminava com erro e não era concluída. Corrigimos essa etapa e agora a integração pode ser ativada normalmente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.34.0',
     date: '16 de outubro de 2026',
     type: 'minor',
