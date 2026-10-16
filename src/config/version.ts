@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.35.8";
+export const APP_VERSION = "1.35.9";
 
-export const VERSION_NOTES = "Os chamados abertos pelo portal agora têm uma área própria e podem ser encontrados pelo cliente, equipamento ou contrato.";
+export const VERSION_NOTES = "O Dominex agora se recupera automaticamente quando uma atualização deixa arquivos antigos no navegador, evitando que o usuário fique preso na tela de erro.";

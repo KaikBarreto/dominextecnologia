@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.35.9',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Recuperação automática após atualizações',
+        description: 'Alguns usuários com o sistema aberto durante uma nova publicação podiam encontrar uma tela de erro ao voltar para o painel. Agora o Dominex reconhece esse caso, atualiza os arquivos necessários e retorna ao sistema automaticamente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.35.8',
     date: '16 de outubro de 2026',
     type: 'patch',
