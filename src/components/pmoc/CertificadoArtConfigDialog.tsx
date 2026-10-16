@@ -55,6 +55,7 @@ import {
   substituteVariables,
   type PmocVariableContext,
 } from '@/utils/pmocVariables';
+import { tenantFileOptions } from '@/utils/tenantStorage';
 
 /**
  * Wizard de configuração do "Certificado de Conformidade com Arte" (2026-10).
@@ -357,7 +358,7 @@ export function CertificadoArtConfigDialog({
     setUploadingLogo(true);
     try {
       const filePath = `pmoc_cert_art_logo_${Date.now()}.${file.name.split('.').pop()}`;
-      const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file);
+      const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file, await tenantFileOptions());
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from('company-logos').getPublicUrl(filePath);
       setLogoUrl(data.publicUrl);

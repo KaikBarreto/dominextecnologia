@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { buildStorageFilePath } from '@/utils/storagePath';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { tenantFileOptions } from '@/utils/tenantStorage';
 
 export interface EquipmentAttachment {
   id: string;
@@ -43,7 +44,7 @@ export function useEquipmentAttachments(equipmentId?: string) {
 
       const { error: uploadError } = await supabase.storage
         .from('equipment-files')
-        .upload(filePath, file);
+        .upload(filePath, file, await tenantFileOptions());
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage.from('equipment-files').getPublicUrl(filePath);

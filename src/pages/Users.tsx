@@ -32,6 +32,7 @@ import { PresetListMobile } from '@/components/users/PresetListMobile';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FABButton } from '@/components/mobile/FABButton';
 import { getErrorMessage, getInvokeErrorMessage } from '@/utils/errorMessages';
+import { tenantFileOptions } from '@/utils/tenantStorage';
 
 export default function Users() {
   const isMobile = useIsMobile();
@@ -99,7 +100,7 @@ export default function Users() {
     const fileName = `user-${userId}-${Date.now()}.${fileExt}`;
     const { error: uploadError } = await supabase.storage
       .from('customer-photos')
-      .upload(fileName, file, { upsert: true });
+      .upload(fileName, file, await tenantFileOptions({ upsert: true }));
     if (uploadError) throw uploadError;
     const { data: { publicUrl } } = supabase.storage
       .from('customer-photos')

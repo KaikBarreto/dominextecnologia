@@ -33,6 +33,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { EmployeeDiscPanel } from '@/components/employees/EmployeeDiscPanel';
 import { PontoPinField } from '@/components/employees/PontoPinField';
 import { FaceBiometricsField } from '@/components/employees/FaceBiometricsField';
+import { tenantFileOptions } from '@/utils/tenantStorage';
 
 interface EmployeeFormDialogProps {
   open: boolean;
@@ -186,7 +187,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
     try {
       const safeName = sanitizeStorageFileName(file.name);
       const path = `photos/${Date.now()}_${safeName}`;
-      const { error } = await supabase.storage.from('employee-photos').upload(path, file);
+      const { error } = await supabase.storage.from('employee-photos').upload(path, file, await tenantFileOptions());
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('employee-photos').getPublicUrl(path);
       setPhotoUrl(publicUrl);

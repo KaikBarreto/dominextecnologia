@@ -32,6 +32,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import type { Customer, CustomerType } from '@/types/database';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
+import { tenantFileOptions } from '@/utils/tenantStorage';
 
 
 const customerSchema = z.object({
@@ -163,7 +164,7 @@ export function CustomerFormDialog({
     if (!photoFile) return undefined;
     const ext = photoFile.name.split('.').pop();
     const path = `${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from('customer-photos').upload(path, photoFile);
+    const { error } = await supabase.storage.from('customer-photos').upload(path, photoFile, await tenantFileOptions());
     if (error) throw error;
     const { data: { publicUrl } } = supabase.storage.from('customer-photos').getPublicUrl(path);
     return publicUrl;

@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import type { Quote } from '@/hooks/useQuotes';
 import type { ProposalCustomization, ProposalSection } from './templates/types';
 import { getProposalSections, PROPOSAL_TEXT_SECTION_KEYS } from './templates/types';
+import { tenantFileOptions } from '@/utils/tenantStorage';
 
 interface ProposalConfigDialogProps {
   open: boolean;
@@ -299,7 +300,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
         } catch {}
       }
       const filePath = `proposal_logo_${Date.now()}.${file.name.split('.').pop()}`;
-      const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file);
+      const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file, await tenantFileOptions());
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
       // Reflete o novo logo no estado local (preview/picker do diálogo aberto)...

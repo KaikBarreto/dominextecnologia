@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { tenantFileOptions } from '@/utils/tenantStorage';
 
 export default function Profile() {
   const { user, profile } = useAuth();
@@ -74,7 +75,7 @@ export default function Profile() {
     setUploading(true);
     try {
       const filePath = `avatars/${profile.user_id}_${Date.now()}.${file.name.split('.').pop()}`;
-      const { error: uploadError } = await supabase.storage.from('customer-photos').upload(filePath, file);
+      const { error: uploadError } = await supabase.storage.from('customer-photos').upload(filePath, file, await tenantFileOptions());
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('customer-photos').getPublicUrl(filePath);
       const { error } = await supabase

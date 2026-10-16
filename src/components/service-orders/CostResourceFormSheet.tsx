@@ -16,6 +16,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import { readPastedCents } from '@/lib/money-paste-mask';
+import { tenantFileOptions } from '@/utils/tenantStorage';
 
 // Parse Brazilian number format: 200.000,50 → 200000.50 | 200000 → 200000
 function parseBRNumber(text: string): number {
@@ -243,7 +244,7 @@ export function CostResourceFormSheet({
           fileName: photoFile.name,
           prefix: String(Date.now()),
         });
-        const { error } = await supabase.storage.from('equipment-files').upload(filePath, photoFile);
+        const { error } = await supabase.storage.from('equipment-files').upload(filePath, photoFile, await tenantFileOptions());
         if (!error) {
           const { data: { publicUrl } } = supabase.storage.from('equipment-files').getPublicUrl(filePath);
           finalPhotoUrl = publicUrl;

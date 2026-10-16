@@ -24,6 +24,7 @@ import { processImageFile } from '@/utils/imageConvert';
 import { buildStorageFilePath } from '@/utils/storagePath';
 import type { Equipment, Customer } from '@/types/database';
 import type { EquipmentCategory } from '@/hooks/useEquipmentCategories';
+import { tenantFileOptions } from '@/utils/tenantStorage';
 
 const CACHE_KEY = 'equipment-form-draft';
 
@@ -176,7 +177,7 @@ export function EquipmentFormDialog({
     setUploadingPhoto(true);
     try {
       const path = buildStorageFilePath({ folder: 'photos', fileName: photoFile.name });
-      const { error } = await supabase.storage.from('equipment-files').upload(path, photoFile);
+      const { error } = await supabase.storage.from('equipment-files').upload(path, photoFile, await tenantFileOptions());
       if (error) throw error;
 
       const { data } = supabase.storage.from('equipment-files').getPublicUrl(path);

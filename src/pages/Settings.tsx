@@ -48,6 +48,7 @@ import { useCustomerOrigins } from '@/hooks/useCustomerOrigins';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import * as LucideIcons from 'lucide-react';
 import type { AppRole } from '@/types/database';
+import { tenantFileOptions } from '@/utils/tenantStorage';
 
 const UsersPage = lazy(() => import('@/pages/Users'));
 
@@ -392,7 +393,7 @@ export default function Settings() {
         } catch {}
       }
       const filePath = `logo_${Date.now()}.${file.name.split('.').pop()}`;
-      const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file);
+      const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file, await tenantFileOptions());
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
       updateSettings.mutate({ logo_url: publicUrl });
@@ -435,7 +436,7 @@ export default function Settings() {
         } catch {}
       }
       const filePath = `wl_logo_${Date.now()}.${file.name.split('.').pop()}`;
-      const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file);
+      const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file, await tenantFileOptions());
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
       updateSettings.mutate({ white_label_logo_url: publicUrl });
@@ -472,7 +473,7 @@ export default function Settings() {
         } catch {}
       }
       const filePath = `wl_icon_${Date.now()}.${file.name.split('.').pop()}`;
-      const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file);
+      const { error: uploadError } = await supabase.storage.from('company-logos').upload(filePath, file, await tenantFileOptions());
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
       updateSettings.mutate({ white_label_icon_url: publicUrl });

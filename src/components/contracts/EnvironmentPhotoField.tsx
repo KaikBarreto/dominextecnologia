@@ -7,6 +7,7 @@ import { buildStorageFilePath } from '@/utils/storagePath';
 import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { tenantFileOptions } from '@/utils/tenantStorage';
 
 interface EnvironmentPhotoFieldProps {
   /** URL pública da foto já persistida (ou recém-enviada). */
@@ -41,7 +42,7 @@ export function EnvironmentPhotoField({ value, onChange, envLabel }: Environment
     try {
       const processed = await processImageFile(file);
       const path = buildStorageFilePath({ folder: 'environment-photos', fileName: processed.name });
-      const { error } = await supabase.storage.from('equipment-files').upload(path, processed);
+      const { error } = await supabase.storage.from('equipment-files').upload(path, processed, await tenantFileOptions());
       if (error) throw error;
       const { data } = supabase.storage.from('equipment-files').getPublicUrl(path);
       onChange(data.publicUrl);

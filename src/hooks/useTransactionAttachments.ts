@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { sanitizeStorageFileName } from '@/utils/storagePath';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { tenantFileOptions } from '@/utils/tenantStorage';
 
 export interface TransactionAttachment {
   id: string;
@@ -69,7 +70,7 @@ export function useUploadTransactionAttachment() {
 
       const { error: uploadError } = await supabase.storage
         .from(BUCKET)
-        .upload(storagePath, file, { contentType: file.type || undefined });
+        .upload(storagePath, file, await tenantFileOptions({ contentType: file.type || undefined }));
       if (uploadError) throw uploadError;
 
       const { data, error } = await supabase
@@ -133,7 +134,7 @@ export function useUploadTransactionAttachmentShared() {
 
       const { error: uploadError } = await supabase.storage
         .from(BUCKET)
-        .upload(storagePath, file, { contentType: file.type || undefined });
+        .upload(storagePath, file, await tenantFileOptions({ contentType: file.type || undefined }));
       if (uploadError) throw uploadError;
 
       const rows = transactionIds.map((transaction_id) => ({
