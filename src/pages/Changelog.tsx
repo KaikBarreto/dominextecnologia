@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.35.3',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tela de conexão do WhatsApp mais clara',
+        description: 'A tela mostrava vários avisos coloridos disputando atenção e o botão de conectar passava despercebido. Agora o passo a passo aparece antes da ação, o botão ganhou destaque e o aviso vermelho não aparece mais para quem ainda não conectou nenhum número.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.35.2',
     date: '16 de outubro de 2026',
     type: 'patch',
