@@ -56,6 +56,82 @@ describe('whatsappAutomation', () => {
     expect(preview).toContain('*Pagar agora:* https://www.dominex.app/pagar/8F2K9Q');
   });
 
+  it('nasce com duas janelas: OS larga e cobrança comercial', () => {
+    const normalized = normalizeWhatsappAutomationPreferences({});
+
+    expect(normalized.sendWindow.transactional).toEqual({
+      startHour: 6,
+      endHour: 23,
+      days: [1, 2, 3, 4, 5, 6, 7],
+    });
+    expect(normalized.sendWindow.reminders).toEqual({
+      startHour: 8,
+      endHour: 20,
+      days: [1, 2, 3, 4, 5, 6],
+    });
+    expect(normalized.humanBehavior.simulateTyping).toBe(true);
+    expect(normalized.humanBehavior.markAsReadBeforeReply).toBe(false);
+  });
+
+  it('o shape plano antigo vira a janela de cobrança, não a de OS', () => {
+    const normalized = normalizeWhatsappAutomationPreferences({
+      sendWindow: { startHour: 9, endHour: 18, days: [1, 2, 3, 4, 5] },
+    });
+
+    expect(normalized.sendWindow.reminders).toEqual({
+      startHour: 9,
+      endHour: 18,
+      days: [1, 2, 3, 4, 5],
+    });
+    expect(normalized.sendWindow.transactional).toEqual(
+      DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES.sendWindow.transactional,
+    );
+  });
+
+  it('aceita OS em 24 horas e preserva cada grupo isoladamente', () => {
+    const normalized = normalizeWhatsappAutomationPreferences({
+      sendWindow: {
+        transactional: { startHour: 0, endHour: 24, days: [5, 1, 1, 3] },
+      },
+    });
+
+    expect(normalized.sendWindow.transactional).toEqual({
+      startHour: 0,
+      endHour: 24,
+      days: [1, 3, 5],
+    });
+    expect(normalized.sendWindow.reminders).toEqual(
+      DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES.sendWindow.reminders,
+    );
+  });
+
+  it('descarta janela invertida e dias fora de 1..7 por grupo', () => {
+    const normalized = normalizeWhatsappAutomationPreferences({
+      sendWindow: {
+        transactional: { startHour: 23, endHour: 6, days: [2] },
+        reminders: { startHour: 7, endHour: 21, days: [0, 9, 'sabado'] },
+      },
+    });
+
+    expect(normalized.sendWindow.transactional.startHour).toBe(6);
+    expect(normalized.sendWindow.transactional.endHour).toBe(23);
+    expect(normalized.sendWindow.transactional.days).toEqual([2]);
+
+    expect(normalized.sendWindow.reminders.startHour).toBe(7);
+    expect(normalized.sendWindow.reminders.endHour).toBe(21);
+    expect(normalized.sendWindow.reminders.days).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it('prende as horas nas bordas do dia', () => {
+    const normalized = normalizeWhatsappAutomationPreferences({
+      sendWindow: { reminders: { startHour: -5, endHour: 99, days: [7] } },
+    });
+
+    expect(normalized.sendWindow.reminders.startHour).toBe(0);
+    expect(normalized.sendWindow.reminders.endHour).toBe(24);
+    expect(normalized.sendWindow.reminders.days).toEqual([7]);
+  });
+
   it('conta os sete fluxos ativos por padrão', () => {
     expect(countEnabledWhatsappAutomations(DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES)).toBe(7);
   });

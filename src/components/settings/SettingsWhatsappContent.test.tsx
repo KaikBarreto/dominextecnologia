@@ -86,7 +86,7 @@ describe('WhatsappSectionNav', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('libera todas as áreas depois da conexão', () => {
+  it('libera automações, modelos e histórico, mantendo atendimento e campanhas futuros', () => {
     const onChange = vi.fn();
     act(() => {
       root.render(
@@ -101,11 +101,14 @@ describe('WhatsappSectionNav', () => {
     });
 
     const buttons = [...container.querySelectorAll('button')];
-    expect(buttons.some((button) => button.disabled)).toBe(false);
+    expect(buttons.filter((button) => button.disabled)).toHaveLength(2);
 
     const inbox = buttons.find((button) => button.textContent?.includes('Atendimento'));
+    const history = buttons.find((button) => button.textContent?.includes('Histórico'));
     act(() => inbox?.click());
-    expect(onChange).toHaveBeenCalledWith('inbox');
+    expect(onChange).not.toHaveBeenCalled();
+    act(() => history?.click());
+    expect(onChange).toHaveBeenCalledWith('history');
   });
 });
 

@@ -8,8 +8,54 @@ export interface WhatsappAutomationRule {
   template: WhatsappTemplateStyle;
 }
 
+/**
+ * Janela em que os avisos podem sair, no fuso de Brasília.
+ * `days` usa dia da semana ISO: 1 = segunda … 7 = domingo.
+ */
+export interface WhatsappSendWindow {
+  startHour: number;
+  endHour: number;
+  days: number[];
+}
+
+/**
+ * São DUAS janelas, porque os dois tipos de aviso têm naturezas opostas:
+ *
+ * - `transactional` (OS): o técnico acabou de agir e o cliente está esperando
+ *   aquela mensagem naquele minuto, porque foi ele quem chamou o técnico.
+ *   Manutenção de ar-condicionado acontece fora do horário comercial, então
+ *   travar um "técnico a caminho" das 22h até as 8h é pior que inútil.
+ *   Nasce largo: 06:00 às 23:00, todos os dias. O tenant pode abrir 24 h.
+ * - `reminders` (cobrança): gerado por cron, ninguém pediu pra receber. É aqui
+ *   que a janela de verdade importa, porque aviso de madrugada é o que mais
+ *   gera denúncia do cliente final, e denúncia é o que de fato derruba número.
+ *   Nasce restrito: 08:00 às 20:00, segunda a sábado.
+ *
+ * Não unifique de volta numa janela só.
+ */
+export interface WhatsappSendWindows {
+  transactional: WhatsappSendWindow;
+  reminders: WhatsappSendWindow;
+}
+
+export type WhatsappSendWindowGroup = keyof WhatsappSendWindows;
+
+/** Sinais que fazem o envio parecer uma pessoa operando o celular. */
+export interface WhatsappHumanBehavior {
+  /** Mostra "digitando…" por alguns segundos, proporcional ao tamanho do texto. */
+  simulateTyping: boolean;
+  /**
+   * Marca a conversa como lida antes de responder. Nasce DESLIGADO porque o
+   * número é o WhatsApp real da empresa: marcar como lida apaga o aviso de
+   * não-lida no celular da equipe, que pode perder uma pergunta do cliente.
+   */
+  markAsReadBeforeReply: boolean;
+}
+
 export interface WhatsappAutomationPreferences {
   version: 1;
+  sendWindow: WhatsappSendWindows;
+  humanBehavior: WhatsappHumanBehavior;
   os: {
     includeLink: boolean;
     events: Record<WhatsappOsEventKey, WhatsappAutomationRule>;
@@ -31,6 +77,14 @@ export type WhatsappAutomationEvent =
 
 export const DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES: WhatsappAutomationPreferences = {
   version: 1,
+  sendWindow: {
+    transactional: { startHour: 6, endHour: 23, days: [1, 2, 3, 4, 5, 6, 7] },
+    reminders: { startHour: 8, endHour: 20, days: [1, 2, 3, 4, 5, 6] },
+  },
+  humanBehavior: {
+    simulateTyping: true,
+    markAsReadBeforeReply: false,
+  },
   os: {
     includeLink: true,
     events: {
@@ -81,6 +135,80 @@ function readTemplate(value: unknown, fallback: WhatsappTemplateStyle): Whatsapp
     : fallback;
 }
 
+function readHour(value: unknown, fallback: number, min: number, max: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+/**
+ * Espelha a sanitização feita em `public.whatsapp_send_window` no banco: as duas
+ * pontas precisam concordar, porque a fila decide pelo SQL e a tela mostra pelo
+ * TypeScript. Janela vazia ou invertida cai inteira no default.
+ */
+function normalizeSendWindow(value: unknown, fallback: WhatsappSendWindow): WhatsappSendWindow {
+  const input = isRecord(value) ? value : {};
+  const startHour = readHour(input.startHour, fallback.startHour, 0, 23);
+  const endHour = readHour(input.endHour, fallback.endHour, 1, 24);
+  const days = Array.isArray(input.days)
+    ? Array.from(
+        new Set(
+          input.days
+            .filter((day): day is number => typeof day === 'number' && Number.isFinite(day))
+            .map((day) => Math.round(day))
+            .filter((day) => day >= 1 && day <= 7),
+        ),
+      ).sort((a, b) => a - b)
+    : [];
+
+  return {
+    startHour: endHour > startHour ? startHour : fallback.startHour,
+    endHour: endHour > startHour ? endHour : fallback.endHour,
+    days: days.length > 0 ? days : fallback.days,
+  };
+}
+
+/**
+ * Shape antigo (`sendWindow` com `startHour`/`endHour`/`days` na raiz) vira a
+ * janela de LEMBRETE, não a transacional: ele era o mais restritivo, é o que a
+ * tela antiga oferecia, e o significado dele era "não incomode o cliente fora
+ * disso" — que é o significado de lembrete. A transacional recebe o default
+ * largo. Mesma regra do `public.whatsapp_send_window` no banco.
+ */
+function normalizeSendWindows(
+  value: unknown,
+  fallback: WhatsappSendWindows,
+): WhatsappSendWindows {
+  const input = isRecord(value) ? value : {};
+  const isLegacyFlat = input.startHour !== undefined || input.endHour !== undefined
+    || Array.isArray(input.days);
+
+  if (isLegacyFlat) {
+    return {
+      transactional: fallback.transactional,
+      reminders: normalizeSendWindow(input, fallback.reminders),
+    };
+  }
+
+  return {
+    transactional: normalizeSendWindow(input.transactional, fallback.transactional),
+    reminders: normalizeSendWindow(input.reminders, fallback.reminders),
+  };
+}
+
+function normalizeHumanBehavior(
+  value: unknown,
+  fallback: WhatsappHumanBehavior,
+): WhatsappHumanBehavior {
+  const input = isRecord(value) ? value : {};
+  return {
+    simulateTyping: readBoolean(input.simulateTyping, fallback.simulateTyping),
+    markAsReadBeforeReply: readBoolean(
+      input.markAsReadBeforeReply,
+      fallback.markAsReadBeforeReply,
+    ),
+  };
+}
+
 function normalizeRule(value: unknown, fallback: WhatsappAutomationRule): WhatsappAutomationRule {
   const input = isRecord(value) ? value : {};
   return {
@@ -105,6 +233,8 @@ export function normalizeWhatsappAutomationPreferences(
 
   return {
     version: 1,
+    sendWindow: normalizeSendWindows(input.sendWindow, defaults.sendWindow),
+    humanBehavior: normalizeHumanBehavior(input.humanBehavior, defaults.humanBehavior),
     os: {
       includeLink: readBoolean(os.includeLink, defaults.os.includeLink),
       events: {

@@ -14,12 +14,13 @@
 
 ---
 
-## Panorama das 3 fases
+## Panorama das fases
 
 | Fase | O que faz | Onde está |
 |---|---|---|
 | **1. Blindagem base** | update, timezone, usuário sudo, SSH por chave, ufw, fail2ban, unattended-upgrades, Docker | **este arquivo, abaixo** |
 | **2. Stack + HTTPS** | subir `docker-compose.yml`, preencher `.env`, Caddy no `wa.<DOMINIO>` | resumo abaixo → `docker-compose.yml`, `.env.example`, `Caddyfile`, `README.md` |
+| **2b. Proxy residencial (Onda 3)** | validar IP comprado, testar conexão longa, atribuir à instância, reconectar, substituir IP queimado | **este arquivo, abaixo da Fase 1** |
 | **3. Backup + restore** | cron `pg_dump` + `tar` do volume, offsite plugável, ensaio de restore | `backup.sh`, `restore.md` |
 
 ### Fase 2 (resumo — detalhe no README.md)
@@ -391,5 +392,138 @@ sudo systemctl reload caddy
 - [ ] `unattended-upgrades --dry-run` sem erro.
 - [ ] `docker run hello-world` sem sudo; `docker`+`caddy` habilitados no boot.
 
-➡️ Prossiga pra **Fase 2** (README.md → subir o stack; `Caddyfile` → proxy) e depois
-**Fase 3** (`backup.sh` + `restore.md`).
+➡️ Prossiga pra **Fase 2** (README.md → subir o stack; `Caddyfile` → proxy), depois
+**Fase 2b** (abaixo, proxy residencial por instância) e por fim **Fase 3**
+(`backup.sh` + `restore.md`).
+
+---
+
+# FASE 2b — Proxy residencial por instância (Onda 3)
+
+> Pré-requisito: Fase 2 concluída (stack no ar, Evolution respondendo via
+> `https://wa.<DOMINIO>`). Contexto completo e as duas regras de ouro (1 IP por
+> instância, IP nunca muda depois de conectado) estão no `README.md`, seção 5 —
+> leia antes de aplicar qualquer proxy. Aqui vai só o procedimento operacional.
+>
+> ⚠️ **Antes de executar qualquer passo que termine em "reconectar"**: confirme
+> que o número que vai escanear o QR é o **número reserva** acordado com o cliente
+> (chip dedicado aos avisos automáticos), nunca o WhatsApp principal de atendimento
+> da empresa. Essa confirmação é tão obrigatória quanto o guard-rail do passo 4B.
+
+## Passo 10 — Validar o IP residencial recém-comprado, ANTES de atribuir
+
+```bash
+# Com autenticação usuário/senha (modelo mais comum de fornecedor residencial):
+curl -x http://USUARIO:SENHA@IP_DO_PROXY:PORTA https://ifconfig.me
+
+# Sem credencial (fornecedor que autentica pelo próprio IP de origem):
+curl -x http://IP_DO_PROXY:PORTA https://ifconfig.me
+
+# País, operadora/ASN (confirma que é residencial, não datacenter) e latência:
+curl -x http://USUARIO:SENHA@IP_DO_PROXY:PORTA https://ipinfo.io/json
+curl -x http://USUARIO:SENHA@IP_DO_PROXY:PORTA -s -o /dev/null -w 'latencia: %{time_total}s\n' https://ifconfig.me
+```
+
+- **Esperar:** `ifconfig.me` devolve o IP do proxy (não o IP da VPS); `ipinfo.io/json`
+  mostra `"country": "BR"`; latência abaixo de ~1–2 s.
+- **O teste do nome da organização NÃO basta.** Caso real (16/10/2026): a Proxy-Cheap
+  oferecia Brasil com o ISP **Lietpark Communications** (Lietparkas UAB, **AS216050**,
+  empresa lituana). O nome não contém "hosting" nem "datacenter", então passaria num
+  teste ingênuo — mas o ipinfo classifica essa ASN como **hosting**, uma das faixas
+  dela (`156.232.90.0/23`) é marcada como Data Center/Web Hosting/Transit, e a ASN é
+  conhecida no mercado por **vender serviço de proxy**. IP geolocalizado no Brasil
+  mas de ASN lituana classificada como hosting **não** é o que estamos comprando:
+  "ASN conhecida de proxy" é categoria própria de detecção, tão ruim quanto datacenter.
+- **Portanto, valide a ASN, não o país.** Consulte `https://ipinfo.io/AS<numero>` e
+  exija as duas coisas:
+  1. **Operadora brasileira de consumidor** no nome da ASN: Vivo/Telefônica, Claro/NET,
+     TIM, Oi, Algar, Sercomtel, provedor regional. Empresa estrangeira já reprova.
+  2. **Tipo da ASN = `isp`**, nunca `hosting` nem `business`.
+  Confirme também em um serviço de score de fraude (ex.: IPQualityScore) que o IP
+  **não** é marcado como `proxy`/`vpn`/`hosting`.
+- Antes de comprar, pergunte ao fornecedor, por escrito: *"quais ASNs/operadoras
+  brasileiras vocês oferecem para residencial estático?"*. Se a resposta for uma única
+  ASN estrangeira, o fornecedor não serve para este uso, por mais barato que seja.
+- **Se o país não for BR, a org indicar datacenter, ou a latência for muito alta**:
+  **não atribua este IP**. Devolva ao fornecedor e peça substituição.
+
+## Passo 11 — Testar que o proxy sustenta conexão longa
+
+Baileys mantém **WebSocket persistente**. Um `curl` pontual não prova que o proxy
+aguenta — teste por alguns minutos, repetindo a chamada pelo mesmo proxy:
+
+```bash
+# ~5 minutos: 20 chamadas, uma a cada 15s, pelo MESMO proxy.
+# Imprime o IP de saída em cada volta: é ele que precisa ser SEMPRE o mesmo.
+for i in $(seq 1 20); do
+  printf '%02d ' "$i"
+  curl -x http://USUARIO:SENHA@IP_DO_PROXY:PORTA -s \
+    -w " | %{http_code} %{time_total}s\n" https://ifconfig.me
+  sleep 15
+done
+```
+
+- **Esperar:** 20 linhas, todas com `200`, sem conexão recusada ou fechada no meio,
+  e **o mesmo IP de saída nas 20 linhas**.
+- **Se o IP mudar em alguma volta**: o fornecedor entregou um proxy **rotativo**
+  (ou uma sessão sticky curta) disfarçado de estático. **Não atribua.** Trocar de
+  IP no meio de uma sessão de WhatsApp é, por si só, sinal de conta comprometida,
+  e é exatamente o que a regra de ouro nº 2 da seção 5 do README proíbe. Um `curl`
+  único no Passo 10 **não** pega isso: só o loop pega.
+- **Se cair no meio do loop**: o proxy não é confiável para sessão persistente.
+  Não atribua; peça substituição ao fornecedor antes de seguir.
+- Observação honesta sobre o limite deste teste: ele prova disponibilidade e IP
+  fixo ao longo do tempo, não que um único socket aberto sobrevive por horas. O
+  teste definitivo é a própria instância conectada: se o status cair para
+  `attention` repetidas vezes nas primeiras 24h, o proxy é o suspeito nº 1.
+
+## Passo 12 — Atribuir o proxy à instância (exige reconexão / QR novo)
+
+> ⚠️ Aplicar proxy numa instância **já conectada** exige reconexão: o socket do
+> Baileys só assume o proxy ao reabrir. O tenant vai precisar escanear um **QR
+> novo**. Avise a janela de manutenção antes de rodar — é percebida pelo tenant.
+
+```bash
+# Direto na API da Evolution. NUNCA no .env / docker-compose (não existe essa env var).
+curl -X POST https://wa.<DOMINIO>/proxy/set/<nome_da_instancia> \
+  -H "apikey: <EVOLUTION_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": true, "host": "<IP_DO_PROXY>", "port": <PORTA>, "protocol": "http", "username": "<usuario>", "password": "<senha>"}'
+
+# Confere o que ficou gravado:
+curl https://wa.<DOMINIO>/proxy/find/<nome_da_instancia> -H "apikey: <EVOLUTION_API_KEY>"
+
+# Força a reconexão (gera QR novo):
+curl https://wa.<DOMINIO>/instance/connect/<nome_da_instancia> -H "apikey: <EVOLUTION_API_KEY>"
+```
+
+- **Validar:** `proxy/find` devolve o `host`/`port` esperados; a tela de conexão do
+  tenant mostra um QR novo; depois de escanear, o estado da conexão volta a
+  `open`/`connected` e o webhook confirma.
+- A credencial do proxy usada acima vem do **Vault** do Supabase
+  (`whatsapp_proxy_cred_<proxy_id>`), nunca de um arquivo em disco na VPS.
+
+## Passo 13 — Quando um proxy cai: o que fazer (e o que NUNCA fazer)
+
+- **Sintoma:** healthcheck do proxy falha (cron a cada 15 min) → a conexão vai pra
+  `attention` → a fila de envio daquele tenant **pausa**.
+- **⚠️ NÃO EXISTE fallback para o IP do VPS.** Deixar a instância sair direto pelo
+  IP da VPS depois de ter saído pelo residencial **é** a troca de IP que estamos
+  evitando — pior que nunca ter tido proxy.
+- **Procedimento correto:**
+  1. Confirmar que o IP morreu de fato (repetir o **Passo 10** nele).
+  2. Substituir por outro IP livre do pool (`whatsapp_proxies`, status `free`) ou
+     comprar um novo.
+  3. Repetir o **Passo 12** com o IP novo (set do proxy + reconexão com QR novo).
+  4. Só então liberar a fila do tenant.
+
+**Sinais de que o IP queimou e deve ser substituído** (não esperar o healthcheck
+pra reagir, se qualquer um destes aparecer antes):
+- Passo 10 repetido no mesmo IP passa a devolver país diferente de BR, ou a
+  latência sobe de forma permanente (não é blip isolado).
+- Vários timeouts/erros de conexão consecutivos no healthcheck, não uma falha
+  isolada de rede.
+- A sessão do WhatsApp cai sozinha repetidamente mesmo depois de reconectar (sinal
+  de que o range do fornecedor já foi marcado por outra parte).
+- O próprio fornecedor avisa rotação forçada ou suspensão do IP (comum em
+  residencial: o dono real da conexão doméstica ficou offline ou trocou de rota).

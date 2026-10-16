@@ -13,7 +13,11 @@
 //   - MESSAGES_UPSERT (mensagem RECEBIDA do cliente) → detecta opt-out ("parar",
 //     "sair", "cancelar") pra não enviar mais àquele número. Ver PENDÊNCIA: a
 //     tabela whatsapp_opt_outs não está no contrato da Onda 1; gravamos de forma
-//     tolerante (ignora se a tabela não existe).
+//     tolerante (ignora se a tabela não existe). Grava também a CHAVE da
+//     mensagem (remote_jid + message_id) em whatsapp_inbound_keys, pro worker
+//     poder marcar a conversa como lida antes de responder — NUNCA o corpo da
+//     mensagem, nem trecho, nem tamanho (a Evolution roda com
+//     DATABASE_SAVE_DATA_NEW_MESSAGE: false justamente por isso).
 //
 // Resolve o tenant pelo `instance` do payload (== company_whatsapp_settings.instance_name).
 // Sempre responde 200 pra eventos desconhecidos/não mapeados (evita retry infinito).
@@ -73,17 +77,102 @@ function jidToPhone(jid: string | null | undefined): string | null {
   return digits;
 }
 
+/**
+ * É conversa 1:1 com um cliente? Grupo (`@g.us`), status/broadcast e canal
+ * (`@newsletter`) não são — e não entram em `whatsapp_inbound_keys`.
+ */
+function isDirectChatJid(jid: string | null | undefined): boolean {
+  if (!jid) return false;
+  const lower = jid.toLowerCase();
+  if (lower.endsWith("@g.us")) return false;
+  if (lower.endsWith("@broadcast")) return false;
+  if (lower.startsWith("status@")) return false;
+  if (lower.includes("@newsletter")) return false;
+  return true;
+}
+
+/**
+ * Grava SÓ a CHAVE da mensagem recebida (remote_jid + message_id), pra que o
+ * worker possa marcar a conversa como lida antes de responder.
+ *
+ * REGRA-LEI: nunca gravar o corpo da mensagem, nem um trecho, nem o tamanho.
+ * A Evolution roda com `DATABASE_SAVE_DATA_NEW_MESSAGE: false` exatamente por
+ * isso — a conversa do cliente do tenant não é dado nosso pra guardar.
+ *
+ * Falha aqui é engolida com `console.warn` e o webhook segue respondendo 200:
+ * a Evolution reenfileira o evento INTEIRO em erro, e perder uma chave de
+ * leitura é irrelevante perto de perder um opt-out.
+ */
+async function recordInboundKey(
+  supabase: SupabaseClient,
+  companyId: string,
+  connectionId: string | null,
+  remoteJid: string | null,
+  messageId: unknown,
+): Promise<void> {
+  // Sem conexão resolvida não grava: o UNIQUE é (connection_id, message_id) e
+  // NULL nunca conflita em Postgres — gravar assim acumularia duplicata.
+  if (!connectionId) return;
+  const id = String(messageId ?? "").trim();
+  if (!id || !isDirectChatJid(remoteJid)) return;
+  const phone = jidToPhone(remoteJid);
+  if (!phone) return;
+  try {
+    const { error } = await supabase
+      .from("whatsapp_inbound_keys")
+      .upsert(
+        {
+          company_id: companyId,
+          connection_id: connectionId,
+          phone,
+          remote_jid: remoteJid,
+          message_id: id,
+        },
+        { onConflict: "connection_id,message_id", ignoreDuplicates: true },
+      );
+    if (error) {
+      console.warn("[whatsapp-webhook] chave de mensagem recebida não gravada.", {
+        message: error.message,
+      });
+    }
+  } catch (err) {
+    console.warn("[whatsapp-webhook] chave de mensagem recebida não gravada.", {
+      message: (err as Error)?.message ?? String(err),
+    });
+  }
+}
+
+function normalizePhone(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 10) return null;
+  return digits.startsWith("55") ? digits : `55${digits}`;
+}
+
+function normalizeAck(value: unknown): number {
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) return numeric;
+  const text = String(value ?? "").toUpperCase();
+  if (text.includes("READ") || text.includes("PLAYED")) return 4;
+  if (text.includes("DELIVER")) return 3;
+  if (text.includes("SERVER") || text.includes("SENT")) return 2;
+  return 0;
+}
+
 async function resolveCompanyByInstance(
   supabase: SupabaseClient,
   instanceName: string,
-): Promise<{ company_id: string } | null> {
+): Promise<{ company_id: string; connection_id: string | null } | null> {
   if (!instanceName) return null;
-  const { data } = await supabase
-    .from("company_whatsapp_settings")
-    .select("company_id")
+  const { data: connection } = await supabase
+    .from("whatsapp_connections")
+    .select("id, company_id")
     .eq("instance_name", instanceName)
     .maybeSingle();
-  return data ?? null;
+  if (connection) return { company_id: connection.company_id, connection_id: connection.id };
+  const { data: legacy } = await supabase
+    .from("company_whatsapp_settings").select("company_id").eq("instance_name", instanceName).maybeSingle();
+  return legacy ? { company_id: legacy.company_id, connection_id: null } : null;
 }
 
 Deno.serve(async (req) => {
@@ -106,6 +195,9 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "unauthorized" }, 401);
   }
 
+  // O payload da Evolution varia entre builds e eventos; a validação por evento
+  // abaixo estreita cada campo antes de persistir.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let payload: Record<string, any>;
   try {
     payload = await req.json();
@@ -131,10 +223,15 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: true, ignored: "unknown_instance" }, 200);
   }
   const companyId = tenant.company_id;
+  const connectionId = tenant.connection_id;
 
   try {
     // ----------------------------------------------------------------------
-    // CONNECTION_UPDATE → connection_status (+ connected_number / connected_at).
+    // CONNECTION_UPDATE → connection_status (+ connected_number / connected_at /
+    // warmup_started_at). connected_at é "quando conectou da última vez" (reescrito
+    // sempre, aparece em tela). warmup_started_at é "quando a reputação atual
+    // começou a contar" — só nasce uma vez por reputação, e só reinicia quando o
+    // NÚMERO conectado muda de verdade (ver bloco de aquecimento abaixo).
     // ----------------------------------------------------------------------
     if (event === "CONNECTION_UPDATE") {
       const state = data?.state ?? data?.connection ?? "";
@@ -142,16 +239,109 @@ Deno.serve(async (req) => {
       const newStatus = mapConnectionStatus(state, Number.isFinite(statusReason) ? statusReason : undefined);
 
       const update: Record<string, unknown> = { connection_status: newStatus };
+      let phone: string | null = null;
       if (newStatus === "connected") {
-        // Número conectado: registra o telefone e marca o connected_at (base do aquecimento).
-        const phone = jidToPhone(data?.wuid ?? data?.jid ?? data?.me?.id ?? null);
+        // Número conectado: registra o telefone e marca o connected_at.
+        phone = jidToPhone(data?.wuid ?? data?.jid ?? data?.me?.id ?? null);
         if (phone) update.connected_number = phone;
         update.connected_at = new Date().toISOString();
+      }
+
+      // ---- Lê o número/aquecimento ANTERIORES antes de sobrescrever qualquer
+      // coisa: é a única forma de saber se o número que acabou de conectar é
+      // o MESMO de antes (reconexão comum, não reinicia aquecimento) ou um
+      // número DIFERENTE (reputação nova, reinicia incondicionalmente).
+      // Fallback em company_whatsapp_settings.connected_number cobre o caso de
+      // uma conexão legada sem display_number ainda preenchido em
+      // whatsapp_connections.
+      let previousDisplayNumber: string | null = null;
+      let previousWarmupStartedAt: string | null = null;
+      if (connectionId && newStatus === "connected") {
+        const { data: prevConn } = await supabase
+          .from("whatsapp_connections")
+          .select("display_number, warmup_started_at")
+          .eq("id", connectionId)
+          .eq("company_id", companyId)
+          .maybeSingle();
+        previousDisplayNumber = prevConn?.display_number ?? null;
+        previousWarmupStartedAt = prevConn?.warmup_started_at ?? null;
+      }
+
+      if (connectionId) {
+        const connectionPatch: Record<string, unknown> = {
+          status: newStatus,
+          last_seen_at: new Date().toISOString(),
+          consecutive_failures: newStatus === "connected" ? 0 : 1,
+          last_error: newStatus === "connected" ? null : `Sessão ${String(state || "desconhecida")}`,
+        };
+        if (phone) connectionPatch.display_number = phone;
+        if (newStatus === "connected") connectionPatch.connected_at = new Date().toISOString();
+        await supabase.from("whatsapp_connections").update(connectionPatch).eq("id", connectionId).eq("company_id", companyId);
+      }
+
+      const { data: currentSettings } = await supabase
+        .from("company_whatsapp_settings")
+        .select("active_connection_id, connected_number")
+        .eq("company_id", companyId)
+        .maybeSingle();
+      if (newStatus === "connected" && connectionId && !currentSettings?.active_connection_id) {
+        update.active_connection_id = connectionId;
       }
       await supabase
         .from("company_whatsapp_settings")
         .update(update)
         .eq("company_id", companyId);
+
+      // ---- Aquecimento (onda 3): warmup_started_at.
+      // Isolado em try/catch próprio e DEPOIS de tudo que importa pro resto do
+      // evento (status, ban, propagação pra company_whatsapp_settings) já ter
+      // sido gravado — falha aqui nunca pode atrasar nem quebrar detecção de
+      // BAN nem opt-out. Só console.warn e segue, webhook continua 200.
+      if (connectionId && newStatus === "connected") {
+        try {
+          const previousNumber = normalizePhone(previousDisplayNumber ?? currentSettings?.connected_number ?? null);
+          const newNumber = normalizePhone(phone);
+          // Só é "troca de número" quando os DOIS existem e são diferentes.
+          // NULL → preenchido pela primeira vez (conexão nova, ou legado sem
+          // display_number ainda) NÃO é troca — é a reputação nascendo, trata
+          // igual ao fluxo normal (preenche só se null).
+          const numberChanged = Boolean(previousNumber && newNumber && previousNumber !== newNumber);
+
+          if (numberChanged) {
+            // Número novo é reputação nova, mesmo que o IP não tenha mudado —
+            // sobrescreve INCONDICIONALMENTE.
+            const { error: warmupResetError } = await supabase
+              .from("whatsapp_connections")
+              .update({ warmup_started_at: new Date().toISOString() })
+              .eq("id", connectionId)
+              .eq("company_id", companyId);
+            if (warmupResetError) {
+              console.warn("[whatsapp-webhook] warmup_started_at (troca de número) não gravado", {
+                message: warmupResetError.message,
+              });
+            }
+          } else if (!previousWarmupStartedAt) {
+            // Mesma regra do whatsapp-connect: só preenche se ainda está NULL
+            // (update condicional) — nunca sobrescreve um aquecimento em curso
+            // só porque a sessão reconectou.
+            const { error: warmupFillError } = await supabase
+              .from("whatsapp_connections")
+              .update({ warmup_started_at: new Date().toISOString() })
+              .eq("id", connectionId)
+              .eq("company_id", companyId)
+              .is("warmup_started_at", null);
+            if (warmupFillError) {
+              console.warn("[whatsapp-webhook] warmup_started_at (preenchimento inicial) não gravado", {
+                message: warmupFillError.message,
+              });
+            }
+          }
+        } catch (warmupError) {
+          console.warn("[whatsapp-webhook] aquecimento não processado (não-fatal)", {
+            message: (warmupError as Error)?.message ?? String(warmupError),
+          });
+        }
+      }
 
       return jsonResponse({ ok: true, connection_status: newStatus }, 200);
     }
@@ -163,27 +353,34 @@ Deno.serve(async (req) => {
     if (event === "MESSAGES_UPDATE" || event === "SEND_MESSAGE") {
       const updates = Array.isArray(data) ? data : [data];
       for (const u of updates) {
-        const ack = Number(u?.update?.status ?? u?.status ?? u?.ack ?? 0);
-        // ack >= 3 (DELIVERED) → entregue.
+        const ack = normalizeAck(u?.update?.status ?? u?.status ?? u?.ack ?? 0);
+        // ack 3=entregue; ack 4=lido.
         if (ack >= 3) {
+          const providerMessageId = String(u?.key?.id ?? u?.id ?? "").trim();
           const remotePhone = jidToPhone(u?.key?.remoteJid ?? u?.remoteJid ?? null);
-          if (remotePhone) {
-            // Marca o evento 'enviado' mais recente desse telefone como 'entregue'.
-            const { data: ev } = await supabase
+          let eventQuery = supabase
+            .from("whatsapp_events")
+            .select("id, job_id")
+            .eq("company_id", companyId);
+          if (providerMessageId) eventQuery = eventQuery.eq("provider_message_id", providerMessageId);
+          else if (remotePhone) eventQuery = eventQuery.eq("phone", remotePhone).in("status", ["enviado", "entregue"]);
+          else continue;
+          const { data: ev } = await eventQuery
+            .order("sent_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (ev) {
+            const read = ack >= 4;
+            const at = new Date().toISOString();
+            await supabase
               .from("whatsapp_events")
-              .select("id")
-              .eq("company_id", companyId)
-              .eq("phone", remotePhone)
-              .eq("status", "enviado")
-              .order("sent_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            if (ev) {
-              await supabase
-                .from("whatsapp_events")
-                .update({ status: "entregue" })
-                .eq("id", ev.id)
-                .eq("company_id", companyId);
+              .update(read ? { status: "lido", read_at: at, delivered_at: at } : { status: "entregue", delivered_at: at })
+              .eq("id", ev.id)
+              .eq("company_id", companyId);
+            if (ev.job_id) {
+              await supabase.from("whatsapp_send_jobs")
+                .update({ status: read ? "read" : "delivered" })
+                .eq("id", ev.job_id).eq("company_id", companyId);
             }
           }
         }
@@ -205,6 +402,17 @@ Deno.serve(async (req) => {
         : [data];
       for (const m of messages) {
         if (m?.key?.fromMe) continue;
+
+        // Chave da mensagem recebida (nunca o corpo) → permite o worker marcar
+        // a conversa como lida antes de responder. Não interfere no opt-out.
+        await recordInboundKey(
+          supabase,
+          companyId,
+          connectionId,
+          typeof m?.key?.remoteJid === "string" ? m.key.remoteJid : null,
+          m?.key?.id,
+        );
+
         const text = m?.message?.conversation ??
           m?.message?.extendedTextMessage?.text ?? "";
         if (typeof text === "string" && text && isOptOutText(text)) {
@@ -217,6 +425,19 @@ Deno.serve(async (req) => {
                   { company_id: companyId, phone, opted_out_at: new Date().toISOString() },
                   { onConflict: "company_id,phone" },
                 );
+              const { data: customers } = await supabase
+                .from("customers")
+                .select("id, phone, celular")
+                .eq("company_id", companyId);
+              const matchingIds = (customers ?? [])
+                .filter((customer) => normalizePhone(customer.celular ?? customer.phone) === phone)
+                .map((customer) => customer.id);
+              if (matchingIds.length) {
+                await supabase.from("customers").update({
+                  whatsapp_notifications_enabled: false,
+                  whatsapp_opt_out_at: new Date().toISOString(),
+                }).eq("company_id", companyId).in("id", matchingIds);
+              }
             } catch (_e) {
               console.warn("[whatsapp-webhook] whatsapp_opt_outs indisponível (pendência Onda 1).");
             }

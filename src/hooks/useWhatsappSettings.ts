@@ -16,6 +16,7 @@ export interface WhatsappSettings {
   connection_status: WhatsappConnectionStatus;
   connected_number: string | null;
   connected_at: string | null;
+  active_connection_id: string | null;
   enabled: boolean;
   trigger_a_caminho: boolean;
   trigger_em_andamento: boolean;
@@ -48,6 +49,8 @@ export function useWhatsappSettings() {
     queryKey,
     enabled: !!companyId,
     staleTime: 30 * 1000,
+    refetchInterval: (state) =>
+      (state.state.data as WhatsappSettings | null | undefined)?.connection_status === 'qr' ? 4_000 : false,
     queryFn: async (): Promise<WhatsappSettings | null> => {
       if (!companyId) return null;
       const { data, error } = await supabase
@@ -118,6 +121,7 @@ export function useWhatsappSettings() {
     settings: query.data ?? null,
     isLoading: query.isLoading,
     companyId,
+    refetch: query.refetch,
     update,
   };
 }
