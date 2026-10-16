@@ -70,7 +70,6 @@ export function FinanceRelatorio({
   const centralT = MESSAGES[locale].app.charges.central;
   const paymentsSetupT = MESSAGES[locale].app.charges.cobrar.notActivated;
   const { hasModule } = useCompanyModules();
-  const hasAdvanced = hasModule('finance_advanced');
   const hasChargeModule = hasModule('cobrancas');
   const { isActive: isPaymentAccountActive } = useTenantPaymentAccount();
 
@@ -118,7 +117,6 @@ export function FinanceRelatorio({
     );
   }
 
-  if (section === 'relatorios' && !hasAdvanced) return null;
   if (section === 'cobrancas' && !hasChargeModule) return null;
 
   if (section === 'cobrancas' && !isPaymentAccountActive) {

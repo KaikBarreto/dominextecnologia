@@ -461,9 +461,9 @@
       },
       {
         "tipos": [
-          "nao_prometer"
+          "atencao"
         ],
-        "texto": "Concluir OS não baixa estoque. O vínculo material × tipo de serviço serve pra calcular custo em orçamento, não mexe em saldo físico. Ver T8."
+        "texto": "Baixa de estoque ao concluir a OS depende do recurso estar ligado (Configurações → Usabilidade → \"Consumo de estoque na OS\", desligado por padrão). Com ele ligado, o técnico lança o material usado durante o atendimento e a baixa é confirmada num resumo editável na finalização. Com ele desligado, concluir a OS não mexe em saldo físico. O vínculo material × tipo de serviço continua servindo só pra calcular custo em orçamento. Ver T5, T7 e T8."
       }
     ]
   },
@@ -1124,10 +1124,9 @@
       },
       {
         "tipos": [
-          "atencao",
-          "modulo_pago"
+          "atencao"
         ],
-        "texto": "A aba Cobranças exige DUAS coisas ao mesmo tempo: módulo Cobranças e conta de recebimento ativa. Faltando uma, a aba some sem aviso."
+        "texto": "A aba Cobranças faz parte do Financeiro completo desde o Essencial, mas exige a conta de recebimento ativa. O plano Exceção não possui o Financeiro."
       },
       {
         "tipos": [
@@ -1200,13 +1199,11 @@
       },
       {
         "t": "35:00",
-        "nome": "Contas a Pagar/Receber: lançar com recorrência, dar baixa, recebimento parcial",
-        "modulo_pago": true
+        "nome": "Contas a Pagar/Receber: lançar com recorrência, dar baixa, recebimento parcial"
       },
       {
         "t": "41:00",
-        "nome": "DRE: o botão Caixa × Competência e o que muda no número",
-        "modulo_pago": true
+        "nome": "DRE: o botão Caixa × Competência e o que muda no número"
       },
       {
         "t": "45:00",
@@ -1253,10 +1250,9 @@
       },
       {
         "tipos": [
-          "atencao",
-          "modulo_pago"
+          "atencao"
         ],
-        "texto": "Contas a Pagar/Receber e DRE exigem Financeiro Avançado. Sem o módulo, a URL direta redireciona."
+        "texto": "Contas a Pagar/Receber e DRE fazem parte do Financeiro completo desde o Essencial. O plano Exceção não possui o grupo Financeiro."
       },
       {
         "tipos": [

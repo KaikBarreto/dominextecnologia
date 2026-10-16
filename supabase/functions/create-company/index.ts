@@ -11,6 +11,8 @@ const corsHeaders = {
 const REQUIRED_PERSONALIZED_MODULE_CODES = [
   'basic',
   'customer_portal',
+  'finance_advanced',
+  'cobrancas',
   'pricing_advanced',
   'video_questions',
 ] as const

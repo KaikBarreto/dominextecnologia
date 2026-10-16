@@ -66,9 +66,9 @@
       <tr><td><span class="ui">Gestão › Funcionários (RH)</span></td><td><code>/funcionarios</code></td><td>Funcionários, equipes, ponto eletrônico e pagamentos.</td><td>Sim: Funcionários / RH</td></tr>
       <tr><td><span class="ui">Gestão › Estoque</span></td><td><code>/estoque</code></td><td>Materiais, saldo por local e movimentações.</td><td>Não</td></tr>
       <tr><td><span class="ui">CRM</span></td><td><code>/crm</code></td><td>Funil de vendas com leads, etapas e acompanhamento.</td><td>Sim: CRM</td></tr>
-      <tr><td><span class="ui">Financeiro › Visão Geral</span></td><td><code>/financeiro/relatorio</code></td><td>Resumo financeiro e resultado do período.</td><td>Não (a aba de DRE dentro dela exige Financeiro Avançado)</td></tr>
+      <tr><td><span class="ui">Financeiro › Visão Geral</span></td><td><code>/financeiro/relatorio</code></td><td>Resumo financeiro e resultado do período.</td><td>Não, exceto no plano Exceção</td></tr>
       <tr><td><span class="ui">Financeiro › Movimentações Financeiras</span></td><td><code>/financeiro/movimentacoes</code></td><td>Lançamentos de entrada e saída, contas, cartões e categorias.</td><td>Não</td></tr>
-      <tr><td><span class="ui">Financeiro › Contas a Pagar/Receber</span></td><td><code>/financeiro/contas</code></td><td>Contas em aberto, vencidas e a vencer.</td><td>Sim: Financeiro Avançado</td></tr>
+      <tr><td><span class="ui">Financeiro › Contas a Pagar/Receber</span></td><td><code>/financeiro/contas</code></td><td>Contas em aberto, vencidas e a vencer.</td><td>Não, exceto no plano Exceção</td></tr>
       <tr><td><span class="ui">Financeiro › Notas Fiscais</span></td><td><code>/notas-fiscais</code></td><td>Emissão e consulta de NFS-e.</td><td>Sim: Emissão de Notas Fiscais</td></tr>
     </tbody>
   </table>
@@ -146,7 +146,7 @@
       <tr><td><b>Cargo</b></td><td>Um conjunto de permissões salvo com nome (por exemplo "Técnico de Campo"). Você monta uma vez e aplica em vários usuários.</td></tr>
       <tr><td><b>Permissão de tela</b></td><td>Liga ou desliga uma tela inteira pra um usuário. Desligou, some do menu dele.</td></tr>
       <tr><td><b>Permissão de ação</b></td><td>Liga ou desliga uma ação dentro de uma tela (criar OS, excluir cliente, excluir lançamento financeiro).</td></tr>
-      <tr><td><b>Módulo</b></td><td>Um pedaço do sistema que a empresa contrata (CRM, Contratos e PMOC, Funcionários, Notas Fiscais, Financeiro Avançado, White Label). Vale pra empresa inteira.</td></tr>
+      <tr><td><b>Módulo</b></td><td>Um pedaço do sistema que a empresa contrata (CRM, Contratos e PMOC, Funcionários, Notas Fiscais, Precificação Avançada, White Label). Vale pra empresa inteira.</td></tr>
       <tr><td><b>Plano</b></td><td>O pacote que a empresa assina. Define quantos usuários cabem e quais módulos vêm inclusos.</td></tr>
       <tr><td><b>Segmento</b></td><td>O ramo da sua empresa. Define quais ferramentas do ramo aparecem. Só a Dominex altera esse campo.</td></tr>
       <tr><td><b>Portal do Cliente</b></td><td>A página que o seu cliente abre por link pra acompanhar OS, equipamentos, contratos e cobranças.</td></tr>
@@ -171,7 +171,8 @@
   <h3>Regras que o sistema aplica</h3>
   <ul>
     <li>Durante o <b>período de teste</b>, todos os módulos ficam liberados. Quando o teste termina ou a assinatura é ativada, valem os módulos do plano contratado. Não é promessa: é benefício do teste.</li>
-    <li>Alguns módulos não abrem uma tela nova, eles ligam pedaços dentro de telas que você já tem. É o caso de <b>Financeiro Avançado</b> (DRE e Contas a Pagar/Receber), <b>Precificação Avançada</b> (BDI e custos no orçamento), <b>Portal do Cliente</b> e <b>White Label</b>.</li>
+    <li>Alguns módulos não abrem uma tela nova, eles ligam pedaços dentro de telas que você já tem. É o caso de <b>Precificação Avançada</b> (BDI e custos no orçamento), <b>Portal do Cliente</b> e <b>White Label</b>.</li>
+    <li>O <b>Financeiro completo</b>, incluindo Contas a Pagar/Receber, DRE e relatórios, vem desde o plano Essencial. Somente o plano Exceção não possui o grupo Financeiro.</li>
     <li>A <span class="ui">Área do Técnico™</span> não depende de módulo: ela aparece conforme o segmento da empresa. Hoje só o segmento Refrigeração e Climatização tem ferramentas cadastradas.</li>
   </ul>
 

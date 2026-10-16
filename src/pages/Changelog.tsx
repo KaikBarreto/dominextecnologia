@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.34.0',
+    date: '16 de outubro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Financeiro completo desde o plano Essencial',
+        description: 'Contas a pagar e receber, DRE, DFC, relatórios e cobranças online agora fazem parte dos planos Essencial, Pro, Business e Personalizado, sem módulo financeiro adicional. Para cobrar por Pix, boleto ou cartão, basta conectar a conta Asaas da sua empresa.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.33.5',
     date: '16 de outubro de 2026',
     type: 'patch',

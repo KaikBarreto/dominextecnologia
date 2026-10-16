@@ -140,7 +140,7 @@ export const customers = {
 
       tabCharges: 'Cobranças',
 
-      // Aba Cobranças (módulo add-on 'cobrancas')
+      // Aba Cobranças (entitlement técnico 'cobrancas', gratuito na base)
       chargesHeading: 'Cobranças do Cliente',
       chargeNewButton: 'Cobrar',
       chargesSummaryOpen: 'Em aberto',

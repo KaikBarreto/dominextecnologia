@@ -319,7 +319,7 @@ export const esOverrides: MessagesOverride = {
 
   pageChrome: {
     ctaTrial: 'Hablar por WhatsApp',
-    seePlans: 'Ver planes',
+    seePlans: 'Conocer recursos',
     seeAllPlans: 'Ver todos los planes',
     faqHeading: 'Preguntas frecuentes',
     problemLabel: 'El problema',
@@ -350,7 +350,7 @@ export const esOverrides: MessagesOverride = {
       subtitle:
         'Se acabaron las planillas, los chats y el retrabajo. Dominex centraliza tus órdenes de trabajo, rastrea a tu equipo y entrega datos reales para que crezcas.',
       ctaPrimary: 'Hablar por WhatsApp',
-      ctaSecondary: 'Ver planes',
+      ctaSecondary: 'Conocer recursos',
       videoUnsupported: 'Tu navegador no admite video HTML5.',
       videoLabel: 'Demostración de Dominex',
     },
@@ -543,7 +543,7 @@ export const esOverrides: MessagesOverride = {
             'Portal del cliente',
             'Precios avanzados (markup)',
             'Preguntas en video en los checklists',
-            'Informes básicos',
+            'Finanzas completas: cuentas, resultados, flujo de efectivo y cobros online',
             'Soporte por correo',
           ],
         },
@@ -554,9 +554,6 @@ export const esOverrides: MessagesOverride = {
             'Todo lo de Esencial +',
             '10 usuarios incluidos',
             'Módulo de empleados / RR. HH.',
-            'Finanzas avanzadas',
-            'Cuentas por pagar/por cobrar',
-            'Estado de resultados e informes financieros',
             'Gestión de contratos y planes de mantenimiento',
           ],
         },
@@ -612,7 +609,7 @@ export const esOverrides: MessagesOverride = {
         },
         {
           q: '¿Puedo gestionar finanzas, cuentas por pagar y estados de resultados?',
-          a: 'Sí. A partir del plan Pro tienes cuentas por pagar/por cobrar, múltiples cuentas bancarias, flujo de caja, movimientos recurrentes, conciliación por categoría y un estado de resultados para el análisis de resultados.',
+          a: 'Sí. A partir del plan Esencial tienes la gestión financiera completa: cuentas por pagar/por cobrar, múltiples cuentas bancarias, flujo de caja, movimientos recurrentes, conciliación por categoría, estado de resultados, estado de flujo de efectivo y cobros online. Conecta la cuenta Asaas de la empresa para aceptar Pix, boleto y tarjeta. Solo el plan Excepción no incluye finanzas.',
         },
         {
           q: '¿Cómo funciona el control de asistencia y la nómina de los empleados?',
@@ -648,7 +645,7 @@ export const esOverrides: MessagesOverride = {
     heroSubtitle:
       'Dominex existe para sacar el servicio en campo del papeleo. Un solo sistema, en móvil y escritorio, para dirigir la operación desde el presupuesto hasta el cobro.',
     ctaTrial: 'Hablar por WhatsApp',
-    ctaPricing: 'Ver planes',
+    ctaPricing: 'Conocer recursos',
     missionTitle: 'Nuestra misión',
     missionP1Strong: 'órdenes de trabajo, mantenimiento y gestión',
     missionP1:

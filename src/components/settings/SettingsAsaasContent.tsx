@@ -50,7 +50,7 @@ import { cn } from '@/lib/utils';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Área "Configurações" de Cobranças (Asaas). Espelha o padrão do WhatsApp:
-//   • Gate de add-on via hasModule('cobrancas') → estado "não contratado".
+//   • Gate de entitlement via hasModule('cobrancas') → indisponível no Exceção.
 //   • Estado DESATIVADO: campo pra colar a API key + botão Ativar (provision).
 //   • Estado ATIVO/PENDENTE: status + taxas informativas + botão desativar.
 //
@@ -342,7 +342,7 @@ export function SettingsAsaasContent() {
     );
   }
 
-  // Add-on não contratado: estado dedicado (o gate real é server-side na edge).
+  // Entitlement ausente: estado dedicado (o gate real é server-side na edge).
   if (!hasModule('cobrancas')) {
     return (
       <Card>

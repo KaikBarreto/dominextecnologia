@@ -93,9 +93,9 @@ No computador, o menu fica na barra lateral esquerda, na ordem abaixo. Itens com
 | Gestão › Funcionários (RH) | /funcionarios | Funcionários, equipes, ponto eletrônico e pagamentos. | Sim: Funcionários / RH |
 | Gestão › Estoque | /estoque | Materiais, saldo por local e movimentações. | Não |
 | CRM | /crm | Funil de vendas com leads, etapas e acompanhamento. | Sim: CRM |
-| Financeiro › Visão Geral | /financeiro/relatorio | Resumo financeiro e resultado do período. | Não (a aba de DRE dentro dela exige Financeiro Avançado) |
+| Financeiro › Visão Geral | /financeiro/relatorio | Resumo financeiro e resultado do período. | Não, exceto no plano Exceção |
 | Financeiro › Movimentações Financeiras | /financeiro/movimentacoes | Lançamentos de entrada e saída, contas, cartões e categorias. | Não |
-| Financeiro › Contas a Pagar/Receber | /financeiro/contas | Contas em aberto, vencidas e a vencer. | Sim: Financeiro Avançado |
+| Financeiro › Contas a Pagar/Receber | /financeiro/contas | Contas em aberto, vencidas e a vencer. | Não, exceto no plano Exceção |
 | Financeiro › Notas Fiscais | /notas-fiscais | Emissão e consulta de NFS-e. | Sim: Emissão de Notas Fiscais |
 
 [Print da tela: Menu lateral escuro da Dominex com os itens Dashboard (ativo, com barra verde embaixo), Agenda, Operacional com seta, Área do Técnico™, Orçamentos, Gestão com seta, CRM e Financeiro com seta.]
@@ -172,7 +172,7 @@ Estas são as palavras que aparecem em toda tela da Dominex. Usar o nome certo e
 | Cargo | Um conjunto de permissões salvo com nome (por exemplo "Técnico de Campo"). Você monta uma vez e aplica em vários usuários. |
 | Permissão de tela | Liga ou desliga uma tela inteira pra um usuário. Desligou, some do menu dele. |
 | Permissão de ação | Liga ou desliga uma ação dentro de uma tela (criar OS, excluir cliente, excluir lançamento financeiro). |
-| Módulo | Um pedaço do sistema que a empresa contrata (CRM, Contratos e PMOC, Funcionários, Notas Fiscais, Financeiro Avançado, White Label). Vale pra empresa inteira. |
+| Módulo | Um pedaço do sistema que a empresa contrata (CRM, Contratos e PMOC, Funcionários, Notas Fiscais, Precificação Avançada, White Label). Vale pra empresa inteira. |
 | Plano | O pacote que a empresa assina. Define quantos usuários cabem e quais módulos vêm inclusos. |
 | Segmento | O ramo da sua empresa. Define quais ferramentas do ramo aparecem. Só a Dominex altera esse campo. |
 | Portal do Cliente | A página que o seu cliente abre por link pra acompanhar OS, equipamentos, contratos e cobranças. |
@@ -197,7 +197,9 @@ Portão 2, a permissão. Vale por pessoa. É o que o administrador configurou em
 
 - Durante o período de teste, todos os módulos ficam liberados. Quando o teste termina ou a assinatura é ativada, valem os módulos do plano contratado. Não é promessa: é benefício do teste.
 
-- Alguns módulos não abrem uma tela nova, eles ligam pedaços dentro de telas que você já tem. É o caso de Financeiro Avançado (DRE e Contas a Pagar/Receber), Precificação Avançada (BDI e custos no orçamento), Portal do Cliente e White Label.
+- Alguns módulos não abrem uma tela nova, eles ligam pedaços dentro de telas que você já tem. É o caso de Precificação Avançada (BDI e custos no orçamento), Portal do Cliente e White Label.
+
+- O Financeiro completo, incluindo Contas a Pagar/Receber, DRE e relatórios, vem desde o plano Essencial. Somente o plano Exceção não possui o grupo Financeiro.
 
 - A Área do Técnico™ não depende de módulo: ela aparece conforme o segmento da empresa. Hoje só o segmento Refrigeração e Climatização tem ferramentas cadastradas.
 
@@ -931,8 +933,8 @@ O interruptor fica fora da área que abre a lista: clicar no nome expande, clica
 | Equipamentos | Gerenciar Equipamentos (criar, editar e excluir). |
 | Estoque | Gerenciar Estoque (materiais e movimentações). |
 | Financeiro | Gerenciar Financeiro (criar e editar transações), Excluir Lançamento Financeiro e Ver Totais Financeiros (saldos, totais e projeções). |
-| Agenda | Ver Contas na Agenda (contas a pagar e receber como avisos) e Ver Toda a Agenda (ver todas as tarefas, não apenas as próprias). |
-| CRM | Gerenciar CRM (leads e pipeline comercial). |
+| Agenda | Ver Contas na Agenda (contas a pagar e receber como avisos), Ver Toda a Agenda (ver todas as tarefas do calendário, não apenas as próprias) e Gerenciar Tarefas (ver e gerenciar as tarefas de todos, não apenas as próprias, na Agenda e na aba Tarefas do CRM). |
+| CRM | Gerenciar CRM (ver e gerenciar todas as oportunidades do funil comercial, não apenas as próprias). |
 | Contratos | Gerenciar Contratos (contratos recorrentes e manutenções). |
 | Funcionários | Gerenciar Funcionários e Gerenciar Ponto (ver e gerenciar o ponto de todos). |
 | Usuários | Gerenciar Usuários (criar, editar e gerenciar usuários). |
@@ -943,6 +945,22 @@ A permissão Excluir Lançamento Financeiro não vem ligada por padrão. Ela foi
 #### Ver Toda a Agenda, a permissão que mais gera dúvida
 
 Sem essa ação, o usuário abre a Agenda e vê só as tarefas dele. Com ela ligada, vê a agenda inteira da empresa. Para técnico, o normal é deixar desligada: ele enxerga o próprio dia sem se distrair com o resto.
+
+#### Gerenciar CRM: o que a pessoa deixa de ver sem ela
+
+Sem essa ação, o usuário que tem a tela CRM liberada não vê mais o funil inteiro: ele passa a ver só as oportunidades em que é responsável (principal ou secundário) ou foi quem cadastrou, mais uma fila especial de oportunidades sem nenhum responsável (a que costuma vir de webhook de captação), que fica visível pra empresa inteira até alguém assumir. Os cartões de resumo do topo do CRM (Total de Leads, Valor Total) também passam a somar só o que a pessoa enxerga, não o total da empresa.
+
+Essa restrição só entra em vigor pra usuário que já recebeu algum permissionamento explícito. Se a sua empresa nunca configurou permissões por pessoa (todo mundo com Acesso Total ou sem nenhuma linha de permissão salva), o comportamento continua sendo o de sempre: qualquer um com a tela CRM aberta vê o funil inteiro.
+
+Além da ação Gerenciar CRM, um funil individual pode estar restrito a algumas pessoas (o item "Quem pode ver" dentro de Gerenciar Funis, no CRM). Isso é configurado dentro da própria tela do CRM, não neste editor, e só fica disponível pra administrador, gestor ou quem tem Gerenciar Configurações ligada.
+
+#### Gerenciar Tarefas: o que a pessoa deixa de ver sem ela
+
+É diferente de Ver Toda a Agenda, embora pareçam a mesma coisa. Ver Toda a Agenda é sobre o calendário: quem tem, vê todos os compromissos agendados. Gerenciar Tarefas é sobre o conjunto inteiro de tarefas, que é maior que o calendário, porque existe tarefa criada dentro de uma oportunidade do CRM que nunca aparece na Agenda (a chave "Mostrar na agenda" desligada, ver T10).
+
+Sem Gerenciar Tarefas e sem Ver Toda a Agenda, o usuário vê apenas as tarefas em que é responsável, é o técnico, foi quem criou, ou que pertencem à sua equipe, tanto na Agenda quanto na aba Tarefas do CRM. Com Ver Toda a Agenda ligada, ele vê todo o calendário, mas ainda pode ficar de fora de uma tarefa de CRM que nunca chegou a entrar na agenda. Com Gerenciar Tarefas ligada, ele vê absolutamente todas as tarefas, nos dois lugares.
+
+Pra quem coordena vendas e também acompanha a agenda de campo ao mesmo tempo, ligue as duas: Ver Toda a Agenda e Gerenciar Tarefas. Pra técnico comum, deixe as duas desligadas, do mesmo jeito que hoje.
 
 ### 4. Chip Acesso Total e por que ele não quebra quando a gente lança tela nova
 
@@ -1090,6 +1108,8 @@ Cada plano permite um número de usuários ativos. Usuário desativado não cont
 | "Meu funcionário apagou uma conta a pagar" | Permissão de exclusão financeira ligada | Vá no usuário, abra a tela Financeiro no editor e desligue a ação Excluir Lançamento Financeiro. Ela é separada e não vem ligada por padrão. |
 | "Diz Ação bloqueada quando tento excluir um usuário" | É o último administrador ativo | A empresa precisa de pelo menos um administrador ativo. Promova outra pessoa a administrador primeiro. |
 | "O técnico está vendo a agenda inteira da empresa" | Ação Ver Toda a Agenda ligada | Abra o usuário, expanda a tela Agenda e desligue Ver Toda a Agenda. Ele passa a ver só as tarefas dele. |
+| "Sumiram oportunidades do funil do meu vendedor" | Ele não tem a ação Gerenciar CRM, então passou a ver só as oportunidades em que é responsável ou criador. | É esperado. Ligue Gerenciar CRM pra quem precisa enxergar o funil inteiro, como gestor ou coordenador comercial. |
+| "Minha coordenadora não vê as tarefas criadas dentro do CRM, só as da Agenda" | Ela tem Ver Toda a Agenda, mas não Gerenciar Tarefas. | Ver Toda a Agenda cobre só o calendário. Ligue também Gerenciar Tarefas pra ela ver as tarefas do CRM que não aparecem na Agenda. |
 | "Criei um usuário e ele não consegue entrar" | Senha errada ou conta desativada | Confira se a conta está como Ativo na lista. Se estiver, reenvie a senha; ela pode ser trocada depois em Perfil › Alterar Senha. |
 
 ### Perguntas frequentes
@@ -1127,7 +1147,13 @@ Cada plano permite um número de usuários ativos. Usuário desativado não cont
 **P:** Existe importação de usuários em massa?
 **R:** Não. Cada usuário é criado pela tela, um a um.
 
-Palavras que o cliente usa pra isso: usuário, login, acesso, senha, permissão, cargo, perfil, liberar, bloquear, tirar do sistema, desativar, dar baixa, vaga, limite de usuários, técnico, administrador, master
+**P:** O que muda pro meu vendedor se eu não ligar Gerenciar CRM?
+**R:** Ele continua acessando a tela CRM normalmente, mas passa a ver só as oportunidades das quais é responsável ou foi quem cadastrou, além da fila de oportunidades sem responsável, que é visível pra todo mundo.
+
+**P:** Qual a diferença entre Ver Toda a Agenda e Gerenciar Tarefas?
+**R:** Ver Toda a Agenda cobre o calendário. Gerenciar Tarefas cobre o conjunto inteiro de tarefas, incluindo as que nasceram dentro de uma oportunidade do CRM e nunca aparecem no calendário. Pra ver tudo em ambos os lugares, ligue as duas.
+
+Palavras que o cliente usa pra isso: usuário, login, acesso, senha, permissão, cargo, perfil, liberar, bloquear, tirar do sistema, desativar, dar baixa, vaga, limite de usuários, técnico, administrador, master, gerenciar CRM, gerenciar tarefas, ver as tarefas de todo mundo, ver o funil inteiro
 
 ---
 
@@ -1387,9 +1413,9 @@ Clicando num cliente, abre a ficha completa. No topo ficam a foto, o nome, o sel
 | Chamados | Só com o módulo Portal do Cliente | Chamados abertos pelo próprio cliente no portal. |
 | Contratos | Sempre | Contratos do cliente, com nome, status, frequência e início, e o botão Novo Contrato. |
 | Financeiro | Só com a permissão Ver Financeiro do Cliente | Lançamentos do cliente, com subabas Tudo, A vencer e Pagas. |
-| Cobranças | Só com o módulo Cobranças e conta de recebimento ativa | Cobranças online do cliente, com link de pagamento, envio por WhatsApp e estorno. |
+| Cobranças | Conta de recebimento ativa | Cobranças online do cliente, com link de pagamento, envio por WhatsApp e estorno. |
 
- A aba Cobranças exige DUAS coisas ao mesmo tempo: o módulo Cobranças contratado e a conta de recebimento ativada. Faltando uma das duas, a aba simplesmente não aparece, sem nenhuma mensagem explicando. Se o cliente reclamar que "sumiu a aba de cobranças", confira primeiro a ativação da conta de recebimento.
+ A aba Cobranças faz parte do Financeiro completo desde o Essencial, mas só aparece depois que a conta de recebimento é ativada. Se o cliente reclamar que "sumiu a aba de cobranças", confira primeiro a ativação da conta Asaas. O plano Exceção não possui o grupo Financeiro.
 
 #### Aba Geral por dentro
 
@@ -2467,6 +2493,18 @@ Agenda: calendário com os compromissos do período e os controles de visão.
 
 No celular, a visão que abre é Dia. O motivo é prático: numa tela de celular, uma semana inteira com sete colunas e horários vira um amontoado ilegível. A visão de Dia mostra um compromisso por vez, com o horário, o cliente, o endereço e o técnico, no tamanho em que dá para ler com o celular na mão.
 
+#### Calendário ou Lista
+
+Ao lado dos botões de Dia, Semana e Mês fica um segundo alternador, com os botões Calendário e Lista. O período que você está navegando (o dia, a semana ou o mês escolhido acima) e os filtros aplicados são exatamente os mesmos nos dois: o alternador só muda a forma como os compromissos daquele período aparecem na tela, no computador e no celular.
+
+Na visão Lista some a grade do calendário e os compromissos do período aparecem em sequência, um cartão embaixo do outro, com a data escrita em cada cartão (num período de semana ou mês, cada item pode ser de um dia diferente). Compromissos atrasados (data já passada, sem estar concluídos nem cancelados) sobem para o topo, debaixo do aviso Atrasado. Sem nenhum compromisso no período, a Lista mostra "Nada por aqui" e "Nenhuma tarefa ou OS neste período."
+
+[Print da tela: Agenda da Dominex na visão Lista, com os compromissos do período em sequência de cartões, sem a grade do calendário, e a seção Atrasado destacada no topo]
+
+Agenda em Lista: os mesmos compromissos do período, em sequência, com os atrasados no topo.
+
+ A escolha entre Calendário e Lista fica salva, mas separadamente para o computador e para o celular: dá para deixar o computador em Lista (bom pra conferir tudo em sequência antes de despachar o dia) e o celular em Calendário, ou vice-versa, que cada aparelho lembra a sua própria preferência.
+
 #### Navegar
 
 - Setas de anterior e próximo movem um dia, uma semana ou um mês, conforme a visão em que você está.
@@ -2487,9 +2525,15 @@ Quando a OS já teve material lançado nela, o resumo também mostra o bloco Mat
 
 #### Filtros
 
-O botão Filtros traz Técnico, Cliente e Status, todos com seleção múltipla. Sem nada marcado, mostra tudo.
+O botão Filtros traz Técnico, Cliente, Status e Tipo, todos com seleção múltipla. Sem nada marcado, mostra tudo. O grupo Tipo tem as opções Ordem de Serviço e Tarefa: marque só uma delas para esconder a outra da tela, por exemplo pra ver apenas os atendimentos a cliente e esconder reunião e compromisso interno. Vale nas duas visões (Calendário e Lista) e nos dois aparelhos.
 
-Quem é técnico só enxerga a própria agenda. Um usuário com o papel de técnico vê apenas as OS em que ele é responsável ou em que a equipe dele foi escalada. Isso não é filtro, é regra de visibilidade e ele não consegue desligar. Para tarefas internas vale uma regra parecida com todos os papéis: sem a permissão Ver Toda a Agenda, a tarefa só aparece para quem é responsável por ela ou para a equipe dela.
+[Print da tela: Painel de Filtros da Agenda aberto, com os grupos Técnico, Cliente, Status e Tipo, este último com as opções Ordem de Serviço e Tarefa]
+
+Painel de Filtros da Agenda: o grupo Tipo separa Ordem de Serviço de Tarefa.
+
+Quem é técnico só enxerga a própria agenda de Ordem de Serviço. Um usuário com o papel de técnico vê apenas as OS em que ele é responsável ou em que a equipe dele foi escalada. Isso não é filtro, é regra de visibilidade e ele não consegue desligar.
+
+Tarefa segue uma régua própria, ligada à permissão Gerenciar Tarefas (a mesma explicada em T2). Quem tem essa permissão vê as tarefas de todo mundo na Agenda. Quem não tem vê só as tarefas em que é o responsável, é o técnico, foi quem criou, ou que pertencem à sua equipe. Quem já tinha a permissão Ver Toda a Agenda continua vendo todas as tarefas do calendário, exatamente como antes: nisso, nada mudou. A permissão Gerenciar Tarefas só faz diferença de verdade para as tarefas que nascem dentro de uma oportunidade do CRM e que foram marcadas para não aparecer na Agenda (a chave "Mostrar na agenda" desligada, ver T10); para o resto do calendário, ter uma das duas permissões já é suficiente. Essa régua é só de Tarefa: Ordem de Serviço não é afetada por nada disso.
 
 ### 2. Criar pelo "+": Nova OS × Nova Tarefa — a diferença que mais confunde
 
@@ -2720,6 +2764,7 @@ Cada linha da lista traz o horário, o tipo de evento e o endereço resolvido a 
 | O cliente diz | Causa provável | O que responder / fazer |
 | "Criei uma tarefa mas ela não aparece em Ordens de Serviço" | Tarefa e OS são coisas diferentes | Tarefa é compromisso interno e só vive na Agenda. Se era para ser um atendimento a cliente, crie novamente pelo botão de criar e escolha Ordem de Serviço na pergunta "O que deseja criar?". |
 | "O técnico não vê a OS na agenda dele" | Ele não é responsável pela OS nem está na equipe escalada | Usuário com papel de técnico só enxerga o que é dele ou da equipe dele. Abra a OS e coloque o nome dele (ou a equipe) em Responsáveis. |
+| "Sumiram tarefas da minha agenda" | O usuário não tem Gerenciar Tarefas nem Ver Toda a Agenda, e a tarefa não é dele | Sem uma dessas duas permissões, a pessoa só vê na Agenda as tarefas em que é responsável, é o técnico, foi quem criou ou que são da equipe dela. Se ela precisa ver as tarefas de todo mundo, ligue Gerenciar Tarefas (ou Ver Toda a Agenda, que já libera o calendário inteiro) na edição do usuário. Isso não mexe em Ordem de Serviço, só em Tarefa. |
 | "Não consigo criar equipe, a tela de Funcionários não abre" | Empresa sem o módulo RH | A aba Equipes fica dentro de Funcionários, que depende do módulo RH. Sem ele, o sistema redireciona e oferece a contratação. As equipes já criadas continuam funcionando nas OS, o que não dá é criar ou editar. |
 | "Onde eu defino o líder da equipe?" | Esse campo não existe | A equipe é uma lista plana de membros, sem hierarquia. Se você precisa marcar quem responde, escale a equipe e também o técnico responsável no campo Responsáveis da OS, ou anote o nome na Descrição da equipe. |
 | "Arrastei sem querer e mudei a data de uma OS" | Arraste aplica na hora, sem confirmação | Basta arrastar de volta para o dia e horário originais, ou abrir a OS e corrigir a data. Se a OS era de contrato, o sistema tinha perguntado antes se era só ela ou também as futuras. |
@@ -2728,12 +2773,21 @@ Cada linha da lista traz o horário, o tipo de evento e o endereço resolvido a 
 | "O marcador do técnico está parado num lugar antigo" | O aparelho parou de enviar posição | O mapa guarda o último ponto conhecido e mostra "Há N min". Celular com tela apagada, navegador fechado ou sem sinal para de enviar. Peça para ele reabrir a tela da OS. |
 | "Não acho a tela de Rastreamento no menu" | Ela não existe como item separado | O histórico é a segunda aba da tela Mapa e Rastreamento. O endereço antigo redireciona para lá. |
 | "Os feriados da minha cidade não aparecem" | Cidade e estado da empresa em branco | Os feriados locais são calculados a partir do endereço cadastrado da empresa. Preencha cidade e estado em Configurações → Empresa. Também confira se a opção de mostrar feriados está ligada em Usabilidade. |
-| "A agenda está vazia mas eu tenho OS" | Filtro ativo ou período errado | Confira o botão Filtros: técnico, cliente ou status podem estar marcados. Confira também se você está no dia certo, especialmente na visão Dia. |
+| "A agenda está vazia mas eu tenho OS" | Filtro ativo ou período errado | Confira o botão Filtros: técnico, cliente, status ou tipo (Ordem de Serviço / Tarefa) podem estar marcados. Confira também se você está no dia certo, especialmente na visão Dia, e se a visão Lista não está com um período diferente do que parece. |
 
 ### Perguntas frequentes
 
 **P:** Qual a diferença entre Tarefa e Ordem de Serviço?
 **R:** Ordem de Serviço é atendimento a cliente: tem checklist, check-in, fotos, assinatura, link para o cliente e relatório. Tarefa é compromisso interno: só aparece na Agenda, com título, responsável, data e descrição.
+
+**P:** Qual a diferença entre a visão Calendário e a visão Lista?
+**R:** Mostram o mesmo período e os mesmos filtros. Calendário desenha a grade do mês, da semana ou do dia. Lista mostra os mesmos compromissos em sequência, um cartão por linha, com os atrasados agrupados no topo. A escolha entre as duas fica salva separadamente no computador e no celular.
+
+**P:** Dá para ver só Ordem de Serviço na Agenda, sem as Tarefas (ou o contrário)?
+**R:** Dá. No botão Filtros, o grupo Tipo tem as opções Ordem de Serviço e Tarefa. Marque só a que você quer ver. Vale no Calendário e na Lista.
+
+**P:** Por que sumiram tarefas da minha agenda?
+**R:** Provavelmente você não tem a permissão Gerenciar Tarefas nem Ver Toda a Agenda. Sem uma das duas, a Agenda só mostra as tarefas em que você é responsável, é o técnico, foi quem criou, ou que são da sua equipe. Peça pra quem administra o sistema ligar uma das duas permissões se você precisa ver as tarefas de todo mundo. Essa regra é só de Tarefa: Ordem de Serviço nunca foi afetada por ela.
 
 **P:** Empresa sem o módulo RH consegue usar equipe?
 **R:** Consegue usar as que já existem, escalando na OS. Não consegue criar, editar nem excluir equipe, porque o cadastro vive dentro da tela Funcionários, que depende do módulo RH.
@@ -3642,7 +3696,7 @@ A virada para Expirado só é calculada quando alguém abre a tela de Orçamento
 
 A tabela traz Nº (número sequencial por empresa), Cliente (com o rótulo (prospecto) quando não é cliente cadastrado, e a linha de visualizações embaixo), Data, Custo, Valor, Margem, Status e Ações. Custo e Margem só aparecem com o módulo Precificação Avançada e em telas largas. A margem é a diferença entre valor e custo em porcentagem: selo verde a partir de 20%, amarelo entre 0% e 19%, vermelho quando o preço ficou abaixo do custo, e traço quando não há custo apurado. Quase todas as colunas ordenam ao toque no cabeçalho, e o rodapé tem paginação.
 
-O menu de três pontinhos oferece: Visualizar, Abrir proposta em nova guia (pré-visualização, não conta como visualização do cliente), Gerar link da proposta, Aprovar (registrar recebimento) (só em Rascunho e Enviado), Rejeitar (só em Enviado), Converter em OS (só em Aprovado ainda não convertido), Gerar cobrança (só com o módulo Cobranças ativo e cliente cadastrado), Editar em laranja e Excluir em vermelho. Quando o orçamento já gerou lançamento financeiro, aparece o selo Recebido ao lado.
+O menu de três pontinhos oferece: Visualizar, Abrir proposta em nova guia (pré-visualização, não conta como visualização do cliente), Gerar link da proposta, Aprovar (registrar recebimento) (só em Rascunho e Enviado), Rejeitar (só em Enviado), Converter em OS (só em Aprovado ainda não convertido), Gerar cobrança (com conta de recebimento ativa e cliente cadastrado), Editar em laranja e Excluir em vermelho. Quando o orçamento já gerou lançamento financeiro, aparece o selo Recebido ao lado.
 
 Ao excluir, a pergunta é Excluir orçamento? com o texto Esta ação não pode ser desfeita. Confirmando, aparece Orçamento excluído!.
 
@@ -3934,7 +3988,7 @@ Se o cliente reclamar que o CNPJ ou o endereço não aparece na proposta, o prob
 
 ### 12. A visão do cliente em /proposta/:token — aprovar ou rejeitar
 
-O cliente abre o link no celular ou no computador, sem login e sem senha. Vê a proposta inteira com a identidade visual da sua empresa (logo, cores e, com White Label, a marca personalizada), um botão flutuante Baixar PDF no canto inferior direito e, quando o orçamento está Enviado, os botões Aprovar (verde) e Rejeitar (vermelho). O Baixar PDF abre a janela de impressão do navegador, com a dica de escolher "Salvar como PDF" e manter "Gráficos de fundo" ligado, senão as cores somem. Havendo cobrança vinculada (módulo Cobranças), aparece também o botão Pagar.
+O cliente abre o link no celular ou no computador, sem login e sem senha. Vê a proposta inteira com a identidade visual da sua empresa (logo, cores e, com White Label, a marca personalizada), um botão flutuante Baixar PDF no canto inferior direito e, quando o orçamento está Enviado, os botões Aprovar (verde) e Rejeitar (vermelho). O Baixar PDF abre a janela de impressão do navegador, com a dica de escolher "Salvar como PDF" e manter "Gráficos de fundo" ligado, senão as cores somem. Havendo cobrança vinculada, aparece também o botão Pagar.
 
 #### O que acontece ao aprovar ou rejeitar
 
@@ -4119,11 +4173,12 @@ Onde fica: Menu → CRM
 Rotas:/crm
 Depende de: T3 (Clientes) e T9 (Orçamentos)
 Quem enxerga: quem tiver a permissão de tela
-CRM ligada no editor de permissões (grupo Comercial) e pertencer a uma empresa com o módulo CRM ativo. Admin e gestor têm a permissão por padrão.
+CRM ligada no editor de permissões (grupo Comercial) e pertencer a uma empresa com o módulo CRM ativo. Dentro da tela, quem tem a ação
+Gerenciar CRM vê o funil inteiro; quem não tem vê só as oportunidades das quais é responsável, co-responsável ou criador. Admin e gestor sempre veem tudo.
 Configuração ligada: o catálogo de
 Origens, em Configurações → Usabilidade, é compartilhado entre o cadastro de clientes e as oportunidades do CRM.
 
-### 1. Tela CRM: kanban × lista, e o empty-state "criar estágios padrão"
+### 1. Tela CRM: Funil × Tarefas, kanban × lista, e o empty-state "criar estágios padrão"
 
 O CRM abre em Menu → CRM. Duas coisas precisam estar verdadeiras para ele existir: o módulo CRM contratado e a permissão de tela ligada para o usuário.
 
@@ -4135,21 +4190,31 @@ CRM recém-aberto, ainda sem funil montado: o convite Configure seu funil de ven
 
 #### O que tem na tela
 
-No topo, o cabeçalho CRM com o subtítulo Gerencie oportunidades e leads e três botões: dois ícones, Gerenciar estágios e Configurar webhooks, e o botão Nova Oportunidade.
+No topo, o cabeçalho CRM com o subtítulo Gerencie oportunidades e leads e quatro ações: três ícones, Gerenciar estágios, Gerenciar funis e Configurar webhooks, e o botão Nova Oportunidade. No celular, os três ícones ficam dentro da gaveta Filtros, no bloco Configurações, cada um como uma linha de botão com texto.
 
-Logo abaixo, os cartões de resumo. Sempre aparecem dois: Total de Leads e Valor Total. Quando o funil já tem estágios, aparecem mais dois: o valor acumulado no primeiro estágio marcado como ganho e o valor acumulado no primeiro estágio neutro. Um detalhe que economiza confusão no suporte: os cartões respeitam os filtros. Se você filtrou por um vendedor, o Total de Leads é o total daquele vendedor, não da empresa.
+Logo abaixo do cabeçalho, um alternador de duas abas comanda a tela inteira: Funil, que é o kanban de sempre, e Tarefas, uma lista com as tarefas vinculadas a oportunidades de qualquer funil da empresa. Essa segunda aba é explicada no capítulo 8. O restante deste capítulo trata da aba Funil, que é a que abre por padrão.
 
-Depois vêm a busca Buscar por título ou cliente..., o botão Filtros e o quadro Pipeline de Vendas, que é o kanban. Quando há filtro ativo, aparece ao lado do título um selo no formato "3 de 12" mostrando quantas oportunidades passaram pelo filtro.
+Dentro da aba Funil, se a empresa tem mais de um funil cadastrado, aparece um seletor de funil logo abaixo do alternador (capítulo 2). Com um funil só, esse seletor simplesmente não aparece, e a tela funciona exatamente como sempre funcionou.
+
+Em seguida vêm os cartões de resumo. Sempre aparecem dois: Total de Leads e Valor Total. Quando o funil selecionado já tem estágios, aparecem mais dois: o valor acumulado no primeiro estágio marcado como ganho e o valor acumulado no primeiro estágio neutro. Um detalhe que economiza confusão no suporte: os cartões respeitam os filtros e a permissão de visibilidade. Se você filtrou por um vendedor, ou se você não tem a ação Gerenciar CRM e só enxerga as suas próprias oportunidades, o Total de Leads reflete só o que está na sua tela, não o total da empresa.
+
+Depois vêm a busca Buscar por título ou cliente..., o botão Filtros e o quadro Pipeline de Vendas, que é o kanban. Quando há filtro ativo, aparece ao lado do título um selo no formato "3 de 12" mostrando quantas oportunidades do funil selecionado passaram pelo filtro.
 
 #### Kanban e lista
 
-No computador a visão é sempre o kanban: uma coluna por estágio, lado a lado, com rolagem horizontal quando há muitos estágios. Cada coluna tem um cabeçalho colorido com o nome do estágio, a quantidade de oportunidades e a soma dos valores, e uma área rolável com os cartões.
+No computador a visão é sempre o kanban: uma coluna por estágio, lado a lado, com rolagem horizontal quando há muitos estágios. Cada coluna tem um cabeçalho colorido com, opcionalmente, um ícone escolhido para o estágio, o nome do estágio, a quantidade de oportunidades e a soma dos valores (mesmo quando é R$ 0,00, a linha de valor sempre aparece, pra todas as colunas ficarem com a mesma altura de cabeçalho), e uma área rolável com os cartões, também padronizada na mesma altura entre as colunas.
 
-No celular você escolhe entre Lista e Kanban dentro da gaveta Filtros, no bloco Visualização. Na visão Lista, cada oportunidade vira uma linha com o círculo colorido do estágio, o título, o cliente, o valor e a previsão de fechamento, e aparece acima um carrossel com um chip por estágio: tocar no chip filtra a lista por aquele estágio, e um selo Estágio: nome mostra o filtro ativo, com um X para limpar. Criar é pelo botão redondo flutuante Lead no canto inferior.
+No celular você escolhe entre Lista e Kanban dentro da gaveta Filtros, no bloco Visualização. Na visão Lista, cada oportunidade vira uma linha com o círculo colorido do estágio, o título, o cliente, o valor e a previsão de fechamento, e aparece acima um carrossel com um chip por estágio: tocar no chip filtra a lista por aquele estágio, e um selo Estágio: nome mostra o filtro ativo, com um X para limpar. Criar é pelo botão redondo flutuante Lead no canto inferior, visível só na aba Funil.
+
+#### O cartão da oportunidade
+
+Cada cartão do kanban mostra o título, o nome do cliente (quando tem), os responsáveis (avatares empilhados, até três, com "+N" quando passa disso, e o nome do responsável principal ao lado), o valor estimado, uma barra de probabilidade e, na parte de baixo, o selo de origem e a previsão de fechamento quando existem. Quando a oportunidade casa o nome salvo em Origem com uma origem ativa no catálogo da empresa, o selo aparece com o ícone e a cor daquela origem; senão, cai num selo neutro com o texto puro.
+
+Uma oportunidade sem nenhum responsável não mostra avatar nenhum: ela ganha um selo amarelo de atenção com o texto Sem responsável. São as oportunidades da fila compartilhada, explicadas no capítulo 9.
 
 #### O funil vazio
 
-Empresa nova não tem nenhum estágio, e por isso o kanban mostra o convite Configure seu funil de vendas, com o texto "Crie os estágios do pipeline pra começar a organizar suas oportunidades. Use o conjunto padrão ou monte do seu jeito." e dois botões: Começar com estágios padrão e Personalizar estágios.
+Um funil sem nenhum estágio mostra o convite Configure seu funil de vendas, com o texto "Crie os estágios do pipeline pra começar a organizar suas oportunidades. Use o conjunto padrão ou monte do seu jeito." e dois botões: Começar com estágios padrão e Personalizar estágios.
 
 O botão de estágios padrão cria cinco colunas de uma vez, prontas para uso, e mostra Estágios padrão criados!. É o caminho recomendado: dá para renomear e recolorir tudo depois.
 
@@ -4160,62 +4225,127 @@ O botão de estágios padrão cria cinco colunas de uma vez, prontas para uso, e
 | Fechado (Ganho) | Verde | Ganho |
 | Fechado (Perdido) | Vermelho | Perdido |
 
-Com os estágios criados mas nenhuma oportunidade, o quadro mostra Nenhuma oportunidade com a orientação de tocar em Nova Oportunidade. Se há oportunidades mas nenhuma passa pelo filtro, a mensagem vira Nenhum resultado encontrado, seguida de "Tente ajustar os filtros para encontrar as oportunidades desejadas". Coluna vazia mostra Sem oportunidades.
+Com os estágios criados mas nenhuma oportunidade, o quadro mostra Nenhuma oportunidade com a orientação de tocar em Nova Oportunidade. Se há oportunidades mas nenhuma passa pelo filtro (ou pela sua permissão de visibilidade), a mensagem vira Nenhum resultado encontrado, seguida de "Tente ajustar os filtros para encontrar as oportunidades desejadas". Coluna vazia mostra Sem oportunidades.
 
-### 2. Montar o funil: criar, renomear, reordenar e colorir estágios
+### 2. Vários funis: criar, trocar, tornar padrão, "quem pode ver" e excluir
 
-O botão de engrenagem Gerenciar estágios (no celular, dentro da gaveta de filtros, no bloco Configurações) abre a janela Gerenciar Estágios do Pipeline. Os estágios são da sua empresa: nada aqui é fixo no sistema, e o funil de uma empresa nunca aparece para outra.
+A empresa pode ter mais de um funil comercial, por exemplo um para vendas novas e outro para pós-venda. O botão de ícone Gerenciar funis no cabeçalho (no celular, dentro da gaveta de filtros) abre a janela Gerenciar Funis, descrita como "Crie funis separados para vendas, pós-venda, licitação e outros fluxos comerciais."
 
-[Print da tela: Janela Gerenciar Estágios do Pipeline de uma empresa sem nenhum estágio ainda, com o bloco pontilhado Novo Estágio contendo o campo Nome do estágio, um seletor de cor mostrando o código #6B7280 e o botão de mais, e abaixo a dica Arraste para reordenar os estágios]
+[Print da tela: Janela Gerenciar Funis com o bloco pontilhado Novo Funil contendo o campo Nome do funil e o botão de mais, e abaixo a lista de funis da empresa, cada linha com a alça de arrastar, o nome, o selo Padrão ou o botão Tornar padrão, e o menu de ações com Editar, Quem pode ver e Excluir]
 
-Janela Gerenciar Estágios do Pipeline, ainda sem nenhum estágio criado: o bloco de criar um novo estágio, com nome e cor.
+Janela Gerenciar Funis: criar um funil novo, ver a lista, marcar o padrão e abrir Quem pode ver de cada um.
+
+#### Criar, renomear e reordenar
+
+No bloco pontilhado Novo Funil, digite o nome no campo Nome do funil e toque no botão de mais. Aparece Funil criado com sucesso! e o funil entra no fim da lista. A dica Arraste para reordenar os funis vale pra ordem em que os funis aparecem no seletor do topo da tela. Cada linha tem um menu com Editar (renomear), Quem pode ver e Excluir.
+
+#### Funil padrão
+
+Um dos funis é sempre o padrão, com o selo azul Padrão. É o funil que abre quando você entra no CRM pela primeira vez, ou quando a sua preferência de funil (guardada no seu navegador) aponta pra um funil que não existe mais. Qualquer outro funil vira padrão pelo botão Tornar padrão na própria linha, confirmado com Funil padrão atualizado!.
+
+#### Excluir um funil
+
+Excluir pede a confirmação genérica Remover funil? / "Esta ação não pode ser desfeita.". Só que o sistema recusa o pedido em três casos, cada um com uma mensagem específica em vez de deixar a exclusão pela metade:
+
+| Situação | Mensagem |
+| É o único funil da empresa | Não é possível excluir o único funil da empresa. Crie outro funil antes de remover este. |
+| Tem etapas cadastradas | Este funil não pode ser excluído porque possui etapas vinculadas. Mova ou exclua as etapas antes. |
+| Tem oportunidades nele | Este funil não pode ser excluído porque possui oportunidades vinculadas. Mova as oportunidades para outro funil antes. |
+
+Um funil só sai do sistema depois de esvaziado: sem etapas e sem oportunidades dentro dele. Excluir o funil padrão promove automaticamente o próximo da lista a padrão, então a empresa nunca fica sem um funil padrão definido.
+
+#### Trocar de funil no dia a dia
+
+Com dois ou mais funis, o seletor aparece logo abaixo do alternador Funil/Tarefas: no computador, uma fileira de botões em pílula com o nome de cada funil; no celular, as mesmas pílulas em uma faixa rolável. Tocar num funil troca o kanban inteiro pra ele, e essa escolha fica lembrada no seu navegador da próxima vez que você abrir o CRM.
+
+Trocar de estágio pelo Estágio do detalhe da oportunidade, ou na criação, pra uma etapa que pertence a outro funil, move a oportunidade inteira pra esse outro funil. Quando a empresa tem mais de um funil, o select de estágio aparece agrupado por nome de funil, com um aviso abaixo: "Escolher uma etapa de outro funil move esta oportunidade para esse funil." Não é um jeito de "espiar" outro funil, é uma mudança real de dono.
+
+#### "Quem pode ver": restringir um funil a algumas pessoas
+
+No menu de ações de cada funil, o item Quem pode ver abre a janela Acesso ao funil, com o nome do funil no título. Ela só aparece pra administrador, gestor, ou quem tem a permissão Gerenciar Configurações ligada.
+
+[Print da tela: Janela Acesso ao funil com a faixa verde Aberto para toda a empresa, o texto explicando que todos os usuários podem ver o funil, e o campo Pessoas com acesso para selecionar quem deve enxergar quando restringido]
+
+Janela Acesso ao funil no estado padrão: aberto pra empresa inteira, até que alguém seja selecionado no campo Pessoas com acesso.
+
+Por padrão, todo funil (inclusive os que você já tinha antes desta função existir) fica aberto pra toda a empresa: a faixa verde mostra Aberto para toda a empresa e a explicação "Todos os usuários da empresa podem ver este funil. Selecione pessoas abaixo para restringir o acesso.". Assim que você marca ao menos uma pessoa no campo Pessoas com acesso, a faixa vira amarela com Restrito e a explicação "Só as pessoas selecionadas abaixo (e quem tem permissão de Gerenciar CRM) podem ver este funil.". O botão Salvar acesso grava; Cancelar fecha sem mudar nada.
+
+Um funil restrito ganha o selo laranja Restrito na própria linha, dentro de Gerenciar Funis, pra você identificar de longe quais funis não são abertos.
+
+Antes de salvar uma restrição que tira o acesso de alguém, o sistema avisa. Se a nova lista deixaria de fora pessoas que hoje conseguem ver o funil, aparece a confirmação Restringir o acesso a este funil?, com uma frase calculada na hora dizendo quantas pessoas vão deixar de ver o funil e, quando é o caso, quantas oportunidades das quais elas são responsáveis vão sumir da tela delas. Só depois de confirmar em Restringir mesmo assim a mudança é gravada. É a forma de você perceber, antes de apertar salvar, que restringir um funil pode fazer um vendedor perder de vista negócios pelos quais ele é responsável.
+
+Quem tem a ação Gerenciar CRM ligada nunca perde acesso a um funil restrito, mesmo que não esteja na lista de pessoas selecionadas. A restrição por "Quem pode ver" é sobre visibilidade comum; quem administra o CRM continua enxergando tudo.
+
+### 3. Montar as etapas do funil: criar, renomear, reordenar, ícone e cor
+
+O botão de engrenagem Gerenciar estágios (no celular, dentro da gaveta de filtros, no bloco Configurações) abre a janela Gerenciar Estágios do Pipeline, que passa a operar dentro do funil selecionado no topo da tela. Com mais de um funil, o título da janela muda pra Gerenciar Estágios do Funil "nome", deixando explícito qual funil está sendo editado. As etapas são da sua empresa: nada aqui é fixo no sistema, e o funil de uma empresa nunca aparece para outra.
+
+[Print da tela: Janela Gerenciar Estágios do Pipeline de uma empresa sem nenhum estágio ainda, com o bloco pontilhado Novo Estágio contendo o campo Nome do estágio, um seletor de ícone, um seletor de cor mostrando o código #6B7280 e o botão de mais, e abaixo a dica Arraste para reordenar os estágios]
+
+Janela Gerenciar Estágios do Pipeline, ainda sem nenhum estágio criado: o bloco de criar um novo estágio, com nome, ícone e cor.
 
 #### Criar
 
-No bloco pontilhado Novo Estágio, digite o nome no campo Nome do estágio, escolha a cor no seletor de cores ao lado e toque no botão de mais. Aparece Estágio criado com sucesso! e o estágio entra no fim do funil. O botão fica travado enquanto o nome estiver vazio.
+No bloco pontilhado Novo Estágio, digite o nome no campo Nome do estágio, escolha um ícone no seletor Ícone (ou deixe em Sem ícone) e a cor no seletor de cores, e toque no botão de mais. Aparece Estágio criado com sucesso! e o estágio entra no fim do funil selecionado. O botão fica travado enquanto o nome estiver vazio, ou enquanto nenhum funil estiver resolvido.
 
-#### Renomear, recolorir e marcar
+#### Renomear, recolorir, trocar o ícone e marcar
 
-Cada linha da lista tem um menu com Editar (laranja) e Excluir (vermelho). Em Editar, a linha abre no modo de edição com o campo de nome, o seletor de cor e as duas chaves Ganho e Perdido. O X descarta e o visto confirma. Confirmando, aparece Estágio atualizado!.
+Cada linha da lista tem um menu com Editar (laranja) e Excluir (vermelho). Em Editar, a linha abre no modo de edição com o campo de nome, o seletor de ícone, o seletor de cor e as duas chaves Ganho e Perdido. O X descarta e o visto confirma. Confirmando, aparece Estágio atualizado!.
+
+O ícone é opcional: um estágio sem ícone continua funcionando normalmente, só com a bolinha colorida no lugar dele. Escolher um ícone ajuda a reconhecer a coluna de longe no kanban, principalmente quando o funil tem muitas colunas parecidas na cor.
 
 #### Reordenar
 
-A lista mostra a dica Arraste para reordenar os estágios. Segure a alça de arrasto à esquerda da linha e solte na posição desejada. A nova ordem vale para o kanban imediatamente. É assim que se acerta o funil na ordem real da sua venda: primeiro contato, visita técnica, proposta enviada, negociação, fechamento.
+A lista mostra a dica Arraste para reordenar os estágios. Segure a alça de arrasto à esquerda da linha e solte na posição desejada, dentro do mesmo funil. A nova ordem vale para o kanban imediatamente. É assim que se acerta o funil na ordem real da sua venda: primeiro contato, visita técnica, proposta enviada, negociação, fechamento. No computador, também dá pra reordenar arrastando o próprio cabeçalho da coluna direto no kanban, sem abrir esta janela.
 
 #### Excluir
 
 Ao excluir, o sistema pergunta Remover estágio? com o texto "Esta ação não pode ser desfeita. Leads neste estágio ficarão sem estágio atribuído." e os botões Cancelar e Remover. Confirmando, aparece Estágio removido!.
 
-Excluir um estágio não apaga as oportunidades dele: elas ficam sem estágio e passam a ser exibidas na primeira coluna do funil. Não é perda de dado, é realocação. Se você viu leads antigos aparecendo do nada na primeira coluna, quase sempre alguém apagou um estágio.
+Excluir um estágio não apaga as oportunidades dele: elas ficam sem estágio e passam a ser exibidas na primeira coluna do mesmo funil. Não é perda de dado, é realocação. Se você viu leads antigos aparecendo do nada na primeira coluna, quase sempre alguém apagou um estágio.
 
 Monte o funil com o menor número de colunas que você consegue explicar em voz alta. Funil com dez estágios ninguém mantém atualizado, e funil desatualizado não serve para decidir nada. Cinco ou seis colunas costumam dar conta de empresa de serviço técnico em campo.
 
-### 3. Marcar estágio como "ganho" e como "perdido" — e o que muda
+### 4. Marcar etapa como "ganho" e como "perdido", e a oferta de lançar a receita
 
-Dentro da edição de cada estágio existem duas chaves: Ganho, com o ícone de troféu verde, e Perdido, com o ícone de X vermelho. Elas são excludentes: ligar uma desliga a outra automaticamente. Um estágio pode ser neutro (as duas desligadas), de ganho ou de perda.
+Dentro da edição de cada etapa existem duas chaves: Ganho, com o ícone de troféu verde, e Perdido, com o ícone de X vermelho. Elas são excludentes: ligar uma desliga a outra automaticamente. Uma etapa pode ser neutra (as duas desligadas), de ganho ou de perda.
 
 | Marcação | O que muda de verdade |
-| Ganho | O primeiro estágio marcado como ganho vira um cartão de resumo no topo da tela (no computador), mostrando o nome do estágio e a soma dos valores das oportunidades que estão nele. É o seu "quanto eu fechei". No gerenciador, o estágio ganha o troféu. |
-| Perdido | Arrastar uma oportunidade para um estágio marcado como perdido abre obrigatoriamente a janela Motivo da Perda. Sem escolher um motivo, a oportunidade não se move. No gerenciador, o estágio ganha o X vermelho. |
-| Neutro | O primeiro estágio neutro também vira um cartão de resumo no topo, com a soma dos valores. É o seu "quanto está em andamento". Mover para um estágio neutro é direto, sem perguntas. |
+| Ganho | A primeira etapa de ganho do funil vira um cartão de resumo no topo da tela (no computador), mostrando o nome da etapa e a soma dos valores das oportunidades que estão nela. É o seu "quanto eu fechei". No gerenciador, a etapa ganha o troféu. Além disso, mover uma oportunidade para qualquer etapa marcada como ganho abre a oferta de lançar a receita, explicada logo abaixo. |
+| Perdido | Arrastar uma oportunidade para uma etapa marcada como perdido abre obrigatoriamente a janela Motivo da Perda. Sem escolher um motivo, a oportunidade não se move. No gerenciador, a etapa ganha o X vermelho. |
+| Neutro | A primeira etapa neutra do funil também vira um cartão de resumo no topo, com a soma dos valores. É o seu "quanto está em andamento". Mover para uma etapa neutra é direto, sem perguntas. |
 
-As marcações não disparam nada além disso. Marcar um estágio como ganho não cria orçamento, não cria Ordem de Serviço, não lança nada no financeiro e não muda o cadastro do cliente. Elas servem para o resumo do topo e para forçar o registro do motivo da perda. Quem fecha negócio ainda precisa criar o orçamento em Orçamentos e, se for o caso, a OS.
+#### A oferta de lançar a receita
 
-### 4. Criar oportunidade: título, cliente (ou criar na hora), vendedor, origem, valor, probabilidade, previsão
+Quando você move uma oportunidade (arrastando no kanban, pelo menu Mover para no celular, ou trocando o Estágio no detalhe) para uma etapa de ganho, o sistema pode perguntar Quer lançar a receita desta venda? na janela Oportunidade ganha, com o texto "Abrimos a conta a receber já com o cliente e o valor da oportunidade. Você confere e ajusta antes de salvar.".
 
-O botão Nova Oportunidade (no celular, o botão redondo flutuante Lead) abre a janela Nova Oportunidade. Editando uma existente, o título vira Editar Oportunidade.
+Essa oferta só aparece pra administrador, gestor, ou pra quem tem a ação Gerenciar Financeiro marcada, de propósito, no editor de permissões daquela pessoa. É diferente da maioria das permissões do sistema: aqui não basta nunca ter mexido no editor de permissões da pessoa, é preciso a marca explícita. Se um vendedor com acesso normal ao sistema nunca vê essa pergunta, o motivo mais comum é esse: a ação Gerenciar Financeiro nunca foi ligada pra ele.
 
-[Print da tela: Janela Nova Oportunidade vazia, com o campo Título da Oportunidade, os seletores Cliente (Nenhum cliente) e Vendedor Responsável (Não atribuído), Origem (Não informado) e Estágio (Não atribuído), os campos Valor Estimado, Probabilidade e Previsão Fechamento, o campo Observações e os botões Cancelar e Salvar]
+- Os botões são Agora não e Sim, lançar receita.
+
+- Escolhendo Sim, lançar receita, abre o formulário de nova conta a receber do Financeiro, já com o cliente e o valor estimado da oportunidade preenchidos (o valor é só sugestão, editável antes de salvar).
+
+- Escolhendo Agora não, ou fechando a janela, a oportunidade continua movida pro estágio de ganho normalmente. A oferta nunca trava a mudança de estágio: ela aparece depois que o estágio já foi gravado.
+
+A oferta só aparece uma vez por oportunidade. Depois que você lança a receita (ou ela já foi lançada de outro jeito e vinculada), mover a mesma oportunidade de novo por qualquer etapa de ganho não pergunta de novo, pra nunca duplicar o lançamento. Sem a ação Gerenciar Financeiro marcada pra você, a pergunta simplesmente não aparece, e mudar o estágio continua funcionando normal.
+
+Fora dessa oferta pontual, as marcações de Ganho e Perdido não disparam mais nada sozinhas: elas não criam orçamento, não criam Ordem de Serviço e não mudam o cadastro do cliente. Servem para o resumo do topo, para forçar o registro do motivo da perda, e para oferecer o lançamento da receita.
+
+### 5. Criar oportunidade: título, cliente, responsáveis, origem, etapa, valor, probabilidade, previsão
+
+O botão Nova Oportunidade (no celular, o botão redondo flutuante Lead) abre a janela Nova Oportunidade. Editando uma existente, o título vira Editar Oportunidade. Uma oportunidade nova nasce sempre no funil que está selecionado no topo da tela no momento da criação.
+
+[Print da tela: Janela Nova Oportunidade vazia, com o campo Título da Oportunidade, os seletores Cliente (Nenhum cliente) e Vendedor Responsável com busca por múltiplos vendedores, Origem (Não informado) e Estágio (Não atribuído), os campos Valor Estimado, Probabilidade e Previsão Fechamento, o campo Observações e os botões Cancelar e Salvar]
 
 Janela Nova Oportunidade sem nada preenchido: só o título é obrigatório, todos os demais campos são opcionais.
 
 | Campo | Obrigatório | O que aceita e o que o sistema faz |
 | Título da Oportunidade * | Sim | Texto livre, com o exemplo Ex: Instalação de 3 splits. É o que aparece grande no cartão do kanban. É o único campo obrigatório. |
-| Cliente | Não | Seletor com busca (Buscar cliente...), com a opção Nenhum cliente e, embaixo do nome, o documento ou o e-mail para diferenciar homônimos. Digitando um nome que não existe, aparece Cadastrar "<nome>" para criar o cliente na hora, sem sair da tela. |
-| Vendedor Responsável | Não | Lista dos usuários da empresa, mais a opção Não atribuído. O rosto e o nome do responsável aparecem no cartão do kanban. |
-| Origem | Não | Seletor com busca alimentado pelo catálogo de Origens da empresa, com a bolinha da cor de cada origem, mais Não informado. Digitando uma origem nova, aparece Adicionar "<nome>" e ela nasce no catálogo, ficando disponível também no cadastro de clientes. |
-| Estágio | Não | Em oportunidade nova já vem com o primeiro estágio do funil selecionado. Também aceita Não atribuído, e nesse caso o cartão aparece na primeira coluna. |
-| Valor Estimado (R$) | Não | Número com centavos. Alimenta o Valor Total do topo, a soma por coluna do kanban e o filtro de faixa de valor. |
+| Cliente | Não | Seletor com busca (Buscar cliente...), com a opção Nenhum cliente e, embaixo do nome, o documento ou o e-mail para diferenciar homônimos. Digitando um nome que não existe, aparece Cadastrar "<nome>" para criar o cliente na hora, sem sair da tela. Quando a oportunidade é criada a partir da ficha de um cliente (na tela de Clientes), este campo já vem preenchido e travado, com o aviso "Cliente definido pela ficha de onde você abriu esta oportunidade.". |
+| Vendedor Responsável | Não | Campo de múltipla escolha com busca (Vendedores), mostrando o rosto de cada usuário da empresa. Você pode marcar mais de um vendedor. O primeiro selecionado vira o responsável principal, com o selo Principal no chip dele; é o que entra nos filtros e nos relatórios. Os demais aparecem como responsáveis secundários. Sem ninguém marcado, a oportunidade nasce sem dono e entra na fila compartilhada explicada no capítulo 9. |
+| Origem | Não | Seletor com busca alimentado pelo catálogo de Origens da empresa, com o ícone e a cor de cada origem, mais Não informado. Digitando uma origem nova, aparece Adicionar "<nome>" e ela nasce no catálogo, ficando disponível também no cadastro de clientes. |
+| Estágio | Não | Em oportunidade nova já vem com a primeira etapa do funil atual selecionada. Também aceita Não atribuído, e nesse caso o cartão aparece na primeira coluna. Quando a empresa tem mais de um funil, a lista aparece agrupada por funil (o nome do funil como cabeçalho de cada grupo), e escolher uma etapa de outro funil move a oportunidade pra ele. |
+| Valor Estimado (R$) | Não | Número com centavos. Alimenta o Valor Total do topo, a soma por coluna do kanban, o filtro de faixa de valor e o valor sugerido na oferta de lançar a receita quando a oportunidade é ganha. |
 | Probabilidade (%) | Não | De 0 a 100, começa em 50. Vira uma barrinha no cartão: verde a partir de 70%, amarela de 40% a 69%, vermelha abaixo de 40%. |
 | Previsão Fechamento | Não | Data. Aparece como selo no cartão e na linha da lista no celular. |
 | Observações | Não | Texto livre, com o exemplo Detalhes da oportunidade.... Aparece na aba Detalhes do lead. |
@@ -4226,37 +4356,49 @@ A criação de cliente na hora, pelo Cadastrar "<nome>", é a mesma janela usada
 
 Não existe importação de leads em massa. Não há botão de importar planilha, CSV ou lista de contatos no CRM. Lead entra de três formas: criado à mão nesta janela, recebido por um webhook de captação, ou digitado por outra pessoa da equipe. Uma base grande vinda de fora precisa ser lançada uma a uma, ou entrar pelo webhook.
 
-Não existe distribuição automática por vendedor. O sistema não sorteia, não faz rodízio nem reveza os leads entre a equipe. Quem define o Vendedor Responsável é uma pessoa, na criação ou na edição. Lead que chega por webhook nasce sem vendedor, e alguém precisa atribuir.
+Não existe distribuição automática por vendedor. O sistema não sorteia, não faz rodízio nem reveza os leads entre a equipe. Quem define o Vendedor Responsável é uma pessoa, na criação ou na edição. Lead que chega por webhook nasce sem vendedor, e alguém precisa assumir ou atribuir.
 
-### 5. Arrastar entre estágios e o motivo da perda obrigatório
+### 6. Arrastar entre etapas e o motivo da perda obrigatório
 
 No computador, mover uma oportunidade é arrastar o cartão de uma coluna e soltar em outra. O cartão fica com a mãozinha de arrastar, e ao soltar aparece Lead atualizado com sucesso!.
 
-No celular não há arraste. Abra o menu de três pontinhos da linha e escolha Mover para seguido do nome do estágio: a lista traz todos os estágios menos aquele em que a oportunidade já está, cada um com sua bolinha colorida. O mesmo menu tem Editar.
+No celular não há arraste. Abra o menu de três pontinhos da linha e escolha Mover para seguido do nome da etapa: a lista traz todas as etapas do funil atual menos aquela em que a oportunidade já está, cada uma com sua bolinha colorida. O mesmo menu tem Editar.
 
-#### Quando o destino é um estágio de perda
+#### Quando o destino é uma etapa de perda
 
-Soltando o cartão num estágio marcado como perdido, o sistema abre a janela Motivo da Perda, com o texto Registre o motivo da perda do negócio e o nome da oportunidade. Os campos são:
+Soltando o cartão numa etapa marcada como perdido, o sistema abre a janela Motivo da Perda, com o texto Registre o motivo da perda do negócio e o nome da oportunidade. Os campos são:
 
 - Motivo *: lista fixa com Preço alto, Concorrente escolhido, Sem orçamento, Não respondeu, Projeto cancelado, Fora do escopo e Outro. O botão de confirmar fica travado enquanto nada estiver escolhido.
 
 - Detalhes (opcional): texto livre.
 
-Os botões são Cancelar e Confirmar Perda. Cancelando, a oportunidade não muda de estágio: ela volta para onde estava.
+Os botões são Cancelar e Confirmar Perda. Cancelando, a oportunidade não muda de etapa: ela volta para onde estava.
 
-O motivo da perda é gravado como texto dentro das Observações da oportunidade, no formato "Motivo da perda: Preço alto" seguido dos detalhes. Não é um campo estruturado: não existe relatório de motivos de perda, não dá para filtrar por motivo nem somar quantos negócios você perdeu por preço. E como ele é escrito no campo de Observações, o texto que já estava lá é substituído. Se a observação da oportunidade era importante, copie antes de mover o cartão para o estágio de perda.
+O motivo da perda é gravado como texto dentro das Observações da oportunidade, no formato "Motivo da perda: Preço alto" seguido dos detalhes. Não é um campo estruturado: não existe relatório de motivos de perda, não dá para filtrar por motivo nem somar quantos negócios você perdeu por preço. E como ele é escrito no campo de Observações, o texto que já estava lá é substituído. Se a observação da oportunidade era importante, copie antes de mover o cartão para a etapa de perda.
 
-### 6. Detalhe do lead: ligar, WhatsApp, e-mail e registrar interação com próxima ação
+### 7. Detalhe da oportunidade: responsáveis, criar OS, criar Tarefa e registrar interação
 
-Tocar no cartão (ou na linha, no celular) abre o detalhe da oportunidade, com o título, o nome do cliente e dois botões no canto: Editar, em laranja, e a lixeira vermelha. A janela tem duas abas: Detalhes e Histórico com a quantidade de interações entre parênteses.
+Tocar no cartão (ou na linha, no celular) abre o detalhe da oportunidade, com o título, o nome do cliente e dois botões no canto: Editar, em laranja, e a lixeira vermelha. A janela tem três abas: Detalhes, Tarefas (com a quantidade entre parênteses, capítulo 8) e Histórico (com a quantidade de interações entre parênteses).
 
 #### Aba Detalhes
 
 No topo, um seletor Status: com cinco opções: Lead, Proposta, Negociação, Negócio Fechado (Ganho) e Negócio Perdido. Mudar ali salva na hora.
 
-Esse Status é uma classificação separada do estágio do funil. Ele é uma lista fixa do sistema, não é configurável, e mover o cartão no kanban não muda o Status, assim como mudar o Status não move o cartão. Os cartões, as somas e os filtros do funil olham o estágio. Use o Status apenas se a sua equipe já se acostumou com ele; na dúvida, ignore e trabalhe pelo kanban.
+Esse Status é uma classificação separada da etapa do funil. Ele é uma lista fixa do sistema, não é configurável, e mover o cartão no kanban não muda o Status, assim como mudar o Status não move o cartão. Os cartões, as somas e os filtros do funil olham a etapa. Use o Status apenas se a sua equipe já se acostumou com ele; na dúvida, ignore e trabalhe pelo kanban.
 
-Abaixo vêm quatro caixas: Valor Estimado (ou Não informado), Probabilidade, Previsão Fechamento (ou Não definida) e Origem (ou Não informada).
+Logo abaixo, o campo Estágio: (mesmo select da criação, agrupado por funil quando a empresa tem mais de um) mostra a etapa atual com a bolinha ou o ícone da cor dela.
+
+#### Responsáveis
+
+Quando a oportunidade tem alguém atribuído, aparece a linha Responsáveis: com um chip por pessoa: o primeiro em destaque, com a foto e o selo Principal; os demais em chips neutros. Quando a oportunidade não tem ninguém, aparece o selo amarelo Sem responsável e o botão Assumir oportunidade, com a legenda "Você vira responsável e ela sai da fila compartilhada.". Clicar nele te torna o responsável principal na hora, sem pedir confirmação extra, e mostra o aviso Oportunidade assumida! / "Ela saiu da fila compartilhada e agora aparece só pra você.". Esse mecanismo é a fila explicada no capítulo 9.
+
+#### Atalhos: gerar OS ou Tarefa
+
+Logo abaixo dos responsáveis, dois botões (quando você tem a permissão correspondente): Criar OS abre o formulário de nova Ordem de Serviço com o cliente e o título já preenchidos, e os responsáveis da oportunidade pré-marcados como responsáveis da OS. Criar Tarefa abre o mesmo formulário de tarefa explicado no capítulo 8, já vinculada a esta oportunidade.
+
+#### Cartões de informação e origem
+
+Em seguida vêm quatro caixas: Valor Estimado (ou Não informado), Probabilidade, Previsão Fechamento (ou Não definida) e Origem (ou Não informada). Quando a origem casa com o catálogo da empresa, o selo aparece com o ícone e a cor daquela origem, do mesmo jeito que no cartão do kanban.
 
 #### Falar com o cliente sem sair da tela
 
@@ -4284,33 +4426,93 @@ O botão Registrar só libera com tipo e descrição preenchidos, e ao salvar ap
 
 Sem nenhuma interação, aparece Nenhuma interação registrada com Clique em "Nova Interação" para registrar o primeiro contato.
 
-A Próxima Ação e a sua data são apenas anotações. O sistema não envia lembrete, não notifica, não cria tarefa na agenda e não avisa quando a data chega. Quem confere é você, abrindo o lead. É por isso que a rotina diária de revisão do funil, no fim desta seção, é tão importante.
+A Próxima Ação e a sua data são apenas anotações. O sistema não envia lembrete, não notifica e não avisa quando a data chega. Se você precisa de um lembrete de verdade, com data e responsável, use uma Tarefa (capítulo 8), que pode inclusive aparecer na Agenda.
 
 #### Excluir a oportunidade
 
 O botão de lixeira vermelha, no topo do detalhe, apaga a oportunidade. Confirmando, aparece Lead removido com sucesso!.
 
-A confirmação de exclusão de lead usa a janelinha do próprio navegador, com a pergunta Tem certeza que deseja excluir este lead? e os botões OK e Cancelar em inglês ou no idioma do navegador. É diferente do resto do sistema, que usa a caixa de confirmação padrão do Dominex. Não é falha nem site invadido: é só uma tela mais antiga. E não há desfazer: apagou, apagou, junto com o histórico de interações.
+A confirmação de exclusão de lead usa a janelinha do próprio navegador, com a pergunta Tem certeza que deseja excluir este lead? e os botões OK e Cancelar em inglês ou no idioma do navegador. É diferente do resto do sistema, que usa a caixa de confirmação padrão do Dominex. Não é falha nem site invadido: é só uma tela mais antiga. E não há desfazer: apagou, apagou, junto com o histórico de interações e das tarefas vinculadas a ela.
 
-### 7. Filtros: origem, vendedor, faixa de valor, busca
+### 8. Tarefas da oportunidade: no card e na aba Tarefas da tela
 
-A busca Buscar por título ou cliente... procura ao mesmo tempo no título da oportunidade e no nome do cliente vinculado. Ela é tolerante a acento e a maiúscula, então "negociacao" acha "Negociação".
+Uma tarefa do CRM é a mesma coisa que uma tarefa da Agenda (T6): mesmo cadastro, mesma tela de edição, mesma conclusão. A diferença é só o vínculo: uma tarefa criada dentro de uma oportunidade fica ligada a ela, e você escolhe se ela também aparece no calendário da Agenda ou só dentro do card do CRM.
 
-O botão Filtros abre quatro filtros que se combinam:
+A relação é de mão única. Toda tarefa nascida dentro de uma oportunidade pode aparecer na Agenda, mas uma tarefa comum, criada direto na Agenda ou na ficha do cliente, nunca aparece dentro de um card do CRM, porque ela não nasceu vinculada a nenhuma oportunidade.
+
+#### Criar uma tarefa a partir do card
+
+Dentro do detalhe da oportunidade, o botão Criar Tarefa (na aba Detalhes) ou Nova tarefa (dentro da própria aba Tarefas) abre o mesmo formulário de tarefa da Agenda, com o título e os responsáveis da oportunidade já sugeridos. Dois campos aparecem só porque a tarefa está sendo criada dentro de uma oportunidade:
+
+- Mostrar na agenda: uma chave. Ligada (padrão), a tarefa aparece no calendário da Agenda, como qualquer outra. Desligada, a legenda muda para "Desligado, a tarefa continua na oportunidade, mas não aparece no calendário.": a tarefa some do calendário mas continua valendo dentro do card e na aba Tarefas da tela do CRM.
+
+- Data: obrigatória enquanto Mostrar na agenda está ligada. Com a chave desligada, a data fica marcada como "(opcional)" e pode ficar em branco, porque uma tarefa que não vai pro calendário não precisa de data pra existir.
+
+O responsável da tarefa não precisa ser o mesmo responsável do card: você pode delegar o follow-up pra outra pessoa da equipe sem trocar o dono da oportunidade.
+
+[Print da tela: Formulário Nova Tarefa aberto a partir de uma oportunidade do CRM, com a chave Mostrar na agenda ligada, o campo Data com asterisco obrigatório e o campo Responsáveis já sugerido]
+
+Formulário de tarefa aberto de dentro de uma oportunidade: a chave Mostrar na agenda decide se ela também entra no calendário.
+
+#### A aba Tarefas do card
+
+Dentro do detalhe da oportunidade, a aba Tarefas lista todas as tarefas vinculadas àquele card. Cada linha mostra um círculo clicável pra marcar Concluir (ou Reabrir, se já está concluída), o título, a data (ou Sem data), os avatares dos responsáveis, e, quando for o caso, os selos Recorrente e Fora da agenda (esse último quando a chave Mostrar na agenda está desligada). Cada linha tem os ícones Editar (laranja) e excluir (vermelho).
+
+Sem nenhuma tarefa, aparece Nenhuma tarefa nesta oportunidade com "Crie tarefas para acompanhar os próximos passos deste negócio.".
+
+Excluir uma tarefa também usa a confirmação do navegador, com o texto Excluir esta tarefa?. Se a tarefa faz parte de uma série recorrente, o texto ganha o complemento " Ela faz parte de uma série recorrente, só esta ocorrência será excluída.": apagar não mexe nas outras ocorrências da série.
+
+Uma tarefa recorrente não aparece uma linha por ocorrência: o card mostra só a próxima ocorrência pendente, com o selo Recorrente, exatamente como a Agenda faz. É a mesma regra nos dois lugares, de propósito, pra não mostrar números diferentes de "quantas tarefas" conforme a tela.
+
+#### A aba Tarefas da tela do CRM
+
+No alternador do topo da tela (capítulo 1), a aba Tarefas é uma terceira superfície, ao lado do kanban. Ela lista, numa tabela corrida, as tarefas vinculadas a oportunidades de qualquer funil da empresa (não só do funil selecionado no seletor), combinando duas regras de visibilidade: só entram tarefas de oportunidades que você já enxerga (a regra do capítulo 9) e, dentro dessas, só as tarefas que a sua permissão de tarefa libera (a regra logo abaixo). Tem busca (Buscar tarefa ou oportunidade...) e um filtro por Responsável. A ordenação é por data, com as vencidas primeiro (selo Atrasada), depois as com data futura, e por último as sem data.
+
+Cada linha mostra o título da tarefa, o nome da oportunidade de origem, os avatares dos responsáveis e a data (ou Sem data). Tocar numa linha abre o detalhe da oportunidade dona daquela tarefa (aba Detalhes); a partir daí, entre na aba Tarefas do próprio card pra ver ou editar a tarefa.
+
+Sem nenhuma tarefa vinculada em nenhuma oportunidade, aparece Nenhuma tarefa vinculada a oportunidades com "Crie tarefas dentro de uma oportunidade para acompanhá-las aqui.". Com filtro sem resultado, é Nenhuma tarefa encontrada / "Tente ajustar a busca ou os filtros.".
+
+Quem tem a permissão Gerenciar Tarefas vê as tarefas de todo mundo, tanto aqui quanto na Agenda. Quem não tem essa permissão (nem Ver Toda a Agenda) vê só as tarefas em que é responsável, é o técnico, foi quem criou, ou que pertencem à sua equipe. Os detalhes dessa permissão estão em T2 (Usuários e Permissões).
+
+### 9. Quem vê o quê: cada um vê as suas, e a fila sem responsável
+
+Sem nenhuma configuração de permissão explícita, o CRM continua exatamente como sempre foi: qualquer pessoa com a tela liberada vê o funil inteiro da empresa. A regra a seguir só entra em ação depois que um administrador começa a configurar permissões por pessoa.
+
+#### Cada um vê as suas
+
+Quem tem a ação Gerenciar CRM ligada enxerga todo o funil (do funil selecionado e dos outros), pode filtrar por qualquer vendedor, e vê os totais reais da empresa nos cartões do topo. Quem não tem essa ação vê só as oportunidades em que é responsável (principal ou secundário) ou foi quem criou. As demais oportunidades simplesmente não aparecem: nem no kanban, nem na lista, nem contam nos cartões de resumo. Não é uma tela de erro nem um "sem permissão", é a oportunidade não estar ali.
+
+Essa regra também é aplicada por trás pelo banco de dados, não só pela tela: mesmo quem tentasse acessar uma oportunidade de outra pessoa por um link direto, sem ter Gerenciar CRM nem ser responsável por ela, receberia zero resultado.
+
+#### A fila "Sem responsável"
+
+Toda oportunidade sem nenhum responsável atribuído (o caso mais comum é lead recebido por webhook, que sempre nasce sem vendedor) fica visível pra empresa inteira, mesmo pra quem não tem Gerenciar CRM: é a fila compartilhada. No card, ela ganha o selo Sem responsável; no detalhe, o botão Assumir oportunidade. Assim que alguém assume, a oportunidade sai da fila e passa a valer a regra de "cada um vê as suas" normalmente, com quem assumiu como responsável principal.
+
+Pra enxergar só a fila, use o filtro Vendedor e marque a opção Sem responsável (capítulo 10).
+
+#### Funil restrito
+
+Some-se a isso a restrição de "Quem pode ver" explicada no capítulo 2: um funil pode estar aberto pra empresa toda, ou restrito a uma lista de pessoas. As duas regras se combinam, sempre pelo caminho mais estreito: mesmo dentro de um funil aberto, quem não tem Gerenciar CRM ainda vê só as suas próprias oportunidades.
+
+### 10. Filtros: origem, vendedor, faixa de valor, busca
+
+A busca Buscar por título ou cliente... procura ao mesmo tempo no título da oportunidade e no nome do cliente vinculado, dentro do funil selecionado. Ela é tolerante a acento e a maiúscula, então "negociacao" acha "Negociação".
+
+O botão Filtros abre os filtros que se combinam:
 
 - Origem: lista de marcação múltipla. Sem nada marcado, o rótulo é Todas.
 
-- Vendedor: lista dos usuários da empresa, também de marcação múltipla. Sem nada marcado, Todos.
+- Vendedor: lista dos usuários da empresa, também de marcação múltipla, mais a opção Sem responsável, que traz só as oportunidades da fila compartilhada do capítulo 9. Sem nada marcado, Todos.
 
 - Valor Mínimo e Valor Máximo: faixa de valor estimado, com os exemplos R$ 0 e R$ 999.999.
 
 Com filtro ativo, aparecem selos escuros abaixo da busca, no formato Origem: Site, Vendedor: Maria, Min e Max, cada um com um X para remover só aquele. Com mais de uma opção marcada, o selo mostra "2 selecionadas". O botão de limpar zera tudo de uma vez, inclusive a busca.
 
-O filtro Origem usa uma lista fixa do sistema: Indicação, Site, Telefone, WhatsApp, Google, Instagram, Facebook, Parceiro, Feira/Evento e Outro. Já o campo Origem do cadastro da oportunidade usa o catálogo de Origens da sua empresa, que você edita em Configurações → Usabilidade → card Origens. As duas listas nascem iguais, mas se afastam assim que você cria uma origem própria: uma oportunidade marcada como "Meta Ads" existe, aparece no cartão e no detalhe, mas não pode ser filtrada, porque "Meta Ads" não está na lista fixa do filtro. Se você depende de filtrar por canal, o jeito de contornar hoje é manter as origens dentro dos dez nomes da lista fixa, ou usar a busca por título.
+O filtro Origem usa uma lista fixa do sistema: Indicação, Site, Telefone, WhatsApp, Google, Instagram, Facebook, Parceiro, Feira/Evento e Outro. Já o campo Origem do cadastro da oportunidade usa o catálogo de Origens da sua empresa, que você edita em Configurações → Usabilidade → card Origens. As duas listas nascem iguais, mas se afastam assim que você cria uma origem própria: uma oportunidade marcada como "Meta Ads" existe, aparece no cartão e no detalhe com o ícone e a cor certos, mas não pode ser filtrada, porque "Meta Ads" não está na lista fixa do filtro. Se você depende de filtrar por canal, o jeito de contornar hoje é manter as origens dentro dos dez nomes da lista fixa, ou usar a busca por título.
 
 Combinação que resolve a maior parte das perguntas do dia a dia: filtre por Vendedor e olhe o cartão Valor Total. Ele passa a mostrar o valor em aberto daquele vendedor, porque os cartões de resumo respeitam os filtros.
 
-### 8. Webhooks de captação: criar, vincular a uma origem, copiar a URL e testar
+### 11. Webhooks de captação: criar, vincular a uma origem, copiar a URL e testar
 
 Webhook é um endereço que outro sistema chama quando alguém preenche um formulário. Serve para o lead do seu site, do formulário de anúncio ou de uma ferramenta de automação cair direto no funil, sem ninguém digitar.
 
@@ -4359,9 +4561,9 @@ O exemplo que aparece na tela é um JSON com nome, telefone e e-mail. O sistema 
 
 - Nome, telefone, e-mail e a fonte são gravados nas Observações da oportunidade, uma informação por linha. O lead não fica vinculado a um cliente cadastrado.
 
-- A oportunidade entra no primeiro estágio neutro do funil, ou seja, o primeiro que não é de ganho nem de perda.
+- A oportunidade entra no primeiro estágio neutro do funil padrão da empresa, ou seja, o primeiro que não é de ganho nem de perda.
 
-- O vendedor fica em branco. Alguém precisa abrir e atribuir.
+- O lead nasce sem responsável e cai direto na fila compartilhada do capítulo 9, visível pra empresa inteira até alguém assumir.
 
 #### Erros que o webhook devolve
 
@@ -4375,82 +4577,109 @@ O exemplo que aparece na tela é um JSON com nome, telefone e e-mail. O sistema 
 
 Quando dá certo, a resposta traz success junto com o lead criado.
 
-Antes de apontar uma campanha paga para o webhook, faça um envio de teste com um nome fictício e confira se o cartão apareceu no funil. Só o funil é prova de que o caminho funciona; a mensagem de sucesso da ferramenta que enviou não basta. Testou e o cartão não apareceu? Confira se o webhook está com a chave Ativo ligada, se a URL foi copiada inteira (o código do fim é parte dela) e se o funil tem pelo menos um estágio neutro criado.
+Antes de apontar uma campanha paga para o webhook, faça um envio de teste com um nome fictício e confira se o cartão apareceu no funil, na fila Sem responsável. Só o funil é prova de que o caminho funciona; a mensagem de sucesso da ferramenta que enviou não basta. Testou e o cartão não apareceu? Confira se o webhook está com a chave Ativo ligada, se a URL foi copiada inteira (o código do fim é parte dela) e se o funil padrão tem pelo menos um estágio neutro criado.
 
 O formulário público de cadastro de cliente (o link de captação que você compartilha para o próprio cliente se cadastrar) não cria lead no CRM: ele cria um cliente na tela de Clientes, com a origem marcada como formulário público. São dois caminhos completamente separados. Se você espera ver no funil quem preencheu aquele formulário, não vai encontrar: procure em Clientes.
 
 A avaliação DISC (perfil comportamental) é do módulo de Funcionários e RH, aplicada a colaborador. Ela não tem nenhuma relação com o CRM, não avalia lead e não aparece no funil.
 
-### 9. Rotina sugerida: revisão diária do funil em 5 minutos
+### 12. Rotina sugerida: revisão diária do funil em 5 minutos
 
 O CRM só vale o que a disciplina de olhar para ele vale. Como o sistema não manda lembrete de próxima ação nem cobra ninguém, a rotina abaixo é o que transforma o funil numa ferramenta de verdade. Cinco minutos, todo dia, no mesmo horário.
 
-- Abra o CRM e olhe os quatro cartões do topo. Total de Leads e Valor Total dão o tamanho da carteira; os cartões do estágio ganho e do estágio neutro dizem quanto já fechou e quanto está em jogo.
+- Comece pela fila "Sem responsável". Filtre por Vendedor → Sem responsável. Todo lead ali é oportunidade parada esperando alguém assumir; não deixe acumular.
 
-- Varra a coluna da direita para a esquerda. Comece pelo estágio mais perto do fechamento: são as oportunidades com maior chance de virar dinheiro esta semana.
+- Abra o CRM e olhe os quatro cartões do topo. Total de Leads e Valor Total dão o tamanho da carteira; os cartões da etapa ganha e da etapa neutra dizem quanto já fechou e quanto está em jogo.
+
+- Varra a coluna da direita para a esquerda. Comece pela etapa mais perto do fechamento: são as oportunidades com maior chance de virar dinheiro esta semana.
 
 - Abra cada cartão parado e olhe a linha Atualizado:, que mostra há quanto tempo ninguém mexe naquela oportunidade. Passou de uma semana sem interação, ou está esperando resposta, ligue.
 
-- Registre toda conversa como interação, mesmo a que não deu em nada, e sempre preencha a Próxima Ação com a data. Um lead sem próxima ação marcada é um lead que vai ser esquecido.
+- Registre toda conversa como interação, mesmo a que não deu em nada. Se o próximo passo tem data marcada, crie uma Tarefa em vez de só anotar a Próxima Ação, pra ela aparecer na sua Agenda.
 
-- Mova o cartão na hora. Falou com o cliente e ele pediu proposta? Arraste para o estágio de proposta ali mesmo. Funil que só é atualizado na sexta-feira não serve para decidir nada.
+- Mova o cartão na hora. Falou com o cliente e ele pediu proposta? Arraste para a etapa de proposta ali mesmo. Funil que só é atualizado na sexta-feira não serve para decidir nada.
 
 - Perdeu, marque como perdido e escolha o motivo. É desconfortável e é o dado mais útil que existe: depois de trinta perdas registradas, o padrão aparece sozinho.
 
 - Uma vez por semana, filtre por vendedor e olhe o Valor Total de cada um. Cinco segundos por pessoa mostram quem está com a carteira cheia e quem precisa de mais lead.
 
-Combine com a tela de Orçamentos: oportunidade que chegou ao estágio de proposta deve ter um orçamento correspondente, e o contador de visualizações da proposta diz se o cliente abriu. Funil no estágio de proposta há cinco dias, com a proposta aberta três vezes e sem resposta, é ligação pendente.
+Combine com a tela de Orçamentos: oportunidade que chegou à etapa de proposta deve ter um orçamento correspondente, e o contador de visualizações da proposta diz se o cliente abriu. Funil na etapa de proposta há cinco dias, com a proposta aberta três vezes e sem resposta, é ligação pendente.
 
 ### Suporte: problemas comuns
 
 | O cliente diz | Causa provável | O que responder / fazer |
 | "Não tem CRM no meu menu" | Módulo CRM não contratado, ou permissão de tela desligada para aquele usuário. | Sem o módulo, o item não aparece no menu para ninguém da empresa. Confirme a contratação com quem cuida da assinatura. Se o módulo está ativo e só uma pessoa não vê, um administrador liga a tela CRM para ela no editor de permissões. |
-| "Abri o CRM e não tem coluna nenhuma" | A empresa ainda não criou os estágios do funil. | É o estado inicial. Toque em Começar com estágios padrão para criar as cinco colunas prontas, ou em Personalizar estágios para montar do seu jeito. |
-| "Criei uma origem nova e ela não aparece no filtro" | O filtro de origem usa uma lista fixa do sistema; o cadastro usa o catálogo da empresa. | É uma limitação conhecida. A oportunidade fica marcada corretamente, mas não é filtrável por essa origem. Para filtrar, mantenha as origens dentro dos dez nomes da lista fixa, ou use a busca por título. |
-| "Apareceu uma janelinha estranha, em inglês, quando fui excluir um lead" | A exclusão de lead usa a confirmação do próprio navegador. | É normal nessa tela e não é invasão. Confirme em OK para excluir ou em Cancelar para desistir. Lembre que não há desfazer. |
-| "Apaguei um estágio e os leads sumiram" | Eles não sumiram: ficaram sem estágio e aparecem na primeira coluna. | Olhe a primeira coluna do funil. Arraste cada cartão para o estágio certo, ou recrie o estágio e mova de volta. |
+| "Sumiram oportunidades do meu funil, só sobraram poucas" | A pessoa não tem a ação Gerenciar CRM e passou a ver só as suas. | É esperado. Sem Gerenciar CRM, cada um vê só as oportunidades em que é responsável ou foi quem criou. Ligue a ação pra quem precisa ver o funil inteiro (gestor, coordenador comercial). |
+| "Apareceram leads que eu nunca vi, numa fila diferente" | São oportunidades sem responsável, visíveis pra empresa toda. | É a fila compartilhada. Qualquer pessoa pode tocar em Assumir oportunidade dentro do card pra virar a responsável e tirá-la da fila. |
+| "Criei um segundo funil e não sei onde ele foi parar" | O seletor de funil só aparece com dois ou mais funis, e a última escolha fica salva no navegador. | Olhe a fileira de pílulas logo abaixo do alternador Funil/Tarefas, no topo da tela, e toque no nome do funil novo. |
+| "Não consigo excluir um funil" | Ele ainda tem etapas ou oportunidades vinculadas, ou é o único funil da empresa. | A mensagem de erro diz exatamente qual dos três casos é. Mova as oportunidades e as etapas pra outro funil (ou apague as etapas) antes de excluir. |
+| "Restringi um funil e um vendedor sumiu com as oportunidades dele" | O funil ficou restrito e a pessoa não estava na lista de acesso. | Abra Gerenciar Funis → Quem pode ver naquele funil e adicione a pessoa de volta à lista. |
+| "Movi um lead pra Ganho e não apareceu nada sobre lançar receita" | A pessoa não tem a ação Gerenciar Financeiro marcada explicitamente, ou a oportunidade já teve receita lançada antes. | Confira os dois casos. Se já foi lançada uma vez, é esperado não perguntar de novo, pra não duplicar a receita. Se a pessoa é vendedor comum e não deve mexer no Financeiro, isso é esperado: só quem tem Gerenciar Financeiro recebe a oferta. |
+| "Abri o CRM e não tem coluna nenhuma" | O funil selecionado ainda não tem etapas. | Toque em Começar com estágios padrão para criar as cinco colunas prontas, ou em Personalizar estágios para montar do seu jeito. |
+| "Criei uma origem nova e ela não aparece no filtro" | O filtro de origem usa uma lista fixa do sistema; o cadastro usa o catálogo da empresa. | É uma limitação conhecida. A oportunidade fica marcada corretamente, com ícone e cor, mas não é filtrável por essa origem. Para filtrar, mantenha as origens dentro dos dez nomes da lista fixa, ou use a busca por título. |
+| "Apareceu uma janelinha estranha, em inglês, quando fui excluir um lead (ou uma tarefa dele)" | A exclusão de lead e de tarefa do card usa a confirmação do próprio navegador. | É normal nessas duas telas e não é invasão. Confirme em OK para excluir ou em Cancelar para desistir. Lembre que não há desfazer. |
+| "Apaguei uma etapa e os leads sumiram" | Eles não sumiram: ficaram sem etapa e aparecem na primeira coluna do mesmo funil. | Olhe a primeira coluna do funil. Arraste cada cartão para a etapa certa, ou recrie a etapa e mova de volta. |
 | "Quero um relatório de por que estou perdendo negócio" | O motivo da perda é texto livre dentro das Observações. | Não existe relatório nem filtro por motivo. O motivo fica escrito na oportunidade e só pode ser lido uma a uma. Se isso é importante, avise o time de produto. |
-| "Movi o lead para perdido e sumiu o que eu tinha escrito nas observações" | O motivo da perda é gravado no campo de Observações e substitui o texto anterior. | É o comportamento atual. Oriente a copiar a observação antes de mover para um estágio de perda. |
+| "Movi o lead para perdido e sumiu o que eu tinha escrito nas observações" | O motivo da perda é gravado no campo de Observações e substitui o texto anterior. | É o comportamento atual. Oriente a copiar a observação antes de mover para uma etapa de perda. |
 | "Tenho uma planilha com 300 contatos, como importo?" | Não existe importação em massa no CRM. | Não há botão de importar planilha. As opções são lançar um a um em Nova Oportunidade ou usar um webhook de captação, mandando os contatos por uma ferramenta de automação. |
-| "O sistema distribui os leads entre meus vendedores?" | Não existe distribuição automática. | O Vendedor Responsável é sempre escolhido por uma pessoa. Lead que chega por webhook nasce sem vendedor e precisa ser atribuído na mão. |
-| "Configurei o webhook e o lead não caiu no funil" | Webhook desligado, URL incompleta, chamada que não é POST, ou funil sem estágio neutro. | Confira a chave Ativo, copie a URL inteira pelo botão de copiar (o código do fim faz parte) e garanta que a chamada é POST com JSON contendo pelo menos nome e telefone. Faça um envio de teste e confira no funil antes de ligar a campanha. |
+| "Criei uma tarefa dentro de uma oportunidade e ela não aparece na Agenda" | A chave Mostrar na agenda estava desligada na criação. | Abra a tarefa dentro do card, na aba Tarefas, e ligue Mostrar na agenda. Ela precisa de uma data pra entrar no calendário. |
+| "Criei uma tarefa na Agenda e ela não aparece na oportunidade" | Tarefa nascida na Agenda nunca fica vinculada a uma oportunidade. | A relação é de mão única: só tarefa criada de dentro do card do CRM pode aparecer na Agenda. O caminho é apagar e recriar a tarefa de dentro da oportunidade certa. |
+| "O sistema distribui os leads entre meus vendedores?" | Não existe distribuição automática. | O Vendedor Responsável é sempre escolhido por uma pessoa (ou assumido da fila). Lead que chega por webhook nasce sem vendedor e cai na fila compartilhada. |
+| "Configurei o webhook e o lead não caiu no funil" | Webhook desligado, URL incompleta, chamada que não é POST, ou funil padrão sem etapa neutra. | Confira a chave Ativo, copie a URL inteira pelo botão de copiar (o código do fim faz parte) e garanta que a chamada é POST com JSON contendo pelo menos nome e telefone. Faça um envio de teste e confira no funil antes de ligar a campanha. |
 | "Mandei o link de cadastro para o cliente preencher e não vi o lead no CRM" | O formulário público de captação cria cliente, não lead. | Procure na tela de Clientes: o cadastro está lá, com a origem de formulário público. São dois caminhos diferentes e não existe ligação automática entre eles. |
-| "O sistema não me avisou da próxima ação que eu marquei" | Próxima ação é só anotação. | Não há lembrete, notificação nem tarefa na agenda. A conferência é manual, na revisão diária do funil. |
-| "O Status do lead e a coluna do kanban estão diferentes" | São dois campos independentes. | O Status é uma lista fixa dentro do detalhe; a coluna é o estágio configurável do funil. Um não mexe no outro. Os números e filtros da tela seguem o estágio. |
+| "O Status do lead e a coluna do kanban estão diferentes" | São dois campos independentes. | O Status é uma lista fixa dentro do detalhe; a coluna é a etapa configurável do funil. Um não mexe no outro. Os números e filtros da tela seguem a etapa. |
 | "Não consigo cadastrar o cliente na hora, dentro da oportunidade" | A criação rápida de cliente exige CPF ou CNPJ. | Aparece Informe o CPF ou CNPJ do cliente para cobrar. Sem o documento, deixe o campo Cliente em branco e vincule depois, pela edição da oportunidade. |
-| "O total de leads mudou sozinho" | Os cartões de resumo respeitam os filtros ativos. | Limpe os filtros no botão de limpar para voltar ao total da empresa. Com filtro ativo, aparece um selo ao lado de Pipeline de Vendas no formato "3 de 12". |
+| "O total de leads mudou sozinho" | Os cartões de resumo respeitam os filtros ativos e a sua permissão de visibilidade. | Limpe os filtros no botão de limpar para voltar ao total que você tem acesso. Com filtro ativo, aparece um selo ao lado de Pipeline de Vendas no formato "3 de 12". |
 
 ### Perguntas frequentes
 
 **P:** Preciso pagar à parte para usar o CRM?
 **R:** Sim, o CRM é um módulo contratado à parte. Sem ele o item nem aparece no menu do sistema.
 
-**P:** Posso montar o funil do meu jeito?
-**R:** Pode, e é o recomendado. Os estágios são da sua empresa: você cria, renomeia, escolhe a cor, arrasta para reordenar e apaga. O conjunto padrão de cinco colunas é só um ponto de partida.
+**P:** Posso ter mais de um funil de vendas?
+**R:** Pode. Em Gerenciar Funis você cria quantos precisar, por exemplo um pra vendas novas e outro pra pós-venda. O seletor de funil só aparece quando há dois ou mais.
 
-**P:** O que muda quando marco um estágio como ganho ou perdido?
-**R:** Ganho faz o valor daquele estágio virar um cartão de resumo no topo. Perdido faz o sistema pedir obrigatoriamente o motivo quando você arrasta um cartão para lá. Nada mais é disparado: nem orçamento, nem OS, nem lançamento financeiro.
+**P:** Dá pra restringir um funil a algumas pessoas?
+**R:** Dá, pelo item "Quem pode ver" no menu do funil, dentro de Gerenciar Funis. Por padrão todo funil é aberto pra empresa inteira; selecionar alguém ali restringe.
+
+**P:** Todo mundo vê todas as oportunidades do funil?
+**R:** Depende da permissão de cada um. Quem tem Gerenciar CRM vê tudo. Quem não tem vê só as oportunidades em que é responsável ou foi quem criou, mais a fila de oportunidades sem responsável, que é visível pra todos.
+
+**P:** Posso montar o funil do meu jeito?
+**R:** Pode, e é o recomendado. As etapas são da sua empresa: você cria, renomeia, escolhe ícone e cor, arrasta para reordenar e apaga. O conjunto padrão de cinco colunas é só um ponto de partida.
+
+**P:** O que muda quando marco uma etapa como ganho ou perdido?
+**R:** Ganho faz o valor daquela etapa virar um cartão de resumo no topo e oferece lançar a receita da venda direto no Financeiro. Perdido faz o sistema pedir obrigatoriamente o motivo quando você arrasta um cartão para lá. Nada mais é disparado automaticamente: nem orçamento, nem OS.
+
+**P:** Lançar a receita ao ganhar a oportunidade é obrigatório?
+**R:** Não. É uma oferta: você pode responder "Agora não" e a mudança de etapa continua valendo do mesmo jeito.
+
+**P:** Posso ter mais de um vendedor na mesma oportunidade?
+**R:** Pode, no campo Vendedor Responsável. O primeiro que você selecionar vira o principal, que é o que aparece nos filtros e relatórios; os demais entram como responsáveis secundários.
 
 **P:** Preciso vincular um cliente cadastrado para criar uma oportunidade?
-**R:** Não. Só o título é obrigatório. Cliente, vendedor, origem, valor, probabilidade, previsão e observações são todos opcionais.
+**R:** Não. Só o título é obrigatório. Cliente, responsáveis, origem, valor, probabilidade, previsão e observações são todos opcionais.
 
 **P:** Dá para criar o cliente sem sair do CRM?
 **R:** Dá: digite o nome no campo Cliente e escolha Cadastrar "<nome>". Essa janela rápida exige CPF ou CNPJ. Sem o documento em mãos, deixe em branco e vincule depois.
 
 **P:** Como movo um lead no celular, se não dá para arrastar?
-**R:** Pelo menu de três pontinhos da linha, na opção Mover para seguida do nome do estágio.
+**R:** Pelo menu de três pontinhos da linha, na opção Mover para seguida do nome da etapa.
 
 **P:** Onde fica registrado o motivo da perda?
 **R:** Dentro das Observações da própria oportunidade, como texto. Não é campo estruturado: não dá para filtrar nem gerar relatório por motivo, e o texto que estava nas Observações é substituído.
 
-**P:** O CRM avisa quando chega a data da próxima ação?
-**R:** Não. Próxima ação e data são anotações para você ler na revisão do funil. Não há notificação, e-mail nem tarefa na agenda.
+**P:** Dá pra criar uma tarefa dentro de uma oportunidade?
+**R:** Dá, na aba Tarefas do card ou pelo botão Criar Tarefa. Você escolhe se ela também aparece na Agenda pela chave Mostrar na agenda.
+
+**P:** Uma tarefa da Agenda aparece automaticamente numa oportunidade?
+**R:** Não. Só o caminho contrário existe: tarefa criada dentro de uma oportunidade pode aparecer na Agenda, mas tarefa da Agenda nunca vira item de um card do CRM.
 
 **P:** Consigo importar meus contatos de uma planilha?
 **R:** Não existe importação em massa. Ou você lança um a um, ou manda os contatos por um webhook de captação usando uma ferramenta de automação.
 
 **P:** O sistema divide os leads entre a equipe automaticamente?
-**R:** Não. O vendedor responsável é sempre escolhido por uma pessoa, e lead vindo de webhook nasce sem vendedor.
+**R:** Não. O responsável é sempre escolhido por uma pessoa, ou assumido por quem tocar em "Assumir oportunidade" na fila. Lead vindo de webhook sempre nasce sem responsável.
 
 **P:** O formulário público de cadastro cria lead no funil?
 **R:** Não. Aquele formulário cria um cliente, que aparece na tela de Clientes. Para o lead cair no funil, o caminho é o webhook de captação do CRM.
@@ -4462,9 +4691,9 @@ Combine com a tela de Orçamentos: oportunidade que chegou ao estágio de propos
 **R:** Não. O DISC é do módulo de Funcionários e RH, aplicado a colaborador, e não tem nenhuma ligação com o CRM.
 
 **P:** Meu vendedor consegue ver os leads dos outros?
-**R:** O acesso à tela é controlado pela permissão CRM. Quem tem a tela liberada enxerga o funil da empresa e pode usar o filtro Vendedor para ver só a própria carteira.
+**R:** Só se tiver a ação Gerenciar CRM ligada. Sem ela, cada um vê apenas as oportunidades das quais é responsável ou criador, além da fila compartilhada de oportunidades sem responsável.
 
-Palavras que o cliente usa pra isso: funil, funil de vendas, pipeline, kanban de vendas, quadro de vendas, lead, oportunidade, prospect, contato, coluna, etapa, estágio, fase da venda, ganhei, perdi, motivo da perda, follow-up, acompanhamento, próxima ação, origem do lead, de onde veio o cliente, webhook, integração do formulário do site, campanha de anúncio
+Palavras que o cliente usa pra isso: funil, funil de vendas, pipeline, kanban de vendas, quadro de vendas, lead, oportunidade, prospect, contato, coluna, etapa, estágio, fase da venda, ganhei, perdi, motivo da perda, follow-up, acompanhamento, próxima ação, origem do lead, de onde veio o cliente, webhook, integração do formulário do site, campanha de anúncio, mais de um funil, vários funis, quem vê o quê, fila sem dono, oportunidade sem vendedor, tarefa da oportunidade
 
 ---
 
@@ -5162,7 +5391,7 @@ O link de contrato dentro do portal abre OUTRA página. Clicando num contrato na
 
 #### Cobranças no portal
 
-Aparecem com descrição, valor, Vencimento e a situação (Pago, Pendente, Vencido, Estornado), mais o botão Pagar, que leva ao pagamento online. A seção só existe se houver cobrança, o que depende do módulo de Cobranças e da conta de recebimento ativa.
+Aparecem com descrição, valor, Vencimento e a situação (Pago, Pendente, Vencido, Estornado), mais o botão Pagar, que leva ao pagamento online. A seção só existe se houver cobrança gerada por uma empresa com a conta de recebimento ativa.
 
 ### 4. Cliente abrindo chamado pelo portal — e onde isso cai pra você (aba Chamados)
 
@@ -5471,7 +5700,7 @@ Relatório,
 Movimentações e
 Contas
 Rotas:/financeiro/relatorio, /financeiro/movimentacoes, /financeiro/contas
-Depende de: T12 (Portal do Cliente). Contas a Pagar/Receber e a aba DRE exigem o módulo Financeiro Avançado
+Disponibilidade: o Financeiro completo vem desde o plano Essencial. Somente o plano Exceção não possui acesso ao grupo Financeiro
 Quem enxerga: quem tem a permissão de tela
 Financeiro. Dentro dela, as ações
 Gerenciar Financeiro,
@@ -5483,9 +5712,9 @@ Ver Totais Financeiros são separadas
 O Financeiro deixou de ser uma tela só com muitas abas e virou um grupo no menu com três telas independentes. Cada uma responde a uma pergunta diferente, e saber qual pergunta é qual economiza metade das dúvidas de suporte.
 
 | Tela | Endereço | Pergunta que ela responde |
-| Relatório | /financeiro/relatorio | "Como foi o meu mês?" Traz a Visão Geral com os cards de receita, despesa e saldo, a DRE, as Categorias e, quando contratado, Cobranças e Assinaturas. |
+| Relatório | /financeiro/relatorio | "Como foi o meu mês?" Traz a Visão Geral com os cards de receita, despesa e saldo, a DRE, as Categorias e, com a conta de recebimento ativa, Cobranças e Assinaturas. |
 | Movimentações | /financeiro/movimentacoes | "Quanto tem em cada conta e o que passou por ela?" Traz o carrossel de contas bancárias, caixas e cartões, com o extrato de cada uma e as faturas de cada cartão. |
-| Contas | /financeiro/contas | "O que eu tenho pra pagar e pra receber?" É a programação financeira, com vencimentos, atrasos e baixas. Exige o módulo Financeiro Avançado. |
+| Contas | /financeiro/contas | "O que eu tenho pra pagar e pra receber?" É a programação financeira, com vencimentos, atrasos e baixas. |
 
 O topo das três telas é o mesmo: título Financeiro, um seletor de período (que abre em Este mês) e, quando a empresa tem recebimento online ativo, o botão Cobrar. Trocar o período no topo muda o que as três telas mostram.
 
@@ -5497,21 +5726,21 @@ Financeiro, tela Relatório, aba Visão Geral: cards do período, saldo por cont
 
 - Visão Geral: sempre aparece.
 
-- DRE - Resultado: só aparece com o módulo Financeiro Avançado. Se você abrir o endereço com ?tab=dre sem o módulo, o sistema devolve você pra Visão Geral, sem mensagem de erro.
+- DRE - Resultado: faz parte do Financeiro completo disponível desde o plano Essencial.
 
 - Categorias: sempre aparece.
 
-- Cobranças e Assinaturas: só aparecem quando a empresa tem o módulo Cobranças contratado e a conta de recebimento ativa. Faltando qualquer uma das duas, as abas somem.
+- Cobranças e Assinaturas: fazem parte do Financeiro completo desde o Essencial e aparecem quando a conta de recebimento está ativa.
 
 #### Recebimento do cliente pelo Asaas, na sua própria conta
 
 O Dominex permite gerar link de pagamento (Pix, boleto ou cartão) pra você cobrar o seu cliente. O dinheiro cai na sua conta Asaas: você conecta a sua própria chave em Configurações, aba Integrações. Isso não tem nenhuma relação com a mensalidade que você paga pelo sistema, que é outro assunto e vive na tela Assinatura.
 
-- Com o módulo Cobranças ativo e a conta ligada, aparece o botão Cobrar no topo do Financeiro, que abre o formulário Nova cobrança com cliente, valor, vencimento, descrição e forma de pagamento (Pix, boleto, Pix e boleto, cartão de crédito, ou deixar o cliente escolher).
+- Com a conta ligada, aparece o botão Cobrar no topo do Financeiro, que abre o formulário Nova cobrança com cliente, valor, vencimento, descrição e forma de pagamento (Pix, boleto, Pix e boleto, cartão de crédito, ou deixar o cliente escolher).
 
-- Com o módulo contratado mas a conta ainda não ativa, o botão vira Ir para Integrações. A mensagem é: "Para cobrar seus clientes online, ative a integração de recebimentos em Configurações, Integrações."
+- Com a conta ainda não ativa, o botão vira Ir para Integrações. A mensagem é: "Para cobrar seus clientes online, ative a integração de recebimentos em Configurações, Integrações."
 
-- Sem o módulo, não aparece botão nenhum.
+- No plano Exceção, o grupo Financeiro e o botão não aparecem.
 
 - Depois de gerada, a cobrança aparece na aba Cobranças com status A receber, Pago, Vencido ou Estornado, e as ações Copiar link e Estornar.
 
@@ -5805,7 +6034,7 @@ Abaixo vem SALDO POR CONTA, com um cartãozinho por conta. Os cartões de crédi
 
 Transferências entre contas e pagamentos de fatura de cartão ficam fora dos cards de Receitas e Despesas. É movimento interno: sem esse corte, transferir R$ 10.000,00 de um banco pro outro apareceria como R$ 10.000,00 de receita.
 
-### 10. Categorias: criar, colorir, ordenar e o grupo de DRE; as do sistema que não se mexe
+### 10. Categorias: criar, organizar em subcategorias e definir o grupo da DRE
 
 As categorias vivem na aba Categorias da tela Relatório. Elas são divididas em duas listas, Categorias de Receita e Categorias de Despesa.
 
@@ -5814,7 +6043,8 @@ As categorias vivem na aba Categorias da tela Relatório. Elas são divididas em
 | Campo | Obrigatório | Observação |
 | Nome | Sim | Validação "Nome é obrigatório". Exemplo sugerido na tela: "Serviços". |
 | Tipo | Sim | Receita, Despesa ou Ambos. Validação "Tipo é obrigatório". |
-| Grupo DRE | Não | Impostos e Deduções, CMV (Custo do Serviço) ou Despesas Operacionais (OPEX). É o que decide em qual linha do resultado a categoria entra. |
+| Grupo DRE | Não | Impostos e Deduções, CSP (Custo do Serviço Prestado) ou Despesas Operacionais (OPEX). É o que decide em qual linha do resultado a categoria entra. |
+| Categoria principal | Não | Escolha uma categoria principal para transformar a nova categoria em subcategoria. A hierarquia tem no máximo dois níveis. |
 | Cor | Sim | Validação "Cor é obrigatória". Usada nos gráficos. |
 | Ícone | Não | Só visual. |
 
@@ -5836,13 +6066,15 @@ Categorias de Receita e Despesa: o cadeado ao lado do nome marca a categoria do 
 
 #### Excluir categoria
 
-A confirmação é clara sobre o efeito: "Tem certeza? Transações com esta categoria não serão afetadas." Ou seja, os lançamentos antigos continuam com o nome da categoria gravado, eles não somem e não mudam de valor.
+- Ao excluir uma subcategoria, as receitas e despesas lançadas nela passam automaticamente para a categoria principal. Os valores e o histórico são preservados e continuam agrupados no resultado.
 
-Não existe subcategoria no financeiro do Dominex. A lista de categorias é plana: não dá pra criar "Veículos" com "Combustível" e "Manutenção" dentro. Se você precisa desse detalhe, o caminho hoje é criar categorias irmãs com nome composto, como "Veículos, Combustível" e "Veículos, Manutenção", e usar a ordenação por arrastar pra deixá-las juntas na lista. O agrupamento contábil de verdade é feito pelo campo Grupo DRE, que junta várias categorias em Impostos, CMV ou OPEX.
+- Ao excluir uma categoria principal que tem subcategorias, as subcategorias não são apagadas. Elas viram categorias principais independentes, com nome e histórico preservados.
+
+A hierarquia tem no máximo dois níveis. Uma categoria principal pode ter várias subcategorias, mas uma subcategoria não pode ter outra dentro dela. A categoria principal também pode receber lançamentos diretamente.
 
 ### 11. Contas a Pagar/Receber: lançar com recorrência, dar baixa, recebimento parcial
 
-Esta tela exige o módulo Financeiro Avançado. Sem ele, abrir /financeiro/contas direto pela URL leva você de volta pro Relatório, sem mensagem de erro. O módulo também é o que libera a aba DRE.
+Contas a Pagar/Receber e DRE fazem parte do Financeiro completo desde o plano Essencial. No plano Exceção, o grupo Financeiro não aparece e suas rotas são bloqueadas.
 
 A tela Contas tem duas sub-abas, A Pagar e A Receber, e no topo os cards Total Pendente, Total Vencido, Próximos 7 dias e Total Pago (ou Total Recebido). Há busca por nome, descrição, categoria ou valor, filtro por situação (Pendentes, Vencidas, Pagas, Todas) e filtro por categoria.
 
@@ -5904,7 +6136,7 @@ Linhas com o nome "Folha [nome do funcionário] — [período]" e a categoria Fo
 
 ### 12. DRE: o botão Caixa × Competência e o que muda no número
 
-A DRE é o Demonstrativo de Resultado: o relatório que responde "sobrou ou faltou dinheiro no período". Ela fica na aba DRE - Resultado da tela Relatório e exige o módulo Financeiro Avançado.
+A DRE é o Demonstrativo de Resultado: o relatório que responde "sobrou ou faltou dinheiro no período". Ela fica na aba DRE - Resultado da tela Relatório e faz parte do Financeiro completo desde o plano Essencial.
 
 #### Como o resultado é montado
 
@@ -5912,8 +6144,8 @@ A DRE é o Demonstrativo de Resultado: o relatório que responde "sobrou ou falt
 | (+) Receita Bruta | Todas as entradas. |
 | (-) Impostos e Deduções | Saídas cujas categorias estão no grupo DRE "Impostos". |
 | (=) Receita Líquida | Receita bruta menos impostos. |
-| (-) CMV (Custo da Mercadoria/Serviço) | Saídas cujas categorias estão no grupo DRE "CMV". |
-| (=) Lucro Bruto | Receita líquida menos CMV. Mostra também a margem em porcentagem. |
+| (-) Custo dos Serviços Prestados (CSP) | Saídas cujas categorias estão no grupo DRE "CSP". |
+| (=) Lucro Bruto | Receita líquida menos o CSP. Mostra também a margem em porcentagem. |
 | (-) Despesas Operacionais (OPEX) | Todo o resto das saídas. |
 | (=) Resultado Líquido (EBITDA) | O número final, com o rótulo Superávit, Déficit ou Equilibrado. |
 
@@ -6029,11 +6261,11 @@ O PDF da DRE abre em uma nova aba. Se o navegador estiver bloqueando pop-ups, na
 | "Paguei parte da fatura e as compras continuam pendentes" | Pagamento parcial, por regra, não quita nenhuma compra | É proposital: não há como saber quais compras foram pagas. Assim que o pagamento completar a fatura, todas as compras dela são quitadas de uma vez. |
 | "Paguei a fatura e o limite do cartão não voltou" | Pagamento antigo, feito antes da correção, com só uma perna registrada | Pagamentos feitos pelo botão Pagar Fatura hoje geram as duas pernas e devolvem o limite na hora, com a mensagem "Pagamento registrado e limite do cartão liberado". Se um pagamento antigo ficou torto, o estorno pode ser recusado com uma mensagem explicando, e o acerto é manual pelo extrato. Acione o suporte com o cartão e o mês. |
 | "O botão Pagar Fatura está travado com um cadeado" | A fatura ainda não fechou | A fatura só pode ser paga a partir do dia do fechamento, inclusive nesse mesmo dia. Passe o mouse no botão: ele mostra a data exata em que o pagamento é liberado. |
-| "Sumiu a aba DRE" ou "Sumiu Contas a Pagar" | Falta o módulo Financeiro Avançado | As duas dependem do módulo Financeiro Avançado. Sem ele, a aba não aparece e o endereço direto devolve pro Relatório. Dá pra contratar em Assinatura, Gerenciar Meu Plano. |
+| "Sumiu a aba DRE" ou "Sumiu Contas a Pagar" | Falta a permissão de tela ou a empresa está no plano Exceção | O Financeiro completo vem desde o Essencial. Confira a permissão de tela Financeiro do usuário e confirme se a empresa não está no plano Exceção, que não inclui recursos financeiros. |
 | "Não consigo excluir um lançamento, o botão nem aparece" | Falta a permissão Excluir Lançamento Financeiro | Excluir é uma permissão à parte e não vem ligada. Administrador e gestor sempre podem. Para os demais, o administrador precisa marcar a ação Excluir Lançamento Financeiro no editor de permissões daquele usuário. |
-| "Quero criar uma subcategoria dentro de Veículos" | Não existe hierarquia de categoria | A lista de categorias é plana. Crie categorias irmãs com nome composto ("Veículos, Combustível") e use o campo Grupo DRE para agrupar contabilmente em Impostos, CMV ou OPEX. |
+| "Quero criar uma subcategoria dentro de Veículos" | É preciso criar ou editar a categoria filha | Abra Categorias, crie uma categoria e escolha Veículos no campo Categoria principal. Também dá para usar a ação Adicionar subcategoria no card da categoria principal. |
 | "O saldo da conta no sistema não bate com o do banco" | Falta lançamento antigo ou saldo inicial errado | Use o menu da conta, Ajustar saldo, informe o saldo real e o sistema lança a diferença como "Ajuste de saldo". Esse ajuste aparece no extrato mas não polui a DRE. |
-| "Minhas compras de cartão sumiram da lista de movimentações" | O interruptor "Incluir compras no cartão" está desligado, que é o padrão | Ligue o interruptor Incluir compras no cartão na visão geral de Movimentações. Por padrão a lista traz só movimento de conta e caixa, porque o que saiu do caixa foi o pagamento da fatura, não cada compra. |
+| "Minhas compras de cartão sumiram da lista de movimentações" | A preferência de incluir todas as compras do cartão está desligada, que é o padrão | No filtro Conta, escolha o cartão para ver somente as compras dele. Para mostrar compras de todos os cartões junto das demais movimentações, ligue a opção em Configurações, Usabilidade, Movimentações financeiras. |
 | "Criei uma conta recorrente e quero cancelar as próximas" | A recorrência já gerou todas as parcelas | A recorrência cria todas as parcelas na hora, não é um agendamento. Para interromper, exclua as parcelas futuras (exige a permissão de excluir lançamento). |
 | "Cliquei em Exportar na DRE e não abriu nada" | Pop-up bloqueado pelo navegador | O documento abre em uma nova aba. Libere os pop-ups para o endereço do sistema e clique de novo em Exportar. |
 | "Apareceu uma despesa de Folha que eu não lancei" | A folha é gerada automaticamente | Funcionário ativo com salário cadastrado gera a linha de folha sozinho em Contas a Pagar, com a categoria Folha de Pagamento. É esperado, e o pagamento é feito de lá. |
@@ -6057,7 +6289,7 @@ O PDF da DRE abre em uma nova aba. Se o navegador estiver bloqueando pop-ups, na
 **R:** Porque o próprio dia do fechamento já pertence ao ciclo seguinte. Com fechamento no dia 20, a fatura acumula do dia 20 do mês anterior até o dia 19. O formulário do cartão avisa isso: "Compras feitas no dia do fechamento já entram na próxima fatura."
 
 **P:** Dá pra criar subcategoria de categoria financeira?
-**R:** Não. A lista de categorias é plana, sem hierarquia. Para agrupar, use o campo Grupo DRE (Impostos, CMV ou OPEX) ou crie categorias irmãs com nome composto.
+**R:** Sim. Crie ou edite a categoria filha e escolha a Categoria principal. A hierarquia tem no máximo dois níveis. Se uma subcategoria for excluída, os lançamentos dela passam para a categoria principal.
 
 **P:** Todo mundo que enxerga o Financeiro pode apagar lançamento?
 **R:** Não. Excluir lançamento financeiro é uma permissão separada, que não vem ligada por padrão. Administrador, gestor e quem tem acesso total sempre podem. Os demais só com a ação Excluir Lançamento Financeiro marcada no editor de permissões.
@@ -7231,13 +7463,13 @@ A aba Personalizado é o montador: você começa do kit básico e vai somando s�
 
 - Confirme no botão do painel.
 
-[Print da tela: Janela Gerenciar Meu Plano na aba Personalizado. À esquerda, o seletor de Ciclo (Mensal/Anual), o cartão verde Módulo Básico com Sempre incluso, e sob Adicione módulos a lista com Gestão de Contratos e PMOC, Funcionários/RH, CRM, Emissão de Notas Fiscais, Financeiro Avançado, Precificação Avançada e Portal do Cliente, todos marcados e em verde, cada um com nome, descrição curta e preço mensal. À direita, o painel Seu Plano listando cada item selecionado com o preço, o seletor de Ciclo repetido e o Total mensal em destaque.]
+[Print da tela: Janela Gerenciar Meu Plano na aba Personalizado. À esquerda, o seletor de Ciclo (Mensal/Anual), o cartão verde Módulo Básico com Sempre incluso, e sob Adicione módulos a lista com Gestão de Contratos e PMOC, Funcionários/RH, CRM, Emissão de Notas Fiscais, Precificação Avançada e Portal do Cliente, todos marcados e em verde, cada um com nome, descrição curta e preço mensal. À direita, o painel Seu Plano listando cada item selecionado com o preço, o seletor de Ciclo repetido e o Total mensal em destaque.]
 
 Aba Personalizado: módulos marcados em verde à esquerda, painel Seu Plano com o total recalculado à direita.
 
 #### Regras que o sistema aplica
 
-- O plano personalizado começa com 2 usuários. O valor vigente de cada usuário adicional aparece no montador.
+- O plano personalizado começa com 5 usuários. O valor vigente de cada usuário adicional aparece no montador.
 
 - O valor da sua assinatura no plano personalizado é a soma do que você montou. Não existe um "preço de tabela" do personalizado.
 
@@ -7256,12 +7488,11 @@ O botão Cancelar assinatura, ao lado de Gerenciar Meu Plano, abre um fluxo de t
 Módulo é um pedaço do sistema contratado pela empresa inteira. Os preços aparecem sempre atualizados dentro do montador e na janela Módulo não disponível, por isso não decore valor: olhe na tela.
 
 | Módulo | O que ele libera |
-| Módulo Básico | O kit que todo plano tem: Ordens de Serviço, Agenda, Dashboard, Orçamentos, Serviços, Mapa ao Vivo, Clientes, Equipamentos, Estoque e o Financeiro básico. |
+| Módulo Básico | O kit dos planos a partir do Essencial: Ordens de Serviço, Agenda, Dashboard, Orçamentos, Serviços, Mapa ao Vivo, Clientes, Equipamentos, Estoque e o Financeiro completo, incluindo Contas a Pagar/Receber, DRE, DFC e Cobranças online. |
 | Gestão de Contratos e PMOC | Contratos recorrentes, portal do contrato e do PMOC pro cliente, e os documentos (TRT, Certificado, Cronograma e Dossiê). |
 | Funcionários / RH | Cadastro de funcionários, equipes, ponto eletrônico e as movimentações financeiras dos colaboradores. |
 | CRM | Funil de vendas com leads, etapas, interações e captação por link. |
 | Emissão de Notas Fiscais | Emissão de NFS-e direto do sistema, com níveis de cota mensal. |
-| Financeiro Avançado | DRE (o demonstrativo de resultado) e as telas de Contas a Pagar e a Receber. |
 | Precificação Avançada | BDI, custos globais de recursos e precificação detalhada de serviços e orçamentos. |
 | Portal do Cliente | A área em que o seu cliente acompanha as OS e os equipamentos dele por link. |
 | White Label | Personalização completa da marca: logo, cores e ícone do sistema, inclusive nos documentos que o cliente recebe. |
@@ -7460,7 +7691,7 @@ OS Abertas e Faturamento mostram também uma seta de tendência com a variação
 
 O Faturamento exclui movimento interno. Transferência entre contas e pagamento de fatura de cartão não entram, porque é dinheiro trocando de bolso dentro da própria empresa, não receita nova. Sem esse corte, transferir R$ 10.000,00 de um banco pro outro inflaria o faturamento em R$ 10.000,00. Se o cliente diz "sumiu dinheiro do meu faturamento", quase sempre é isso: era transferência.
 
-O Faturamento conta só o que já foi pago. Conta a receber ainda em aberto não aparece aqui. Para enxergar o que está previsto, o caminho é Financeiro › Contas a Pagar/Receber, que depende do módulo Financeiro Avançado.
+O Faturamento conta só o que já foi pago. Conta a receber ainda em aberto não aparece aqui. Para enxergar o que está previsto, o caminho é Financeiro › Contas a Pagar/Receber, disponível desde o plano Essencial. O plano Exceção não inclui o Financeiro.
 
 Onde ficam "técnicos em campo" e "clientes ativos". Eles não são cartões de indicador no topo. O número de técnicos em campo agora aparece dentro do bloco Desempenho da Equipe, no rodapé do bloco. E não existe hoje um cartão de clientes ativos no Dashboard: a contagem de clientes você vê na própria tela de Clientes. Se alguém procura esses dois números como cartão no topo, eles não estão lá.
 
@@ -7616,11 +7847,13 @@ Cinco minutos de manhã, sempre na mesma ordem. A ideia não é analisar, é nã
 
 - Confira quem está em campo. O bloco Equipe em Campo mostra quem já está rodando. Técnico que deveria estar em campo e não aparece no mapa merece uma ligação.
 
-- Olhe a agenda de amanhã. Vá em Agenda e avance um dia. Confirme que todas as visitas têm técnico, que ninguém está com o dia impossível e que os feriados estão considerados.
+- Olhe a agenda de amanhã. Vá em Agenda e avance um dia. Confirme que todas as visitas têm técnico, que ninguém está com o dia impossível e que os feriados estão considerados. Se você prefere uma lista corrida em vez do calendário, use o alternador Calendário / Lista no topo da Agenda: a visão em lista mostra tarefas e Ordens de Serviço em sequência, incluindo os compromissos sem data marcada, que não têm onde aparecer no calendário.
 
 - Fim. Se sobrou tempo, olhe OS por Status: um monte de OS em Pendente quer dizer que estão entrando pedidos e ninguém está agendando.
 
  Faça essa rodada sempre no mesmo horário, de preferência antes de o primeiro técnico sair. Depois que a equipe está na rua, remanejar custa combustível e paciência.
+
+ Na Agenda, o filtro Tipo deixa você olhar só Tarefa ou só Ordem de Serviço, tanto no calendário quanto na visão em lista. Útil quando você quer conferir só os compromissos internos do dia, sem o volume de OS agendadas misturado.
 
 ### 7. Rotina semanal (20 min): funil do CRM, orçamentos em aberto, estoque mínimo
 
@@ -7638,13 +7871,13 @@ Uma vez por semana, num horário tranquilo, com o filtro do Dashboard em Último
 
 - Taxa de Conclusão. Se ela caiu em relação à semana anterior, alguma coisa travou: falta de peça, falta de técnico ou cliente sem responder.
 
- O funil do CRM só existe pra quem contratou o módulo CRM, e a aba de contas a pagar e receber só pra quem tem o Financeiro Avançado. Se a sua empresa não tem esses módulos, pule esses passos ou avalie contratar em Assinatura › Gerenciar Meu Plano.
+ O funil do CRM só existe pra quem contratou o módulo CRM. O Financeiro completo, incluindo Contas a Pagar/Receber e DRE, já vem desde o Essencial; somente o plano Exceção não possui esse grupo.
 
 ### 8. Rotina mensal (1h): DRE, contas a receber vencidas, contratos a vencer, NPS
 
 Uma hora por mês, de preferência nos primeiros dias, com o filtro em Mês passado pra olhar o mês fechado.
 
-- DRE. Vá em Financeiro › Visão Geral e abra a aba de DRE. É o demonstrativo de resultado: quanto entrou, quanto saiu e o que sobrou. Exige o módulo Financeiro Avançado.
+- DRE. Vá em Financeiro › Visão Geral e abra a aba de DRE. É o demonstrativo de resultado: quanto entrou, quanto saiu e o que sobrou. Está disponível desde o plano Essencial.
 
 - Contas a receber vencidas. Em Financeiro › Contas a Pagar/Receber, filtre o que está vencido. Cobrar no dia 5 é muito mais fácil que cobrar no dia 45.
 
@@ -7706,7 +7939,7 @@ Tela Novidades: a versão que você está usando aparece marcada com Versão atu
 | "Os atalhos de teclado não funcionam" | O cursor está dentro de um campo de texto, ou o interruptor está desligado | Clique numa área vazia da tela antes de usar o atalho. Confira também Configurações › Atalhos, onde há um interruptor geral. |
 | "Onde fica a busca geral do sistema?" | Não existe busca global | Cada tela tem a própria busca. Use o atalho da tela e depois a busca dela. |
 | "O sistema não atualizou depois da correção" | Versão antiga guardada no navegador | Clique no ícone de recarregar ao lado do número da versão no rodapé. No celular, puxe a tela pra baixo. |
-| "Não vejo a aba de DRE" | Falta o módulo Financeiro Avançado | A DRE e as Contas a Pagar/Receber dependem do módulo Financeiro Avançado. Contrate em Assinatura › Gerenciar Meu Plano. |
+| "Não vejo a aba de DRE" | Falta a permissão de tela ou a empresa está no plano Exceção | O Financeiro completo vem desde o Essencial. Confira a permissão Financeiro do usuário e o plano da empresa; o plano Exceção não inclui esse grupo. |
 | "Meu Dashboard está vazio" | Período sem movimento ou base ainda nova | Troque o filtro pra Todos os tempos. Se continuar vazio, é porque ainda não existem OS e lançamentos cadastrados. |
 
 ### Perguntas frequentes

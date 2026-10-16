@@ -80,7 +80,7 @@ interface FinanceDREProps {
   transactions: (FinancialTransaction & { customer?: any })[];
   /** Período selecionado no topo da tela. Vazio = "Todos os tempos". */
   range?: DateRange;
-  /** Gate do add-on Cobranças. Sem ele, nem o toggle nem a query existem na UX. */
+  /** Entitlement técnico de Cobranças. Sem ele, nem o toggle nem a query existem na UX. */
   canIncludeSubscriptionProjections?: boolean;
 }
 

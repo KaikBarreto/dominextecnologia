@@ -15,6 +15,7 @@ describe('subscriptionCatalog', () => {
       'crm',
       'basic',
       'customer_portal',
+      'cobrancas',
       'pricing_advanced',
       'video_questions',
       'crm',
@@ -55,6 +56,7 @@ describe('subscriptionCatalog', () => {
 
   it('marca o antigo Financeiro Avançado como aposentado na proposta', () => {
     expect(isRetiredProposalModule('finance_advanced')).toBe(true);
+    expect(isRetiredProposalModule('cobrancas')).toBe(true);
     expect(isRetiredProposalModule('finance')).toBe(false);
   });
 

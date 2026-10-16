@@ -82,7 +82,7 @@ const BASE_MODULE_BENEFITS = [
 ];
 
 const BASE_MODULE_DESCRIPTION = [
-  'OS, agenda, clientes, equipamentos, estoque e financeiro.',
+  'OS, agenda, clientes, equipamentos, estoque e financeiro completo, com contas, DRE, DFC e cobranças online.',
   'Também inclui Área do Técnico™, Portal do Cliente, Orçamentos e Precificação',
   'e perguntas em vídeo nos checklists.',
 ].join(' ');

@@ -319,7 +319,7 @@ export const frOverrides: MessagesOverride = {
 
   pageChrome: {
     ctaTrial: 'Discuter sur WhatsApp',
-    seePlans: 'Voir les tarifs',
+    seePlans: 'Découvrir les fonctionnalités',
     seeAllPlans: 'Voir tous les tarifs',
     faqHeading: 'Questions fréquentes',
     problemLabel: 'Le problème',
@@ -350,7 +350,7 @@ export const frOverrides: MessagesOverride = {
       subtitle:
         'Fini les feuilles de calcul, les fils de discussion et les reprises. Dominex centralise vos ordres de travail, suit votre équipe et fournit des données réelles pour vous aider à grandir.',
       ctaPrimary: 'Discuter sur WhatsApp',
-      ctaSecondary: 'Voir les tarifs',
+      ctaSecondary: 'Découvrir les fonctionnalités',
       videoUnsupported: 'Votre navigateur ne prend pas en charge la vidéo HTML5.',
       videoLabel: 'Démo Dominex',
     },
@@ -543,7 +543,7 @@ export const frOverrides: MessagesOverride = {
             'Portail client',
             'Tarification avancée (marge)',
             'Questions vidéo dans les checklists',
-            'Rapports de base',
+            'Finance complète : comptes, résultat, trésorerie et encaissements en ligne',
             'Support par e-mail',
           ],
         },
@@ -554,9 +554,6 @@ export const frOverrides: MessagesOverride = {
             'Tout ce qui est inclus dans Essentiel +',
             '10 utilisateurs inclus',
             'Module Employés / RH',
-            'Finances avancées',
-            'Comptes à payer/à recevoir',
-            'Compte de résultat et rapports financiers',
             'Gestion des contrats et plans de maintenance',
           ],
         },
@@ -612,7 +609,7 @@ export const frOverrides: MessagesOverride = {
         },
         {
           q: 'Puis-je gérer les finances, les comptes à payer et le compte de résultat ?',
-          a: 'Oui. À partir de l’offre Pro, vous disposez des comptes à payer/à recevoir, de plusieurs comptes bancaires, de la trésorerie, des écritures récurrentes, du rapprochement par catégorie et d’un compte de résultat pour analyser vos performances.',
+          a: 'Oui. Dès l’offre Essentiel, vous disposez de la gestion financière complète : comptes à payer/à recevoir, plusieurs comptes bancaires, trésorerie, écritures récurrentes, rapprochement par catégorie, compte de résultat, tableau des flux de trésorerie et encaissements en ligne. Connectez le compte Asaas de l’entreprise pour accepter Pix, boleto et carte. Seule l’offre Exception exclut la finance.',
         },
         {
           q: 'Comment fonctionnent le pointage et la paie des employés ?',
@@ -648,7 +645,7 @@ export const frOverrides: MessagesOverride = {
     heroSubtitle:
       'Dominex existe pour sortir le travail d’intervention de la paperasse. Un seul système, sur mobile et ordinateur, pour piloter l’opération du devis à l’encaissement.',
     ctaTrial: 'Discuter sur WhatsApp',
-    ctaPricing: 'Voir les tarifs',
+    ctaPricing: 'Découvrir les fonctionnalités',
     missionTitle: 'Notre mission',
     missionP1Strong: 'ordres de travail, maintenance et gestion',
     missionP1:

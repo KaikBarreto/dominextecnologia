@@ -133,7 +133,7 @@ function Hero() {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto whitespace-normal h-auto text-center leading-tight"
             asChild
           >
-            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{t.ctaPricing}</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('recursos', locale)}>{t.ctaPricing}</Link>
           </Button>
         </div>
       </div>
@@ -248,7 +248,7 @@ function FinalCta() {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 whitespace-normal h-auto text-center leading-tight"
             asChild
           >
-            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{t.ctaPricing}</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('recursos', locale)}>{t.ctaPricing}</Link>
           </Button>
         </div>
       </div>

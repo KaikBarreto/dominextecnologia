@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.33.5";
+export const APP_VERSION = "1.34.0";
 
-export const VERSION_NOTES = "O atalho do WhatsApp chegou também ao app do técnico em campo: ele chama o cliente com um toque, de qualquer tela da ordem de serviço.";
+export const VERSION_NOTES = "O Financeiro completo agora vem desde o plano Essencial, com contas a pagar e receber, DRE, DFC, relatórios e cobranças online.";
