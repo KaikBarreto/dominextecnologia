@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.34.0";
+export const APP_VERSION = "1.34.1";
 
-export const VERSION_NOTES = "O Financeiro completo agora vem desde o plano Essencial, com contas a pagar e receber, DRE, DFC, relatórios e cobranças online.";
+export const VERSION_NOTES = "Ajustes internos de preparação. Nada muda no uso do dia a dia.";
