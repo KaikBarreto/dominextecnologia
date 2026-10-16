@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.0',
+    date: '16 de outubro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Descontos flexíveis nas propostas',
+        description: 'Agora é possível oferecer descontos diferentes para o plano mensal e para o anual, escolhendo entre percentual ou valor em reais. Cada condição é calculada separadamente sobre o preço cheio e a proposta em PDF já mostra os valores originais, os descontos e os totais finais.',
+        category: 'recurso',
+      },
+      {
+        title: 'Tabela completa de preços no simulador',
+        description: 'A nova aba Tabela reúne o plano Essencial, todos os módulos adicionais e o valor por usuário extra. O módulo de personalização também passou a aparecer pelo nome White Label, deixando a apresentação comercial mais direta.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cobranças como módulo adicional',
+        description: 'Contas, movimentações, DRE, DFC e relatórios continuam incluídos no Financeiro do plano Essencial. Já as cobranças online e as assinaturas recorrentes de clientes voltaram a fazer parte do módulo Cobranças, contratado separadamente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.35.4',
     date: '16 de outubro de 2026',
     type: 'patch',

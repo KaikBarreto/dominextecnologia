@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.35.4";
+export const APP_VERSION = "1.36.0";
 
-export const VERSION_NOTES = "Conectar o WhatsApp ficou mais simples: a tela mostra o passo a passo com as instruções para Android e iPhone, e uma barra de progresso enquanto o QR Code é gerado.";
+export const VERSION_NOTES = "O simulador de propostas ganhou tabela completa de preços, descontos mensal e anual em percentual ou reais e PDFs com todos os valores calculados.";
