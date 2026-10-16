@@ -94,6 +94,15 @@ export function nfseRowToEmission(row: NfseListRow): NfseEmission {
     fisqal_fiscal_request_id: null,
     tomador_avulso: row.tomador_avulso ?? null,
     intermediario_avulso: row.intermediario_avulso ?? null,
+    // ⚠️ A RPC `get_nfse_emissions_paged` ainda NÃO devolve estas duas colunas
+    // (nasceram com a NFS-e automática por contrato). O default aqui é o da
+    // própria coluna no banco, e é por isso que a listagem ainda não pode
+    // mostrar o selo "Automática": enquanto a RPC não trouxer `origem`, toda
+    // nota lida por este caminho se parece com manual. Antes de exibir o selo
+    // (Onda 3), acrescentar `origem` e `nfse_auto_job_id` ao SELECT da RPC e
+    // trocar estes dois valores por `row.origem` / `row.nfse_auto_job_id`.
+    origem: 'manual',
+    nfse_auto_job_id: null,
   };
   return emission;
 }

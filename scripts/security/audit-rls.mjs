@@ -22,6 +22,11 @@ export const SENSITIVE_TABLES = new Set([
   'usage_events',
   'self_registration_attempts',
   'salesperson_daily_activity',
+  // Fila da NFS-e automática: carrega company_id + vínculo com parcela e
+  // contrato, e é escrita só por trigger/cron/RPC. Entrar aqui obriga o
+  // REVOKE explícito de anon e proíbe policy com predicado `true` fora de
+  // service_role (R10 do doc de autorização da NFS-e automática).
+  'nfse_auto_jobs',
 ]);
 
 function unquoteIdentifier(identifier) {

@@ -22,6 +22,72 @@ export const nfse = {
       overview: 'Relatório fiscal',
       list: 'Notas Fiscais',
       received: 'Notas recebidas',
+      automatic: 'Emissões automáticas',
+    },
+    // ── Emissões automáticas (fila `nfse_auto_jobs`, NFS-e por contrato
+    // recorrente) ────────────────────────────────────────────────────────────
+    auto: {
+      title: 'Emissões automáticas',
+      subtitle: 'O que está acontecendo com as notas das parcelas de contrato que têm emissão automática ligada.',
+      summary: '{count} agendamento(s)',
+      groups: {
+        blocked: 'Bloqueadas',
+        failed: 'Falharam',
+        waitingDecision: 'Aguardando decisão',
+        inProgress: 'Em andamento',
+        issued: 'Emitidas',
+        cancelled: 'Canceladas',
+      },
+      status: {
+        pendente: 'Na fila',
+        processando: 'Emitindo agora',
+        emitida: 'Emitida',
+        falhou: 'Falhou',
+        cancelada: 'Cancelada',
+        bloqueada_assinatura: 'Bloqueada (assinatura)',
+        bloqueada_modulo: 'Bloqueada (módulo)',
+        bloqueada_cota: 'Bloqueada (cota do mês)',
+        aguardando_decisao: 'Aguardando decisão',
+        unknown: 'Desconhecido',
+      },
+      reasons: {
+        bloqueada_assinatura: 'Regularize a assinatura para retomar.',
+        bloqueada_modulo: 'O módulo Notas Fiscais não está ativo no plano atual.',
+        bloqueada_cota: 'Você atingiu o limite de notas do mês.',
+        aguardando_decisao:
+          'A competência desta nota já fechou. A emissão automática parou aqui e espera sua decisão.',
+      },
+      card: {
+        customerFallback: 'Cliente',
+        contractFallback: 'Contrato',
+        competencePrefix: 'Competência',
+        scheduledForPrefix: 'Previsão',
+        attemptsLabel: '{count}ª tentativa',
+      },
+      actions: {
+        retry: 'Tentar de novo',
+        emitAnyway: 'Emitir mesmo assim',
+        viewInvoice: 'Ver nota',
+      },
+      emitAnywayDialog: {
+        title: 'Emitir mesmo assim?',
+        description:
+          'A competência de {competence} já fechou. Emitir agora lança o serviço num período em que o imposto já foi apurado, o que pode exigir ajuste com o seu contador. Se já decidiu, confirme abaixo.',
+        confirm: 'Emitir mesmo assim',
+        cancel: 'Cancelar',
+      },
+      toasts: {
+        retrySuccess: 'Enviado para a fila. Acompanhe o andamento aqui.',
+        retryGenericError: 'Não foi possível tentar de novo agora.',
+      },
+      empty: {
+        title: 'Nenhuma emissão automática ainda',
+        description:
+          'Ligue a emissão automática na aba Financeiro de um contrato para ver os agendamentos aqui.',
+      },
+      loadErrorTitle: 'Não foi possível carregar as emissões automáticas',
+      loadError: 'Tente novamente em alguns instantes.',
+      retryBtn: 'Tentar novamente',
     },
     // ── Notas recebidas (NF-e/NFS-e destinadas ao CNPJ do cliente) ──────────
     recebidas: {
@@ -891,6 +957,71 @@ export const nfse = {
       overview: 'Tax Report',
       list: 'Invoices',
       received: 'Received invoices',
+      automatic: 'Automatic invoicing',
+    },
+    // ── Automatic invoicing (`nfse_auto_jobs` queue, recurring-contract
+    // service invoices) ───────────────────────────────────────────────────
+    auto: {
+      title: 'Automatic invoicing',
+      subtitle: "What's happening with the invoices of contract installments that have automatic invoicing turned on.",
+      summary: '{count} schedule(s)',
+      groups: {
+        blocked: 'Blocked',
+        failed: 'Failed',
+        waitingDecision: 'Awaiting decision',
+        inProgress: 'In progress',
+        issued: 'Issued',
+        cancelled: 'Cancelled',
+      },
+      status: {
+        pendente: 'Queued',
+        processando: 'Issuing now',
+        emitida: 'Issued',
+        falhou: 'Failed',
+        cancelada: 'Cancelled',
+        bloqueada_assinatura: 'Blocked (subscription)',
+        bloqueada_modulo: 'Blocked (module)',
+        bloqueada_cota: 'Blocked (monthly quota)',
+        aguardando_decisao: 'Awaiting decision',
+        unknown: 'Unknown',
+      },
+      reasons: {
+        bloqueada_assinatura: 'Settle your subscription to resume.',
+        bloqueada_modulo: 'The Service Invoices module is not active on your current plan.',
+        bloqueada_cota: "You have reached this month's invoice limit.",
+        aguardando_decisao:
+          "This invoice's accounting period has already closed. Automatic issuance stopped here and is waiting for your decision.",
+      },
+      card: {
+        customerFallback: 'Customer',
+        contractFallback: 'Contract',
+        competencePrefix: 'Period',
+        scheduledForPrefix: 'Expected on',
+        attemptsLabel: 'Attempt #{count}',
+      },
+      actions: {
+        retry: 'Try again',
+        emitAnyway: 'Issue anyway',
+        viewInvoice: 'View invoice',
+      },
+      emitAnywayDialog: {
+        title: 'Issue anyway?',
+        description:
+          "The accounting period for {competence} has already closed. Issuing now records the service in a period whose taxes were already filed, which may require an adjustment with your accountant. If you're sure, confirm below.",
+        confirm: 'Issue anyway',
+        cancel: 'Cancel',
+      },
+      toasts: {
+        retrySuccess: 'Sent to the queue. Track its progress here.',
+        retryGenericError: 'Could not try again right now.',
+      },
+      empty: {
+        title: 'No automatic invoicing yet',
+        description: "Turn on automatic invoicing in a contract's Financial tab to see schedules here.",
+      },
+      loadErrorTitle: 'Could not load automatic invoicing',
+      loadError: 'Please try again in a moment.',
+      retryBtn: 'Try again',
     },
     // ── Received invoices (NF-e/NFS-e issued against the client's tax ID) ──
     recebidas: {
@@ -1743,6 +1874,71 @@ export const nfse = {
       overview: 'Informe fiscal',
       list: 'Facturas',
       received: 'Facturas recibidas',
+      automatic: 'Facturación automática',
+    },
+    // ── Facturación automática (cola `nfse_auto_jobs`, facturas de servicio
+    // por contrato recurrente) ──────────────────────────────────────────────
+    auto: {
+      title: 'Facturación automática',
+      subtitle: 'Lo que está pasando con las facturas de las cuotas de contrato que tienen la facturación automática activada.',
+      summary: '{count} programación(es)',
+      groups: {
+        blocked: 'Bloqueadas',
+        failed: 'Fallidas',
+        waitingDecision: 'Esperando decisión',
+        inProgress: 'En curso',
+        issued: 'Emitidas',
+        cancelled: 'Canceladas',
+      },
+      status: {
+        pendente: 'En cola',
+        processando: 'Emitiendo ahora',
+        emitida: 'Emitida',
+        falhou: 'Fallida',
+        cancelada: 'Cancelada',
+        bloqueada_assinatura: 'Bloqueada (suscripción)',
+        bloqueada_modulo: 'Bloqueada (módulo)',
+        bloqueada_cota: 'Bloqueada (cupo del mes)',
+        aguardando_decisao: 'Esperando decisión',
+        unknown: 'Desconocido',
+      },
+      reasons: {
+        bloqueada_assinatura: 'Regulariza la suscripción para continuar.',
+        bloqueada_modulo: 'El módulo de Facturas de Servicio no está activo en el plan actual.',
+        bloqueada_cota: 'Alcanzaste el límite de facturas del mes.',
+        aguardando_decisao:
+          'El período de esta factura ya cerró. La emisión automática se detuvo aquí y espera tu decisión.',
+      },
+      card: {
+        customerFallback: 'Cliente',
+        contractFallback: 'Contrato',
+        competencePrefix: 'Período',
+        scheduledForPrefix: 'Previsto para',
+        attemptsLabel: 'Intento n.º {count}',
+      },
+      actions: {
+        retry: 'Intentar de nuevo',
+        emitAnyway: 'Emitir de todos modos',
+        viewInvoice: 'Ver factura',
+      },
+      emitAnywayDialog: {
+        title: '¿Emitir de todos modos?',
+        description:
+          'El período de {competence} ya cerró. Emitir ahora registra el servicio en un período cuyos impuestos ya fueron declarados, lo que puede requerir un ajuste con tu contador. Si ya decidiste, confirma abajo.',
+        confirm: 'Emitir de todos modos',
+        cancel: 'Cancelar',
+      },
+      toasts: {
+        retrySuccess: 'Enviado a la cola. Sigue el progreso aquí.',
+        retryGenericError: 'No se pudo intentar de nuevo en este momento.',
+      },
+      empty: {
+        title: 'Todavía no hay facturación automática',
+        description: 'Activa la facturación automática en la pestaña Financiero de un contrato para ver las programaciones aquí.',
+      },
+      loadErrorTitle: 'No se pudo cargar la facturación automática',
+      loadError: 'Inténtalo de nuevo en unos instantes.',
+      retryBtn: 'Intentar de nuevo',
     },
     // ── Facturas recibidas (NF-e/NFS-e emitidas contra el CNPJ del cliente) ──
     recebidas: {
@@ -2597,6 +2793,73 @@ export const nfse = {
       overview: 'Rapport fiscal',
       list: 'Factures',
       received: 'Factures reçues',
+      automatic: 'Facturation automatique',
+    },
+    // ── Facturation automatique (file `nfse_auto_jobs`, factures de service
+    // par contrat récurrent) ────────────────────────────────────────────────
+    auto: {
+      title: 'Facturation automatique',
+      subtitle:
+        "Ce qui se passe avec les factures des échéances de contrat dont la facturation automatique est activée.",
+      summary: '{count} planification(s)',
+      groups: {
+        blocked: 'Bloquées',
+        failed: 'Échouées',
+        waitingDecision: 'En attente de décision',
+        inProgress: 'En cours',
+        issued: 'Émises',
+        cancelled: 'Annulées',
+      },
+      status: {
+        pendente: 'En file',
+        processando: 'Émission en cours',
+        emitida: 'Émise',
+        falhou: 'Échouée',
+        cancelada: 'Annulée',
+        bloqueada_assinatura: 'Bloquée (abonnement)',
+        bloqueada_modulo: 'Bloquée (module)',
+        bloqueada_cota: 'Bloquée (quota du mois)',
+        aguardando_decisao: 'En attente de décision',
+        unknown: 'Inconnu',
+      },
+      reasons: {
+        bloqueada_assinatura: "Régularisez l'abonnement pour reprendre.",
+        bloqueada_modulo: "Le module Factures de Service n'est pas actif dans le plan actuel.",
+        bloqueada_cota: 'Vous avez atteint la limite de factures du mois.',
+        aguardando_decisao:
+          "La période de cette facture est déjà clôturée. L'émission automatique s'est arrêtée ici et attend votre décision.",
+      },
+      card: {
+        customerFallback: 'Client',
+        contractFallback: 'Contrat',
+        competencePrefix: 'Période',
+        scheduledForPrefix: 'Prévue le',
+        attemptsLabel: 'Tentative n° {count}',
+      },
+      actions: {
+        retry: 'Réessayer',
+        emitAnyway: 'Émettre malgré tout',
+        viewInvoice: 'Voir la facture',
+      },
+      emitAnywayDialog: {
+        title: 'Émettre malgré tout ?',
+        description:
+          "La période de {competence} est déjà clôturée. Émettre maintenant enregistre le service dans une période dont les impôts ont déjà été déclarés, ce qui peut demander un ajustement avec votre comptable. Si vous êtes sûr, confirmez ci-dessous.",
+        confirm: 'Émettre malgré tout',
+        cancel: 'Annuler',
+      },
+      toasts: {
+        retrySuccess: 'Envoyée dans la file. Suivez son avancement ici.',
+        retryGenericError: "Impossible de réessayer pour le moment.",
+      },
+      empty: {
+        title: 'Aucune facturation automatique pour le moment',
+        description:
+          "Activez la facturation automatique dans l'onglet Financier d'un contrat pour voir les planifications ici.",
+      },
+      loadErrorTitle: 'Impossible de charger la facturation automatique',
+      loadError: 'Veuillez réessayer dans un instant.',
+      retryBtn: 'Réessayer',
     },
     // ── Factures reçues (NF-e/NFS-e émises contre le CNPJ du client) ────────
     recebidas: {

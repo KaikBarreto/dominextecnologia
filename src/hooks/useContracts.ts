@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '@/integrations/supabase/client';
 import type { ContractFinanceRule } from '@/lib/contract-billing';
+import type { ContractNfseAutoRule } from '@/lib/contract-nfse-auto';
 import { useToast } from '@/hooks/use-toast';
 import { useFeatureFlag, isFlagEnabledFor } from './useFeatureFlag';
 
@@ -54,6 +55,22 @@ export interface Contract {
   // cliente final NÃO exibe os documentos PMOC (Dossiê, TRT, Certificado,
   // Cronograma). O gestor libera/oculta na aba Documentos do contrato.
   portal_documents_released: boolean;
+  // NFS-e automática por contrato (Onda 1 — migration 20261016140000).
+  // `nfse_auto_enabled` nasce `false` em todo contrato (default de banco);
+  // ligar é SEMPRE ação explícita de um humano na aba Financeiro. Overrides
+  // fiscais nulos herdam de `service_types` (resolvido no banco, não aqui).
+  nfse_auto_enabled: boolean;
+  nfse_auto_trigger: 'dia_fixo' | 'vencimento' | 'pagamento';
+  nfse_auto_day: number | null;
+  nfse_auto_description: string | null;
+  // Carimbados por trigger do banco (quem ligou e quando) — o app NUNCA escreve
+  // nestes dois campos, só lê (auditoria/exibição).
+  nfse_auto_enabled_at: string | null;
+  nfse_auto_enabled_by: string | null;
+  nfse_codigo_servico: string | null;
+  nfse_codigo_tributacao_municipal: string | null;
+  nfse_codigo_nbs: string | null;
+  nfse_iss_aliquota: number | null;
   customers?: { id: string; name: string; document?: string | null; address?: string | null; city?: string | null; state?: string | null } | null;
   // Alias singular do MESMO cliente do contrato (FK customer_id). Existe porque
   // alguns consumidores (ex.: select "Contrato vinculado" no financeiro) leem
@@ -2433,6 +2450,37 @@ export function useContracts() {
     },
   });
 
+  /**
+   * Liga/desliga/ajusta a regra da EMISSÃO AUTOMÁTICA DE NFS-e de um
+   * contrato (bloco "Nota fiscal automática" na aba Financeiro de
+   * ContractDetail — ver docs/planos/2026-10-16-nfse-automatica-contrato.md
+   * §3.1). Molde IDÊNTICO a `updateContractFinanceRule`: mesmo tipo de
+   * mutation, mesma invalidação — MAS campos diferentes, de propósito (não
+   * reusar `updateContractFinanceRule` pra carregar `nfse_*`, que não é
+   * regra de cobrança).
+   *
+   * O patch vem pronto de `buildContractNfseAutoRule` (@/lib/contract-nfse-auto),
+   * que valida ANTES de montar o objeto (ligado + dia_fixo sem dia é
+   * recusado ali, nunca aqui). Esta mutation NUNCA grava
+   * `nfse_auto_enabled_at`/`nfse_auto_enabled_by` — essas duas colunas são
+   * carimbadas por um trigger do banco que precisa ver o usuário da sessão;
+   * escrevê-las pelo app estragaria o rastro de quem autorizou a automação.
+   */
+  const updateContractNfseAutoRule = useMutation({
+    mutationFn: async (input: { contractId: string; rule: ContractNfseAutoRule }) => {
+      const { error } = await supabase
+        .from('contracts')
+        .update(input.rule as any)
+        .eq('id', input.contractId);
+      if (error) throw error;
+      return input.rule;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+    },
+  });
+
   const applyFinancialLinksToContractParcels = useMutation({
     mutationFn: async (input: {
       contractId: string;
@@ -3775,6 +3823,7 @@ export function useContracts() {
     /** Gera as parcelas (a receber) de um contrato recém-criado, num INSERT só. */
     createContractInstallments,
     updateContractFinanceRule,
+    updateContractNfseAutoRule,
     renewContract,
     setPortalDocumentsReleased,
     deleteContract,

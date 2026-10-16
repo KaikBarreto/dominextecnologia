@@ -147,6 +147,27 @@ verify_jwt = false
 [functions.nfse-tax-codes]
 verify_jwt = false
 
+# nfse-auto-runner: drena a fila da NFS-e AUTOMÁTICA por contrato recorrente e
+# emite SEM humano na ponta. Chamada SÓ por pg_cron via pg_net, com
+# `Authorization: Bearer <CRON_SECRET>` (segredo do Vault).
+#
+# verify_jwt=false é OBRIGATÓRIO e não é afrouxamento: o segredo do Vault é
+# texto cru, não um JWT — com verify_jwt=true o gateway devolveria 401
+# UNAUTHORIZED_INVALID_JWT_FORMAT antes de a função sequer olhar o header, e o
+# cron falharia em silêncio (aconteceu com dfe-sync-cron e collect-db-health).
+# O gate real é dentro da função: CRON_SECRET comparado em tempo constante,
+# fail-closed (secret ausente ⇒ 401 pra todo mundo), antes de qualquer
+# createClient.
+#
+# ⚠️ Ela NÃO tem caminho alternativo com sessão de usuário, de propósito: itera
+# a fila de TODAS as empresas e emite documento fiscal em nome de cada CNPJ.
+# Aceitar JWT aqui deixaria um tenant disparar emissão no CNPJ alheio e queimar
+# a cota fiscal dos outros. Quem emite com humano na ponta é `nfse-emit`, que
+# exige JWT + módulo 'nfe' + can_manage_system. Mesmo desenho de
+# dfe-manifestar-worker.
+[functions.nfse-auto-runner]
+verify_jwt = false
+
 # -----------------------------------------------------------------------------
 # NFS-e — rotas LEGADAS (`fisqal-*`). ⚠️ SAEM NO RELEASE SEGUINTE.
 # Mantidas por 1 release só para o cliente com bundle antigo em cache não

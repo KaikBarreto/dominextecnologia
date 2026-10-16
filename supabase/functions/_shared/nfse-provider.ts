@@ -31,8 +31,26 @@ import type { NfseCanonicalStatus } from "./nfse-status.ts";
 export interface NfseProviderCtx {
   supabase: SupabaseClient;
   companyId: string;
-  /** Linha de `company_fiscal_settings` do tenant (já carregada pelo handler). */
+  /**
+   * Linha de `company_fiscal_settings` do tenant (já carregada pelo handler).
+   *
+   * ⚠️ Tem que vir da MESMA leitura que produziu `companyId` (sempre
+   * `.eq("company_id", companyId)`). O certificado A1 que ASSINA a nota sai
+   * daqui; `companyId` vira o `empresaId` do microserviço e a linha de
+   * `fiscal_certificate_audit`. Par de origens diferentes = nota assinada com o
+   * certificado de outra empresa.
+   */
   fiscal: Record<string, unknown>;
+  /**
+   * Contexto gravado em `fiscal_certificate_audit.contexto` quando o
+   * certificado é decifrado. Opcional: ausente mantém o rótulo histórico de
+   * cada operação (`"emitir_nfse"`, chave de acesso na consulta, etc.).
+   *
+   * Existe para a emissão AUTOMÁTICA poder carimbar `emitir_nfse_auto:<job_id>`
+   * e a auditoria de custódia responder qual job usou a chave privada de qual
+   * CNPJ.
+   */
+  contextoAuditoria?: string;
 }
 
 // -----------------------------------------------------------------------------

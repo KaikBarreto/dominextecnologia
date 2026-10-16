@@ -166,6 +166,30 @@ export const COL_SERVICE_TYPE = "service_type_id";
  */
 export const COL_CREATED_BY = "created_by";
 
+/**
+ * ORIGEM da nota em `nfse_emissions` (migration 20261016140000):
+ * 'manual' (alguém clicou emitir) ou 'automatica' (saiu pelo contrato, sem
+ * humano na ponta). `DEFAULT 'manual'` no banco preserva as notas existentes.
+ *
+ * Em `origem = 'automatica'`, `created_by` fica NULL DE PROPÓSITO: a tela de
+ * Notas Fiscais mostra o avatar de QUEM EMITIU, e ninguém emitiu. A
+ * responsabilidade humana existe e mora em
+ * `contracts.nfse_auto_enabled_by/at` (quem ligou a automação naquele
+ * contrato), alcançável a partir de `nfse_auto_job_id`.
+ */
+export const COL_ORIGEM = "origem";
+
+/**
+ * Vínculo nota↔job da fila automática em `nfse_emissions`
+ * (migration 20261016140000). SEM FK física: nota é documento fiscal e não
+ * pode ser bloqueada nem apagada por causa de outra linha.
+ *
+ * Escrito SEMPRE em par com `origem` — `null` no caminho manual. O par diz a
+ * verdade sobre a ÚLTIMA tentativa gravada na linha; deixar um job id velho
+ * numa linha reaproveitada por emissão manual seria rastro mentiroso.
+ */
+export const COL_NFSE_AUTO_JOB_ID = "nfse_auto_job_id";
+
 // =============================================================================
 // TOMADOR / INTERMEDIÁRIO AVULSO (digitado na hora, sem cadastro em `customers`)
 // =============================================================================

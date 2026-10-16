@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { BrandedQRCode } from '@/components/BrandedQRCode';
 import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
@@ -18,6 +18,7 @@ import { useTableSort } from '@/hooks/useTableSort';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -99,6 +100,15 @@ import {
   contractInstallmentDescription,
   nextNonRetroactiveDue,
 } from '@/lib/contract-billing';
+import {
+  buildContractNfseAutoRule,
+  isValidNfseAutoDay,
+  nfseAutoDayRequired,
+  type ContractNfseAutoRule,
+  type ContractNfseAutoTrigger,
+} from '@/lib/contract-nfse-auto';
+import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { TaxCodeCombobox } from '@/components/fiscal/TaxCodeCombobox';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { todayInTz, dateInTz } from '@/lib/timezone';
@@ -119,6 +129,17 @@ function todayISODate(): string {
   const d = new Date();
   const off = d.getTimezoneOffset() * 60000;
   return new Date(d.getTime() - off).toISOString().slice(0, 10);
+}
+
+/**
+ * Serialização ESTÁVEL da regra de NFS-e automática (sempre as mesmas 8
+ * chaves, na mesma ordem — `ContractNfseAutoRule`). Usada tanto pro valor que
+ * ACABOU de vir do banco (hidratação) quanto pro valor local (dirty-check do
+ * autosave): comparar os dois JSON.stringify é o que decide "mudou de fato"
+ * sem reimplementar a comparação campo a campo duas vezes.
+ */
+function nfseAutoSnapshot(rule: ContractNfseAutoRule): string {
+  return JSON.stringify(rule);
 }
 
 const STATUS_VARIANTS: Record<string, 'success' | 'outline' | 'destructive' | 'secondary'> = {
@@ -148,6 +169,11 @@ const OS_STATUS_VARIANT: Record<OsStatus, 'success' | 'info' | 'warning' | 'dest
 // do wizard e o que alimenta a conta do lote inicial da cobrança contínua.
 const FREQUENCY_MONTHS = FINANCE_FREQUENCY_MONTHS;
 
+// Autosave da "Nota fiscal automática" (bloco NFS-e da aba Financeiro) — mesmo
+// atraso e mesmo molde de guardas (loadedRef/hydratingRef/lastSavedRef) do
+// autosave de Configurações → Regional (SettingsRegionalContent.tsx).
+const NFSE_AUTO_SAVE_DELAY_MS = 700;
+
 export default function ContractDetail() {
   const isMobile = useIsMobile();
   const { locale, currency, timezone } = useAppLocaleContext();
@@ -157,6 +183,9 @@ export default function ContractDetail() {
   const fin = MESSAGES[locale].app.finance;
   // Copy da cobrança contínua: a MESMA da etapa Financeiro do wizard.
   const tCont = MESSAGES[locale].app.contracts.continuousBilling;
+  // Copy do bloco "Nota fiscal automática" — mesmo namespace de continuousBilling
+  // (conceito compartilhável, não exclusivo do wizard).
+  const tNfseAuto = MESSAGES[locale].app.contracts.nfseAuto;
 
   const FREQUENCY_OPTIONS = useMemo(
     () => Object.entries(FREQUENCY_MONTHS).map(([value, months]) => ({
@@ -190,7 +219,12 @@ export default function ContractDetail() {
   // "Financeiro" são abas próprias em TODO contrato (decisão do CEO).
   const [pmocTab, setPmocTab] = useState<'overview' | 'equipamentos' | 'ocorrencias' | 'historico' | 'financeiro' | 'documentos' | 'cronograma'>('overview');
 
-  const { deleteContract, applyFinancialLinksToContractParcels, renewContract, updateContractFinanceRule } = useContracts();
+  const { deleteContract, applyFinancialLinksToContractParcels, renewContract, updateContractFinanceRule, updateContractNfseAutoRule } = useContracts();
+  // Tipos de serviço — só pra resolver a HERANÇA dos dados fiscais exibida no
+  // bloco "Nota fiscal automática" (placeholder/texto de apoio). A resolução
+  // real (qual valor a nota usa) é feita no banco por `nfse_auto_claim`, nunca
+  // recalculada aqui.
+  const { serviceTypes } = useServiceTypes();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -227,6 +261,28 @@ export default function ContractDetail() {
   const [contEditFrequency, setContEditFrequency] = useState('mensal');
   const [contEditAnchor, setContEditAnchor] = useState('');
   const [contSaving, setContSaving] = useState(false);
+
+  // ── Nota fiscal automática (NFS-e por contrato) — bloco próprio da aba
+  // Financeiro, autosave com debounce (decisão do Tech Lead: aqui é o único
+  // lugar que configura isto, porque a automação nasce DESLIGADA por lei e só
+  // faz sentido ligar com o contrato já existindo e o tipo de serviço já
+  // escolhido). Mesmo molde de guardas do autosave de Configurações → Regional
+  // (SettingsRegionalContent.tsx): loadedRef/hydratingRef/lastSavedRef evitam
+  // que o refetch automático da tela (refetchOnWindowFocus/refetchOnMount)
+  // apague uma edição em andamento.
+  const [nfseEnabled, setNfseEnabled] = useState(false);
+  const [nfseTrigger, setNfseTrigger] = useState<ContractNfseAutoTrigger>('dia_fixo');
+  const [nfseDay, setNfseDay] = useState('');
+  const [nfseDescription, setNfseDescription] = useState('');
+  const [nfseCodigoServico, setNfseCodigoServico] = useState('');
+  const [nfseCodigoTribMun, setNfseCodigoTribMun] = useState('');
+  const [nfseCodigoNbs, setNfseCodigoNbs] = useState('');
+  const [nfseIssAliquota, setNfseIssAliquota] = useState('');
+  const [nfseDirty, setNfseDirty] = useState(false);
+  const nfseLoadedRef = useRef(false);
+  const nfseHydratingRef = useRef(false);
+  const nfseLastSavedRef = useRef<string>('');
+  const nfseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // "Aplicar conta/categoria a todas as parcelas" (contratos antigos sem vínculo).
   const [showApplyLinksModal, setShowApplyLinksModal] = useState(false);
   const [applyAccountId, setApplyAccountId] = useState('');
@@ -1013,6 +1069,126 @@ export default function ContractDetail() {
       setContSaving(false);
     }
   };
+
+  // ── Nota fiscal automática: hidratação, dirty-check e autosave ────────────
+  // Dia só é OBRIGATÓRIO quando ligado + modo dia_fixo (espelha o CHECK
+  // `contracts_nfse_auto_day_required` do banco). Fora disso, dia vazio é
+  // estado normal (configurando o modo antes de ligar).
+  const nfseDayNum = nfseDay.trim() === '' ? null : parseInt(nfseDay, 10);
+  const nfseDayBlocking = nfseAutoDayRequired(nfseEnabled, nfseTrigger) && !isValidNfseAutoDay(nfseDayNum);
+  const nfseSelectedServiceType = useMemo(
+    () => serviceTypes.find(st => st.id === (contract as any)?.service_type_id) ?? null,
+    [serviceTypes, contract],
+  );
+
+  // Hidrata do contrato. Guard anti-eco: não re-hidrata o payload que
+  // acabamos de salvar (evita engolir uma edição em voo quando a tela refaz a
+  // busca em segundo plano — refetchOnWindowFocus/refetchOnMount: 'always').
+  useEffect(() => {
+    if (!contract) return;
+    const c = contract as any;
+    const serverRule: ContractNfseAutoRule = {
+      nfse_auto_enabled: !!c.nfse_auto_enabled,
+      nfse_auto_trigger: (c.nfse_auto_trigger as ContractNfseAutoTrigger) || 'dia_fixo',
+      nfse_auto_day: c.nfse_auto_day ?? null,
+      nfse_auto_description: c.nfse_auto_description ?? null,
+      nfse_codigo_servico: c.nfse_codigo_servico ?? null,
+      nfse_codigo_tributacao_municipal: c.nfse_codigo_tributacao_municipal ?? null,
+      nfse_codigo_nbs: c.nfse_codigo_nbs ?? null,
+      nfse_iss_aliquota: c.nfse_iss_aliquota ?? null,
+    };
+    const snapshot = nfseAutoSnapshot(serverRule);
+    if (nfseLoadedRef.current && snapshot === nfseLastSavedRef.current) return;
+    nfseHydratingRef.current = true;
+    setNfseEnabled(serverRule.nfse_auto_enabled);
+    setNfseTrigger(serverRule.nfse_auto_trigger);
+    setNfseDay(serverRule.nfse_auto_day != null ? String(serverRule.nfse_auto_day) : '');
+    setNfseDescription(serverRule.nfse_auto_description || '');
+    setNfseCodigoServico(serverRule.nfse_codigo_servico || '');
+    setNfseCodigoTribMun(serverRule.nfse_codigo_tributacao_municipal || '');
+    setNfseCodigoNbs(serverRule.nfse_codigo_nbs || '');
+    setNfseIssAliquota(serverRule.nfse_iss_aliquota != null ? String(serverRule.nfse_iss_aliquota) : '');
+    nfseLastSavedRef.current = snapshot;
+    nfseLoadedRef.current = true;
+    requestAnimationFrame(() => { nfseHydratingRef.current = false; });
+  }, [contract]);
+
+  const buildNfseSnapshot = useCallback((): ContractNfseAutoRule => ({
+    nfse_auto_enabled: nfseEnabled,
+    nfse_auto_trigger: nfseTrigger,
+    nfse_auto_day: nfseDayNum,
+    nfse_auto_description: nfseDescription.trim() || null,
+    nfse_codigo_servico: nfseCodigoServico.trim() || null,
+    nfse_codigo_tributacao_municipal: nfseCodigoTribMun.trim() || null,
+    nfse_codigo_nbs: nfseCodigoNbs.trim() || null,
+    nfse_iss_aliquota: nfseIssAliquota.trim() === '' ? null : Number(nfseIssAliquota.replace(',', '.')),
+  }), [nfseEnabled, nfseTrigger, nfseDayNum, nfseDescription, nfseCodigoServico, nfseCodigoTribMun, nfseCodigoNbs, nfseIssAliquota]);
+
+  // Monta o patch validado, ou `null` + toast quando o CHECK do banco
+  // recusaria (defesa redundante: `nfseDayBlocking` já impede o autosave de
+  // chamar isto fora do caso válido).
+  const buildNfseRuleSafe = useCallback((): ContractNfseAutoRule | null => {
+    try {
+      return buildContractNfseAutoRule({
+        enabled: nfseEnabled,
+        trigger: nfseTrigger,
+        day: nfseDayNum,
+        description: nfseDescription,
+        codigoServico: nfseCodigoServico,
+        codigoTributacaoMunicipal: nfseCodigoTribMun,
+        codigoNbs: nfseCodigoNbs,
+        issAliquota: nfseIssAliquota.trim() === '' ? null : Number(nfseIssAliquota.replace(',', '.')),
+      });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: tNfseAuto.errorToastTitle, description: getErrorMessage(err) });
+      return null;
+    }
+  }, [nfseEnabled, nfseTrigger, nfseDayNum, nfseDescription, nfseCodigoServico, nfseCodigoTribMun, nfseCodigoNbs, nfseIssAliquota, toast, tNfseAuto.errorToastTitle]);
+
+  // Auto-save com debounce. Enquanto `nfseDayBlocking` (ligado + dia_fixo sem
+  // dia válido), NÃO dispara rede — o CHECK do banco recusaria, e estourar
+  // isso como erro técnico é pior do que simplesmente esperar o usuário
+  // escolher o dia (a mensagem em PT-BR já está no campo).
+  useEffect(() => {
+    if (!nfseLoadedRef.current || nfseHydratingRef.current || !id) return;
+    const snapshot = nfseAutoSnapshot(buildNfseSnapshot());
+    const dirty = snapshot !== nfseLastSavedRef.current;
+    setNfseDirty(dirty);
+    if (nfseTimerRef.current) clearTimeout(nfseTimerRef.current);
+    if (!dirty || nfseDayBlocking) return;
+    nfseTimerRef.current = setTimeout(() => {
+      const rule = buildNfseRuleSafe();
+      if (!rule) return;
+      nfseLastSavedRef.current = snapshot;
+      setNfseDirty(false);
+      updateContractNfseAutoRule.mutate(
+        { contractId: id, rule },
+        {
+          onError: (e: unknown) =>
+            toast({ variant: 'destructive', title: tNfseAuto.errorToastTitle, description: getErrorMessage(e) }),
+        },
+      );
+    }, NFSE_AUTO_SAVE_DELAY_MS);
+    return () => { if (nfseTimerRef.current) clearTimeout(nfseTimerRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buildNfseSnapshot, nfseDayBlocking, id]);
+
+  // Flush no unmount (troca de aba / saída) — mesmo padrão do autosave de
+  // Configurações → Regional, pra não perder a última edição digitada bem na
+  // hora de navegar pra outro contrato.
+  const flushNfseRef = useRef<() => void>(() => {});
+  flushNfseRef.current = () => {
+    if (!nfseLoadedRef.current || nfseHydratingRef.current || !id || nfseDayBlocking) return;
+    if (nfseTimerRef.current) clearTimeout(nfseTimerRef.current);
+    const snapshot = nfseAutoSnapshot(buildNfseSnapshot());
+    if (snapshot === nfseLastSavedRef.current) return;
+    const rule = buildNfseRuleSafe();
+    if (!rule) return;
+    nfseLastSavedRef.current = snapshot;
+    setNfseDirty(false);
+    updateContractNfseAutoRule.mutate({ contractId: id, rule });
+  };
+  useEffect(() => () => { flushNfseRef.current?.(); }, []);
 
   /**
    * Executa a rodada de cobrança em lote.
@@ -2379,6 +2555,169 @@ export default function ContractDetail() {
                 "Nova receita": o card vazio no fim da aba era invisível na
                 prática. */}
             {activeContractSubscription && billingSection}
+
+            {/* Nota fiscal automática (NFS-e por contrato) — só com o módulo
+                NFS-e ativo: sem ele os campos fiscais não significam nada pra
+                quem vê a tela. Autosave com debounce (decisão do Tech Lead):
+                este é o ÚNICO lugar do app que liga a automação — ela nasce
+                desligada por lei, então não há motivo pra repetir o bloco no
+                wizard de criação. */}
+            {hasModule('nfe') && (
+              <Card className="w-full min-w-0 max-w-full overflow-hidden">
+                <CardHeader className="flex flex-col items-start justify-between gap-2 space-y-0 sm:flex-row sm:items-center">
+                  <CardTitle className="flex min-w-0 items-center gap-2 text-base sm:text-lg">
+                    <FileText className="h-5 w-5 shrink-0" />
+                    <span className="min-w-0 break-words">{tNfseAuto.sectionLabel}</span>
+                  </CardTitle>
+                  {updateContractNfseAutoRule.isPending ? (
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> {tNfseAuto.savingStatus}
+                    </span>
+                  ) : nfseDirty ? (
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" /> {tNfseAuto.unsavedStatus}
+                    </span>
+                  ) : nfseLoadedRef.current ? (
+                    <span className="flex items-center gap-1.5 text-xs text-success">
+                      <CheckCircle className="h-3.5 w-3.5" /> {tNfseAuto.savedStatus}
+                    </span>
+                  ) : null}
+                </CardHeader>
+                <CardContent className="min-w-0 space-y-4">
+                  <p className="text-xs text-muted-foreground break-words">{tNfseAuto.sectionHint}</p>
+
+                  {/* Liga/desliga: escolha binária → LabeledSwitch. Wrapper
+                      flex-col/items-start porque Label é inline e a raiz do
+                      LabeledSwitch é inline-flex (com space-y as duas colam). */}
+                  <div className="flex flex-col items-start gap-2">
+                    <LabeledSwitch
+                      value={nfseEnabled ? 'on' : 'off'}
+                      onChange={(v) => setNfseEnabled(v === 'on')}
+                      off={{ value: 'off', label: tNfseAuto.off }}
+                      on={{ value: 'on', label: tNfseAuto.on }}
+                      aria-label={tNfseAuto.sectionLabel}
+                    />
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>{tNfseAuto.triggerLabel}</Label>
+                      <Select value={nfseTrigger} onValueChange={(v) => setNfseTrigger(v as ContractNfseAutoTrigger)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="dia_fixo">{tNfseAuto.triggerFixedDay}</SelectItem>
+                          <SelectItem value="vencimento">{tNfseAuto.triggerDueDate}</SelectItem>
+                          <SelectItem value="pagamento">{tNfseAuto.triggerPayment}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* Dia do mês: só no modo dia_fixo, e obrigatório quando a
+                        automação está ligada nesse modo (CHECK do banco). */}
+                    {nfseTrigger === 'dia_fixo' && (
+                      <div className="space-y-2">
+                        <Label>{tNfseAuto.dayLabel}</Label>
+                        <NumericInput
+                          value={nfseDay}
+                          onValueChange={setNfseDay}
+                          placeholder={tNfseAuto.dayPlaceholder}
+                        />
+                        {nfseDayBlocking ? (
+                          <p className="flex items-start gap-1.5 text-xs text-destructive break-words">
+                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                            {tNfseAuto.dayRequiredHint}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground break-words">{tNfseAuto.dayClampHint}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{tNfseAuto.descriptionLabel}</Label>
+                    <Textarea
+                      value={nfseDescription}
+                      onChange={(e) => setNfseDescription(e.target.value)}
+                      placeholder={tNfseAuto.descriptionPlaceholder}
+                      rows={2}
+                    />
+                    <p className="text-xs text-muted-foreground break-words">{tNfseAuto.descriptionHint}</p>
+                  </div>
+
+                  {/* Dados fiscais: overrides opcionais, nulo = herda do tipo
+                      de serviço do contrato (resolvido no banco, nunca aqui —
+                      este bloco só EXIBE o valor herdado como apoio). */}
+                  <div className="space-y-3 rounded-xl border bg-muted/30 p-3">
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-semibold">{tNfseAuto.fiscalSectionLabel}</p>
+                      <p className="text-xs text-muted-foreground break-words">{tNfseAuto.fiscalSectionHint}</p>
+                    </div>
+                    {!nfseSelectedServiceType && (
+                      <NoticeBanner variant="info">{tNfseAuto.fiscalNoServiceTypeHint}</NoticeBanner>
+                    )}
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">{tNfseAuto.codigoServicoLabel}</Label>
+                        <TaxCodeCombobox
+                          type="servico"
+                          value={nfseCodigoServico}
+                          onSelect={(codigo) => setNfseCodigoServico(codigo)}
+                          placeholder={tNfseAuto.placeholderTaxSearch}
+                        />
+                        <p className="text-[11px] text-muted-foreground break-words">
+                          {nfseSelectedServiceType?.codigo_servico
+                            ? `${tNfseAuto.inheritedFromPrefix} ${nfseSelectedServiceType.codigo_servico}`
+                            : tNfseAuto.inheritedNone}
+                        </p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">{tNfseAuto.codigoTribMunLabel}</Label>
+                        <Input
+                          value={nfseCodigoTribMun}
+                          onChange={(e) => setNfseCodigoTribMun(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                          inputMode="numeric"
+                          maxLength={3}
+                        />
+                        <p className="text-[11px] text-muted-foreground break-words">
+                          {nfseSelectedServiceType?.codigo_tributacao_municipal
+                            ? `${tNfseAuto.inheritedFromPrefix} ${nfseSelectedServiceType.codigo_tributacao_municipal}`
+                            : tNfseAuto.inheritedNone}
+                        </p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">{tNfseAuto.codigoNbsLabel}</Label>
+                        <TaxCodeCombobox
+                          type="nbs"
+                          value={nfseCodigoNbs}
+                          onSelect={(codigo) => setNfseCodigoNbs(codigo)}
+                          placeholder={tNfseAuto.placeholderTaxSearch}
+                        />
+                        <p className="text-[11px] text-muted-foreground break-words">
+                          {nfseSelectedServiceType?.codigo_nbs
+                            ? `${tNfseAuto.inheritedFromPrefix} ${nfseSelectedServiceType.codigo_nbs}`
+                            : tNfseAuto.inheritedNone}
+                        </p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">{tNfseAuto.issAliquotaLabel}</Label>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          value={nfseIssAliquota}
+                          onChange={(e) => setNfseIssAliquota(e.target.value)}
+                          placeholder="5"
+                        />
+                        <p className="text-[11px] text-muted-foreground break-words">
+                          {nfseSelectedServiceType?.iss_aliquota != null
+                            ? `${tNfseAuto.inheritedFromPrefix} ${nfseSelectedServiceType.iss_aliquota}%`
+                            : tNfseAuto.inheritedNone}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         );
 

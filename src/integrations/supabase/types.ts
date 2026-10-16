@@ -2452,6 +2452,16 @@ export type Database = {
           is_pmoc: boolean
           name: string
           next_pmoc_generation_date: string | null
+          nfse_auto_day: number | null
+          nfse_auto_description: string | null
+          nfse_auto_enabled: boolean
+          nfse_auto_enabled_at: string | null
+          nfse_auto_enabled_by: string | null
+          nfse_auto_trigger: string
+          nfse_codigo_nbs: string | null
+          nfse_codigo_servico: string | null
+          nfse_codigo_tributacao_municipal: string | null
+          nfse_iss_aliquota: number | null
           notes: string | null
           pmoc_area_climatizada_m2: number | null
           pmoc_carga_termica_tr: number | null
@@ -2499,6 +2509,16 @@ export type Database = {
           is_pmoc?: boolean
           name: string
           next_pmoc_generation_date?: string | null
+          nfse_auto_day?: number | null
+          nfse_auto_description?: string | null
+          nfse_auto_enabled?: boolean
+          nfse_auto_enabled_at?: string | null
+          nfse_auto_enabled_by?: string | null
+          nfse_auto_trigger?: string
+          nfse_codigo_nbs?: string | null
+          nfse_codigo_servico?: string | null
+          nfse_codigo_tributacao_municipal?: string | null
+          nfse_iss_aliquota?: number | null
           notes?: string | null
           pmoc_area_climatizada_m2?: number | null
           pmoc_carga_termica_tr?: number | null
@@ -2546,6 +2566,16 @@ export type Database = {
           is_pmoc?: boolean
           name?: string
           next_pmoc_generation_date?: string | null
+          nfse_auto_day?: number | null
+          nfse_auto_description?: string | null
+          nfse_auto_enabled?: boolean
+          nfse_auto_enabled_at?: string | null
+          nfse_auto_enabled_by?: string | null
+          nfse_auto_trigger?: string
+          nfse_codigo_nbs?: string | null
+          nfse_codigo_servico?: string | null
+          nfse_codigo_tributacao_municipal?: string | null
+          nfse_iss_aliquota?: number | null
           notes?: string | null
           pmoc_area_climatizada_m2?: number | null
           pmoc_carga_termica_tr?: number | null
@@ -6972,6 +7002,111 @@ export type Database = {
           },
         ]
       }
+      nfse_auto_jobs: {
+        Row: {
+          attempts: number
+          bloqueado_em: string | null
+          claim_count: number
+          company_id: string
+          competencia: string
+          contract_id: string
+          created_at: string
+          emitted_at: string | null
+          financial_transaction_id: string
+          id: string
+          last_error: string | null
+          nfse_emission_id: string | null
+          proxima_tentativa_em: string | null
+          reenfileirado_em: string | null
+          reenfileirado_motivo: string | null
+          reenfileirado_por: string | null
+          scheduled_for: string
+          status: string
+          trigger_reason: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          bloqueado_em?: string | null
+          claim_count?: number
+          company_id: string
+          competencia: string
+          contract_id: string
+          created_at?: string
+          emitted_at?: string | null
+          financial_transaction_id: string
+          id?: string
+          last_error?: string | null
+          nfse_emission_id?: string | null
+          proxima_tentativa_em?: string | null
+          reenfileirado_em?: string | null
+          reenfileirado_motivo?: string | null
+          reenfileirado_por?: string | null
+          scheduled_for: string
+          status?: string
+          trigger_reason: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          bloqueado_em?: string | null
+          claim_count?: number
+          company_id?: string
+          competencia?: string
+          contract_id?: string
+          created_at?: string
+          emitted_at?: string | null
+          financial_transaction_id?: string
+          id?: string
+          last_error?: string | null
+          nfse_emission_id?: string | null
+          proxima_tentativa_em?: string | null
+          reenfileirado_em?: string | null
+          reenfileirado_motivo?: string | null
+          reenfileirado_por?: string | null
+          scheduled_for?: string
+          status?: string
+          trigger_reason?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfse_auto_jobs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfse_auto_jobs_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contract_health_status"
+            referencedColumns: ["contract_id"]
+          },
+          {
+            foreignKeyName: "nfse_auto_jobs_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfse_auto_jobs_financial_transaction_id_fkey"
+            columns: ["financial_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfse_auto_jobs_nfse_emission_id_fkey"
+            columns: ["nfse_emission_id"]
+            isOneToOne: false
+            referencedRelation: "nfse_emissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nfse_codigos_nbs: {
         Row: {
           ativo: boolean
@@ -7064,7 +7199,9 @@ export type Database = {
           intermediario_avulso: Json | null
           intermediario_customer_id: string | null
           municipio_incidencia_ibge: string | null
+          nfse_auto_job_id: string | null
           numero_nfse: string | null
+          origem: string
           pdf_url: string | null
           percentual_trib_sn: number | null
           protocolo: string | null
@@ -7106,7 +7243,9 @@ export type Database = {
           intermediario_avulso?: Json | null
           intermediario_customer_id?: string | null
           municipio_incidencia_ibge?: string | null
+          nfse_auto_job_id?: string | null
           numero_nfse?: string | null
+          origem?: string
           pdf_url?: string | null
           percentual_trib_sn?: number | null
           protocolo?: string | null
@@ -7148,7 +7287,9 @@ export type Database = {
           intermediario_avulso?: Json | null
           intermediario_customer_id?: string | null
           municipio_incidencia_ibge?: string | null
+          nfse_auto_job_id?: string | null
           numero_nfse?: string | null
+          origem?: string
           pdf_url?: string | null
           percentual_trib_sn?: number | null
           protocolo?: string | null
@@ -12122,6 +12263,7 @@ export type Database = {
           p_customer_id: string
           p_description: string
           p_due_date: string
+          p_service_order_id?: string
           p_tenant_charge_id: string
         }
         Returns: string
@@ -12713,6 +12855,94 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: number
       }
+      nfse_auto_adiar: {
+        Args: { p_job_id: string; p_mensagem: string; p_status: string }
+        Returns: undefined
+      }
+      nfse_auto_aguardar_decisao: {
+        Args: { p_job_id: string; p_mensagem: string }
+        Returns: undefined
+      }
+      nfse_auto_amanha: { Args: never; Returns: string }
+      nfse_auto_claim: {
+        Args: { p_limite?: number; p_orfao_minutos?: number }
+        Returns: {
+          cliente_bairro: string
+          cliente_cep: string
+          cliente_cidade: string
+          cliente_complemento: string
+          cliente_documento: string
+          cliente_email: string
+          cliente_ibge: string
+          cliente_id: string
+          cliente_inscricao_mun: string
+          cliente_logradouro: string
+          cliente_nome: string
+          cliente_numero: string
+          cliente_razao_social: string
+          cliente_telefone: string
+          cliente_uf: string
+          contrato_auto_enabled: boolean
+          contrato_auto_trigger: string
+          contrato_descricao_nota: string
+          contrato_nome: string
+          contrato_service_type_id: string
+          contrato_status: string
+          fiscal_codigo_nbs: string
+          fiscal_codigo_servico: string
+          fiscal_codigo_trib_mun: string
+          fiscal_iss_aliquota: number
+          fiscal_item_lc116: string
+          fiscal_servico_nome: string
+          job_attempts: number
+          job_company_id: string
+          job_competencia: string
+          job_contract_id: string
+          job_id: string
+          job_scheduled_for: string
+          job_transaction_id: string
+          job_trigger_reason: string
+          parcela_amount: number
+          parcela_amount_received: number
+          parcela_description: string
+          parcela_due_date: string
+          parcela_is_paid: boolean
+          parcela_transaction_date: string
+        }[]
+      }
+      nfse_auto_concluir: {
+        Args: { p_job_id: string; p_nfse_emission_id: string }
+        Returns: undefined
+      }
+      nfse_auto_encerrar: {
+        Args: { p_job_id: string; p_mensagem: string; p_status: string }
+        Returns: undefined
+      }
+      nfse_auto_enfileirar: {
+        Args: { p_financial_transaction_id: string; p_motivo: string }
+        Returns: string
+      }
+      nfse_auto_enqueue_due_jobs: {
+        Args: never
+        Returns: {
+          contract_id: string
+          enqueued_count: number
+          reason: string
+          trigger_mode: string
+        }[]
+      }
+      nfse_auto_falhar: {
+        Args: { p_definitivo: boolean; p_job_id: string; p_mensagem: string }
+        Returns: undefined
+      }
+      nfse_auto_registrar_tentativa: {
+        Args: { p_job_id: string }
+        Returns: number
+      }
+      nfse_auto_trigger_date: {
+        Args: { p_day: number; p_month_start: string }
+        Returns: string
+      }
       nfse_can_emit: { Args: { p_company_id: string }; Returns: Json }
       nfse_month_usage: { Args: { p_company_id: string }; Returns: number }
       notify_terms_update: {
@@ -12728,6 +12958,8 @@ export type Database = {
         }
         Returns: string
       }
+      os_billing_state: { Args: { _service_order_id: string }; Returns: Json }
+      os_media_company_ok: { Args: { object_name: string }; Returns: boolean }
       pay_affiliate_balance: {
         Args: {
           p_affiliate_id: string
@@ -13055,6 +13287,12 @@ export type Database = {
         Args: { p_inventory_ids: string[]; p_stock_id: string }
         Returns: undefined
       }
+      storage_folder_uuid: { Args: { object_name: string }; Returns: string }
+      storage_insert_company_ok: {
+        Args: { meta: Json; object_name: string }
+        Returns: boolean
+      }
+      storage_stamp_company_ok: { Args: { meta: Json }; Returns: boolean }
       submit_disc_assessment: {
         Args: {
           p_answers: Json
@@ -13084,6 +13322,10 @@ export type Database = {
         }
         Returns: Json
       }
+      sync_service_order_scope: {
+        Args: { _items: Json; _service_order_id: string }
+        Returns: Json
+      }
       tenant_charges_without_receivable: {
         Args: { p_company_id: string }
         Returns: Json
@@ -13092,6 +13334,7 @@ export type Database = {
         Args: { _at?: string; _company_id: string }
         Returns: boolean
       }
+      time_photo_company_ok: { Args: { object_name: string }; Returns: boolean }
       tombstone_tenant_subscription_if_empty: {
         Args: {
           p_company_id: string

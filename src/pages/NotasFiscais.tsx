@@ -10,6 +10,7 @@ import {
   Loader2,
   FileBarChart,
   Inbox,
+  RefreshCw,
 } from 'lucide-react';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FABButton } from '@/components/mobile/FABButton';
@@ -40,6 +41,7 @@ import { NfseComoFunciona } from '@/components/fiscal/NfseComoFunciona';
 import { nfseRowToEmission, type NfseListRow } from '@/components/fiscal/nfseRow';
 import { NfseListTab } from '@/components/fiscal/NfseListTab';
 import { NotasRecebidasTab } from '@/components/fiscal/inboundNotes/NotasRecebidasTab';
+import { AutoEmissoesTab } from '@/components/fiscal/AutoEmissoesTab';
 
 /** Quantas notas o atalho "Últimas emissões" mostra. */
 const RECENT_LIMIT = 5;
@@ -82,7 +84,7 @@ export default function NotasFiscais() {
   const [searchParams, setSearchParams] = useSearchParams();
   // Abre na listagem (a informação que o usuário busca primeiro); "Relatório
   // fiscal" (ex-"Visão Geral") é a 2ª aba.
-  const [tab, setTab] = useState<'visao-geral' | 'nfse' | 'recebidas'>('nfse');
+  const [tab, setTab] = useState<'visao-geral' | 'nfse' | 'recebidas' | 'automaticas'>('nfse');
   const [novaOpen, setNovaOpen] = useState(false);
   const [selected, setSelected] = useState<NfseEmission | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -256,6 +258,7 @@ export default function NotasFiscais() {
   const navTabs: SettingsTab[] = [
     { value: 'nfse', label: t.tabs.list, icon: FileText },
     { value: 'visao-geral', label: t.tabs.overview, icon: FileBarChart },
+    { value: 'automaticas', label: t.tabs.automatic, icon: RefreshCw },
     { value: 'recebidas', label: t.tabs.received, icon: Inbox },
   ];
 
@@ -324,7 +327,7 @@ export default function NotasFiscais() {
               (Notas Fiscais / Relatório fiscal) — "Notas recebidas" é outro
               fluxo (o que fornecedores emitem contra o cliente), sem relação
               com esses contadores. */}
-          {tab !== 'recebidas' && !showGuidedEmpty && (
+          {(tab === 'nfse' || tab === 'visao-geral') && !showGuidedEmpty && (
             <NfseStatsCards stats={stats} loading={isLoading} />
           )}
 
@@ -339,11 +342,17 @@ export default function NotasFiscais() {
           <SettingsSidebarLayout
             tabs={navTabs}
             activeTab={tab}
-            onTabChange={(v) => setTab(v as 'visao-geral' | 'nfse' | 'recebidas')}
+            onTabChange={(v) => setTab(v as 'visao-geral' | 'nfse' | 'recebidas' | 'automaticas')}
           >
             {tab === 'recebidas' ? (
               /* ---- Notas recebidas: NF-e/NFS-e emitidas contra o CNPJ do cliente ---- */
               <NotasRecebidasTab />
+            ) : tab === 'automaticas' ? (
+              /* ---- Emissões automáticas: fila `nfse_auto_jobs` por contrato.
+                  Igual a "recebidas", fica FORA do estado guiado: a automação
+                  é config do CONTRATO (aba Financeiro), não depende de a
+                  empresa já ter concluído o onboarding de emissão manual. */
+              <AutoEmissoesTab />
             ) : showGuidedEmpty ? (
               /* Sem config de emissão: guia só as abas de EMISSÃO. */
               renderGuidedEmpty()

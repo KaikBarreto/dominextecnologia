@@ -319,7 +319,10 @@ export const sefinProvider: NfseProvider = {
   // ---------------------------------------------------------------------------
   async emitir(ctx: NfseProviderCtx, input: NfseEmitirInput): Promise<NfseResultado> {
     const { dps, tomador, servico, valores } = input;
-    const base = await corpoBase(ctx, "emitir_nfse");
+    // Fallback no rótulo histórico: só a emissão automática manda contexto
+    // próprio (`emitir_nfse_auto:<job_id>`), pro rastro de decifra do
+    // certificado dizer QUAL job usou a chave privada de QUAL CNPJ.
+    const base = await corpoBase(ctx, ctx.contextoAuditoria || "emitir_nfse");
 
     const valoresPayload: Record<string, unknown> = { valorServico: valores.valorServico };
     // Campo AUSENTE = não enviar (≠ zero). A supressão da alíquota (E0625) já

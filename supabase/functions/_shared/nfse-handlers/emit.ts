@@ -3,6 +3,32 @@
 // =============================================================================
 // AUTENTICADA: Authorization Bearer + módulo 'nfe' ativo + can_manage_system.
 //
+// ┌───────────────────────────────────────────────────────────────────────────┐
+// │ DOIS CHAMADORES, DOIS GATES, UM ÚNICO MONTADOR DE DPS                     │
+// │                                                                           │
+// │   handleNfseEmit(req)        → authorizeFiscalManager (JWT + módulo +     │
+// │   (porta do HUMANO)            can_manage_system) → emitirNfseAutorizada  │
+// │                                                                           │
+// │   nfse-auto-runner           → CRON_SECRET + entitlement + módulo + cota  │
+// │   (porta da AUTOMAÇÃO)         por job → emitirNfseAutorizada             │
+// │                                                                           │
+// │ `emitirNfseAutorizada` é o NÚCLEO: recebe contexto JÁ PROVADO e não sabe  │
+// │ nada de requisição HTTP. Ela NUNCA lê o tenant do body — `EmitBody` não   │
+// │ tem `companyId` e nenhuma atribuição de `companyId` parte de `body`.      │
+// │                                                                           │
+// │ POR QUE EXTRAIR em vez de afrouxar o gate: `_shared/fiscal-auth.ts` é o   │
+// │ gate de SETE edges fiscais. Abrir nele um ramo sem JWT (ou aceitar        │
+// │ CRON_SECRET) abriria as sete de uma vez. E o runner forjar/emprestar JWT  │
+// │ de um usuário real seria impersonar humano em documento fiscal — além de  │
+// │ deixar de faturar, em silêncio, todo tenant sem usuário com              │
+// │ can_manage_system. Duplicar a montagem da DPS no runner criaria uma       │
+// │ SEGUNDA VERDADE sobre o que vai na nota: a próxima rejeição E0625/E1235   │
+// │ passaria a acontecer só num dos dois caminhos.                            │
+// │                                                                           │
+// │ Regra de autorização completa:                                            │
+// │ docs/planos/2026-10-16-nfse-automatica-regra-de-autorizacao.md (R2, R4)   │
+// └───────────────────────────────────────────────────────────────────────────┘
+//
 // Fluxo:
 //   - Auth de tenant via fiscal-auth.ts.
 //   - Body: { emissionId?, customerId | tomadorAvulso, servico: {...},
@@ -43,6 +69,7 @@
 //     fallback `company_fiscal_settings.iss_aliquota`.
 // =============================================================================
 
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   authorizeFiscalManager,
   corsHeaders,
@@ -67,6 +94,8 @@ import {
   COL_CREATED_BY,
   COL_CTRIBMUN,
   COL_INTERMEDIARIO_AVULSO,
+  COL_NFSE_AUTO_JOB_ID,
+  COL_ORIGEM,
   COL_TOMADOR_AVULSO,
   enderecoAvulsoCompleto,
   isUnknownColumnError,
@@ -95,6 +124,14 @@ const COLUNAS_TOLERANTES = [
   COL_CREATED_BY,
   COL_TOMADOR_AVULSO,
   COL_INTERMEDIARIO_AVULSO,
+  // `origem` e `nfse_auto_job_id` (migration 20261016140000) entram aqui pelo
+  // MESMO motivo do `created_by`: elas são rastro, e perder rastro é melhor que
+  // perder a linha de uma nota que já foi ao governo. Também é o que mantém
+  // esta edge backward-compatible com ambiente onde a migration da NFS-e
+  // automática ainda não foi aplicada (servidor vai na frente do frontend, mas
+  // nunca exigindo schema que ainda não existe).
+  COL_ORIGEM,
+  COL_NFSE_AUTO_JOB_ID,
 ];
 
 // ⚠️ Assimetria PROPOSITAL com `save-draft.ts`, onde as colunas do avulso NÃO
@@ -328,7 +365,14 @@ function identidadeDoTomador(
   return `avulso:${clean(avulso?.nome).toLowerCase()}`;
 }
 
-interface EmitBody {
+/**
+ * Corpo da emissão.
+ *
+ * ⚠️ NÃO TEM, e não pode passar a ter, `companyId`. O tenant é pré-condição
+ * provada por quem chama o núcleo — nunca dado de entrada. Se um dia alguém
+ * mandar `companyId` no body, ele morre no parse por não existir aqui.
+ */
+export interface EmitBody {
   // emissionId: emite A PARTIR de um rascunho já salvo (status='rascunho').
   // Quando presente, o rascunho é a FONTE dos dados; o body sobrescreve campo a
   // campo se vier. Em vez de INSERT, a MESMA linha do rascunho "vira" emitida.
@@ -480,6 +524,70 @@ async function herdarCTribMunDoTipoDeServico(
   }
 }
 
+/**
+ * Contexto JÁ PROVADO da emissão. Quem monta este objeto é quem provou o
+ * tenant: `handleNfseEmit` (pelo JWT, via `authorizeFiscalManager`) ou
+ * `nfse-auto-runner` (pelo retorno de `nfse_auto_claim`, que re-deriva a
+ * coerência job ↔ parcela ↔ contrato ↔ cliente em SQL).
+ */
+export interface EmitirNfseAutorizadaInput {
+  /** service-role client (bypassa RLS — toda query é filtrada por companyId). */
+  supabase: SupabaseClient;
+  /**
+   * ÚNICA fonte do tenant daqui pra baixo.
+   *
+   * ⚠️ NÃO existe (e não pode passar a existir) um caminho em que este valor
+   * venha de `body`. Se um dia alguém mandar `companyId` no corpo da
+   * requisição, ele é ignorado: `EmitBody` não tem o campo e nada é lido de lá.
+   */
+  companyId: string;
+  /**
+   * Autor humano da nota, ou `null` quando foi a automação.
+   *
+   * `null` é a resposta HONESTA para "quem apertou o botão?" numa nota
+   * automática: ninguém apertou. Carimbar aqui o usuário que ligou o switch (ou
+   * o último admin, ou um usuário de sistema sintético) é falso testemunho
+   * sobre documento fiscal — e é essa pessoa que seria chamada se a nota
+   * estivesse errada. A responsabilidade humana fica em
+   * `contracts.nfse_auto_enabled_by/at`, alcançável por `nfseAutoJobId`.
+   */
+  autorUserId: string | null;
+  origem: "manual" | "automatica";
+  /** Job da fila automática (só em `origem: "automatica"`). */
+  nfseAutoJobId?: string | null;
+  /**
+   * Parcela de contrato que originou a nota (só no caminho automático).
+   *
+   * Ausente = comportamento histórico do caminho manual (nota STANDALONE, sem
+   * vínculo financeiro). Presente, o vínculo é gravado porque os produtores da
+   * fila (trigger de pagamento e cron de enfileiramento) perguntam
+   * "esta parcela já tem nota viva?" justamente por
+   * `nfse_emissions.financial_transaction_id` — sem o vínculo, a mesma parcela
+   * poderia ser reenfileirada depois.
+   *
+   * ⚠️ A coluna é `ON DELETE SET NULL`: parcela apagada apaga o vínculo. Por
+   * isso ela NUNCA é a trava de duplicidade (a trava é a UNIQUE
+   * (company_id, idempotency_key), com a chave derivada DA PARCELA) — é rastro
+   * e conveniência de consulta.
+   */
+  financialTransactionId?: string | null;
+  /**
+   * Vai para `fiscal_certificate_audit.contexto` na decifra do certificado.
+   * Ausente = `"emitir_nfse"` (comportamento histórico do caminho manual).
+   * O runner manda `emitir_nfse_auto:<job_id>`, pra auditoria de custódia do
+   * certificado apontar exatamente qual job usou a chave privada de qual CNPJ.
+   */
+  contextoAuditoria?: string;
+  body: EmitBody;
+}
+
+/**
+ * Porta do HUMANO. Gate inalterado: `Authorization: Bearer <jwt>` + módulo
+ * 'nfe' + `can_manage_system` (que honra o curinga '*' no servidor).
+ *
+ * ⚠️ Esta função NÃO ganha ramo sem JWT, nem aceita CRON_SECRET, nem passa a
+ * aceitar `companyId` no body. Automação entra pelo núcleo, não por aqui.
+ */
 export async function handleNfseEmit(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -491,6 +599,12 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
     );
   }
 
+  // O try/catch continua envolvendo TUDO, inclusive o gate: antes da extração
+  // do núcleo, uma exceção dentro de `authorizeFiscalManager` (createClient,
+  // rede no `auth.getUser()`) caía no catch geral e virava 500 em PT-BR COM os
+  // headers de CORS. Sem este bloco, ela passaria a virar um 500 cru do
+  // runtime, sem CORS — e o browser mostraria "erro de rede" em vez da
+  // mensagem. Nenhum comportamento da porta do humano muda.
   try {
     const auth = await authorizeFiscalManager(req);
     if (!auth.ok) return auth.response;
@@ -503,6 +617,64 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
       return jsonResponse({ error: "invalid_body", message: "Requisição inválida." }, 400);
     }
 
+    return await emitirNfseAutorizada({
+      supabase,
+      companyId,
+      autorUserId: userId,
+      origem: "manual",
+      body,
+    });
+  } catch (err) {
+    const providerResp = providerErrorResponse(err, { friendly: true });
+    if (providerResp) return providerResp;
+
+    console.error(`${TAG} unexpected error`, {
+      message: (err as Error)?.message ?? String(err),
+    });
+    return jsonResponse(
+      {
+        error: "internal_error",
+        message: "Falha inesperada ao emitir a nota fiscal. Tente novamente.",
+      },
+      500,
+    );
+  }
+}
+
+/**
+ * NÚCLEO da emissão. Monta a DPS, valida, consome o número, fala com o provedor
+ * e grava `nfse_emissions` + `nfse_events`.
+ *
+ * Não conhece `Request`, não conhece header, não conhece JWT e não conhece
+ * CRON_SECRET: autorização é pré-condição, resolvida por quem chama.
+ *
+ * ⚠️ O par (`companyId`, linha de `company_fiscal_settings`) tem UMA ÚNICA
+ * ORIGEM, e é aqui: a config fiscal é carregada abaixo com
+ * `.eq("company_id", companyId)`. A assinatura NÃO aceita `fiscal`
+ * pré-carregado, de propósito. Em `_shared/providers/sefin.ts` o certificado A1
+ * que ASSINA a nota vem de `ctx.fiscal`, enquanto `ctx.companyId` vira o
+ * `empresaId` do microserviço e a linha de `fiscal_certificate_audit`: se os
+ * dois pudessem vir de lugares diferentes, a nota sairia assinada com o
+ * certificado da empresa A, registrada como B no nosso banco, e a auditoria de
+ * decifra apontaria o CNPJ errado — documento fiscal emitido com a identidade
+ * de outra empresa, que não se corrige depois. Enquanto a origem é única, isso
+ * é impossível por construção; aceitar `fiscal` por parâmetro transformaria
+ * esse desastre num bug de uma linha.
+ */
+export async function emitirNfseAutorizada(
+  input: EmitirNfseAutorizadaInput,
+): Promise<Response> {
+  const { supabase, companyId, body, origem } = input;
+  const autorUserId = input.autorUserId;
+  const nfseAutoJobId = input.nfseAutoJobId ?? null;
+  const contextoAuditoria = clean(input.contextoAuditoria) || "emitir_nfse";
+  // Vazio no caminho manual: a nota standalone continua nascendo com
+  // `financial_transaction_id = null`, byte a byte como sempre foi.
+  const vinculoParcela: Record<string, unknown> = clean(input.financialTransactionId)
+    ? { financial_transaction_id: clean(input.financialTransactionId) }
+    : {};
+
+  try {
     // ---- Emissão A PARTIR de um rascunho (opcional).
     const emissionId = clean(body?.emissionId);
     let draft: Record<string, any> | null = null;
@@ -1059,16 +1231,22 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
 
     // ---- Autoria da nota (`created_by`).
     // A edge roda com service_role: auth.uid() NÃO vem de graça, então o valor
-    // é carimbado com o userId que o gate de auth já resolveu do JWT.
+    // é carimbado com o `autorUserId` que o chamador já resolveu (do JWT, no
+    // caminho manual; `null` no caminho automático — ver EmitirNfseAutorizadaInput).
     // Regra: o autor ORIGINAL nunca é reescrito. Se a linha-alvo já tem autor
     // (rascunho salvo por alguém, ou tentativa anterior), mantemos; se está
     // NULL (nota antiga / rascunho pré-migration), preenchemos agora.
+    //
+    // ⚠️ Emissão automática NÃO apaga autoria humana existente: quando
+    // `autorUserId` é null e a linha-alvo já tem autor, o `autorDoAlvo` vence e
+    // o UPDATE nem toca a coluna. Quando a linha não tem autor, gravar null é
+    // gravar a verdade.
     const autorDoAlvo = clean(
       (emissionId ? draft?.[COL_CREATED_BY] : existing?.[COL_CREATED_BY]) ?? "",
     );
     const autoriaSeVazia: Record<string, unknown> = autorDoAlvo
       ? {}
-      : { [COL_CREATED_BY]: userId };
+      : { [COL_CREATED_BY]: autorUserId };
 
     const camposComuns: Record<string, unknown> = {
       // Exatamente uma das duas fontes do tomador fica gravada — o par é escrito
@@ -1083,6 +1261,13 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
       // Registra o cTribMun EFETIVAMENTE enviado (pode ter vindo da herança do
       // tipo de serviço) — a linha tem que espelhar o que foi à prefeitura.
       [COL_CTRIBMUN]: codigoTributacaoMunicipal || null,
+      // ORIGEM + JOB andam SEMPRE JUNTOS, inclusive no caminho manual (onde o
+      // job é null). O par descreve a tentativa que está sendo gravada nesta
+      // linha; omitir um dos dois num UPDATE deixaria a linha contando história
+      // mista (ex.: `origem='manual'` com `nfse_auto_job_id` de um job velho,
+      // ou vice-versa) e a auditoria "quem emitiu esta nota?" responderia errado.
+      [COL_ORIGEM]: origem,
+      [COL_NFSE_AUTO_JOB_ID]: nfseAutoJobId,
     };
 
     /**
@@ -1102,6 +1287,7 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
       if (alvoId) {
         const payload: Record<string, unknown> = {
           ...camposComuns,
+          ...vinculoParcela,
           ...autoriaSeVazia,
           ...extra,
           updated_at: new Date().toISOString(),
@@ -1121,12 +1307,14 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
         return await rodarTolerandoColunaAusente(runUpdate, payload);
       }
 
-      // STANDALONE: sem service_order_id, sem financial_transaction_id de OS.
+      // STANDALONE: sem service_order_id. `financial_transaction_id` fica null
+      // no caminho manual e carrega a PARCELA no caminho automático.
       const payload: Record<string, unknown> = {
         company_id: companyId,
         financial_transaction_id: null,
         ...camposComuns,
-        [COL_CREATED_BY]: userId,
+        ...vinculoParcela,
+        [COL_CREATED_BY]: autorUserId,
         ...extra,
       };
       const runInsert = (p: Record<string, unknown>) =>
@@ -1195,10 +1383,16 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
     };
 
     // ---- Entrega ao provedor ativo.
+    //
+    // ⚠️ `companyId` e `fiscal` saem da MESMA iteração e da MESMA leitura: o
+    // `fiscal` acima foi lido com `.eq("company_id", companyId)`. É isso que
+    // impede, por construção, assinar a nota de uma empresa com o certificado
+    // de outra (ver o cabeçalho de `emitirNfseAutorizada`).
     const ctx: NfseProviderCtx = {
       supabase,
       companyId,
       fiscal: fiscal as Record<string, unknown>,
+      contextoAuditoria,
     };
 
     let resultado: NfseResultado;
