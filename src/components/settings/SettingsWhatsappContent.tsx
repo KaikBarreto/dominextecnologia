@@ -8,6 +8,7 @@ import {
   CreditCard,
   FileText,
   History,
+  Lightbulb,
   Link2,
   Lock,
   MessageSquareText,
@@ -268,11 +269,14 @@ function WhatsappContent() {
         <NoticeBanner variant="neutral" icon={Lock} title={copy.readOnlyTitle}>
           {copy.readOnlyDescription}
         </NoticeBanner>
-      ) : (
+      ) : activeSection !== 'connection' ? (
+        /* Na aba de Conexão este aviso diz exatamente o que o cartão logo abaixo
+           já diz, a 60px de distância. Repetir a mesma frase duas vezes gasta o
+           topo da tela e enfraquece as duas. */
         <NoticeBanner variant="info" title={copy.preparationTitle}>
           {copy.preparationDescription}
         </NoticeBanner>
-      )}
+      ) : null}
 
       <WhatsappSectionNav
         active={activeSection}
@@ -447,97 +451,127 @@ function ConnectionCard({
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Link2 className="h-5 w-5 text-primary" />
-                {copy.connectionTitle}
-              </CardTitle>
-              <CardDescription className="mt-1 max-w-3xl">{copy.connectionDescription}</CardDescription>
-            </div>
-            <Badge variant="outline">Somente um canal ativo por vez</Badge>
-          </div>
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Link2 className="h-5 w-5 text-primary" />
+            {copy.connectionTitle}
+          </CardTitle>
+          <CardDescription className="mt-1 max-w-2xl">{copy.connectionDescription}</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <section className="rounded-xl bg-muted/35 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-background text-primary shadow-sm"><ShieldCheck className="h-5 w-5" /></span>
-                  <div><h3 className="font-semibold">Meta Cloud API</h3><p className="text-sm text-muted-foreground">Conexão oficial pelo Facebook.</p></div>
+        <CardContent className="space-y-4">
+          {/* HIERARQUIA: o QR é a única ação possível hoje, então ele é o herói e
+              ocupa a largura toda. A Meta Cloud API vira faixa secundária abaixo.
+              Antes os dois dividiam 50/50, o que prometia uma escolha que não
+              existe e ainda deixava meia tela vazia do lado desabilitado. */}
+          <section className="rounded-xl border bg-background p-4 shadow-sm sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex min-w-0 gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#25D366] text-white">
+                  <WhatsAppIcon className="h-6 w-6" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-lg font-semibold leading-tight">Conectar por QR Code</h3>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    Usa um número de WhatsApp da empresa. Leva menos de um minuto.
+                  </p>
                 </div>
-                <Badge variant="secondary">Em breve</Badge>
               </div>
-              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                Será a opção recomendada para maior estabilidade, templates aprovados e escala. Os custos da Meta serão separados do plano Dominex.
-              </p>
-              <Button type="button" variant="outline" className="mt-4 w-full" disabled>Conectar com a Meta</Button>
-            </section>
+              <Badge variant={qrReady ? 'default' : 'outline'} className="shrink-0">
+                {qrConnection?.status === 'connected' && !qrConnection.risk_accepted_at
+                  ? 'Aceite necessário'
+                  : CONNECTION_LABELS[qrConnection?.status ?? 'disconnected']}
+              </Badge>
+            </div>
 
-            <section className="rounded-xl bg-muted/35 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-background text-[#25D366] shadow-sm"><WhatsAppIcon className="h-5 w-5" /></span>
-                  <div><h3 className="font-semibold">Conectar por QR Code</h3><p className="text-sm text-muted-foreground">Usa um número de WhatsApp da empresa.</p></div>
-                </div>
-                <Badge variant={qrReady ? 'default' : 'outline'}>
-                  {qrConnection?.status === 'connected' && !qrConnection.risk_accepted_at
-                    ? 'Aceite necessário'
-                    : CONNECTION_LABELS[qrConnection?.status ?? 'disconnected']}
-                </Badge>
-              </div>
+            {qrConnection?.display_number && (
+              <p className="mt-4 text-sm"><span className="text-muted-foreground">Número:</span> +{qrConnection.display_number}</p>
+            )}
 
-              {qrConnection?.display_number && <p className="mt-4 text-sm"><span className="text-muted-foreground">Número:</span> +{qrConnection.display_number}</p>}
-              {qrConnection?.last_error && (
-                <NoticeBanner variant="destructive" className="mt-3">{qrConnection.last_error}</NoticeBanner>
-              )}
+            {/* Só é erro quando o número chegou a conectar de verdade, ou quando o
+                estado é mesmo de falha. Mostrar "foi desconectado" pra quem nunca
+                conectou é alarme falso, e alarme falso treina o cliente a ignorar
+                alarme de verdade. */}
+            {qrConnection?.last_error
+              && (Boolean(qrConnection.display_number) || qrConnection.status === 'error' || qrConnection.status === 'banned') && (
+              <NoticeBanner variant="destructive" className="mt-4">{qrConnection.last_error}</NoticeBanner>
+            )}
 
-              {qrPayload?.qr && qrConnection?.status !== 'connected' && (
-                <div className="mt-4 flex flex-col items-center rounded-xl bg-white p-4 text-slate-950">
-                  {qrImageSrc ? (
-                    <img src={qrImageSrc} alt="QR Code para conectar o WhatsApp" className="h-56 w-56" />
-                  ) : (
-                    <QRCodeSVG value={qrPayload.qr} size={224} level="M" />
-                  )}
-                  <p className="mt-3 text-center text-xs text-slate-600">WhatsApp → Aparelhos conectados → Conectar aparelho</p>
-                </div>
-              )}
-
-              {!qrReady && (
-                <>
-                  {/* Sugestão, não exigência: o aviso vem ANTES do aceite, mas em
-                      tom de recomendação. Quem decide qual número conectar é o cliente. */}
-                  <NoticeBanner variant="warning" className="mt-4" title="Pode ser melhor usar um número secundário">
-                    Se a empresa tiver um chip separado para os avisos automáticos, vale usar ele. Assim o WhatsApp principal de atendimento segue funcionando em qualquer cenário.
-                  </NoticeBanner>
-                  {/* Fundo branco de propósito: caixa dessaturada é proibida pela régua
-                      visual. Contraste vem da borda, não de um bege apagado. */}
-                  <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-lg border bg-background p-3 text-sm leading-relaxed">
-                    <Checkbox checked={acceptedRisk} onCheckedChange={(value) => setAcceptedRisk(value === true)} className="mt-0.5" disabled={!canManage || !moduleActive} />
-                    <span>
-                      Entendo que toda automação de WhatsApp fora da API Oficial da Meta tem um risco, ainda que ínfimo, de bloqueio do número, justamente por se tratar de envio automatizado.
-                    </span>
-                  </label>
-                </>
-              )}
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                {qrReady ? (
-                  <>
-                    {!active && <Button type="button" onClick={activate} disabled={!canManage || !moduleActive || connectionState.selectConnection.isPending}>Usar este canal</Button>}
-                    <Button type="button" variant="outline" onClick={disconnect} disabled={!canManage || connectionState.disconnect.isPending}><Unplug className="mr-2 h-4 w-4" />Desconectar</Button>
-                  </>
+            {qrPayload?.qr && qrConnection?.status !== 'connected' && (
+              <div className="mt-4 flex flex-col items-center rounded-xl border bg-white p-4 text-slate-950">
+                {qrImageSrc ? (
+                  <img src={qrImageSrc} alt="QR Code para conectar o WhatsApp" className="h-56 w-56" />
                 ) : (
-                  <Button type="button" onClick={startQr} disabled={!canManage || !moduleActive || !acceptedRisk || connectionState.connectQr.isPending}>
-                    <RefreshCw className={`mr-2 h-4 w-4 ${connectionState.connectQr.isPending ? 'animate-spin' : ''}`} />
-                    {qrConnection?.status === 'connected' ? 'Confirmar e ativar' : qrPayload?.qr ? 'Gerar novo QR Code' : 'Conectar meu WhatsApp'}
-                  </Button>
+                  <QRCodeSVG value={qrPayload.qr} size={224} level="M" />
                 )}
-                {active && <Badge variant="outline" className="h-9 px-3">Canal ativo</Badge>}
+                <p className="mt-3 text-center text-xs text-slate-600">WhatsApp → Aparelhos conectados → Conectar aparelho</p>
               </div>
-            </section>
-          </div>
+            )}
+
+            {!qrReady && (
+              <>
+                {!qrPayload?.qr && (
+                  <ol className="mt-4 space-y-2 text-sm text-muted-foreground">
+                    {['Toque no botão abaixo para gerar o QR Code.',
+                      'No celular, abra o WhatsApp em Aparelhos conectados.',
+                      'Aponte a câmera para o código e pronto.'].map((passo, index) => (
+                      <li key={passo} className="flex gap-2.5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-foreground text-[11px] font-semibold text-background">
+                          {index + 1}
+                        </span>
+                        {passo}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+
+                <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border bg-background p-3 text-sm leading-relaxed">
+                  <Checkbox checked={acceptedRisk} onCheckedChange={(value) => setAcceptedRisk(value === true)} className="mt-0.5" disabled={!canManage || !moduleActive} />
+                  <span>
+                    Entendo que toda automação de WhatsApp fora da API Oficial da Meta tem um risco, ainda que ínfimo, de bloqueio do número, justamente por se tratar de envio automatizado.
+                  </span>
+                </label>
+
+                {/* Recomendação, não perigo. Virou dica discreta: em bloco laranja
+                    cheio ela pesava mais que o próprio botão de conectar. */}
+                <p className="mt-2.5 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+                  <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+                  Pode ser melhor usar um número secundário. Se a empresa tiver um chip separado para os avisos, o WhatsApp principal de atendimento segue funcionando em qualquer cenário.
+                </p>
+              </>
+            )}
+
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              {qrReady ? (
+                <>
+                  {!active && <Button type="button" size="lg" onClick={activate} disabled={!canManage || !moduleActive || connectionState.selectConnection.isPending}>Usar este canal</Button>}
+                  <Button type="button" variant="outline" onClick={disconnect} disabled={!canManage || connectionState.disconnect.isPending}><Unplug className="mr-2 h-4 w-4" />Desconectar</Button>
+                  {active && <Badge variant="outline" className="h-9 px-3">Canal ativo</Badge>}
+                </>
+              ) : (
+                <Button type="button" size="lg" className="w-full sm:w-auto" onClick={startQr} disabled={!canManage || !moduleActive || !acceptedRisk || connectionState.connectQr.isPending}>
+                  <RefreshCw className={`mr-2 h-4 w-4 ${connectionState.connectQr.isPending ? 'animate-spin' : ''}`} />
+                  {qrConnection?.status === 'connected' ? 'Confirmar e ativar' : qrPayload?.qr ? 'Gerar novo QR Code' : 'Conectar meu WhatsApp'}
+                </Button>
+              )}
+            </div>
+          </section>
+
+          {/* Secundário de propósito: está desabilitado, então não disputa atenção
+              com a única ação possível. Uma faixa, não meia tela. */}
+          <section className="flex flex-wrap items-center gap-3 rounded-xl border bg-muted/30 p-4">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background text-primary shadow-sm">
+              <ShieldCheck className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold">Meta Cloud API</h3>
+                <Badge variant="secondary" className="shrink-0">Em breve</Badge>
+              </div>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                Conexão oficial pelo Facebook, com mais estabilidade e escala. Os custos da Meta serão separados do plano Dominex.
+              </p>
+            </div>
+          </section>
           <div className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
             O Dominex reduz o risco com consentimento, fila, aquecimento e limites. Nenhuma integração por QR Code consegue garantir ausência de bloqueio.
