@@ -37,12 +37,14 @@ import {
   maskKey,
 } from "../_shared/asaas-tenant-client.ts";
 
+// Baixas em dinheiro também chegam como PAYMENT_RECEIVED, diferenciadas por
+// payment.billingType === "RECEIVED_IN_CASH". A Asaas rejeita o nome antigo
+// PAYMENT_RECEIVED_IN_CASH ao cadastrar ou atualizar o webhook.
 const WEBHOOK_EVENTS = [
   "PAYMENT_CREATED",
   "PAYMENT_UPDATED",
   "PAYMENT_RECEIVED",
   "PAYMENT_CONFIRMED",
-  "PAYMENT_RECEIVED_IN_CASH",
   "PAYMENT_OVERDUE",
   "PAYMENT_REFUNDED",
   "PAYMENT_REFUND_IN_PROGRESS",

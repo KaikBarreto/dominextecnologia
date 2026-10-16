@@ -1600,6 +1600,7 @@ export type Database = {
       }
       company_whatsapp_settings: {
         Row: {
+          active_connection_id: string | null
           automation_preferences: Json
           company_id: string
           connected_at: string | null
@@ -1615,6 +1616,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active_connection_id?: string | null
           automation_preferences?: Json
           company_id: string
           connected_at?: string | null
@@ -1630,6 +1632,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active_connection_id?: string | null
           automation_preferences?: Json
           company_id?: string
           connected_at?: string | null
@@ -1645,6 +1648,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "company_whatsapp_settings_active_connection_id_fkey"
+            columns: ["active_connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "company_whatsapp_settings_company_id_fkey"
             columns: ["company_id"]
@@ -11649,13 +11659,119 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_connections: {
+        Row: {
+          company_id: string
+          connected_at: string | null
+          consecutive_failures: number
+          created_at: string
+          display_number: string | null
+          id: string
+          instance_name: string | null
+          last_error: string | null
+          last_seen_at: string | null
+          meta_business_id: string | null
+          meta_phone_number_id: string | null
+          meta_quality_rating: string | null
+          meta_waba_id: string | null
+          next_send_at: string | null
+          provider: string
+          proxy_checked_at: string | null
+          proxy_health_ok: boolean | null
+          proxy_id: string | null
+          risk_accepted_at: string | null
+          risk_accepted_by: string | null
+          risk_terms_version: string | null
+          secret_name: string | null
+          status: string
+          updated_at: string
+          warmup_started_at: string | null
+        }
+        Insert: {
+          company_id: string
+          connected_at?: string | null
+          consecutive_failures?: number
+          created_at?: string
+          display_number?: string | null
+          id?: string
+          instance_name?: string | null
+          last_error?: string | null
+          last_seen_at?: string | null
+          meta_business_id?: string | null
+          meta_phone_number_id?: string | null
+          meta_quality_rating?: string | null
+          meta_waba_id?: string | null
+          next_send_at?: string | null
+          provider: string
+          proxy_checked_at?: string | null
+          proxy_health_ok?: boolean | null
+          proxy_id?: string | null
+          risk_accepted_at?: string | null
+          risk_accepted_by?: string | null
+          risk_terms_version?: string | null
+          secret_name?: string | null
+          status?: string
+          updated_at?: string
+          warmup_started_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          connected_at?: string | null
+          consecutive_failures?: number
+          created_at?: string
+          display_number?: string | null
+          id?: string
+          instance_name?: string | null
+          last_error?: string | null
+          last_seen_at?: string | null
+          meta_business_id?: string | null
+          meta_phone_number_id?: string | null
+          meta_quality_rating?: string | null
+          meta_waba_id?: string | null
+          next_send_at?: string | null
+          provider?: string
+          proxy_checked_at?: string | null
+          proxy_health_ok?: boolean | null
+          proxy_id?: string | null
+          risk_accepted_at?: string | null
+          risk_accepted_by?: string | null
+          risk_terms_version?: string | null
+          secret_name?: string | null
+          status?: string
+          updated_at?: string
+          warmup_started_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_connections_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_connections_proxy_id_fkey"
+            columns: ["proxy_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_proxies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_events: {
         Row: {
           company_id: string
+          connection_id: string | null
+          cost_estimate: number | null
+          delivered_at: string | null
           error: string | null
           id: string
+          job_id: string | null
           os_id: string | null
           phone: string | null
+          provider: string | null
+          provider_message_id: string | null
+          read_at: string | null
           sent_at: string
           status: string
           template_id: string | null
@@ -11663,10 +11779,17 @@ export type Database = {
         }
         Insert: {
           company_id: string
+          connection_id?: string | null
+          cost_estimate?: number | null
+          delivered_at?: string | null
           error?: string | null
           id?: string
+          job_id?: string | null
           os_id?: string | null
           phone?: string | null
+          provider?: string | null
+          provider_message_id?: string | null
+          read_at?: string | null
           sent_at?: string
           status: string
           template_id?: string | null
@@ -11674,10 +11797,17 @@ export type Database = {
         }
         Update: {
           company_id?: string
+          connection_id?: string | null
+          cost_estimate?: number | null
+          delivered_at?: string | null
           error?: string | null
           id?: string
+          job_id?: string | null
           os_id?: string | null
           phone?: string | null
+          provider?: string | null
+          provider_message_id?: string | null
+          read_at?: string | null
           sent_at?: string
           status?: string
           template_id?: string | null
@@ -11689,6 +11819,20 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_events_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_send_jobs"
             referencedColumns: ["id"]
           },
           {
@@ -11710,6 +11854,86 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_inbound_keys: {
+        Row: {
+          company_id: string
+          connection_id: string | null
+          id: string
+          message_id: string
+          phone: string
+          read_at: string | null
+          received_at: string
+          remote_jid: string
+        }
+        Insert: {
+          company_id: string
+          connection_id?: string | null
+          id?: string
+          message_id: string
+          phone: string
+          read_at?: string | null
+          received_at?: string
+          remote_jid: string
+        }
+        Update: {
+          company_id?: string
+          connection_id?: string | null
+          id?: string
+          message_id?: string
+          phone?: string
+          read_at?: string | null
+          received_at?: string
+          remote_jid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_inbound_keys_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_inbound_keys_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_number_checks: {
+        Row: {
+          checked_at: string
+          company_id: string
+          exists_on_whatsapp: boolean
+          id: string
+          phone: string
+        }
+        Insert: {
+          checked_at?: string
+          company_id: string
+          exists_on_whatsapp: boolean
+          id?: string
+          phone: string
+        }
+        Update: {
+          checked_at?: string
+          company_id?: string
+          exists_on_whatsapp?: boolean
+          id?: string
+          phone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_number_checks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -11739,6 +11963,234 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_proxies: {
+        Row: {
+          assigned_connection_id: string | null
+          created_at: string
+          host: string
+          id: string
+          kind: string
+          label: string
+          last_check_at: string | null
+          last_check_ok: boolean | null
+          last_error: string | null
+          monthly_cost: number | null
+          notes: string | null
+          port: number
+          protocol: string
+          region: string | null
+          secret_name: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_connection_id?: string | null
+          created_at?: string
+          host: string
+          id?: string
+          kind?: string
+          label: string
+          last_check_at?: string | null
+          last_check_ok?: boolean | null
+          last_error?: string | null
+          monthly_cost?: number | null
+          notes?: string | null
+          port: number
+          protocol?: string
+          region?: string | null
+          secret_name?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_connection_id?: string | null
+          created_at?: string
+          host?: string
+          id?: string
+          kind?: string
+          label?: string
+          last_check_at?: string | null
+          last_check_ok?: boolean | null
+          last_error?: string | null
+          monthly_cost?: number | null
+          notes?: string | null
+          port?: number
+          protocol?: string
+          region?: string | null
+          secret_name?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_proxies_assigned_connection_id_fkey"
+            columns: ["assigned_connection_id"]
+            isOneToOne: true
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_send_jobs: {
+        Row: {
+          attempts: number
+          company_id: string
+          connection_id: string
+          created_at: string
+          customer_id: string | null
+          dedupe_key: string
+          defers: number
+          event_key: string
+          id: string
+          last_error: string | null
+          last_error_code: string | null
+          locked_at: string | null
+          next_attempt_at: string
+          provider: string
+          provider_message_id: string | null
+          sent_at: string | null
+          source_id: string
+          source_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          company_id: string
+          connection_id: string
+          created_at?: string
+          customer_id?: string | null
+          dedupe_key: string
+          defers?: number
+          event_key: string
+          id?: string
+          last_error?: string | null
+          last_error_code?: string | null
+          locked_at?: string | null
+          next_attempt_at?: string
+          provider: string
+          provider_message_id?: string | null
+          sent_at?: string | null
+          source_id: string
+          source_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          company_id?: string
+          connection_id?: string
+          created_at?: string
+          customer_id?: string | null
+          dedupe_key?: string
+          defers?: number
+          event_key?: string
+          id?: string
+          last_error?: string | null
+          last_error_code?: string | null
+          locked_at?: string | null
+          next_attempt_at?: string
+          provider?: string
+          provider_message_id?: string | null
+          sent_at?: string | null
+          source_id?: string
+          source_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_send_jobs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_send_jobs_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_send_jobs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_template_bindings: {
+        Row: {
+          approval_status: string
+          body: string
+          category: string
+          company_id: string
+          connection_id: string
+          created_at: string
+          event_key: string
+          external_template_id: string | null
+          id: string
+          language_code: string
+          last_synced_at: string | null
+          rejection_reason: string | null
+          template_name: string
+          updated_at: string
+          variable_keys: Json
+        }
+        Insert: {
+          approval_status?: string
+          body: string
+          category?: string
+          company_id: string
+          connection_id: string
+          created_at?: string
+          event_key: string
+          external_template_id?: string | null
+          id?: string
+          language_code?: string
+          last_synced_at?: string | null
+          rejection_reason?: string | null
+          template_name: string
+          updated_at?: string
+          variable_keys?: Json
+        }
+        Update: {
+          approval_status?: string
+          body?: string
+          category?: string
+          company_id?: string
+          connection_id?: string
+          created_at?: string
+          event_key?: string
+          external_template_id?: string | null
+          id?: string
+          language_code?: string
+          last_synced_at?: string | null
+          rejection_reason?: string | null
+          template_name?: string
+          updated_at?: string
+          variable_keys?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_template_bindings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_template_bindings_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
             referencedColumns: ["id"]
           },
         ]
@@ -13475,7 +13927,129 @@ export type Database = {
         Args: { p_employee_id: string; p_pin: string }
         Returns: Json
       }
+      whatsapp_assign_proxy: {
+        Args: { p_connection_id: string; p_proxy_id: string }
+        Returns: {
+          assigned_connection_id: string | null
+          created_at: string
+          host: string
+          id: string
+          kind: string
+          label: string
+          last_check_at: string | null
+          last_check_ok: boolean | null
+          last_error: string | null
+          monthly_cost: number | null
+          notes: string | null
+          port: number
+          protocol: string
+          region: string | null
+          secret_name: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "whatsapp_proxies"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       whatsapp_can_send: { Args: { p_company_id: string }; Returns: boolean }
+      whatsapp_claim_send_jobs: {
+        Args: { p_limit?: number; p_orphan_minutes?: number }
+        Returns: {
+          attempts: number
+          company_id: string
+          connection_id: string
+          created_at: string
+          customer_id: string | null
+          dedupe_key: string
+          defers: number
+          event_key: string
+          id: string
+          last_error: string | null
+          last_error_code: string | null
+          locked_at: string | null
+          next_attempt_at: string
+          provider: string
+          provider_message_id: string | null
+          sent_at: string | null
+          source_id: string
+          source_type: string
+          status: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "whatsapp_send_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      whatsapp_defer_send_job: {
+        Args: {
+          p_code: string
+          p_company_id: string
+          p_job_id: string
+          p_message: string
+          p_next_attempt_at: string
+        }
+        Returns: boolean
+      }
+      whatsapp_enqueue_due_reminders: { Args: never; Returns: number }
+      whatsapp_enqueue_transactional_job: {
+        Args: {
+          p_company_id: string
+          p_customer_id: string
+          p_dedupe_key: string
+          p_event_key: string
+          p_next_attempt_at?: string
+          p_source_id: string
+          p_source_type: string
+        }
+        Returns: string
+      }
+      whatsapp_event_window_group: {
+        Args: { p_event_key: string }
+        Returns: string
+      }
+      whatsapp_in_send_window: {
+        Args: {
+          p_at?: string
+          p_company_id: string
+          p_connection_id: string
+          p_event_key: string
+        }
+        Returns: boolean
+      }
+      whatsapp_next_window_opening: {
+        Args: {
+          p_company_id: string
+          p_connection_id: string
+          p_event_key: string
+          p_from?: string
+        }
+        Returns: string
+      }
+      whatsapp_purge_inbound_keys: { Args: never; Returns: number }
+      whatsapp_purge_signals: { Args: never; Returns: number }
+      whatsapp_release_proxy: {
+        Args: { p_connection_id: string }
+        Returns: boolean
+      }
+      whatsapp_send_window: {
+        Args: { p_company_id: string; p_group: string }
+        Returns: {
+          days: number[]
+          end_hour: number
+          start_hour: number
+        }[]
+      }
+      whatsapp_window_open_offset: {
+        Args: { p_connection_id: string }
+        Returns: number
+      }
     }
     Enums: {
       admin_task_priority: "baixa" | "media" | "alta" | "urgente"

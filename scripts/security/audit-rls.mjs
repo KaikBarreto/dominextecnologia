@@ -27,6 +27,11 @@ export const SENSITIVE_TABLES = new Set([
   // REVOKE explícito de anon e proíbe policy com predicado `true` fora de
   // service_role (R10 do doc de autorização da NFS-e automática).
   'nfse_auto_jobs',
+  // Pool de IPs residenciais do WhatsApp: aponta pro Vault (secret_name) e
+  // guarda custo de infra. Nenhum tenant tem o que ver aqui.
+  'whatsapp_proxies',
+  // Chave de mensagem recebida do cliente final (sem corpo, mas com telefone).
+  'whatsapp_inbound_keys',
 ]);
 
 function unquoteIdentifier(identifier) {

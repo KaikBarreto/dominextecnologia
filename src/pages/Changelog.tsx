@@ -42,6 +42,52 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.35.1',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aviso vermelho indevido na conexão do WhatsApp',
+        description: 'Enquanto o QR Code esperava a leitura, a tela mostrava um alerta vermelho como se algo tivesse dado errado, e parte do texto aparecia em inglês. Agora o alerta só aparece quando o WhatsApp realmente desconecta, e sempre em português.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.35.0',
+    date: '16 de outubro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Avisos automáticos pelo WhatsApp',
+        description: 'Conecte o WhatsApp da sua empresa lendo um QR Code e o cliente passa a ser avisado sozinho quando o técnico está a caminho, quando o serviço começa e quando termina, além dos lembretes de cobrança. Cada cliente escolhe se quer receber, e pode pedir para parar a qualquer momento respondendo a mensagem.',
+        category: 'recurso',
+      },
+      {
+        title: 'Horário de envio separado por tipo de aviso',
+        description: 'Você define dois horários diferentes. O aviso de serviço acompanha a operação da sua empresa, porque o cliente está esperando por ele no momento em que acontece, e o lembrete de cobrança fica no horário comercial. Fora do horário, a mensagem espera e sai na próxima abertura.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Proteção do número da empresa',
+        description: 'Os envios saem com intervalo e ritmo variados, começam devagar nos primeiros dias e o sistema confere se o número tem WhatsApp antes de enviar. Recomendamos conectar um número reservado para os avisos, e não o WhatsApp principal de atendimento.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.34.2',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ativação da integração com a Asaas corrigida',
+        description: 'Ao conectar uma conta Asaas, a chave era aceita, mas a ativação terminava com erro e não era concluída. Corrigimos essa etapa e agora a integração pode ser ativada normalmente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.34.0',
     date: '16 de outubro de 2026',
     type: 'minor',

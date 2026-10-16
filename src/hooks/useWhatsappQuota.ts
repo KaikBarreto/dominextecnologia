@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 /**
  * Consumo de cota mensal de avisos WhatsApp.
  *
- * Conta os eventos do mês corrente com status 'enviado' ou 'entregue' na
+ * Conta os eventos do mês corrente com status enviado, entregue ou lido na
  * tabela `whatsapp_events`, cruzando com `whatsapp_tiers` via
  * `companies.whatsapp_tier` para obter o limite do plano.
  *
@@ -38,7 +38,7 @@ export function useWhatsappQuota(companyId: string | null | undefined) {
         .maybeSingle();
       if (companyError) throw companyError;
 
-      const tier: number = (company as any)?.whatsapp_tier ?? 1;
+      const tier: number = company?.whatsapp_tier ?? 1;
 
       // 2) Busca os detalhes do tier
       const { data: tierData, error: tierError } = await supabase
@@ -48,9 +48,9 @@ export function useWhatsappQuota(companyId: string | null | undefined) {
         .maybeSingle();
       if (tierError) throw tierError;
 
-      const monthlyLimit: number | null = (tierData as any)?.monthly_limit ?? null;
-      const tierName: string = (tierData as any)?.name ?? `Nível ${tier}`;
-      const tierPrice: number = Number((tierData as any)?.price ?? 0);
+      const monthlyLimit: number | null = tierData?.monthly_limit ?? null;
+      const tierName: string = tierData?.name ?? `Nível ${tier}`;
+      const tierPrice: number = Number(tierData?.price ?? 0);
 
       // 3) Conta os eventos do mês corrente
       const now = new Date();
@@ -59,8 +59,8 @@ export function useWhatsappQuota(companyId: string | null | undefined) {
         .from('whatsapp_events')
         .select('id', { count: 'exact', head: true })
         .eq('company_id', companyId)
-        .in('status', ['enviado', 'entregue'])
-        .gte('created_at', startOfMonth);
+        .in('status', ['enviado', 'entregue', 'lido'])
+        .gte('sent_at', startOfMonth);
       if (countError) throw countError;
 
       const used = count ?? 0;

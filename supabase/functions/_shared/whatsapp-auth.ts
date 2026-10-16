@@ -4,7 +4,8 @@
 //   1. Authorization: Bearer <jwt> obrigatório → auth.getUser() → userId. 401 se falhar.
 //   2. profiles.company_id do user. 403 se null.
 //   3. Gate de módulo: company_has_module(company_id, 'whatsapp'). 403 se false.
-//   4. Gate de ação: can_manage_system(userId) (honra '*' Acesso Total no server). 403 se false.
+//   4. Gate de ação financeira/operacional: role admin ou gestor. Uma permissão
+//      genérica de configurações não autoriza conectar ou trocar um número.
 //   5. Escritas via service_role client (bypassa RLS) sempre filtradas por company_id.
 //
 // Espelha _shared/fiscal-auth.ts (mesmo mecanismo canônico de tenant/permissão),
@@ -50,7 +51,10 @@ export type WhatsappAuthResult = WhatsappAuthOk | WhatsappAuthFail;
  * Aplica o gate de auth/módulo/ação. Devolve o service-role client e o companyId
  * já resolvidos, ou uma Response de erro pronta pra retornar.
  */
-export async function authorizeWhatsappManager(req: Request): Promise<WhatsappAuthResult> {
+export async function authorizeWhatsappManager(
+  req: Request,
+  options: { requireModule?: boolean } = {},
+): Promise<WhatsappAuthResult> {
   // ---- 1. Authorization Bearer obrigatório
   const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization");
   if (!authHeader || !authHeader.toLowerCase().startsWith("bearer ")) {
@@ -102,37 +106,42 @@ export async function authorizeWhatsappManager(req: Request): Promise<WhatsappAu
     };
   }
 
-  // ---- 3. Gate de módulo: 'whatsapp' (Avisos de WhatsApp)
-  const { data: hasModule, error: moduleErr } = await supabase.rpc("company_has_module", {
-    p_company_id: companyId,
-    p_module_code: "whatsapp",
-  });
-  if (moduleErr) {
-    console.error("[whatsapp-auth] company_has_module error", { message: moduleErr.message });
-    return {
-      ok: false,
-      response: jsonResponse(req, {
-        error: "internal_error",
-        message: "Falha ao verificar o módulo de Avisos de WhatsApp.",
-      }, 500),
-    };
-  }
-  if (hasModule !== true) {
-    return {
-      ok: false,
-      response: jsonResponse(req, {
-        error: "module_inactive",
-        message: "O módulo de Avisos de WhatsApp não está ativo no seu plano.",
-      }, 403),
-    };
+  // ---- 3. Gate de módulo: desconectar é exceção deliberada para que o tenant
+  // possa revogar a sessão mesmo depois de cancelar o add-on.
+  if (options.requireModule !== false) {
+    const { data: hasModule, error: moduleErr } = await supabase.rpc("company_has_module", {
+      p_company_id: companyId,
+      p_module_code: "whatsapp",
+    });
+    if (moduleErr) {
+      console.error("[whatsapp-auth] company_has_module error", { message: moduleErr.message });
+      return {
+        ok: false,
+        response: jsonResponse(req, {
+          error: "internal_error",
+          message: "Falha ao verificar o módulo de Avisos de WhatsApp.",
+        }, 500),
+      };
+    }
+    if (hasModule !== true) {
+      return {
+        ok: false,
+        response: jsonResponse(req, {
+          error: "module_inactive",
+          message: "O módulo de Avisos de WhatsApp não está ativo no seu plano.",
+        }, 403),
+      };
+    }
   }
 
-  // ---- 4. Gate de ação: can_manage_system (honra '*' Acesso Total no server)
-  const { data: canManage, error: manageErr } = await supabase.rpc("can_manage_system", {
-    _user_id: userId,
-  });
+  // ---- 4. Gate de ação: somente administrador/gestor do tenant.
+  const { data: roleRows, error: manageErr } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .in("role", ["admin", "gestor"]);
   if (manageErr) {
-    console.error("[whatsapp-auth] can_manage_system error", { message: manageErr.message });
+    console.error("[whatsapp-auth] user_roles error", { message: manageErr.message });
     return {
       ok: false,
       response: jsonResponse(req, {
@@ -141,7 +150,7 @@ export async function authorizeWhatsappManager(req: Request): Promise<WhatsappAu
       }, 500),
     };
   }
-  if (canManage !== true) {
+  if (!roleRows?.length) {
     return {
       ok: false,
       response: jsonResponse(req, {

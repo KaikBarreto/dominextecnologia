@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  AlertTriangle,
   ArrowRight,
   Bot,
-  CheckCircle2,
-  Clock3,
   Calculator,
   CreditCard,
   FileText,
@@ -14,15 +13,19 @@ import {
   MessageSquareText,
   Megaphone,
   PlugZap,
+  RefreshCw,
   Settings2,
+  ShieldCheck,
+  Unplug,
   type LucideIcon,
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { SettingsAsaasContent } from '@/components/settings/SettingsAsaasContent';
 import { SettingsAsaasSimulator } from '@/components/settings/SettingsAsaasSimulator';
 import { WhatsappAutomationSettings } from '@/components/settings/whatsapp/WhatsappAutomationSettings';
+import { WhatsappProtectionSettings } from '@/components/settings/whatsapp/WhatsappProtectionSettings';
 import {
-  WhatsappHistoryPreview,
   WhatsappInboxPreview,
   WhatsappCampaignsPreview,
   WhatsappTemplatesPreview,
@@ -31,6 +34,7 @@ import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -38,6 +42,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useToast } from '@/hooks/use-toast';
 import { useWhatsappSettings } from '@/hooks/useWhatsappSettings';
+import { useWhatsappConnections, type WhatsappConnectionStatus } from '@/hooks/useWhatsappConnections';
 import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { WHATSAPP_MODULE_CODE } from '@/lib/subscriptionCatalog';
@@ -74,15 +79,15 @@ const SHELL_COPY: Record<LocaleCode, {
 }> = {
   'pt-br': {
     preparationTitle: 'Conecte o WhatsApp para liberar as configurações',
-    preparationDescription: 'As outras áreas ficam visíveis, mas bloqueadas até a conexão oficial do número da empresa ser concluída.',
+    preparationDescription: 'As automações ficam disponíveis após conectar o número da empresa por QR Code. Atendimento e campanhas continuam como etapas futuras.',
     noModuleTitle: 'Prévia do módulo de WhatsApp',
     noModuleDescription: 'Você pode conhecer toda a estrutura. Para salvar e ativar as automações, contrate o módulo de WhatsApp.',
     readOnlyTitle: 'Configuração somente para leitura',
     readOnlyDescription: 'Somente administradores, gestores ou usuários com permissão de configurações podem alterar estas regras.',
     connectionTitle: 'Conexão com o WhatsApp',
-    connectionDescription: 'A configuração de mensagens está separada do provedor. Assim, ela continua válida com Meta direta ou parceiro oficial.',
-    pending: 'Provedor a definir',
-    stepProvider: 'Escolher Meta direta ou parceiro oficial',
+    connectionDescription: 'Conecte o WhatsApp atual da empresa por QR Code. A API Oficial da Meta será adicionada depois, sem misturar os canais.',
+    pending: 'Conexão necessária',
+    stepProvider: 'Escolher QR Code ou Meta',
     stepNumber: 'Conectar o número da empresa',
     stepTemplates: 'Aprovar e vincular os templates',
     readyNow: 'Liberado após conectar',
@@ -181,6 +186,7 @@ function WhatsappContent() {
   const canManage = isAdminOrGestor() || hasPermission('fn:manage_settings');
   const { hasModule, isLoading: modulesLoading } = useCompanyModules();
   const { settings, isLoading, update } = useWhatsappSettings();
+  const whatsappConnections = useWhatsappConnections();
   const [requestedSection, setRequestedSection] = useState<WhatsappSection | null>(null);
 
   const persistedPreferences = useMemo(
@@ -205,7 +211,11 @@ function WhatsappContent() {
   const isDirty = current !== baseline;
   const moduleActive = hasModule('whatsapp');
   const readOnly = !moduleActive || !canManage;
-  const isConnected = settings?.connection_status === 'connected';
+  const isConnected = whatsappConnections.connections.some(
+    (connection) => connection.id === settings?.active_connection_id
+      && connection.status === 'connected'
+      && Boolean(connection.risk_accepted_at),
+  );
   const activeSection = isConnected ? (requestedSection ?? 'automations') : 'connection';
 
   const handleSave = async () => {
@@ -273,24 +283,44 @@ function WhatsappContent() {
       />
 
       {activeSection === 'automations' && (
-        <WhatsappAutomationSettings
-          locale={locale}
-          enabled={enabled}
-          preferences={preferences}
-          isSaving={update.isPending}
-          isDirty={isDirty}
-          readOnly={readOnly}
-          onEnabledChange={setEnabled}
-          onPreferencesChange={setPreferences}
-          onSave={handleSave}
-        />
+        <>
+          {/* Horário e ritmo vêm antes do conteúdo: é a régua que protege o número.
+              O botão de salvar é o do card de automações, logo abaixo. */}
+          <WhatsappProtectionSettings
+            locale={locale}
+            preferences={preferences}
+            readOnly={readOnly}
+            onPreferencesChange={setPreferences}
+          />
+          <WhatsappAutomationSettings
+            locale={locale}
+            enabled={enabled}
+            preferences={preferences}
+            isSaving={update.isPending}
+            isDirty={isDirty}
+            readOnly={readOnly}
+            onEnabledChange={setEnabled}
+            onPreferencesChange={setPreferences}
+            onSave={handleSave}
+          />
+        </>
       )}
 
       {activeSection === 'inbox' && <WhatsappInboxPreview />}
       {activeSection === 'templates' && <WhatsappTemplatesPreview />}
       {activeSection === 'campaigns' && <WhatsappCampaignsPreview />}
-      {activeSection === 'history' && <WhatsappHistoryPreview />}
-      {activeSection === 'connection' && <ConnectionCard copy={copy} />}
+      {activeSection === 'history' && (
+        <WhatsappOperationalHistory jobs={whatsappConnections.jobs} isLoading={whatsappConnections.historyLoading} />
+      )}
+      {activeSection === 'connection' && (
+        <ConnectionCard
+          copy={copy}
+          activeConnectionId={settings?.active_connection_id ?? null}
+          canManage={isAdminOrGestor()}
+          moduleActive={moduleActive}
+          connectionState={whatsappConnections}
+        />
+      )}
     </div>
   );
 }
@@ -323,7 +353,8 @@ export function WhatsappSectionNav({
       {sections.map((section) => {
         const Icon = SECTION_ICONS[section];
         const selected = section === active;
-        const locked = section !== 'connection' && !isConnected;
+        const futureOnly = section === 'inbox' || section === 'campaigns';
+        const locked = futureOnly || (section !== 'connection' && !isConnected);
         return (
           <button
             key={section}
@@ -332,7 +363,7 @@ export function WhatsappSectionNav({
             disabled={locked}
             aria-disabled={locked}
             aria-current={selected ? 'page' : undefined}
-            title={locked ? lockedLabel : undefined}
+            title={futureOnly ? 'Etapa futura' : locked ? lockedLabel : undefined}
             className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
               selected
                 ? 'border-primary bg-primary text-white shadow-sm'
@@ -351,9 +382,71 @@ export function WhatsappSectionNav({
   );
 }
 
-function ConnectionCard({ copy }: { copy: (typeof SHELL_COPY)[LocaleCode] }) {
+type ConnectionState = ReturnType<typeof useWhatsappConnections>;
+
+const CONNECTION_LABELS: Record<WhatsappConnectionStatus, string> = {
+  disconnected: 'Desconectado', connecting: 'Conectando', qr: 'Aguardando leitura do QR',
+  connected: 'Conectado', attention: 'Pausado por segurança', banned: 'Possível bloqueio', error: 'Erro',
+};
+
+function ConnectionCard({
+  copy,
+  activeConnectionId,
+  canManage,
+  moduleActive,
+  connectionState,
+}: {
+  copy: (typeof SHELL_COPY)[LocaleCode];
+  activeConnectionId: string | null;
+  canManage: boolean;
+  moduleActive: boolean;
+  connectionState: ConnectionState;
+}) {
+  const { toast } = useToast();
+  const [acceptedRisk, setAcceptedRisk] = useState(false);
+  const qrConnection = connectionState.connections.find((connection) => connection.provider === 'evolution_qr');
+  const qrPayload = connectionState.connectQr.data;
+  const qrImageSrc = qrPayload?.qr?.startsWith('data:image')
+    ? qrPayload.qr
+    : qrPayload?.qr?.startsWith('iVBOR')
+      ? `data:image/png;base64,${qrPayload.qr}`
+      : null;
+  const active = qrConnection?.id === activeConnectionId;
+  const qrReady = qrConnection?.status === 'connected' && Boolean(qrConnection.risk_accepted_at);
+
+  const startQr = async () => {
+    try {
+      await connectionState.connectQr.mutateAsync();
+      toast({ title: 'QR Code gerado', description: 'Abra o WhatsApp no celular e leia o código abaixo.' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Não foi possível conectar', description: (error as Error).message });
+    }
+  };
+
+  const activate = async () => {
+    if (!qrConnection) return;
+    try {
+      await connectionState.selectConnection.mutateAsync(qrConnection.id);
+      toast({ title: 'Canal ativado', description: 'Os próximos avisos usarão este número.' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Não foi possível ativar', description: (error as Error).message });
+    }
+  };
+
+  const disconnect = async () => {
+    if (!qrConnection) return;
+    try {
+      await connectionState.disconnect.mutateAsync(qrConnection.id);
+      connectionState.connectQr.reset();
+      toast({ title: 'WhatsApp desconectado', description: 'A fila foi pausada e não mudará de canal automaticamente.' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Não foi possível desconectar', description: (error as Error).message });
+    }
+  };
+
   return (
-    <Card>
+    <div className="space-y-4">
+      <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -363,32 +456,129 @@ function ConnectionCard({ copy }: { copy: (typeof SHELL_COPY)[LocaleCode] }) {
               </CardTitle>
               <CardDescription className="mt-1 max-w-3xl">{copy.connectionDescription}</CardDescription>
             </div>
-            <Badge variant="secondary"><Clock3 className="mr-1 h-3 w-3" />{copy.pending}</Badge>
+            <Badge variant="outline">Somente um canal ativo por vez</Badge>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 md:grid-cols-3">
-            <ConnectionStep label={copy.stepProvider} status={copy.futureStep} />
-            <ConnectionStep label={copy.stepNumber} status={copy.futureStep} />
-            <ConnectionStep label={copy.stepTemplates} status={copy.futureStep} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <section className="rounded-xl bg-muted/35 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-background text-primary shadow-sm"><ShieldCheck className="h-5 w-5" /></span>
+                  <div><h3 className="font-semibold">Meta Cloud API</h3><p className="text-sm text-muted-foreground">Conexão oficial pelo Facebook.</p></div>
+                </div>
+                <Badge variant="secondary">Em breve</Badge>
+              </div>
+              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                Será a opção recomendada para maior estabilidade, templates aprovados e escala. Os custos da Meta serão separados do plano Dominex.
+              </p>
+              <Button type="button" variant="outline" className="mt-4 w-full" disabled>Conectar com a Meta</Button>
+            </section>
+
+            <section className="rounded-xl bg-muted/35 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-background text-[#25D366] shadow-sm"><WhatsAppIcon className="h-5 w-5" /></span>
+                  <div><h3 className="font-semibold">Conectar por QR Code</h3><p className="text-sm text-muted-foreground">Usa um número de WhatsApp da empresa.</p></div>
+                </div>
+                <Badge variant={qrReady ? 'default' : 'outline'}>
+                  {qrConnection?.status === 'connected' && !qrConnection.risk_accepted_at
+                    ? 'Aceite necessário'
+                    : CONNECTION_LABELS[qrConnection?.status ?? 'disconnected']}
+                </Badge>
+              </div>
+
+              {qrConnection?.display_number && <p className="mt-4 text-sm"><span className="text-muted-foreground">Número:</span> +{qrConnection.display_number}</p>}
+              {qrConnection?.last_error && (
+                <NoticeBanner variant="destructive" className="mt-3">{qrConnection.last_error}</NoticeBanner>
+              )}
+
+              {qrPayload?.qr && qrConnection?.status !== 'connected' && (
+                <div className="mt-4 flex flex-col items-center rounded-xl bg-white p-4 text-slate-950">
+                  {qrImageSrc ? (
+                    <img src={qrImageSrc} alt="QR Code para conectar o WhatsApp" className="h-56 w-56" />
+                  ) : (
+                    <QRCodeSVG value={qrPayload.qr} size={224} level="M" />
+                  )}
+                  <p className="mt-3 text-center text-xs text-slate-600">WhatsApp → Aparelhos conectados → Conectar aparelho</p>
+                </div>
+              )}
+
+              {!qrReady && (
+                <>
+                  {/* Sugestão, não exigência: o aviso vem ANTES do aceite, mas em
+                      tom de recomendação. Quem decide qual número conectar é o cliente. */}
+                  <NoticeBanner variant="warning" className="mt-4" title="Pode ser melhor usar um número secundário">
+                    Se a empresa tiver um chip separado para os avisos automáticos, vale usar ele. Assim o WhatsApp principal de atendimento segue funcionando em qualquer cenário.
+                  </NoticeBanner>
+                  {/* Fundo branco de propósito: caixa dessaturada é proibida pela régua
+                      visual. Contraste vem da borda, não de um bege apagado. */}
+                  <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-lg border bg-background p-3 text-sm leading-relaxed">
+                    <Checkbox checked={acceptedRisk} onCheckedChange={(value) => setAcceptedRisk(value === true)} className="mt-0.5" disabled={!canManage || !moduleActive} />
+                    <span>
+                      Entendo que toda automação de WhatsApp fora da API Oficial da Meta tem um risco, ainda que ínfimo, de bloqueio do número, justamente por se tratar de envio automatizado.
+                    </span>
+                  </label>
+                </>
+              )}
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {qrReady ? (
+                  <>
+                    {!active && <Button type="button" onClick={activate} disabled={!canManage || !moduleActive || connectionState.selectConnection.isPending}>Usar este canal</Button>}
+                    <Button type="button" variant="outline" onClick={disconnect} disabled={!canManage || connectionState.disconnect.isPending}><Unplug className="mr-2 h-4 w-4" />Desconectar</Button>
+                  </>
+                ) : (
+                  <Button type="button" onClick={startQr} disabled={!canManage || !moduleActive || !acceptedRisk || connectionState.connectQr.isPending}>
+                    <RefreshCw className={`mr-2 h-4 w-4 ${connectionState.connectQr.isPending ? 'animate-spin' : ''}`} />
+                    {qrConnection?.status === 'connected' ? 'Confirmar e ativar' : qrPayload?.qr ? 'Gerar novo QR Code' : 'Conectar meu WhatsApp'}
+                  </Button>
+                )}
+                {active && <Badge variant="outline" className="h-9 px-3">Canal ativo</Badge>}
+              </div>
+            </section>
           </div>
-          <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-            {copy.readyNow}: {copy.readyDescription}
+          <div className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            O Dominex reduz o risco com consentimento, fila, aquecimento e limites. Nenhuma integração por QR Code consegue garantir ausência de bloqueio.
           </div>
         </CardContent>
       </Card>
+    </div>
   );
 }
 
-function ConnectionStep({ label, status }: { label: string; status: string }) {
+function WhatsappOperationalHistory({ jobs, isLoading }: { jobs: ConnectionState['jobs']; isLoading: boolean }) {
+  const counts = jobs.reduce<Record<string, number>>((acc, job) => {
+    acc[job.status] = (acc[job.status] ?? 0) + 1;
+    return acc;
+  }, {});
+  const labels: Record<string, string> = { pending: 'Na fila', processing: 'Processando', retry: 'Nova tentativa', sent: 'Enviado', delivered: 'Entregue', read: 'Lido', skipped: 'Ignorado', failed: 'Falhou', cancelled: 'Cancelado' };
+  const metricValue = (status: string) => status === 'pending'
+    ? (counts.pending ?? 0) + (counts.processing ?? 0) + (counts.retry ?? 0)
+    : counts[status] ?? 0;
   return (
-    <div className="flex items-start gap-3 rounded-lg border px-3 py-3">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">•</span>
-      <span className="min-w-0">
-        <span className="block text-sm font-medium leading-tight">{label}</span>
-        <span className="mt-0.5 block text-xs text-muted-foreground">{status}</span>
-      </span>
-    </div>
+    <Card>
+      <CardHeader><CardTitle className="text-base">Fila e histórico de envios</CardTitle><CardDescription>Últimos 50 avisos transacionais. Mensagens ignoradas mostram o motivo.</CardDescription></CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+          {['pending', 'sent', 'delivered', 'read', 'skipped', 'failed'].map((status) => (
+            <div key={status} className="rounded-lg bg-muted/35 p-3"><p className="text-xs text-muted-foreground">{labels[status]}</p><p className="mt-1 text-xl font-semibold">{metricValue(status)}</p></div>
+          ))}
+        </div>
+        {isLoading ? <Skeleton className="h-32 w-full" /> : jobs.length === 0 ? (
+          <p className="rounded-lg bg-muted/30 p-6 text-center text-sm text-muted-foreground">Nenhum aviso entrou na fila ainda.</p>
+        ) : (
+          <div className="divide-y rounded-lg bg-muted/20">
+            {jobs.slice(0, 15).map((job) => (
+              <div key={job.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm">
+                <div><p className="font-medium">{job.event_key.replace('os.', 'OS · ').replace('billing.', 'Cobrança · ')}</p><p className="text-xs text-muted-foreground">{new Date(job.created_at).toLocaleString('pt-BR')}{job.last_error ? ` · ${job.last_error}` : ''}</p></div>
+                <Badge variant="outline">{labels[job.status] ?? job.status}</Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

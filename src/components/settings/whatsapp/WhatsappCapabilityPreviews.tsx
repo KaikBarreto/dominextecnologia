@@ -76,7 +76,7 @@ export function WhatsappInboxPreview() {
                   key={contact.name}
                   className={`flex gap-3 border-b px-3 py-3 ${contact.active ? 'bg-muted' : ''}`}
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                     {contact.initials}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -189,7 +189,7 @@ export function WhatsappTemplatesPreview() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <CardTitle className="flex items-center gap-2 text-base"><FileText className="h-5 w-5 text-primary" />Modelos de mensagem</CardTitle>
-              <CardDescription className="mt-1">Catálogo que será enviado para aprovação e sincronizado com a Meta.</CardDescription>
+              <CardDescription className="mt-1">Variações transacionais usadas no QR Code; templates oficiais serão sincronizados com a Meta em uma etapa futura.</CardDescription>
             </div>
             <Badge variant="outline">7 estruturas previstas</Badge>
           </div>
@@ -266,9 +266,9 @@ export function WhatsappHistoryPreview() {
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base">Custos e franquia</CardTitle></CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-3">
-          <CostLine title="Atendimento" description="Regra vigente em out/2026: até 1.000 mensagens de serviço entregues por número/mês; depois disso, há cobrança por mensagem." />
-          <CostLine title="Utilidade" description="OS, cobrança e lembretes; a cobrança depende da categoria, janela e país do destinatário." />
-          <CostLine title="Parceiro" description="Pode existir mensalidade, taxa por número, atendente ou mensagem além do valor da Meta." />
+          <CostLine title="QR Code" description="Não existe cobrança por mensagem da Meta, mas o módulo Dominex e os limites de segurança continuam valendo." />
+          <CostLine title="API Oficial" description="Na etapa futura, os custos de mensagens da Meta serão pagos separadamente pelo cliente." />
+          <CostLine title="Proteção" description="Horário de envio, ritmo humano, aquecimento e limites reduzem o risco, sem garantia contra bloqueio. Conecte um número reserva, não o principal da empresa." />
         </CardContent>
       </Card>
     </div>
