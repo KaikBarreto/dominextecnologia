@@ -1029,6 +1029,80 @@ export async function emitirNfseAutorizada(
       );
     }
 
+    // ---- Simples Nacional (opSimpNac / regApTribSN).
+    // '1' não optante · '2' optante MEI · '3' optante Simples (ME/EPP).
+    // Derivado de regime_tributario; o body pode sobrescrever. Regime
+    // desconhecido/ausente → NÃO enviamos o campo (não se chuta regime fiscal).
+    //
+    // ⚠️ Este bloco e o percentual abaixo foram SUBIDOS para cá (antes ficavam
+    // depois da RPC de numeração) por um motivo só: o gate de dado logo abaixo
+    // precisa rodar ANTES de `fisqal_next_dps_number`. Gate que falha depois de
+    // consumir número de DPS fura a numeração sem necessidade.
+    const opSimpNacOverride = clean(body?.opSimpNac);
+    const opSimpNac = /^[1-3]$/.test(opSimpNacOverride)
+      ? opSimpNacOverride
+      : opSimpNacFromRegime(fiscal.regime_tributario);
+
+    // regApTribSN: obrigatório quando opSimpNac='3'.
+    // '1' federais e municipal pelo SN · '2' federais pelo SN e ISSQN por fora ·
+    // '3' ambos por fora do SN. Body → reg_ap_trib_sn da empresa → '1'.
+    let regApTribSN: string | null = null;
+    if (opSimpNac === "3") {
+      const regOverride = clean(body?.regApTribSN);
+      const regDefault = clean(fiscal.reg_ap_trib_sn);
+      regApTribSN = /^[1-3]$/.test(regOverride)
+        ? regOverride
+        : (/^[1-3]$/.test(regDefault) ? regDefault : "1");
+    }
+
+    // ---- Percentual total de tributos (grupo `totTrib` da DPS).
+    // Precedência inalterada: body → rascunho → default da empresa
+    // (`company_fiscal_settings.percentual_trib_sn`).
+    const percentualTotalTributos = parseNonNegative(
+      firstNonEmpty(
+        body?.valores?.percentualTotalTributosSimplesNacional,
+        body?.valores?.percentualTribSn,
+        draft?.percentual_trib_sn,
+        fiscal.percentual_trib_sn,
+      ),
+    );
+
+    // ---- GATE DE DADO — `totTrib` ausente derruba a nota na PREFEITURA.
+    //
+    // O QUE ACONTECEU (piloto de 2026-10-16, homologação): a nota foi recusada
+    // com `E1235 — the element 'trib' has incomplete content, expected
+    // 'tribFed, totTrib'`. `totTrib` é obrigatório no schema do layout
+    // nacional, e o ÚNICO jeito de ele ir no XML é este percentual: o provedor
+    // só monta o grupo quando `percentualTotalTributosSimplesNacional` vem
+    // preenchido (`providers/sefin.ts`). Com a coluna NULL, o XML sai sem
+    // `totTrib` e volta recusado com uma mensagem que o cliente não tem como
+    // interpretar ("sem detalhamento").
+    //
+    // POR QUE SÓ NO CAMINHO AUTOMÁTICO: na emissão manual quem preenche é a
+    // PESSOA, no formulário (`ImpostosSection`), e ela manda o valor no body
+    // mesmo quando a empresa não tem default salvo. Medido em produção: a
+    // empresa que emite hoje tem `percentual_trib_sn = NULL` e suas notas saem
+    // porque o campo vem do formulário, nota a nota. Gatear o caminho manual
+    // aqui quebraria quem está emitindo bem agora, e a porta do humano não
+    // muda de comportamento. Lá, a recusa chega na tela na hora, com a pessoa
+    // olhando, e vira linha `rejeitada` com o motivo.
+    // Na automação não há ninguém olhando: a recusa viria horas depois, em
+    // lote, e para TODAS as parcelas do contrato.
+    //
+    // POR QUE NÃO É SÓ DO SIMPLES NACIONAL: `totTrib` é exigido pelo schema
+    // independentemente do regime, e a nossa única fonte dele é esta coluna.
+    // Empresa de qualquer regime com o campo vazio tomaria a mesma E1235.
+    if (origem === "automatica" && percentualTotalTributos == null) {
+      return jsonResponse(
+        {
+          error: "missing_total_tributos",
+          message:
+            "Informe o percentual total de tributos nas configurações fiscais da empresa antes de usar a emissão automática. Sem esse percentual a prefeitura recusa a nota.",
+        },
+        422,
+      );
+    }
+
     // ---- Monta tomador.
     // ⚠️ A ESTRUTURA do bloco é a mesma nas duas origens — muda só a FONTE dos
     // dados. Não inventar campo novo aqui: o layout nacional recusa a nota por
@@ -1115,27 +1189,6 @@ export async function emitirNfseAutorizada(
       padLeft(serieDps, 5) +
       padLeft(numeroDps, 15);
 
-    // ---- Simples Nacional (opSimpNac / regApTribSN).
-    // '1' não optante · '2' optante MEI · '3' optante Simples (ME/EPP).
-    // Derivado de regime_tributario; o body pode sobrescrever. Regime
-    // desconhecido/ausente → NÃO enviamos o campo (não se chuta regime fiscal).
-    const opSimpNacOverride = clean(body?.opSimpNac);
-    const opSimpNac = /^[1-3]$/.test(opSimpNacOverride)
-      ? opSimpNacOverride
-      : opSimpNacFromRegime(fiscal.regime_tributario);
-
-    // regApTribSN: obrigatório quando opSimpNac='3'.
-    // '1' federais e municipal pelo SN · '2' federais pelo SN e ISSQN por fora ·
-    // '3' ambos por fora do SN. Body → reg_ap_trib_sn da empresa → '1'.
-    let regApTribSN: string | null = null;
-    if (opSimpNac === "3") {
-      const regOverride = clean(body?.regApTribSN);
-      const regDefault = clean(fiscal.reg_ap_trib_sn);
-      regApTribSN = /^[1-3]$/.test(regOverride)
-        ? regOverride
-        : (/^[1-3]$/.test(regDefault) ? regDefault : "1");
-    }
-
     // ---- Retenção do ISSQN (tpRetIssqn): '1' NÃO retido · '2' retido pelo
     // tomador · '3' retido pelo intermediário. body → rascunho.
     // `tpRetIssqnInformado` = "" quando ninguém informou (NÃO enviamos o campo e o
@@ -1184,18 +1237,11 @@ export async function emitirNfseAutorizada(
       const csll = parseNonNegative(body?.valores?.valorCsll ?? draft?.valor_csll);
       if (csll != null && csll > 0) valores.valorCsll = csll;
     }
-    // Percentual total de tributos (Simples Nacional):
-    // body → rascunho → default da empresa (company_fiscal_settings.percentual_trib_sn).
-    {
-      const pct = parseNonNegative(
-        firstNonEmpty(
-          body?.valores?.percentualTotalTributosSimplesNacional,
-          body?.valores?.percentualTribSn,
-          draft?.percentual_trib_sn,
-          fiscal.percentual_trib_sn,
-        ),
-      );
-      if (pct != null) valores.percentualTotalTributosSimplesNacional = pct;
+    // Percentual total de tributos (grupo `totTrib`): já resolvido acima, junto
+    // com o gate que impede a automação de mandar a nota sem ele. Campo
+    // AUSENTE continua sendo "não enviar" (≠ zero) no caminho manual.
+    if (percentualTotalTributos != null) {
+      valores.percentualTotalTributosSimplesNacional = percentualTotalTributos;
     }
 
     // ISS registrado na NOSSA linha: quando a alíquota é suprimida (E0625), a nota
@@ -1258,6 +1304,40 @@ export async function emitirNfseAutorizada(
       valor_servico: valorServico,
       valor_iss: valorIssRegistrado,
       descricao_servico: discriminacao,
+      // ---- SNAPSHOT DO QUE FOI À PREFEITURA.
+      //
+      // Estas oito colunas existem desde a criação da tabela e, até aqui,
+      // NENHUMA era escrita por este handler: quem as preenchia era só o
+      // `save-draft`. Consequência medida no piloto de 2026-10-16: a nota
+      // AUTORIZADA (número 1, chave 3304557226193889700019300...) ficou com
+      // `data_competencia`, `codigo_servico`, `codigo_nbs`,
+      // `municipio_incidencia_ibge`, `aliquota_issqn`, `trib_issqn`,
+      // `tp_ret_issqn` e `percentual_trib_sn` todos NULL — a linha não
+      // espelhava o documento que o governo autorizou.
+      //
+      // ⚠️ NÃO é um defeito só da automação: vale para QUALQUER emissão
+      // standalone (sem rascunho), inclusive a manual. Emissão a partir de
+      // rascunho parecia correta por acidente, porque o `save-draft` já tinha
+      // gravado as colunas antes.
+      //
+      // Cada valor abaixo é o EFETIVAMENTE ENVIADO, nunca o "pedido": quando a
+      // alíquota é suprimida pela E0625, por exemplo, a nota não carrega ISS
+      // destacado e a coluna fica NULL de propósito — igual ao `valor_iss`
+      // logo acima. Mesma regra que já valia para o cTribMun: a linha tem que
+      // espelhar o que foi à prefeitura.
+      //
+      // `regime_apuracao` NÃO entra aqui de propósito: em produção ela guarda
+      // 'competencia' (regime contábil caixa/competência), não é campo da DPS,
+      // e `EmitBody` nem aceita `regimeApuracao`. Preenchê-la com um valor do
+      // XML seria inventar semântica nova numa coluna que já tem dono.
+      data_competencia: dataCompetencia || null,
+      codigo_servico: codigoServico || null,
+      codigo_nbs: codigoNbs || null,
+      municipio_incidencia_ibge: municipioIncidencia || null,
+      aliquota_issqn: valores.aliquotaIssqn ?? null,
+      trib_issqn: valores.tribIssqn ?? null,
+      tp_ret_issqn: tpRetIssqnInformado || null,
+      percentual_trib_sn: percentualTotalTributos,
       // Registra o cTribMun EFETIVAMENTE enviado (pode ter vindo da herança do
       // tipo de serviço) — a linha tem que espelhar o que foi à prefeitura.
       [COL_CTRIBMUN]: codigoTributacaoMunicipal || null,
