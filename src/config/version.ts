@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.35.0";
+export const APP_VERSION = "1.35.1";
 
-export const VERSION_NOTES = "Avisos automáticos pelo WhatsApp liberados: conecte o número da empresa lendo um QR Code e o cliente passa a ser avisado sozinho sobre o andamento do serviço e sobre as cobranças.";
+export const VERSION_NOTES = "Tela de conexão do WhatsApp ajustada: o aviso vermelho não aparece mais enquanto o QR Code está esperando leitura, e a mensagem de estado passou a ficar em português.";

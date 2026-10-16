@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.35.1',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aviso vermelho indevido na conexão do WhatsApp',
+        description: 'Enquanto o QR Code esperava a leitura, a tela mostrava um alerta vermelho como se algo tivesse dado errado, e parte do texto aparecia em inglês. Agora o alerta só aparece quando o WhatsApp realmente desconecta, e sempre em português.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.35.0',
     date: '16 de outubro de 2026',
     type: 'minor',
