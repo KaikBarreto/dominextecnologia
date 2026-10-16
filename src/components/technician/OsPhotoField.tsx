@@ -3,8 +3,8 @@ import { Camera, ImageIcon, X, Download, Copy, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
-import { processImageFile } from '@/utils/imageConvert';
+import { processImageFile, OS_PHOTO_COMPRESSION } from '@/utils/imageConvert';
+import { buildOsMediaPath, removeOsMedia, uploadOsMediaBatch } from '@/utils/osUpload';
 import { SignedImg } from '@/components/ui/SignedImg';
 import { PhotoCarousel } from '@/components/ui/PhotoCarousel';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
@@ -120,6 +120,10 @@ export function OsPhotoField({
   const [pendingRemoval, setPendingRemoval] = useState<number | null>(null);
   const [previewImages, setPreviewImages] = useState<{ urls: string[]; index: number } | null>(null);
   const [photosToSave, setPhotosToSave] = useState<File[] | null>(null);
+  // Fração 0..1 do LOTE sendo enviado (bytes de todas as fotos juntas), ou null
+  // fora de envio. Antes a tela só dizia "Enviando..." e parava ali: numa foto
+  // grande em 4G o técnico não sabia se tinha andado ou travado.
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
 
   // File processado de cada foto enviada NESTA sessão, indexado pela publicUrl.
   // Permite salvar no aparelho sem await antes do navigator.share (exigência iOS).
@@ -162,9 +166,16 @@ export function OsPhotoField({
 
   const confirmRemovePhoto = () => {
     if (pendingRemoval === null) return;
+    const removed = photoUrls[pendingRemoval];
     const remaining = photoUrls.filter((_, i) => i !== pendingRemoval);
     onChange(remaining.length ? remaining.join(',') : null);
     setPendingRemoval(null);
+    // Apaga o arquivo de verdade, não só o ponteiro. A auditoria de 16/10/2026
+    // achou 502 arquivos órfãos (209 MB) no bucket vindos exatamente daqui.
+    // Best-effort e DEPOIS do onChange: tirar a foto da pergunta é o que importa
+    // pro técnico e não pode depender da limpeza dar certo.
+    capturedFilesRef.current.delete(removed);
+    void removeOsMedia([removed]);
   };
 
   const handlePhotoUpload = async (
@@ -191,30 +202,49 @@ export function OsPhotoField({
     const rawFiles = Array.from(selectedFiles);
 
     setUploading(true);
+    setUploadPct(0);
     try {
-      const uploadedUrls: string[] = [...photoUrls];
+      // Compressão das fotos em paralelo (é trabalho de CPU, não de rede): no
+      // laço antigo cada foto esperava a anterior comprimir E subir.
+      const processed = await Promise.all(
+        selectedFiles.map(async (raw) => {
+          try {
+            return await processImageFile(raw, OS_PHOTO_COMPRESSION);
+          } catch {
+            return raw;
+          }
+        }),
+      );
 
-      for (const rawFile of selectedFiles) {
-        const file = await processImageFile(rawFile);
+      const items = processed.map((file) => ({
+        path: buildOsMediaPath(serviceOrderId, pathPrefix, (file.name.split('.').pop() || 'jpg').toLowerCase()),
+        body: file,
+        label: file.name,
+      }));
 
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${serviceOrderId}/${pathPrefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${fileExt}`;
+      const { uploaded, failed } = await uploadOsMediaBatch(items, setUploadPct);
 
-        const { error: uploadError } = await supabase.storage
-          .from('os-photos')
-          .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('os-photos')
-          .getPublicUrl(fileName);
-
-        uploadedUrls.push(publicUrl);
-        capturedFilesRef.current.set(publicUrl, file);
+      // 🚨 PARCIAL VALE. O laço antigo lançava na primeira falha e NUNCA chamava
+      // o onChange: as fotos que já tinham subido sumiam da pergunta (e viravam
+      // lixo pago no bucket) e o técnico refazia tudo. Agora o que entrou é
+      // salvo, e só o que faltou é cobrado dele.
+      if (uploaded.length) {
+        uploaded.forEach(({ url, index }) => capturedFilesRef.current.set(url, processed[index]));
+        await onChange([...photoUrls, ...uploaded.map((u) => u.url)].join(','));
       }
 
-      await onChange(uploadedUrls.join(','));
+      if (failed.length) {
+        toast({
+          variant: 'destructive',
+          title: t.toastUploadError,
+          description: uploaded.length
+            ? t.toastPartialUpload
+                .replace('{ok}', String(uploaded.length))
+                .replace('{total}', String(items.length))
+            : getErrorMessage(failed[0].error),
+        });
+        return;
+      }
 
       // Câmera + toggle ON: abre o modal "Salvar no aparelho?", que JÁ confirma o
       // envio. Nesse caminho NÃO dispara o toast "Foto enviada!" — ele sobe por cima
@@ -233,14 +263,35 @@ export function OsPhotoField({
       });
     } finally {
       setUploading(false);
+      setUploadPct(null);
       event.target.value = '';
     }
   };
 
   // Botões de captura (câmera + galeria). Reutilizados tanto DENTRO do card
   // vazio (quando ainda não há foto) quanto soltos (quando já há fotos).
+  // Barra de progresso do lote. Fica logo acima dos botões (que viram
+  // "Enviando...") e some sozinha no fim. Determinada por BYTES, não por
+  // contagem de arquivos — a barra anda liso mesmo com fotos de tamanhos bem
+  // diferentes no mesmo envio.
+  const uploadBar = uploadPct !== null && (
+    <div className="w-full space-y-1" aria-live="polite">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-primary transition-[width] duration-200 ease-out"
+          style={{ width: `${Math.round(uploadPct * 100)}%` }}
+        />
+      </div>
+      <p className="text-center text-[11px] tabular-nums text-muted-foreground">
+        {t.btnUploading} {Math.round(uploadPct * 100)}%
+      </p>
+    </div>
+  );
+
   const captureButtons = (
-    <div className={cameraOnly ? 'w-full' : 'grid grid-cols-2 gap-2 w-full'}>
+    <div className={cameraOnly ? 'w-full space-y-2' : 'w-full space-y-2'}>
+      {uploadBar}
+      <div className={cameraOnly ? 'w-full' : 'grid grid-cols-2 gap-2 w-full'}>
       <label className={photoDisabled ? 'pointer-events-none' : 'cursor-pointer'}>
         <input
           type="file"
@@ -276,6 +327,7 @@ export function OsPhotoField({
           </Button>
         </label>
       )}
+      </div>
     </div>
   );
 

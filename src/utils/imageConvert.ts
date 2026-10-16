@@ -44,11 +44,14 @@ const COMPRESS_THRESHOLD = 500 * 1024;
  * - Compresses to ~82% JPEG quality
  * - Skips compression for files under 500 KB that are already JPEG
  */
-function compressImage(file: File): Promise<File> {
+function compressImage(file: File, opts?: CompressOptions): Promise<File> {
+  const maxDimension = opts?.maxDimension ?? MAX_DIMENSION;
+  const quality = opts?.quality ?? JPEG_QUALITY;
+  const threshold = opts?.skipUnderBytes ?? COMPRESS_THRESHOLD;
   return new Promise((resolve) => {
     // Skip small JPEGs
     const isJpeg = file.type === 'image/jpeg' || /\.jpe?g$/i.test(file.name);
-    if (isJpeg && file.size <= COMPRESS_THRESHOLD) {
+    if (isJpeg && file.size <= threshold) {
       resolve(file);
       return;
     }
@@ -62,13 +65,13 @@ function compressImage(file: File): Promise<File> {
       let { width, height } = img;
 
       // Calculate new dimensions keeping aspect ratio
-      if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+      if (width > maxDimension || height > maxDimension) {
         if (width > height) {
-          height = Math.round(height * (MAX_DIMENSION / width));
-          width = MAX_DIMENSION;
+          height = Math.round(height * (maxDimension / width));
+          width = maxDimension;
         } else {
-          width = Math.round(width * (MAX_DIMENSION / height));
-          height = MAX_DIMENSION;
+          width = Math.round(width * (maxDimension / height));
+          height = maxDimension;
         }
       }
 
@@ -92,7 +95,7 @@ function compressImage(file: File): Promise<File> {
           resolve(new File([blob], newName, { type: 'image/jpeg' }));
         },
         'image/jpeg',
-        JPEG_QUALITY
+        quality
       );
     };
 
@@ -141,16 +144,43 @@ async function ensureNonHeic(file: File): Promise<File> {
 }
 
 /**
+ * Ajuste fino da compressão, por tela. Omitir mantém o padrão histórico
+ * (1920px / 82%), que vale pra cadastro de cliente, equipamento, perfil etc.
+ */
+export interface CompressOptions {
+  /** Maior lado do resultado, em px. */
+  maxDimension?: number;
+  /** Qualidade do JPEG, 0 a 1. */
+  quality?: number;
+  /** JPEG abaixo deste tamanho passa direto, sem recomprimir. */
+  skipUnderBytes?: number;
+}
+
+/**
+ * Régua das FOTOS DA OS. Medição de 16/10/2026 no bucket `os-photos`: 787
+ * arquivos entre 512 KB e 1 MB e 165 acima de 1 MB (353 MB só eles), todos
+ * gerados pelo padrão de 1920px/82%. Pra foto de defeito, 1600px a 75% mostra
+ * exatamente a mesma evidência pesando perto da metade — e o que é economizado
+ * sai direto do plano de dados do técnico em campo. Decisão do CEO em
+ * 16/10/2026. Só a OS usa esta régua; as outras telas seguem no padrão.
+ */
+export const OS_PHOTO_COMPRESSION: CompressOptions = {
+  maxDimension: 1600,
+  quality: 0.75,
+  skipUnderBytes: 300 * 1024,
+};
+
+/**
  * Processes an image file:
  * 1. Converts HEIC/HEIF to JPEG
  * 2. Compresses and resizes to optimize storage
  */
-export async function processImageFile(file: File): Promise<File> {
+export async function processImageFile(file: File, opts?: CompressOptions): Promise<File> {
   const processed = await ensureNonHeic(file);
 
   // Compress and resize
   try {
-    return await compressImage(processed);
+    return await compressImage(processed, opts);
   } catch {
     return processed;
   }

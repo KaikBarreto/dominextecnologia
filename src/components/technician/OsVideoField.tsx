@@ -4,10 +4,10 @@ import { Video, Square, X, RotateCcw, Upload, ImageIcon, Loader2 } from 'lucide-
 import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { OsVideoPlayer } from '@/components/technician/OsVideoPlayer';
 import { canCompressVideoInBrowser, compressVideoInBrowser, unlockAudioContextForCompression } from '@/utils/videoCompress';
+import { buildOsMediaPath, removeOsMedia, uploadOsMedia } from '@/utils/osUpload';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -104,6 +104,8 @@ export function OsVideoField({
   // Duração do vídeo em segundos. A compressão roda em tempo real, então esse
   // número É a espera — mostrar o que falta evita a sensação de barra travada.
   const [compressSecs, setCompressSecs] = useState<number | null>(null);
+  // Fração 0..1 do envio em si (bytes). null fora de envio.
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
 
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -148,22 +150,16 @@ export function OsVideoField({
 
   const uploadClip = async (blob: Blob, ext: string) => {
     setUploading(true);
+    setUploadPct(0);
     try {
-      const fileName = `${serviceOrderId}/${pathPrefix}-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2, 6)}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('os-photos')
-        .upload(fileName, blob, { contentType: blob.type || `video/${ext}` });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('os-photos')
-        .getPublicUrl(fileName);
-
-      await onChange(publicUrl);
+      // Motor compartilhado com as fotos: reenvio automático (até 3 tentativas,
+      // mesmo caminho no bucket, sem duplicar) e progresso em BYTES. Vídeo é o
+      // arquivo mais pesado que o técnico manda — é onde a barra mais importa.
+      const path = buildOsMediaPath(serviceOrderId, pathPrefix, ext);
+      const typed = blob.type ? blob : new Blob([blob], { type: `video/${ext}` });
+      const result = await uploadOsMedia(path, typed, setUploadPct);
+      if ('error' in result) throw result.error;
+      await onChange(result.url);
       toast({ title: t.toastUploaded });
     } catch (error: any) {
       toast({
@@ -173,6 +169,7 @@ export function OsVideoField({
       });
     } finally {
       setUploading(false);
+      setUploadPct(null);
     }
   };
 
@@ -314,8 +311,12 @@ export function OsVideoField({
   };
 
   const confirmRemove = () => {
+    const removed = value;
     onChange(null);
     setPendingRemoval(false);
+    // Apaga o arquivo, não só o ponteiro (ver auditoria de órfãos em
+    // `@/utils/osUpload`). Best-effort, depois do onChange.
+    void removeOsMedia([removed]);
   };
 
   const hasClip = !!value;
@@ -521,7 +522,23 @@ export function OsVideoField({
         disabled={disabled}
       />
 
-      {!hasClip && !recording && (
+      {/* Progresso do ENVIO (bytes). Vídeo é o arquivo mais pesado da OS: sem
+          barra, "Enviando..." parado parecia travamento. */}
+      {uploadPct !== null && (
+        <div className="space-y-1" aria-live="polite">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-[width] duration-200 ease-out"
+              style={{ width: `${Math.round(uploadPct * 100)}%` }}
+            />
+          </div>
+          <p className="text-center text-[11px] tabular-nums text-muted-foreground">
+            {t.btnUploading} {Math.round(uploadPct * 100)}%
+          </p>
+        </div>
+      )}
+
+      {!hasClip && !recording && uploadPct === null && (
         <p className="text-xs text-muted-foreground text-center">
           {t.hintClip.replace('{n}', String(MAX_SECONDS))}
         </p>
