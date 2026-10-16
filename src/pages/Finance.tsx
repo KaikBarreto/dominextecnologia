@@ -107,8 +107,8 @@ export default function Finance() {
   const { hasModule } = useCompanyModules();
   const canManageFinanceSettings = useCanManageFinanceSettings();
 
-  // Todo o Financeiro (incluindo Contas, DRE, DFC e Cobranças) é base. Cobranças
-  // mantém entitlement técnico próprio; o Exceção é barrado pela PermissionRoute.
+  // O Financeiro (Contas, DRE e DFC) é base. Cobranças e Assinaturas recorrentes
+  // continuam atrás do add-on `cobrancas`; o Exceção é barrado pela PermissionRoute.
   useEffect(() => {
     if (screen === 'cobrancas' && !hasModule('cobrancas')) {
       navigate(localizeAppPath('/financeiro/relatorio', locale), { replace: true });

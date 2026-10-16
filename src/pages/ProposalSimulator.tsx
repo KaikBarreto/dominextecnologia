@@ -27,10 +27,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   usePublicSubscriptionCatalog,
+  type PublicSubscriptionModule,
   type PublicSubscriptionPlan,
 } from '@/hooks/usePublicSubscriptionPlans';
 import { cn } from '@/lib/utils';
@@ -43,9 +46,7 @@ import {
 import {
   MAX_PROPOSAL_UNITS,
   MAX_PROPOSAL_USERS,
-  MAX_PROPOSAL_DISCOUNT_PERCENT,
   MAX_PROPOSAL_INSTALLMENTS,
-  MIN_PROPOSAL_DISCOUNT_PERCENT,
   MIN_PROPOSAL_INSTALLMENTS,
   BASE_MODULE_CODE,
   CUSTOM_PLAN_CODE,
@@ -55,8 +56,14 @@ import {
   cleanProposalInstallments,
   createProposalUnit,
   defaultUnitName,
+  maxProposalDiscountPercent,
   parsePublicProposal,
+  proposalDiscountAmount,
   serializePublicProposal,
+  type ProposalDiscount,
+  type ProposalDiscountMode,
+  type ProposalDiscountPeriod,
+  type ProposalTotals,
   type ProposalUnit,
 } from '@/lib/publicProposal';
 import { formatBRL } from '@/utils/currency';
@@ -72,8 +79,9 @@ const MODULE_LABELS: Record<string, string> = {
   nfe: 'Emissão de notas fiscais',
   pricing_advanced: 'Orçamentos e Precificação',
   video_questions: 'Perguntas em vídeo nos checklists',
-  white_label: 'Sistema com a sua marca',
+  white_label: 'White Label',
   whatsapp: 'Integração com o WhatsApp',
+  cobrancas: 'Cobranças',
 };
 
 const BASE_MODULE_BENEFITS = [
@@ -82,7 +90,7 @@ const BASE_MODULE_BENEFITS = [
 ];
 
 const BASE_MODULE_DESCRIPTION = [
-  'OS, agenda, clientes, equipamentos, estoque e financeiro completo, com contas, DRE, DFC e cobranças online.',
+  'OS, agenda, clientes, equipamentos, estoque e financeiro completo, com contas, DRE e DFC.',
   'Também inclui Área do Técnico™, Portal do Cliente, Orçamentos e Precificação',
   'e perguntas em vídeo nos checklists.',
 ].join(' ');
@@ -125,6 +133,42 @@ function moduleDisplayName(module: { code: string; name: string }): string {
   return MODULE_LABELS[module.code] ?? module.name;
 }
 
+function MonthlyCatalogPrice({ price, hidden }: { price: number; hidden: boolean }) {
+  if (hidden) {
+    return <span aria-label="Preço oculto">••••</span>;
+  }
+
+  return (
+    <>
+      {money(price)}<span className="font-normal text-muted-foreground">/mês</span>
+    </>
+  );
+}
+
+function PricingTableRow({
+  name,
+  description,
+  price,
+  hidden,
+}: {
+  name: string;
+  description: string;
+  price: number;
+  hidden: boolean;
+}) {
+  return (
+    <TableRow>
+      <TableCell className="min-w-48 align-top font-semibold">{name}</TableCell>
+      <TableCell className="min-w-80 whitespace-normal align-top leading-relaxed text-muted-foreground">
+        {description}
+      </TableCell>
+      <TableCell className="whitespace-nowrap text-right align-top font-semibold tabular-nums">
+        <MonthlyCatalogPrice price={price} hidden={hidden} />
+      </TableCell>
+    </TableRow>
+  );
+}
+
 function planModules(plan: PublicSubscriptionPlan): string[] {
   if (plan.code === 'excecao') {
     return [
@@ -137,46 +181,125 @@ function planModules(plan: PublicSubscriptionPlan): string[] {
   return moduleBenefits(plan.includedModules);
 }
 
-function ProposalPrice({
-  monthly,
-  yearlyFull,
-  yearlyDiscounted,
-  savings,
-  pixInstallment,
-  discountPercent,
-  installments,
+function discountLabel(discount: ProposalDiscount, appliedAmount: number): string {
+  if (appliedAmount <= 0) return 'sem desconto';
+  return discount.mode === 'percent'
+    ? `${discount.value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}% de desconto`
+    : `${money(appliedAmount)} de desconto`;
+}
+
+function DiscountField({
+  id,
+  label,
+  period,
+  discount,
+  fullPrice,
+  onChange,
 }: {
-  monthly: number;
-  yearlyFull: number;
-  yearlyDiscounted: number;
-  savings: number;
-  pixInstallment: number;
-  discountPercent: number;
-  installments: number;
+  id: string;
+  label: string;
+  period: ProposalDiscountPeriod;
+  discount: ProposalDiscount;
+  fullPrice: number;
+  onChange: (discount: ProposalDiscount) => void;
 }) {
+  const maxPercent = maxProposalDiscountPercent(period);
+  const maxAmount = Math.round(fullPrice * maxPercent) / 100;
+
+  function changeMode(mode: ProposalDiscountMode) {
+    const appliedAmount = proposalDiscountAmount(fullPrice, discount, period);
+    const convertedValue = mode === 'amount'
+      ? appliedAmount
+      : fullPrice > 0
+        ? Math.round((appliedAmount / fullPrice) * 10_000) / 100
+        : 0;
+    onChange(cleanProposalDiscount({ mode, value: convertedValue }, period));
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <Label htmlFor={id}>{label}</Label>
+        <ToggleGroup
+          type="single"
+          value={discount.mode}
+          onValueChange={(mode) => mode && changeMode(mode as ProposalDiscountMode)}
+          variant="outline"
+          size="sm"
+          aria-label={`Formato do ${label.toLowerCase()}`}
+          className="gap-0"
+        >
+          <ToggleGroupItem value="percent" aria-label={`${label} em percentual`} className="h-8 rounded-r-none px-3">
+            %
+          </ToggleGroupItem>
+          <ToggleGroupItem value="amount" aria-label={`${label} em reais`} className="h-8 rounded-l-none border-l-0 px-3">
+            R$
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+      <Input
+        id={id}
+        type="number"
+        min={0}
+        max={discount.mode === 'percent' ? maxPercent : maxAmount}
+        step={discount.mode === 'percent' ? 0.1 : 0.01}
+        value={discount.value}
+        onChange={(event) => onChange(cleanProposalDiscount({
+          ...discount,
+          value: event.target.value === '' ? 0 : Number(event.target.value),
+        }, period))}
+      />
+      <p className="text-xs text-muted-foreground">
+        Até {maxPercent}% do valor {period === 'annual' ? 'anual' : 'mensal'} cheio
+        {discount.mode === 'amount' ? ` (${money(maxAmount)})` : ''}.
+      </p>
+    </div>
+  );
+}
+
+function ProposalPrice({
+  totals,
+}: {
+  totals: ProposalTotals;
+}) {
+  const annualLabel = discountLabel(totals.annualDiscount, totals.annualDiscountAmount);
+  const monthlyLabel = discountLabel(totals.monthlyDiscount, totals.monthlyDiscountAmount);
+
   return (
     <div className="space-y-2 border-t border-border/40 pt-5">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-600">
-        Plano anual · {discountPercent > 0 ? `${discountPercent}% de desconto` : 'sem desconto'}
+        Plano anual · {annualLabel}
       </p>
-      {discountPercent > 0 && (
+      {totals.annualDiscountAmount > 0 && (
         <p className="text-sm text-muted-foreground">
-          de <span className="text-destructive line-through">{money(yearlyFull)}</span>
+          de <span className="text-destructive line-through">{money(totals.yearlyFull)}</span>
         </p>
       )}
       <p className="text-3xl font-bold tracking-tight lg:text-4xl">
         <span className="mr-1 text-base font-semibold text-muted-foreground">por</span>
-        {money(yearlyDiscounted)}<span className="text-base font-semibold text-muted-foreground">/ano</span>
+        {money(totals.yearlyDiscounted)}<span className="text-base font-semibold text-muted-foreground">/ano</span>
       </p>
-      <p className="text-sm font-bold text-emerald-600">
-        Economize {money(savings)} no plano anual
-      </p>
+      {totals.annualDiscountAmount > 0 && (
+        <p className="text-sm font-bold text-emerald-600">
+          Economize {money(totals.savings)} no plano anual
+        </p>
+      )}
       <p className="text-sm text-muted-foreground">
-        Em até {installments}x de {money(pixInstallment)} no Pix
+        Em até {totals.installments}x de {money(totals.pixInstallment)} no Pix
       </p>
-      <p className="pt-1 text-base font-bold">Opção mensal: {money(monthly)}/mês</p>
+      <div className="mt-3 rounded-lg bg-muted/40 p-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Plano mensal · {monthlyLabel}
+        </p>
+        <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
+          {totals.monthlyDiscountAmount > 0 && (
+            <span className="text-sm text-destructive line-through">{money(totals.monthlyFull)}</span>
+          )}
+          <span className="text-lg font-bold">{money(totals.monthly)}/mês</span>
+        </div>
+      </div>
       <p className="text-xs text-muted-foreground">
-        O valor apresentado considera somente os planos escolhidos por unidade.
+        Mensal e anual são calculados separadamente sobre seus valores cheios.
       </p>
     </div>
   );
@@ -211,10 +334,11 @@ export default function ProposalSimulator() {
   const [clientName, setClientName] = useState(initialState.clientName);
   const [units, setUnits] = useState<ProposalUnit[]>(initialState.units);
   const [pricesHidden, setPricesHidden] = useState(initialState.pricesHidden);
-  const [discountPercent, setDiscountPercent] = useState(initialState.discountPercent);
+  const [annualDiscount, setAnnualDiscount] = useState(initialState.annualDiscount);
+  const [monthlyDiscount, setMonthlyDiscount] = useState(initialState.monthlyDiscount);
   const [installments, setInstallments] = useState(initialState.installments);
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'proposal' | 'structure'>('proposal');
+  const [activeTab, setActiveTab] = useState<'proposal' | 'structure' | 'pricing'>('proposal');
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     try {
       return localStorage.getItem('dominex-proposal-theme') === 'light' ? 'light' : 'dark';
@@ -232,6 +356,19 @@ export default function ProposalSimulator() {
   const proposalModules = useMemo(
     () => modules.filter((module) => !isRetiredProposalModule(module.code)),
     [modules],
+  );
+  const baseModule = useMemo(
+    () => proposalModules.find((module) => module.code === BASE_MODULE_CODE),
+    [proposalModules],
+  );
+  const paidAddonModules = useMemo(
+    () => proposalModules.filter(
+      (module): module is PublicSubscriptionModule => module.price > 0
+        && module.code !== BASE_MODULE_CODE
+        && module.code !== EXTRA_USER_MODULE_CODE
+        && !isRequiredCustomModule(module.code),
+    ),
+    [proposalModules],
   );
   const extraUserPrice = catalog?.extraUserPrice ?? 0;
 
@@ -255,10 +392,10 @@ export default function ProposalSimulator() {
       return;
     }
     setSearchParams(
-      serializePublicProposal({ clientName, units, pricesHidden, discountPercent, installments }),
+      serializePublicProposal({ clientName, units, pricesHidden, annualDiscount, monthlyDiscount, installments }),
       { replace: true },
     );
-  }, [clientName, discountPercent, installments, pricesHidden, setSearchParams, units]);
+  }, [annualDiscount, clientName, installments, monthlyDiscount, pricesHidden, setSearchParams, units]);
 
   useEffect(() => {
     if (plans.length === 0) return;
@@ -283,8 +420,7 @@ export default function ProposalSimulator() {
         plans,
         proposalModules,
         extraUserPrice,
-        { discountPercent, installments },
-      ).monthly;
+      ).monthlyFull;
       return {
         unit,
         code: CUSTOM_PLAN_CODE,
@@ -303,17 +439,33 @@ export default function ProposalSimulator() {
       users: plan?.maxUsers ?? 0,
       monthly: plan?.price ?? 0,
     };
-  }), [discountPercent, extraUserPrice, installments, plans, proposalModules, units]);
+  }), [extraUserPrice, plans, proposalModules, units]);
   const totals = useMemo(
     () => calculateProposalTotals(
       units,
       plans,
       proposalModules,
       extraUserPrice,
-      { discountPercent, installments },
+      { annualDiscount, monthlyDiscount, installments },
     ),
-    [discountPercent, extraUserPrice, installments, plans, proposalModules, units],
+    [annualDiscount, extraUserPrice, installments, monthlyDiscount, plans, proposalModules, units],
   );
+
+  useEffect(() => {
+    if (isLoading) return;
+    const annualMaximum = Math.round(
+      totals.yearlyFull * maxProposalDiscountPercent('annual'),
+    ) / 100;
+    const monthlyMaximum = Math.round(
+      totals.monthlyFull * maxProposalDiscountPercent('monthly'),
+    ) / 100;
+    if (annualDiscount.mode === 'amount' && annualDiscount.value > annualMaximum) {
+      setAnnualDiscount({ mode: 'amount', value: annualMaximum });
+    }
+    if (monthlyDiscount.mode === 'amount' && monthlyDiscount.value > monthlyMaximum) {
+      setMonthlyDiscount({ mode: 'amount', value: monthlyMaximum });
+    }
+  }, [annualDiscount, isLoading, monthlyDiscount, totals.monthlyFull, totals.yearlyFull]);
   const modulePickerUnit = units.find((unit) => unit.id === modulePickerUnitId);
   const availableModules = modulePickerUnit
     ? proposalModules.filter(
@@ -415,16 +567,15 @@ export default function ProposalSimulator() {
             plans,
             proposalModules,
             extraUserPrice,
-            { discountPercent, installments },
           );
           return {
             name: view.unit.name,
             planName: view.name,
             modules: view.modules,
             users: view.users,
-            monthly: unitTotals.monthly,
+            monthly: unitTotals.monthlyFull,
             yearlyFull: unitTotals.yearlyFull,
-            yearlyDiscounted: unitTotals.yearlyDiscounted,
+            yearlyDiscounted: unitTotals.yearlyFull,
           };
         }),
         totals,
@@ -501,6 +652,7 @@ export default function ProposalSimulator() {
           <TabsList variant="underline" className="mb-6 w-full print:hidden">
             <TabsTrigger variant="underline" value="proposal">Proposta</TabsTrigger>
             <TabsTrigger variant="underline" value="structure">Organograma</TabsTrigger>
+            <TabsTrigger variant="underline" value="pricing">Tabela</TabsTrigger>
           </TabsList>
 
           <TabsContent value="proposal" className="mt-0">
@@ -729,15 +881,7 @@ export default function ProposalSimulator() {
                   )}
 
                   {!pricesHidden && !isLoading && (
-                    <ProposalPrice
-                      monthly={totals.monthly}
-                      yearlyFull={totals.yearlyFull}
-                      yearlyDiscounted={totals.yearlyDiscounted}
-                      savings={totals.savings}
-                      pixInstallment={totals.pixInstallment}
-                      discountPercent={totals.discountPercent}
-                      installments={totals.installments}
-                    />
+                    <ProposalPrice totals={totals} />
                   )}
 
                   <div className="space-y-2 border-t border-border/40 pt-5">
@@ -767,25 +911,25 @@ export default function ProposalSimulator() {
                     id="proposal-more-options"
                     className="mt-3 grid gap-4 rounded-xl border border-border/50 bg-card p-4 text-left shadow-sm sm:grid-cols-2"
                   >
-                    <div className="space-y-2">
-                      <Label htmlFor="proposal-discount">Desconto anual</Label>
-                      <div className="relative">
-                        <Input
-                          id="proposal-discount"
-                          type="number"
-                          min={MIN_PROPOSAL_DISCOUNT_PERCENT}
-                          max={MAX_PROPOSAL_DISCOUNT_PERCENT}
-                          step={1}
-                          value={discountPercent}
-                          onChange={(event) => setDiscountPercent(cleanProposalDiscount(event.target.value))}
-                          className="pr-9"
-                        />
-                        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">%</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">De 0% a 40% sobre o valor anual.</p>
-                    </div>
+                    <DiscountField
+                      id="proposal-annual-discount"
+                      label="Desconto anual"
+                      period="annual"
+                      discount={annualDiscount}
+                      fullPrice={totals.yearlyFull}
+                      onChange={setAnnualDiscount}
+                    />
 
-                    <div className="space-y-2">
+                    <DiscountField
+                      id="proposal-monthly-discount"
+                      label="Desconto mensal"
+                      period="monthly"
+                      discount={monthlyDiscount}
+                      fullPrice={totals.monthlyFull}
+                      onChange={setMonthlyDiscount}
+                    />
+
+                    <div className="space-y-2 sm:col-span-2">
                       <Label htmlFor="proposal-installments">Parcelas no Pix</Label>
                       <Select
                         value={String(installments)}
@@ -805,6 +949,10 @@ export default function ProposalSimulator() {
                       </Select>
                       <p className="text-xs text-muted-foreground">Escolha entre 3x e 6x.</p>
                     </div>
+
+                    <p className="text-xs text-muted-foreground sm:col-span-2">
+                      Cada desconto é aplicado diretamente sobre o preço cheio da respectiva modalidade; um não altera a base de cálculo do outro.
+                    </p>
                   </div>
                 )}
               </div>
@@ -854,6 +1002,89 @@ export default function ProposalSimulator() {
               </div>
             </section>
           </TabsContent>
+
+          <TabsContent value="pricing" className="mt-0">
+            <section
+              className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border/40"
+              aria-label="Tabela de preços"
+            >
+              <div className="flex flex-col gap-3 border-b border-border/50 px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-7">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-600">
+                    Catálogo mensal
+                  </p>
+                  <h2 className="mt-1 text-xl font-bold">Tabela de preços</h2>
+                  <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                    Comece pelo Essencial e monte a operação com os add-ons necessários para cada unidade.
+                  </p>
+                </div>
+                <Badge variant="secondary" className="w-fit">5 usuários inclusos</Badge>
+              </div>
+
+              {isLoading ? (
+                <div className="space-y-3 p-5 sm:p-7" aria-label="Carregando tabela de preços">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : (
+                <Table className="min-w-[720px]">
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead>Item</TableHead>
+                      <TableHead>O que inclui</TableHead>
+                      <TableHead className="text-right">Valor mensal</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      <TableCell colSpan={3} className="py-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        Base da operação
+                      </TableCell>
+                    </TableRow>
+                    <PricingTableRow
+                      name="Essencial"
+                      description={BASE_MODULE_DESCRIPTION}
+                      price={baseModule?.price ?? plans.find((plan) => plan.code === 'start')?.price ?? 0}
+                      hidden={pricesHidden}
+                    />
+
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      <TableCell colSpan={3} className="py-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        Add-ons
+                      </TableCell>
+                    </TableRow>
+                    {paidAddonModules.map((module) => (
+                      <PricingTableRow
+                        key={module.code}
+                        name={moduleDisplayName(module)}
+                        description={module.description || 'Funcionalidade adicional contratada por unidade.'}
+                        price={module.price}
+                        hidden={pricesHidden}
+                      />
+                    ))}
+
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      <TableCell colSpan={3} className="py-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        Capacidade
+                      </TableCell>
+                    </TableRow>
+                    <PricingTableRow
+                      name="Usuário adicional"
+                      description={`Valor por usuário acima dos ${CUSTOM_PLAN_INCLUDED_USERS} usuários inclusos no Essencial.`}
+                      price={extraUserPrice}
+                      hidden={pricesHidden}
+                    />
+                  </TableBody>
+                </Table>
+              )}
+
+              <p className="border-t border-border/50 px-5 py-4 text-xs leading-relaxed text-muted-foreground sm:px-7">
+                Valores por unidade, cobrados mensalmente. O desconto anual é calculado na aba Proposta.
+              </p>
+            </section>
+          </TabsContent>
         </Tabs>
 
         <ResponsiveModal
@@ -884,7 +1115,7 @@ export default function ProposalSimulator() {
         </ResponsiveModal>
 
         <footer className="mt-8 text-center text-xs text-muted-foreground print:mt-5">
-          Esta simulação não exibe preços avulsos de módulos ou usuários. Condições sujeitas à validação comercial.
+          Consulte os valores avulsos na aba Tabela. Condições sujeitas à validação comercial.
         </footer>
       </div>
     </main>

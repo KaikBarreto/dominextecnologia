@@ -543,7 +543,7 @@ export const enOverrides: MessagesOverride = {
             'Client portal',
             'Advanced pricing (markup)',
             'Video questions in checklists',
-            'Complete finance: accounts, income statement, cash flow and online charges',
+            'Complete finance: accounts, income statement and cash flow',
             'Email support',
           ],
         },
@@ -609,7 +609,7 @@ export const enOverrides: MessagesOverride = {
         },
         {
           q: 'Can I manage finance, payables and income statements?',
-          a: 'Yes. Starting on the Essential plan you get complete financial management: payables/receivables, multiple bank accounts, cash flow, recurring entries, reconciliation by category, income statements, cash flow statements and online charges. Connect the company’s Asaas account to accept Pix, bank slips and cards. Only the Exception plan excludes finance.',
+          a: 'Yes. Starting on the Essential plan you get complete financial management: payables/receivables, multiple bank accounts, cash flow, recurring entries, reconciliation by category, income statements and cash flow statements. Online Pix, bank slip and card charges, plus recurring customer subscriptions, are part of the paid Charges add-on. Only the Exception plan excludes finance.',
         },
         {
           q: 'How does employee time tracking and payroll work?',

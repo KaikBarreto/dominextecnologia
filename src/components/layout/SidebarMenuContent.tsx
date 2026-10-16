@@ -122,8 +122,8 @@ const tenantMenuItems: MenuItem[] = [
     icon: DollarSign,
     children: [
       // Todo o Financeiro faz parte da base desde o Essencial. O plano Exceção
-      // bloqueia o grupo inteiro por `screen:finance`; Cobranças mantém o gate
-      // técnico gratuito da base e NFS-e segue como produto fiscal próprio.
+      // bloqueia o grupo inteiro por `screen:finance`; Cobranças continua como
+      // add-on pago e NFS-e segue como produto fiscal próprio.
       { title: 'Visão Geral', icon: FileBarChart, path: '/financeiro/relatorio', screenKey: 'screen:finance' },
       { title: 'Movimentações Financeiras', icon: HistoryIcon, path: '/financeiro/movimentacoes', screenKey: 'screen:finance' },
       { title: 'Contas a Pagar/Receber', icon: CalendarClock, path: '/financeiro/contas', screenKey: 'screen:finance' },

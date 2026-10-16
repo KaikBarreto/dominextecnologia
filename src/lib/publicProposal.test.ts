@@ -19,7 +19,8 @@ describe('publicProposal', () => {
 
     expect(state.clientName).toBe('');
     expect(state.pricesHidden).toBe(false);
-    expect(state.discountPercent).toBe(20);
+    expect(state.annualDiscount).toEqual({ mode: 'percent', value: 20 });
+    expect(state.monthlyDiscount).toEqual({ mode: 'percent', value: 0 });
     expect(state.installments).toBe(3);
     expect(state.units).toHaveLength(1);
     expect(state.units[0]).toMatchObject({ name: 'Matriz', planCode: DEFAULT_PROPOSAL_PLAN });
@@ -29,7 +30,8 @@ describe('publicProposal', () => {
     const state = {
       clientName: 'Grupo Clima Forte',
       pricesHidden: true,
-      discountPercent: 35,
+      annualDiscount: { mode: 'amount' as const, value: 900 },
+      monthlyDiscount: { mode: 'percent' as const, value: 15 },
       installments: 6,
       units: [
         createProposalUnit('Matriz', 'master'),
@@ -41,7 +43,8 @@ describe('publicProposal', () => {
 
     expect(parsed.clientName).toBe(state.clientName);
     expect(parsed.pricesHidden).toBe(true);
-    expect(parsed.discountPercent).toBe(35);
+    expect(parsed.annualDiscount).toEqual({ mode: 'amount', value: 900 });
+    expect(parsed.monthlyDiscount).toEqual({ mode: 'percent', value: 15 });
     expect(parsed.installments).toBe(6);
     expect(parsed.units.map(({ name, planCode }) => ({ name, planCode }))).toEqual([
       { name: 'Matriz', planCode: 'master' },
@@ -53,7 +56,8 @@ describe('publicProposal', () => {
     const state = {
       clientName: 'Grupo Personalizado',
       pricesHidden: false,
-      discountPercent: 20,
+      annualDiscount: { mode: 'percent' as const, value: 20 },
+      monthlyDiscount: { mode: 'percent' as const, value: 0 },
       installments: 3,
       units: [
         createProposalUnit('Matriz', CUSTOM_PLAN_CODE, ['basic', 'crm', 'rh'], 7),
@@ -78,26 +82,42 @@ describe('publicProposal', () => {
     expect(parsed.units[0].users).toBe(5);
   });
 
-  it('mantém todo o Financeiro como recurso-base gratuito', () => {
-    const unit = createProposalUnit(
+  it('mantém o Financeiro na base e cobra Cobranças somente quando selecionado', () => {
+    const baseUnit = createProposalUnit(
+      'Matriz',
+      CUSTOM_PLAN_CODE,
+      ['basic', 'finance_advanced'],
+      5,
+    );
+    const chargesUnit = createProposalUnit(
       'Matriz',
       CUSTOM_PLAN_CODE,
       ['basic', 'finance_advanced', 'cobrancas'],
       5,
     );
 
-    expect(unit.moduleCodes).toContain('finance_advanced');
-    expect(unit.moduleCodes).toContain('cobrancas');
+    expect(baseUnit.moduleCodes).toContain('finance_advanced');
+    expect(baseUnit.moduleCodes).not.toContain('cobrancas');
     expect(calculateProposalTotals(
-      [unit],
+      [baseUnit],
       [],
       [
         { code: 'basic', price: 197 },
         { code: 'finance_advanced', price: 0 },
-        { code: 'cobrancas', price: 0 },
+        { code: 'cobrancas', price: 150 },
       ],
       20,
     ).monthly).toBe(197);
+    expect(calculateProposalTotals(
+      [chargesUnit],
+      [],
+      [
+        { code: 'basic', price: 197 },
+        { code: 'finance_advanced', price: 0 },
+        { code: 'cobrancas', price: 150 },
+      ],
+      20,
+    ).monthly).toBe(347);
   });
 
   it('limita URLs adulteradas e rejeita código de plano inválido', () => {
@@ -122,12 +142,16 @@ describe('publicProposal', () => {
         { code: 'avancado', price: 547 },
       ]),
     ).toEqual({
+      monthlyFull: 1394,
       monthly: 1394,
+      monthlyDiscountAmount: 0,
+      monthlyDiscount: { mode: 'percent', value: 0 },
       yearlyFull: 16728,
-      yearlyDiscounted: 13382,
-      savings: 3346,
-      pixInstallment: 13382 / 3,
-      discountPercent: 20,
+      yearlyDiscounted: 13382.4,
+      annualDiscountAmount: 3345.6,
+      annualDiscount: { mode: 'percent', value: 20 },
+      savings: 3345.6,
+      pixInstallment: 4460.8,
       installments: 3,
     });
   });
@@ -140,23 +164,69 @@ describe('publicProposal', () => {
       [{ code: 'start', price: 100 }],
       [],
       0,
-      { discountPercent: 40, installments: 6 },
+      {
+        annualDiscount: { mode: 'percent', value: 40 },
+        monthlyDiscount: { mode: 'percent', value: 50 },
+        installments: 6,
+      },
     )).toEqual({
-      monthly: 100,
+      monthlyFull: 100,
+      monthly: 50,
+      monthlyDiscountAmount: 50,
+      monthlyDiscount: { mode: 'percent', value: 50 },
       yearlyFull: 1200,
       yearlyDiscounted: 720,
+      annualDiscountAmount: 480,
+      annualDiscount: { mode: 'percent', value: 40 },
       savings: 480,
       pixInstallment: 120,
-      discountPercent: 40,
       installments: 6,
     });
+  });
+
+  it('calcula descontos nominais mensal e anual em bases independentes', () => {
+    const totals = calculateProposalTotals(
+      [createProposalUnit('Matriz', 'start')],
+      [{ code: 'start', price: 100 }],
+      [],
+      0,
+      {
+        monthlyDiscount: { mode: 'amount', value: 30 },
+        annualDiscount: { mode: 'amount', value: 100 },
+      },
+    );
+
+    expect(totals.monthlyFull).toBe(100);
+    expect(totals.monthly).toBe(70);
+    expect(totals.yearlyFull).toBe(1200);
+    expect(totals.yearlyDiscounted).toBe(1100);
+    expect(totals.yearlyFull).toBe(totals.monthlyFull * 12);
   });
 
   it('limita condições adulteradas da URL aos intervalos comerciais', () => {
     const parsed = parsePublicProposal(new URLSearchParams('d=99&x=1'));
 
-    expect(parsed.discountPercent).toBe(40);
+    expect(parsed.annualDiscount).toEqual({ mode: 'percent', value: 40 });
+    expect(parsed.monthlyDiscount).toEqual({ mode: 'percent', value: 0 });
     expect(parsed.installments).toBe(3);
+  });
+
+  it('limita desconto nominal ao teto equivalente de cada modalidade', () => {
+    const totals = calculateProposalTotals(
+      [createProposalUnit('Matriz', 'start')],
+      [{ code: 'start', price: 100 }],
+      [],
+      0,
+      {
+        monthlyDiscount: { mode: 'amount', value: 999 },
+        annualDiscount: { mode: 'amount', value: 9999 },
+      },
+    );
+
+    expect(totals.monthlyDiscountAmount).toBe(50);
+    expect(totals.monthly).toBe(50);
+    expect(totals.annualDiscountAmount).toBe(480);
+    expect(totals.yearlyDiscounted).toBe(720);
   });
 
   it('não deixa preço negativo contaminar o orçamento', () => {
@@ -184,7 +254,7 @@ describe('publicProposal', () => {
 
     expect(totals.monthly).toBe(367);
     expect(totals.yearlyFull).toBe(4404);
-    expect(totals.yearlyDiscounted).toBe(3523);
+    expect(totals.yearlyDiscounted).toBe(3523.2);
   });
 
   it('cobra o nível comercial de WhatsApp no plano personalizado', () => {

@@ -22,7 +22,12 @@ describe('subscriptionCatalog', () => {
     ])).toEqual([
       ...REQUIRED_CUSTOM_MODULE_CODES,
       'crm',
+      'cobrancas',
     ]);
+  });
+
+  it('mantém Cobranças fora da base obrigatória para ser um add-on pago', () => {
+    expect(REQUIRED_CUSTOM_MODULE_CODES).not.toContain('cobrancas');
   });
 
   it('usa o preço de extra_user do catálogo', () => {
@@ -54,9 +59,9 @@ describe('subscriptionCatalog', () => {
     ])).toBeNull();
   });
 
-  it('marca o antigo Financeiro Avançado como aposentado na proposta', () => {
+  it('aposenta somente o antigo Financeiro Avançado na proposta', () => {
     expect(isRetiredProposalModule('finance_advanced')).toBe(true);
-    expect(isRetiredProposalModule('cobrancas')).toBe(true);
+    expect(isRetiredProposalModule('cobrancas')).toBe(false);
     expect(isRetiredProposalModule('finance')).toBe(false);
   });
 

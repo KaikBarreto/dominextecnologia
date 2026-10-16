@@ -15,7 +15,7 @@ describe('preço do plano personalizado no painel master', () => {
     moduleRow('basic', 197),
     moduleRow('customer_portal', 0),
     moduleRow('finance_advanced', 0),
-    moduleRow('cobrancas', 0),
+    moduleRow('cobrancas', 150),
     moduleRow('pricing_advanced', 0),
     moduleRow('video_questions', 0),
     moduleRow('extra_user', 20),
@@ -28,5 +28,9 @@ describe('preço do plano personalizado no painel master', () => {
 
   it('soma módulos opcionais sem tratar extra_user como módulo marcável', () => {
     expect(sumModulesPrice(catalog, ['crm', 'extra_user'], undefined, undefined, 6)).toBe(317);
+  });
+
+  it('soma Cobranças como add-on pago quando selecionado', () => {
+    expect(sumModulesPrice(catalog, ['cobrancas'], undefined, undefined, 5)).toBe(347);
   });
 });

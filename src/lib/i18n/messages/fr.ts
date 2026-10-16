@@ -543,7 +543,7 @@ export const frOverrides: MessagesOverride = {
             'Portail client',
             'Tarification avancée (marge)',
             'Questions vidéo dans les checklists',
-            'Finance complète : comptes, résultat, trésorerie et encaissements en ligne',
+            'Finance complète : comptes, résultat et trésorerie',
             'Support par e-mail',
           ],
         },
@@ -609,7 +609,7 @@ export const frOverrides: MessagesOverride = {
         },
         {
           q: 'Puis-je gérer les finances, les comptes à payer et le compte de résultat ?',
-          a: 'Oui. Dès l’offre Essentiel, vous disposez de la gestion financière complète : comptes à payer/à recevoir, plusieurs comptes bancaires, trésorerie, écritures récurrentes, rapprochement par catégorie, compte de résultat, tableau des flux de trésorerie et encaissements en ligne. Connectez le compte Asaas de l’entreprise pour accepter Pix, boleto et carte. Seule l’offre Exception exclut la finance.',
+          a: 'Oui. Dès l’offre Essentiel, vous disposez de la gestion financière complète : comptes à payer/à recevoir, plusieurs comptes bancaires, trésorerie, écritures récurrentes, rapprochement par catégorie, compte de résultat et tableau des flux de trésorerie. Les encaissements en ligne par Pix, boleto ou carte et les abonnements récurrents font partie du module payant Encaissements. Seule l’offre Exception exclut la finance.',
         },
         {
           q: 'Comment fonctionnent le pointage et la paie des employés ?',

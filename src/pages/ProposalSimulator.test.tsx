@@ -13,7 +13,7 @@ vi.mock('@/hooks/usePublicSubscriptionPlans', () => ({
         description: null,
         price: 197,
         maxUsers: 5,
-        includedModules: ['basic', 'customer_portal', 'finance_advanced', 'cobrancas', 'pricing_advanced', 'video_questions'],
+        includedModules: ['basic', 'customer_portal', 'finance_advanced', 'pricing_advanced', 'video_questions'],
       }],
       modules: [{
         id: 'basic',
@@ -55,7 +55,7 @@ vi.mock('@/hooks/usePublicSubscriptionPlans', () => ({
         code: 'cobrancas',
         name: 'Cobranças',
         description: 'Pix, boleto e cartão.',
-        price: 0,
+        price: 150,
         type: 'addon',
       }, {
         id: 'whatsapp',
@@ -63,6 +63,13 @@ vi.mock('@/hooks/usePublicSubscriptionPlans', () => ({
         name: 'Avisos de WhatsApp',
         description: 'Avisos automáticos ao cliente.',
         price: 49,
+        type: 'addon',
+      }, {
+        id: 'white-label',
+        code: 'white_label',
+        name: 'Sistema com sua marca',
+        description: 'Logo, cores e identidade visual da empresa.',
+        price: 50,
         type: 'addon',
       }],
       extraUserPrice: 20,
@@ -127,9 +134,46 @@ describe('ProposalSimulator', () => {
     fireEvent.click(whatsappOption);
 
     await waitFor(() => {
-      expect(screen.getByText('R$ 246,00/mês')).toBeInTheDocument();
+      expect(screen.getAllByText('R$ 246,00/mês')).toHaveLength(2);
     });
     expect(screen.getAllByText('Integração com o WhatsApp')).toHaveLength(2);
+  }, 30_000);
+
+  it('oferece Cobranças ao adicionar módulo no plano personalizado', async () => {
+    render(
+      <MemoryRouter initialEntries={['/proposta?l1=personalizado']}>
+        <ProposalSimulator />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar módulo' }));
+    const chargesOption = await screen.findByRole('button', { name: /Cobranças/ });
+
+    expect(chargesOption).toBeInTheDocument();
+    fireEvent.click(chargesOption);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Remover Cobranças' })).toBeInTheDocument();
+      expect(screen.getAllByText('R$ 347,00/mês')).toHaveLength(2);
+    });
+  }, 30_000);
+
+  it('exibe Essencial, add-ons e usuário adicional na tabela de preços', () => {
+    render(
+      <MemoryRouter initialEntries={['/proposta']}>
+        <ProposalSimulator />
+      </MemoryRouter>,
+    );
+
+    const pricingTab = screen.getByRole('tab', { name: 'Tabela' });
+    fireEvent.mouseDown(pricingTab, { button: 0, ctrlKey: false });
+
+    const priceTable = screen.getByRole('region', { name: 'Tabela de preços' });
+    expect(within(priceTable).getByRole('row', { name: /^Essencial\b/ })).toHaveTextContent('R$ 197,00/mês');
+    expect(within(priceTable).getByRole('row', { name: /Cobranças/ })).toHaveTextContent('R$ 150,00/mês');
+    expect(within(priceTable).getByRole('row', { name: /White Label/ })).toHaveTextContent('R$ 50,00/mês');
+    expect(within(priceTable).getByRole('row', { name: /Usuário adicional/ })).toHaveTextContent('R$ 20,00/mês');
+    expect(within(priceTable).queryByText('Sistema com sua marca')).not.toBeInTheDocument();
   });
 
   it('ignora o Financeiro Avançado de links antigos sem cobrar nem exibir', () => {
@@ -139,11 +183,11 @@ describe('ProposalSimulator', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('R$ 197,00/mês')).toBeInTheDocument();
+    expect(screen.getAllByText('R$ 197,00/mês')).toHaveLength(2);
     expect(screen.queryByText('Financeiro Avançado')).not.toBeInTheDocument();
   });
 
-  it('mantém as opções avançadas recolhidas e recalcula desconto e parcelas', async () => {
+  it('calcula descontos mensal e anual de forma independente e alterna percentual ou reais', async () => {
     render(
       <MemoryRouter initialEntries={['/proposta']}>
         <ProposalSimulator />
@@ -154,14 +198,20 @@ describe('ProposalSimulator', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mais opções' }));
 
     fireEvent.change(screen.getByLabelText('Desconto anual'), { target: { value: '40' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Desconto mensal em reais' }));
+    fireEvent.change(screen.getByLabelText('Desconto mensal'), { target: { value: '30' } });
     fireEvent.click(screen.getByRole('combobox', { name: 'Parcelas no Pix' }));
     fireEvent.click(await screen.findByRole('option', { name: '6x' }));
 
     await waitFor(() => {
       expect(screen.getByText('Plano anual · 40% de desconto')).toBeInTheDocument();
       expect(screen.getByText('R$ 2.364,00')).toHaveClass('line-through', 'text-destructive');
-      expect(screen.getByText('Economize R$ 946,00 no plano anual')).toHaveClass('font-bold');
-      expect(screen.getByText('Em até 6x de R$ 236,33 no Pix')).toBeInTheDocument();
+      expect(screen.getByText('Economize R$ 945,60 no plano anual')).toHaveClass('font-bold');
+      expect(screen.getByText('Em até 6x de R$ 236,40 no Pix')).toBeInTheDocument();
+      expect(screen.getByText('Plano mensal · R$ 30,00 de desconto')).toBeInTheDocument();
+      expect(screen.getByText('R$ 197,00')).toHaveClass('line-through', 'text-destructive');
+      expect(screen.getByText('R$ 167,00/mês')).toBeInTheDocument();
     });
+    expect(screen.getByRole('radio', { name: 'Desconto mensal em reais' })).toHaveAttribute('aria-checked', 'true');
   });
 });

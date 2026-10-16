@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import type { ProposalDiscount } from '@/lib/publicProposal';
 
 const PAGE_WIDTH = 210;
 const PAGE_HEIGHT = 297;
@@ -39,12 +40,16 @@ export interface ProposalPdfUnit {
 }
 
 export interface ProposalPdfTotals {
+  monthlyFull: number;
   monthly: number;
+  monthlyDiscountAmount: number;
+  monthlyDiscount: ProposalDiscount;
   yearlyFull: number;
   yearlyDiscounted: number;
+  annualDiscountAmount: number;
+  annualDiscount: ProposalDiscount;
   savings: number;
   pixInstallment: number;
-  discountPercent: number;
   installments: number;
 }
 
@@ -75,6 +80,21 @@ function safeText(value: string, fallback: string): string {
     .join('')
     .trim();
   return cleaned || fallback;
+}
+
+function proposalDiscountLabel(discount: ProposalDiscount, amount: number): string {
+  if (amount <= 0) return 'SEM DESCONTO';
+  if (discount.mode === 'percent') {
+    return `${discount.value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}% DE DESCONTO`;
+  }
+  return `${money(amount)} DE DESCONTO`;
+}
+
+function compactDiscountLabel(discount: ProposalDiscount, amount: number): string {
+  if (amount <= 0) return 'SEM DESCONTO';
+  return discount.mode === 'percent'
+    ? `${discount.value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}% OFF`
+    : `${money(amount)} OFF`;
 }
 
 function fileSlug(value: string): string {
@@ -547,7 +567,7 @@ function buildUsersValuesRows(input: GenerateProposalPdfInput): UsersValuesRow[]
   const totalUsers = input.units.reduce((sum, unit) => sum + unit.users, 0);
   return [
     { label: 'Usuários inclusos', qty: String(totalUsers), value: 'Incluso' },
-    { label: 'Unidades contratadas', qty: String(input.units.length), value: money(input.totals.monthly) },
+    { label: 'Unidades contratadas', qty: String(input.units.length), value: money(input.totals.monthlyFull) },
   ];
 }
 
@@ -630,7 +650,12 @@ function drawInvestmentBand(doc: jsPDF, displayFont: string, totals: ProposalPdf
   setTextColor(doc, DARK);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('INVESTIMENTO MENSAL', MARGIN + 8, y + 12, { charSpace: 1.1 });
+  doc.text(
+    totals.monthlyDiscountAmount > 0 ? 'INVESTIMENTO MENSAL COM DESCONTO' : 'INVESTIMENTO MENSAL',
+    MARGIN + 8,
+    y + 12,
+    { charSpace: 1.1 },
+  );
 
   drawBigMoney(doc, displayFont, totals.monthly, MARGIN + 8, y + 27, 26, 11, DARK, '/mês');
 
@@ -638,7 +663,9 @@ function drawInvestmentBand(doc: jsPDF, displayFont: string, totals: ProposalPdf
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   const note = doc.splitTextToSize(
-    'Sem taxa de adesão, sem fidelidade. Módulos e usuários podem entrar ou sair a qualquer momento.',
+    totals.monthlyDiscountAmount > 0
+      ? `Valor cheio: ${money(totals.monthlyFull)}/mês. Sem taxa de adesão e sem fidelidade.`
+      : 'Sem taxa de adesão, sem fidelidade. Módulos e usuários podem entrar ou sair a qualquer momento.',
     64,
   );
   doc.text(note, PAGE_WIDTH - MARGIN - 8, y + 13, { align: 'right' });
@@ -686,7 +713,14 @@ function renderScopePages(
   } else {
     y += GAP_BEFORE_TABLE;
   }
-  y += drawUsersValuesTable(doc, displayFont, tableRows, 'Total mensal', input.totals.monthly, y) + 6;
+  y += drawUsersValuesTable(
+    doc,
+    displayFont,
+    tableRows,
+    input.totals.monthlyDiscountAmount > 0 ? 'Mensal com desconto' : 'Total mensal',
+    input.totals.monthly,
+    y,
+  ) + 6;
 
   // Faixa verde de investimento sempre ancorada no PÉ da página (própria ou compartilhada com
   // os cards/tabela acima) — nunca flutuando logo abaixo do conteúdo com vazio embaixo dela.
@@ -846,8 +880,8 @@ function renderPaymentPage(
 ) {
   const label = `${pad2(internalPage)} / ${pad2(totalPagesLabel)}`;
   addDarkPage(doc);
-  const annualTitle = input.totals.discountPercent > 0
-    ? ['no ano sai', `${input.totals.discountPercent}% mais barato.`]
+  const annualTitle = input.totals.annualDiscountAmount > 0
+    ? ['duas condições,', 'cada uma com seu desconto.']
     : ['condições de', 'pagamento.'];
   addSectionHeader(doc, displayFont, 'Como pagar', annualTitle, label);
 
@@ -864,15 +898,23 @@ function renderPaymentPage(
   setTextColor(doc, MUTED);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
-  doc.text('MENSAL', monthlyX + 7, topY + 10, { charSpace: 1.2 });
+  doc.text(
+    `MENSAL · ${compactDiscountLabel(input.totals.monthlyDiscount, input.totals.monthlyDiscountAmount)}`,
+    monthlyX + 7,
+    topY + 10,
+    { charSpace: 0.35, maxWidth: monthlyWidth - 14 },
+  );
   drawBigMoney(doc, displayFont, input.totals.monthly, monthlyX + 7, topY + 22, 15, 8, WHITE, '/mês');
   setTextColor(doc, MUTED);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
+  if (input.totals.monthlyDiscountAmount > 0) {
+    doc.text(`De ${money(input.totals.monthlyFull)}/mês`, monthlyX + 7, topY + 29);
+  }
   doc.text(
     doc.splitTextToSize('Cobrança recorrente, sem fidelidade. Cancele quando quiser.', monthlyWidth - 14),
     monthlyX + 7,
-    topY + 31,
+    topY + (input.totals.monthlyDiscountAmount > 0 ? 36 : 31),
   );
 
   // Card anual.
@@ -884,9 +926,7 @@ function renderPaymentPage(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
   doc.text(
-    input.totals.discountPercent > 0
-      ? `ANUAL · ${input.totals.discountPercent}% DE DESCONTO`
-      : 'ANUAL · SEM DESCONTO',
+    `ANUAL · ${proposalDiscountLabel(input.totals.annualDiscount, input.totals.annualDiscountAmount)}`,
     annualX + 7,
     topY + 10,
     { charSpace: 0.7 },
@@ -895,12 +935,19 @@ function renderPaymentPage(
 
   const miniPillY = topY + 28;
   const miniPillH = 6.2;
-  const miniLabels = [
-    money(input.totals.monthly).replace(/,00$/, ''),
-    '× 12',
-    `× ${(1 - input.totals.discountPercent / 100).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}`,
-    `= ${money(input.totals.yearlyDiscounted).replace(/,00$/, '')}`,
-  ];
+  const miniLabels = input.totals.annualDiscountAmount > 0
+    ? [
+        money(input.totals.yearlyFull).replace(/,00$/, ''),
+        `- ${input.totals.annualDiscount.mode === 'percent'
+          ? `${input.totals.annualDiscount.value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`
+          : money(input.totals.annualDiscountAmount).replace(/,00$/, '')}`,
+        `= ${money(input.totals.yearlyDiscounted).replace(/,00$/, '')}`,
+      ]
+    : [
+        money(input.totals.monthlyFull).replace(/,00$/, ''),
+        '× 12',
+        `= ${money(input.totals.yearlyDiscounted).replace(/,00$/, '')}`,
+      ];
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.5);
   let mx = annualX + 7;
@@ -929,7 +976,9 @@ function renderPaymentPage(
   drawRichParagraph(doc, equivRuns, annualX + 7, topY + 42, annualWidth - 14, 7.5, 4.2);
 
   // Badge de economia.
-  const savingsLabel = `Economia de ${money(input.totals.savings)}`;
+  const savingsLabel = input.totals.savings > 0
+    ? `Economia de ${money(input.totals.savings)}`
+    : 'Valor anual sem desconto';
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
   const savingsWidth = doc.getTextWidth(savingsLabel) + 10;

@@ -251,7 +251,6 @@ const PLAN_CODE_ALIASES: Record<string, string> = {
 const FREE_BASE_MODULE_CODES = [
   'customer_portal',
   'finance_advanced',
-  'cobrancas',
   'pricing_advanced',
   'video_questions',
 ] as const;
