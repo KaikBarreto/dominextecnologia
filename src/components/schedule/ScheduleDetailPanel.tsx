@@ -14,7 +14,8 @@ import { useNavigate } from 'react-router-dom';
 import type { ServiceOrder, OsType } from '@/types/database';
 import { getOsTypeLabel } from '@/types/database';
 import { buildCustomerAddress } from '@/utils/geolocation';
-import { buildServiceOrderShareLink } from '@/utils/shareLinks';
+import { buildServiceOrderShareLink, buildWhatsAppLink } from '@/utils/shareLinks';
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -47,6 +48,29 @@ interface ScheduleDetailPanelProps {
 
 function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+/**
+ * Atalho de WhatsApp ao lado do telefone do cliente no Resumo da OS: o técnico
+ * abre a conversa direto, sem copiar o número. Não renderiza nada quando o
+ * telefone não tem dígitos suficientes (`buildWhatsAppLink` devolve null).
+ */
+function CustomerWhatsAppLink({ phone }: { phone?: string | null }) {
+  const href = buildWhatsAppLink(phone);
+  if (!href) return null;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      aria-label="WhatsApp"
+      title="WhatsApp"
+      className="shrink-0 text-[#25D366] transition-opacity hover:opacity-80"
+    >
+      <WhatsAppIcon className="h-4 w-4" />
+    </a>
+  );
 }
 
 function OrderDetail({
@@ -190,8 +214,9 @@ function OrderDetail({
               </div>
               {(order.customer.phone || order.customer.celular) && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Phone className="h-3.5 w-3.5" />
-                  {order.customer.phone || order.customer.celular}
+                  <Phone className="h-3.5 w-3.5 shrink-0" />
+                  <span className="min-w-0 break-all">{order.customer.phone || order.customer.celular}</span>
+                  <CustomerWhatsAppLink phone={order.customer.phone || order.customer.celular} />
                 </div>
               )}
             </div>
@@ -204,8 +229,9 @@ function OrderDetail({
             </div>
             {(order.customer?.phone || order.customer?.celular) && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Phone className="h-3.5 w-3.5" />
-                {order.customer.phone || order.customer.celular}
+                <Phone className="h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0 break-all">{order.customer.phone || order.customer.celular}</span>
+                <CustomerWhatsAppLink phone={order.customer.phone || order.customer.celular} />
               </div>
             )}
             {order.customer?.address && (

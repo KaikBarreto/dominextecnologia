@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.33.3";
+export const APP_VERSION = "1.33.4";
 
-export const VERSION_NOTES = "Isolamento de arquivos entre empresas concluído: comprovantes, fotos de funcionário, de cliente, de equipamento e logos só são acessíveis por quem é da empresa dona.";
+export const VERSION_NOTES = "Agora dá para chamar o cliente no WhatsApp com um toque, direto do resumo da ordem de serviço, sem copiar o número.";

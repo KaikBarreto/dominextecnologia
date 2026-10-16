@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.33.4',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Chamar o cliente no WhatsApp direto do resumo da ordem de serviço',
+        description: 'No resumo da ordem de serviço, ao lado do telefone do cliente, agora tem o atalho do WhatsApp. Um toque abre a conversa com o cliente, sem precisar copiar o número e procurar na agenda do celular. Vale também para as tarefas, e o atalho só aparece quando o telefone cadastrado é válido.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.33.3',
     date: '16 de outubro de 2026',
     type: 'patch',
