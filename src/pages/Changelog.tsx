@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.35.2',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Dados da nota fiscal completos no sistema',
+        description: 'Quando a nota era emitida direto, sem passar por rascunho, algumas informações não ficavam guardadas aqui: o mês de referência, o código do serviço e o município do imposto apareciam em branco na tela da nota, mesmo com a nota autorizada corretamente pela prefeitura. Agora o sistema registra exatamente o que foi enviado, e a tela mostra a nota como ela é.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.35.1',
     date: '16 de outubro de 2026',
     type: 'patch',
