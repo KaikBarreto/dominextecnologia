@@ -81,6 +81,7 @@ import { phoneMask } from '@/utils/masks';
 import { CustomerStockTab } from '@/components/customers/CustomerStockTab';
 import { CustomerExpenseDialog } from '@/components/customers/CustomerExpenseDialog';
 import { useCustomerPaidExpenses, type CustomerPaidExpense } from '@/hooks/useCustomerPaidExpenses';
+import { buildPortalCallsPath } from '@/lib/portalCalls';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos' | 'cobrancas' | 'estoque';
 
@@ -1298,8 +1299,8 @@ export default function CustomerDetail() {
                           {os.scheduled_date ? format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}>
-                            <ExternalLink className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]" onClick={() => navigate(buildPortalCallsPath(os.id))}>
+                            <Eye className="h-4 w-4" />
                           </Button>
                         </TableCell>
                       </TableRow>

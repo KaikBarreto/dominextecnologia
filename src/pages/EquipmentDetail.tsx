@@ -20,7 +20,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
-import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Copy, Edit, LayoutGrid, List, Image, ChevronRight, ChevronDown, X } from 'lucide-react';
+import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Copy, Edit, LayoutGrid, List, Image, ChevronRight, ChevronDown, X, Megaphone } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -52,8 +52,10 @@ import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks'
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatOSNumber } from '@/lib/osNumber';
+import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
+import { buildPortalCallsPath, isPortalCall } from '@/lib/portalCalls';
 
-type TabKey = 'geral' | 'anexos' | 'tarefas';
+type TabKey = 'geral' | 'anexos' | 'tarefas' | 'chamados';
 
 // cm → px a 96 DPI
 const cmToPx = (cm: number) => Math.round(cm * 37.795);
@@ -139,7 +141,7 @@ export default function EquipmentDetail() {
   const te = MESSAGES[locale].app.equipment.detail;
   const { attachments, isLoading: attachLoading, uploadAttachment, deleteAttachment } = useEquipmentAttachments(id);
   const { tasks, isLoading: tasksLoading, createTask, toggleTask, deleteTask } = useEquipmentTasks(id);
-  const { serviceOrders } = useServiceOrders();
+  const { serviceOrders, isLoading: ordersLoading } = useServiceOrders();
   const { customers } = useCustomers();
   const { categories } = useEquipmentCategories();
   const { fields: fieldConfigs } = useEquipmentFieldConfig();
@@ -188,6 +190,7 @@ export default function EquipmentDetail() {
   }, [equipment, routeParam, navigate]);
 
   const equipmentOrders = serviceOrders.filter(os => os.equipment_id === id);
+  const equipmentCalls = equipmentOrders.filter(isPortalCall);
   const { sortedItems: sortedEqOrders, sortConfig: eqOsSortConfig, handleSort: handleEqOsSort } = useTableSort(equipmentOrders);
   const ordersPagination = useDataPagination(sortedEqOrders);
   // Fetch portal token for this customer to generate proper QR URL
@@ -374,6 +377,7 @@ export default function EquipmentDetail() {
     { key: 'geral', label: te.tabGeneral },
     { key: 'anexos', label: te.tabAttachments },
     { key: 'tarefas', label: te.tabHistory },
+    { key: 'chamados', label: MESSAGES[locale].app.os.tabs.calls },
   ];
 
   return (
@@ -913,6 +917,23 @@ export default function EquipmentDetail() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {activeTab === 'chamados' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Megaphone className="h-5 w-5 text-muted-foreground" />
+            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
+              {MESSAGES[locale].app.os.tabs.calls}
+            </h2>
+          </div>
+          <PortalCallsPanel
+            items={equipmentCalls}
+            isLoading={ordersLoading}
+            defaultView="all"
+            onOpenCall={(order) => navigate(buildPortalCallsPath(order.id))}
+          />
         </div>
       )}
 

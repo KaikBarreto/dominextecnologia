@@ -436,10 +436,11 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
   const [ticketDesc, setTicketDesc] = useState('');
   const [ticketSubmitting, setTicketSubmitting] = useState(false);
 
-  // customer_id e company_id vem de payload.contract (exposto na edge desde 1.10.0).
+  // IDs de contexto vêm de payload.contract (contract.id desde 1.12.0).
   // Leitura defensiva: pode ser null em payloads antigos ou de outra versão.
   const customerId = contract.customer_id ?? null;
   const companyId = contract.company_id ?? null;
+  const contractId = contract.id ?? null;
 
   const handleSubmitTicket = async () => {
     if (ticketDesc.trim().length < 10) return;
@@ -462,12 +463,13 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
       const insertPayload = normalizeOptionalForeignKeys({
         customer_id: customerId,
         company_id: companyId,
+        contract_id: contractId,
         description: ticketDesc.trim(),
         os_type: 'manutencao_corretiva',
         status: 'pendente',
         origin: 'portal',
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any, ['customer_id', 'company_id']);
+      } as any, ['customer_id', 'company_id', 'contract_id']);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await supabaseAnon.from('service_orders').insert(insertPayload as any);
       if (error) throw error;

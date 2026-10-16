@@ -144,7 +144,7 @@ export function useServiceOrders() {
             equipment:equipment(id, name, brand, model),
             form_template:form_templates(id, name),
             service_type:service_types(id, name, color, number_prefix),
-            contract:contracts(id, is_pmoc)
+            contract:contracts(id, name, is_pmoc)
           `)
           .order('created_at', { ascending: false })
           .range(from, from + pageSize - 1);
