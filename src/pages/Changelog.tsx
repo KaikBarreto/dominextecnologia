@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.33.0',
+    date: '16 de outubro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Falha de sinal não apaga mais as fotos que já subiram',
+        description: 'Quando o técnico mandava várias fotos de uma vez e o sinal oscilava no meio, o envio inteiro era cancelado: as fotos que já tinham subido desapareciam da pergunta e ele precisava refazer todas. Agora cada foto que entrou fica salva, e o aviso diz exatamente quantas faltaram para ele tentar só essas. O app também tenta reenviar sozinho até três vezes antes de desistir, o que resolve a maioria das quedas rápidas de sinal sem o técnico perceber.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Envio de fotos mais rápido e com barra de progresso',
+        description: 'As fotos agora sobem três de cada vez, em vez de uma esperando a outra, então um envio de cinco fotos termina em bem menos tempo. E tanto as fotos quanto o vídeo passaram a mostrar uma barra com a porcentagem real do envio, no lugar do antigo Enviando parado na tela, que deixava a dúvida se tinha travado.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Fotos da ordem de serviço ocupam quase metade do tamanho',
+        description: 'Ajustamos a qualidade com que as fotos da ordem de serviço são preparadas antes de subir. Na prática elas ficam com cerca de metade do peso, sem perder nitidez para mostrar o defeito, o relatório e o PMOC. Isso significa envio mais rápido no campo e bem menos consumo do plano de dados do celular do técnico.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Remover uma foto agora apaga mesmo o arquivo',
+        description: 'Ao remover uma foto ou um vídeo de uma pergunta, o arquivo continuava guardado no sistema para sempre, mesmo sem aparecer em lugar nenhum. Agora ele é apagado de verdade junto com a remoção.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.32.8',
     date: '16 de outubro de 2026',
     type: 'patch',

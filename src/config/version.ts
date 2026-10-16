@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.32.8";
+export const APP_VERSION = "1.33.0";
 
-export const VERSION_NOTES = "A tela que deixa o vídeo mais leve travava em 0% no iPhone. Agora conclui com o som preservado, mostra quantos segundos faltam e, se travar, desiste sozinha em poucos segundos em vez de prender o técnico.";
+export const VERSION_NOTES = "Envio de fotos da ordem de serviço reformado: queda de sinal não apaga mais o que já subiu, o app tenta reenviar sozinho, as fotos sobem três de cada vez com barra de progresso e ocupam quase metade do tamanho.";
