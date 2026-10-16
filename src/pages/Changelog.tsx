@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.33.3',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Isolamento de arquivos entre empresas concluído',
+        description: 'Fechamos a última parte do reforço: comprovantes financeiros, fotos de funcionário, fotos de cliente, arquivos de equipamento e logos agora só podem ser abertos, trocados ou apagados por quem é da empresa dona. Antes, uma conta de outra empresa conseguia até listar e baixar comprovantes e fotos de funcionário que não eram dela. Nada muda no uso do dia a dia: dentro da sua conta continua tudo igual.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.33.2',
     date: '16 de outubro de 2026',
     type: 'patch',
