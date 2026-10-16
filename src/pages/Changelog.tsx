@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.32.8',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'A redução do vídeo travava em 0% no iPhone',
+        description: 'A tela que deixa o vídeo mais leve antes de enviar ficava parada em 0% no iPhone e não saía dali, prendendo o técnico em campo. Já está corrigido e agora funciona com o som preservado. Além disso, a tela passou a mostrar quantos segundos faltam, e se por qualquer motivo travar, ela desiste sozinha em poucos segundos e mostra o aviso explicando o tamanho do arquivo, em vez de deixar você esperando sem resposta.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.32.7',
     date: '16 de outubro de 2026',
     type: 'patch',

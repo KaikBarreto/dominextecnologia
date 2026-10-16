@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.32.7";
+export const APP_VERSION = "1.32.8";
 
-export const VERSION_NOTES = "Vídeo gravado em alta resolução no celular não é mais recusado no checklist: o app reduz o tamanho do arquivo na hora, com o som preservado, e envia.";
+export const VERSION_NOTES = "A tela que deixa o vídeo mais leve travava em 0% no iPhone. Agora conclui com o som preservado, mostra quantos segundos faltam e, se travar, desiste sozinha em poucos segundos em vez de prender o técnico.";
