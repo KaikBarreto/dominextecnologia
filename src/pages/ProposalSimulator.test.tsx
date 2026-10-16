@@ -239,6 +239,33 @@ describe('ProposalSimulator', () => {
     expect(screen.getByRole('radio', { name: 'Desconto mensal em reais' })).toHaveAttribute('aria-checked', 'true');
   });
 
+  it('remove zeros à esquerda dos campos de desconto durante a digitação', async () => {
+    render(
+      <MemoryRouter initialEntries={['/proposta']}>
+        <ProposalSimulator />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mais opções' }));
+    const annualDiscount = screen.getByLabelText('Desconto adicional no anual');
+    const monthlyDiscount = screen.getByLabelText('Desconto mensal');
+
+    expect(annualDiscount).toHaveValue('20');
+    expect(monthlyDiscount).toHaveValue('');
+
+    fireEvent.change(annualDiscount, { target: { value: '020' } });
+    expect(annualDiscount).toHaveValue('20');
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Desconto mensal em reais' }));
+    fireEvent.change(monthlyDiscount, { target: { value: '0050' } });
+    expect(monthlyDiscount).toHaveValue('50');
+
+    await waitFor(() => {
+      expect(screen.getByText('Plano anual · 20% de desconto adicional')).toBeInTheDocument();
+      expect(screen.getByText('Plano mensal · R$ 50,00 de desconto')).toBeInTheDocument();
+    });
+  });
+
   it('calcula R$ 3.811,20 no anual quando o mensal cai de R$ 547 para R$ 397', async () => {
     render(
       <MemoryRouter initialEntries={['/proposta']}>

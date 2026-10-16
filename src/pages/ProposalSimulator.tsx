@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -205,6 +206,13 @@ function DiscountField({
 }) {
   const maxPercent = maxProposalDiscountPercent(period);
   const maxAmount = Math.round(fullPrice * maxPercent) / 100;
+  const [inputValue, setInputValue] = useState(
+    discount.value > 0 ? String(discount.value).replace('.', ',') : '',
+  );
+
+  useEffect(() => {
+    setInputValue(discount.value > 0 ? String(discount.value).replace('.', ',') : '');
+  }, [discount.mode, discount.value]);
 
   function changeMode(mode: ProposalDiscountMode) {
     const appliedAmount = proposalDiscountAmount(fullPrice, discount, period);
@@ -237,17 +245,23 @@ function DiscountField({
           </ToggleGroupItem>
         </ToggleGroup>
       </div>
-      <Input
+      <NumericInput
         id={id}
-        type="number"
-        min={0}
-        max={discount.mode === 'percent' ? maxPercent : maxAmount}
-        step={discount.mode === 'percent' ? 0.1 : 0.01}
-        value={discount.value}
-        onChange={(event) => onChange(cleanProposalDiscount({
-          ...discount,
-          value: event.target.value === '' ? 0 : Number(event.target.value),
-        }, period))}
+        decimal
+        maxDecimals={2}
+        placeholder="0"
+        value={inputValue}
+        onValueChange={(value) => {
+          const numericValue = value === '' ? 0 : Number(value.replace(',', '.'));
+          const cleanedDiscount = cleanProposalDiscount({
+            ...discount,
+            value: numericValue,
+          }, period);
+          setInputValue(cleanedDiscount.value === numericValue
+            ? value
+            : String(cleanedDiscount.value).replace('.', ','));
+          onChange(cleanedDiscount);
+        }}
       />
       <p className="text-xs text-muted-foreground">
         Até {maxPercent}% {period === 'annual' ? 'da base anual negociada' : 'do valor mensal cheio'}
