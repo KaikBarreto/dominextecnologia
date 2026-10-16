@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.33.1',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Arquivos de uma empresa ficam trancados para as outras',
+        description: 'Encontramos e fechamos uma falha de isolamento: uma conta de outra empresa conseguia apagar ou substituir fotos e vídeos de ordem de serviço que não eram dela, além de ver as selfies do ponto de funcionários de outra empresa. Agora cada arquivo só pode ser lido, trocado ou apagado por quem é da empresa dona dele. Para você nada muda no dia a dia, tudo que já funcionava continua igual dentro da sua conta.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.33.0',
     date: '16 de outubro de 2026',
     type: 'minor',
