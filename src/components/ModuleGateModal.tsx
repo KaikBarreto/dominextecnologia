@@ -108,7 +108,7 @@ export function ModuleGateModal({
 export const MODULE_INFO: Record<string, { name: string; description: string }> = {
   basic: {
     name: 'Módulo Básico',
-    description: 'OS, Agenda, Dashboard, Orçamentos, Serviços, Mapa, Clientes, Equipamentos, Estoque, Financeiro Básico',
+    description: 'OS, Agenda, Dashboard, Orçamentos, Serviços, Mapa, Clientes, Equipamentos, Estoque e Financeiro completo com Cobranças',
   },
   contracts: {
     name: 'Gestão de Contratos e PMOC',
@@ -127,8 +127,12 @@ export const MODULE_INFO: Record<string, { name: string; description: string }> 
     description: 'Emissão de NFS-e (nota fiscal de serviço) integrada ao sistema',
   },
   finance_advanced: {
-    name: 'Financeiro Avançado',
-    description: 'DRE - Demonstrativo de Resultado, Contas a Pagar e a Receber',
+    name: 'Financeiro completo',
+    description: 'Contas a Pagar e Receber, DRE, DFC e relatórios, inclusos no Módulo Básico',
+  },
+  cobrancas: {
+    name: 'Cobranças online',
+    description: 'Pix, boleto, cartão e assinaturas, inclusos no Módulo Básico; requer conexão da conta Asaas da empresa',
   },
   customer_portal: {
     name: 'Portal do Cliente',

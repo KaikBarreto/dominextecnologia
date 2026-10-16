@@ -40,13 +40,7 @@ import LanguageSelector from '@/components/i18n/LanguageSelector';
 import { useLocale } from '@/lib/i18n';
 import { resolveSlug } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
-import { localizeHash, type AnchorKey } from '@/lib/i18n/localizeHash';
 import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
-
-/** Chaves canônicas das âncoras do nav. Hash + label localizados no render. */
-const NAV_ANCHOR_KEYS: { key: AnchorKey }[] = [
-  { key: 'precos' },
-];
 
 type MenuIcon = ComponentType<LucideProps>;
 
@@ -192,7 +186,6 @@ const SOLUTION_LINKS: SolutionLink[] = [
 export default function LandingNavbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [activeId, setActiveId] = useState<string>('');
   const [solutionsOpen, setSolutionsOpen] = useState(false); // desktop dropdown
   const [segmentsOpen, setSegmentsOpen] = useState(false); // desktop dropdown
   const [mobileSolutionsOpen, setMobileSolutionsOpen] = useState(false); // mobile accordion
@@ -228,16 +221,6 @@ export default function LandingNavbar() {
   })();
   const onHome = canonicalPath === '/';
 
-  // navLinks localizados: id e href usam o hash traduzido pro locale atual.
-  // O label do primeiro item (Plataforma) sai das mensagens.
-  const anchorLabel = (key: AnchorKey) => (key === 'recursos' ? m.platform : m.pricing);
-  const navLinks = NAV_ANCHOR_KEYS.map((item) => {
-    const hash = localizeHash(item.key, locale);
-    return { label: anchorLabel(item.key), key: item.key, id: hash, href: `#${hash}` };
-  });
-  // Hash localizados das âncoras principais — usados nos comparadores de activeId.
-  const hashPrecos   = localizeHash('precos', locale);
-
   // CTA "Criar Conta": cor do segmento na respectiva landing, verde da marca no
   // resto. Usamos canonicalPath (sem prefixo de locale) para bater com as chaves
   // de SEGMENTS (ex: 'sistema-para-refrigeracao'). Calculamos o texto legível
@@ -251,47 +234,6 @@ export default function LandingNavbar() {
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-
-  // Track active section (only meaningful on the home page).
-  useEffect(() => {
-    if (!onHome) {
-      setActiveId('');
-      return;
-    }
-    // Mede a posição das seções e atualiza a aba ativa. As leituras de geometria
-    // (getBoundingClientRect) rodam dentro de um requestAnimationFrame e nunca
-    // depois de uma escrita no DOM no mesmo frame — evita o forced reflow (layout
-    // thrashing) que o trace acusou no scroll da home.
-    let raf = 0;
-    const compute = () => {
-      const offset = window.innerHeight * 0.4;
-      let current = '';
-      for (const link of navLinks) {
-        const el = document.getElementById(link.id);
-        if (!el) continue;
-        const top = el.getBoundingClientRect().top;
-        if (top - offset <= 0) {
-          current = link.id;
-        } else {
-          break;
-        }
-      }
-      setActiveId(current);
-    };
-    const updateActive = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(compute);
-    };
-
-    compute();
-    window.addEventListener('scroll', updateActive, { passive: true });
-    window.addEventListener('resize', updateActive, { passive: true });
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('scroll', updateActive);
-      window.removeEventListener('resize', updateActive);
-    };
-  }, [onHome]);
 
   // Trava o scroll do body enquanto o menu mobile full-screen está aberto.
   // Reverte no fechar/desmontar. Fecha também com Escape.
@@ -352,13 +294,6 @@ export default function LandingNavbar() {
   };
   const closeSolutionsOnHover = () => {
     solutionsCloseTimer.current = setTimeout(() => setSolutionsOpen(false), 120);
-  };
-
-  // Âncoras (ex: #recursos…) só rolam na home. Em outra rota, manda pra /<locale>/#id.
-  // anchorTo recebe a chave canônica da âncora e devolve o href localizado.
-  const anchorTo = (key: AnchorKey) => {
-    const hash = `#${localizeHash(key, locale)}`;
-    return onHome ? hash : localizeInternal('/', locale) + hash;
   };
 
   return (
@@ -597,22 +532,6 @@ export default function LandingNavbar() {
               )}
             </div>
 
-            <a
-              href={anchorTo('precos')}
-              className={cn(
-                'relative text-sm transition-colors py-1',
-                activeId === hashPrecos ? 'text-white font-medium' : 'text-white/60 hover:text-white'
-              )}
-            >
-              {m.pricing}
-              <span
-                className={cn(
-                  'absolute left-0 right-0 -bottom-1 h-[2px] rounded-full bg-primary transition-all duration-300',
-                  activeId === hashPrecos ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
-                )}
-              />
-            </a>
-
             {/* Blog — rota própria (/blog), não é âncora: usa Link (SPA, sem reload). */}
             <Link
               to={localizeInternal('/blog', locale)}
@@ -813,17 +732,6 @@ export default function LandingNavbar() {
               })}
             </div>
           )}
-
-          <a
-            href={anchorTo('precos')}
-            onClick={() => setMobileOpen(false)}
-            className={cn(
-              'block py-3 text-sm border-b border-white/5 transition-colors',
-              activeId === hashPrecos ? 'text-white font-medium border-l-2 border-l-primary pl-3' : 'text-white/70 hover:text-white'
-            )}
-          >
-            {m.pricing}
-          </a>
 
           {/* Blog — rota própria (/blog), Link SPA (não recarrega). */}
           <Link

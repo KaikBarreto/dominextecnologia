@@ -438,7 +438,7 @@ T0  Bem-vindo à Dominex
 
 ⚠️ Portal com link correto mas **sem estar público** = acesso negado. É a pegadinha nº1 aqui.
 ⚠️ A aba **Chamados** no cadastro do cliente só existe com o módulo Portal ativo.
-⚠️ 🔒 A aba **Cobranças** exige DUAS coisas ao mesmo tempo: módulo Cobranças **e** conta de recebimento ativa. Faltando uma, a aba some sem aviso.
+⚠️ A aba **Cobranças** faz parte do Financeiro completo desde o Essencial, mas exige a conta de recebimento ativa. O plano Exceção não possui o Financeiro.
 ⚠️ O link de contrato dentro do portal **abre outra página** (Portal PMOC da unidade), não abre dentro do portal.
 🚫 Não existe login com senha pro cliente final nesse fluxo — o acesso é por link/token.
 🚫 Não existe chat ou troca de mensagem no portal — o chamado é de mão única.
@@ -462,8 +462,8 @@ T0  Bem-vindo à Dominex
 8. `23:00` **Pagar a fatura**: integral × parcial, e o limite voltando
 9. `27:00` **Visão Geral**: cards de saldo, gráfico de fluxo de caixa e pizza por categoria
 10. `31:00` **Categorias**: criar, colorir, ordenar e o grupo de DRE; as do sistema que não se mexe
-11. `35:00` 🔒 **Contas a Pagar/Receber**: lançar com **recorrência**, dar baixa, recebimento parcial
-12. `41:00` 🔒 **DRE**: o botão **Caixa × Competência** e o que muda no número
+11. `35:00` **Contas a Pagar/Receber**: lançar com **recorrência**, dar baixa, recebimento parcial
+12. `41:00` **DRE**: o botão **Caixa × Competência** e o que muda no número
 13. `45:00` O caso da compra de cartão na DRE: mês da compra × mês do pagamento × mês da fatura
 14. `48:00` Exportar CSV e gerar o PDF da DRE
 
@@ -476,7 +476,7 @@ T0  Bem-vindo à Dominex
 ⚠️ Pagar a fatura **integralmente** quita as compras. Pagamento **parcial não quita nenhuma** — mostre o aviso da tela.
 ⚠️ Transferência e pagamento de fatura **não entram** no faturamento nem na DRE. Não é erro.
 ⚠️ Recorrência de contas **já cria todas as parcelas de uma vez** (não é agendamento que dispara depois).
-⚠️ 🔒 Contas a Pagar/Receber e DRE exigem **Financeiro Avançado**. Sem o módulo, a URL direta redireciona.
+⚠️ Contas a Pagar/Receber e DRE fazem parte do Financeiro completo desde o Essencial. O plano Exceção não possui o grupo Financeiro.
 ⚠️ Excluir lançamento exige permissão específica (T2).
 🚫 Não existe subcategoria/hierarquia — a lista de categorias é plana.
 🚫 Não existe tela própria de BDI aqui (é dentro de Orçamentos, T9).
@@ -614,7 +614,7 @@ T0  Bem-vindo à Dominex
 | T10 | CRM: funil, leads e captação | **CRM** | 30min |
 | T11 | Contratos e PMOC | **Contratos e PMOC** | 45min |
 | T12 | Portal do Cliente, NPS e reputação | **Portal do Cliente** | 25min |
-| T13 | Financeiro | Financeiro Avançado (parcial) | 50min |
+| T13 | Financeiro | — (incluso desde o Essencial) | 50min |
 | T14 | Notas Fiscais (NFS-e) | **Emissão de Notas Fiscais** | 30min |
 | T15 | Funcionários, Ponto e Folha | **Funcionários / RH** | 35min |
 | T16 | Sua assinatura, plano e módulos | — | 20min |

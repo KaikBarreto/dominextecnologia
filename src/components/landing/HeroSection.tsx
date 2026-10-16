@@ -108,7 +108,7 @@ export default function HeroSection() {
                 className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto whitespace-normal h-auto text-center leading-tight"
                 asChild
               >
-                <a href={`#${localizeHash('precos', locale)}`}>{t.ctaSecondary}</a>
+                <a href={`#${localizeHash('recursos', locale)}`}>{t.ctaSecondary}</a>
               </Button>
             </div>
           </div>

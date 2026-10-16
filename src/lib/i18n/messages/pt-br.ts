@@ -124,7 +124,7 @@ export const ptBr = {
   // (headings/labels de seção/CTAs); o conteúdo dos itens vem de content/<locale>.
   pageChrome: {
     ctaTrial: 'Falar no WhatsApp',
-    seePlans: 'Ver planos',
+    seePlans: 'Conhecer recursos',
     seeAllPlans: 'Ver todos os planos',
     faqHeading: 'Perguntas frequentes',
     problemLabel: 'O problema',
@@ -159,7 +159,7 @@ export const ptBr = {
       subtitle:
         'Chega de planilha, WhatsApp e retrabalho. O Dominex centraliza suas OS, rastreia sua equipe e entrega dados reais para você crescer.',
       ctaPrimary: 'Falar no WhatsApp',
-      ctaSecondary: 'Ver planos',
+      ctaSecondary: 'Conhecer recursos',
       videoUnsupported: 'Seu navegador não suporta vídeo HTML5.',
       videoLabel: 'Demonstração do Dominex',
     },
@@ -353,7 +353,7 @@ export const ptBr = {
             'Portal do cliente',
             'Precificação avançada (BDI)',
             'Perguntas em vídeo nos checklists',
-            'Relatórios básicos',
+            'Financeiro completo: contas, DRE, DFC e cobranças online',
             'Suporte por email',
           ],
         },
@@ -364,9 +364,6 @@ export const ptBr = {
             'Tudo do Essencial +',
             '10 usuários inclusos',
             'Módulo Funcionários / RH',
-            'Financeiro avançado',
-            'Contas a pagar/receber',
-            'DRE e relatórios financeiros',
             'Gestão de Contratos e PMOC',
           ],
         },
@@ -422,7 +419,7 @@ export const ptBr = {
         },
         {
           q: 'Consigo controlar o financeiro, contas a pagar e DRE?',
-          a: 'Sim. A partir do plano Pro você tem contas a pagar/receber, múltiplas contas bancárias, fluxo de caixa, recorrências, conciliação por categoria e DRE para análise de resultado.',
+          a: 'Sim. A partir do plano Essencial você tem o financeiro completo: contas a pagar/receber, múltiplas contas bancárias, fluxo de caixa, recorrências, conciliação por categoria, DRE, DFC e cobranças online. Para Pix, boleto e cartão, basta conectar a conta Asaas da empresa. Apenas o plano Exceção não inclui a área financeira.',
         },
         {
           q: 'Como funciona o controle de ponto e folha dos funcionários?',
@@ -459,7 +456,7 @@ export const ptBr = {
     heroSubtitle:
       'A Dominex existe para tirar da papelada o trabalho de quem presta serviço de campo. Um sistema só, no celular e no computador, pra conduzir a operação do orçamento ao recibo.',
     ctaTrial: 'Falar no WhatsApp',
-    ctaPricing: 'Ver planos',
+    ctaPricing: 'Conhecer recursos',
     missionTitle: 'Nossa missão',
     missionP1Strong: 'ordem de serviço, PMOC e gestão',
     missionP1:

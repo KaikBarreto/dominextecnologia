@@ -1,6 +1,6 @@
 import { useEffect, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, XCircle, CheckCircle2, Star, ChevronRight } from 'lucide-react';
+import { ArrowRight, XCircle, CheckCircle2, Star } from 'lucide-react';
 import { useLocale, useCanonicalSlugRedirect } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
 import { localizeHash } from '@/lib/i18n/localizeHash';
@@ -101,7 +101,6 @@ export default function SegmentLandingPage({ data }: { data: SegmentData }) {
         <SegmentDeepDives data={data} />
         <SegmentFeatures data={data} />
         <SegmentTestimonials data={data} />
-        <SegmentPricingCta data={data} />
         <SegmentFaq data={data} />
         <SegmentFinalCta data={data} />
         <LandingFooter />
@@ -197,7 +196,7 @@ function SegmentHero({ data }: { data: SegmentData }) {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto whitespace-normal h-auto text-center leading-tight"
             asChild
           >
-            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{messages.pageChrome.seePlans}</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('recursos', locale)}>{messages.pageChrome.seePlans}</Link>
           </Button>
         </div>
       </div>
@@ -447,62 +446,6 @@ function SegmentTestimonials({ data }: { data: SegmentData }) {
   );
 }
 
-/* ----------------------- Preços (ponte) ---------------------------- */
-
-function SegmentPricingCta({ data }: { data: SegmentData }) {
-  const ref = useScrollReveal();
-  const { locale, messages } = useLocale();
-  const c = messages.pageChrome;
-  return (
-    <section className="py-20">
-      <div ref={ref} className="mx-auto max-w-4xl px-4 scroll-reveal">
-        <div
-          className="rounded-2xl border p-10 text-center"
-          style={{
-            borderColor: 'color-mix(in srgb, var(--seg-accent) 20%, transparent)',
-            backgroundImage:
-              'linear-gradient(to bottom right, color-mix(in srgb, var(--seg-accent) 8%, transparent), transparent)',
-          }}
-        >
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3 break-words">
-            {c.pricing.heading}
-          </h2>
-          <p className="text-white/50 mb-8 max-w-xl mx-auto">
-            {c.pricing.subtitle}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              size="lg"
-              className="px-8 py-6 text-base border-0 transition-opacity hover:opacity-90 whitespace-normal h-auto text-center leading-tight"
-              style={{
-                backgroundColor: 'var(--seg-accent)',
-                color: 'var(--seg-accent-fg)',
-                boxShadow: '0 0 40px -8px color-mix(in srgb, var(--seg-accent) 60%, transparent)',
-              }}
-              asChild
-            >
-              <WhatsAppCtaLink>
-                {c.ctaTrial}
-                <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
-              </WhatsAppCtaLink>
-            </Button>
-            <Button
-              size="lg"
-              variant="ghost"
-              className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 whitespace-normal h-auto text-center leading-tight"
-              asChild
-            >
-              <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>
-                {c.seeAllPlans} <ChevronRight className="ml-1 h-4 w-4 shrink-0" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 /* ------------------------------ FAQ -------------------------------- */
 
 function SegmentFaq({ data }: { data: SegmentData }) {
@@ -576,7 +519,7 @@ function SegmentFinalCta({ data }: { data: SegmentData }) {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 whitespace-normal h-auto text-center leading-tight"
             asChild
           >
-            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{c.seePlans}</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('recursos', locale)}>{c.seePlans}</Link>
           </Button>
         </div>
       </div>

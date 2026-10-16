@@ -104,25 +104,12 @@ export default function Finance() {
   // Linha a destacar na lista (vem do `?txn=`). Fica até o usuário sair da tela.
   const [highlightTransactionId, setHighlightTransactionId] = useState<string | null>(null);
   const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
-  const { hasModule, isLoading: modulesLoading } = useCompanyModules();
+  const { hasModule } = useCompanyModules();
   const canManageFinanceSettings = useCanManageFinanceSettings();
 
-  // "Contas a Pagar/Receber" exige finance_advanced (mesmo gate que antes
-  // escondia a aba). Acesso direto por URL sem o módulo → cai no Relatório.
-  //
-  // ⚠️ ESPERAR `modulesLoading` NÃO É DETALHE: sem isso, quem cola a URL ou dá
-  // F5 em /financeiro/contas é expulso SEMPRE, mesmo tendo o módulo contratado.
-  // No primeiro render o `AuthContext` ainda hidrata, `profile.company_id` é
-  // undefined, as queries de módulo ficam `enabled: false`, `modules` vem `[]` e
-  // `hasModule()` responde `false` — o effect então redireciona ANTES do dado
-  // chegar. Clicar na aba de dentro do app disfarçava (cache quente), o que
-  // fazia o bug parecer intermitente. Provado no navegador em 24/09/2026.
+  // Todo o Financeiro (incluindo Contas, DRE, DFC e Cobranças) é base. Cobranças
+  // mantém entitlement técnico próprio; o Exceção é barrado pela PermissionRoute.
   useEffect(() => {
-    if (modulesLoading) return;
-    if ((screen === 'contas' || screen === 'relatorios') && !hasModule('finance_advanced')) {
-      navigate(localizeAppPath('/financeiro/relatorio', locale), { replace: true });
-      return;
-    }
     if (screen === 'cobrancas' && !hasModule('cobrancas')) {
       navigate(localizeAppPath('/financeiro/relatorio', locale), { replace: true });
       return;
@@ -130,7 +117,7 @@ export default function Finance() {
     if (screen === 'configuracoes' && !canManageFinanceSettings) {
       navigate(localizeAppPath('/financeiro/relatorio', locale), { replace: true });
     }
-  }, [screen, hasModule, modulesLoading, navigate, locale, canManageFinanceSettings]);
+  }, [screen, hasModule, navigate, locale, canManageFinanceSettings]);
 
   const {
     // `transactions` = só as RAÍZES. É o que toda listagem desta tela consome.

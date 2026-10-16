@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, XCircle, CheckCircle2, Star, ChevronRight, Check, ChevronDown } from 'lucide-react';
+import { ArrowRight, XCircle, CheckCircle2, Star, Check, ChevronDown } from 'lucide-react';
 import { useLocale, useCanonicalSlugRedirect } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
 import { localizeHash } from '@/lib/i18n/localizeHash';
@@ -100,7 +100,6 @@ export default function ModuleLandingPage({ data }: { data: ModuleData }) {
         <ModuleDeepDives data={data} />
         <ModuleFeatures data={data} />
         <ModuleTestimonials data={data} />
-        <ModulePricingCta />
         <ModuleFaq data={data} />
         <ModuleFinalCta data={data} />
         <LandingFooter />
@@ -177,7 +176,7 @@ function ModuleHero({ data }: { data: ModuleData }) {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto whitespace-normal h-auto text-center leading-tight"
             asChild
           >
-            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{messages.pageChrome.seePlans}</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('recursos', locale)}>{messages.pageChrome.seePlans}</Link>
           </Button>
         </div>
       </div>
@@ -526,50 +525,6 @@ function ModuleTestimonials({ data }: { data: ModuleData }) {
   );
 }
 
-/* ----------------------- Preços (ponte) ---------------------------- */
-
-function ModulePricingCta() {
-  const ref = useScrollReveal();
-  const { locale, messages } = useLocale();
-  const c = messages.pageChrome;
-  return (
-    <section className="py-20">
-      <div ref={ref} className="mx-auto max-w-4xl px-4 scroll-reveal">
-        <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.08] to-transparent p-10 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3 break-words">
-            {c.pricing.heading}
-          </h2>
-          <p className="text-white/50 mb-8 max-w-xl mx-auto">
-            {c.pricing.subtitle}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              size="lg"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-6 text-base shadow-brand-glow whitespace-normal h-auto text-center leading-tight"
-              asChild
-            >
-              <WhatsAppCtaLink>
-                {c.ctaTrial}
-                <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
-              </WhatsAppCtaLink>
-            </Button>
-            <Button
-              size="lg"
-              variant="ghost"
-              className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 whitespace-normal h-auto text-center leading-tight"
-              asChild
-            >
-              <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>
-                {c.seeAllPlans} <ChevronRight className="ml-1 h-4 w-4 shrink-0" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 /* ------------------------------ FAQ -------------------------------- */
 
 function ModuleFaq({ data }: { data: ModuleData }) {
@@ -638,7 +593,7 @@ function ModuleFinalCta({ data }: { data: ModuleData }) {
             className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 whitespace-normal h-auto text-center leading-tight"
             asChild
           >
-            <Link to={localizeInternal('/', locale) + '#' + localizeHash('precos', locale)}>{c.seePlans}</Link>
+            <Link to={localizeInternal('/', locale) + '#' + localizeHash('recursos', locale)}>{c.seePlans}</Link>
           </Button>
         </div>
       </div>

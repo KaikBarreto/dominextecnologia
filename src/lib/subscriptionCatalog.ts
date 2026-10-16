@@ -4,7 +4,9 @@ export const EXTRA_USER_MODULE_CODE = 'extra_user';
 export const WHATSAPP_MODULE_CODE = 'whatsapp';
 export const CUSTOM_PLAN_INCLUDED_USERS = 5;
 export const EXCEPTION_PLAN_CODE = 'excecao';
-export const RETIRED_PROPOSAL_MODULE_CODES = ['finance_advanced'] as const;
+// Códigos preservados no banco para gates e snapshots antigos, mas nunca
+// vendidos separadamente: todo o Financeiro agora pertence à base.
+export const RETIRED_PROPOSAL_MODULE_CODES = ['finance_advanced', 'cobrancas'] as const;
 
 const EXCEPTION_RESTRICTED_SCREENS = new Set([
   'screen:quotes',
@@ -22,6 +24,8 @@ export function planAllowsScreen(planCode: string | null | undefined, screenId: 
 
 export const FREE_BASE_MODULE_CODES = [
   CUSTOMER_PORTAL_MODULE_CODE,
+  'finance_advanced',
+  'cobrancas',
   'pricing_advanced',
   'video_questions',
 ] as const;

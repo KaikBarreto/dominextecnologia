@@ -121,15 +121,14 @@ const tenantMenuItems: MenuItem[] = [
     title: 'Financeiro',
     icon: DollarSign,
     children: [
-      // Mesma permissão de tela (screen:finance) em todos — não é módulo novo.
-      // "Contas a Pagar/Receber" exige finance_advanced (mesmo gate que antes
-      // escondia a aba dentro da página); Relatório (Visão Geral + DRE) e
-      // Movimentações são base. A aba DRE dentro do Relatório é gateada inline.
+      // Todo o Financeiro faz parte da base desde o Essencial. O plano Exceção
+      // bloqueia o grupo inteiro por `screen:finance`; Cobranças mantém o gate
+      // técnico gratuito da base e NFS-e segue como produto fiscal próprio.
       { title: 'Visão Geral', icon: FileBarChart, path: '/financeiro/relatorio', screenKey: 'screen:finance' },
       { title: 'Movimentações Financeiras', icon: HistoryIcon, path: '/financeiro/movimentacoes', screenKey: 'screen:finance' },
-      { title: 'Contas a Pagar/Receber', icon: CalendarClock, path: '/financeiro/contas', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
+      { title: 'Contas a Pagar/Receber', icon: CalendarClock, path: '/financeiro/contas', screenKey: 'screen:finance' },
       { title: 'Cobranças', icon: CreditCard, path: '/financeiro/cobrancas', screenKey: 'screen:finance', moduleKey: 'cobrancas' },
-      { title: 'Relatórios', icon: BarChart3, path: '/financeiro/relatorios', screenKey: 'screen:finance', moduleKey: 'finance_advanced' },
+      { title: 'Relatórios', icon: BarChart3, path: '/financeiro/relatorios', screenKey: 'screen:finance' },
       // Notas Fiscais (NFS-e) — gate duplo: módulo pago `nfe` (empresa) E permissão de tela dedicada (usuário).
       { title: 'Notas Fiscais', icon: Receipt, path: '/notas-fiscais', screenKey: 'screen:fiscal_notes', moduleKey: 'nfe' },
     ],

@@ -78,21 +78,23 @@ describe('publicProposal', () => {
     expect(parsed.units[0].users).toBe(5);
   });
 
-  it('remove o Financeiro Avançado aposentado de links e cálculos antigos', () => {
+  it('mantém todo o Financeiro como recurso-base gratuito', () => {
     const unit = createProposalUnit(
       'Matriz',
       CUSTOM_PLAN_CODE,
-      ['basic', 'finance_advanced'],
+      ['basic', 'finance_advanced', 'cobrancas'],
       5,
     );
 
-    expect(unit.moduleCodes).not.toContain('finance_advanced');
+    expect(unit.moduleCodes).toContain('finance_advanced');
+    expect(unit.moduleCodes).toContain('cobrancas');
     expect(calculateProposalTotals(
       [unit],
       [],
       [
         { code: 'basic', price: 197 },
-        { code: 'finance_advanced', price: 150 },
+        { code: 'finance_advanced', price: 0 },
+        { code: 'cobrancas', price: 0 },
       ],
       20,
     ).monthly).toBe(197);

@@ -319,7 +319,7 @@ export const enOverrides: MessagesOverride = {
 
   pageChrome: {
     ctaTrial: 'Chat on WhatsApp',
-    seePlans: 'See plans',
+    seePlans: 'Explore features',
     seeAllPlans: 'See all plans',
     faqHeading: 'Frequently asked questions',
     problemLabel: 'The problem',
@@ -350,7 +350,7 @@ export const enOverrides: MessagesOverride = {
       subtitle:
         'No more spreadsheets, chat threads and rework. Dominex centralizes your work orders, tracks your team and delivers real data so you can grow.',
       ctaPrimary: 'Chat on WhatsApp',
-      ctaSecondary: 'See plans',
+      ctaSecondary: 'Explore features',
       videoUnsupported: 'Your browser does not support HTML5 video.',
       videoLabel: 'Dominex demo',
     },
@@ -543,7 +543,7 @@ export const enOverrides: MessagesOverride = {
             'Client portal',
             'Advanced pricing (markup)',
             'Video questions in checklists',
-            'Basic reports',
+            'Complete finance: accounts, income statement, cash flow and online charges',
             'Email support',
           ],
         },
@@ -554,9 +554,6 @@ export const enOverrides: MessagesOverride = {
             'Everything in Essential +',
             '10 users included',
             'Employees / HR module',
-            'Advanced finance',
-            'Payables/receivables',
-            'Income statement and financial reports',
             'Contract and maintenance-plan management',
           ],
         },
@@ -612,7 +609,7 @@ export const enOverrides: MessagesOverride = {
         },
         {
           q: 'Can I manage finance, payables and income statements?',
-          a: 'Yes. Starting on the Pro plan you get payables/receivables, multiple bank accounts, cash flow, recurring entries, reconciliation by category and an income statement for results analysis.',
+          a: 'Yes. Starting on the Essential plan you get complete financial management: payables/receivables, multiple bank accounts, cash flow, recurring entries, reconciliation by category, income statements, cash flow statements and online charges. Connect the company’s Asaas account to accept Pix, bank slips and cards. Only the Exception plan excludes finance.',
         },
         {
           q: 'How does employee time tracking and payroll work?',
@@ -648,7 +645,7 @@ export const enOverrides: MessagesOverride = {
     heroSubtitle:
       'Dominex exists to take field service work out of the paperwork. One system, on mobile and desktop, to run the operation from quote to receipt.',
     ctaTrial: 'Chat on WhatsApp',
-    ctaPricing: 'See plans',
+    ctaPricing: 'Explore features',
     missionTitle: 'Our mission',
     missionP1Strong: 'work order, maintenance and management',
     missionP1:

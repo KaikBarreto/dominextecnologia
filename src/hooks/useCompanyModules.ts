@@ -31,14 +31,15 @@ export type ModuleCode =
  * SidebarMenuContent e nas guards de rota). Porte do EcoSistema, mas ADAPTADO:
  * - No Dominex o gate de tela hoje é feito por `moduleKey` no menu (só `crm` e
  *   `rh` gateiam telas inteiras) + checagens inline de `hasModule(...)` dentro
- *   das páginas (customer_portal, white_label, finance_advanced).
+ *   das páginas (customer_portal, white_label).
+ * - `finance_advanced` permanece apenas como entitlement legado gratuito; todo
+ *   o Financeiro é base e o Exceção é bloqueado por `planAllowsScreen`.
  * - Telas não-mapeadas são liberadas por padrão (`hasScreen` retorna true),
  *   espelhando o comportamento do EcoSistema.
  *
  * Por isso só entram aqui as telas que correspondem a uma tela INTEIRA gateada
- * por um módulo. Sub-features inline (BDI/precificação, portal do cliente,
- * white-label, abas avançadas do financeiro) NÃO têm tela própria e continuam
- * sendo gateadas inline via `hasModule(...)`, igual ao white_label do EcoSistema.
+ * por um módulo. Sub-features inline (BDI/precificação, portal do cliente e
+ * white-label) NÃO têm tela própria e continuam gateadas via `hasModule(...)`.
  */
 const SCREEN_TO_MODULE_MAP: Record<string, ModuleCode> = {
   // Módulo básico (kit base — incluso em todos os planos pagos)
@@ -53,8 +54,8 @@ const SCREEN_TO_MODULE_MAP: Record<string, ModuleCode> = {
   // Contratos virou módulo PAGO (2026-06): 'Gestão de Contratos e PMOC'. Saiu do
   // basic — sem o módulo `contracts`, a tela de contratos é gateada (upgrade).
   'screen:contracts': 'contracts',
-  // Financeiro: a TELA é base; só as abas avançadas (DRE, contas a pagar/receber)
-  // exigem finance_advanced e são gateadas inline dentro de Finance.tsx.
+  // Financeiro completo é base. O plano Exceção bloqueia a tela inteira pela
+  // regra adicional de `planAllowsScreen` acima do gate por módulo.
   'screen:finance': 'basic',
   // Funcionários / RH (tela inteira atrás do módulo rh — espelha moduleKey do menu)
   'screen:employees': 'rh',

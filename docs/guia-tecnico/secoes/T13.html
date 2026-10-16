@@ -6,7 +6,7 @@
   <div class="meta">
     <span><b>Onde fica:</b> Menu lateral, grupo <span class="ui">Financeiro</span>, com três telas próprias: <span class="ui">Relatório</span>, <span class="ui">Movimentações</span> e <span class="ui">Contas</span></span>
     <span><b>Rotas:</b> <code>/financeiro/relatorio</code>, <code>/financeiro/movimentacoes</code>, <code>/financeiro/contas</code></span>
-    <span><b>Depende de:</b> T12 (Portal do Cliente). Contas a Pagar/Receber e a aba DRE exigem o módulo <b>Financeiro Avançado</b></span>
+    <span><b>Disponibilidade:</b> o Financeiro completo vem desde o plano Essencial. Somente o plano Exceção não possui acesso ao grupo Financeiro</span>
     <span><b>Quem enxerga:</b> quem tem a permissão de tela <span class="ui">Financeiro</span>. Dentro dela, as ações <span class="ui">Gerenciar Financeiro</span>, <span class="ui">Excluir Lançamento Financeiro</span> e <span class="ui">Ver Totais Financeiros</span> são separadas</span>
   </div>
 
@@ -17,9 +17,9 @@
   <table class="dados">
     <thead><tr><th>Tela</th><th>Endereço</th><th>Pergunta que ela responde</th></tr></thead>
     <tbody>
-      <tr><td><span class="ui">Relatório</span></td><td><code>/financeiro/relatorio</code></td><td>"Como foi o meu mês?" Traz a Visão Geral com os cards de receita, despesa e saldo, a DRE, as Categorias e, quando contratado, Cobranças e Assinaturas.</td></tr>
+      <tr><td><span class="ui">Relatório</span></td><td><code>/financeiro/relatorio</code></td><td>"Como foi o meu mês?" Traz a Visão Geral com os cards de receita, despesa e saldo, a DRE, as Categorias e, com a conta de recebimento ativa, Cobranças e Assinaturas.</td></tr>
       <tr><td><span class="ui">Movimentações</span></td><td><code>/financeiro/movimentacoes</code></td><td>"Quanto tem em cada conta e o que passou por ela?" Traz o carrossel de contas bancárias, caixas e cartões, com o extrato de cada uma e as faturas de cada cartão.</td></tr>
-      <tr><td><span class="ui">Contas</span></td><td><code>/financeiro/contas</code></td><td>"O que eu tenho pra pagar e pra receber?" É a programação financeira, com vencimentos, atrasos e baixas. Exige o módulo Financeiro Avançado.</td></tr>
+      <tr><td><span class="ui">Contas</span></td><td><code>/financeiro/contas</code></td><td>"O que eu tenho pra pagar e pra receber?" É a programação financeira, com vencimentos, atrasos e baixas.</td></tr>
     </tbody>
   </table>
 
@@ -33,17 +33,17 @@
   <h3>As abas de dentro do Relatório</h3>
   <ul>
     <li><span class="ui">Visão Geral</span>: sempre aparece.</li>
-    <li><span class="ui">DRE - Resultado</span>: só aparece com o módulo <b>Financeiro Avançado</b>. Se você abrir o endereço com <code>?tab=dre</code> sem o módulo, o sistema devolve você pra Visão Geral, sem mensagem de erro.</li>
+    <li><span class="ui">DRE - Resultado</span>: faz parte do Financeiro completo disponível desde o plano Essencial.</li>
     <li><span class="ui">Categorias</span>: sempre aparece.</li>
-    <li><span class="ui">Cobranças</span> e <span class="ui">Assinaturas</span>: só aparecem quando a empresa tem o módulo <b>Cobranças</b> contratado <b>e</b> a conta de recebimento ativa. Faltando qualquer uma das duas, as abas somem.</li>
+    <li><span class="ui">Cobranças</span> e <span class="ui">Assinaturas</span>: fazem parte do Financeiro completo desde o Essencial e aparecem quando a conta de recebimento está ativa.</li>
   </ul>
 
   <h3>Recebimento do cliente pelo Asaas, na sua própria conta</h3>
   <p>O Dominex permite gerar link de pagamento (Pix, boleto ou cartão) pra você cobrar o seu cliente. O dinheiro cai na <b>sua</b> conta Asaas: você conecta a sua própria chave em <span class="ui">Configurações</span>, aba <span class="ui">Integrações</span>. Isso não tem nenhuma relação com a mensalidade que você paga pelo sistema, que é outro assunto e vive na tela Assinatura.</p>
   <ul>
-    <li>Com o módulo <b>Cobranças</b> ativo e a conta ligada, aparece o botão <span class="ui">Cobrar</span> no topo do Financeiro, que abre o formulário <span class="ui">Nova cobrança</span> com cliente, valor, vencimento, descrição e forma de pagamento (Pix, boleto, Pix e boleto, cartão de crédito, ou deixar o cliente escolher).</li>
-    <li>Com o módulo contratado mas a conta ainda não ativa, o botão vira <span class="ui">Ir para Integrações</span>. A mensagem é: "Para cobrar seus clientes online, ative a integração de recebimentos em Configurações, Integrações."</li>
-    <li>Sem o módulo, não aparece botão nenhum.</li>
+    <li>Com a conta ligada, aparece o botão <span class="ui">Cobrar</span> no topo do Financeiro, que abre o formulário <span class="ui">Nova cobrança</span> com cliente, valor, vencimento, descrição e forma de pagamento (Pix, boleto, Pix e boleto, cartão de crédito, ou deixar o cliente escolher).</li>
+    <li>Com a conta ainda não ativa, o botão vira <span class="ui">Ir para Integrações</span>. A mensagem é: "Para cobrar seus clientes online, ative a integração de recebimentos em Configurações, Integrações."</li>
+    <li>No plano Exceção, o grupo Financeiro e o botão não aparecem.</li>
     <li>Depois de gerada, a cobrança aparece na aba <span class="ui">Cobranças</span> com status <span class="ui">A receber</span>, <span class="ui">Pago</span>, <span class="ui">Vencido</span> ou <span class="ui">Estornado</span>, e as ações <span class="ui">Copiar link</span> e <span class="ui">Estornar</span>.</li>
   </ul>
 
@@ -345,7 +345,7 @@
 
   <h2>11. Contas a Pagar/Receber: lançar com recorrência, dar baixa, recebimento parcial</h2>
 
-  <div class="aviso">Esta tela exige o módulo <b>Financeiro Avançado</b>. Sem ele, abrir <code>/financeiro/contas</code> direto pela URL leva você de volta pro Relatório, sem mensagem de erro. O módulo também é o que libera a aba DRE.</div>
+  <div class="aviso">Contas a Pagar/Receber e DRE fazem parte do Financeiro completo desde o plano Essencial. No plano Exceção, o grupo Financeiro não aparece e suas rotas são bloqueadas.</div>
 
   <p>A tela <span class="ui">Contas</span> tem duas sub-abas, <span class="ui">A Pagar</span> e <span class="ui">A Receber</span>, e no topo os cards <span class="ui">Total Pendente</span>, <span class="ui">Total Vencido</span>, <span class="ui">Próximos 7 dias</span> e <span class="ui">Total Pago</span> (ou <span class="ui">Total Recebido</span>). Há busca por nome, descrição, categoria ou valor, filtro por situação (<span class="ui">Pendentes</span>, <span class="ui">Vencidas</span>, <span class="ui">Pagas</span>, <span class="ui">Todas</span>) e filtro por categoria.</p>
 
@@ -389,11 +389,11 @@
   <h3>Folha de pagamento aparecendo sozinha aqui</h3>
   <p>Linhas com o nome "Folha [nome do funcionário] — [período]" e a categoria <span class="ui">Folha de Pagamento</span> são geradas automaticamente pelo sistema, não por você. Elas trazem um ícone de pessoas e, ao clicar em pagar, abrem o modal de pagamento de funcionário (com desconto de vale e, no modo CLT, holerite). A confirmação é "Folha quitada com sucesso".</p>
 
-  <!-- PRINT FALTANDO: tela Contas a Pagar/Receber com as sub-abas A Pagar e A Receber, os quatro cards de totais e a seção Faturas de Cartão. A conta de demonstração usada na captura NÃO tem o módulo Financeiro Avançado, então /financeiro/contas redireciona pro Relatório e o print sai errado (o arquivo t13-financeiro-contas.png capturado hoje mostra, na verdade, a tela Relatório). Precisa de uma conta com o módulo ligado. -->
+  <!-- PRINT FALTANDO: recapturar a tela Contas a Pagar/Receber com as sub-abas A Pagar e A Receber, os quatro cards de totais e a seção Faturas de Cartão usando uma empresa de demonstração em plano Essencial ou superior. -->
 
   <h2>12. DRE: o botão Caixa × Competência e o que muda no número</h2>
 
-  <p>A DRE é o Demonstrativo de Resultado: o relatório que responde "sobrou ou faltou dinheiro no período". Ela fica na aba <span class="ui">DRE - Resultado</span> da tela <span class="ui">Relatório</span> e exige o módulo <b>Financeiro Avançado</b>.</p>
+  <p>A DRE é o Demonstrativo de Resultado: o relatório que responde "sobrou ou faltou dinheiro no período". Ela fica na aba <span class="ui">DRE - Resultado</span> da tela <span class="ui">Relatório</span> e faz parte do Financeiro completo desde o plano Essencial.</p>
 
   <h3>Como o resultado é montado</h3>
   <table class="dados">
@@ -531,8 +531,8 @@
       </tr>
       <tr>
         <td>"Sumiu a aba DRE" ou "Sumiu Contas a Pagar"</td>
-        <td>Falta o módulo Financeiro Avançado</td>
-        <td>As duas dependem do módulo Financeiro Avançado. Sem ele, a aba não aparece e o endereço direto devolve pro Relatório. Dá pra contratar em Assinatura, Gerenciar Meu Plano.</td>
+        <td>Falta a permissão de tela ou a empresa está no plano Exceção</td>
+        <td>O Financeiro completo vem desde o Essencial. Confira a permissão de tela Financeiro do usuário e confirme se a empresa não está no plano Exceção, que não inclui recursos financeiros.</td>
       </tr>
       <tr>
         <td>"Não consigo excluir um lançamento, o botão nem aparece"</td>

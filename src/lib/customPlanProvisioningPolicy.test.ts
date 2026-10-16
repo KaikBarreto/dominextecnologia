@@ -11,7 +11,7 @@ describe('provisionamento do plano personalizado', () => {
     (name) => {
       const source = edgeSource(name);
 
-      for (const code of ['basic', 'customer_portal', 'pricing_advanced', 'video_questions']) {
+      for (const code of ['basic', 'customer_portal', 'finance_advanced', 'cobrancas', 'pricing_advanced', 'video_questions']) {
         expect(source).toContain(`'${code}'`);
       }
       expect(source).toContain('...REQUIRED_PERSONALIZED_MODULE_CODES');

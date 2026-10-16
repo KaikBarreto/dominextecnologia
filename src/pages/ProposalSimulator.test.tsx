@@ -13,7 +13,7 @@ vi.mock('@/hooks/usePublicSubscriptionPlans', () => ({
         description: null,
         price: 197,
         maxUsers: 5,
-        includedModules: ['basic', 'customer_portal', 'pricing_advanced', 'video_questions'],
+        includedModules: ['basic', 'customer_portal', 'finance_advanced', 'cobrancas', 'pricing_advanced', 'video_questions'],
       }],
       modules: [{
         id: 'basic',
@@ -48,8 +48,15 @@ vi.mock('@/hooks/usePublicSubscriptionPlans', () => ({
         code: 'finance_advanced',
         name: 'Financeiro Avançado',
         description: 'DRE e DFC.',
-        price: 150,
+        price: 0,
         type: 'module',
+      }, {
+        id: 'cobrancas',
+        code: 'cobrancas',
+        name: 'Cobranças',
+        description: 'Pix, boleto e cartão.',
+        price: 0,
+        type: 'addon',
       }, {
         id: 'whatsapp',
         code: 'whatsapp',

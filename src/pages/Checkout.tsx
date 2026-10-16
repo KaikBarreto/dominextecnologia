@@ -65,15 +65,13 @@ const PLAN_FEATURES: Record<string, string[]> = {
     "Equipamentos",
     "Estoque",
     "Portal do Cliente",
-    "Financeiro Básico",
+    "Financeiro completo: contas, DRE, DFC e cobranças online",
   ],
   avancado: [
     "Tudo do Start",
     "Gestão de Contratos e PMOC",
     "Funcionários / RH",
     "Ponto Eletrônico",
-    "Financeiro Avançado (DRE)",
-    "Contas a Pagar e Receber",
   ],
   master: [
     "Tudo do Avançado",

@@ -14,6 +14,8 @@ describe('preço do plano personalizado no painel master', () => {
   const catalog = [
     moduleRow('basic', 197),
     moduleRow('customer_portal', 0),
+    moduleRow('finance_advanced', 0),
+    moduleRow('cobrancas', 0),
     moduleRow('pricing_advanced', 0),
     moduleRow('video_questions', 0),
     moduleRow('extra_user', 20),
