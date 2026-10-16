@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.35.4',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Passo a passo para conectar o WhatsApp',
+        description: 'A tela de conexão agora mostra o caminho completo dentro do aplicativo, com as instruções do Android e do iPhone e os nomes dos botões em destaque, e continua visível enquanto você escaneia o QR Code. Enquanto o código é gerado, uma barra de progresso mostra que o sistema está trabalhando.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.35.3',
     date: '16 de outubro de 2026',
     type: 'patch',
