@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { OsVideoPlayer } from '@/components/technician/OsVideoPlayer';
-import { canCompressVideoInBrowser, compressVideoInBrowser } from '@/utils/videoCompress';
+import { canCompressVideoInBrowser, compressVideoInBrowser, unlockAudioContextForCompression } from '@/utils/videoCompress';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -101,6 +101,9 @@ export function OsVideoField({
   // Fração 0..1 enquanto o navegador recomprime um vídeo pesado da galeria.
   // null = não está comprimindo. Trava os botões e abre o overlay de progresso.
   const [compressPct, setCompressPct] = useState<number | null>(null);
+  // Duração do vídeo em segundos. A compressão roda em tempo real, então esse
+  // número É a espera — mostrar o que falta evita a sensação de barra travada.
+  const [compressSecs, setCompressSecs] = useState<number | null>(null);
 
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -245,10 +248,19 @@ export function OsVideoField({
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    // 🚨 SÍNCRONO, antes de QUALQUER await: criar e destravar o AudioContext tem
+    // que acontecer dentro do gesto do usuário. Um `await` no meio já estoura a
+    // "ativação transitória" do toque e o WebKit passa a recusar som — foi o que
+    // pendurou a compressão em 0% no iPhone (v1.32.7). Só vale a pena quando o
+    // arquivo é grande o bastante pra precisar comprimir; nos outros casos o
+    // contexto é fechado logo abaixo, sem custo.
+    const willCompress = file.size > MAX_UPLOAD_BYTES && canCompressVideoInBrowser();
+    const unlockedAudio = willCompress ? unlockAudioContextForCompression() : null;
     // DURAÇÃO primeiro: é a regra que a tela anuncia ("clipe de até 30 segundos").
     // Best-effort — se der pra medir, rejeita acima de ~35s.
-    const durationOk = await checkDuration(file);
-    if (durationOk === false) {
+    const seconds = await measureDuration(file);
+    if (seconds !== null && seconds > 35) {
+      unlockedAudio?.close().catch(() => {});
       toast({
         variant: 'destructive',
         title: t.toastTooLong,
@@ -264,22 +276,27 @@ export function OsVideoField({
       // 1,5 Mbps — o mesmo ajuste do gravador do app). É o caminho normal pra
       // vídeo de celular em 4K: 28s saem com ~88 MB e voltam com ~6 MB.
       const picked = pickRecordingMime();
-      if (picked && canCompressVideoInBrowser()) {
+      if (picked && willCompress) {
         setCompressPct(0);
+        setCompressSecs(seconds);
         let compressed: Awaited<ReturnType<typeof compressVideoInBrowser>> = null;
         try {
           compressed = await compressVideoInBrowser(file, {
             mime: picked.mime,
             ext: picked.ext,
+            audioContext: unlockedAudio,
             onProgress: setCompressPct,
           });
         } finally {
           setCompressPct(null);
+          setCompressSecs(null);
         }
         if (compressed && compressed.blob.size <= MAX_UPLOAD_BYTES) {
           await uploadClip(compressed.blob, compressed.ext);
           return;
         }
+      } else {
+        unlockedAudio?.close().catch(() => {});
       }
       // Sem suporte, falhou, ou nem comprimido coube: volta pro aviso claro.
       toast({
@@ -291,6 +308,7 @@ export function OsVideoField({
       });
       return;
     }
+    unlockedAudio?.close().catch(() => {});
     const ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
     await uploadClip(file, ext);
   };
@@ -363,6 +381,14 @@ export function OsVideoField({
             </div>
             <p className="mt-2 text-sm font-semibold tabular-nums text-white">
               {Math.round(compressPct * 100)}%
+              {compressSecs !== null && compressPct < 1 && (
+                <span className="ml-2 font-normal text-white/60">
+                  {t.compressingRemaining.replace(
+                    '{n}',
+                    String(Math.max(1, Math.ceil(compressSecs * (1 - compressPct)))),
+                  )}
+                </span>
+              )}
             </p>
           </div>
         </div>,
@@ -525,24 +551,28 @@ export function OsVideoField({
   );
 }
 
-// Mede a duração do vídeo carregando os metadados. Retorna true (ok), false
-// (passou de ~35s) ou null (não deu pra medir → deixa passar).
-function checkDuration(file: File): Promise<boolean | null> {
+// Mede a duração do vídeo (segundos) carregando só os metadados. `null` = não
+// deu pra medir, e aí o chamador deixa passar. Serve pros DOIS usos: barrar
+// clipe longo demais e estimar quanto tempo a compressão vai levar (ela roda em
+// tempo real, então a duração do vídeo É a espera).
+function measureDuration(file: File): Promise<number | null> {
   return new Promise((resolve) => {
     try {
       const url = URL.createObjectURL(file);
       const v = document.createElement('video');
       v.preload = 'metadata';
-      const done = (result: boolean | null) => {
+      const done = (result: number | null) => {
         URL.revokeObjectURL(url);
         resolve(result);
       };
+      // Prazo: metadados de arquivo grande no celular podem não vir nunca.
+      const guard = setTimeout(() => done(null), 15000);
       v.onloadedmetadata = () => {
+        clearTimeout(guard);
         const d = v.duration;
-        if (!isFinite(d) || d <= 0) return done(null);
-        done(d <= 35);
+        done(isFinite(d) && d > 0 ? d : null);
       };
-      v.onerror = () => done(null);
+      v.onerror = () => { clearTimeout(guard); done(null); };
       v.src = url;
     } catch {
       resolve(null);
