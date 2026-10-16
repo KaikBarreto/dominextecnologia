@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.35.4";
+export const APP_VERSION = "1.35.5";
 
-export const VERSION_NOTES = "Conectar o WhatsApp ficou mais simples: a tela mostra o passo a passo com as instruções para Android e iPhone, e uma barra de progresso enquanto o QR Code é gerado.";
+export const VERSION_NOTES = "Ajuste visual na tela de conexão do WhatsApp, com menos molduras e mais respiro entre os blocos.";
