@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.33.5',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Atalho do WhatsApp também no app do técnico em campo',
+        description: 'O técnico agora chama o cliente no WhatsApp com um toque de dentro da ordem de serviço, tanto no celular quanto no computador, sem precisar copiar o número. Na versão da ordem de serviço que o cliente recebe por link, o atalho não aparece.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.33.4',
     date: '16 de outubro de 2026',
     type: 'patch',

@@ -14,8 +14,8 @@ import { useNavigate } from 'react-router-dom';
 import type { ServiceOrder, OsType } from '@/types/database';
 import { getOsTypeLabel } from '@/types/database';
 import { buildCustomerAddress } from '@/utils/geolocation';
-import { buildServiceOrderShareLink, buildWhatsAppLink } from '@/utils/shareLinks';
-import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
+import { buildServiceOrderShareLink } from '@/utils/shareLinks';
+import { CustomerWhatsAppLink } from '@/components/CustomerWhatsAppLink';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -48,29 +48,6 @@ interface ScheduleDetailPanelProps {
 
 function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-}
-
-/**
- * Atalho de WhatsApp ao lado do telefone do cliente no Resumo da OS: o técnico
- * abre a conversa direto, sem copiar o número. Não renderiza nada quando o
- * telefone não tem dígitos suficientes (`buildWhatsAppLink` devolve null).
- */
-function CustomerWhatsAppLink({ phone }: { phone?: string | null }) {
-  const href = buildWhatsAppLink(phone);
-  if (!href) return null;
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={(e) => e.stopPropagation()}
-      aria-label="WhatsApp"
-      title="WhatsApp"
-      className="shrink-0 text-[#25D366] transition-opacity hover:opacity-80"
-    >
-      <WhatsAppIcon className="h-4 w-4" />
-    </a>
-  );
 }
 
 function OrderDetail({

@@ -91,6 +91,7 @@ import { PublicAppLocaleProvider, useAppLocaleContext } from '@/contexts/AppLoca
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
+import { CustomerWhatsAppLink } from '@/components/CustomerWhatsAppLink';
 import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -2801,7 +2802,14 @@ function TechnicianOSInner() {
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold break-words">{serviceOrder.customer?.name}</p>
                   {(serviceOrder.customer?.phone || serviceOrder.customer?.celular) && (
-                    <p className="text-sm text-muted-foreground mt-0.5">{serviceOrder.customer.phone || serviceOrder.customer.celular}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-sm text-muted-foreground min-w-0 break-words">{serviceOrder.customer.phone || serviceOrder.customer.celular}</p>
+                      {/* Na visão pública quem abre o link é o próprio cliente: o
+                          atalho só faz sentido pro técnico. */}
+                      {!isPublicMode && (
+                        <CustomerWhatsAppLink phone={serviceOrder.customer.phone || serviceOrder.customer.celular} />
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -3468,10 +3476,13 @@ function TechnicianOSInner() {
         </div>
         <p className="font-semibold text-sm break-words">{serviceOrder.customer?.name}</p>
         {(serviceOrder.customer?.phone || serviceOrder.customer?.celular) && (
-          <a href={`tel:${serviceOrder.customer.phone || serviceOrder.customer.celular}`} className="flex items-center gap-1.5 text-xs text-primary mt-1">
-            <Phone className="h-3 w-3 shrink-0" />
-            {serviceOrder.customer.phone || serviceOrder.customer.celular}
-          </a>
+          <div className="flex items-center gap-2 mt-1">
+            <a href={`tel:${serviceOrder.customer.phone || serviceOrder.customer.celular}`} className="flex items-center gap-1.5 text-xs text-primary min-w-0">
+              <Phone className="h-3 w-3 shrink-0" />
+              <span className="break-all">{serviceOrder.customer.phone || serviceOrder.customer.celular}</span>
+            </a>
+            <CustomerWhatsAppLink phone={serviceOrder.customer.phone || serviceOrder.customer.celular} />
+          </div>
         )}
         {(isServiceAddress && destAddress ? destAddress : serviceOrder.customer?.address) && (
           <p className="text-xs text-muted-foreground flex items-start gap-1.5 mt-1">
@@ -3862,10 +3873,13 @@ function TechnicianOSInner() {
               <p className="text-xs text-muted-foreground mt-0.5">{serviceOrder.customer.document}</p>
             )}
             {(serviceOrder.customer?.phone || serviceOrder.customer?.celular) && (
-              <a href={`tel:${serviceOrder.customer.phone || serviceOrder.customer.celular}`} className="flex items-center gap-1.5 text-sm text-primary mt-1">
-                <Phone className="h-3 w-3 shrink-0" />
-                {serviceOrder.customer.phone || serviceOrder.customer.celular}
-              </a>
+              <div className="flex items-center gap-2 mt-1">
+                <a href={`tel:${serviceOrder.customer.phone || serviceOrder.customer.celular}`} className="flex items-center gap-1.5 text-sm text-primary min-w-0">
+                  <Phone className="h-3 w-3 shrink-0" />
+                  <span className="break-all">{serviceOrder.customer.phone || serviceOrder.customer.celular}</span>
+                </a>
+                <CustomerWhatsAppLink phone={serviceOrder.customer.phone || serviceOrder.customer.celular} />
+              </div>
             )}
             {serviceOrder.customer?.address && (
               <p className="text-sm text-muted-foreground flex items-start gap-1.5 mt-1">
