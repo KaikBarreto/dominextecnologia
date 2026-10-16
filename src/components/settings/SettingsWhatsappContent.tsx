@@ -26,6 +26,8 @@ import { SettingsAsaasContent } from '@/components/settings/SettingsAsaasContent
 import { SettingsAsaasSimulator } from '@/components/settings/SettingsAsaasSimulator';
 import { WhatsappAutomationSettings } from '@/components/settings/whatsapp/WhatsappAutomationSettings';
 import { WhatsappProtectionSettings } from '@/components/settings/whatsapp/WhatsappProtectionSettings';
+import { WhatsappPairingSteps } from '@/components/settings/whatsapp/WhatsappPairingSteps';
+import { OptimisticProgress } from '@/components/settings/whatsapp/OptimisticProgress';
 import {
   WhatsappInboxPreview,
   WhatsappCampaignsPreview,
@@ -509,20 +511,10 @@ function ConnectionCard({
 
             {!qrReady && (
               <>
-                {!qrPayload?.qr && (
-                  <ol className="mt-4 space-y-2 text-sm text-muted-foreground">
-                    {['Toque no botão abaixo para gerar o QR Code.',
-                      'No celular, abra o WhatsApp em Aparelhos conectados.',
-                      'Aponte a câmera para o código e pronto.'].map((passo, index) => (
-                      <li key={passo} className="flex gap-2.5">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-foreground text-[11px] font-semibold text-background">
-                          {index + 1}
-                        </span>
-                        {passo}
-                      </li>
-                    ))}
-                  </ol>
-                )}
+                {/* O passo a passo fica visível TAMBÉM com o QR na tela: é
+                    justamente nesse momento que a pessoa está com o celular na
+                    mão procurando o menu certo. */}
+                <WhatsappPairingSteps className="mt-4" />
 
                 <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border bg-background p-3 text-sm leading-relaxed">
                   <Checkbox checked={acceptedRisk} onCheckedChange={(value) => setAcceptedRisk(value === true)} className="mt-0.5" disabled={!canManage || !moduleActive} />
@@ -539,6 +531,15 @@ function ConnectionCard({
                 </p>
               </>
             )}
+
+            {/* A criação da instância na Evolution leva alguns segundos. Sem
+                sinal de progresso, a espera parece travamento e o cliente
+                clica de novo. */}
+            <OptimisticProgress
+              active={connectionState.connectQr.isPending}
+              label="Preparando a conexão e gerando o QR Code…"
+              className="mt-4"
+            />
 
             <div className="mt-5 flex flex-wrap items-center gap-2">
               {qrReady ? (
