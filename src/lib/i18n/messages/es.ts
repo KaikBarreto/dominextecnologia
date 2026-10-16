@@ -543,7 +543,7 @@ export const esOverrides: MessagesOverride = {
             'Portal del cliente',
             'Precios avanzados (markup)',
             'Preguntas en video en los checklists',
-            'Finanzas completas: cuentas, resultados, flujo de efectivo y cobros online',
+            'Finanzas completas: cuentas, resultados y flujo de efectivo',
             'Soporte por correo',
           ],
         },
@@ -609,7 +609,7 @@ export const esOverrides: MessagesOverride = {
         },
         {
           q: '¿Puedo gestionar finanzas, cuentas por pagar y estados de resultados?',
-          a: 'Sí. A partir del plan Esencial tienes la gestión financiera completa: cuentas por pagar/por cobrar, múltiples cuentas bancarias, flujo de caja, movimientos recurrentes, conciliación por categoría, estado de resultados, estado de flujo de efectivo y cobros online. Conecta la cuenta Asaas de la empresa para aceptar Pix, boleto y tarjeta. Solo el plan Excepción no incluye finanzas.',
+          a: 'Sí. A partir del plan Esencial tienes la gestión financiera completa: cuentas por pagar/por cobrar, múltiples cuentas bancarias, flujo de caja, movimientos recurrentes, conciliación por categoría, estado de resultados y estado de flujo de efectivo. Los cobros online por Pix, boleto o tarjeta y las suscripciones recurrentes forman parte del módulo adicional Cobros. Solo el plan Excepción no incluye finanzas.',
         },
         {
           q: '¿Cómo funciona el control de asistencia y la nómina de los empleados?',

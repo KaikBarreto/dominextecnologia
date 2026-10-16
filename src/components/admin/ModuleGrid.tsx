@@ -22,13 +22,13 @@ import {
  */
 
 // Módulos obrigatórios do Personalizado. O básico é a raiz paga; Portal do
-// Cliente, Financeiro completo (inclusive Cobranças), Precificação Avançada e
-// Perguntas em Vídeo são recursos gratuitos da base. Nenhum pode ser removido.
+// Cliente, Financeiro completo, Precificação Avançada e Perguntas em Vídeo são
+// recursos gratuitos da base. Cobranças continua sendo um add-on pago.
 export const BASE_MODULE_CODES = [...REQUIRED_CUSTOM_MODULE_CODES];
 
 // 'extra_user' é um adicional calculado pelo contador de usuários, não um
 // recurso marcável. O preço vem do catálogo no fluxo de cobrança/server-side.
-const HIDDEN_MODULE_CODES = ['extra_user', 'finance_advanced', 'cobrancas'];
+const HIDDEN_MODULE_CODES = ['extra_user', 'finance_advanced'];
 
 export interface SubscriptionModule {
   code: string;

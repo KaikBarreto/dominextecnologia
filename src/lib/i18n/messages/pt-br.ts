@@ -353,7 +353,7 @@ export const ptBr = {
             'Portal do cliente',
             'Precificação avançada (BDI)',
             'Perguntas em vídeo nos checklists',
-            'Financeiro completo: contas, DRE, DFC e cobranças online',
+            'Financeiro completo: contas, DRE e DFC',
             'Suporte por email',
           ],
         },
@@ -419,7 +419,7 @@ export const ptBr = {
         },
         {
           q: 'Consigo controlar o financeiro, contas a pagar e DRE?',
-          a: 'Sim. A partir do plano Essencial você tem o financeiro completo: contas a pagar/receber, múltiplas contas bancárias, fluxo de caixa, recorrências, conciliação por categoria, DRE, DFC e cobranças online. Para Pix, boleto e cartão, basta conectar a conta Asaas da empresa. Apenas o plano Exceção não inclui a área financeira.',
+          a: 'Sim. A partir do plano Essencial você tem o financeiro completo: contas a pagar/receber, múltiplas contas bancárias, fluxo de caixa, recorrências, conciliação por categoria, DRE e DFC. Cobranças online por Pix, boleto ou cartão e assinaturas recorrentes fazem parte do módulo adicional Cobranças. Apenas o plano Exceção não inclui a área financeira.',
         },
         {
           q: 'Como funciona o controle de ponto e folha dos funcionários?',

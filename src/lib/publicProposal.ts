@@ -12,9 +12,12 @@ export const DEFAULT_PROPOSAL_PLAN = 'start';
 export const DEFAULT_UNIT_NAME = 'Matriz';
 export const CUSTOM_PLAN_CODE = 'personalizado';
 export const BASE_MODULE_CODE = BASE_SUBSCRIPTION_MODULE_CODE;
-export const DEFAULT_PROPOSAL_DISCOUNT_PERCENT = 20;
+export const DEFAULT_PROPOSAL_ANNUAL_DISCOUNT_PERCENT = 20;
+export const DEFAULT_PROPOSAL_MONTHLY_DISCOUNT_PERCENT = 0;
 export const MIN_PROPOSAL_DISCOUNT_PERCENT = 0;
-export const MAX_PROPOSAL_DISCOUNT_PERCENT = 40;
+export const MAX_PROPOSAL_ANNUAL_DISCOUNT_PERCENT = 40;
+export const MAX_PROPOSAL_MONTHLY_DISCOUNT_PERCENT = 50;
+export const MAX_PROPOSAL_DISCOUNT_AMOUNT = 1_000_000_000;
 export const DEFAULT_PROPOSAL_INSTALLMENTS = 3;
 export const MIN_PROPOSAL_INSTALLMENTS = 3;
 export const MAX_PROPOSAL_INSTALLMENTS = 6;
@@ -28,11 +31,20 @@ export interface ProposalUnit {
   users: number;
 }
 
+export type ProposalDiscountMode = 'percent' | 'amount';
+export type ProposalDiscountPeriod = 'annual' | 'monthly';
+
+export interface ProposalDiscount {
+  mode: ProposalDiscountMode;
+  value: number;
+}
+
 export interface PublicProposalState {
   clientName: string;
   units: ProposalUnit[];
   pricesHidden: boolean;
-  discountPercent: number;
+  annualDiscount: ProposalDiscount;
+  monthlyDiscount: ProposalDiscount;
   installments: number;
 }
 
@@ -47,17 +59,22 @@ export interface ProposalModulePrice {
 }
 
 export interface ProposalTotals {
+  monthlyFull: number;
   monthly: number;
+  monthlyDiscountAmount: number;
+  monthlyDiscount: ProposalDiscount;
   yearlyFull: number;
   yearlyDiscounted: number;
+  annualDiscountAmount: number;
+  annualDiscount: ProposalDiscount;
   savings: number;
   pixInstallment: number;
-  discountPercent: number;
   installments: number;
 }
 
 export interface ProposalCalculationOptions {
-  discountPercent?: number;
+  annualDiscount?: Partial<ProposalDiscount>;
+  monthlyDiscount?: Partial<ProposalDiscount>;
   installments?: number;
 }
 
@@ -108,13 +125,64 @@ function cleanIntegerInRange(
   return Math.min(Math.max(Math.trunc(parsed), min), max);
 }
 
-export function cleanProposalDiscount(value: string | number | null | undefined): number {
-  return cleanIntegerInRange(
-    value,
-    DEFAULT_PROPOSAL_DISCOUNT_PERCENT,
-    MIN_PROPOSAL_DISCOUNT_PERCENT,
-    MAX_PROPOSAL_DISCOUNT_PERCENT,
+function roundCurrency(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function cleanDecimalInRange(
+  value: string | number | null | undefined,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
+  const parsed = typeof value === 'number'
+    ? value
+    : value === ''
+      ? 0
+      : Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return roundCurrency(Math.min(Math.max(parsed, min), max));
+}
+
+export function maxProposalDiscountPercent(period: ProposalDiscountPeriod): number {
+  return period === 'monthly'
+    ? MAX_PROPOSAL_MONTHLY_DISCOUNT_PERCENT
+    : MAX_PROPOSAL_ANNUAL_DISCOUNT_PERCENT;
+}
+
+export function cleanProposalDiscount(
+  discount: Partial<ProposalDiscount> | null | undefined,
+  period: ProposalDiscountPeriod,
+): ProposalDiscount {
+  const mode: ProposalDiscountMode = discount?.mode === 'amount' ? 'amount' : 'percent';
+  const defaultValue = period === 'annual'
+    ? DEFAULT_PROPOSAL_ANNUAL_DISCOUNT_PERCENT
+    : DEFAULT_PROPOSAL_MONTHLY_DISCOUNT_PERCENT;
+  return {
+    mode,
+    value: cleanDecimalInRange(
+      discount?.value,
+      defaultValue,
+      MIN_PROPOSAL_DISCOUNT_PERCENT,
+      mode === 'percent' ? maxProposalDiscountPercent(period) : MAX_PROPOSAL_DISCOUNT_AMOUNT,
+    ),
+  };
+}
+
+export function proposalDiscountAmount(
+  fullPrice: number,
+  discount: ProposalDiscount,
+  period: ProposalDiscountPeriod,
+): number {
+  const safeFullPrice = roundCurrency(Math.max(0, fullPrice));
+  const cleanedDiscount = cleanProposalDiscount(discount, period);
+  const maximumAmount = roundCurrency(
+    safeFullPrice * maxProposalDiscountPercent(period) / 100,
   );
+  const requestedAmount = cleanedDiscount.mode === 'percent'
+    ? roundCurrency(safeFullPrice * cleanedDiscount.value / 100)
+    : cleanedDiscount.value;
+  return roundCurrency(Math.min(requestedAmount, maximumAmount));
 }
 
 export function cleanProposalInstallments(value: string | number | null | undefined): number {
@@ -148,7 +216,16 @@ export function createProposalUnit(
 export function parsePublicProposal(searchParams: URLSearchParams): PublicProposalState {
   const clientName = cleanText(searchParams.get('c'), 120);
   const pricesHidden = searchParams.get('p') === '1';
-  const discountPercent = cleanProposalDiscount(searchParams.get('d'));
+  const annualDiscountValue = searchParams.get('ad') ?? searchParams.get('d');
+  const monthlyDiscountValue = searchParams.get('md');
+  const annualDiscount = cleanProposalDiscount({
+    mode: searchParams.get('at') === 'r' ? 'amount' : 'percent',
+    value: annualDiscountValue === null ? undefined : Number(annualDiscountValue),
+  }, 'annual');
+  const monthlyDiscount = cleanProposalDiscount({
+    mode: searchParams.get('mt') === 'r' ? 'amount' : 'percent',
+    value: monthlyDiscountValue === null ? undefined : Number(monthlyDiscountValue),
+  }, 'monthly');
   const installments = cleanProposalInstallments(searchParams.get('x'));
   const rawCount = Number.parseInt(searchParams.get('k') ?? '', 10);
   const count = Number.isFinite(rawCount)
@@ -166,7 +243,7 @@ export function parsePublicProposal(searchParams: URLSearchParams): PublicPropos
     );
   });
 
-  return { clientName, units, pricesHidden, discountPercent, installments };
+  return { clientName, units, pricesHidden, annualDiscount, monthlyDiscount, installments };
 }
 
 export function serializePublicProposal(state: PublicProposalState): URLSearchParams {
@@ -175,11 +252,23 @@ export function serializePublicProposal(state: PublicProposalState): URLSearchPa
 
   if (state.clientName.trim()) params.set('c', state.clientName.trim().slice(0, 120));
   params.set('k', String(Math.max(units.length, 1)));
-  const discountPercent = cleanProposalDiscount(state.discountPercent);
+  const annualDiscount = cleanProposalDiscount(state.annualDiscount, 'annual');
+  const monthlyDiscount = cleanProposalDiscount(state.monthlyDiscount, 'monthly');
   const installments = cleanProposalInstallments(state.installments);
-  if (discountPercent !== DEFAULT_PROPOSAL_DISCOUNT_PERCENT) {
-    params.set('d', String(discountPercent));
+  if (
+    annualDiscount.value !== DEFAULT_PROPOSAL_ANNUAL_DISCOUNT_PERCENT
+    || annualDiscount.mode !== 'percent'
+  ) {
+    params.set('ad', String(annualDiscount.value));
   }
+  if (annualDiscount.mode === 'amount') params.set('at', 'r');
+  if (
+    monthlyDiscount.value !== DEFAULT_PROPOSAL_MONTHLY_DISCOUNT_PERCENT
+    || monthlyDiscount.mode !== 'percent'
+  ) {
+    params.set('md', String(monthlyDiscount.value));
+  }
+  if (monthlyDiscount.mode === 'amount') params.set('mt', 'r');
   if (installments !== DEFAULT_PROPOSAL_INSTALLMENTS) {
     params.set('x', String(installments));
   }
@@ -205,7 +294,8 @@ export function calculateProposalTotals(
   extraUserPrice = 0,
   options: ProposalCalculationOptions = {},
 ): ProposalTotals {
-  const discountPercent = cleanProposalDiscount(options.discountPercent);
+  const annualDiscount = cleanProposalDiscount(options.annualDiscount, 'annual');
+  const monthlyDiscount = cleanProposalDiscount(options.monthlyDiscount, 'monthly');
   const installments = cleanProposalInstallments(options.installments);
   const priceByCode = new Map(plans.map((plan) => [plan.code, Math.max(0, plan.price)]));
   const modulePriceByCode = new Map(
@@ -220,20 +310,26 @@ export function calculateProposalTotals(
     const extraUsers = Math.max(0, cleanUsers(unit.users) - CUSTOM_PLAN_INCLUDED_USERS);
     return modulesTotal + extraUsers * Math.max(0, extraUserPrice);
   });
-  const monthly = monthlyPrices.reduce((total, value) => total + value, 0);
-  const yearlyFull = monthly * 12;
-  const yearlyDiscounted = monthlyPrices.reduce(
-    (total, value) => total + Math.round(value * 12 * (1 - discountPercent / 100)),
-    0,
-  );
+  const monthlyFull = roundCurrency(monthlyPrices.reduce((total, value) => total + value, 0));
+  const monthlyDiscountAmount = proposalDiscountAmount(monthlyFull, monthlyDiscount, 'monthly');
+  const monthly = roundCurrency(monthlyFull - monthlyDiscountAmount);
+  // Os dois descontos partem do preço cheio. O anual nunca usa o mensal já
+  // descontado, evitando desconto composto ou conflito entre as condições.
+  const yearlyFull = roundCurrency(monthlyFull * 12);
+  const annualDiscountAmount = proposalDiscountAmount(yearlyFull, annualDiscount, 'annual');
+  const yearlyDiscounted = roundCurrency(yearlyFull - annualDiscountAmount);
 
   return {
+    monthlyFull,
     monthly,
+    monthlyDiscountAmount,
+    monthlyDiscount,
     yearlyFull,
     yearlyDiscounted,
-    savings: yearlyFull - yearlyDiscounted,
-    pixInstallment: yearlyDiscounted / installments,
-    discountPercent,
+    annualDiscountAmount,
+    annualDiscount,
+    savings: annualDiscountAmount,
+    pixInstallment: roundCurrency(yearlyDiscounted / installments),
     installments,
   };
 }

@@ -59,6 +59,7 @@ const CUSTOMER_PORTAL_MODULE = "customer_portal";
 const EXTRA_USER_MODULE = "extra_user";
 const FREE_BASE_MODULES = [
   CUSTOMER_PORTAL_MODULE,
+  "finance_advanced",
   "pricing_advanced",
   "video_questions",
 ] as const;

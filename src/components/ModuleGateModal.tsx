@@ -108,7 +108,7 @@ export function ModuleGateModal({
 export const MODULE_INFO: Record<string, { name: string; description: string }> = {
   basic: {
     name: 'Módulo Básico',
-    description: 'OS, Agenda, Dashboard, Orçamentos, Serviços, Mapa, Clientes, Equipamentos, Estoque e Financeiro completo com Cobranças',
+    description: 'OS, Agenda, Dashboard, Orçamentos, Serviços, Mapa, Clientes, Equipamentos, Estoque e Financeiro completo',
   },
   contracts: {
     name: 'Gestão de Contratos e PMOC',
@@ -132,7 +132,7 @@ export const MODULE_INFO: Record<string, { name: string; description: string }> 
   },
   cobrancas: {
     name: 'Cobranças online',
-    description: 'Pix, boleto, cartão e assinaturas, inclusos no Módulo Básico; requer conexão da conta Asaas da empresa',
+    description: 'Pix, boleto, cartão e assinaturas recorrentes via Asaas',
   },
   customer_portal: {
     name: 'Portal do Cliente',
