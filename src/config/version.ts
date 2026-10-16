@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.36.0";
+export const APP_VERSION = "1.35.5";
 
-export const VERSION_NOTES = "O simulador de propostas ganhou tabela completa de preços, descontos mensal e anual em percentual ou reais e PDFs com todos os valores calculados.";
+export const VERSION_NOTES = "Ajuste visual na tela de conexão do WhatsApp, com menos molduras e mais respiro entre os blocos.";
