@@ -27,6 +27,20 @@ describe('head social da OS pública', () => {
     expect(html).not.toContain('SoftwareApplication');
   });
 
+  it('mantém a arte padrão da Dominex quando o tenant não tem White Label ativo', () => {
+    const html = injectPublicOsHead(shell, {
+      order_number: 1049,
+      company_name: 'Clima Padrão',
+      social_image_url: 'https://www.dominex.app/images/og-social.jpg',
+      social_image_is_composed: false,
+    }, 'https://www.dominex.app/os-tecnico/os-def');
+
+    expect(html).toContain('<title>OS #1049 · Clima Padrão</title>');
+    expect(html).toContain('property="og:image" content="https://www.dominex.app/images/og-social.jpg"');
+    expect(html).toContain('name="twitter:image" content="https://www.dominex.app/images/og-social.jpg"');
+    expect(html).not.toContain('property="og:image:width"');
+  });
+
   it('remove a imagem fixa da Dominex quando a OS não resolve', () => {
     const html = injectPublicOsHead(shell, null, 'https://www.dominex.app/os-tecnico/invalida');
     expect(html).not.toContain('/images/og-social.jpg');

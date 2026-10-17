@@ -179,6 +179,13 @@ export default function Settings() {
   const [companySegment, setCompanySegment] = useState('');
   const [uploading, setUploading] = useState(false);
   const [socialImageUploading, setSocialImageUploading] = useState(false);
+  const [socialEditorOpen, setSocialEditorOpen] = useState(false);
+  const [socialBackgroundMode, setSocialBackgroundMode] = useState<'auto' | 'manual'>('auto');
+  const [socialBackgroundColor, setSocialBackgroundColor] = useState('#000000');
+  const [socialLogoScale, setSocialLogoScale] = useState(100);
+  const [socialDraftFile, setSocialDraftFile] = useState<File | null>(null);
+  const [socialDraftUrl, setSocialDraftUrl] = useState<string | null>(null);
+  const [socialPreviewLoading, setSocialPreviewLoading] = useState(false);
   const [wlUploading, setWlUploading] = useState(false);
   const [wlEnabled, setWlEnabled] = useState(false);
   const [wlColor, setWlColor] = useState('#00C597');
@@ -378,6 +385,44 @@ export default function Settings() {
       ? settings.white_label_logo_url
       : settings?.logo_url || null;
 
+  useEffect(() => {
+    if (!socialEditorOpen || !currentBrandLogo) {
+      setSocialDraftFile(null);
+      setSocialDraftUrl(null);
+      setSocialPreviewLoading(false);
+      return;
+    }
+
+    let objectUrl: string | null = null;
+    let cancelled = false;
+    setSocialPreviewLoading(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const file = await createOsSocialImageFromLogo(currentBrandLogo, wlColor, {
+          backgroundColor: socialBackgroundMode === 'manual' ? socialBackgroundColor : null,
+          logoScale: socialLogoScale / 100,
+        });
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(file);
+        setSocialDraftFile(file);
+        setSocialDraftUrl(objectUrl);
+      } catch {
+        if (!cancelled) {
+          setSocialDraftFile(null);
+          setSocialDraftUrl(null);
+        }
+      } finally {
+        if (!cancelled) setSocialPreviewLoading(false);
+      }
+    }, 180);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [currentBrandLogo, socialBackgroundColor, socialBackgroundMode, socialEditorOpen, socialLogoScale, wlColor]);
+
   const persistOsSocialImage = async (
     file: File,
     mode: 'logo' | 'custom',
@@ -421,6 +466,24 @@ export default function Settings() {
     try {
       const file = await createOsSocialImageFromLogo(currentBrandLogo, wlColor);
       await persistOsSocialImage(file, 'logo');
+      toast({ title: t.company.visualIdentity.socialImage.generated });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: t.company.visualIdentity.socialImage.error,
+        description: getErrorMessage(error),
+      });
+    } finally {
+      setSocialImageUploading(false);
+    }
+  };
+
+  const handleSaveSocialImageDraft = async () => {
+    if (!socialDraftFile) return;
+    setSocialImageUploading(true);
+    try {
+      await persistOsSocialImage(socialDraftFile, 'logo');
+      setSocialEditorOpen(false);
       toast({ title: t.company.visualIdentity.socialImage.generated });
     } catch (error) {
       toast({
@@ -692,151 +755,79 @@ export default function Settings() {
     switch (activeTab) {
       case 'empresa':
         return (
-          <div className="space-y-6">
-          <Card>
-            <CardHeader>
+          <div className="mx-auto max-w-6xl space-y-6">
+          <Card className="border-0 bg-transparent shadow-none">
+            <CardHeader className="px-0 pb-3 pt-0">
               <div className="flex items-center gap-2">
                 <Building className="h-5 w-5 text-primary" />
                 <CardTitle>{t.company.cardTitle}</CardTitle>
               </div>
               <CardDescription>{t.company.cardDescription}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-5 p-0">
 
-              {/* ========== SEÇÃO: IDENTIDADE VISUAL ========== */}
-              <div className="space-y-1">
-                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Image className="h-4 w-4 text-primary" />
-                  {t.company.visualIdentity.sectionTitle}
-                </h3>
-                <p className="text-xs text-muted-foreground">{t.company.visualIdentity.sectionDescription}</p>
-              </div>
+              <section className="rounded-2xl bg-card p-4 shadow-sm sm:p-6">
+                {/* ========== SEÇÃO: IDENTIDADE VISUAL ========== */}
+                <div className="space-y-5">
+                    <div className="space-y-1">
+                      <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
+                        <Image className="h-4 w-4 text-primary" />
+                        {t.company.visualIdentity.sectionTitle}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">{t.company.visualIdentity.sectionDescription}</p>
+                    </div>
 
-              <div className="pl-0 sm:pl-6">
-                {settings?.logo_url ? (
-                  <div className="flex items-center gap-4">
-                    <img src={settings.logo_url} alt="Logo" className="h-20 w-20 rounded-lg object-contain border bg-white" />
-                    <div className="flex flex-col gap-2">
-                      <Button variant="outline" size="sm" asChild disabled={uploading}>
-                        <label className="cursor-pointer">
-                          {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                          {t.company.visualIdentity.replace}
-                          <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-                        </label>
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive-ghost" size="sm">
-                            <Trash2 className="mr-2 h-4 w-4" /> {t.company.visualIdentity.remove}
+                    {settings?.logo_url ? (
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                        <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-2xl bg-muted/40 p-3">
+                          <img src={settings.logo_url} alt="Logo" className="max-h-full max-w-full object-contain" />
+                        </div>
+                        <div className="grid w-full gap-2 sm:w-auto">
+                          <Button variant="outline" size="sm" asChild disabled={uploading}>
+                            <label className="cursor-pointer justify-center">
+                              {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                              {t.company.visualIdentity.replace}
+                              <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                            </label>
                           </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>{t.company.visualIdentity.removeLogoTitle}</AlertDialogTitle>
-                            <AlertDialogDescription>{t.company.visualIdentity.removeLogoDesc}</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>{MESSAGES[locale].app.common.cancel}</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleRemoveLogo}>{t.company.visualIdentity.remove}</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
-                ) : (
-                  <label className="cursor-pointer flex flex-col items-center justify-center h-28 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-colors bg-muted/20">
-                    {uploading ? (
-                      <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive-ghost" size="sm">
+                                <Trash2 className="mr-2 h-4 w-4" /> {t.company.visualIdentity.remove}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>{t.company.visualIdentity.removeLogoTitle}</AlertDialogTitle>
+                                <AlertDialogDescription>{t.company.visualIdentity.removeLogoDesc}</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>{MESSAGES[locale].app.common.cancel}</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleRemoveLogo}>{t.company.visualIdentity.remove}</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
                     ) : (
-                      <>
-                        <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                        <span className="text-sm text-muted-foreground">{t.company.visualIdentity.uploadPrompt}</span>
-                        <span className="text-xs text-muted-foreground">{t.company.visualIdentity.uploadHint}</span>
-                      </>
-                    )}
-                    <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploading} />
-                  </label>
-                )}
-              </div>
-
-              <Separator className="my-6" />
-
-              <div className="space-y-1">
-                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Image className="h-4 w-4 text-primary" />
-                  {t.company.visualIdentity.socialImage.title}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  {t.company.visualIdentity.socialImage.description}
-                </p>
-              </div>
-
-              <div className="grid gap-4 pl-0 sm:grid-cols-[minmax(0,360px)_1fr] sm:pl-6">
-                <div className="aspect-[1200/630] overflow-hidden rounded-lg border bg-muted/30">
-                  {settings?.os_social_image_url ? (
-                    <img
-                      src={settings.os_social_image_url}
-                      alt={t.company.visualIdentity.socialImage.previewAlt}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : currentBrandLogo ? (
-                    <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
-                      <img src={currentBrandLogo} alt="" className="max-h-16 max-w-[70%] object-contain" />
-                      <span className="text-xs text-muted-foreground">
-                        {t.company.visualIdentity.socialImage.generateHint}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex h-full items-center justify-center p-6 text-center text-xs text-muted-foreground">
-                      {t.company.visualIdentity.socialImage.empty}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-col justify-center gap-3">
-                  <div>
-                    <p className="text-sm font-medium">
-                      {settings?.os_social_image_mode === 'custom'
-                        ? t.company.visualIdentity.socialImage.customActive
-                        : t.company.visualIdentity.socialImage.logoActive}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {t.company.visualIdentity.socialImage.formatHint}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={socialImageUploading || !currentBrandLogo}
-                      onClick={handleGenerateSocialImage}
-                    >
-                      {socialImageUploading
-                        ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        : <RefreshCw className="mr-2 h-4 w-4" />}
-                      {t.company.visualIdentity.socialImage.useLogo}
-                    </Button>
-                    <Button type="button" variant="outline" size="sm" asChild disabled={socialImageUploading}>
-                      <label className="cursor-pointer">
-                        <Upload className="mr-2 h-4 w-4" />
-                        {t.company.visualIdentity.socialImage.uploadCustom}
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/webp"
-                          className="hidden"
-                          onChange={handleCustomSocialImage}
-                          disabled={socialImageUploading}
-                        />
+                      <label className="flex h-32 cursor-pointer flex-col items-center justify-center rounded-2xl bg-muted/35 transition-colors hover:bg-muted/55 focus-within:ring-2 focus-within:ring-ring">
+                        {uploading ? (
+                          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                        ) : (
+                          <>
+                            <Upload className="mb-2 h-7 w-7 text-muted-foreground" />
+                            <span className="text-sm font-medium text-foreground">{t.company.visualIdentity.uploadPrompt}</span>
+                            <span className="text-xs text-muted-foreground">{t.company.visualIdentity.uploadHint}</span>
+                          </>
+                        )}
+                        <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploading} />
                       </label>
-                    </Button>
-                  </div>
+                    )}
                 </div>
-              </div>
-
-              <Separator className="my-6" />
+              </section>
 
               {/* ========== SEÇÃO: DADOS CADASTRAIS ========== */}
+              <section className="space-y-5 rounded-2xl bg-card p-4 shadow-sm sm:p-6">
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <FileText className="h-4 w-4 text-primary" />
@@ -845,7 +836,7 @@ export default function Settings() {
                 <p className="text-xs text-muted-foreground">{t.company.registrationData.sectionDescription}</p>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2 pl-0 sm:pl-6">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label>{t.company.registrationData.companyName}</Label>
@@ -868,7 +859,7 @@ export default function Settings() {
                 </div>
               </div>
 
-              <div className="space-y-2 pl-0 sm:pl-6">
+              <div className="space-y-2">
                 <Label>{t.company.registrationData.segment}</Label>
                 {/* Somente-leitura: o segmento define quais ferramentas/recursos
                     aparecem e só pode ser alterado pela Dominex. O usuário vê
@@ -887,10 +878,10 @@ export default function Settings() {
                 })()}
                 <p className="text-xs text-muted-foreground">{t.company.registrationData.segmentHint}</p>
               </div>
-
-              <Separator className="my-6" />
+              </section>
 
               {/* ========== SEÇÃO: CONTATO ========== */}
+              <section className="space-y-5 rounded-2xl bg-card p-4 shadow-sm sm:p-6">
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Phone className="h-4 w-4 text-primary" />
@@ -899,7 +890,7 @@ export default function Settings() {
                 <p className="text-xs text-muted-foreground">{t.company.contact.sectionDescription}</p>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2 pl-0 sm:pl-6">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label>{t.company.contact.phone}</Label>
@@ -921,11 +912,11 @@ export default function Settings() {
                   <Input type="email" value={companyEmail} onChange={e => setCompanyEmail(e.target.value)} placeholder={t.company.contact.emailPlaceholder} />
                 </div>
               </div>
-
-              <Separator className="my-6" />
+              </section>
 
               {/* ========== SEÇÃO: ENDEREÇO ========== */}
-              <div className="flex items-center justify-between">
+              <section className="space-y-5 rounded-2xl bg-card p-4 shadow-sm sm:p-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-primary" />
@@ -939,7 +930,7 @@ export default function Settings() {
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2 pl-0 sm:pl-6">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>{t.company.address.zip}</Label>
                   <CepLookup
@@ -994,11 +985,11 @@ export default function Settings() {
                   />
                 </div>
               </div>
+              </section>
 
+              <section className="rounded-2xl bg-card p-4 shadow-sm sm:p-6">
               {hasModule('white_label') ? (
               <>
-              <Separator className="my-6" />
-
               {/* ========== SEÇÃO: WHITE LABEL ========== */}
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -1010,9 +1001,8 @@ export default function Settings() {
               </>
               ) : (
               <>
-              <Separator className="my-6" />
               <div
-                className="flex items-center justify-between p-4 rounded-lg border border-dashed border-muted-foreground/30 cursor-pointer hover:border-primary/50 transition-colors"
+                className="flex cursor-pointer flex-col gap-3 rounded-xl bg-muted/35 p-4 transition-colors hover:bg-muted/55 sm:flex-row sm:items-center sm:justify-between"
                 onClick={() => setWlGateOpen(true)}
               >
                 <div className="space-y-1">
@@ -1045,6 +1035,174 @@ export default function Settings() {
 
                 {wlEnabled && (
                   <>
+                    <Separator className="opacity-50" />
+
+                    {/* A imagem social da OS é um recurso exclusivo do White Label. */}
+                    <div className="space-y-5 rounded-2xl bg-muted/25 p-4 sm:p-5">
+                      <div className="space-y-1">
+                        <h4 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                          <Image className="h-4 w-4 text-primary" />
+                          {t.company.visualIdentity.socialImage.title}
+                        </h4>
+                        <p className="text-xs leading-relaxed text-muted-foreground">
+                          {t.company.visualIdentity.socialImage.description}
+                        </p>
+                      </div>
+
+                      <div className="grid gap-5 md:grid-cols-[minmax(0,360px)_minmax(220px,1fr)] md:items-center">
+                        <div className="relative aspect-[1200/630] overflow-hidden rounded-xl bg-background/70 shadow-inner">
+                          {socialDraftUrl ? (
+                            <img
+                              src={socialDraftUrl}
+                              alt={t.company.visualIdentity.socialImage.previewAlt}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : settings?.os_social_image_url ? (
+                            <img
+                              src={settings.os_social_image_url}
+                              alt={t.company.visualIdentity.socialImage.previewAlt}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : currentBrandLogo ? (
+                            <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
+                              <img src={currentBrandLogo} alt="" className="max-h-16 max-w-[70%] object-contain" />
+                              <span className="text-xs text-muted-foreground">
+                                {t.company.visualIdentity.socialImage.generateHint}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex h-full items-center justify-center p-6 text-center text-xs text-muted-foreground">
+                              {t.company.visualIdentity.socialImage.empty}
+                            </div>
+                          )}
+                          {socialPreviewLoading && (
+                            <div className="absolute inset-0 grid place-items-center bg-background/65 backdrop-blur-[1px]">
+                              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex min-w-0 flex-col gap-4">
+                          <div>
+                            <p className="text-sm font-medium">
+                              {settings?.os_social_image_mode === 'custom'
+                                ? t.company.visualIdentity.socialImage.customActive
+                                : t.company.visualIdentity.socialImage.logoActive}
+                            </p>
+                            <p className="text-xs leading-relaxed text-muted-foreground">
+                              {t.company.visualIdentity.socialImage.formatHint}
+                            </p>
+                          </div>
+                          <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-1 xl:grid-cols-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full justify-center"
+                              disabled={socialImageUploading || !currentBrandLogo}
+                              onClick={() => handleGenerateSocialImage()}
+                            >
+                              {socialImageUploading
+                                ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                : <RefreshCw className="mr-2 h-4 w-4" />}
+                              {t.company.visualIdentity.socialImage.useLogo}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={socialEditorOpen ? 'secondary' : 'outline'}
+                              size="sm"
+                              className="w-full justify-center"
+                              disabled={socialImageUploading || !currentBrandLogo}
+                              onClick={() => setSocialEditorOpen((open) => !open)}
+                            >
+                              <SlidersHorizontal className="mr-2 h-4 w-4" />
+                              {t.company.visualIdentity.socialImage.adjust}
+                            </Button>
+                            <Button type="button" variant="outline" size="sm" className="w-full sm:col-span-2 md:col-span-1 xl:col-span-2" asChild disabled={socialImageUploading}>
+                              <label className="cursor-pointer justify-center">
+                                <Upload className="mr-2 h-4 w-4" />
+                                {t.company.visualIdentity.socialImage.uploadCustom}
+                                <input
+                                  type="file"
+                                  accept="image/png,image/jpeg,image/webp"
+                                  className="hidden"
+                                  onChange={handleCustomSocialImage}
+                                  disabled={socialImageUploading}
+                                />
+                              </label>
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {socialEditorOpen && (
+                        <div className="grid gap-5 rounded-2xl bg-background/75 p-4 shadow-sm lg:grid-cols-2">
+                          <div className="space-y-3">
+                            <div className="space-y-1">
+                              <Label>{t.company.visualIdentity.socialImage.background}</Label>
+                              <p className="text-xs text-muted-foreground">
+                                {t.company.visualIdentity.socialImage.backgroundHint}
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={socialBackgroundMode === 'auto' ? 'secondary' : 'outline'}
+                                onClick={() => setSocialBackgroundMode('auto')}
+                              >
+                                {t.company.visualIdentity.socialImage.automatic}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={socialBackgroundMode === 'manual' ? 'secondary' : 'outline'}
+                                onClick={() => setSocialBackgroundMode('manual')}
+                              >
+                                {t.company.visualIdentity.socialImage.manual}
+                              </Button>
+                            </div>
+                            {socialBackgroundMode === 'manual' && (
+                              <div className="flex items-center gap-3">
+                                <ColorPicker value={socialBackgroundColor} onChange={setSocialBackgroundColor} />
+                                <span className="text-xs font-medium uppercase text-muted-foreground">{socialBackgroundColor}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between gap-4">
+                                <Label>{t.company.visualIdentity.socialImage.logoSize}</Label>
+                                <span className="text-xs tabular-nums text-muted-foreground">{socialLogoScale}%</span>
+                              </div>
+                              <Slider
+                                min={60}
+                                max={140}
+                                step={5}
+                                value={[socialLogoScale]}
+                                onValueChange={([value]) => setSocialLogoScale(value)}
+                              />
+                            </div>
+                            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                              <Button type="button" variant="ghost" size="sm" onClick={() => setSocialEditorOpen(false)}>
+                                {MESSAGES[locale].app.common.cancel}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={!socialDraftFile || socialPreviewLoading || socialImageUploading}
+                                onClick={handleSaveSocialImageDraft}
+                              >
+                                {socialImageUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {t.company.visualIdentity.socialImage.saveAdjustments}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     <Separator className="opacity-50" />
 
                     {/* WL Logo + Icon side by side on desktop */}
@@ -1337,12 +1495,13 @@ export default function Settings() {
                   </>
                 )}
               </div>}
+              </section>
 
             </CardContent>
           </Card>
 
           {/* ========== DOCUMENTOS LEGAIS ========== */}
-          <Card>
+          <Card className="border-0 shadow-sm">
             <CardContent className="pt-6 space-y-4">
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">

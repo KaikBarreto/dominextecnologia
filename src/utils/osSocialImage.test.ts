@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { chooseSocialBackground } from './osSocialImage';
+import { chooseSocialBackground, chooseSocialPalette } from './osSocialImage';
+
+function pixelsFromGrid(grid: Array<Array<[number, number, number, number]>>): Uint8ClampedArray {
+  return new Uint8ClampedArray(grid.flat(2));
+}
 
 describe('chooseSocialBackground', () => {
   it('escolhe fundo claro para logo escuro', () => {
@@ -15,5 +19,34 @@ describe('chooseSocialBackground', () => {
       255, 255, 255, 0,
       20, 20, 20, 255,
     ]))).toBe('#f4f8f6');
+  });
+});
+
+describe('chooseSocialPalette', () => {
+  it('estende o fundo preto sólido do próprio logo e usa a cor interna como detalhe', () => {
+    const black: [number, number, number, number] = [0, 0, 0, 255];
+    const gold: [number, number, number, number] = [239, 177, 91, 255];
+    const pixels = pixelsFromGrid(Array.from({ length: 8 }, (_, y) => (
+      Array.from({ length: 8 }, (_, x) => (x >= 2 && x <= 5 && y >= 2 && y <= 5 ? gold : black))
+    )));
+
+    expect(chooseSocialPalette(pixels, 8, 8, '#00c597')).toEqual({
+      background: '#000000',
+      accent: '#efb15b',
+      extendsLogoEdge: true,
+    });
+  });
+
+  it('não transforma os traços de um logo transparente em fundo sólido', () => {
+    const transparent: [number, number, number, number] = [0, 0, 0, 0];
+    const dark: [number, number, number, number] = [18, 18, 18, 255];
+    const pixels = pixelsFromGrid(Array.from({ length: 8 }, (_, y) => (
+      Array.from({ length: 8 }, (_, x) => (x === 3 && y >= 1 && y <= 6 ? dark : transparent))
+    )));
+
+    expect(chooseSocialPalette(pixels, 8, 8, '#00c597')).toMatchObject({
+      background: '#f4f8f6',
+      extendsLogoEdge: false,
+    });
   });
 });
