@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.1',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Faturar a ordem de serviço agora aparece em todo lugar',
+        description: 'O botão Faturar existia só dentro do detalhe da ordem de serviço e passava despercebido. Agora ele está no menu de ações da lista, na lista do celular e também na agenda, no mesmo lugar onde você edita ou exclui. E as ordens que já foram faturadas passam a mostrar um selo verde de Faturada, ou azul de Cobrança enviada quando o cliente ainda não pagou, direto na lista, no quadro e na agenda. Assim dá para ver de relance o que já virou dinheiro e o que ainda não.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.36.0',
     date: '17 de outubro de 2026',
     type: 'minor',
