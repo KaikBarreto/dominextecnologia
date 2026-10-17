@@ -12,7 +12,7 @@ Converte `docs/domiflix/trilha-de-tutoriais.md` (fonte única de verdade da tril
 
 ## Guia Técnico (PDF + página pública + Central de Ajuda) — pipeline de CAPTURA
 
-Scripts que capturam prints reais do sistema pra montar o **Guia Técnico da Dominex**: manual completo do produto, uma seção por tutorial da trilha do Domiflix (`docs/domiflix/trilha-de-tutoriais.md`, T0..T17), com telas reais capturadas por Playwright numa conta demo.
+Scripts que capturam prints reais do sistema pra montar o **Guia Técnico da Dominex**: manual completo do produto, uma seção por tutorial da trilha do Domiflix (`docs/domiflix/trilha-de-tutoriais.md`, com códigos editoriais estáveis e não contíguos), com telas reais capturadas por Playwright numa conta demo.
 
 > Esta seção documenta só o pipeline de **captura de print**. O pipeline de **montagem** (PDF, página pública, chunks pro Cato) é objeto de outra frente de trabalho e ainda não existe neste repositório.
 

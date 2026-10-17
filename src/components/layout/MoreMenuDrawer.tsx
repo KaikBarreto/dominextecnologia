@@ -93,7 +93,7 @@ const tenantMenuItems: MenuItem[] = [
     icon: FolderOpen,
     children: [
       { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
-      { title: 'Clientes', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
+      { title: 'Clientes e Fornecedores', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
       { title: 'Equipamentos', icon: Boxes, path: '/equipamentos', screenKey: 'screen:equipment' },
       { title: 'Contratos', icon: ScrollText, path: '/contratos', screenKey: 'screen:contracts' },
       { title: 'Funcionários', icon: Briefcase, path: '/funcionarios', screenKey: 'screen:employees', moduleKey: 'rh' },
@@ -110,9 +110,9 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Contas a Pagar/Receber', icon: CalendarClock, path: '/financeiro/contas', screenKey: 'screen:finance' },
       { title: 'Cobranças', icon: CreditCard, path: '/financeiro/cobrancas', screenKey: 'screen:finance', moduleKey: 'cobrancas' },
       { title: 'Relatórios', icon: BarChart3, path: '/financeiro/relatorios', screenKey: 'screen:finance' },
-      { title: 'Notas Fiscais', icon: Receipt, path: '/notas-fiscais', screenKey: 'screen:fiscal_notes', moduleKey: 'nfe' },
     ],
   },
+  { title: 'Notas Fiscais', icon: Receipt, path: '/notas-fiscais', screenKey: 'screen:fiscal_notes', moduleKey: 'nfe' },
   // Configurações intencionalmente fora da lista — já existe botão dedicado
   // no footer do drawer (mesmo destino), evitando duplicidade visual.
 ];

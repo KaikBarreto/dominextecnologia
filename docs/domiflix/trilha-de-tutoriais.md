@@ -5,7 +5,7 @@
 >
 > **Formato**: **1 tutorial por área**, com capítulos marcados por tempo. O aluno assiste a área inteira de uma vez e usa os capítulos pra voltar num ponto específico.
 >
-> **Ordem da trilha**: seguindo do T0 ao T17, o cliente sai do zero e chega ao sistema rodando de verdade — cada tutorial só usa o que já foi ensinado antes.
+> **Ordem da trilha**: em 20 aulas identificadas de T0 a T22 (com T1, T6 e T16 incorporadas a outras aulas), o cliente sai do zero e chega ao sistema rodando de verdade — cada tutorial só usa o que já foi ensinado antes.
 
 ---
 
@@ -24,86 +24,74 @@
 ## Sequência lógica de consumo
 
 ```
-T0  Bem-vindo à Dominex
- → T1  Configurações e identidade da empresa
-   → T2  Usuários, cargos e permissões
-     → T3  Clientes e Equipamentos
-       → T4  Serviços, tarefas e checklists
-         → T5  Ordens de Serviço (visão do gestor)
-           → T6  Agenda, Equipes e Mapa ao Vivo
-             → T7  O técnico em campo + Área do Técnico™
-               → T8  Estoque, compras e inventário
-                 → T9  Orçamentos, Precificação e Proposta
-                   → T10 CRM: funil, leads e captação
-                     → T11 Contratos e PMOC
-                       → T12 Portal do Cliente, NPS e reputação
-                         → T13 Financeiro
-                           → T14 Notas Fiscais (NFS-e)
-                             → T15 Funcionários, Ponto e Folha
-                               → T16 Sua assinatura, plano e módulos
-                                 → T17 Dashboard, rotina e truques
+T0  Bem-vindo, configuração, identidade e assinatura
+ → T2  Usuários, cargos e permissões
+   → T3  Clientes e Equipamentos
+     → T4  Serviços, tarefas e checklists
+       → T5  Ordens de Serviço, Agenda, Equipes e Mapa ao Vivo
+         → T7  O técnico em campo
+           → T18 Área do Técnico — Refrigeração e Climatização
+             → T8  Estoque, compras e inventário
+             → T9  Orçamentos, Precificação e Proposta
+               → T10 CRM: funil, leads e captação
+                 → T11 Contratos e PMOC
+                   → T12 Portal do Cliente e Portal do Contrato
+                     → T13 Financeiro
+                       → T19 Integração com Asaas, Assinaturas e Cobranças
+                         → T20 Relatório Financeiro e DRE
+                           → T14 Notas Fiscais (NFS-e e NF-e)
+                             → T15 Funcionários: Financeiro do Funcionário e Ponto Eletrônico
+                               → T22 Ferramentas de RH: DISC, Organograma, Fluxograma
+                                 → T21 Integração com WhatsApp
+                                   → T17 Dashboard, relatórios e exportações
 ```
 
-**Por que essa ordem**: não dá pra abrir OS sem cliente, equipamento e tipo de serviço. Não dá pra montar orçamento sem catálogo de serviços. Contrato/PMOC depende de cliente + equipamento + checklist. Financeiro só faz sentido depois que existem OS e orçamentos gerando dinheiro. NFS-e depende de configuração fiscal e de ter o que faturar. O cliente pode pular o que não usa, mas vendo na ordem nada citado fica em aberto.
+**Por que essa ordem**: não dá pra abrir OS sem cliente, equipamento e tipo de serviço. Não dá pra montar orçamento sem catálogo de serviços. Contrato/PMOC depende de cliente + equipamento + checklist. Financeiro só faz sentido depois que existem OS e orçamentos gerando dinheiro. Cobranças, relatórios e fiscal vêm depois da base financeira. A integração com WhatsApp entra quando os principais eventos da operação já foram apresentados. O cliente pode pular o que não usa, mas vendo na ordem nada citado fica em aberto.
 
-**Corte prático pra quem tem pressa**: T0 → T1 → T3 → T4 → T5 → T7. Com esses seis a empresa já está atendendo cliente e fechando OS.
+**Corte prático pra quem tem pressa**: T0 → T3 → T4 → T5 → T7. Com essas cinco aulas a empresa já está configurada, atendendo cliente e fechando OS.
 
 ---
 
-# 🎬 T0 — Bem-vindo à Dominex (Inspiração visual: *Interestelar*)
+# 🎬 T0 — Bem-vindo, configuração, identidade e assinatura (Inspiração visual: *Interestelar*)
 
-**Duração**: ~20min · **Pré-requisito**: nenhum
+**Duração**: ~65min · **Pré-requisito**: nenhum · 🔒 **White Label** (parcial)
 
-> A visão de cima. O aluno entende como a Dominex é organizada por dentro, aprende o vocabulário do sistema (OS, contrato, PMOC, módulo, cargo) e descobre onde fica cada coisa antes de mergulhar em qualquer tela.
+> A primeira aula deixa a empresa pronta para operar: apresenta a Dominex, configura identidade e preferências e explica plano, módulos, uso da conta e pagamento.
 
 **Capítulos**
 1. `00:00` O que a Dominex resolve — do chamado do cliente até o dinheiro na conta
-2. `02:00` Tour pelo menu: Dashboard, Agenda, Operacional, Área do Técnico™, Orçamentos, Gestão, CRM, Financeiro
-3. `06:00` Sidebar × Barra superior × menu do celular — a mesma coisa em 3 lugares
-4. `08:00` Vocabulário: Ordem de Serviço, Tarefa, Contrato, PMOC, Checklist, Cargo, Módulo
-5. `11:00` O que é módulo contratado e por que uma tela pode não aparecer pra você
-6. `14:00` Os 3 públicos do sistema: gestor no escritório, técnico no celular, cliente no link público
-7. `17:00` Onde pedir ajuda e como usar o Domiflix (minha lista, continuar assistindo, perfil)
+2. `03:00` Tour pelo menu e os 3 públicos: gestor, técnico e cliente no link público
+3. `08:00` Sidebar × barra superior × menu do celular e o vocabulário essencial
+4. `13:00` Módulo contratado, cargo e por que uma tela pode não aparecer
+5. `17:00` Aba **Empresa**: logo, dados cadastrais, contato e endereço
+6. `22:00` O switch "mostrar em documentos" e o que sai no PDF e no relatório
+7. `25:00` 🔒 **White Label**: logo full + ícone, cor, QR Code e cabeçalho do relatório
+8. `30:00` Abas **Regional** e **Usabilidade**: idioma, moeda, fuso e preferências de operação
+9. `36:00` **Origens**, **Atalhos** e **Aparência**
+10. `40:00` **Integrações**, documentos legais e **Zona de Perigo**
+11. `45:00` Tela **Assinatura**: status, plano atual, vencimento, valor e uso da conta
+12. `49:00` **Gerenciar Meu Plano**: planos prontos, personalizado, módulos e usuários extras
+13. `55:00` **Pagar Agora**: Pix, Boleto e Cartão; mensal × anual e histórico de pagamentos
+14. `61:00` Onde pedir ajuda e como usar o Domiflix
 
-- **Abertura**: "Neste tutorial você vai entender como a Dominex funciona por dentro e descobrir onde fica cada coisa."
-- **Recap**: "Você conheceu o sistema em alto nível, aprendeu o vocabulário e já sabe por onde começar."
-- **Próximo**: "No próximo tutorial: deixar a empresa configurada."
+- **Abertura**: "Nesta primeira aula você vai conhecer a Dominex, deixar a empresa com a sua identidade e entender o plano contratado."
+- **Recap**: "Empresa configurada, identidade aplicada, preferências ajustadas e assinatura sob controle."
+- **Próximo**: "Na próxima aula: quem entra no sistema e o que cada um pode fazer."
 
 ⚠️ Deixe claro logo no começo que **o menu muda conforme o plano e o cargo** — é a dúvida nº1 de quem assiste e não acha a tela.
-
----
-
-# 🎬 T1 — Configurações e identidade da empresa (Inspiração visual: *Homem de Ferro*)
-
-**Duração**: ~30min · **Pré-requisito**: T0
-
-> Deixar o sistema com a cara da empresa e pronto pra uso real: logo, dados cadastrais, endereço, idioma/moeda/fuso, preferências de uso, tema e integrações.
-
-**Capítulos**
-1. `00:00` Aba **Empresa**: logo, dados cadastrais, contato e endereço (CEP preenche sozinho)
-2. `05:00` O switch "mostrar em documentos" campo a campo — o que sai no PDF e no relatório
-3. `08:00` 🔒 **White Label**: logo full + ícone, cor primária, estilo do QR Code e cabeçalho do relatório com preview ao vivo
-4. `13:00` Aba **Regional**: meu idioma × padrões da empresa (idioma, moeda, fuso) e o switch do resultado DISC
-5. `16:00` Aba **Usabilidade**: auto-salvar OS, mostrar valores, exigir assinatura, fotos no dispositivo, tabelas compactas, confirmar exclusão, feriados na agenda
-6. `21:00` Card **Origens** — o catálogo compartilhado entre Clientes e CRM
-7. `23:00` Aba **Atalhos** e aba **Aparência** (sidebar × barra superior, tema claro/escuro)
-8. `26:00` Aba **Integrações**: Recebimentos (Asaas) e o estado atual do WhatsApp
-9. `28:00` Documentos legais e a **Zona de Perigo** (Zerar Sistema) — o que ela apaga
-
-- **Abertura**: "Neste tutorial você vai deixar a Dominex com a cara da sua empresa."
-- **Recap**: "Empresa cadastrada, documentos com sua marca, preferências ajustadas e integrações no lugar."
-- **Próximo**: "No próximo tutorial: quem entra no sistema e o que cada um pode fazer."
-
 ⚠️ **Salvamento é automático** (com debounce) — mostre o selo "salvando / salvo" no topo. Não existe botão "Salvar" nessa tela.
-⚠️ **Segmento é somente-leitura** — só a Dominex muda. Explique isso antes que o cliente procure o campo.
-🚫 **WhatsApp está "Em breve"** hoje: a aba existe mas mostra um card fixo, não o painel de conexão por QR Code. **Não gravar aula de conectar WhatsApp** até a flag ser desligada.
-🚫 Não existe configuração do link de avaliação do Google dentro de Configurações — ele vive na configuração de NPS da OS (T12).
+⚠️ **Segmento é somente-leitura** — só a Dominex muda.
+⚠️ **Cartão é sempre recorrente mensal** e não tem o desconto anual. Só Pix e Boleto pegam os 20%.
+⚠️ O valor exibido considera preço promocional/personalizado — pode não bater com a tabela pública.
+⚠️ Plano "Personalizado" não aparece pra compra direta no checkout.
+⚠️ Nesta aula mostre apenas onde ficam as integrações. A conexão e as automações do WhatsApp são ensinadas com segurança no T21.
+🚫 Não existe configuração do link de avaliação do Google dentro de Configurações — ele vive na configuração de NPS da OS (T5).
 
 ---
 
 # 🎬 T2 — Usuários, cargos e permissões (Inspiração visual: *Missão Impossível*)
 
-**Duração**: ~25min · **Pré-requisito**: T1
+**Duração**: ~25min · **Pré-requisito**: T0
 
 > Colocar a equipe dentro do sistema sem dar acesso demais. É aqui que o gestor decide o que o técnico vê, o que o financeiro vê e o que ninguém vê.
 
@@ -188,11 +176,11 @@ T0  Bem-vindo à Dominex
 
 ---
 
-# 🎬 T5 — Ordens de Serviço: a visão do gestor (Inspiração visual: *Mad Max: Estrada da Fúria*)
+# 🎬 T5 — Ordens de Serviço, Agenda, Equipes e Mapa ao Vivo (Inspiração visual: *Mad Max: Estrada da Fúria*)
 
-**Duração**: ~45min · **Pré-requisito**: T4
+**Duração**: ~70min · **Pré-requisito**: T4 · 🔒 **módulo RH** (para Equipes)
 
-> O coração da operação. Abrir, distribuir, acompanhar e fechar OS — tudo do lado de dentro do escritório.
+> O coração da operação. Abrir, distribuir, agendar, acompanhar e fechar OS, com visão de relatório, NPS, equipes e localização em campo.
 
 **Capítulos**
 1. `00:00` Tela **Ordens de Serviço**: kanban × lista e os 4 indicadores do topo
@@ -207,42 +195,26 @@ T0  Bem-vindo à Dominex
 10. `32:00` Filtros, busca e por que a busca ignora o filtro de período
 11. `35:00` Abrir a OS no app do técnico sendo gestor, e **compartilhar o link** com o cliente
 12. `38:00` Aba **Relatório**: leitura do dashboard de OS
-13. `41:00` Aba **NPS**: promotores, neutros, detratores e o comentário aberto do detrator
+13. `41:00` Aba **NPS**: promotores, neutros, detratores, critérios de estrela e comentário aberto
+14. `45:00` Nota mínima + **convite pra avaliar no Google** e o tratamento de detratores
+15. `48:00` Tela **Agenda**: visão Dia, Semana e Mês (e por que o celular abre em Dia)
+16. `51:00` Criar pelo "+": **Nova OS** × **Nova Tarefa**
+17. `54:00` Reagendar arrastando, legenda de cores e feriados
+18. `57:00` **Ordens Pausadas** e a retomada aparecendo em duas datas
+19. `60:00` **Equipes**: criar time com cor, ícone, foto e membros
+20. `63:00` Escalar equipe inteira numa OS em vez de técnico individual
+21. `65:00` **Mapa e Rastreamento**: cores dos marcadores e posição em tempo real
+22. `68:00` Aba **Histórico**: eventos de localização por técnico e por data
 
-- **Abertura**: "Neste tutorial você vai abrir, distribuir e acompanhar Ordem de Serviço do início ao fim."
-- **Recap**: "OS criada, técnico avisado, status controlado e cliente com link pra acompanhar."
-- **Próximo**: "No próximo tutorial: agenda, equipes e mapa ao vivo."
+- **Abertura**: "Neste tutorial você vai abrir, distribuir, agendar e acompanhar Ordens de Serviço, a equipe e os resultados da operação."
+- **Recap**: "OS criada, agenda montada, equipe escalada, operação no mapa e indicadores de relatório e NPS acompanhados."
+- **Próximo**: "No próximo tutorial: o lado do técnico, no celular, em campo."
 
 ⚠️ O formulário salva **rascunho** enquanto está aberto — mostre recuperando.
 ⚠️ Mudar a data de uma OS **recorrente ou de contrato** abre confirmação. Explique por quê.
 ⚠️ OS de contrato PMOC mostra aviso extra na edição — não é erro.
 🚫 **Não existe toggle manual "exigir assinatura"** na criação de OS avulsa. Hoje isso só é ligado sozinho quando a OS nasce de contrato PMOC. Não prometa o botão.
 ⚠️ **Baixa de estoque ao concluir a OS depende do recurso estar ligado** (Configurações → Usabilidade → "Consumo de estoque na OS", desligado por padrão). Com ele ligado, o técnico lança o material usado durante o atendimento e a baixa é confirmada num resumo editável na finalização. Com ele desligado, concluir a OS não mexe em saldo físico. O vínculo material × tipo de serviço continua servindo só pra calcular custo em orçamento. Ver T5, T7 e T8.
-
----
-
-# 🎬 T6 — Agenda, Equipes e Mapa ao Vivo (Inspiração visual: *Top Gun: Maverick*)
-
-**Duração**: ~30min · **Pré-requisito**: T5
-
-> Onde a operação vira rota. Quem vai, quando vai, e onde está agora.
-
-**Capítulos**
-1. `00:00` Tela **Agenda**: visão Dia, Semana e Mês (e por que o celular abre em Dia)
-2. `03:00` Criar pelo "+": **Nova OS** × **Nova Tarefa** — a diferença que mais confunde
-3. `07:00` Reagendar arrastando no desktop e com toque-e-segure no celular
-4. `10:00` Legenda de cores por tipo de serviço e a estrela de feriado
-5. `12:00` **Ordens Pausadas**: o diálogo de retomada rápida
-6. `14:00` A OS retomada aparecendo em duas datas (badge "Retomada")
-7. `16:00` **Equipes**: onde ficam de verdade (Funcionários → aba Equipes), criar time com cor, ícone, foto e membros
-8. `20:00` Escalar equipe inteira numa OS em vez de técnico individual
-9. `22:00` **Mapa e Rastreamento** — aba Mapa: as cores dos marcadores e o que cada uma significa
-10. `26:00` Aba **Histórico**: eventos de localização por técnico e por data
-
-- **Abertura**: "Neste tutorial você vai organizar a semana da equipe e acompanhar o time no mapa em tempo real."
-- **Recap**: "Agenda montada, equipes formadas e visibilidade de onde cada técnico está."
-- **Próximo**: "No próximo tutorial: o lado do técnico, no celular, em campo."
-
 ⚠️ **Tarefa não é OS**: não aparece na tela de Ordens de Serviço, é compromisso separado.
 ⚠️ Arrastar na agenda **muda a data na hora, sem confirmação** (exceto OS recorrente/de contrato).
 ⚠️ O técnico só aparece no mapa se **deu permissão de localização** no celular **e** está com OS "a caminho" ou "em andamento".
@@ -252,36 +224,65 @@ T0  Bem-vindo à Dominex
 
 ---
 
-# 🎬 T7 — O técnico em campo + Área do Técnico™ (Inspiração visual: *Perdido em Marte*)
+# 🎬 T7 — O técnico em campo: preenchimento de OS, pausar OS, finalizar parcialmente, link público, PDF e consumo de estoque (Inspiração visual: *Perdido em Marte*)
 
-**Duração**: ~40min · **Pré-requisito**: T6
+**Duração**: ~35min · **Pré-requisito**: T5
 
-> O tutorial que o técnico assiste. Tudo o que acontece no celular, do "estou a caminho" até a assinatura do cliente — mais a caixa de ferramentas de cálculo.
+> O tutorial que o técnico assiste: executar a OS pelo celular, registrar o atendimento e entregar o resultado ao cliente.
 
 **Capítulos**
 1. `00:00` Abrindo a OS no celular: o link, o endereço amigável e o que o técnico vê primeiro
 2. `03:00` **A Caminho** → mapa em tela cheia com botão pra Waze e Google Maps
 3. `06:00` **Check-in**: a OS vira "Em Andamento" e a localização é registrada
-4. `09:00` Preenchendo checklist por equipamento: sim/não, conformidade, medição, seleção, número
-5. `15:00` **Fotos**: Tirar Foto × Galeria, e quando só a câmera é permitida
-6. `18:00` 🔒 Resposta em **vídeo**
-7. `20:00` **Pausar** e retomar a OS depois — e como isso aparece na agenda do gestor
+4. `09:00` Preenchendo checklist por equipamento: conformidade, medição, seleção e observação
+5. `14:00` **Fotos e vídeo**: câmera, galeria e evidências do atendimento
+6. `17:00` **Consumo de estoque**: lançar o material usado dentro da OS
+7. `20:00` **Pausar** e retomar a OS — e como isso aparece na agenda do gestor
 8. `23:00` **Assinatura** do técnico e do cliente
-9. `26:00` **Finalizar** (e o "finalizar parcialmente" em contrato PMOC)
-10. `29:00` **Área do Técnico™**: a caixa de ferramentas do seu segmento (carga térmica, capacitor, cabo elétrico, superaquecimento, régua de gases, retrofit, ciclo de refrigeração…)
-11. `35:00` Usar a calculadora **de dentro da OS**, sem sair da tela
-12. `37:00` As ferramentas com cadeado: o que é do seu segmento e o que é de outro
+9. `25:00` **Finalizar parcialmente** uma visita de contrato e preservar o que ficou pendente
+10. `28:00` Revisar o consumo de estoque e concluir a OS
+11. `30:00` Copiar o **link público** e conferir a visão do cliente sem login
+12. `33:00` Baixar e compartilhar o **PDF** do relatório da OS
 
-- **Abertura**: "Neste tutorial você vai executar uma OS do começo ao fim pelo celular, como se estivesse na casa do cliente."
-- **Recap**: "Você saiu a caminho, fez check-in, preencheu o checklist com foto, colheu assinatura e finalizou."
+- **Abertura**: "Neste tutorial você vai executar uma OS do começo ao fim pelo celular, registrar materiais e entregar o relatório ao cliente."
+- **Recap**: "OS preenchida, pausada quando necessário, materiais consumidos, atendimento finalizado e relatório compartilhado."
+- **Próximo**: "No próximo tutorial: a Área do Técnico para Refrigeração e Climatização."
+
+⚠️ **Sinal de internet é obrigatório na hora de salvar.** O app guarda rascunho do formulário e avisa quando a conexão cai, mas checklist, mídia e check-in precisam de rede pra gravar.
+🚫 **Não prometer "funciona offline / sincroniza depois".** Não existe fila de sincronização; as chamadas são sempre online.
+⚠️ A mesma URL serve pro técnico, pro gestor e pro cliente — **sem login, ela vira modo cliente sozinha**. Cuidado ao gravar tela: mostre logado e deslogado.
+⚠️ A baixa de estoque depende de **Configurações → Usabilidade → Consumo de estoque na OS**. Com o recurso desligado, concluir a OS não altera o saldo físico.
+⚠️ Finalização parcial é própria das visitas vinculadas a contrato; não apresente como opção de toda OS avulsa.
+
+---
+
+# 🎬 T18 — Área do Técnico: Refrigeração e Climatização (Inspiração visual: *Apollo 13*)
+
+**Duração**: ~30min · **Pré-requisito**: T7 · **série especial por segmento**
+
+> Primeira aula da série Área do Técnico. Cada segmento terá uma aula própria; esta cobre exclusivamente Refrigeração e Climatização.
+
+**Capítulos**
+1. `00:00` Por que a Área do Técnico muda conforme o segmento da empresa
+2. `02:00` Visão geral do hub e acesso às ferramentas dentro e fora da OS
+3. `04:00` **Catálogo**: modelos, capacidades e códigos de erro
+4. `07:00` **Carga Térmica**: dimensionar os BTUs do ambiente
+5. `10:00` **Conversão** de pressão, temperatura, potência e medidas
+6. `12:00` **Cálculo de Capacitor** pelo BTU e tensão
+7. `14:00` **Cabo Elétrico**: bitola e disjuntor por distância e carga
+8. `17:00` **Superaquecimento e sub-resfriamento** pela pressão e temperatura
+9. `20:00` **Régua de Gases** e pressão de saturação
+10. `22:00` **Retrofit de Gás** e opções de refrigerante substituto
+11. `25:00` **Ciclo de Refrigeração** e consulta dos termos técnicos
+12. `27:00` **Diluição de Produto** e histórico dos cálculos
+
+- **Abertura**: "Nesta aula especial você vai usar a Área do Técnico de Refrigeração e Climatização como apoio prático no atendimento."
+- **Recap**: "As ferramentas do segmento foram apresentadas com o momento certo de usar cada uma."
 - **Próximo**: "No próximo tutorial: estoque, compras e inventário."
 
-⚠️ **Sinal de internet é obrigatório na hora de salvar.** O app guarda rascunho do formulário e avisa quando a conexão cai, mas checklist, foto e check-in precisam de rede pra gravar.
-🚫 **Não prometer "funciona offline / sincroniza depois".** Não existe fila de sincronização — as chamadas são sempre online. O que existe é o app abrir rápido mesmo com rede ruim e o rascunho local do formulário. **[VALIDAR COM O TECH LEAD a frase exata antes de gravar.]**
-⚠️ A mesma URL serve pro técnico, pro gestor e pro cliente — **sem login, ela vira modo cliente sozinha**. Cuidado ao gravar tela: mostre logado e deslogado.
-⚠️ **Área do Técnico™ ≠ executar OS.** São duas coisas diferentes com nomes parecidos. Separe bem no vídeo.
-⚠️ As calculadoras mudam conforme o **segmento** da empresa — o técnico de elevador não vê as mesmas de refrigeração.
-🚫 Não existe baixa de material/estoque dentro da tela de execução.
+⚠️ Esta aula é **exclusiva de Refrigeração e Climatização**. Outros segmentos recebem aulas próprias conforme suas ferramentas forem publicadas.
+⚠️ A lista disponível vem do segmento contratado pela empresa; ferramentas de outros segmentos podem aparecer apenas como prévia bloqueada.
+⚠️ Área do Técnico não substitui o preenchimento da OS. Ela é uma caixa de ferramentas de apoio.
 
 ---
 
@@ -398,12 +399,11 @@ T0  Bem-vindo à Dominex
 9. `27:00` Aba **Documentos**: TRT, Certificado, Dossiê e Planilha — gerar, assinar e baixar
 10. `32:00` **Responsáveis Técnicos**: cadastro, CFT/CREA, assinatura e carimbo (Configurações de Contrato)
 11. `36:00` Aba **Financeiro** do contrato: cobrança única ou parcelada, marcar paga, aplicar em massa
-12. `40:00` **Portal do Contrato/PMOC**: link e QR Code pro cliente
-13. `42:00` **Renovar** (+6 ou +12 meses) e o que a renovação gera; pausar e excluir com segurança
+12. `40:00` **Renovar** (+6 ou +12 meses) e o que a renovação gera; pausar e excluir com segurança
 
 - **Abertura**: "Neste tutorial você vai montar contrato recorrente e deixar o PMOC em conformidade com a lei."
 - **Recap**: "Contrato criado, visitas programadas, documentos assinados e cliente com portal próprio."
-- **Próximo**: "No próximo tutorial: o portal do cliente e a sua reputação."
+- **Próximo**: "No próximo tutorial: o Portal do Cliente e o Portal do Contrato."
 
 ⚠️ 🚫 **Não fale em "tela de PMOC" nem em item de menu PMOC** — não existe mais. O caminho é Contratos com filtro de tipo.
 ⚠️ 🚫 **Não prometa "robô que gera OS todo dia".** As visitas são geradas **de uma vez**, no momento de criar ou renovar o contrato, cobrindo todo o horizonte configurado.
@@ -415,11 +415,11 @@ T0  Bem-vindo à Dominex
 
 ---
 
-# 🎬 T12 — Portal do Cliente, NPS e reputação (Inspiração visual: *Black Mirror*)
+# 🎬 T12 — Portal do Cliente e Portal do Contrato (Inspiração visual: *Black Mirror*)
 
-**Duração**: ~25min · **Pré-requisito**: T11 · 🔒 **módulo Portal do Cliente** (para o portal)
+**Duração**: ~18min · **Pré-requisito**: T11 · 🔒 **módulos Portal do Cliente e Contratos/PMOC**
 
-> Transformar serviço bem feito em prova social. O cliente acompanha, avalia e, se gostou, avalia no Google.
+> Os dois acessos públicos do cliente: o portal geral para acompanhar o relacionamento com a empresa e o portal específico do contrato ou PMOC.
 
 **Capítulos**
 1. `00:00` O Portal do Cliente **já nasce criado** pra todo cliente — só falta torná-lo público
@@ -427,13 +427,11 @@ T0  Bem-vindo à Dominex
 3. `06:00` O que o cliente enxerga: OS, equipamentos, contratos e cobranças
 4. `10:00` Cliente abrindo **chamado** pelo portal — e onde isso cai pra você (aba Chamados)
 5. `13:00` O **QR Code do equipamento** levando direto pro portal filtrado naquele aparelho
-6. `15:00` A **avaliação (NPS)** que aparece pro cliente ao fim da OS: nota, estrelas por critério, comentário
-7. `18:00` Configurar os **critérios de estrela** (nome, cor, ordem)
-8. `20:00` Nota mínima + **convite pra avaliar no Google**: colando o link do Google Maps
-9. `23:00` Lendo o painel de NPS e o que fazer com um detrator
+6. `15:00` **Portal do Contrato/PMOC**: gerar, copiar e testar o link e o QR Code da unidade
+7. `17:00` Diferença entre Portal do Cliente e Portal do Contrato — quando compartilhar cada um
 
-- **Abertura**: "Neste tutorial você vai abrir o sistema pro seu cliente e transformar serviço bom em avaliação boa."
-- **Recap**: "Portal ligado, cliente acompanhando, avaliação chegando e review no Google acontecendo."
+- **Abertura**: "Neste tutorial você vai configurar os dois portais que conectam o cliente à sua operação e aos contratos."
+- **Recap**: "Portal do Cliente publicado e Portal do Contrato pronto para compartilhar por link ou QR Code."
 - **Próximo**: "No próximo tutorial: o financeiro."
 
 ⚠️ Portal com link correto mas **sem estar público** = acesso negado. É a pegadinha nº1 aqui.
@@ -447,12 +445,12 @@ T0  Bem-vindo à Dominex
 
 # 🎬 T13 — Financeiro (Inspiração visual: *Ozark*)
 
-**Duração**: ~50min · **Pré-requisito**: T12
+**Duração**: ~35min · **Pré-requisito**: T12
 
-> O tutorial mais longo, e o que mais evita prejuízo. Dinheiro entrando, saindo, no cartão e no resultado.
+> A base do controle financeiro: contas, movimentações, cartões e compromissos a pagar ou receber.
 
 **Capítulos**
-1. `00:00` Os 3 endereços do menu Financeiro e o que cada um responde
+1. `00:00` Os endereços do menu Financeiro e o que cada um responde
 2. `02:00` **Movimentações**: criar a primeira conta bancária/caixa
 3. `06:00` Lançar receita e despesa, marcar como pago, editar e excluir
 4. `10:00` Extrato com "saldo após" e o ajuste manual de saldo
@@ -462,32 +460,85 @@ T0  Bem-vindo à Dominex
 8. `23:00` **Pagar a fatura**: integral × parcial, e o limite voltando
 9. `27:00` **Visão Geral**: cards de saldo, gráfico de fluxo de caixa e pizza por categoria
 10. `31:00` **Categorias**: criar, colorir, ordenar e o grupo de DRE; as do sistema que não se mexe
-11. `35:00` **Contas a Pagar/Receber**: lançar com **recorrência**, dar baixa, recebimento parcial
-12. `41:00` **DRE**: o botão **Caixa × Competência** e o que muda no número
-13. `45:00` O caso da compra de cartão na DRE: mês da compra × mês do pagamento × mês da fatura
-14. `48:00` Exportar CSV e gerar o PDF da DRE
+11. `33:00` **Contas a Pagar/Receber**: recorrência, baixa e recebimento parcial
 
-- **Abertura**: "Neste tutorial você vai colocar o dinheiro da empresa dentro do sistema e enxergar o resultado de verdade."
-- **Recap**: "Contas cadastradas, cartão sob controle, contas a pagar organizadas e DRE lida do jeito certo."
-- **Próximo**: "No próximo tutorial: nota fiscal de serviço."
+- **Abertura**: "Neste tutorial você vai colocar o movimento financeiro da empresa dentro do sistema e organizar o que entrou, saiu e ainda vai vencer."
+- **Recap**: "Contas cadastradas, cartão sob controle e compromissos financeiros organizados."
+- **Próximo**: "No próximo tutorial: integração com Asaas, assinaturas e cobranças."
 
-⚠️ **Regime Caixa × Competência** é o conceito mais importante do tutorial — dedique tempo. Caixa = o que já entrou/saiu. Competência = o mês do fato, pago ou não.
-⚠️ Compra no cartão entra na DRE pelo mês da **compra** (Competência) ou do **pagamento** (Caixa) — **nunca** pelo mês da fatura.
 ⚠️ Pagar a fatura **integralmente** quita as compras. Pagamento **parcial não quita nenhuma** — mostre o aviso da tela.
 ⚠️ Transferência e pagamento de fatura **não entram** no faturamento nem na DRE. Não é erro.
 ⚠️ Recorrência de contas **já cria todas as parcelas de uma vez** (não é agendamento que dispara depois).
-⚠️ Contas a Pagar/Receber e DRE fazem parte do Financeiro completo desde o Essencial. O plano Exceção não possui o grupo Financeiro.
+⚠️ Contas a Pagar/Receber fazem parte do Financeiro completo desde o Essencial. O plano Exceção não possui o grupo Financeiro.
 ⚠️ Excluir lançamento exige permissão específica (T2).
 🚫 Não existe subcategoria/hierarquia — a lista de categorias é plana.
 🚫 Não existe tela própria de BDI aqui (é dentro de Orçamentos, T9).
 
 ---
 
-# 🎬 T14 — Notas Fiscais (NFS-e) (Inspiração visual: *Better Call Saul*)
+# 🎬 T19 — Integração com Asaas, Assinaturas e Cobranças (Inspiração visual: *Billions*)
 
-**Duração**: ~30min · **Pré-requisito**: T13 · 🔒 **módulo Emissão de Notas Fiscais**
+**Duração**: ~40min · **Pré-requisito**: T13 · 🔒 **módulo Cobranças**
 
-> Do certificado digital até a nota autorizada com a prefeitura. Passo delicado, feito devagar.
+> Conectar a conta Asaas da empresa, cobrar uma vez ou de forma recorrente e acompanhar o pagamento até a baixa no Financeiro.
+
+**Capítulos**
+1. `00:00` O papel da Dominex e do Asaas no fluxo da cobrança
+2. `03:00` Configurações → Integrações → **Asaas**: conectar a conta e validar a chave
+3. `07:00` Taxas reais, métodos habilitados e atualização das condições da conta
+4. `11:00` Conta de recebimento e lançamento automático no Financeiro
+5. `14:00` Simulador: Pix, boleto, cartão, prazo e valor líquido
+6. `18:00` Criar **cobrança avulsa**: cliente, vencimento, juros, multa e desconto
+7. `23:00` Compartilhar o checkout e acompanhar pendente, pago, vencido ou cancelado
+8. `27:00` Repasse de taxa e conciliação do valor líquido
+9. `30:00` Criar **assinatura**: frequência, duração e formas de pagamento
+10. `35:00` Acompanhar, editar e cancelar assinaturas com segurança
+11. `38:00` Cobrança de contrato e orçamento: onde os fluxos se encontram
+
+- **Abertura**: "Neste tutorial você vai conectar sua conta Asaas e transformar cobranças avulsas ou recorrentes em recebimentos acompanhados pela Dominex."
+- **Recap**: "Asaas conectado, cobrança enviada, assinatura criada e baixa financeira acompanhada."
+- **Próximo**: "No próximo tutorial: Relatório Financeiro e DRE."
+
+⚠️ CPF ou CNPJ válido do cliente é obrigatório para criar a cobrança no Asaas.
+⚠️ A confirmação visual do checkout não dá baixa sozinha; o status definitivo vem do webhook do Asaas.
+⚠️ Mostre as taxas retornadas pela conta conectada. Nunca trate valor de referência como taxa garantida.
+⚠️ Cancelar assinatura e revogar uma autorização de Pix Automático são ações relacionadas, mas não equivalentes.
+
+---
+
+# 🎬 T20 — Relatório Financeiro e DRE (Inspiração visual: *Margin Call*)
+
+**Duração**: ~30min · **Pré-requisito**: T13
+
+> Ler resultado, caixa e compromissos sem misturar faturamento, transferência e data de fatura.
+
+**Capítulos**
+1. `00:00` Relatórios → Visão Geral: filtros, indicadores e origem dos números
+2. `04:00` **DRE**: receita, custos, despesas e resultado do período
+3. `08:00` **Caixa × Competência** e o que muda em cada regime
+4. `12:00` Compra no cartão: mês da compra, mês do pagamento e mês da fatura
+5. `16:00` Assinaturas previstas e o cuidado com projeções
+6. `19:00` **DFC**: entradas, saídas e variação do caixa
+7. `22:00` Pacote para a contabilidade e conferência dos lançamentos
+8. `25:00` Exportar CSV e gerar o PDF do relatório
+9. `28:00` Checklist mensal de fechamento financeiro
+
+- **Abertura**: "Neste tutorial você vai ler o resultado da empresa e entender por que caixa, competência e fatura mostram datas diferentes."
+- **Recap**: "DRE interpretada, DFC conferida e relatório exportado com o filtro correto."
+- **Próximo**: "No próximo tutorial: Notas Fiscais, NFS-e e NF-e."
+
+⚠️ Caixa = o que já entrou ou saiu. Competência = o mês do fato, pago ou não.
+⚠️ Compra no cartão entra na DRE pelo mês da **compra** em Competência ou do **pagamento** em Caixa — nunca pelo mês da fatura.
+⚠️ Transferência e pagamento de fatura são movimentos internos e não entram no faturamento nem na DRE.
+⚠️ Antes de exportar, confira período, regime e filtros aplicados.
+
+---
+
+# 🎬 T14 — Notas Fiscais (NFS-e e NF-e) (Inspiração visual: *Better Call Saul*)
+
+**Duração**: ~35min · **Pré-requisito**: T13 · 🔒 **módulo Emissão de Notas Fiscais**
+
+> Emitir NFS-e e acompanhar notas de serviço ou produto recebidas contra o CNPJ da empresa.
 
 **Capítulos**
 1. `00:00` O que é NFS-e e por que a configuração vem antes de tudo
@@ -500,9 +551,11 @@ T0  Bem-vindo à Dominex
 8. `22:00` O caso do **Simples Nacional**: o percentual que precisa ser preenchido
 9. `24:00` Nota autorizada: número, protocolo, chave de acesso; baixar **PDF (DANFSe)** e **XML**
 10. `27:00` **Cancelar** nota com motivo, e reemitir depois (número novo)
+11. `30:00` **Notas recebidas**: consultar NF-e e NFS-e emitidas contra o CNPJ
+12. `33:00` Manifestar NF-e de produto e lançar a nota recebida como despesa
 
-- **Abertura**: "Neste tutorial você vai configurar a parte fiscal e emitir sua primeira nota de serviço."
-- **Recap**: "Certificado no lugar, impostos configurados, nota emitida e PDF na mão do cliente."
+- **Abertura**: "Neste tutorial você vai configurar a parte fiscal, emitir NFS-e e acompanhar NF-e e NFS-e recebidas pela empresa."
+- **Recap**: "Certificado no lugar, NFS-e emitida e notas recebidas conferidas."
 - **Próximo**: "No próximo tutorial: sua equipe, o ponto e a folha."
 
 ⚠️ Sem certificado carregado, a tela volta pro estado guiado e **não emite**.
@@ -511,17 +564,18 @@ T0  Bem-vindo à Dominex
 ⚠️ "Baixar PDF" só aparece pra nota **autorizada, com cancelamento pendente ou cancelada** — não aparece em rascunho nem em nota rejeitada.
 ⚠️ Reemitir depois de cancelar gera **número novo** — não reaproveita o número cancelado.
 🚫 Configuração fiscal **não é página separada** — é modal aberto de dentro de Notas Fiscais.
+🚫 A Dominex **não emite NF-e de produto** nesta tela. NF-e entra como nota recebida, com consulta e manifestação; a emissão disponível é NFS-e.
 
 ---
 
-# 🎬 T15 — Funcionários, Ponto e Folha (Inspiração visual: *The Office*)
+# 🎬 T15 — Funcionários: Financeiro do Funcionário e Ponto Eletrônico (Inspiração visual: *The Office*)
 
 **Duração**: ~35min · **Pré-requisito**: T14 · 🔒 **módulo Funcionários / RH**
 
-> Time cadastrado, ponto batendo e folha caindo no financeiro sem planilha paralela.
+> Cadastro funcional, movimentações financeiras do funcionário, pagamento e controle de ponto eletrônico no mesmo fluxo.
 
 **Capítulos**
-1. `00:00` Tela **Funcionários** e suas 5 abas
+1. `00:00` Tela **Funcionários**: cadastro, financeiro individual e ponto eletrônico
 2. `02:00` Cadastro: dados, foto, chave PIX, admissão
 3. `06:00` Remuneração: salário, custo mensal e os campos CLT (CBO, matrícula, dependentes, VT)
 4. `10:00` Configuração de pagamento: frequência e dia do mês
@@ -531,11 +585,10 @@ T0  Bem-vindo à Dominex
 8. `24:00` **Ponto**: gerar o link público do funcionário e bater ponto pelo celular
 9. `28:00` Aba **Ponto** do gestor: Hoje, Histórico, Relatório, Configurações (exigir selfie e localização)
 10. `31:00` A **folha** aparecendo sozinha em Contas a Pagar e sendo quitada de lá
-11. `33:00` Abas **Comportamental (DISC)** e **Organograma**
 
-- **Abertura**: "Neste tutorial você vai cadastrar sua equipe, ligar o ponto e fechar a folha dentro do sistema."
-- **Recap**: "Funcionários cadastrados, ponto batendo com foto e localização, folha caindo no financeiro."
-- **Próximo**: "No próximo tutorial: seu plano e sua assinatura."
+- **Abertura**: "Neste tutorial você vai cadastrar sua equipe, controlar o financeiro de cada funcionário e colocar o ponto eletrônico para funcionar."
+- **Recap**: "Funcionários cadastrados, movimentações e pagamentos registrados, ponto eletrônico configurado e folha no financeiro."
+- **Próximo**: "No próximo tutorial: Perfil Comportamental, Organograma e Fluxograma."
 
 ⚠️ **Vale gera despesa na hora. Bônus e falta não** — só entram no financeiro quando a folha é paga. Essa é a confusão nº1 aqui.
 ⚠️ Criar acesso exige e-mail preenchido e senha de no mínimo 6 caracteres.
@@ -546,54 +599,91 @@ T0  Bem-vindo à Dominex
 
 ---
 
-# 🎬 T16 — Sua assinatura, plano e módulos (Inspiração visual: *A Rede Social*)
+# 🎬 T22 — Ferramentas de RH: Perfil Comportamental (DISC), Organograma, Fluxograma (Inspiração visual: *Severance*)
 
-**Duração**: ~20min · **Pré-requisito**: T15
+**Duração**: ~40min · **Pré-requisito**: T15 · 🔒 **módulo Funcionários / RH**
 
-> Entender o que você paga, o que está incluído e como ligar um módulo novo.
+> Ferramentas para entender pessoas, desenhar a estrutura da empresa e documentar como o trabalho deve acontecer.
 
 **Capítulos**
-1. `00:00` Tela **Assinatura**: status, plano atual, vencimento e valor
-2. `03:00` Card **Uso da Conta**: usuários usados × contratados
-3. `05:00` **Gerenciar Meu Plano** — aba Planos Prontos
-4. `08:00` **Gerenciar Meu Plano** — aba Personalizado: montar módulo a módulo + usuários extras
-5. `12:00` O catálogo de módulos explicado em uma frase cada
-6. `15:00` **Pagar Agora** → checkout: Pix, Boleto e Cartão
-7. `18:00` Mensal × Anual (o desconto que só vale à vista) e o histórico de pagamentos
+1. `00:00` Onde ficam as três ferramentas dentro de **Funcionários**
+2. `02:00` **Perfil Comportamental (DISC)**: gerar o link individual e definir se o funcionário verá o resultado
+3. `06:00` A experiência do funcionário respondendo a avaliação sem login
+4. `10:00` Ler o perfil: fatores DISC, competências, perfil emocional, qualidades e pontos de atenção
+5. `15:00` Histórico de avaliações, evolução e comparação entre dois funcionários
+6. `19:00` Baixar o dossiê individual e o relatório comparativo em PDF
+7. `22:00` **Organograma**: criar o quadro e adicionar funcionário, cargo manual e setor
+8. `26:00` Conectar a hierarquia, organizar automaticamente, buscar, destacar setor e trabalhar em tela cheia
+9. `30:00` Exportar o Organograma em PNG ou PDF
+10. `32:00` **Fluxograma**: criar uma rotina com início, ação, decisão, subprocesso e fim
+11. `35:00` Usar raias de responsáveis, conexões e organização automática
+12. `37:00` Conferir problemas do fluxo e gerar o POP com o fluxograma incorporado
+13. `39:00` Exportar, compartilhar e manter o processo atualizado
 
-- **Abertura**: "Neste tutorial você vai entender exatamente o que paga e como ligar um recurso novo."
-- **Recap**: "Plano entendido, módulos sob controle e pagamento resolvido."
-- **Próximo**: "No último tutorial: a rotina que faz tudo isso girar."
+- **Abertura**: "Neste tutorial você vai transformar informação de pessoas, estrutura e processos em ferramentas práticas de RH."
+- **Recap**: "Perfil comportamental analisado, organograma desenhado e processo documentado em fluxograma."
+- **Próximo**: "No próximo tutorial: integração com WhatsApp."
 
-⚠️ **Cartão é sempre recorrente mensal** e não tem o desconto anual. Só Pix e Boleto pegam os 20%.
-⚠️ O valor exibido considera preço promocional/personalizado — pode não bater com a tabela pública.
-⚠️ Plano "Personalizado" não aparece pra compra direta no checkout.
+⚠️ O link do DISC é individual e público; use somente dados fictícios ou uma conta-demo durante a gravação.
+⚠️ A visibilidade do resultado para o funcionário depende da configuração escolhida ao gerar a avaliação.
+⚠️ Organograma e Fluxograma salvam o desenho automaticamente; mostre o estado de salvamento antes de sair.
+⚠️ O Fluxograma nasce com uma etapa inicial e a conferência aponta caminhos sem início, sem fim ou isolados.
+⚠️ O POP é gerado a partir do Fluxograma cadastrado; desenho desatualizado gera documento desatualizado.
 
 ---
 
-# 🎬 T17 — Dashboard, rotina e truques (Inspiração visual: *Moneyball*)
+# 🎬 T21 — Integração com WhatsApp (Inspiração visual: *Mr. Robot*)
 
-**Duração**: ~25min · **Pré-requisito**: T16
+**Duração**: ~30min · **Pré-requisito**: T0 · 🔒 **módulo WhatsApp**
 
-> Fechar a trilha lendo os números e montando a rotina que mantém o sistema vivo.
+> Conectar o número da empresa, proteger a operação e ativar automações sem transformar o WhatsApp em disparo indiscriminado.
+
+**Capítulos**
+1. `00:00` Configurações → Integrações → **WhatsApp** e o que o módulo libera hoje
+2. `03:00` Conexão por QR Code: preparar o número, aceitar o risco e iniciar o pareamento
+3. `07:00` Ler o QR Code e acompanhar os estados de conexão
+4. `10:00` Número ativo, reconexão e troca da conexão principal
+5. `13:00` Proteção do número: horário, ritmo e limites de envio
+6. `17:00` Ativar automações e escolher os eventos da Ordem de Serviço
+7. `21:00` Conteúdo, modelos e autorização de contato por cliente
+8. `24:00` Histórico operacional: enviado, falhou, bloqueado e nova tentativa
+9. `27:00` Desconectar com segurança e quando refazer o pareamento
+
+- **Abertura**: "Neste tutorial você vai conectar o WhatsApp da empresa e ativar automações com uma régua segura de envio."
+- **Recap**: "Número conectado, proteção configurada, automações ativadas e histórico monitorado."
+- **Próximo**: "No último tutorial: dashboard, relatórios e exportações."
+
+⚠️ Atendimento e campanhas aparecem como prévias bloqueadas e continuam sendo etapas futuras. Não grave como funcionalidade disponível.
+⚠️ Sem conexão ativa, as áreas de automação permanecem bloqueadas.
+⚠️ Somente administradores, gestores ou usuários com permissão de configurações podem alterar as regras.
+⚠️ Não use número pessoal ou principal sem explicar o risco operacional do pareamento por QR Code.
+
+---
+
+# 🎬 T17 — Dashboard, relatórios e exportações (Inspiração visual: *Moneyball*)
+
+**Duração**: ~35min · **Pré-requisito**: T21
+
+> Fechar a trilha lendo os números e sabendo onde encontrar, filtrar e exportar os principais relatórios da operação.
 
 **Capítulos**
 1. `00:00` **Dashboard**: os KPIs (OS abertas, pendentes, técnicos em campo, taxa de conclusão, faturamento, clientes ativos)
 2. `05:00` Mapa ao vivo, fluxo de caixa e evolução de OS na tela inicial
 3. `09:00` **Top Técnicos**, resumo por status, OS por tipo e **OS críticas**
-4. `13:00` **Chamados do Portal** e o alerta de chamado novo
-5. `15:00` Atalhos de teclado e busca rápida
-6. `17:00` **Rotina diária** (5 min): OS críticas, chamados novos, agenda de amanhã
-7. `19:00` **Rotina semanal** (20 min): funil do CRM, orçamentos em aberto, estoque mínimo
-8. `21:00` **Rotina mensal** (1h): DRE, contas a receber vencidas, contratos a vencer, NPS
-9. `23:00` Onde ver as novidades do sistema (Changelog) e como pedir ajuda
+4. `13:00` Filtros de período e como conferir a origem de cada indicador
+5. `16:00` Relatórios operacionais de **OS e NPS**: visão consolidada e filtros
+6. `20:00` Onde encontrar cada família de relatório e quando voltar ao T20 para a leitura financeira
+7. `24:00` Relatórios de estoque: posição, inventário e contagem
+8. `28:00` Relatórios de pessoas e comercial: ponto e atividade
+9. `31:00` Exportações em **PDF, Excel e CSV** e **Exportar meus dados** da empresa
 
-- **Abertura**: "Neste último tutorial você vai aprender a ler seus números e montar a rotina que mantém tudo girando."
-- **Recap**: "Você sabe ler o dashboard e tem uma rotina diária, semanal e mensal pra não deixar nada cair."
+- **Abertura**: "Neste último tutorial você vai aprender a ler o dashboard, encontrar cada relatório e levar os dados para PDF, Excel ou CSV."
+- **Recap**: "Você sabe de onde vêm os indicadores, onde consultar cada relatório e qual exportação usar."
 - **Próximo**: "Fim da trilha. Volte em qualquer tutorial pelo capítulo que precisar."
 
 ⚠️ Faturamento e fluxo de caixa **excluem movimento interno** (transferência e pagamento de fatura). Explique pra ninguém achar que sumiu dinheiro.
 ⚠️ O mapa só plota técnico que já mandou o primeiro ponto de GPS.
+⚠️ Antes de exportar, aplique os filtros de período e confira se o arquivo reflete exatamente a visão da tela.
 
 ---
 
@@ -601,29 +691,31 @@ T0  Bem-vindo à Dominex
 
 | # | Tutorial | Módulo pago | Duração |
 |---|---|---|---|
-| T0 | Bem-vindo à Dominex | — | 20min |
-| T1 | Configurações e identidade da empresa | White Label (parcial) | 30min |
+| T0 | Bem-vindo, configuração, identidade e assinatura | White Label (parcial) | 65min |
 | T2 | Usuários, cargos e permissões | — | 25min |
 | T3 | Clientes e Equipamentos | — | 35min |
 | T4 | Serviços, tarefas e checklists | Vídeo em checklist (parcial) | 30min |
-| T5 | Ordens de Serviço (gestor) | — | 45min |
-| T6 | Agenda, Equipes e Mapa ao Vivo | RH (Equipes) | 30min |
-| T7 | O técnico em campo + Área do Técnico™ | — | 40min |
+| T5 | Ordens de Serviço, Agenda, Equipes e Mapa ao Vivo | RH (Equipes) | 70min |
+| T7 | O técnico em campo: preenchimento de OS, pausar OS, finalizar parcialmente, link público, PDF e consumo de estoque | — | 35min |
+| T18 | Área do Técnico: Refrigeração e Climatização | Segmento específico | 30min |
 | T8 | Estoque, compras e inventário | — | 35min |
 | T9 | Orçamentos, Precificação e Proposta | Precificação Avançada (parcial) | 45min |
 | T10 | CRM: funil, leads e captação | **CRM** | 30min |
 | T11 | Contratos e PMOC | **Contratos e PMOC** | 45min |
-| T12 | Portal do Cliente, NPS e reputação | **Portal do Cliente** | 25min |
-| T13 | Financeiro | — (incluso desde o Essencial) | 50min |
-| T14 | Notas Fiscais (NFS-e) | **Emissão de Notas Fiscais** | 30min |
-| T15 | Funcionários, Ponto e Folha | **Funcionários / RH** | 35min |
-| T16 | Sua assinatura, plano e módulos | — | 20min |
-| T17 | Dashboard, rotina e truques | — | 25min |
-| | **TOTAL** | | **~9h35min** |
+| T12 | Portal do Cliente e Portal do Contrato | **Portal do Cliente + Contratos/PMOC** | 18min |
+| T13 | Financeiro | — (incluso desde o Essencial) | 35min |
+| T19 | Integração com Asaas, Assinaturas e Cobranças | **Cobranças** | 40min |
+| T20 | Relatório Financeiro e DRE | — (incluso desde o Essencial) | 30min |
+| T14 | Notas Fiscais (NFS-e e NF-e) | **Emissão de Notas Fiscais** | 35min |
+| T15 | Funcionários: Financeiro do Funcionário e Ponto Eletrônico | **Funcionários / RH** | 35min |
+| T22 | Ferramentas de RH: Perfil Comportamental (DISC), Organograma, Fluxograma | **Funcionários / RH** | 40min |
+| T21 | Integração com WhatsApp | **WhatsApp** | 30min |
+| T17 | Dashboard, relatórios e exportações | — | 35min |
+| | **TOTAL** | | **~12h23min** |
 
-**18 tutoriais.** Gravando 1 tutorial por dia (com preparo, gravação e revisão), são **~18 dias úteis** pra cobrir a trilha inteira.
+**20 tutoriais.** Gravando 1 tutorial por dia (com preparo, gravação e revisão), são **~20 dias úteis** pra cobrir a trilha inteira.
 
-**Ordem sugerida de gravação** (não é a ordem de exibição — é a de menor risco): T3 → T4 → T5 → T7 → T0 → T1 → T2 → T6 → T8 → T9 → T12 → T13 → T10 → T11 → T15 → T14 → T16 → T17. Comece pelo miolo operacional, que é o que já está estável, e deixe T14 (fiscal) e T11 (PMOC) por último, porque dependem de dado real de cliente.
+**Ordem sugerida de gravação** (não é a ordem de exibição — é a de menor risco): T3 → T4 → T5 → T7 → T18 → T0 → T2 → T8 → T9 → T12 → T13 → T20 → T10 → T11 → T15 → T22 → T19 → T21 → T14 → T17. Comece pelo miolo operacional, que é o que já está estável, e deixe integrações e fiscal mais perto do fim, porque dependem de contas conectadas e dados reais de teste.
 
 ---
 
@@ -640,9 +732,9 @@ T0  Bem-vindo à Dominex
 
 > Gere **sempre as duas primeiras** (banner + thumbnail) pra cada tutorial. A miniatura de episódio pode ser um recorte do banner. A logo é opcional — só faça se quiser o nome estilizado por cima da hero.
 
-## Direção de arte (vale pra todas as 18 capas)
+## Direção de arte (vale pra todas as 20 capas)
 
-Pra as 18 capas parecerem uma coleção só:
+Pra as 20 capas parecerem uma coleção só:
 
 - **Paleta**: preto profundo `#141414` como base, **verde Dominex `#00C597`** como cor de luz/acento principal, e um toque frio de azul-aço nas sombras. Vermelho só como faísca pontual, nunca dominante.
 - **Universo visual**: manutenção técnica e campo — ar-condicionado, casa de máquinas, telhado de galpão, van de serviço, prancheta digital, ferramenta, EPI, prédio comercial brasileiro. Nada de escritório genérico americano.
@@ -669,15 +761,16 @@ de campo. Universo: manutenção técnica e serviço de campo no Brasil.
 
 ---
 
-### T0 — Bem-vindo à Dominex · Tema: *Interestelar*
-**Ideia**: a visão de cima, o mapa inteiro antes da viagem.
+### T0 — Bem-vindo, configuração, identidade e assinatura · Tema: *Interestelar*
+**Ideia**: a visão de cima e o painel de comando sendo configurado antes da viagem.
 
 **Banner 16:9 (1280×720)**
 ```
 Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Plano amplo visto
 de cima de uma cidade brasileira à noite, prédios comerciais com centenas de
 condensadores de ar-condicionado nos telhados, linhas de luz verde-esmeralda
-#00C597 conectando os prédios como uma constelação. Um técnico minúsculo de
+#00C597 conectando os prédios como uma constelação e painéis holográficos de
+configuração e módulos no céu. Um técnico minúsculo de
 costas, silhueta, no telhado do terço direito, olhando para a cidade. Terço
 esquerdo limpo e escuro para sobreposição de título. Base preto profundo
 #141414, sombras azul-aço, luz volumétrica, alto contraste, granulado sutil de
@@ -689,34 +782,9 @@ filme, sem rostos, sem logotipos.
 Pôster vertical 2:3, 400x600, sem texto. Técnico de costas em silhueta no
 centro, de pé na borda de um telhado, olhando uma cidade noturna que se abre
 abaixo dele, com uma constelação de linhas verde-esmeralda #00C597 ligando os
-prédios. Respiro escuro na parte de cima. Base preto profundo #141414, sombras
+prédios e blocos modulares de vidro flutuando ao redor. Respiro escuro na parte de cima. Base preto profundo #141414, sombras
 azul-aço, luz volumétrica, granulado de filme, alto contraste, sem rostos, sem
 logotipos.
-```
-
----
-
-### T1 — Configurações e identidade · Tema: *Homem de Ferro*
-**Ideia**: a oficina onde a ferramenta é calibrada antes de sair pro mundo.
-
-**Banner 16:9 (1280×720)**
-```
-Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Bancada de oficina
-técnica escura vista de lado, com painéis holográficos flutuantes em verde-
-esmeralda #00C597 mostrando formas geométricas de configuração, sliders e um
-retângulo de identidade visual sendo montado. Ferramentas de precisão sobre a
-bancada, faíscas suaves. Terço esquerdo limpo e escuro. Base preto profundo
-#141414, sombras azul-aço, luz volumétrica, alto contraste, granulado de filme,
-sem texto legível nos painéis, sem rostos, sem logotipos.
-```
-
-**Thumbnail 2:3 (400×600)**
-```
-Pôster vertical 2:3, 400x600, sem texto. Composição centralizada de uma bancada
-de oficina de alta precisão vista de frente, painéis holográficos verde-
-esmeralda #00C597 subindo em camadas, ferramentas alinhadas, faíscas suaves,
-respiro escuro no topo. Base preto profundo #141414, sombras azul-aço, luz
-volumétrica, granulado de filme, sem texto legível, sem rostos, sem logotipos.
 ```
 
 ---
@@ -799,8 +867,8 @@ texto legível, sem rostos, sem logotipos.
 
 ---
 
-### T5 — Ordens de Serviço · Tema: *Mad Max: Estrada da Fúria*
-**Ideia**: o despacho. A frota saindo, tudo em movimento, tudo sob controle.
+### T5 — Ordens de Serviço, Agenda, Equipes e Mapa ao Vivo · Tema: *Mad Max: Estrada da Fúria*
+**Ideia**: o despacho. A frota saindo pela agenda e sendo acompanhada no mapa, tudo sob controle.
 
 **Banner 16:9 (1280×720)**
 ```
@@ -819,32 +887,6 @@ em contra-luz, poeira e névoa ao redor, faróis acesos, trilhas de luz verde-
 esmeralda #00C597 subindo pelo chão em direção à câmera, respiro escuro no
 topo. Base preto profundo #141414, sombras azul-aço, luz volumétrica, alto
 contraste, granulado de filme, sem placas legíveis, sem rostos, sem logotipos.
-```
-
----
-
-### T6 — Agenda, Equipes e Mapa ao Vivo · Tema: *Top Gun: Maverick*
-**Ideia**: a sala de comando. Esquadrão em formação, cada um no seu ponto.
-
-**Banner 16:9 (1280×720)**
-```
-Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Sala de comando
-escura com uma mesa-mapa horizontal iluminada, mostrando um mapa urbano
-abstrato com pontos e rotas em verde-esmeralda #00C597 se movendo, e uma grade
-de calendário luminosa flutuando ao fundo. Silhuetas de duas pessoas em pé
-observando, no terço direito. Terço esquerdo limpo. Base preto profundo
-#141414, sombras azul-aço, luz volumétrica, alto contraste, granulado de filme,
-sem texto legível, sem rostos, sem logotipos.
-```
-
-**Thumbnail 2:3 (400×600)**
-```
-Pôster vertical 2:3, 400x600, sem texto. Vista de cima de uma mesa-mapa
-luminosa com mapa urbano abstrato, rotas e pontos pulsando em verde-esmeralda
-#00C597, uma grade de calendário luminosa sobreposta em perspectiva, silhueta
-de mãos apontando na borda inferior, respiro escuro no topo. Base preto
-profundo #141414, sombras azul-aço, granulado de filme, alto contraste, sem
-texto legível, sem rostos, sem logotipos.
 ```
 
 ---
@@ -871,6 +913,31 @@ telhado industrial, segurando um celular que emite luz verde-esmeralda #00C597
 sobre ele, céu escuro e vasto ocupando o topo do quadro. Base preto profundo
 #141414, sombras azul-aço, luz volumétrica, alto contraste, granulado de filme,
 sem rosto visível, sem logotipos.
+```
+
+---
+
+### T18 — Área do Técnico: Refrigeração e Climatização · Tema: *Apollo 13*
+**Ideia**: instrumentos precisos reunidos num painel técnico para resolver o problema em campo.
+
+**Banner 16:9 (1280×720)**
+```
+Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Bancada técnica
+escura com manifold, termômetros, capacitor, cabos e cilindro de fluido
+refrigerante organizados como instrumentos de uma missão, cada ferramenta
+ligada por linhas finas de luz verde-esmeralda #00C597 a um painel abstrato.
+Vapor frio e condensação no ar. Terço esquerdo limpo. Base preto profundo
+#141414, sombras azul-aço, alto contraste, granulado de filme, sem números
+legíveis, sem rostos, sem logotipos.
+```
+
+**Thumbnail 2:3 (400×600)**
+```
+Pôster vertical 2:3, 400x600, sem texto. Manifold de refrigeração centralizado,
+cercado por termômetro, capacitor, cabo e régua de gases, todos conectados por
+linhas de luz verde-esmeralda #00C597, vapor frio subindo e respiro escuro no
+topo. Base preto profundo #141414, sombras azul-aço, alto contraste, granulado
+de filme, sem números legíveis, sem rostos, sem logotipos.
 ```
 
 ---
@@ -979,15 +1046,15 @@ sem logotipos.
 
 ---
 
-### T12 — Portal do Cliente, NPS e reputação · Tema: *Black Mirror*
-**Ideia**: a tela do outro lado. O cliente olhando de volta pra você.
+### T12 — Portal do Cliente e Portal do Contrato · Tema: *Black Mirror*
+**Ideia**: as duas telas do outro lado, conectando o cliente à operação e ao contrato.
 
 **Banner 16:9 (1280×720)**
 ```
 Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Um celular
 flutuando no escuro, visto de lado, com a tela emitindo luz verde-esmeralda
-#00C597 que projeta no ar formas abstratas de estrelas de avaliação e um
-gráfico ascendente. Reflexos limpos, superfície preta espelhada embaixo,
+#00C597 que projeta no ar duas interfaces abstratas interligadas: uma visão
+geral do cliente e uma visão de contrato com calendário e documentos. Reflexos limpos, superfície preta espelhada embaixo,
 estética minimalista e fria. Terço esquerdo vazio e escuro. Base preto profundo
 #141414, sombras azul-aço, luz volumétrica, alto contraste, granulado sutil,
 sem texto legível na tela, sem rostos, sem logotipos.
@@ -997,7 +1064,7 @@ sem texto legível na tela, sem rostos, sem logotipos.
 ```
 Pôster vertical 2:3, 400x600, sem texto. Celular na vertical flutuando no
 escuro no centro do quadro, tela emitindo luz verde-esmeralda #00C597 que
-projeta estrelas de avaliação abstratas subindo pelo ar, superfície preta
+projeta duas interfaces abstratas interligadas, uma geral e outra com calendário e documentos, superfície preta
 espelhada abaixo, estética minimalista e fria, respiro escuro no topo. Base
 preto profundo #141414, sombras azul-aço, luz volumétrica, granulado sutil, sem
 texto legível, sem rostos, sem logotipos.
@@ -1030,7 +1097,55 @@ logotipos.
 
 ---
 
-### T14 — Notas Fiscais (NFS-e) · Tema: *Better Call Saul*
+### T19 — Integração com Asaas, Assinaturas e Cobranças · Tema: *Billions*
+**Ideia**: pagamentos únicos e recorrentes atravessando uma ponte digital segura.
+
+**Banner 16:9 (1280×720)**
+```
+Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Cofre digital
+aberto no terço direito, recebendo três fluxos abstratos de pagamento — Pix,
+boleto e cartão — enquanto anéis concêntricos sugerem recorrência. Linhas de
+luz verde-esmeralda #00C597 conectam tudo sobre uma superfície preta
+espelhada. Terço esquerdo escuro e limpo. Alto contraste, sombras azul-aço,
+granulado sutil, sem marcas, sem números legíveis, sem rostos.
+```
+
+**Thumbnail 2:3 (400×600)**
+```
+Pôster vertical 2:3, 400x600, sem texto. Cofre digital central recebendo três
+trilhas luminosas de pagamento e envolvido por anéis de recorrência em
+verde-esmeralda #00C597, superfície preta espelhada, respiro escuro no topo.
+Alto contraste, sombras azul-aço, granulado sutil, sem marcas, sem números
+legíveis, sem rostos.
+```
+
+---
+
+### T20 — Relatório Financeiro e DRE · Tema: *Margin Call*
+**Ideia**: o resultado da empresa revelado numa mesa de análise antes da decisão.
+
+**Banner 16:9 (1280×720)**
+```
+Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Mesa escura de
+análise com folhas financeiras abstratas, gráficos de resultado e uma linha
+dividindo caixa e competência, iluminados por um único monitor em
+verde-esmeralda #00C597. Atmosfera noturna, tensa e precisa. Terço esquerdo
+limpo, base preto profundo #141414, sombras azul-aço, granulado de filme, sem
+números legíveis, sem rostos, sem logotipos.
+```
+
+**Thumbnail 2:3 (400×600)**
+```
+Pôster vertical 2:3, 400x600, sem texto. Pilha de relatórios financeiros sobre
+mesa preta, atravessada por uma linha luminosa que separa caixa e competência,
+gráfico de resultado abstrato aceso em verde-esmeralda #00C597 ao fundo,
+respiro escuro no topo. Sombras azul-aço, alto contraste, sem números legíveis,
+sem rostos, sem logotipos.
+```
+
+---
+
+### T14 — Notas Fiscais (NFS-e e NF-e) · Tema: *Better Call Saul*
 **Ideia**: o carimbo oficial. Burocracia levada a sério.
 
 **Banner 16:9 (1280×720)**
@@ -1056,8 +1171,8 @@ sem texto legível, sem rostos, sem logotipos.
 
 ---
 
-### T15 — Funcionários, Ponto e Folha · Tema: *The Office*
-**Ideia**: o time. Gente, horário e salário — o lado humano do sistema.
+### T15 — Funcionários: Financeiro do Funcionário e Ponto Eletrônico · Tema: *The Office*
+**Ideia**: o time. Cadastro, horário e movimentações financeiras — o lado humano do sistema.
 
 **Banner 16:9 (1280×720)**
 ```
@@ -1082,34 +1197,59 @@ legível, sem rostos, sem logotipos.
 
 ---
 
-### T16 — Assinatura, plano e módulos · Tema: *A Rede Social*
-**Ideia**: montar o próprio plano, peça por peça.
+### T22 — Ferramentas de RH: Perfil Comportamental (DISC), Organograma, Fluxograma · Tema: *Severance*
+**Ideia**: pessoas, estrutura e processos alinhados em um sistema visual controlado.
 
 **Banner 16:9 (1280×720)**
 ```
-Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Conjunto de blocos
-modulares de vidro escuro flutuando e se encaixando no ar, alguns já acesos por
-dentro em verde-esmeralda #00C597 e outros apagados e translúcidos, formando
-uma estrutura maior. Fundo escuro infinito, reflexos limpos. Estética tech
-minimalista. Terço esquerdo vazio. Base preto profundo #141414, sombras
-azul-aço, luz volumétrica, alto contraste, granulado sutil, sem texto, sem
-rostos, sem logotipos.
+Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Sala escura de
+planejamento de RH com três camadas holográficas flutuando no terço direito:
+um radar comportamental dividido em quatro quadrantes, uma hierarquia de cartões
+e um fluxograma conectado por setas. Todos os elementos ligados por linhas de
+luz verde-esmeralda #00C597, estética precisa e minimalista, terço esquerdo
+limpo. Base preto profundo #141414, sombras azul-aço, alto contraste, luz
+volumétrica, sem números legíveis, sem rostos, sem logotipos.
 ```
 
 **Thumbnail 2:3 (400×600)**
 ```
-Pôster vertical 2:3, 400x600, sem texto. Torre vertical de blocos modulares de
-vidro escuro se encaixando uns nos outros, alguns acesos por dentro em verde-
-esmeralda #00C597 e outros apagados, fundo escuro infinito, reflexos limpos,
-estética tech minimalista, respiro escuro no topo. Base preto profundo #141414,
-sombras azul-aço, luz volumétrica, alto contraste, granulado sutil, sem texto,
-sem rostos, sem logotipos.
+Pôster vertical 2:3, 400x600, sem texto. Composição central em três níveis: um
+radar comportamental abstrato no topo, uma pequena árvore hierárquica no meio e
+um fluxograma com decisão e setas na base, todos conectados por um feixe de luz
+verde-esmeralda #00C597. Ambiente de planejamento escuro, preciso e
+minimalista, respiro no topo. Base preto profundo #141414, sombras azul-aço,
+alto contraste, granulado sutil, sem números legíveis, sem rostos, sem
+logotipos.
 ```
 
 ---
 
-### T17 — Dashboard, rotina e truques · Tema: *Moneyball*
-**Ideia**: parar de achar e começar a medir.
+### T21 — Integração com WhatsApp · Tema: *Mr. Robot*
+**Ideia**: um canal conectado com proteção, automação e histórico visível.
+
+**Banner 16:9 (1280×720)**
+```
+Pôster cinematográfico horizontal 16:9, 1280x720, sem texto. Smartphone no
+terço direito conectado por um feixe verde-esmeralda #00C597 a uma central
+operacional abstrata, com pequenos pulsos representando mensagens e um escudo
+translúcido protegendo o fluxo. Ambiente técnico escuro, cabos e luzes de
+status ao fundo, terço esquerdo limpo. Base preto profundo #141414, sombras
+azul-aço, alto contraste, sem texto legível, sem rostos, sem logotipos.
+```
+
+**Thumbnail 2:3 (400×600)**
+```
+Pôster vertical 2:3, 400x600, sem texto. Smartphone central emitindo pulsos de
+mensagem em verde-esmeralda #00C597 dentro de um escudo translúcido, cabos e
+luzes técnicas ao fundo, respiro escuro no topo. Base preto profundo #141414,
+sombras azul-aço, alto contraste, granulado sutil, sem texto legível, sem
+rostos, sem logotipos.
+```
+
+---
+
+### T17 — Dashboard, relatórios e exportações · Tema: *Moneyball*
+**Ideia**: parar de achar, começar a medir e levar os dados adiante.
 
 **Banner 16:9 (1280×720)**
 ```
@@ -1151,13 +1291,13 @@ logotipos.
 ## Funcionalidades desligadas hoje
 | Item | Situação |
 |---|---|
-| Conectar WhatsApp por QR Code | Aba mostra "Em breve" (flag ligada no código). Não gravar. |
+| Atendimento e Campanhas no WhatsApp | As abas aparecem como prévia bloqueada e ainda são etapas futuras. Não gravar como disponíveis. |
 | Banner "Instalar Dominex" (PWA) | O componente existe mas **não está montado** no app — não há prompt de instalação visível. Não gravar aula de "instalar como app" sem confirmar. |
 
 ## Coisas que parecem existir e não existem
 - Conversão **Orçamento → Contrato** (contrato é sempre manual).
 - Toggle manual de "exigir assinatura" na criação de OS.
-- Baixa automática de estoque ao **concluir** OS.
+- Baixa automática de estoque ao concluir OS **sem habilitar e preencher o consumo de estoque**.
 - Fila de sincronização **offline** de verdade no app do técnico.
 - Botão "Gerar Folha".
 - Subcategoria/hierarquia de categoria financeira.
@@ -1181,9 +1321,9 @@ Abra o sistema e confirme cada ponto abaixo. Se algum voltar diferente, o capít
 1. **T7 — a frase sobre offline.** O app usa sempre rede pra salvar; não existe fila de sincronização. **Definir com o Tech Lead a frase exata** que pode ser dita sobre "trabalhar em campo com sinal ruim" antes de gravar qualquer coisa.
 2. ~~**T5/T8 — baixa de estoque.**~~ **RESOLVIDO em 06/09/2026 (v1.23.0/1.23.1).** Existem DOIS caminhos independentes de baixa: (a) conversão de orçamento em OS e ajustes/inventário, que sempre valeram; e (b) o consumo lançado dentro da própria OS, confirmado no resumo da finalização, que depende do recurso "Consumo de estoque na OS" (Configurações → Usabilidade, desligado por padrão). O Guia Técnico já foi corrigido em T5, T7, T8 e T9.
 3. **T5 — assinatura obrigatória.** Confirmar se existe algum ponto do fluxo (fora de contrato PMOC) onde o gestor liga a exigência de assinatura.
-4. **T6 — Equipes sem módulo RH.** Confirmar se empresa sem o módulo Funcionários consegue criar/editar equipe, já que a aba vive dentro de `/funcionarios`.
-5. **T1 — WhatsApp.** Confirmar se a flag "Em breve" continua ligada na data da gravação.
-6. **T0/T1 — instalar como app.** Confirmar se o banner de instalação foi religado antes de prometer o passo a passo.
+4. **T5 — Equipes sem módulo RH.** Confirmar se empresa sem o módulo Funcionários consegue criar/editar equipe, já que a aba vive dentro de `/funcionarios`.
+5. **T21 — WhatsApp.** Confirmar conexão por QR Code numa conta-demo e quais eventos de automação estão liberados na data da gravação.
+6. **T0 — instalar como app.** Confirmar se o banner de instalação foi religado antes de prometer o passo a passo.
 7. **T3 — excluir categoria de equipamento com equipamentos vinculados.** Confirmar o comportamento na tela antes de mostrar.
 8. **T14 — município de exemplo.** Confirmar cobertura do município que for usado na gravação, senão a emissão trava na frente da câmera.
 9. **T4 — abas "Tipos de Tarefa" e "Checklists".** Conferir os nomes exatos das abas na tela no dia da gravação.

@@ -54,7 +54,7 @@ const tenantNavItems: NavItem[] = [
   { icon: LayoutDashboard, label: 'Início', bottomNavKey: 'home', path: '/dashboard' },
   { icon: ClipboardList, label: 'OS', bottomNavKey: 'serviceOrders', path: '/ordens-servico' },
   { icon: CalendarDays, label: 'Agenda', bottomNavKey: 'schedule', path: '/agenda', special: true },
-  { icon: Users, label: 'Clientes', bottomNavKey: 'customers', path: '/clientes' },
+  { icon: Users, label: 'Clientes e Fornecedores', bottomNavKey: 'customers', path: '/clientes' },
   { icon: Menu, label: 'Menu', bottomNavKey: 'menu', action: 'openMore' },
 ];
 
@@ -240,7 +240,7 @@ export function MobileBottomNav() {
                 </div>
                 <span
                   className={cn(
-                    'text-[10px] font-medium transition-all duration-300',
+                    'max-w-16 text-center text-[10px] font-medium leading-tight transition-all duration-300',
                     active ? 'text-primary' : 'text-foreground'
                   )}
                 >

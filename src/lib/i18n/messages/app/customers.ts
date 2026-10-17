@@ -7,8 +7,8 @@
 export const customers = {
   'pt-br': {
     // ── Chrome da tela (Customers.tsx) ──
-    title: 'Clientes',
-    subtitle: 'Gerencie seus clientes',
+    title: 'Clientes e Fornecedores',
+    subtitle: 'Gerencie seus clientes e fornecedores',
     listHeading: 'Lista de Clientes',
     newCustomer: 'Novo Cliente',
     newCustomerShort: 'Cliente',
@@ -526,8 +526,8 @@ export const customers = {
   },
 
   en: {
-    title: 'Customers',
-    subtitle: 'Manage your customers',
+    title: 'Customers & Suppliers',
+    subtitle: 'Manage your customers and suppliers',
     listHeading: 'Customer List',
     newCustomer: 'New Customer',
     newCustomerShort: 'Customer',
@@ -996,8 +996,8 @@ export const customers = {
   },
 
   es: {
-    title: 'Clientes',
-    subtitle: 'Administra tus clientes',
+    title: 'Clientes y Proveedores',
+    subtitle: 'Administra tus clientes y proveedores',
     listHeading: 'Lista de Clientes',
     newCustomer: 'Nuevo Cliente',
     newCustomerShort: 'Cliente',
@@ -1466,8 +1466,8 @@ export const customers = {
   },
 
   fr: {
-    title: 'Clients',
-    subtitle: 'Gérez vos clients',
+    title: 'Clients et Fournisseurs',
+    subtitle: 'Gérez vos clients et fournisseurs',
     listHeading: 'Liste des Clients',
     newCustomer: 'Nouveau Client',
     newCustomerShort: 'Client',

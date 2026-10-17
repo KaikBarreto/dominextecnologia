@@ -8,6 +8,7 @@ import {
   Package,
   DollarSign,
   FileText,
+  Receipt,
   Settings as SettingsIcon,
   User,
   TrendingUp,
@@ -94,7 +95,7 @@ const tenantMenuItems: MenuItem[] = [
     icon: FolderOpen,
     children: [
       { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
-      { title: 'Clientes', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
+      { title: 'Clientes e Fornecedores', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
       { title: 'Equipamentos', icon: Boxes, path: '/equipamentos', screenKey: 'screen:equipment' },
       { title: 'Contratos', icon: ScrollText, path: '/contratos', screenKey: 'screen:contracts' },
       { title: 'Funcionários', icon: Briefcase, path: '/funcionarios', screenKey: 'screen:employees', moduleKey: 'rh' },
@@ -103,6 +104,7 @@ const tenantMenuItems: MenuItem[] = [
   },
   { title: 'CRM/Kanban', icon: ListFilter, path: '/crm', screenKey: 'screen:crm', moduleKey: 'crm' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
+  { title: 'Notas Fiscais', icon: Receipt, path: '/notas-fiscais', screenKey: 'screen:fiscal_notes', moduleKey: 'nfe' },
 ];
 
 const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [

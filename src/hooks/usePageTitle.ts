@@ -11,7 +11,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/checklists": "Checklists",
   "/questionarios": "Checklists", // back-compat: rota antiga
   "/agenda": "Agenda",
-  "/clientes": "Clientes",
+  "/clientes": "Clientes e Fornecedores",
   "/equipamentos": "Equipamentos",
   "/crm": "CRM/Kanban",
   "/orcamentos": "Orçamentos",

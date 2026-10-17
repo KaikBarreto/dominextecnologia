@@ -34,7 +34,7 @@ const TITLE_TO_KEY: Record<string, keyof ShellMenu> = {
   'Área do Técnico™': 'technicianArea',
   Orçamentos: 'quotes',
   Serviços: 'services',
-  Clientes: 'customers',
+  'Clientes e Fornecedores': 'customers',
   Equipamentos: 'equipment',
   Contratos: 'contracts',
   Funcionários: 'employees',

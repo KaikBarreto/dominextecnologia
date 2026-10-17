@@ -31,7 +31,12 @@ const ROOT = join(__dirname, "..");
 const INPUT_PATH = join(ROOT, "docs/domiflix/trilha-de-tutoriais.md");
 const OUTPUT_PATH = join(ROOT, "docs/guia-tecnico/grade/capitulos.json");
 
-const TOTAL_TUTORIAIS_ESPERADO = 18; // T0..T17
+// Códigos editoriais são estáveis e não precisam ser contíguos: aulas
+// consolidadas preservam lacunas, e novas aulas ganham códigos novos.
+const CODIGOS_TUTORIAIS_ESPERADOS = [
+  "T0", "T2", "T3", "T4", "T5", "T7", "T18", "T8", "T9", "T10",
+  "T11", "T12", "T13", "T19", "T20", "T14", "T15", "T22", "T21", "T17",
+];
 
 // Mapa dos marcadores de convenção da trilha (ver seção "Convenções" do .md).
 const TIPO_POR_MARCADOR = {
@@ -239,9 +244,9 @@ function main() {
     };
   });
 
-  // --- Validação 1: exatamente T0..T17, sem buraco e sem repetição ---
+  // --- Validação 1: exatamente os códigos editoriais publicados, sem repetição ---
   const chaves = Object.keys(resultado);
-  const esperadas = Array.from({ length: TOTAL_TUTORIAIS_ESPERADO }, (_, n) => `T${n}`);
+  const esperadas = CODIGOS_TUTORIAIS_ESPERADOS;
   const faltandoChave = esperadas.filter((k) => !chaves.includes(k));
   const chavesExtras = chaves.filter((k) => !esperadas.includes(k));
   const contagem = {};
@@ -298,7 +303,7 @@ function main() {
   );
   const totalModuloPagoSecao = Object.values(resultado).filter((t) => t.modulo_pago).length;
 
-  console.log(`[trilha-para-capitulos] OK — ${chaves.length} tutoriais (T0..T${TOTAL_TUTORIAIS_ESPERADO - 1}) gravados em ${OUTPUT_PATH}`);
+  console.log(`[trilha-para-capitulos] OK — ${chaves.length} tutoriais gravados em ${OUTPUT_PATH}`);
   console.log(`[trilha-para-capitulos] ${totalCapitulos} capítulos · ${totalNotas} notas · ${totalFlagsCapitulo} flags de capítulo · ${totalModuloPagoSecao} seções com módulo pago no cabeçalho`);
   for (const code of esperadas) {
     const t = resultado[code];

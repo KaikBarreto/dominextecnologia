@@ -106,7 +106,7 @@ const tenantMenuItems: MenuItem[] = [
     icon: FolderOpen,
     children: [
       { title: 'Serviços', icon: Wrench, path: '/servicos', screenKey: 'screen:services' },
-      { title: 'Clientes', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
+      { title: 'Clientes e Fornecedores', icon: Users, path: '/clientes', screenKey: 'screen:customers' },
       { title: 'Equipamentos', icon: Boxes, path: '/equipamentos', screenKey: 'screen:equipment' },
       { title: 'Contratos', icon: ScrollText, path: '/contratos', screenKey: 'screen:contracts', moduleKey: 'contracts' },
       { title: 'Funcionários', icon: Briefcase, path: '/funcionarios', screenKey: 'screen:employees', moduleKey: 'rh' },
@@ -129,10 +129,11 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Contas a Pagar/Receber', icon: CalendarClock, path: '/financeiro/contas', screenKey: 'screen:finance' },
       { title: 'Cobranças', icon: CreditCard, path: '/financeiro/cobrancas', screenKey: 'screen:finance', moduleKey: 'cobrancas' },
       { title: 'Relatórios', icon: BarChart3, path: '/financeiro/relatorios', screenKey: 'screen:finance' },
-      // Notas Fiscais (NFS-e) — gate duplo: módulo pago `nfe` (empresa) E permissão de tela dedicada (usuário).
-      { title: 'Notas Fiscais', icon: Receipt, path: '/notas-fiscais', screenKey: 'screen:fiscal_notes', moduleKey: 'nfe' },
     ],
   },
+  // Módulo fiscal no primeiro nível do menu, independente do grupo Financeiro.
+  // Mantém o gate duplo: módulo pago `nfe` + permissão de tela dedicada.
+  { title: 'Notas Fiscais', icon: Receipt, path: '/notas-fiscais', screenKey: 'screen:fiscal_notes', moduleKey: 'nfe' },
 ];
 
 const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [

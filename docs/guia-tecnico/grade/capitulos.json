@@ -2,104 +2,80 @@
   "T0": {
     "code": "T0",
     "inspiracao": "Interestelar",
-    "titulo": "Bem-vindo à Dominex",
-    "resumo": "A visão de cima. O aluno entende como a Dominex é organizada por dentro, aprende o vocabulário do sistema (OS, contrato, PMOC, módulo, cargo) e descobre onde fica cada coisa antes de mergulhar em qualquer tela.",
-    "duracao": "~20min",
+    "titulo": "Bem-vindo, configuração, identidade e assinatura",
+    "resumo": "A primeira aula deixa a empresa pronta para operar: apresenta a Dominex, configura identidade e preferências e explica plano, módulos, uso da conta e pagamento.",
+    "duracao": "~65min",
     "prereq": "nenhum",
-    "modulo_pago": null,
+    "modulo_pago": "White Label (parcial)",
     "capitulos": [
       {
         "t": "00:00",
         "nome": "O que a Dominex resolve — do chamado do cliente até o dinheiro na conta"
       },
       {
-        "t": "02:00",
-        "nome": "Tour pelo menu: Dashboard, Agenda, Operacional, Área do Técnico™, Orçamentos, Gestão, CRM, Financeiro"
-      },
-      {
-        "t": "06:00",
-        "nome": "Sidebar × Barra superior × menu do celular — a mesma coisa em 3 lugares"
+        "t": "03:00",
+        "nome": "Tour pelo menu e os 3 públicos: gestor, técnico e cliente no link público"
       },
       {
         "t": "08:00",
-        "nome": "Vocabulário: Ordem de Serviço, Tarefa, Contrato, PMOC, Checklist, Cargo, Módulo"
+        "nome": "Sidebar × barra superior × menu do celular e o vocabulário essencial"
       },
       {
-        "t": "11:00",
-        "nome": "O que é módulo contratado e por que uma tela pode não aparecer pra você"
-      },
-      {
-        "t": "14:00",
-        "nome": "Os 3 públicos do sistema: gestor no escritório, técnico no celular, cliente no link público"
+        "t": "13:00",
+        "nome": "Módulo contratado, cargo e por que uma tela pode não aparecer"
       },
       {
         "t": "17:00",
-        "nome": "Onde pedir ajuda e como usar o Domiflix (minha lista, continuar assistindo, perfil)"
+        "nome": "Aba Empresa: logo, dados cadastrais, contato e endereço"
+      },
+      {
+        "t": "22:00",
+        "nome": "O switch \"mostrar em documentos\" e o que sai no PDF e no relatório"
+      },
+      {
+        "t": "25:00",
+        "nome": "White Label: logo full + ícone, cor, QR Code e cabeçalho do relatório",
+        "modulo_pago": true
+      },
+      {
+        "t": "30:00",
+        "nome": "Abas Regional e Usabilidade: idioma, moeda, fuso e preferências de operação"
+      },
+      {
+        "t": "36:00",
+        "nome": "Origens, Atalhos e Aparência"
+      },
+      {
+        "t": "40:00",
+        "nome": "Integrações, documentos legais e Zona de Perigo"
+      },
+      {
+        "t": "45:00",
+        "nome": "Tela Assinatura: status, plano atual, vencimento, valor e uso da conta"
+      },
+      {
+        "t": "49:00",
+        "nome": "Gerenciar Meu Plano: planos prontos, personalizado, módulos e usuários extras"
+      },
+      {
+        "t": "55:00",
+        "nome": "Pagar Agora: Pix, Boleto e Cartão; mensal × anual e histórico de pagamentos"
+      },
+      {
+        "t": "61:00",
+        "nome": "Onde pedir ajuda e como usar o Domiflix"
       }
     ],
-    "abertura": "Neste tutorial você vai entender como a Dominex funciona por dentro e descobrir onde fica cada coisa.",
-    "recap": "Você conheceu o sistema em alto nível, aprendeu o vocabulário e já sabe por onde começar.",
-    "proximo": "No próximo tutorial: deixar a empresa configurada.",
+    "abertura": "Nesta primeira aula você vai conhecer a Dominex, deixar a empresa com a sua identidade e entender o plano contratado.",
+    "recap": "Empresa configurada, identidade aplicada, preferências ajustadas e assinatura sob controle.",
+    "proximo": "Na próxima aula: quem entra no sistema e o que cada um pode fazer.",
     "notas": [
       {
         "tipos": [
           "atencao"
         ],
         "texto": "Deixe claro logo no começo que o menu muda conforme o plano e o cargo — é a dúvida nº1 de quem assiste e não acha a tela."
-      }
-    ]
-  },
-  "T1": {
-    "code": "T1",
-    "inspiracao": "Homem de Ferro",
-    "titulo": "Configurações e identidade da empresa",
-    "resumo": "Deixar o sistema com a cara da empresa e pronto pra uso real: logo, dados cadastrais, endereço, idioma/moeda/fuso, preferências de uso, tema e integrações.",
-    "duracao": "~30min",
-    "prereq": "T0",
-    "modulo_pago": null,
-    "capitulos": [
-      {
-        "t": "00:00",
-        "nome": "Aba Empresa: logo, dados cadastrais, contato e endereço (CEP preenche sozinho)"
       },
-      {
-        "t": "05:00",
-        "nome": "O switch \"mostrar em documentos\" campo a campo — o que sai no PDF e no relatório"
-      },
-      {
-        "t": "08:00",
-        "nome": "White Label: logo full + ícone, cor primária, estilo do QR Code e cabeçalho do relatório com preview ao vivo",
-        "modulo_pago": true
-      },
-      {
-        "t": "13:00",
-        "nome": "Aba Regional: meu idioma × padrões da empresa (idioma, moeda, fuso) e o switch do resultado DISC"
-      },
-      {
-        "t": "16:00",
-        "nome": "Aba Usabilidade: auto-salvar OS, mostrar valores, exigir assinatura, fotos no dispositivo, tabelas compactas, confirmar exclusão, feriados na agenda"
-      },
-      {
-        "t": "21:00",
-        "nome": "Card Origens — o catálogo compartilhado entre Clientes e CRM"
-      },
-      {
-        "t": "23:00",
-        "nome": "Aba Atalhos e aba Aparência (sidebar × barra superior, tema claro/escuro)"
-      },
-      {
-        "t": "26:00",
-        "nome": "Aba Integrações: Recebimentos (Asaas) e o estado atual do WhatsApp"
-      },
-      {
-        "t": "28:00",
-        "nome": "Documentos legais e a Zona de Perigo (Zerar Sistema) — o que ela apaga"
-      }
-    ],
-    "abertura": "Neste tutorial você vai deixar a Dominex com a cara da sua empresa.",
-    "recap": "Empresa cadastrada, documentos com sua marca, preferências ajustadas e integrações no lugar.",
-    "proximo": "No próximo tutorial: quem entra no sistema e o que cada um pode fazer.",
-    "notas": [
       {
         "tipos": [
           "atencao"
@@ -110,19 +86,37 @@
         "tipos": [
           "atencao"
         ],
-        "texto": "Segmento é somente-leitura — só a Dominex muda. Explique isso antes que o cliente procure o campo."
+        "texto": "Segmento é somente-leitura — só a Dominex muda."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Cartão é sempre recorrente mensal e não tem o desconto anual. Só Pix e Boleto pegam os 20%."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "O valor exibido considera preço promocional/personalizado — pode não bater com a tabela pública."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Plano \"Personalizado\" não aparece pra compra direta no checkout."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Nesta aula mostre apenas onde ficam as integrações. A conexão e as automações do WhatsApp são ensinadas com segurança no T21."
       },
       {
         "tipos": [
           "nao_prometer"
         ],
-        "texto": "WhatsApp está \"Em breve\" hoje: a aba existe mas mostra um card fixo, não o painel de conexão por QR Code. Não gravar aula de conectar WhatsApp até a flag ser desligada."
-      },
-      {
-        "tipos": [
-          "nao_prometer"
-        ],
-        "texto": "Não existe configuração do link de avaliação do Google dentro de Configurações — ele vive na configuração de NPS da OS (T12)."
+        "texto": "Não existe configuração do link de avaliação do Google dentro de Configurações — ele vive na configuração de NPS da OS (T5)."
       }
     ]
   },
@@ -132,7 +126,7 @@
     "titulo": "Usuários, cargos e permissões",
     "resumo": "Colocar a equipe dentro do sistema sem dar acesso demais. É aqui que o gestor decide o que o técnico vê, o que o financeiro vê e o que ninguém vê.",
     "duracao": "~25min",
-    "prereq": "T1",
+    "prereq": "T0",
     "modulo_pago": null,
     "capitulos": [
       {
@@ -372,11 +366,11 @@
   "T5": {
     "code": "T5",
     "inspiracao": "Mad Max: Estrada da Fúria",
-    "titulo": "Ordens de Serviço: a visão do gestor",
-    "resumo": "O coração da operação. Abrir, distribuir, acompanhar e fechar OS — tudo do lado de dentro do escritório.",
-    "duracao": "~45min",
+    "titulo": "Ordens de Serviço, Agenda, Equipes e Mapa ao Vivo",
+    "resumo": "O coração da operação. Abrir, distribuir, agendar, acompanhar e fechar OS, com visão de relatório, NPS, equipes e localização em campo.",
+    "duracao": "~70min",
     "prereq": "T4",
-    "modulo_pago": null,
+    "modulo_pago": "RH (para Equipes)",
     "capitulos": [
       {
         "t": "00:00",
@@ -428,12 +422,48 @@
       },
       {
         "t": "41:00",
-        "nome": "Aba NPS: promotores, neutros, detratores e o comentário aberto do detrator"
+        "nome": "Aba NPS: promotores, neutros, detratores, critérios de estrela e comentário aberto"
+      },
+      {
+        "t": "45:00",
+        "nome": "Nota mínima + convite pra avaliar no Google e o tratamento de detratores"
+      },
+      {
+        "t": "48:00",
+        "nome": "Tela Agenda: visão Dia, Semana e Mês (e por que o celular abre em Dia)"
+      },
+      {
+        "t": "51:00",
+        "nome": "Criar pelo \"+\": Nova OS × Nova Tarefa"
+      },
+      {
+        "t": "54:00",
+        "nome": "Reagendar arrastando, legenda de cores e feriados"
+      },
+      {
+        "t": "57:00",
+        "nome": "Ordens Pausadas e a retomada aparecendo em duas datas"
+      },
+      {
+        "t": "60:00",
+        "nome": "Equipes: criar time com cor, ícone, foto e membros"
+      },
+      {
+        "t": "63:00",
+        "nome": "Escalar equipe inteira numa OS em vez de técnico individual"
+      },
+      {
+        "t": "65:00",
+        "nome": "Mapa e Rastreamento: cores dos marcadores e posição em tempo real"
+      },
+      {
+        "t": "68:00",
+        "nome": "Aba Histórico: eventos de localização por técnico e por data"
       }
     ],
-    "abertura": "Neste tutorial você vai abrir, distribuir e acompanhar Ordem de Serviço do início ao fim.",
-    "recap": "OS criada, técnico avisado, status controlado e cliente com link pra acompanhar.",
-    "proximo": "No próximo tutorial: agenda, equipes e mapa ao vivo.",
+    "abertura": "Neste tutorial você vai abrir, distribuir, agendar e acompanhar Ordens de Serviço, a equipe e os resultados da operação.",
+    "recap": "OS criada, agenda montada, equipe escalada, operação no mapa e indicadores de relatório e NPS acompanhados.",
+    "proximo": "No próximo tutorial: o lado do técnico, no celular, em campo.",
     "notas": [
       {
         "tipos": [
@@ -464,63 +494,7 @@
           "atencao"
         ],
         "texto": "Baixa de estoque ao concluir a OS depende do recurso estar ligado (Configurações → Usabilidade → \"Consumo de estoque na OS\", desligado por padrão). Com ele ligado, o técnico lança o material usado durante o atendimento e a baixa é confirmada num resumo editável na finalização. Com ele desligado, concluir a OS não mexe em saldo físico. O vínculo material × tipo de serviço continua servindo só pra calcular custo em orçamento. Ver T5, T7 e T8."
-      }
-    ]
-  },
-  "T6": {
-    "code": "T6",
-    "inspiracao": "Top Gun: Maverick",
-    "titulo": "Agenda, Equipes e Mapa ao Vivo",
-    "resumo": "Onde a operação vira rota. Quem vai, quando vai, e onde está agora.",
-    "duracao": "~30min",
-    "prereq": "T5",
-    "modulo_pago": null,
-    "capitulos": [
-      {
-        "t": "00:00",
-        "nome": "Tela Agenda: visão Dia, Semana e Mês (e por que o celular abre em Dia)"
       },
-      {
-        "t": "03:00",
-        "nome": "Criar pelo \"+\": Nova OS × Nova Tarefa — a diferença que mais confunde"
-      },
-      {
-        "t": "07:00",
-        "nome": "Reagendar arrastando no desktop e com toque-e-segure no celular"
-      },
-      {
-        "t": "10:00",
-        "nome": "Legenda de cores por tipo de serviço e a estrela de feriado"
-      },
-      {
-        "t": "12:00",
-        "nome": "Ordens Pausadas: o diálogo de retomada rápida"
-      },
-      {
-        "t": "14:00",
-        "nome": "A OS retomada aparecendo em duas datas (badge \"Retomada\")"
-      },
-      {
-        "t": "16:00",
-        "nome": "Equipes: onde ficam de verdade (Funcionários → aba Equipes), criar time com cor, ícone, foto e membros"
-      },
-      {
-        "t": "20:00",
-        "nome": "Escalar equipe inteira numa OS em vez de técnico individual"
-      },
-      {
-        "t": "22:00",
-        "nome": "Mapa e Rastreamento — aba Mapa: as cores dos marcadores e o que cada uma significa"
-      },
-      {
-        "t": "26:00",
-        "nome": "Aba Histórico: eventos de localização por técnico e por data"
-      }
-    ],
-    "abertura": "Neste tutorial você vai organizar a semana da equipe e acompanhar o time no mapa em tempo real.",
-    "recap": "Agenda montada, equipes formadas e visibilidade de onde cada técnico está.",
-    "proximo": "No próximo tutorial: o lado do técnico, no celular, em campo.",
-    "notas": [
       {
         "tipos": [
           "atencao"
@@ -563,10 +537,10 @@
   "T7": {
     "code": "T7",
     "inspiracao": "Perdido em Marte",
-    "titulo": "O técnico em campo + Área do Técnico™",
-    "resumo": "O tutorial que o técnico assiste. Tudo o que acontece no celular, do \"estou a caminho\" até a assinatura do cliente — mais a caixa de ferramentas de cálculo.",
-    "duracao": "~40min",
-    "prereq": "T6",
+    "titulo": "O técnico em campo: preenchimento de OS, pausar OS, finalizar parcialmente, link público, PDF e consumo de estoque",
+    "resumo": "O tutorial que o técnico assiste: executar a OS pelo celular, registrar o atendimento e entregar o resultado ao cliente.",
+    "duracao": "~35min",
+    "prereq": "T5",
     "modulo_pago": null,
     "capitulos": [
       {
@@ -583,57 +557,56 @@
       },
       {
         "t": "09:00",
-        "nome": "Preenchendo checklist por equipamento: sim/não, conformidade, medição, seleção, número"
+        "nome": "Preenchendo checklist por equipamento: conformidade, medição, seleção e observação"
       },
       {
-        "t": "15:00",
-        "nome": "Fotos: Tirar Foto × Galeria, e quando só a câmera é permitida"
+        "t": "14:00",
+        "nome": "Fotos e vídeo: câmera, galeria e evidências do atendimento"
       },
       {
-        "t": "18:00",
-        "nome": "Resposta em vídeo",
-        "modulo_pago": true
+        "t": "17:00",
+        "nome": "Consumo de estoque: lançar o material usado dentro da OS"
       },
       {
         "t": "20:00",
-        "nome": "Pausar e retomar a OS depois — e como isso aparece na agenda do gestor"
+        "nome": "Pausar e retomar a OS — e como isso aparece na agenda do gestor"
       },
       {
         "t": "23:00",
         "nome": "Assinatura do técnico e do cliente"
       },
       {
-        "t": "26:00",
-        "nome": "Finalizar (e o \"finalizar parcialmente\" em contrato PMOC)"
+        "t": "25:00",
+        "nome": "Finalizar parcialmente uma visita de contrato e preservar o que ficou pendente"
       },
       {
-        "t": "29:00",
-        "nome": "Área do Técnico™: a caixa de ferramentas do seu segmento (carga térmica, capacitor, cabo elétrico, superaquecimento, régua de gases, retrofit, ciclo de refrigeração…)"
+        "t": "28:00",
+        "nome": "Revisar o consumo de estoque e concluir a OS"
       },
       {
-        "t": "35:00",
-        "nome": "Usar a calculadora de dentro da OS, sem sair da tela"
+        "t": "30:00",
+        "nome": "Copiar o link público e conferir a visão do cliente sem login"
       },
       {
-        "t": "37:00",
-        "nome": "As ferramentas com cadeado: o que é do seu segmento e o que é de outro"
+        "t": "33:00",
+        "nome": "Baixar e compartilhar o PDF do relatório da OS"
       }
     ],
-    "abertura": "Neste tutorial você vai executar uma OS do começo ao fim pelo celular, como se estivesse na casa do cliente.",
-    "recap": "Você saiu a caminho, fez check-in, preencheu o checklist com foto, colheu assinatura e finalizou.",
-    "proximo": "No próximo tutorial: estoque, compras e inventário.",
+    "abertura": "Neste tutorial você vai executar uma OS do começo ao fim pelo celular, registrar materiais e entregar o relatório ao cliente.",
+    "recap": "OS preenchida, pausada quando necessário, materiais consumidos, atendimento finalizado e relatório compartilhado.",
+    "proximo": "No próximo tutorial: a Área do Técnico para Refrigeração e Climatização.",
     "notas": [
       {
         "tipos": [
           "atencao"
         ],
-        "texto": "Sinal de internet é obrigatório na hora de salvar. O app guarda rascunho do formulário e avisa quando a conexão cai, mas checklist, foto e check-in precisam de rede pra gravar."
+        "texto": "Sinal de internet é obrigatório na hora de salvar. O app guarda rascunho do formulário e avisa quando a conexão cai, mas checklist, mídia e check-in precisam de rede pra gravar."
       },
       {
         "tipos": [
           "nao_prometer"
         ],
-        "texto": "Não prometer \"funciona offline / sincroniza depois\". Não existe fila de sincronização — as chamadas são sempre online. O que existe é o app abrir rápido mesmo com rede ruim e o rascunho local do formulário. [VALIDAR COM O TECH LEAD a frase exata antes de gravar.]"
+        "texto": "Não prometer \"funciona offline / sincroniza depois\". Não existe fila de sincronização; as chamadas são sempre online."
       },
       {
         "tipos": [
@@ -645,19 +618,95 @@
         "tipos": [
           "atencao"
         ],
-        "texto": "Área do Técnico™ ≠ executar OS. São duas coisas diferentes com nomes parecidos. Separe bem no vídeo."
+        "texto": "A baixa de estoque depende de Configurações → Usabilidade → Consumo de estoque na OS. Com o recurso desligado, concluir a OS não altera o saldo físico."
       },
       {
         "tipos": [
           "atencao"
         ],
-        "texto": "As calculadoras mudam conforme o segmento da empresa — o técnico de elevador não vê as mesmas de refrigeração."
+        "texto": "Finalização parcial é própria das visitas vinculadas a contrato; não apresente como opção de toda OS avulsa."
+      }
+    ]
+  },
+  "T18": {
+    "code": "T18",
+    "inspiracao": "Apollo 13",
+    "titulo": "Área do Técnico: Refrigeração e Climatização",
+    "resumo": "Primeira aula da série Área do Técnico. Cada segmento terá uma aula própria; esta cobre exclusivamente Refrigeração e Climatização.",
+    "duracao": "~30min",
+    "prereq": "T7",
+    "modulo_pago": null,
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Por que a Área do Técnico muda conforme o segmento da empresa"
+      },
+      {
+        "t": "02:00",
+        "nome": "Visão geral do hub e acesso às ferramentas dentro e fora da OS"
+      },
+      {
+        "t": "04:00",
+        "nome": "Catálogo: modelos, capacidades e códigos de erro"
+      },
+      {
+        "t": "07:00",
+        "nome": "Carga Térmica: dimensionar os BTUs do ambiente"
+      },
+      {
+        "t": "10:00",
+        "nome": "Conversão de pressão, temperatura, potência e medidas"
+      },
+      {
+        "t": "12:00",
+        "nome": "Cálculo de Capacitor pelo BTU e tensão"
+      },
+      {
+        "t": "14:00",
+        "nome": "Cabo Elétrico: bitola e disjuntor por distância e carga"
+      },
+      {
+        "t": "17:00",
+        "nome": "Superaquecimento e sub-resfriamento pela pressão e temperatura"
+      },
+      {
+        "t": "20:00",
+        "nome": "Régua de Gases e pressão de saturação"
+      },
+      {
+        "t": "22:00",
+        "nome": "Retrofit de Gás e opções de refrigerante substituto"
+      },
+      {
+        "t": "25:00",
+        "nome": "Ciclo de Refrigeração e consulta dos termos técnicos"
+      },
+      {
+        "t": "27:00",
+        "nome": "Diluição de Produto e histórico dos cálculos"
+      }
+    ],
+    "abertura": "Nesta aula especial você vai usar a Área do Técnico de Refrigeração e Climatização como apoio prático no atendimento.",
+    "recap": "As ferramentas do segmento foram apresentadas com o momento certo de usar cada uma.",
+    "proximo": "No próximo tutorial: estoque, compras e inventário.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Esta aula é exclusiva de Refrigeração e Climatização. Outros segmentos recebem aulas próprias conforme suas ferramentas forem publicadas."
       },
       {
         "tipos": [
-          "nao_prometer"
+          "atencao"
         ],
-        "texto": "Não existe baixa de material/estoque dentro da tela de execução."
+        "texto": "A lista disponível vem do segmento contratado pela empresa; ferramentas de outros segmentos podem aparecer apenas como prévia bloqueada."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Área do Técnico não substitui o preenchimento da OS. Ela é uma caixa de ferramentas de apoio."
       }
     ]
   },
@@ -1003,16 +1052,12 @@
       },
       {
         "t": "40:00",
-        "nome": "Portal do Contrato/PMOC: link e QR Code pro cliente"
-      },
-      {
-        "t": "42:00",
         "nome": "Renovar (+6 ou +12 meses) e o que a renovação gera; pausar e excluir com segurança"
       }
     ],
     "abertura": "Neste tutorial você vai montar contrato recorrente e deixar o PMOC em conformidade com a lei.",
     "recap": "Contrato criado, visitas programadas, documentos assinados e cliente com portal próprio.",
-    "proximo": "No próximo tutorial: o portal do cliente e a sua reputação.",
+    "proximo": "No próximo tutorial: o Portal do Cliente e o Portal do Contrato.",
     "notas": [
       {
         "tipos": [
@@ -1063,11 +1108,11 @@
   "T12": {
     "code": "T12",
     "inspiracao": "Black Mirror",
-    "titulo": "Portal do Cliente, NPS e reputação",
-    "resumo": "Transformar serviço bem feito em prova social. O cliente acompanha, avalia e, se gostou, avalia no Google.",
-    "duracao": "~25min",
+    "titulo": "Portal do Cliente e Portal do Contrato",
+    "resumo": "Os dois acessos públicos do cliente: o portal geral para acompanhar o relacionamento com a empresa e o portal específico do contrato ou PMOC.",
+    "duracao": "~18min",
     "prereq": "T11",
-    "modulo_pago": "Portal do Cliente (para o portal)",
+    "modulo_pago": "módulos Portal do Cliente e Contratos/PMOC",
     "capitulos": [
       {
         "t": "00:00",
@@ -1091,23 +1136,15 @@
       },
       {
         "t": "15:00",
-        "nome": "A avaliação (NPS) que aparece pro cliente ao fim da OS: nota, estrelas por critério, comentário"
+        "nome": "Portal do Contrato/PMOC: gerar, copiar e testar o link e o QR Code da unidade"
       },
       {
-        "t": "18:00",
-        "nome": "Configurar os critérios de estrela (nome, cor, ordem)"
-      },
-      {
-        "t": "20:00",
-        "nome": "Nota mínima + convite pra avaliar no Google: colando o link do Google Maps"
-      },
-      {
-        "t": "23:00",
-        "nome": "Lendo o painel de NPS e o que fazer com um detrator"
+        "t": "17:00",
+        "nome": "Diferença entre Portal do Cliente e Portal do Contrato — quando compartilhar cada um"
       }
     ],
-    "abertura": "Neste tutorial você vai abrir o sistema pro seu cliente e transformar serviço bom em avaliação boa.",
-    "recap": "Portal ligado, cliente acompanhando, avaliação chegando e review no Google acontecendo.",
+    "abertura": "Neste tutorial você vai configurar os dois portais que conectam o cliente à sua operação e aos contratos.",
+    "recap": "Portal do Cliente publicado e Portal do Contrato pronto para compartilhar por link ou QR Code.",
     "proximo": "No próximo tutorial: o financeiro.",
     "notas": [
       {
@@ -1152,14 +1189,14 @@
     "code": "T13",
     "inspiracao": "Ozark",
     "titulo": "Financeiro",
-    "resumo": "O tutorial mais longo, e o que mais evita prejuízo. Dinheiro entrando, saindo, no cartão e no resultado.",
-    "duracao": "~50min",
+    "resumo": "A base do controle financeiro: contas, movimentações, cartões e compromissos a pagar ou receber.",
+    "duracao": "~35min",
     "prereq": "T12",
     "modulo_pago": null,
     "capitulos": [
       {
         "t": "00:00",
-        "nome": "Os 3 endereços do menu Financeiro e o que cada um responde"
+        "nome": "Os endereços do menu Financeiro e o que cada um responde"
       },
       {
         "t": "02:00",
@@ -1198,38 +1235,14 @@
         "nome": "Categorias: criar, colorir, ordenar e o grupo de DRE; as do sistema que não se mexe"
       },
       {
-        "t": "35:00",
-        "nome": "Contas a Pagar/Receber: lançar com recorrência, dar baixa, recebimento parcial"
-      },
-      {
-        "t": "41:00",
-        "nome": "DRE: o botão Caixa × Competência e o que muda no número"
-      },
-      {
-        "t": "45:00",
-        "nome": "O caso da compra de cartão na DRE: mês da compra × mês do pagamento × mês da fatura"
-      },
-      {
-        "t": "48:00",
-        "nome": "Exportar CSV e gerar o PDF da DRE"
+        "t": "33:00",
+        "nome": "Contas a Pagar/Receber: recorrência, baixa e recebimento parcial"
       }
     ],
-    "abertura": "Neste tutorial você vai colocar o dinheiro da empresa dentro do sistema e enxergar o resultado de verdade.",
-    "recap": "Contas cadastradas, cartão sob controle, contas a pagar organizadas e DRE lida do jeito certo.",
-    "proximo": "No próximo tutorial: nota fiscal de serviço.",
+    "abertura": "Neste tutorial você vai colocar o movimento financeiro da empresa dentro do sistema e organizar o que entrou, saiu e ainda vai vencer.",
+    "recap": "Contas cadastradas, cartão sob controle e compromissos financeiros organizados.",
+    "proximo": "No próximo tutorial: integração com Asaas, assinaturas e cobranças.",
     "notas": [
-      {
-        "tipos": [
-          "atencao"
-        ],
-        "texto": "Regime Caixa × Competência é o conceito mais importante do tutorial — dedique tempo. Caixa = o que já entrou/saiu. Competência = o mês do fato, pago ou não."
-      },
-      {
-        "tipos": [
-          "atencao"
-        ],
-        "texto": "Compra no cartão entra na DRE pelo mês da compra (Competência) ou do pagamento (Caixa) — nunca pelo mês da fatura."
-      },
       {
         "tipos": [
           "atencao"
@@ -1252,7 +1265,7 @@
         "tipos": [
           "atencao"
         ],
-        "texto": "Contas a Pagar/Receber e DRE fazem parte do Financeiro completo desde o Essencial. O plano Exceção não possui o grupo Financeiro."
+        "texto": "Contas a Pagar/Receber fazem parte do Financeiro completo desde o Essencial. O plano Exceção não possui o grupo Financeiro."
       },
       {
         "tipos": [
@@ -1274,12 +1287,172 @@
       }
     ]
   },
+  "T19": {
+    "code": "T19",
+    "inspiracao": "Billions",
+    "titulo": "Integração com Asaas, Assinaturas e Cobranças",
+    "resumo": "Conectar a conta Asaas da empresa, cobrar uma vez ou de forma recorrente e acompanhar o pagamento até a baixa no Financeiro.",
+    "duracao": "~40min",
+    "prereq": "T13",
+    "modulo_pago": "Cobranças",
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "O papel da Dominex e do Asaas no fluxo da cobrança"
+      },
+      {
+        "t": "03:00",
+        "nome": "Configurações → Integrações → Asaas: conectar a conta e validar a chave"
+      },
+      {
+        "t": "07:00",
+        "nome": "Taxas reais, métodos habilitados e atualização das condições da conta"
+      },
+      {
+        "t": "11:00",
+        "nome": "Conta de recebimento e lançamento automático no Financeiro"
+      },
+      {
+        "t": "14:00",
+        "nome": "Simulador: Pix, boleto, cartão, prazo e valor líquido"
+      },
+      {
+        "t": "18:00",
+        "nome": "Criar cobrança avulsa: cliente, vencimento, juros, multa e desconto"
+      },
+      {
+        "t": "23:00",
+        "nome": "Compartilhar o checkout e acompanhar pendente, pago, vencido ou cancelado"
+      },
+      {
+        "t": "27:00",
+        "nome": "Repasse de taxa e conciliação do valor líquido"
+      },
+      {
+        "t": "30:00",
+        "nome": "Criar assinatura: frequência, duração e formas de pagamento"
+      },
+      {
+        "t": "35:00",
+        "nome": "Acompanhar, editar e cancelar assinaturas com segurança"
+      },
+      {
+        "t": "38:00",
+        "nome": "Cobrança de contrato e orçamento: onde os fluxos se encontram"
+      }
+    ],
+    "abertura": "Neste tutorial você vai conectar sua conta Asaas e transformar cobranças avulsas ou recorrentes em recebimentos acompanhados pela Dominex.",
+    "recap": "Asaas conectado, cobrança enviada, assinatura criada e baixa financeira acompanhada.",
+    "proximo": "No próximo tutorial: Relatório Financeiro e DRE.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "CPF ou CNPJ válido do cliente é obrigatório para criar a cobrança no Asaas."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "A confirmação visual do checkout não dá baixa sozinha; o status definitivo vem do webhook do Asaas."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Mostre as taxas retornadas pela conta conectada. Nunca trate valor de referência como taxa garantida."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Cancelar assinatura e revogar uma autorização de Pix Automático são ações relacionadas, mas não equivalentes."
+      }
+    ]
+  },
+  "T20": {
+    "code": "T20",
+    "inspiracao": "Margin Call",
+    "titulo": "Relatório Financeiro e DRE",
+    "resumo": "Ler resultado, caixa e compromissos sem misturar faturamento, transferência e data de fatura.",
+    "duracao": "~30min",
+    "prereq": "T13",
+    "modulo_pago": null,
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Relatórios → Visão Geral: filtros, indicadores e origem dos números"
+      },
+      {
+        "t": "04:00",
+        "nome": "DRE: receita, custos, despesas e resultado do período"
+      },
+      {
+        "t": "08:00",
+        "nome": "Caixa × Competência e o que muda em cada regime"
+      },
+      {
+        "t": "12:00",
+        "nome": "Compra no cartão: mês da compra, mês do pagamento e mês da fatura"
+      },
+      {
+        "t": "16:00",
+        "nome": "Assinaturas previstas e o cuidado com projeções"
+      },
+      {
+        "t": "19:00",
+        "nome": "DFC: entradas, saídas e variação do caixa"
+      },
+      {
+        "t": "22:00",
+        "nome": "Pacote para a contabilidade e conferência dos lançamentos"
+      },
+      {
+        "t": "25:00",
+        "nome": "Exportar CSV e gerar o PDF do relatório"
+      },
+      {
+        "t": "28:00",
+        "nome": "Checklist mensal de fechamento financeiro"
+      }
+    ],
+    "abertura": "Neste tutorial você vai ler o resultado da empresa e entender por que caixa, competência e fatura mostram datas diferentes.",
+    "recap": "DRE interpretada, DFC conferida e relatório exportado com o filtro correto.",
+    "proximo": "No próximo tutorial: Notas Fiscais, NFS-e e NF-e.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Caixa = o que já entrou ou saiu. Competência = o mês do fato, pago ou não."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Compra no cartão entra na DRE pelo mês da compra em Competência ou do pagamento em Caixa — nunca pelo mês da fatura."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Transferência e pagamento de fatura são movimentos internos e não entram no faturamento nem na DRE."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Antes de exportar, confira período, regime e filtros aplicados."
+      }
+    ]
+  },
   "T14": {
     "code": "T14",
     "inspiracao": "Better Call Saul",
-    "titulo": "Notas Fiscais (NFS-e)",
-    "resumo": "Do certificado digital até a nota autorizada com a prefeitura. Passo delicado, feito devagar.",
-    "duracao": "~30min",
+    "titulo": "Notas Fiscais (NFS-e e NF-e)",
+    "resumo": "Emitir NFS-e e acompanhar notas de serviço ou produto recebidas contra o CNPJ da empresa.",
+    "duracao": "~35min",
     "prereq": "T13",
     "modulo_pago": "Emissão de Notas Fiscais",
     "capitulos": [
@@ -1322,10 +1495,18 @@
       {
         "t": "27:00",
         "nome": "Cancelar nota com motivo, e reemitir depois (número novo)"
+      },
+      {
+        "t": "30:00",
+        "nome": "Notas recebidas: consultar NF-e e NFS-e emitidas contra o CNPJ"
+      },
+      {
+        "t": "33:00",
+        "nome": "Manifestar NF-e de produto e lançar a nota recebida como despesa"
       }
     ],
-    "abertura": "Neste tutorial você vai configurar a parte fiscal e emitir sua primeira nota de serviço.",
-    "recap": "Certificado no lugar, impostos configurados, nota emitida e PDF na mão do cliente.",
+    "abertura": "Neste tutorial você vai configurar a parte fiscal, emitir NFS-e e acompanhar NF-e e NFS-e recebidas pela empresa.",
+    "recap": "Certificado no lugar, NFS-e emitida e notas recebidas conferidas.",
     "proximo": "No próximo tutorial: sua equipe, o ponto e a folha.",
     "notas": [
       {
@@ -1363,21 +1544,27 @@
           "nao_prometer"
         ],
         "texto": "Configuração fiscal não é página separada — é modal aberto de dentro de Notas Fiscais."
+      },
+      {
+        "tipos": [
+          "nao_prometer"
+        ],
+        "texto": "A Dominex não emite NF-e de produto nesta tela. NF-e entra como nota recebida, com consulta e manifestação; a emissão disponível é NFS-e."
       }
     ]
   },
   "T15": {
     "code": "T15",
     "inspiracao": "The Office",
-    "titulo": "Funcionários, Ponto e Folha",
-    "resumo": "Time cadastrado, ponto batendo e folha caindo no financeiro sem planilha paralela.",
+    "titulo": "Funcionários: Financeiro do Funcionário e Ponto Eletrônico",
+    "resumo": "Cadastro funcional, movimentações financeiras do funcionário, pagamento e controle de ponto eletrônico no mesmo fluxo.",
     "duracao": "~35min",
     "prereq": "T14",
     "modulo_pago": "Funcionários / RH",
     "capitulos": [
       {
         "t": "00:00",
-        "nome": "Tela Funcionários e suas 5 abas"
+        "nome": "Tela Funcionários: cadastro, financeiro individual e ponto eletrônico"
       },
       {
         "t": "02:00",
@@ -1414,15 +1601,11 @@
       {
         "t": "31:00",
         "nome": "A folha aparecendo sozinha em Contas a Pagar e sendo quitada de lá"
-      },
-      {
-        "t": "33:00",
-        "nome": "Abas Comportamental (DISC) e Organograma"
       }
     ],
-    "abertura": "Neste tutorial você vai cadastrar sua equipe, ligar o ponto e fechar a folha dentro do sistema.",
-    "recap": "Funcionários cadastrados, ponto batendo com foto e localização, folha caindo no financeiro.",
-    "proximo": "No próximo tutorial: seu plano e sua assinatura.",
+    "abertura": "Neste tutorial você vai cadastrar sua equipe, controlar o financeiro de cada funcionário e colocar o ponto eletrônico para funcionar.",
+    "recap": "Funcionários cadastrados, movimentações e pagamentos registrados, ponto eletrônico configurado e folha no financeiro.",
+    "proximo": "No próximo tutorial: Perfil Comportamental, Organograma e Fluxograma.",
     "notas": [
       {
         "tipos": [
@@ -1462,75 +1645,187 @@
       }
     ]
   },
-  "T16": {
-    "code": "T16",
-    "inspiracao": "A Rede Social",
-    "titulo": "Sua assinatura, plano e módulos",
-    "resumo": "Entender o que você paga, o que está incluído e como ligar um módulo novo.",
-    "duracao": "~20min",
+  "T22": {
+    "code": "T22",
+    "inspiracao": "Severance",
+    "titulo": "Ferramentas de RH: Perfil Comportamental (DISC), Organograma, Fluxograma",
+    "resumo": "Ferramentas para entender pessoas, desenhar a estrutura da empresa e documentar como o trabalho deve acontecer.",
+    "duracao": "~40min",
     "prereq": "T15",
-    "modulo_pago": null,
+    "modulo_pago": "Funcionários / RH",
     "capitulos": [
       {
         "t": "00:00",
-        "nome": "Tela Assinatura: status, plano atual, vencimento e valor"
+        "nome": "Onde ficam as três ferramentas dentro de Funcionários"
       },
       {
-        "t": "03:00",
-        "nome": "Card Uso da Conta: usuários usados × contratados"
+        "t": "02:00",
+        "nome": "Perfil Comportamental (DISC): gerar o link individual e definir se o funcionário verá o resultado"
       },
       {
-        "t": "05:00",
-        "nome": "Gerenciar Meu Plano — aba Planos Prontos"
+        "t": "06:00",
+        "nome": "A experiência do funcionário respondendo a avaliação sem login"
       },
       {
-        "t": "08:00",
-        "nome": "Gerenciar Meu Plano — aba Personalizado: montar módulo a módulo + usuários extras"
-      },
-      {
-        "t": "12:00",
-        "nome": "O catálogo de módulos explicado em uma frase cada"
+        "t": "10:00",
+        "nome": "Ler o perfil: fatores DISC, competências, perfil emocional, qualidades e pontos de atenção"
       },
       {
         "t": "15:00",
-        "nome": "Pagar Agora → checkout: Pix, Boleto e Cartão"
+        "nome": "Histórico de avaliações, evolução e comparação entre dois funcionários"
       },
       {
-        "t": "18:00",
-        "nome": "Mensal × Anual (o desconto que só vale à vista) e o histórico de pagamentos"
+        "t": "19:00",
+        "nome": "Baixar o dossiê individual e o relatório comparativo em PDF"
+      },
+      {
+        "t": "22:00",
+        "nome": "Organograma: criar o quadro e adicionar funcionário, cargo manual e setor"
+      },
+      {
+        "t": "26:00",
+        "nome": "Conectar a hierarquia, organizar automaticamente, buscar, destacar setor e trabalhar em tela cheia"
+      },
+      {
+        "t": "30:00",
+        "nome": "Exportar o Organograma em PNG ou PDF"
+      },
+      {
+        "t": "32:00",
+        "nome": "Fluxograma: criar uma rotina com início, ação, decisão, subprocesso e fim"
+      },
+      {
+        "t": "35:00",
+        "nome": "Usar raias de responsáveis, conexões e organização automática"
+      },
+      {
+        "t": "37:00",
+        "nome": "Conferir problemas do fluxo e gerar o POP com o fluxograma incorporado"
+      },
+      {
+        "t": "39:00",
+        "nome": "Exportar, compartilhar e manter o processo atualizado"
       }
     ],
-    "abertura": "Neste tutorial você vai entender exatamente o que paga e como ligar um recurso novo.",
-    "recap": "Plano entendido, módulos sob controle e pagamento resolvido.",
-    "proximo": "No último tutorial: a rotina que faz tudo isso girar.",
+    "abertura": "Neste tutorial você vai transformar informação de pessoas, estrutura e processos em ferramentas práticas de RH.",
+    "recap": "Perfil comportamental analisado, organograma desenhado e processo documentado em fluxograma.",
+    "proximo": "No próximo tutorial: integração com WhatsApp.",
     "notas": [
       {
         "tipos": [
           "atencao"
         ],
-        "texto": "Cartão é sempre recorrente mensal e não tem o desconto anual. Só Pix e Boleto pegam os 20%."
+        "texto": "O link do DISC é individual e público; use somente dados fictícios ou uma conta-demo durante a gravação."
       },
       {
         "tipos": [
           "atencao"
         ],
-        "texto": "O valor exibido considera preço promocional/personalizado — pode não bater com a tabela pública."
+        "texto": "A visibilidade do resultado para o funcionário depende da configuração escolhida ao gerar a avaliação."
       },
       {
         "tipos": [
           "atencao"
         ],
-        "texto": "Plano \"Personalizado\" não aparece pra compra direta no checkout."
+        "texto": "Organograma e Fluxograma salvam o desenho automaticamente; mostre o estado de salvamento antes de sair."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "O Fluxograma nasce com uma etapa inicial e a conferência aponta caminhos sem início, sem fim ou isolados."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "O POP é gerado a partir do Fluxograma cadastrado; desenho desatualizado gera documento desatualizado."
+      }
+    ]
+  },
+  "T21": {
+    "code": "T21",
+    "inspiracao": "Mr. Robot",
+    "titulo": "Integração com WhatsApp",
+    "resumo": "Conectar o número da empresa, proteger a operação e ativar automações sem transformar o WhatsApp em disparo indiscriminado.",
+    "duracao": "~30min",
+    "prereq": "T0",
+    "modulo_pago": "WhatsApp",
+    "capitulos": [
+      {
+        "t": "00:00",
+        "nome": "Configurações → Integrações → WhatsApp e o que o módulo libera hoje"
+      },
+      {
+        "t": "03:00",
+        "nome": "Conexão por QR Code: preparar o número, aceitar o risco e iniciar o pareamento"
+      },
+      {
+        "t": "07:00",
+        "nome": "Ler o QR Code e acompanhar os estados de conexão"
+      },
+      {
+        "t": "10:00",
+        "nome": "Número ativo, reconexão e troca da conexão principal"
+      },
+      {
+        "t": "13:00",
+        "nome": "Proteção do número: horário, ritmo e limites de envio"
+      },
+      {
+        "t": "17:00",
+        "nome": "Ativar automações e escolher os eventos da Ordem de Serviço"
+      },
+      {
+        "t": "21:00",
+        "nome": "Conteúdo, modelos e autorização de contato por cliente"
+      },
+      {
+        "t": "24:00",
+        "nome": "Histórico operacional: enviado, falhou, bloqueado e nova tentativa"
+      },
+      {
+        "t": "27:00",
+        "nome": "Desconectar com segurança e quando refazer o pareamento"
+      }
+    ],
+    "abertura": "Neste tutorial você vai conectar o WhatsApp da empresa e ativar automações com uma régua segura de envio.",
+    "recap": "Número conectado, proteção configurada, automações ativadas e histórico monitorado.",
+    "proximo": "No último tutorial: dashboard, relatórios e exportações.",
+    "notas": [
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Atendimento e campanhas aparecem como prévias bloqueadas e continuam sendo etapas futuras. Não grave como funcionalidade disponível."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Sem conexão ativa, as áreas de automação permanecem bloqueadas."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Somente administradores, gestores ou usuários com permissão de configurações podem alterar as regras."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Não use número pessoal ou principal sem explicar o risco operacional do pareamento por QR Code."
       }
     ]
   },
   "T17": {
     "code": "T17",
     "inspiracao": "Moneyball",
-    "titulo": "Dashboard, rotina e truques",
-    "resumo": "Fechar a trilha lendo os números e montando a rotina que mantém o sistema vivo.",
-    "duracao": "~25min",
-    "prereq": "T16",
+    "titulo": "Dashboard, relatórios e exportações",
+    "resumo": "Fechar a trilha lendo os números e sabendo onde encontrar, filtrar e exportar os principais relatórios da operação.",
+    "duracao": "~35min",
+    "prereq": "T21",
     "modulo_pago": null,
     "capitulos": [
       {
@@ -1547,31 +1842,31 @@
       },
       {
         "t": "13:00",
-        "nome": "Chamados do Portal e o alerta de chamado novo"
+        "nome": "Filtros de período e como conferir a origem de cada indicador"
       },
       {
-        "t": "15:00",
-        "nome": "Atalhos de teclado e busca rápida"
+        "t": "16:00",
+        "nome": "Relatórios operacionais de OS e NPS: visão consolidada e filtros"
       },
       {
-        "t": "17:00",
-        "nome": "Rotina diária (5 min): OS críticas, chamados novos, agenda de amanhã"
+        "t": "20:00",
+        "nome": "Onde encontrar cada família de relatório e quando voltar ao T20 para a leitura financeira"
       },
       {
-        "t": "19:00",
-        "nome": "Rotina semanal (20 min): funil do CRM, orçamentos em aberto, estoque mínimo"
+        "t": "24:00",
+        "nome": "Relatórios de estoque: posição, inventário e contagem"
       },
       {
-        "t": "21:00",
-        "nome": "Rotina mensal (1h): DRE, contas a receber vencidas, contratos a vencer, NPS"
+        "t": "28:00",
+        "nome": "Relatórios de pessoas e comercial: ponto e atividade"
       },
       {
-        "t": "23:00",
-        "nome": "Onde ver as novidades do sistema (Changelog) e como pedir ajuda"
+        "t": "31:00",
+        "nome": "Exportações em PDF, Excel e CSV e Exportar meus dados da empresa"
       }
     ],
-    "abertura": "Neste último tutorial você vai aprender a ler seus números e montar a rotina que mantém tudo girando.",
-    "recap": "Você sabe ler o dashboard e tem uma rotina diária, semanal e mensal pra não deixar nada cair.",
+    "abertura": "Neste último tutorial você vai aprender a ler o dashboard, encontrar cada relatório e levar os dados para PDF, Excel ou CSV.",
+    "recap": "Você sabe de onde vêm os indicadores, onde consultar cada relatório e qual exportação usar.",
     "proximo": "Fim da trilha. Volte em qualquer tutorial pelo capítulo que precisar.",
     "notas": [
       {
@@ -1585,6 +1880,12 @@
           "atencao"
         ],
         "texto": "O mapa só plota técnico que já mandou o primeiro ponto de GPS."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Antes de exportar, aplique os filtros de período e confira se o arquivo reflete exatamente a visão da tela."
       }
     ]
   }

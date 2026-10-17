@@ -48,7 +48,7 @@ export const SCREEN_PERMISSIONS = [
   { key: 'screen:questionnaires', label: 'Checklists', description: 'Modelos de checklist usados dentro das ordens de serviço.', icon: FileQuestion, group: 'Serviços', category: 'servicos' },
   { key: 'screen:contracts', label: 'Contratos', description: 'Contratos recorrentes, PMOC e as visitas programadas de cada um.', icon: ScrollText, group: 'Serviços', category: 'servicos' },
   { key: 'screen:equipment', label: 'Equipamentos', description: 'Cadastro dos equipamentos dos clientes e o histórico de cada um.', icon: Boxes, group: 'Serviços', category: 'servicos' },
-  { key: 'screen:customers', label: 'Clientes', description: 'Cadastro de clientes, com contatos, endereços e histórico de atendimento.', icon: Users, group: 'Comercial', category: 'comercial' },
+  { key: 'screen:customers', label: 'Clientes e Fornecedores', description: 'Cadastro de clientes e fornecedores, com contatos, endereços e históricos.', icon: Users, group: 'Comercial', category: 'comercial' },
   { key: 'screen:crm', label: 'CRM/Kanban', description: 'Funis Kanban com leads, oportunidades e follow-ups (também exige o módulo contratado).', icon: ListFilter, group: 'Comercial', category: 'comercial' },
   { key: 'screen:quotes', label: 'Orçamentos', description: 'Orçamentos e propostas enviadas aos clientes.', icon: FileText, group: 'Comercial', category: 'comercial' },
   { key: 'screen:inventory', label: 'Estoque', description: 'Materiais, saldos e movimentações de estoque.', icon: Package, group: 'Operacional', category: 'operacional' },
