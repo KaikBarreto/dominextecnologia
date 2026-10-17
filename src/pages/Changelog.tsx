@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.2',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Clientes e fornecedores identificados no mesmo cadastro',
+        description: 'A tela e os menus agora usam o nome Clientes e Fornecedores, deixando claro que os dois tipos de contato são administrados na mesma área. O novo nome também aparece nos atalhos e nas permissões.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Notas Fiscais com acesso direto no menu',
+        description: 'Notas Fiscais deixou de ficar escondida dentro do Financeiro e agora aparece como uma opção principal da navegação, facilitando o acesso à emissão e à consulta de documentos fiscais.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.36.1',
     date: '17 de outubro de 2026',
     type: 'patch',

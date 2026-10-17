@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.36.1";
+export const APP_VERSION = "1.36.2";
 
-export const VERSION_NOTES = "O botão Faturar passou a aparecer na lista, no celular e na agenda, e as ordens já faturadas ganharam um selo para você ver de relance o que virou dinheiro.";
+export const VERSION_NOTES = "A navegação agora reúne Clientes e Fornecedores com um nome mais claro e dá acesso direto às Notas Fiscais pelo menu principal.";
