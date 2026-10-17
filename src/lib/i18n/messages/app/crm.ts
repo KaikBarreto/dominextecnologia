@@ -288,7 +288,7 @@ export const crm = {
     // ── PipelineManagerDialog (Onda D — multi-pipeline) ──
     pipelines: {
       title: 'Gerenciar Funis',
-      subtitle: 'Crie funis separados para vendas, pós-venda, licitação e outros fluxos comerciais.',
+      subtitle: 'Crie funis separados para vendas, pós-venda, licitação e outros fluxos comerciais. Para organizar uma obra com várias frentes ao mesmo tempo, use Projetos.',
       newPipelineLabel: 'Novo Funil',
       namePlaceholder: 'Nome do funil',
       dragHint: 'Arraste para reordenar os funis',
@@ -1457,7 +1457,7 @@ export const crm = {
 
     pipelines: {
       title: 'Manage Pipelines',
-      subtitle: 'Create separate pipelines for sales, after sales, bidding and other workflows.',
+      subtitle: 'Create separate pipelines for sales, after sales, bidding and other workflows. To organise a job site with several work fronts at once, use Projects.',
       newPipelineLabel: 'New Pipeline',
       namePlaceholder: 'Pipeline name',
       dragHint: 'Drag to reorder pipelines',
@@ -2552,7 +2552,7 @@ export const crm = {
 
     pipelines: {
       title: 'Gestionar Embudos',
-      subtitle: 'Crea embudos separados para ventas, posventa, licitaciones y otros flujos.',
+      subtitle: 'Crea embudos separados para ventas, posventa, licitaciones y otros flujos. Para organizar una obra con varios frentes a la vez, usa Proyectos.',
       newPipelineLabel: 'Nuevo Embudo',
       namePlaceholder: 'Nombre del embudo',
       dragHint: 'Arrastra para reordenar los embudos',
@@ -3649,7 +3649,7 @@ export const crm = {
 
     pipelines: {
       title: 'Gérer les Pipelines',
-      subtitle: `Créez des pipelines séparés pour les ventes, le service après vente, les appels d'offres et autres flux.`,
+      subtitle: `Créez des pipelines séparés pour les ventes, le service après vente, les appels d'offres et autres flux. Pour organiser un chantier avec plusieurs fronts de travail, utilisez Projets.`,
       newPipelineLabel: 'Nouveau Pipeline',
       namePlaceholder: 'Nom du pipeline',
       dragHint: 'Glissez pour réorganiser les pipelines',

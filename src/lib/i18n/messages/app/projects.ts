@@ -11,7 +11,7 @@ export const projects = {
     // Estado vazio — sem nenhum projeto cadastrado ainda.
     empty: {
       title: 'Nenhum projeto ainda',
-      description: 'Crie o primeiro projeto para agrupar frentes de trabalho e acompanhar o progresso da obra.',
+      description: 'Crie o primeiro projeto para agrupar frentes de trabalho e acompanhar o progresso da obra. Cada frente é um quadro Kanban, igual ao do CRM.',
       action: 'Criar projeto',
     },
     // Estado vazio — tem projeto, mas a busca/filtro não achou nenhum.
@@ -151,7 +151,7 @@ export const projects = {
 
     empty: {
       title: 'No projects yet',
-      description: 'Create your first project to group work fronts and track the job progress.',
+      description: 'Create your first project to group work fronts and track the job progress. Each work front is a Kanban board, just like in the CRM.',
       action: 'Create project',
     },
     emptyFiltered: {
@@ -276,7 +276,7 @@ export const projects = {
 
     empty: {
       title: 'Todavía no hay proyectos',
-      description: 'Cree el primer proyecto para agrupar frentes de trabajo y seguir el progreso de la obra.',
+      description: 'Cree el primer proyecto para agrupar frentes de trabajo y seguir el progreso de la obra. Cada frente es un tablero Kanban, igual que en el CRM.',
       action: 'Crear proyecto',
     },
     emptyFiltered: {
@@ -401,12 +401,12 @@ export const projects = {
 
     empty: {
       title: `Aucun projet pour l'instant`,
-      description: `Créez votre premier projet pour regrouper les fronts de travail et suivre l'avancement du chantier.`,
+      description: `Créez votre premier projet pour regrouper les fronts de travail et suivre l'avancement du chantier. Chaque front de travail est un tableau Kanban, comme dans le CRM.`,
       action: 'Créer un projet',
     },
     emptyFiltered: {
       title: 'Aucun projet trouvé',
-      description: 'Ajustez la recherche ou les filtres pour voir d`autres projets.',
+      description: `Ajustez la recherche ou les filtres pour voir d'autres projets.`,
     },
 
     kpiTotal: 'Projets',

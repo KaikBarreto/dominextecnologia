@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.36.14";
+export const APP_VERSION = "1.36.15";
 
-export const VERSION_NOTES = "Chegou a tela Projetos: crie uma obra e organize as frentes de trabalho dela (compras, engenharia, operacional) em quadros separados, com barra de progresso da obra.";
+export const VERSION_NOTES = "CRM/Kanban e Projetos passaram a ficar no mesmo grupo do menu, com uma orientação em cada tela explicando quando usar qual.";

@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.15',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'CRM/Kanban e Projetos agora ficam juntos no menu',
+        description: 'Os dois passaram a ficar no mesmo grupo do menu, chamado CRM e Projetos, porque um projeto agrupa quadros Kanban. Continuam sendo duas telas com permissões separadas, então ainda dá para liberar Projetos para a equipe de obra sem abrir a carteira comercial. As telas também ganharam uma orientação explicando quando usar cada uma.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.36.14',
     date: '17 de outubro de 2026',
     type: 'patch',
