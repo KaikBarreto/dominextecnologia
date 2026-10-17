@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.36.4";
+export const APP_VERSION = "1.36.5";
 
-export const VERSION_NOTES = "O link público da Ordem de Serviço agora pode exibir o logo da empresa com contraste automático ou uma imagem personalizada.";
+export const VERSION_NOTES = "A opção Resetar OS agora também aparece durante atendimentos a caminho, em andamento ou pausados.";

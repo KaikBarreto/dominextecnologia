@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.5',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Resetar OS também durante o atendimento',
+        description: 'A opção Resetar OS agora aparece quando o atendimento está A caminho, Em andamento ou Pausado, além das ordens já concluídas. Assim, uma execução iniciada por engano pode voltar para Agendada e recomeçar pelo fluxo correto.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.36.4',
     date: '17 de outubro de 2026',
     type: 'patch',
