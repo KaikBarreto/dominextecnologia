@@ -18,6 +18,14 @@ export type SocialImagePalette = {
 export type OsSocialImageOptions = {
   backgroundColor?: string | null;
   logoScale?: number;
+  compactSafeArea?: boolean;
+};
+
+export type SocialLogoRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 };
 
 type LoadedImage = {
@@ -276,6 +284,34 @@ function paintBrandBackground(context: CanvasRenderingContext2D, palette: Social
   context.fillRect(0, 0, OS_SOCIAL_IMAGE_WIDTH, OS_SOCIAL_IMAGE_HEIGHT);
 }
 
+/**
+ * Calcula a área do logo dentro da arte. No modo compacto, o conteúdo fica
+ * inteiramente dentro do quadrado central de 630×630 que o WhatsApp costuma
+ * recortar nos cartões menores.
+ */
+export function calculateSocialLogoRect(
+  naturalWidth: number,
+  naturalHeight: number,
+  options: OsSocialImageOptions = {},
+): SocialLogoRect {
+  const compactSafeArea = options.compactSafeArea ?? true;
+  const logoScale = compactSafeArea
+    ? Math.min(1, Math.max(0.6, options.logoScale ?? 1))
+    : Math.min(1.4, Math.max(0.6, options.logoScale ?? 1));
+  const maxWidth = (compactSafeArea ? 570 : 760) * logoScale;
+  const maxHeight = (compactSafeArea ? 420 : 320) * logoScale;
+  const imageScale = Math.min(maxWidth / naturalWidth, maxHeight / naturalHeight, 1.8);
+  const width = naturalWidth * imageScale;
+  const height = naturalHeight * imageScale;
+
+  return {
+    x: (OS_SOCIAL_IMAGE_WIDTH - width) / 2,
+    y: (OS_SOCIAL_IMAGE_HEIGHT - height) / 2,
+    width,
+    height,
+  };
+}
+
 /** Gera uma arte 1200x630 com o logo centralizado e fundo de alto contraste. */
 export async function createOsSocialImageFromLogo(
   logoUrl: string,
@@ -302,18 +338,17 @@ export async function createOsSocialImageFromLogo(
       : detectedPalette;
     paintBrandBackground(context, palette);
 
-    const logoScale = Math.min(1.4, Math.max(0.6, options.logoScale ?? 1));
-    const maxWidth = 760 * logoScale;
-    const maxHeight = 320 * logoScale;
-    const scale = Math.min(maxWidth / loaded.image.naturalWidth, maxHeight / loaded.image.naturalHeight, 1.8);
-    const width = loaded.image.naturalWidth * scale;
-    const height = loaded.image.naturalHeight * scale;
+    const logoRect = calculateSocialLogoRect(
+      loaded.image.naturalWidth,
+      loaded.image.naturalHeight,
+      options,
+    );
     context.drawImage(
       loaded.image,
-      (OS_SOCIAL_IMAGE_WIDTH - width) / 2,
-      (OS_SOCIAL_IMAGE_HEIGHT - height) / 2,
-      width,
-      height,
+      logoRect.x,
+      logoRect.y,
+      logoRect.width,
+      logoRect.height,
     );
 
     return canvasToFile(canvas, `os-social-logo-${Date.now()}.png`, 'image/png');

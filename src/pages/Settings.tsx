@@ -183,6 +183,7 @@ export default function Settings() {
   const [socialBackgroundMode, setSocialBackgroundMode] = useState<'auto' | 'manual'>('auto');
   const [socialBackgroundColor, setSocialBackgroundColor] = useState('#000000');
   const [socialLogoScale, setSocialLogoScale] = useState(100);
+  const [socialCompactSafeArea, setSocialCompactSafeArea] = useState(true);
   const [socialDraftFile, setSocialDraftFile] = useState<File | null>(null);
   const [socialDraftUrl, setSocialDraftUrl] = useState<string | null>(null);
   const [socialPreviewLoading, setSocialPreviewLoading] = useState(false);
@@ -384,6 +385,7 @@ export default function Settings() {
     wlEnabled && settings?.white_label_logo_url
       ? settings.white_label_logo_url
       : settings?.logo_url || null;
+  const socialPreviewSource = socialDraftUrl || settings?.os_social_image_url || currentBrandLogo;
 
   useEffect(() => {
     if (!socialEditorOpen || !currentBrandLogo) {
@@ -401,6 +403,7 @@ export default function Settings() {
         const file = await createOsSocialImageFromLogo(currentBrandLogo, wlColor, {
           backgroundColor: socialBackgroundMode === 'manual' ? socialBackgroundColor : null,
           logoScale: socialLogoScale / 100,
+          compactSafeArea: socialCompactSafeArea,
         });
         if (cancelled) return;
         objectUrl = URL.createObjectURL(file);
@@ -421,7 +424,7 @@ export default function Settings() {
       window.clearTimeout(timer);
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [currentBrandLogo, socialBackgroundColor, socialBackgroundMode, socialEditorOpen, socialLogoScale, wlColor]);
+  }, [currentBrandLogo, socialBackgroundColor, socialBackgroundMode, socialCompactSafeArea, socialEditorOpen, socialLogoScale, wlColor]);
 
   const persistOsSocialImage = async (
     file: File,
@@ -1137,41 +1140,122 @@ export default function Settings() {
                       </div>
 
                       {socialEditorOpen && (
-                        <div className="grid gap-5 rounded-2xl bg-background/75 p-4 shadow-sm lg:grid-cols-2">
-                          <div className="space-y-3">
+                        <div className="grid gap-6 rounded-2xl bg-background/75 p-4 shadow-sm lg:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.85fr)] sm:p-5">
+                          <div className="min-w-0 space-y-3">
                             <div className="space-y-1">
-                              <Label>{t.company.visualIdentity.socialImage.background}</Label>
-                              <p className="text-xs text-muted-foreground">
-                                {t.company.visualIdentity.socialImage.backgroundHint}
+                              <Label>{t.company.visualIdentity.socialImage.previewTitle}</Label>
+                              <p className="text-xs leading-relaxed text-muted-foreground">
+                                {t.company.visualIdentity.socialImage.previewHint}
                               </p>
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant={socialBackgroundMode === 'auto' ? 'secondary' : 'outline'}
-                                onClick={() => setSocialBackgroundMode('auto')}
-                              >
-                                {t.company.visualIdentity.socialImage.automatic}
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant={socialBackgroundMode === 'manual' ? 'secondary' : 'outline'}
-                                onClick={() => setSocialBackgroundMode('manual')}
-                              >
-                                {t.company.visualIdentity.socialImage.manual}
-                              </Button>
-                            </div>
-                            {socialBackgroundMode === 'manual' && (
-                              <div className="flex items-center gap-3">
-                                <ColorPicker value={socialBackgroundColor} onChange={setSocialBackgroundColor} />
-                                <span className="text-xs font-medium uppercase text-muted-foreground">{socialBackgroundColor}</span>
+
+                            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_148px] sm:items-end">
+                              <div className="space-y-2">
+                                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                  {t.company.visualIdentity.socialImage.widePreview}
+                                </p>
+                                <div className="relative aspect-[1200/630] overflow-hidden rounded-xl bg-muted shadow-inner">
+                                  {socialPreviewSource && (
+                                    <img
+                                      src={socialPreviewSource}
+                                      alt={t.company.visualIdentity.socialImage.previewAlt}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  )}
+                                  {socialCompactSafeArea && (
+                                    <div
+                                      aria-hidden="true"
+                                      className="absolute inset-y-0 left-1/2 aspect-square -translate-x-1/2 border-x border-dashed border-white/70 bg-white/[0.035] shadow-[0_0_0_1px_rgba(0,0,0,0.08)]"
+                                    >
+                                      <span className="absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/65 px-2 py-1 text-[10px] font-medium text-white">
+                                        {t.company.visualIdentity.socialImage.safeAreaLabel}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {socialPreviewLoading && (
+                                    <div className="absolute inset-0 grid place-items-center bg-background/55 backdrop-blur-[1px]">
+                                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            )}
+
+                              <div className="w-full max-w-[180px] space-y-2 justify-self-center sm:max-w-none">
+                                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                  {t.company.visualIdentity.socialImage.compactPreview}
+                                </p>
+                                <div className="relative aspect-square overflow-hidden rounded-xl bg-muted shadow-inner">
+                                  {socialPreviewSource && (
+                                    <img
+                                      src={socialPreviewSource}
+                                      alt=""
+                                      className="h-full w-full object-cover"
+                                    />
+                                  )}
+                                  {socialPreviewLoading && (
+                                    <div className="absolute inset-0 grid place-items-center bg-background/55 backdrop-blur-[1px]">
+                                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                           </div>
 
-                          <div className="space-y-4">
+                          <div className="flex min-w-0 flex-col gap-5">
+                            <div className="flex items-start justify-between gap-4 rounded-xl bg-muted/45 p-3.5">
+                              <div className="space-y-1">
+                                <Label htmlFor="social-compact-safe-area">
+                                  {t.company.visualIdentity.socialImage.compactSafeArea}
+                                </Label>
+                                <p className="text-xs leading-relaxed text-muted-foreground">
+                                  {t.company.visualIdentity.socialImage.compactSafeAreaHint}
+                                </p>
+                              </div>
+                              <Switch
+                                id="social-compact-safe-area"
+                                checked={socialCompactSafeArea}
+                                onCheckedChange={(checked) => {
+                                  setSocialCompactSafeArea(checked);
+                                  if (checked && socialLogoScale > 100) setSocialLogoScale(100);
+                                }}
+                                aria-label={t.company.visualIdentity.socialImage.compactSafeArea}
+                              />
+                            </div>
+
+                            <div className="space-y-3">
+                              <div className="space-y-1">
+                                <Label>{t.company.visualIdentity.socialImage.background}</Label>
+                                <p className="text-xs text-muted-foreground">
+                                  {t.company.visualIdentity.socialImage.backgroundHint}
+                                </p>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={socialBackgroundMode === 'auto' ? 'secondary' : 'outline'}
+                                  onClick={() => setSocialBackgroundMode('auto')}
+                                >
+                                  {t.company.visualIdentity.socialImage.automatic}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={socialBackgroundMode === 'manual' ? 'secondary' : 'outline'}
+                                  onClick={() => setSocialBackgroundMode('manual')}
+                                >
+                                  {t.company.visualIdentity.socialImage.manual}
+                                </Button>
+                              </div>
+                              {socialBackgroundMode === 'manual' && (
+                                <div className="flex items-center gap-3">
+                                  <ColorPicker value={socialBackgroundColor} onChange={setSocialBackgroundColor} />
+                                  <span className="text-xs font-medium uppercase text-muted-foreground">{socialBackgroundColor}</span>
+                                </div>
+                              )}
+                            </div>
+
                             <div className="space-y-2">
                               <div className="flex items-center justify-between gap-4">
                                 <Label>{t.company.visualIdentity.socialImage.logoSize}</Label>
@@ -1179,13 +1263,14 @@ export default function Settings() {
                               </div>
                               <Slider
                                 min={60}
-                                max={140}
+                                max={socialCompactSafeArea ? 100 : 140}
                                 step={5}
                                 value={[socialLogoScale]}
                                 onValueChange={([value]) => setSocialLogoScale(value)}
                               />
                             </div>
-                            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+
+                            <div className="mt-auto flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                               <Button type="button" variant="ghost" size="sm" onClick={() => setSocialEditorOpen(false)}>
                                 {MESSAGES[locale].app.common.cancel}
                               </Button>

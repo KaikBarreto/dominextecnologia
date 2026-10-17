@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { chooseSocialBackground, chooseSocialPalette } from './osSocialImage';
+import {
+  calculateSocialLogoRect,
+  chooseSocialBackground,
+  chooseSocialPalette,
+} from './osSocialImage';
 
 function pixelsFromGrid(grid: Array<Array<[number, number, number, number]>>): Uint8ClampedArray {
   return new Uint8ClampedArray(grid.flat(2));
@@ -48,5 +52,30 @@ describe('chooseSocialPalette', () => {
       background: '#f4f8f6',
       extendsLogoEdge: false,
     });
+  });
+});
+
+describe('calculateSocialLogoRect', () => {
+  it('mantém um logo horizontal inteiro dentro do recorte quadrado central', () => {
+    const rect = calculateSocialLogoRect(1200, 300, { compactSafeArea: true });
+
+    expect(rect).toEqual({ x: 315, y: 243.75, width: 570, height: 142.5 });
+    expect(rect.x).toBeGreaterThanOrEqual(285);
+    expect(rect.x + rect.width).toBeLessThanOrEqual(915);
+  });
+
+  it('preserva a composição mais larga quando a área segura é desligada', () => {
+    const rect = calculateSocialLogoRect(1200, 300, { compactSafeArea: false });
+
+    expect(rect).toEqual({ x: 220, y: 220, width: 760, height: 190 });
+  });
+
+  it('limita a escala compacta a 100% para não escapar do quadrado', () => {
+    const rect = calculateSocialLogoRect(800, 800, {
+      compactSafeArea: true,
+      logoScale: 1.4,
+    });
+
+    expect(rect).toEqual({ x: 390, y: 105, width: 420, height: 420 });
   });
 });
