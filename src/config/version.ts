@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.36.6";
+export const APP_VERSION = "1.36.7";
 
-export const VERSION_NOTES = "Cada funil do CRM/Kanban agora pode deixar de acompanhar valores: os indicadores passam a contar cards em vez de somar dinheiro, ideal para obras, compras e processos internos.";
+export const VERSION_NOTES = "Empresas com White Label agora podem ajustar a imagem compartilhada da Ordem de Serviço com fundo baseado no logo, cor manual e controle de tamanho.";

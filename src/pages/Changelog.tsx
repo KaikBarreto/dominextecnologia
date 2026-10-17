@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.7',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Imagem da OS ajustável no White Label',
+        description: 'Empresas com White Label podem preparar a imagem exibida ao compartilhar uma Ordem de Serviço no WhatsApp. O fundo agora acompanha as cores do próprio logo e também pode ser escolhido manualmente, com ajuste do tamanho antes de salvar. Para as demais empresas, a prévia continua usando a imagem padrão da Dominex.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Configurações da empresa mais organizadas',
+        description: 'A tela de dados da empresa ganhou uma hierarquia mais clara, campos em colunas e blocos mais leves, com melhor aproveitamento do espaço no computador e no celular.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.36.6',
     date: '17 de outubro de 2026',
     type: 'patch',
