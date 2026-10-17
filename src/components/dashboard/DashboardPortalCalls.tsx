@@ -13,6 +13,7 @@ import { formatOSNumber } from '@/lib/osNumber';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR, enUS, es, fr } from 'date-fns/locale';
 import type { ServiceOrder, OsStatus } from '@/types/database';
+import { buildPortalCallsPath } from '@/lib/portalCalls';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -92,7 +93,8 @@ export function DashboardPortalCalls({ items, isLoading }: DashboardPortalCallsP
     return os.description?.trim() || tc.noDescription;
   }
 
-  const navigateToOS = () => navigate('/ordens-servico');
+  const navigateToCalls = () => navigate(buildPortalCallsPath());
+  const navigateToCall = (id: string) => navigate(buildPortalCallsPath(id));
 
   return (
     <motion.div
@@ -131,7 +133,7 @@ export function DashboardPortalCalls({ items, isLoading }: DashboardPortalCallsP
                   return (
                     <MobileListItem
                       key={os.id}
-                      onClick={navigateToOS}
+                      onClick={() => navigateToCall(os.id)}
                       leading={
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                           <ClipboardList className="h-5 w-5" />
@@ -167,7 +169,7 @@ export function DashboardPortalCalls({ items, isLoading }: DashboardPortalCallsP
                 })}
                 {items.length > 5 && (
                   <button
-                    onClick={navigateToOS}
+                    onClick={navigateToCalls}
                     className="w-full text-center text-xs text-primary font-medium min-h-11 py-2.5 hover:bg-muted/40 active:bg-muted/60 flex items-center justify-center gap-1"
                   >
                     {tc.viewAll} <ArrowRight className="h-3 w-3" />
@@ -183,7 +185,7 @@ export function DashboardPortalCalls({ items, isLoading }: DashboardPortalCallsP
                   return (
                     <div
                       key={os.id}
-                      onClick={navigateToOS}
+                      onClick={() => navigateToCall(os.id)}
                       className="rounded-xl bg-muted/30 p-3 space-y-1.5 cursor-pointer hover:bg-muted/50 active:scale-[0.98] transition-all"
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -210,7 +212,7 @@ export function DashboardPortalCalls({ items, isLoading }: DashboardPortalCallsP
                 })}
                 {items.length > 5 && (
                   <button
-                    onClick={navigateToOS}
+                    onClick={navigateToCalls}
                     className="w-full text-center text-xs text-primary font-medium min-h-11 py-2 hover:underline flex items-center justify-center gap-1"
                   >
                     {tc.viewAll} <ArrowRight className="h-3 w-3" />

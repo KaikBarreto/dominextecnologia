@@ -43,7 +43,19 @@ export function useContractDetail(contractId: string | undefined) {
           responsible_technicians:responsible_technician_id (id, full_name, cft_crea, modality),
           contract_items (id, contract_id, equipment_id, environment_id, item_name, item_description, form_template_id, form_template_ids, first_os_excluded_questions, pmoc_scope, pmoc_start_visit, sort_order, equipment:equipment(id, name, brand, model)),
           contract_environments (id, company_id, contract_id, identificacao, tipo_atividade, area_climatizada_m2, ocupantes_fixos, ocupantes_flutuantes, carga_termica_tr, photo_url, sort_order),
-          service_orders (id, order_number, status, scheduled_date, equipment_id)
+          service_orders (
+            id,
+            order_number,
+            status,
+            scheduled_date,
+            equipment_id,
+            contract_id,
+            origin,
+            description,
+            created_at,
+            customer:customers(id, name),
+            equipment:equipment(id, name)
+          )
         `)
         .eq('id', contractId!)
         .single();
@@ -85,7 +97,10 @@ export function useContractDetail(contractId: string | undefined) {
   });
 
   // Stats derivadas 100% das OSs reais do contrato.
-  const contractOrders: ContractServiceOrder[] = contract?.service_orders || [];
+  // Chamado do portal pode carregar contract_id para preservar contexto, mas
+  // não é visita/ocorrência prevista pelo contrato e não entra nestas stats.
+  const contractOrders: ContractServiceOrder[] = (contract?.service_orders || [])
+    .filter(order => order.origin !== 'portal');
   const totalOccurrences = contractOrders.length;
   const completedOccurrences = contractOrders.filter(o => o.status === 'concluida').length;
   // Próxima visita = OS ativa (≠ concluida/cancelada) com menor scheduled_date.

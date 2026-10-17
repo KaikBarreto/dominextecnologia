@@ -1217,7 +1217,7 @@ Deno.serve(async (req) => {
 
     const payload: Record<string, unknown> = {
       generated_at: new Date().toISOString(),
-      payload_version: "1.11.0", // 1.11.0 — cobranças do cliente (charges[]) no portal
+      payload_version: "1.12.0", // 1.12.0 — contract.id para vincular chamados do portal
       // Espelha get_portal_data: acesso liberado (já passamos pelo gate de
       // privacidade) + se o viewer logado pode preencher OS + se é PMOC.
       access: "granted",
@@ -1230,6 +1230,7 @@ Deno.serve(async (req) => {
         state: customer?.state ?? null,
       },
       contract: {
+        id: contract.id ?? null,
         customer_id: contract.customer_id ?? null,
         company_id: contract.company_id ?? null,
         name: contract.name ?? null,

@@ -19,6 +19,7 @@ import {
   LayoutGrid,
   Star,
   BarChart3,
+  Megaphone,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -73,6 +74,8 @@ import { getIsPmocFromOrder } from '@/hooks/useIsPmocOrder';
 import { formatOSNumberDigits } from '@/lib/osNumber';
 import { useOsFinishRevenuePrompt } from '@/hooks/useOsFinishRevenuePrompt';
 import { OsFinishRevenueDialog } from '@/components/financial/OsFinishRevenueDialog';
+import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
+import { isOpenPortalCall } from '@/lib/portalCalls';
 
 export default function ServiceOrders() {
   const isMobile = useIsMobile();
@@ -86,9 +89,11 @@ export default function ServiceOrders() {
   const location = useLocation();
   const [pendingFocusSearch, setPendingFocusSearch] = useState(false);
 
-  // Captura intent ao chegar via /ordens-servico { state: { focusSearch | initialStatus } }
+  // Captura intent ao chegar via state (atalhos antigos) ou query string
+  // (deep-link estável do Dashboard/fichas para a aba Chamados).
   useEffect(() => {
     const state = location.state as { focusSearch?: boolean; initialStatus?: string } | null;
+    const params = new URLSearchParams(location.search);
     if (state?.focusSearch) {
       setPendingFocusSearch(true);
     }
@@ -98,7 +103,15 @@ export default function ServiceOrders() {
     if (state?.focusSearch || state?.initialStatus) {
       window.history.replaceState({}, '');
     }
-  }, [location.state]);
+    if (params.get('aba') === 'chamados') {
+      setActiveTab('calls');
+    }
+    const requestedOsId = params.get('os');
+    if (requestedOsId) {
+      setViewingOsId(requestedOsId);
+      setViewDialogOpen(true);
+    }
+  }, [location.search, location.state]);
 
   // Aplica o foco assim que o input mobile estiver montado (após isLoading=false)
   useEffect(() => {
@@ -353,6 +366,12 @@ export default function ServiceOrders() {
 
   const sidebarTabs: SettingsTab[] = [
     { value: 'orders', label: t.tabs.orders, icon: ClipboardList },
+    {
+      value: 'calls',
+      label: t.tabs.calls,
+      icon: Megaphone,
+      sublabel: String(serviceOrders.filter(isOpenPortalCall).length),
+    },
     { value: 'report', label: t.tabs.report, icon: BarChart3 },
     { value: 'nps', label: t.tabs.nps, icon: Star },
   ];
@@ -507,6 +526,42 @@ export default function ServiceOrders() {
       <SettingsSidebarLayout tabs={sidebarTabs} activeTab={activeTab} onTabChange={setActiveTab}>
         {activeTab === 'nps' && <NpsDashboard />}
         {activeTab === 'report' && <OsReportDashboard />}
+        {activeTab === 'calls' && (
+          <div className="space-y-4">
+            <PortalCallsPanel
+              items={serviceOrders}
+              isLoading={isLoading}
+              onOpenCall={(order) => {
+                setViewingOsId(order.id);
+                setViewDialogOpen(true);
+              }}
+            />
+
+            <ServiceOrderViewDialog
+              open={viewDialogOpen}
+              onOpenChange={setViewDialogOpen}
+              serviceOrderId={viewingOsId}
+              onEdit={canEditOS && viewingOsId ? () => {
+                const os = serviceOrders.find((order) => order.id === viewingOsId);
+                if (os) {
+                  setActiveTab('orders');
+                  handleEdit(os);
+                }
+              } : undefined}
+              onDelete={canDeleteOS && viewingOsId ? () => {
+                const os = serviceOrders.find((order) => order.id === viewingOsId);
+                if (os) {
+                  setActiveTab('orders');
+                  handleDeleteClick(os);
+                }
+              } : undefined}
+              onStatusChange={viewingOsId ? async (newStatus) => {
+                const os = serviceOrders.find((order) => order.id === viewingOsId);
+                if (os) await handleStatusChange(os, newStatus);
+              } : undefined}
+            />
+          </div>
+        )}
         {activeTab === 'orders' && (
           <div className={cn('space-y-4', !isMobile && 'space-y-6')}>
 

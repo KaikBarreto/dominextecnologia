@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { BrandedQRCode } from '@/components/BrandedQRCode';
 import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
-import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText, Wrench, ClipboardCheck, XCircle, CreditCard, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText, Wrench, ClipboardCheck, XCircle, CreditCard, AlertTriangle, Megaphone } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useContractPublicToken, useRegeneratePmocToken, useResolveContractId } from '@/hooks/usePmocPortal';
 import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
@@ -42,7 +42,7 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useContractDetail, isActiveContractOS } from '@/hooks/useContractDetail';
 import { useContracts, getFrequencyLabel, type ContractServiceOrder } from '@/hooks/useContracts';
 import { useServiceOrderActivities, freqCodeShortLabel } from '@/hooks/useServiceOrderActivities';
-import { osStatusLabels, type OsStatus } from '@/types/database';
+import { osStatusLabels, type OsStatus, type ServiceOrder } from '@/types/database';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
@@ -76,6 +76,8 @@ import {
 } from '@/lib/contractChargeBatch';
 import { useTenantCharges } from '@/hooks/useTenantCharges';
 import { contractFrequencyToCycle } from '@/utils/contractBillingCycle';
+import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
+import { buildPortalCallsPath, isPortalCall } from '@/lib/portalCalls';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -214,10 +216,9 @@ export default function ContractDetail() {
   const { settings: companySettings } = useCompanySettings();
   const qrConfig = useBrandedQrConfig();
 
-  // Aba ativa do contrato. PMOC tem 5 abas; contrato comum tem 3 (Visão Geral
-  // + Ocorrências + Financeiro). Default = visão geral. "Ocorrências" e
-  // "Financeiro" são abas próprias em TODO contrato (decisão do CEO).
-  const [pmocTab, setPmocTab] = useState<'overview' | 'equipamentos' | 'ocorrencias' | 'historico' | 'financeiro' | 'documentos' | 'cronograma'>('overview');
+  // Aba ativa do contrato. Chamados fica separado de Ocorrências: ocorrência é
+  // visita prevista pelo contrato; chamado é solicitação reativa vinda do portal.
+  const [pmocTab, setPmocTab] = useState<'overview' | 'equipamentos' | 'ocorrencias' | 'chamados' | 'historico' | 'financeiro' | 'documentos' | 'cronograma'>('overview');
 
   const { deleteContract, applyFinancialLinksToContractParcels, renewContract, updateContractFinanceRule, updateContractNfseAutoRule } = useContracts();
   // Tipos de serviço — só pra resolver a HERANÇA dos dados fiscais exibida no
@@ -500,13 +501,17 @@ export default function ContractDetail() {
   // Anexamos `occurrence_number` derivado a cada OS pra preservar a UI/sort/print
   // existentes sem reescrever a coluna "#".
   const sortedOccurrences = useMemo<(ContractServiceOrder & { occurrence_number: number })[]>(() => {
-    const orders = [...(contract?.service_orders || [])].sort((a, b) => {
+    const orders = (contract?.service_orders || []).filter(order => order.origin !== 'portal').sort((a, b) => {
       const da = a.scheduled_date ? parseISO(a.scheduled_date).getTime() : 0;
       const db = b.scheduled_date ? parseISO(b.scheduled_date).getTime() : 0;
       return da - db;
     });
     return orders.map((o, i) => ({ ...o, occurrence_number: i + 1 }));
   }, [contract]);
+  const contractCalls = useMemo(
+    () => ((contract?.service_orders || []) as unknown as ServiceOrder[]).filter(isPortalCall),
+    [contract],
+  );
   const { sortedItems: sortedOcc, sortConfig: occSortConfig, handleSort: handleOccSort } = useTableSort(sortedOccurrences);
   const occPagination = useDataPagination(sortedOcc);
   const recPagination = useDataPagination(linkedTransactions || []);
@@ -1567,10 +1572,11 @@ export default function ContractDetail() {
         contratos não-PMOC seguem direto pra "Visão Geral" sem nav.
       */}
       {(() => {
-        // Abas PMOC (5): Visão Geral, Ocorrências, Financeiro, Documentos, Cronograma.
+        // Abas PMOC: Chamados é separado de Ocorrências (visitas planejadas).
         const pmocSidebarTabs: SettingsTab[] = [
           { value: 'overview', label: td.tabs.overview, icon: Info },
           { value: 'ocorrencias', label: td.tabs.ocorrencias, icon: Repeat },
+          { value: 'chamados', label: MESSAGES[locale].app.os.tabs.calls, icon: Megaphone },
           { value: 'equipamentos', label: td.tabs.equipamentos, icon: Wrench },
           { value: 'historico', label: td.tabs.historico, icon: ClipboardCheck },
           { value: 'financeiro', label: td.tabs.financeiro, icon: DollarSign },
@@ -1578,10 +1584,11 @@ export default function ContractDetail() {
           { value: 'cronograma', label: td.tabs.cronograma, icon: Calendar },
         ];
 
-        // Abas de contrato comum (5): Visão Geral + Ocorrências + Equipamentos + Financeiro + Documentos.
+        // Abas de contrato comum: mesma separação entre Chamados e Ocorrências.
         const commonSidebarTabs: SettingsTab[] = [
           { value: 'overview', label: td.tabs.overview, icon: Info },
           { value: 'ocorrencias', label: td.tabs.ocorrencias, icon: Repeat },
+          { value: 'chamados', label: MESSAGES[locale].app.os.tabs.calls, icon: Megaphone },
           { value: 'equipamentos', label: td.tabs.equipamentos, icon: Wrench },
           { value: 'financeiro', label: td.tabs.financeiro, icon: DollarSign },
           { value: 'documentos', label: td.tabs.documentos, icon: FileText },
@@ -2020,6 +2027,14 @@ export default function ContractDetail() {
               {!isMobile && <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />}
             </CardContent>
           </Card>
+        );
+
+        const callsContent = (
+          <PortalCallsPanel
+            items={contractCalls}
+            defaultView="all"
+            onOpenCall={(order) => navigate(buildPortalCallsPath(order.id))}
+          />
         );
 
         // Aba "Financeiro" (própria, em todo contrato). Recorte SÓ deste contrato
@@ -2721,17 +2736,16 @@ export default function ContractDetail() {
           </div>
         );
 
-        // "Ocorrências" e "Financeiro" viraram abas próprias em TODO contrato.
-        // PMOC tem 5 abas; contrato comum tem 3 (Visão Geral + Ocorrências +
-        // Financeiro).
+        // Ocorrências, Chamados e Financeiro são abas próprias em todo contrato.
         return (
           <SettingsSidebarLayout
             tabs={isPmoc ? pmocSidebarTabs : commonSidebarTabs}
             activeTab={pmocTab}
-            onTabChange={(v) => setPmocTab(v as 'overview' | 'equipamentos' | 'ocorrencias' | 'historico' | 'financeiro' | 'documentos' | 'cronograma')}
+            onTabChange={(v) => setPmocTab(v as 'overview' | 'equipamentos' | 'ocorrencias' | 'chamados' | 'historico' | 'financeiro' | 'documentos' | 'cronograma')}
           >
             {pmocTab === 'overview' && overviewContent}
             {pmocTab === 'ocorrencias' && occurrencesContent}
+            {pmocTab === 'chamados' && callsContent}
             {pmocTab === 'equipamentos' && (
               <ContractEnvironmentsTab contract={contract} />
             )}

@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.35.8',
+    date: '16 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Chamados do portal no lugar certo',
+        description: 'Os chamados abertos pelo portal agora aparecem em uma área própria nas Ordens de Serviço e também dentro do cliente, equipamento e contrato. O aviso do painel leva direto ao chamado certo, sem misturar o atendimento com as visitas planejadas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.35.7',
     date: '16 de outubro de 2026',
     type: 'patch',

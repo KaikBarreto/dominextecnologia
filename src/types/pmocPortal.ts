@@ -68,6 +68,8 @@ export interface PortalUnit {
 }
 
 export interface PortalContract {
+  /** ID do contrato resolvido pelo token. Usado para vincular chamados abertos neste portal. */
+  id?: string | null;
   name: string | null;
   /**
    * ID do cliente vinculado ao contrato. Exposto no payload (1.10.0+) pra

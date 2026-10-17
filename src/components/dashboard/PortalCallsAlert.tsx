@@ -26,6 +26,7 @@ import {
   DrawerContent,
 } from '@/components/ui/drawer';
 import type { ServiceOrder } from '@/types/database';
+import { buildPortalCallsPath } from '@/lib/portalCalls';
 
 // ---------------------------------------------------------------------------
 // localStorage key helper — chave por usuário para não vazar entre contas
@@ -177,7 +178,7 @@ export function PortalCallsAlert({
 
   const viewCalls = useCallback(() => {
     dismiss();
-    navigate('/ordens-servico');
+    navigate(buildPortalCallsPath());
   }, [dismiss, navigate]);
 
   if (!open) return null;

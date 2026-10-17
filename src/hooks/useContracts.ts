@@ -98,6 +98,13 @@ export interface ContractServiceOrder {
   order_number: number;
   status: string;
   scheduled_date: string | null;
+  equipment_id?: string | null;
+  contract_id?: string | null;
+  origin?: string | null;
+  description?: string | null;
+  created_at?: string;
+  customer?: { id: string; name: string } | null;
+  equipment?: { id: string; name: string } | null;
 }
 
 export interface ContractItem {
@@ -1900,7 +1907,7 @@ export function useContracts() {
           responsible_technicians:responsible_technician_id (id, full_name, cft_crea, modality),
           contract_items (id, contract_id, equipment_id, environment_id, item_name, item_description, form_template_id, form_template_ids, first_os_excluded_questions, pmoc_scope, pmoc_start_visit, sort_order, equipment:equipment(id, name, brand, model)),
           contract_environments (id, company_id, contract_id, identificacao, tipo_atividade, area_climatizada_m2, ocupantes_fixos, ocupantes_flutuantes, carga_termica_tr, photo_url, sort_order),
-          service_orders (id, order_number, status, scheduled_date)
+          service_orders (id, order_number, status, scheduled_date, origin)
         `)
         .order('created_at', { ascending: false });
 
@@ -3789,6 +3796,7 @@ export function useContracts() {
 
   // Stats derivadas 100% de service_orders do contrato (fonte única).
   const osGeneratedThisMonth = visibleContracts.flatMap(c => c.service_orders || []).filter(os => {
+    if (os.origin === 'portal') return false;
     if (!os.scheduled_date) return false;
     const d = new Date(os.scheduled_date + 'T12:00:00');
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
@@ -3796,6 +3804,7 @@ export function useContracts() {
 
   const sevenDaysFromNow = addDays(now, 7);
   const upcomingOccurrences = visibleContracts.flatMap(c => c.service_orders || []).filter(os => {
+    if (os.origin === 'portal') return false;
     if (!isActiveContractOS(os) || !os.scheduled_date) return false;
     const d = new Date(os.scheduled_date + 'T12:00:00');
     return d >= now && d <= sevenDaysFromNow;
@@ -3805,6 +3814,7 @@ export function useContracts() {
   const expiringContracts = activeContracts.filter(c => {
     // "Vencendo" = última OS do contrato (maior scheduled_date) cai dentro de 30 dias.
     const lastOs = (c.service_orders || [])
+      .filter(os => os.origin !== 'portal')
       .filter(os => !!os.scheduled_date)
       .sort((a, b) => new Date(b.scheduled_date!).getTime() - new Date(a.scheduled_date!).getTime())[0];
     if (!lastOs?.scheduled_date) return false;
