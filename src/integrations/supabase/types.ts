@@ -745,20 +745,53 @@ export type Database = {
         }
         Relationships: []
       }
+      api_key_manager_rate_limit_buckets: {
+        Row: {
+          expires_at: string
+          ip_hash: string
+          request_count: number
+          route: string
+          updated_at: string
+          user_id: string
+          window_started_at: string
+        }
+        Insert: {
+          expires_at?: string
+          ip_hash: string
+          request_count?: number
+          route: string
+          updated_at?: string
+          user_id: string
+          window_started_at: string
+        }
+        Update: {
+          expires_at?: string
+          ip_hash?: string
+          request_count?: number
+          route?: string
+          updated_at?: string
+          user_id?: string
+          window_started_at?: string
+        }
+        Relationships: []
+      }
       app_feature_flags: {
         Row: {
+          company_allowlist: string[]
           contract_allowlist: string[]
           enabled: boolean
           key: string
           updated_at: string
         }
         Insert: {
+          company_allowlist?: string[]
           contract_allowlist?: string[]
           enabled?: boolean
           key: string
           updated_at?: string
         }
         Update: {
+          company_allowlist?: string[]
           contract_allowlist?: string[]
           enabled?: boolean
           key?: string
@@ -925,6 +958,103 @@ export type Database = {
           view_count?: number | null
         }
         Relationships: []
+      }
+      booking_reservations: {
+        Row: {
+          cancelled_at: string | null
+          company_id: string
+          conflict_enforced: boolean
+          created_at: string
+          id: string
+          integration_id: string | null
+          key_id: string | null
+          override_id: string | null
+          resource_id: string
+          resource_type: string
+          service_order_id: string
+          slot: unknown
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          company_id: string
+          conflict_enforced?: boolean
+          created_at?: string
+          id?: string
+          integration_id?: string | null
+          key_id?: string | null
+          override_id?: string | null
+          resource_id: string
+          resource_type: string
+          service_order_id: string
+          slot: unknown
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          company_id?: string
+          conflict_enforced?: boolean
+          created_at?: string
+          id?: string
+          integration_id?: string | null
+          key_id?: string | null
+          override_id?: string | null
+          resource_id?: string
+          resource_type?: string
+          service_order_id?: string
+          slot?: unknown
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_reservations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_reservations_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "public_api_integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_reservations_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "public_api_keys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_reservations_override_id_fkey"
+            columns: ["override_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_conflict_overrides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_reservations_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
+          },
+          {
+            foreignKeyName: "booking_reservations_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       companies: {
         Row: {
@@ -2992,6 +3122,7 @@ export type Database = {
           is_default: boolean
           name: string
           position: number
+          tracks_value: boolean
           updated_at: string
         }
         Insert: {
@@ -3002,6 +3133,7 @@ export type Database = {
           is_default?: boolean
           name: string
           position?: number
+          tracks_value?: boolean
           updated_at?: string
         }
         Update: {
@@ -3012,6 +3144,7 @@ export type Database = {
           is_default?: boolean
           name?: string
           position?: number
+          tracks_value?: boolean
           updated_at?: string
         }
         Relationships: [
@@ -8188,6 +8321,430 @@ export type Database = {
         }
         Relationships: []
       }
+      public_api_external_refs: {
+        Row: {
+          company_id: string
+          created_at: string
+          external_id: string
+          id: string
+          integration_id: string
+          resource_id: string
+          resource_type: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          external_id: string
+          id?: string
+          integration_id: string
+          resource_id: string
+          resource_type: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          external_id?: string
+          id?: string
+          integration_id?: string
+          resource_id?: string
+          resource_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_api_external_refs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "public_api_external_refs_integration_company_fk"
+            columns: ["integration_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "public_api_integrations"
+            referencedColumns: ["id", "company_id"]
+          },
+          {
+            foreignKeyName: "public_api_external_refs_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "public_api_integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_api_idempotency: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          endpoint: string
+          expires_at: string
+          id: string
+          idempotency_key: string
+          integration_id: string
+          key_id: string | null
+          request_hash: string
+          resource_id: string | null
+          resource_type: string | null
+          response_body: Json | null
+          response_status: number | null
+          state: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          endpoint: string
+          expires_at?: string
+          id?: string
+          idempotency_key: string
+          integration_id: string
+          key_id?: string | null
+          request_hash: string
+          resource_id?: string | null
+          resource_type?: string | null
+          response_body?: Json | null
+          response_status?: number | null
+          state?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          endpoint?: string
+          expires_at?: string
+          id?: string
+          idempotency_key?: string
+          integration_id?: string
+          key_id?: string | null
+          request_hash?: string
+          resource_id?: string | null
+          resource_type?: string | null
+          response_body?: Json | null
+          response_status?: number | null
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_api_idempotency_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "public_api_integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "public_api_idempotency_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "public_api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_api_integration_resources: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          integration_id: string
+          is_active: boolean
+          resource_id: string
+          resource_type: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          integration_id: string
+          is_active?: boolean
+          resource_id: string
+          resource_type: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          integration_id?: string
+          is_active?: boolean
+          resource_id?: string
+          resource_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_api_integration_resources_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "public_api_integration_resources_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "public_api_integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "public_api_resources_integration_company_fk"
+            columns: ["integration_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "public_api_integrations"
+            referencedColumns: ["id", "company_id"]
+          },
+        ]
+      }
+      public_api_integrations: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          disabled_at: string | null
+          distribution_mode: string
+          id: string
+          ip_allowlist: unknown[]
+          name: string
+          scopes: string[]
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          disabled_at?: string | null
+          distribution_mode?: string
+          id?: string
+          ip_allowlist?: unknown[]
+          name: string
+          scopes?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          disabled_at?: string | null
+          distribution_mode?: string
+          id?: string
+          ip_allowlist?: unknown[]
+          name?: string
+          scopes?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_api_integrations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_api_keys: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          integration_id: string
+          last_used_at: string | null
+          name: string | null
+          public_id: string
+          revoked_at: string | null
+          revoked_by: string | null
+          rotated_from_key_id: string | null
+          secret_hash: string
+          secret_last_four: string
+          valid_from: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          integration_id: string
+          last_used_at?: string | null
+          name?: string | null
+          public_id: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          rotated_from_key_id?: string | null
+          secret_hash: string
+          secret_last_four: string
+          valid_from?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          integration_id?: string
+          last_used_at?: string | null
+          name?: string | null
+          public_id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          rotated_from_key_id?: string | null
+          secret_hash?: string
+          secret_last_four?: string
+          valid_from?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_api_keys_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "public_api_integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "public_api_keys_rotated_from_key_id_fkey"
+            columns: ["rotated_from_key_id"]
+            isOneToOne: false
+            referencedRelation: "public_api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_api_rate_limit_buckets: {
+        Row: {
+          expires_at: string
+          key_id: string
+          request_count: number
+          route: string
+          updated_at: string
+          window_started_at: string
+        }
+        Insert: {
+          expires_at?: string
+          key_id: string
+          request_count?: number
+          route: string
+          updated_at?: string
+          window_started_at: string
+        }
+        Update: {
+          expires_at?: string
+          key_id?: string
+          request_count?: number
+          route?: string
+          updated_at?: string
+          window_started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_api_rate_limit_buckets_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "public_api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_api_request_audit: {
+        Row: {
+          company_id: string | null
+          completed_at: string | null
+          created_at: string
+          duration_ms: number | null
+          endpoint: string
+          error_code: string | null
+          expires_at: string
+          id: string
+          idempotency_key_hash: string | null
+          integration_id: string | null
+          ip_hash: string | null
+          key_id: string | null
+          method: string
+          outcome: string
+          request_bytes: number | null
+          request_id: string
+          resource_id: string | null
+          resource_type: string | null
+          response_bytes: number | null
+          route: string
+          status_code: number | null
+          user_agent_hash: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          endpoint: string
+          error_code?: string | null
+          expires_at?: string
+          id?: string
+          idempotency_key_hash?: string | null
+          integration_id?: string | null
+          ip_hash?: string | null
+          key_id?: string | null
+          method: string
+          outcome?: string
+          request_bytes?: number | null
+          request_id?: string
+          resource_id?: string | null
+          resource_type?: string | null
+          response_bytes?: number | null
+          route: string
+          status_code?: number | null
+          user_agent_hash?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          endpoint?: string
+          error_code?: string | null
+          expires_at?: string
+          id?: string
+          idempotency_key_hash?: string | null
+          integration_id?: string | null
+          ip_hash?: string | null
+          key_id?: string | null
+          method?: string
+          outcome?: string
+          request_bytes?: number | null
+          request_id?: string
+          resource_id?: string | null
+          resource_type?: string | null
+          response_bytes?: number | null
+          route?: string
+          status_code?: number | null
+          user_agent_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_api_request_audit_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "public_api_request_audit_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "public_api_integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "public_api_request_audit_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "public_api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_item_materials: {
         Row: {
           id: string
@@ -9035,6 +9592,155 @@ export type Database = {
             columns: ["sdr_id"]
             isOneToOne: false
             referencedRelation: "salespeople_basic"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_booking_exceptions: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          ends_at: string
+          id: string
+          is_available: boolean
+          reason: string | null
+          starts_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          ends_at: string
+          id?: string
+          is_available?: boolean
+          reason?: string | null
+          starts_at: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string
+          id?: string
+          is_available?: boolean
+          reason?: string | null
+          starts_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_booking_exceptions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_booking_settings: {
+        Row: {
+          booking_enabled: boolean
+          booking_horizon_days: number
+          company_id: string
+          created_at: string
+          default_duration_minutes: number
+          minimum_notice_minutes: number
+          slot_interval_minutes: number
+          updated_at: string
+          updated_by: string | null
+          weekly_hours: Json
+        }
+        Insert: {
+          booking_enabled?: boolean
+          booking_horizon_days?: number
+          company_id: string
+          created_at?: string
+          default_duration_minutes?: number
+          minimum_notice_minutes?: number
+          slot_interval_minutes?: number
+          updated_at?: string
+          updated_by?: string | null
+          weekly_hours?: Json
+        }
+        Update: {
+          booking_enabled?: boolean
+          booking_horizon_days?: number
+          company_id?: string
+          created_at?: string
+          default_duration_minutes?: number
+          minimum_notice_minutes?: number
+          slot_interval_minutes?: number
+          updated_at?: string
+          updated_by?: string | null
+          weekly_hours?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_booking_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_conflict_overrides: {
+        Row: {
+          authorized_by: string
+          company_id: string
+          created_at: string
+          id: string
+          justification: string
+          requested_slot: unknown
+          resource_id: string
+          resource_type: string
+          service_order_id: string
+          used_at: string | null
+        }
+        Insert: {
+          authorized_by: string
+          company_id: string
+          created_at?: string
+          id?: string
+          justification: string
+          requested_slot: unknown
+          resource_id: string
+          resource_type: string
+          service_order_id: string
+          used_at?: string | null
+        }
+        Update: {
+          authorized_by?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          justification?: string
+          requested_slot?: unknown
+          resource_id?: string
+          resource_type?: string
+          service_order_id?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_conflict_overrides_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_conflict_overrides_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
+          },
+          {
+            foreignKeyName: "schedule_conflict_overrides_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -12538,6 +13244,16 @@ export type Database = {
         Args: { p_company_id: string; p_date: string; p_employee_id: string }
         Returns: string[]
       }
+      api_key_manager_consume_rate_limit: {
+        Args: {
+          p_ip_hash: string
+          p_limit: number
+          p_route: string
+          p_user_id: string
+          p_window_seconds: number
+        }
+        Returns: Json
+      }
       apply_subscription_upgrade_payment: {
         Args: {
           p_asaas_payment_id: string
@@ -13239,6 +13955,10 @@ export type Database = {
         Args: { _permission: string; _user_id: string }
         Returns: boolean
       }
+      has_explicit_public_api_permission: {
+        Args: { p_permission: string; p_user_id: string }
+        Returns: boolean
+      }
       has_full_permissions: { Args: { _user_id: string }; Returns: boolean }
       has_ponto_pin: { Args: { p_employee_id: string }; Returns: boolean }
       has_role: {
@@ -13283,6 +14003,14 @@ export type Database = {
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_user_active: { Args: { _user_id: string }; Returns: boolean }
+      is_valid_portal_ticket_context: {
+        Args: {
+          _company_id: string
+          _contract_id?: string
+          _customer_id: string
+        }
+        Returns: boolean
+      }
       kiosk_punch_states: {
         Args: { p_company_id: string; p_employee_ids: string[] }
         Returns: {
@@ -13513,6 +14241,124 @@ export type Database = {
         }[]
       }
       prune_db_health_history: { Args: never; Returns: number }
+      public_api_assert_integration: {
+        Args: { p_integration_id: string; p_required_scope?: string }
+        Returns: string
+      }
+      public_api_authenticate_key: {
+        Args: {
+          p_public_id: string
+          p_required_scope?: string
+          p_secret_hash: string
+          p_source_ip?: unknown
+        }
+        Returns: Json
+      }
+      public_api_cleanup_expired_data: { Args: never; Returns: Json }
+      public_api_company_is_enabled: {
+        Args: { p_company_id: string }
+        Returns: boolean
+      }
+      public_api_consume_rate_limit: {
+        Args: {
+          p_key_id: string
+          p_limit: number
+          p_route: string
+          p_window_seconds: number
+        }
+        Returns: Json
+      }
+      public_api_create_service_order: {
+        Args: {
+          p_idempotency_key: string
+          p_integration_id: string
+          p_payload: Json
+          p_request_hash: string
+        }
+        Returns: Json
+      }
+      public_api_customer_summary: {
+        Args: { p_customer_id: string; p_integration_id: string }
+        Returns: Json
+      }
+      public_api_get_availability: {
+        Args: {
+          p_duration_minutes: number
+          p_from: string
+          p_integration_id: string
+          p_resource_id?: string
+          p_service_type_id?: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      public_api_get_booking_resources: {
+        Args: { p_integration_id: string }
+        Returns: Json
+      }
+      public_api_get_capabilities: {
+        Args: { p_integration_id: string }
+        Returns: Json
+      }
+      public_api_get_catalogs: {
+        Args: { p_integration_id: string }
+        Returns: Json
+      }
+      public_api_get_service_order: {
+        Args: {
+          p_external_id?: string
+          p_integration_id: string
+          p_service_order_id?: string
+        }
+        Returns: Json
+      }
+      public_api_insert_request_audit: {
+        Args: {
+          p_duration_ms?: number
+          p_endpoint?: string
+          p_error_code?: string
+          p_integration_id: string
+          p_ip_hash?: string
+          p_key_id: string
+          p_method: string
+          p_request_id: string
+          p_route: string
+          p_status_code?: number
+        }
+        Returns: string
+      }
+      public_api_resolve_customer: {
+        Args: { p_integration_id: string; p_payload: Json }
+        Returns: Json
+      }
+      public_api_resource_slot_available: {
+        Args: {
+          p_company_id: string
+          p_ends_at: string
+          p_resource_id: string
+          p_resource_type: string
+          p_starts_at: string
+        }
+        Returns: boolean
+      }
+      public_api_service_order_response: {
+        Args: {
+          p_integration_id: string
+          p_replay?: boolean
+          p_service_order_id: string
+        }
+        Returns: Json
+      }
+      public_api_slot_is_available: {
+        Args: {
+          p_company_id: string
+          p_ends_at: string
+          p_resource_id: string
+          p_resource_type: string
+          p_starts_at: string
+        }
+        Returns: boolean
+      }
       reassign_contract_pending_orders: {
         Args: {
           p_contract_id: string
@@ -13704,6 +14550,30 @@ export type Database = {
       revert_credit_card_bill_payment: {
         Args: { p_transaction_id: string }
         Returns: Json
+      }
+      schedule_book_service_order: {
+        Args: {
+          p_ends_at: string
+          p_override_justification?: string
+          p_resource_id: string
+          p_resource_type: string
+          p_service_order_id: string
+          p_starts_at: string
+        }
+        Returns: Json
+      }
+      schedule_create_service_order_with_override: {
+        Args: {
+          p_assignee_user_ids?: string[]
+          p_equipment_items?: Json
+          p_order: Json
+          p_override_justification: string
+        }
+        Returns: Json
+      }
+      schedule_weekly_hours_is_valid: {
+        Args: { p_value: Json }
+        Returns: boolean
       }
       seed_company_catalog: {
         Args: { p_company_id: string; p_language?: string }

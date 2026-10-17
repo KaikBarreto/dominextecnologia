@@ -22,9 +22,14 @@ const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
 interface LeadCardProps {
   lead: Lead;
   onClick: () => void;
+  /** Funil não acompanha valores (R$)? Esconde a linha de valor e a barra de
+   *  Probabilidade — as duas são vocabulário de venda puro, sem sentido num
+   *  funil de projeto/processo. Default `true` pra não mudar nenhum outro
+   *  consumidor existente. */
+  showValue?: boolean;
 }
 
-export function LeadCard({ lead, onClick }: LeadCardProps) {
+export function LeadCard({ lead, onClick, showValue = true }: LeadCardProps) {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
   const dfLocale = DATE_FNS_LOCALES[locale];
@@ -113,15 +118,18 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
         </div>
 
         {/* Value */}
-        {lead.value && lead.value > 0 && (
+        {/* `(lead.value ?? 0) > 0` e não `lead.value && ...`: com valor 0 o
+            `&&` devolve o próprio 0 e o React IMPRIME "0" solto no card
+            (visto em produção no funil de compras, 2026-10-17). */}
+        {showValue && (lead.value ?? 0) > 0 && (
           <div className="flex items-center gap-1.5 mb-3">
             <DollarSign className="h-4 w-4 text-primary" />
             <p className="text-lg font-bold text-primary">{formatCurrency(lead.value)}</p>
           </div>
         )}
 
-        {/* Probability bar */}
-        {lead.probability !== null && lead.probability !== undefined && (
+        {/* Probability bar — vocabulário de venda, some junto com o valor */}
+        {showValue && lead.probability !== null && lead.probability !== undefined && (
           <div className="mb-3">
             <div className="flex items-center justify-between text-xs mb-1">
               <span className="text-muted-foreground flex items-center gap-1">

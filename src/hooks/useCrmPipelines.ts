@@ -10,6 +10,11 @@ export interface CrmPipeline {
   color: string;
   position: number;
   is_default: boolean;
+  /** Se este funil soma e exibe valores em R$ nos KPIs/kanban. Desligado
+   *  pra funis de projeto/processo (sem dinheiro envolvido) — ver
+   *  migration 20261017131000_crm_pipeline_tracks_value.sql. Default do
+   *  banco é `true`, então nunca degrada funil existente. */
+  tracks_value: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -25,6 +30,7 @@ export interface CrmPipelineUpdate {
   name?: string;
   color?: string;
   position?: number;
+  tracks_value?: boolean;
 }
 
 /** Referência estável pro estado vazio — mesmo cuidado do NO_STAGES em

@@ -22,6 +22,8 @@ import {
   Circle,
   Trash2,
   ListFilter,
+  CircleDashed,
+  Layers,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -193,6 +195,10 @@ export default function CRM() {
   }, [storedPipelineId, pipelines, defaultPipeline]);
 
   const selectedPipeline = pipelines.find((p) => p.id === selectedPipelineId) ?? null;
+
+  // Ausente/undefined (query ainda não resolveu) = true — nunca degrada um
+  // funil existente pra vocabulário de processo enquanto o funil carrega.
+  const tracksValue = selectedPipeline?.tracks_value !== false;
 
   // Estágios do funil selecionado — nunca os de outro funil da mesma empresa.
   // Fallback pro conjunto todo enquanto nenhum funil foi resolvido ainda
@@ -813,15 +819,23 @@ export default function CRM() {
 
   const wonStage = stages.find(s => s.is_won);
   const neutralStage = stages.find(s => !s.is_won && !s.is_lost);
+  // Card 2 do funil sem valores: contagem de cards em etapas que não são
+  // nem ganho nem perda — "o que ainda está rolando" sem falar de dinheiro.
+  const inProgressCount = stages.reduce((sum, stage) => {
+    if (stage.is_won || stage.is_lost) return sum;
+    return sum + (leadsByStage[stage.id]?.length || 0);
+  }, 0);
 
-  // Resumo (header mobile) — total e valor total como dois chips de destaque.
+  // Resumo (header mobile) — total e valor total (ou contagem, em funil sem
+  // valores) como dois chips de destaque.
   const summaryRow = (
     <div className="grid grid-cols-2 gap-2">
-      <div className="rounded-2xl border bg-primary text-white p-3 flex items-center justify-between">
+      {/* Mesma trava do card desktop: `text-primary-foreground`, não `text-white`. */}
+      <div className="rounded-2xl border bg-primary text-primary-foreground p-3 flex items-center justify-between">
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-wider text-white/70">{t.totalLeads}</p>
+          <p className="text-[10px] uppercase tracking-wider text-primary-foreground/70">{t.totalInPipeline}</p>
           {isLoading ? (
-            <Skeleton className="h-7 w-12 mt-1 bg-white/20" />
+            <Skeleton className="h-7 w-12 mt-1 bg-primary-foreground/20" />
           ) : (
             <p className="text-2xl font-bold leading-none mt-1">{filteredStats.total}</p>
           )}
@@ -830,14 +844,20 @@ export default function CRM() {
       </div>
       <div className="rounded-2xl border bg-success text-white p-3 flex items-center justify-between">
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-wider text-white/70">{t.totalValue}</p>
+          <p className="text-[10px] uppercase tracking-wider text-white/70">{tracksValue ? t.totalValue : t.inProgress}</p>
           {isLoading ? (
             <Skeleton className="h-7 w-20 mt-1 bg-white/20" />
           ) : (
-            <p className="text-lg font-bold leading-tight mt-1 truncate">{formatCurrency(filteredStats.totalValue)}</p>
+            <p className="text-lg font-bold leading-tight mt-1 truncate">
+              {tracksValue ? formatCurrency(filteredStats.totalValue) : inProgressCount}
+            </p>
           )}
         </div>
-        <DollarSign className="h-5 w-5 opacity-80 shrink-0" />
+        {tracksValue ? (
+          <DollarSign className="h-5 w-5 opacity-80 shrink-0" />
+        ) : (
+          <CircleDashed className="h-5 w-5 opacity-80 shrink-0" />
+        )}
       </div>
     </div>
   );
@@ -1005,10 +1025,15 @@ export default function CRM() {
                     </span>
                   </div>
                   {/* Sempre renderizada (mesmo em R$ 0,00) — senão a coluna some essa
-                      linha e o cabeçalho fica mais baixo que os vizinhos. */}
-                  <p className="text-sm font-semibold mt-1.5 text-white/90">
-                    {formatCurrency(valueByStage[stage.id] || 0)}
-                  </p>
+                      linha e o cabeçalho fica mais baixo que os vizinhos. Funil
+                      sem valores não renderiza NENHUMA (todas as colunas ficam
+                      sem a linha igualmente, então a altura continua uniforme),
+                      e evita "R$ 0,00" repetido em todo o kanban. */}
+                  {tracksValue && (
+                    <p className="text-sm font-semibold mt-1.5 text-white/90">
+                      {formatCurrency(valueByStage[stage.id] || 0)}
+                    </p>
+                  )}
                 </div>
 
                 {/* `[&_[data-radix-scroll-area-viewport]>div]:!block`: mesma trava do
@@ -1026,6 +1051,7 @@ export default function CRM() {
                         <LeadCard
                           lead={lead}
                           onClick={() => handleLeadClick(lead)}
+                          showValue={tracksValue}
                         />
                       </div>
                     ))}
@@ -1640,14 +1666,18 @@ export default function CRM() {
       <>
       {/* Stats Cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <Card className="border-0 bg-primary text-white">
+        {/* `text-primary-foreground`, nunca `text-white` cravado: no tema escuro
+            `--primary` é 88% de luminosidade e o branco sobre ele fica ilegível
+            (provado no navegador em 2026-10-17). Os cards success/info/warning
+            abaixo seguem com branco porque são cores saturadas nos dois temas. */}
+        <Card className="border-0 bg-primary text-primary-foreground">
           <CardContent className="p-4 sm:p-5">
             <div className="flex flex-col items-center text-center gap-2 sm:flex-row sm:justify-between sm:text-left">
               <div className="min-w-0 w-full">
-                <p className="text-sm text-white/70">{t.totalLeads}</p>
-                {isLoading ? <Skeleton className="h-8 w-12 mt-1 bg-white/20" /> : <p className="text-2xl sm:text-3xl font-bold">{filteredStats.total}</p>}
+                <p className="text-sm text-primary-foreground/70">{t.totalInPipeline}</p>
+                {isLoading ? <Skeleton className="h-8 w-12 mt-1 bg-primary-foreground/20" /> : <p className="text-2xl sm:text-3xl font-bold">{filteredStats.total}</p>}
               </div>
-              <div className="rounded-full bg-white/20 p-3 shrink-0 hidden sm:flex"><Target className="h-6 w-6" /></div>
+              <div className="rounded-full bg-primary-foreground/20 p-3 shrink-0 hidden sm:flex"><Target className="h-6 w-6" /></div>
             </div>
           </CardContent>
         </Card>
@@ -1656,10 +1686,18 @@ export default function CRM() {
           <CardContent className="p-4 sm:p-5">
             <div className="flex flex-col items-center text-center gap-2 sm:flex-row sm:justify-between sm:text-left">
               <div className="min-w-0 w-full">
-                <p className="text-sm text-white/70">{t.totalValue}</p>
-                {isLoading ? <Skeleton className="h-8 w-24 mt-1 bg-white/20" /> : <p className="text-xl sm:text-2xl font-bold truncate">{formatCurrency(filteredStats.totalValue)}</p>}
+                <p className="text-sm text-white/70">{tracksValue ? t.totalValue : t.inProgress}</p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-24 mt-1 bg-white/20" />
+                ) : (
+                  <p className="text-xl sm:text-2xl font-bold truncate">
+                    {tracksValue ? formatCurrency(filteredStats.totalValue) : inProgressCount}
+                  </p>
+                )}
               </div>
-              <div className="rounded-full bg-white/20 p-3 shrink-0 hidden sm:flex"><DollarSign className="h-6 w-6" /></div>
+              <div className="rounded-full bg-white/20 p-3 shrink-0 hidden sm:flex">
+                {tracksValue ? <DollarSign className="h-6 w-6" /> : <CircleDashed className="h-6 w-6" />}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -1670,7 +1708,13 @@ export default function CRM() {
               <div className="flex flex-col items-center text-center gap-2 sm:flex-row sm:justify-between sm:text-left">
                 <div className="min-w-0 w-full">
                   <p className="text-sm text-white/70 truncate">{wonStage.name}</p>
-                  {isLoading ? <Skeleton className="h-8 w-24 mt-1 bg-white/20" /> : <p className="text-xl sm:text-2xl font-bold truncate">{formatCurrency(valueByStage[wonStage.id] || 0)}</p>}
+                  {isLoading ? (
+                    <Skeleton className="h-8 w-24 mt-1 bg-white/20" />
+                  ) : (
+                    <p className="text-xl sm:text-2xl font-bold truncate">
+                      {tracksValue ? formatCurrency(valueByStage[wonStage.id] || 0) : (leadsByStage[wonStage.id]?.length ?? 0)}
+                    </p>
+                  )}
                 </div>
                 <div className="rounded-full bg-white/20 p-3 shrink-0 hidden sm:flex"><TrendingUp className="h-6 w-6" /></div>
               </div>
@@ -1684,9 +1728,17 @@ export default function CRM() {
               <div className="flex flex-col items-center text-center gap-2 sm:flex-row sm:justify-between sm:text-left">
                 <div className="min-w-0 w-full">
                   <p className="text-sm text-white/70 truncate">{neutralStage.name}</p>
-                  {isLoading ? <Skeleton className="h-8 w-24 mt-1 bg-white/20" /> : <p className="text-xl sm:text-2xl font-bold truncate">{formatCurrency(valueByStage[neutralStage.id] || 0)}</p>}
+                  {isLoading ? (
+                    <Skeleton className="h-8 w-24 mt-1 bg-white/20" />
+                  ) : (
+                    <p className="text-xl sm:text-2xl font-bold truncate">
+                      {tracksValue ? formatCurrency(valueByStage[neutralStage.id] || 0) : (leadsByStage[neutralStage.id]?.length ?? 0)}
+                    </p>
+                  )}
                 </div>
-                <div className="rounded-full bg-white/20 p-3 shrink-0 hidden sm:flex"><Users className="h-6 w-6" /></div>
+                <div className="rounded-full bg-white/20 p-3 shrink-0 hidden sm:flex">
+                  {tracksValue ? <Users className="h-6 w-6" /> : <Layers className="h-6 w-6" />}
+                </div>
               </div>
             </CardContent>
           </Card>

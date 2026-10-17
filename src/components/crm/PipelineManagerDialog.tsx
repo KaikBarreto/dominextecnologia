@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { PipelineAccessDialog } from '@/components/crm/PipelineAccessDialog';
 import { StageManagerDialog } from '@/components/crm/StageManagerDialog';
 import { Label } from '@/components/ui/label';
@@ -177,6 +178,7 @@ export function PipelineManagerDialog({
   const Row = ({ pipeline }: { pipeline: CrmPipeline }) => {
     const [name, setName] = useState(pipeline.name);
     const [color, setColor] = useState(pipeline.color ?? '#2563EB');
+    const [tracksValue, setTracksValue] = useState(pipeline.tracks_value !== false);
     const isEditing = editingId === pipeline.id;
     const isDragging = draggedId === pipeline.id;
     const isDragOver = dragOverId === pipeline.id;
@@ -199,6 +201,7 @@ export function PipelineManagerDialog({
             onClick={() => {
               setName(pipeline.name);
               setColor(pipeline.color ?? '#2563EB');
+              setTracksValue(pipeline.tracks_value !== false);
               setEditingId(null);
             }}
           >
@@ -209,12 +212,30 @@ export function PipelineManagerDialog({
             size="icon"
             disabled={!name.trim()}
             onClick={() => {
-              updatePipeline.mutate({ id: pipeline.id, name: name.trim(), color });
+              updatePipeline.mutate({ id: pipeline.id, name: name.trim(), color, tracks_value: tracksValue });
               setEditingId(null);
             }}
           >
             <Check className="h-4 w-4 text-success" />
           </Button>
+          {/* `LabeledSwitch` é `inline-flex`; num container que use `space-y-*`
+              ele colaria na linha anterior. Aqui o pai é `flex flex-wrap`, mas
+              forçamos quebra de linha com `w-full` pra não competir com
+              nome/cor/ações na mesma fileira. */}
+          <div className="w-full flex items-start justify-between gap-3 pt-1">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">{t.pipelines.tracksValueLabel}</p>
+              <p className="text-xs text-muted-foreground">{t.pipelines.tracksValueHint}</p>
+            </div>
+            <LabeledSwitch
+              value={tracksValue ? 'sim' : 'nao'}
+              onChange={(v) => setTracksValue(v === 'sim')}
+              off={{ value: 'nao', label: t.pipelines.switchNo }}
+              on={{ value: 'sim', label: t.pipelines.switchYes }}
+              aria-label={t.pipelines.tracksValueLabel}
+              className="shrink-0"
+            />
+          </div>
         </div>
       );
     }

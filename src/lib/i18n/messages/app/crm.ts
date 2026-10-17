@@ -17,8 +17,9 @@ export const crm = {
     newOpportunityShort: 'Lead',
 
     // ── Estatísticas ──
-    totalLeads: 'Total de Leads',
+    totalInPipeline: 'Total no funil',
     totalValue: 'Valor Total',
+    inProgress: 'Em andamento',
 
     // ── Busca ──
     searchPlaceholder: 'Buscar por título, cliente, telefone ou documento...',
@@ -289,6 +290,10 @@ export const crm = {
       deleteDesc: 'Esta ação não pode ser desfeita.',
       deleteConfirm: 'Remover',
       cancel: 'Cancelar',
+      tracksValueLabel: 'Acompanha valores financeiros',
+      tracksValueHint: 'Desligue para funis de projeto ou processo: os indicadores passam a contar cards em vez de somar dinheiro.',
+      switchYes: 'Sim',
+      switchNo: 'Não',
     },
 
     // ── PipelineAccessDialog (Onda D3 — ACL por funil) ──
@@ -1196,8 +1201,9 @@ export const crm = {
     newOpportunity: 'New Opportunity',
     newOpportunityShort: 'Lead',
 
-    totalLeads: 'Total Leads',
+    totalInPipeline: 'Total in pipeline',
     totalValue: 'Total Value',
+    inProgress: 'In progress',
 
     searchPlaceholder: 'Search by title, customer, phone or tax ID...',
     searchPlaceholderMobile: 'Search lead, customer or phone...',
@@ -1447,6 +1453,10 @@ export const crm = {
       deleteDesc: 'This action cannot be undone.',
       deleteConfirm: 'Remove',
       cancel: 'Cancel',
+      tracksValueLabel: 'Tracks financial values',
+      tracksValueHint: 'Turn off for project or process pipelines: the indicators switch to counting cards instead of adding up money.',
+      switchYes: 'Yes',
+      switchNo: 'No',
     },
 
     pipelineAccess: {
@@ -2280,8 +2290,9 @@ export const crm = {
     newOpportunity: 'Nueva Oportunidad',
     newOpportunityShort: 'Lead',
 
-    totalLeads: 'Total de Leads',
+    totalInPipeline: 'Total en el embudo',
     totalValue: 'Valor Total',
+    inProgress: 'En curso',
 
     searchPlaceholder: 'Buscar por título, cliente, teléfono o documento...',
     searchPlaceholderMobile: 'Buscar lead, cliente o teléfono...',
@@ -2531,6 +2542,10 @@ export const crm = {
       deleteDesc: 'Esta acción no se puede deshacer.',
       deleteConfirm: 'Eliminar',
       cancel: 'Cancelar',
+      tracksValueLabel: 'Acompaña valores financieros',
+      tracksValueHint: 'Desactívalo para embudos de proyecto o proceso: los indicadores pasan a contar tarjetas en vez de sumar dinero.',
+      switchYes: 'Sí',
+      switchNo: 'No',
     },
 
     pipelineAccess: {
@@ -3366,8 +3381,9 @@ export const crm = {
     newOpportunity: 'Nouvelle Opportunité',
     newOpportunityShort: 'Lead',
 
-    totalLeads: 'Total Leads',
+    totalInPipeline: 'Total dans le pipeline',
     totalValue: 'Valeur Totale',
+    inProgress: 'En cours',
 
     searchPlaceholder: `Rechercher par titre, client, téléphone ou document...`,
     searchPlaceholderMobile: `Rechercher lead, client ou téléphone...`,
@@ -3617,6 +3633,10 @@ export const crm = {
       deleteDesc: 'Cette action est irréversible.',
       deleteConfirm: 'Supprimer',
       cancel: 'Annuler',
+      tracksValueLabel: 'Suit les valeurs financières',
+      tracksValueHint: `Désactivez pour les pipelines de projet ou de processus : les indicateurs passent à compter des cartes au lieu d'additionner de l'argent.`,
+      switchYes: 'Oui',
+      switchNo: 'Non',
     },
 
     pipelineAccess: {
