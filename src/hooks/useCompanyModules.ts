@@ -61,6 +61,10 @@ const SCREEN_TO_MODULE_MAP: Record<string, ModuleCode> = {
   'screen:employees': 'rh',
   // CRM (tela inteira atrás do módulo crm — espelha moduleKey do menu)
   'screen:crm': 'crm',
+  // Projetos (gestão de obras) reusa o módulo crm: cada frente de projeto é um
+  // funil do CRM, e o CEO decidiu não criar módulo pago novo pra isso — quem
+  // tem CRM tem Projetos, sem cobrança adicional.
+  'screen:projects': 'crm',
 };
 
 interface CompanyModule {

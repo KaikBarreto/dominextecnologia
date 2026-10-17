@@ -32,6 +32,7 @@ import {
   Handshake,
   Video,
   Crown,
+  FolderKanban,
 } from 'lucide-react';
 import { AreaTecnicoIcon, OperacionalIcon } from '@/components/icons/MenuIcons';
 import {
@@ -103,6 +104,7 @@ const tenantMenuItems: MenuItem[] = [
     ],
   },
   { title: 'CRM/Kanban', icon: ListFilter, path: '/crm', screenKey: 'screen:crm', moduleKey: 'crm' },
+  { title: 'Projetos', icon: FolderKanban, path: '/projetos', screenKey: 'screen:projects', moduleKey: 'crm' },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
   { title: 'Notas Fiscais', icon: Receipt, path: '/notas-fiscais', screenKey: 'screen:fiscal_notes', moduleKey: 'nfe' },
 ];

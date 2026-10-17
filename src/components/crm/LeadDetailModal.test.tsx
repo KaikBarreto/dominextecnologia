@@ -48,6 +48,14 @@ vi.mock('@/hooks/useCrmStages', () => ({
 vi.mock('@/hooks/useCrmPipelines', () => ({
   useCrmPipelines: () => ({ pipelines: [{ id: 'pipeline-1', name: 'Funil de Vendas', is_default: true }] }),
 }));
+// Onda 1 de Projetos (2026-10-17): LeadDetailModal passou a chamar
+// useProjectPipelines SEMPRE (nunca condicionalmente — Rules of Hooks), com a
+// query desabilitada quando `projectId` é nulo. Mesmo cuidado já aplicado a
+// useCrmPipelineAccess abaixo: sem QueryClient no teste, o hook real derruba
+// a montagem — e o caso sob teste (autosave/histórico) não envolve projeto.
+vi.mock('@/hooks/useProjectPipelines', () => ({
+  useProjectPipelines: () => ({ pipelines: [] }),
+}));
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({ user: { id: 'user-1' }, isAdminOrGestor: () => true, hasPermission: () => true }),
 }));

@@ -200,13 +200,29 @@ export default function CRM() {
   // funil existente pra vocabulário de processo enquanto o funil carrega.
   const tracksValue = selectedPipeline?.tracks_value !== false;
 
+  // Onda 1 de Projetos (gestão de obras, 2026-10-17): `pipelines` (de
+  // useCrmPipelines) já vem filtrado a `project_id IS NULL`, mas `allStages`
+  // (useCrmStages) e `leads`/`visibleLeads` (useLeads) NÃO filtram nada no
+  // banco — trazem estágios e leads de TODOS os funis da empresa, inclusive
+  // frentes de projeto. Este Set é o fallback seguro pra quando
+  // selectedPipelineId é nulo (empresa sem funil comercial, OU a janela de
+  // corrida entre useCrmStages resolver e useCrmPipelines resolver — são
+  // queries independentes). Sem isso, "nenhum funil selecionado" cairia em
+  // "mostre tudo", inclusive estágios/leads de frentes de projeto.
+  const globalPipelineIds = useMemo(() => new Set(pipelines.map((p) => p.id)), [pipelines]);
+
   // Estágios do funil selecionado — nunca os de outro funil da mesma empresa.
-  // Fallback pro conjunto todo enquanto nenhum funil foi resolvido ainda
-  // (bootstrap raríssimo de empresa sem nenhum funil), pra não esconder o
-  // empty-state "Configure seu funil de vendas" atrás de uma lista vazia.
+  // Fallback pro conjunto GLOBAL (comercial) enquanto nenhum funil foi
+  // resolvido ainda (bootstrap raríssimo de empresa sem nenhum funil
+  // comercial, ou a janela de corrida acima), pra não esconder o empty-state
+  // "Configure seu funil de vendas" atrás de uma lista vazia — mas também
+  // nunca vazar estágio de frente de projeto nesse fallback.
   const stages = useMemo(
-    () => (selectedPipelineId ? allStages.filter((s) => s.pipeline_id === selectedPipelineId) : allStages),
-    [allStages, selectedPipelineId],
+    () =>
+      allStages.filter((s) =>
+        selectedPipelineId ? s.pipeline_id === selectedPipelineId : globalPipelineIds.has(s.pipeline_id),
+      ),
+    [allStages, selectedPipelineId, globalPipelineIds],
   );
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -275,14 +291,22 @@ export default function CRM() {
   const { data: profiles = [] } = useProfiles();
   const profileMap = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
 
-  // DECISÃO (pedida no briefing): a aba Tarefas mostra as tarefas de TODOS os
-  // funis da empresa, não só do funil selecionado no topo. Tarefa é uma lista
-  // de afazeres transversal (o vendedor quer ver tudo que tem pra fazer hoje,
-  // não só do funil que estava aberto por último) — e o próprio plano da Onda
-  // E (E0) descreve a aba como "todas as tarefas com lead_id não nulo", sem
-  // recorte por funil. As abas de funil somem quando pageTab==='tarefas'
-  // pra não sugerir um filtro que não existe.
-  const visibleLeadIds = useMemo(() => new Set(visibleLeads.map((l) => l.id)), [visibleLeads]);
+  // DECISÃO (pedida no briefing original): a aba Tarefas mostra as tarefas de
+  // TODOS os funis da empresa, não só do funil selecionado no topo. Tarefa é
+  // uma lista de afazeres transversal (o vendedor quer ver tudo que tem pra
+  // fazer hoje, não só do funil que estava aberto por último). As abas de
+  // funil somem quando pageTab==='tarefas' pra não sugerir um filtro que não
+  // existe.
+  //
+  // ATUALIZAÇÃO — Onda 1 de Projetos (decisão do CEO, 2026-10-17): "todos os
+  // funis" passou a significar todos os funis COMERCIAIS (`project_id IS
+  // NULL`), não todos os funis da empresa. Tarefa de frente de projeto
+  // aparece dentro do projeto, não na aba Tarefas do CRM — por isso o filtro
+  // abaixo usa `globalPipelineIds` em vez de `visibleLeads` cru.
+  const visibleLeadIds = useMemo(
+    () => new Set(visibleLeads.filter((l) => globalPipelineIds.has(l.pipeline_id)).map((l) => l.id)),
+    [visibleLeads, globalPipelineIds],
+  );
   const leadTitleMap = useMemo(() => new Map(visibleLeads.map((l) => [l.id, l.title])), [visibleLeads]);
   const myTeamIds = useMemo(
     () => (user?.id ? teamsWithMembers.filter((t) => t.members.some((m) => m.user_id === user.id)).map((t) => t.id) : []),
@@ -364,9 +388,15 @@ export default function CRM() {
   // oportunidade ainda" de "tem oportunidade, só não bate com o filtro" — se
   // comparasse com visibleLeads (todos os funis), abrir um funil vazio
   // enquanto outro funil tem leads mostraria a mensagem errada.
+  // Onda 1 de Projetos (2026-10-17): fallback (selectedPipelineId nulo) usa
+  // globalPipelineIds, não visibleLeads cru — mesma razão do fallback de
+  // `stages` acima: nunca vazar lead de frente de projeto pro board de /crm.
   const pipelineLeads = useMemo(
-    () => (selectedPipelineId ? visibleLeads.filter((lead) => lead.pipeline_id === selectedPipelineId) : visibleLeads),
-    [visibleLeads, selectedPipelineId],
+    () =>
+      visibleLeads.filter((lead) =>
+        selectedPipelineId ? lead.pipeline_id === selectedPipelineId : globalPipelineIds.has(lead.pipeline_id),
+      ),
+    [visibleLeads, selectedPipelineId, globalPipelineIds],
   );
 
   // Apply filters — em cima de visibleLeads (já recortado por permissão),
@@ -377,7 +407,14 @@ export default function CRM() {
       // Onda D — multi-pipeline: só oportunidades do funil selecionado no
       // topo. leads.pipeline_id é mantido por trigger a partir do stage_id
       // (nunca escrito pelo client) — ver migration 20260918100000.
-      if (selectedPipelineId && lead.pipeline_id !== selectedPipelineId) return false;
+      // Onda 1 de Projetos (2026-10-17): sem funil selecionado, cai no
+      // conjunto de funis COMERCIAIS (globalPipelineIds), nunca em "todos" —
+      // mesmo risco do fallback de `stages`/`pipelineLeads` acima.
+      if (selectedPipelineId) {
+        if (lead.pipeline_id !== selectedPipelineId) return false;
+      } else if (!globalPipelineIds.has(lead.pipeline_id)) {
+        return false;
+      }
       if (filters.search) {
         // Busca pelo título da oportunidade OU por qualquer dado de contato do
         // cliente — telefone/celular são o que o vendedor tem na mão quando só
@@ -414,7 +451,7 @@ export default function CRM() {
       if (filters.maxValue && (lead.value || 0) > parseFloat(filters.maxValue)) return false;
       return true;
     });
-  }, [visibleLeads, filters, selectedPipelineId]);
+  }, [visibleLeads, filters, selectedPipelineId, globalPipelineIds]);
 
   // Group filtered leads by stage_id — assign leads without stage to the first stage
   const leadsByStage = useMemo(() => {

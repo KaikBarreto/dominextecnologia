@@ -122,7 +122,6 @@ export type Database = {
           is_default: boolean
           name: string
           position: number
-          tracks_value: boolean
           updated_at: string
         }
         Insert: {
@@ -132,7 +131,6 @@ export type Database = {
           is_default?: boolean
           name: string
           position?: number
-          tracks_value?: boolean
           updated_at?: string
         }
         Update: {
@@ -142,7 +140,6 @@ export type Database = {
           is_default?: boolean
           name?: string
           position?: number
-          tracks_value?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -1592,9 +1589,9 @@ export type Database = {
           logo_url: string | null
           name: string
           neighborhood: string | null
+          os_finish_revenue_prompt_enabled: boolean
           os_social_image_mode: string
           os_social_image_url: string | null
-          os_finish_revenue_prompt_enabled: boolean
           os_stock_consumption_enabled: boolean
           phone: string | null
           proposal_customization: Json | null
@@ -1643,9 +1640,9 @@ export type Database = {
           logo_url?: string | null
           name?: string
           neighborhood?: string | null
+          os_finish_revenue_prompt_enabled?: boolean
           os_social_image_mode?: string
           os_social_image_url?: string | null
-          os_finish_revenue_prompt_enabled?: boolean
           os_stock_consumption_enabled?: boolean
           phone?: string | null
           proposal_customization?: Json | null
@@ -1694,9 +1691,9 @@ export type Database = {
           logo_url?: string | null
           name?: string
           neighborhood?: string | null
+          os_finish_revenue_prompt_enabled?: boolean
           os_social_image_mode?: string
           os_social_image_url?: string | null
-          os_finish_revenue_prompt_enabled?: boolean
           os_stock_consumption_enabled?: boolean
           phone?: string | null
           proposal_customization?: Json | null
@@ -3144,6 +3141,7 @@ export type Database = {
           is_default: boolean
           name: string
           position: number
+          project_id: string | null
           tracks_value: boolean
           updated_at: string
         }
@@ -3155,6 +3153,7 @@ export type Database = {
           is_default?: boolean
           name: string
           position?: number
+          project_id?: string | null
           tracks_value?: boolean
           updated_at?: string
         }
@@ -3166,6 +3165,7 @@ export type Database = {
           is_default?: boolean
           name?: string
           position?: number
+          project_id?: string | null
           tracks_value?: boolean
           updated_at?: string
         }
@@ -3175,6 +3175,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_pipelines_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -8384,6 +8391,95 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_number_counters: {
+        Row: {
+          company_id: string
+          next_value: number
+        }
+        Insert: {
+          company_id: string
+          next_value?: number
+        }
+        Update: {
+          company_id?: string
+          next_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_number_counters_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          code: number
+          color: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          responsible_user_id: string | null
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          code: number
+          color?: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          responsible_user_id?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: number
+          color?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          responsible_user_id?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]
@@ -14171,6 +14267,7 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: number
       }
+      next_project_code: { Args: { p_company_id: string }; Returns: number }
       nfse_auto_adiar: {
         Args: { p_job_id: string; p_mensagem: string; p_status: string }
         Returns: undefined
@@ -14361,6 +14458,16 @@ export type Database = {
           payment_group_id: string
           total_amount: number
           transaction_count: number
+        }[]
+      }
+      project_progress_summary: {
+        Args: never
+        Returns: {
+          active_count: number
+          done_count: number
+          has_won_stage: boolean
+          lost_count: number
+          project_id: string
         }[]
       }
       prune_db_health_history: { Args: never; Returns: number }

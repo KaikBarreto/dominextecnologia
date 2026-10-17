@@ -32,6 +32,7 @@ import { filterAccessiblePipelines } from '@/lib/crmPipelineAccess';
 import { firstStageOfPipeline } from '@/lib/crmPipelineMove';
 import { useCrmStages } from '@/hooks/useCrmStages';
 import { useCrmPipelines } from '@/hooks/useCrmPipelines';
+import { useProjectPipelines } from '@/hooks/useProjectPipelines';
 import { IconPreview } from '@/components/customers/originIcons';
 import { OriginBadge } from '@/components/crm/OriginBadge';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -74,16 +75,32 @@ interface LeadDetailModalProps {
    * que a pessoa acabou de clicar.
    */
   initialTab?: 'detalhes' | 'tarefas' | 'historico';
+  /**
+   * Onda 1 de "Projetos" (gestão de obras, 2026-10-17): presente quando este
+   * modal abre DE DENTRO de um Projeto. Escopa o seletor "mover pra outro
+   * funil" aos funis DAQUELE projeto (`useProjectPipelines`), nunca aos
+   * funis comerciais (`useCrmPipelines`) — sem isso, abrir este modal dentro
+   * de um projeto listaria SÓ funis comerciais (o funil atual, de projeto,
+   * nem apareceria), e um clique acidental jogaria o card da obra pro
+   * quadro de vendas. `null`/ausente preserva o caminho comercial de sempre.
+   */
+  projectId?: string | null;
 }
 
-export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChange, initialTab = 'detalhes' }: LeadDetailModalProps) {
+export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChange, initialTab = 'detalhes', projectId = null }: LeadDetailModalProps) {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
   const dfLocale = DATE_FNS_LOCALES[locale];
   const interactionTypes = getInteractionTypes(locale);
   const { stages, getStageHex } = useCrmStages();
-  // Onda D — multi-pipeline.
-  const { pipelines } = useCrmPipelines();
+  // Onda D — multi-pipeline. Onda 1 de Projetos: dois hooks SEMPRE chamados
+  // (nunca condicionalmente — violaria Rules of Hooks); `useProjectPipelines`
+  // fica com a query desabilitada (sem round trip) quando `projectId` é nulo.
+  // `pipelines` é a lista efetiva usada pelo resto do componente: comercial
+  // fora de projeto, escopada ao projeto quando `projectId` está presente.
+  const { pipelines: commercialPipelines } = useCrmPipelines();
+  const { pipelines: projectPipelines } = useProjectPipelines(projectId);
+  const pipelines = projectId ? projectPipelines : commercialPipelines;
   const hasMultiplePipelines = pipelines.length > 1;
   const { access: pipelineAccessRows } = useCrmPipelineAccess();
   const { interactions, isLoading: loadingInteractions, createInteraction } = useLeadInteractions(lead?.id || null);
@@ -232,9 +249,37 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
   // Etapas mostradas no select de etapa: só as do funil atual. Trocar de funil
   // é trabalho do select de funil logo acima — misturar as duas coisas num
   // select só era o que existia antes e ninguém entendia que mudava de funil.
-  const stageOptions = hasMultiplePipelines
+  //
+  // O filtro depende de `currentPipelineId`, NUNCA de `hasMultiplePipelines`.
+  // Antes era `hasMultiplePipelines ? filtra : stages`, e `stages` vem de
+  // `useCrmStages`, que traz TODAS as etapas da empresa sem filtro. Era
+  // inofensivo enquanto todo funil era comercial; com frente de projeto virou
+  // vazamento: dentro de uma obra com uma única frente, o select listava
+  // "Lead", "Proposta", "Fechado (Ganho)" etc., e um clique mandava o card da
+  // obra pro funil comercial (o trigger `trg_leads_resolve_pipeline`
+  // recalcula o `pipeline_id` a partir do `stage_id`). Provado no navegador
+  // em 2026-10-17. Só cai no `stages` cru quando o lead não tem funil
+  // resolvível — aí esconder tudo deixaria o usuário sem saída.
+  const stageOptions = currentPipelineId
     ? stages.filter((s) => s.pipeline_id === currentPipelineId)
     : stages;
+
+  // Funil que não rastreia valor (`tracks_value: false` — obra/processo,
+  // 2026-10-17): os Info Cards escondem Valor Estimado, Probabilidade e
+  // Origem (vocabulário de venda) e renomeiam "Previsão Fechamento" pra
+  // "Prazo". A régua é SEMPRE o funil REAL do card (`currentPipelineId`,
+  // calculado acima a partir da etapa — mesma fonte do `stageOptions`),
+  // nunca `projectId` nem a cardinalidade de `pipelines`: foi exatamente
+  // decidir por cardinalidade (`hasMultiplePipelines`) que vazou etapa
+  // comercial pra dentro de uma frente de obra com uma única frente (ver
+  // LeadDetailModal.singleFrontStages.test.tsx). Um funil comercial criado
+  // fora de "Projetos" também pode ter `tracks_value: false` — por isso a
+  // busca é pelo funil, não pelo contexto de onde o modal abriu.
+  //
+  // Ausente/indeterminado = true. Nunca degrada um funil comercial pra
+  // vocabulário de processo enquanto a query do funil ainda não resolveu.
+  const currentPipeline = pipelines.find((p) => p.id === currentPipelineId) ?? null;
+  const tracksValue = currentPipeline?.tracks_value !== false;
 
   const handleStageChange = (stageId: string) => {
     onStageChange(lead, stageId);
@@ -564,30 +609,36 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
               </div>
             )}
 
-            {/* Info Cards */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-lg border bg-card p-4">
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                  <DollarSign className="h-4 w-4" />
-                  <span className="text-xs">{t.detail.valueEstimated}</span>
+            {/* Info Cards. Valor Estimado, Probabilidade e Origem são
+                vocabulário de VENDA — somem em funil que não rastreia valor
+                (obra/processo); "Previsão Fechamento" vira "Prazo". */}
+            <div className={cn('grid gap-4', tracksValue ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-1')}>
+              {tracksValue && (
+                <div className="rounded-lg border bg-card p-4">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <DollarSign className="h-4 w-4" />
+                    <span className="text-xs">{t.detail.valueEstimated}</span>
+                  </div>
+                  <p className="text-xl font-bold text-primary">
+                    {lead.value ? formatCurrency(lead.value) : t.detail.valueNotSet}
+                  </p>
                 </div>
-                <p className="text-xl font-bold text-primary">
-                  {lead.value ? formatCurrency(lead.value) : t.detail.valueNotSet}
-                </p>
-              </div>
+              )}
 
-              <div className="rounded-lg border bg-card p-4">
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                  <TrendingUp className="h-4 w-4" />
-                  <span className="text-xs">{t.detail.probability}</span>
+              {tracksValue && (
+                <div className="rounded-lg border bg-card p-4">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <TrendingUp className="h-4 w-4" />
+                    <span className="text-xs">{t.detail.probability}</span>
+                  </div>
+                  <p className="text-xl font-bold">{lead.probability || 50}%</p>
                 </div>
-                <p className="text-xl font-bold">{lead.probability || 50}%</p>
-              </div>
+              )}
 
               <div className="rounded-lg border bg-card p-4">
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
                   <Calendar className="h-4 w-4" />
-                  <span className="text-xs">{t.detail.closeDate}</span>
+                  <span className="text-xs">{tracksValue ? t.detail.closeDate : t.detail.deadlineLabel}</span>
                 </div>
                 <p className="text-sm font-medium">
                   {lead.expected_close_date
@@ -596,17 +647,19 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
                 </p>
               </div>
 
-              <div className="rounded-lg border bg-card p-4">
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                  <MessageSquare className="h-4 w-4" />
-                  <span className="text-xs">{t.detail.origin}</span>
+              {tracksValue && (
+                <div className="rounded-lg border bg-card p-4">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <MessageSquare className="h-4 w-4" />
+                    <span className="text-xs">{t.detail.origin}</span>
+                  </div>
+                  {lead.source ? (
+                    <OriginBadge source={lead.source} className="text-xs px-2 py-0.5" iconClassName="h-3 w-3" />
+                  ) : (
+                    <p className="text-sm font-medium">{t.detail.originNotSet}</p>
+                  )}
                 </div>
-                {lead.source ? (
-                  <OriginBadge source={lead.source} className="text-xs px-2 py-0.5" iconClassName="h-3 w-3" />
-                ) : (
-                  <p className="text-sm font-medium">{t.detail.originNotSet}</p>
-                )}
-              </div>
+              )}
             </div>
 
             {/* Customer Contact */}

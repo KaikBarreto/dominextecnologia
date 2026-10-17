@@ -143,6 +143,8 @@ const CustomerDetail = React.lazy(() => import("./pages/CustomerDetail"));
 const EquipmentPage = React.lazy(() => import("./pages/Equipment"));
 const EquipmentDetail = React.lazy(() => import("./pages/EquipmentDetail"));
 const CRM = React.lazy(() => import("./pages/CRM"));
+const Projects = React.lazy(() => import("./pages/Projects"));
+const ProjectDetail = React.lazy(() => import("./pages/ProjectDetail"));
 const Inventory = React.lazy(() => import("./pages/Inventory"));
 const Finance = React.lazy(() => import("./pages/Finance"));
 const FiscalSettings = React.lazy(() => import("./pages/FiscalSettings"));
@@ -748,6 +750,8 @@ const AppRoutes = () => (
       {localizedAppRoutes('equipment', <PermissionRoute screenKey="screen:equipment"><EquipmentPage /></PermissionRoute>)}
       {localizedAppRoutes('equipmentDetail', <PermissionRoute screenKey="screen:equipment"><EquipmentDetail /></PermissionRoute>)}
       {localizedAppRoutes('crm', <PermissionRoute screenKey="screen:crm"><ModuleRoute moduleKey="crm"><CRM /></ModuleRoute></PermissionRoute>)}
+      {localizedAppRoutes('projects', <PermissionRoute screenKey="screen:projects"><ModuleRoute moduleKey="crm"><Projects /></ModuleRoute></PermissionRoute>)}
+      {localizedAppRoutes('projectDetail', <PermissionRoute screenKey="screen:projects"><ModuleRoute moduleKey="crm"><ProjectDetail /></ModuleRoute></PermissionRoute>)}
       {localizedAppRoutes('quotes', <PermissionRoute screenKey="screen:quotes"><Quotes /></PermissionRoute>)}
       {localizedAppRoutes('inventory', <PermissionRoute screenKey="screen:inventory"><Inventory /></PermissionRoute>)}
       {/* "Financeiro" é um grupo de telas orientadas por tarefa; cada rota tem

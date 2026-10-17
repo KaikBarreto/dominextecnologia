@@ -37,6 +37,7 @@ import {
   Video,
   Crown,
   BarChart3,
+  FolderKanban,
 } from 'lucide-react';
 import { OperacionalIcon, AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -117,6 +118,7 @@ const tenantMenuItems: MenuItem[] = [
     ],
   },
   { title: 'CRM/Kanban', icon: ListFilter, path: '/crm', screenKey: 'screen:crm', moduleKey: 'crm' },
+  { title: 'Projetos', icon: FolderKanban, path: '/projetos', screenKey: 'screen:projects', moduleKey: 'crm' },
   {
     title: 'Financeiro',
     icon: DollarSign,
