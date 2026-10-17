@@ -1332,9 +1332,12 @@ export function TransactionFormDialog({
   // muda apenas a prioridade visual conforme o tipo. Assim trocar
   // Receita/Despesa nunca apaga uma escolha já feita e editar um lançamento
   // legado com ambos os vínculos preserva os dois valores.
-  const customerField = (
+  // Recebe a classe de span: na seção principal o vínculo vive PAREADO com a
+  // Ordem de serviço (meia linha cada, igual Categoria/Centro de custo); em
+  // "Mais detalhes" ele aparece sozinho e ocupa a linha inteira.
+  const customerField = (spanClass = 'lg:col-span-2') => (
     <FormField control={form.control} name="customer_id" render={({ field }) => (
-      <FormItem className="lg:col-span-2">
+      <FormItem className={spanClass}>
         <FormLabel>{tf.customerLabel}</FormLabel>
         <CustomerSelectField
           customers={activeCustomers}
@@ -1353,9 +1356,9 @@ export function TransactionFormDialog({
   // material também pertence a uma OS. Amarrar aqui é o que faz a OS mostrar o
   // selo "Faturada" e o que deixa a trava de contagem dupla enxergar o
   // lançamento feito direto pelo Financeiro.
-  const serviceOrderField = (
+  const serviceOrderField = (spanClass = 'lg:col-span-2') => (
     <FormField control={form.control} name="service_order_id" render={({ field }) => (
-      <FormItem className="lg:col-span-2">
+      <FormItem className={spanClass}>
         <FormLabel>{tf.serviceOrderLabel}</FormLabel>
         <ServiceOrderSelectField
           serviceOrders={osOptions}
@@ -1371,9 +1374,9 @@ export function TransactionFormDialog({
     )} />
   );
 
-  const supplierField = (
+  const supplierField = (spanClass = 'lg:col-span-2') => (
     <FormField control={form.control} name="supplier_id" render={({ field }) => (
-      <FormItem className="lg:col-span-2">
+      <FormItem className={spanClass}>
         <FormLabel>{tf.supplierLabel}</FormLabel>
         <SupplierSelectField
           suppliers={suppliers}
@@ -1433,7 +1436,12 @@ export function TransactionFormDialog({
           form.reset({ ...defaults, transaction_type: defaultType });
         }}
       />
-      <p className="text-sm text-muted-foreground -mt-2 mb-4">{tf.subtitle}</p>
+      {/* Sem `-mt-2`: este parágrafo é o PRIMEIRO filho da área rolável do
+          modal, e a margem negativa o empurrava 8px pra FORA do container,
+          onde a borda do scroll cortava o topo das letras (medido no QA de
+          17/10/2026: texto em y=159, container começando em y=167). Aparecia
+          cortado no desktop e no mobile. */}
+      <p className="text-sm text-muted-foreground mb-4">{tf.subtitle}</p>
 
       <Form {...form}>
         <form id="transaction-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-0">
@@ -1555,15 +1563,17 @@ export function TransactionFormDialog({
             </FormItem>
           )} />
 
-          {/* Vínculo principal: Cliente em receita; Fornecedor em despesa.
-              O vínculo secundário continua disponível em Mais detalhes. */}
-          {isEntrada ? customerField : supplierField}
+          {/* Vínculo principal (Cliente em receita, Fornecedor em despesa) e
+              Ordem de serviço dividem a MESMA linha, meia a meia, igual
+              Categoria/Centro de custo logo acima. Antes cada um esticava a
+              linha inteira e a seção ficava desalinhada do resto do modal.
 
-          {/* Ordem de serviço fica na seção PRINCIPAL, não em "Mais detalhes".
-              Campo escondido em seção colapsada ninguém acha, e é justamente
-              por não ter onde amarrar que o lançamento feito pelo Financeiro
-              ficava solto e furava a trava de contagem dupla. */}
-          {serviceOrderField}
+              A Ordem de serviço fica aqui na seção PRINCIPAL, não em "Mais
+              detalhes": campo escondido em seção colapsada ninguém acha, e é
+              justamente por não ter onde amarrar que o lançamento feito pelo
+              Financeiro ficava solto e furava a trava de contagem dupla. */}
+          {isEntrada ? customerField('') : supplierField('')}
+          {serviceOrderField('')}
           </ModalFormSection>
 
           {/* ── Seção 2: Dinheiro ──────────────────────────────────────────
@@ -1819,7 +1829,7 @@ export function TransactionFormDialog({
           >
             {/* Vínculo secundário: permanece editável e é automaticamente
                 revelado em edição ou ao trocar o tipo com valor preenchido. */}
-            {isEntrada ? supplierField : customerField}
+            {isEntrada ? supplierField() : customerField()}
 
             {/* Notes */}
             <FormField control={form.control} name="notes" render={({ field }) => (
