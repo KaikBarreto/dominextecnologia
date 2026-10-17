@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.8',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Amarrar um lançamento ou uma cobrança a uma ordem de serviço',
+        description: 'Ao registrar uma entrada ou saída no Financeiro, e também ao gerar uma cobrança por lá, agora existe o campo Ordem de serviço, com busca pelo número ou pelo nome do cliente. É opcional: quem não quiser, deixa em branco. Amarrando, a ordem passa a mostrar o selo de Faturada e o sistema deixa de aceitar que a mesma ordem seja faturada duas vezes por caminhos diferentes, o que antes inflava o faturamento do mês sem ninguém perceber. No detalhe do lançamento, a ordem de serviço virou um link que leva direto até ela.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.36.7',
     date: '17 de outubro de 2026',
     type: 'patch',

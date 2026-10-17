@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.36.7";
+export const APP_VERSION = "1.36.8";
 
-export const VERSION_NOTES = "Empresas com White Label agora podem ajustar a imagem compartilhada da Ordem de Serviço com fundo baseado no logo, cor manual e controle de tamanho.";
+export const VERSION_NOTES = "No Financeiro, o lançamento e a cobrança agora podem ser amarrados a uma ordem de serviço, o que evita a mesma venda ser faturada duas vezes por caminhos diferentes.";
