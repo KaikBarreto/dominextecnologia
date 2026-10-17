@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.36.2";
+export const APP_VERSION = "1.36.3";
 
-export const VERSION_NOTES = "A navegação agora reúne Clientes e Fornecedores com um nome mais claro e dá acesso direto às Notas Fiscais pelo menu principal.";
+export const VERSION_NOTES = "Ordens de serviço concluídas agora podem voltar para Agendada, com opção de manter ou apagar as respostas do atendimento.";

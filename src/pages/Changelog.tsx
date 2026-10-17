@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.3',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Resetar uma ordem de serviço concluída',
+        description: 'Agora uma ordem concluída pode voltar para Agendada e seguir novamente o fluxo de atendimento, incluindo A caminho e check-in. Antes de confirmar, você escolhe se mantém as respostas já registradas ou se começa o atendimento com os campos limpos. A opção Resetar OS está disponível no menu de ações da agenda, da lista e dos cartões.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.36.2',
     date: '17 de outubro de 2026',
     type: 'patch',
