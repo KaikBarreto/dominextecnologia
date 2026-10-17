@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.4',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Logo da sua empresa ao compartilhar uma OS',
+        description: 'Ao enviar no WhatsApp o link público de uma ordem de serviço, a prévia agora pode mostrar o logo da empresa em uma imagem com contraste automático. Em Configurações, também é possível enviar uma arte personalizada no formato correto para redes sociais.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.36.3',
     date: '17 de outubro de 2026',
     type: 'patch',
