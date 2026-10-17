@@ -122,6 +122,7 @@ export type Database = {
           is_default: boolean
           name: string
           position: number
+          tracks_value: boolean
           updated_at: string
         }
         Insert: {
@@ -131,6 +132,7 @@ export type Database = {
           is_default?: boolean
           name: string
           position?: number
+          tracks_value?: boolean
           updated_at?: string
         }
         Update: {
@@ -140,6 +142,7 @@ export type Database = {
           is_default?: boolean
           name?: string
           position?: number
+          tracks_value?: boolean
           updated_at?: string
         }
         Relationships: []
