@@ -49,6 +49,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useOsFinishRevenuePrompt } from '@/hooks/useOsFinishRevenuePrompt';
 import { OsFinishRevenueDialog } from '@/components/financial/OsFinishRevenueDialog';
 import { ScheduleConflictDialog } from '@/components/schedule/ScheduleConflictDialog';
+import { ResetServiceOrderDialog } from '@/components/service-orders/ResetServiceOrderDialog';
 import {
   isScheduleConflictError,
   type ScheduleConflictItem,
@@ -79,7 +80,7 @@ type SchedulableOrder = ServiceOrder & {
 };
 
 export default function Schedule() {
-  const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, rescheduleServiceOrder, deleteServiceOrder } = useServiceOrders();
+  const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, rescheduleServiceOrder, deleteServiceOrder, resetServiceOrder } = useServiceOrders();
   const { data: allProfiles = [] } = useProfiles();
   const { customers } = useCustomers();
   const isMobile = useIsMobile();
@@ -182,6 +183,7 @@ export default function Schedule() {
   const [selectedOrder, setSelectedOrder] = useState<(ServiceOrder & { customer: any; equipment: any }) | null>(null);
   const [editingTask, setEditingTask] = useState<(ServiceOrder & { customer: any; equipment: any }) | null>(null);
   const [summaryOrder, setSummaryOrder] = useState<(ServiceOrder & { customer: any; equipment: any }) | null>(null);
+  const [resetOrder, setResetOrder] = useState<ServiceOrder | null>(null);
   const [defaultDate, setDefaultDate] = useState<string | undefined>();
   const [defaultTime, setDefaultTime] = useState<string | undefined>();
   const [isPausedDialogOpen, setIsPausedDialogOpen] = useState(false);
@@ -545,6 +547,19 @@ export default function Schedule() {
 
   const handleReopenFromSummary = (id: string) => {
     updateServiceOrder.mutate({ id, status: 'em_andamento' as any });
+    setSummaryOrder(null);
+  };
+
+  const handleResetFromSummary = (id: string) => {
+    const order = serviceOrders.find((item) => item.id === id);
+    if (!order) return;
+    setResetOrder(order);
+  };
+
+  const handleResetConfirm = async (clearResponses: boolean) => {
+    if (!resetOrder) return;
+    await resetServiceOrder.mutateAsync({ id: resetOrder.id, clearResponses });
+    setResetOrder(null);
     setSummaryOrder(null);
   };
 
@@ -1048,7 +1063,14 @@ export default function Schedule() {
               onDeleteGroup={!canDeleteOS ? undefined : handleDeleteGroupFromSummary}
               onDeleteFinancialGroup={(summaryOrder as any)._isFinancialEvent && canDeleteFinance ? () => handleDeleteFinancialGroup(summaryOrder) : undefined}
               onFinalize={(summaryOrder as any)._isFinancialEvent ? () => handleResolveBillingReminder(summaryOrder) : handleFinalizeFromSummary}
-              onReopen={(summaryOrder as any)._isFinancialEvent ? () => handleReopenBillingReminder(summaryOrder) : (!canReopenOS ? undefined : handleReopenFromSummary)}
+              onReopen={(summaryOrder as any)._isFinancialEvent
+                ? () => handleReopenBillingReminder(summaryOrder)
+                : (summaryOrder as any).entry_type === 'tarefa' && canReopenOS
+                  ? handleReopenFromSummary
+                  : undefined}
+              onReset={(summaryOrder as any)._isFinancialEvent || (summaryOrder as any).entry_type === 'tarefa' || !canReopenOS
+                ? undefined
+                : handleResetFromSummary}
               onPause={(summaryOrder as any)._isFinancialEvent ? undefined : handlePauseFromSummary}
               onResume={(summaryOrder as any)._isFinancialEvent ? undefined : handleResumeFromSummary}
             />
@@ -1202,7 +1224,14 @@ export default function Schedule() {
             onDeleteGroup={!canDeleteOS ? undefined : handleDeleteGroupFromSummary}
             onDeleteFinancialGroup={summaryOrder && (summaryOrder as any)._isFinancialEvent && canDeleteFinance ? () => handleDeleteFinancialGroup(summaryOrder) : undefined}
             onFinalize={summaryOrder && (summaryOrder as any)._isFinancialEvent ? () => handleResolveBillingReminder(summaryOrder) : handleFinalizeFromSummary}
-            onReopen={summaryOrder && (summaryOrder as any)._isFinancialEvent ? () => handleReopenBillingReminder(summaryOrder) : (!canReopenOS ? undefined : handleReopenFromSummary)}
+            onReopen={summaryOrder && (summaryOrder as any)._isFinancialEvent
+              ? () => handleReopenBillingReminder(summaryOrder)
+              : summaryOrder && (summaryOrder as any).entry_type === 'tarefa' && canReopenOS
+                ? handleReopenFromSummary
+                : undefined}
+            onReset={!summaryOrder || (summaryOrder as any)._isFinancialEvent || (summaryOrder as any).entry_type === 'tarefa' || !canReopenOS
+              ? undefined
+              : handleResetFromSummary}
             onPause={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handlePauseFromSummary}
             onResume={summaryOrder && (summaryOrder as any)._isFinancialEvent ? undefined : handleResumeFromSummary}
           />
@@ -1258,6 +1287,15 @@ export default function Schedule() {
       />
       {/* "Houve alguma receita nesta OS?" — ver comentário no layout mobile. */}
       <OsFinishRevenueDialog {...revenueDialogProps} />
+      <ResetServiceOrderDialog
+        open={!!resetOrder}
+        onOpenChange={(open) => {
+          if (!open && !resetServiceOrder.isPending) setResetOrder(null);
+        }}
+        orderNumber={resetOrder?.order_number}
+        isPending={resetServiceOrder.isPending}
+        onConfirm={handleResetConfirm}
+      />
     </div>
   );
 }

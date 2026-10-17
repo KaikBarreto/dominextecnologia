@@ -131,6 +131,11 @@ export interface ServiceOrderUpdate extends Partial<ServiceOrderInput> {
   recurrence_weekdays?: number[] | null;
 }
 
+export interface ResetServiceOrderInput {
+  id: string;
+  clearResponses: boolean;
+}
+
 export function useServiceOrders() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -619,6 +624,37 @@ export function useServiceOrders() {
     },
   });
 
+  const resetServiceOrder = useMutation({
+    mutationFn: async ({ id, clearResponses }: ResetServiceOrderInput) => {
+      const { data, error } = await supabase.rpc('reset_service_order', {
+        _service_order_id: id,
+        _clear_responses: clearResponses,
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['paused-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['service-ratings'] });
+      toast({
+        title: 'OS resetada com sucesso!',
+        description: variables.clearResponses
+          ? 'A OS voltou para Agendada e o preenchimento anterior foi apagado.'
+          : 'A OS voltou para Agendada e o preenchimento anterior foi mantido.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao resetar OS',
+        description: getErrorMessage(error),
+      });
+    },
+  });
+
   const rescheduleServiceOrder = useMutation({
     mutationFn: (input: Omit<BookServiceOrderScheduleInput, 'timezone'>) =>
       bookServiceOrderSchedule({ ...input, timezone }),
@@ -652,5 +688,6 @@ export function useServiceOrders() {
     updateServiceOrder,
     rescheduleServiceOrder,
     deleteServiceOrder,
+    resetServiceOrder,
   };
 }

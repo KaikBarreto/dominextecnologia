@@ -107,9 +107,9 @@ describe('PermissionsEditor', () => {
 
   it('busca por ação filtra a tela e mostra só a ação que casou', () => {
     mount();
-    typeSearch('reabrir');
+    typeSearch('resetar');
     expect(text()).toContain('Ordens de Serviço');
-    expect(text()).toContain('Reabrir OS');
+    expect(text()).toContain('Resetar OS');
     expect(text()).not.toContain('Criar OS');
     expect(text()).not.toContain('Notas Fiscais');
   });

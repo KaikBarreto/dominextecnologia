@@ -13660,6 +13660,10 @@ export type Database = {
         }
         Returns: number
       }
+      reset_service_order: {
+        Args: { _clear_responses?: boolean; _service_order_id: string }
+        Returns: Json
+      }
       reset_system_audit_start: {
         Args: { p_company_id: string; p_options: Json }
         Returns: string

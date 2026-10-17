@@ -65,6 +65,7 @@ interface ServiceOrderViewDialogProps {
   onEdit?: () => void;
   onDelete?: () => void;
   onStatusChange?: (newStatus: OsStatus) => Promise<void> | void;
+  onReset?: () => void;
 }
 
 // Régua do CEO: selo de status é SATURADO com texto e ícone brancos, nunca
@@ -84,7 +85,7 @@ const renderSignedImage = (url: string, alt: string, className: string) => (
   <SignedImg src={url} alt={alt} className={className} />
 );
 
-export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onEdit, onDelete, onStatusChange }: ServiceOrderViewDialogProps) {
+export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onEdit, onDelete, onStatusChange, onReset }: ServiceOrderViewDialogProps) {
   const { locale, currency, timezone } = useAppLocaleContext();
   const tv = MESSAGES[locale].app.os.viewDialog;
   const navigate = useNavigate();
@@ -659,8 +660,8 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         if (onStatusChange && serviceOrder.status !== 'concluida' && serviceOrder.status !== 'cancelada') {
           actions.push({ key: 'finalize', icon: CheckCircle, label: tv.actionFinalize, tone: 'success', onClick: async () => { await onStatusChange('concluida'); onOpenChange(false); } });
         }
-        if (onStatusChange && serviceOrder.status === 'concluida') {
-          actions.push({ key: 'reopen', icon: RotateCcw, label: tv.actionReopen, tone: 'warning', onClick: async () => { await onStatusChange('em_andamento'); onOpenChange(false); } });
+        if (onReset && serviceOrder.status === 'concluida') {
+          actions.push({ key: 'reset', icon: RotateCcw, label: 'Resetar OS', tone: 'warning', onClick: onReset });
         }
         if (onEdit) {
           actions.push({ key: 'edit', icon: Pencil, label: tv.actionEdit, tone: 'edit', onClick: () => { onOpenChange(false); onEdit(); } });

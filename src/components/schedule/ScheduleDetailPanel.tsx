@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Link2, Check, Trash2, UsersRound, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckCircle, Pencil, RotateCcw, Pause, Play, Receipt } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Link2, Check, Trash2, UsersRound, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckCircle, Pencil, RotateCcw, Pause, Play, Receipt, MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -27,6 +27,7 @@ import {
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { getDateFnsLocale } from '@/lib/format';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface AssigneeInfo {
   id: string;
@@ -46,6 +47,7 @@ interface ScheduleDetailPanelProps {
   onDeleteFinancialGroup?: () => void;
   onFinalize?: (id: string) => void;
   onReopen?: (id: string) => void;
+  onReset?: (id: string) => void;
   onPause?: (id: string) => void;
   onResume?: (id: string) => void;
 }
@@ -63,6 +65,7 @@ function OrderDetail({
   onDeleteFinancialGroup,
   onFinalize,
   onReopen,
+  onReset,
   onPause,
   onResume,
 }: {
@@ -74,6 +77,7 @@ function OrderDetail({
   onDeleteFinancialGroup?: () => void;
   onFinalize?: (id: string) => void;
   onReopen?: (id: string) => void;
+  onReset?: (id: string) => void;
   onPause?: (id: string) => void;
   onResume?: (id: string) => void;
 }) {
@@ -384,87 +388,70 @@ function OrderDetail({
               {isFinancialEvent ? t.btnReopenBilling : t.btnReopenTask}
             </Button>
           )}
-          {!isTask && onFinalize && order.status !== 'concluida' && (
-            <Button
-              className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={() => setShowFinalizeConfirm(true)}
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              {t.btnFinalizeOs}
-            </Button>
-          )}
-          {!isTask && onReopen && order.status === 'concluida' && (
-            <Button
-              variant="outline"
-              className="w-full mt-2 border-amber-500/30 text-amber-600 hover:bg-amber-500 hover:text-white"
-              onClick={() => setShowReopenConfirm(true)}
-            >
-              <RotateCcw className="h-4 w-4 mr-2" />
-              {t.btnReopenOs}
-            </Button>
-          )}
-          {!isTask && onPause && (order.status === 'em_andamento' || order.status === 'a_caminho') && (
-            <Button
-              variant="outline"
-              className="w-full mt-2 border-amber-600/30 text-amber-600 hover:bg-amber-600 hover:text-white"
-              onClick={() => onPause(order.id)}
-            >
-              <Pause className="h-4 w-4 mr-2" />
-              {t.btnPauseOs}
-            </Button>
-          )}
-          {!isTask && onResume && order.status === 'pausada' && (
-            <Button
-              variant="outline"
-              className="w-full mt-2 border-primary/30 text-primary hover:bg-primary hover:text-white"
-              onClick={() => onResume(order.id)}
-            >
-              <Play className="h-4 w-4 mr-2" />
-              {t.btnResumeOs}
-            </Button>
-          )}
-          {!isTask && billing.canBill && (
-            <Button
-              variant="outline"
-              className="w-full mt-2 border-success/30 text-success hover:bg-success hover:text-white"
-              onClick={() => billing.open(order as any)}
-            >
-              <Receipt className="h-4 w-4 mr-2" />
-              {t.btnBilling}
-            </Button>
-          )}
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            {onEdit && (
-              <Button
-                onClick={onEdit}
-                variant="outline"
-                className="border-amber-500/30 text-amber-600 hover:bg-amber-500 hover:text-white"
-              >
-                <Pencil className="h-4 w-4 mr-2" />
-                {t.btnEdit}
-              </Button>
-            )}
-            {onDelete && (
-              <Button
-                variant="outline"
-                className="border-destructive/30 text-destructive hover:bg-destructive hover:text-white"
-                onClick={handleDeleteClick}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                {t.btnDelete}
-              </Button>
-            )}
-          </div>
-          {!isTask && order.customer_id && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full mt-2"
-              onClick={handleCopyTrackingLink}
-            >
-              {linkCopied ? <Check className="h-3.5 w-3.5 mr-1.5 shrink-0" /> : <Link2 className="h-3.5 w-3.5 mr-1.5 shrink-0" />}
-              <span className="truncate">{linkCopied ? t.linkCopied : t.btnCopyLink}</span>
-            </Button>
+          {(onEdit || onDelete || (!isTask && (onFinalize || onReset || onPause || onResume || billing.canBill || order.customer_id))) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="mt-2 w-full">
+                  <MoreHorizontal className="mr-2 h-4 w-4" />
+                  Ações
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[220px]">
+                {!isTask && onFinalize && order.status !== 'concluida' && (
+                  <DropdownMenuItem onClick={() => setShowFinalizeConfirm(true)}>
+                    <CheckCircle className="mr-2 h-4 w-4 text-emerald-500" />
+                    {t.btnFinalizeOs}
+                  </DropdownMenuItem>
+                )}
+                {!isTask && onReset && order.status === 'concluida' && (
+                  <DropdownMenuItem onClick={() => onReset(order.id)}>
+                    <RotateCcw className="mr-2 h-4 w-4 text-amber-500" />
+                    Resetar OS
+                  </DropdownMenuItem>
+                )}
+                {!isTask && onPause && (order.status === 'em_andamento' || order.status === 'a_caminho') && (
+                  <DropdownMenuItem onClick={() => onPause(order.id)}>
+                    <Pause className="mr-2 h-4 w-4 text-amber-600" />
+                    {t.btnPauseOs}
+                  </DropdownMenuItem>
+                )}
+                {!isTask && onResume && order.status === 'pausada' && (
+                  <DropdownMenuItem onClick={() => onResume(order.id)}>
+                    <Play className="mr-2 h-4 w-4 text-primary" />
+                    {t.btnResumeOs}
+                  </DropdownMenuItem>
+                )}
+                {!isTask && billing.canBill && (
+                  <DropdownMenuItem onClick={() => billing.open(order as any)}>
+                    <Receipt className="mr-2 h-4 w-4 text-success" />
+                    {t.btnBilling}
+                  </DropdownMenuItem>
+                )}
+                {onEdit && (
+                  <DropdownMenuItem onClick={onEdit}>
+                    <Pencil className="mr-2 h-4 w-4 text-amber-500" />
+                    {t.btnEdit}
+                  </DropdownMenuItem>
+                )}
+                {!isTask && order.customer_id && (
+                  <DropdownMenuItem onClick={handleCopyTrackingLink}>
+                    {linkCopied
+                      ? <Check className="mr-2 h-4 w-4" />
+                      : <Link2 className="mr-2 h-4 w-4" />}
+                    {linkCopied ? t.linkCopied : t.btnCopyLink}
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-destructive focus:bg-destructive focus:text-destructive-foreground" onClick={handleDeleteClick}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      {t.btnDelete}
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {/* Delete confirmation - with recurrence/financial options */}
@@ -632,6 +619,7 @@ export function ScheduleDetailPanel({
   onDeleteFinancialGroup,
   onFinalize,
   onReopen,
+  onReset,
   onPause,
   onResume,
 }: ScheduleDetailPanelProps) {
@@ -648,7 +636,7 @@ export function ScheduleDetailPanel({
   return (
     <div className="bg-card rounded-xl border shadow-sm p-4 h-full min-w-0 overflow-hidden">
       {selectedOrder ? (
-        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} onDeleteGroup={onDeleteGroup} onDeleteFinancialGroup={onDeleteFinancialGroup} onFinalize={onFinalize} onReopen={onReopen} onPause={onPause} onResume={onResume} />
+        <OrderDetail order={selectedOrder} onBack={onClearSelection} onEdit={onEdit} onDelete={onDelete} onDeleteGroup={onDeleteGroup} onDeleteFinancialGroup={onDeleteFinancialGroup} onFinalize={onFinalize} onReopen={onReopen} onReset={onReset} onPause={onPause} onResume={onResume} />
       ) : (
         <>
           <div className="mb-4">

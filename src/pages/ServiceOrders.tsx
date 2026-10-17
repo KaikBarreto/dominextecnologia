@@ -21,6 +21,7 @@ import {
   BarChart3,
   Megaphone,
   Receipt,
+  RotateCcw,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -81,6 +82,7 @@ import { useOsBillingFlags } from '@/hooks/useOsBillingFlags';
 import { OsBilledBadge } from '@/components/service-orders/OsBilledBadge';
 import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
 import { isOpenPortalCall } from '@/lib/portalCalls';
+import { ResetServiceOrderDialog } from '@/components/service-orders/ResetServiceOrderDialog';
 
 export default function ServiceOrders() {
   const isMobile = useIsMobile();
@@ -135,6 +137,8 @@ export default function ServiceOrders() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [osToDelete, setOsToDelete] = useState<ServiceOrder | null>(null);
   const [deleteMode, setDeleteMode] = useState<'single' | 'group' | null>(null);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [osToReset, setOsToReset] = useState<ServiceOrder | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingOsId, setViewingOsId] = useState<string | null>(null);
   const [statusConfigOpen, setStatusConfigOpen] = useState(false);
@@ -155,7 +159,7 @@ export default function ServiceOrders() {
   }, [viewMode]);
 
   const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
-  const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
+  const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder, resetServiceOrder } = useServiceOrders();
   const { statuses } = useOsStatuses();
   // Receita ao finalizar a OS. `maybeOpen` decide sozinho se abre (toggle da
   // empresa + permissão + OS ainda sem receita) e nunca lança — não duplicar
@@ -171,6 +175,7 @@ export default function ServiceOrders() {
   const canCreateOS = isAdminOrGestor() || hasPermission('fn:create_os');
   const canEditOS = isAdminOrGestor() || hasPermission('fn:edit_os');
   const canDeleteOS = isAdminOrGestor() || hasPermission('fn:delete_os');
+  const canResetOS = isAdminOrGestor() || hasPermission('fn:reopen_os');
 
   const getOsCode = (os: ServiceOrder) => {
     const prefix = (os as any).service_type?.number_prefix || 'OS';
@@ -337,6 +342,19 @@ export default function ServiceOrders() {
     const hasGroup = !!(os as any).recurrence_group_id || !!(os as any).contract_id;
     setDeleteMode(hasGroup ? null : 'single');
     setDeleteDialogOpen(true);
+  };
+
+  const handleResetClick = (os: ServiceOrder) => {
+    setOsToReset(os);
+    setViewDialogOpen(false);
+    setResetDialogOpen(true);
+  };
+
+  const handleResetConfirm = async (clearResponses: boolean) => {
+    if (!osToReset) return;
+    await resetServiceOrder.mutateAsync({ id: osToReset.id, clearResponses });
+    setResetDialogOpen(false);
+    setOsToReset(null);
   };
 
   const handleStatusChange = async (os: ServiceOrder, newStatus: OsStatus) => {
@@ -579,6 +597,10 @@ export default function ServiceOrders() {
                 const os = serviceOrders.find((order) => order.id === viewingOsId);
                 if (os) await handleStatusChange(os, newStatus);
               } : undefined}
+              onReset={canResetOS && viewingOsId ? () => {
+                const os = serviceOrders.find((order) => order.id === viewingOsId);
+                if (os) handleResetClick(os);
+              } : undefined}
             />
           </div>
         )}
@@ -745,6 +767,12 @@ export default function ServiceOrders() {
                               icon: <Pencil className="h-4 w-4" />,
                               variant: 'edit' as const,
                               onClick: () => handleEdit(os),
+                            }] : []),
+                            ...(canResetOS && os.status === 'concluida' ? [{
+                              key: 'reset',
+                              label: 'Resetar OS',
+                              icon: <RotateCcw className="h-4 w-4" />,
+                              onClick: () => handleResetClick(os),
                             }] : []),
                             ...(billing.canBill ? [{
                               key: 'billing',
@@ -949,6 +977,12 @@ export default function ServiceOrders() {
                                               hidden: !canEditOS,
                                             },
                                             {
+                                              label: 'Resetar OS',
+                                              icon: RotateCcw,
+                                              onClick: () => handleResetClick(os),
+                                              hidden: !canResetOS || os.status !== 'concluida',
+                                            },
+                                            {
                                               label: t.rowActions.billing,
                                               icon: Receipt,
                                               onClick: () => billing.open(os as any),
@@ -1130,6 +1164,17 @@ export default function ServiceOrders() {
                                     <Pencil className="h-3 w-3" />
                                   </Button>
                                 )}
+                                {canResetOS && os.status === 'concluida' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 hover:bg-amber-500 hover:text-white"
+                                    onClick={(e) => { e.stopPropagation(); handleResetClick(os); }}
+                                    title="Resetar OS"
+                                  >
+                                    <RotateCcw className="h-3 w-3" />
+                                  </Button>
+                                )}
                                 {canDeleteOS && (
                                   <Button
                                     variant="ghost"
@@ -1259,6 +1304,10 @@ export default function ServiceOrders() {
                 const os = serviceOrders.find((o) => o.id === viewingOsId);
                 if (os) await handleStatusChange(os, newStatus);
               } : undefined}
+              onReset={canResetOS && viewingOsId ? () => {
+                const os = serviceOrders.find((o) => o.id === viewingOsId);
+                if (os) handleResetClick(os);
+              } : undefined}
             />
 
             <OsStatusManagerDialog
@@ -1279,6 +1328,16 @@ export default function ServiceOrders() {
           </div>
         )}
       </SettingsSidebarLayout>
+      <ResetServiceOrderDialog
+        open={resetDialogOpen}
+        onOpenChange={(open) => {
+          setResetDialogOpen(open);
+          if (!open && !resetServiceOrder.isPending) setOsToReset(null);
+        }}
+        orderNumber={osToReset?.order_number}
+        isPending={resetServiceOrder.isPending}
+        onConfirm={handleResetConfirm}
+      />
     </div>
   );
 }

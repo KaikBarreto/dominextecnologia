@@ -16,7 +16,7 @@ const TREE: PermissionSearchGroup[] = [
     screen: { key: 'screen:service_orders', label: 'Ordens de Serviço', description: 'Lista completa de OS.' },
     actions: [
       { key: 'fn:create_os', label: 'Criar OS', description: 'Criar novas ordens de serviço' },
-      { key: 'fn:reopen_os', label: 'Reabrir OS', description: 'Reabrir ordens concluídas' },
+      { key: 'fn:reopen_os', label: 'Resetar OS', description: 'Resetar ordens concluídas' },
     ],
   },
   {
@@ -95,7 +95,7 @@ describe('filterPermissionTree', () => {
   });
 
   it('só a ação-filha casando mantém a tela com SÓ aquela ação', () => {
-    const out = filterPermissionTree(TREE, 'reabrir');
+    const out = filterPermissionTree(TREE, 'resetar');
     expect(out).toHaveLength(1);
     expect(out[0].screen.key).toBe('screen:service_orders');
     expect(out[0].actions.map(a => a.key)).toEqual(['fn:reopen_os']);
