@@ -22,6 +22,8 @@ import { AccountFormDialog } from './AccountFormDialog';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { useCustomers } from '@/hooks/useCustomers';
 import { SupplierSelectField } from '@/components/financial/SupplierSelectField';
+import { ServiceOrderSelectField } from '@/components/service-orders/ServiceOrderSelectField';
+import { useServiceOrderOptions } from '@/hooks/useServiceOrderOptions';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { getCategoryIcon } from './categoryIcons';
 import { cn } from '@/lib/utils';
@@ -166,6 +168,11 @@ function makeTransactionSchema(
     account_id: z.string().min(1, v.accountRequired),
     // Cliente é SEMPRE opcional aqui: nem toda receita/despesa tem dono.
     customer_id: z.string().optional(),
+    // Ordem de serviço: opcional, e agora É campo do formulário (1.36.2).
+    // Antes só chegava por `prefill`, vindo do botão "Faturar OS" — quem
+    // lançava direto pelo Financeiro não tinha como amarrar, a OS ficava sem
+    // selo de "Faturada" e a trava de contagem dupla não via esse caminho.
+    service_order_id: z.string().optional(),
     // Fornecedor é SEMPRE opcional, pelo mesmo motivo do cliente. Os dois
     // campos convivem SEMPRE visíveis (não alternam por tipo): o campo
     // Cliente já era mostrado em receita E despesa antes deste campo existir
@@ -766,12 +773,11 @@ interface TransactionFormDialogProps {
    * `transaction`, que significa "estou editando este registro" e muda o plano
    * de parcelas, a regra de `paid_date` e o comportamento de anexos.
    *
-   * `service_order_id` NÃO é campo do formulário (não está
-   * no schema Zod, logo o parse os descartaria): eles são carimbados direto no
-   * payload em `runSubmit`. Ver o bloco "vínculos do prefill" lá. Já
-   * `customer_id` É campo do formulário (desde 1.24.22) e flui por ele.
+   * `customer_id` (1.24.22) e `service_order_id` (1.36.2) SÃO campos do
+   * formulário e fluem normalmente por ele: o prefill só semeia o valor
+   * inicial, e o usuário pode trocar nos dois seletores.
    *
-   * Hoje só o fluxo "receita ao finalizar OS" usa.
+   * Usam: "receita ao finalizar OS", "faturar OS" e a receita de lead ganho.
    */
   prefill?: Partial<TransactionFormData> & { service_order_id?: string; customer_id?: string };
   /** Impede trocar o cliente em fluxos ancorados numa ficha específica. */
@@ -806,6 +812,13 @@ export function TransactionFormDialog({
   const { activeCostCenters } = useCostCenters();
   // Mesmo filtro do ContaFormDialog: cliente excluído some da lista.
   const { customers } = useCustomers();
+  // Janela recente de OSs pro seletor de vínculo. Passa a OS já vinculada pra
+  // ela entrar na lista mesmo sendo antiga (senão, editar um lançamento velho
+  // mostraria o campo vazio e salvar apagaria o vínculo em silêncio).
+  const { serviceOrders: osOptions } = useServiceOrderOptions(
+    open,
+    (transaction as any)?.service_order_id ?? prefill?.service_order_id ?? null,
+  );
   const activeCustomers = useMemo(() => (customers || []).filter((c: any) => !c.is_deleted), [customers]);
   // Fornecedor não tem soft-delete (tabela `suppliers` não tem `is_deleted`),
   // então a lista inteira entra sem filtro — diferente do cliente de propósito.
@@ -902,6 +915,7 @@ export function TransactionFormDialog({
       installment_count: 1,
       account_id: (transaction as any)?.account_id ?? lastAccountId,
       customer_id: (transaction as any)?.customer_id ?? '',
+      service_order_id: (transaction as any)?.service_order_id ?? '',
       supplier_id: (transaction as any)?.supplier_id ?? '',
       cost_center_id: transaction?.cost_center_id ?? null,
       // Decisão do CEO: nunca nasce marcado. Sem padrão, sem preferência salva.
@@ -909,13 +923,11 @@ export function TransactionFormDialog({
     };
 
     // Pré-preenchimento só existe em CRIAÇÃO. Editando, quem manda é o registro.
-    // Só `service_order_id` fica de fora: não é campo do form (o parse do Zod o
-    // descartaria) e entra direto no payload em `runSubmit`. `customer_id` VIRA
-    // campo do formulário (chegou em 1.24.22), então passa por aqui de propósito
-    // — assim o seletor de cliente aparece preenchido e o usuário pode trocar.
+    // `customer_id` (1.24.22) e `service_order_id` (1.36.2) SÃO campos do
+    // formulário, então o prefill passa por aqui de propósito: os dois
+    // seletores aparecem preenchidos e o usuário ainda pode trocar.
     if (transaction || !prefill) return base;
-    const { service_order_id: _prefillOsId, ...prefillFields } = prefill;
-    return { ...base, ...prefillFields };
+    return { ...base, ...prefill };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transaction, defaultType, prefillKey, timezone, requireDueDateWhenUnpaid]);
 
@@ -1152,14 +1164,12 @@ export function TransactionFormDialog({
         supplier_id: data.supplier_id || null,
         cost_center_id: data.cost_center_id || null,
         credit_card_bill_date: data.credit_card_bill_date || null,
-        // ── vínculos do prefill ────────────────────────────────────────────
-        // `service_order_id` não existe no schema Zod, então NÃO sobrevive ao
-        // parse do react-hook-form: se dependesse do form, chegaria aqui como
-        // `undefined` e o vínculo da receita com a OS se perderia em silêncio.
-        // É carimbado direto no payload, por último,
-        // pra nada acima sobrescrever. Só em CRIAÇÃO: em edição o vínculo do
-        // registro já existe e não é assunto deste formulário.
-        ...(!isEditing && prefill?.service_order_id ? { service_order_id: prefill.service_order_id } : {}),
+        // Vínculo com a Ordem de serviço. Desde a 1.36.2 é campo do formulário
+        // (antes só chegava por `prefill` e era carimbado aqui por fora, porque
+        // não sobrevivia ao parse do Zod). Mesma regra de cliente/fornecedor:
+        // vazio vira `null`, nunca some do payload — senão desvincular pela
+        // tela não teria efeito nenhum.
+        service_order_id: data.service_order_id || null,
       };
       if (data.payment_method) localStorage.setItem('fin_last_payment_method', data.payment_method);
       if (data.account_id) localStorage.setItem('fin_last_account_id', data.account_id);
@@ -1333,6 +1343,28 @@ export function TransactionFormDialog({
           placeholder={tf.customerPlaceholder}
           searchPlaceholder={tf.customerSearchPlaceholder}
           disabled={lockCustomer}
+        />
+        <FormMessage />
+      </FormItem>
+    )} />
+  );
+
+  // Vínculo com a OS. Opcional e sempre visível (receita E despesa): despesa de
+  // material também pertence a uma OS. Amarrar aqui é o que faz a OS mostrar o
+  // selo "Faturada" e o que deixa a trava de contagem dupla enxergar o
+  // lançamento feito direto pelo Financeiro.
+  const serviceOrderField = (
+    <FormField control={form.control} name="service_order_id" render={({ field }) => (
+      <FormItem className="lg:col-span-2">
+        <FormLabel>{tf.serviceOrderLabel}</FormLabel>
+        <ServiceOrderSelectField
+          serviceOrders={osOptions}
+          value={field.value || ''}
+          onValueChange={field.onChange}
+          placeholder={tf.serviceOrderPlaceholder}
+          searchPlaceholder={tf.serviceOrderSearchPlaceholder}
+          emptyMessage={tf.serviceOrderEmpty}
+          noneLabel={tf.serviceOrderNone}
         />
         <FormMessage />
       </FormItem>
@@ -1526,6 +1558,12 @@ export function TransactionFormDialog({
           {/* Vínculo principal: Cliente em receita; Fornecedor em despesa.
               O vínculo secundário continua disponível em Mais detalhes. */}
           {isEntrada ? customerField : supplierField}
+
+          {/* Ordem de serviço fica na seção PRINCIPAL, não em "Mais detalhes".
+              Campo escondido em seção colapsada ninguém acha, e é justamente
+              por não ter onde amarrar que o lançamento feito pelo Financeiro
+              ficava solto e furava a trava de contagem dupla. */}
+          {serviceOrderField}
           </ModalFormSection>
 
           {/* ── Seção 2: Dinheiro ──────────────────────────────────────────

@@ -65,6 +65,15 @@ vi.mock('@/hooks/useCostCenters', () => ({
   useCostCenters: () => ({ activeCostCenters: [], costCenters: [] }),
 }));
 
+// Seletor de OS (vínculo opcional da cobrança, 1.36.2): stub pelo MESMO motivo
+// do `useCostCenters` acima — o hook real passa por `useUserCompany`, que exige
+// AuthProvider, e estes testes montam o dialog sem contexto de auth. Lista
+// vazia: nenhum teste daqui exercita o vínculo com OS.
+vi.mock('@/hooks/useServiceOrderOptions', () => ({
+  useServiceOrderOptions: () => ({ serviceOrders: [], isLoading: false }),
+}));
+
+
 vi.mock('@/hooks/useTenantCharges', () => ({
   useTenantCharges: () => ({ create: { mutateAsync: createMutateAsync, isPending: false } }),
   buildCheckoutUrl: (code: string) => `https://dominex.app/pagar/${code}`,

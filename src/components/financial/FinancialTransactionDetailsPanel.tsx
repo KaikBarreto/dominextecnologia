@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   CalendarDays,
   CheckCircle2,
@@ -157,13 +158,35 @@ export function FinancialTransactionDetailsPanel({
         {transaction.transaction_type === 'entrada' && received > 0 && (
           <DetailItem label="Já recebido" value={`${money(received)} de ${money(Number(transaction.amount))}`} />
         )}
-        <DetailItem label="Vínculos" icon={Link2} value={[
-          transaction.contract_id ? 'Contrato' : null,
-          transaction.service_order_id ? 'Ordem de serviço' : null,
-          transaction.transfer_pair_id ? 'Transferência' : null,
-          transaction.payment_group_id ? 'Quitação em lote' : null,
-          transaction.tenant_charge_id ? 'Cobrança online' : null,
-        ].filter(Boolean).join(' · ') || 'Nenhum'} />
+        {/* "Ordem de serviço" é CLICÁVEL: leva direto pra OS pelo deep-link
+            `?os=<id>` que a tela de OS já entende. Antes era texto morto, e
+            quem via o lançamento não tinha como chegar na OS de origem. Os
+            demais vínculos seguem como rótulo (não têm deep-link pronto). */}
+        <DetailItem label="Vínculos" icon={Link2} value={(() => {
+          const vinculos: React.ReactNode[] = [];
+          if (transaction.contract_id) vinculos.push('Contrato');
+          if (transaction.service_order_id) {
+            vinculos.push(
+              <Link
+                key="os"
+                to={`/ordens-servico?os=${transaction.service_order_id}`}
+                className="underline underline-offset-2 hover:text-primary"
+              >
+                Ordem de serviço
+              </Link>,
+            );
+          }
+          if (transaction.transfer_pair_id) vinculos.push('Transferência');
+          if (transaction.payment_group_id) vinculos.push('Quitação em lote');
+          if (transaction.tenant_charge_id) vinculos.push('Cobrança online');
+          if (vinculos.length === 0) return 'Nenhum';
+          return vinculos.map((v, i) => (
+            <span key={i}>
+              {i > 0 && ' · '}
+              {v}
+            </span>
+          ));
+        })()} />
         <DetailItem label="Criado por" value={transaction.creator?.full_name || transaction.creator?.email || 'Não informado'} />
         <DetailItem label="Criado em" value={transaction.created_at ? new Date(transaction.created_at).toLocaleString('pt-BR') : 'Não informado'} />
         <DetailItem label="Última atualização" value={transaction.updated_at ? new Date(transaction.updated_at).toLocaleString('pt-BR') : 'Não informado'} />

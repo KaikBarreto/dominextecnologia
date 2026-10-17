@@ -171,6 +171,15 @@ vi.mock('@/components/ui/SearchableSelect', () => ({
   ),
 }));
 
+// Seletor de OS (vínculo opcional da cobrança, 1.36.2): stub pelo MESMO motivo
+// do `useCostCenters` acima — o hook real passa por `useUserCompany`, que exige
+// AuthProvider, e estes testes montam o dialog sem contexto de auth. Lista
+// vazia: nenhum teste daqui exercita o vínculo com OS.
+vi.mock('@/hooks/useServiceOrderOptions', () => ({
+  useServiceOrderOptions: () => ({ serviceOrders: [], isLoading: false }),
+}));
+
+
 import { TransactionFormDialog } from './TransactionFormDialog';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { todayInTz } from '@/lib/timezone';

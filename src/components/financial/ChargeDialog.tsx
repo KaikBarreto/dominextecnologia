@@ -8,6 +8,8 @@ import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { Button } from '@/components/ui/button';
+import { ServiceOrderSelectField } from '@/components/service-orders/ServiceOrderSelectField';
+import { useServiceOrderOptions } from '@/hooks/useServiceOrderOptions';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -127,6 +129,12 @@ const METHOD_TO_SIMULATOR: Record<Exclude<BillingMethod, 'UNDEFINED'>, Simulator
 };
 
 export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustomer, presetAmount, presetDescription, presetDueDate, source, onCreated }: ChargeDialogProps) {
+  // Vínculo com a OS escolhido NA TELA. Só entra em cena quando o chamador não
+  // passou `source`: cobrança aberta pelo Financeiro não tem origem nenhuma e,
+  // sem isto, nascia solta — a OS ficava sem selo de "Faturada" e a trava de
+  // contagem dupla não enxergava essa cobrança.
+  const [osVinculada, setOsVinculada] = useState('');
+  const { serviceOrders: osOptions } = useServiceOrderOptions(open && !source, null);
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.cobrar;
   const fin = MESSAGES[locale].app.finance;
@@ -291,6 +299,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
       setDiscountPercent(defaultDiscountPercent != null ? String(defaultDiscountPercent) : '');
       setDiscountDays(defaultDiscountDays != null ? String(defaultDiscountDays) : '');
       setDescription(presetDescription ?? defaultDescription ?? '');
+      setOsVinculada('');
       setCategory('');
       setCostCenterId(null);
       setPostToFinance(autoPostToFinance);
@@ -630,8 +639,10 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
         // Quem paga a taxa — só faz sentido no cartão; o edge ignora nos demais.
         fee_payer: method === 'CREDIT_CARD' ? feePayer : undefined,
         // Origem da cobrança: ativa o dedupe no edge (orçamento ou parcela).
-        source_type: source?.type,
-        source_id: source?.id ?? null,
+        // Origem do CHAMADOR tem prioridade (orçamento, parcela, "Faturar OS").
+        // Sem ela, vale a OS escolhida na tela; sem nenhuma das duas, avulsa.
+        source_type: source?.type ?? (osVinculada ? 'service_order' : undefined),
+        source_id: source?.id ?? (osVinculada || null),
         // Opção por cobrança (padrão vem da conta): lançar ou não no Financeiro.
         // Parcela de contrato não tem essa escolha — o lançamento é a própria
         // parcela, e a edge ignora o campo. Nem enviamos, pra não fingir opção.
@@ -1149,6 +1160,26 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                     searchPlaceholder={t.quickCustomer.searchPlaceholder}
                     className={showCustomerError ? 'border-destructive ring-1 ring-destructive' : undefined}
                   />
+                )}
+
+                {/* Vínculo com a OS. Só aparece quando a cobrança NÃO nasceu de
+                    uma origem (orçamento, parcela, "Faturar OS") — nesses casos o
+                    vínculo já vem pronto e deixar o usuário trocar confundiria.
+                    Aberta pelo Financeiro, é aqui que se amarra na OS. */}
+                {!source && (
+                  <div className="mt-3 space-y-1.5">
+                    <Label htmlFor="charge-service-order">{t.fields.serviceOrderLabel}</Label>
+                    <ServiceOrderSelectField
+                      id="charge-service-order"
+                      value={osVinculada}
+                      onValueChange={setOsVinculada}
+                      serviceOrders={osOptions}
+                      placeholder={t.fields.serviceOrderPlaceholder}
+                      searchPlaceholder={t.fields.serviceOrderSearchPlaceholder}
+                      emptyMessage={t.fields.serviceOrderEmpty}
+                      noneLabel={t.fields.serviceOrderNone}
+                    />
+                  </div>
                 )}
 
                 {/* Cliente sem CPF/CNPJ (ou com documento errado): avisa AQUI e
