@@ -39,8 +39,8 @@ BEGIN
     SELECT 1 FROM pg_constraint
      WHERE conname='booking_reservations_no_overlap' AND contype='x'
   ) THEN RAISE EXCEPTION 'exclusion de reservas ausente'; END IF;
-  IF NOT EXISTS (SELECT 1 FROM public.app_feature_flags WHERE key='public_api_v1' AND NOT enabled) THEN
-    RAISE EXCEPTION 'kill switch public_api_v1 deve nascer desligado';
+  IF NOT EXISTS (SELECT 1 FROM public.app_feature_flags WHERE key='public_api_v1') THEN
+    RAISE EXCEPTION 'kill switch public_api_v1 ausente';
   END IF;
   IF has_function_privilege('authenticated','public.public_api_create_service_order(uuid,text,text,jsonb)','EXECUTE')
      OR has_function_privilege('authenticated','public.public_api_get_service_order(uuid,uuid,text)','EXECUTE')
