@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.9',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Prévia da OS mais nítida e atualizada',
+        description: 'A imagem da empresa exibida ao compartilhar uma Ordem de Serviço ganhou mais nitidez. Cada novo link copiado também solicita ao WhatsApp a arte mais recente, reduzindo casos em que uma imagem antiga ou inadequada continuava aparecendo no cartão.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.36.8',
     date: '17 de outubro de 2026',
     type: 'patch',
