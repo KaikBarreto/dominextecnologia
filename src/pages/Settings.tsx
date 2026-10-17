@@ -49,6 +49,7 @@ import { useUserPreferences } from '@/hooks/useUserPreferences';
 import * as LucideIcons from 'lucide-react';
 import type { AppRole } from '@/types/database';
 import { tenantFileOptions } from '@/utils/tenantStorage';
+import { createCustomOsSocialImage, createOsSocialImageFromLogo } from '@/utils/osSocialImage';
 
 const UsersPage = lazy(() => import('@/pages/Users'));
 
@@ -177,6 +178,7 @@ export default function Settings() {
   const [companyZip, setCompanyZip] = useState('');
   const [companySegment, setCompanySegment] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [socialImageUploading, setSocialImageUploading] = useState(false);
   const [wlUploading, setWlUploading] = useState(false);
   const [wlEnabled, setWlEnabled] = useState(false);
   const [wlColor, setWlColor] = useState('#00C597');
@@ -370,6 +372,95 @@ export default function Settings() {
   const flushRef = useRef(flushSave);
   flushRef.current = flushSave;
   useEffect(() => () => { flushRef.current?.(); }, []);
+
+  const currentBrandLogo =
+    wlEnabled && settings?.white_label_logo_url
+      ? settings.white_label_logo_url
+      : settings?.logo_url || null;
+
+  const persistOsSocialImage = async (
+    file: File,
+    mode: 'logo' | 'custom',
+  ) => {
+    const previousUrl = settings?.os_social_image_url;
+    const filePath = `os_social_${Date.now()}.jpg`;
+    const options = await tenantFileOptions({
+      contentType: 'image/jpeg',
+      cacheControl: '3600',
+    });
+    const { error: uploadError } = await supabase.storage
+      .from('company-logos')
+      .upload(filePath, file, options);
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(filePath);
+    try {
+      await updateSettings.mutateAsync({
+        os_social_image_url: publicUrl,
+        os_social_image_mode: mode,
+      });
+    } catch (error) {
+      await supabase.storage.from('company-logos').remove([filePath]);
+      throw error;
+    }
+
+    if (previousUrl?.includes('/company-logos/')) {
+      const previousPath = previousUrl.split('/company-logos/')[1]?.split('?')[0];
+      if (previousPath?.startsWith('os_social_')) {
+        await supabase.storage.from('company-logos').remove([previousPath]);
+      }
+    }
+  };
+
+  const handleGenerateSocialImage = async () => {
+    if (!currentBrandLogo) {
+      toast({ variant: 'destructive', title: t.company.visualIdentity.socialImage.logoRequired });
+      return;
+    }
+    setSocialImageUploading(true);
+    try {
+      const file = await createOsSocialImageFromLogo(currentBrandLogo, wlColor);
+      await persistOsSocialImage(file, 'logo');
+      toast({ title: t.company.visualIdentity.socialImage.generated });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: t.company.visualIdentity.socialImage.error,
+        description: getErrorMessage(error),
+      });
+    } finally {
+      setSocialImageUploading(false);
+    }
+  };
+
+  const handleCustomSocialImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const source = event.target.files?.[0];
+    event.target.value = '';
+    if (!source) return;
+    if (!source.type.startsWith('image/')) {
+      toast({ variant: 'destructive', title: t.company.visualIdentity.errorFileType });
+      return;
+    }
+    if (source.size > 10 * 1024 * 1024) {
+      toast({ variant: 'destructive', title: t.company.visualIdentity.socialImage.errorFileSize });
+      return;
+    }
+
+    setSocialImageUploading(true);
+    try {
+      const file = await createCustomOsSocialImage(source);
+      await persistOsSocialImage(file, 'custom');
+      toast({ title: t.company.visualIdentity.socialImage.customSaved });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: t.company.visualIdentity.socialImage.error,
+        description: getErrorMessage(error),
+      });
+    } finally {
+      setSocialImageUploading(false);
+    }
+  };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     let file = e.target.files?.[0];
@@ -666,6 +757,81 @@ export default function Settings() {
                     <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploading} />
                   </label>
                 )}
+              </div>
+
+              <Separator className="my-6" />
+
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Image className="h-4 w-4 text-primary" />
+                  {t.company.visualIdentity.socialImage.title}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {t.company.visualIdentity.socialImage.description}
+                </p>
+              </div>
+
+              <div className="grid gap-4 pl-0 sm:grid-cols-[minmax(0,360px)_1fr] sm:pl-6">
+                <div className="aspect-[1200/630] overflow-hidden rounded-lg border bg-muted/30">
+                  {settings?.os_social_image_url ? (
+                    <img
+                      src={settings.os_social_image_url}
+                      alt={t.company.visualIdentity.socialImage.previewAlt}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : currentBrandLogo ? (
+                    <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
+                      <img src={currentBrandLogo} alt="" className="max-h-16 max-w-[70%] object-contain" />
+                      <span className="text-xs text-muted-foreground">
+                        {t.company.visualIdentity.socialImage.generateHint}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex h-full items-center justify-center p-6 text-center text-xs text-muted-foreground">
+                      {t.company.visualIdentity.socialImage.empty}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col justify-center gap-3">
+                  <div>
+                    <p className="text-sm font-medium">
+                      {settings?.os_social_image_mode === 'custom'
+                        ? t.company.visualIdentity.socialImage.customActive
+                        : t.company.visualIdentity.socialImage.logoActive}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t.company.visualIdentity.socialImage.formatHint}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={socialImageUploading || !currentBrandLogo}
+                      onClick={handleGenerateSocialImage}
+                    >
+                      {socialImageUploading
+                        ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        : <RefreshCw className="mr-2 h-4 w-4" />}
+                      {t.company.visualIdentity.socialImage.useLogo}
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" asChild disabled={socialImageUploading}>
+                      <label className="cursor-pointer">
+                        <Upload className="mr-2 h-4 w-4" />
+                        {t.company.visualIdentity.socialImage.uploadCustom}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          className="hidden"
+                          onChange={handleCustomSocialImage}
+                          disabled={socialImageUploading}
+                        />
+                      </label>
+                    </Button>
+                  </div>
+                </div>
               </div>
 
               <Separator className="my-6" />

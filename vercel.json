@@ -43,6 +43,7 @@
     { "source": "/v1/openapi.json", "destination": "/api/openapi-v1" },
     { "source": "/llms.txt", "destination": "/docs/llms.txt" },
     { "source": "/v1/:path*", "destination": "/api/public-v1?path=:path*" },
+    { "source": "/os-tecnico/:id", "destination": "/api/public-os?id=:id" },
     { "source": "/blog/:slug", "destination": "/api/blog-post?slug=:slug&locale=pt-br" },
     { "source": "/en/blog/:slug", "destination": "/api/blog-post?slug=:slug&locale=en" },
     { "source": "/es/blog/:slug", "destination": "/api/blog-post?slug=:slug&locale=es" },

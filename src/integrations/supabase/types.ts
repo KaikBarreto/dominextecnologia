@@ -1462,6 +1462,8 @@ export type Database = {
           logo_url: string | null
           name: string
           neighborhood: string | null
+          os_social_image_mode: string
+          os_social_image_url: string | null
           os_finish_revenue_prompt_enabled: boolean
           os_stock_consumption_enabled: boolean
           phone: string | null
@@ -1511,6 +1513,8 @@ export type Database = {
           logo_url?: string | null
           name?: string
           neighborhood?: string | null
+          os_social_image_mode?: string
+          os_social_image_url?: string | null
           os_finish_revenue_prompt_enabled?: boolean
           os_stock_consumption_enabled?: boolean
           phone?: string | null
@@ -1560,6 +1564,8 @@ export type Database = {
           logo_url?: string | null
           name?: string
           neighborhood?: string | null
+          os_social_image_mode?: string
+          os_social_image_url?: string | null
           os_finish_revenue_prompt_enabled?: boolean
           os_stock_consumption_enabled?: boolean
           phone?: string | null
@@ -13090,6 +13096,10 @@ export type Database = {
       get_profile_company_id: { Args: { _user_id: string }; Returns: string }
       get_public_os: { Args: { p_os_id: string }; Returns: Json }
       get_public_os_by_code: { Args: { p_code: string }; Returns: Json }
+      get_public_os_social_meta: {
+        Args: { p_reference: string }
+        Returns: Json
+      }
       get_public_registration_modules: {
         Args: { p_codes: string[] }
         Returns: {

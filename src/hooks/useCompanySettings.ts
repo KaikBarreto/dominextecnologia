@@ -20,6 +20,8 @@ export interface CompanySettings {
   state?: string;
   zip_code?: string;
   logo_url?: string;
+  os_social_image_url?: string | null;
+  os_social_image_mode?: 'logo' | 'custom';
   // Espelha ProposalCustomization (src/components/quotes/templates/types.ts).
   // Mantido inline pra evitar import circular (types.ts importa CompanySettings).
   proposal_customization?: {
