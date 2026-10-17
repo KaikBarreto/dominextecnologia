@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Loader2, Wallet, CreditCard } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
@@ -18,6 +18,8 @@ import { calculateEmployeeCost, defaultCostInput } from '@/utils/employeeCostPro
 import type { HoleriteSnapshot } from '@/utils/holeriteHtmlGenerator';
 import { CostCenterSelect } from '@/components/financial/CostCenterSelect';
 import { useCostCenters } from '@/hooks/useCostCenters';
+import { CategorySelectField } from '@/components/financial/CategorySelectField';
+import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { formatMoney } from '@/lib/format';
 
 export interface PaymentPayload {
@@ -25,11 +27,57 @@ export interface PaymentPayload {
   accountId: string;
   description?: string;
   // NOVOS (aditivos — não quebra callers existentes):
-  mode: 'informal' | 'clt';
+  mode: 'informal' | 'clt' | 'pj';
   holeriteSnapshot?: HoleriteSnapshot; // preenchido só no CLT
-  amount: number; // valor efetivamente pago (toPay informal | liquido CLT) — source of truth
+  amount: number; // valor efetivamente pago (toPay informal | liquido CLT | valor combinado PJ) — source of truth
   /** Centro de custo (obra/projeto/setor) escolhido na hora do pagamento. Sempre opcional. */
   costCenterId?: string | null;
+  /** Nº da nota fiscal (opcional, só no modo PJ). */
+  invoiceNumber?: string;
+  /**
+   * Categoria financeira do lançamento — só preenchido no modo PJ (CLT/informal
+   * continuam gravando `'Funcionários'` direto no caller, sem passar por aqui).
+   * SEMPRE o `name` de uma linha real de `financial_categories` da empresa —
+   * nunca um literal inventado (ver `resolveDefaultPjCategoryName` abaixo).
+   */
+  category?: string;
+}
+
+/**
+ * Nome de SEMENTE da categoria de sistema "mão de obra avulsa" (CSP, saída,
+ * grupo `cmv`) — criada pelo gatilho de empresa nova
+ * (`supabase/migrations/20260919190000_dedup_categorias_financeiras_e_trava.sql`).
+ * É aditivo-only aqui: NÃO está mapeada em `SYSTEM_CATEGORY_ROLES`
+ * (`finance-system-categories.ts`) porque o trio (is_system+saida+cmv) SOZINHO
+ * é ambíguo com "CSP - Materiais" — por isso a resolução abaixo também exige
+ * bater o NOME, em vez de usar o motor de papel único daquele arquivo.
+ */
+const PJ_LABOR_CATEGORY_SEED_NAME = 'CSP - Mão de Obra Avulsa';
+
+const normalizeCategoryName = (value: string | null | undefined): string =>
+  (value ?? '').trim().toLocaleLowerCase('pt-BR');
+
+/**
+ * Resolve a categoria-padrão do pagamento PJ/MEI PELA LINHA (is_system + saída
+ * + dre_group='cmv' + nome ainda igual à semente), nunca por nome cru solto —
+ * `financial_transactions.category` é cópia de texto, não FK, então gravar um
+ * nome que não existe em `financial_categories` cria lançamento órfão (sem
+ * cor/ícone, fora do DRE). Empresa que RENOMEOU essa categoria ou nunca teve
+ * (empresa muito antiga) devolve `''`: o campo nasce vazio e o
+ * `CategorySelectField` cobre com seu próprio `fallbackNames` quando a lista
+ * estiver inteiramente vazia; nos outros casos o usuário escolhe na hora.
+ */
+function resolveDefaultPjCategoryName(categories: { name: string; type: string; dre_group?: string | null; is_system?: boolean | null; is_active?: boolean | null }[]): string {
+  const seed = normalizeCategoryName(PJ_LABOR_CATEGORY_SEED_NAME);
+  const match = categories.find(
+    (c) =>
+      c.is_system === true &&
+      c.is_active !== false &&
+      c.type === 'saida' &&
+      normalizeCategoryName(c.dre_group) === 'cmv' &&
+      normalizeCategoryName(c.name) === seed,
+  );
+  return match?.name ?? '';
 }
 
 interface EmployeePaymentModalProps {
@@ -48,11 +96,17 @@ interface EmployeePaymentModalProps {
   financialTransactionId?: string;
   payrollPeriodLabel?: string;
   // NOVOS (CLT) — todos OPCIONAIS, caller atualizado na próxima task:
-  employeeRegime?: 'informal' | 'clt';
+  employeeRegime?: 'informal' | 'clt' | 'pj';
   dependentsCount?: number;
   vtEnabled?: boolean;
   vtMonthlyValue?: number;
   paymentDate?: string; // ISO; default hoje. Competência sai daqui.
+  /**
+   * Contrato PJ vigente (quando o funcionário é PJ/MEI). Só usado pra
+   * pré-preencher o valor combinado quando `billing_type === 'monthly'` —
+   * cobrança por OS/hora/diária varia a cada pagamento, não dá pra adivinhar.
+   */
+  pjActiveContract?: { amount: number; billing_type: 'monthly' | 'per_order' | 'hourly' | 'daily' } | null;
 }
 
 export function EmployeePaymentModal({
@@ -70,6 +124,7 @@ export function EmployeePaymentModal({
   vtEnabled,
   vtMonthlyValue,
   paymentDate,
+  pjActiveContract,
 }: EmployeePaymentModalProps) {
   const { accounts, balances } = useFinancialAccounts();
   const { locale, currency } = useAppLocaleContext();
@@ -78,6 +133,7 @@ export function EmployeePaymentModal({
   const t = MESSAGES[locale].app.employees.paymentModal;
   const fin = MESSAGES[locale].app.finance;
   const { activeCostCenters } = useCostCenters();
+  const { categories: financialCategories } = useFinancialCategories();
   const activeAccounts = useMemo(() => {
     const active = accounts.filter(a => a.is_active);
     // Sort: "Conta Principal" or "Caixa" first, then by sort_order
@@ -97,12 +153,52 @@ export function EmployeePaymentModal({
   const [accountId, setAccountId] = useState('');
   const [costCenterId, setCostCenterId] = useState<string | null>(null);
   const [description, setDescription] = useState('');
-  const [payMode, setPayMode] = useState<'informal' | 'clt'>('informal');
+  const [payMode, setPayMode] = useState<'informal' | 'clt' | 'pj'>('informal');
+  const [pjAmountStr, setPjAmountStr] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [pjCategoryName, setPjCategoryName] = useState('');
+  // `true` só quando o usuário ESCOLHEU a categoria à mão nesta sessão do
+  // modal — protege a escolha manual de ser sobrescrita pelo efeito de
+  // resolução automática (abaixo) quando as categorias chegam depois.
+  const pjCategoryTouchedRef = useRef(false);
 
   // Modo default = regime do funcionário, resetado sempre que o modal abre.
+  // PJ/MEI é travado em 'pj' — não faz sentido pagar prestador em modo
+  // informal/CLT (folha/encargos não existem pra esse regime).
   useEffect(() => {
     if (open) setPayMode(employeeRegime ?? 'informal');
   }, [open, employeeRegime]);
+
+  // Valor combinado PJ: pré-preenchido pelo contrato vigente quando a
+  // cobrança é mensal (por OS/hora/diária varia a cada pagamento). Reseta a
+  // cada entrada no modo PJ (abrir o modal ou trocar pra PJ) — a categoria
+  // em si é resolvida no efeito seguinte, que também cobre carregamento
+  // assíncrono.
+  useEffect(() => {
+    if (open && payMode === 'pj') {
+      const prefill = pjActiveContract?.billing_type === 'monthly' ? pjActiveContract.amount : 0;
+      setPjAmountStr(prefill > 0 ? maskCurrency(String(Math.round(prefill * 100))) : '');
+      setInvoiceNumber('');
+      pjCategoryTouchedRef.current = false;
+      setPjCategoryName('');
+    }
+  }, [open, payMode]);
+
+  // Categoria default: "CSP - Mão de Obra Avulsa" resolvida pela LINHA (não
+  // pelo nome cru), pra sobreviver a rename e nunca mandar pro banco um nome
+  // que não existe em `financial_categories` da empresa. Depende de
+  // `financialCategories` DE PROPÓSITO: na primeira abertura do modal depois
+  // de carregar a página, a lista ainda está vazia (`[]`, react-query em
+  // voo) — sem essa dependência o campo nascia vazio pra sempre (achado em
+  // QA). Roda de novo quando a lista chega, mas só enquanto o usuário não
+  // tiver tocado no campo (`pjCategoryTouchedRef`), pra nunca substituir uma
+  // escolha manual.
+  useEffect(() => {
+    if (open && payMode === 'pj' && !pjCategoryTouchedRef.current) {
+      const resolved = resolveDefaultPjCategoryName(financialCategories);
+      if (resolved) setPjCategoryName(resolved);
+    }
+  }, [open, payMode, financialCategories]);
 
   // Competência = mês/ano da DATA DO PAGAMENTO (nunca new Date() na geração).
   const { competencia, competenceYear } = useMemo(() => {
@@ -193,10 +289,25 @@ export function EmployeePaymentModal({
     [grossBase, ded.totalDescontosLegais, balance.totalFaltas, valeDiscount],
   );
 
+  // PJ: valor combinado digitado (sem balance/vale/falta — não existe pra PJ).
+  const pjAmount = useMemo(() => parseCurrency(pjAmountStr), [pjAmountStr]);
+
+  // Colar valor pronto no campo PJ (mesma régua dos demais campos de dinheiro).
+  const handlePjAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData?.getData('text');
+    if (!text) return;
+    const cents = centsFromPastedAmount(text);
+    if (cents == null) return;
+    e.preventDefault();
+    setPjAmountStr(maskCurrency(String(cents)));
+  };
+
   // Valor efetivamente pago (source of truth único).
-  const amountToPay = payMode === 'clt' ? cltLiquido : toPay;
+  const amountToPay = payMode === 'clt' ? cltLiquido : payMode === 'pj' ? pjAmount : toPay;
   const negativo = amountToPay < 0;
-  const canSubmit = !negativo && amountToPay > 0 && !!accountId && !isPending;
+  // PJ exige categoria escolhida (nunca grava lançamento sem nome de categoria
+  // real da empresa) — mesma régua do `accountId`, que já bloqueia sem conta.
+  const canSubmit = !negativo && amountToPay > 0 && !!accountId && !isPending && (payMode !== 'pj' || !!pjCategoryName);
 
   const handleConfirm = () => {
     if (negativo) return; // guard também no submit, não só no disabled
@@ -209,13 +320,15 @@ export function EmployeePaymentModal({
       liquido: cltLiquido,
     } : undefined;
     onSubmit({
-      valeDiscount,
+      valeDiscount: payMode === 'pj' ? 0 : valeDiscount,
       accountId,
       description: description || undefined,
       mode: payMode,
       holeriteSnapshot: snapshot,
       amount: amountToPay, // MESMO número que será gravado
       costCenterId,
+      category: payMode === 'pj' ? pjCategoryName : undefined,
+      invoiceNumber: payMode === 'pj' ? (invoiceNumber.trim() || undefined) : undefined,
     });
   };
 
@@ -237,6 +350,10 @@ export function EmployeePaymentModal({
   );
 
   const isClt = payMode === 'clt';
+  const isPj = payMode === 'pj';
+  // PJ/MEI é travado no modo 'pj' — folha/encargos CLT não fazem sentido pra
+  // um contrato de prestação de serviço.
+  const availableModes = employeeRegime === 'pj' ? (['pj'] as const) : (['informal', 'clt'] as const);
 
   return (
     <ResponsiveModal
@@ -256,11 +373,11 @@ export function EmployeePaymentModal({
         <div className="grid gap-4 md:grid-cols-[1fr_320px]">
           {/* ===================== FORM (esquerda) ===================== */}
           <div className="space-y-4">
-            {/* Seletor de modo Informal x CLT */}
+            {/* Seletor de modo (Informal/CLT, ou travado em PJ/MEI) */}
             <div className="space-y-1">
               <Label className="text-xs">{t.modeLabel}</Label>
               <div className="flex rounded-md border overflow-hidden text-sm">
-                {(['informal', 'clt'] as const).map((m) => (
+                {availableModes.map((m) => (
                   <button
                     key={m}
                     type="button"
@@ -271,14 +388,50 @@ export function EmployeePaymentModal({
                     }`}
                     onClick={() => setPayMode(m)}
                   >
-                    {m === 'informal' ? t.modeInformal : t.modeClt}
+                    {m === 'informal' ? t.modeInformal : m === 'clt' ? t.modeClt : t.modePj}
                   </button>
                 ))}
               </div>
             </div>
 
+            {/* Valor combinado + nota fiscal — só no modo PJ/MEI */}
+            {isPj && (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label>{t.pj.amountLabel}</Label>
+                  <Input
+                    value={pjAmountStr}
+                    onChange={e => setPjAmountStr(maskCurrency(e.target.value))}
+                    onPaste={handlePjAmountPaste}
+                    placeholder={maskCurrency('0')}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    {pjActiveContract?.billing_type === 'monthly' ? t.pj.amountFromContractHint : t.pj.noContractWarning}
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t.pj.invoiceNumberLabel}</Label>
+                  <Input
+                    value={invoiceNumber}
+                    onChange={e => setInvoiceNumber(e.target.value)}
+                    placeholder={t.pj.invoiceNumberPlaceholder}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t.pj.categoryLabel}</Label>
+                  <CategorySelectField
+                    value={pjCategoryName}
+                    onValueChange={(name) => { pjCategoryTouchedRef.current = true; setPjCategoryName(name); }}
+                    type="saida"
+                    fallbackNames={[PJ_LABOR_CATEGORY_SEED_NAME]}
+                  />
+                  <p className="text-[11px] text-muted-foreground">{t.pj.categoryHint}</p>
+                </div>
+              </div>
+            )}
+
             {/* Vale Discount */}
-            {balance.totalVales > 0 && (
+            {!isPj && balance.totalVales > 0 && (
               <div className="space-y-2">
                 <Label>{t.advanceDiscount.label}</Label>
                 <Input
@@ -355,7 +508,24 @@ export function EmployeePaymentModal({
 
           {/* ===================== RESUMO (direita / aside) ===================== */}
           <aside className="space-y-3 md:border-l md:pl-4">
-            {isClt ? (
+            {isPj ? (
+              <>
+                <div className="rounded-lg bg-muted border border-border p-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-1">{t.amountToPay.label}</p>
+                  <p className={`text-2xl font-bold ${amountToPay >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {fmt(amountToPay)}
+                  </p>
+                </div>
+                {invoiceNumber.trim() && (
+                  <div className="rounded-lg border p-4 space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t.pj.invoiceNumberLabel}</span>
+                      <span className="font-medium">{invoiceNumber.trim()}</span>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : isClt ? (
               <>
                 {/* PROVENTOS */}
                 <div className="rounded-lg border p-4 space-y-2 text-sm">
@@ -493,6 +663,12 @@ export function EmployeePaymentModal({
             {isClt && (
               <p className="text-[11px] leading-snug text-muted-foreground">
                 {t.disclaimer}
+              </p>
+            )}
+            {/* PJ/MEI: reforça que não há desconto de imposto nesse modo. */}
+            {isPj && (
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                {t.pj.noTaxDisclaimer}
               </p>
             )}
           </aside>

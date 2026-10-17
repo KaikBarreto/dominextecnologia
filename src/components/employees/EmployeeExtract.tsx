@@ -164,6 +164,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
       const details = buildPaymentDetails(movement) as {
         holerite?: HoleriteSnapshot & { mode?: string };
         holeriteIdentity?: HoleriteIdentity;
+        pjProviderIdentity?: { legalName?: string | null; cnpj?: string | null; invoiceNumber?: string | null; competencia?: string };
       };
       if (details.holerite?.mode === 'clt') {
         // Usa a identidade congelada no snapshot (cargo/CBO/matrícula do momento
@@ -188,6 +189,7 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
           employeeName, kind: 'pagamento', salary: employeeSalary, movement,
           companySettings, whiteLabel: wlEnabled, generatedByName: responsibleName, payment, locale,
           timeZone: timezone,
+          ...(details.pjProviderIdentity ? { pjProvider: details.pjProviderIdentity } : {}),
         }));
       } else {
         const payment: ThermalPaymentBreakdown = { ...b, paymentMethod: method, description: movement.description || undefined };
@@ -222,7 +224,10 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
     const isPayment = m.type === 'pagamento';
     const isVale = m.type === 'vale';
     const sign = signFor(m.type);
-    const b = isPayment ? buildBreakdown(m) : null;
+    // PJ/MEI não tem salário/vale/falta — o breakdown cheio (salário base,
+    // subtotal, vales) não existe pra esse modo. Mostra só valor + conta.
+    const isPjPayment = isPayment && buildPaymentDetails(m).mode === 'pj';
+    const b = isPayment && !isPjPayment ? buildBreakdown(m) : null;
 
     return (
       <div key={m.id} className="rounded-lg border p-3 space-y-2">
@@ -276,6 +281,20 @@ export function EmployeeExtract({ open, onOpenChange, employeeName, employeeSala
         {/* Forma de pagamento (não-pagamento) */}
         {!isPayment && m.payment_method && (
           <p className="text-xs text-muted-foreground pl-1">{t.extract.movement.viaAccount} {accountName(m.payment_method)}</p>
+        )}
+
+        {/* Breakdown do pagamento PJ/MEI: sem salário/bônus/vale, só valor + conta. */}
+        {isPjPayment && (
+          <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 text-xs">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t.extract.movement.breakdown.paymentMethod}</span>
+              <span className="font-medium">{accountName(m.payment_method) || t.extract.movement.breakdown.paymentMethod}</span>
+            </div>
+            <div className="flex justify-between border-t pt-1.5 items-center">
+              <span className="font-semibold">{t.extract.movement.breakdown.netAmount}</span>
+              <span className="font-bold text-base text-green-600">{fmt(Math.abs(m.amount))}</span>
+            </div>
+          </div>
         )}
 
         {/* Breakdown do pagamento */}

@@ -4335,6 +4335,69 @@ export type Database = {
           },
         ]
       }
+      employee_contracts: {
+        Row: {
+          amount: number
+          billing_type: string
+          company_id: string
+          created_at: string
+          employee_id: string
+          end_date: string | null
+          id: string
+          notes: string | null
+          payment_day: number | null
+          readjustment_percent: number | null
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          billing_type: string
+          company_id: string
+          created_at?: string
+          employee_id: string
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          payment_day?: number | null
+          readjustment_percent?: number | null
+          start_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billing_type?: string
+          company_id?: string
+          created_at?: string
+          employee_id?: string
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          payment_day?: number | null
+          readjustment_percent?: number | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_contracts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_face_calibration_attempts: {
         Row: {
           avg_distance: number | null
@@ -4681,6 +4744,9 @@ export type Database = {
           phone: string | null
           photo_url: string | null
           pix_key: string | null
+          pj_cnpj: string | null
+          pj_is_mei: boolean
+          pj_legal_name: string | null
           ponto_enabled: boolean
           ponto_slug: string | null
           position: string | null
@@ -4715,6 +4781,9 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           pix_key?: string | null
+          pj_cnpj?: string | null
+          pj_is_mei?: boolean
+          pj_legal_name?: string | null
           ponto_enabled?: boolean
           ponto_slug?: string | null
           position?: string | null
@@ -4749,6 +4818,9 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           pix_key?: string | null
+          pj_cnpj?: string | null
+          pj_is_mei?: boolean
+          pj_legal_name?: string | null
           ponto_enabled?: boolean
           ponto_slug?: string | null
           position?: string | null

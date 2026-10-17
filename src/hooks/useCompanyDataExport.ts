@@ -476,6 +476,7 @@ async function collectSheets({
   const employmentRegimeMap: Record<string, string> = {
     informal: 'Informal',
     clt: 'CLT',
+    pj: 'PJ/MEI',
   };
 
   // ── Mapas de FK, carregados sob demanda e UMA vez ──────────────────────────

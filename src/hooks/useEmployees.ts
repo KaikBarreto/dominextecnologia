@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 
 export type PaymentFrequency = 'monthly' | 'biweekly' | 'weekly';
 export type PaymentDayType = 'business' | 'calendar';
@@ -30,12 +32,18 @@ export interface Employee {
   payment_day: number | null;
   payment_day_2: number | null;
   payment_weekday: number | null;
-  employment_regime: 'informal' | 'clt';
+  employment_regime: 'informal' | 'clt' | 'pj';
   dependents_count: number;
   vt_enabled: boolean;
   vt_monthly_value: number;
   cbo: string | null;
   matricula: string | null;
+  /** CNPJ do prestador PJ/MEI. Só preenchido quando employment_regime = 'pj'. */
+  pj_cnpj: string | null;
+  /** Razão social do prestador PJ/MEI (o nome fantasia/pessoal fica em `name`). */
+  pj_legal_name: string | null;
+  /** true = o prestador é MEI. false para PJ comum e para quem não é 'pj'. */
+  pj_is_mei: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +51,11 @@ export interface Employee {
 export function useEmployees() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  // PJ/MEI não é "funcionário" no vocabulário do dono — os toasts de
+  // criar/editar têm variante própria (achado em QA: "Funcionário criado!"
+  // depois de cadastrar um prestador pela aba PJ/MEI).
+  const { locale } = useAppLocaleContext();
+  const tToasts = MESSAGES[locale].app.employees.toasts;
 
   const employeesQuery = useQuery({
     queryKey: ['employees'],
@@ -64,7 +77,10 @@ export function useEmployees() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['employees'] }); toast({ title: 'Funcionário criado!' }); },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['employees'] });
+      toast({ title: variables?.employment_regime === 'pj' ? tToasts.providerCreated : tToasts.employeeCreated });
+    },
     onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao criar funcionário', description: getErrorMessage(e) }),
   });
 
@@ -74,7 +90,10 @@ export function useEmployees() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['employees'] }); toast({ title: 'Funcionário atualizado!' }); },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['employees'] });
+      toast({ title: variables?.employment_regime === 'pj' ? tToasts.providerUpdated : tToasts.employeeUpdated });
+    },
     onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao atualizar funcionário', description: getErrorMessage(e) }),
   });
 

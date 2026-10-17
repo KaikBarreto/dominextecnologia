@@ -179,6 +179,25 @@ function stripLeadingZeros(digits: string): string {
   return stripped === "" ? "0" : stripped;
 }
 
+/**
+ * Converte o VALOR CONTROLADO de um `NumericInput` em modo `decimal` pra
+ * number. Nunca use `Number(valorDoNumericInput)` direto: o componente
+ * SEMPRE devolve notação PT-BR com vírgula decimal ("7,5"), mesmo em telas
+ * com idioma do app em en/es/fr — `Number('7,5')` é `NaN`, e isso grava
+ * `null` no banco em silêncio (achado em QA: reajuste de contrato PJ).
+ *
+ * Não é locale-aware de propósito: `sanitizeNumeric`/`parseBrazilianAmount`
+ * acima também não são — todo `NumericInput decimal` do app usa essa MESMA
+ * notação, independente do locale escolhido pelo usuário.
+ *
+ * Retorna `null` pra vazio ou valor inválido (nunca `NaN`).
+ */
+export function parseDecimalInputValue(value: string | null | undefined): number | null {
+  if (value == null || value.trim() === "") return null;
+  const n = Number(value.replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
 export interface NumericInputProps
   extends Omit<React.ComponentProps<typeof Input>, "value" | "onChange" | "type"> {
   /** Valor controlado como string crua (preserva "0," durante a digitação). */
