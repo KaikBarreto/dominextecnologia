@@ -169,6 +169,7 @@
         "npm:vite@^5.4.19",
         "npm:vitest@^3.2.4",
         "npm:xlsx@~0.18.5",
+        "npm:yaml@^2.6.0",
         "npm:zod@^3.25.76"
       ]
     }

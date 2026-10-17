@@ -1,0 +1,531 @@
+openapi: 3.1.1
+info:
+  title: Dominex Public API
+  version: 1.0.0
+  summary: Agendamento seguro de ordens de servico para integracoes server-to-server.
+  description: |
+    API REST publica e multi-tenant da Dominex. O contrato usa nomes tecnicos em
+    ingles; este documento explica o comportamento em portugues brasileiro.
+
+    A chave e um segredo de servidor. Nao use esta API diretamente em navegador,
+    aplicativo mobile distribuido ou qualquer cliente onde o segredo possa ser extraido.
+  contact:
+    name: Dominex Tecnologia
+    url: https://www.dominex.app
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.dominex.app/v1
+    description: Producao
+tags:
+  - name: Capabilities
+  - name: Catalogs
+  - name: Availability
+  - name: Customers
+  - name: Service orders
+security:
+  - bearerAuth: []
+paths:
+  /capabilities:
+    get:
+      operationId: getCapabilities
+      tags: [Capabilities]
+      summary: Consulta capacidades liberadas para a integracao.
+      responses:
+        '200':
+          description: Capacidades, timezone e limites vigentes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Capabilities'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /service-types:
+    get:
+      operationId: listServiceTypes
+      tags: [Catalogs]
+      summary: Lista tipos de servico ativos sem precos ou dados fiscais.
+      x-required-scope: catalogs:read
+      responses:
+        '200':
+          description: Catalogo ativo.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ServiceType' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /booking-resources:
+    get:
+      operationId: listBookingResources
+      tags: [Catalogs]
+      summary: Lista recursos autorizados quando o modo e agent_selects.
+      x-required-scope: catalogs:read
+      responses:
+        '200':
+          description: Usuarios e equipes que podem receber agendamentos.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/BookingResource' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /availability:
+    get:
+      operationId: listAvailability
+      tags: [Availability]
+      summary: Consulta slots disponiveis no timezone da empresa.
+      x-required-scope: availability:read
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+          description: Inicio ISO 8601 com offset.
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+          description: Fim ISO 8601 com offset; o periodo maximo e 31 dias.
+        - name: duration_minutes
+          in: query
+          required: true
+          schema: { type: integer, minimum: 15, maximum: 480 }
+        - name: service_type_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: resource_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: No maximo 50 opcoes. Intervalos usam a semantica [inicio, fim).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AvailabilityResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /customers/resolve:
+    post:
+      operationId: resolveCustomer
+      tags: [Customers]
+      summary: Localiza um cliente por identificador exato sem alterar seu cadastro.
+      x-required-scope: customers:resolve
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResolveCustomerRequest' }
+            examples:
+              byPhone:
+                value: { phone: '+5511999999999' }
+              byExternalId:
+                value: { external_id: crm-customer-42 }
+      responses:
+        '200':
+          description: Cliente encontrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerSummary' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /service-orders:
+    post:
+      operationId: createServiceOrder
+      tags: [Service orders]
+      summary: Resolve ou cria o cliente e agenda uma OS atomicamente.
+      description: |
+        A operacao fixa `origin=public_api`, `entry_type=os` e `status=agendada`.
+        O servidor rejeita conflitos e nunca executa override pela API publica.
+      x-required-scope: service_orders:create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateServiceOrderRequest' }
+            examples:
+              existingCustomer:
+                summary: Cliente existente no modo agent_selects
+                value:
+                  external_id: whatsapp-msg-01JABC
+                  customer: { external_id: crm-customer-42 }
+                  service_type_id: 018f9c91-8c0c-7c15-a9c1-c6245482a111
+                  os_type: manutencao_corretiva
+                  description: Ar-condicionado nao esta resfriando.
+                  scheduled_at: '2026-10-20T14:00:00-03:00'
+                  duration_minutes: 120
+                  resource: { type: user, id: 018f9c91-8c0c-7c15-a9c1-c6245482a222 }
+              newCustomer:
+                summary: Novo cliente nos modos round_robin ou unassigned
+                value:
+                  customer:
+                    external_id: whatsapp-contact-5511999999999
+                    name: Cliente Exemplo
+                    phone: '+5511999999999'
+                  os_type: visita_tecnica
+                  description: Avaliacao tecnica solicitada pelo WhatsApp.
+                  scheduled_at: '2026-10-21T09:30:00-03:00'
+                  duration_minutes: 90
+      responses:
+        '201':
+          description: OS criada. O header Location aponta para a consulta da OS.
+          headers:
+            Location:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServiceOrder' }
+        '200':
+          description: Replay idempotente da resposta ja persistida.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServiceOrder' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /service-orders/{id}:
+    get:
+      operationId: getServiceOrder
+      tags: [Service orders]
+      summary: Consulta uma OS criada pela mesma integracao.
+      x-required-scope: service_orders:read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Resumo da OS.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServiceOrder' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /service-orders/by-external-id/{external_id}:
+    get:
+      operationId: getServiceOrderByExternalId
+      tags: [Service orders]
+      summary: Consulta uma OS pela referencia da mesma integracao.
+      x-required-scope: service_orders:read
+      parameters:
+        - name: external_id
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        '200':
+          description: Resumo da OS.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServiceOrder' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: dmx_live_<public_id>.<secret>
+      description: Chave de servidor gerada no Dominex e exibida uma unica vez.
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Identificador unico da tentativa, mantido por sete dias.
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 200
+        pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{7,199}$'
+  headers:
+    RequestId:
+      description: UUID para suporte e correlacao, sem dados pessoais.
+      schema: { type: string, format: uuid }
+    RetryAfter:
+      description: Segundos ate uma nova tentativa ser aceita.
+      schema: { type: integer, minimum: 1 }
+  responses:
+    BadRequest:
+      description: Sintaxe, metodo ou campo invalido.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/RequestId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unauthorized:
+      description: Chave ausente, invalida, expirada ou revogada.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/RequestId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Forbidden:
+      description: Escopo, origem ou assinatura nao autoriza a operacao.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/RequestId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: Recurso inexistente ou pertencente a outro tenant.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/RequestId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Conflict:
+      description: Conflito de agenda, ambiguidade ou idempotencia.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/RequestId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    PayloadTooLarge:
+      description: Corpo acima de 64 KiB.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/RequestId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unprocessable:
+      description: JSON valido, mas dados nao atendem ao contrato.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/RequestId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    RateLimited:
+      description: Limite por chave, rota ou janela excedido.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/RequestId' }
+        Retry-After: { $ref: '#/components/headers/RetryAfter' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unavailable:
+      description: Kill switch, dependencia ou validacao fail-closed indisponivel.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/RequestId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, detail, request_id]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        code: { type: string }
+        detail: { type: string }
+        request_id: { type: string, format: uuid }
+      example:
+        type: https://api.dominex.app/problems/schedule-conflict
+        title: Conflito de agendamento
+        status: 409
+        code: schedule_conflict
+        detail: O responsavel nao esta disponivel nesse horario.
+        request_id: 018f9c91-8c0c-7c15-a9c1-c6245482aaaa
+    Capabilities:
+      type: object
+      additionalProperties: false
+      required: [version, timezone, scopes, distribution_mode, schedule_configured, limits, booking]
+      properties:
+        version: { const: v1 }
+        timezone: { type: string, example: America/Sao_Paulo }
+        scopes:
+          type: array
+          items: { $ref: '#/components/schemas/Scope' }
+        distribution_mode: { $ref: '#/components/schemas/DistributionMode' }
+        schedule_configured: { type: boolean }
+        limits:
+          type: object
+          additionalProperties: false
+          required: [requests_per_minute, availability_per_minute, mutations_per_minute, max_body_bytes, max_availability_days, max_availability_options]
+          properties:
+            requests_per_minute: { const: 60 }
+            availability_per_minute: { const: 30 }
+            mutations_per_minute: { const: 10 }
+            max_body_bytes: { const: 65536 }
+            max_availability_days: { const: 31 }
+            max_availability_options: { const: 50 }
+        booking:
+          oneOf:
+            - { $ref: '#/components/schemas/BookingSettings' }
+            - { type: 'null' }
+    Scope:
+      type: string
+      enum: [catalogs:read, availability:read, customers:resolve, service_orders:create, service_orders:read]
+    DistributionMode:
+      type: string
+      enum: [agent_selects, round_robin, unassigned]
+    BookingSettings:
+      type: object
+      required: [slot_interval_minutes, minimum_notice_minutes, booking_horizon_days, default_duration_minutes, weekly_hours]
+      properties:
+        slot_interval_minutes: { type: integer, default: 30 }
+        minimum_notice_minutes: { type: integer, default: 120 }
+        booking_horizon_days: { type: integer, default: 60 }
+        default_duration_minutes: { type: integer, default: 120 }
+        weekly_hours: { type: object, additionalProperties: true }
+    ServiceType:
+      type: object
+      additionalProperties: false
+      required: [id, name, requires_equipment]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        requires_equipment: { type: boolean }
+    BookingResource:
+      type: object
+      additionalProperties: false
+      required: [id, type, name]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [user, team] }
+        name: { type: string }
+    AvailabilityResponse:
+      type: object
+      required: [timezone, slots]
+      properties:
+        timezone: { type: string }
+        slots:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            required: [starts_at, ends_at]
+            properties:
+              starts_at: { type: string, format: date-time }
+              ends_at: { type: string, format: date-time }
+              resource: { oneOf: [{ $ref: '#/components/schemas/BookingResource' }, { type: 'null' }] }
+    ResolveCustomerRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        external_id: { type: string, minLength: 1, maxLength: 200 }
+        document: { type: string, description: CPF ou CNPJ; pontuacao e removida pelo servidor. }
+        phone: { type: string, pattern: '^\+[1-9][0-9]{7,14}$' }
+        email: { type: string, format: email, maxLength: 254 }
+    CustomerSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        external_id: { type: [string, 'null'] }
+        name: { type: string }
+        document_last_four: { type: [string, 'null'] }
+        phone_last_four: { type: [string, 'null'] }
+    CustomerInput:
+      type: object
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        external_id: { type: string, minLength: 1, maxLength: 200 }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        phone: { type: string, pattern: '^\+[1-9][0-9]{7,14}$' }
+        document: { type: string }
+        email: { type: string, format: email, maxLength: 254 }
+      anyOf:
+        - required: [id]
+        - required: [external_id]
+        - required: [name, phone]
+        - required: [name, document]
+        - required: [name, email]
+    ServiceAddress:
+      type: object
+      additionalProperties: false
+      properties:
+        line1: { type: string, maxLength: 300 }
+        number: { type: string, maxLength: 30 }
+        neighborhood: { type: string, maxLength: 100 }
+        city: { type: string, maxLength: 100 }
+        state: { type: string, maxLength: 100 }
+        postal_code: { type: string, maxLength: 30 }
+    CreateServiceOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [customer, os_type, description, scheduled_at, duration_minutes]
+      properties:
+        external_id: { type: string, minLength: 1, maxLength: 200 }
+        customer: { $ref: '#/components/schemas/CustomerInput' }
+        service_type_id: { type: string, format: uuid }
+        os_type:
+          type: string
+          enum: [manutencao_preventiva, manutencao_corretiva, instalacao, visita_tecnica]
+        description: { type: string, minLength: 1, maxLength: 4000 }
+        scheduled_at: { type: string, format: date-time, description: ISO 8601 obrigatoriamente com offset. }
+        duration_minutes: { type: integer, minimum: 15, maximum: 480 }
+        resource:
+          type: object
+          description: Obrigatorio em `agent_selects` e recusado nos modos `round_robin` e `unassigned`.
+          additionalProperties: false
+          required: [type, id]
+          properties:
+            type: { type: string, enum: [user, team] }
+            id: { type: string, format: uuid }
+        service_address: { $ref: '#/components/schemas/ServiceAddress' }
+    ServiceOrder:
+      type: object
+      additionalProperties: false
+      required: [id, order_number, status, customer, scheduled_at, duration_minutes, timezone, assignment_status, public_tracking_url]
+      properties:
+        id: { type: string, format: uuid }
+        external_id: { type: [string, 'null'] }
+        order_number: { type: integer }
+        status:
+          type: string
+          enum: [agendada, pendente, a_caminho, em_andamento, pausada, concluida, cancelada]
+        customer: { $ref: '#/components/schemas/CustomerSummary' }
+        scheduled_at: { type: string, format: date-time }
+        duration_minutes: { type: integer }
+        timezone: { type: string }
+        assignment_status: { type: string, enum: [assigned, assignment_pending] }
+        resource: { oneOf: [{ $ref: '#/components/schemas/BookingResource' }, { type: 'null' }] }
+        public_tracking_url: { type: string, format: uri }
+        idempotent_replay: { type: boolean, default: false }

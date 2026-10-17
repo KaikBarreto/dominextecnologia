@@ -91,6 +91,7 @@ export interface Equipment {
 export interface ServiceOrder {
   id: string;
   order_number: number;
+  entry_type?: 'os' | 'tarefa' | null;
   customer_id: string;
   equipment_id?: string;
   technician_id?: string;

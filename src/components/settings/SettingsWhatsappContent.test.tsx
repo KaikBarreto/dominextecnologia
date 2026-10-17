@@ -1,7 +1,8 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AsaasContent, WhatsappSectionNav } from './SettingsWhatsappContent';
+import { MemoryRouter, useLocation } from 'react-router-dom';
+import { AsaasContent, SettingsIntegrationContent, WhatsappSectionNav } from './SettingsWhatsappContent';
 
 vi.mock('@/contexts/AppLocaleContext', () => ({
   useAppLocaleContext: () => ({ locale: 'pt-br' }),
@@ -34,6 +35,10 @@ vi.mock('@/components/settings/SettingsAsaasContent', () => ({
 
 vi.mock('@/components/settings/SettingsAsaasSimulator', () => ({
   SettingsAsaasSimulator: () => <div>Conteúdo do simulador Asaas</div>,
+}));
+
+vi.mock('@/components/settings/SettingsPublicApiContent', () => ({
+  SettingsPublicApiContent: () => <div>Gestão da API Pública</div>,
 }));
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -118,5 +123,48 @@ describe('WhatsappSectionNav', () => {
     expect(onChange).toHaveBeenCalledWith('history');
     clicar('Modelos');
     expect(onChange).toHaveBeenCalledWith('templates');
+  });
+});
+
+describe('SettingsIntegrationContent', () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  function LocationProbe() {
+    const location = useLocation();
+    return <output data-testid="location">{location.search}</output>;
+  }
+
+  it('abre a API por deep-link e preserva a escolha da subaba na URL', () => {
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={['/configuracoes?tab=integracoes&integration=api']}>
+          <SettingsIntegrationContent />
+          <LocationProbe />
+        </MemoryRouter>,
+      );
+    });
+
+    expect(container.textContent).toContain('Gestão da API Pública');
+    expect(container.querySelector('[data-testid="location"]')?.textContent).toContain('integration=api');
+
+    const asaasTab = [...container.querySelectorAll('button')]
+      .find((button) => button.textContent?.includes('Cobranças'));
+    act(() => asaasTab?.click());
+
+    expect(container.textContent).toContain('Configuração da conta Asaas');
+    expect(container.querySelector('[data-testid="location"]')?.textContent).toContain('integration=asaas');
+    expect(container.querySelector('[data-testid="location"]')?.textContent).toContain('tab=integracoes');
   });
 });

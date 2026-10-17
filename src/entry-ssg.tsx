@@ -40,6 +40,8 @@ import BlogPost from '@/pages/BlogPost';
 import type { BlogPostAlternate } from '@/pages/BlogPost';
 import PrivacyPolicy from '@/pages/PrivacyPolicy';
 import TermsOfUse from '@/pages/TermsOfUse';
+import DeveloperDocs from '@/pages/docs/DeveloperDocs';
+import { DOC_ARTICLES } from '@/pages/docs/docsContent';
 
 import SegmentLandingPage from '@/pages/segmentos/SegmentLandingPage';
 import { getAllSegmentSlugs, getSegmentData } from '@/pages/segmentos/content/loader';
@@ -285,7 +287,7 @@ const TERMOS_DESCRIPTIONS: Record<LocaleCode, string> = {
 };
 
 /** Tipo de rota, pra montar o JSON-LD certo (Breadcrumb + App/Product + FAQ). */
-type RouteKind = 'home' | 'segment' | 'module' | 'institutional';
+type RouteKind = 'home' | 'segment' | 'module' | 'institutional' | 'docs';
 
 /** FAQ no formato cru das landings ({ q, a }). */
 interface RawFaq {
@@ -303,6 +305,9 @@ interface RouteEntry {
   breadcrumbName?: string;
   /** FAQ da landing (segmento/módulo) → vira FAQPage por-rota. */
   faq?: RawFaq[];
+  /** Ilustração social específica de artigos da documentação. */
+  ogImage?: string;
+  ogImageAlt?: string;
 }
 
 const BREADCRUMB_LABELS: Record<LocaleCode, { home: string; blog: string }> = {
@@ -426,6 +431,50 @@ function buildRouteJsonLd(
   return blocks.join('\n    ');
 }
 
+/** JSON-LD dos guias técnicos públicos, com fonte e versão explícitas. */
+function buildDocsJsonLd(
+  homeUrl: string,
+  pageUrl: string,
+  entry: RouteEntry,
+  locale: LocaleCode,
+): string {
+  const blocks = [
+    jsonLdScript(breadcrumbLd(homeUrl, pageUrl, entry.breadcrumbName ?? entry.title, locale)),
+    jsonLdScript({
+      '@context': 'https://schema.org',
+      '@type': 'TechArticle',
+      headline: entry.title,
+      description: entry.description,
+      url: pageUrl,
+      inLanguage: 'pt-BR',
+      proficiencyLevel: 'Beginner',
+      about: {
+        '@type': 'SoftwareApplication',
+        name: 'API Pública Dominex v1',
+        applicationCategory: 'DeveloperApplication',
+        operatingSystem: 'Server',
+        url: `${SITE_URL}/docs`,
+      },
+      author: {
+        '@type': 'Organization',
+        '@id': ORGANIZATION_ID,
+        name: 'Dominex',
+        url: SITE_URL,
+      },
+      publisher: {
+        '@type': 'Organization',
+        '@id': ORGANIZATION_ID,
+        name: 'Dominex',
+        url: SITE_URL,
+      },
+      isPartOf: { '@type': 'WebSite', name: 'Dominex Developers', url: `${SITE_URL}/docs` },
+    }),
+  ];
+  const faqLd = faqPageLd(entry.faq);
+  if (faqLd) blocks.push(jsonLdScript(faqLd));
+  return blocks.join('\n    ');
+}
+
 /**
  * Monta o RouteEntry (elemento + head) de uma rota BASE (path pt-br sem prefixo)
  * PARA UM LOCALE. Segmentos/módulos resolvem conteúdo pelo loader com o locale
@@ -440,6 +489,35 @@ function buildRouteEntry(basePath: string, locale: LocaleCode): RouteEntry | und
       title: HOME_TITLES[locale] ?? HOME_TITLES['pt-br'],
       description: HOME_DESCRIPTIONS[locale] ?? HOME_DESCRIPTIONS['pt-br'],
       kind: 'home',
+    };
+  }
+
+  if (basePath === '/docs') {
+    return {
+      element: <DeveloperDocs />,
+      title: 'Documentação da API Pública Dominex v1 | Guias para IA',
+      description: 'Integre agentes de IA, WhatsApp e sistemas externos à Dominex com guias de autenticação, disponibilidade, clientes e criação segura de ordens de serviço.',
+      kind: 'docs',
+      breadcrumbName: 'Documentação da API',
+      faq: [
+        { q: 'O que é a API Pública Dominex?', a: 'É uma API REST server-to-server para consultar serviços e disponibilidade, resolver clientes, criar ordens de serviço e acompanhar seu status.' },
+        { q: 'Posso usar a chave da API no navegador?', a: 'Não. A chave Dominex deve permanecer em um servidor ou secret manager e nunca pode ser exposta em frontend, aplicativo distribuído, log ou prompt.' },
+        { q: 'Como evitar ordens de serviço duplicadas?', a: 'Envie uma Idempotency-Key estável em cada criação. Em timeout ou falha transitória, repita a mesma chave com exatamente o mesmo JSON.' },
+        { q: 'A API pode criar uma OS a partir de um agente no WhatsApp?', a: 'Sim. O fluxo recomendado identifica o cliente, consulta serviços e horários reais, pede confirmação e cria a OS de forma atômica.' },
+      ],
+    };
+  }
+
+  const docsArticle = DOC_ARTICLES.find((article) => article.path === basePath);
+  if (docsArticle) {
+    return {
+      element: <DeveloperDocs />,
+      title: `${docsArticle.title} | Dominex Developers`,
+      description: docsArticle.description,
+      kind: 'docs',
+      breadcrumbName: docsArticle.title,
+      ogImage: docsArticle.image ? `${SITE_URL}${docsArticle.image.src}` : undefined,
+      ogImageAlt: docsArticle.image?.alt,
     };
   }
 
@@ -552,6 +630,8 @@ function buildBaseRoutes(): string[] {
     '/blog',
     '/privacidade',
     '/termos',
+    '/docs',
+    ...DOC_ARTICLES.map((article) => article.path),
   ];
 }
 
@@ -582,7 +662,7 @@ function outDirForPath(localizedPath: string): string {
 }
 
 export const SSG_TASKS: SsgTask[] = SSG_BASE_ROUTES.flatMap((basePath) =>
-  LOCALES.map((loc) => {
+  (basePath === '/docs' || basePath.startsWith('/docs/') ? LOCALES.filter((loc) => loc.code === 'pt-br') : LOCALES).map((loc) => {
     // localizedPath já leva o slug do idioma (fallback pt-br embutido).
     const localizedPath = localizePath(localizedSlugPath(basePath, loc.code), loc.code);
     return {
@@ -688,6 +768,8 @@ export function renderRoute(
     jsonLd = buildHomeJsonLd(locale, homeUrl);
   } else if (entry.kind === 'segment' || entry.kind === 'module') {
     jsonLd = buildRouteJsonLd(homeUrl, pageUrl, entry, locale);
+  } else if (entry.kind === 'docs') {
+    jsonLd = buildDocsJsonLd(homeUrl, pageUrl, entry, locale);
   } else if (entry.kind === 'institutional') {
     jsonLd = jsonLdScript(
       breadcrumbLd(homeUrl, pageUrl, entry.breadcrumbName ?? entry.title, locale),
@@ -707,7 +789,15 @@ export function renderRoute(
     jsonLd,
     stripGlobalJsonLd,
     htmlLang: getLocaleDef(locale).htmlLang,
-    hreflang: hreflangBlock(route),
+    hreflang: entry.kind === 'docs'
+      ? `<link rel="alternate" hreflang="pt-BR" href="${pageUrl}" />\n    <link rel="alternate" hreflang="x-default" href="${pageUrl}" />`
+      : hreflangBlock(route),
+    ...(entry.kind === 'docs'
+      ? {
+          ogImage: entry.ogImage ?? `${SITE_URL}/docs/images/dominex-api-hero.jpg`,
+          ogImageAlt: entry.ogImageAlt ?? 'API Pública Dominex conectando aplicações a ordens de serviço',
+        }
+      : {}),
     // Keywords localizada só na home en/es/fr (fecha a lacuna de idioma). Demais
     // rotas/idiomas não mexem no keywords do shell (undefined).
     keywords: isNonDefaultHome ? HOME_KEYWORDS[locale] : undefined,

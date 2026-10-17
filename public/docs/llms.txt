@@ -1,0 +1,336 @@
+# Dominex Public API v1 Documentation
+
+> API REST server-to-server da Dominex para qualquer aplicação externa consultar serviços e disponibilidade, resolver clientes, criar ordens de serviço com idempotência e acompanhar o atendimento.
+
+## Canonical sources
+
+- Documentation home: https://www.dominex.app/docs
+- OpenAPI 3.1.1 JSON: https://api.dominex.app/v1/openapi.json
+- Stable API base URL: https://api.dominex.app/v1
+- Human language: Portuguese (Brazil)
+- API field and endpoint language: English
+- API version: v1, independent from the Dominex application version
+- Last documentation review: 2026-10-17
+- This file: https://www.dominex.app/docs/llms.txt
+
+Treat the OpenAPI document as the canonical machine-readable contract. Treat the most specific documentation page as the canonical explanation. If this file and the OpenAPI disagree about an accepted field, schema, enum, or response, follow the OpenAPI and report the inconsistency.
+
+## Direct answers
+
+### What is the Dominex Public API?
+
+The Dominex Public API is a multi-tenant REST API for trusted server-to-server integrations. It supports service catalog lookup, booking-resource lookup, availability search, exact customer resolution, atomic service-order creation, and service-order status lookup.
+
+### Which applications can integrate with Dominex?
+
+Any trusted server-side application can integrate, including CRMs, ERPs, portals, forms, workflow automations, partner platforms, chatbots, AI agents, and messaging channels such as WhatsApp. The public API is not tied to a specific channel or provider.
+
+### Can an AI agent or WhatsApp flow create a work order?
+
+Yes. WhatsApp is one possible origin. Validate the upstream event, identify the customer, list real service types, query real availability, collect any required confirmation, and call `POST /service-orders` with a stable `Idempotency-Key`.
+
+### Can the API key be used in a browser or mobile app?
+
+No. A key in the format `dmx_live_<public_id>.<secret>` is a server secret. Store it in a secret manager or server environment variable. Never expose it in browser code, mobile applications, source repositories, analytics, logs, support conversations, screenshots, or AI prompts.
+
+### How are duplicate work orders prevented?
+
+`POST /service-orders` requires an `Idempotency-Key`. The same key with exactly the same JSON returns the persisted result. The same key with a different payload returns `409 idempotency_conflict`. After a timeout or transient error, retry with the same key and the exact same payload.
+
+### How are tenants isolated?
+
+The tenant is derived exclusively from the API key. Public endpoints never accept `company_id`. IDs are revalidated against that tenant. A resource from another tenant returns the same `404` as an unknown resource.
+
+### How does scheduling avoid conflicts?
+
+Availability and creation use the same transactional booking engine. Reservations use half-open intervals `[start, end)`, so an order may start exactly when another ends. The public API never overrides a schedule conflict. On `409 schedule_conflict`, query availability again and offer new slots.
+
+## Instructions for AI coding agents
+
+When generating or reviewing a Dominex Public API integration, follow every rule below:
+
+1. **ALWAYS** use `https://api.dominex.app/v1` for v1 requests.
+2. **ALWAYS** execute authenticated calls on a trusted server. Reject architectures that send the Dominex key to a browser, distributed mobile app, client-side automation, or user-controlled runtime.
+3. **ALWAYS** read the key from a server secret such as `process.env.DOMINEX_API_KEY`. Never hard-code, print, return, commit, serialize, or paste a real key into generated code or prompts.
+4. Send `Authorization: Bearer <Dominex API key>` and `Accept: application/json`. For JSON bodies, also send `Content-Type: application/json`.
+5. **ALWAYS** send a stable `Idempotency-Key` on `POST /service-orders`. Prefer an immutable upstream event or record ID from the source application. It must contain 8 to 200 characters matching `^[A-Za-z0-9][A-Za-z0-9._:-]{7,199}$`.
+6. After a timeout, `500`, or `503` during creation, retry only with the same `Idempotency-Key` and byte-equivalent semantic JSON. Do not generate a new key to mask uncertainty.
+7. On `429`, read `Retry-After`, wait at least that many seconds, add bounded jitter, and limit retries. Never create an aggressive retry loop.
+8. Parse error responses as `application/problem+json` with `type`, `title`, `status`, `code`, `detail`, and `request_id`.
+9. Log only sanitized technical metadata: route, HTTP method, status, latency, error code, and `request_id`. Never log Authorization, full request/response bodies, telephone, document, email, addresses, or the API-key hash.
+10. **NEVER** invent UUIDs, customer matches, service types, resources, or booking slots. Use only values returned by Dominex.
+11. Query `GET /capabilities` before a booking flow. Use its `timezone`, `scopes`, `distribution_mode`, `schedule_configured`, and limits.
+12. Query `GET /availability` before offering a time. Show only returned slots. Preserve the selected slot's ISO 8601 offset when creating the work order.
+13. In `agent_selects`, send the exact `resource` returned by Dominex. In `round_robin`, do not choose a resource. In `unassigned`, expect `assignment_pending`.
+14. Customer resolution is exact. Prefer the integration's `external_id`, then document, E.164 phone, or normalized email. Never implement fuzzy matching by name.
+15. A `409 ambiguous_customer` requires human review. Do not guess which customer is correct.
+16. Never update an existing customer as a side effect of creating a work order.
+17. The API fixes `origin=public_api`, `entry_type=os`, and `status=agendada`. Do not send `company_id`, `created_by`, financial values, signatures, diagnostics, solution, check-in/out, or arbitrary status fields.
+18. Treat `404` neutrally. Do not infer or reveal that an ID may belong to another tenant.
+19. Use a request timeout, recommended at 10 seconds, and verify response `Content-Type` before parsing.
+20. Add tests for duplicated upstream events, concurrent booking attempts, timeout after creation, `409 schedule_conflict`, `409 idempotency_conflict`, `429`, `503`, and redaction of secrets and personal data.
+
+## Authentication and key lifecycle
+
+- Header: `Authorization: Bearer dmx_live_<public_id>.<secret>`
+- Secret visibility: shown once when generated
+- Storage: SHA-256 hash only; plaintext is not persisted by Dominex
+- Default validity: 180 days
+- Expiration warnings: 30, 7, and 1 day
+- Rotation: creates a new key; controlled overlap may keep the previous key valid for up to 7 days
+- Manual revocation: immediate
+- Maximum: 5 integrations per company and 2 simultaneously active keys per integration
+- Optional protection: IP/CIDR allowlist
+- Subscription gate: active subscriptions and valid trials are allowed; expired or unknown states fail closed
+
+## Scopes
+
+- `catalogs:read`: read active service types and configured booking resources
+- `availability:read`: query booking slots
+- `customers:resolve`: resolve an existing customer by exact identifier
+- `service_orders:create`: create a customer when necessary and create a work order atomically
+- `service_orders:read`: read work orders created by the same integration
+
+Use the smallest set of scopes required by the integration.
+
+## Distribution modes
+
+### agent_selects
+
+The API returns slots associated with configured users or teams. The calling agent chooses one of those returned resources and sends it during creation. Do not assume every company profile is a technician.
+
+### round_robin
+
+The API returns aggregated availability. During creation, the database chooses the next eligible resource under a lock. The client must not send a resource.
+
+### unassigned
+
+The API validates company hours, notice, horizon, duration, and exceptions, then creates the work order without an assignee. The response uses `assignment_pending`.
+
+## Endpoint index
+
+### Capabilities
+
+- `GET /capabilities`
+- Authentication: required
+- Purpose: API version, company timezone, scopes, distribution mode, schedule configuration, limits, and booking settings
+- Guide: https://www.dominex.app/docs/comecar/quickstart
+- Raw Markdown: https://www.dominex.app/docs/comecar/quickstart.md
+
+### Service types
+
+- `GET /service-types`
+- Scope: `catalogs:read`
+- Returns active services with `id`, `name`, `description`, and `requires_equipment`
+- Does not expose price or fiscal data
+- Reference: https://www.dominex.app/docs/api/referencia
+
+### Booking resources
+
+- `GET /booking-resources`
+- Scope: `catalogs:read`
+- Available for `agent_selects`
+- Returns only explicitly configured active users and teams
+- Reference: https://www.dominex.app/docs/api/referencia
+
+### Availability
+
+- `GET /availability`
+- Scope: `availability:read`
+- Required query fields: `from`, `to`, `duration_minutes`
+- Optional query fields: `service_type_id`, `resource_id`
+- Dates must be ISO 8601 with offset
+- Maximum query range: 31 days
+- Maximum response: 50 slots
+- Duration: 15 to 480 minutes
+- Guide: https://www.dominex.app/docs/guias/disponibilidade
+- Raw Markdown: https://www.dominex.app/docs/guias/disponibilidade.md
+
+### Resolve customer
+
+- `POST /customers/resolve`
+- Scope: `customers:resolve`
+- Accepted exact identifiers: integration `external_id`, CPF/CNPJ document, E.164 phone, or email
+- Does not update customer data
+- No match: `404`
+- Multiple matches: `409 ambiguous_customer`
+- Guide: https://www.dominex.app/docs/guias/clientes
+- Raw Markdown: https://www.dominex.app/docs/guias/clientes.md
+
+### Create service order
+
+- `POST /service-orders`
+- Scope: `service_orders:create`
+- `Idempotency-Key`: required
+- Atomic operations: resolve/create customer, validate schedule, select/validate resource, create work order, create assignees, create reservation, persist external reference
+- Server-fixed values: `origin=public_api`, `entry_type=os`, `status=agendada`
+- Guide: https://www.dominex.app/docs/guias/criar-os
+- Raw Markdown: https://www.dominex.app/docs/guias/criar-os.md
+
+### Read service order
+
+- `GET /service-orders/{id}`
+- `GET /service-orders/by-external-id/{external_id}`
+- Scope: `service_orders:read`
+- Visibility: only work orders created by the same integration
+- Guide: https://www.dominex.app/docs/guias/acompanhar-os
+- Raw Markdown: https://www.dominex.app/docs/guias/acompanhar-os.md
+
+## Recommended integration flow
+
+1. Verify the source application's authentication, signature, and event schema before trusting the event.
+2. Deduplicate the upstream event by its immutable source ID.
+3. Call `GET /capabilities` and verify `schedule_configured` and required scopes.
+4. Call `GET /service-types`; map the source record or user intent to a real returned service.
+5. Resolve the customer with `POST /customers/resolve`. If not found, collect name and at least one of phone, document, email, or external reference.
+6. Call `GET /availability` using the tenant timezone and desired duration.
+7. Present or process only returned slots. When the source flow is interactive, ask the person to confirm service, time, and address.
+8. Call `POST /service-orders` with the upstream event ID as an external reference and as the basis for `Idempotency-Key`.
+9. On `409 schedule_conflict`, return to availability. On `429`, wait for `Retry-After`. On timeout, reuse the same payload and idempotency key.
+10. Persist or communicate the order number, confirmed time, assignee state, and public tracking link only after a `200` or `201` response.
+
+## Create-service-order example
+
+```http
+POST /v1/service-orders HTTP/1.1
+Host: api.dominex.app
+Authorization: Bearer dmx_live_PUBLIC_ID.SECRET
+Idempotency-Key: crm-event-01JABC
+Content-Type: application/json
+Accept: application/json
+
+{
+  "external_id": "crm-event-01JABC",
+  "customer": {
+    "external_id": "crm-contact-42",
+    "name": "Cliente Exemplo",
+    "phone": "+5511999999999"
+  },
+  "os_type": "visita_tecnica",
+  "description": "Avaliação técnica solicitada pelo sistema parceiro.",
+  "scheduled_at": "2026-10-21T09:30:00-03:00",
+  "duration_minutes": 90
+}
+```
+
+All values above are fictitious. Never use a real key in documentation or an AI prompt.
+
+## Service-order input constraints
+
+- `customer`: existing by `id` or `external_id`, or new with `name` and at least one identifier
+- `os_type`: `manutencao_preventiva`, `manutencao_corretiva`, `instalacao`, or `visita_tecnica`
+- `description`: required, 1 to 4000 characters
+- `scheduled_at`: required ISO 8601 date-time with explicit offset
+- `duration_minutes`: required integer from 15 to 480
+- `service_type_id`: optional UUID returned by Dominex
+- `resource`: required only in `agent_selects`; rejected in `round_robin` and `unassigned`
+- `address`: optional documented service address object
+- Request body maximum: 64 KiB
+
+## Rate limits
+
+- General: 60 requests per minute per key
+- Availability: 30 requests per minute per key
+- Mutations: 10 requests per minute per key
+- Monthly quota: none in v1
+- Limit response: `429` with `Retry-After`
+
+Do not hard-code limits as permanent business assumptions. Read current limits from `GET /capabilities` and treat these numbers as v1 defaults.
+
+## Error model and recovery
+
+Errors use `application/problem+json`:
+
+```json
+{
+  "type": "https://api.dominex.app/problems/schedule-conflict",
+  "title": "Conflito de agendamento",
+  "status": 409,
+  "code": "schedule_conflict",
+  "detail": "O responsável não está disponível nesse horário.",
+  "request_id": "018f9c91-8c0c-7c15-a9c1-c6245482aaaa"
+}
+```
+
+- `400`: malformed request, invalid method, unknown or forbidden field; fix before retrying
+- `401`: missing, invalid, expired, or revoked API key; stop and rotate or restore the credential
+- `403`: missing scope, rejected IP, or invalid subscription state; stop and correct configuration
+- `404`: resource not found or outside the tenant/integration boundary; do not disclose more
+- `409 schedule_conflict`: query availability again
+- `409 ambiguous_customer`: require human review
+- `409 idempotency_conflict`: same key was used with a different payload; treat as an implementation incident
+- `413`: body exceeds 64 KiB; reduce request
+- `422`: syntactically valid JSON violates the contract; correct before retrying
+- `429`: wait for `Retry-After` with jitter
+- `500` or `503`: bounded transient retry; preserve payload and idempotency key during creation
+
+Guide: https://www.dominex.app/docs/api/erros-e-limites
+Raw Markdown: https://www.dominex.app/docs/api/erros-e-limites.md
+
+## Scheduling rules
+
+- Default slot interval: 30 minutes
+- Default minimum notice: 120 minutes
+- Default booking horizon: 60 days
+- Default duration: 120 minutes
+- Minimum duration: 15 minutes
+- Maximum duration: 480 minutes
+- Blocking statuses: `agendada`, `pendente`, `a_caminho`, `em_andamento`, `pausada`
+- Non-blocking statuses: `cancelada`, `concluida`
+- Company holidays, blocks, exceptional hours, weekly hours, and legacy overlaps affect availability
+- The public API never overrides a conflict
+
+Defaults apply only after company scheduling is configured. Read actual values from `GET /capabilities`.
+
+## v1 boundaries
+
+The following are intentionally out of scope for v1: arbitrary customer updates, service-order status mutation, deletion, recurrence, equipment, checklists, photos, finance, fiscal functions, and outbound webhooks.
+
+Do not generate calls for undocumented endpoints. Do not use Supabase directly. Do not include `company_id` in a public API payload.
+
+## Documentation pages
+
+### Start
+
+- [Documentation overview](https://www.dominex.app/docs) — raw: https://www.dominex.app/docs/index.md
+- [Quickstart](https://www.dominex.app/docs/comecar/quickstart) — raw: https://www.dominex.app/docs/comecar/quickstart.md
+- [Authentication](https://www.dominex.app/docs/comecar/autenticacao) — raw: https://www.dominex.app/docs/comecar/autenticacao.md
+- [Production readiness](https://www.dominex.app/docs/comecar/producao) — raw: https://www.dominex.app/docs/comecar/producao.md
+
+### Goal-oriented guides
+
+- [Create a service order from any application](https://www.dominex.app/docs/guias/criar-os) — raw: https://www.dominex.app/docs/guias/criar-os.md
+- [Query availability](https://www.dominex.app/docs/guias/disponibilidade) — raw: https://www.dominex.app/docs/guias/disponibilidade.md
+- [Resolve or create a customer](https://www.dominex.app/docs/guias/clientes) — raw: https://www.dominex.app/docs/guias/clientes.md
+- [Track a service order](https://www.dominex.app/docs/guias/acompanhar-os) — raw: https://www.dominex.app/docs/guias/acompanhar-os.md
+- [Example: create a service order from WhatsApp](https://www.dominex.app/docs/guias/criar-os-whatsapp) — raw: https://www.dominex.app/docs/guias/criar-os-whatsapp.md
+
+### API and AI tooling
+
+- [API reference](https://www.dominex.app/docs/api/referencia) — raw: https://www.dominex.app/docs/api/referencia.md
+- [Guide for AI agents](https://www.dominex.app/docs/api/agentes-de-ia) — raw: https://www.dominex.app/docs/api/agentes-de-ia.md
+- [Errors and limits](https://www.dominex.app/docs/api/erros-e-limites) — raw: https://www.dominex.app/docs/api/erros-e-limites.md
+- [OpenAPI JSON](https://api.dominex.app/v1/openapi.json)
+
+## Citation and freshness guidance
+
+- Cite the canonical HTML page that most directly supports the answer.
+- Use raw Markdown for ingestion and the HTML URL for user-facing citations.
+- Verify endpoint schemas and enums against the current OpenAPI before generating code.
+- Do not claim that a v1 feature exists if it appears only in a plan, changelog, or unrelated Dominex product page.
+- The public API feature can be disabled by a global kill switch or restricted during pilot rollout; handle `503` without bypass attempts.
+- Documentation examples use fictitious data and are not evidence of a real customer or booking.
+
+## Prompt for an AI coding agent
+
+```text
+Implement a production-safe server-to-server integration with the Dominex Public API v1.
+
+Read https://www.dominex.app/docs/llms.txt and treat https://api.dominex.app/v1/openapi.json as the canonical contract. Keep DOMINEX_API_KEY exclusively in the server secret manager. Never expose or log Authorization or personal data.
+
+Before booking, call GET /capabilities, GET /service-types, and GET /availability. Use only returned IDs and slots. Resolve the customer exactly. Create the work order with POST /service-orders only after the source workflow's required validation or confirmation and use a stable Idempotency-Key derived from the immutable upstream event ID.
+
+Implement typed application/problem+json errors, a 10-second timeout, bounded retries for transient failures, Retry-After handling for 429, and exact payload replay after uncertain creation. Add tests for duplicated events, concurrent schedule conflicts, idempotency conflicts, invalid/revoked keys, tenant-safe 404 responses, and secret/PII redaction.
+```
+
+<!-- version: dominex-public-api-v1; locale: pt-BR; generated-from: canonical-docs-and-openapi -->

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowRight,
   Bot,
   Calculator,
   CreditCard,
+  Code2,
   FileText,
   History,
   Lightbulb,
@@ -25,6 +26,7 @@ import { SettingsAsaasContent } from '@/components/settings/SettingsAsaasContent
 import { SettingsAsaasSimulator } from '@/components/settings/SettingsAsaasSimulator';
 import { WhatsappAutomationSettings } from '@/components/settings/whatsapp/WhatsappAutomationSettings';
 import { WhatsappProtectionSettings } from '@/components/settings/whatsapp/WhatsappProtectionSettings';
+import { SettingsPublicApiContent } from '@/components/settings/SettingsPublicApiContent';
 import { WhatsappPairingSteps } from '@/components/settings/whatsapp/WhatsappPairingSteps';
 import { OptimisticProgress } from '@/components/settings/whatsapp/OptimisticProgress';
 import {
@@ -56,7 +58,7 @@ import {
   type WhatsappAutomationPreferences,
 } from '@/lib/whatsappAutomation';
 
-type IntegrationSubTab = 'whatsapp' | 'asaas';
+type IntegrationSubTab = 'whatsapp' | 'asaas' | 'api';
 type AsaasSection = 'settings' | 'simulator';
 type WhatsappSection = 'automations' | 'inbox' | 'templates' | 'campaigns' | 'history' | 'connection';
 
@@ -135,11 +137,23 @@ const SHELL_COPY: Record<LocaleCode, {
 export function SettingsIntegrationContent() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.settings.integrations;
-  const [activeSubTab, setActiveSubTab] = useState<IntegrationSubTab>('whatsapp');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const integrationParam = searchParams.get('integration');
+  const activeSubTab: IntegrationSubTab = integrationParam === 'asaas' || integrationParam === 'api'
+    ? integrationParam
+    : 'whatsapp';
+
+  const setActiveSubTab = (value: IntegrationSubTab) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', 'integracoes');
+    next.set('integration', value);
+    setSearchParams(next, { replace: true });
+  };
 
   const subTabs = [
     { value: 'whatsapp' as const, label: t.subTabs.whatsapp, icon: <WhatsAppIcon className="h-4 w-4 shrink-0" /> },
     { value: 'asaas' as const, label: t.subTabs.asaas, icon: <CreditCard className="h-4 w-4 shrink-0" /> },
+    { value: 'api' as const, label: 'API Pública', icon: <Code2 className="h-4 w-4 shrink-0" /> },
   ];
 
   return (
@@ -153,6 +167,7 @@ export function SettingsIntegrationContent() {
 
       {activeSubTab === 'whatsapp' && <WhatsappContent />}
       {activeSubTab === 'asaas' && <AsaasContent />}
+      {activeSubTab === 'api' && <SettingsPublicApiContent />}
     </div>
   );
 }

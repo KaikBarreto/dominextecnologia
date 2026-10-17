@@ -95,6 +95,7 @@ export function isMarketingRoute(pathname: string): boolean {
  * e os portais continuam com o viewport fixo.
  */
 export function allowsPinchZoom(pathname: string): boolean {
+  if (pathname === '/docs' || pathname.startsWith('/docs/')) return true;
   if (isMarketingRoute(pathname)) return true;
   const raw = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
   return EXACT_PUBLIC_FORM_PATHS.has(stripLocale(raw));

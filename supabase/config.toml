@@ -449,3 +449,13 @@ verify_jwt = false
 # antes de a função olhar o header (aconteceu em 2026-09-24).
 [functions.collect-db-health]
 verify_jwt = false
+
+# API publica v1: autentica exclusivamente a chave Dominex `dmx_live_*` dentro
+# da edge. O gateway nao pode exigir JWT de usuario neste endpoint.
+[functions.public-api-v1]
+verify_jwt = false
+
+# Gestao de integracoes/chaves: o gateway exige JWT e a funcao valida novamente
+# usuario, tenant e permissao explicita, sem depender do fallback legado.
+[functions.api-key-manager]
+verify_jwt = true

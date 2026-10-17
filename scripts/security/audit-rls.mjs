@@ -32,6 +32,20 @@ export const SENSITIVE_TABLES = new Set([
   'whatsapp_proxies',
   // Chave de mensagem recebida do cliente final (sem corpo, mas com telefone).
   'whatsapp_inbound_keys',
+  // API publica: credenciais, tenant derivado, idempotencia, auditoria e
+  // reservas nunca podem ganhar leitura anon/authenticated direta.
+  'public_api_integrations',
+  'public_api_keys',
+  'public_api_external_refs',
+  'public_api_idempotency',
+  'public_api_rate_limit_buckets',
+  'api_key_manager_rate_limit_buckets',
+  'public_api_request_audit',
+  'schedule_booking_settings',
+  'schedule_booking_exceptions',
+  'public_api_integration_resources',
+  'booking_reservations',
+  'schedule_conflict_overrides',
 ]);
 
 function unquoteIdentifier(identifier) {

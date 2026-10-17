@@ -5,6 +5,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
+import {
+  bookServiceOrderSchedule,
+  isScheduleConflictError,
+  normalizeScheduleBookingError,
+  type BookServiceOrderScheduleInput,
+  type ScheduleBookingOverride,
+} from '@/lib/scheduleBooking';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 
 export interface ServiceOrderEquipmentItem {
   equipment_id: string;
@@ -56,7 +64,7 @@ export function groupScopeItems(items: RawScopeItem[]): GroupedScopeItem[] {
   }));
 }
 
-export interface ServiceOrderInput {
+export interface ServiceOrderInput extends ScheduleBookingOverride {
   customer_id: string;
   equipment_id?: string;
   technician_id?: string;
@@ -127,6 +135,7 @@ export function useServiceOrders() {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { timezone } = useAppLocaleContext();
 
   const serviceOrdersQuery = useQuery({
     queryKey: ['service-orders'],
@@ -230,7 +239,16 @@ export function useServiceOrders() {
     mutationFn: async (input: ServiceOrderInput) => {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
-      const { equipment_items, assignee_user_ids, assignee_team_ids, ...rest } = input;
+      const { equipment_items, assignee_user_ids, assignee_team_ids, ...restWithBooking } = input;
+      const rest = { ...restWithBooking };
+      delete rest.schedule_override;
+      delete rest.schedule_override_reason;
+      delete rest.schedule_request_id;
+
+      // A reserva v1 possui um único recurso direto. Equipe tem precedência;
+      // os demais usuários continuam como co-responsáveis na junction.
+      if (rest.team_id) rest.technician_id = undefined;
+
       const sanitized = normalizeOptionalForeignKeys(
         {
           ...rest,
@@ -239,13 +257,37 @@ export function useServiceOrders() {
         },
         ['technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id', 'lead_id']
       );
+
+      if (input.schedule_override) {
+        if ((input.schedule_override_reason?.trim().length ?? 0) < 10) {
+          throw new Error('A justificativa do conflito deve ter pelo menos 10 caracteres.');
+        }
+        const orderPayload = normalizeOptionalForeignKeys(rest, [
+          'technician_id',
+          'team_id',
+          'customer_id',
+          'equipment_id',
+          'service_type_id',
+          'form_template_id',
+          'lead_id',
+        ]);
+        const { data, error } = await supabase.rpc('schedule_create_service_order_with_override' as never, {
+          p_order: orderPayload,
+          p_override_justification: input.schedule_override_reason?.trim(),
+          p_equipment_items: equipment_items ?? [],
+          p_assignee_user_ids: assignee_user_ids ?? [],
+        } as never);
+        if (error) throw normalizeScheduleBookingError(error);
+        return data;
+      }
+
       const { data, error } = await supabase
         .from('service_orders')
         .insert(sanitized as any)
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) throw normalizeScheduleBookingError(error);
 
       // Insert equipment items into junction table
       if (equipment_items && equipment_items.length > 0) {
@@ -280,6 +322,14 @@ export function useServiceOrders() {
       toast({ title: 'Ordem de serviço criada com sucesso!' });
     },
     onError: (error: Error) => {
+      if (isScheduleConflictError(error)) {
+        toast({
+          variant: 'destructive',
+          title: 'Conflito de agenda',
+          description: error.message,
+        });
+        return;
+      }
       toast({ 
         variant: 'destructive', 
         title: 'Erro ao criar OS', 
@@ -289,7 +339,72 @@ export function useServiceOrders() {
   });
 
   const updateServiceOrder = useMutation({
-    mutationFn: async ({ id, assignee_user_ids, equipment_items, ...input }: ServiceOrderUpdate & { assignee_user_ids?: string[]; equipment_items?: Array<{ equipment_id?: string; form_template_id?: string }> }) => {
+    mutationFn: async ({
+      id,
+      assignee_user_ids,
+      equipment_items,
+      schedule_override,
+      schedule_override_reason,
+      schedule_request_id,
+      ...input
+    }: ServiceOrderUpdate & { assignee_user_ids?: string[]; equipment_items?: Array<{ equipment_id?: string; form_template_id?: string }> }) => {
+      const touchesSchedule = [
+        'scheduled_date',
+        'scheduled_time',
+        'duration_minutes',
+        'technician_id',
+        'team_id',
+      ].some(key => Object.prototype.hasOwnProperty.call(input, key)) || assignee_user_ids !== undefined;
+
+      if (touchesSchedule) {
+        const { data: current, error: currentError } = await supabase
+          .from('service_orders')
+          .select('scheduled_date, scheduled_time, duration_minutes, technician_id, team_id')
+          .eq('id', id)
+          .single();
+        if (currentError) throw currentError;
+
+        const scheduledDate = input.scheduled_date ?? current.scheduled_date;
+        const scheduledTime = input.scheduled_time ?? current.scheduled_time;
+        const durationMinutes = input.duration_minutes ?? current.duration_minutes;
+        const teamWasProvided = Object.prototype.hasOwnProperty.call(input, 'team_id');
+        const technicianWasProvided = Object.prototype.hasOwnProperty.call(input, 'technician_id');
+        const teamId = teamWasProvided ? (input.team_id || null) : current.team_id;
+        const technicianId = teamId
+          ? null
+          : assignee_user_ids !== undefined
+            ? (assignee_user_ids[0] ?? null)
+            : technicianWasProvided
+              ? (input.technician_id || null)
+              : current.technician_id;
+
+        if (scheduledDate && scheduledTime && durationMinutes && (teamId || technicianId)) {
+          await bookServiceOrderSchedule({
+            service_order_id: id,
+            resource_type: teamId ? 'team' : 'technician',
+            resource_id: teamId || technicianId!,
+            scheduled_date: scheduledDate,
+            scheduled_time: scheduledTime,
+            duration_minutes: durationMinutes,
+            timezone,
+            schedule_override,
+            schedule_override_reason,
+            schedule_request_id,
+          });
+
+          // A reserva v1 aceita um único responsável direto e limpa o outro.
+          // Mantemos co-responsáveis na junction, mas não reintroduzimos aqui o
+          // técnico/equipe que o RPC acabou de limpar atomicamente.
+          if (teamId) {
+            input.team_id = teamId;
+            input.technician_id = undefined;
+          } else {
+            input.technician_id = technicianId ?? undefined;
+            input.team_id = undefined;
+          }
+        }
+      }
+
       const sanitized = normalizeOptionalForeignKeys(input, [
         'technician_id',
         'team_id',
@@ -428,6 +543,14 @@ export function useServiceOrders() {
       toast({ title: 'OS atualizada com sucesso!' });
     },
     onError: (error: Error) => {
+      if (isScheduleConflictError(error)) {
+        toast({
+          variant: 'destructive',
+          title: 'Conflito de agenda',
+          description: error.message,
+        });
+        return;
+      }
       toast({ 
         variant: 'destructive', 
         title: 'Erro ao atualizar OS', 
@@ -496,12 +619,38 @@ export function useServiceOrders() {
     },
   });
 
+  const rescheduleServiceOrder = useMutation({
+    mutationFn: (input: Omit<BookServiceOrderScheduleInput, 'timezone'>) =>
+      bookServiceOrderSchedule({ ...input, timezone }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      toast({ title: 'OS reagendada com sucesso!' });
+    },
+    onError: (error: Error) => {
+      if (isScheduleConflictError(error)) {
+        toast({
+          variant: 'destructive',
+          title: 'Conflito de agenda',
+          description: error.message,
+        });
+        return;
+      }
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao reagendar OS',
+        description: getErrorMessage(error),
+      });
+    },
+  });
+
   return {
     serviceOrders: serviceOrdersQuery.data ?? [],
     isLoading: serviceOrdersQuery.isLoading,
     error: serviceOrdersQuery.error,
     createServiceOrder,
     updateServiceOrder,
+    rescheduleServiceOrder,
     deleteServiceOrder,
   };
 }

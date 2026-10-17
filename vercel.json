@@ -5,6 +5,11 @@
       "has": [{ "type": "host", "value": "dominex.app" }],
       "destination": "https://www.dominex.app/:path*",
       "permanent": true
+    },
+    {
+      "source": "/v1/docs",
+      "destination": "/docs",
+      "permanent": true
     }
   ],
   "headers": [
@@ -35,6 +40,9 @@
     }
   ],
   "rewrites": [
+    { "source": "/v1/openapi.json", "destination": "/api/openapi-v1" },
+    { "source": "/llms.txt", "destination": "/docs/llms.txt" },
+    { "source": "/v1/:path*", "destination": "/api/public-v1?path=:path*" },
     { "source": "/blog/:slug", "destination": "/api/blog-post?slug=:slug&locale=pt-br" },
     { "source": "/en/blog/:slug", "destination": "/api/blog-post?slug=:slug&locale=en" },
     { "source": "/es/blog/:slug", "destination": "/api/blog-post?slug=:slug&locale=es" },

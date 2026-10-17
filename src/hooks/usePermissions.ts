@@ -85,6 +85,8 @@ export const FUNCTION_PERMISSIONS = [
   { key: 'fn:os_finish_revenue', label: 'Lançar Receita ao Finalizar OS', description: 'Ao concluir uma Ordem de Serviço, poder lançar a receita dela direto no fechamento.', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:service_orders' },
   { key: 'fn:manage_users', label: 'Gerenciar Usuários', description: 'Criar, editar e gerenciar usuários do sistema', group: 'Administração', category: 'administracao', relatedScreen: 'screen:users' },
   { key: 'fn:manage_settings', label: 'Gerenciar Configurações', description: 'Alterar configurações do sistema', group: 'Administração', category: 'administracao', relatedScreen: 'screen:settings' },
+  { key: 'fn:manage_api_keys', label: 'Gerenciar Chaves da API', description: 'Criar, rotacionar e revogar credenciais da API Pública', group: 'Administração', category: 'administracao', relatedScreen: 'screen:settings' },
+  { key: 'fn:override_schedule_conflict', label: 'Sobrescrever Conflito de Agenda', description: 'Autorizar sobreposição de horário com justificativa auditada', group: 'Serviços', category: 'servicos', relatedScreen: 'screen:schedule' },
   { key: 'fn:export_company_data', label: 'Exportar Dados da Empresa', description: 'Baixar em planilha todos os dados da empresa, incluindo financeiro e salários dos funcionários', group: 'Administração', category: 'administracao', relatedScreen: 'screen:settings' },
   { key: 'fn:manage_crm', label: 'Gerenciar CRM', description: 'Gerenciar leads e pipeline comercial', group: 'Comercial', category: 'comercial', relatedScreen: 'screen:crm' },
   { key: 'fn:manage_contracts', label: 'Gerenciar Contratos', description: 'Gerenciar contratos recorrentes e manutenções', group: 'Serviços', category: 'servicos', relatedScreen: 'screen:contracts' },
@@ -178,7 +180,9 @@ export function usePermissionPresets() {
       if (error) throw error;
       return (data || []).map(p => ({
         ...p,
-        permissions: (p.permissions as any) || [],
+        permissions: Array.isArray(p.permissions)
+          ? p.permissions.filter((permission): permission is string => typeof permission === 'string')
+          : [],
       })) as PermissionPreset[];
     },
   });
@@ -187,7 +191,7 @@ export function usePermissionPresets() {
     mutationFn: async (preset: { name: string; description?: string; permissions: string[] }) => {
       const { error } = await supabase
         .from('permission_presets')
-        .insert({ name: preset.name, description: preset.description || null, permissions: preset.permissions as any });
+        .insert({ name: preset.name, description: preset.description || null, permissions: preset.permissions });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -201,7 +205,7 @@ export function usePermissionPresets() {
     mutationFn: async ({ id, ...updates }: { id: string; name?: string; description?: string; permissions?: string[] }) => {
       const { error } = await supabase
         .from('permission_presets')
-        .update(updates as any)
+        .update(updates)
         .eq('id', id);
       if (error) throw error;
     },
@@ -240,7 +244,9 @@ export function useUserPermissions() {
       if (error) throw error;
       return (data || []).map(p => ({
         ...p,
-        permissions: (p.permissions as any) || [],
+        permissions: Array.isArray(p.permissions)
+          ? p.permissions.filter((permission): permission is string => typeof permission === 'string')
+          : [],
       })) as UserPermission[];
     },
   });
@@ -256,7 +262,7 @@ export function useUserPermissions() {
         .from('user_permissions')
         .upsert({
           user_id,
-          permissions: permissions as any,
+          permissions,
           preset_id: preset_id || null,
           is_active: is_active ?? true,
         }, { onConflict: 'user_id' });

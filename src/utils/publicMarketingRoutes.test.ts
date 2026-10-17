@@ -53,6 +53,8 @@ describe('allowsPinchZoom — zoom liberado onde o usuário precisa', () => {
     '/sistema-para-refrigeracao',
     '/sistema-para-assistencia-tecnica',
     '/os-digital',
+    '/docs',
+    '/docs/guias/criar-os-whatsapp',
   ])('libera em página de marketing: %s', (path) => {
     expect(allowsPinchZoom(path)).toBe(true);
   });

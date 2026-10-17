@@ -1,5 +1,7 @@
 User-agent: *
 Allow: /
+Allow: /docs
+Allow: /docs/
 Allow: /quem-somos
 Allow: /privacidade
 Allow: /termos

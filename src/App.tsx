@@ -127,6 +127,7 @@ import BlogPost from "./pages/BlogPost";
 // prerender só visita rotas de marketing (todas eager).
 // ─────────────────────────────────────────────────────────────────────────────
 const Auth = React.lazy(() => import("./pages/Auth"));
+const DeveloperDocs = React.lazy(() => import("./pages/docs/DeveloperDocs"));
 // Retorno do OAuth (Google). Fora do auth wall e sem AppLayout: o usuário chega
 // com a sessão ainda sendo estabelecida; a própria página decide acesso/destino.
 const AuthCallback = React.lazy(() => import("./pages/AuthCallback"));
@@ -680,6 +681,10 @@ const AppRoutes = () => (
     <Route path="/auth/callback" element={<AuthCallback />} />
     {/* Legacy /auth redirect */}
     <Route path="/auth" element={<Navigate to="/login" replace />} />
+
+    {/* Documentação pública da API — sem autenticação e fora do shell do app. */}
+    <Route path="/docs/*" element={<DeveloperDocs />} />
+    <Route path="/v1/docs" element={<Navigate to="/docs" replace />} />
     
     {/* Technician OS - Public route with OS ID */}
     <Route path="/os-tecnico/:id" element={<TechnicianOS />} />

@@ -79,8 +79,11 @@ export const useResolvedRouteTitle = (): string => {
 
 export const usePageTitle = () => {
   const title = useResolvedRouteTitle();
+  const { pathname } = useLocation();
 
   useEffect(() => {
+    // A documentação pública gerencia títulos específicos por artigo.
+    if (pathname === "/docs" || pathname.startsWith("/docs/")) return;
     document.title = title ? title + SUFFIX : DEFAULT_TITLE;
-  }, [title]);
+  }, [pathname, title]);
 };

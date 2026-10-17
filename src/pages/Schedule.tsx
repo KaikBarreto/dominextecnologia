@@ -48,9 +48,38 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { useOsFinishRevenuePrompt } from '@/hooks/useOsFinishRevenuePrompt';
 import { OsFinishRevenueDialog } from '@/components/financial/OsFinishRevenueDialog';
+import { ScheduleConflictDialog } from '@/components/schedule/ScheduleConflictDialog';
+import {
+  isScheduleConflictError,
+  type ScheduleConflictItem,
+} from '@/lib/scheduleBooking';
+
+type PendingScheduleConflict =
+  | {
+      kind: 'submit';
+      data: ServiceOrderInput;
+      serviceOrderId?: string;
+      conflicts: ScheduleConflictItem[];
+    }
+  | {
+      kind: 'reschedule';
+      serviceOrderId: string;
+      scheduledDate: string;
+      scheduledTime: string;
+      durationMinutes: number;
+      resourceType: 'technician' | 'team';
+      resourceId: string;
+      requestId: string;
+      conflicts: ScheduleConflictItem[];
+    };
+
+type SchedulableOrder = ServiceOrder & {
+  duration_minutes?: number | null;
+  _assignee_user_ids?: string[];
+};
 
 export default function Schedule() {
-  const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder } = useServiceOrders();
+  const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, rescheduleServiceOrder, deleteServiceOrder } = useServiceOrders();
   const { data: allProfiles = [] } = useProfiles();
   const { customers } = useCustomers();
   const isMobile = useIsMobile();
@@ -67,6 +96,11 @@ export default function Schedule() {
   const canCreateOS = isAdminOrGestor() || hasPermission('fn:create_os');
   const canEditOS = isAdminOrGestor() || hasPermission('fn:edit_os');
   const canDeleteOS = isAdminOrGestor() || hasPermission('fn:delete_os');
+  // Override de conflito é deliberadamente estrito: o fallback legado de
+  // `hasPermission` por role não vale para uma autorização auditável.
+  const canOverrideScheduleConflict = hasPermissionRecord && (
+    permissions.includes('*') || permissions.includes('fn:override_schedule_conflict')
+  );
   // Aviso financeiro na agenda apaga LANÇAMENTO (financial_transactions), não OS
   // — logo, `fn:delete_finance`, não `fn:delete_os`.
   // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
@@ -151,6 +185,7 @@ export default function Schedule() {
   const [defaultDate, setDefaultDate] = useState<string | undefined>();
   const [defaultTime, setDefaultTime] = useState<string | undefined>();
   const [isPausedDialogOpen, setIsPausedDialogOpen] = useState(false);
+  const [pendingScheduleConflict, setPendingScheduleConflict] = useState<PendingScheduleConflict | null>(null);
   const { pausedOrders } = usePausedOrders();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -600,11 +635,54 @@ export default function Schedule() {
   };
 
   const handleDrop = async (orderId: string, newDate: string, newTime: string) => {
-    await updateServiceOrder.mutateAsync({
-      id: orderId,
-      scheduled_date: newDate,
-      scheduled_time: newTime,
-    });
+    const order = serviceOrders.find(item => item.id === orderId);
+    // Tarefas continuam no fluxo legado: o motor de reservas é contrato de OS.
+    if (order?.entry_type === 'tarefa') {
+      await updateServiceOrder.mutateAsync({ id: orderId, scheduled_date: newDate, scheduled_time: newTime });
+      return;
+    }
+
+    const resourceType = order?.team_id ? 'team' : 'technician';
+    const schedulableOrder = order as SchedulableOrder | undefined;
+    const resourceId = order?.team_id
+      || order?.technician_id
+      || schedulableOrder?._assignee_user_ids?.[0];
+    if (!order || !resourceId) {
+      // OS sem responsável continua reagendável e sem reserva, pois não existe
+      // recurso cujo horário possa conflitar.
+      await updateServiceOrder.mutateAsync({ id: orderId, scheduled_date: newDate, scheduled_time: newTime });
+      return;
+    }
+    const durationMinutes = schedulableOrder.duration_minutes || 120;
+
+    const requestId = crypto.randomUUID();
+    try {
+      await rescheduleServiceOrder.mutateAsync({
+        service_order_id: orderId,
+        scheduled_date: newDate,
+        scheduled_time: newTime,
+        duration_minutes: durationMinutes,
+        resource_type: resourceType,
+        resource_id: resourceId,
+        schedule_request_id: requestId,
+      });
+    } catch (error) {
+      if (isScheduleConflictError(error)) {
+        setPendingScheduleConflict({
+          kind: 'reschedule',
+          serviceOrderId: orderId,
+          scheduledDate: newDate,
+          scheduledTime: newTime,
+          durationMinutes,
+          resourceType,
+          resourceId,
+          requestId,
+          conflicts: error.conflicts,
+        });
+        return;
+      }
+      throw error;
+    }
   };
 
   const touchDrag = useTouchDragDrop(handleDrop);
@@ -619,11 +697,63 @@ export default function Schedule() {
   };
 
   const handleSubmit = async (data: ServiceOrderInput) => {
-    if (selectedOrder) {
-      await updateServiceOrder.mutateAsync({ id: selectedOrder.id, ...data });
-    } else {
-      await createServiceOrder.mutateAsync(data);
+    const payload: ServiceOrderInput = {
+      ...data,
+      schedule_request_id: data.schedule_request_id ?? crypto.randomUUID(),
+    };
+    try {
+      if (selectedOrder) {
+        await updateServiceOrder.mutateAsync({ id: selectedOrder.id, ...payload });
+      } else {
+        await createServiceOrder.mutateAsync(payload);
+      }
+    } catch (error) {
+      if (isScheduleConflictError(error)) {
+        setPendingScheduleConflict({
+          kind: 'submit',
+          data: payload,
+          serviceOrderId: selectedOrder?.id,
+          conflicts: error.conflicts,
+        });
+      }
+      throw error;
     }
+  };
+
+  const handleScheduleConflictOverride = async (reason: string) => {
+    const pending = pendingScheduleConflict;
+    if (!pending || !canOverrideScheduleConflict) return;
+
+    if (pending.kind === 'reschedule') {
+      await rescheduleServiceOrder.mutateAsync({
+        service_order_id: pending.serviceOrderId,
+        scheduled_date: pending.scheduledDate,
+        scheduled_time: pending.scheduledTime,
+        duration_minutes: pending.durationMinutes,
+        resource_type: pending.resourceType,
+        resource_id: pending.resourceId,
+        schedule_override: true,
+        schedule_override_reason: reason,
+        schedule_request_id: pending.requestId,
+      });
+    } else if (pending.serviceOrderId) {
+      await updateServiceOrder.mutateAsync({
+        id: pending.serviceOrderId,
+        ...pending.data,
+        schedule_override: true,
+        schedule_override_reason: reason,
+      });
+      handleCloseForm(false);
+    } else {
+      await createServiceOrder.mutateAsync({
+        ...pending.data,
+        schedule_override: true,
+        schedule_override_reason: reason,
+      });
+      handleCloseForm(false);
+    }
+
+    setPendingScheduleConflict(null);
   };
 
   // Anti-flicker: segura a tela no skeleton enquanto a preferência de view do
@@ -1113,6 +1243,18 @@ export default function Schedule() {
         onOpenChange={setIsSearchModalOpen}
         orders={searchableOrders as any}
         onSelect={(order) => handleSearchResultSelect(order as any)}
+      />
+      <ScheduleConflictDialog
+        open={!!pendingScheduleConflict}
+        conflicts={pendingScheduleConflict?.conflicts ?? []}
+        canOverride={canOverrideScheduleConflict}
+        isLoading={createServiceOrder.isPending || updateServiceOrder.isPending || rescheduleServiceOrder.isPending}
+        onCancel={() => setPendingScheduleConflict(null)}
+        onOverride={(reason) => {
+          // A mutation já apresenta o erro via toast; consumir a rejeição evita
+          // uma Promise não tratada no handler do diálogo e mantém a tentativa.
+          void handleScheduleConflictOverride(reason).catch(() => undefined);
+        }}
       />
       {/* "Houve alguma receita nesta OS?" — ver comentário no layout mobile. */}
       <OsFinishRevenueDialog {...revenueDialogProps} />
