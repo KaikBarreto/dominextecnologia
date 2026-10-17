@@ -292,7 +292,10 @@ function SectionAccordion({
       className="w-full"
     >
       <AccordionItem value={sectionKey} className="border-0">
-        <AccordionTrigger className="hover:no-underline py-0 pb-2 pt-1 border-b-2 border-slate-200 text-slate-600">
+        <AccordionTrigger
+          data-pdf-keep
+          className="hover:no-underline py-0 pb-2 pt-1 border-b-2 border-slate-200 text-slate-600"
+        >
           <span className="flex items-center gap-1.5 min-w-0">
             <Icon className="h-3.5 w-3.5 text-slate-500 shrink-0" />
             <span className="text-xs font-bold text-slate-600 uppercase tracking-wider text-left">{label}</span>
@@ -432,7 +435,6 @@ function ReportPmocItem({
       key={groupKey}
       value={groupKey}
       id={anchorId}
-      data-pdf-section
       className={cn(
         // Sem caixa por equipamento: lista limpa, SEM fundo próprio — herda o
         // branco do documento de trás. Mais espaço VERTICAL entre equipamentos.
@@ -633,8 +635,15 @@ export function ReportPmocChecklist({
   const sectionTitle = hasRealEquipment ? 'Checklists por Equipamento' : 'Checklists';
 
   return (
-    <div data-pdf-section className="border border-slate-200 rounded-lg p-3 sm:p-4">
-      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+    // O checklist precisa fluir entre páginas: nem a seção nem o grupo de um
+    // equipamento podem ser atômicos. Cabeçalhos, respostas, cards PMOC e fotos
+    // continuam protegidos individualmente por `data-pdf-keep`/caixas de imagem.
+    // Isso ocupa o espaço restante da folha sem cortar conteúdo no meio.
+    <div>
+      <h3
+        data-pdf-keep
+        className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5"
+      >
         <ListChecks className="h-3.5 w-3.5" /> {sectionTitle}
       </h3>
       <Accordion
