@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.10',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Imagem da OS preparada para os dois formatos do WhatsApp',
+        description: 'O ajuste da imagem compartilhada agora mostra lado a lado o cartão grande e a miniatura compacta. A nova otimização mantém o logo dentro da área que pode aparecer no recorte quadrado, sem deixar de gerar a arte completa para o cartão horizontal.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.36.9',
     date: '17 de outubro de 2026',
     type: 'patch',

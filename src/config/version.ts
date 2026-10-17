@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.36.9";
+export const APP_VERSION = "1.36.10";
 
-export const VERSION_NOTES = "A prévia da Ordem de Serviço compartilhada ficou mais nítida e novos links passam a solicitar ao WhatsApp a arte mais recente da empresa.";
+export const VERSION_NOTES = "A arte compartilhada da Ordem de Serviço agora pode ser ajustada para continuar legível tanto no cartão grande quanto na miniatura compacta do WhatsApp.";
