@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.11',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Checklists melhor distribuídos no PDF da OS',
+        description: 'O relatório em PDF agora aproveita o espaço disponível antes de continuar o checklist na página seguinte. A moldura externa foi removida e cada resposta, foto e título permanece inteiro durante a quebra de página, evitando grandes áreas em branco e conteúdo cortado.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.36.10',
     date: '17 de outubro de 2026',
     type: 'patch',
