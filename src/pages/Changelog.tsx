@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.14',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Projetos: acompanhe uma obra inteira em um lugar só',
+        description: 'Chegou a tela Projetos, para quem já usa o CRM/Kanban. Crie o projeto, por exemplo a instalação de 80 máquinas em uma indústria, e dentro dele crie quantas frentes de trabalho quiser: compras, engenharia, operacional. Cada frente é um quadro próprio com as etapas dela, e o projeto mostra a barra de progresso da obra e as tarefas de cada card. As frentes já nascem com as etapas certas, sem valores e sem probabilidade de fechamento.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cards de funis de processo não falam mais de venda',
+        description: 'Em qualquer funil com a opção de acompanhar valores desligada, o card deixa de pedir valor estimado, probabilidade e origem do lead. O campo de vendedor passa a se chamar responsável e a previsão de fechamento passa a se chamar prazo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.36.13',
     date: '17 de outubro de 2026',
     type: 'patch',
