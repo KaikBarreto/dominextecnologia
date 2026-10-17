@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.35.8";
+export const APP_VERSION = "1.36.0";
 
-export const VERSION_NOTES = "Os chamados abertos pelo portal agora têm uma área própria e podem ser encontrados pelo cliente, equipamento ou contrato.";
+export const VERSION_NOTES = "A nova API pública permite integrar sistemas externos à agenda e às Ordens de Serviço com chaves seguras, limites de uso e documentação completa.";

@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.0',
+    date: '17 de outubro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'API pública para integrar a Dominex',
+        description: 'Agora administradores podem criar integrações e chaves de API para conectar agentes de IA, sistemas próprios e outras aplicações à agenda, aos clientes e às Ordens de Serviço. A documentação completa está disponível em /docs.',
+        category: 'recurso',
+      },
+      {
+        title: 'Agendamentos protegidos contra conflito',
+        description: 'A agenda e a API passaram a compartilhar o mesmo controle de disponibilidade e reserva, com idempotência, limites de uso e bloqueio transacional para evitar duplicidades e sobreposições acidentais.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.35.8',
     date: '16 de outubro de 2026',
     type: 'patch',
