@@ -80,3 +80,20 @@ test('redireciona a raiz e a documentacao para o site publico', async () => {
       : `https://www.dominex.app${path}`);
   }
 });
+
+test('serve o OpenAPI 3.1.1 empacotado sem depender do site', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error('OpenAPI nao deve consultar upstream');
+  };
+  try {
+    const response = await handleRequest(new Request('https://api.dominex.app/v1/openapi.json'), env);
+    const document = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(document.openapi, '3.1.1');
+    assert.equal(document.info.title, 'Dominex Public API');
+    assert.match(response.headers.get('content-type'), /application\/vnd\.oai\.openapi\+json/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

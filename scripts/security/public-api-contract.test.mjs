@@ -8,9 +8,16 @@ const openapiSource = await readFile(new URL('docs/api/openapi.v1.yaml', root), 
 const publicEdge = await readFile(new URL('supabase/functions/public-api-v1/index.ts', root), 'utf8');
 const managerEdge = await readFile(new URL('supabase/functions/api-key-manager/index.ts', root), 'utf8');
 const publicProxy = await readFile(new URL('api/public-v1.js', root), 'utf8');
+const cloudflareGateway = await readFile(new URL('workers/public-api-gateway.js', root), 'utf8');
+const generatedOpenApi = JSON.parse(await readFile(new URL('workers/openapi.v1.json', root), 'utf8'));
 const publicHelpers = await readFile(new URL('supabase/functions/_shared/public-api.ts', root), 'utf8');
 const bookingMigration = await readFile(new URL('supabase/migrations/20261017122000_public_api_v1_booking_engine.sql', root), 'utf8');
 const contract = parse(openapiSource);
+
+test('OpenAPI servido pelo gateway e identico a fonte YAML canonica', () => {
+  assert.deepEqual(generatedOpenApi, contract);
+  assert.match(cloudflareGateway, /openapi\.v1\.json/);
+});
 
 test('OpenAPI v1 usa 3.1.1, HTTPS e autenticacao Bearer global', () => {
   assert.equal(contract.openapi, '3.1.1');
@@ -61,9 +68,11 @@ test('override interno nao fica acessivel a service role nem a API publica', () 
 });
 
 test('edge publica exige proxy autenticado e recebe IP apenas da borda confiavel', () => {
-  assert.match(publicProxy, /PUBLIC_API_PROXY_SECRET/);
+  const gateways = `${publicProxy}\n${cloudflareGateway}`;
+  assert.match(gateways, /PUBLIC_API_PROXY_SECRET/);
   assert.match(publicProxy, /x-vercel-forwarded-for/);
-  assert.match(publicProxy, /X-Dominex-Client-Ip/);
+  assert.match(cloudflareGateway, /cf-connecting-ip/);
+  assert.match(gateways, /X-Dominex-Client-Ip/);
   assert.match(publicEdge, /PUBLIC_API_PROXY_SECRET/);
   assert.match(publicEdge, /timingSafeEqual\(providedProxySecret, expectedProxySecret\)/);
   assert.doesNotMatch(publicEdge, /const ip = requestIp\(req\)/);

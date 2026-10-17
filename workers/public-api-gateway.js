@@ -1,3 +1,5 @@
+import openApiDocument from './openapi.v1.json' with { type: 'json' };
+
 const MAX_BODY_BYTES = 64 * 1024;
 const API_METHODS = new Set(['GET', 'POST']);
 const ALLOWED_RESPONSE_HEADERS = [
@@ -67,16 +69,20 @@ async function readBody(request) {
 }
 
 async function proxyStatic(request, env, pathname) {
-  const targetPath = pathname === '/v1/openapi.json' ? pathname : '/docs/llms.txt';
-  const upstream = new URL(targetPath, env.DOCS_ORIGIN);
+  if (pathname === '/v1/openapi.json') {
+    return new Response(JSON.stringify(openApiDocument), {
+      headers: {
+        'Content-Type': 'application/vnd.oai.openapi+json;version=3.1.1; charset=utf-8',
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=3600',
+        'X-Content-Type-Options': 'nosniff',
+      },
+    });
+  }
+
+  const upstream = new URL('/docs/llms.txt', env.DOCS_ORIGIN);
   const response = await fetch(new Request(upstream, { method: 'GET' }));
   const headers = new Headers();
-  headers.set(
-    'Content-Type',
-    pathname === '/v1/openapi.json'
-      ? 'application/vnd.oai.openapi+json;version=3.1.1; charset=utf-8'
-      : 'text/plain; charset=utf-8',
-  );
+  headers.set('Content-Type', 'text/plain; charset=utf-8');
   headers.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
   headers.set('X-Content-Type-Options', 'nosniff');
   return new Response(response.body, { status: response.status, headers });
