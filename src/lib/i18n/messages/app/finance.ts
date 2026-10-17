@@ -1443,6 +1443,12 @@ export const finance = {
     osBilling: {
       dialogTitle: 'Faturar Ordem de Serviço',
       osLabel: 'OS #{number}',
+      badge: {
+        billed: 'Faturada',
+        billedWithValue: 'Faturada · {value}',
+        charged: 'Cobrança enviada',
+        chargedWithValue: 'Cobrança · {value}',
+      },
       hint: 'Escolha como registrar o faturamento.',
       option: {
         revenueTitle: 'Lançar receita',
@@ -2809,6 +2815,12 @@ export const finance = {
     osBilling: {
       dialogTitle: 'Bill Service Order',
       osLabel: 'SO #{number}',
+      badge: {
+        billed: 'Billed',
+        billedWithValue: 'Billed · {value}',
+        charged: 'Charge sent',
+        chargedWithValue: 'Charge · {value}',
+      },
       hint: 'Choose how to record the billing.',
       option: {
         revenueTitle: 'Record revenue',
@@ -4176,6 +4188,12 @@ export const finance = {
     osBilling: {
       dialogTitle: 'Facturar orden de servicio',
       osLabel: 'OS #{number}',
+      badge: {
+        billed: 'Facturada',
+        billedWithValue: 'Facturada · {value}',
+        charged: 'Cobro enviado',
+        chargedWithValue: 'Cobro · {value}',
+      },
       hint: 'Elija cómo registrar la facturación.',
       option: {
         revenueTitle: 'Registrar ingreso',
@@ -5543,6 +5561,12 @@ export const finance = {
     osBilling: {
       dialogTitle: `Facturer l'ordre de service`,
       osLabel: 'OS #{number}',
+      badge: {
+        billed: 'Facturé',
+        billedWithValue: 'Facturé · {value}',
+        charged: 'Paiement envoyé',
+        chargedWithValue: 'Paiement · {value}',
+      },
       hint: `Choisissez comment enregistrer la facturation.`,
       option: {
         revenueTitle: 'Enregistrer une recette',

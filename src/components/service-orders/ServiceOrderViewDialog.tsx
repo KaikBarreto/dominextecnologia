@@ -32,9 +32,8 @@ import { OsMaterialsSection } from './OsMaterialsSection';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOsRevenueSummary } from '@/hooks/useOsRevenueSummary';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
-import { useCanLaunchOsRevenue } from '@/hooks/useCanLaunchOsRevenue';
+import { useOsBillingAction } from '@/hooks/useOsBillingAction';
 import { OsBillingDialog } from './OsBillingDialog';
-import type { OsRevenueContext } from '@/hooks/useOsFinishRevenuePrompt';
 
 interface OSPhoto {
   id: string;
@@ -96,13 +95,11 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
   const { hasScreen } = useCompanyModules();
   const canSeeFinance = hasScreenAccess('screen:finance') && hasScreen('screen:finance');
   const osRevenue = useOsRevenueSummary(canSeeFinance ? serviceOrderId : null);
-  // Ação manual "Faturar OS" (lançar receita OU gerar cobrança). Gate único:
-  // `fn:os_finish_revenue` (a régua anti-default-allow de `useCanLaunchOsRevenue`
-  // já trata usuário legado sem permissão configurada como `false` — não mexer).
-  // Sem ela, nenhum botão novo aparece na tela (lei do CEO: nunca obrigatório).
-  const canLaunchRevenue = useCanLaunchOsRevenue();
-  const canSeeBilling = canSeeFinance && canLaunchRevenue;
-  const [billingOpen, setBillingOpen] = useState(false);
+  // Ação manual "Faturar OS" (lançar receita OU gerar cobrança). A trava e o
+  // estado vêm do hook compartilhado, o MESMO que o menu da listagem e o painel
+  // da agenda usam — a ação nasceu só aqui e ficou invisível nas outras telas.
+  const billing = useOsBillingAction();
+  const canSeeBilling = billing.canBill;
   const [linkCopied, setLinkCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [serviceOrder, setServiceOrder] = useState<ServiceOrder & { customer: any; equipment: any; form_template: any } | null>(null);
@@ -707,7 +704,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
             icon: Receipt,
             label: tv.actionBilling,
             tone: 'success',
-            onClick: () => setBillingOpen(true),
+            onClick: () => serviceOrder && billing.open(serviceOrder as any),
           });
         }
         // Tema claro: fundo branco + ícone saturado + borda sutil colorida.
@@ -781,21 +778,12 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
     </span>
   ) : tv.titleFallback;
 
-  // Contexto do diálogo "Faturar OS" — MESMA fonte que o prompt automático de
-  // fechamento já usa (osNumber/customerId/customerName/suggestedAmount).
-  const billingContext: OsRevenueContext | null =
-    canSeeBilling && serviceOrder
-      ? {
-          serviceOrderId: serviceOrder.id,
-          osNumber: serviceOrder.order_number,
-          customerId: serviceOrder.customer_id,
-          customerName: serviceOrder.customer?.name ?? null,
-          suggestedAmount: serviceOrder.total_value ?? null,
-        }
-      : null;
-
   const billingDialog = canSeeBilling ? (
-    <OsBillingDialog open={billingOpen} onOpenChange={setBillingOpen} context={billingContext} />
+    <OsBillingDialog
+      open={billing.isOpen}
+      onOpenChange={billing.setOpen}
+      context={billing.context}
+    />
   ) : null;
 
   const previewModal = (

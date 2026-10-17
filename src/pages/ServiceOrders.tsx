@@ -20,6 +20,7 @@ import {
   Star,
   BarChart3,
   Megaphone,
+  Receipt,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -74,6 +75,10 @@ import { getIsPmocFromOrder } from '@/hooks/useIsPmocOrder';
 import { formatOSNumberDigits } from '@/lib/osNumber';
 import { useOsFinishRevenuePrompt } from '@/hooks/useOsFinishRevenuePrompt';
 import { OsFinishRevenueDialog } from '@/components/financial/OsFinishRevenueDialog';
+import { OsBillingDialog } from '@/components/service-orders/OsBillingDialog';
+import { useOsBillingAction } from '@/hooks/useOsBillingAction';
+import { useOsBillingFlags } from '@/hooks/useOsBillingFlags';
+import { OsBilledBadge } from '@/components/service-orders/OsBilledBadge';
 import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
 import { isOpenPortalCall } from '@/lib/portalCalls';
 
@@ -156,6 +161,12 @@ export default function ServiceOrders() {
   // empresa + permissão + OS ainda sem receita) e nunca lança — não duplicar
   // essas checagens aqui.
   const { maybeOpen: maybeOpenRevenuePrompt, dialogProps: revenueDialogProps } = useOsFinishRevenuePrompt();
+  // Ação manual "Faturar OS" (receita OU cobrança). Mesma trava das outras
+  // telas, centralizada no hook: sem permissão, `canBill` é false e o item de
+  // menu nem entra no array.
+  const billing = useOsBillingAction();
+  // Selo "já faturada" na listagem. Lote só da página visível (2 consultas pro
+  // lote inteiro, não uma por linha) e só pra quem pode ver o Financeiro.
 
   const canCreateOS = isAdminOrGestor() || hasPermission('fn:create_os');
   const canEditOS = isAdminOrGestor() || hasPermission('fn:edit_os');
@@ -259,6 +270,15 @@ export default function ServiceOrders() {
 
   const { sortedItems, sortConfig, handleSort } = useTableSort(sortableOrders);
   const pagination = useDataPagination(sortedItems);
+  // Selo "já faturada": 2 consultas pro LOTE da página visível, nunca uma por
+  // linha. Só roda pra quem pode ver o Financeiro (mesma trava da ação).
+  // A visão ATIVA manda: o kanban pinta a lista filtrada inteira, a lista pinta
+  // só a página. Alimentar sempre com `paginatedItems` deixaria o kanban sem
+  // selo (ele não usa paginação).
+  const { flags: billingFlags } = useOsBillingFlags(
+    (viewMode === 'kanban' ? filteredOrders : pagination.paginatedItems).map((os: any) => os.id),
+    billing.canBill,
+  );
 
   // Fallback do enum legado, localizado (só entra quando o tenant não tem
   // status configurados em os_statuses — os labels do catálogo NÃO são traduzidos).
@@ -726,6 +746,12 @@ export default function ServiceOrders() {
                               variant: 'edit' as const,
                               onClick: () => handleEdit(os),
                             }] : []),
+                            ...(billing.canBill ? [{
+                              key: 'billing',
+                              label: t.rowActions.billing,
+                              icon: <Receipt className="h-4 w-4" />,
+                              onClick: () => billing.open(os as any),
+                            }] : []),
                             ...(canDeleteOS ? [{
                               key: 'delete',
                               label: t.rowActions.delete,
@@ -758,6 +784,7 @@ export default function ServiceOrders() {
                                   {getIsPmocFromOrder(os as any) && (
                                     <PmocComplianceBadge variant="chip" withTooltip />
                                   )}
+                                  <OsBilledBadge snapshot={billingFlags.get(os.id)} compact />
                                   {os.service_type ? (
                                     <span className="inline-flex items-center gap-1">
                                       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getIsPmocFromOrder(os as any) ? 'hsl(var(--info))' : os.service_type.color }} />
@@ -832,13 +859,20 @@ export default function ServiceOrders() {
                                   return (
                                     <TableRow key={os.id}>
                                       <TableCell>
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-mono font-medium text-sm">
+                                        {/* `flex-wrap` + `whitespace-nowrap`: a coluna OS é
+                                            estreita, e com o chip ao LADO o código era espremido e
+                                            quebrava em 3 linhas ("OS-" / "2026-" / "8002"). Medido
+                                            no QA de 17/10/2026. Agora o código fica inteiro numa
+                                            linha e o chip desce. Vale pro selo de faturamento e
+                                            pro chip de PMOC, que já sofria disso. */}
+                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                          <span className="font-mono font-medium text-sm whitespace-nowrap">
                                             {getOsCode(os)}
                                           </span>
                                           {getIsPmocFromOrder(os as any) && (
                                             <PmocComplianceBadge variant="chip" withTooltip />
                                           )}
+                                          <OsBilledBadge snapshot={billingFlags.get(os.id)} compact />
                                         </div>
                                       </TableCell>
                                       <TableCell>
@@ -913,6 +947,12 @@ export default function ServiceOrders() {
                                               variant: 'edit',
                                               onClick: () => handleEdit(os),
                                               hidden: !canEditOS,
+                                            },
+                                            {
+                                              label: t.rowActions.billing,
+                                              icon: Receipt,
+                                              onClick: () => billing.open(os as any),
+                                              hidden: !billing.canBill,
                                             },
                                             {
                                               label: t.rowActions.delete,
@@ -1103,7 +1143,10 @@ export default function ServiceOrders() {
                                 )}
                               </div>
                               <CardContent className="p-3 pr-10 space-y-1">
-                                <span className="font-mono text-xs font-medium">{getOsCode(os)}</span>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-mono text-xs font-medium">{getOsCode(os)}</span>
+                                  <OsBilledBadge snapshot={billingFlags.get(os.id)} compact />
+                                </div>
                                 <p className="text-sm font-medium">{os.customer?.name || t.na}</p>
                                 {os.service_type && (
                                   <div className="flex items-center gap-1">
@@ -1226,6 +1269,13 @@ export default function ServiceOrders() {
             {/* "Houve alguma receita nesta OS?" — sobe sozinho após a OS ser
                 gravada como concluída (lista, kanban ou modal de detalhe). */}
             <OsFinishRevenueDialog {...revenueDialogProps} />
+            {billing.canBill && (
+              <OsBillingDialog
+                open={billing.isOpen}
+                onOpenChange={billing.setOpen}
+                context={billing.context}
+              />
+            )}
           </div>
         )}
       </SettingsSidebarLayout>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Link2, Check, Trash2, UsersRound, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckCircle, Pencil, RotateCcw, Pause, Play } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Link2, Check, Trash2, UsersRound, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckCircle, Pencil, RotateCcw, Pause, Play, Receipt } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,6 +9,10 @@ import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
 import { EventCard, getStatusBadgeClass } from './EventCard';
 import { OrderTimeline } from './OrderTimeline';
 import { OsMaterialsSection } from '@/components/service-orders/OsMaterialsSection';
+import { OsBillingDialog } from '@/components/service-orders/OsBillingDialog';
+import { useOsBillingAction } from '@/hooks/useOsBillingAction';
+import { useOsBillingState } from '@/hooks/useOsBillingState';
+import { OsBilledBadge } from '@/components/service-orders/OsBilledBadge';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import type { ServiceOrder, OsType } from '@/types/database';
@@ -76,6 +80,16 @@ function OrderDetail({
   const navigate = useNavigate();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.scheduleDetail;
+  // Ação "Faturar OS" também aqui: a agenda é onde muita gente volta na OS
+  // depois de concluída. Mesma trava das outras telas (hook compartilhado);
+  // sem permissão o botão nem é renderizado.
+  const billing = useOsBillingAction();
+  // Selo "já faturada" no painel. Uma OS só aqui, então usa a RPC de UMA OS
+  // (a de lote serve pras listagens). Só consulta pra quem pode ver.
+  const { snapshot: billingSnapshot } = useOsBillingState(
+    // `isTask` só é declarado bem abaixo; a expressão é a mesma (entry_type).
+    (order as any).entry_type !== 'tarefa' && billing.canBill ? order.id : null,
+  );
   const tTypeFallback = MESSAGES[locale].app.os.typeFallback;
   const tTypeGeneric = MESSAGES[locale].app.os.typeGeneric;
 
@@ -170,6 +184,7 @@ function OrderDetail({
             {!isTask && (order as any).contract?.is_pmoc === true && (
               <Badge className="text-xs shrink-0 bg-blue-600 text-white hover:bg-blue-600">PMOC</Badge>
             )}
+            {!isTask && <OsBilledBadge snapshot={billingSnapshot} className="text-xs shrink-0" />}
           </div>
           {isTask && taskTitle && (
             <p className="text-sm font-medium">{taskTitle}</p>
@@ -408,6 +423,16 @@ function OrderDetail({
               {t.btnResumeOs}
             </Button>
           )}
+          {!isTask && billing.canBill && (
+            <Button
+              variant="outline"
+              className="w-full mt-2 border-success/30 text-success hover:bg-success hover:text-white"
+              onClick={() => billing.open(order as any)}
+            >
+              <Receipt className="h-4 w-4 mr-2" />
+              {t.btnBilling}
+            </Button>
+          )}
           <div className="grid grid-cols-2 gap-2 mt-2">
             {onEdit && (
               <Button
@@ -580,6 +605,15 @@ function OrderDetail({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          {/* Faturar OS — receita OU cobranca. Gate ja decidiu la em cima. */}
+          {billing.canBill && (
+            <OsBillingDialog
+              open={billing.isOpen}
+              onOpenChange={billing.setOpen}
+              context={billing.context}
+            />
+          )}
         </div>
       </ScrollArea>
     </>
