@@ -6,6 +6,7 @@
     "resumo": "A primeira aula deixa a empresa pronta para operar: apresenta a Dominex, configura identidade e preferências e explica plano, módulos, uso da conta e pagamento.",
     "duracao": "~65min",
     "prereq": "nenhum",
+    "responsavel": "Kaik",
     "modulo_pago": "White Label (parcial)",
     "capitulos": [
       {
@@ -127,6 +128,7 @@
     "resumo": "Colocar a equipe dentro do sistema sem dar acesso demais. É aqui que o gestor decide o que o técnico vê, o que o financeiro vê e o que ninguém vê.",
     "duracao": "~25min",
     "prereq": "T0",
+    "responsavel": "Maicon",
     "modulo_pago": null,
     "capitulos": [
       {
@@ -193,6 +195,7 @@
     "resumo": "A base de tudo. Sem cliente e sem equipamento não existe OS, orçamento, contrato nem PMOC.",
     "duracao": "~35min",
     "prereq": "T2",
+    "responsavel": "Matheus",
     "modulo_pago": null,
     "capitulos": [
       {
@@ -285,6 +288,7 @@
     "resumo": "O mise en place do sistema. Aqui você monta o cardápio de serviços da empresa e os formulários que o técnico vai preencher em campo.",
     "duracao": "~30min",
     "prereq": "T3",
+    "responsavel": "Matheus",
     "modulo_pago": null,
     "capitulos": [
       {
@@ -370,6 +374,7 @@
     "resumo": "O coração da operação. Abrir, distribuir, agendar, acompanhar e fechar OS, com visão de relatório, NPS, equipes e localização em campo.",
     "duracao": "~70min",
     "prereq": "T4",
+    "responsavel": "Matheus",
     "modulo_pago": "RH (para Equipes)",
     "capitulos": [
       {
@@ -541,6 +546,7 @@
     "resumo": "O tutorial que o técnico assiste: executar a OS pelo celular, registrar o atendimento e entregar o resultado ao cliente.",
     "duracao": "~35min",
     "prereq": "T5",
+    "responsavel": "Matheus",
     "modulo_pago": null,
     "capitulos": [
       {
@@ -635,6 +641,7 @@
     "resumo": "Primeira aula da série Área do Técnico. Cada segmento terá uma aula própria; esta cobre exclusivamente Refrigeração e Climatização.",
     "duracao": "~30min",
     "prereq": "T7",
+    "responsavel": "Matheus",
     "modulo_pago": null,
     "capitulos": [
       {
@@ -717,6 +724,7 @@
     "resumo": "Controlar o que entra, o que sai e o que sumiu. Vale pra quem tem depósito e pra quem carrega peça na van.",
     "duracao": "~35min",
     "prereq": "T7",
+    "responsavel": "Maicon",
     "modulo_pago": null,
     "capitulos": [
       {
@@ -791,6 +799,7 @@
     "resumo": "Onde o serviço vira preço e o preço vira documento bonito na mão do cliente.",
     "duracao": "~45min",
     "prereq": "T8",
+    "responsavel": "Matheus",
     "modulo_pago": null,
     "capitulos": [
       {
@@ -909,6 +918,7 @@
     "resumo": "Parar de perder oportunidade em conversa de WhatsApp. Todo lead num funil visível, com dono e próximo passo.",
     "duracao": "~30min",
     "prereq": "T9",
+    "responsavel": "Maicon",
     "modulo_pago": "CRM",
     "capitulos": [
       {
@@ -1004,6 +1014,7 @@
     "resumo": "Receita recorrente e conformidade legal no mesmo lugar. É o tutorial mais denso da trilha.",
     "duracao": "~45min",
     "prereq": "T10",
+    "responsavel": "Matheus",
     "modulo_pago": "Gestão de Contratos e PMOC",
     "capitulos": [
       {
@@ -1112,6 +1123,7 @@
     "resumo": "Os dois acessos públicos do cliente: o portal geral para acompanhar o relacionamento com a empresa e o portal específico do contrato ou PMOC.",
     "duracao": "~18min",
     "prereq": "T11",
+    "responsavel": "Maicon",
     "modulo_pago": "módulos Portal do Cliente e Contratos/PMOC",
     "capitulos": [
       {
@@ -1192,6 +1204,7 @@
     "resumo": "A base do controle financeiro: contas, movimentações, cartões e compromissos a pagar ou receber.",
     "duracao": "~35min",
     "prereq": "T12",
+    "responsavel": "Matheus",
     "modulo_pago": null,
     "capitulos": [
       {
@@ -1294,6 +1307,7 @@
     "resumo": "Conectar a conta Asaas da empresa, cobrar uma vez ou de forma recorrente e acompanhar o pagamento até a baixa no Financeiro.",
     "duracao": "~40min",
     "prereq": "T13",
+    "responsavel": "Kaik",
     "modulo_pago": "Cobranças",
     "capitulos": [
       {
@@ -1378,6 +1392,7 @@
     "resumo": "Ler resultado, caixa e compromissos sem misturar faturamento, transferência e data de fatura.",
     "duracao": "~30min",
     "prereq": "T13",
+    "responsavel": "Maicon",
     "modulo_pago": null,
     "capitulos": [
       {
@@ -1454,6 +1469,7 @@
     "resumo": "Emitir NFS-e e acompanhar notas de serviço ou produto recebidas contra o CNPJ da empresa.",
     "duracao": "~35min",
     "prereq": "T13",
+    "responsavel": "Kaik",
     "modulo_pago": "Emissão de Notas Fiscais",
     "capitulos": [
       {
@@ -1560,6 +1576,7 @@
     "resumo": "Cadastro funcional, movimentações financeiras do funcionário, pagamento e controle de ponto eletrônico no mesmo fluxo.",
     "duracao": "~35min",
     "prereq": "T14",
+    "responsavel": "Maicon",
     "modulo_pago": "Funcionários / RH",
     "capitulos": [
       {
@@ -1652,6 +1669,7 @@
     "resumo": "Ferramentas para entender pessoas, desenhar a estrutura da empresa e documentar como o trabalho deve acontecer.",
     "duracao": "~40min",
     "prereq": "T15",
+    "responsavel": "Matheus",
     "modulo_pago": "Funcionários / RH",
     "capitulos": [
       {
@@ -1750,6 +1768,7 @@
     "resumo": "Conectar o número da empresa, proteger a operação e ativar automações sem transformar o WhatsApp em disparo indiscriminado.",
     "duracao": "~30min",
     "prereq": "T0",
+    "responsavel": "Kaik",
     "modulo_pago": "WhatsApp",
     "capitulos": [
       {
@@ -1826,6 +1845,7 @@
     "resumo": "Fechar a trilha lendo os números e sabendo onde encontrar, filtrar e exportar os principais relatórios da operação.",
     "duracao": "~35min",
     "prereq": "T21",
+    "responsavel": "Kaik",
     "modulo_pago": null,
     "capitulos": [
       {

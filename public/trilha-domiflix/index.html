@@ -272,6 +272,29 @@
     }
 
     /* ============================================================
+       Divisão das gravações
+       ============================================================ */
+    .responsaveis-grid { display: grid; gap: 14px; }
+    @media (min-width: 760px) {
+      .responsaveis-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .responsavel-card:last-child { grid-column: 1 / -1; }
+    }
+    .responsavel-card {
+      background: var(--surf); border: 1px solid var(--line);
+      border-radius: var(--r); padding: clamp(16px, 2.4vw, 24px); min-width: 0;
+    }
+    .responsavel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .responsavel-nome { font-size: 20px; }
+    .responsavel-total { color: var(--fg-3); font-size: 12.5px; white-space: nowrap; }
+    .responsavel-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .responsavel-lista a {
+      display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px;
+      color: var(--fg-2); font-size: 14.5px; line-height: 1.45; text-decoration: none;
+    }
+    .responsavel-lista a:hover { color: var(--fg); text-decoration: none; }
+    .responsavel-cod { color: var(--acc-2); font-family: var(--mono); font-size: 11.5px; font-weight: 700; padding-top: 3px; }
+
+    /* ============================================================
        Tutorial
        ============================================================ */
     .tutorial {
@@ -456,6 +479,7 @@
       </div>
       <nav class="topo-nav" aria-label="Seções principais">
         <a href="#sequencia">Sequência</a>
+        <a href="#responsaveis">Equipe</a>
         <a href="#tutoriais">Tutoriais</a>
         <a href="#resumo">Resumo</a>
         <a href="#arte">Arte</a>
@@ -520,6 +544,7 @@
           <ul class="toc-lista" role="list" aria-labelledby="tocd-t2">
             <li><a class="toc-link" href="#convencoes"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Como a trilha é montada</span></a></li>
             <li><a class="toc-link" href="#sequencia"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Sequência da trilha</span></a></li>
+            <li><a class="toc-link" href="#responsaveis"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Divisão das gravações</span></a></li>
             <li><a class="toc-link" href="#resumo"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Resumo da trilha</span></a></li>
             <li><a class="toc-link" href="#arte"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Padrão de arte</span></a></li>
             <li><a class="toc-link" href="#capas"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Prompts de capa</span></a></li>
@@ -695,6 +720,52 @@
             <div class="callout">---</div>
           </section>
 
+          <!-- ============ Divisão das gravações ============ -->
+          <section class="secao" id="responsaveis" data-secao>
+            <div class="secao-head">
+              <p class="secao-tag">Produção</p>
+              <h2 class="secao-titulo">Divisão das gravações</h2>
+              <p class="secao-sub">Responsáveis definidos nas capturas de planejamento. A duração mostra o volume aproximado de conteúdo de cada pessoa.</p>
+            </div>
+            <div class="responsaveis-grid">
+              <article class="responsavel-card">
+                <header class="responsavel-head"><h3 class="responsavel-nome">Kaik</h3><span class="responsavel-total">5 tutoriais · ~3h25</span></header>
+                <ul class="responsavel-lista" role="list">
+                  <li><a href="#t0"><span class="responsavel-cod">T0</span><span>Introdução/Assinatura e Configurações/Instruções Iniciais</span></a></li>
+                  <li><a href="#t14"><span class="responsavel-cod">T14</span><span>Notas Fiscais (NFS-e e NF-e)</span></a></li>
+                  <li><a href="#t17"><span class="responsavel-cod">T17</span><span>Dashboard, relatórios e exportações</span></a></li>
+                  <li><a href="#t19"><span class="responsavel-cod">T19</span><span>Integração com Asaas, Assinaturas e Cobranças</span></a></li>
+                  <li><a href="#t21"><span class="responsavel-cod">T21</span><span>Integração com WhatsApp</span></a></li>
+                </ul>
+              </article>
+              <article class="responsavel-card">
+                <header class="responsavel-head"><h3 class="responsavel-nome">Maicon</h3><span class="responsavel-total">6 tutoriais · ~2h53</span></header>
+                <ul class="responsavel-lista" role="list">
+                  <li><a href="#t2"><span class="responsavel-cod">T2</span><span>Usuários e Permissões (restrição por funcionário)</span></a></li>
+                  <li><a href="#t15"><span class="responsavel-cod">T15</span><span>Funcionários, RH e Ponto Eletrônico</span></a></li>
+                  <li><a href="#t10"><span class="responsavel-cod">T10</span><span>CRM/Kanban: leads, comercial, funil e acompanhamento de processos/projetos</span></a></li>
+                  <li><a href="#t20"><span class="responsavel-cod">T20</span><span>Relatório Financeiro e DRE</span></a></li>
+                  <li><a href="#t12"><span class="responsavel-cod">T12</span><span>Portal do Cliente, Portal do Contrato e dinâmica de QR Codes</span></a></li>
+                  <li><a href="#t8"><span class="responsavel-cod">T8</span><span>Estoque: consumo na OS, locais, inventário, compras e histórico de materiais</span></a></li>
+                </ul>
+              </article>
+              <article class="responsavel-card">
+                <header class="responsavel-head"><h3 class="responsavel-nome">Matheus</h3><span class="responsavel-total">9 tutoriais · ~6h05</span></header>
+                <ul class="responsavel-lista" role="list">
+                  <li><a href="#t3"><span class="responsavel-cod">T3</span><span>Clientes, Fornecedores e Equipamentos</span></a></li>
+                  <li><a href="#t4"><span class="responsavel-cod">T4</span><span>Cadastros: Tipos de Serviço, Tipos de Tarefa e Checklists</span></a></li>
+                  <li><a href="#t5"><span class="responsavel-cod">T5</span><span>Ordens de Serviço, Agenda, Equipes e Mapa ao Vivo</span></a></li>
+                  <li><a href="#t7"><span class="responsavel-cod">T7</span><span>O técnico em campo: preenchimento de OS, pausa, finalização parcial, link público, PDF e consumo de estoque</span></a></li>
+                  <li><a href="#t18"><span class="responsavel-cod">T18</span><span>Área do Técnico™: Refrigeração e Climatização</span></a></li>
+                  <li><a href="#t9"><span class="responsavel-cod">T9</span><span>Orçamentos, Propostas e Precificação</span></a></li>
+                  <li><a href="#t13"><span class="responsavel-cod">T13</span><span>Financeiro: receitas, despesas, movimentações e contas a pagar e receber</span></a></li>
+                  <li><a href="#t11"><span class="responsavel-cod">T11</span><span>Contratos e PMOC</span></a></li>
+                  <li><a href="#t22"><span class="responsavel-cod">T22</span><span>Ferramentas de RH: Perfil Comportamental (DISC), Organograma e Fluxograma</span></a></li>
+                </ul>
+              </article>
+            </div>
+          </section>
+
           <!-- ============ Os 20 tutoriais ============ -->
           <section class="secao" id="tutoriais">
             <div class="secao-head">
@@ -707,6 +778,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T0</span><span class="tutorial-insp">Inspiração visual: <em>Interestelar</em></span></p>
             <h2 class="tutorial-titulo">Bem-vindo, configuração, identidade e assinatura</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Kaik</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~65min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: nenhum</li>
               <li class="meta-item meta-item--modulo"><span aria-hidden="true">🔒</span> <strong>White Label</strong> (parcial)</li>
@@ -742,6 +814,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T2</span><span class="tutorial-insp">Inspiração visual: <em>Missão Impossível</em></span></p>
             <h2 class="tutorial-titulo">Usuários, cargos e permissões</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Maicon</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~25min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T0</li>
               
@@ -771,6 +844,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T3</span><span class="tutorial-insp">Inspiração visual: <em>Sherlock</em></span></p>
             <h2 class="tutorial-titulo">Clientes e Equipamentos</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Matheus</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~35min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T2</li>
               
@@ -802,6 +876,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T4</span><span class="tutorial-insp">Inspiração visual: <em>Ratatouille</em></span></p>
             <h2 class="tutorial-titulo">Serviços, tarefas e checklists</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Matheus</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~30min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T3</li>
               
@@ -834,6 +909,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T5</span><span class="tutorial-insp">Inspiração visual: <em>Mad Max: Estrada da Fúria</em></span></p>
             <h2 class="tutorial-titulo">Ordens de Serviço, Agenda, Equipes e Mapa ao Vivo</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Matheus</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~70min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T4</li>
               <li class="meta-item meta-item--modulo"><span aria-hidden="true">🔒</span> <strong>Módulo RH</strong> (para Equipes)</li>
@@ -877,6 +953,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T7</span><span class="tutorial-insp">Inspiração visual: <em>Perdido em Marte</em></span></p>
             <h2 class="tutorial-titulo">O técnico em campo: preenchimento de OS, pausar OS, finalizar parcialmente, link público, PDF e consumo de estoque</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Matheus</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~35min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T5</li>
               <li class="meta-item"><span aria-hidden="true">▤</span> 12 capítulos</li>
@@ -909,6 +986,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T18</span><span class="tutorial-insp">Inspiração visual: <em>Apollo 13</em></span></p>
             <h2 class="tutorial-titulo">Área do Técnico: Refrigeração e Climatização</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Matheus</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~30min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T7</li>
               <li class="meta-item meta-item--modulo"><span aria-hidden="true">◆</span> <strong>Série especial por segmento</strong></li>
@@ -942,6 +1020,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T8</span><span class="tutorial-insp">Inspiração visual: <em>Duna</em></span></p>
             <h2 class="tutorial-titulo">Estoque, compras e inventário</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Maicon</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~35min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T7</li>
               
@@ -973,6 +1052,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T9</span><span class="tutorial-insp">Inspiração visual: <em>Mad Men</em></span></p>
             <h2 class="tutorial-titulo">Orçamentos, Precificação e Proposta</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Matheus</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~45min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T8</li>
               
@@ -1008,6 +1088,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T10</span><span class="tutorial-insp">Inspiração visual: <em>Suits</em></span></p>
             <h2 class="tutorial-titulo">CRM: funil, leads e captação</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Maicon</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~30min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T9</li>
               <li class="meta-item meta-item--modulo"><span aria-hidden="true">🔒</span> <strong>Módulo CRM</strong></li>
@@ -1038,6 +1119,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T11</span><span class="tutorial-insp">Inspiração visual: <em>Peaky Blinders</em></span></p>
             <h2 class="tutorial-titulo">Contratos e PMOC</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Matheus</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~45min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T10</li>
               <li class="meta-item meta-item--modulo"><span aria-hidden="true">🔒</span> <strong>Módulo Gestão de Contratos e PMOC</strong></li>
@@ -1071,6 +1153,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T12</span><span class="tutorial-insp">Inspiração visual: <em>Black Mirror</em></span></p>
             <h2 class="tutorial-titulo">Portal do Cliente e Portal do Contrato</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Maicon</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~18min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T11</li>
               <li class="meta-item meta-item--modulo"><span aria-hidden="true">🔒</span> <strong>Portal do Cliente + Contratos/PMOC</strong></li>
@@ -1099,6 +1182,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T13</span><span class="tutorial-insp">Inspiração visual: <em>Ozark</em></span></p>
             <h2 class="tutorial-titulo">Financeiro</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Matheus</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~35min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T12</li>
               
@@ -1131,6 +1215,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T19</span><span class="tutorial-insp">Inspiração visual: <em>Billions</em></span></p>
             <h2 class="tutorial-titulo">Integração com Asaas, Assinaturas e Cobranças</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Kaik</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~40min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T13</li>
               <li class="meta-item meta-item--modulo"><span aria-hidden="true">🔒</span> <strong>Módulo Cobranças</strong></li>
@@ -1163,6 +1248,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T20</span><span class="tutorial-insp">Inspiração visual: <em>Margin Call</em></span></p>
             <h2 class="tutorial-titulo">Relatório Financeiro e DRE</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Maicon</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~30min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T13</li>
               <li class="meta-item"><span aria-hidden="true">▤</span> 9 capítulos</li>
@@ -1192,6 +1278,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T14</span><span class="tutorial-insp">Inspiração visual: <em>Better Call Saul</em></span></p>
             <h2 class="tutorial-titulo">Notas Fiscais (NFS-e e NF-e)</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Kaik</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~35min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T13</li>
               <li class="meta-item meta-item--modulo"><span aria-hidden="true">🔒</span> <strong>Módulo Emissão de Notas Fiscais</strong></li>
@@ -1225,6 +1312,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T15</span><span class="tutorial-insp">Inspiração visual: <em>The Office</em></span></p>
             <h2 class="tutorial-titulo">Funcionários: Financeiro do Funcionário e Ponto Eletrônico</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Maicon</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~35min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T14</li>
               <li class="meta-item meta-item--modulo"><span aria-hidden="true">🔒</span> <strong>Módulo Funcionários / RH</strong></li>
@@ -1256,6 +1344,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T22</span><span class="tutorial-insp">Inspiração visual: <em>Severance</em></span></p>
             <h2 class="tutorial-titulo">Ferramentas de RH: Perfil Comportamental (DISC), Organograma, Fluxograma</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Matheus</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~40min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T15</li>
               <li class="meta-item meta-item--modulo"><span aria-hidden="true">🔒</span> <strong>Módulo Funcionários / RH</strong></li>
@@ -1290,6 +1379,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T21</span><span class="tutorial-insp">Inspiração visual: <em>Mr. Robot</em></span></p>
             <h2 class="tutorial-titulo">Integração com WhatsApp</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Kaik</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~30min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T0</li>
               <li class="meta-item meta-item--modulo"><span aria-hidden="true">🔒</span> <strong>Módulo WhatsApp</strong></li>
@@ -1320,6 +1410,7 @@
             <p class="tutorial-eyebrow"><span class="tutorial-cod">T17</span><span class="tutorial-insp">Inspiração visual: <em>Moneyball</em></span></p>
             <h2 class="tutorial-titulo">Dashboard, relatórios e exportações</h2>
             <ul class="meta" role="list">
+              <li class="meta-item"><span aria-hidden="true">●</span> Responsável: <strong>Kaik</strong></li>
               <li class="meta-item"><span aria-hidden="true">⏱</span> ~35min</li>
               <li class="meta-item"><span aria-hidden="true">↳</span> Pré-requisito: T21</li>
               
@@ -1356,29 +1447,29 @@
             <div class="card">
               <div class="tabela-wrap">
         <table class="tabela-resumo">
-          <thead><tr><th scope="col">#</th><th scope="col">Tutorial</th><th scope="col">Módulo pago</th><th scope="col">Duração</th></tr></thead>
+          <thead><tr><th scope="col">#</th><th scope="col">Tutorial</th><th scope="col">Responsável</th><th scope="col">Módulo pago</th><th scope="col">Duração</th></tr></thead>
           <tbody>
-          <tr><td data-label="#">T0</td><td data-label="Tutorial">Bem-vindo, configuração, identidade e assinatura</td><td data-label="Módulo pago">White Label (parcial)</td><td data-label="Duração">65min</td></tr>
-          <tr><td data-label="#">T2</td><td data-label="Tutorial">Usuários, cargos e permissões</td><td data-label="Módulo pago">—</td><td data-label="Duração">25min</td></tr>
-          <tr><td data-label="#">T3</td><td data-label="Tutorial">Clientes e Equipamentos</td><td data-label="Módulo pago">—</td><td data-label="Duração">35min</td></tr>
-          <tr><td data-label="#">T4</td><td data-label="Tutorial">Serviços, tarefas e checklists</td><td data-label="Módulo pago">Vídeo em checklist (parcial)</td><td data-label="Duração">30min</td></tr>
-          <tr><td data-label="#">T5</td><td data-label="Tutorial">Ordens de Serviço, Agenda, Equipes e Mapa ao Vivo</td><td data-label="Módulo pago">RH (Equipes)</td><td data-label="Duração">70min</td></tr>
-          <tr><td data-label="#">T7</td><td data-label="Tutorial">O técnico em campo: preenchimento de OS, pausar OS, finalizar parcialmente, link público, PDF e consumo de estoque</td><td data-label="Módulo pago">—</td><td data-label="Duração">35min</td></tr>
-          <tr><td data-label="#">T18</td><td data-label="Tutorial">Área do Técnico: Refrigeração e Climatização</td><td data-label="Módulo pago">Segmento específico</td><td data-label="Duração">30min</td></tr>
-          <tr><td data-label="#">T8</td><td data-label="Tutorial">Estoque, compras e inventário</td><td data-label="Módulo pago">—</td><td data-label="Duração">35min</td></tr>
-          <tr><td data-label="#">T9</td><td data-label="Tutorial">Orçamentos, Precificação e Proposta</td><td data-label="Módulo pago">Precificação Avançada (parcial)</td><td data-label="Duração">45min</td></tr>
-          <tr><td data-label="#">T10</td><td data-label="Tutorial">CRM: funil, leads e captação</td><td data-label="Módulo pago"><strong>CRM</strong></td><td data-label="Duração">30min</td></tr>
-          <tr><td data-label="#">T11</td><td data-label="Tutorial">Contratos e PMOC</td><td data-label="Módulo pago"><strong>Contratos e PMOC</strong></td><td data-label="Duração">45min</td></tr>
-          <tr><td data-label="#">T12</td><td data-label="Tutorial">Portal do Cliente e Portal do Contrato</td><td data-label="Módulo pago"><strong>Portal do Cliente + Contratos/PMOC</strong></td><td data-label="Duração">18min</td></tr>
-          <tr><td data-label="#">T13</td><td data-label="Tutorial">Financeiro</td><td data-label="Módulo pago">— (incluso desde o Essencial)</td><td data-label="Duração">35min</td></tr>
-          <tr><td data-label="#">T19</td><td data-label="Tutorial">Integração com Asaas, Assinaturas e Cobranças</td><td data-label="Módulo pago"><strong>Cobranças</strong></td><td data-label="Duração">40min</td></tr>
-          <tr><td data-label="#">T20</td><td data-label="Tutorial">Relatório Financeiro e DRE</td><td data-label="Módulo pago">— (incluso desde o Essencial)</td><td data-label="Duração">30min</td></tr>
-          <tr><td data-label="#">T14</td><td data-label="Tutorial">Notas Fiscais (NFS-e e NF-e)</td><td data-label="Módulo pago"><strong>Emissão de Notas Fiscais</strong></td><td data-label="Duração">35min</td></tr>
-          <tr><td data-label="#">T15</td><td data-label="Tutorial">Funcionários: Financeiro do Funcionário e Ponto Eletrônico</td><td data-label="Módulo pago"><strong>Funcionários / RH</strong></td><td data-label="Duração">35min</td></tr>
-          <tr><td data-label="#">T22</td><td data-label="Tutorial">Ferramentas de RH: Perfil Comportamental (DISC), Organograma, Fluxograma</td><td data-label="Módulo pago"><strong>Funcionários / RH</strong></td><td data-label="Duração">40min</td></tr>
-          <tr><td data-label="#">T21</td><td data-label="Tutorial">Integração com WhatsApp</td><td data-label="Módulo pago"><strong>WhatsApp</strong></td><td data-label="Duração">30min</td></tr>
-          <tr><td data-label="#">T17</td><td data-label="Tutorial">Dashboard, relatórios e exportações</td><td data-label="Módulo pago">—</td><td data-label="Duração">35min</td></tr>
-          <tr><td data-label="#"></td><td data-label="Tutorial"><strong>TOTAL</strong></td><td data-label="Módulo pago"></td><td data-label="Duração"><strong>~12h23min</strong></td></tr>
+          <tr><td data-label="#">T0</td><td data-label="Tutorial">Bem-vindo, configuração, identidade e assinatura</td><td data-label="Responsável">Kaik</td><td data-label="Módulo pago">White Label (parcial)</td><td data-label="Duração">65min</td></tr>
+          <tr><td data-label="#">T2</td><td data-label="Tutorial">Usuários, cargos e permissões</td><td data-label="Responsável">Maicon</td><td data-label="Módulo pago">—</td><td data-label="Duração">25min</td></tr>
+          <tr><td data-label="#">T3</td><td data-label="Tutorial">Clientes e Equipamentos</td><td data-label="Responsável">Matheus</td><td data-label="Módulo pago">—</td><td data-label="Duração">35min</td></tr>
+          <tr><td data-label="#">T4</td><td data-label="Tutorial">Serviços, tarefas e checklists</td><td data-label="Responsável">Matheus</td><td data-label="Módulo pago">Vídeo em checklist (parcial)</td><td data-label="Duração">30min</td></tr>
+          <tr><td data-label="#">T5</td><td data-label="Tutorial">Ordens de Serviço, Agenda, Equipes e Mapa ao Vivo</td><td data-label="Responsável">Matheus</td><td data-label="Módulo pago">RH (Equipes)</td><td data-label="Duração">70min</td></tr>
+          <tr><td data-label="#">T7</td><td data-label="Tutorial">O técnico em campo: preenchimento de OS, pausar OS, finalizar parcialmente, link público, PDF e consumo de estoque</td><td data-label="Responsável">Matheus</td><td data-label="Módulo pago">—</td><td data-label="Duração">35min</td></tr>
+          <tr><td data-label="#">T18</td><td data-label="Tutorial">Área do Técnico: Refrigeração e Climatização</td><td data-label="Responsável">Matheus</td><td data-label="Módulo pago">Segmento específico</td><td data-label="Duração">30min</td></tr>
+          <tr><td data-label="#">T8</td><td data-label="Tutorial">Estoque, compras e inventário</td><td data-label="Responsável">Maicon</td><td data-label="Módulo pago">—</td><td data-label="Duração">35min</td></tr>
+          <tr><td data-label="#">T9</td><td data-label="Tutorial">Orçamentos, Precificação e Proposta</td><td data-label="Responsável">Matheus</td><td data-label="Módulo pago">Precificação Avançada (parcial)</td><td data-label="Duração">45min</td></tr>
+          <tr><td data-label="#">T10</td><td data-label="Tutorial">CRM: funil, leads e captação</td><td data-label="Responsável">Maicon</td><td data-label="Módulo pago"><strong>CRM</strong></td><td data-label="Duração">30min</td></tr>
+          <tr><td data-label="#">T11</td><td data-label="Tutorial">Contratos e PMOC</td><td data-label="Responsável">Matheus</td><td data-label="Módulo pago"><strong>Contratos e PMOC</strong></td><td data-label="Duração">45min</td></tr>
+          <tr><td data-label="#">T12</td><td data-label="Tutorial">Portal do Cliente e Portal do Contrato</td><td data-label="Responsável">Maicon</td><td data-label="Módulo pago"><strong>Portal do Cliente + Contratos/PMOC</strong></td><td data-label="Duração">18min</td></tr>
+          <tr><td data-label="#">T13</td><td data-label="Tutorial">Financeiro</td><td data-label="Responsável">Matheus</td><td data-label="Módulo pago">— (incluso desde o Essencial)</td><td data-label="Duração">35min</td></tr>
+          <tr><td data-label="#">T19</td><td data-label="Tutorial">Integração com Asaas, Assinaturas e Cobranças</td><td data-label="Responsável">Kaik</td><td data-label="Módulo pago"><strong>Cobranças</strong></td><td data-label="Duração">40min</td></tr>
+          <tr><td data-label="#">T20</td><td data-label="Tutorial">Relatório Financeiro e DRE</td><td data-label="Responsável">Maicon</td><td data-label="Módulo pago">— (incluso desde o Essencial)</td><td data-label="Duração">30min</td></tr>
+          <tr><td data-label="#">T14</td><td data-label="Tutorial">Notas Fiscais (NFS-e e NF-e)</td><td data-label="Responsável">Kaik</td><td data-label="Módulo pago"><strong>Emissão de Notas Fiscais</strong></td><td data-label="Duração">35min</td></tr>
+          <tr><td data-label="#">T15</td><td data-label="Tutorial">Funcionários: Financeiro do Funcionário e Ponto Eletrônico</td><td data-label="Responsável">Maicon</td><td data-label="Módulo pago"><strong>Funcionários / RH</strong></td><td data-label="Duração">35min</td></tr>
+          <tr><td data-label="#">T22</td><td data-label="Tutorial">Ferramentas de RH: Perfil Comportamental (DISC), Organograma, Fluxograma</td><td data-label="Responsável">Matheus</td><td data-label="Módulo pago"><strong>Funcionários / RH</strong></td><td data-label="Duração">40min</td></tr>
+          <tr><td data-label="#">T21</td><td data-label="Tutorial">Integração com WhatsApp</td><td data-label="Responsável">Kaik</td><td data-label="Módulo pago"><strong>WhatsApp</strong></td><td data-label="Duração">30min</td></tr>
+          <tr><td data-label="#">T17</td><td data-label="Tutorial">Dashboard, relatórios e exportações</td><td data-label="Responsável">Kaik</td><td data-label="Módulo pago">—</td><td data-label="Duração">35min</td></tr>
+          <tr><td data-label="#"></td><td data-label="Tutorial"><strong>TOTAL</strong></td><td data-label="Responsável"></td><td data-label="Módulo pago"></td><td data-label="Duração"><strong>~12h23min</strong></td></tr>
           </tbody>
         </table>
       </div>
@@ -2255,6 +2346,7 @@ logotipos.</pre>
           <ul class="toc-lista" role="list" aria-labelledby="tocm-t2">
             <li><a class="toc-link" href="#convencoes"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Como a trilha é montada</span></a></li>
             <li><a class="toc-link" href="#sequencia"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Sequência da trilha</span></a></li>
+            <li><a class="toc-link" href="#responsaveis"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Divisão das gravações</span></a></li>
             <li><a class="toc-link" href="#resumo"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Resumo da trilha</span></a></li>
             <li><a class="toc-link" href="#arte"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Padrão de arte</span></a></li>
             <li><a class="toc-link" href="#capas"><span class="toc-cod toc-cod--ext">•</span><span class="toc-txt">Prompts de capa</span></a></li>

@@ -52,9 +52,43 @@ T0  Bem-vindo, configuração, identidade e assinatura
 
 ---
 
+## Divisão das gravações
+
+### Kaik — 5 tutoriais · ~3h25
+
+- **T0** — Introdução/Assinatura e Configurações/Instruções Iniciais
+- **T14** — Notas Fiscais (NFS-e e NF-e)
+- **T17** — Dashboard, relatórios e exportações
+- **T19** — Integração com Asaas, Assinaturas e Cobranças
+- **T21** — Integração com WhatsApp
+
+### Maicon — 6 tutoriais · ~2h53
+
+- **T2** — Usuários e Permissões (restrição por funcionário)
+- **T15** — Funcionários, RH e Ponto Eletrônico
+- **T10** — CRM/Kanban: leads, comercial, funil e acompanhamento de processos/projetos
+- **T20** — Relatório Financeiro e DRE
+- **T12** — Portal do Cliente, Portal do Contrato e dinâmica de QR Codes
+- **T8** — Estoque: consumo na OS, locais, inventário, compras e histórico de materiais
+
+### Matheus — 9 tutoriais · ~6h05
+
+- **T3** — Clientes, Fornecedores e Equipamentos
+- **T4** — Cadastros: Tipos de Serviço, Tipos de Tarefa e Checklists
+- **T5** — Ordens de Serviço, Agenda, Equipes e Mapa ao Vivo
+- **T7** — O técnico em campo: preenchimento de OS, pausa, finalização parcial, link público, PDF e consumo de estoque
+- **T18** — Área do Técnico™: Refrigeração e Climatização
+- **T9** — Orçamentos, Propostas e Precificação
+- **T13** — Financeiro: receitas, despesas, movimentações e contas a pagar e receber
+- **T11** — Contratos e PMOC
+- **T22** — Ferramentas de RH: Perfil Comportamental (DISC), Organograma e Fluxograma
+
+---
+
 # 🎬 T0 — Bem-vindo, configuração, identidade e assinatura (Inspiração visual: *Interestelar*)
 
 **Duração**: ~65min · **Pré-requisito**: nenhum · 🔒 **White Label** (parcial)
+**Responsável**: Kaik
 
 > A primeira aula deixa a empresa pronta para operar: apresenta a Dominex, configura identidade e preferências e explica plano, módulos, uso da conta e pagamento.
 
@@ -92,6 +126,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T2 — Usuários, cargos e permissões (Inspiração visual: *Missão Impossível*)
 
 **Duração**: ~25min · **Pré-requisito**: T0
+**Responsável**: Maicon
 
 > Colocar a equipe dentro do sistema sem dar acesso demais. É aqui que o gestor decide o que o técnico vê, o que o financeiro vê e o que ninguém vê.
 
@@ -118,6 +153,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T3 — Clientes e Equipamentos (Inspiração visual: *Sherlock*)
 
 **Duração**: ~35min · **Pré-requisito**: T2
+**Responsável**: Matheus
 
 > A base de tudo. Sem cliente e sem equipamento não existe OS, orçamento, contrato nem PMOC.
 
@@ -149,6 +185,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T4 — Serviços, tarefas e checklists (Inspiração visual: *Ratatouille*)
 
 **Duração**: ~30min · **Pré-requisito**: T3
+**Responsável**: Matheus
 
 > O *mise en place* do sistema. Aqui você monta o cardápio de serviços da empresa e os formulários que o técnico vai preencher em campo.
 
@@ -179,6 +216,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T5 — Ordens de Serviço, Agenda, Equipes e Mapa ao Vivo (Inspiração visual: *Mad Max: Estrada da Fúria*)
 
 **Duração**: ~70min · **Pré-requisito**: T4 · 🔒 **módulo RH** (para Equipes)
+**Responsável**: Matheus
 
 > O coração da operação. Abrir, distribuir, agendar, acompanhar e fechar OS, com visão de relatório, NPS, equipes e localização em campo.
 
@@ -227,6 +265,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T7 — O técnico em campo: preenchimento de OS, pausar OS, finalizar parcialmente, link público, PDF e consumo de estoque (Inspiração visual: *Perdido em Marte*)
 
 **Duração**: ~35min · **Pré-requisito**: T5
+**Responsável**: Matheus
 
 > O tutorial que o técnico assiste: executar a OS pelo celular, registrar o atendimento e entregar o resultado ao cliente.
 
@@ -259,6 +298,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T18 — Área do Técnico: Refrigeração e Climatização (Inspiração visual: *Apollo 13*)
 
 **Duração**: ~30min · **Pré-requisito**: T7 · **série especial por segmento**
+**Responsável**: Matheus
 
 > Primeira aula da série Área do Técnico. Cada segmento terá uma aula própria; esta cobre exclusivamente Refrigeração e Climatização.
 
@@ -289,6 +329,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T8 — Estoque, compras e inventário (Inspiração visual: *Duna*)
 
 **Duração**: ~35min · **Pré-requisito**: T7
+**Responsável**: Maicon
 
 > Controlar o que entra, o que sai e o que sumiu. Vale pra quem tem depósito e pra quem carrega peça na van.
 
@@ -317,6 +358,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T9 — Orçamentos, Precificação e Proposta (Inspiração visual: *Mad Men*)
 
 **Duração**: ~45min · **Pré-requisito**: T8
+**Responsável**: Matheus
 
 > Onde o serviço vira preço e o preço vira documento bonito na mão do cliente.
 
@@ -353,6 +395,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T10 — CRM: funil, leads e captação (Inspiração visual: *Suits*)
 
 **Duração**: ~30min · **Pré-requisito**: T9 · 🔒 **módulo CRM**
+**Responsável**: Maicon
 
 > Parar de perder oportunidade em conversa de WhatsApp. Todo lead num funil visível, com dono e próximo passo.
 
@@ -384,6 +427,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T11 — Contratos e PMOC (Inspiração visual: *Peaky Blinders*)
 
 **Duração**: ~45min · **Pré-requisito**: T10 · 🔒 **módulo Gestão de Contratos e PMOC**
+**Responsável**: Matheus
 
 > Receita recorrente e conformidade legal no mesmo lugar. É o tutorial mais denso da trilha.
 
@@ -418,6 +462,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T12 — Portal do Cliente e Portal do Contrato (Inspiração visual: *Black Mirror*)
 
 **Duração**: ~18min · **Pré-requisito**: T11 · 🔒 **módulos Portal do Cliente e Contratos/PMOC**
+**Responsável**: Maicon
 
 > Os dois acessos públicos do cliente: o portal geral para acompanhar o relacionamento com a empresa e o portal específico do contrato ou PMOC.
 
@@ -446,6 +491,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T13 — Financeiro (Inspiração visual: *Ozark*)
 
 **Duração**: ~35min · **Pré-requisito**: T12
+**Responsável**: Matheus
 
 > A base do controle financeiro: contas, movimentações, cartões e compromissos a pagar ou receber.
 
@@ -479,6 +525,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T19 — Integração com Asaas, Assinaturas e Cobranças (Inspiração visual: *Billions*)
 
 **Duração**: ~40min · **Pré-requisito**: T13 · 🔒 **módulo Cobranças**
+**Responsável**: Kaik
 
 > Conectar a conta Asaas da empresa, cobrar uma vez ou de forma recorrente e acompanhar o pagamento até a baixa no Financeiro.
 
@@ -509,6 +556,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T20 — Relatório Financeiro e DRE (Inspiração visual: *Margin Call*)
 
 **Duração**: ~30min · **Pré-requisito**: T13
+**Responsável**: Maicon
 
 > Ler resultado, caixa e compromissos sem misturar faturamento, transferência e data de fatura.
 
@@ -537,6 +585,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T14 — Notas Fiscais (NFS-e e NF-e) (Inspiração visual: *Better Call Saul*)
 
 **Duração**: ~35min · **Pré-requisito**: T13 · 🔒 **módulo Emissão de Notas Fiscais**
+**Responsável**: Kaik
 
 > Emitir NFS-e e acompanhar notas de serviço ou produto recebidas contra o CNPJ da empresa.
 
@@ -571,6 +620,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T15 — Funcionários: Financeiro do Funcionário e Ponto Eletrônico (Inspiração visual: *The Office*)
 
 **Duração**: ~35min · **Pré-requisito**: T14 · 🔒 **módulo Funcionários / RH**
+**Responsável**: Maicon
 
 > Cadastro funcional, movimentações financeiras do funcionário, pagamento e controle de ponto eletrônico no mesmo fluxo.
 
@@ -602,6 +652,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T22 — Ferramentas de RH: Perfil Comportamental (DISC), Organograma, Fluxograma (Inspiração visual: *Severance*)
 
 **Duração**: ~40min · **Pré-requisito**: T15 · 🔒 **módulo Funcionários / RH**
+**Responsável**: Matheus
 
 > Ferramentas para entender pessoas, desenhar a estrutura da empresa e documentar como o trabalho deve acontecer.
 
@@ -635,6 +686,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T21 — Integração com WhatsApp (Inspiração visual: *Mr. Robot*)
 
 **Duração**: ~30min · **Pré-requisito**: T0 · 🔒 **módulo WhatsApp**
+**Responsável**: Kaik
 
 > Conectar o número da empresa, proteger a operação e ativar automações sem transformar o WhatsApp em disparo indiscriminado.
 
@@ -663,6 +715,7 @@ T0  Bem-vindo, configuração, identidade e assinatura
 # 🎬 T17 — Dashboard, relatórios e exportações (Inspiração visual: *Moneyball*)
 
 **Duração**: ~35min · **Pré-requisito**: T21
+**Responsável**: Kaik
 
 > Fechar a trilha lendo os números e sabendo onde encontrar, filtrar e exportar os principais relatórios da operação.
 
@@ -689,29 +742,29 @@ T0  Bem-vindo, configuração, identidade e assinatura
 
 # 📊 Resumo da trilha
 
-| # | Tutorial | Módulo pago | Duração |
-|---|---|---|---|
-| T0 | Bem-vindo, configuração, identidade e assinatura | White Label (parcial) | 65min |
-| T2 | Usuários, cargos e permissões | — | 25min |
-| T3 | Clientes e Equipamentos | — | 35min |
-| T4 | Serviços, tarefas e checklists | Vídeo em checklist (parcial) | 30min |
-| T5 | Ordens de Serviço, Agenda, Equipes e Mapa ao Vivo | RH (Equipes) | 70min |
-| T7 | O técnico em campo: preenchimento de OS, pausar OS, finalizar parcialmente, link público, PDF e consumo de estoque | — | 35min |
-| T18 | Área do Técnico: Refrigeração e Climatização | Segmento específico | 30min |
-| T8 | Estoque, compras e inventário | — | 35min |
-| T9 | Orçamentos, Precificação e Proposta | Precificação Avançada (parcial) | 45min |
-| T10 | CRM: funil, leads e captação | **CRM** | 30min |
-| T11 | Contratos e PMOC | **Contratos e PMOC** | 45min |
-| T12 | Portal do Cliente e Portal do Contrato | **Portal do Cliente + Contratos/PMOC** | 18min |
-| T13 | Financeiro | — (incluso desde o Essencial) | 35min |
-| T19 | Integração com Asaas, Assinaturas e Cobranças | **Cobranças** | 40min |
-| T20 | Relatório Financeiro e DRE | — (incluso desde o Essencial) | 30min |
-| T14 | Notas Fiscais (NFS-e e NF-e) | **Emissão de Notas Fiscais** | 35min |
-| T15 | Funcionários: Financeiro do Funcionário e Ponto Eletrônico | **Funcionários / RH** | 35min |
-| T22 | Ferramentas de RH: Perfil Comportamental (DISC), Organograma, Fluxograma | **Funcionários / RH** | 40min |
-| T21 | Integração com WhatsApp | **WhatsApp** | 30min |
-| T17 | Dashboard, relatórios e exportações | — | 35min |
-| | **TOTAL** | | **~12h23min** |
+| # | Tutorial | Responsável | Módulo pago | Duração |
+|---|---|---|---|---|
+| T0 | Bem-vindo, configuração, identidade e assinatura | Kaik | White Label (parcial) | 65min |
+| T2 | Usuários, cargos e permissões | Maicon | — | 25min |
+| T3 | Clientes e Equipamentos | Matheus | — | 35min |
+| T4 | Serviços, tarefas e checklists | Matheus | Vídeo em checklist (parcial) | 30min |
+| T5 | Ordens de Serviço, Agenda, Equipes e Mapa ao Vivo | Matheus | RH (Equipes) | 70min |
+| T7 | O técnico em campo: preenchimento de OS, pausar OS, finalizar parcialmente, link público, PDF e consumo de estoque | Matheus | — | 35min |
+| T18 | Área do Técnico: Refrigeração e Climatização | Matheus | Segmento específico | 30min |
+| T8 | Estoque, compras e inventário | Maicon | — | 35min |
+| T9 | Orçamentos, Precificação e Proposta | Matheus | Precificação Avançada (parcial) | 45min |
+| T10 | CRM: funil, leads e captação | Maicon | **CRM** | 30min |
+| T11 | Contratos e PMOC | Matheus | **Contratos e PMOC** | 45min |
+| T12 | Portal do Cliente e Portal do Contrato | Maicon | **Portal do Cliente + Contratos/PMOC** | 18min |
+| T13 | Financeiro | Matheus | — (incluso desde o Essencial) | 35min |
+| T19 | Integração com Asaas, Assinaturas e Cobranças | Kaik | **Cobranças** | 40min |
+| T20 | Relatório Financeiro e DRE | Maicon | — (incluso desde o Essencial) | 30min |
+| T14 | Notas Fiscais (NFS-e e NF-e) | Kaik | **Emissão de Notas Fiscais** | 35min |
+| T15 | Funcionários: Financeiro do Funcionário e Ponto Eletrônico | Maicon | **Funcionários / RH** | 35min |
+| T22 | Ferramentas de RH: Perfil Comportamental (DISC), Organograma, Fluxograma | Matheus | **Funcionários / RH** | 40min |
+| T21 | Integração com WhatsApp | Kaik | **WhatsApp** | 30min |
+| T17 | Dashboard, relatórios e exportações | Kaik | — | 35min |
+| | **TOTAL** | | | **~12h23min** |
 
 **20 tutoriais.** Gravando 1 tutorial por dia (com preparo, gravação e revisão), são **~20 dias úteis** pra cobrir a trilha inteira.
 

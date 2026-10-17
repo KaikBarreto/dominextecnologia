@@ -144,6 +144,9 @@ function main() {
     let duracao = null;
     let prereq = null;
     let moduloPagoSecao = null;
+    const linhaResponsavel = secao.match(/^\*\*Responsável\*\*:\s*(.+)$/m);
+    const responsavel = linhaResponsavel ? cleanMarkdown(linhaResponsavel[1].trim()) : null;
+    if (!responsavel) faltando.push("responsavel");
 
     if (linhaDuracao) {
       const partes = linhaDuracao[1].split(" · ").map((p) => p.trim());
@@ -235,6 +238,7 @@ function main() {
       resumo,
       duracao,
       prereq,
+      responsavel,
       modulo_pago: moduloPagoSecao,
       capitulos,
       abertura: abertura ? cleanMarkdown(abertura[1].trim()) : null,
@@ -273,7 +277,7 @@ function main() {
   // --- Validação 3: nenhum resíduo de markdown (** / ` / *itálico*) ou
   // marcador (⚠️/🔒/🚫) sobrando em texto que devia estar limpo. ---
   for (const t of Object.values(resultado)) {
-    const camposTexto = [t.titulo, t.inspiracao, t.resumo, t.modulo_pago, t.abertura, t.recap, t.proximo];
+    const camposTexto = [t.titulo, t.inspiracao, t.resumo, t.responsavel, t.modulo_pago, t.abertura, t.recap, t.proximo];
     for (const campo of camposTexto) {
       if (temMarkdownResidual(campo)) erros.push(`${t.code}: resíduo de markdown/marcador em campo de seção: "${campo}"`);
     }

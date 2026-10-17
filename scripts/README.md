@@ -8,7 +8,7 @@ Fazem parte do build (`npm run build`). Não mexer sem entender o pipeline de bu
 
 ## `trilha-para-capitulos.mjs`
 
-Converte `docs/domiflix/trilha-de-tutoriais.md` (fonte única de verdade da trilha de tutoriais) em `docs/guia-tecnico/grade/capitulos.json`, consumido pelo montador do Guia Técnico.
+Converte `docs/domiflix/trilha-de-tutoriais.md` (fonte única de verdade da trilha de tutoriais, incluindo o responsável por cada gravação) em `docs/guia-tecnico/grade/capitulos.json`, consumido pelo montador do Guia Técnico.
 
 ## Guia Técnico (PDF + página pública + Central de Ajuda) — pipeline de CAPTURA
 
