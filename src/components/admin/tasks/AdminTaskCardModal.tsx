@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -189,11 +190,13 @@ export function AdminTaskCardModal({ task, open, onOpenChange, onUpdate, onDelet
                 </p>
               </>
             ) : (
-              <Input
-                type="date"
+              <DatePicker
                 className="h-9 text-sm"
                 value={task.due_date ?? ''}
-                onChange={(e) => onUpdate({ id: task.id, due_date: e.target.value || null })}
+                onValueChange={(v) => onUpdate({ id: task.id, due_date: v || null })}
+                placeholder="dd/mm/aaaa"
+                clearable
+                clearLabel="Limpar"
               />
             )}
           </MetaField>

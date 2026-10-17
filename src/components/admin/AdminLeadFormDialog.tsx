@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
@@ -397,7 +398,13 @@ export function AdminLeadFormDialog({ open, onOpenChange, editingLead, pipelineI
             </div>
             <div>
               <Label>Previsão de Fechamento</Label>
-              <Input type="date" value={form.expected_close_date} onChange={e => setForm(f => ({ ...f, expected_close_date: e.target.value }))} />
+              <DatePicker
+                value={form.expected_close_date}
+                onValueChange={(v) => setForm(f => ({ ...f, expected_close_date: v }))}
+                placeholder="dd/mm/aaaa"
+                clearable
+                clearLabel="Limpar"
+              />
             </div>
             <div>
               <Label>Probabilidade (%)</Label>

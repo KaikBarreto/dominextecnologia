@@ -143,6 +143,21 @@ describe('SettingsPublicApiContent', () => {
     expect(container.textContent).toContain('Expira em até 1 dia');
   });
 
+  it('usa o DateTimePicker do sistema nas exceções de expediente, sem input datetime-local nativo', () => {
+    managementMock.data.booking_exceptions = [{
+      id: 'exc-1',
+      starts_at: '2026-11-01T12:00:00Z',
+      ends_at: '2026-11-01T18:00:00Z',
+      is_available: false,
+      reason: 'Feriado',
+    }];
+
+    act(() => root.render(<SettingsPublicApiContent />));
+
+    expect(container.textContent).toContain('Exceções de expediente');
+    expect(document.querySelector('input[type="datetime-local"]')).toBeNull();
+  });
+
   it('identifica integração inativa e impede gerar chave pela interface', () => {
     managementMock.data.integrations[0] = {
       ...managementMock.data.integrations[0],

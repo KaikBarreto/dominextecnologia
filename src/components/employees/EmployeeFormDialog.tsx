@@ -8,6 +8,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
@@ -447,7 +448,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           </div>
           <div className="space-y-1.5">
             <Label>{t.fields.hireDate}</Label>
-            <Input type="date" value={hireDate} onChange={e => setHireDate(e.target.value)} />
+            <DatePicker value={hireDate} onValueChange={setHireDate} />
           </div>
           <div className="space-y-1.5">
             <Label>{t.fields.pixKey}</Label>

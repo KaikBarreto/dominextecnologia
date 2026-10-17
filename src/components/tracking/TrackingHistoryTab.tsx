@@ -3,7 +3,7 @@ import { MapPin, ExternalLink, Navigation, Clock, ArrowDownUp } from 'lucide-rea
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { supabase } from '@/integrations/supabase/client';
@@ -162,11 +162,15 @@ export function TrackingHistoryTab() {
           </SelectContent>
         </Select>
 
-        <Input
-          type="date"
+        <DatePicker
           value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
+          onValueChange={setSelectedDate}
+          placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
           className="sm:w-[200px]"
+          // O filtro já tinha `if (!selectedDate) return` no effect de busca —
+          // limpar é um estado válido (query não dispara), por isso clearable.
+          clearable
+          clearLabel={MESSAGES[locale].app.common.clear}
         />
       </div>
 

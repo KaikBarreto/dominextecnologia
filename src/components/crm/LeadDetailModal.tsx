@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -941,10 +942,13 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
 
                   <div className="space-y-2">
                     <Label>{t.detail.nextActionDate}</Label>
-                    <Input
-                      type="date"
+                    {/* Campo opcional, segue vazio até o usuário marcar uma data */}
+                    <DatePicker
                       value={newInteraction.next_action_date}
-                      onChange={(e) => setNewInteraction(prev => ({ ...prev, next_action_date: e.target.value }))}
+                      onValueChange={(v) => setNewInteraction(prev => ({ ...prev, next_action_date: v }))}
+                      placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
+                      clearable
+                      clearLabel={MESSAGES[locale].app.common.clear}
                     />
                   </div>
 

@@ -329,6 +329,21 @@ describe('buildMaterialItem — prova de não-regressão de preço (função pur
   });
 });
 
+describe('QuoteFormDialog — campos de data no step de revisão (prova real de DOM)', () => {
+  it('usa o DatePicker do sistema pra validade e 1º vencimento, sem input date nativo do navegador', async () => {
+    mount();
+    await goPastRecipient(); // "services"
+    await clickAsync(findButtonByText(tq.next)!); // "materials"
+    await clickAsync(findButtonByText(tq.next)!); // "discount"
+    await clickAsync(findButtonByText(tq.next)!); // "review"
+
+    const placeholder = MESSAGES['pt-br'].app.common.datePicker.placeholder;
+    const dateButtons = qAll('button').filter((b) => b.textContent?.includes(placeholder));
+    expect(dateButtons.length).toBe(2); // validUntil + receivableFirstDueDate
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+  });
+});
+
 describe('QuoteFormDialog — desconto em R$ (prova real de DOM)', () => {
   it('colar "4.550" dá 4550 (não 4.55, o bug do sócio) quando o tipo é "R$"', async () => {
     mount();

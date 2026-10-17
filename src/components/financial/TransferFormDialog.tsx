@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -171,7 +172,7 @@ export function TransferFormDialog({ open, onOpenChange, accounts, onSubmit, isL
           </div>
           <div className="space-y-1.5">
             <Label>{t.dateLabel}</Label>
-            <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+            <DatePicker value={date} onValueChange={setDate} />
           </div>
         </div>
 

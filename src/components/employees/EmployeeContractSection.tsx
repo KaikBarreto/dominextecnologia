@@ -4,6 +4,7 @@ import { FileText, RefreshCw, Ban, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Textarea } from '@/components/ui/textarea';
 import { NumericInput, parseDecimalInputValue } from '@/components/ui/numeric-input';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
@@ -264,17 +265,20 @@ export function EmployeeContractSection({ employeeId }: EmployeeContractSectionP
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">{t.fields.startDate}</Label>
-              <Input type="date" value={form.startDate} onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))} />
+              <DatePicker value={form.startDate} onValueChange={(v) => setForm((f) => ({ ...f, startDate: v }))} />
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label className="text-xs text-muted-foreground">{t.fields.endDate}</Label>
               </div>
-              <Input
-                type="date"
+              {/* `clearable`: contrato indeterminado zera `endDate` (sem fim
+                  previsto), então o campo precisa voltar a vazio. */}
+              <DatePicker
                 value={form.endDate}
                 disabled={form.indeterminate}
-                onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
+                onValueChange={(v) => setForm((f) => ({ ...f, endDate: v }))}
+                clearable
+                clearLabel={MESSAGES[locale].app.common.clear}
               />
             </div>
           </div>

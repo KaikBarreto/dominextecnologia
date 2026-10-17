@@ -3,6 +3,7 @@ import { AlertTriangle, ChevronDown, ChevronRight, Pencil, User, X } from 'lucid
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Separator } from '@/components/ui/separator';
 import {
   Select,
@@ -179,12 +180,13 @@ export function PessoasStep({
             {s.pessoas.competencia.label}{' '}
             <span className="text-destructive">*</span>
           </Label>
-          <Input
+          {/* Obrigatório (validação em `errors`, mensagem abaixo), sem clearable */}
+          <DatePicker
             id="nfse-competencia"
-            type="date"
             value={dataCompetencia}
             max={todayISO()}
-            onChange={(e) => onDataCompetencia(e.target.value)}
+            onValueChange={onDataCompetencia}
+            placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
           />
           {competenciaError && (
             <p className="text-sm text-destructive">{competenciaError}</p>

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -224,11 +225,14 @@ export function StockPositionTab() {
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
-          <input
-            type="datetime-local"
+          <DateTimePicker
             value={atInput}
-            onChange={(e) => setAtInput(e.target.value)}
-            className="w-full rounded-xl border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            onValueChange={setAtInput}
+            placeholder={MESSAGES[locale].app.common.datePicker.dateTimePlaceholder}
+            className="w-full rounded-xl"
+            // Data de corte da posição de estoque: sempre tem valor (default =
+            // agora), nunca pode ficar vazia — sem `clearable`.
+            clearable={false}
           />
         </div>
       ) : (
@@ -242,11 +246,11 @@ export function StockPositionTab() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <input
-            type="datetime-local"
+          <DateTimePicker
             value={atInput}
-            onChange={(e) => setAtInput(e.target.value)}
-            className="rounded-xl border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary h-10"
+            onValueChange={setAtInput}
+            placeholder={MESSAGES[locale].app.common.datePicker.dateTimePlaceholder}
+            clearable={false}
           />
           <div className="ml-auto flex items-center gap-2">
             {exportDropdown()}

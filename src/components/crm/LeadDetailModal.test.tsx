@@ -242,4 +242,17 @@ describe('LeadDetailModal — aba Histórico mostra mudança de estágio (prova 
     const byLine = qAll('p').find((p) => /Ana Vendedora/i.test(p.textContent || ''));
     expect(byLine).toBeTruthy();
   });
+
+  it('usa o DatePicker do sistema pro campo "Próxima ação em", sem input date nativo do navegador', () => {
+    mount(BASE_LEAD);
+    clickHistoryTab();
+
+    const newInteractionBtn = qAll('button').find((b) => /nova interação/i.test(b.textContent || ''));
+    expect(newInteractionBtn).toBeTruthy();
+    act(() => {
+      newInteractionBtn!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+  });
 });

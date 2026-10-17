@@ -18,6 +18,7 @@ import { useTableSort } from '@/hooks/useTableSort';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Textarea } from '@/components/ui/textarea';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
@@ -2831,12 +2832,12 @@ export default function ContractDetail() {
           )}
           <div>
             <Label>{td.financial.dueDateLabel}</Label>
-            <Input
-              type="date"
+            <DatePicker
               min={recDueDateMin}
               max={recDueDateMax}
               value={recDueDate}
-              onChange={e => setRecDueDate(e.target.value)}
+              onValueChange={setRecDueDate}
+              placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
             />
             {recDueDateYearInvalid && (
               <p className="text-xs text-destructive mt-1">
@@ -3139,12 +3140,12 @@ export default function ContractDetail() {
           </div>
           <div>
             <Label>{tCont.editAnchorLabel}</Label>
-            <Input
-              type="date"
+            <DatePicker
               min={recDueDateMin}
               max={recDueDateMax}
               value={contEditAnchor}
-              onChange={e => setContEditAnchor(e.target.value)}
+              onValueChange={setContEditAnchor}
+              placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
             />
             <p className="mt-1 text-xs text-muted-foreground break-words">{tCont.editAnchorHint}</p>
           </div>
@@ -3295,7 +3296,7 @@ export default function ContractDetail() {
               </NoticeBanner>
             )}
           </div>
-          <div><Label>{td.financial.dueDateLabel}</Label><Input type="date" value={editRecDueDate} onChange={e => setEditRecDueDate(e.target.value)} /></div>
+          <div><Label>{td.financial.dueDateLabel}</Label><DatePicker value={editRecDueDate} onValueChange={setEditRecDueDate} placeholder={MESSAGES[locale].app.common.datePicker.placeholder} /></div>
           <div className="flex flex-col gap-2 pt-2">
             <Button className="min-h-11 active:scale-[0.98] transition-transform rounded-xl" onClick={() => setShowBulkEditPrompt(true)} disabled={editRecSaving}>
               {editRecSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} {td.financial.saveBtn}

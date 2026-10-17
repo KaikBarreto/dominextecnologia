@@ -22,6 +22,14 @@ export interface DatePickerProps {
   /** Mostra a ação de limpar dentro do calendário (campo de data opcional). */
   clearable?: boolean;
   clearLabel?: string;
+  /**
+   * Rótulo de leitor de tela pro campo que não tem `<Label>` visível ao lado
+   * (filtro de período "de/até", por exemplo). Existe porque o gatilho é um
+   * `<button>`: ele não herda `aria-label` por spread como o `<input>` herdava.
+   */
+  ariaLabel?: string;
+  /** Espelha o `aria-invalid` do `Input`: campo com erro de validação. */
+  ariaInvalid?: boolean;
 }
 
 /**
@@ -41,6 +49,45 @@ export function parseIsoDate(value: string): Date | undefined {
 /** `Date` → `yyyy-MM-dd` usando os componentes LOCAIS (mesma razão acima). */
 export function toIsoDate(date: Date): string {
   return format(date, 'yyyy-MM-dd');
+}
+
+/**
+ * Janela de anos que o seletor de ano oferece quando o campo não declara
+ * `min`/`max`. 100 anos pra trás existe por causa de DATA DE NASCIMENTO (o
+ * caso que inviabilizava o calendário só com a setinha de mês) e das datas de
+ * fabricação/instalação de equipamento antigo; 20 anos pra frente cobre
+ * contrato longo e parcelamento esticado.
+ */
+const DEFAULT_YEARS_BACK = 100;
+const DEFAULT_YEARS_AHEAD = 20;
+
+/**
+ * Faixa de anos do seletor. Sempre ENGLOBA o valor já gravado: dado legado
+ * fora da janela (ano digitado errado, importação antiga) continua visível e
+ * selecionável — senão o campo mostraria uma data que o calendário se recusa a
+ * navegar, e salvar viraria um beco sem saída.
+ */
+export function resolveYearRange(
+  selected: Date | undefined,
+  minDate: Date | undefined,
+  maxDate: Date | undefined,
+  today: Date = new Date(),
+): { fromYear: number; toYear: number } {
+  const currentYear = today.getFullYear();
+  let fromYear = minDate ? minDate.getFullYear() : currentYear - DEFAULT_YEARS_BACK;
+  let toYear = maxDate ? maxDate.getFullYear() : currentYear + DEFAULT_YEARS_AHEAD;
+
+  if (selected) {
+    const selectedYear = selected.getFullYear();
+    fromYear = Math.min(fromYear, selectedYear);
+    toYear = Math.max(toYear, selectedYear);
+  }
+
+  // `min` depois de `max` é erro de chamada, mas não pode quebrar a tela:
+  // o calendário ficaria sem nenhum mês navegável.
+  if (toYear < fromYear) toYear = fromYear;
+
+  return { fromYear, toYear };
 }
 
 /**
@@ -64,6 +111,8 @@ export function DatePicker({
   id,
   clearable = false,
   clearLabel,
+  ariaLabel,
+  ariaInvalid,
 }: DatePickerProps) {
   const { locale } = useAppLocaleContext();
   const dateFnsLocale = getDateFnsLocale(locale);
@@ -76,6 +125,8 @@ export function DatePicker({
   // `dd/MM/yyyy` em pt-br; nos demais idiomas o formato curto da própria locale.
   const displayFormat = locale === 'pt-br' ? 'dd/MM/yyyy' : 'P';
 
+  const { fromYear, toYear } = resolveYearRange(selected, minDate, maxDate);
+
   return (
     <Popover open={open} onOpenChange={setOpen} modal>
       <PopoverTrigger asChild>
@@ -84,8 +135,15 @@ export function DatePicker({
           type="button"
           variant="outline"
           disabled={disabled}
+          aria-label={ariaLabel}
+          aria-invalid={ariaInvalid}
           className={cn(
-            'w-full justify-start text-left font-normal',
+            // `h-10 px-3 text-base md:text-sm` = a mesma caixa do `Input`, pra o
+            // campo ficar rente aos irmãos na grade do formulário (o botão
+            // padrão vem com `px-4`/`text-sm` e desalinhava).
+            'h-10 w-full justify-start px-3 text-left text-base font-normal md:text-sm',
+            // Hover discreto (régua): `bg-muted`, nunca o accent saturado.
+            'hover:bg-muted hover:text-foreground data-[state=open]:bg-muted',
             !selected && 'text-muted-foreground',
             className,
           )}
@@ -96,7 +154,17 @@ export function DatePicker({
           </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      {/* `max-w` + `collisionPadding`: em tela estreita o calendário encosta na
+          borda em vez de ser cortado (o popover vive dentro de modal, que no
+          mobile já é um drawer colado nas laterais).
+          `--radix-popover-content-available-height` é o espaço que SOBRA entre
+          o gatilho e a borda da janela: com o campo perto do rodapé, o
+          calendário rola por dentro em vez de vazar pra fora da tela. */}
+      <PopoverContent
+        className="w-auto max-w-[calc(100vw-1.5rem)] overflow-y-auto p-0 max-h-[var(--radix-popover-content-available-height)]"
+        align="start"
+        collisionPadding={12}
+      >
         <Calendar
           mode="single"
           selected={selected}
@@ -111,6 +179,11 @@ export function DatePicker({
               ? (date: Date) => (!!minDate && date < minDate) || (!!maxDate && date > maxDate)
               : undefined
           }
+          // Mês e ano viram seletor: sem isso, achar uma data de nascimento era
+          // descer de mês em mês na setinha.
+          captionLayout="dropdown-buttons"
+          fromYear={fromYear}
+          toYear={toYear}
           initialFocus
           locale={dateFnsLocale}
         />

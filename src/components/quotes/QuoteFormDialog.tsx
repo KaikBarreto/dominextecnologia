@@ -5,6 +5,7 @@ import { formatMoney, getCurrencySymbol } from '@/lib/format';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -1479,7 +1480,14 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
               <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>{tq.reviewValidUntil}</Label>
-                  <Input type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)} />
+                  {/* Opcional (valid_until vira undefined se vazio), por isso clearable */}
+                  <DatePicker
+                    value={validUntil}
+                    onValueChange={setValidUntil}
+                    placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
+                    clearable
+                    clearLabel={MESSAGES[locale].app.common.clear}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1.5">
@@ -1517,7 +1525,14 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                 </div>
                 <div className="space-y-2">
                   <Label>{tq.receivableFirstDueDateLabel}</Label>
-                  <Input type="date" value={receivableFirstDueDate} onChange={e => setReceivableFirstDueDate(e.target.value)} />
+                  {/* Opcional (receivable_first_due_date vira null se vazio), por isso clearable */}
+                  <DatePicker
+                    value={receivableFirstDueDate}
+                    onValueChange={setReceivableFirstDueDate}
+                    placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
+                    clearable
+                    clearLabel={MESSAGES[locale].app.common.clear}
+                  />
                   <p className="text-[11px] text-muted-foreground">{tq.receivableFirstDueDateHint}</p>
                 </div>
               </section>

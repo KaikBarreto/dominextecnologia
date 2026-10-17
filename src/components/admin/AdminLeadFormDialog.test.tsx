@@ -285,4 +285,9 @@ describe('AdminLeadFormDialog — campo de valor do lead (prova real de DOM)', (
     act(() => saveButton.click());
     expect(createLead.mutate).not.toHaveBeenCalled();
   });
+
+  it('usa o DatePicker do sistema pra "Previsão de Fechamento", sem input date nativo do navegador', () => {
+    mount(undefined, makeLead());
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+  });
 });

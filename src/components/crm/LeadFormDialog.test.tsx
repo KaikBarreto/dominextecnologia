@@ -146,4 +146,10 @@ describe('LeadFormDialog — campo de valor estimado (prova real de DOM)', () =>
       expect.objectContaining({ id: 'lead-1', title: 'Nome atualizado' }),
     );
   });
+
+  it('usa o DatePicker do sistema pra "Previsão de fechamento", sem input date nativo do navegador', () => {
+    mount();
+    expect(q('#expected_close_date')).toBeInstanceOf(HTMLButtonElement);
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+  });
 });

@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -495,11 +496,14 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId, pre
 
             <div className="space-y-2">
               <Label htmlFor="expected_close_date">{tracksValue ? t.form.closeDate : t.form.deadlineLabel}</Label>
-              <Input
+              {/* Campo opcional (pode voltar a ficar vazio), por isso clearable */}
+              <DatePicker
                 id="expected_close_date"
-                type="date"
                 value={formData.expected_close_date || ''}
-                onChange={(e) => handleChange('expected_close_date', e.target.value || null)}
+                onValueChange={(v) => handleChange('expected_close_date', v || null)}
+                placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
+                clearable
+                clearLabel={MESSAGES[locale].app.common.clear}
               />
             </div>
           </div>

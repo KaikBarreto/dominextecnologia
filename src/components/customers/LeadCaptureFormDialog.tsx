@@ -3,6 +3,7 @@ import { Link2, Loader2 } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -221,11 +222,13 @@ export function LeadCaptureFormDialog({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="lcf-expires">Expira em (opcional)</Label>
-            <Input
+            {/* Opcional (expires_at vira null se vazio), por isso clearable */}
+            <DateTimePicker
               id="lcf-expires"
-              type="datetime-local"
               value={expiresAt}
-              onChange={(e) => setExpiresAt(e.target.value)}
+              onValueChange={setExpiresAt}
+              placeholder="dd/mm/aaaa --:--"
+              clearable
             />
             <p className="text-xs text-muted-foreground">Depois dessa data o link deixa de aceitar cadastros.</p>
           </div>

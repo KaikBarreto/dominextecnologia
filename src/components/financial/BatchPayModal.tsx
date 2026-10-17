@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -224,14 +225,14 @@ export function BatchPayModal({
           </div>
           <div className="space-y-1.5">
             <Label>{fields.date}</Label>
-            {/* Não existe pagamento no futuro: `max` barra o calendário nativo e
-                o `disabled` do Confirmar é quem garante (dá pra digitar a data
-                na mão). O servidor recusa de novo, no fuso da empresa. */}
-            <Input
-              type="date"
+            {/* Não existe pagamento no futuro: `max` apaga as datas futuras
+                do calendário e o `disabled` do Confirmar sustenta a regra pra
+                valor que já veio de fora. O servidor recusa de novo, no fuso
+                da empresa. */}
+            <DatePicker
               max={todayInTz(timezone)}
               value={paidDate}
-              onChange={(e) => setPaidDate(e.target.value)}
+              onValueChange={setPaidDate}
             />
             {paidDate && !dateAllowed && (
               <p className="text-xs text-destructive">{fields.dateFuture}</p>

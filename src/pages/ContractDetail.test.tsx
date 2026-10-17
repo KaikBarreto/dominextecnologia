@@ -260,6 +260,15 @@ describe('ContractDetail — "Novo recebimento" (prova real de DOM)', () => {
     paste(input, '4.550');
     expect(input.value).toBe('4.550,00');
   });
+
+  it('usa o DatePicker do sistema pro vencimento, sem input date nativo do navegador', () => {
+    goToFinanceiro();
+    const newRevenueBtn = qAll('button').find((b) => /nova receita|novo recebimento/i.test(b.textContent || ''));
+    expect(newRevenueBtn).toBeTruthy();
+    click(newRevenueBtn!);
+
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+  });
 });
 
 describe('ContractDetail — "Editar recebimento" (prova real de DOM)', () => {
@@ -275,6 +284,15 @@ describe('ContractDetail — "Editar recebimento" (prova real de DOM)', () => {
     const input = inputs[0];
     paste(input, '4.550');
     expect(input.value).toBe('4.550,00');
+  });
+
+  it('usa o DatePicker do sistema pro vencimento, sem input date nativo do navegador', () => {
+    goToFinanceiro();
+    const editButtons = qAll('button[title]').filter((b) => /editar/i.test(b.getAttribute('title') || ''));
+    expect(editButtons.length).toBeGreaterThan(0);
+    click(editButtons[0]);
+
+    expect(document.querySelector('input[type="date"]')).toBeNull();
   });
 });
 

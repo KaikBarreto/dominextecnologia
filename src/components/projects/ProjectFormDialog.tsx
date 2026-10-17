@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -196,11 +197,25 @@ export function ProjectFormDialog({ open, onOpenChange, project }: ProjectFormDi
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="project-start">{tf.fieldStartDate}</Label>
-            <Input id="project-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <DatePicker
+              id="project-start"
+              value={startDate}
+              onValueChange={setStartDate}
+              placeholder={tc.datePicker.placeholder}
+              clearable
+              clearLabel={tc.clear}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="project-end">{tf.fieldEndDate}</Label>
-            <Input id="project-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <DatePicker
+              id="project-end"
+              value={endDate}
+              onValueChange={setEndDate}
+              placeholder={tc.datePicker.placeholder}
+              clearable
+              clearLabel={tc.clear}
+            />
           </div>
         </div>
 

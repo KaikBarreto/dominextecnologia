@@ -815,6 +815,7 @@ export const finance = {
       paidDateLabelRevenue: 'Data do recebimento',
       paidDateLabelExpense: 'Data do pagamento',
       paidDateHint: 'Quando o dinheiro realmente saiu ou entrou da conta, e não a data do lançamento acima. É essa data que conta no relatório em Regime de Caixa.',
+      dueDateHint: 'Quando essa conta vence. Pode deixar em branco se ainda não tem data definida.',
       // Aviso NÃO bloqueante: dado gravado antes desta trava existir. Editar
       // um lançamento antigo não pode travar num erro que o usuário não
       // criou — mas ele precisa saber que aquela data está errada.
@@ -2233,6 +2234,7 @@ export const finance = {
       paidDateLabelRevenue: 'Date received',
       paidDateLabelExpense: 'Date paid',
       paidDateHint: 'When the money actually left or landed in the account, not the entry date above. This is the date used in the report under the Cash regime.',
+      dueDateHint: 'When this bill is due. You can leave it blank if there is no date set yet.',
       paidDateFutureLegacyWarning: 'This date is in the future and was already saved this way before this check existed. We kept it so your edit is not blocked, but it should ideally be corrected to today or earlier.',
       cancelLabel: 'Cancel',
       saveLabel: 'Save',
@@ -3611,6 +3613,7 @@ export const finance = {
       paidDateLabelRevenue: 'Fecha de cobro',
       paidDateLabelExpense: 'Fecha de pago',
       paidDateHint: 'Cuando el dinero realmente salió o entró en la cuenta, no la fecha del registro de arriba. Es la fecha que cuenta en el informe bajo el Régimen de Caja.',
+      dueDateHint: 'Cuándo vence esta cuenta. Puedes dejarlo en blanco si todavía no hay fecha definida.',
       paidDateFutureLegacyWarning: 'Esta fecha está en el futuro y ya estaba guardada así antes de que existiera esta validación. La mantuvimos para no bloquear su edición, pero lo ideal es corregirla a hoy o antes.',
       cancelLabel: 'Cancelar',
       saveLabel: 'Guardar',
@@ -4989,6 +4992,7 @@ export const finance = {
       paidDateLabelRevenue: `Date d'encaissement`,
       paidDateLabelExpense: 'Date de paiement',
       paidDateHint: `Quand l'argent est réellement sorti ou arrivé sur le compte, pas la date de l'opération ci-dessus. C'est cette date qui compte dans le rapport en régime de caisse.`,
+      dueDateHint: `Quand cette facture arrive à échéance. Vous pouvez laisser vide s'il n'y a pas encore de date définie.`,
       paidDateFutureLegacyWarning: `Cette date est dans le futur et était déjà enregistrée ainsi avant l'existence de ce contrôle. Nous l'avons conservée pour ne pas bloquer votre modification, mais il faudrait la corriger à aujourd'hui ou avant.`,
       cancelLabel: 'Annuler',
       saveLabel: 'Enregistrer',

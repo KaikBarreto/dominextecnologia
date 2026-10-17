@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.16',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'O calendário de datas agora é o mesmo em todo o sistema',
+        description: 'Antes, clicar num campo de data abria o calendário do próprio navegador: um visual diferente em cada computador, fora do estilo do sistema e às vezes até em outro idioma. Agora todos os campos de data abrem o calendário do Dominex, igual em qualquer lugar e no idioma da sua empresa. Ele também ganhou seletor de mês e de ano, então achar uma data antiga, como a de nascimento de um funcionário, deixou de ser um sobe e desce mês a mês. Os campos que pedem data e hora juntas, como a data de corte da posição de estoque, seguem o mesmo padrão, com uma roleta para escolher o horário.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Conta a pagar já aceita o vencimento na hora de criar',
+        description: 'Ao lançar uma despesa e desligar a opção Já foi pago, o campo de vencimento aparece na mesma hora. Antes ele só existia depois, ao editar a conta, então quem lançava precisava salvar e abrir de novo só para informar a data. Preencher continua sendo opcional, e quando a despesa é parcelada as parcelas passam a ser contadas a partir do vencimento que você informar.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.36.15',
     date: '17 de outubro de 2026',
     type: 'patch',

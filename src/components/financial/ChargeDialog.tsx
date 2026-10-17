@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { ServiceOrderSelectField } from '@/components/service-orders/ServiceOrderSelectField';
 import { useServiceOrderOptions } from '@/hooks/useServiceOrderOptions';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -1266,12 +1267,11 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                 >
                   {t.fields.dueDate}
                 </Label>
-                <Input
+                <DatePicker
                   id="charge-due"
-                  type="date"
                   value={dueDate}
                   min={todayISO()}
-                  onChange={(e) => setDueDate(e.target.value)}
+                  onValueChange={setDueDate}
                   className={showDueDateError ? 'border-destructive ring-1 ring-destructive' : undefined}
                 />
                 {/* Vencimento e competência são coisas diferentes e o usuário
