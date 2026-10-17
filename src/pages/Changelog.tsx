@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.6',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Funis de projeto e processo sem valores',
+        description: 'Cada funil do CRM/Kanban agora pode indicar se acompanha valores financeiros. Ao desligar essa opção nas configurações do funil, os indicadores do topo passam a mostrar a quantidade de cards em vez de somar dinheiro, e os cards deixam de exibir valor e probabilidade. Ideal para acompanhar obras, compras e processos internos no mesmo quadro.',
+        category: 'recurso',
+      },
+      {
+        title: 'Indicadores do CRM/Kanban mais claros',
+        description: 'O primeiro indicador do quadro passou a se chamar Total no funil, que faz sentido tanto para vendas quanto para projetos, e voltou a ficar legível no tema escuro. Cards sem valor preenchido também pararam de exibir um zero solto.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.36.5',
     date: '17 de outubro de 2026',
     type: 'patch',
