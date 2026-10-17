@@ -47,6 +47,7 @@ export interface CompraOrdemRow {
   id: string;
   numero: number;
   compra_id: string;
+  financial_transaction_id: string | null;
   supplier_id: string;
   /** Resolvido via suppliers; '' se não achar. */
   supplier_name: string;
@@ -144,6 +145,7 @@ export function useCompraOrdens(compraId: string | null): UseCompraOrdensResult 
           id: o.id,
           numero: o.numero,
           compra_id: o.compra_id,
+          financial_transaction_id: o.financial_transaction_id,
           supplier_id: o.supplier_id,
           supplier_name: supplierName.get(o.supplier_id) ?? '',
           status: o.status as CompraOrdemStatus,

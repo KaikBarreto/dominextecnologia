@@ -91,6 +91,7 @@ import { MaterialPurchasesTab } from '@/components/inventory/MaterialPurchasesTa
 import { NfeImportDialog } from '@/components/inventory/NfeImportDialog';
 import { InventoryCountsTab } from '@/components/inventory/InventoryCountsTab';
 import { StockPositionTab } from '@/components/inventory/StockPositionTab';
+import { MaterialPurchaseReportTab } from '@/components/inventory/MaterialPurchaseReportTab';
 import { formatMoney } from '@/lib/format';
 
 export default function Inventory() {
@@ -471,6 +472,7 @@ export default function Inventory() {
     { value: 'compras', label: isMobile ? t.tabs.purchasesShort : t.tabs.purchases, icon: ShoppingCart },
     { value: 'inventarios', label: t.tabs.inventories, icon: ClipboardList },
     { value: 'posicao', label: isMobile ? t.tabs.positionShort : t.tabs.position, icon: BarChart3 },
+    { value: 'relatorio', label: t.tabs.report, icon: FileSpreadsheet },
   ];
 
   // Subabas dos depósitos dentro da aba Estoque Atual — mobile renderiza pílulas
@@ -997,6 +999,9 @@ export default function Inventory() {
 
         {/* ===================== ABA: POSIÇÃO DE ESTOQUE ===================== */}
         {activeTab === 'posicao' && <StockPositionTab />}
+
+        {/* ===================== ABA: RELATÓRIO DE COMPRAS ===================== */}
+        {activeTab === 'relatorio' && <MaterialPurchaseReportTab />}
       </SettingsSidebarLayout>
 
       {/* FAB mobile-only (só na aba de estoque) */}

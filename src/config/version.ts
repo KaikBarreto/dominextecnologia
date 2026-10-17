@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.36.11";
+export const APP_VERSION = "1.36.12";
 
-export const VERSION_NOTES = "O relatório em PDF da Ordem de Serviço agora aproveita melhor as páginas e distribui os checklists sem deixar grandes espaços em branco.";
+export const VERSION_NOTES = "Agora é possível registrar uma compra de material com entrada no estoque e lançamento no Financeiro de uma só vez, além de acompanhar histórico, média paga e exportações no relatório por material.";

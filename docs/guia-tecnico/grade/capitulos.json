@@ -722,14 +722,14 @@
     "inspiracao": "Duna",
     "titulo": "Estoque, compras e inventário",
     "resumo": "Controlar o que entra, o que sai e o que sumiu. Vale pra quem tem depósito e pra quem carrega peça na van.",
-    "duracao": "~35min",
+    "duracao": "~43min",
     "prereq": "T7",
     "responsavel": "Maicon",
     "modulo_pago": null,
     "capitulos": [
       {
         "t": "00:00",
-        "nome": "Tela Estoque: as 5 abas e pra que serve cada uma"
+        "nome": "Tela Estoque: as 6 abas e pra que serve cada uma"
       },
       {
         "t": "02:00",
@@ -749,7 +749,7 @@
       },
       {
         "t": "16:00",
-        "nome": "Aba Compras: abrir compra, cadastrar fornecedor"
+        "nome": "Aba Compras: requisição ou compra direta, fornecedor e financeiro"
       },
       {
         "t": "19:00",
@@ -766,10 +766,14 @@
       {
         "t": "31:00",
         "nome": "Aba Posição: saldo do estoque numa data passada"
+      },
+      {
+        "t": "35:00",
+        "nome": "Aba Relatório: histórico, média paga, projeção e exportação"
       }
     ],
     "abertura": "Neste tutorial você vai colocar seu estoque sob controle, do cadastro do material até a contagem física.",
-    "recap": "Materiais cadastrados, depósitos organizados, compra cotada e inventário fechado.",
+    "recap": "Materiais cadastrados, depósitos organizados, compras ligadas ao estoque e ao financeiro, inventário fechado e custos acompanhados no relatório.",
     "proximo": "No próximo tutorial: orçamento, precificação e proposta.",
     "notas": [
       {
@@ -786,9 +790,27 @@
       },
       {
         "tipos": [
+          "atencao"
+        ],
+        "texto": "A média paga do relatório é uma estimativa histórica ponderada por material. Não é custo médio contábil móvel do saldo atual."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "A compra direta só aparece para quem pode gerenciar estoque e financeiro, porque uma única confirmação atualiza os dois."
+      },
+      {
+        "tipos": [
           "nao_prometer"
         ],
-        "texto": "Concluir OS não dá baixa no estoque. Diga isso explicitamente no vídeo: a baixa acontece na conversão de orçamento em OS (T9) e nos ajustes/inventário, não ao finalizar a OS. [VALIDAR COM O TECH LEAD antes de gravar.]"
+        "texto": "Vendas, lucro realizado e margem histórica só entram no relatório quando houver venda real do PDV. Saída de estoque não é tratada como venda."
+      },
+      {
+        "tipos": [
+          "atencao"
+        ],
+        "texto": "Por padrão, concluir OS não dá baixa no estoque. Se a empresa ligar Consumo de estoque na OS e o técnico anotar materiais, a baixa é confirmada no resumo exibido ao finalizar; mesmo se essa baixa falhar, a OS é finalizada e o consumo fica pendente para nova tentativa."
       }
     ]
   },

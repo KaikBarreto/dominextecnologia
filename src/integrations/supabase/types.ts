@@ -2024,6 +2024,7 @@ export type Database = {
           compra_id: string
           created_at: string
           created_by: string | null
+          financial_transaction_id: string | null
           id: string
           notes: string | null
           numero: number
@@ -2038,6 +2039,7 @@ export type Database = {
           compra_id: string
           created_at?: string
           created_by?: string | null
+          financial_transaction_id?: string | null
           id?: string
           notes?: string | null
           numero: number
@@ -2052,6 +2054,7 @@ export type Database = {
           compra_id?: string
           created_at?: string
           created_by?: string | null
+          financial_transaction_id?: string | null
           id?: string
           notes?: string | null
           numero?: number
@@ -2067,6 +2070,13 @@ export type Database = {
             columns: ["compra_id"]
             isOneToOne: false
             referencedRelation: "compras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compra_ordens_financial_transaction_id_fkey"
+            columns: ["financial_transaction_id"]
+            isOneToOne: true
+            referencedRelation: "financial_transactions"
             referencedColumns: ["id"]
           },
           {
@@ -2103,36 +2113,48 @@ export type Database = {
       }
       compras: {
         Row: {
+          client_request_id: string | null
           company_id: string
           created_at: string
           created_by: string | null
+          flow_type: string
           id: string
           notes: string | null
           numero: number
+          purchase_date: string | null
+          request_hash: string | null
           status: string
           stock_id: string | null
           title: string
           updated_at: string
         }
         Insert: {
+          client_request_id?: string | null
           company_id: string
           created_at?: string
           created_by?: string | null
+          flow_type?: string
           id?: string
           notes?: string | null
           numero: number
+          purchase_date?: string | null
+          request_hash?: string | null
           status?: string
           stock_id?: string | null
           title: string
           updated_at?: string
         }
         Update: {
+          client_request_id?: string | null
           company_id?: string
           created_at?: string
           created_by?: string | null
+          flow_type?: string
           id?: string
           notes?: string | null
           numero?: number
+          purchase_date?: string | null
+          request_hash?: string | null
           status?: string
           stock_id?: string | null
           title?: string
@@ -13983,6 +14005,35 @@ export type Database = {
         }[]
       }
       get_stock_access: { Args: { p_stock_id: string }; Returns: Json }
+      get_material_purchase_report: {
+        Args: {
+          p_created_by_ids?: string[]
+          p_end_date?: string
+          p_group_ids?: string[]
+          p_start_date?: string
+          p_stock_ids?: string[]
+          p_supplier_ids?: string[]
+        }
+        Returns: {
+          average_paid: number | null
+          current_balance: number
+          group_color: string | null
+          group_id: string | null
+          group_name: string | null
+          history: Json
+          inventory_id: string
+          last_purchase_date: string | null
+          material_name: string
+          purchase_count: number
+          priced_quantity: number
+          purchased_quantity: number
+          purchased_total: number
+          registered_sale_price: number
+          sku: string
+          unit: string
+          unpriced_quantity: number
+        }[]
+      }
       get_stock_balance_at_date: {
         Args: { p_at: string; p_stock_ids?: string[] }
         Returns: {
@@ -14523,6 +14574,24 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      registrar_compra_material_direta: {
+        Args: {
+          p_account_id: string
+          p_category_id: string
+          p_client_request_id: string
+          p_description: string | null
+          p_due_date: string | null
+          p_is_paid: boolean
+          p_items: Json
+          p_notes: string | null
+          p_paid_date: string | null
+          p_payment_method: string | null
+          p_purchase_date: string
+          p_stock_id: string
+          p_supplier_id: string
+        }
+        Returns: Json
       }
       register_manual_company_payment: {
         Args: {
