@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.36.12";
+export const APP_VERSION = "1.36.13";
 
-export const VERSION_NOTES = "Agora é possível registrar uma compra de material com entrada no estoque e lançamento no Financeiro de uma só vez, além de acompanhar histórico, média paga e exportações no relatório por material.";
+export const VERSION_NOTES = "Agora dá para gerenciar prestadores PJ e MEI em uma aba própria, com contrato de prazo e valor, aviso de vencimento, pagamento com número da nota e recibo de prestação de serviço sem desconto de imposto.";

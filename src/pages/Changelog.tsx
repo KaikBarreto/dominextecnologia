@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.13',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Prestadores PJ e MEI em uma aba própria',
+        description: 'Funcionários (RH) ganhou a aba PJ/MEI, separada da equipe fixa. O cadastro do prestador pede CNPJ, confere o número e busca a razão social automaticamente. Ponto eletrônico, vale transporte, dependentes e folha não aparecem mais para quem é prestador, e quem já batia ponto tem o registro desativado ao mudar de regime.',
+        category: 'recurso',
+      },
+      {
+        title: 'Contrato do prestador com aviso de vencimento',
+        description: 'Agora é possível registrar início, fim, valor e forma de cobrança do contrato, seja mensal, por serviço, por hora ou por diária. Dá para renovar mantendo o contrato anterior no histórico ou encerrar quando quiser, e a lista avisa quando a vigência está perto de terminar.',
+        category: 'recurso',
+      },
+      {
+        title: 'Recibo de prestação de serviço no pagamento',
+        description: 'Ao pagar um prestador, o valor já vem do contrato vigente e é possível guardar o número da nota recebida. O recibo gerado é de prestação de serviço, sem nenhum desconto de imposto, e a despesa entra como custo de mão de obra avulsa, separada da folha de funcionários.',
+        category: 'recurso',
+      },
+      {
+        title: 'Nome da conta no recibo de pagamento',
+        description: 'O recibo emitido logo após o pagamento mostrava um código interno no campo Forma de Pagamento. Agora exibe o nome da conta utilizada, inclusive nos recibos de pagamentos anteriores.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.36.12',
     date: '17 de outubro de 2026',
     type: 'patch',
