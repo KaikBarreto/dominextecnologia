@@ -43,6 +43,7 @@ export function injectPublicOsHead(shell, meta, canonicalUrl) {
     : 'Acompanhe o status e os detalhes desta ordem de serviço.';
   const imageUrl = String(meta?.social_image_url || '').trim();
   const hasComposedImage = meta?.social_image_is_composed === true;
+  const composedImageType = /\.png(?:$|\?)/i.test(imageUrl) ? 'image/png' : 'image/jpeg';
 
   let html = shell
     .replace(/<title>[\s\S]*?<\/title>/i, '')
@@ -57,7 +58,8 @@ export function injectPublicOsHead(shell, meta, canonicalUrl) {
   const imageMeta = imageUrl
     ? `
     <meta property="og:image" content="${escapeAttr(imageUrl)}" />
-    <meta property="og:image:alt" content="Imagem de compartilhamento de ${escapeAttr(companyName || DEFAULT_TITLE)}" />${hasComposedImage ? '\n    <meta property="og:image:type" content="image/jpeg" />\n    <meta property="og:image:width" content="1200" />\n    <meta property="og:image:height" content="630" />' : ''}
+    <meta property="og:image:secure_url" content="${escapeAttr(imageUrl)}" />
+    <meta property="og:image:alt" content="Imagem de compartilhamento de ${escapeAttr(companyName || DEFAULT_TITLE)}" />${hasComposedImage ? `\n    <meta property="og:image:type" content="${composedImageType}" />\n    <meta property="og:image:width" content="1200" />\n    <meta property="og:image:height" content="630" />` : ''}
     <meta name="twitter:image" content="${escapeAttr(imageUrl)}" />`
     : '';
 

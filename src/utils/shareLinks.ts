@@ -7,6 +7,12 @@ interface ServiceOrderShareLinkParams {
   serviceName?: string | null;
   /** UUID antigo — fallback retrocompatível quando não há `shortCode`. */
   osId?: string | null;
+  /**
+   * Identificador opcional para o crawler buscar novamente o preview social.
+   * Não muda a OS nem a URL canônica; serve apenas para escapar do cache de
+   * aplicativos como o WhatsApp quando a arte foi atualizada.
+   */
+  previewKey?: string | number | null;
 }
 
 /**
@@ -24,13 +30,18 @@ export function buildServiceOrderShareLink(
   const params: ServiceOrderShareLinkParams =
     typeof arg === 'string' ? { osId: arg } : arg;
 
-  const { shortCode, customerName, serviceName, osId } = params;
+  const { shortCode, customerName, serviceName, osId, previewKey } = params;
 
   const segment = shortCode
     ? buildSlugSegment([customerName, serviceName], shortCode, 'os')
     : osId ?? '';
 
-  return `https://dominex.app/os-tecnico/${segment}?modo=cliente`;
+  const query = new URLSearchParams({ modo: 'cliente' });
+  if (previewKey !== null && previewKey !== undefined && String(previewKey).trim()) {
+    query.set('preview', String(previewKey));
+  }
+
+  return `https://dominex.app/os-tecnico/${segment}?${query.toString()}`;
 }
 
 interface ProposalShareLinkParams {

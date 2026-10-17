@@ -801,15 +801,21 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
 
   // URL pública desta OS — MESMA fonte do "Copiar Link" e do link do rodapé
   // (clicável no PDF via [data-pdf-link]). Não duplicar a lógica de montagem.
-  const shareUrl = buildServiceOrderShareLink({
+  const shareLinkParams = {
     shortCode: (serviceOrder as any).public_short_code,
     customerName: serviceOrder.customer?.name,
     serviceName: (serviceOrder as any).service_type?.name,
     osId: serviceOrder.id,
-  });
+  };
+  const shareUrl = buildServiceOrderShareLink(shareLinkParams);
 
   const handleCopyLink = () => {
-    const url = shareUrl;
+    // O PDF mantém a URL estável; só o link copiado ganha uma chave efêmera
+    // para o WhatsApp não reutilizar a arte que armazenou antes da atualização.
+    const url = buildServiceOrderShareLink({
+      ...shareLinkParams,
+      previewKey: Date.now().toString(36),
+    });
     navigator.clipboard.writeText(url).then(() => {
       toast({ title: tR.toastLinkCopied });
     }).catch(() => {

@@ -428,9 +428,10 @@ export default function Settings() {
     mode: 'logo' | 'custom',
   ) => {
     const previousUrl = settings?.os_social_image_url;
-    const filePath = `os_social_${Date.now()}.jpg`;
+    const isPng = file.type === 'image/png';
+    const filePath = `os_social_${Date.now()}.${isPng ? 'png' : 'jpg'}`;
     const options = await tenantFileOptions({
-      contentType: 'image/jpeg',
+      contentType: isPng ? 'image/png' : 'image/jpeg',
       cacheControl: '3600',
     });
     const { error: uploadError } = await supabase.storage

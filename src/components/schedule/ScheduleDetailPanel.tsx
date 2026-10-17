@@ -124,6 +124,7 @@ function OrderDetail({
       customerName: order.customer?.name,
       serviceName: order.service_type?.name,
       osId: order.id,
+      previewKey: Date.now().toString(36),
     });
     await navigator.clipboard.writeText(link);
     setLinkCopied(true);

@@ -15,12 +15,14 @@ describe('head social da OS pública', () => {
     const html = injectPublicOsHead(shell, {
       order_number: 1048,
       company_name: 'Clima Exemplo',
-      social_image_url: 'https://cdn.example.com/os-social.jpg',
+      social_image_url: 'https://cdn.example.com/os-social.png',
       social_image_is_composed: true,
     }, 'https://www.dominex.app/os-tecnico/os-abc');
 
     expect(html).toContain('<title>OS #1048 · Clima Exemplo</title>');
-    expect(html).toContain('content="https://cdn.example.com/os-social.jpg"');
+    expect(html).toContain('content="https://cdn.example.com/os-social.png"');
+    expect(html).toContain('property="og:image:secure_url" content="https://cdn.example.com/os-social.png"');
+    expect(html).toContain('property="og:image:type" content="image/png"');
     expect(html).toContain('property="og:image:width" content="1200"');
     expect(html).toContain('content="noindex, nofollow, noarchive"');
     expect(html).not.toContain('/images/og-social.jpg');

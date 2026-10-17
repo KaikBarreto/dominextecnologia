@@ -1,7 +1,9 @@
 export const OS_SOCIAL_IMAGE_WIDTH = 1200;
 export const OS_SOCIAL_IMAGE_HEIGHT = 630;
 
-const SOCIAL_IMAGE_QUALITY = 0.9;
+// Imagens personalizadas podem ser fotográficas; nelas usamos JPEG quase sem
+// perdas. Artes montadas com logo usam PNG para preservar letras e bordas.
+const SOCIAL_IMAGE_QUALITY = 0.97;
 const LIGHT_BACKGROUND = '#f4f8f6';
 const DARK_BACKGROUND = '#0d1714';
 
@@ -42,15 +44,19 @@ async function fetchImage(url: string): Promise<Blob> {
   return response.blob();
 }
 
-function canvasToJpeg(canvas: HTMLCanvasElement, fileName: string): Promise<File> {
+function canvasToFile(
+  canvas: HTMLCanvasElement,
+  fileName: string,
+  type: 'image/jpeg' | 'image/png',
+): Promise<File> {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (!blob) {
         reject(new Error('Não foi possível gerar a imagem social.'));
         return;
       }
-      resolve(new File([blob], fileName, { type: 'image/jpeg' }));
-    }, 'image/jpeg', SOCIAL_IMAGE_QUALITY);
+      resolve(new File([blob], fileName, { type }));
+    }, type, type === 'image/jpeg' ? SOCIAL_IMAGE_QUALITY : undefined);
   });
 }
 
@@ -283,6 +289,8 @@ export async function createOsSocialImageFromLogo(
     canvas.height = OS_SOCIAL_IMAGE_HEIGHT;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Seu navegador não conseguiu preparar a imagem social.');
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
 
     const sampledPixels = sampleLogo(loaded.image);
     const detectedPalette = chooseSocialPalette(sampledPixels, 96, 96, brandColor);
@@ -308,7 +316,7 @@ export async function createOsSocialImageFromLogo(
       height,
     );
 
-    return canvasToJpeg(canvas, `os-social-logo-${Date.now()}.jpg`);
+    return canvasToFile(canvas, `os-social-logo-${Date.now()}.png`, 'image/png');
   } finally {
     loaded.revoke();
   }
@@ -323,6 +331,8 @@ export async function createCustomOsSocialImage(source: Blob): Promise<File> {
     canvas.height = OS_SOCIAL_IMAGE_HEIGHT;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Seu navegador não conseguiu preparar a imagem social.');
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
 
     const scale = Math.max(
       OS_SOCIAL_IMAGE_WIDTH / loaded.image.naturalWidth,
@@ -338,7 +348,7 @@ export async function createCustomOsSocialImage(source: Blob): Promise<File> {
       height,
     );
 
-    return canvasToJpeg(canvas, `os-social-personalizada-${Date.now()}.jpg`);
+    return canvasToFile(canvas, `os-social-personalizada-${Date.now()}.jpg`, 'image/jpeg');
   } finally {
     loaded.revoke();
   }

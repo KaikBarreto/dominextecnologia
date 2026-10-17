@@ -901,6 +901,7 @@ function TechnicianOSInner() {
         customerName: serviceOrder?.customer?.name,
         serviceName: (serviceOrder as any)?.service_type?.name,
         osId: serviceOrder?.id ?? id,
+        previewKey: Date.now().toString(36),
       });
       await navigator.clipboard.writeText(link);
       setTrackingLinkCopied(true);

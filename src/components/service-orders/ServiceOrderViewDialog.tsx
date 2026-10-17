@@ -684,6 +684,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
                   customerName: serviceOrder.customer?.name,
                   serviceName: (serviceOrder as any).service_type?.name,
                   osId: serviceOrder.id,
+                  previewKey: Date.now().toString(36),
                 });
                 await navigator.clipboard.writeText(url);
                 setLinkCopied(true);
