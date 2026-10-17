@@ -4,6 +4,17 @@ export type AppRole = 'admin' | 'gestor' | 'tecnico' | 'comercial' | 'financeiro
 
 export type OsStatus = 'agendada' | 'pendente' | 'a_caminho' | 'em_andamento' | 'pausada' | 'concluida' | 'cancelada';
 
+const RESETTABLE_OS_STATUSES: ReadonlySet<OsStatus> = new Set([
+  'a_caminho',
+  'em_andamento',
+  'pausada',
+  'concluida',
+]);
+
+export function isResettableServiceOrderStatus(status: OsStatus): boolean {
+  return RESETTABLE_OS_STATUSES.has(status);
+}
+
 export type OsType = 'manutencao_preventiva' | 'manutencao_corretiva' | 'instalacao' | 'visita_tecnica';
 
 export type CustomerType = 'pf' | 'pj';

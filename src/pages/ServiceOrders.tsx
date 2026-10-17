@@ -46,7 +46,7 @@ import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrder
 import { ServiceOrderViewDialog } from '@/components/service-orders/ServiceOrderViewDialog';
 import { OsStatusManagerDialog } from '@/components/service-orders/OsStatusManagerDialog';
 import type { ServiceOrder, OsStatus } from '@/types/database';
-import { osStatusLabels, getOsTypeLabel } from '@/types/database';
+import { osStatusLabels, getOsTypeLabel, isResettableServiceOrderStatus } from '@/types/database';
 import { useOsStatuses } from '@/hooks/useOsStatuses';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -768,7 +768,7 @@ export default function ServiceOrders() {
                               variant: 'edit' as const,
                               onClick: () => handleEdit(os),
                             }] : []),
-                            ...(canResetOS && os.status === 'concluida' ? [{
+                            ...(canResetOS && isResettableServiceOrderStatus(os.status) ? [{
                               key: 'reset',
                               label: 'Resetar OS',
                               icon: <RotateCcw className="h-4 w-4" />,
@@ -980,7 +980,7 @@ export default function ServiceOrders() {
                                               label: 'Resetar OS',
                                               icon: RotateCcw,
                                               onClick: () => handleResetClick(os),
-                                              hidden: !canResetOS || os.status !== 'concluida',
+                                              hidden: !canResetOS || !isResettableServiceOrderStatus(os.status),
                                             },
                                             {
                                               label: t.rowActions.billing,
@@ -1164,7 +1164,7 @@ export default function ServiceOrders() {
                                     <Pencil className="h-3 w-3" />
                                   </Button>
                                 )}
-                                {canResetOS && os.status === 'concluida' && (
+                                {canResetOS && isResettableServiceOrderStatus(os.status) && (
                                   <Button
                                     variant="ghost"
                                     size="icon"
