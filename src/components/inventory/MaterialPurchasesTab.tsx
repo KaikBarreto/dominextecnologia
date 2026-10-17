@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ShoppingCart, Plus, Search, Users, Pencil, Trash2, CheckCheck, XCircle, RotateCcw, AlertTriangle,
+  ShoppingCart, Search, Users, Pencil, Trash2, CheckCheck, XCircle, RotateCcw,
+  AlertTriangle, PackagePlus, ClipboardPlus,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,12 +22,16 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { fuzzyIncludes } from '@/lib/utils';
 import { useCompras, type CompraListRow, type CompraStatus } from '@/hooks/useCompras';
 import { useLowStock } from '@/hooks/useLowStock';
+import { useCanRegisterDirectMaterialPurchase } from '@/hooks/useCanRegisterDirectMaterialPurchase';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { safeTimeZone } from '@/lib/timezone';
+import { formatDate as formatLocalizedDate } from '@/lib/format';
+import type { LocaleCode } from '@/lib/i18n/locales';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { SuppliersDialog } from './SuppliersDialog';
 import { CompraEditorDialog } from './CompraEditorDialog';
 import { CompraDetailView } from './CompraDetailView';
+import { DirectMaterialPurchaseDialog } from './DirectMaterialPurchaseDialog';
 
 const STATUS_VARIANT: Record<string, 'info' | 'success' | 'destructive'> = {
   aberta: 'info',
@@ -37,24 +42,27 @@ const STATUS_VARIANT: Record<string, 'info' | 'success' | 'destructive'> = {
 // Ordem fixa para o filtro de status.
 const STATUS_FILTER_KEYS: CompraStatus[] = ['aberta', 'concluida', 'cancelada'];
 
-function formatDate(iso: string, locale: string, timezone: string | null | undefined): string {
-  return new Date(iso).toLocaleDateString(locale === 'pt-br' ? 'pt-BR' : locale, { timeZone: safeTimeZone(timezone) });
+function formatDate(iso: string, locale: LocaleCode, timezone: string | null | undefined): string {
+  return formatLocalizedDate(iso, locale, safeTimeZone(timezone));
 }
 
 export function MaterialPurchasesTab() {
   const isMobile = useIsMobile();
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.purchases;
+  const tDirect = MESSAGES[locale].app.inventory.directPurchase;
   const formatCurrency = (v: number) =>
     new Intl.NumberFormat(locale === 'pt-br' ? 'pt-BR' : locale, { style: 'currency', currency: currency || 'BRL' }).format(v);
   const { compras, isLoading, setStatus, deleteCompra } = useCompras();
   const { lowStockRows } = useLowStock();
+  const canRegisterDirectPurchase = useCanRegisterDirectMaterialPurchase();
 
   const [search, setSearch] = useState('');
   // Filtro de status multi-seleção. Vazio = mostra todas (régua do projeto).
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [suppliersOpen, setSuppliersOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [directPurchaseOpen, setDirectPurchaseOpen] = useState(false);
   const [editing, setEditing] = useState<CompraListRow | null>(null);
   const [selectedCompraId, setSelectedCompraId] = useState<string | null>(null);
   const [toCancel, setToCancel] = useState<CompraListRow | null>(null);
@@ -213,9 +221,19 @@ export function MaterialPurchasesTab() {
             <Users className="h-4 w-4" />
           </Button>
           <Button size="sm" className="h-10 shrink-0 gap-1.5" onClick={openNew}>
-            <Plus className="h-4 w-4" />
-            <span className="hidden min-[340px]:inline">{t.actions.newPurchaseShort}</span>
+            <ClipboardPlus className="h-4 w-4" />
+            <span className="sr-only">{t.actions.newPurchase}</span>
           </Button>
+          {canRegisterDirectPurchase && (
+            <Button
+              size="sm"
+              className="h-10 shrink-0 gap-1.5"
+              onClick={() => setDirectPurchaseOpen(true)}
+            >
+              <PackagePlus className="h-4 w-4" />
+              <span className="hidden min-[360px]:inline">{tDirect.actionShort}</span>
+            </Button>
+          )}
         </MobileListToolbar>
       ) : (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -241,9 +259,14 @@ export function MaterialPurchasesTab() {
             <Button variant="outline" className="gap-1.5" onClick={() => setSuppliersOpen(true)}>
               <Users className="h-4 w-4" /> {t.actions.suppliers}
             </Button>
-            <Button className="gap-1.5" onClick={openNew}>
-              <Plus className="h-4 w-4" /> {t.actions.newPurchase}
+            <Button variant="outline" className="gap-1.5" onClick={openNew}>
+              <ClipboardPlus className="h-4 w-4" /> {t.actions.newPurchase}
             </Button>
+            {canRegisterDirectPurchase && (
+              <Button className="gap-1.5" onClick={() => setDirectPurchaseOpen(true)}>
+                <PackagePlus className="h-4 w-4" /> {tDirect.action}
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -271,8 +294,11 @@ export function MaterialPurchasesTab() {
         // empilhada) e grade a partir do desktop (2 em lg, 3 em xl).
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
           {filtered.map((c) => {
+            const isDirect = c.flow_type === 'compra_direta';
             const variant = STATUS_VARIANT[c.status] ?? STATUS_VARIANT.aberta;
-            const statusLabel = statusLabelMap[c.status] ?? c.status;
+            const statusLabel = isDirect
+              ? tDirect.card.badge
+              : statusLabelMap[c.status] ?? c.status;
             return (
               <Card
                 key={c.id}
@@ -296,26 +322,35 @@ export function MaterialPurchasesTab() {
                     {/* Linha secundária: data + nº de cotações + fornecedor aceito */}
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <p className="text-xs text-muted-foreground">
-                        {formatDate(c.created_at, locale, timezone)} • {c.cotacao_count === 1
+                        {formatDate(isDirect && c.purchase_date ? c.purchase_date : c.created_at, locale, timezone)}
+                        {!isDirect && ` • ${c.cotacao_count === 1
                           ? t.card.quotes.replace('{count}', String(c.cotacao_count))
-                          : t.card.quotesPlural.replace('{count}', String(c.cotacao_count))}
+                          : t.card.quotesPlural.replace('{count}', String(c.cotacao_count))}`}
                       </p>
-                      {c.accepted_supplier_name && (
+                      {(isDirect ? c.direct_supplier_name : c.accepted_supplier_name) && (
                         <Badge variant="success" className="max-w-full truncate text-[10px]">
-                          {t.card.accepted.replace('{name}', c.accepted_supplier_name)}
+                          {(isDirect ? tDirect.card.supplier : t.card.accepted).replace(
+                            '{name}',
+                            (isDirect ? c.direct_supplier_name : c.accepted_supplier_name) ?? '',
+                          )}
                         </Badge>
                       )}
                     </div>
 
                     {/* Menor cotação em destaque, quando houver */}
-                    {c.lowest_total != null && (
+                    {isDirect && c.direct_total != null ? (
+                      <p className="text-sm">
+                        <span className="text-muted-foreground">{tDirect.card.total.replace('{value}', '')}</span>
+                        <span className="font-semibold text-success">{formatCurrency(c.direct_total)}</span>
+                      </p>
+                    ) : c.lowest_total != null ? (
                       <p className="text-sm">
                         <span className="text-muted-foreground">{t.card.lowestQuote}</span>
                         <span className="font-semibold text-success">{formatCurrency(c.lowest_total)}</span>
                       </p>
-                    )}
+                    ) : null}
                   </button>
-                  <RowActionsMenu actions={rowActions(c)} />
+                  {!isDirect && <RowActionsMenu actions={rowActions(c)} />}
                 </CardContent>
               </Card>
             );
@@ -326,6 +361,10 @@ export function MaterialPurchasesTab() {
       {/* Dialogs */}
       <SuppliersDialog open={suppliersOpen} onOpenChange={setSuppliersOpen} />
       <CompraEditorDialog open={editorOpen} onOpenChange={setEditorOpen} compra={editing} />
+      <DirectMaterialPurchaseDialog
+        open={directPurchaseOpen}
+        onOpenChange={setDirectPurchaseOpen}
+      />
 
       {/* Cancelar compra */}
       <AlertDialog open={!!toCancel} onOpenChange={(o) => !o && setToCancel(null)}>

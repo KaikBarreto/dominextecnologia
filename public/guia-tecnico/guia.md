@@ -9,25 +9,45 @@ Cada seção é auto-contida: dá pra responder um cliente lendo só ela.
 
 ---
 
-# T0 · Bem-vindo à Dominex
+# T0 · Bem-vindo, configuração, identidade e assinatura
 
 **Fase 01 da trilha:** Deixar o sistema de pé
-**Do que trata:** A visão de cima. O aluno entende como a Dominex é organizada por dentro, aprende o vocabulário do sistema (OS, contrato, PMOC, módulo, cargo) e descobre onde fica cada coisa antes de mergulhar em qualquer tela.
+**Do que trata:** A primeira aula deixa a empresa pronta para operar: apresenta a Dominex, configura identidade e preferências e explica plano, módulos, uso da conta e pagamento.
 **Depende de:** nenhum
 
 **Assuntos desta seção:**
 1. O que a Dominex resolve — do chamado do cliente até o dinheiro na conta
-2. Tour pelo menu: Dashboard, Agenda, Operacional, Área do Técnico™, Orçamentos, Gestão, CRM, Financeiro
-3. Sidebar × Barra superior × menu do celular — a mesma coisa em 3 lugares
-4. Vocabulário: Ordem de Serviço, Tarefa, Contrato, PMOC, Checklist, Cargo, Módulo
-5. O que é módulo contratado e por que uma tela pode não aparecer pra você
-6. Os 3 públicos do sistema: gestor no escritório, técnico no celular, cliente no link público
-7. Onde pedir ajuda e como usar o Domiflix (minha lista, continuar assistindo, perfil)
+2. Tour pelo menu e os 3 públicos: gestor, técnico e cliente no link público
+3. Sidebar × barra superior × menu do celular e o vocabulário essencial
+4. Módulo contratado, cargo e por que uma tela pode não aparecer
+5. Aba Empresa: logo, dados cadastrais, contato e endereço
+6. O switch "mostrar em documentos" e o que sai no PDF e no relatório
+7. White Label: logo full + ícone, cor, QR Code e cabeçalho do relatório
+8. Abas Regional e Usabilidade: idioma, moeda, fuso e preferências de operação
+9. Origens, Atalhos e Aparência
+10. Integrações, documentos legais e Zona de Perigo
+11. Tela Assinatura: status, plano atual, vencimento, valor e uso da conta
+12. Gerenciar Meu Plano: planos prontos, personalizado, módulos e usuários extras
+13. Pagar Agora: Pix, Boleto e Cartão; mensal × anual e histórico de pagamentos
+14. Onde pedir ajuda e como usar o Domiflix
 
-## T0 Bem-vindo à Dominex
+00
+
+Fase 01 · Deixar o sistema de pé
+
+T0
+
+### Bem-vindo, configuração, identidade e assinatura
+
+🔒 Depende do módulo White Label (parcial)
+
+A primeira aula deixa a empresa pronta para operar: apresenta a Dominex, configura identidade e preferências e explica plano, módulos, uso da conta e pagamento.
+
+Vídeo na trilha ~65minPré-requisito nenhumCapítulos 14Módulo White Label (parcial)
 
 A Dominex é o sistema onde a sua empresa de serviço técnico organiza tudo num lugar só: o cadastro do cliente, o equipamento instalado no endereço dele, a ordem de serviço que o técnico executa em campo, o orçamento enviado, o contrato recorrente e o dinheiro que entra e sai. Esta seção é a visão de cima: o que existe, onde fica, como se chama e por que uma tela pode não aparecer pra você.
 
+Módulo Depende do módulo White Label (parcial)
 Onde fica: vale pro sistema inteiro (menu lateral no computador, barra de baixo no celular)
 Rotas:/dashboard, /agenda, /ordens-servico, /orcamentos, /clientes, /equipamentos, /servicos, /contratos, /funcionarios, /estoque, /crm, /financeiro/relatorio, /notas-fiscais, /mapa-ao-vivo, /area-tecnico, /configuracoes, /perfil, /assinatura, /domiflix, /changelog
 Depende de: nada. É a primeira seção do guia.
@@ -287,7 +307,7 @@ No rodapé de qualquer tela aparece Dominex v1.22.5 · Desenvolvido por Auctus. 
 
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "Sumiu uma tela do meu menu" | Permissão de tela desligada pelo administrador, ou módulo que deixou de estar no plano | Pergunte se um colega administrador vê a tela. Se ele vê, o caminho é Configurações › Usuários e Permissões. Se ninguém vê, é módulo: confira em Assinatura. |
 | "Não acho o PMOC no menu" | PMOC não tem menu próprio | PMOC é um tipo de contrato. O caminho é Gestão › Contratos e filtrar pelo tipo PMOC. Exige o módulo Gestão de Contratos e PMOC. |
 | "Onde instalo o aplicativo da Dominex?" | Não existe convite de instalação dentro do sistema | A Dominex roda no navegador do celular. Se quiser um atalho na tela inicial, use a opção do próprio navegador. Não existe loja de aplicativos nem botão de instalar dentro do sistema. |
@@ -333,24 +353,17 @@ Palavras que o cliente usa pra isso: menu, barra lateral, painel, tela inicial, 
 
 ---
 
-# T1 · Configurações e identidade da empresa
+# T1 · T1
 
 **Fase 01 da trilha:** Deixar o sistema de pé
-**Do que trata:** Deixar o sistema com a cara da empresa e pronto pra uso real: logo, dados cadastrais, endereço, idioma/moeda/fuso, preferências de uso, tema e integrações.
-**Depende de:** T0
 
-**Assuntos desta seção:**
-1. Aba Empresa: logo, dados cadastrais, contato e endereço (CEP preenche sozinho)
-2. O switch "mostrar em documentos" campo a campo — o que sai no PDF e no relatório
-3. White Label: logo full + ícone, cor primária, estilo do QR Code e cabeçalho do relatório com preview ao vivo
-4. Aba Regional: meu idioma × padrões da empresa (idioma, moeda, fuso) e o switch do resultado DISC
-5. Aba Usabilidade: auto-salvar OS, mostrar valores, exigir assinatura, fotos no dispositivo, tabelas compactas, confirmar exclusão, feriados na agenda
-6. Card Origens — o catálogo compartilhado entre Clientes e CRM
-7. Aba Atalhos e aba Aparência (sidebar × barra superior, tema claro/escuro)
-8. Aba Integrações: Recebimentos (Asaas) e o estado atual do WhatsApp
-9. Documentos legais e a Zona de Perigo (Zerar Sistema) — o que ela apaga
+01
 
-## T1 Configurações e identidade da empresa
+Fase 01 · Deixar o sistema de pé
+
+T1
+
+### T1
 
 É aqui que a Dominex deixa de ser um sistema genérico e passa a ser o sistema da sua empresa: logo no relatório que o cliente recebe, CNPJ e endereço nos documentos, moeda e fuso certos, preferências de uso do time e as integrações de cobrança. Tudo numa tela só, dividida em abas, e tudo salvo automaticamente.
 
@@ -720,7 +733,7 @@ A janela lista, sob o título Serão mantidos:, três coisas: Dados básicos da 
 
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "Não tem botão de salvar nas configurações" | A tela salva sozinha | É assim mesmo. Olhe o selo no topo direito: Salvando, Alterações não salvas ou Salvo. Sair do campo já grava. |
 | "Não consigo mudar o segmento da minha empresa" | Campo somente leitura por definição | Só a Dominex altera o segmento, porque ele define quais ferramentas aparecem. Abra chamado no suporte informando o novo ramo. |
 | "Quero conectar meu WhatsApp e não acho o QR Code" | Recurso ainda não liberado | A aba WhatsApp está marcada como Em breve e mostra só um aviso. Não existe conexão por QR Code hoje. Avise que ainda não está disponível. |
@@ -778,7 +791,7 @@ Palavras que o cliente usa pra isso: configurações, ajustes, dados da empresa,
 
 **Fase 01 da trilha:** Deixar o sistema de pé
 **Do que trata:** Colocar a equipe dentro do sistema sem dar acesso demais. É aqui que o gestor decide o que o técnico vê, o que o financeiro vê e o que ninguém vê.
-**Depende de:** T1
+**Depende de:** T0
 
 **Assuntos desta seção:**
 1. Onde fica: Configurações → Usuários e Permissões
@@ -790,7 +803,17 @@ Palavras que o cliente usa pra isso: configurações, ajustes, dados da empresa,
 7. Ativar × desativar × excluir usuário, e a vaga do plano
 8. Limite de usuários do plano e como contratar mais
 
-## T2 Usuários, cargos e permissões
+02
+
+Fase 01 · Deixar o sistema de pé
+
+T2
+
+### Usuários, cargos e permissões
+
+Colocar a equipe dentro do sistema sem dar acesso demais. É aqui que o gestor decide o que o técnico vê, o que o financeiro vê e o que ninguém vê.
+
+Vídeo na trilha ~25minPré-requisito T0Capítulos 8
 
 Colocar a equipe dentro do sistema sem dar acesso demais. É aqui que você decide o que o técnico vê no celular, o que o financeiro pode apagar e o que ninguém deve alcançar. Uma configuração de dez minutos que evita o problema mais caro de qualquer empresa: a pessoa errada mexendo no lugar errado.
 
@@ -1098,7 +1121,7 @@ Cada plano permite um número de usuários ativos. Usuário desativado não cont
 
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "Não consigo desativar meu próprio usuário" | Proteção do sistema | É proposital. Na sua linha só aparece Editar. Peça pra outro administrador fazer, se for mesmo necessário. |
 | "O botão Reativar está apagado" | Sem vaga livre no plano | A empresa bateu o limite de usuários ativos. Desative outro usuário ou contrate usuários extras em Assinatura. |
 | "Diz que o e-mail já está cadastrado" | E-mail em uso em outra conta | O e-mail é único no sistema inteiro. Use outro e-mail ou verifique se a pessoa já não tem conta desativada na sua empresa. |
@@ -1175,7 +1198,17 @@ Palavras que o cliente usa pra isso: usuário, login, acesso, senha, permissão,
 9. Campos customizados de equipamento: criar, ordenar, marcar obrigatório e visível
 10. Detalhe do equipamento: QR Code, etiqueta configurável, anexos e histórico de OS
 
-## T3 Clientes e Equipamentos
+03
+
+Fase 02 · Os cadastros que sustentam tudo
+
+T3
+
+### Clientes e Equipamentos
+
+A base de tudo. Sem cliente e sem equipamento não existe OS, orçamento, contrato nem PMOC.
+
+Vídeo na trilha ~35minPré-requisito T2Capítulos 10
 
 A base de tudo na Dominex. Sem cliente cadastrado e sem equipamento vinculado a ele, não existe ordem de serviço, orçamento, contrato nem PMOC. Esta seção mostra como montar essa base do jeito certo na primeira vez, para não ter que refazer depois.
 
@@ -1597,7 +1630,7 @@ Duas seções. Ordens de Serviço Relacionadas lista todas as OS que citaram aqu
 
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "Digitei o CNPJ e ele apagou o endereço que eu tinha preenchido" | A consulta de CNPJ sobrescreve razão social, fantasia, e-mail, telefone e o endereço inteiro | Explique que a ordem certa é digitar o CNPJ PRIMEIRO e ajustar na mão depois. O único campo protegido é o Nome. Peça para reabrir o cliente, corrigir o endereço e salvar. |
 | "Fechei a janela sem querer e perdi o cadastro" | Rascunho automático | Clicar em Novo Cliente de novo faz aparecer a pergunta para retomar o rascunho. Vale só para cadastro novo. |
 | "Onde eu anexo o contrato assinado do cliente?" | O cadastro de cliente não tem anexos | Anexe no contrato (aba Documentos anexados do contrato) ou na ficha do equipamento (aba Anexos). No cliente não existe. |
@@ -1661,7 +1694,17 @@ Palavras que o cliente usa pra isso: ficha do cliente, cadastro de cliente, base
 10. Pergunta de vídeo (módulo pago, com limite de perguntas)
 11. Vincular checklist a tipos de serviço e desativar sem perder histórico
 
-## T4 Serviços, tarefas e checklists
+04
+
+Fase 02 · Os cadastros que sustentam tudo
+
+T4
+
+### Serviços, tarefas e checklists
+
+O mise en place do sistema. Aqui você monta o cardápio de serviços da empresa e os formulários que o técnico vai preencher em campo.
+
+Vídeo na trilha ~30minPré-requisito T3Capítulos 11
 
 Aqui você monta o cardápio de serviços da sua empresa e os formulários que o técnico vai preencher em campo. Sem esse cadastro, toda Ordem de Serviço nasce sem tipo, sem numeração organizada e sem roteiro de conferência.
 
@@ -1962,7 +2005,7 @@ O que NÃO existe nesta tela: não existe importação em massa de tipos de serv
 
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "Cadastrei o serviço mas o botão de salvar não funciona" | Nome vazio, ou código de tributação municipal com menos de 3 dígitos na aba Fiscal | Confira se o campo Nome está preenchido. Se estiver, abra a aba Fiscal: o campo de código municipal aceita 3 dígitos ou nenhum. A mensagem "O código de tributação municipal deve ter 3 dígitos." aparece no rodapé do formulário. |
 | "Não aparece a aba Fiscal no tipo de serviço" | Empresa sem o módulo de Nota Fiscal | Explique que a aba Fiscal só existe para quem contratou o módulo de emissão de NFS-e. Sem ele, o tipo de serviço tem só a aba de dados, e isso não impede nada do dia a dia. |
 | "Sumiu um checklist que eu usava" | Alguém desativou o checklist | Checklist desativado some da listagem e da escolha em OS nova, mas as OS antigas continuam com ele. Não dá para reativar pela tela: o caminho é criar um novo com as mesmas perguntas ou acionar o suporte. |
@@ -2004,10 +2047,10 @@ Palavras que o cliente usa para isso: cadastro de serviço, tabela de serviços,
 
 ---
 
-# T5 · Ordens de Serviço: a visão do gestor
+# T5 · Ordens de Serviço, Agenda, Equipes e Mapa ao Vivo
 
 **Fase 03 da trilha:** A operação rodando
-**Do que trata:** O coração da operação. Abrir, distribuir, acompanhar e fechar OS — tudo do lado de dentro do escritório.
+**Do que trata:** O coração da operação. Abrir, distribuir, agendar, acompanhar e fechar OS, com visão de relatório, NPS, equipes e localização em campo.
 **Depende de:** T4
 
 **Assuntos desta seção:**
@@ -2023,12 +2066,34 @@ Palavras que o cliente usa para isso: cadastro de serviço, tabela de serviços,
 10. Filtros, busca e por que a busca ignora o filtro de período
 11. Abrir a OS no app do técnico sendo gestor, e compartilhar o link com o cliente
 12. Aba Relatório: leitura do dashboard de OS
-13. Aba NPS: promotores, neutros, detratores e o comentário aberto do detrator
+13. Aba NPS: promotores, neutros, detratores, critérios de estrela e comentário aberto
+14. Nota mínima + convite pra avaliar no Google e o tratamento de detratores
+15. Tela Agenda: visão Dia, Semana e Mês (e por que o celular abre em Dia)
+16. Criar pelo "+": Nova OS × Nova Tarefa
+17. Reagendar arrastando, legenda de cores e feriados
+18. Ordens Pausadas e a retomada aparecendo em duas datas
+19. Equipes: criar time com cor, ícone, foto e membros
+20. Escalar equipe inteira numa OS em vez de técnico individual
+21. Mapa e Rastreamento: cores dos marcadores e posição em tempo real
+22. Aba Histórico: eventos de localização por técnico e por data
 
-## T5 Ordens de Serviço: a visão do gestor
+05
+
+Fase 03 · A operação rodando
+
+T5
+
+### Ordens de Serviço, Agenda, Equipes e Mapa ao Vivo
+
+🔒 Depende do módulo RH (para Equipes)
+
+O coração da operação. Abrir, distribuir, agendar, acompanhar e fechar OS, com visão de relatório, NPS, equipes e localização em campo.
+
+Vídeo na trilha ~70minPré-requisito T4Capítulos 22Módulo RH (para Equipes)
 
 A Ordem de Serviço é o coração da operação: é ela que diz quem atende, quem vai, quando vai, o que precisa ser feito e o que foi feito. Esta seção cobre o lado de dentro do escritório, do momento em que o chamado entra até o relatório na mão do cliente.
 
+Módulo Depende do módulo RH (para Equipes)
 Onde fica: Menu → Ordens de Serviço
 Rotas:/ordens-servico. O link de campo e o link do cliente usam /os-tecnico/<endereço da OS>
 Depende de: ter cliente cadastrado. Tipo de serviço, equipamento e checklist são opcionais, mas mudam muito o resultado
@@ -2403,7 +2468,7 @@ O botão Configurações dentro da aba abre Configurações de NPS, onde você d
 
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "Sumiram minhas OS" | Filtro de período em "este mês" | O topo da tela recorta por data agendada e começa em "este mês". Mude o período. Se for procurar uma OS específica, use a busca: ela ignora período e status de propósito, e a tela mostra "Mostrando resultados de todas as OS (filtros pausados)". |
 | "Criei a recorrência anual e só veio uma OS" | Frequência Anual, que hoje não multiplica | Confirme com o cliente que a frequência escolhida foi Anual. Hoje ela não gera as ocorrências seguintes. O caminho seguro é montar as visitas por um contrato recorrente ou lançar as OS manualmente. Registre o caso no suporte. |
 | "Liguei recorrência semanal e veio uma OS só" | Campo Até vazio | Sem data limite, a série não é gerada e nenhum aviso aparece. Peça para editar a OS, ligar a recorrência de novo com o "Até" preenchido, ou criar novamente. |
@@ -2448,25 +2513,17 @@ Palavras que o cliente usa para isso: OS, ordem, chamado, atendimento, serviço,
 
 ---
 
-# T6 · Agenda, Equipes e Mapa ao Vivo
+# T6 · T6
 
 **Fase 03 da trilha:** A operação rodando
-**Do que trata:** Onde a operação vira rota. Quem vai, quando vai, e onde está agora.
-**Depende de:** T5
 
-**Assuntos desta seção:**
-1. Tela Agenda: visão Dia, Semana e Mês (e por que o celular abre em Dia)
-2. Criar pelo "+": Nova OS × Nova Tarefa — a diferença que mais confunde
-3. Reagendar arrastando no desktop e com toque-e-segure no celular
-4. Legenda de cores por tipo de serviço e a estrela de feriado
-5. Ordens Pausadas: o diálogo de retomada rápida
-6. A OS retomada aparecendo em duas datas (badge "Retomada")
-7. Equipes: onde ficam de verdade (Funcionários → aba Equipes), criar time com cor, ícone, foto e membros
-8. Escalar equipe inteira numa OS em vez de técnico individual
-9. Mapa e Rastreamento — aba Mapa: as cores dos marcadores e o que cada uma significa
-10. Aba Histórico: eventos de localização por técnico e por data
+06
 
-## T6 Agenda, Equipes e Mapa ao Vivo
+Fase 03 · A operação rodando
+
+T6
+
+### T6
 
 Aqui a operação vira rota: quem vai, quando vai e onde está agora. A Agenda organiza a semana da equipe, as Equipes agrupam os técnicos que trabalham juntos e o Mapa mostra onde cada um está enquanto o serviço acontece.
 
@@ -2499,10 +2556,6 @@ Ao lado dos botões de Dia, Semana e Mês fica um segundo alternador, com os bot
 
 Na visão Lista some a grade do calendário e os compromissos do período aparecem em sequência, um cartão embaixo do outro, com a data escrita em cada cartão (num período de semana ou mês, cada item pode ser de um dia diferente). Compromissos atrasados (data já passada, sem estar concluídos nem cancelados) sobem para o topo, debaixo do aviso Atrasado. Sem nenhum compromisso no período, a Lista mostra "Nada por aqui" e "Nenhuma tarefa ou OS neste período."
 
-[Print da tela: Agenda da Dominex na visão Lista, com os compromissos do período em sequência de cartões, sem a grade do calendário, e a seção Atrasado destacada no topo]
-
-Agenda em Lista: os mesmos compromissos do período, em sequência, com os atrasados no topo.
-
  A escolha entre Calendário e Lista fica salva, mas separadamente para o computador e para o celular: dá para deixar o computador em Lista (bom pra conferir tudo em sequência antes de despachar o dia) e o celular em Calendário, ou vice-versa, que cada aparelho lembra a sua própria preferência.
 
 #### Navegar
@@ -2526,10 +2579,6 @@ Quando a OS já teve material lançado nela, o resumo também mostra o bloco Mat
 #### Filtros
 
 O botão Filtros traz Técnico, Cliente, Status e Tipo, todos com seleção múltipla. Sem nada marcado, mostra tudo. O grupo Tipo tem as opções Ordem de Serviço e Tarefa: marque só uma delas para esconder a outra da tela, por exemplo pra ver apenas os atendimentos a cliente e esconder reunião e compromisso interno. Vale nas duas visões (Calendário e Lista) e nos dois aparelhos.
-
-[Print da tela: Painel de Filtros da Agenda aberto, com os grupos Técnico, Cliente, Status e Tipo, este último com as opções Ordem de Serviço e Tarefa]
-
-Painel de Filtros da Agenda: o grupo Tipo separa Ordem de Serviço de Tarefa.
 
 Quem é técnico só enxerga a própria agenda de Ordem de Serviço. Um usuário com o papel de técnico vê apenas as OS em que ele é responsável ou em que a equipe dele foi escalada. Isso não é filtro, é regra de visibilidade e ele não consegue desligar.
 
@@ -2761,7 +2810,7 @@ Cada linha da lista traz o horário, o tipo de evento e o endereço resolvido a 
 
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "Criei uma tarefa mas ela não aparece em Ordens de Serviço" | Tarefa e OS são coisas diferentes | Tarefa é compromisso interno e só vive na Agenda. Se era para ser um atendimento a cliente, crie novamente pelo botão de criar e escolha Ordem de Serviço na pergunta "O que deseja criar?". |
 | "O técnico não vê a OS na agenda dele" | Ele não é responsável pela OS nem está na equipe escalada | Usuário com papel de técnico só enxerga o que é dele ou da equipe dele. Abra a OS e coloque o nome dele (ou a equipe) em Responsáveis. |
 | "Sumiram tarefas da minha agenda" | O usuário não tem Gerenciar Tarefas nem Ver Toda a Agenda, e a tarefa não é dele | Sem uma dessas duas permissões, a pessoa só vê na Agenda as tarefas em que é responsável, é o técnico, foi quem criou ou que são da equipe dela. Se ela precisa ver as tarefas de todo mundo, ligue Gerenciar Tarefas (ou Ver Toda a Agenda, que já libera o calendário inteiro) na edição do usuário. Isso não mexe em Ordem de Serviço, só em Tarefa. |
@@ -2820,27 +2869,37 @@ Palavras que o cliente usa para isso: agenda, calendário, escala, roteiro do di
 
 ---
 
-# T7 · O técnico em campo + Área do Técnico™
+# T7 · O técnico em campo: preenchimento de OS, pausar OS, finalizar parcialmente, link público, PDF e consumo de estoque
 
 **Fase 03 da trilha:** A operação rodando
-**Do que trata:** O tutorial que o técnico assiste. Tudo o que acontece no celular, do "estou a caminho" até a assinatura do cliente — mais a caixa de ferramentas de cálculo.
-**Depende de:** T6
+**Do que trata:** O tutorial que o técnico assiste: executar a OS pelo celular, registrar o atendimento e entregar o resultado ao cliente.
+**Depende de:** T5
 
 **Assuntos desta seção:**
 1. Abrindo a OS no celular: o link, o endereço amigável e o que o técnico vê primeiro
 2. A Caminho → mapa em tela cheia com botão pra Waze e Google Maps
 3. Check-in: a OS vira "Em Andamento" e a localização é registrada
-4. Preenchendo checklist por equipamento: sim/não, conformidade, medição, seleção, número
-5. Fotos: Tirar Foto × Galeria, e quando só a câmera é permitida
-6. Resposta em vídeo
-7. Pausar e retomar a OS depois — e como isso aparece na agenda do gestor
+4. Preenchendo checklist por equipamento: conformidade, medição, seleção e observação
+5. Fotos e vídeo: câmera, galeria e evidências do atendimento
+6. Consumo de estoque: lançar o material usado dentro da OS
+7. Pausar e retomar a OS — e como isso aparece na agenda do gestor
 8. Assinatura do técnico e do cliente
-9. Finalizar (e o "finalizar parcialmente" em contrato PMOC)
-10. Área do Técnico™: a caixa de ferramentas do seu segmento (carga térmica, capacitor, cabo elétrico, superaquecimento, régua de gases, retrofit, ciclo de refrigeração…)
-11. Usar a calculadora de dentro da OS, sem sair da tela
-12. As ferramentas com cadeado: o que é do seu segmento e o que é de outro
+9. Finalizar parcialmente uma visita de contrato e preservar o que ficou pendente
+10. Revisar o consumo de estoque e concluir a OS
+11. Copiar o link público e conferir a visão do cliente sem login
+12. Baixar e compartilhar o PDF do relatório da OS
 
-## T7 O técnico em campo + Área do Técnico™
+07
+
+Fase 03 · A operação rodando
+
+T7
+
+### O técnico em campo: preenchimento de OS, pausar OS, finalizar parcialmente, link público, PDF e consumo de estoque
+
+A seção que o técnico assiste: executar a OS pelo celular, registrar o atendimento e entregar o resultado ao cliente.
+
+Vídeo na trilha ~35minPré-requisito T5Capítulos 12
 
 Esta é a parte que o técnico vive: abrir a OS no celular, avisar que está a caminho, fazer o check-in, preencher o checklist com foto, colher assinatura e finalizar. No fim, a caixa de ferramentas de cálculo que ele leva no bolso.
 
@@ -3182,7 +3241,7 @@ Seletor de nicho em Instalações Elétricas: as ferramentas daquele segmento ap
 
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "O técnico preencheu tudo no cliente e não salvou nada" | Sem internet no local | Explique com franqueza: cada resposta é enviada na hora, e não existe fila para sincronizar depois. Sem sinal, o app mostra "Erro ao salvar resposta". A orientação para a equipe é preencher com sinal, ou sair para um ponto com sinal antes de responder. |
 | "Aparece uma faixa vermelha dizendo que vai sincronizar quando reconectar" | Aviso de conexão perdida | A faixa indica que o celular perdeu a conexão. Enquanto ela estiver na tela, nada é gravado. Peça para o técnico recuperar o sinal e refazer o que tentou responder, conferindo se a resposta ficou na tela. |
 | "O técnico não consegue fazer check-in" | Localização negada ou GPS desligado | O check-in exige localização. Peça para autorizar a localização para o site nas configurações do navegador, ligar o GPS do aparelho e tentar de novo em local aberto. |
@@ -3230,18 +3289,29 @@ Palavras que o cliente usa para isso: app do técnico, tela do celular, link da 
 **Depende de:** T7
 
 **Assuntos desta seção:**
-1. Tela Estoque: as 5 abas e pra que serve cada uma
+1. Tela Estoque: as 6 abas e pra que serve cada uma
 2. Cadastrar material: categoria/grupo, unidade, estoque mínimo e custo
 3. Depósitos/locais: criar, definir o que existe em cada um e transferir entre eles
 4. Restrição de acesso por depósito — quem vê o quê
 5. Aba Histórico (Kardex): lendo a movimentação item a item
-6. Aba Compras: abrir compra, cadastrar fornecedor
+6. Aba Compras: requisição ou compra direta, fornecedor e financeiro
 7. Cotação com vários fornecedores e escolha da vencedora
 8. Importar XML da NF-e e a compra montada sozinha
 9. Aba Inventários: contagem física passo a passo e o ajuste gerado no fechamento
 10. Aba Posição: saldo do estoque numa data passada
+11. Aba Relatório: histórico, média paga, projeção e exportação
 
-## T8 Estoque, compras e inventário
+08
+
+Fase 03 · A operação rodando
+
+T8
+
+### Estoque, compras e inventário
+
+Controlar o que entra, o que sai e o que sumiu. Vale pra quem tem depósito e pra quem carrega peça na van.
+
+Vídeo na trilha ~43minPré-requisito T7Capítulos 11
 
 Controlar o que entra, o que sai e o que sumiu. Vale tanto para quem tem um depósito grande quanto para quem carrega peça na van e quer saber quanto tem de gás, filtro e capacitor antes de sair para a rua.
 
@@ -3251,22 +3321,19 @@ Depende de: nada obrigatório. Fica mais útil depois que existem orçamentos e 
 Quem enxerga: quem tem a tela Estoque liberada. A ação Gerenciar Estoque é uma permissão separada. Além disso, cada local de estoque pode ter acesso restrito a usuários específicos
 Módulo: a tela não depende de módulo pago
 
-### 1. Tela Estoque: as 5 abas e pra que serve cada uma
+### 1. Tela Estoque: as 6 abas e pra que serve cada uma
 
-A tela se chama Estoque, com o subtítulo "Controle de peças e materiais". Ela tem cinco abas na navegação lateral:
+A tela se chama Estoque, com o subtítulo "Controle de peças e materiais". Ela tem seis abas na navegação lateral:
 
 | Aba | Para que serve |
 | Estoque Atual | O que existe hoje, por local. É a tela do dia a dia: cadastrar material, ver saldo, registrar entrada e saída, transferir. |
 | Histórico de Materiais (Kardex) | Todo movimento que já aconteceu, item por item, com saldo antes e depois. |
-| Compras de Material | Requisições de compra, fornecedores e cotações. |
+| Compras de Material | Requisições, fornecedores, cotações, Ordens de Compra e compra direta ligada ao Financeiro. |
 | Inventários | Contagem física: você conta, o sistema compara com o esperado e ajusta a diferença. |
 | Posição de Estoque | Qual era o saldo numa data passada. É o retrato do estoque para fechamento e para conferência com o contador. |
+| Relatório | Histórico comercial das compras por material, com total comprado, média paga, formas de pagamento, saldo atual e projeção baseada no preço de venda cadastrado. |
 
-No celular, para caber na faixa de abas, três desses nomes aparecem encurtados: Histórico de Materiais (Kardex) vira só Histórico, Compras de Material vira Compras e Posição de Estoque vira Posição. Estoque Atual e Inventários continuam com o nome completo mesmo no celular. É a mesma tela e as mesmas colunas, só o rótulo da aba que muda de tamanho.
-
-[Print da tela: Tela Estoque da Dominex na aba Estoque Atual, com os indicadores de total de itens, valor investido, projeção de venda e estoque baixo, mais a tabela de materiais]
-
-Estoque: aba Estoque Atual, com os indicadores e a lista de materiais.
+No celular, para caber na faixa de abas, três desses nomes aparecem encurtados: Histórico de Materiais (Kardex) vira só Histórico, Compras de Material vira Compras e Posição de Estoque vira Posição. Estoque Atual, Inventários e Relatório mantêm o nome. É a mesma tela, só o rótulo de algumas abas muda de tamanho.
 
 #### Os quatro indicadores da aba Estoque Atual
 
@@ -3419,13 +3486,9 @@ Período, Material (com Todos os materiais), Tipo de movimento (com Todos os tip
 
  O Kardex é a ferramenta para responder "cadê os 20 filtros que compramos mês passado". Filtre pelo material, ordene por data e leia a coluna de saldo: em algum ponto o número muda sem um movimento correspondente, e ali está a resposta.
 
-### 6. Aba Compras: abrir compra, cadastrar fornecedor
+### 6. Aba Compras: requisição ou compra direta, fornecedor e financeiro
 
-A aba Compras de Material mostra o título Requisições de Compra. Uma requisição é a lista do que você precisa comprar, antes de saber de quem e por quanto.
-
-[Print da tela: Aba Compras de Material com a faixa de alerta 1 material abaixo do mínimo e o atalho Criar requisição, a busca por código ou título, os botões Filtros, Fornecedores e Nova requisição de compra, e dois cartões de requisição: Reposição teste QA (Aberta, 0 cotações) e Reposição de Gases (Aberta, 1 cotação, menor cotação R$ 2.000,00)]
-
-Aba Compras de Material: o alerta de estoque abaixo do mínimo vira atalho direto para uma nova requisição.
+A aba Compras de Material atende dois momentos diferentes. Nova requisição de compra organiza o que ainda será cotado e comprado. Registrar compra direta serve para algo que já foi comprado: uma única confirmação registra a entrada no estoque e a despesa no Financeiro.
 
 #### Criar uma requisição
 
@@ -3446,6 +3509,27 @@ A requisição nasce com o status Aberta e depois pode virar Concluída ou Cance
 [Print da tela: Janela Nova Requisição de Compra com o campo Título vazio, o botão âmbar Adicionar itens abaixo do mínimo, a chave Do estoque/Fora do estoque, o campo Adicionar material do estoque, a mensagem Nenhum material adicionado e o campo Observações]
 
 Janela Nova Requisição de Compra: título, materiais (do estoque ou não) e o atalho para o que já está abaixo do mínimo.
+
+#### Registrar uma compra que já aconteceu
+
+Use Registrar compra direta quando você já sabe o fornecedor, o que chegou e quanto foi pago. A janela Compra de material explica: "Registre a entrada no estoque e a despesa financeira em uma única operação."
+
+| Campo | Obrigatório | O que acontece |
+| Descrição | Não | Identifica a compra no histórico, por exemplo "Reposição de cobre". |
+| Fornecedor | Sim | Vincula a compra ao fornecedor cadastrado. |
+| Local de estoque | Sim | É o local que recebe todos os materiais desta compra. O local principal vem selecionado quando existe. |
+| Data da compra | Sim | Não aceita data futura. |
+| Materiais, Quantidade e Preço unitário | Sim | Você pode adicionar várias linhas. O mesmo material não pode ser repetido. O sistema calcula o subtotal de cada linha e o Total da compra. |
+| Categoria financeira | Sim | Classifica a despesa. Quando existe uma categoria de materiais ligada ao CMV, ela é sugerida primeiro. |
+| Conta financeira | Sim | Escolha uma conta ativa de caixa ou banco. Conta de cartão de crédito não entra neste fluxo. |
+| Situação do pagamento | Sim | Em Pago, informe forma e data do pagamento. Em Pendente, informe o vencimento. |
+| Observações | Não | Guarda contexto adicional da compra. |
+
+Em uma compra paga, as formas disponíveis são Dinheiro, Pix, Cartão de débito, Transferência, Boleto e Cheque. Cartão de crédito fica fora porque esse tipo de despesa precisa entrar pela fatura do cartão, não como saída já paga da conta.
+
+A compra direta é uma operação única. Ao confirmar, o sistema cria a compra, registra as entradas no local escolhido e lança uma despesa no Financeiro pelo total calculado dos materiais. Se alguma parte falhar, nada deve ficar lançado pela metade. Repetir a mesma tentativa também não duplica estoque nem despesa.
+
+ O botão só aparece para Admin, Gestor ou para um usuário que tenha, ao mesmo tempo, permissão de gerenciar Estoque e Financeiro. Depois de registrada, a compra recebe o selo Compra direta e fica somente para consulta. Ela não oferece Editar, Reabrir, Cancelar ou Excluir por partes, porque isso separaria o estoque da despesa financeira.
 
 #### Cadastrar fornecedor
 
@@ -3477,17 +3561,35 @@ Com as cotações lado a lado, a mais barata recebe o selo Mais barata e o cart�
 
 - Desfazer aceite e Reabrir revertem a decisão.
 
-Aceitar a cotação NÃO mexe no estoque. A própria tela avisa: "Aceitar não mexe no estoque. Use Registrar entrada quando o material chegar." São dois momentos diferentes de propósito: decidir de quem comprar e receber a mercadoria. Aceitar antes e receber depois é o normal.
+Aceitar a cotação NÃO mexe no estoque. Cotar e receber são momentos separados. A entrada só acontece no recebimento da Ordem de Compra.
 
-#### Registrar a entrada quando o material chegar
+#### Gerar as Ordens de Compra
 
-Na cotação aceita, use Registrar entrada no estoque. A confirmação explica: "Os materiais desta compra serão dados de entrada com o fornecedor [nome] e os preços desta cotação. Materiais fora do estoque serão criados automaticamente. O movimento aparece no histórico (Kardex)."
+Depois das cotações, escolha o Fornecedor escolhido de cada material. O botão Gerar ordens de compra cria uma O.C. separada para cada fornecedor escolhido. Se não houver material com fornecedor, a mensagem é "Nenhum material com fornecedor escolhido. Escolha o fornecedor de cada material antes de gerar as ordens."
 
-- Material que já existe no cadastro recebe uma entrada com a quantidade e o custo daquela cotação.
+- Cada O.C. recebe um número e mostra fornecedor, total, quantidade pedida, quantidade recebida e quantidade pendente.
 
-- Material marcado como Fora do estoque é criado no cadastro na hora, com o nome, a unidade e o custo da cotação, e recebe a entrada. Ele ganha o selo Criar no estoque antes da confirmação.
+- Os status são Rascunho, Enviada, Recebida parcial, Recebida e Cancelada.
 
-- Ao final, a confirmação é "Entrada registrada (N itens)."
+- Uma ordem pode ser baixada em PDF para envio ou conferência.
+
+- Se já existir uma ordem em aberto para aquele fornecedor na mesma requisição, ela é pulada para não duplicar.
+
+#### Registrar o recebimento quando o material chegar
+
+Na O.C., use Registrar recebimento. A janela orienta: "Informe só o que chegou agora. Você pode receber em partes, o saldo continua pendente." Digite a quantidade recebida de cada item ou use Receber tudo, depois confirme.
+
+- A quantidade recebida não pode passar da quantidade pedida.
+
+- Recebimento parcial atualiza a quantidade pendente e deixa a ordem como Recebida parcial.
+
+- Quando todos os itens chegam, a ordem muda para Recebida.
+
+- Material que ainda não existe no cadastro é criado na hora e recebe a entrada.
+
+- Cada recebimento gera uma entrada no Kardex no local de destino da requisição.
+
+ A Ordem de Compra tradicional controla cotação, pedido e recebimento, mas não cria automaticamente uma despesa no Financeiro. No Relatório, ela aparece como Não vinculado. Para registrar estoque e financeiro juntos numa compra já realizada, use Registrar compra direta.
 
 ### 8. Importar XML da NF-e e a compra montada sozinha
 
@@ -3577,15 +3679,55 @@ Posição de Estoque: o mesmo material (Filtro G4) somado nos dois depósitos, c
 
  Essa aba é o que o contador pede no fechamento do ano: o valor do estoque em 31 de dezembro. Também serve para conferir "quanto eu tinha antes daquela obra grande" e para justificar variação de custo entre meses.
 
+### 11. Aba Relatório: histórico, média paga, projeção e exportação
+
+A aba Relatório abre o Relatório de estoque por material. Ela responde quanto foi comprado, de quem, para qual local, quanto foi pago por unidade e qual seria a projeção usando o preço de venda cadastrado no material.
+
+#### Indicadores
+
+- Total comprado: soma dos itens recebidos com preço conhecido. Abrindo o cartão aparecem ticket médio por compra, quantidade de materiais, material com maior quantidade, cobertura de preço, quantidades separadas por unidade e distribuição das formas de pagamento.
+
+- Total vendido e Lucro bruto: ficam identificados como PDV. Eles só serão calculados quando existir venda real registrada pelo PDV.
+
+- Projeção de lucro: estimativa que compara o custo comprado com o preço de venda cadastrado. Abrindo o cartão, o sistema mostra a venda projetada e a margem estimada.
+
+Média paga não é custo contábil do saldo. Para cada material, a média é ponderada: soma do valor das compras com preço dividido pela quantidade dessas compras. Material sem preço fica fora do cálculo e reduz a Cobertura de preço. O sistema não mistura kg, metro e unidade numa média geral. Na visão por grupo, a média só aparece quando todos os materiais somados usam a mesma unidade.
+
+#### Período e filtros
+
+O período pode ser Últimos 30 dias, Últimos 90 dias, Este ano, Todo o histórico ou Personalizado. O botão Filtros permite selecionar vários Materiais, Fornecedores, Locais, Grupos e Responsáveis pela O.C. A opção Ocultar materiais sem movimento no período fica guardada para a próxima vez. O filtro Clientes está reservado para quando o PDV estiver ativo.
+
+A chave Por material / Por grupo troca a organização da tabela. Por material, cada linha mostra SKU e grupo. Por grupo, cada linha vira um subtotal e pode ser aberta para mostrar os materiais daquele grupo. A busca aceita nome, SKU e grupo.
+
+#### Tabela e histórico
+
+As colunas são Material ou Grupo, Última compra, Compras, Qtd. comprada, Valor comprado, Média paga, Saldo atual, Qtd. vendida, Valor vendido e Lucro projetado. As colunas disponíveis podem ser ordenadas. A paginação oferece 10, 25 ou 50 linhas e guarda a preferência.
+
+Abrindo uma linha aparece o Histórico de compras, com data, fornecedor, local, número da O.C., responsável, situação ou forma de pagamento, quantidade, valor unitário e total. Compra direta mostra o pagamento que foi lançado no Financeiro. O.C. tradicional sem lançamento financeiro aparece como Não vinculado, nunca como pendente por suposição.
+
+Saldo atual é o saldo de agora, mesmo quando o período do relatório está no passado. Para saber o saldo que existia numa data antiga, use a aba Posição de Estoque. Em recebimentos parciais antigos, o histórico comercial pode usar a data consolidada da O.C., porque essas compras não guardavam um evento detalhado para cada parcela recebida.
+
+#### Exportar
+
+- PDF: abre em paisagem com identidade da empresa, filtros aplicados, indicadores, distribuição de pagamentos, tabela visível e histórico de compras.
+
+- Excel: gera as abas Resumo, Histórico e Por grupo. Quantidades e valores permanecem numéricos para soma, filtro e tabela dinâmica.
+
+ Saída, consumo, transferência e ajuste de estoque não são venda. O relatório não inventa faturamento a partir desses movimentos. Quando o PDV entrar, cada venda precisa trazer sua origem comercial e o custo congelado daquele momento para preservar a margem histórica.
+
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "Concluí a OS e o estoque não baixou" | Depende do recurso "Consumo de estoque na OS" (Configurações → Usabilidade → Ordens de Serviço) | Com o recurso desligado (padrão da empresa), concluir OS realmente não dá baixa em estoque: a baixa acontece na conversão de um orçamento em OS (os materiais do orçamento saem do estoque, movimento tipo Saída com origem OS no Kardex), na saída manual e no ajuste do inventário. Com o recurso ligado, o técnico anota o material usado direto na OS pelo Consumir do estoque do menu de mais ações, e a baixa (movimento tipo Consumo no Kardex) é confirmada no resumo editável que aparece ao finalizar. Sem material anotado naquela OS, nada muda, com o recurso ligado ou não. |
 | "O sistema não avisou que o material acabou" | Estoque mínimo não preenchido | O alerta depende do mínimo definido por local, dentro do cadastro do material, no bloco Locais deste material. Sem mínimo, não há alerta e o material não entra no indicador Estoque baixo. |
 | "Meu funcionário vê menos itens que eu no estoque" | Restrição de acesso por local | É permissão, não bug. Na configuração do local, a aba Acesso pode estar em Restrito. Quem não está marcado não vê aquele depósito nem os movimentos dele. |
 | "Não consigo tirar um material do local" | Ainda há saldo naquele local | A mensagem é "Ainda há saldo neste local. Transfira ou dê baixa antes." Use Transferir saldo ou registre a saída e depois desmarque. |
 | "Importei a nota duas vezes e dobrou o estoque" | Confirmou o aviso de nota repetida | O sistema avisa "Esta nota já foi importada". Se foi confirmado mesmo assim, corrija com uma saída manual da quantidade duplicada, ou com um inventário do material. Notas sem chave de acesso não têm essa proteção. |
-| "Aceitei a cotação e o estoque não entrou" | Aceitar e receber são etapas diferentes | A própria tela avisa: "Aceitar não mexe no estoque. Use Registrar entrada quando o material chegar." Abra a cotação aceita e use Registrar entrada no estoque. |
+| "Aceitei a cotação e o estoque não entrou" | Aceitar e receber são etapas diferentes | Aceitar a cotação só registra a decisão comercial. Escolha o fornecedor de cada material, gere a Ordem de Compra e use Registrar recebimento na O.C. quando o material chegar. |
+| "O botão Registrar compra direta não aparece" | O usuário não tem acesso aos dois domínios | A compra direta movimenta estoque e financeiro na mesma confirmação. Ela só aparece para Admin, Gestor ou para quem tem as permissões de gerenciar Estoque e Financeiro ao mesmo tempo. |
+| "Não aparece meu cartão de crédito na compra" | Compra direta não lança fatura de cartão | Esse fluxo aceita conta ativa de caixa ou banco. Compra no cartão de crédito precisa ser registrada pelo fluxo da fatura no Financeiro, para não parecer uma saída já paga da conta. |
+| "A média paga ficou diferente da média que fiz na calculadora" | Média simples, unidades misturadas ou compra sem preço | O relatório usa média ponderada por quantidade de cada material. Itens sem preço ficam fora e aparecem na cobertura de preço. O sistema também não soma kg, metro e unidade numa média geral. |
+| "A compra aparece como Não vinculado no relatório" | A O.C. tradicional não gerou despesa financeira | Isso não significa que está pendente. Significa apenas que aquela Ordem de Compra não tem lançamento financeiro ligado. Compras diretas novas trazem Pago ou Em aberto conforme o que foi informado. |
 | "Finalizei o inventário com número errado" | Fechamento é definitivo | Não dá para desfazer nem cancelar inventário finalizado. O caminho é criar um novo inventário com a contagem correta, ou lançar um ajuste manual editando a quantidade do material. Tudo fica registrado no Kardex. |
 | "O valor investido está diferente do que eu esperava" | Preço de custo desatualizado ou local filtrado | O valor usa o preço de custo cadastrado. Confira também qual depósito está selecionado nas pílulas: o indicador reflete o local ativo. |
 | "Consigo importar meus materiais de uma planilha?" | Não existe importação em massa por planilha | Não existe importação de materiais por CSV ou Excel. O caminho mais próximo é o Importar XML (NF-e), que cria os itens a partir da nota do fornecedor e já registra a entrada. |
@@ -3607,13 +3749,25 @@ Posição de Estoque: o mesmo material (Filtro G4) somado nos dois depósitos, c
 **R:** Pela tela de Estoque, só quem tem a permissão de gerenciar estoque e acesso ao local. Dentro da própria Ordem de Serviço, sim, quando a empresa liga o recurso Consumo de estoque na OS em Configurações → Usabilidade: o técnico anota o material usado durante o atendimento pelo Consumir do estoque do menu de mais ações, e a baixa é confirmada no resumo editável que aparece ao finalizar a OS. Com o recurso desligado, a tela de execução não mostra esse passo.
 
 **P:** Aceitar a cotação já compra o material?
-**R:** Não. Aceitar registra a decisão de qual fornecedor venceu. Quando a mercadoria chega, use Registrar entrada no estoque na cotação aceita, e aí sim o saldo sobe.
+**R:** Não. Aceitar registra a decisão comercial. Depois escolha o fornecedor de cada material, gere a Ordem de Compra e registre o recebimento na O.C. quando a mercadoria chegar. Só o recebimento aumenta o saldo.
+
+**P:** Qual a diferença entre requisição e compra direta?
+**R:** Requisição é o planejamento do que ainda será cotado, pedido e recebido. Compra direta é para material já comprado: ao confirmar, o saldo entra no local escolhido e a despesa nasce no Financeiro na mesma operação.
+
+**P:** A compra direta pode ficar pendente no Financeiro?
+**R:** Pode. Em Situação do pagamento, escolha Pendente e informe o vencimento. Se já pagou, escolha Pago, a forma de pagamento e a data.
 
 **P:** O que acontece com o material "fora do estoque" da requisição?
 **R:** Ele fica só como texto na requisição até a entrada ser registrada. Nesse momento, o sistema cria o item no cadastro com o nome, a unidade e o custo da cotação, e dá a entrada.
 
 **P:** Como sei quanto tinha em estoque no fim do ano passado?
 **R:** Na aba Posição de Estoque, escolha a data e clique em Atualizar. Ela reconstrói o saldo daquele dia e mostra o valor total em custo e a projeção de venda, com exportação em PDF e Excel.
+
+**P:** Onde vejo quanto paguei em média pelo cobre ou por outro material?
+**R:** Abra a aba Relatório, filtre o material e consulte Média paga. O valor é ponderado pelas quantidades recebidas e representa uma estimativa histórica. Abra a linha para conferir cada compra que formou a média.
+
+**P:** O Relatório já mostra vendas e lucro real?
+**R:** Ainda não. Os cartões de venda e lucro ficam identificados como PDV e só passam a calcular quando existir uma venda comercial real com custo congelado. Hoje a Projeção de lucro é apenas uma estimativa baseada no preço de venda cadastrado.
 
 **P:** Posso fazer inventário só de uma parte do estoque?
 **R:** Pode. No passo Escopo, escolha Por grupo de material ou Itens específicos. Contagem parcial mensal por grupo costuma funcionar melhor que uma contagem geral por ano.
@@ -3624,7 +3778,7 @@ Posição de Estoque: o mesmo material (Filtro G4) somado nos dois depósitos, c
 **P:** O saldo pode ficar negativo?
 **R:** As saídas e transferências avisam antes: "Saldo ficaria negativo" e "Saldo insuficiente. Disponível: X." A regra é bloquear o que passaria do disponível, então saldo negativo não é o comportamento normal do sistema.
 
-Palavras que o cliente usa para isso: estoque, almoxarifado, depósito, van, peça, material, insumo, dar baixa, entrada, saída, kardex, extrato do estoque, contagem, balanço, inventário, requisição, cotação, fornecedor, nota do fornecedor, XML da nota
+Palavras que o cliente usa para isso: estoque, almoxarifado, depósito, van, peça, material, insumo, dar baixa, entrada, saída, kardex, extrato do estoque, contagem, balanço, inventário, requisição, cotação, ordem de compra, compra direta, fornecedor, nota do fornecedor, XML da nota, média paga, custo médio, histórico de compras, relatório por material
 
 ---
 
@@ -3650,7 +3804,17 @@ Palavras que o cliente usa para isso: estoque, almoxarifado, depósito, van, pe�
 13. Contador de visualizações: quantas vezes o cliente abriu e quando
 14. Aprovar e o que isso lança no financeiro de uma vez só; Converter em OS
 
-## T9 Orçamentos, Precificação e Proposta
+09
+
+Fase 04 · Vender
+
+T9
+
+### Orçamentos, Precificação e Proposta
+
+Onde o serviço vira preço e o preço vira documento bonito na mão do cliente.
+
+Vídeo na trilha ~45minPré-requisito T8Capítulos 14
 
 Onde o serviço vira preço e o preço vira documento na mão do cliente: você monta o orçamento em cinco etapas, o sistema calcula o preço a partir dos seus custos reais, gera um link de proposta que o cliente abre no celular e aprova com um toque, e depois transforma o orçamento aprovado em Ordem de Serviço.
 
@@ -4084,7 +4248,7 @@ Não existe conversão de orçamento em contrato (contrato é sempre montado do 
 
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "Meu cliente abriu a proposta mas não aparece o botão de aprovar" | O orçamento ainda está em Rascunho. Os botões Aprovar e Rejeitar só existem no status Enviado. | Peça para usar a ação Gerar link da proposta no menu de três pontinhos: ela copia o link e promove o orçamento para Enviado. O link que já foi mandado continua valendo, é só o cliente recarregar. |
 | "Não acho a tela de BDI no menu" | Não existe tela de BDI. A precificação fica dentro de Orçamentos. | Menu → Orçamentos → aba Precificação para o padrão da empresa, ou o bloco Configurações BDI dentro de cada orçamento, na etapa Serviços e mão de obra. Exige o módulo Precificação Avançada. |
 | "Sumiram as abas Custos Globais e Precificação" | Módulo Precificação Avançada não contratado ou desativado. | Essas abas, o bloco de BDI, o campo de deslocamento e as colunas Custo e Margem são do módulo Precificação Avançada. Sem ele o orçamento funciona, com preço digitado na mão. |
@@ -4164,7 +4328,19 @@ Palavras que o cliente usa pra isso: orçamento, orçar, proposta, proposta come
 8. Webhooks de captação: criar, vincular a uma origem, copiar a URL e testar
 9. Rotina sugerida: revisão diária do funil em 5 minutos
 
-## T10 CRM: funil, leads e captação
+10
+
+Fase 04 · Vender
+
+T10
+
+### CRM: funil, leads e captação
+
+🔒 Depende do módulo CRM
+
+Parar de perder oportunidade em conversa de WhatsApp. Todo lead num funil visível, com dono e próximo passo.
+
+Vídeo na trilha ~30minPré-requisito T9Capítulos 9Módulo CRM
 
 Parar de perder oportunidade em conversa de WhatsApp: todo pedido de orçamento vira um cartão num funil visível, com dono, valor, probabilidade e próximo passo marcado, do primeiro contato até o negócio fechado.
 
@@ -4231,10 +4407,6 @@ Com os estágios criados mas nenhuma oportunidade, o quadro mostra Nenhuma oport
 
 A empresa pode ter mais de um funil comercial, por exemplo um para vendas novas e outro para pós-venda. O botão de ícone Gerenciar funis no cabeçalho (no celular, dentro da gaveta de filtros) abre a janela Gerenciar Funis, descrita como "Crie funis separados para vendas, pós-venda, licitação e outros fluxos comerciais."
 
-[Print da tela: Janela Gerenciar Funis com o bloco pontilhado Novo Funil contendo o campo Nome do funil e o botão de mais, e abaixo a lista de funis da empresa, cada linha com a alça de arrastar, o nome, o selo Padrão ou o botão Tornar padrão, e o menu de ações com Editar, Quem pode ver e Excluir]
-
-Janela Gerenciar Funis: criar um funil novo, ver a lista, marcar o padrão e abrir Quem pode ver de cada um.
-
 #### Criar, renomear e reordenar
 
 No bloco pontilhado Novo Funil, digite o nome no campo Nome do funil e toque no botão de mais. Aparece Funil criado com sucesso! e o funil entra no fim da lista. A dica Arraste para reordenar os funis vale pra ordem em que os funis aparecem no seletor do topo da tela. Cada linha tem um menu com Editar (renomear), Quem pode ver e Excluir.
@@ -4263,10 +4435,6 @@ Trocar de estágio pelo Estágio do detalhe da oportunidade, ou na criação, pr
 #### "Quem pode ver": restringir um funil a algumas pessoas
 
 No menu de ações de cada funil, o item Quem pode ver abre a janela Acesso ao funil, com o nome do funil no título. Ela só aparece pra administrador, gestor, ou quem tem a permissão Gerenciar Configurações ligada.
-
-[Print da tela: Janela Acesso ao funil com a faixa verde Aberto para toda a empresa, o texto explicando que todos os usuários podem ver o funil, e o campo Pessoas com acesso para selecionar quem deve enxergar quando restringido]
-
-Janela Acesso ao funil no estado padrão: aberto pra empresa inteira, até que alguém seja selecionado no campo Pessoas com acesso.
 
 Por padrão, todo funil (inclusive os que você já tinha antes desta função existir) fica aberto pra toda a empresa: a faixa verde mostra Aberto para toda a empresa e a explicação "Todos os usuários da empresa podem ver este funil. Selecione pessoas abaixo para restringir o acesso.". Assim que você marca ao menos uma pessoa no campo Pessoas com acesso, a faixa vira amarela com Restrito e a explicação "Só as pessoas selecionadas abaixo (e quem tem permissão de Gerenciar CRM) podem ver este funil.". O botão Salvar acesso grava; Cancelar fecha sem mudar nada.
 
@@ -4450,10 +4618,6 @@ Dentro do detalhe da oportunidade, o botão Criar Tarefa (na aba Detalhes) ou No
 
 O responsável da tarefa não precisa ser o mesmo responsável do card: você pode delegar o follow-up pra outra pessoa da equipe sem trocar o dono da oportunidade.
 
-[Print da tela: Formulário Nova Tarefa aberto a partir de uma oportunidade do CRM, com a chave Mostrar na agenda ligada, o campo Data com asterisco obrigatório e o campo Responsáveis já sugerido]
-
-Formulário de tarefa aberto de dentro de uma oportunidade: a chave Mostrar na agenda decide se ela também entra no calendário.
-
 #### A aba Tarefas do card
 
 Dentro do detalhe da oportunidade, a aba Tarefas lista todas as tarefas vinculadas àquele card. Cada linha mostra um círculo clicável pra marcar Concluir (ou Reabrir, se já está concluída), o título, a data (ou Sem data), os avatares dos responsáveis, e, quando for o caso, os selos Recorrente e Fora da agenda (esse último quando a chave Mostrar na agenda está desligada). Cada linha tem os ícones Editar (laranja) e excluir (vermelho).
@@ -4607,7 +4771,7 @@ Combine com a tela de Orçamentos: oportunidade que chegou à etapa de proposta 
 
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "Não tem CRM no meu menu" | Módulo CRM não contratado, ou permissão de tela desligada para aquele usuário. | Sem o módulo, o item não aparece no menu para ninguém da empresa. Confirme a contratação com quem cuida da assinatura. Se o módulo está ativo e só uma pessoa não vê, um administrador liga a tela CRM para ela no editor de permissões. |
 | "Sumiram oportunidades do meu funil, só sobraram poucas" | A pessoa não tem a ação Gerenciar CRM e passou a ver só as suas. | É esperado. Sem Gerenciar CRM, cada um vê só as oportunidades em que é responsável ou foi quem criou. Ligue a ação pra quem precisa ver o funil inteiro (gestor, coordenador comercial). |
 | "Apareceram leads que eu nunca vi, numa fila diferente" | São oportunidades sem responsável, visíveis pra empresa toda. | É a fila compartilhada. Qualquer pessoa pode tocar em Assumir oportunidade dentro do card pra virar a responsável e tirá-la da fila. |
@@ -4715,10 +4879,21 @@ Palavras que o cliente usa pra isso: funil, funil de vendas, pipeline, kanban de
 9. Aba Documentos: TRT, Certificado, Dossiê e Planilha — gerar, assinar e baixar
 10. Responsáveis Técnicos: cadastro, CFT/CREA, assinatura e carimbo (Configurações de Contrato)
 11. Aba Financeiro do contrato: cobrança única ou parcelada, marcar paga, aplicar em massa
-12. Portal do Contrato/PMOC: link e QR Code pro cliente
-13. Renovar (+6 ou +12 meses) e o que a renovação gera; pausar e excluir com segurança
+12. Renovar (+6 ou +12 meses) e o que a renovação gera; pausar e excluir com segurança
 
-## T11 Contratos e PMOC
+11
+
+Fase 05 · Contratos, PMOC e o cliente
+
+T11
+
+### Contratos e PMOC
+
+🔒 Depende do módulo Gestão de Contratos e PMOC
+
+Receita recorrente e conformidade legal no mesmo lugar. É a seção mais denso da trilha.
+
+Vídeo na trilha ~45minPré-requisito T10Capítulos 12Módulo Gestão de Contratos e PMOC
 
 Receita recorrente e conformidade legal no mesmo lugar. É aqui que você transforma cliente avulso em contrato mensal, programa todas as visitas do ano de uma vez e emite os documentos que a Lei Federal 13.589/2018 exige de quem faz manutenção de climatização.
 
@@ -5212,7 +5387,7 @@ Exclusão de contrato, o que some e o que fica.
 
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "Não acho o PMOC no menu" | Não existe menu PMOC | PMOC é um tipo de contrato. Vá em Contratos e use o filtro Tipo marcando PMOC. Se a tela Contratos não abre, é o módulo de contratos que não está contratado. |
 | "Criei o contrato e não apareceu OS nenhuma na agenda" | Contrato criado como pausado, ou plano só com atividades eventuais | Confira se o contrato está Ativo: só contrato ativo gera visitas. Se estiver ativo e mesmo assim vazio, veja se todas as atividades do plano estão marcadas como Eventual, que não entra no cronograma. Na aba Cronograma existe o botão Gerar OSs deste contrato agora. |
 | "Onde eu converto o orçamento aprovado em contrato?" | Essa conversão não existe | Contrato é sempre criado manualmente em Contratos → Novo Contrato. Orçamento converte em ordem de serviço, não em contrato. |
@@ -5270,10 +5445,10 @@ Palavras que o cliente usa pra isso: contrato, contrato de manutenção, mensali
 
 ---
 
-# T12 · Portal do Cliente, NPS e reputação
+# T12 · Portal do Cliente e Portal do Contrato
 
 **Fase 05 da trilha:** Contratos, PMOC e o cliente
-**Do que trata:** Transformar serviço bem feito em prova social. O cliente acompanha, avalia e, se gostou, avalia no Google.
+**Do que trata:** Os dois acessos públicos do cliente: o portal geral para acompanhar o relacionamento com a empresa e o portal específico do contrato ou PMOC.
 **Depende de:** T11
 
 **Assuntos desta seção:**
@@ -5282,16 +5457,26 @@ Palavras que o cliente usa pra isso: contrato, contrato de manutenção, mensali
 3. O que o cliente enxerga: OS, equipamentos, contratos e cobranças
 4. Cliente abrindo chamado pelo portal — e onde isso cai pra você (aba Chamados)
 5. O QR Code do equipamento levando direto pro portal filtrado naquele aparelho
-6. A avaliação (NPS) que aparece pro cliente ao fim da OS: nota, estrelas por critério, comentário
-7. Configurar os critérios de estrela (nome, cor, ordem)
-8. Nota mínima + convite pra avaliar no Google: colando o link do Google Maps
-9. Lendo o painel de NPS e o que fazer com um detrator
+6. Portal do Contrato/PMOC: gerar, copiar e testar o link e o QR Code da unidade
+7. Diferença entre Portal do Cliente e Portal do Contrato — quando compartilhar cada um
 
-## T12 Portal do Cliente, NPS e reputação
+12
+
+Fase 05 · Contratos, PMOC e o cliente
+
+T12
+
+### Portal do Cliente e Portal do Contrato
+
+🔒 Depende do módulo módulos Portal do Cliente e Contratos/PMOC
+
+Os dois acessos públicos do cliente: o portal geral para acompanhar o relacionamento com a empresa e o portal específico do contrato ou PMOC.
+
+Vídeo na trilha ~18minPré-requisito T11Capítulos 7Módulo módulos Portal do Cliente e Contratos/PMOC
 
 Serviço bem feito que ninguém vê não vira reputação. Esta seção mostra como abrir uma janela do sistema para o seu cliente acompanhar sozinho, como coletar a nota dele no fim de cada atendimento e como transformar cliente satisfeito em avaliação no Google.
 
-Módulo Depende do módulo Portal do Cliente (para o portal)
+Módulo Depende do módulo módulos Portal do Cliente e Contratos/PMOC
 Onde fica: o portal é gerado na ficha do cliente (Menu → Clientes → abrir o cliente → menu Ações). A configuração de avaliação fica em Menu → Ordens de Serviço → aba NPS e Satisfação → botão Configurações.
 Rotas:/clientes/:id (para gerar o link), /ordens-servico (aba NPS e Satisfação). O portal público do cliente fica em /portal/:token, fora da área logada.
 Depende de: T3 (Clientes e Equipamentos), T5 (Ordens de Serviço), T11 (Contratos e PMOC)
@@ -5608,7 +5793,7 @@ No fim do painel fica o Feed de Feedbacks, com todas as avaliações do período
 
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "Mandei o link do portal e meu cliente diz que pede login" | A chave Portal Público está desligada naquele cliente | Abra a ficha do cliente e ligue Portal Público. Depois teste o link numa janela anônima: logado você vê o portal mesmo com a chave desligada, e isso engana. |
 | "Qual é a senha do portal do meu cliente?" | Não existe senha | O acesso é só por link. Cada cliente tem um endereço único, copiado na ficha dele em Ações → Copiar link do portal. Não há cadastro, senha nem login social para o cliente final. |
 | "Meu cliente abriu o link e apareceu Portal ainda não disponível" | O módulo Portal do Cliente não está ativo | É gate de plano. Confira a assinatura em Assinatura. Sem o módulo, nenhum portal de cliente abre. |
@@ -5671,11 +5856,11 @@ Palavras que o cliente usa pra isso: portal do cliente, área do cliente, link d
 # T13 · Financeiro
 
 **Fase 06 da trilha:** O dinheiro e o fiscal
-**Do que trata:** O tutorial mais longo, e o que mais evita prejuízo. Dinheiro entrando, saindo, no cartão e no resultado.
+**Do que trata:** A base do controle financeiro: contas, movimentações, cartões e compromissos a pagar ou receber.
 **Depende de:** T12
 
 **Assuntos desta seção:**
-1. Os 3 endereços do menu Financeiro e o que cada um responde
+1. Os endereços do menu Financeiro e o que cada um responde
 2. Movimentações: criar a primeira conta bancária/caixa
 3. Lançar receita e despesa, marcar como pago, editar e excluir
 4. Extrato com "saldo após" e o ajuste manual de saldo
@@ -5685,12 +5870,19 @@ Palavras que o cliente usa pra isso: portal do cliente, área do cliente, link d
 8. Pagar a fatura: integral × parcial, e o limite voltando
 9. Visão Geral: cards de saldo, gráfico de fluxo de caixa e pizza por categoria
 10. Categorias: criar, colorir, ordenar e o grupo de DRE; as do sistema que não se mexe
-11. Contas a Pagar/Receber: lançar com recorrência, dar baixa, recebimento parcial
-12. DRE: o botão Caixa × Competência e o que muda no número
-13. O caso da compra de cartão na DRE: mês da compra × mês do pagamento × mês da fatura
-14. Exportar CSV e gerar o PDF da DRE
+11. Contas a Pagar/Receber: recorrência, baixa e recebimento parcial
 
-## T13 Financeiro
+13
+
+Fase 06 · O dinheiro e o fiscal
+
+T13
+
+### Financeiro
+
+A base do controle financeiro: contas, movimentações, cartões e compromissos a pagar ou receber.
+
+Vídeo na trilha ~35minPré-requisito T12Capítulos 11
 
 O Financeiro do Dominex é onde entra o dinheiro que você recebe do cliente, sai o que você paga de fornecedor, funcionário e imposto, e onde o sistema mostra se o mês fechou no azul ou no vermelho. É o módulo que mais evita prejuízo, porque ele junta conta bancária, caixa, cartão de crédito, contas a pagar, contas a receber e resultado num lugar só.
 
@@ -6255,7 +6447,7 @@ O PDF da DRE abre em uma nova aba. Se o navegador estiver bloqueando pop-ups, na
 
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "Fiz uma transferência do banco pro caixa e não apareceu no faturamento" | Comportamento correto do sistema | Transferência entre contas não é receita nem despesa, é dinheiro seu mudando de lugar. Ela aparece no extrato das duas contas e muda os dois saldos, mas fica de fora dos cards de Receitas e Despesas e da DRE de propósito. |
 | "Comprei no cartão e a despesa não aparece no resultado" | Fatura ainda não foi quitada por inteiro e a DRE está em Regime de Caixa | Troque o botão da DRE para Regime de Competência: a compra aparece no mês em que foi feita. Ou pague a fatura integralmente, que aí ela passa a contar também no Regime de Caixa. |
 | "Paguei parte da fatura e as compras continuam pendentes" | Pagamento parcial, por regra, não quita nenhuma compra | É proposital: não há como saber quais compras foram pagas. Assim que o pagamento completar a fatura, todas as compras dela são quitadas de uma vez. |
@@ -6319,10 +6511,10 @@ Palavras que o cliente usa pra isso: financeiro, caixa, fluxo de caixa, contas a
 
 ---
 
-# T14 · Notas Fiscais (NFS-e)
+# T14 · Notas Fiscais (NFS-e e NF-e)
 
 **Fase 06 da trilha:** O dinheiro e o fiscal
-**Do que trata:** Do certificado digital até a nota autorizada com a prefeitura. Passo delicado, feito devagar.
+**Do que trata:** Emitir NFS-e e acompanhar notas de serviço ou produto recebidas contra o CNPJ da empresa.
 **Depende de:** T13
 
 **Assuntos desta seção:**
@@ -6336,8 +6528,22 @@ Palavras que o cliente usa pra isso: financeiro, caixa, fluxo de caixa, contas a
 8. O caso do Simples Nacional: o percentual que precisa ser preenchido
 9. Nota autorizada: número, protocolo, chave de acesso; baixar PDF (DANFSe) e XML
 10. Cancelar nota com motivo, e reemitir depois (número novo)
+11. Notas recebidas: consultar NF-e e NFS-e emitidas contra o CNPJ
+12. Manifestar NF-e de produto e lançar a nota recebida como despesa
 
-## T14 Notas Fiscais (NFS-e)
+14
+
+Fase 06 · O dinheiro e o fiscal
+
+T14
+
+### Notas Fiscais (NFS-e e NF-e)
+
+🔒 Depende do módulo Emissão de Notas Fiscais
+
+Emitir NFS-e e acompanhar notas de serviço ou produto recebidas contra o CNPJ da empresa.
+
+Vídeo na trilha ~35minPré-requisito T13Capítulos 12Módulo Emissão de Notas Fiscais
 
 A NFS-e é a nota fiscal do serviço que a sua empresa presta: instalação, manutenção, limpeza, contrato de PMOC. Quem recebe é a prefeitura da cidade onde o serviço foi feito, e o imposto dela é o ISS. No Dominex você configura o certificado digital uma vez e passa a emitir, acompanhar, cancelar e baixar o documento sem sair do sistema.
 
@@ -6717,7 +6923,7 @@ Se você precisa emitir uma segunda nota legítima para o mesmo cliente, com o m
 
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "Não acho a tela de configuração fiscal no menu" | Ela não é uma tela, é um modal | A configuração fiscal abre de dentro de Notas Fiscais, pelo botão Configurações fiscais no topo da tela. Não existe item de menu separado. |
 | "Cancelei uma nota e agora não consigo emitir outra igual" | Confusão entre reaproveitar e criar novo documento | Nota cancelada nunca é reaproveitada: o sistema emite um documento novo, com número e chave novos, e mantém a cancelada na lista. Se a mensagem foi "Nota fiscal já emitida para este cliente e valor", existe uma nota AUTORIZADA igual, não cancelada. Confira a lista antes. |
 | "A nota foi autorizada mas não tem link do PDF" | O PDF é gerado sob demanda | Não existe link fixo. Clique em Baixar PDF na linha da nota: o documento é gerado na hora e baixa como arquivo. Leva alguns segundos e mostra "Gerando o PDF da nota...". |
@@ -6781,14 +6987,14 @@ Palavras que o cliente usa pra isso: nota fiscal, nota de serviço, NFS-e, emiti
 
 ---
 
-# T15 · Funcionários, Ponto e Folha
+# T15 · Funcionários: Financeiro do Funcionário e Ponto Eletrônico
 
 **Fase 07 da trilha:** Gente e crescimento
-**Do que trata:** Time cadastrado, ponto batendo e folha caindo no financeiro sem planilha paralela.
+**Do que trata:** Cadastro funcional, movimentações financeiras do funcionário, pagamento e controle de ponto eletrônico no mesmo fluxo.
 **Depende de:** T14
 
 **Assuntos desta seção:**
-1. Tela Funcionários e suas 5 abas
+1. Tela Funcionários: cadastro, financeiro individual e ponto eletrônico
 2. Cadastro: dados, foto, chave PIX, admissão
 3. Remuneração: salário, custo mensal e os campos CLT (CBO, matrícula, dependentes, VT)
 4. Configuração de pagamento: frequência e dia do mês
@@ -6798,9 +7004,20 @@ Palavras que o cliente usa pra isso: nota fiscal, nota de serviço, NFS-e, emiti
 8. Ponto: gerar o link público do funcionário e bater ponto pelo celular
 9. Aba Ponto do gestor: Hoje, Histórico, Relatório, Configurações (exigir selfie e localização)
 10. A folha aparecendo sozinha em Contas a Pagar e sendo quitada de lá
-11. Abas Comportamental (DISC) e Organograma
 
-## T15 Funcionários, Ponto e Folha
+15
+
+Fase 07 · Gente e crescimento
+
+T15
+
+### Funcionários: Financeiro do Funcionário e Ponto Eletrônico
+
+🔒 Depende do módulo Funcionários / RH
+
+Cadastro funcional, movimentações financeiras do funcionário, pagamento e controle de ponto eletrônico no mesmo fluxo.
+
+Vídeo na trilha ~35minPré-requisito T14Capítulos 10Módulo Funcionários / RH
 
 Aqui vive o time interno da sua empresa: cadastro do funcionário, salário, vale, falta, bônus, ponto eletrônico batido pelo celular e a folha de pagamento caindo sozinha no financeiro. É o módulo que tira a planilha paralela de cima da mesa.
 
@@ -7230,7 +7447,7 @@ Organograma: a lista de quadros salvos, com o atalho para criar um novo.
 
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "Onde fica o botão Gerar Folha?" | Ele não existe | A folha é gerada automaticamente uma vez por dia, para todo funcionário ativo com salário, e aparece sozinha em Financeiro, Contas, aba A Pagar, com a descrição "Folha [nome] — [período]". Não há botão pra gerar. |
 | "A folha do meu funcionário não apareceu" | Funcionário inativo, sem salário, ou vencimento além de 35 dias | Confira se o funcionário está ativo e com salário maior que zero, e confira a Configuração de Pagamento no cadastro. O sistema só cria folha para os próximos 35 dias, então um vencimento mais distante ainda não aparece. |
 | "Lancei um bônus e não saiu do caixa" | Comportamento correto | Bônus e falta são saldo interno do funcionário, não geram lançamento no financeiro na hora. Eles entram no caixa quando a folha é paga. Só o vale gera despesa imediata. |
@@ -7295,22 +7512,17 @@ Palavras que o cliente usa pra isso: RH, funcionário, colaborador, equipe, pont
 
 ---
 
-# T16 · Sua assinatura, plano e módulos
+# T16 · T16
 
 **Fase 07 da trilha:** Gente e crescimento
-**Do que trata:** Entender o que você paga, o que está incluído e como ligar um módulo novo.
-**Depende de:** T15
 
-**Assuntos desta seção:**
-1. Tela Assinatura: status, plano atual, vencimento e valor
-2. Card Uso da Conta: usuários usados × contratados
-3. Gerenciar Meu Plano — aba Planos Prontos
-4. Gerenciar Meu Plano — aba Personalizado: montar módulo a módulo + usuários extras
-5. O catálogo de módulos explicado em uma frase cada
-6. Pagar Agora → checkout: Pix, Boleto e Cartão
-7. Mensal × Anual (o desconto que só vale à vista) e o histórico de pagamentos
+16
 
-## T16 Sua assinatura, plano e módulos
+Fase 07 · Gente e crescimento
+
+T16
+
+### T16
 
 Entender exatamente o que você paga por mês, o que está incluído, como ligar um recurso novo sem falar com ninguém e como pagar quando vence. Esta é a tela que responde "por que minha fatura mudou?" e "por que eu não tenho o CRM?".
 
@@ -7589,7 +7801,7 @@ No fim da tela de Assinatura fica o cartão Histórico de pagamentos, com a desc
 
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "Paguei e o sistema continua bloqueado" | Pagamento ainda não compensado, normalmente boleto | Abra Assinatura › Histórico de pagamentos. Se a linha está Pendente, o pagamento não caiu. Pix libera em minutos; boleto pode levar até três dias úteis. |
 | "Meu valor está diferente do site" | Preço promocional ou plano personalizado | O valor da tela é o efetivo da empresa, já com promoção ou preço negociado. No plano Personalizado, o valor é a soma dos módulos e usuários contratados. |
 | "Marquei Anual no cartão e não veio desconto" | Comportamento esperado | O desconto vigente do ciclo anual vale só para pagamento à vista, por Pix ou Boleto. No cartão a cobrança é sempre mensal recorrente. |
@@ -7640,24 +7852,34 @@ Palavras que o cliente usa pra isso: assinatura, mensalidade, plano, upgrade, m�
 
 ---
 
-# T17 · Dashboard, rotina e truques
+# T17 · Dashboard, relatórios e exportações
 
 **Fase 07 da trilha:** Gente e crescimento
-**Do que trata:** Fechar a trilha lendo os números e montando a rotina que mantém o sistema vivo.
-**Depende de:** T16
+**Do que trata:** Fechar a trilha lendo os números e sabendo onde encontrar, filtrar e exportar os principais relatórios da operação.
+**Depende de:** T21
 
 **Assuntos desta seção:**
 1. Dashboard: os KPIs (OS abertas, pendentes, técnicos em campo, taxa de conclusão, faturamento, clientes ativos)
 2. Mapa ao vivo, fluxo de caixa e evolução de OS na tela inicial
 3. Top Técnicos, resumo por status, OS por tipo e OS críticas
-4. Chamados do Portal e o alerta de chamado novo
-5. Atalhos de teclado e busca rápida
-6. Rotina diária (5 min): OS críticas, chamados novos, agenda de amanhã
-7. Rotina semanal (20 min): funil do CRM, orçamentos em aberto, estoque mínimo
-8. Rotina mensal (1h): DRE, contas a receber vencidas, contratos a vencer, NPS
-9. Onde ver as novidades do sistema (Changelog) e como pedir ajuda
+4. Filtros de período e como conferir a origem de cada indicador
+5. Relatórios operacionais de OS e NPS: visão consolidada e filtros
+6. Onde encontrar cada família de relatório e quando voltar ao T20 para a leitura financeira
+7. Relatórios de estoque: posição, inventário e contagem
+8. Relatórios de pessoas e comercial: ponto e atividade
+9. Exportações em PDF, Excel e CSV e Exportar meus dados da empresa
 
-## T17 Dashboard, rotina e truques
+17
+
+Fase 07 · Gente e crescimento
+
+T17
+
+### Dashboard, relatórios e exportações
+
+Fechar a trilha lendo os números e sabendo onde encontrar, filtrar e exportar os principais relatórios da operação.
+
+Vídeo na trilha ~35minPré-requisito T21Capítulos 9
 
 Parar de achar e começar a medir. O Dashboard é a tela que responde, em dez segundos, se o dia está sob controle: quantas OS estão abertas, quem está em campo agora, quanto entrou no período e o que está atrasado. Aqui você aprende a ler cada bloco e a montar a rotina diária, semanal e mensal que mantém o sistema vivo.
 
@@ -7929,7 +8151,7 @@ Tela Novidades: a versão que você está usando aparece marcada com Versão atu
 
 ### Suporte: problemas comuns
 
-| O cliente diz | Causa provável | O que responder / fazer |
+| O cliente diz | Causa provável | Como resolver |
 | "Meu faturamento no Dashboard está menor do que eu recebi" | Transferências e pagamento de fatura são excluídos, e só o que está pago entra | Transferência entre contas e pagamento de fatura de cartão não são receita, então não entram. E conta a receber ainda em aberto também não conta. Confira em Financeiro. |
 | "O técnico está trabalhando e não aparece no mapa" | Sem ponto de GPS enviado | O mapa só plota quem já mandou posição. Peça pro técnico abrir a Área do Técnico ou a OS no celular e liberar a permissão de localização. |
 | "Não acho o cartão de clientes ativos no Dashboard" | Ele não existe como cartão | O Dashboard tem três cartões: OS Abertas, Taxa de Conclusão e Faturamento. A contagem de clientes fica na tela de Clientes. |

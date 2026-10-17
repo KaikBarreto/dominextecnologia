@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.12',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Compra de material integrada ao estoque e ao Financeiro',
+        description: 'A nova opção Registrar compra direta permite informar fornecedor, local, materiais, preços e pagamento em uma única etapa. Ao confirmar, os materiais entram no estoque e a despesa é criada no Financeiro sem precisar repetir o lançamento.',
+        category: 'recurso',
+      },
+      {
+        title: 'Histórico e média paga por material',
+        description: 'A tela de Estoque ganhou um relatório com histórico de compras, média paga ponderada, filtros por material, fornecedor, local, grupo e responsável, além de visualização por grupo e exportação em PDF ou Excel.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.36.11',
     date: '17 de outubro de 2026',
     type: 'patch',

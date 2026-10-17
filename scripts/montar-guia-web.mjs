@@ -419,7 +419,6 @@ function main() {
   // artefatos legíveis por máquina: markdown, chunks de RAG e índice.
   // Ficam na mesma rota pública pra qualquer ferramenta de IA conseguir puxar.
   const extras = [
-    ["Guia-Tecnico-Dominex.md", "guia.md"],
     ["Guia-Tecnico-chunks.jsonl", "chunks.jsonl"],
     ["Guia-Tecnico-index.json", "index.json"],
   ];
@@ -834,7 +833,26 @@ document.querySelectorAll('main table').forEach(function (t) {
 </script>
 </body></html>`;
 
-  fs.writeFileSync(path.join(DEST, "index.html"), html);
+  fs.writeFileSync(path.join(DEST, "index.html"), html.replace(/[ \t]+$/gm, ""));
+
+  // O markdown precisa nascer do mesmo HTML que acabou de ser publicado.
+  // Copiar o arquivo antigo de docs/ fazia a rota /guia-tecnico/guia.md ficar
+  // defasada quando somente as seções e a grade eram atualizadas.
+  try {
+    console.log(
+      execFileSync(
+        "python3",
+        ["scripts/guia-para-markdown.py", path.join(DEST, "index.html")],
+        { encoding: "utf8" },
+      ).trim(),
+    );
+    fs.renameSync(
+      path.join(DEST, "Guia-Tecnico-Dominex.md"),
+      path.join(DEST, "guia.md"),
+    );
+  } catch (e) {
+    console.warn("Geração do markdown público falhou:", String(e).slice(0, 200));
+  }
 
   // llms.txt: convenção pra agente de IA descobrir o conteúdo em texto puro
   fs.writeFileSync(

@@ -43,6 +43,7 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.purchaseDetail;
   const tCompras = MESSAGES[locale].app.inventory.compras;
+  const tDirect = MESSAGES[locale].app.inventory.directPurchase;
   const tOrdens = tCompras.ordens;
   const { money } = useLocaleFormatters();
   const { suppliers } = useSuppliers();
@@ -73,6 +74,7 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
   const [ordemToCancel, setOrdemToCancel] = useState<CompraOrdemRow | null>(null);
   const [ordemToDelete, setOrdemToDelete] = useState<CompraOrdemRow | null>(null);
   const [ordemToReceive, setOrdemToReceive] = useState<CompraOrdemRow | null>(null);
+  const isDirect = compra.flow_type === 'compra_direta';
 
   useEffect(() => {
     let cancelled = false;
@@ -190,7 +192,7 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
 
   const meta = COMPRA_STATUS[compra.status] ?? COMPRA_STATUS.aberta;
 
-  const compraActions: RowAction[] = [
+  const compraActions: RowAction[] = isDirect ? [] : [
     { label: t.compraActions.edit, icon: Pencil, variant: 'edit', onClick: () => onEdit(compra) },
     {
       label: t.compraActions.complete,
@@ -233,15 +235,21 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
               <span className="font-mono text-base font-medium text-muted-foreground sm:text-lg">#{compra.numero}</span>
               <h1 className="text-xl font-bold leading-tight sm:text-2xl">{compra.title}</h1>
               <Badge variant={meta.variant}>{meta.label}</Badge>
+              {isDirect && <Badge variant="info">{tDirect.card.badge}</Badge>}
             </div>
             {compra.notes && (
               <p className="mt-1.5 text-sm text-muted-foreground">{compra.notes}</p>
             )}
           </div>
-          <div className="shrink-0">
+          {!isDirect && <div className="shrink-0">
             <RowActionsMenu actions={compraActions} label={t.actionsLabel} />
-          </div>
+          </div>}
         </div>
+        {isDirect && (
+          <p className="rounded-lg border border-info/25 bg-info/5 px-3 py-2 text-xs text-muted-foreground">
+            {tDirect.detail.integratedNote}
+          </p>
+        )}
       </div>
 
       {/* Materiais da compra */}
@@ -269,7 +277,7 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
                     </span>
                   </div>
                   {/* Fornecedor escolhido pro item — só aparece quando alguma cotação já precificou o material. */}
-                  {options.length > 0 && (
+                  {!isDirect && options.length > 0 && (
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground">{tCompras.chosenSupplier}</Label>
                       <Select
@@ -298,7 +306,7 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
       </section>
 
       {/* Cotações por fornecedor */}
-      <section className="space-y-3">
+      {!isDirect && <section className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {t.sectionQuotes}
@@ -416,15 +424,15 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
             })}
           </div>
         )}
-      </section>
+      </section>}
 
       {/* Ordens de Compra (uma por fornecedor, geradas a partir da escolha por item) */}
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            {tOrdens.title}
+            {isDirect ? tDirect.detail.summaryTitle : tOrdens.title}
           </h2>
-          <Button
+          {!isDirect && <Button
             size="sm"
             variant="outline"
             className="gap-1.5"
@@ -432,7 +440,7 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
             onClick={handleGenerateOrdens}
           >
             <ClipboardList className="h-4 w-4" /> {tOrdens.generate}
-          </Button>
+          </Button>}
         </div>
 
         {ordensLoading ? (
@@ -506,7 +514,7 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
                       <span className="text-base font-bold">{money(o.total)}</span>
-                      <RowActionsMenu actions={ordemActions} label={t.actionsLabel} />
+                      {!isDirect && <RowActionsMenu actions={ordemActions} label={t.actionsLabel} />}
                     </div>
                   </div>
                 </div>

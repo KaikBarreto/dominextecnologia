@@ -22,6 +22,12 @@ export interface CompraListRow extends Compra {
   accepted_supplier_name: string | null;
   /** Total da cotação aceita; null se não há aceita ou ela não tem preço. */
   accepted_total: number | null;
+  /** Fornecedor da compra direta; null nas requisições normais. */
+  direct_supplier_name: string | null;
+  /** Total calculado pelos itens recebidos da compra direta. */
+  direct_total: number | null;
+  /** Elo 1:1 com o Financeiro; null nas requisições normais. */
+  direct_financial_transaction_id: string | null;
 }
 
 /**
@@ -70,21 +76,42 @@ export function useCompras() {
 
       // Carrega materiais, cotações, preços e fornecedores de todas as compras
       // de uma vez. Fornecedores servem para nomear a cotação aceita.
-      const [matsRes, cotsRes, pricesRes, supsRes] = await Promise.all([
+      const [matsRes, cotsRes, pricesRes, supsRes, ordersRes] = await Promise.all([
         supabase.from('compra_materiais').select('*').in('compra_id', ids),
         supabase.from('compra_cotacoes').select('*').in('compra_id', ids),
         supabase.from('compra_cotacao_precos').select('*').in('company_id', companyId ? [companyId] : []),
         supabase.from('suppliers').select('id, name'),
+        supabase
+          .from('compra_ordens')
+          .select('id, compra_id, supplier_id, financial_transaction_id')
+          .in('compra_id', ids),
       ]);
       if (matsRes.error) throw matsRes.error;
       if (cotsRes.error) throw cotsRes.error;
       if (pricesRes.error) throw pricesRes.error;
       if (supsRes.error) throw supsRes.error;
+      if (ordersRes.error) throw ordersRes.error;
 
       const mats = (matsRes.data ?? []) as CompraMaterial[];
       const cots = (cotsRes.data ?? []) as Tables<'compra_cotacoes'>[];
       const prices = (pricesRes.data ?? []) as Tables<'compra_cotacao_precos'>[];
       const sups = (supsRes.data ?? []) as Pick<Tables<'suppliers'>, 'id' | 'name'>[];
+      const orders = (ordersRes.data ?? []) as Pick<
+        Tables<'compra_ordens'>,
+        'id' | 'compra_id' | 'supplier_id' | 'financial_transaction_id'
+      >[];
+      const orderIds = orders.map((order) => order.id);
+      const orderItemsRes = orderIds.length > 0
+        ? await supabase
+          .from('compra_ordem_itens')
+          .select('ordem_id, quantity_ordered, unit_price')
+          .in('ordem_id', orderIds)
+        : { data: [], error: null };
+      if (orderItemsRes.error) throw orderItemsRes.error;
+      const orderItems = (orderItemsRes.data ?? []) as Pick<
+        Tables<'compra_ordem_itens'>,
+        'ordem_id' | 'quantity_ordered' | 'unit_price'
+      >[];
 
       const qtyByMaterial = new Map<string, number>(mats.map((m) => [m.id, m.quantity]));
       const supplierName = new Map<string, string>(sups.map((s) => [s.id, s.name]));
@@ -111,6 +138,17 @@ export function useCompras() {
           ? supplierName.get(accepted.supplier_id) ?? null
           : null;
         const accepted_total = accepted ? cotacaoTotal(accepted.id) || null : null;
+        const directOrder = c.flow_type === 'compra_direta'
+          ? orders.find((order) => order.compra_id === c.id) ?? null
+          : null;
+        const direct_total = directOrder
+          ? orderItems
+            .filter((item) => item.ordem_id === directOrder.id)
+            .reduce(
+              (sum, item) => sum + Number(item.quantity_ordered) * Number(item.unit_price ?? 0),
+              0,
+            )
+          : null;
 
         return {
           ...c,
@@ -118,6 +156,11 @@ export function useCompras() {
           lowest_total: lowest,
           accepted_supplier_name,
           accepted_total,
+          direct_supplier_name: directOrder
+            ? supplierName.get(directOrder.supplier_id) ?? null
+            : null,
+          direct_total,
+          direct_financial_transaction_id: directOrder?.financial_transaction_id ?? null,
         };
       });
     },

@@ -67,7 +67,7 @@
     {
       "id": "t8-compras",
       "url": "/estoque",
-      "legenda": "Aba Compras de Material, com a lista de requisições de compra, o status de cada uma e a contagem de cotações.",
+      "legenda": "Aba Compras de Material, com a lista de requisições e compras diretas, os botões Nova requisição de compra e Registrar compra direta, status, fornecedor e total.",
       "passos": [
         {
           "esperar": 3000
@@ -80,6 +80,34 @@
         }
       ],
       "recorte": "main"
+    },
+    {
+      "id": "t8-compra-direta",
+      "url": "/estoque",
+      "legenda": "Janela Compra de material, que registra fornecedor, local, itens, custo e pagamento para atualizar estoque e financeiro juntos.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Compras de Material"
+        },
+        {
+          "esperar": 2000
+        },
+        {
+          "clicar": "Registrar compra direta"
+        },
+        {
+          "esperar": 1500
+        }
+      ],
+      "recorte": "dialog",
+      "viewport": {
+        "largura": 1440,
+        "altura": 1100
+      },
+      "observacao": "Somente abrir e capturar. Nunca clicar em Registrar compra. O botão exige acesso simultâneo a Estoque e Financeiro."
     },
     {
       "id": "t8-nova-requisicao",
@@ -143,6 +171,28 @@
         }
       ],
       "recorte": "main"
+    },
+    {
+      "id": "t8-relatorio-compras",
+      "url": "/estoque",
+      "legenda": "Aba Relatório de estoque por material, com indicadores de compras, áreas futuras do PDV, filtros, visão por material ou grupo e tabela de média paga.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Relatório"
+        },
+        {
+          "esperar": 3000
+        }
+      ],
+      "recorte": "main",
+      "viewport": {
+        "largura": 1920,
+        "altura": 1100
+      },
+      "observacao": "Capturar depois da migration do relatório e com compras fictícias. A largura maior preserva as colunas de custo, saldo e PDV sem corte."
     }
   ]
 }

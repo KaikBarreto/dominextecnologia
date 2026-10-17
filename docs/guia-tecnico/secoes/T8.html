@@ -11,27 +11,25 @@
     <span><b>Módulo:</b> a tela não depende de módulo pago</span>
   </div>
 
-  <h2>1. Tela Estoque: as 5 abas e pra que serve cada uma</h2>
+  <h2>1. Tela Estoque: as 6 abas e pra que serve cada uma</h2>
 
-  <p>A tela se chama <span class="ui">Estoque</span>, com o subtítulo "Controle de peças e materiais". Ela tem cinco abas na navegação lateral:</p>
+  <p>A tela se chama <span class="ui">Estoque</span>, com o subtítulo "Controle de peças e materiais". Ela tem seis abas na navegação lateral:</p>
 
   <table class="dados">
     <thead><tr><th>Aba</th><th>Para que serve</th></tr></thead>
     <tbody>
       <tr><td><span class="ui">Estoque Atual</span></td><td>O que existe hoje, por local. É a tela do dia a dia: cadastrar material, ver saldo, registrar entrada e saída, transferir.</td></tr>
       <tr><td><span class="ui">Histórico de Materiais (Kardex)</span></td><td>Todo movimento que já aconteceu, item por item, com saldo antes e depois.</td></tr>
-      <tr><td><span class="ui">Compras de Material</span></td><td>Requisições de compra, fornecedores e cotações.</td></tr>
+      <tr><td><span class="ui">Compras de Material</span></td><td>Requisições, fornecedores, cotações, Ordens de Compra e compra direta ligada ao Financeiro.</td></tr>
       <tr><td><span class="ui">Inventários</span></td><td>Contagem física: você conta, o sistema compara com o esperado e ajusta a diferença.</td></tr>
       <tr><td><span class="ui">Posição de Estoque</span></td><td>Qual era o saldo numa data passada. É o retrato do estoque para fechamento e para conferência com o contador.</td></tr>
+      <tr><td><span class="ui">Relatório</span></td><td>Histórico comercial das compras por material, com total comprado, média paga, formas de pagamento, saldo atual e projeção baseada no preço de venda cadastrado.</td></tr>
     </tbody>
   </table>
 
-  <p>No celular, para caber na faixa de abas, três desses nomes aparecem encurtados: <span class="ui">Histórico de Materiais (Kardex)</span> vira só <span class="ui">Histórico</span>, <span class="ui">Compras de Material</span> vira <span class="ui">Compras</span> e <span class="ui">Posição de Estoque</span> vira <span class="ui">Posição</span>. <span class="ui">Estoque Atual</span> e <span class="ui">Inventários</span> continuam com o nome completo mesmo no celular. É a mesma tela e as mesmas colunas, só o rótulo da aba que muda de tamanho.</p>
+  <p>No celular, para caber na faixa de abas, três desses nomes aparecem encurtados: <span class="ui">Histórico de Materiais (Kardex)</span> vira só <span class="ui">Histórico</span>, <span class="ui">Compras de Material</span> vira <span class="ui">Compras</span> e <span class="ui">Posição de Estoque</span> vira <span class="ui">Posição</span>. <span class="ui">Estoque Atual</span>, <span class="ui">Inventários</span> e <span class="ui">Relatório</span> mantêm o nome. É a mesma tela, só o rótulo de algumas abas muda de tamanho.</p>
 
-  <figure>
-    <img src="img/t8-estoque.png" alt="Tela Estoque da Dominex na aba Estoque Atual, com os indicadores de total de itens, valor investido, projeção de venda e estoque baixo, mais a tabela de materiais">
-    <figcaption>Estoque: aba Estoque Atual, com os indicadores e a lista de materiais.</figcaption>
-  </figure>
+  <!-- PRINT FALTANDO: t8-estoque — refazer a tela Estoque na aba Estoque Atual depois da publicação, mostrando as seis abas, inclusive Relatório. O print anterior mostrava cinco abas e foi retirado para não ensinar uma navegação antiga. -->
 
   <h3>Os quatro indicadores da aba Estoque Atual</h3>
   <ul>
@@ -199,14 +197,11 @@
     O Kardex é a ferramenta para responder "cadê os 20 filtros que compramos mês passado". Filtre pelo material, ordene por data e leia a coluna de saldo: em algum ponto o número muda sem um movimento correspondente, e ali está a resposta.
   </div>
 
-  <h2>6. Aba Compras: abrir compra, cadastrar fornecedor</h2>
+  <h2>6. Aba Compras: requisição ou compra direta, fornecedor e financeiro</h2>
 
-  <p>A aba <span class="ui">Compras de Material</span> mostra o título <span class="ui">Requisições de Compra</span>. Uma requisição é a lista do que você precisa comprar, antes de saber de quem e por quanto.</p>
+  <p>A aba <span class="ui">Compras de Material</span> atende dois momentos diferentes. <span class="ui">Nova requisição de compra</span> organiza o que ainda será cotado e comprado. <span class="ui">Registrar compra direta</span> serve para algo que já foi comprado: uma única confirmação registra a entrada no estoque e a despesa no Financeiro.</p>
 
-  <figure>
-    <img src="img/t8-compras.png" alt="Aba Compras de Material com a faixa de alerta 1 material abaixo do mínimo e o atalho Criar requisição, a busca por código ou título, os botões Filtros, Fornecedores e Nova requisição de compra, e dois cartões de requisição: Reposição teste QA (Aberta, 0 cotações) e Reposição de Gases (Aberta, 1 cotação, menor cotação R$ 2.000,00)">
-    <figcaption>Aba Compras de Material: o alerta de estoque abaixo do mínimo vira atalho direto para uma nova requisição.</figcaption>
-  </figure>
+  <!-- PRINT FALTANDO: t8-compras — refazer a aba Compras de Material com Nova requisição de compra, Registrar compra direta e pelo menos um cartão fictício de cada tipo. O print anterior não mostrava a compra direta e foi retirado. -->
 
   <h3>Criar uma requisição</h3>
   <ol>
@@ -224,6 +219,36 @@
     <img src="img/t8-nova-requisicao.png" alt="Janela Nova Requisição de Compra com o campo Título vazio, o botão âmbar Adicionar itens abaixo do mínimo, a chave Do estoque/Fora do estoque, o campo Adicionar material do estoque, a mensagem Nenhum material adicionado e o campo Observações">
     <figcaption>Janela Nova Requisição de Compra: título, materiais (do estoque ou não) e o atalho para o que já está abaixo do mínimo.</figcaption>
   </figure>
+
+  <h3>Registrar uma compra que já aconteceu</h3>
+  <p>Use <span class="ui">Registrar compra direta</span> quando você já sabe o fornecedor, o que chegou e quanto foi pago. A janela <span class="ui">Compra de material</span> explica: "Registre a entrada no estoque e a despesa financeira em uma única operação."</p>
+
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>O que acontece</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Descrição</span></td><td>Não</td><td>Identifica a compra no histórico, por exemplo "Reposição de cobre".</td></tr>
+      <tr><td><span class="ui">Fornecedor</span></td><td>Sim</td><td>Vincula a compra ao fornecedor cadastrado.</td></tr>
+      <tr><td><span class="ui">Local de estoque</span></td><td>Sim</td><td>É o local que recebe todos os materiais desta compra. O local principal vem selecionado quando existe.</td></tr>
+      <tr><td><span class="ui">Data da compra</span></td><td>Sim</td><td>Não aceita data futura.</td></tr>
+      <tr><td><span class="ui">Materiais</span>, <span class="ui">Quantidade</span> e <span class="ui">Preço unitário</span></td><td>Sim</td><td>Você pode adicionar várias linhas. O mesmo material não pode ser repetido. O sistema calcula o subtotal de cada linha e o <span class="ui">Total da compra</span>.</td></tr>
+      <tr><td><span class="ui">Categoria financeira</span></td><td>Sim</td><td>Classifica a despesa. Quando existe uma categoria de materiais ligada ao CMV, ela é sugerida primeiro.</td></tr>
+      <tr><td><span class="ui">Conta financeira</span></td><td>Sim</td><td>Escolha uma conta ativa de caixa ou banco. Conta de cartão de crédito não entra neste fluxo.</td></tr>
+      <tr><td><span class="ui">Situação do pagamento</span></td><td>Sim</td><td>Em <span class="ui">Pago</span>, informe forma e data do pagamento. Em <span class="ui">Pendente</span>, informe o vencimento.</td></tr>
+      <tr><td><span class="ui">Observações</span></td><td>Não</td><td>Guarda contexto adicional da compra.</td></tr>
+    </tbody>
+  </table>
+
+  <p>Em uma compra paga, as formas disponíveis são Dinheiro, Pix, Cartão de débito, Transferência, Boleto e Cheque. Cartão de crédito fica fora porque esse tipo de despesa precisa entrar pela fatura do cartão, não como saída já paga da conta.</p>
+
+  <div class="regra">
+    <b>A compra direta é uma operação única.</b> Ao confirmar, o sistema cria a compra, registra as entradas no local escolhido e lança uma despesa no Financeiro pelo total calculado dos materiais. Se alguma parte falhar, nada deve ficar lançado pela metade. Repetir a mesma tentativa também não duplica estoque nem despesa.
+  </div>
+
+  <div class="aviso">
+    O botão só aparece para Admin, Gestor ou para um usuário que tenha, ao mesmo tempo, permissão de gerenciar Estoque e Financeiro. Depois de registrada, a compra recebe o selo <span class="ui">Compra direta</span> e fica somente para consulta. Ela não oferece Editar, Reabrir, Cancelar ou Excluir por partes, porque isso separaria o estoque da despesa financeira.
+  </div>
+
+  <!-- PRINT FALTANDO: t8-compra-direta — janela "Compra de material" aberta, com fornecedor, local, materiais, total, categoria, conta e situação do pagamento. Capturar sem preencher dados pessoais e sem clicar em Registrar compra. -->
 
   <h3>Cadastrar fornecedor</h3>
   <p>O botão <span class="ui">Fornecedores</span> abre a janela com a lista. Em <span class="ui">Novo</span>, o cadastro pede <span class="ui">Nome *</span> (único obrigatório), <span class="ui">CPF/CNPJ</span>, <span class="ui">Contato</span>, <span class="ui">Telefone</span>, <span class="ui">E-mail</span> e <span class="ui">Observações</span>. Sem fornecedor cadastrado: "Nenhum fornecedor" e "Cadastre fornecedores para usá-los nas cotações."</p>
@@ -254,17 +279,33 @@
   </ul>
 
   <div class="regra">
-    <b>Aceitar a cotação NÃO mexe no estoque.</b> A própria tela avisa: "Aceitar não mexe no estoque. Use Registrar entrada quando o material chegar." São dois momentos diferentes de propósito: decidir de quem comprar e receber a mercadoria. Aceitar antes e receber depois é o normal.
+    <b>Aceitar a cotação NÃO mexe no estoque.</b> Cotar e receber são momentos separados. A entrada só acontece no recebimento da Ordem de Compra.
   </div>
 
-  <h3>Registrar a entrada quando o material chegar</h3>
-  <p>Na cotação aceita, use <span class="ui">Registrar entrada no estoque</span>. A confirmação explica: "Os materiais desta compra serão dados de entrada com o fornecedor <i>[nome]</i> e os preços desta cotação. Materiais fora do estoque serão criados automaticamente. O movimento aparece no histórico (Kardex)."</p>
+  <h3>Gerar as Ordens de Compra</h3>
+  <p>Depois das cotações, escolha o <span class="ui">Fornecedor escolhido</span> de cada material. O botão <span class="ui">Gerar ordens de compra</span> cria uma O.C. separada para cada fornecedor escolhido. Se não houver material com fornecedor, a mensagem é "Nenhum material com fornecedor escolhido. Escolha o fornecedor de cada material antes de gerar as ordens."</p>
 
   <ul>
-    <li>Material que já existe no cadastro recebe uma <b>entrada</b> com a quantidade e o custo daquela cotação.</li>
-    <li>Material marcado como <span class="ui">Fora do estoque</span> é <b>criado no cadastro</b> na hora, com o nome, a unidade e o custo da cotação, e recebe a entrada. Ele ganha o selo <span class="ui">Criar no estoque</span> antes da confirmação.</li>
-    <li>Ao final, a confirmação é "Entrada registrada (N itens)."</li>
+    <li>Cada O.C. recebe um número e mostra fornecedor, total, quantidade pedida, quantidade recebida e quantidade pendente.</li>
+    <li>Os status são <span class="ui">Rascunho</span>, <span class="ui">Enviada</span>, <span class="ui">Recebida parcial</span>, <span class="ui">Recebida</span> e <span class="ui">Cancelada</span>.</li>
+    <li>Uma ordem pode ser baixada em PDF para envio ou conferência.</li>
+    <li>Se já existir uma ordem em aberto para aquele fornecedor na mesma requisição, ela é pulada para não duplicar.</li>
   </ul>
+
+  <h3>Registrar o recebimento quando o material chegar</h3>
+  <p>Na O.C., use <span class="ui">Registrar recebimento</span>. A janela orienta: "Informe só o que chegou agora. Você pode receber em partes, o saldo continua pendente." Digite a quantidade recebida de cada item ou use <span class="ui">Receber tudo</span>, depois confirme.</p>
+
+  <ul>
+    <li>A quantidade recebida não pode passar da quantidade pedida.</li>
+    <li>Recebimento parcial atualiza a quantidade pendente e deixa a ordem como <span class="ui">Recebida parcial</span>.</li>
+    <li>Quando todos os itens chegam, a ordem muda para <span class="ui">Recebida</span>.</li>
+    <li>Material que ainda não existe no cadastro é criado na hora e recebe a entrada.</li>
+    <li>Cada recebimento gera uma entrada no Kardex no local de destino da requisição.</li>
+  </ul>
+
+  <div class="aviso">
+    A Ordem de Compra tradicional controla cotação, pedido e recebimento, mas não cria automaticamente uma despesa no Financeiro. No Relatório, ela aparece como <span class="ui">Não vinculado</span>. Para registrar estoque e financeiro juntos numa compra já realizada, use <span class="ui">Registrar compra direta</span>.
+  </div>
 
   <h2>8. Importar XML da NF-e e a compra montada sozinha</h2>
 
@@ -353,6 +394,47 @@
     Essa aba é o que o contador pede no fechamento do ano: o valor do estoque em 31 de dezembro. Também serve para conferir "quanto eu tinha antes daquela obra grande" e para justificar variação de custo entre meses.
   </div>
 
+  <h2>11. Aba Relatório: histórico, média paga, projeção e exportação</h2>
+
+  <p>A aba <span class="ui">Relatório</span> abre o <span class="ui">Relatório de estoque por material</span>. Ela responde quanto foi comprado, de quem, para qual local, quanto foi pago por unidade e qual seria a projeção usando o preço de venda cadastrado no material.</p>
+
+  <h3>Indicadores</h3>
+  <ul>
+    <li><span class="ui">Total comprado</span>: soma dos itens recebidos com preço conhecido. Abrindo o cartão aparecem ticket médio por compra, quantidade de materiais, material com maior quantidade, cobertura de preço, quantidades separadas por unidade e distribuição das formas de pagamento.</li>
+    <li><span class="ui">Total vendido</span> e <span class="ui">Lucro bruto</span>: ficam identificados como <span class="ui">PDV</span>. Eles só serão calculados quando existir venda real registrada pelo PDV.</li>
+    <li><span class="ui">Projeção de lucro</span>: estimativa que compara o custo comprado com o preço de venda cadastrado. Abrindo o cartão, o sistema mostra a venda projetada e a margem estimada.</li>
+  </ul>
+
+  <div class="regra">
+    <b>Média paga não é custo contábil do saldo.</b> Para cada material, a média é ponderada: soma do valor das compras com preço dividido pela quantidade dessas compras. Material sem preço fica fora do cálculo e reduz a <span class="ui">Cobertura de preço</span>. O sistema não mistura kg, metro e unidade numa média geral. Na visão por grupo, a média só aparece quando todos os materiais somados usam a mesma unidade.
+  </div>
+
+  <h3>Período e filtros</h3>
+  <p>O período pode ser <span class="ui">Últimos 30 dias</span>, <span class="ui">Últimos 90 dias</span>, <span class="ui">Este ano</span>, <span class="ui">Todo o histórico</span> ou <span class="ui">Personalizado</span>. O botão <span class="ui">Filtros</span> permite selecionar vários Materiais, Fornecedores, Locais, Grupos e Responsáveis pela O.C. A opção <span class="ui">Ocultar materiais sem movimento no período</span> fica guardada para a próxima vez. O filtro Clientes está reservado para quando o PDV estiver ativo.</p>
+
+  <p>A chave <span class="ui">Por material</span> / <span class="ui">Por grupo</span> troca a organização da tabela. Por material, cada linha mostra SKU e grupo. Por grupo, cada linha vira um subtotal e pode ser aberta para mostrar os materiais daquele grupo. A busca aceita nome, SKU e grupo.</p>
+
+  <h3>Tabela e histórico</h3>
+  <p>As colunas são Material ou Grupo, Última compra, Compras, Qtd. comprada, Valor comprado, Média paga, Saldo atual, Qtd. vendida, Valor vendido e Lucro projetado. As colunas disponíveis podem ser ordenadas. A paginação oferece 10, 25 ou 50 linhas e guarda a preferência.</p>
+
+  <p>Abrindo uma linha aparece o <span class="ui">Histórico de compras</span>, com data, fornecedor, local, número da O.C., responsável, situação ou forma de pagamento, quantidade, valor unitário e total. Compra direta mostra o pagamento que foi lançado no Financeiro. O.C. tradicional sem lançamento financeiro aparece como <span class="ui">Não vinculado</span>, nunca como pendente por suposição.</p>
+
+  <div class="aviso">
+    <span class="ui">Saldo atual</span> é o saldo de agora, mesmo quando o período do relatório está no passado. Para saber o saldo que existia numa data antiga, use a aba <span class="ui">Posição de Estoque</span>. Em recebimentos parciais antigos, o histórico comercial pode usar a data consolidada da O.C., porque essas compras não guardavam um evento detalhado para cada parcela recebida.
+  </div>
+
+  <h3>Exportar</h3>
+  <ul>
+    <li><span class="ui">PDF</span>: abre em paisagem com identidade da empresa, filtros aplicados, indicadores, distribuição de pagamentos, tabela visível e histórico de compras.</li>
+    <li><span class="ui">Excel</span>: gera as abas <span class="ui">Resumo</span>, <span class="ui">Histórico</span> e <span class="ui">Por grupo</span>. Quantidades e valores permanecem numéricos para soma, filtro e tabela dinâmica.</li>
+  </ul>
+
+  <div class="regra">
+    Saída, consumo, transferência e ajuste de estoque não são venda. O relatório não inventa faturamento a partir desses movimentos. Quando o PDV entrar, cada venda precisa trazer sua origem comercial e o custo congelado daquele momento para preservar a margem histórica.
+  </div>
+
+  <!-- PRINT FALTANDO: t8-relatorio-compras — aba Relatório com os quatro indicadores, o cartão Total comprado expandido, filtros e a tabela por material. Capturar depois que a migration do relatório estiver aplicada e houver compras fictícias na conta de teste. -->
+
   <h2 class="suporte">Suporte: problemas comuns</h2>
   <table class="faq">
     <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
@@ -385,7 +467,27 @@
       <tr>
         <td>"Aceitei a cotação e o estoque não entrou"</td>
         <td>Aceitar e receber são etapas diferentes</td>
-        <td>A própria tela avisa: "Aceitar não mexe no estoque. Use Registrar entrada quando o material chegar." Abra a cotação aceita e use <span class="ui">Registrar entrada no estoque</span>.</td>
+        <td>Aceitar a cotação só registra a decisão comercial. Escolha o fornecedor de cada material, gere a Ordem de Compra e use <span class="ui">Registrar recebimento</span> na O.C. quando o material chegar.</td>
+      </tr>
+      <tr>
+        <td>"O botão Registrar compra direta não aparece"</td>
+        <td>O usuário não tem acesso aos dois domínios</td>
+        <td>A compra direta movimenta estoque e financeiro na mesma confirmação. Ela só aparece para Admin, Gestor ou para quem tem as permissões de gerenciar Estoque e Financeiro ao mesmo tempo.</td>
+      </tr>
+      <tr>
+        <td>"Não aparece meu cartão de crédito na compra"</td>
+        <td>Compra direta não lança fatura de cartão</td>
+        <td>Esse fluxo aceita conta ativa de caixa ou banco. Compra no cartão de crédito precisa ser registrada pelo fluxo da fatura no Financeiro, para não parecer uma saída já paga da conta.</td>
+      </tr>
+      <tr>
+        <td>"A média paga ficou diferente da média que fiz na calculadora"</td>
+        <td>Média simples, unidades misturadas ou compra sem preço</td>
+        <td>O relatório usa média ponderada por quantidade de cada material. Itens sem preço ficam fora e aparecem na cobertura de preço. O sistema também não soma kg, metro e unidade numa média geral.</td>
+      </tr>
+      <tr>
+        <td>"A compra aparece como Não vinculado no relatório"</td>
+        <td>A O.C. tradicional não gerou despesa financeira</td>
+        <td>Isso não significa que está pendente. Significa apenas que aquela Ordem de Compra não tem lançamento financeiro ligado. Compras diretas novas trazem Pago ou Em aberto conforme o que foi informado.</td>
       </tr>
       <tr>
         <td>"Finalizei o inventário com número errado"</td>
@@ -430,13 +532,25 @@
     <dd>Pela tela de Estoque, só quem tem a permissão de gerenciar estoque e acesso ao local. Dentro da própria Ordem de Serviço, sim, quando a empresa liga o recurso <span class="ui">Consumo de estoque na OS</span> em Configurações → Usabilidade: o técnico anota o material usado durante o atendimento pelo <span class="ui">Consumir do estoque</span> do menu de mais ações, e a baixa é confirmada no resumo editável que aparece ao finalizar a OS. Com o recurso desligado, a tela de execução não mostra esse passo.</dd>
 
     <dt>Aceitar a cotação já compra o material?</dt>
-    <dd>Não. Aceitar registra a decisão de qual fornecedor venceu. Quando a mercadoria chega, use <span class="ui">Registrar entrada no estoque</span> na cotação aceita, e aí sim o saldo sobe.</dd>
+    <dd>Não. Aceitar registra a decisão comercial. Depois escolha o fornecedor de cada material, gere a Ordem de Compra e registre o recebimento na O.C. quando a mercadoria chegar. Só o recebimento aumenta o saldo.</dd>
+
+    <dt>Qual a diferença entre requisição e compra direta?</dt>
+    <dd>Requisição é o planejamento do que ainda será cotado, pedido e recebido. Compra direta é para material já comprado: ao confirmar, o saldo entra no local escolhido e a despesa nasce no Financeiro na mesma operação.</dd>
+
+    <dt>A compra direta pode ficar pendente no Financeiro?</dt>
+    <dd>Pode. Em <span class="ui">Situação do pagamento</span>, escolha <span class="ui">Pendente</span> e informe o vencimento. Se já pagou, escolha <span class="ui">Pago</span>, a forma de pagamento e a data.</dd>
 
     <dt>O que acontece com o material "fora do estoque" da requisição?</dt>
     <dd>Ele fica só como texto na requisição até a entrada ser registrada. Nesse momento, o sistema cria o item no cadastro com o nome, a unidade e o custo da cotação, e dá a entrada.</dd>
 
     <dt>Como sei quanto tinha em estoque no fim do ano passado?</dt>
     <dd>Na aba <span class="ui">Posição de Estoque</span>, escolha a data e clique em <span class="ui">Atualizar</span>. Ela reconstrói o saldo daquele dia e mostra o valor total em custo e a projeção de venda, com exportação em PDF e Excel.</dd>
+
+    <dt>Onde vejo quanto paguei em média pelo cobre ou por outro material?</dt>
+    <dd>Abra a aba <span class="ui">Relatório</span>, filtre o material e consulte <span class="ui">Média paga</span>. O valor é ponderado pelas quantidades recebidas e representa uma estimativa histórica. Abra a linha para conferir cada compra que formou a média.</dd>
+
+    <dt>O Relatório já mostra vendas e lucro real?</dt>
+    <dd>Ainda não. Os cartões de venda e lucro ficam identificados como PDV e só passam a calcular quando existir uma venda comercial real com custo congelado. Hoje a <span class="ui">Projeção de lucro</span> é apenas uma estimativa baseada no preço de venda cadastrado.</dd>
 
     <dt>Posso fazer inventário só de uma parte do estoque?</dt>
     <dd>Pode. No passo <span class="ui">Escopo</span>, escolha <span class="ui">Por grupo de material</span> ou <span class="ui">Itens específicos</span>. Contagem parcial mensal por grupo costuma funcionar melhor que uma contagem geral por ano.</dd>
@@ -449,6 +563,6 @@
   </dl>
 
   <div class="glossario">
-    <b>Palavras que o cliente usa para isso:</b> estoque, almoxarifado, depósito, van, peça, material, insumo, dar baixa, entrada, saída, kardex, extrato do estoque, contagem, balanço, inventário, requisição, cotação, fornecedor, nota do fornecedor, XML da nota
+    <b>Palavras que o cliente usa para isso:</b> estoque, almoxarifado, depósito, van, peça, material, insumo, dar baixa, entrada, saída, kardex, extrato do estoque, contagem, balanço, inventário, requisição, cotação, ordem de compra, compra direta, fornecedor, nota do fornecedor, XML da nota, média paga, custo médio, histórico de compras, relatório por material
   </div>
 </section>

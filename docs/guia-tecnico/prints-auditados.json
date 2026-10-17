@@ -509,19 +509,9 @@
     "hash": "86a695a3e3a75dc96c42bfd44e72d71acce308e8c08e827f6f648979c71afa07",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
-  "t8-compras.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "91d96d0d1194657db59ab89f2cb59c5769c64039d38f10e8a10274593445d7dd",
-    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-  },
   "t8-config-locais.png": {
     "auditado_em": "2026-09-06",
     "hash": "087fa1f19fc6279b7d3aebab4d7806affbd9e6fce35ffae7efaf223e3a9a9a91",
-    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
-  },
-  "t8-estoque.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "812d5b06bbbbdb7c2f303b6b1f4d4f52697d19d6cda7d080e9ffaafd144ebbd7",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t8-inventario-wizard.png": {

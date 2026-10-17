@@ -328,30 +328,34 @@ T0  Bem-vindo, configuração, identidade e assinatura
 
 # 🎬 T8 — Estoque, compras e inventário (Inspiração visual: *Duna*)
 
-**Duração**: ~35min · **Pré-requisito**: T7
+**Duração**: ~43min · **Pré-requisito**: T7
 **Responsável**: Maicon
 
 > Controlar o que entra, o que sai e o que sumiu. Vale pra quem tem depósito e pra quem carrega peça na van.
 
 **Capítulos**
-1. `00:00` Tela **Estoque**: as 5 abas e pra que serve cada uma
+1. `00:00` Tela **Estoque**: as 6 abas e pra que serve cada uma
 2. `02:00` Cadastrar material: categoria/grupo, unidade, **estoque mínimo** e custo
 3. `06:00` **Depósitos/locais**: criar, definir o que existe em cada um e transferir entre eles
 4. `11:00` Restrição de acesso por depósito — quem vê o quê
 5. `13:00` Aba **Histórico (Kardex)**: lendo a movimentação item a item
-6. `16:00` Aba **Compras**: abrir compra, cadastrar fornecedor
+6. `16:00` Aba **Compras**: requisição ou compra direta, fornecedor e financeiro
 7. `19:00` **Cotação** com vários fornecedores e escolha da vencedora
 8. `23:00` **Importar XML da NF-e** e a compra montada sozinha
 9. `26:00` Aba **Inventários**: contagem física passo a passo e o ajuste gerado no fechamento
 10. `31:00` Aba **Posição**: saldo do estoque numa data passada
+11. `35:00` Aba **Relatório**: histórico, média paga, projeção e exportação
 
 - **Abertura**: "Neste tutorial você vai colocar seu estoque sob controle, do cadastro do material até a contagem física."
-- **Recap**: "Materiais cadastrados, depósitos organizados, compra cotada e inventário fechado."
+- **Recap**: "Materiais cadastrados, depósitos organizados, compras ligadas ao estoque e ao financeiro, inventário fechado e custos acompanhados no relatório."
 - **Próximo**: "No próximo tutorial: orçamento, precificação e proposta."
 
 ⚠️ Alerta de estoque baixo depende do **estoque mínimo** preenchido no material.
 ⚠️ Um usuário pode não ver todos os depósitos — é permissão, não bug.
-🚫 **Concluir OS não dá baixa no estoque.** Diga isso explicitamente no vídeo: a baixa acontece na conversão de orçamento em OS (T9) e nos ajustes/inventário, não ao finalizar a OS. **[VALIDAR COM O TECH LEAD antes de gravar.]**
+⚠️ A média paga do relatório é uma estimativa histórica ponderada por material. Não é custo médio contábil móvel do saldo atual.
+⚠️ A compra direta só aparece para quem pode gerenciar estoque e financeiro, porque uma única confirmação atualiza os dois.
+🚫 Vendas, lucro realizado e margem histórica só entram no relatório quando houver venda real do PDV. Saída de estoque não é tratada como venda.
+⚠️ Por padrão, concluir OS não dá baixa no estoque. Se a empresa ligar **Consumo de estoque na OS** e o técnico anotar materiais, a baixa é confirmada no resumo exibido ao finalizar; mesmo se essa baixa falhar, a OS é finalizada e o consumo fica pendente para nova tentativa.
 
 ---
 
