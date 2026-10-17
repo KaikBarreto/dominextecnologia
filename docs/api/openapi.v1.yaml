@@ -14,15 +14,21 @@ info:
     url: https://www.dominex.app
   license:
     name: Proprietary
+    url: https://www.dominex.app/termos
 servers:
   - url: https://api.dominex.app/v1
     description: Producao
 tags:
   - name: Capabilities
+    description: Capacidades, limites e configuracao efetiva da integracao.
   - name: Catalogs
+    description: Servicos e recursos de agenda disponibilizados pelo tenant.
   - name: Availability
+    description: Horarios livres calculados pelo motor transacional de agenda.
   - name: Customers
+    description: Resolucao exata e segura de clientes sem alteracao cadastral.
   - name: Service orders
+    description: Criacao idempotente e consulta de Ordens de Servico da integracao.
 security:
   - bearerAuth: []
 paths:

@@ -1,0 +1,16 @@
+name = "dominex-public-api"
+main = "workers/public-api-gateway.js"
+compatibility_date = "2026-10-17"
+workers_dev = false
+
+routes = [
+  { pattern = "api.dominex.app", custom_domain = true }
+]
+
+[vars]
+PUBLIC_API_UPSTREAM = "https://byqldosixshhuiuarszp.supabase.co/functions/v1/public-api-v1"
+DOCS_ORIGIN = "https://www.dominex.app"
+
+[observability]
+enabled = true
+head_sampling_rate = 1

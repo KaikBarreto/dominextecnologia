@@ -78,6 +78,12 @@ O arquivo [`openapi.v1.yaml`](./openapi.v1.yaml) é a fonte canônica do contrat
 
 ## Nota de implantação
 
-O proxy do domínio e a edge devem compartilhar `PUBLIC_API_PROXY_SECRET`, com
+O Cloudflare Worker definido em `wrangler.public-api.toml` e a edge devem
+compartilhar `PUBLIC_API_PROXY_SECRET`, com
 valor aleatório de pelo menos 256 bits. A edge falha fechado quando esse segredo
 não está configurado ou não confere, impedindo acesso direto pela URL do projeto.
+
+O Worker é a única borda oficial de `api.dominex.app`: limita o corpo a 64 KiB,
+não oferece CORS, encaminha somente headers permitidos e usa o IP fornecido pela
+Cloudflare. A própria edge mantém o rate limit persistente e revalida chave,
+escopos, assinatura, tenant e allowlist de IP.
