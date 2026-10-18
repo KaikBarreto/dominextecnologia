@@ -2,6 +2,17 @@
   "secao": "T5",
   "prints": [
     {
+      "id": "t5-ordens-servico",
+      "url": "/ordens-servico",
+      "legenda": "Tela Ordens de Serviço em visão kanban, com os quatro indicadores no topo, as quatro abas da navegação lateral (Ordens de Serviço, Chamados, Relatório, NPS e Satisfação) e as colunas de status com os cartões de cada OS.",
+      "passos": [
+        {
+          "esperar": 3000
+        }
+      ],
+      "recorte": "main"
+    },
+    {
       "id": "t5-nova-os-etapa1",
       "url": "/ordens-servico",
       "legenda": "Janela Nova Ordem de Serviço na Etapa 1, com a chave Cliente cadastrado e Cliente avulso, o campo de busca de cliente, o bloco de endereço de serviço e o campo Tipo de Serviço.",
@@ -38,7 +49,7 @@
     {
       "id": "t5-lista-os",
       "url": "/ordens-servico",
-      "legenda": "Tela Ordens de Serviço na visão Lista, com as colunas OS, Criador, Cliente, Tipo, Data, Status e Ações.",
+      "legenda": "Tela Ordens de Serviço na visão Lista, com as colunas OS, Criador, Cliente, Tipo, Data, Status e Ações, incluindo o selo Faturada nas OS com receita já lançada.",
       "passos": [
         {
           "esperar": 3000
@@ -56,7 +67,7 @@
     {
       "id": "t5-aba-relatorio",
       "url": "/ordens-servico",
-      "legenda": "Aba Relatório da tela de Ordens de Serviço, com Total de OS, Taxa de conclusão, Tempo médio e Faturamento, mais os gráficos de OS por status e por tipo de serviço.",
+      "legenda": "Aba Relatório da tela de Ordens de Serviço, com Total de OS, Taxa de conclusão, Tempo médio e Faturamento em cartões coloridos, o gráfico OS por Status em rosca com o total no centro, OS por Tipo de Serviço, Volume de OS ao Longo do Tempo com as linhas Total e Concluídas, Faturamento, OS por Dia da Semana e Saúde do Agendamento.",
       "passos": [
         {
           "esperar": 3000
@@ -66,6 +77,23 @@
         },
         {
           "esperar": 3000
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t5-aba-chamados",
+      "url": "/ordens-servico",
+      "legenda": "Aba Chamados da tela de Ordens de Serviço, com a busca, os filtros Chamados abertos/Todos os chamados e Todos os portais/Portal do Cliente/Portal do Contrato, e a tabela com OS, Cliente, Descrição, Origem, data de abertura e Status.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Chamados"
+        },
+        {
+          "esperar": 2000
         }
       ],
       "recorte": "main"

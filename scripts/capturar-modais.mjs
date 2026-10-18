@@ -28,6 +28,7 @@
  *   { "ir": "/agenda" }                       navega pra outra rota
  *   { "clicar": "Nova OS" }                   clica por texto acessível (botão/link/aba)
  *   { "clicarSeletor": "button.foo" }         clica por seletor CSS
+ *   { "enviarArquivo": "docs/.../x.xlsx" }   envia arquivo pro input[type=file]
  *   { "preencher": "#campo", "valor": "10" }  preenche input por seletor CSS
  *   { "campo": "Nome do cliente", "valor": "Lat" }  preenche por placeholder ou rótulo
  *   { "digitar": "Latinha" }                  digita no elemento focado
@@ -138,6 +139,23 @@ async function executarPasso(page, passo) {
       await alvo.click({ timeout: 4000, force: true });
     }
     await page.waitForTimeout(900);
+  } else if (passo.enviarArquivo !== undefined) {
+    // Envia um arquivo pro <input type=file> da tela. Existe pra UMA coisa:
+    // a tela de CONFERÊNCIA da importação por planilha só aparece depois de
+    // um arquivo subir, e ela é a tela principal daquele recurso. Sem isto o
+    // print "t13-planilha-conferencia" saía idêntico ao da janela de upload,
+    // com uma legenda prometendo algo que a imagem não mostrava (achado de
+    // 18/10/2026).
+    //
+    // ⚠️ NÃO viola a regra de ouro da captura: subir o arquivo só dispara o
+    // PREVIEW, que é uma RPC somente-leitura e não grava lançamento nenhum.
+    // Quem grava é o botão "Gravar N selecionada(s)", e nenhum spec clica
+    // nele. Se um dia alguém escrever um spec que clique, está quebrando a
+    // regra — o arquivo é de uma conta DEMO, mas em PRODUÇÃO.
+    const caminho = path.resolve(passo.enviarArquivo);
+    if (!fs.existsSync(caminho)) throw new Error(`arquivo não existe: ${caminho}`);
+    await page.locator(passo.seletor || 'input[type="file"]').first().setInputFiles(caminho);
+    await page.waitForTimeout(1200);
   } else if (passo.campo !== undefined) {
     // preenche por placeholder ou por rótulo, que é como o app nomeia os campos
     const re = new RegExp(passo.campo, "i");

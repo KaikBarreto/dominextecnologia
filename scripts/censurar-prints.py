@@ -238,6 +238,35 @@ MANIFESTO_PATH = "docs/guia-tecnico/prints-auditados.json"
 # visual de TODOS os 26 PNGs, um por um). Coordenadas medidas com régua/grade
 # sobreposta ao PNG real (ver processo no relatório da captura).
 REGIOES = {
+    # ── 18/10/2026: VAZAMENTO DE CREDENCIAL (o caso 3 do cabeçalho, de novo) ──
+    # Os dois prints abaixo mostram a caixa "Portal do Contrato" com a URL
+    # pública do portal PMOC em TEXTO PURO, e o token de acesso faz parte do
+    # próprio link:
+    #   https://www.dominex.app/contrato/unidade/pmoc-mercado-boa-vista-loja-centro-<TOKEN>
+    # Não é nome vazando, é CREDENCIAL FUNCIONANDO: qualquer leitor do guia
+    # (que é público) abriria o portal daquele contrato. O QR Code logo abaixo
+    # codifica a MESMA url e é legível por máquina, então tarjar só o texto
+    # NÃO resolve — as duas regiões são obrigatórias, sempre em par.
+    #
+    # Isto NÃO é dado liberado pelo CEO: a liberação de 06/09/2026 cobriu nome,
+    # foto e logo de cliente real, nunca token de acesso.
+    #
+    # Medidas em fração de 1184x900 (tamanho real do PNG conferido com PIL).
+    "t11-portal-do-contrato.png": [
+        (0.245, 0.665, 0.710, 0.730),   # URL do portal, com o token no fim
+        (0.248, 0.738, 0.410, 0.950),   # QR Code da MESMA URL
+    ],
+    # t1-configuracoes.png: tarjei CNPJ/telefone/e-mail/endereço em 18/10/2026
+    # e o CEO mandou DESTARJAR no mesmo dia — é conta de demonstração, pode
+    # publicar como está. O print foi RECAPTURADO (borrão não se desfaz
+    # tirando a entrada daqui). Mesma decisão vale para salário de funcionário
+    # e número de CREA, que também ficam visíveis. NÃO recriar sem reconfirmar.
+
+    "t11-contrato-visao-geral.png": [
+        (0.245, 0.665, 0.710, 0.730),   # idem (a tela é a mesma, outro recorte)
+        (0.248, 0.738, 0.410, 0.950),
+    ],
+
     # t1-configuracoes.png: DESTARJADO em 06/09/2026 — o box "Identidade
     # Visual" mostra o logo real da "Glacial Cold Brasil". O CEO liberou o
     # logo de cliente real usado no white-label da conta demo (junto com o

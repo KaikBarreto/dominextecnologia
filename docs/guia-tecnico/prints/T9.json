@@ -4,7 +4,7 @@
     {
       "id": "t9-wizard-destinatario",
       "url": "/orcamentos",
-      "legenda": "Assistente de Novo Orçamento na etapa 1 (Destinatário), com a chave Cliente cadastrado / Novo prospecto e o seletor de cliente, sem nada preenchido.",
+      "legenda": "Assistente de Novo Orçamento na etapa 1 (Destinatário), com a chave Cliente cadastrado / Novo prospecto, o seletor de cliente sem nada preenchido e o botão de mais para criar cliente na hora.",
       "passos": [
         { "esperar": 2500 },
         { "clicar": "Novo Orçamento" },

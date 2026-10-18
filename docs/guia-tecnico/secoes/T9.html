@@ -8,12 +8,12 @@
     <span><b>Rotas:</b> <code>/orcamentos</code> (tela interna), <code>/proposta/:token</code> (link público que o cliente abre, sem login), <code>/orcamento/:token</code> (link antigo, redireciona para o novo)</span>
     <span><b>Depende de:</b> T3 (Clientes), T4 (Tipos de Serviço), T8 (Estoque, para puxar material)</span>
     <span><b>Quem enxerga:</b> quem tiver a permissão de tela <span class="ui">Orçamentos</span> ligada no editor de permissões (grupo Comercial). Admin e gestor têm por padrão.</span>
-    <span><b>Depende do módulo:</b> a tela de Orçamentos faz parte do kit básico e está em todos os planos. As abas <span class="ui">Custos Globais</span> e <span class="ui">Precificação</span>, o bloco de BDI dentro do orçamento, o campo de deslocamento e as colunas <span class="ui">Custo</span> e <span class="ui">Margem</span> da lista exigem o módulo <b>Precificação Avançada</b>.</span>
+    <span><b>Depende do módulo:</b> nenhum. A tela de Orçamentos faz parte do kit básico e está em todos os planos, e desde a versão 1.29.0 a Precificação Avançada (abas <span class="ui">Custos Globais</span> e <span class="ui">Precificação</span>, bloco de BDI dentro do orçamento, campo de deslocamento e colunas <span class="ui">Custo</span> e <span class="ui">Margem</span>) também faz parte de todo plano, do Essencial em diante, sem bloqueio nem limite diferente por plano.</span>
   </div>
 
   <h2>1. Tela Orçamentos: os indicadores (em aberto, taxa de conversão, ticket médio)</h2>
 
-  <p>A tela abre em <span class="ui">Menu → Orçamentos</span>, com uma barra lateral de abas: <span class="ui">Orçamentos</span> (a lista), <span class="ui">Custos dos Serviços</span>, <span class="ui">Custos Globais</span> e <span class="ui">Precificação</span>. As duas últimas só aparecem com o módulo Precificação Avançada; não vê-las não é bug, é módulo não contratado.</p>
+  <p>A tela abre em <span class="ui">Menu → Orçamentos</span>, com uma barra lateral de abas: <span class="ui">Orçamentos</span> (a lista), <span class="ui">Custos dos Serviços</span>, <span class="ui">Custos Globais</span> e <span class="ui">Precificação</span>. As quatro aparecem para todo plano, sem exigir módulo.</p>
 
   <figure>
     <img src="img/t9-orcamentos.png" alt="Tela Orçamentos com barra lateral de abas, três cartões de indicadores (Em Aberto, Conversão, Ticket Médio), campo de busca e tabela com um orçamento em rascunho">
@@ -58,7 +58,7 @@
   <div class="aviso">A virada para <b>Expirado</b> só é calculada quando alguém abre a tela de Orçamentos. Se ninguém abre a tela por uma semana, os orçamentos vencidos continuam aparecendo como Enviado até a próxima visita. Não existe rotina noturna nem lembrete automático de orçamento vencido.</div>
 
   <h3>Colunas da lista e ações</h3>
-  <p>A tabela traz <span class="ui">Nº</span> (número sequencial por empresa), <span class="ui">Cliente</span> (com o rótulo <span class="ui">(prospecto)</span> quando não é cliente cadastrado, e a linha de visualizações embaixo), <span class="ui">Data</span>, <span class="ui">Custo</span>, <span class="ui">Valor</span>, <span class="ui">Margem</span>, <span class="ui">Status</span> e <span class="ui">Ações</span>. Custo e Margem só aparecem com o módulo Precificação Avançada e em telas largas. A margem é a diferença entre valor e custo em porcentagem: selo verde a partir de 20%, amarelo entre 0% e 19%, vermelho quando o preço ficou abaixo do custo, e traço quando não há custo apurado. Quase todas as colunas ordenam ao toque no cabeçalho, e o rodapé tem paginação.</p>
+  <p>A tabela traz <span class="ui">Nº</span> (número sequencial por empresa), <span class="ui">Cliente</span> (com o rótulo <span class="ui">(prospecto)</span> quando não é cliente cadastrado, e a linha de visualizações embaixo), <span class="ui">Data</span>, <span class="ui">Custo</span>, <span class="ui">Valor</span>, <span class="ui">Margem</span>, <span class="ui">Status</span> e <span class="ui">Ações</span>. Custo e Margem aparecem em telas largas, para todo plano. A margem é a diferença entre valor e custo em porcentagem: selo verde a partir de 20%, amarelo entre 0% e 19%, vermelho quando o preço ficou abaixo do custo, e traço quando não há custo apurado. Quase todas as colunas ordenam ao toque no cabeçalho, e o rodapé tem paginação.</p>
   <p>O menu de três pontinhos oferece: <span class="ui">Visualizar</span>, <span class="ui">Abrir proposta em nova guia</span> (pré-visualização, não conta como visualização do cliente), <span class="ui">Gerar link da proposta</span>, <span class="ui">Aprovar (registrar recebimento)</span> (só em Rascunho e Enviado), <span class="ui">Rejeitar</span> (só em Enviado), <span class="ui">Converter em OS</span> (só em Aprovado ainda não convertido), <span class="ui">Gerar cobrança</span> (com conta de recebimento ativa e cliente cadastrado), <span class="ui">Editar</span> em laranja e <span class="ui">Excluir</span> em vermelho. Quando o orçamento já gerou lançamento financeiro, aparece o selo <span class="ui">Recebido</span> ao lado.</p>
   <p>Ao excluir, a pergunta é <span class="ui">Excluir orçamento?</span> com o texto <span class="ui">Esta ação não pode ser desfeita.</span> Confirmando, aparece <span class="ui">Orçamento excluído!</span>.</p>
 
@@ -76,7 +76,7 @@
   <h3>Escolher o destinatário</h3>
   <p>No topo tem uma chave com duas posições:</p>
   <ul>
-    <li><span class="ui">Cliente cadastrado</span>: mostra o campo <span class="ui">Cliente *</span>, um seletor com busca. É o modo recomendado: o documento sai com CNPJ ou CPF e endereço completo, e só assim dá para gerar cobrança e ligar o orçamento ao histórico do cliente.</li>
+    <li><span class="ui">Cliente cadastrado</span>: mostra o campo <span class="ui">Cliente *</span>, um seletor com busca e, colado na borda do campo, um botão de mais (+) que cria o cliente na hora, sem fechar o assistente. É o modo recomendado: o documento sai com CNPJ ou CPF e endereço completo, e só assim dá para gerar cobrança e ligar o orçamento ao histórico do cliente.</li>
     <li><span class="ui">Novo prospecto</span>: mostra <span class="ui">Nome *</span>, <span class="ui">Telefone</span> e <span class="ui">E-mail</span>, para orçar a quem ainda não é cliente sem sujar o cadastro.</li>
   </ul>
   <p>O botão <span class="ui">Próximo</span> fica travado sem cliente selecionado ou nome de prospecto. É a única obrigatoriedade da primeira etapa.</p>
@@ -88,13 +88,13 @@
   <p>Há ainda um resgate rápido: fechando sem salvar, na próxima vez que abrir <span class="ui">Novo Orçamento</span> o sistema pergunta se quer retomar. Ele guarda destinatário, quilometragem, desconto, validade, observações, termos e modelo, mas <b>não</b> guarda serviços e materiais.</p>
 
   <figure>
-    <img src="img/t9-wizard-destinatario.png" alt="Janela Novo Orçamento na etapa 1 de 5 (Destinatário), com a barra de progresso no topo, a chave Cliente cadastrado / Novo prospecto desligada, o campo Cliente com o seletor Selecione o cliente vazio, e os botões Cancelar, Salvar rascunho e Próximo no rodapé">
-    <figcaption>Etapa 1 do assistente de Novo Orçamento: a chave entre cliente cadastrado e prospecto avulso, e o seletor de cliente ainda sem escolha.</figcaption>
+    <img src="img/t9-wizard-destinatario.png" alt="Janela Novo Orçamento na etapa 1 de 5 (Destinatário), com a barra de progresso no topo, a chave Cliente cadastrado / Novo prospecto desligada, o campo Cliente com o seletor Selecione o cliente vazio e o botão de mais colado na borda do campo, e os botões Cancelar, Salvar rascunho e Próximo no rodapé">
+    <figcaption>Etapa 1 do assistente de Novo Orçamento: a chave entre cliente cadastrado e prospecto avulso, o seletor de cliente ainda sem escolha e o botão de mais para criar cliente na hora.</figcaption>
   </figure>
 
   <h2>3. Etapa 2 Serviços: puxando do catálogo e o preço padrão entrando sozinho</h2>
 
-  <p>A etapa se chama <span class="ui">Serviços e mão de obra</span>. Ela tem duas partes: o bloco <span class="ui">Configurações BDI</span> (só com o módulo Precificação Avançada) e o bloco <span class="ui">Serviços e Mão de Obra</span>.</p>
+  <p>A etapa se chama <span class="ui">Serviços e mão de obra</span>. Ela tem duas partes: o bloco <span class="ui">Configurações BDI</span> e o bloco <span class="ui">Serviços e Mão de Obra</span>.</p>
 
   <h3>O bloco de BDI do orçamento</h3>
   <p>Os campos vêm com as taxas padrão salvas na aba Precificação e podem ser mudados <b>só para este orçamento</b>, sem mexer no padrão da empresa:</p>
@@ -141,7 +141,7 @@
   <div class="regra">A diferença entre os dois jeitos aparece lá na frente: só o material <b>escolhido do estoque</b> dá baixa quando o orçamento vira Ordem de Serviço. Material digitado na mão entra no documento e no preço, mas nunca mexe no estoque.</div>
 
   <h3>Deslocamento</h3>
-  <p>Ainda nesta etapa, com o módulo Precificação Avançada, tem o bloco <span class="ui">Deslocamento</span>: você informa a quilometragem e o sistema mostra o valor calculado ao lado, multiplicando pelo custo por quilômetro configurado. Esse valor entra no custo total e aparece na proposta como uma linha própria de deslocamento, se a exibição estiver ligada em Configurar Proposta.</p>
+  <p>Ainda nesta etapa tem o bloco <span class="ui">Deslocamento</span>: você informa a quilometragem e o sistema mostra o valor calculado ao lado, multiplicando pelo custo por quilômetro configurado. Esse valor entra no custo total e aparece na proposta como uma linha própria de deslocamento, se a exibição estiver ligada em Configurar Proposta.</p>
 
   <h2>5. Etapa 4 Desconto: valor fixo × percentual, e o custo de brindes</h2>
 
@@ -165,7 +165,7 @@
     <li><span class="ui">Válido até</span>: um campo de data. É essa data que faz o orçamento virar Expirado quando passa e ele ainda estava Enviado. Também é o que a proposta mostra ao cliente como <span class="ui">Proposta válida até</span>. Deixar em branco é permitido: aí o orçamento nunca expira sozinho.</li>
     <li><span class="ui">Template da Proposta</span>: escolhe o modelo visual daquele orçamento específico. Orçamento novo já nasce com o modelo <b>Clean</b> selecionado.</li>
   </ul>
-  <p>Embaixo aparece o <span class="ui">Resumo do Orçamento</span>. Com o módulo Precificação Avançada ele mostra BDI calculado, lucro médio ponderado, custo total, deslocamento, preço final e as opções de pagamento (à vista com desconto e parcelado no cartão). Sem o módulo, o resumo é simples: <span class="ui">Subtotal Serviços</span>, <span class="ui">Subtotal Materiais</span>, <span class="ui">Desconto</span> e <span class="ui">Total</span>.</p>
+  <p>Embaixo aparece o <span class="ui">Resumo do Orçamento</span>, sempre com BDI calculado, lucro médio ponderado, custo total, deslocamento, preço final e as opções de pagamento (à vista com desconto e parcelado no cartão).</p>
   <p>Sem nenhum item adicionado, no lugar do resumo aparece <span class="ui">Adicione ao menos um serviço ou material para finalizar.</span> e o botão de concluir fica travado. Para finalizar são obrigatórias duas coisas: destinatário e pelo menos um item.</p>
   <p>O botão final é <span class="ui">Criar Orçamento</span> em orçamento novo, e <span class="ui">Salvar Alterações</span> quando você está editando. Ao concluir aparece <span class="ui">Orçamento criado com sucesso!</span> ou <span class="ui">Orçamento atualizado!</span>.</p>
 
@@ -174,7 +174,7 @@
   <h2>7. Aba Custos do Serviço: mão de obra e materiais por tipo de serviço</h2>
 
   <p>Aba <span class="ui">Custos dos Serviços</span>, dentro de Orçamentos. É aqui que a precificação automática nasce: você diz uma vez quanto custa executar cada tipo de serviço, e todo orçamento futuro que usar aquele serviço já entra com preço calculado.</p>
-  <p>No topo tem o seletor <span class="ui">Tipo de serviço</span>, com busca. Sem nada escolhido, a tela mostra <span class="ui">Selecione um tipo de serviço para configurar custos.</span> Escolhido o serviço, aparecem as sub-abas <span class="ui">Mão de obra</span>, <span class="ui">Recursos</span>, <span class="ui">Materiais</span> e <span class="ui">Resumo</span>. As sub-abas Recursos e Resumo exigem o módulo Precificação Avançada.</p>
+  <p>No topo tem o seletor <span class="ui">Tipo de serviço</span>, com busca. Sem nada escolhido, a tela mostra <span class="ui">Selecione um tipo de serviço para configurar custos.</span> Escolhido o serviço, aparecem as sub-abas <span class="ui">Mão de obra</span>, <span class="ui">Recursos</span>, <span class="ui">Materiais</span> e <span class="ui">Resumo</span>.</p>
 
   <h3>Mão de obra</h3>
   <p>Dois campos: <span class="ui">Custo / hora (R$)</span> e <span class="ui">Horas</span>. Embaixo, o sistema mostra o <span class="ui">Custo HH</span>, que é a multiplicação dos dois.</p>
@@ -199,7 +199,7 @@
 
   <h2>8. Aba Custos Globais: veículos, ferramentas, brindes, EPI</h2>
 
-  <p>Aba <span class="ui">Custos Globais</span>, título <span class="ui">Centro de Custos</span>, com o subtítulo "Cadastre veículos, ferramentas e recursos. O custo/hora é rateado automaticamente." <b>Exige o módulo Precificação Avançada.</b></p>
+  <p>Aba <span class="ui">Custos Globais</span>, título <span class="ui">Centro de Custos</span>, com o subtítulo "Cadastre veículos, ferramentas e recursos. O custo/hora é rateado automaticamente."</p>
   <p>A lógica é simples: uma caminhonete não é custo de um serviço só, é custo da empresa inteira. Você cadastra o custo mensal dela uma vez, diz quantas horas por mês ela roda, e o sistema descobre quanto ela custa por hora. Depois, na aba Custos dos Serviços, você marca quais recursos aquele serviço usa.</p>
 
   <p>São cinco categorias, cada uma com sua aba e seu ícone: <span class="ui">Veículos</span>, <span class="ui">Ferramentas</span>, <span class="ui">Brindes</span>, <span class="ui">EPIs</span> e <span class="ui">Outros</span>. No topo aparecem quatro indicadores: <span class="ui">Custo/hora Veículos</span>, <span class="ui">Custo/hora Ferramentas</span>, <span class="ui">Custo/hora EPIs</span> e <span class="ui">Custo/Brinde</span>.</p>
@@ -221,7 +221,7 @@
 
   <div class="regra">Não existe uma tela chamada "BDI" no menu do sistema. A precificação por BDI vive em <b>dois lugares</b>: a aba <span class="ui">Precificação</span> dentro de Orçamentos, que define o padrão da empresa, e o bloco <span class="ui">Configurações BDI</span> dentro de cada orçamento, que ajusta só aquele orçamento. Quem procura BDI em Configurações não vai achar.</div>
 
-  <p>A aba <span class="ui">Precificação</span> tem o subtítulo <span class="ui">Taxas padrão aplicadas em todos os orçamentos via método BDI</span> e <b>exige o módulo Precificação Avançada</b>. Ela é dividida em duas colunas: à esquerda a configuração, à direita o simulador.</p>
+  <p>A aba <span class="ui">Precificação</span> tem o subtítulo <span class="ui">Taxas padrão aplicadas em todos os orçamentos via método BDI</span>. Ela é dividida em duas colunas: à esquerda a configuração, à direita o simulador.</p>
 
   <h3>O que é BDI, em português de obra</h3>
   <p>O cartão do topo, chamado <span class="ui">Método BDI</span>, explica com estas palavras: "O preço final é calculado dividindo o custo real pelo BDI, garantindo que impostos e overhead nunca sejam subprecificados." E mostra a fórmula <span class="ui">Preço = Custo Total ÷ BDI</span>.</p>
@@ -269,12 +269,13 @@
   <ul>
     <li><span class="ui">Logo da proposta</span>: opcional. Vazio, a proposta usa o logo da empresa. Aceita só imagem, no máximo 5 MB. Erros possíveis: <span class="ui">Arquivo muito grande (máx 5MB)</span> e <span class="ui">Apenas imagens são permitidas</span>. Ao subir, aparece <span class="ui">Logo da proposta atualizado</span>; ao remover, <span class="ui">Logo da proposta removido</span>. O logo é salvo na hora, sem esperar o botão Salvar.</li>
     <li><span class="ui">Personalizar Cores</span>: <span class="ui">Cor Primária</span>, <span class="ui">Cor de Destaque</span> e <span class="ui">Fundo do Cabeçalho</span>.</li>
+    <li><span class="ui">Tamanho do logo</span>: controle deslizante de 50% a 200%, em passos de 10%. Ajusta o tamanho do logo na proposta mantendo a proporção, tanto na capa/cabeçalho quanto no rodapé/fechamento. Sem ajuste, fica em 100%.</li>
     <li><span class="ui">Mostrar paginação?</span>: exibe "Página XX/YY" no rodapé de cada folha. Vale para Vanguarda, Aurora e Prisma.</li>
     <li><span class="ui">Mostrar deslocamento</span>: exibe a linha de deslocamento no resumo de investimento. Vale para os quatro modelos.</li>
     <li><span class="ui">Mostrar brindes</span>: exibe a seção de cortesias quando a proposta os inclui. Vale para Vanguarda, Aurora e Prisma.</li>
     <li><span class="ui">Seções da proposta</span>: liga, desliga, reordena e escreve o texto padrão das sete seções. São elas: <span class="ui">Mensagem de abertura</span>, <span class="ui">Formas de pagamento</span>, <span class="ui">Informações adicionais</span>, <span class="ui">Observações</span>, <span class="ui">Sobre a empresa</span>, <span class="ui">Garantia</span> e <span class="ui">Mensagem de encerramento</span>. A seção Formas de pagamento não tem texto editável: é um bloco calculado a partir do valor do orçamento.</li>
   </ul>
-  <div class="regra">As seções configuráveis só têm efeito no modelo <b>Clean</b>. Nos modelos escuros a estrutura do documento é fixa. E o texto escrito aqui é o <b>padrão</b>: quando o orçamento tem o próprio texto em Observações ou em Condições / Termos, o texto do orçamento vence.</div>
+  <div class="regra">Ligar/desligar e reordenar as seções só têm efeito no modelo <b>Clean</b>; nos modelos escuros a estrutura do documento é fixa. Já o texto que você escreve na seção <span class="ui">Sobre a empresa</span> vale nos quatro modelos. Em qualquer seção com fonte própria no orçamento (Observações ou Condições / Termos), o texto escrito aqui é só o <b>padrão</b>: o texto do orçamento vence.</div>
 
   <h3>Etapa Revisão</h3>
   <p>Mostra a proposta montada em folhas A4, com setas para virar página e o indicador <span class="ui">Página X/Y</span>. Confirme em <span class="ui">Salvar</span> e aparece <span class="ui">Configuração da proposta salva</span>. Fechar sem salvar descarta cores, interruptores e seções. O logo é exceção: já foi salvo no envio.</p>
@@ -399,12 +400,7 @@
       <tr>
         <td>"Não acho a tela de BDI no menu"</td>
         <td>Não existe tela de BDI. A precificação fica dentro de Orçamentos.</td>
-        <td>Menu → Orçamentos → aba <span class="ui">Precificação</span> para o padrão da empresa, ou o bloco <span class="ui">Configurações BDI</span> dentro de cada orçamento, na etapa Serviços e mão de obra. Exige o módulo Precificação Avançada.</td>
-      </tr>
-      <tr>
-        <td>"Sumiram as abas Custos Globais e Precificação"</td>
-        <td>Módulo Precificação Avançada não contratado ou desativado.</td>
-        <td>Essas abas, o bloco de BDI, o campo de deslocamento e as colunas Custo e Margem são do módulo Precificação Avançada. Sem ele o orçamento funciona, com preço digitado na mão.</td>
+        <td>Menu → Orçamentos → aba <span class="ui">Precificação</span> para o padrão da empresa, ou o bloco <span class="ui">Configurações BDI</span> dentro de cada orçamento, na etapa Serviços e mão de obra.</td>
       </tr>
       <tr>
         <td>"Onde eu transformo o orçamento aprovado em contrato?"</td>

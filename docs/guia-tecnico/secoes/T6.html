@@ -56,6 +56,10 @@
   <h3>O resumo do compromisso</h3>
   <p>Clicando num cartão da Agenda (ou num resultado da busca, ou em <span class="ui">Ver detalhes</span> na janela <span class="ui">OS Pausadas</span>), abre o resumo daquele compromisso: no computador, um painel à direita da tela; no celular, um painel abaixo do calendário. Para uma OS, o resumo traz o cliente, o endereço, o equipamento (quando houver), os responsáveis, a descrição e a linha do tempo com os horários de início, pausa, retomada e conclusão.</p>
 
+  <p>Ao lado do telefone do cliente, tanto numa OS quanto numa Tarefa, fica um ícone de WhatsApp que abre a conversa direto com aquele número, sem precisar copiar e colar. Ele só aparece quando o telefone cadastrado tem dígitos suficientes para formar um link válido.</p>
+
+  <p>Para quem tem permissão de faturar, o resumo de uma OS também traz o botão <span class="ui">Faturar OS</span> e, quando já existe cobrança ou receita lançada, o selo <span class="ui">Faturada</span> ou <span class="ui">Cobrança enviada</span> ao lado do nome, exatamente como nas outras telas que mostram OS (tabela, lista do celular e kanban). Não é preciso abrir a Ordem de Serviço só para faturar: a agenda já resolve.</p>
+
   <p>Quando a OS já teve material lançado nela, o resumo também mostra o bloco <span class="ui">Materiais utilizados</span>: cada linha traz o material, a quantidade, a unidade e o local de estoque de onde saiu, com o custo de cada linha e o <span class="ui">Custo total</span> ao final. Um material ainda não baixado do estoque aparece com o aviso <span class="ui">Ainda não baixado do estoque</span>. É a mesma informação que já aparecia na tela de Ordem de Serviço, agora também aqui, sem precisar sair da Agenda.</p>
 
   <div class="regra">
@@ -110,7 +114,7 @@
       <tr><td><span class="ui">Responsáveis</span></td><td>Não</td><td>Mesmo seletor da OS: aceita pessoas e equipes.</td></tr>
       <tr><td><span class="ui">Data</span>, <span class="ui">Horário</span>, <span class="ui">Duração (min)</span></td><td>Não</td><td>Definem o bloco no calendário.</td></tr>
       <tr><td><span class="ui">Descrição</span></td><td>Não</td><td>"Detalhes da tarefa..."</td></tr>
-      <tr><td><span class="ui">Recorrência</span></td><td>Não</td><td>Mesmas frequências da OS. Ao ligar, o aviso é: "Ativar a recorrência transforma esta tarefa numa série, criando as próximas ocorrências." Ao alterar uma série existente: "Alterar a recorrência atualiza esta tarefa e as próximas da série. As anteriores e as já concluídas permanecem como estão."</td></tr>
+      <tr><td><span class="ui">Recorrência</span></td><td>Não</td><td>Mesmas frequências da OS. Ao ligar, o aviso é: "Ativar a recorrência transforma esta tarefa numa série, criando as próximas ocorrências." Ao alterar uma série existente: "Alterar a recorrência atualiza esta tarefa e as próximas da série. As anteriores e as já concluídas permanecem como estão." A duração aceita <span class="ui">Até uma data</span> (data final obrigatória) ou <span class="ui">Contínua</span>, sem data para acabar: o sistema cria as próximas ocorrências sozinho, aos poucos, e você encerra quando quiser voltando para "Até uma data" ou excluindo a série.</td></tr>
     </tbody>
   </table>
 
@@ -140,11 +144,13 @@
 
   <p>Cada compromisso no calendário aparece na <b>cor do tipo de serviço</b>. É por isso que vale a pena escolher cores bem diferentes ao cadastrar os serviços: de longe, a agenda passa a se ler como um mapa, sem precisar abrir cartão nenhum.</p>
 
-  <p>O botão <span class="ui">Legenda</span> abre a lista <span class="ui">Legenda — Tipos de Serviço</span>, com a cor e o nome de cada serviço, mais a entrada <span class="ui">Feriado</span>.</p>
+  <p>Embaixo do calendário, no computador e no celular, fica uma faixa de legenda com a cor e o nome de cada tipo de serviço, mais a entrada <span class="ui">Feriado</span> no fim. A faixa tem sempre a mesma altura (uma linha), não importa quantos tipos de serviço a empresa tenha cadastrado: ela mostra os tipos que aparecem nos compromissos do período visível no calendário e, se o espaço não for suficiente para todos, rola na horizontal. Empresa nova sem nenhuma OS ainda vê uma amostra dos primeiros tipos cadastrados.</p>
+
+  <p>Quando existem mais tipos ativos do que os mostrados na faixa, aparece ao final o botão <span class="ui">Ver todos (N)</span>, com N sendo o total de tipos ativos da empresa. Tocando nele, abre a lista completa, no celular como uma aba que sobe do rodapé, no computador como um balão ao lado do botão.</p>
 
   <figure>
-    <img src="img/t6-legenda-agenda.png" alt="Janela pequena Legenda — Tipos de Serviço aberta no celular, listando a bolinha de cor e o nome de três tipos de serviço: Higienização em amarelo, Manutenção Preventiva em verde e Visita Técnica em cinza">
-    <figcaption>O botão Legenda só existe na versão para celular da Agenda; no computador a cor de cada serviço já se aprende olhando o cadastro em Serviços. Nesta captura da conta de exemplo aparecem só os tipos de serviço cadastrados, sem nenhum feriado na janela visível.</figcaption>
+    <img src="img/t6-legenda-agenda.png" alt="Faixa de legenda abaixo do calendário da Agenda, com os chips coloridos de cada tipo de serviço em uso no período, o chip Feriado ao final e o botão Ver todos abrindo a lista completa de tipos de serviço ativos">
+    <figcaption>A faixa de legenda mostra só os tipos usados no período visível; o botão Ver todos abre o catálogo completo quando ele não cabe todo na faixa.</figcaption>
   </figure>
 
   <h3>Feriados</h3>
@@ -226,7 +232,7 @@
     <li>Clique em <span class="ui">Nova Equipe</span>. Abre a janela com o mesmo nome.</li>
     <li>Preencha <span class="ui">Nome *</span>. É o único campo obrigatório: sem ele o botão de criar não responde.</li>
     <li><span class="ui">Descrição</span> é opcional e aparece embaixo do nome no cartão da equipe.</li>
-    <li>Em <span class="ui">Visual da Equipe</span> você define como ela é reconhecida: uma <b>cor</b>, um <b>ícone</b> escolhido numa grade (pessoas, chave inglesa, raio, escudo, caminhão, martelo, capacete, engrenagem, chama, gota, vento, termômetro, cabo, tomada, lâmpada, manômetro) e, se quiser, uma <b>foto</b> pelo botão <span class="ui">Foto</span>. Com foto, ela substitui o ícone no cartão. O botão <span class="ui">Remover</span> tira a foto.</li>
+    <li>Em <span class="ui">Visual da Equipe</span> você define como ela é reconhecida: uma <b>cor</b>, um <b>ícone</b> escolhido numa grade (pessoas, chave inglesa, raio, escudo, caminhão, martelo, capacete, engrenagem, pulso, chama, gota, vento, termômetro, cabo, tomada, lâmpada, manômetro) e, se quiser, uma <b>foto</b> pelo botão <span class="ui">Foto</span>. Com foto, ela substitui o ícone no cartão. O botão <span class="ui">Remover</span> tira a foto.</li>
     <li>Em <span class="ui">Membros</span>, marque os técnicos. É uma lista com caixinhas e avatar. Quando não há usuário disponível, a mensagem é "Nenhum usuário disponível".</li>
     <li>Clique em <span class="ui">Criar Equipe</span>. Ao editar, o botão é <span class="ui">Salvar</span>.</li>
   </ol>
@@ -242,7 +248,7 @@
   <p>No topo há uma busca por nome. Sem resultado: "Nenhuma equipe encontrada" e "Tente outro termo de busca.". Sem equipe nenhuma: "Nenhuma equipe cadastrada" e "Cadastre sua primeira equipe para organizar os técnicos."</p>
 
   <figure>
-    <img src="img/t6-equipes-lista.png" alt="Aba Equipes dentro de Funcionários (RH), com o menu lateral (Funcionários, Equipes selecionada, Controle de Ponto, Perfil Comportamental, Organograma), o campo Buscar equipe e o estado vazio: ícone de duas pessoas, Nenhuma equipe cadastrada, Cadastre sua primeira equipe para organizar os técnicos, e o botão Nova equipe">
+    <img src="img/t6-equipes-lista.png" alt="Aba Equipes dentro de Funcionários (RH), com o menu lateral (Funcionários, PJ/MEI, Equipes selecionada, Controle de Ponto, Perfil Comportamental, Organograma, Fluxograma), o campo Buscar equipe e o estado vazio: ícone de duas pessoas, Nenhuma equipe cadastrada, Cadastre sua primeira equipe para organizar os técnicos, e o botão Nova equipe">
     <figcaption>Aba Equipes sem nenhuma cadastrada ainda: é aqui, dentro de Funcionários, que a equipe nasce.</figcaption>
   </figure>
 

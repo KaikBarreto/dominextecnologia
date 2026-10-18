@@ -15,11 +15,13 @@
   <p>A tela <span class="ui">Clientes</span> abre em <code>/clientes</code> e lista todos os clientes da sua empresa. Cada linha é um cliente com foto (ou as iniciais do nome num círculo colorido), nome, documento, empresa, tipo (PF ou PJ), telefone, e-mail e cidade.</p>
 
   <figure>
-    <img src="img/t3-clientes.png" alt="Tela de Clientes da Dominex com a barra de busca no topo, o alternador entre visualização em grade e em lista, e a tabela de clientes com colunas Foto, Nome, Empresa, Tipo, Contato, Endereço e Ações. No topo da lista, Cliente Demo e Cliente SoNome QA aparecem cadastrados só com o nome, com Empresa, Contato e Endereço em traço; logo abaixo, clientes completos como Clínica Vida & Saúde já trazem o documento embaixo do nome, telefone e e-mail na coluna Contato e a rua na coluna Endereço.">
-    <figcaption>Tela Clientes: repare a diferença entre um cadastro completo (documento, contato e endereço preenchidos) e um cliente salvo só com o nome, com as demais colunas em traço.</figcaption>
+    <img src="img/t3-clientes.png" alt="Tela de Clientes da Dominex com as abas Clientes e Fornecedores no topo, a barra de busca, o alternador entre visualização em grade e em lista, e a tabela de clientes com colunas Foto, Nome, Empresa, Tipo, Contato, Endereço e Ações. No topo da lista, Cliente Demo e Cliente SoNome QA aparecem cadastrados só com o nome, com Empresa, Contato e Endereço em traço; logo abaixo, clientes completos como Clínica Vida & Saúde já trazem o documento embaixo do nome, telefone e e-mail na coluna Contato e a rua na coluna Endereço.">
+    <figcaption>Tela Clientes: a aba Clientes selecionada (ao lado da aba Fornecedores), e repare a diferença entre um cadastro completo (documento, contato e endereço preenchidos) e um cliente salvo só com o nome, com as demais colunas em traço.</figcaption>
   </figure>
 
   <p>Isso mostra na prática o que a busca vai encontrar: um cliente pode ficar só com o nome por um tempo, e as colunas Empresa, Contato e Endereço simplesmente ficam em traço até alguém completar o cadastro.</p>
+
+  <p>Logo abaixo do título da tela existe um segundo nível de navegação com duas abas: <span class="ui">Clientes</span> e <span class="ui">Fornecedores</span>. Esta seção trata da aba Clientes; a aba Fornecedores guarda o cadastro de quem vende material ou serviço pra sua empresa, e tem tela e campos próprios.</p>
 
   <p>No canto direito, acima da lista, existe um alternador de visualização com duas opções:</p>
   <ul>
@@ -29,20 +31,22 @@
   <p>A escolha entre grade e lista fica salva no seu navegador.</p>
 
   <h3>Buscar cliente</h3>
-  <p>O campo de busca no topo diz <span class="ui">Buscar por nome, empresa, email ou documento...</span> no computador e <span class="ui">Buscar clientes...</span> no celular. A busca é tolerante: acha mesmo com acento diferente ou letra maiúscula trocada, e procura em quatro lugares ao mesmo tempo:</p>
+  <p>O campo de busca no topo diz <span class="ui">Buscar por nome, empresa, contato, documento ou endereço...</span> no computador e <span class="ui">Buscar clientes...</span> no celular. A busca é tolerante: acha mesmo com acento diferente, letra maiúscula trocada ou palavras fora de ordem, compara telefone e documento dígito a dígito mesmo com máscara diferente ("(21) 96830-1901" acha "21968301901"), e cobre praticamente todos os dados do cadastro:</p>
   <ul>
-    <li>Nome do cliente;</li>
+    <li>Nome, Razão Social e Nome Fantasia;</li>
     <li>E-mail;</li>
     <li>CPF ou CNPJ (campo <span class="ui">CPF/CNPJ</span>);</li>
-    <li>Razão social (o campo gravado como <span class="ui">Razão Social</span> na aba Fiscal).</li>
+    <li>Telefone e Celular;</li>
+    <li>Endereço completo: rua, número, complemento, bairro, cidade, UF e CEP.</li>
   </ul>
-  <p>Não existe busca por telefone, por cidade nem por origem.</p>
+  <p>O único dado do cadastro que a busca não alcança é a Origem.</p>
 
   <p>No computador, os títulos <span class="ui">Nome</span>, <span class="ui">Empresa</span>, <span class="ui">Tipo</span> e <span class="ui">Endereço</span> são clicáveis e ordenam a tabela. A lista mostra 10 clientes por página por padrão, e o rodapé permite trocar o tamanho da página.</p>
 
   <p>No fim da linha existe um menu de três pontinhos com:</p>
   <ul>
     <li><span class="ui">Visualizar</span>: abre a ficha completa do cliente.</li>
+    <li><span class="ui">Criar oportunidade no CRM</span>: só aparece para empresa com o módulo CRM contratado. Abre uma oportunidade já vinculada a esse cliente.</li>
     <li><span class="ui">Editar</span> (em laranja): abre o formulário de cadastro já preenchido.</li>
     <li><span class="ui">Excluir</span> (em vermelho): pede confirmação antes.</li>
   </ul>
@@ -81,8 +85,8 @@
 
   <h3>Campos da aba Contato</h3>
   <figure>
-    <img src="img/t3-novo-cliente-contato.png" alt="Janela Novo Cliente aberta na aba Contato, com o círculo de foto e o botão Foto no topo, e os campos Nome, Tipo (Pessoa Jurídica), Telefone, Celular, Email, Data de Nascimento, Origem (Nenhuma) e Observações, todos em branco, e os botões Cancelar e Criar no rodapé.">
-    <figcaption>Janela Novo Cliente na aba Contato, com todos os campos em branco.</figcaption>
+    <img src="img/t3-novo-cliente-contato.png" alt="Janela Novo Cliente aberta na aba Contato, com o círculo de foto e o botão Foto no topo, e os campos Nome, Tipo (Pessoa Jurídica), Telefone, Celular, a chave Receber mensagens pelo WhatsApp desabilitada por falta de celular, Email, Data de Nascimento, Origem (Nenhuma) e Observações, todos em branco, e os botões Cancelar e Criar no rodapé.">
+    <figcaption>Janela Novo Cliente na aba Contato, com todos os campos em branco. A chave de WhatsApp só libera depois que um celular válido é digitado.</figcaption>
   </figure>
   <table class="dados">
     <thead><tr><th>Campo</th><th>Obrigatório</th><th>O que aceita e o que o sistema faz</th></tr></thead>
@@ -91,7 +95,8 @@
       <tr><td><span class="ui">Nome *</span></td><td>Sim</td><td>Mínimo de 2 caracteres. É o nome que aparece em OS, orçamento, contrato e portal. Pode ser apelido comercial.</td></tr>
       <tr><td><span class="ui">Tipo</span></td><td>Sim (já vem escolhido)</td><td><span class="ui">Pessoa Jurídica</span> ou <span class="ui">Pessoa Física</span>. O padrão é Pessoa Jurídica. Define o selo PJ ou PF nas listas.</td></tr>
       <tr><td><span class="ui">Telefone</span></td><td>Não</td><td>Máscara de telefone fixo, no formato (00) 0000-0000.</td></tr>
-      <tr><td><span class="ui">Celular</span></td><td>Não</td><td>Máscara de celular, no formato (00) 00000-0000. É o número que ganha botão de WhatsApp na ficha.</td></tr>
+      <tr><td><span class="ui">Celular</span></td><td>Não</td><td>Máscara de celular, no formato (00) 00000-0000. É o número que ganha botão de WhatsApp na ficha e que libera a chave de notificação por WhatsApp.</td></tr>
+      <tr><td><span class="ui">Receber mensagens pelo WhatsApp</span></td><td>Não</td><td>Chave liga/desliga. Fica travada e desligada enquanto o Celular não tiver um número válido. Nasce ligada (é um opt-out, não opt-in): libera aviso de OS, cobrança e vencimento por WhatsApp; o cliente pode mandar "PARAR" a qualquer momento para desligar por conta própria.</td></tr>
       <tr><td><span class="ui">Email</span></td><td>Não</td><td>Se preenchido, precisa ser um e-mail válido. É o mesmo campo do <span class="ui">E-mail fiscal</span> da aba Fiscal.</td></tr>
       <tr><td><span class="ui">Data de Nascimento</span></td><td>Não</td><td>Seletor de data.</td></tr>
       <tr><td><span class="ui">Origem</span></td><td>Não</td><td>Lista com busca. Traz o catálogo de origens da empresa e permite criar uma origem nova na hora, digitando o nome e confirmando.</td></tr>
@@ -193,10 +198,10 @@
 
   <p><b>Aba Campos</b></p>
   <figure>
-    <img src="img/t3-formulario-captacao-campos.png" alt="Aba Campos da janela Novo formulário de captação, com a lista de campos (Nome, Tipo de cliente PF/PJ, CPF/CNPJ, E-mail, Telefone, Celular, Razão social, Nome fantasia, CEP, Endereço, Número...), cada um com duas chaves lado a lado, Exibir e Obrigatório. Só o campo Nome está com as duas chaves ligadas.">
+    <img src="img/t3-formulario-captacao-campos.png" alt="Aba Campos da janela Novo formulário de captação, com a lista de campos (Nome, Tipo de cliente PF/PJ, CPF/CNPJ, E-mail, Telefone, Celular, Razão social, Nome fantasia, CEP, Endereço, Número... até Foto, por último), cada um com duas chaves lado a lado, Exibir e Obrigatório. Só o campo Nome está com as duas chaves ligadas.">
     <figcaption>Aba Campos do formulário de captação: cada campo tem as chaves Exibir e Obrigatório, e só Nome nasce ligado.</figcaption>
   </figure>
-  <p>Lista os 16 campos que podem aparecer na página pública, cada um com duas chaves: <span class="ui">Exibir</span> e <span class="ui">Obrigatório</span>. Os campos disponíveis são: Nome, Tipo de cliente (PF/PJ), CPF / CNPJ, E-mail, Telefone, Celular, Razão social, Nome fantasia, CEP, Endereço, Número, Bairro, Complemento, Cidade, Estado (UF) e Observações.</p>
+  <p>Lista os 17 campos que podem aparecer na página pública, cada um com duas chaves: <span class="ui">Exibir</span> e <span class="ui">Obrigatório</span>. Os campos disponíveis são: Nome, Tipo de cliente (PF/PJ), CPF / CNPJ, E-mail, Telefone, Celular, Razão social, Nome fantasia, CEP, Endereço, Número, Bairro, Complemento, Cidade, Estado (UF), Observações e Foto (o visitante pode tirar a foto pela câmera do celular ou escolher da galeria).</p>
   <p>Formulário novo já nasce com <span class="ui">Nome</span> exibido e obrigatório, e todo o resto desligado. Marcar <span class="ui">Obrigatório</span> só faz efeito se o campo estiver exibido. Se você desligar todos, ao salvar aparece <span class="ui">Habilite ao menos um campo do formulário</span>.</p>
 
   <p><b>Aba LGPD</b></p>
@@ -240,9 +245,10 @@
       <tr><td><span class="ui">Equipamentos</span></td><td>Sempre</td><td>Equipamentos daquele cliente, com botão <span class="ui">Novo Equipamento</span> já vinculado a ele.</td></tr>
       <tr><td><span class="ui">Histórico de OS</span></td><td>Sempre</td><td>Todas as ordens de serviço do cliente, com número, status e data, e o botão <span class="ui">Nova OS</span>.</td></tr>
       <tr><td><span class="ui">Tarefas</span></td><td>Sempre</td><td>Tarefas ligadas ao cliente, com data, horário e situação (Pendente, Em andamento, Concluída).</td></tr>
+      <tr><td><span class="ui">Estoque</span></td><td>Sempre</td><td>Cadastro de materiais exclusivo deste cliente (entradas, saídas, saldo mínimo e histórico), separado do estoque da sua empresa. O técnico pode escolher esse estoque ao registrar o consumo numa OS daquele cliente.</td></tr>
       <tr><td><span class="ui">Chamados</span></td><td>Só com o módulo Portal do Cliente</td><td>Chamados abertos pelo próprio cliente no portal.</td></tr>
       <tr><td><span class="ui">Contratos</span></td><td>Sempre</td><td>Contratos do cliente, com nome, status, frequência e início, e o botão <span class="ui">Novo Contrato</span>.</td></tr>
-      <tr><td><span class="ui">Financeiro</span></td><td>Só com a permissão <span class="ui">Ver Financeiro do Cliente</span></td><td>Lançamentos do cliente, com subabas <span class="ui">Tudo</span>, <span class="ui">A vencer</span> e <span class="ui">Pagas</span>.</td></tr>
+      <tr><td><span class="ui">Financeiro</span></td><td>Só com a permissão <span class="ui">Ver Financeiro do Cliente</span></td><td>Lançamentos do cliente, com subabas <span class="ui">Tudo</span>, <span class="ui">A vencer</span> e <span class="ui">Pagas</span>. O botão <span class="ui">Gasto pago pelo cliente</span> registra compra ou despesa que o próprio cliente pagou, só para consulta: não entra em conta, caixa, banco nem DRE da sua empresa.</td></tr>
       <tr><td><span class="ui">Cobranças</span></td><td>Conta de recebimento ativa</td><td>Cobranças online do cliente, com link de pagamento, envio por WhatsApp e estorno.</td></tr>
     </tbody>
   </table>
@@ -253,7 +259,7 @@
 
   <h3>Aba Geral por dentro</h3>
   <figure>
-    <img src="img/t3-cliente-detalhe-geral.png" alt="Ficha de um cliente sem contato cadastrado, aba Geral. No topo, o avatar, o nome do cliente com selo PJ, a chave Portal Público e o menu Ações. Abaixo, a navegação por abas (Geral, Equipamentos, Histórico de OS, Tarefas, Chamados, Contratos, Financeiro, Cobranças) e o bloco Responsável no Local (falar com), com o estado vazio Nenhum contato cadastrado e o botão Adicionar contato.">
+    <img src="img/t3-cliente-detalhe-geral.png" alt="Ficha de um cliente sem contato cadastrado, aba Geral. No topo, o avatar, o nome do cliente com selo PJ, a chave Portal Público e o menu Ações. Abaixo, a navegação por abas (Geral, Equipamentos, Histórico de OS, Tarefas, Estoque, Chamados, Contratos, Financeiro, Cobranças) e o bloco Responsável no Local (falar com), com o estado vazio Nenhum contato cadastrado e o botão Adicionar contato.">
     <figcaption>Ficha do cliente na aba Geral: topo com Portal Público e Ações, abas do cliente e o bloco Responsável no Local. Este cliente de exemplo ainda não tem CPF/CNPJ, telefone nem endereço preenchidos, por isso os blocos Informações e Endereço não aparecem.</figcaption>
   </figure>
   <ul>
@@ -291,11 +297,11 @@
 
   <h2>8. Tela Equipamentos: cadastro, categorias e criar o cliente na hora, só com o nome</h2>
 
-  <p>A tela <span class="ui">Equipamentos</span>, em <code>/equipamentos</code>, tem duas abas na lateral (pílulas no celular): <span class="ui">Equipamentos</span> e <span class="ui">Categorias</span>.</p>
+  <p>A tela <span class="ui">Equipamentos</span>, em <code>/equipamentos</code>, tem duas abas no topo, no mesmo formato no computador e no celular: <span class="ui">Equipamentos</span> e <span class="ui">Categorias</span>.</p>
 
   <figure>
-    <img src="img/t3-equipamentos.png" alt="Tela de Equipamentos da Dominex com as abas Equipamentos e Categorias na lateral, busca, filtros e a lista de equipamentos com colunas Foto, Nome, Local, Cliente, Categoria e Status">
-    <figcaption>Tela Equipamentos: navegação lateral com Equipamentos e Categorias, busca, filtros e a lista.</figcaption>
+    <img src="img/t3-equipamentos.png" alt="Tela de Equipamentos da Dominex com as abas Equipamentos e Categorias no topo, busca, filtros e a lista de equipamentos com colunas Foto, Nome, Local, Cliente, Categoria e Status">
+    <figcaption>Tela Equipamentos: abas Equipamentos e Categorias no topo, busca, filtros e a lista.</figcaption>
   </figure>
 
   <p>A busca diz <span class="ui">Buscar por nome, identificador, marca ou cliente...</span> e procura em cinco campos: nome, identificador, marca, modelo e nome do cliente. Ao lado tem o botão <span class="ui">Filtros</span>, com dois filtros de múltipla escolha: <span class="ui">Categoria</span> e <span class="ui">Cliente</span>. Nenhum marcado significa "mostrar tudo".</p>
@@ -304,8 +310,8 @@
 
   <h3>Cadastrar um equipamento</h3>
   <figure>
-    <img src="img/t3-novo-equipamento.png" alt="Janela Novo Equipamento, com o quadrado pontilhado Foto/Adicionar, o seletor Cliente com o texto Selecione o cliente, o campo Nome, o campo Identificador travado escrito Gerado automaticamente ao salvar, o campo Validade da Garantia e o campo Observações, todos vazios.">
-    <figcaption>Janela Novo Equipamento, com o seletor de Cliente e o campo Identificador travado até salvar.</figcaption>
+    <img src="img/t3-novo-equipamento.png" alt="Janela Novo Equipamento, com o quadrado pontilhado Foto/Adicionar, o seletor Cliente com o texto Selecione o cliente e o botão + colado na borda direita do campo, o campo Nome, o campo Identificador travado escrito Gerado automaticamente ao salvar, o campo Validade da Garantia e o campo Observações, todos vazios.">
+    <figcaption>Janela Novo Equipamento, com o seletor de Cliente (botão + para criar na hora) e o campo Identificador travado até salvar.</figcaption>
   </figure>
   <p>O botão <span class="ui">Novo Equipamento</span> abre a janela com estes campos:</p>
   <table class="dados">
@@ -328,7 +334,7 @@
   </div>
 
   <h3>Criar o cliente na hora, só com o nome</h3>
-  <p>No campo <span class="ui">Cliente *</span>, se você digitar um nome que não existe, aparece a opção de criar. Também existe a opção fixa <span class="ui">+ Novo cliente</span> dentro da lista. Isso abre a janela <span class="ui">Novo cliente</span> com quatro campos: <span class="ui">Nome</span>, <span class="ui">CPF / CNPJ</span>, <span class="ui">E-mail (opcional)</span> e <span class="ui">Telefone (opcional)</span>, e o botão <span class="ui">Criar cliente</span>. O nome que você digitou já vem preenchido.</p>
+  <p>No campo <span class="ui">Cliente *</span>, ao lado direito do campo existe um botão quadrado com um "+" colado na borda. Esse botão é o único caminho para criar cliente dali: digitar um nome que não existe na busca do campo não abre criação sozinho, só filtra a lista. Clicar no "+" abre a janela <span class="ui">Novo cliente</span> com quatro campos: <span class="ui">Nome</span>, <span class="ui">CPF / CNPJ</span>, <span class="ui">E-mail (opcional)</span> e <span class="ui">Telefone (opcional)</span>, e o botão <span class="ui">Criar cliente</span>. Se você já tinha digitado algo na busca do campo Cliente, esse texto já vem preenchido no Nome.</p>
 
   <div class="aviso">
     <b>Essa mesma janela se comporta de dois jeitos diferentes, e isso confunde muita gente.</b>
@@ -342,7 +348,7 @@
 
   <h3>Categorias de equipamento</h3>
   <figure>
-    <img src="img/t3-categorias-equipamento.png" alt="Aba Categorias da tela Equipamentos, sem nenhuma categoria criada: navegação lateral com as abas Equipamentos e Categorias, título CATEGORIAS DE EQUIPAMENTOS, o botão Nova Categoria no canto superior direito, o ícone de etiqueta, a mensagem Nenhuma categoria criada, o texto Crie categorias para organizar seus equipamentos e um segundo botão Nova Categoria centralizado.">
+    <img src="img/t3-categorias-equipamento.png" alt="Aba Categorias da tela Equipamentos, sem nenhuma categoria criada: abas Equipamentos e Categorias no topo, título CATEGORIAS DE EQUIPAMENTOS, o botão Nova Categoria no canto superior direito, o ícone de etiqueta, a mensagem Nenhuma categoria criada, o texto Crie categorias para organizar seus equipamentos e um segundo botão Nova Categoria centralizado.">
     <figcaption>Aba Categorias da tela Equipamentos, no estado sem nenhuma categoria criada.</figcaption>
   </figure>
   <p>A aba <span class="ui">Categorias</span> mostra <span class="ui">Categorias de Equipamentos</span> com o botão <span class="ui">Nova Categoria</span>. Cada categoria tem <span class="ui">Nome da categoria</span> (a tela sugere "Ex: Split, Cassete, VRF...") e <span class="ui">Cor</span>, que vira uma bolinha ao lado do nome nas listas. Sem nenhuma, aparece <span class="ui">Nenhuma categoria criada</span>.</p>

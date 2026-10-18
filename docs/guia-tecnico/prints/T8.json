@@ -4,7 +4,7 @@
     {
       "id": "t8-cadastrar-material",
       "url": "/estoque",
-      "legenda": "Janela Novo Item de Estoque, com Nome, Código/SKU sugerido automaticamente, Categoria, Grupo, preços de custo e venda, e o bloco Locais deste material com a quantidade mínima por local.",
+      "legenda": "Janela Novo Item de Estoque, com Nome, Código/SKU sugerido automaticamente, Categoria, Grupo com o botão + de criação rápida, Fornecedor escolhido do cadastro com o botão + de criação rápida, preços de custo e venda, e o bloco Locais deste material com a quantidade mínima por local.",
       "passos": [
         {
           "esperar": 3000
@@ -16,7 +16,8 @@
           "esperar": 2000
         }
       ],
-      "recorte": "dialog"
+      "recorte": "dialog",
+      "observacao": "Recapturar: o campo Fornecedor deixou de ser texto livre e virou um select ligado ao cadastro de fornecedores, com busca e o botão + de criação rápida; o campo Grupo ganhou o mesmo botão + (nome e cor) ao lado do seletor. O print de 06/09/2026 mostra os dois campos como eram antes dessa mudança."
     },
     {
       "id": "t8-config-locais",
@@ -112,7 +113,7 @@
     {
       "id": "t8-nova-requisicao",
       "url": "/estoque",
-      "legenda": "Janela Nova Requisição de Compra, com Título, a escolha entre material Do estoque e Fora do estoque, e o atalho Adicionar itens abaixo do mínimo.",
+      "legenda": "Janela Nova Requisição de Compra, com Título, o campo Local de destino, a escolha entre material Do estoque e Fora do estoque, e o atalho Adicionar itens abaixo do mínimo.",
       "passos": [
         {
           "esperar": 3000
@@ -130,7 +131,8 @@
           "esperar": 2000
         }
       ],
-      "recorte": "dialog"
+      "recorte": "dialog",
+      "observacao": "Recapturar: a janela ganhou o campo Local de destino (select dos depósitos, pré-selecionado com o principal) entre o Título e a lista de materiais, para o recebimento da O.C. saber onde entrar. O print de 06/09/2026 não mostra esse campo."
     },
     {
       "id": "t8-inventario-wizard",
@@ -158,7 +160,7 @@
     {
       "id": "t8-posicao-estoque",
       "url": "/estoque",
-      "legenda": "Aba Posição de Estoque, com o seletor de data, o filtro de locais e a tabela de saldo por material com valor em custo e projeção de venda.",
+      "legenda": "Aba Posição de Estoque, com o seletor de data e hora num calendário próprio, as abas de depósito sublinhadas, os cartões Valor em estoque (custo) e Projeção de venda no indicador colorido com ícone, e a tabela de saldo por material com valor em custo e projeção de venda.",
       "passos": [
         {
           "esperar": 3000
@@ -170,7 +172,8 @@
           "esperar": 2500
         }
       ],
-      "recorte": "main"
+      "recorte": "main",
+      "observacao": "Recapturar: o campo de data virou um calendário próprio no lugar do input nativo do navegador, o seletor de depósito deixou de ser pílula arredondada e passou a ser aba sublinhada, e os dois cartões de total passaram a usar o componente de indicador (ícone e fundo colorido) em vez da caixa simples. O print de 06/09/2026 mostra a versão antiga dos três."
     },
     {
       "id": "t8-relatorio-compras",

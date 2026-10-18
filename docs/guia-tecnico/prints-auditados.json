@@ -1,97 +1,152 @@
 {
   "t0-central-ajuda.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "504695989b43869666270b30cdc3e2c1c80024ee1971c0f588b7a0dc465748cc",
+    "auditado_em": "2026-10-18",
+    "hash": "7ef71299dbe423608ca56249e79949781a204f2540066e91f74c17aa0bbf93e2",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t0-dashboard-completo.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "cc4450dd108024b4dcb48b889e02a41d2012b68598813d0b7b33999e26e3c347",
+    "auditado_em": "2026-10-18",
+    "hash": "0dc44b6e85c433331517dd94429c27c7b11d43a5ac8624271a8401a459ce4326",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t0-menu-lateral.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "d40b92ba79556e7f0105b1e47f5fbc8143e897d610b530a0cb90a2d00108b8d6",
+    "auditado_em": "2026-10-18",
+    "hash": "64d6f179dcfc08d0550cb3f981818af4b2a115ff22754b799123bf43d87a03ad",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t1-atalhos.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "3851f4ee49616ef1258b44605ed25f15e98c613ae7c144bdff6d8cff0689193a",
+    "auditado_em": "2026-10-18",
+    "hash": "2550b5cbcfc76f1f696a99794b7de6240f943eaede9321360a1eca9d5f928028",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t1-configuracoes.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "bfa325c09b0ca0c9b71383f048f7aede2b651d4fd1a58b134009f9c2352b11e2",
+    "auditado_em": "2026-10-18",
+    "hash": "7dec367f7fa31ee6d08fe66c77742534d774bb533f58f32ac4ad37e7bb6e38f2",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t1-integracoes-whatsapp.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "58b03617739a798bc38d7d4233b6cdd44dc0ea5a4b3ce0eaeead295a0d85116d",
+    "auditado_em": "2026-10-18",
+    "hash": "e4e28b0e453f621dda5fb81bda51648117a80e1f87e5dadb0c3ddd4bba1851ca",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t1-perfil.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "0bec48258305310a8ef56986d2c02e11abfd415789d20d8d1a89d2e28774a5e8",
+    "auditado_em": "2026-10-18",
+    "hash": "a91a42f9c13748dcbc801865b9449738fb53346a31e2ba9f9d23270141c4660b",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t1-regional.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "3297ca9a65deb402a789fca445f3a3e6f10c6c984ce2064eff86c0bed13c0f28",
+    "auditado_em": "2026-10-18",
+    "hash": "f8ae3324655dc0805ee5c7f764ca3794d9f7c43a47f9f735fd8c3e791287acb1",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t1-usabilidade.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "2d7b8553858714a0d578e5e9f7e229e0cb2e0d05f170a0923a438e2e8956340a",
+    "auditado_em": "2026-10-18",
+    "hash": "b5141d5b84ceff45cf24d20d81dd6e8e43270cf23bf0327c9f2f68ca1c05869d",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t10-checklists.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "fcef796f93f11904498e6921bc58774e365f594fb9cb99b0ee33bc3259a2842a",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t10-crm.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "b6c389f627db7b4f2ce9f2972005c508afd4189cb96235cd7b94e84e8d7876b5",
+    "auditado_em": "2026-10-18",
+    "hash": "c67be9636652b9948807afe585e6ecd6bc292934e9148e26c134a0784ef70230",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t10-etiquetas.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "d62bfab71005222c987108c7ca3891868444d619a7ffcc384e085284081824bc",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t10-fila-sem-responsavel.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "ab55c1aa144971d38d886bb0eaec9d08b7ae075569b54bd40d980dcbc0a75a17",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t10-gerenciar-estagios.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "06a652c01f7fc55523ab69bb03c8839ab8eef389c235e78a5fa1d4136cf46bd7",
+    "auditado_em": "2026-10-18",
+    "hash": "9e42b095a879a13ecf0812b6552e631e1929801a07ef4d37323efdb332f97d28",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t10-gerenciar-funis.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "a087d32135f50449f73aaf70829770aa01492d1281c69c766d9223a640d9552c",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t10-nova-oportunidade.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "0288e6cdd0e317c13bb43a3aa1a0365d5959bf1e9fe09cdd4e13b72261b4f859",
+    "auditado_em": "2026-10-18",
+    "hash": "0182a50a08e17611d287ea4cc37b92fa92efc499608b9863bea72a71e7491fad",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t10-nova-tarefa-oportunidade.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "3d8169d45dd6aabcd6ea3f01839df7892daeff23fbac9d1c244c11b637fa5327",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t10-novo-projeto.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "d005cd35f89d136e54354e08d78edd1f3ad94c5b3a49315c6c2e3bb577d06e23",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t10-oportunidade-aba-tarefas.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "47679dff03b414fac2acb80e8f65778aecbced25960f41551abc65731730e101",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t10-projeto-detalhe.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "491fb05e5bd19c0a3d6c3bd82d8d4a10c22625946ac14f9eea0fc454fb5c932b",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t10-projetos-lista.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "d83e485ec1f4b7defc0cdd95a33d09c3b41d07a0bf7007aca2eeb7cca04caf21",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t10-quem-pode-ver.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "8beebfe56617b2f0e8b559c8951041b785f481da4e5598cccb60fb25620faff8",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t10-seletor-funil.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "f0fb4c23699c69e31ada5216b58c827083e827772f9147c8e910898b831e6252",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t10-webhooks.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "352de5b22078cdc6b1a544e6e216ee8aafeb68d6c2c0d46efc80655b1a9b853f",
+    "auditado_em": "2026-10-18",
+    "hash": "31b2d61452de0e47afab3cd44956c990d7f258804af2eb37108012f765798e3c",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t11-configuracoes-contrato-documentos.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "976c5f9cc54b2ebfe1490bb7c9e5762789cdbbc77e6acf526ffa81f1b578eca9",
+    "auditado_em": "2026-10-18",
+    "hash": "f440b03c9b7342bf4455ab2851b45b6ead741c533e5c857a2f43969b35d78275",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t11-configuracoes-contrato.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "db05ebf2ccad8b5f6b48b870aed2c9d77dc848188f7c9cbe1f65004487c0c259",
+    "auditado_em": "2026-10-18",
+    "hash": "90a3eb74305427edeba29d8b9516f3768078085da8b6317483475a5a14b08462",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t11-contrato-documentos.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "e80338a381b229008f05380aadefdb0abf6f79ca8b2c000c174f24eb86787552",
+    "auditado_em": "2026-10-18",
+    "hash": "9c5929d4f385728cc8f9694660798991d205462c482a42304ff94b83a5014ffa",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t11-contrato-nova-receita.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "5eb50e2ae9f93ad8168126de12dfaf6a105042d981506475ee39fbb01f72b5e8",
+    "auditado_em": "2026-10-18",
+    "hash": "9ca8f021507aa19a8ddc825186d5d8e52c47daee4bf42e90540e01233f0daa1f",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t11-contrato-visao-geral.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "4fb1637b9147f532cea599c537bf155a0b5a6e24385ab1577e9515b2b961cad2",
-    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    "auditado_em": "2026-10-18",
+    "hash": "e25e62e638f9bdb47d7baadbea09374be3e500ca5cd5eaf6ee78ea82a4f73401",
+    "hash_regioes": "7dc01fc487672722841c4df6d008eb23b33714723b1bd3644efbf1088949a399"
   },
   "t11-contratos.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "f9d23d3169ba390acf7f9a6647af021f2429254a19b637c000f2ecbb10f700bf",
+    "auditado_em": "2026-10-18",
+    "hash": "dfefb9429391c45f0dcf00d0945dcdb2203ef46fb39af05a49bd485f7eb09b8e",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t11-filtros-contratos.png": {
@@ -100,8 +155,8 @@
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t11-novo-contrato-identificacao.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "7c0b751921fdfefed808585752b7d0071cf01e043e82e0304840eef458e8955d",
+    "auditado_em": "2026-10-18",
+    "hash": "4c76db28caec83db82d36d7e1fb5edcd9cf935b9e7a2a26a6fdabecae8f4b213",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t11-novo-responsavel-tecnico.png": {
@@ -110,28 +165,33 @@
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t11-portal-do-contrato.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "8951473a1518766b0bc2f089329b5ae08538936426b43fbcec94a6ea16ba6ef4",
+    "auditado_em": "2026-10-18",
+    "hash": "40b43eb81701a2c0c9ac590ffb6315dab31cf05bb70dbcf44b353b665b94f93e",
+    "hash_regioes": "7dc01fc487672722841c4df6d008eb23b33714723b1bd3644efbf1088949a399"
+  },
+  "t11-portal-unidade.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "0f2c6ad12286192975c04754041c8566c5af9e32fb66e6e3ca0c3b7ca0857798",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t11-renovar-contrato.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "d2ef5c2a0e14ba950f87b63ac876ebee3ffc1ac4e63e197c3981e7cb479b58cc",
+    "auditado_em": "2026-10-18",
+    "hash": "f8a8879611f1ba06e93c171e3ac222a0b6787243cd9b3d556e46d6de345806c4",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t11-responsaveis-tecnicos-lista.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "6d0424f54f032e1da80c75b87f717970cf7ad9dc95553af2a505ed326572b4a7",
+    "auditado_em": "2026-10-18",
+    "hash": "025488f4cbe49e1ecf1a4a53b3f49ac3197f4c879ab7005d5cf5e0a90611084f",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t11-wizard-pmoc-unidade.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "dbe1e97910e8f9ec418b6ca90ca92de3064355a05a2f73021257be32e28b31d0",
+    "auditado_em": "2026-10-18",
+    "hash": "6497eba56cf1e24b139ec968190397b824cd9fc99a7dc351427f1fc0a2f3c326",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t12-cliente-aba-chamados.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "d0a2ff0dd27d8b787a2f134540cbda42f9d023bcecaf3c300861a819acc8267e",
+    "auditado_em": "2026-10-18",
+    "hash": "ff248db89aa16dc91fdcfc3415b95482c1317c580bc33b10c36693982ef36280",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t12-como-pegar-link-google.png": {
@@ -145,8 +205,8 @@
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t12-ficha-cliente-portal.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "30c19c38bd4d4a8473e0b7a50e4ce2f31638c8ef13c361ccb0a6d0f73c6718e9",
+    "auditado_em": "2026-10-18",
+    "hash": "1428e37bb2a842c7a20c3ad9d9edc5bb785116841d68386cb8bbac6b4b6be1dc",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t12-nps-avaliacao-google.png": {
@@ -155,23 +215,28 @@
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t12-nps-detratores.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "1beda98e9c5950a1ddef8bc8a0b8e6ed9ea9dc8b3ee9bf33025d28cfeee0f746",
+    "auditado_em": "2026-10-18",
+    "hash": "917006e86cac9a180ddff758247ed1f432418df86ccd1d5b3968eb864a79abe2",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t12-painel-nps.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "b3993b8e850845e581c3c6422b4ea4a78658521edecc638e57b89253383b1378",
+    "auditado_em": "2026-10-18",
+    "hash": "e760c9fea4ff30a8123e18ade813efe7e47bc8aec31a53e1180f1aa53d4d2cd4",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t12-portal-cliente.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "e07a7145dc464261029d5ca4836204c02ee7884f4b10b15009ef30b16209df13",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t13-cartao-faturas.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "394730dfb20bcbedab6dd5ded87e909c884bef75a050835453aaf9a73811acf6",
+    "auditado_em": "2026-10-18",
+    "hash": "08027da1353273e469104d1286acbba4b98bdbc248d4dd05c72cc6c281b66a36",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t13-categorias.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "98fe2dd41661bb489845abfaf702cf4cc31a21a79f8b65286c71150d571f5938",
+    "auditado_em": "2026-10-18",
+    "hash": "19f0ac3c753249ce063f40066db854fb3e75e7befba92ecf43eb0e75941be7a5",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t13-cobrar-modal.png": {
@@ -179,24 +244,44 @@
     "hash": "46ef2d99e61399d512af7f4356a8e47fdc0b4b34c21481a10f84616d66d56f81",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
+  "t13-conciliacao-aba.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "a73ef248eb0a8a01cb70d4a0f6327049dea8b21e6a971ce50141e03e0a2dc7da",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t13-conciliacao-cartao.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "2abd31adfdf27427d53feca7f4d06ea8cdb8f6c53ae66b3af516fd239653f4ac",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t13-conciliacao-destinos.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "93e013468950a12c0c08f628b834df26e2e700bfda4f9fad2115d046c10761cb",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t13-conciliacao-extrato.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "7cb291c66d0009b786fe70654b6371165d0c9a40cdd24abcdae95f3bdd783497",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
   "t13-financeiro-contas.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "3c383762761c994af1d14483246738c9c43d44c9f9b8837e39898d14997f392e",
+    "auditado_em": "2026-10-18",
+    "hash": "d34bfc18cef52a3c98a45ebcf39cc0b14d40b01d59d3b820fc868272d2e82144",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t13-financeiro-movimentacoes.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "51fd8f15afb4c842f03c1e6aef51e25e380a5fbf323134ef3f91fde6d255cc02",
+    "auditado_em": "2026-10-18",
+    "hash": "8d31f94e3989b38d2179d583b626b0658b90b782e5b52163e31628808db950fa",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t13-financeiro-relatorio.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "f7ab4d7a20b8eb06c29d1d5c26cd20291e83cbd2d667eb86d3f0fe402bb15260",
+    "auditado_em": "2026-10-18",
+    "hash": "f43f4dc9e82fcf5ee6da49e9c5478f860c09944a4bc1b5da0dcf632a03f8aff4",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t13-nova-transacao-modal.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "2f83572798a97a7525a6114af6bf93f53cba8aa15053c1067b50d94266e5c66e",
+    "auditado_em": "2026-10-18",
+    "hash": "c03f92a54b1467d486c188a0cf5869935d0007a1fd1427648c06706aa3cc3cf5",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t13-novo-cartao-modal.png": {
@@ -204,164 +289,204 @@
     "hash": "3f5a7ec04779cde91f20b1a2690565f17d836913878b9b9155ed6793815b696b",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
+  "t13-planilha-conferencia.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "fe01dbf78ffa5d7bf2b34039defac3fea1d9b6690157792ecba617e1430da883",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t13-planilha-dialogo.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "cf421a9ad2a2d6749931e70300d4f46acb9f2840c6ad3e62ee421d699bfe63c8",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
   "t14-como-funciona.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "d1670caa52abfb5324455e0d0373149a7378348efa94d1882a0665968a7e9320",
+    "auditado_em": "2026-10-18",
+    "hash": "2f99dcbdb64b18a96e505d2e32463fcceccebe0bdda4606186f3e1f7f95195ed",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t14-config-fiscal-certificado.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "0c778edf9a236cd45e83f0745ad198608b305a16f0c84b9b3270dcbe17d96a16",
+    "auditado_em": "2026-10-18",
+    "hash": "354e70d6adb6b67dd978e38506147ceb0278300e31efb8cbb2b18b869a85b4bc",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t14-config-fiscal-empresa.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "f6bbde10a293c355a0ffe2ecd28146502fb70b02e739c48cd5393803a9c36f42",
+    "auditado_em": "2026-10-18",
+    "hash": "699d92560702dea1b71106fabaf3586c5ef890ebf885a881796037533f8d236d",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t14-config-fiscal-tributacao.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "d6618f5659088c2da5b7dfac49084412d16667df40e9039374cff2c7910177cf",
+    "auditado_em": "2026-10-18",
+    "hash": "7a2ad9a408381731020599ed824f9b3046efea0cf5b1bd26a36a6f59280df630",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t14-emissoes-automaticas.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "33b60fdfb2600991562f22acdab7f9309876b610f5d86c6d1d0ff7f1d66bf829",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t14-notas-fiscais.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "e4d597d270885df92d2efebd767bcbc6481c5dcb55e109d5d5e5075f06dfd556",
+    "auditado_em": "2026-10-18",
+    "hash": "ea8e697a9d31ea32623710b1f6c54719b7120e1057397f389224dd4b357e7696",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t14-notas-recebidas.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "705e1ea2ef7b94cd15067c39a2b01e34a16f0a1b807db7cb578d67dc0fb5ecae",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t14-nova-nota-stepper.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "2016b889e6109fc62fb3acea64edec7f7f7c67ffded1fbf7d7680dc6331f4e85",
+    "auditado_em": "2026-10-18",
+    "hash": "b81bf9f198e628889c79ccdfe0e8dc540e266278ba7a81f3b893a4680e34da53",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t15-funcionarios.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "49a4f0cce0390921153b10517e45776a3a18a2bfc5a211eb597dea0e82d3e792",
+    "auditado_em": "2026-10-18",
+    "hash": "f087ca900b164e3114431a4893eb2bc311412bbfa4a3e216f75c049704f719b2",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t15-novo-funcionario-dados.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "4c8e69760479a9bb985a87a01834b114733a87de4201061a582434172135950f",
+    "auditado_em": "2026-10-18",
+    "hash": "656993a2b84f5b7b7985c7ae6df971613541194626357f58e46849b7b4c690e6",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t15-novo-funcionario-pagamento.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "53a2cba8e38162ab2a8deaa1eaace0a5b393449ea947fe0d2a41aa834b5e8d26",
+    "auditado_em": "2026-10-18",
+    "hash": "72a09cc2ada67bdde9b4f6448c1c39ca32d63c97f53bbd370a1811f7c886bb67",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t15-novo-prestador-pagamento.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "af2e90f12ff5bf7853366e1e8f835ae639f18ff957c6c7bf234aee883da83b25",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t15-organograma.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "dba2eabe16de1d3587e9f82232e6ecfefa7e8e9aa41b9013da9b324719d25885",
+    "auditado_em": "2026-10-18",
+    "hash": "4273dd41be746847ec9f4c74afb32b2e0bdfff06cb8a9d94286eb67d010d67c6",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t15-pj-lista.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "8a5c3e497236ea3612c1417c34e5420c32402ec0262d39aa024356f4a4bcb773",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t15-ponto-config.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "3ccc176239922bf55d8c4c74f186357fbcc7cbbfdf892d040b68311abec691ec",
+    "auditado_em": "2026-10-18",
+    "hash": "b06d710f8eea41d4ebc7503ed91cd8b3f09dbc4c1a88706f8daeceb24f538397",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t15-ponto-hoje.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "f68c07049b267815a2cdd930926761ac5ecaad365d874ad27dc9632b413856d2",
+    "auditado_em": "2026-10-18",
+    "hash": "5de66bd121a0ab9554948f1166c832f28d5c83229b4325a9dd4544fb95660a26",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t15-ponto-publico.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "1ac06cfc9536273b5b987b186c693124ae547c52a100c9fa0381e3dc4a3a16c1",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t15-prestador-contrato.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "8465aec04af2d4d6babac49980cac6023c71b339b16984ab059026fa2670a52c",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t16-assinatura.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "5d8573a1fc97a15aa03cee71d7ccf341e388e2d038a2ae7bb1f7e7f0f918fd71",
+    "auditado_em": "2026-10-18",
+    "hash": "5e3a8c45f279c85fb0f5b411008f4fb7a90b44a4a3b62103616e6f0a1773f294",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t16-checkout.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "31181c3a26c34fbc97e7f921c9da9b42f98403c59f0d70ee5caa68baa7c4dc21",
+    "auditado_em": "2026-10-18",
+    "hash": "7fd1c0e6668d6e5eb01427a54e955963970aa869d948b704ac243991079a1ea8",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t16-gerenciar-plano-personalizado.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "176baa9d79358d1c1f1c5bb6131547b1a6d37a5a7944ff10efca350c91a4560d",
+    "auditado_em": "2026-10-18",
+    "hash": "da8d092c1b93f277188bf15f8d647f18c257bd10f537c7142eab61c672ab4759",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t17-changelog.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "1cea33d2c22a7ee3f7399d021a7e6ab39f0939fa319e147993560a79ead90566",
+    "auditado_em": "2026-10-18",
+    "hash": "d9a719b308483c00c12ba47007f5b5bbef169fce784b4ce853b398f4dc0b0d83",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t17-dashboard-kpis.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "80b53ef9a5185d1dbbe9802fc608e3a11d12f417f4f67c2d7e9c530206840a04",
+    "auditado_em": "2026-10-18",
+    "hash": "a25b01993c3764d744a5e43eb2c9cc83069e554eab4488526d5073cc704ced52",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t2-novo-usuario.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "b75c706eb9e255ed478b43ae17b998209b407536c37f91691ea4dfcd8b1a064d",
+    "auditado_em": "2026-10-18",
+    "hash": "13282b6a028104ab68e6d2245d1a9e8002849925325df5017a529f23783f19b1",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t2-permissoes-acoes-da-tela.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "b42e3a2635e9cf8e81e7fbcd589c2111970febceb1cda8aa42472f1117fb608c",
+    "auditado_em": "2026-10-18",
+    "hash": "906cdcd30b437e7a43923157526569b97a64e10996fafd96c19e6bf5ae363973",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t2-usuarios.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "5fa2e18c668fd76a51aa9bb5da418f8f03b857750a5ed04ff5b92ec181f1f753",
+    "auditado_em": "2026-10-18",
+    "hash": "21b44128a6c6b009f59d68f539a0c04ad4726ebc82f798e024cd2e2fb93e4df6",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t3-categorias-equipamento.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "9be83a95ac7edefa18247846fa0f9296eb30c6018d18446f7560729029924fbb",
+    "auditado_em": "2026-10-18",
+    "hash": "97684a50f260dab1743f7cc95c48419d36dde465e98c2f86afb32a7d1cb1de96",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t3-cliente-detalhe-geral.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "7ad64b9988072ab70addde7da4934036583ce2217e0e46410fd4adda06ac60a9",
+    "auditado_em": "2026-10-18",
+    "hash": "8dbca83b6be81b622803904a017eadceae84cee686979fe3e87a044914b1de7e",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t3-clientes.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "a8826374b3ee8eedae89f36beee1465e2fa4e0d2cb4a9a00a741a93e099c02d0",
+    "auditado_em": "2026-10-18",
+    "hash": "2d4a059755a11048340a8442c341ec76b77ad0f88a33b6b6becffff4988db717",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t3-configurar-campos-equipamento.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "ce2237c1b460e40bfe207d50f56ea5b30a7c3e241ff210f29278e1094ec8398f",
+    "auditado_em": "2026-10-18",
+    "hash": "82996cdeea842df37e81415e084c2e6ff34004d272f5a4b6b7d44542e73b06d4",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t3-equipamento-etiqueta.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "4a9a997e808797ac7b61760056fae21849938996032c3b4d5b3a591c50e8f591",
+    "auditado_em": "2026-10-18",
+    "hash": "f8e8256d74985d146a6b2ac298913e4d1b9e7e23281cdb891d5f51dcb26b7731",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t3-equipamentos.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "9694781e4c8343530deb32ae1d9632e1665088fbc28e925050cf66eb75bf1ddb",
+    "auditado_em": "2026-10-18",
+    "hash": "73c743e08e5f85d25380b641aadedcd75039ade4418b27053f894e2746f4013b",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t3-formulario-captacao-campos.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "fbe50cd8df1a05564e5c211393f9900e5f37467c8b37fa793f7667702edc1e5d",
+    "auditado_em": "2026-10-18",
+    "hash": "5454de3eb2f0a3a63506b7533d20491d34fa28a633d69131d25d73c1f77719cb",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t3-formularios-captacao.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "45e78392732562e311c830f8d800eb43053c842c45c9c2d335fbc6a261c5a13c",
+    "auditado_em": "2026-10-18",
+    "hash": "eab3bb09d258e4f808ba7ba398d3c08511edc741a4c872d0fc38a35cf28123f9",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t3-novo-cliente-contato.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "c2c6da6f56fc89a29ea240ef70846c332f4c9779b3bc1e776c2a40939ea4d29c",
+    "auditado_em": "2026-10-18",
+    "hash": "034a9b884f1730373edaba82828695bac1227a19163497c29d5f5f815c479e00",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t3-novo-cliente-fiscal.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "dc06589437d2b060f4e7d834230612420176bd2d2b9f0e15b78b429163eb5a8f",
+    "auditado_em": "2026-10-18",
+    "hash": "ed33d5a3f4981e20cd7425cec23a19ae908be027d29b2484114c893b9f0fc8fc",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t3-novo-equipamento.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "5291400cc9f783edebd16d4ff13b2d0938806020b539eada2d53b89770d08d18",
+    "auditado_em": "2026-10-18",
+    "hash": "f350d20af46df2794674d19b6fc1db4bb19812eab57f9fd6142820fe4d368c16",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t3-origens-cliente.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "a55d9257f3f8309a8c5d29488fb1e47b13c40518d48483ce26541138cea378a9",
+    "auditado_em": "2026-10-18",
+    "hash": "ab3cf9879a79c1b1ae013018fe407cf5495be806d3e4eb4bc842aa8ad7eff0a1",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t4-catalogo-checklists.png": {
@@ -370,13 +495,13 @@
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t4-categorias-servico.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "81ffa9761c1136911a04172c7eaea17e4daf8d1f5ca447e07168cf10264a7dce",
+    "auditado_em": "2026-10-18",
+    "hash": "fc77025684e7c428210c93f64490f53e6d0ccc3530fd96646080ef14cba3b23c",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t4-checklists-lista.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "e93eb6fe07544f0a177a07565169bf1bff9fda8cbe5f66e270bca4f6ccc2d8e8",
+    "auditado_em": "2026-10-18",
+    "hash": "29e5501925121e21c46fce2f6901a6d95cc9ae6e42cd400f8bbfa8059c705fd1",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t4-novo-checklist.png": {
@@ -385,58 +510,73 @@
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t4-servicos.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "704857693414fca110404f1001881d1fcae023495252c8b631faf8c0dfa22c8f",
+    "auditado_em": "2026-10-18",
+    "hash": "36a10234f8d00f67be38f651d64a188624acccb09798892551ba6fe3d4603fd4",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t4-tipo-servico-fiscal.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "cae61305309fbd441f1d34a02b2e33d2e4f785fcbaf1c9ad07ef767cbf182e27",
+    "auditado_em": "2026-10-18",
+    "hash": "a805843a1c3fda452132cbdae93e506a87f57824ef0a4a188aec6210e346b582",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t4-tipo-servico-form.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "51a5f3e970f726a3302808f4bd1e0321ffee5ba6ed965c98d53cbb3689460a1d",
+    "auditado_em": "2026-10-18",
+    "hash": "ef1f9a1eaebf36a3fec590c43be2999a072f30976f38e093da88606bebd0753d",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t4-tipos-tarefa.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "4e21c1776446c5cf996fa54d2a960d4069f8db5515010768298aa6fc6edf5edf",
+    "auditado_em": "2026-10-18",
+    "hash": "32f786075d085160b87ced53f878984784ce9e15690512a67ea8f3c305bd7c04",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t5-aba-chamados.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "72ef76f043f2d8b653d7d526f34458891f0f2075d1ebdb29ee91fcd2da6da036",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t5-aba-nps.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "b5f7ec8d3fca670b77d5af60d70e7a13d5d152e51830d8c48ca5c1c15d8f5ac7",
+    "auditado_em": "2026-10-18",
+    "hash": "19034903b85cd11a8bd37c950c117d6cff74ccc74970b845f10979ada42a0504",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t5-aba-relatorio.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "e35022b0b3f0a563f8e7bdbca16b33c9682d774fe2f1356b8a35bcf896cc45aa",
+    "auditado_em": "2026-10-18",
+    "hash": "84f9e8331e2793a448f1a468ca3b587212f225a7653b8d8529c2a0fd6867a724",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t5-configurar-status.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "f3b18f3550d42b3b6a5a55af7869a3d5afa5d24ee2d5a5177ad2456ec6c5a4fe",
+    "auditado_em": "2026-10-18",
+    "hash": "335809a985f1a0d3374749a70795dde2de4a581897f162f33a175e48fa5490c9",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t5-lista-os.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "c7fdb61c39e09332080201b828c0172398ff7c4c887930317361c0ca96e45d7e",
+    "auditado_em": "2026-10-18",
+    "hash": "1b3a3eb550f7e231b18135c77fb54105fed533b9d34ab6c15dae76e3f9aaebaf",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t5-nova-os-etapa1.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "256b2ecd9c23084e38f0c8205ddb2290213fdfc37258e81ae791afbec93ff4e8",
+    "auditado_em": "2026-10-18",
+    "hash": "0ee21cc87ffde20399f49854903dad157ed7ee0eba4b9fd2be279ee95007af29",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t5-ordens-servico.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "03568f17467f595804627528ec0147d24b970b9dccd23093d3cd919a58821f14",
+    "auditado_em": "2026-10-18",
+    "hash": "d987af0e615855162fd0d0c5cf37c31c9c5666a26975940e4754606260919a8f",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t6-agenda-filtro-tipo.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "6ffc0c0a5f83102619b3f95de2bf56524b8ffc31887c19ff566a1425cd05f74a",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t6-agenda-lista.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "d2b0d1711197e14f790d747a9fe9b1bf2e1e6864d84edd9cee922c03c07590bc",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t6-agenda.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "91070331ed8c65eb1ade435fcc3547a7f83c6950cb09b79593b6b3354bbd5afa",
+    "auditado_em": "2026-10-18",
+    "hash": "56e04e8210aa205b4e74c9f43255a4bb3acb68f669b0b1868f699aac9fa7f3d1",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t6-equipes-lista.png": {
@@ -455,8 +595,8 @@
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t6-mapa.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "124077dabeb34b8e6327da7a32245cafb061bf076969e9102221509edcfd795b",
+    "auditado_em": "2026-10-18",
+    "hash": "641a6a49f45a354558a9d7ece7d4452870f28b577bb2e5595e55f75fa2ca6a19",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t6-nova-equipe.png": {
@@ -475,93 +615,123 @@
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t7-area-tecnico-inicio.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "5ffa9a812a7f3d5094947f34b1414bebfac3fd69641c7b3d8d91ba246a7b3e8a",
+    "auditado_em": "2026-10-18",
+    "hash": "264b965e01fbcb7c79268e54a08c6cf6c1fe3aed4822ef1631eff91c232350d4",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t7-area-tecnico.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "329c7e616e693892826f287d30216b1587b620f416c3a16e3513c5bb543c2c87",
+    "auditado_em": "2026-10-18",
+    "hash": "849ece27e2518b9b324755067d2ddaad03b563966ca80b18b58e8e1a605b1840",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t7-carga-termica.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "1d10c1ee078e32c863a767274aaaabb0442f3830c2c435ae1978f6026e6d1b52",
+    "auditado_em": "2026-10-18",
+    "hash": "1196d7ab3aeb80cda8f2b3b28b2db7fc01325b715e221b6b6080fb3b8c27e05f",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t7-ferramentas-cadeado.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "5b36f611892dfa5021c4e41e9170b07410e2bc26e1c5766b027a1fb17966c6d0",
+    "auditado_em": "2026-10-18",
+    "hash": "5b6313427c91ed7064b321b8a950d58fc3398d655d03ef11c17dab92cc839a9f",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t7-os-compartilhada.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "17203f975339f4c16a64a0f38f392705051ac1c2a7c7c1368626435f8664a0c4",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t7-os-modo-cliente.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "ac64ac8ecd16593cd8f401c5274fc218aac95d4df7a9bb6f2bfdd66137306173",
+    "auditado_em": "2026-10-18",
+    "hash": "ca96658e1e27d6a223fd6d18aac3d0baee67ff524d9f1ea3b4c2df538d4b56cd",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t7-regua-gases.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "15073d3cbf4c96d28c7791672decbf834417d90de74c41987df1bf02d289356e",
+    "auditado_em": "2026-10-18",
+    "hash": "4310afcae4ca6353eb0d0c3cc78401f864292455cb7e12b76858deb8afc59c72",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t8-cadastrar-material.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "86a695a3e3a75dc96c42bfd44e72d71acce308e8c08e827f6f648979c71afa07",
+    "auditado_em": "2026-10-18",
+    "hash": "9cceec46c6fda21658cbd950376bce566c767a06eaf8c77e51d9a15876114665",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t8-compra-direta.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "170b657e60cfa950a0d120ad6651847775ddde5cb93b792ad61d742cd8833c9a",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t8-compras.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "0784247c80666962333da82aab484ee6d3104c9550d1814d5bfa7ca51919d4d7",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t8-config-locais.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "087fa1f19fc6279b7d3aebab4d7806affbd9e6fce35ffae7efaf223e3a9a9a91",
+    "auditado_em": "2026-10-18",
+    "hash": "810ac137a5a946bb2c4f54c8e5dc72d7594b8727fa38a85eba18a0c2ff535f32",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t8-estoque.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "6ef30272d64dbc7434d7c31acad5c35bba4ceab38a00d02de9659fe2ab021e9b",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t8-inventario-wizard.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "45604873fa05368afe7f257610c8af028d19122d6580b90212018008bba79f74",
+    "auditado_em": "2026-10-18",
+    "hash": "c44d1088f9b9439a9d542686409b000c3dff9a552265619777d6084a666a0467",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t8-kardex.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "3d5874894308d5f1f058bd47202894a20fd4c49b476504180fb94ad8075542d1",
+    "auditado_em": "2026-10-18",
+    "hash": "86e45457a59b7d2201e17fc16bac068ce17a10845a75adaa1b3aa42fc5841be3",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t8-nova-requisicao.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "5f73653a5d852d19a89a39a97d5acf3db7cb961afbd46c7ece4e1f556a0bd6e9",
+    "auditado_em": "2026-10-18",
+    "hash": "613cf165337056e3da19a008f116461ff674a0278804b92e3f98dd9388e2f70f",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t8-posicao-estoque.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "08c458b82c96b9d9eff2bd94f421ff11dcda618f549378b69de9997225f8a40c",
+    "auditado_em": "2026-10-18",
+    "hash": "6bacb5df16fc33ac6712b48778e84b40e319a01c5f889dcfea404e92786da504",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t8-relatorio-compras.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "754605a288cd247b28f1d5f0d908598e73623658ae2934a463e5489594388178",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t9-aba-custos-globais.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "3a4521cc8b76bf07bc9aca3d4108d1e645a69b2bc71805507a5b5d00423e2cf3",
+    "auditado_em": "2026-10-18",
+    "hash": "5677088ca1f71b28608eebc82ca16095abd3dad83922cc1378ef53c070c51214",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t9-aba-custos-servico.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "114ee0474f9e4422ea9dbdf0c2070ea407961ba0364addd32f3a5a506b511c71",
+    "auditado_em": "2026-10-18",
+    "hash": "0297989fa72f3fec901e74a2ddb5c99f68a188a3c66f6b19f8464d36700dba89",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t9-aba-precificacao.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "9f7ebf490fca28422ee628525e4dba8e2a4c9f7f6082fd43dffca9c1f61d6530",
+    "auditado_em": "2026-10-18",
+    "hash": "7fcc27e82dfad4600242524c5d35f86d12903a33ca2c852d2a62205f15d21b4a",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t9-configurar-proposta.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "d7a7c0f3a72ca0427208c4e7e5640dd59b490db3be276a4a142f153911b28e7a",
+    "auditado_em": "2026-10-18",
+    "hash": "919b77b3c5ea077190ecd3abf9260a4184d63d9ac2d60a3a6bd1865a83832bfb",
+    "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "t9-orcamento-publico.png": {
+    "auditado_em": "2026-10-18",
+    "hash": "2998f23da43f7dc596f37f196cf783486c79a866758043477586ab8f1269a8ef",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t9-orcamentos.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "f1937a959abaece1b6f94205fd2af13e42f1104c0a16a8ca7bcc745131d99bf9",
+    "auditado_em": "2026-10-18",
+    "hash": "e5f8037a39c6fb623c50811d494cbe4eaf64113d91d3bad26bbd2f892c71f03d",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t9-wizard-destinatario.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "9e59ff29e490a9af2908d11d3d6d859483b63da433e66be574fd944974b9fd53",
+    "auditado_em": "2026-10-18",
+    "hash": "8194612ef9048f8332d79c45beb9aafaea9f6cd0c2a524980f6a6347d4149ed2",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   }
 }

@@ -113,12 +113,24 @@
 
   <h3>O aviso de upgrade e de downgrade</h3>
   <ul>
-    <li><b>Subindo de plano</b>, aparece uma faixa verde: "Upgrade: os recursos são liberados na hora e o novo valor já entra na próxima cobrança."</li>
-    <li><b>Descendo de plano</b>, aparece uma faixa amarela: "Downgrade agendado: você mantém o plano atual até o fim do período já pago. O novo valor de R$ X/mês passa a valer na próxima cobrança."</li>
+    <li><b>Subindo de plano</b>, aparece uma faixa verde: "Upgrade: você paga apenas o ajuste proporcional e os recursos são liberados após a confirmação."</li>
+    <li><b>Descendo de plano</b>, aparece uma faixa amarela: "Downgrade agendado: você mantém o plano atual até o fim do período já pago. O novo valor de R$ X/mês passa a valer na próxima cobrança, sem reembolso do ciclo atual."</li>
     <li>Se o plano escolhido comporta menos usuários do que a empresa tem hoje, o sistema abre uma etapa pedindo pra <b>reduzir os usuários antes</b> de aplicar a mudança. Ele não escolhe quem sai por você.</li>
   </ul>
 
   <p>Para confirmar, use o botão do painel da direita: <span class="ui">Aplicar plano</span> no ciclo mensal ou <span class="ui">Pagar e ativar (anual)</span> no ciclo anual. Enquanto processa, ele mostra <span class="ui">Aplicando...</span>.</p>
+
+  <div class="regra">
+    <b>Upgrade agora tem cobrança imediata, mas só do valor proporcional.</b> Ao confirmar qualquer upgrade (trocar pra um plano mais caro, somar um módulo pago, somar usuário extra ou subir o nível de NFS-e), a janela fecha e o sistema leva direto pro checkout com o resumo do upgrade: o seu plano atual, a etiqueta <span class="ui">Cobrança proporcional hoje</span> com o valor a pagar agora, a data e o valor cheio da próxima renovação, e, quando existir, a faixa <span class="ui">Crédito do período já pago</span>, descontando os dias que você já pagou e ainda não usou no plano antigo. O texto de apoio avisa: "Você paga somente pelo período restante. O plano será liberado após a confirmação." O pagamento é por Pix, Boleto ou Cartão, do mesmo jeito que numa venda nova. <b>O módulo, o plano novo, o usuário extra ou o nível de NFS-e só entram no ar depois que esse pagamento é confirmado</b>, não antes.
+  </div>
+
+  <div class="aviso">
+    Se o upgrade também muda o ciclo de mensal pra anual, o Cartão de crédito não aparece como forma de pagamento nesse checkout específico: a troca pro anual é sempre à vista, por Pix ou Boleto, e a data de vencimento é reiniciada a partir de hoje para o novo ciclo de um ano.
+  </div>
+
+  <div class="aviso">
+    <b>Downgrade continua sem cobrança nenhuma no momento da troca.</b> Reduzir de plano, tirar um módulo ou diminuir usuários não passa pelo checkout: a mudança só entra em vigor na próxima cobrança, pelo valor novo, e você mantém o que já pagou até lá.
+  </div>
 
   <!-- INCERTO: os nomes exibidos dos planos prontos vêm do catálogo cadastrado pela Dominex, então podem ser renomeados sem mudar o código. Confirmar os nomes vigentes antes de citá-los literalmente em material de treinamento. -->
 
@@ -129,16 +141,21 @@
   <h3>Como montar</h3>
   <ol>
     <li>No topo aparece o <b>módulo básico</b> em verde, com a etiqueta <span class="ui">Sempre incluso</span> e o preço dele. Não dá pra tirar.</li>
-    <li>Abaixo, sob o título <span class="ui">Adicione módulos:</span>, cada módulo tem nome, descrição e preço mensal. Clicar marca ou desmarca, e o cartão fica verde quando está selecionado.</li>
-    <li>Se você marcar o módulo de notas fiscais, aparece a seção <span class="ui">Nível de Notas Fiscais (NFS-e)</span>, com os níveis disponíveis, o limite de notas por mês de cada um e o preço. O nível atual vem marcado com <span class="ui">(atual)</span>, e níveis abaixo do seu ficam desabilitados. O aviso: "O novo nível é liberado imediatamente e o valor entra na próxima cobrança."</li>
+    <li>Logo abaixo, uma linha verde pra cada módulo que já vem <b>grátis em todos os planos</b>: Portal do Cliente, Orçamentos e Precificação, e Perguntas em vídeo nos checklists. Cada uma traz a etiqueta <span class="ui">Grátis e incluso em todos os planos</span>, sem checkbox: não dá pra desmarcar porque não é uma escolha, é um benefício que vem de fábrica.</li>
+    <li>Abaixo, sob o título <span class="ui">Adicione módulos:</span>, ficam só os módulos <b>pagos</b>: Gestão de Contratos e PMOC, Funcionários/RH, CRM, Emissão de Notas Fiscais e White Label. Cada um tem nome, descrição e preço mensal. Clicar marca ou desmarca, e o cartão fica verde quando está selecionado.</li>
+    <li>Se você marcar o módulo de notas fiscais, aparece a seção <span class="ui">Nível de Notas Fiscais (NFS-e)</span>, com os níveis disponíveis, o limite de notas por mês de cada um e o preço. O nível atual vem marcado com <span class="ui">(atual)</span>, e níveis abaixo do seu ficam desabilitados. Subir de nível é um upgrade como outro qualquer: o pagamento proporcional acontece no checkout, e a nova cota só libera depois da confirmação.</li>
     <li>Em <span class="ui">Usuários adicionais:</span>, os botões de mais e menos aumentam ou diminuem os extras. A linha mostra quantos estão inclusos, quantos são extras e o valor vigente.</li>
     <li>O painel <span class="ui">Seu Plano</span>, à direita, lista tudo o que você marcou com o preço ao lado e fecha com <span class="ui">Total mensal</span> ou <span class="ui">Total anual</span>.</li>
     <li>Confirme no botão do painel.</li>
   </ol>
 
+  <div class="aviso">
+    A caixa de aviso que fica dentro da seção de NFS-e, dizendo "o novo nível é liberado imediatamente e o valor entra na próxima cobrança", está desatualizada no próprio sistema e não é mais verdade: o fluxo real, hoje, é o pagamento proporcional no checkout descrito mais abaixo, igual a qualquer outro upgrade. Vale o que acontece na tela de pagamento, não essa frase.
+  </div>
+
   <figure>
-    <img src="img/t16-gerenciar-plano-personalizado.png" alt="Janela Gerenciar Meu Plano na aba Personalizado. À esquerda, o seletor de Ciclo (Mensal/Anual), o cartão verde Módulo Básico com Sempre incluso, e sob Adicione módulos a lista com Gestão de Contratos e PMOC, Funcionários/RH, CRM, Emissão de Notas Fiscais, Precificação Avançada e Portal do Cliente, todos marcados e em verde, cada um com nome, descrição curta e preço mensal. À direita, o painel Seu Plano listando cada item selecionado com o preço, o seletor de Ciclo repetido e o Total mensal em destaque.">
-    <figcaption>Aba Personalizado: módulos marcados em verde à esquerda, painel Seu Plano com o total recalculado à direita.</figcaption>
+    <img src="img/t16-gerenciar-plano-personalizado.png" alt="Janela Gerenciar Meu Plano na aba Personalizado. À esquerda, o seletor de Ciclo (Mensal/Anual), o cartão verde Módulo Básico com Sempre incluso, as linhas verdes dos módulos grátis Portal do Cliente, Orçamentos e Precificação e Perguntas em vídeo nos checklists com a etiqueta Grátis e incluso em todos os planos, e sob Adicione módulos a lista dos módulos pagos: Gestão de Contratos e PMOC, Funcionários/RH, CRM, Emissão de Notas Fiscais e White Label, cada um com nome, descrição curta e preço mensal. À direita, o painel Seu Plano listando cada item selecionado com o preço, o seletor de Ciclo repetido e o Total mensal em destaque.">
+    <figcaption>Aba Personalizado: módulo básico e módulos grátis em verde, módulos pagos sob "Adicione módulos", e o painel Seu Plano com o total recalculado à direita.</figcaption>
   </figure>
 
   <h3>Regras que o sistema aplica</h3>
@@ -158,26 +175,27 @@
 
   <h2>5. O catálogo de módulos explicado em uma frase cada</h2>
 
-  <p>Módulo é um pedaço do sistema contratado pela empresa inteira. Os preços aparecem sempre atualizados dentro do montador e na janela <span class="ui">Módulo não disponível</span>, por isso não decore valor: olhe na tela.</p>
+  <p>Módulo é um pedaço do sistema contratado pela empresa inteira. A maioria é paga e soma no montador, mas alguns já vêm <b>grátis em qualquer plano pago</b>, marcados abaixo. Os preços aparecem sempre atualizados dentro do montador e na janela <span class="ui">Módulo não disponível</span>, por isso não decore valor: olhe na tela.</p>
 
   <table class="dados">
     <thead><tr><th>Módulo</th><th>O que ele libera</th></tr></thead>
     <tbody>
       <tr><td><b>Módulo Básico</b></td><td>O kit dos planos a partir do Essencial: Ordens de Serviço, Agenda, Dashboard, Orçamentos, Serviços, Mapa ao Vivo, Clientes, Equipamentos, Estoque e o Financeiro completo, incluindo Contas a Pagar/Receber, DRE, DFC e Cobranças online.</td></tr>
-      <tr><td><b>Gestão de Contratos e PMOC</b></td><td>Contratos recorrentes, portal do contrato e do PMOC pro cliente, e os documentos (TRT, Certificado, Cronograma e Dossiê).</td></tr>
-      <tr><td><b>Funcionários / RH</b></td><td>Cadastro de funcionários, equipes, ponto eletrônico e as movimentações financeiras dos colaboradores.</td></tr>
-      <tr><td><b>CRM</b></td><td>Funil de vendas com leads, etapas, interações e captação por link.</td></tr>
-      <tr><td><b>Emissão de Notas Fiscais</b></td><td>Emissão de NFS-e direto do sistema, com níveis de cota mensal.</td></tr>
-      <tr><td><b>Precificação Avançada</b></td><td>BDI, custos globais de recursos e precificação detalhada de serviços e orçamentos.</td></tr>
-      <tr><td><b>Portal do Cliente</b></td><td>A área em que o seu cliente acompanha as OS e os equipamentos dele por link.</td></tr>
-      <tr><td><b>White Label</b></td><td>Personalização completa da marca: logo, cores e ícone do sistema, inclusive nos documentos que o cliente recebe.</td></tr>
-      <tr><td><b>Usuário extra</b></td><td>Não é uma tela, é uma vaga a mais de usuário ativo no plano. O valor vigente aparece no montador.</td></tr>
+      <tr><td><b>Gestão de Contratos e PMOC</b> (pago)</td><td>Contratos recorrentes, portal do contrato e do PMOC pro cliente, e os documentos (TRT, Certificado, Cronograma e Dossiê).</td></tr>
+      <tr><td><b>Funcionários / RH</b> (pago)</td><td>Cadastro de funcionários, equipes, ponto eletrônico e as movimentações financeiras dos colaboradores.</td></tr>
+      <tr><td><b>CRM</b> (pago)</td><td>Funil de vendas com leads, etapas, interações e captação por link.</td></tr>
+      <tr><td><b>Emissão de Notas Fiscais</b> (pago)</td><td>Emissão de NFS-e direto do sistema, com níveis de cota mensal.</td></tr>
+      <tr><td><b>Precificação Avançada</b> (grátis, incluso em todos os planos)</td><td>BDI, custos globais de recursos e precificação detalhada de serviços e orçamentos.</td></tr>
+      <tr><td><b>Portal do Cliente</b> (grátis, incluso em todos os planos)</td><td>A área em que o seu cliente acompanha as OS e os equipamentos dele por link.</td></tr>
+      <tr><td><b>Perguntas em vídeo nos checklists</b> (grátis, incluso em todos os planos)</td><td>O técnico grava ou recebe uma pergunta em vídeo dentro do checklist da OS, em vez de só texto.</td></tr>
+      <tr><td><b>White Label</b> (pago)</td><td>Personalização completa da marca: logo, cores e ícone do sistema, inclusive nos documentos que o cliente recebe.</td></tr>
+      <tr><td><b>Usuário extra</b> (pago)</td><td>Não é uma tela, é uma vaga a mais de usuário ativo no plano. O valor vigente aparece no montador.</td></tr>
     </tbody>
   </table>
 
   <h3>Como saber o que você já tem</h3>
   <ul>
-    <li>Abra <span class="ui">Gerenciar Meu Plano</span> na aba <span class="ui">Personalizado</span>: os módulos já contratados vêm marcados em verde.</li>
+    <li>Abra <span class="ui">Gerenciar Meu Plano</span> na aba <span class="ui">Personalizado</span>: os módulos pagos já contratados vêm marcados em verde sob <span class="ui">Adicione módulos</span>, e os módulos grátis aparecem sempre em verde mais acima, contratado ou não.</li>
     <li>O cartão <span class="ui">Sua Assinatura</span> mostra o plano e a contagem de módulos.</li>
     <li>Durante o período de teste, todos os módulos ficam liberados. Ao ativar a assinatura, valem só os do plano escolhido, e é normal o cliente estranhar que "sumiu" alguma coisa. Não sumiu: acabou o teste.</li>
   </ul>
@@ -286,8 +304,8 @@
       </tr>
       <tr>
         <td>"Contratei um módulo e ele não apareceu"</td>
-        <td>A página ainda estava com dados antigos</td>
-        <td>Recarregue a página. O upgrade libera na hora. Se persistir, confirme na aba Personalizado se o módulo ficou marcado.</td>
+        <td>O upgrade abriu o checkout e o pagamento do ajuste proporcional ainda não foi confirmado</td>
+        <td>Upgrade de plano, módulo, usuário extra ou nível de NFS-e passa pelo checkout: o recurso só libera depois que esse pagamento é confirmado. Veja o Histórico de pagamentos; se a linha está Pendente, aguarde a compensação (Pix é na hora, boleto leva até três dias úteis).</td>
       </tr>
       <tr>
         <td>"Não consigo trocar por um plano menor"</td>
@@ -323,10 +341,10 @@
     <dd>Em Assinatura, no bloco principal, campo Valor mensal. O mesmo valor aparece no selo do cartão Sua Assinatura.</dd>
 
     <dt>Como contrato um módulo novo?</dt>
-    <dd>Assinatura › Gerenciar Meu Plano › aba Personalizado, marque o módulo e confirme no painel da direita. Os recursos são liberados na hora e o valor entra na próxima cobrança.</dd>
+    <dd>Assinatura › Gerenciar Meu Plano › aba Personalizado, marque o módulo e confirme no painel da direita. Isso é um upgrade: o sistema leva você pro checkout pra pagar o ajuste proporcional, e o módulo libera depois que esse pagamento é confirmado.</dd>
 
     <dt>Se eu subir de plano hoje, pago proporcional?</dt>
-    <dd>Os recursos são liberados imediatamente e o novo valor entra na próxima cobrança. Não há cobrança avulsa no momento da troca.</dd>
+    <dd>Sim. Ao confirmar o upgrade, você vai pro checkout pagar só a diferença proporcional ao tempo que falta até o seu próximo vencimento. Os recursos novos liberam depois que esse pagamento é confirmado, não antes.</dd>
 
     <dt>Se eu descer de plano, perco os recursos na hora?</dt>
     <dd>Não. O downgrade é agendado: você mantém o plano atual até o fim do período já pago e o valor novo passa a valer na próxima cobrança.</dd>

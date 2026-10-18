@@ -55,8 +55,8 @@
       <tr><td><span class="ui">Nome do Item *</span></td><td>Sim</td><td>Único campo obrigatório.</td></tr>
       <tr><td><span class="ui">Código/SKU</span></td><td>Não</td><td>Sugestão "Ex: FLT-001". O sistema propõe um código sequencial sozinho, com o selo <span class="ui">Auto</span>, e a explicação "Código sequencial sugerido automaticamente (você pode personalizar)."</td></tr>
       <tr><td><span class="ui">Categoria</span></td><td>Não</td><td>Lista fixa: Peças, Filtros, Gases, Ferramentas, Materiais, Equipamentos e Outros.</td></tr>
-      <tr><td><span class="ui">Grupo</span></td><td>Não</td><td>Diferente da categoria: o grupo é <b>criado por você</b> e serve para organizar do seu jeito. Dá para criar um grupo novo digitando o nome na própria busca. Sem grupo cadastrado, a mensagem é "Nenhum grupo. Crie em Configurações."</td></tr>
-      <tr><td><span class="ui">Fornecedor</span></td><td>Não</td><td>Texto livre com o nome do fornecedor habitual.</td></tr>
+      <tr><td><span class="ui">Grupo</span></td><td>Não</td><td>Diferente da categoria: o grupo é <b>criado por você</b>, tem uma cor própria e serve para organizar do seu jeito. O botão <span class="ui">+</span> ao lado do campo abre uma janela rápida só com <span class="ui">Nome do grupo</span> e <span class="ui">Cor</span>, sem precisar sair do cadastro do material.</td></tr>
+      <tr><td><span class="ui">Fornecedor</span></td><td>Não</td><td>Não é mais texto livre: é um campo de busca ligado ao <b>cadastro de fornecedores</b>, com o botão <span class="ui">+</span> para cadastrar um novo sem sair da janela. Material cadastrado antes dessa mudança, sem fornecedor vinculado, mostra abaixo do campo o nome antigo digitado, só como referência.</td></tr>
       <tr><td><span class="ui">Descrição</span></td><td>Não</td><td>"Descrição detalhada do item..."</td></tr>
       <tr><td><span class="ui">Quantidade</span></td><td>Não</td><td>Quantidade inicial. Ao cadastrar com quantidade maior que zero, o sistema registra uma <b>entrada</b> no local ativo, com a observação "Cadastro inicial", e o movimento aparece no Kardex.</td></tr>
       <tr><td><span class="ui">Unidade</span></td><td>Não</td><td>Unidade de medida (un, m, kg, L). Aparece nas listas e no relatório.</td></tr>
@@ -70,10 +70,7 @@
     <b>Categoria e Grupo não são a mesma coisa.</b> Categoria é uma lista fechada, igual para todo mundo (Peças, Filtros, Gases, Ferramentas, Materiais, Equipamentos, Outros). Grupo é livre, criado pela sua empresa em <span class="ui">Configurações do Estoque</span> → <span class="ui">Grupos de material</span>. Muita gente usa grupo para separar por marca, por linha ou por finalidade.
   </div>
 
-  <figure>
-    <img src="img/t8-cadastrar-material.png" alt="Janela Novo Item de Estoque com os campos Nome do Item, Código/SKU com o selo Auto e a sugestão EST-003, Grupo, Fornecedor, Descrição, Quantidade, Unidade, Preço de Custo e Preço de Venda, e o início do bloco Locais deste material com os botões Marcar todos e Desmarcar todos">
-    <figcaption>Janela Novo Item de Estoque: o único campo obrigatório é o nome, o SKU já vem sugerido.</figcaption>
-  </figure>
+  <!-- PRINT FALTANDO: t8-cadastrar-material — refazer a janela Novo Item de Estoque. O print anterior (06/09/2026) mostra o campo Fornecedor como texto livre e o campo Grupo sem o botão + de criação rápida; os dois mudaram. -->
 
   <h3>Estoque mínimo e o alerta de estoque baixo</h3>
 
@@ -108,14 +105,14 @@
     <li>Use <span class="ui">Definir como principal</span> para eleger o local padrão, <span class="ui">Renomear</span> para trocar o nome e <span class="ui">Excluir</span> para remover. Excluir avisa: "O local <i>[nome]</i> será removido. Esta ação não pode ser desfeita."</li>
   </ol>
 
-  <p>Com mais de um local, a aba <span class="ui">Estoque Atual</span> ganha uma linha de pílulas, uma por depósito. Você troca de depósito tocando na pílula, e os indicadores e a lista passam a refletir só aquele local.</p>
+  <p>Com mais de um local, a aba <span class="ui">Estoque Atual</span> ganha uma linha de abas sublinhadas, uma por depósito. Você troca de depósito tocando na aba, e os indicadores e a lista passam a refletir só aquele local. O local marcado como <span class="ui">Principal</span> aparece com uma estrela ao lado do nome.</p>
 
   <div class="dica">
     Casos comuns de mais de um local: <b>depósito central</b> mais <b>van de cada técnico</b>; ou <b>matriz</b> e <b>filial</b>. Com a van cadastrada como local, dá para saber quanto de gás cada técnico está carregando e repor antes de a rota começar.
   </div>
 
   <h3>Definir o que existe em cada local</h3>
-  <p>Ao lado de cada pílula de depósito há uma engrenagem, com o rótulo <span class="ui">Configurar itens deste local</span>. Ela abre a janela <span class="ui">Configurar [nome do local]</span>, com duas abas: <span class="ui">Itens</span> e <span class="ui">Acesso</span>.</p>
+  <p>Ao lado de cada aba de depósito há uma engrenagem, com o rótulo <span class="ui">Configurar itens deste local</span>. Ela abre a janela <span class="ui">Configurar [nome do local]</span>, com duas abas: <span class="ui">Itens</span> e <span class="ui">Acesso</span>.</p>
 
   <p>Na aba <span class="ui">Itens</span> você marca quais materiais existem naquele depósito, com busca, <span class="ui">Marcar todos</span>, <span class="ui">Desmarcar todos</span> e um atalho <span class="ui">Adicionar por grupo</span> para trazer um grupo inteiro de uma vez. A confirmação é "Itens do local atualizados".</p>
 
@@ -150,7 +147,7 @@
   <p>Escolhendo <span class="ui">Restrito</span>, aparece a lista de usuários para marcar quem tem acesso. Alguns aparecem com o rótulo <span class="ui">Sempre tem acesso</span> (a gestão não pode ser bloqueada do próprio estoque). Salvando, aparece "Acesso do local atualizado".</p>
 
   <div class="regra">
-    Um usuário sem acesso a um depósito <b>não vê aquela pílula</b>, não vê o saldo daquele local, não vê os movimentos daquele local no Kardex e não consegue movimentar nada lá. Para ele, é como se aquele depósito não existisse. <b>Isso é permissão, não é bug.</b> Quando alguém reclama que "meu estoque está com menos itens que o do meu sócio", é quase sempre isso.
+    Um usuário sem acesso a um depósito <b>não vê aquela aba</b>, não vê o saldo daquele local, não vê os movimentos daquele local no Kardex e não consegue movimentar nada lá. Para ele, é como se aquele depósito não existisse. <b>Isso é permissão, não é bug.</b> Quando alguém reclama que "meu estoque está com menos itens que o do meu sócio", é quase sempre isso.
   </div>
 
   <div class="dica">
@@ -207,6 +204,7 @@
   <ol>
     <li>Clique em <span class="ui">Nova requisição de compra</span>. Abre a janela <span class="ui">Nova Requisição de Compra</span>.</li>
     <li>Preencha <span class="ui">Título *</span>. Sugestão da tela: "Ex.: Reposição de materiais, Junho". Sem título, o aviso é "Dê um título à requisição."</li>
+    <li>Escolha o <span class="ui">Local de destino</span>: o depósito que vai receber os materiais quando a Ordem de Compra for recebida. Vem pré-selecionado com o local principal, mas pode ser trocado antes de salvar.</li>
     <li>Em <span class="ui">Materiais</span>, escolha a origem de cada item: <span class="ui">Do estoque</span> (busca no seu cadastro) ou <span class="ui">Fora do estoque</span> (você digita o nome de algo que ainda não existe no cadastro, e ele ganha o selo <span class="ui">Fora do estoque</span>).</li>
     <li>Preencha <span class="ui">Quantidade</span> e <span class="ui">Unidade</span> de cada material.</li>
     <li>O atalho <span class="ui">Adicionar itens abaixo do mínimo</span> monta a lista sozinho: escolha o local e o sistema traz tudo que está abaixo do mínimo, mostrando o <span class="ui">Deficit</span> de cada um.</li>
@@ -215,10 +213,7 @@
 
   <p>A requisição nasce com o status <span class="ui">Aberta</span> e depois pode virar <span class="ui">Concluída</span> ou <span class="ui">Cancelada</span>. O menu de cada uma traz <span class="ui">Editar</span>, <span class="ui">Concluir requisição</span>, <span class="ui">Reabrir requisição</span>, <span class="ui">Cancelar requisição</span> e <span class="ui">Excluir</span>.</p>
 
-  <figure>
-    <img src="img/t8-nova-requisicao.png" alt="Janela Nova Requisição de Compra com o campo Título vazio, o botão âmbar Adicionar itens abaixo do mínimo, a chave Do estoque/Fora do estoque, o campo Adicionar material do estoque, a mensagem Nenhum material adicionado e o campo Observações">
-    <figcaption>Janela Nova Requisição de Compra: título, materiais (do estoque ou não) e o atalho para o que já está abaixo do mínimo.</figcaption>
-  </figure>
+  <!-- PRINT FALTANDO: t8-nova-requisicao — refazer a janela Nova Requisição de Compra. O print anterior (06/09/2026) não mostra o campo Local de destino, que passou a existir entre o Título e os Materiais. -->
 
   <h3>Registrar uma compra que já aconteceu</h3>
   <p>Use <span class="ui">Registrar compra direta</span> quando você já sabe o fornecedor, o que chegou e quanto foi pago. A janela <span class="ui">Compra de material</span> explica: "Registre a entrada no estoque e a despesa financeira em uma única operação."</p>
@@ -385,10 +380,7 @@
 
   <p>O botão <span class="ui">Exportar</span> gera PDF e Excel com o título <span class="ui">Posição de Estoque</span> e a data no cabeçalho.</p>
 
-  <figure>
-    <img src="img/t8-posicao-estoque.png" alt="Aba Posição de Estoque com as pílulas Todos os locais, Galpão (teste) e Van 01 (teste), o seletor de data, os cartões Valor em estoque (custo) R$ 900,00 e Projeção de venda R$ 0,00, e a tabela com Local, SKU, Material, Un., Saldo, Valor (custo) e Projeção venda, com a linha Total ao fim">
-    <figcaption>Posição de Estoque: o mesmo material (Filtro G4) somado nos dois depósitos, com o total no rodapé da tabela.</figcaption>
-  </figure>
+  <!-- PRINT FALTANDO: t8-posicao-estoque — refazer a aba Posição de Estoque. O print anterior (06/09/2026) mostra pílulas arredondadas de depósito, um input de data nativo do navegador e os dois cartões de total como caixa simples; os três mudaram de visual. -->
 
   <div class="dica">
     Essa aba é o que o contador pede no fechamento do ano: o valor do estoque em 31 de dezembro. Também serve para conferir "quanto eu tinha antes daquela obra grande" e para justificar variação de custo entre meses.
@@ -497,7 +489,7 @@
       <tr>
         <td>"O valor investido está diferente do que eu esperava"</td>
         <td>Preço de custo desatualizado ou local filtrado</td>
-        <td>O valor usa o preço de custo cadastrado. Confira também qual depósito está selecionado nas pílulas: o indicador reflete o local ativo.</td>
+        <td>O valor usa o preço de custo cadastrado. Confira também qual depósito está selecionado na aba de local: o indicador reflete o local ativo.</td>
       </tr>
       <tr>
         <td>"Consigo importar meus materiais de uma planilha?"</td>
@@ -526,7 +518,7 @@
     <dd>Categoria é uma lista fixa igual para todos (Peças, Filtros, Gases, Ferramentas, Materiais, Equipamentos, Outros). Grupo é livre, criado pela sua empresa em Configurações do Estoque, e serve para organizar do seu jeito.</dd>
 
     <dt>Preciso ter mais de um depósito?</dt>
-    <dd>Não. Quem tem um só trabalha no local principal e nem vê as pílulas de depósito. Mais de um local só compensa quando existe separação física real, como matriz e filial ou a van de cada técnico.</dd>
+    <dd>Não. Quem tem um só trabalha no local principal e nem vê as abas de depósito. Mais de um local só compensa quando existe separação física real, como matriz e filial ou a van de cada técnico.</dd>
 
     <dt>Dá para o técnico dar baixa de material pelo celular?</dt>
     <dd>Pela tela de Estoque, só quem tem a permissão de gerenciar estoque e acesso ao local. Dentro da própria Ordem de Serviço, sim, quando a empresa liga o recurso <span class="ui">Consumo de estoque na OS</span> em Configurações → Usabilidade: o técnico anota o material usado durante o atendimento pelo <span class="ui">Consumir do estoque</span> do menu de mais ações, e a baixa é confirmada no resumo editável que aparece ao finalizar a OS. Com o recurso desligado, a tela de execução não mostra esse passo.</dd>

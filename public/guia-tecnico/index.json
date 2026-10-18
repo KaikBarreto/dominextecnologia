@@ -1,14 +1,14 @@
 {
  "documento": "Guia Técnico — Dominex",
  "descricao": "Manual completo da Dominex, sistema de gestão para empresas de serviço técnico em campo (refrigeração e climatização, elétrica, energia solar, CFTV, dedetização, elevadores e assistência técnica). Uma seção por área do sistema, na ordem da Trilha Domiflix. Cada chunk é auto-contido e pode ser recuperado isoladamente.",
- "gerado_em": "2026-10-17",
- "total_chunks": 678,
- "total_palavras": 145026,
+ "gerado_em": "2026-10-18",
+ "total_chunks": 713,
+ "total_palavras": 163476,
  "chunks_por_tipo": {
   "visao_geral": 18,
-  "capitulo": 193,
-  "problema": 234,
-  "faq": 215,
+  "capitulo": 207,
+  "problema": 243,
+  "faq": 227,
   "glossario": 18
  },
  "secoes": [
@@ -40,7 +40,7 @@
    "titulo": null,
    "fase": "01",
    "fase_titulo": "Deixar o sistema de pé",
-   "chunks": 33,
+   "chunks": 37,
    "capitulos": []
   },
   {
@@ -104,7 +104,7 @@
    "titulo": "Ordens de Serviço, Agenda, Equipes e Mapa ao Vivo",
    "fase": "03",
    "fase_titulo": "A operação rodando",
-   "chunks": 37,
+   "chunks": 39,
    "capitulos": [
     "Tela Ordens de Serviço: kanban × lista e os 4 indicadores do topo",
     "Criar OS — Etapa 1: cliente cadastrado × cliente avulso, e o tipo de serviço",
@@ -184,7 +184,7 @@
    "titulo": "Orçamentos, Precificação e Proposta",
    "fase": "04",
    "fase_titulo": "Vender",
-   "chunks": 45,
+   "chunks": 44,
    "capitulos": [
     "Tela Orçamentos: os indicadores (em aberto, taxa de conversão, ticket médio)",
     "Wizard — Etapa 1 Destinatário: cliente cadastrado × prospect avulso",
@@ -207,7 +207,7 @@
    "titulo": "CRM: funil, leads e captação",
    "fase": "04",
    "fase_titulo": "Vender",
-   "chunks": 56,
+   "chunks": 69,
    "capitulos": [
     "Tela CRM: kanban × lista, e o empty-state \"criar estágios padrão\"",
     "Montar o funil: criar, renomear, reordenar e colorir estágios",
@@ -262,7 +262,7 @@
    "titulo": "Financeiro",
    "fase": "06",
    "fase_titulo": "O dinheiro e o fiscal",
-   "chunks": 44,
+   "chunks": 47,
    "capitulos": [
     "Os endereços do menu Financeiro e o que cada um responde",
     "Movimentações: criar a primeira conta bancária/caixa",
@@ -282,7 +282,7 @@
    "titulo": "Notas Fiscais (NFS-e e NF-e)",
    "fase": "06",
    "fase_titulo": "O dinheiro e o fiscal",
-   "chunks": 40,
+   "chunks": 45,
    "capitulos": [
     "O que é NFS-e e por que a configuração vem antes de tudo",
     "Abrindo Configurações (é um modal, não outra tela) — passo Empresa",
@@ -303,7 +303,7 @@
    "titulo": "Funcionários: Financeiro do Funcionário e Ponto Eletrônico",
    "fase": "07",
    "fase_titulo": "Gente e crescimento",
-   "chunks": 42,
+   "chunks": 51,
    "capitulos": [
     "Tela Funcionários: cadastro, financeiro individual e ponto eletrônico",
     "Cadastro: dados, foto, chave PIX, admissão",

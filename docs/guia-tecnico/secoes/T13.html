@@ -500,6 +500,172 @@
   <div class="dica">O documento carimba o regime usado, com uma linha explicando ("Regime de Caixa: cada valor entra no mês em que o dinheiro entrou ou saiu da conta"). Isso importa: sem esse carimbo, o contador recebe o PDF e não sabe qual régua gerou aqueles números.</div>
   <div class="aviso">O PDF da DRE abre em uma <b>nova aba</b>. Se o navegador estiver bloqueando pop-ups, nada acontece na tela. Libere os pop-ups para o endereço do sistema e clique de novo.</div>
 
+  <h2>15. Conciliar o extrato do banco: subir o .ofx e casar linha por linha</h2>
+
+  <p>Conciliar é conferir, linha por linha, se o que o banco registrou bate com o que está lançado no sistema. Feito à mão, num extrato de trezentas linhas, é a tarefa que ninguém faz até o contador cobrar. A conciliação faz esse trabalho lado a lado: o extrato de um lado, as movimentações do sistema do outro.</p>
+
+  <p>Fica em <span class="ui">Financeiro</span>, tela <span class="ui">Movimentações</span>, na aba <span class="ui">Conciliação</span>, logo abaixo de <span class="ui">Visão Geral</span> na lista da esquerda.</p>
+
+  <figure>
+    <img src="img/t13-conciliacao-aba.png" alt="Aba Conciliação dentro de Movimentações Financeiras, com o seletor de conta para conciliar, o botão Como funciona e o estado vazio convidando a importar o extrato ponto ofx">
+    <figcaption>Financeiro, Movimentações, aba Conciliação. Antes de escolher a conta, a tela só explica o que vai acontecer.</figcaption>
+  </figure>
+
+  <p><b>O arquivo vem do seu internet banking.</b> Procure por "exportar extrato" e escolha o formato <code>.ofx</code>, que alguns bancos chamam de "Money" ou "OFX". Não serve PDF nem Excel: o <code>.ofx</code> carrega data, valor e identificador de cada lançamento de um jeito que o sistema lê sem adivinhar.</p>
+
+  <div class="regra"><b>Um arquivo, uma conta.</b> Se o seu banco exportar várias contas no mesmo arquivo, o sistema recusa e pede para exportar uma por vez. Importar só parte das contas em silêncio esconderia uma conta inteira da conferência.</div>
+
+  <h3>Os dois painéis e o rodapé que fecha</h3>
+
+  <p>Depois de importar, a tela fica com o extrato do banco à esquerda e, à direita, o painel da linha que você selecionar. O rodapé mostra os três números que importam: <span class="ui">Saldo do banco</span>, <span class="ui">Saldo conciliado</span> e <span class="ui">Diferença</span>.</p>
+
+  <figure>
+    <img src="img/t13-conciliacao-extrato.png" alt="Extrato importado com as linhas do banco, selo Pendente em cada uma, valores com sinal de mais e de menos, e o rodapé fixo com Saldo do banco, Saldo conciliado, Diferença e o botão Finalizar conciliação">
+    <figcaption>Cada linha do extrato com o seu estado. O rodapé fica fixo e acompanha a rolagem.</figcaption>
+  </figure>
+
+  <div class="regra"><b>Só fecha no zero.</b> O botão <span class="ui">Finalizar conciliação</span> só habilita quando a diferença está zerada e não sobrou nenhuma linha pendente. Não existe lançamento de ajuste para forçar o fechamento: conciliação que fecha com diferença não conciliou nada.</div>
+
+  <h3>O que fazer com cada linha</h3>
+
+  <p>Clique numa linha e o painel da direita oferece os destinos possíveis <b>para aquela linha</b>. Linha de entrada e linha de saída não recebem as mesmas opções, porque não fazem sentido as mesmas coisas.</p>
+
+  <figure>
+    <img src="img/t13-conciliacao-destinos.png" alt="Painel de ações de uma linha do extrato com os destinos Baixar conta, Criar lançamento, Transferência, Pagar fatura, Vale de funcionário, Buscar lançamento, Inverter sinal e Ignorar">
+    <figcaption>Os destinos de uma linha de saída. Numa linha de entrada, pagar fatura e vale não aparecem.</figcaption>
+  </figure>
+
+  <table class="dados">
+    <thead><tr><th>Destino</th><th>Quando usar</th><th>O que acontece</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Casar</span></td><td>o lançamento já existe no sistema</td><td>só amarra a linha do banco ao lançamento. Nada é criado nem alterado. Quando existe um candidato exato, ele vem sugerido com um clique.</td></tr>
+      <tr><td><span class="ui">Baixar conta</span></td><td>é uma conta a pagar ou a receber que venceu</td><td>marca como paga, com a data do extrato e a conta conciliada.</td></tr>
+      <tr><td><span class="ui">Criar lançamento</span></td><td>o movimento não existe no sistema</td><td>cria já pago, com a data e o valor da linha. A descrição vem preenchida com o texto do banco.</td></tr>
+      <tr><td><span class="ui">Transferência</span></td><td>é dinheiro indo de uma conta sua para outra</td><td>cria o par: sai de uma, entra na outra. <b>Não vira receita nem despesa.</b></td></tr>
+      <tr><td><span class="ui">Pagar fatura</span></td><td>é o pagamento da fatura do cartão</td><td>usa o mesmo caminho de pagamento de fatura do sistema.</td></tr>
+      <tr><td><span class="ui">Vale de funcionário</span></td><td>é um vale que saiu da conta</td><td>registra a saída e o vale no histórico do funcionário.</td></tr>
+      <tr><td><span class="ui">Buscar lançamento</span></td><td>o lançamento existe, mas em outra data</td><td>busca sem janela de data, por texto ou por valor.</td></tr>
+      <tr><td><span class="ui">Ignorar</span></td><td>a linha não é movimento do seu financeiro</td><td>tira da conferência. <b>E a diferença sai do zero</b>, então você não consegue fechar ignorando linha de verdade.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="aviso"><b>Compra no cartão não aparece como conta a baixar, e isso é de propósito.</b> Despesa de cartão nunca é paga uma a uma: ela só pesa no seu bolso quando a fatura inteira é quitada. Se aparecesse aqui para dar baixa, o gasto contaria duas vezes, na compra e no pagamento da fatura.</div>
+
+  <h3>Desfazer é seguro, e sabe o que desfazer</h3>
+
+  <p>Toda linha resolvida mostra <span class="ui">Desfazer</span>. O que ele faz depende do que foi feito: se o sistema <b>criou</b> o lançamento, desfazer <b>apaga</b> esse lançamento; se você <b>casou</b> com um lançamento que já existia antes, desfazer só <b>desvincula</b> e não encosta no seu dado. Transferência desfeita apaga as duas pernas, nas duas contas.</p>
+
+  <h3>Quando o banco manda o valor com o sinal trocado</h3>
+
+  <p>Acontece: alguns bancos exportam uma despesa com sinal de entrada, ou mandam o arquivo inteiro com os valores positivos. Quando o tipo informado pelo banco não combina com o sinal do valor, o sistema avisa e marca as linhas suspeitas.</p>
+
+  <div class="regra"><b>O sistema nunca corrige o valor sozinho.</b> Ele mostra quais linhas estão estranhas e deixa você inverter, de uma vez ou linha a linha. O valor original do arquivo é preservado, a correção fica registrada e pode ser desfeita. Ao inverter, o saldo inicial é recalculado, então a conferência continua fechando.</div>
+
+  <h3>Subir o mesmo extrato de novo não duplica nada</h3>
+
+  <p>Pode importar o mesmo arquivo quantas vezes quiser. E também funciona no caso chato: quando o banco reexporta o mesmo período com códigos novos, o sistema reconhece as linhas pelo conteúdo e descarta as repetidas, mostrando quais foram e por quê. Nada é descartado em silêncio.</p>
+
+  <p>Dá para parar no meio. Ao voltar, a conta mostra o cartão <span class="ui">Continuar conciliação</span> com quantas linhas faltam, e o progresso sobrevive até a fechar o navegador. As conciliações já finalizadas ficam guardadas em <span class="ui">Conciliações anteriores</span>, em modo leitura. Se precisar mexer numa já finalizada, use <span class="ui">Reabrir conciliação</span>.</p>
+
+<h2>16. Fatura do cartão na conciliação: o que muda e por que a compra não fica paga</h2>
+
+  <p>A fatura do cartão também entra na conciliação, e é provavelmente onde ela mais vale a pena. Selecione o cartão no seletor de conta, dentro do grupo <span class="ui">Cartões</span>, e importe o arquivo da fatura.</p>
+
+  <p>O raciocínio muda, porque uma fatura não é um extrato de caixa. A linha não é dinheiro que moveu, é uma <b>compra</b>. E o número de fechamento não é saldo, é o <b>total da fatura</b>.</p>
+
+  <figure>
+    <img src="img/t13-conciliacao-cartao.png" alt="Conciliação de fatura de cartão com as linhas de compra e o rodapé mostrando Total da fatura, Compras lançadas e Falta lançar em vez de saldo">
+    <figcaption>No cartão o rodapé fala a língua da fatura: total, compras lançadas e o que falta lançar.</figcaption>
+  </figure>
+
+  <div class="regra"><b>A diferença é a compra que você esqueceu de lançar.</b> É essa conta que quase ninguém fecha à mão, e é por isso que a despesa de cartão quase sempre aparece menor do que foi de verdade.</div>
+
+  <p>Os destinos também mudam. Numa linha de compra você tem <span class="ui">Casar com compra já lançada</span> e <span class="ui">Lançar compra</span>. Numa linha de crédito, que normalmente é o pagamento da fatura, você tem <span class="ui">Casar com pagamento</span> e <span class="ui">Pagamento da fatura</span>. Dar baixa, transferência e criar lançamento comum <b>não existem aqui</b>.</p>
+
+  <div class="aviso"><b>A compra lançada pela conciliação nasce não paga, e continua não paga.</b> Ela cai na fatura certa e só é quitada quando você paga a fatura inteira, exatamente como já funcionava ao lançar a compra pela tela do cartão. Casar uma compra com a linha da fatura também não a torna paga: casar registra o vínculo, não quita.</div>
+
+  <h3>Em qual fatura a compra cai</h3>
+
+  <p>O sistema calcula sozinho, pelo dia de fechamento do seu cartão, e segue a mesma regra do resto do sistema: compra feita <b>no próprio dia do fechamento</b> já vai para a fatura seguinte.</p>
+
+  <table class="dados">
+    <thead><tr><th>Fechamento do cartão</th><th>Data da compra</th><th>Fatura</th></tr></thead>
+    <tbody>
+      <tr><td>dia 18</td><td>05 de agosto</td><td>agosto</td></tr>
+      <tr><td>dia 18</td><td>17 de agosto</td><td>agosto</td></tr>
+      <tr><td>dia 18</td><td>18 de agosto</td><td>setembro, porque a fatura fecha nesse dia</td></tr>
+      <tr><td>dia 18</td><td>25 de agosto</td><td>setembro</td></tr>
+    </tbody>
+  </table>
+
+  <p>Quando você lança a compra pela conciliação, a tela mostra em qual fatura ela caiu. Vale conferir: é a informação que mais gera dúvida depois.</p>
+
+  <div class="aviso"><b>Estorno e devolução de cartão ainda não entram por aqui.</b> Se a fatura tiver um crédito que não é pagamento, lance pelo Financeiro e volte para casar a linha. O sistema recusa com essa orientação em vez de deixar você registrar algo que deixaria a fatura maior que a real.</div>
+
+<h2>17. Importar movimentações por planilha: o molde, a conferência e o desfazer</h2>
+
+  <p>Para quem está começando no sistema e tem meses de histórico numa planilha, ou para quem recebe uma relação do contador, existe a importação por planilha. Fica em <span class="ui">Financeiro</span>, tela <span class="ui">Movimentações</span>, no botão <span class="ui">Importar planilha</span> do topo.</p>
+
+  <figure>
+    <img src="img/t13-planilha-dialogo.png" alt="Diálogo Importar planilha financeira com o botão Baixar molde, a área de arrastar a planilha preenchida e a seção recolhível Importações anteriores">
+    <figcaption>Os dois caminhos: baixar o molde para preencher, ou subir a planilha já pronta.</figcaption>
+  </figure>
+
+  <h3>Comece pelo molde</h3>
+
+  <p>O botão <span class="ui">Baixar molde</span> gera uma planilha <code>.xlsx</code> já formatada, com a marca da sua empresa, uma primeira aba de instruções e, na aba de digitação, <b>as suas contas, categorias e centros de custo em listas de escolher</b>. É isso que impede o preenchimento de voltar com nomes que o sistema não conhece.</p>
+
+  <p>O molde abre no Excel e no Google Planilhas. As colunas de Tipo, Categoria, Conta e Centro de custo ganham cor conforme o que você escolhe, usando a mesma cor que o item tem no sistema.</p>
+
+  <div class="regra"><b>O valor é sempre positivo.</b> Quem diz se o dinheiro entrou ou saiu é a coluna <span class="ui">Tipo</span>. E cartão de crédito não entra por esta planilha: a fatura do cartão se resolve pela conciliação ou pela tela do cartão.</div>
+
+  <h3>As três colunas de data, e para que serve cada uma</h3>
+
+  <p>É aqui que a maioria das planilhas sai errada, então vale decorar: a planilha tem três datas e elas respondem perguntas diferentes.</p>
+
+  <table class="dados">
+    <thead><tr><th>Coluna</th><th>Responde</th><th>Quando importa</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Data</span></td><td>quando o lançamento aconteceu</td><td>sempre, é obrigatória</td></tr>
+      <tr><td><span class="ui">Vencimento</span></td><td>quando a conta precisa ser paga ou recebida</td><td>só quando <span class="ui">Pago?</span> for <b>Não</b></td></tr>
+      <tr><td><span class="ui">Data do pagamento</span></td><td>quando o dinheiro realmente se moveu</td><td>só quando <span class="ui">Pago?</span> for <b>Sim</b></td></tr>
+    </tbody>
+  </table>
+
+  <div class="regra"><b>Conta que ainda vai vencer precisa do Vencimento preenchido.</b> Se a linha não está paga e a célula fica em branco, o sistema entende que ela vence na própria data do lançamento, e aí ela nasce atrasada na sua lista de contas a pagar. Uma compra lançada em 7 de outubro para pagar em boleto de 30 dias precisa ter 6 de novembro no Vencimento.</div>
+
+  <p>As três colunas têm seletor de calendário: clique na célula e escolha a data, em vez de digitar. Isso evita o erro mais comum da planilha, que é escrever um dia que não existe naquele mês, tipo 31 de fevereiro ou 31 de novembro. Se acontecer, o sistema avisa na célula certa e deixa aquela linha desmarcada, sem estragar as outras.</p>
+
+  <p>Preencher a coluna errada não quebra nada, só é ignorado com aviso: vencimento numa linha paga não tem o que cobrar, e data de pagamento numa linha não paga não existe ainda. Nos dois casos a conferência explica o que foi desconsiderado.</p>
+
+  <h3>Confira antes de gravar</h3>
+
+  <p>Depois de subir o arquivo, nada é gravado de imediato. A tela mostra a planilha interpretada, linha por linha, com quanto entra, quanto sai e o estado de cada linha.</p>
+
+  <figure>
+    <img src="img/t13-planilha-conferencia.png" alt="Tela de conferência da importação com contadores de prontas, para conferir e duplicadas, totais de entradas e saídas, e a lista de linhas com os selos Pronta, Precisa de atenção e Duplicada">
+    <figcaption>A conferência mostra o impacto antes de qualquer coisa ser gravada.</figcaption>
+  </figure>
+
+  <table class="dados">
+    <thead><tr><th>Selo</th><th>O que significa</th><th>O que fazer</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Pronta</span></td><td>o sistema entendeu tudo da linha</td><td>nada, já vem marcada para gravar</td></tr>
+      <tr><td><span class="ui">Precisa de atenção</span></td><td>uma categoria, conta ou centro de custo não existe no seu cadastro</td><td>escolher o correspondente ali mesmo, sem voltar para o Excel</td></tr>
+      <tr><td><span class="ui">Duplicada</span></td><td>já existe um lançamento igual, na mesma data</td><td>nada. Vem desmarcada sozinha, e você marca só se quiser mesmo os dois</td></tr>
+    </tbody>
+  </table>
+
+  <p>Cliente ou fornecedor que não existe no cadastro <b>não bloqueia</b> a linha: ela entra sem o vínculo e o nome é informado. Bloquear por isso faria uma planilha com quatrocentos nomes novos travar as quatrocentas linhas.</p>
+
+  <div class="regra"><b>Só é gravado o que está marcado.</b> O botão diz quantas linhas vão entrar, e é exatamente esse número que entra.</div>
+
+  <h3>Desfazer a importação inteira</h3>
+
+  <p>A primeira importação quase sempre sai torta. Por isso existe <span class="ui">Desfazer importação</span>, que remove de uma vez tudo o que aquela importação criou, e ele <b>não some depois que você fecha a janela</b>: reabra o <span class="ui">Importar planilha</span> e a seção <span class="ui">Importações anteriores</span> lista as importações com a data, quantos lançamentos criou e o botão de desfazer.</p>
+
+  <div class="aviso"><b>Lançamento já mexido não é removido, e isso é proteção.</b> Se um lançamento daquela importação já foi conciliado, recebeu anexo, teve recebimento parcial ou virou pagamento de fatura, o desfazer mantém esse e explica o motivo de cada um. O resto sai normalmente.</div>
+
   <h2 class="suporte">Suporte: problemas comuns</h2>
   <table class="faq">
     <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>

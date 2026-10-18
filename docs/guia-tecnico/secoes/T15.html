@@ -1,32 +1,36 @@
 <section class="tutorial" id="t15">
   <h1><span class="tcode">T15</span> Funcionários, Ponto e Folha</h1>
 
-  <p class="lead">Aqui vive o time interno da sua empresa: cadastro do funcionário, salário, vale, falta, bônus, ponto eletrônico batido pelo celular e a folha de pagamento caindo sozinha no financeiro. É o módulo que tira a planilha paralela de cima da mesa.</p>
+  <p class="lead">Aqui vive o time interno da sua empresa: cadastro do funcionário, salário, vale, falta, bônus, ponto eletrônico batido pelo celular e a folha de pagamento caindo sozinha no financeiro. Também vive aqui o cadastro de prestador PJ/MEI, com contrato e pagamento sem folha. É o módulo que tira a planilha paralela de cima da mesa.</p>
 
   <div class="meta">
-    <span><b>Onde fica:</b> Menu lateral, <span class="ui">Funcionários</span>. O ponto do gestor, as equipes, o perfil comportamental e o organograma são abas dentro dessa mesma tela</span>
-    <span><b>Rotas:</b> <code>/funcionarios</code>, <code>/funcionarios/perfil/:codigo</code>, <code>/funcionarios/organograma</code>. O ponto do funcionário fica numa página pública, <code>/ponto/:codigo</code>, que abre sem login</span>
+    <span><b>Onde fica:</b> Menu lateral, <span class="ui">Funcionários</span>. O ponto do gestor, os prestadores PJ/MEI, as equipes, o perfil comportamental, o organograma e o fluxograma são abas dentro dessa mesma tela</span>
+    <span><b>Rotas:</b> <code>/funcionarios</code>, <code>/funcionarios/perfil/:codigo</code>, <code>/funcionarios/organograma</code>, <code>/funcionarios/fluxogramas</code>. O ponto do funcionário fica numa página pública, <code>/ponto/:codigo</code>, que abre sem login, e o ponto em grupo (quiosque de tablet) fica em <code>/ponto/empresa/:codigo</code></span>
     <span><b>Depende de:</b> T14 (Notas Fiscais)</span>
     <span><b>Depende do módulo:</b> Funcionários / RH</span>
     <span><b>Quem enxerga:</b> quem tem a permissão de tela <span class="ui">Funcionários</span>. A aba de ponto só aparece para administrador, gestor ou quem tem permissão de gerenciar ponto ou funcionários</span>
   </div>
 
-  <h2>1. Tela Funcionários e suas 5 abas</h2>
+  <h2>1. Tela Funcionários e suas abas (Funcionários, PJ/MEI, Equipes, Ponto, Perfil, Organograma e Fluxograma)</h2>
 
   <p>A tela se chama <span class="ui">Funcionários (RH)</span> e o subtítulo é "Gerencie funcionários, vales, pagamentos e extratos". Do lado esquerdo (no celular, num carrossel de pílulas) ficam as abas:</p>
 
   <table class="dados">
     <thead><tr><th>Aba</th><th>O que tem dentro</th></tr></thead>
     <tbody>
-      <tr><td><span class="ui">Funcionários</span></td><td>A lista do time, com busca, ordenação e as ações de cada pessoa.</td></tr>
+      <tr><td><span class="ui">Funcionários</span></td><td>A lista do time em regime CLT ou Informal, com busca, ordenação e as ações de cada pessoa. Prestador PJ/MEI não aparece aqui.</td></tr>
+      <tr><td><span class="ui">PJ/MEI</span></td><td>A lista separada dos prestadores de serviço (regime PJ ou MEI), com CNPJ, contrato vigente e vigência. Ver capítulo 6.</td></tr>
       <tr><td><span class="ui">Equipes</span></td><td>Montagem das equipes que aparecem na agenda e nas ordens de serviço.</td></tr>
       <tr><td><span class="ui">Controle de Ponto</span></td><td>O painel do gestor sobre o ponto: Hoje, Histórico, Relatório e Config.</td></tr>
       <tr><td><span class="ui">Perfil Comportamental</span></td><td>Os perfis DISC do time.</td></tr>
       <tr><td><span class="ui">Organograma</span></td><td>O quadro visual da estrutura da empresa.</td></tr>
+      <tr><td><span class="ui">Fluxograma</span></td><td>Desenhe os processos da empresa em um fluxograma e documente o passo a passo (POP) de cada etapa, com exportação em PDF.</td></tr>
     </tbody>
   </table>
 
-  <div class="aviso">A aba <span class="ui">Controle de Ponto</span> só aparece para administrador, gestor ou usuário com permissão de gerenciar ponto ou gerenciar funcionários. Quem não tem essas permissões vê quatro abas, não cinco. Isso não é erro de carregamento.</div>
+  <div class="aviso">A aba <span class="ui">Controle de Ponto</span> só aparece para administrador, gestor ou usuário com permissão de gerenciar ponto ou gerenciar funcionários. Quem não tem essas permissões vê uma aba a menos. Isso não é erro de carregamento.</div>
+
+  <div class="regra">A aba <span class="ui">PJ/MEI</span> e a aba <span class="ui">Funcionários</span> são listas separadas de propósito, pedido explícito do time: um prestador PJ/MEI nunca aparece na lista de funcionários CLT/Informal, e vice-versa. O contador no topo da tela conta só CLT/Informal, nunca os prestadores PJ/MEI.</div>
 
   <div class="regra"><b>Não existe uma tela separada de ponto para o gestor.</b> O acompanhamento do ponto é uma aba dentro de Funcionários. O único endereço de ponto que existe fora daqui é o link público do funcionário, que é individual e serve só pra ele bater o ponto.</div>
 
@@ -44,8 +48,8 @@
   </ul>
 
   <figure>
-    <img src="img/t15-funcionarios.png" alt="Tela Funcionários (RH) com as abas Funcionários, Equipes, Controle de Ponto, Perfil Comportamental e Organograma na lateral, e a lista de funcionários com colunas Funcionário, Cargo, Contato, Salário, Saldo e Ações">
-    <figcaption>Funcionários (RH): as abas na lateral e a lista do time com salário e saldo de cada pessoa.</figcaption>
+    <img src="img/t15-funcionarios.png" alt="Tela Funcionários (RH) com as abas Funcionários, PJ/MEI, Equipes, Controle de Ponto, Perfil Comportamental, Organograma e Fluxograma na lateral, e a lista de funcionários com colunas Funcionário, Cargo, Contato, Salário, Saldo e Ações">
+    <figcaption>Funcionários (RH): as abas na lateral, incluindo a aba PJ/MEI, e a lista do time CLT/Informal com salário e saldo de cada pessoa.</figcaption>
   </figure>
 
   <h3>Excluir funcionário</h3>
@@ -57,7 +61,9 @@
 
   <h2>2. Cadastro: dados, foto, chave PIX, admissão</h2>
 
-  <p>O botão <span class="ui">Novo Funcionário</span> abre um formulário com três abas: <span class="ui">Dados</span>, <span class="ui">Pagamento</span> e <span class="ui">Perfil</span>. O botão de salvar fica fixo no rodapé, então dá pra salvar de qualquer aba. Ele é <span class="ui">Criar Funcionário</span> na criação e <span class="ui">Salvar</span> na edição.</p>
+  <p>O botão <span class="ui">Novo Funcionário</span> abre um formulário com quatro abas: <span class="ui">Dados</span>, <span class="ui">Pagamento</span>, <span class="ui">Ponto</span> e <span class="ui">Perfil</span>. O botão de salvar fica fixo no rodapé, então dá pra salvar de qualquer aba. Ele é <span class="ui">Criar Funcionário</span> na criação e <span class="ui">Salvar</span> na edição.</p>
+
+  <div class="regra">A aba <span class="ui">Ponto</span> tem seção própria, separada da aba <span class="ui">Pagamento</span>. Quem aprendeu numa versão antiga do sistema pode procurar o ponto eletrônico dentro de Pagamento e não vai achar: ele mudou de lugar. Veja o capítulo 9.</div>
 
   <h3>Campos da aba Dados</h3>
   <table class="dados">
@@ -84,7 +90,7 @@
 
   <h2>3. Remuneração: salário, custo mensal e os campos CLT (CBO, matrícula, dependentes, VT)</h2>
 
-  <div class="aviso">Na tela, esta aba se chama <span class="ui">Pagamento</span>, não "Remuneração". É a segunda das três abas do formulário do funcionário.</div>
+  <div class="aviso">Na tela, esta aba se chama <span class="ui">Pagamento</span>, não "Remuneração". É a segunda das quatro abas do formulário do funcionário.</div>
 
   <h3>Salário e custo mensal</h3>
   <table class="dados">
@@ -96,7 +102,7 @@
   </table>
 
   <h3>Contrato de trabalho</h3>
-  <p>A seção <span class="ui">Contrato de trabalho</span> tem uma chave de <span class="ui">Regime</span>. Escolhendo CLT, aparecem os campos formais:</p>
+  <p>A seção <span class="ui">Contrato de trabalho</span> tem a chave de <span class="ui">Regime</span>, com três opções: <span class="ui">Informal</span>, <span class="ui">CLT</span> e <span class="ui">PJ/MEI</span>. Escolhendo CLT, aparecem os campos formais:</p>
   <table class="dados">
     <thead><tr><th>Campo</th><th>O que é</th></tr></thead>
     <tbody>
@@ -107,6 +113,8 @@
     </tbody>
   </table>
   <p>Esses campos alimentam o holerite gerado no pagamento em modo CLT. Fora do regime CLT eles não aparecem e não são exigidos.</p>
+
+  <div class="regra">Escolhendo <span class="ui">PJ/MEI</span> no Regime, o formulário muda de figura: some o Custo mensal, somem os campos CLT, some a Configuração de Pagamento, e entram o CNPJ, a razão social e uma aba <span class="ui">Contrato</span> nova. É o assunto do capítulo 6. O campo Salário também some, e no lugar aparece <span class="ui">Valor de referência (opcional)</span>, que não é o que o prestador recebe, só uma referência de custo pra orçamento de OS.</div>
 
   <div class="aviso">O aviso que a própria tela de pagamento CLT exibe vale como régua: "Valores calculados com base nas tabelas vigentes de INSS, IRRF e FGTS. São estimativas, confirme com o seu contador antes de fechar a folha." O Dominex organiza e documenta o pagamento, ele não substitui a contabilidade.</div>
 
@@ -130,9 +138,11 @@
   <p>Escolhendo <span class="ui">Dia útil</span>, o sistema conta apenas os dias em que se trabalha, pulando sábados, domingos e feriados cadastrados. Assim, "5º dia útil" cai numa data diferente a cada mês, exatamente como acontece na prática. Escolhendo <span class="ui">Dia corrido</span>, o sistema usa o número do calendário e, em meses curtos, encaixa no último dia disponível (dia 31 em fevereiro vira 28 ou 29).</p>
 
   <figure>
-    <img src="img/t15-novo-funcionario-pagamento.png" alt="Formulário Novo Funcionário na aba Pagamento, com os campos Salário e Custo mensal total (com botão Calcular) no topo, o bloco Contrato de trabalho com a chave Regime em Informal/CLT, os campos CBO, Matrícula, Dependentes (IRRF) e a chave Vale-transporte, e abaixo o bloco Configuração de Pagamento com Frequência em Mensal e Tipo de dia em Dia útil">
-    <figcaption>Novo Funcionário, aba Pagamento: salário, custo mensal, dados do contrato de trabalho e a configuração que faz a folha aparecer sozinha em Contas a Pagar.</figcaption>
+    <img src="img/t15-novo-funcionario-pagamento.png" alt="Formulário Novo Funcionário na aba Pagamento, com os campos Salário e Custo mensal total (com botão Calcular) no topo, o seletor de três opções Informal/CLT/PJ-MEI em Contrato de trabalho, com CLT selecionado mostrando CBO, Matrícula, Dependentes (IRRF) e a chave Vale-transporte, e abaixo o bloco Configuração de Pagamento com Frequência em Mensal e Tipo de dia em Dia útil">
+    <figcaption>Novo Funcionário, aba Pagamento: salário, custo mensal, o seletor de regime (Informal/CLT/PJ-MEI) e a configuração que faz a folha aparecer sozinha em Contas a Pagar. O ponto eletrônico não aparece mais aqui: tem aba própria (capítulo 9).</figcaption>
   </figure>
+
+  <div class="aviso">A <span class="ui">Configuração de Pagamento</span> (frequência e dia do mês) só vale pra CLT e Informal. Prestador PJ/MEI não tem folha: o dia e o valor de pagamento vêm do <span class="ui">Contrato</span>, capítulo 6.</div>
 
   <h2>5. Vincular acesso ao sistema: criando o login do funcionário</h2>
 
@@ -161,9 +171,67 @@
 
   <div class="aviso">O acesso criado por aqui nasce com perfil <b>Técnico</b>. Se essa pessoa precisar de outras telas (financeiro, contratos, orçamentos), o ajuste é feito depois no editor de permissões, na tela de usuários. Cadastrar como funcionário não dá acesso a nada além do perfil Técnico.</div>
 
-  <h2>6. Vale, falta e bônus — o que vira despesa na hora e o que só entra na folha</h2>
+  <h2>6. Prestador PJ/MEI: cadastro, contrato de prestação de serviço e pagamento sem folha</h2>
 
-  <p>Cada funcionário tem um saldo, que aparece na lista e no card. O saldo parte do salário e é ajustado pelas movimentações. As três movimentações são <span class="ui">Vale</span>, <span class="ui">Bônus</span> e <span class="ui">Falta</span>, todas no menu de ações da linha.</p>
+  <p>A aba <span class="ui">PJ/MEI</span> cadastra quem presta serviço pra empresa sem vínculo CLT: autônomo com CNPJ, ou MEI. É uma lista e um fluxo de pagamento separados dos funcionários, porque prestador não tem salário, não bate ponto e não entra na folha automática.</p>
+
+  <h3>A lista de prestadores</h3>
+  <p>Busca por nome ou CNPJ, botão <span class="ui">Novo prestador</span>. As colunas são <span class="ui">Prestador</span>, <span class="ui">CNPJ</span>, <span class="ui">Valor</span> (do contrato vigente, com o sufixo /mês, /OS, /hora ou /diária) e <span class="ui">Vigência</span>. Sem contrato vigente, a coluna de valor e a de vigência mostram "Sem contrato". O menu de ações de cada linha é mais curto que o da aba Funcionários: só <span class="ui">Extrato</span>, <span class="ui">Pagamento</span>, <span class="ui">Editar</span> e <span class="ui">Excluir</span>. Não existe <span class="ui">Vale</span>, <span class="ui">Bônus</span> nem <span class="ui">Falta</span> pra prestador PJ/MEI: esses conceitos são de salário CLT/Informal e não se aplicam a quem é pago por contrato de prestação de serviço.</p>
+
+  <p>Sem ninguém cadastrado: "Nenhum prestador PJ/MEI. Cadastre um prestador PJ ou MEI para controlar contrato e pagamentos."</p>
+
+  <h3>Cadastro do prestador</h3>
+  <p>O cadastro é o mesmo formulário de funcionário, mas com o <span class="ui">Regime</span> em <span class="ui">PJ/MEI</span> (veja capítulo 3). Na aba Dados, os campos são os mesmos (Nome, CPF, Telefone, Email, Endereço etc.). Na aba Pagamento, o bloco <span class="ui">Dados do prestador PJ/MEI</span> traz:</p>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>Observação</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">CNPJ</span></td><td>Não, mas se preenchido precisa ser válido</td><td>Dígito errado trava o salvamento: "CNPJ inválido. Confira o número digitado."</td></tr>
+      <tr><td><span class="ui">Razão social</span></td><td>Não</td><td>Sai no recibo de prestação de serviços, junto com o nome e o CNPJ do prestador.</td></tr>
+      <tr><td><span class="ui">É MEI (Microempreendedor Individual)</span></td><td>Não</td><td>Chave liga/desliga, só pra identificar o tipo de prestador.</td></tr>
+    </tbody>
+  </table>
+  <p>O título do formulário vira <span class="ui">Novo Prestador</span> / <span class="ui">Editar Prestador</span>, e o botão de criação é <span class="ui">Criar Prestador</span>, não "Criar Funcionário".</p>
+
+  <div class="regra">Trocar o Regime de um funcionário existente para PJ/MEI <b>desliga o ponto eletrônico na hora</b>, mesmo que você não toque na chave. O sistema avisa: "Ponto eletrônico desativado: o regime PJ/MEI não usa ponto." Não é só esconder o campo, é desligar de verdade, porque prestador PJ/MEI não bate ponto.</div>
+
+  <h3>Aba Contrato: vigência, valor, forma de cobrança</h3>
+  <p>Só aparece com o Regime em PJ/MEI, é a quarta aba do formulário (depois de Dados, Pagamento e, no lugar de Ponto, <span class="ui">Contrato</span>). Antes de salvar o prestador pela primeira vez, ela mostra "Salve o cadastro do prestador para registrar o contrato."</p>
+  <p>Sem contrato ainda, o aviso é "Nenhum contrato ainda. Registre o contrato para controlar vigência, valor e forma de cobrança." com o botão <span class="ui">Novo contrato</span>. O formulário de contrato tem:</p>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Observação</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Início</span> e <span class="ui">Fim</span></td><td>O contrato nasce com data de fim preenchível, não indeterminado. A chave <span class="ui">Prazo indeterminado</span> remove a exigência de fim.</td></tr>
+      <tr><td><span class="ui">Forma de cobrança</span></td><td><span class="ui">Mensal</span>, <span class="ui">Por OS</span>, <span class="ui">Por hora</span> ou <span class="ui">Por diária</span>.</td></tr>
+      <tr><td><span class="ui">Valor</span></td><td>O valor combinado com o prestador.</td></tr>
+      <tr><td><span class="ui">Dia de pagamento</span></td><td>Opcional, só de referência: não gera folha nem conta a pagar automática.</td></tr>
+      <tr><td><span class="ui">Reajuste anual (%)</span></td><td>Opcional, de referência pra renovação.</td></tr>
+      <tr><td><span class="ui">Observações</span></td><td>Texto livre.</td></tr>
+    </tbody>
+  </table>
+
+  <p>O contrato vigente mostra um selo de vigência: <span class="ui">Ativo</span> (verde), <span class="ui">Vence em N dias</span> (âmbar, aviso de contrato vencendo) ou <span class="ui">Vencido</span> (vermelho). O mesmo selo aparece na coluna Vigência da lista de prestadores.</p>
+  <ul>
+    <li><span class="ui">Renovar</span>: abre um novo contrato que começa no dia seguinte ao fim do atual, com os mesmos valores pré-preenchidos pra ajustar.</li>
+    <li><span class="ui">Encerrar</span>: pede confirmação ("Encerrar contrato? O contrato atual será marcado como encerrado. O histórico é preservado.") e marca o contrato atual como encerrado, mantendo o histórico visível abaixo.</li>
+    <li>Com o histórico preenchido e nenhum contrato vigente, o aviso muda para "Nenhum contrato vigente. O último contrato foi encerrado. Registre um novo para continuar o pagamento."</li>
+  </ul>
+
+  <h3>Pagar o prestador: valor combinado, nota fiscal e sem desconto de imposto</h3>
+  <p>A ação <span class="ui">Pagamento</span> na aba PJ/MEI abre o mesmo modal de pagamento, travado no modo <span class="ui">PJ/MEI</span> (não dá pra escolher Informal ou CLT pra um prestador). Os campos são:</p>
+  <ul>
+    <li><span class="ui">Valor combinado</span>: pré-preenchido pelo valor do contrato vigente quando a forma de cobrança é Mensal ("Pré-preenchido pelo contrato vigente. Pode ser ajustado."). Nas outras formas de cobrança (por OS, hora ou diária), o valor varia a cada pagamento e o campo nasce vazio, com o aviso "Nenhum contrato vigente encontrado para este prestador. Informe o valor manualmente." quando não há contrato.</li>
+    <li><span class="ui">Nº da nota fiscal (opcional)</span>: texto livre, sai impresso no recibo.</li>
+    <li><span class="ui">Categoria</span>: a categoria financeira do lançamento. Nasce pré-selecionada em <b>CSP - Mão de Obra Avulsa</b> (categoria de sistema), mas pode ser trocada, por exemplo se o prestador for administrativo. É obrigatória: sem categoria escolhida o pagamento não é liberado.</li>
+  </ul>
+  <p>O aviso no resumo é direto: "Prestação de serviço PJ/MEI: sem desconto de INSS, IRRF ou FGTS." Não existe cálculo de encargo nesse modo, só o valor combinado.</p>
+
+  <div class="regra"><b>Pagamento de PJ/MEI não entra na folha.</b> A despesa vai pra categoria <b>CSP - Mão de Obra Avulsa</b>, separada da categoria Folha de Pagamento usada por CLT/Informal (capítulo 11). Isso existe de propósito: misturar os dois inflaria o custo de pessoal (CLT/Informal) na DRE com gasto que é, na verdade, terceirização.</div>
+
+  <p>Ao confirmar, o sistema gera o <b>recibo de prestação de serviços</b> (nunca holerite, PJ/MEI não tem folha), com o título "RECIBO DE PRESTAÇÃO DE SERVIÇOS" e a seção "DADOS DO PRESTADOR" trazendo nome, razão social, CNPJ, número da nota fiscal (se preenchido) e a competência do mês.</p>
+
+  <h2>7. Vale, falta e bônus — o que vira despesa na hora e o que só entra na folha</h2>
+
+  <p>Cada funcionário CLT ou Informal tem um saldo, que aparece na lista e no card. O saldo parte do salário e é ajustado pelas movimentações. As três movimentações são <span class="ui">Vale</span>, <span class="ui">Bônus</span> e <span class="ui">Falta</span>, todas no menu de ações da linha. Prestador PJ/MEI não tem nada disso: veja o capítulo 6.</p>
 
   <div class="aviso"><b>Esta é a confusão número um deste módulo.</b> <span class="ui">Vale</span> gera despesa no financeiro <b>na hora</b>, porque o dinheiro sai da conta naquele momento. <span class="ui">Bônus</span> e <span class="ui">Falta</span> <b>não</b> geram nada no financeiro na hora: eles são só saldo interno do funcionário e entram no caixa quando a folha é paga. Por isso um bônus lançado hoje não aparece no extrato da conta bancária hoje. Não é erro.</div>
 
@@ -194,9 +262,9 @@
   <h3>Extrato do funcionário</h3>
   <p>A ação <span class="ui">Extrato</span> abre o histórico completo daquela pessoa, com o resumo <span class="ui">Bônus</span>, <span class="ui">Vales</span>, <span class="ui">Faltas</span> e <span class="ui">Saldo</span>, e a coluna <span class="ui">Saldo após</span> em cada linha. Dali dá pra exportar e gerar recibos. Excluir uma movimentação avisa: "Excluir movimentação? Esta ação não pode ser desfeita. Os saldos serão recalculados."</p>
 
-  <h2>7. Pagar funcionário: modo informal × CLT (com holerite) e o desconto do vale</h2>
+  <h2>8. Pagar funcionário: modo informal × CLT (com holerite) e o desconto do vale</h2>
 
-  <p>A ação <span class="ui">Pagamento</span> abre o modal com o <span class="ui">Tipo de pagamento</span>, que tem duas opções: <span class="ui">Normal / Informal</span> e <span class="ui">CLT</span>.</p>
+  <p>A ação <span class="ui">Pagamento</span>, na aba <span class="ui">Funcionários</span>, abre o modal com o <span class="ui">Tipo de pagamento</span>, travado em duas opções para quem é CLT ou Informal: <span class="ui">Normal / Informal</span> e <span class="ui">CLT</span>. Pra prestador PJ/MEI, o mesmo modal abre travado num terceiro modo, só dele: veja o pagamento de PJ/MEI no capítulo 6.</p>
 
   <h3>Modo Normal / Informal</h3>
   <p>É a conta direta, sem encargos calculados. O resumo mostra:</p>
@@ -231,19 +299,21 @@
   </ol>
   <p>Depois disso, o sistema pergunta se você quer o recibo: "Deseja gerar Recibo? O recibo do pagamento será aberto em uma nova página para impressão ou download em PDF." Há dois formatos, <span class="ui">A4 (imprimível)</span> ("Folha inteira, ideal para arquivar e imprimir") e <span class="ui">Térmico 80mm</span> ("Comprovante para impressora de cupom").</p>
 
-  <h2>8. Ponto: gerar o link público do funcionário e bater ponto pelo celular</h2>
+  <h2>9. Ponto: gerar o link público do funcionário e bater ponto pelo celular</h2>
 
-  <p>O ponto eletrônico do Dominex não exige que o funcionário tenha login. Ele bate o ponto por um link exclusivo, aberto no navegador do celular.</p>
+  <p>O ponto eletrônico do Dominex não exige que o funcionário tenha login. Ele bate o ponto por um link exclusivo, aberto no navegador do celular. Só existe pra regime CLT e Informal: PJ/MEI não usa ponto (capítulo 6).</p>
 
   <h3>Gerar o link</h3>
   <ol>
-    <li>Edite o funcionário e vá até a seção <span class="ui">Ponto eletrônico</span>, na aba <span class="ui">Pagamento</span>. A descrição é "Gera um link público pro funcionário bater o ponto pelo celular".</li>
+    <li>Edite o funcionário e vá até a aba <span class="ui">Ponto</span> do formulário (não é mais dentro da aba Pagamento). A descrição é "Gera um link público pro funcionário bater o ponto pelo celular".</li>
     <li>Ligue a chave, que passa de <span class="ui">Desativado</span> para <span class="ui">Ativado</span>.</li>
     <li>Em funcionário novo, aparece "Salve o funcionário para gerar o link de ponto, ele será copiado automaticamente". Salve.</li>
     <li>O link é gerado e copiado na hora, com a confirmação "Link gerado e copiado!". Em funcionário já salvo, o link fica visível com o botão <span class="ui">Copiar</span>.</li>
     <li>Também dá pra pegar pelo menu de ações da lista, em <span class="ui">Link do ponto</span>.</li>
   </ol>
   <p>Se a cópia automática falhar, aparece "Não foi possível copiar" e o link é mostrado na mensagem pra você copiar à mão. Erro ao gerar: "Erro ao gerar link do ponto".</p>
+
+  <div class="dica">Essa aba <span class="ui">Ponto</span> também é onde fica o PIN opcional do ponto (protege a batida num tablet compartilhado ou num link pessoal) e o cadastro facial guiado, usado tanto na identificação do quiosque quanto na confirmação por selfie.</div>
 
   <h3>O que o funcionário vê</h3>
   <p>Abrindo o link no celular, ele vê uma página só dele, com o nome, a foto e o cargo, o título <span class="ui">PONTO ELETRÔNICO</span> e um botão grande com a próxima batida:</p>
@@ -253,11 +323,15 @@
       <tr><td>Ainda não bateu</td><td>"Você ainda não bateu o ponto hoje"</td><td><span class="ui">Registrar Entrada</span></td></tr>
       <tr><td>Trabalhando</td><td>"Trabalhando"</td><td><span class="ui">Iniciar Intervalo</span></td></tr>
       <tr><td>Em intervalo</td><td>"Em intervalo"</td><td><span class="ui">Voltar do Intervalo</span></td></tr>
-      <tr><td>Depois do intervalo</td><td>"Trabalhando"</td><td><span class="ui">Registrar Saída</span></td></tr>
-      <tr><td>Encerrou</td><td>"Jornada concluída"</td><td>Mostra <span class="ui">PONTO DO DIA CONCLUÍDO</span></td></tr>
+      <tr><td>Depois do intervalo (sem bater intervalo)</td><td>"Trabalhando"</td><td>Mostra <span class="ui">Iniciar Intervalo</span> e <span class="ui">Registrar Saída</span> juntos: a saída não depende mais de bater intervalo antes</td></tr>
+      <tr><td>Jornada encerrada no dia</td><td>"Jornada concluída"</td><td><span class="ui">Registrar Nova Entrada</span>, pra abrir uma segunda jornada no mesmo dia</td></tr>
     </tbody>
   </table>
   <p>Abaixo fica o bloco <span class="ui">Registros de hoje</span>, com a linha do tempo das batidas: <span class="ui">Entrada</span>, <span class="ui">Início do intervalo</span>, <span class="ui">Fim do intervalo</span> e <span class="ui">Saída</span>.</p>
+
+  <div class="regra"><b>Jornada encerrada não é um beco sem saída.</b> Depois de bater a saída, o botão não trava num aviso final: ele vira <span class="ui">Registrar Nova Entrada</span>, porque o dia pode ter mais de uma jornada (plantão, chamado noturno, retorno depois de um intervalo longo). Um funcionário que bate entrada de manhã, saída no fim da tarde e é chamado de novo às 22h abre uma SEGUNDA jornada no mesmo dia, não um erro. No Histórico do gestor, dia com mais de uma jornada ganha o selo <span class="ui">N jornadas</span>.</div>
+
+  <div class="regra">A jornada, não o relógio da meia-noite, decide em qual dia a batida entra. Uma saída de madrugada (por padrão, antes das 05:00) com a entrada ainda aberta no dia anterior é contada no dia em que a jornada COMEÇOU, não no dia do relógio. Isso evita o banco de horas acusar falta numa jornada que só terminou depois da virada do dia. O horário desse corte é ajustável em Config, capítulo 10.</div>
 
   <h3>O fluxo de bater o ponto</h3>
   <ol>
@@ -273,7 +347,7 @@
 
   <!-- PRINT FALTANDO: página pública de ponto (/ponto/:codigo) aberta no celular, com o nome do funcionário, o botão Registrar Entrada e a linha do tempo Registros de hoje. Exige o link individual de um funcionário de teste e a captura sairia com nome e foto de pessoa real da base demo. Precisa de um funcionário fictício com ponto ativado. -->
 
-  <h2>9. Aba Ponto do gestor: Hoje, Histórico, Relatório, Configurações (exigir selfie e localização)</h2>
+  <h2>10. Aba Ponto do gestor: Hoje, Histórico, Relatório, Configurações (exigir selfie e localização)</h2>
 
   <p>A aba <span class="ui">Controle de Ponto</span>, dentro de Funcionários, tem quatro sub-abas: <span class="ui">Hoje</span>, <span class="ui">Histórico</span>, <span class="ui">Relatório</span> e <span class="ui">Config</span>.</p>
 
@@ -299,6 +373,7 @@
     <li>Filtros por <span class="ui">Funcionário</span>, <span class="ui">Período</span> e <span class="ui">Status</span> (Completo, Incompleto, Justificado).</li>
     <li>Colunas: <span class="ui">Data</span>, <span class="ui">Funcionário</span>, <span class="ui">Entrada</span>, <span class="ui">Saída</span>, <span class="ui">Trabalhado</span>, <span class="ui">Saldo</span>, <span class="ui">Status</span> e <span class="ui">Ações</span>.</li>
     <li>Situações do dia: <span class="ui">Em andamento</span>, <span class="ui">Completo</span>, <span class="ui">Incompleto</span>, <span class="ui">Justificado</span>, <span class="ui">Feriado</span> e <span class="ui">Folga</span>.</li>
+    <li>Dia com mais de uma jornada ganha o selo <span class="ui">N jornadas</span>, e a saída que empurrou a batida pro dia seguinte aparece marcada (ex.: "01:10 +1"), pra não parecer erro de digitação.</li>
     <li>Totais no rodapé: <span class="ui">Esperado</span>, <span class="ui">Trabalhado</span> e <span class="ui">Saldo</span>.</li>
     <li>Vazio: "Nenhum registro de ponto. Ainda não há registros de ponto no período."</li>
   </ul>
@@ -313,7 +388,7 @@
   </ul>
 
   <h3>Config</h3>
-  <p>Duas partes. A <span class="ui">Jornada Padrão da Empresa</span> vale pra todo mundo, e a <span class="ui">Jornada Individual</span> permite ajustar pessoa por pessoa, dia a dia da semana, inclusive marcando <span class="ui">Folga</span>. Quem não tem jornada própria mostra "Herda empresa (08:00-18:00)".</p>
+  <p>Três partes. A <span class="ui">Jornada Padrão da Empresa</span> vale pra todo mundo, o link do <span class="ui">Ponto em Grupo</span> (quiosque) fica logo abaixo dela, e a <span class="ui">Jornada Individual</span> permite ajustar pessoa por pessoa, dia a dia da semana, inclusive marcando <span class="ui">Folga</span>. Quem não tem jornada própria mostra "Herda empresa (08:00-18:00)".</p>
   <table class="dados">
     <thead><tr><th>Configuração</th><th>O que faz</th></tr></thead>
     <tbody>
@@ -324,22 +399,27 @@
       <tr><td><span class="ui">Raio máximo (metros)</span></td><td>Distância aceita em relação ao ponto de referência. A dica é "0 = sem restrição".</td></tr>
       <tr><td><span class="ui">Tolerância atraso (min)</span></td><td>Quantos minutos além do horário ainda não contam como atraso.</td></tr>
       <tr><td><span class="ui">Permitir fora do horário</span></td><td>Se o funcionário pode bater ponto fora da jornada prevista.</td></tr>
+      <tr><td><span class="ui">Batidas da madrugada contam para o dia anterior até</span></td><td>O horário de corte da jornada noturna (padrão 05:00). "Quem entra à noite e sai depois da meia-noite tem as horas somadas no dia em que começou a trabalhar."</td></tr>
     </tbody>
   </table>
   <p>O botão é <span class="ui">Salvar configurações</span>. Na jornada individual, <span class="ui">Salvar jornada</span>.</p>
 
+  <h3>Ponto em Grupo (quiosque de tablet)</h3>
+  <p>Além do link individual de cada funcionário, existe um link ÚNICO da empresa, pensado pra ficar aberto num tablet fixo (recepção, oficina, obra): o time inteiro bate o ponto por ali, escolhendo o próprio nome na lista, sem precisar do celular pessoal. O cartão <span class="ui">Link do quiosque de ponto</span> fica na sub-aba Config, com <span class="ui">Copiar link</span>, <span class="ui">Abrir quiosque</span> e <span class="ui">Baixar QR Code</span>. Há também um atalho mobile, <span class="ui">Ponto em grupo (quiosque)</span>, pra abrir, copiar ou compartilhar esse mesmo link direto do celular do gestor.</p>
+  <div class="dica">O quiosque reconhece o funcionário por reconhecimento facial guiado (cadastro de rosto feito uma vez, na aba Ponto do cadastro) quando a empresa exige, além de aceitar PIN por funcionário pra proteger a batida no tablet compartilhado.</div>
+
   <figure>
-    <img src="img/t15-ponto-config.png" alt="Sub-aba Config do Controle de Ponto, com o bloco Jornada Padrão da Empresa mostrando Entrada padrão 08:00, Saída padrão 05:00 PM e Intervalo 60 minutos, as chaves Exigir selfie e Exigir geolocalização ligadas, os campos Raio máximo (metros) e Tolerância atraso (min), a chave Permitir fora do horário ligada, o botão Salvar configurações, e abaixo o início da tabela Jornada Individual com um funcionário por linha e a jornada de cada dia da semana">
-    <figcaption>Controle de Ponto, sub-aba Config: a jornada padrão da empresa e as chaves de selfie, geolocalização e tolerância.</figcaption>
+    <img src="img/t15-ponto-config.png" alt="Sub-aba Config do Controle de Ponto, com o bloco Jornada Padrão da Empresa mostrando Entrada padrão 08:00, Saída padrão 05:00 PM, Intervalo 60 minutos e o campo Batidas da madrugada contam para o dia anterior até, as chaves Exigir selfie e Exigir geolocalização ligadas, os campos Raio máximo (metros) e Tolerância atraso (min), a chave Permitir fora do horário ligada, o botão Salvar configurações, o cartão Link do quiosque de ponto, e abaixo o início da tabela Jornada Individual com um funcionário por linha e a jornada de cada dia da semana">
+    <figcaption>Controle de Ponto, sub-aba Config: a jornada padrão da empresa, o corte da jornada noturna, o link do quiosque e as chaves de selfie, geolocalização e tolerância.</figcaption>
   </figure>
 
-  <h2>10. A folha aparecendo sozinha em Contas a Pagar e sendo quitada de lá</h2>
+  <h2>11. A folha aparecendo sozinha em Contas a Pagar e sendo quitada de lá</h2>
 
   <div class="regra"><b>Não existe botão "Gerar Folha" no Dominex.</b> Não procure na tela de Funcionários nem no Financeiro: ele não existe. A folha é gerada <b>automaticamente</b> pelo sistema, uma vez por dia, e aparece sozinha em <span class="ui">Financeiro</span>, tela <span class="ui">Contas</span>, aba <span class="ui">A Pagar</span>.</div>
 
   <h3>Como a folha nasce</h3>
   <ol>
-    <li>Uma vez por dia, de madrugada, o sistema percorre todos os funcionários <b>ativos</b> com salário maior que zero.</li>
+    <li>Uma vez por dia, de madrugada, o sistema percorre todos os funcionários <b>ativos</b> com salário maior que zero e regime CLT ou Informal. Prestador PJ/MEI nunca entra nessa varredura (capítulo 6).</li>
     <li>Para cada um, calcula as datas de pagamento dos próximos <b>35 dias</b>, usando a <span class="ui">Configuração de Pagamento</span> do cadastro (frequência, tipo de dia e dia escolhido).</li>
     <li>Cria uma conta a pagar por período, com a descrição "Folha [nome do funcionário] — [período]", no valor do salário e com o vencimento na data calculada.</li>
     <li>A categoria usada é <b>Folha de Pagamento</b>, que o próprio sistema cria na primeira vez, já classificada como despesa operacional (OPEX) na DRE.</li>
@@ -355,13 +435,13 @@
   <h3>Quitando a folha</h3>
   <p>Existem dois caminhos, e os dois terminam no mesmo lugar:</p>
   <ul>
-    <li><b>Pelo Financeiro</b>: em <span class="ui">Contas</span>, aba <span class="ui">A Pagar</span>, a linha da folha tem um ícone de pessoas. Clicando em pagar, abre o modal de pagamento do funcionário (o mesmo do capítulo anterior), já com o período preenchido. A confirmação é "Folha quitada com sucesso". Erro: "Erro ao pagar folha".</li>
+    <li><b>Pelo Financeiro</b>: em <span class="ui">Contas</span>, aba <span class="ui">A Pagar</span>, a linha da folha tem um ícone de pessoas. Clicando em pagar, abre o modal de pagamento do funcionário do capítulo 8, já com o período preenchido. A confirmação é "Folha quitada com sucesso". Erro: "Erro ao pagar folha".</li>
     <li><b>Pelo RH</b>: na tela <span class="ui">Funcionários</span>, ação <span class="ui">Pagamento</span>. Nesse caso, o sistema procura uma folha pendente daquele funcionário e quita ela, em vez de criar uma despesa nova.</li>
   </ul>
 
   <div class="dica">O caminho completo é sempre o mesmo: <b>ponto → horas → folha → conta a pagar</b>. O ponto registra a jornada, as horas viram saldo e faltas, a folha nasce sozinha em Contas a Pagar e o pagamento fecha o ciclo. Se algum passo parecer fora do lugar, comece conferindo o cadastro do funcionário, que é onde ficam salário e configuração de pagamento.</div>
 
-  <h2>11. Abas Comportamental (DISC) e Organograma</h2>
+  <h2>12. Abas Comportamental (DISC), Organograma e Fluxograma</h2>
 
   <h3>Perfil Comportamental (DISC)</h3>
   <p>A aba <span class="ui">Perfil Comportamental</span> mostra o "Perfil Comportamental da Equipe, perfis DISC de todos os funcionários ativos". A explicação da própria tela: "Envie um teste rápido pro funcionário responder pelo link, sem precisar de login. O resultado mostra o estilo de trabalho dele: pontos fortes, o que evitar e como liderá-lo melhor."</p>
@@ -389,6 +469,9 @@
     <img src="img/t15-organograma.png" alt="Aba Organograma com o texto 'Monte a estrutura da sua empresa em um quadro visual', o botão Novo Organograma no topo, e a lista de dois quadros salvos, cada um com nome, número de nós e os ícones de editar, excluir e abrir">
     <figcaption>Organograma: a lista de quadros salvos, com o atalho para criar um novo.</figcaption>
   </figure>
+
+  <h3>Fluxograma (processos e POP)</h3>
+  <p>A aba <span class="ui">Fluxograma</span> tem a mesma lógica de "vários quadros salvos" do Organograma, mas pra desenhar processos: "Desenhe os processos da empresa em um fluxograma e documente como cada etapa deve ser feita." Cada etapa do fluxo pode ter um Procedimento Operacional Padrão (POP) descrito por dentro, com exportação em PDF pra treinar a equipe ou deixar impresso na parede.</p>
 
   <h2 class="suporte">Suporte: problemas comuns</h2>
   <table class="faq">
@@ -432,7 +515,32 @@
       <tr>
         <td>"O link do ponto do funcionário não abre"</td>
         <td>Ponto desativado no cadastro</td>
-        <td>A mensagem é "Link inválido ou desativado". Edite o funcionário, ligue a chave Ponto eletrônico, salve e envie o link novo.</td>
+        <td>A mensagem é "Link inválido ou desativado". Edite o funcionário, vá na aba Ponto, ligue a chave, salve e envie o link novo.</td>
+      </tr>
+      <tr>
+        <td>"Troquei o funcionário pra PJ e ele não bate ponto mais"</td>
+        <td>Comportamento correto</td>
+        <td>PJ/MEI não usa ponto eletrônico. Ao trocar o regime, o sistema desliga a chave de ponto na hora, mesmo que ela não tenha sido tocada, e avisa "Ponto eletrônico desativado: o regime PJ/MEI não usa ponto."</td>
+      </tr>
+      <tr>
+        <td>"Cadastrei um prestador PJ e não achei Vale, Bônus ou Falta no menu dele"</td>
+        <td>Comportamento correto</td>
+        <td>A aba PJ/MEI tem um menu de ações mais curto (Extrato, Pagamento, Editar, Excluir). Vale, Bônus e Falta são conceitos de salário CLT/Informal e não existem pra prestador pago por contrato.</td>
+      </tr>
+      <tr>
+        <td>"O pagamento do prestador PJ está inflando o custo de funcionário na DRE"</td>
+        <td>Categoria errada no pagamento</td>
+        <td>Pagamento de PJ/MEI deve ficar na categoria CSP - Mão de Obra Avulsa, nunca na categoria Funcionários/Folha. Confira a categoria escolhida no modal de Pagamento do prestador.</td>
+      </tr>
+      <tr>
+        <td>"Bati a saída e o ponto ficou travado, sem jeito de bater de novo"</td>
+        <td>Expectativa de dia único</td>
+        <td>Não trava. Depois da saída, o botão vira "Registrar Nova Entrada" pra abrir uma segunda jornada no mesmo dia (plantão, chamado noturno). O selo "Jornada concluída" não é um fim definitivo.</td>
+      </tr>
+      <tr>
+        <td>"Onde fica o link do ponto em grupo (quiosque)?"</td>
+        <td>Procurando no lugar errado</td>
+        <td>Em Funcionários, aba Controle de Ponto, sub-aba Config, cartão Link do quiosque de ponto. É um link único da empresa pra deixar fixo num tablet, diferente do link individual de cada funcionário.</td>
       </tr>
       <tr>
         <td>"O ponto não pede selfie"</td>
@@ -487,7 +595,16 @@
     <dd>Sim. As equipes vivem na aba Equipes dentro de Funcionários, que depende do módulo Funcionários / RH. Sem o módulo, não há como criar nem editar equipe.</dd>
 
     <dt>O funcionário precisa de login pra bater ponto?</dt>
-    <dd>Não. O ponto é batido por um link público e individual, aberto no navegador do celular, sem senha. Ligue a chave Ponto eletrônico no cadastro dele e envie o link.</dd>
+    <dd>Não. O ponto é batido por um link público e individual, aberto no navegador do celular, sem senha. Ligue a chave na aba Ponto do cadastro dele e envie o link.</dd>
+
+    <dt>Qual a diferença entre o link individual de ponto e o quiosque?</dt>
+    <dd>O link individual é de UM funcionário, gerado no cadastro dele. O quiosque é um link ÚNICO da empresa, pensado pra ficar fixo num tablet: o time inteiro bate o ponto por ali, escolhendo o próprio nome. Fica em Funcionários, aba Controle de Ponto, sub-aba Config.</dd>
+
+    <dt>O que diferencia um funcionário PJ/MEI de um CLT ou Informal?</dt>
+    <dd>Prestador PJ/MEI tem aba própria (PJ/MEI), não tem salário nem ponto, é pago por um Contrato (valor + forma de cobrança) em vez de folha, e recebe recibo de prestação de serviços, não holerite. CLT e Informal usam salário, saldo com vale/bônus/falta, ponto eletrônico e folha automática.</dd>
+
+    <dt>O pagamento de um prestador PJ/MEI entra na folha de pagamento?</dt>
+    <dd>Não. A despesa vai para a categoria de sistema CSP - Mão de Obra Avulsa, separada da categoria Folha de Pagamento usada por CLT/Informal, pra não inflar o custo de pessoal na DRE.</dd>
 
     <dt>Como faço pra exigir foto e localização no ponto?</dt>
     <dd>Em Funcionários, aba Controle de Ponto, sub-aba Config. Ligue Exigir selfie e Exigir geolocalização. Sem essas chaves ligadas, o funcionário bate o ponto direto, sem foto e sem localização.</dd>
@@ -518,6 +635,6 @@
   </dl>
 
   <div class="glossario">
-    <b>Palavras que o cliente usa pra isso:</b> RH, funcionário, colaborador, equipe, ponto, bater ponto, cartão de ponto, espelho de ponto, banco de horas, vale, adiantamento, bônus, falta, DSR, folha, folha de pagamento, holerite, contracheque, recibo, CLT, CBO, vale-transporte, salário, admissão, organograma, DISC, perfil comportamental
+    <b>Palavras que o cliente usa pra isso:</b> RH, funcionário, colaborador, equipe, ponto, bater ponto, cartão de ponto, espelho de ponto, banco de horas, vale, adiantamento, bônus, falta, DSR, folha, folha de pagamento, holerite, contracheque, recibo, CLT, CBO, vale-transporte, salário, admissão, organograma, DISC, perfil comportamental, PJ, MEI, prestador, autônomo, CNPJ, razão social, nota fiscal, contrato de prestação de serviço, terceirizado, quiosque, ponto em grupo, tablet de ponto, fluxograma, processo, POP
   </div>
 </section>

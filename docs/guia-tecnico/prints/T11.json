@@ -69,7 +69,7 @@
           "esperar": 800
         },
         {
-          "clicarSeletor": "[role=\"option\"]:has-text(\"Cliente Demo\"), [cmdk-item]:has-text(\"Cliente Demo\")"
+          "clicarSeletor": "[role=\"option\"]:has-text(\"Supermercado Bom Preço\"), [cmdk-item]:has-text(\"Supermercado Bom Preço\")"
         },
         {
           "esperar": 800
@@ -138,7 +138,8 @@
           "esperar": 3000
         }
       ],
-      "recorte": "main"
+      "recorte": "main",
+      "nota": "NAO capturavel hoje: a conta demo esta com ZERO contratos (os prints originais de 06/09/2026 foram feitos quando havia). Para recapturar, criar um contrato na conta demo antes. A imagem atual continua valida enquanto isso."
     },
     {
       "id": "t11-portal-do-contrato",
@@ -158,7 +159,8 @@
           "rolarAte": "text=Portal do Contrato"
         }
       ],
-      "recorte": "main"
+      "recorte": "main",
+      "nota": "NAO capturavel hoje: a conta demo esta com ZERO contratos (os prints originais de 06/09/2026 foram feitos quando havia). Para recapturar, criar um contrato na conta demo antes. A imagem atual continua valida enquanto isso."
     },
     {
       "id": "t11-contrato-documentos",
@@ -181,7 +183,8 @@
           "esperar": 2500
         }
       ],
-      "recorte": "main"
+      "recorte": "main",
+      "nota": "NAO capturavel hoje: a conta demo esta com ZERO contratos (os prints originais de 06/09/2026 foram feitos quando havia). Para recapturar, criar um contrato na conta demo antes. A imagem atual continua valida enquanto isso."
     },
     {
       "id": "t11-contrato-nova-receita",
@@ -210,7 +213,13 @@
           "esperar": 1800
         }
       ],
-      "recorte": "dialog"
+      "recorte": "dialog",
+      "viewport": {
+        "largura": 1440,
+        "altura": 1150
+      },
+      "observacao": "Viewport mais alto que o padrão: desde a 1.24.59/1.24.60 esta janela ganhou o bloco Duração da cobrança (cobrança continua / janela rolante) e, pra quem usa, o campo Centro de custo, deixando o modal mais alto que em 06/09/2026. Sem aumentar a altura o recorte 'dialog' corta o botão final (Criar Conta a Receber / Criar N Parcelas).",
+      "nota": "NAO capturavel hoje: a conta demo esta com ZERO contratos (os prints originais de 06/09/2026 foram feitos quando havia). Para recapturar, criar um contrato na conta demo antes. A imagem atual continua valida enquanto isso."
     },
     {
       "id": "t11-renovar-contrato",
@@ -233,7 +242,8 @@
           "esperar": 1800
         }
       ],
-      "recorte": "dialog"
+      "recorte": "dialog",
+      "nota": "NAO capturavel hoje: a conta demo esta com ZERO contratos (os prints originais de 06/09/2026 foram feitos quando havia). Para recapturar, criar um contrato na conta demo antes. A imagem atual continua valida enquanto isso."
     }
   ]
 }

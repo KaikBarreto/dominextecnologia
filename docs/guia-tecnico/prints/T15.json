@@ -6,35 +6,142 @@
       "url": "/funcionarios",
       "legenda": "Formulário Novo Funcionário na aba Dados, com foto, Nome Completo, CPF, Telefone, Email, Cargo, Endereço, Data de Admissão e Chave PIX.",
       "passos": [
-        { "esperar": 2500 },
-        { "clicar": "Novo Funcionário" },
-        { "esperar": 1500 }
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "Novo Funcionário"
+        },
+        {
+          "esperar": 1500
+        }
       ],
       "recorte": "dialog"
     },
     {
       "id": "t15-novo-funcionario-pagamento",
       "url": "/funcionarios",
-      "legenda": "Formulário Novo Funcionário na aba Pagamento, com Salário, Custo mensal total, Contrato de trabalho, Configuração de Pagamento, Ponto eletrônico e Criar acesso ao sistema.",
+      "legenda": "Formulário Novo Funcionário na aba Pagamento, com Salário, Custo mensal total, o seletor de regime Informal/CLT/PJ-MEI em Contrato de trabalho (CLT selecionado) e Configuração de Pagamento. O Ponto eletrônico não aparece mais aqui: ganhou aba própria.",
       "passos": [
-        { "esperar": 2500 },
-        { "clicar": "Novo Funcionário" },
-        { "esperar": 1500 },
-        { "clicar": "Pagamento" },
-        { "esperar": 1200 }
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "Novo Funcionário"
+        },
+        {
+          "esperar": 1500
+        },
+        {
+          "clicar": "Pagamento"
+        },
+        {
+          "esperar": 1200
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t15-pj-lista",
+      "url": "/funcionarios",
+      "legenda": "Aba PJ/MEI com a lista de prestadores, colunas Prestador, CNPJ, Valor, Vigência e Ações, e o botão Novo prestador. Mostrar pelo menos um prestador com contrato vigente, se houver na base demo.",
+      "passos": [
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "^PJ/MEI$"
+        },
+        {
+          "esperar": 1500
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t15-novo-prestador-pagamento",
+      "url": "/funcionarios",
+      "legenda": "Formulário Novo Prestador (regime PJ/MEI pré-selecionado), aba Pagamento, com Valor de referência (opcional), o seletor de regime em PJ/MEI e o bloco Dados do prestador PJ/MEI com CNPJ, Razão social e a chave É MEI.",
+      "passos": [
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "^PJ/MEI$"
+        },
+        {
+          "esperar": 1200
+        },
+        {
+          "clicar": "Novo prestador"
+        },
+        {
+          "esperar": 1500
+        },
+        {
+          "clicar": "Pagamento"
+        },
+        {
+          "esperar": 1200
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t15-prestador-contrato",
+      "url": "/funcionarios",
+      "legenda": "Aba Contrato de um prestador PJ/MEI já cadastrado, com o cartão Contrato vigente (valor, forma de cobrança, início/fim e o selo de vigência) e os botões Renovar e Encerrar. Precisa de um prestador PJ/MEI já salvo na base demo; sem ele a aba mostra só o aviso de salvar o cadastro primeiro. RECAPTURA 18/10/2026: a linha do prestador não tem mais botão Editar à vista — ele passou para dentro do menu Ações da linha (junto de Extrato, Pagamento e Arquivar).",
+      "passos": [
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "^PJ/MEI$"
+        },
+        {
+          "esperar": 1500
+        },
+        {
+          "clicarSeletor": "button[aria-label=\"Ações\"]"
+        },
+        {
+          "esperar": 800
+        },
+        {
+          "clicar": "Editar"
+        },
+        {
+          "esperar": 1800
+        },
+        {
+          "clicar": "^Contrato$"
+        },
+        {
+          "esperar": 1200
+        }
       ],
       "recorte": "dialog"
     },
     {
       "id": "t15-ponto-config",
       "url": "/funcionarios",
-      "legenda": "Aba Controle de Ponto, sub-aba Config, com a Jornada Padrão da Empresa e as chaves Exigir selfie, Exigir geolocalização, Raio máximo e Tolerância atraso.",
+      "legenda": "Aba Controle de Ponto, sub-aba Config, com a Jornada Padrão da Empresa, o campo Batidas da madrugada contam para o dia anterior até, as chaves Exigir selfie, Exigir geolocalização, Raio máximo, Tolerância atraso e o cartão Link do quiosque de ponto.",
       "passos": [
-        { "esperar": 2500 },
-        { "clicar": "Controle de Ponto" },
-        { "esperar": 1800 },
-        { "clicar": "^Config$" },
-        { "esperar": 1500 }
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "Controle de Ponto"
+        },
+        {
+          "esperar": 1800
+        },
+        {
+          "clicar": "^Config$"
+        },
+        {
+          "esperar": 1500
+        }
       ],
       "recorte": "main"
     },
@@ -43,9 +150,15 @@
       "url": "/funcionarios",
       "legenda": "Aba Controle de Ponto, sub-aba Hoje, com os indicadores Presentes, Ausentes, Em intervalo e Concluídos e a tabela de batidas do dia.",
       "passos": [
-        { "esperar": 2500 },
-        { "clicar": "Controle de Ponto" },
-        { "esperar": 2000 }
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "Controle de Ponto"
+        },
+        {
+          "esperar": 2000
+        }
       ],
       "recorte": "main"
     },
@@ -54,7 +167,9 @@
       "url": "/funcionarios/organograma",
       "legenda": "Aba Organograma com a lista de quadros salvos e o botão Novo Organograma.",
       "passos": [
-        { "esperar": 3000 }
+        {
+          "esperar": 3000
+        }
       ],
       "recorte": "main"
     }

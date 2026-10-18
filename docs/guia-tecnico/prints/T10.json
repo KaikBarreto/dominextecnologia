@@ -2,6 +2,17 @@
   "secao": "T10",
   "prints": [
     {
+      "id": "t10-crm",
+      "url": "/crm",
+      "legenda": "Tela CRM/Kanban recém-aberta, com os cartões Total no funil e Valor Total, campo de busca e o quadro com o nome do funil selecionado (Funil de Vendas) mostrando o estado inicial, com o convite Configure seu funil e os botões Começar com estágios padrão e Personalizar estágios. RECAPTURA: o print anterior mostrava o cabeçalho antigo (CRM / Gerencie oportunidades e leads) e o cartão Total de Leads, ambos renomeados.",
+      "passos": [
+        {
+          "esperar": 2500
+        }
+      ],
+      "recorte": "main"
+    },
+    {
       "id": "t10-nova-oportunidade",
       "url": "/crm",
       "legenda": "Janela Nova Oportunidade com os campos Título, Cliente, Vendedor Responsável (múltipla escolha), Origem, Estágio, Valor Estimado, Probabilidade, Previsão Fechamento e Observações, sem nada preenchido.",
@@ -21,16 +32,22 @@
     {
       "id": "t10-gerenciar-estagios",
       "url": "/crm",
-      "legenda": "Janela Gerenciar Estágios do Pipeline com o bloco Novo Estágio (nome, ícone e cor) e a lista de estágios com as marcações de ganho e perdido.",
+      "legenda": "Bloco de estágios de um funil, dentro da aba Funis, com o botão Novo estágio já acionado. Mostra os campos do estágio novo e a lista dos estágios existentes na mesma ordem em que aparecem no quadro, cada um com seu menu de ações.",
       "passos": [
         {
           "esperar": 2500
         },
         {
-          "clicarSeletor": "[title=\"Gerenciar estágios\"]"
+          "clicar": "Configurações do CRM/Kanban"
         },
         {
           "esperar": 1800
+        },
+        {
+          "clicar": "Novo estágio"
+        },
+        {
+          "esperar": 900
         }
       ],
       "recorte": "dialog"
@@ -38,16 +55,22 @@
     {
       "id": "t10-webhooks",
       "url": "/crm",
-      "legenda": "Janela Webhooks de Leads Externos com o bloco Criar novo webhook (Nome e Origem padrão) e a documentação dos campos obrigatórios e opcionais. Censurar o código secreto de qualquer URL exibida.",
+      "legenda": "Aba Webhooks de Leads Externos: o bloco Criar novo webhook (Nome, Origem padrão, Funil de destino e Etapa de destino) e a documentação dos campos obrigatórios e opcionais, incluindo a nota sobre o cabeçalho x-idempotency-key, que evita criar a mesma oportunidade duas vezes num reenvio. Censurar o código secreto de qualquer URL exibida.",
       "passos": [
         {
           "esperar": 2500
         },
         {
-          "clicarSeletor": "[title=\"Configurar webhooks\"]"
+          "clicar": "Configurações do CRM/Kanban"
         },
         {
           "esperar": 1800
+        },
+        {
+          "clicar": "Webhooks"
+        },
+        {
+          "esperar": 2000
         },
         {
           "rolarAte": "Como usar o webhook",
@@ -70,13 +93,13 @@
     {
       "id": "t10-gerenciar-funis",
       "url": "/crm",
-      "legenda": "Janela Gerenciar Funis com o bloco Novo Funil, a lista de funis da empresa com a alça de arrastar, o selo Padrão (ou o botão Tornar padrão) e o menu de ações de cada linha.",
+      "legenda": "Aba Funis da janela Configurações do CRM/Kanban: o botão Novo funil, a lista de funis da empresa com a alça de arrastar para reordenar, a contagem de etapas e de oportunidades de cada funil, o selo Padrão e o menu de ações da linha. O funil aberto mostra os próprios estágios logo abaixo. RECAPTURA 18/10/2026: as quatro telas de configuração do CRM (funis, estágios, etiquetas e webhooks) foram unificadas numa única janela com abas; não existe mais botão separado para cada uma.",
       "passos": [
         {
           "esperar": 2500
         },
         {
-          "clicarSeletor": "[title=\"Gerenciar funis\"]"
+          "clicar": "Configurações do CRM/Kanban"
         },
         {
           "esperar": 1800
@@ -87,28 +110,28 @@
     {
       "id": "t10-quem-pode-ver",
       "url": "/crm",
-      "legenda": "Janela Acesso ao funil, com a faixa verde Aberto para toda a empresa e o campo Pessoas com acesso para restringir quem enxerga aquele funil. REQUISITO: usuário logado precisa ser admin/gestor ou ter Gerenciar Configurações, senão o item 'Quem pode ver' não aparece no menu da linha.",
+      "legenda": "Janela Acesso ao funil, aberta pelo menu de ações da LINHA DO FUNIL (não a do estágio). Define se o funil fica aberto para toda a empresa ou restrito às pessoas escolhidas. REQUISITO: o usuário logado precisa ser admin/gestor ou ter Gerenciar Configurações, senão o item Quem pode ver não aparece no menu.",
       "passos": [
         {
           "esperar": 2500
         },
         {
-          "clicarSeletor": "[title=\"Gerenciar funis\"]"
+          "clicar": "Configurações do CRM/Kanban"
         },
         {
-          "esperar": 1200
+          "esperar": 1800
         },
         {
-          "clicarSeletor": "[role=\"dialog\"] [aria-label=\"Ações\"]"
+          "clicarSeletor": "[role=\"dialog\"] button[aria-label=\"Ações\"]"
         },
         {
-          "esperar": 600
+          "esperar": 800
         },
         {
           "clicar": "Quem pode ver"
         },
         {
-          "esperar": 1200
+          "esperar": 1500
         }
       ],
       "recorte": "dialog"
@@ -178,6 +201,103 @@
         },
         {
           "esperar": 1500
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t10-projetos-lista",
+      "url": "/projetos",
+      "legenda": "Tela Projetos com os cartões Projetos, Em andamento, Atrasados e Concluídos, campo de busca, filtro por Status e a lista de obras com código, nome, cliente, prazo, barra de progresso e selo de status. REQUISITO DE DADO: a empresa demo precisa ter ao menos um projeto cadastrado, idealmente com frentes e cards para a barra de progresso não aparecer vazia.",
+      "passos": [
+        {
+          "esperar": 2500
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t10-projeto-detalhe",
+      "url": "/projetos",
+      "legenda": "Detalhe de um projeto na aba Frentes, mostrando o seletor de frentes de trabalho em abas, o quadro Kanban daquela frente com as colunas A fazer, Em execução, Concluído e Cancelado, e os cards dentro de cada coluna. REQUISITO DE DADO: o primeiro projeto da lista precisa ter ao menos uma frente de trabalho com etapas e, de preferência, algum card.",
+      "passos": [
+        {
+          "esperar": 2500
+        },
+        {
+          "clicarSeletor": "table tbody tr"
+        },
+        {
+          "esperar": 1800
+        },
+        {
+          "clicar": "Frentes"
+        },
+        {
+          "esperar": 1200
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t10-novo-projeto",
+      "url": "/projetos",
+      "legenda": "Janela Novo projeto vazia, com os campos Nome do projeto, Cliente (Projeto interno), Responsável (Sem responsável definido), Status (Em andamento), Início previsto, Prazo final, Cor e Descrição, e os botões Cancelar e Salvar.",
+      "passos": [
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "Novo projeto"
+        },
+        {
+          "esperar": 1500
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t10-checklists",
+      "url": "/crm",
+      "legenda": "Aba Checklists: modelos de checklist que padronizam as etapas de um atendimento comercial e podem ser aplicados a qualquer oportunidade do quadro.",
+      "passos": [
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "Configurações do CRM/Kanban"
+        },
+        {
+          "esperar": 1800
+        },
+        {
+          "clicar": "Checklists"
+        },
+        {
+          "esperar": 2200
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t10-etiquetas",
+      "url": "/crm",
+      "legenda": "Aba Etiquetas: marcadores coloridos para identificar oportunidades de olho no quadro, com o botão Nova etiqueta e a lista das etiquetas já criadas, cada uma com editar e excluir.",
+      "passos": [
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "Configurações do CRM/Kanban"
+        },
+        {
+          "esperar": 1800
+        },
+        {
+          "clicar": "Etiquetas"
+        },
+        {
+          "esperar": 2000
         }
       ],
       "recorte": "dialog"

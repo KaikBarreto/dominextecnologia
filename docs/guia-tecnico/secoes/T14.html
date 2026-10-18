@@ -4,8 +4,8 @@
   <p class="lead">A NFS-e é a nota fiscal do serviço que a sua empresa presta: instalação, manutenção, limpeza, contrato de PMOC. Quem recebe é a prefeitura da cidade onde o serviço foi feito, e o imposto dela é o ISS. No Dominex você configura o certificado digital uma vez e passa a emitir, acompanhar, cancelar e baixar o documento sem sair do sistema.</p>
 
   <div class="meta">
-    <span><b>Onde fica:</b> Menu lateral, <span class="ui">Notas Fiscais</span>. A configuração fiscal é um <b>modal</b> aberto pelo botão <span class="ui">Configurações fiscais</span> dentro dessa mesma tela</span>
-    <span><b>Rotas:</b> <code>/notas-fiscais</code>. O endereço antigo <code>/notas-fiscais/configuracoes</code> redireciona pra <code>/notas-fiscais</code> já abrindo o modal de configuração</span>
+    <span><b>Onde fica:</b> Menu lateral, <span class="ui">Notas Fiscais</span>. A configuração fiscal é uma <b>tela própria</b>, aberta pelo botão <span class="ui">Configurações fiscais</span> dentro dessa mesma tela</span>
+    <span><b>Rotas:</b> <code>/notas-fiscais</code>, com as abas <span class="ui">Notas Fiscais</span>, <span class="ui">Relatório fiscal</span>, <span class="ui">Emissões automáticas</span> e <span class="ui">Notas recebidas</span>. A configuração fica em <code>/notas-fiscais/configuracoes</code></span>
     <span><b>Depende de:</b> T13 (Financeiro)</span>
     <span><b>Depende do módulo:</b> Emissão de Notas Fiscais</span>
     <span><b>Quem enxerga:</b> quem tem a permissão de tela <span class="ui">Notas Fiscais</span> e a empresa tem o módulo contratado. Sem uma das duas coisas, a tela mostra "Você não tem acesso ao módulo de Notas Fiscais. Fale com o administrador da sua empresa."</span>
@@ -38,11 +38,12 @@
 
   <h3>A tela depois de configurada</h3>
   <ul>
-    <li>Quatro indicadores no topo: <span class="ui">Autorizadas</span>, <span class="ui">Processando</span>, <span class="ui">Rejeitadas</span> e <span class="ui">Canceladas</span>. Notas com cancelamento em andamento contam junto das autorizadas, porque ainda têm efeito fiscal.</li>
-    <li>Duas abas: <span class="ui">Visão Geral</span>, com as <span class="ui">Últimas emissões</span> (as 5 mais recentes), e <span class="ui">NFS-e</span>, com a listagem completa, busca e filtro por situação.</li>
+    <li>Quatro indicadores no topo: <span class="ui">Autorizadas</span>, <span class="ui">Processando</span>, <span class="ui">Rejeitadas</span> e <span class="ui">Canceladas</span>. Notas com cancelamento em andamento contam junto das autorizadas, porque ainda têm efeito fiscal. Eles só valem para as abas de emissão, não para <span class="ui">Notas recebidas</span>.</li>
+    <li>Quatro abas: <span class="ui">Notas Fiscais</span>, com a listagem completa das notas que a sua empresa emite, busca e filtro por situação (é a primeira aba, a tela abre direto nela); <span class="ui">Relatório fiscal</span>, com as <span class="ui">Últimas emissões</span> (as 5 mais recentes); <span class="ui">Emissões automáticas</span>, descrita no capítulo 11; e <span class="ui">Notas recebidas</span>, descrita no capítulo 12.</li>
     <li>Um seletor de período no topo, que abre em <span class="ui">Todos os tempos</span> de propósito: quem tem poucas notas no mês não pode achar que a tela está vazia.</li>
     <li>O botão flutuante <span class="ui">Nova Nota</span>, sempre ao alcance, mesmo com a lista rolada.</li>
   </ul>
+  <div class="dica">A aba <span class="ui">Notas Fiscais</span> já se chamou <span class="ui">NFS-e</span>, e a <span class="ui">Relatório fiscal</span> já se chamou <span class="ui">Visão Geral</span>. Se um cliente antigo ainda falar pelos nomes velhos, é a mesma tela.</div>
 
   <h3>As situações que uma nota pode ter</h3>
   <table class="dados">
@@ -57,11 +58,11 @@
     </tbody>
   </table>
 
-  <h2>2. Abrindo Configurações (é um modal, não outra tela) — passo Empresa</h2>
+  <h2>2. Abrindo Configurações (é uma tela própria, não um modal), passo Empresa</h2>
 
-  <div class="regra"><b>A configuração fiscal não é uma página separada.</b> Ela é um modal que abre de dentro de Notas Fiscais, pelo botão <span class="ui">Configurações fiscais</span> no topo (ou pelo botão do estado guiado). O endereço antigo <code>/notas-fiscais/configuracoes</code> continua funcionando, mas só redireciona pra <code>/notas-fiscais</code> abrindo esse mesmo modal. Não procure um item "Configurações fiscais" no menu lateral: ele não existe.</div>
+  <div class="regra"><b>A configuração fiscal é uma tela própria, no endereço <code>/notas-fiscais/configuracoes</code>.</b> Ela já foi um modal que abria por cima de Notas Fiscais, mas isso mudou: hoje o botão <span class="ui">Configurações fiscais</span> no topo (ou o botão do estado guiado) <b>navega</b> pra essa tela, com um botão <span class="ui">Voltar</span> para retornar a Notas Fiscais. Não procure um item "Configurações fiscais" no menu lateral: ele não existe, você chega lá pelo botão de dentro de Notas Fiscais.</div>
 
-  <p>O modal tem quatro seções numeradas na lateral: <span class="ui">1. Empresa</span>, <span class="ui">2. Certificado A1</span>, <span class="ui">3. Tributação</span> e <span class="ui">4. Serviços</span>. No cabeçalho aparece um selo com a situação atual: <span class="ui">Apto a emitir</span> ou <span class="ui">Configuração incompleta</span>.</p>
+  <p>A tela tem quatro seções numeradas na lateral no desktop (em pílulas, no celular): <span class="ui">1. Empresa</span>, <span class="ui">2. Certificado A1</span>, <span class="ui">3. Tributação</span> e <span class="ui">4. Serviços</span>. No cabeçalho aparece um selo com a situação atual: <span class="ui">Apto a emitir</span> ou <span class="ui">Configuração incompleta</span>, e um botão <span class="ui">Voltar</span> para retornar a Notas Fiscais.</p>
 
   <div class="aviso">A ordem importa e o sistema força ela: primeiro a empresa é registrada, só depois o certificado é aceito. A dica na tela é literal: "Passo 1 de 2: preencha os dados e registre a empresa. Só depois libera o certificado." Tentando subir o certificado antes, aparece "Registre a empresa antes de subir o certificado. Volte ao passo 1. Empresa e registre a empresa primeiro."</div>
 
@@ -97,7 +98,7 @@
   <div class="aviso"><b>Município sem cobertura bloqueia a emissão mesmo com todo o resto certo.</b> Verifique a cobertura ANTES de comprar certificado ou prometer nota pro cliente. Se o município não estiver apto, o passo final da emissão mostra "Emissão bloqueada, o município ainda não está liberado para emitir NFS-e. Verifique nas Configurações Fiscais." Não há o que fazer do lado do sistema: depende da prefeitura aderir ao padrão nacional.</div>
 
   <figure>
-    <img src="img/t14-config-fiscal-empresa.png" alt="Modal Configurações fiscais na seção 1. Empresa, com o selo laranja Configuração incompleta, o aviso Passo 1 de 2, os campos Razão social / Nome, CNPJ, Inscrição Municipal, o bloco Endereço fiscal com CEP e demais campos, a chave Homologação/Produção, o botão Salvar dados da empresa e, na base, o bloco Status da emissão com os três itens Empresa, Certificado e Município, todos pendentes, e o botão Verificar cobertura do município">
+    <img src="img/t14-config-fiscal-empresa.png" alt="Tela Configurações fiscais na seção 1. Empresa, com o selo laranja Configuração incompleta, o aviso Passo 1 de 2, os campos Razão social / Nome, CNPJ, Inscrição Municipal, o bloco Endereço fiscal com CEP e demais campos, a chave Homologação/Produção, o botão Salvar dados da empresa e, na base, o bloco Status da emissão com os três itens Empresa, Certificado e Município, todos pendentes, e o botão Verificar cobertura do município">
     <figcaption>Configurações fiscais, seção Empresa: dados cadastrais, chave de ambiente e o bloco Status da emissão.</figcaption>
   </figure>
 
@@ -124,7 +125,7 @@
   </ol>
 
   <figure>
-    <img src="img/t14-config-fiscal-certificado.png" alt="Modal Configurações fiscais na seção 2. Certificado A1, com o aviso 'Registre a empresa antes de subir o certificado', o campo Arquivo do certificado com o botão Selecionar arquivo (.pfx / .p12), o campo opcional Nome do certificado, o campo Senha do certificado com ícone de olho para mostrar, a caixa de Autorização para guardar o certificado com o link Ler a Seção 12 dos Termos de Uso, e o botão Enviar certificado">
+    <img src="img/t14-config-fiscal-certificado.png" alt="Tela Configurações fiscais na seção 2. Certificado A1, com o aviso 'Registre a empresa antes de subir o certificado', o campo Arquivo do certificado com o botão Selecionar arquivo (.pfx / .p12), o campo opcional Nome do certificado, o campo Senha do certificado com ícone de olho para mostrar, a caixa de Autorização para guardar o certificado com o link Ler a Seção 12 dos Termos de Uso, e o botão Enviar certificado">
     <figcaption>Configurações fiscais, seção Certificado A1: envio do arquivo, senha e a autorização de guarda.</figcaption>
   </figure>
 
@@ -163,7 +164,7 @@
   <p>O botão é <span class="ui">Salvar tributação</span>. A confirmação é "Configurações fiscais salvas." e o erro é "Não foi possível salvar as configurações fiscais."</p>
 
   <figure>
-    <img src="img/t14-config-fiscal-tributacao.png" alt="Modal Configurações fiscais na seção 3. Tributação, com o campo Regime tributário em Simples Nacional, o campo Apuração de tributos no Simples Nacional já preenchido com a primeira opção sugerida, os campos Inscrição Municipal e Inscrição Estadual lado a lado, e o botão Salvar tributação">
+    <img src="img/t14-config-fiscal-tributacao.png" alt="Tela Configurações fiscais na seção 3. Tributação, com o campo Regime tributário em Simples Nacional, o campo Apuração de tributos no Simples Nacional já preenchido com a primeira opção sugerida, os campos Inscrição Municipal e Inscrição Estadual lado a lado, e o botão Salvar tributação">
     <figcaption>Configurações fiscais, seção Tributação: regime tributário, apuração no Simples e as inscrições.</figcaption>
   </figure>
 
@@ -176,7 +177,7 @@
 
   <h2>5. Passo Serviços: código de serviço padrão e NBS</h2>
 
-  <p>A seção <span class="ui">4. Serviços</span> do modal é o seu catálogo de serviços, o <b>mesmo</b> usado nas ordens de serviço e na agenda, aberto direto na aba fiscal do cadastro. A explicação na tela é: "Cadastre aqui os serviços que você fatura, com os códigos fiscais de cada um. É a mesma lista usada nas ordens de serviço e na agenda: preenchendo os códigos uma vez, toda nota nova já sai preenchida."</p>
+  <p>A seção <span class="ui">4. Serviços</span> da tela de configuração é o seu catálogo de serviços, o <b>mesmo</b> usado nas ordens de serviço e na agenda, aberto direto na aba fiscal do cadastro. A explicação na tela é: "Cadastre aqui os serviços que você fatura, com os códigos fiscais de cada um. É a mesma lista usada nas ordens de serviço e na agenda: preenchendo os códigos uma vez, toda nota nova já sai preenchida."</p>
 
   <h3>Os códigos fiscais de cada serviço</h3>
   <table class="dados">
@@ -219,7 +220,7 @@
   <p>O botão <span class="ui">Nova Nota</span> abre o assistente <span class="ui">Nova NFS-e</span>, dividido em quatro abas. No rodapé, sempre visíveis: <span class="ui">Cancelar</span>, <span class="ui">Salvar rascunho</span>, <span class="ui">Voltar</span> e <span class="ui">Avançar</span>. No topo, um resumo com <span class="ui">Total da nota</span>, <span class="ui">Base ISS</span> e um contador de pendências ("3 pendência(s) para emitir" ou "Pronta para emitir"), que ao ser tocado lista o que falta.</p>
 
   <figure>
-    <img src="img/t14-nova-nota-stepper.png" alt="Assistente Nova NFS-e na etapa Pessoas, com Total da nota R$ 0,00 e Base ISS R$ 0,00 no topo, o selo vermelho '6 pendência(s) para emitir' aberto listando o que falta (concluir cadastro da empresa, selecionar o tomador, código de tributação, código NBS e valor de serviço), as quatro abas Pessoas, Serviço, Valores e Revisar e Emitir, o campo Data de competência preenchido e o campo Tomador do serviço vazio com a validação 'Selecione o tomador do serviço'">
+    <img src="img/t14-nova-nota-stepper.png" alt="Assistente Nova NFS-e na etapa Pessoas, com Total da nota R$ 0,00 e Base ISS R$ 0,00 no topo, o selo vermelho '6 pendência(s) para emitir' aberto listando o que falta (concluir cadastro da empresa, selecionar o tomador, código de tributação, código NBS e valor de serviço), as quatro abas Pessoas, Serviço, Valores e Revisar e Emitir, o campo Data de competência preenchido, acima do campo Tomador o par de links 'Selecionar cadastrado' e 'Digitar manualmente', e o campo Tomador do serviço vazio com a validação 'Selecione o tomador do serviço'">
     <figcaption>Assistente Nova NFS-e: o contador de pendências aberto mostra exatamente o que falta preencher para poder emitir.</figcaption>
   </figure>
 
@@ -233,6 +234,9 @@
       <tr><td><span class="ui">Intermediário do serviço</span></td><td>Não</td><td>Só para o caso em que existe um intermediário entre você e o tomador.</td></tr>
     </tbody>
   </table>
+
+  <div class="dica">Acima do campo Tomador (e também do Intermediário) existe um par de links, <span class="ui">Selecionar cadastrado</span> e <span class="ui">Digitar manualmente</span>. O normal é escolher o cliente já cadastrado. "Digitar manualmente" serve para o tomador avulso, que não vira cadastro em Clientes: você preenche nome, documento e endereço só para aquela nota, para o caso raro de cobrar alguém que nunca vai virar cliente de verdade no sistema.</div>
+
   <div class="aviso">Cliente sem documento trava a nota: "Este cliente está sem CPF/CNPJ. Complete os dados fiscais antes de emitir." Complete a ficha do cliente (aba Fiscal) e volte. Endereço incompleto do cliente também é motivo comum de recusa pela prefeitura.</div>
 
   <h3>Etapa 2, Serviço</h3>
@@ -343,14 +347,54 @@
   </table>
   <div class="dica">Se você precisa emitir uma segunda nota legítima para o mesmo cliente, com o mesmo valor e a mesma competência (por exemplo, duas visitas idênticas no mesmo mês), mude a <b>discriminação do serviço</b> para diferenciar e, se possível, ajuste a competência. Se ainda assim o sistema disser que já foi emitida, cancele a anterior antes ou fale com o suporte.</div>
 
+  <h2>11. Emissões automáticas: nota de contrato recorrente sem precisar clicar</h2>
+
+  <p>É possível ligar a emissão automática de NFS-e para as parcelas de um contrato recorrente, em vez de emitir cada nota manualmente. A chave <span class="ui">Nota fiscal automática</span> fica na aba <span class="ui">Financeiro</span> do contrato, não aqui em Notas Fiscais: "Ligada, o sistema emite a nota fiscal de cada parcela deste contrato sozinho, sem precisar clicar em nada." Ela nasce <b>desligada</b> em todo contrato, inclusive os antigos: ligar é sempre uma ação explícita de alguém da empresa.</p>
+
+  <div class="regra">A aba <span class="ui">Emissões automáticas</span>, aqui em Notas Fiscais, é só para <b>acompanhar</b> o que a automação já fez ou tentou fazer. Não existe lançar uma emissão automática manualmente por aqui: quem liga e desliga é a aba Financeiro do contrato.</div>
+
+  <h3>Quando a nota sai</h3>
+  <p>No contrato, três modos de disparo: <span class="ui">Em um dia fixo do mês</span> (você escolhe o dia; se o mês não tiver esse dia, a nota sai no último dia daquele mês, então dia 31 em fevereiro sai no dia 28 ou 29), <span class="ui">No vencimento da parcela</span> e <span class="ui">Quando o cliente pagar</span>. Neste último, a nota só sai na <b>quitação total</b> da parcela: recebimento parcial não dispara emissão.</p>
+
+  <p>Os dados fiscais do serviço (código de tributação, código NBS, código de tributação municipal e alíquota de ISS) são herdados do tipo de serviço do contrato por padrão, mas podem ser sobrescritos contrato a contrato. A descrição do serviço na nota também pode ser personalizada; em branco, usa o nome do tipo de serviço e o mês de referência.</p>
+
+  <h3>O que aparece na aba Emissões automáticas</h3>
+  <p>Os agendamentos ficam agrupados por situação, com o motivo em português e o que fazer: <span class="ui">Bloqueadas</span> (assinatura da plataforma irregular, módulo Notas Fiscais fora do plano atual, ou cota mensal esgotada), <span class="ui">Falharam</span>, <span class="ui">Aguardando decisão</span>, <span class="ui">Em andamento</span>, <span class="ui">Emitidas</span> e <span class="ui">Canceladas</span>.</p>
+
+  <div class="aviso"><b>Competência de mês já fechado não emite sozinha.</b> Se o atraso empurrar a tentativa para depois do mês de competência ter virado, a automação para e o agendamento fica <span class="ui">Aguardando decisão</span>: "A competência de [mês] já fechou. Emitir agora lança o serviço num período em que o imposto já foi apurado, o que pode exigir ajuste com o seu contador." É preciso confirmar manualmente em <span class="ui">Emitir mesmo assim</span>, ou deixar como está.</div>
+
+  <p>Para os casos bloqueados, com falha ou cancelados, a ação <span class="ui">Tentar de novo</span> reenvia o agendamento para a fila. A nota, quando sai, pode ser aberta por <span class="ui">Ver nota</span>, que leva ao mesmo detalhe de qualquer outra NFS-e.</p>
+
+  <!-- PRINT FALTANDO: t14-emissoes-automaticas — aba "Emissões automáticas" em /notas-fiscais?tab=automaticas, com os agendamentos agrupados por situação (Bloqueadas, Falharam, Aguardando decisão, Em andamento, Emitidas, Canceladas). Precisa de pelo menos um contrato da empresa demo com "Nota fiscal automática" ligada e algum agendamento gerado, o que hoje não existe no tenant demo. Declarado em prints/T14.json. -->
+
+  <h2>12. Notas recebidas: NF-e e NFS-e que fornecedores emitem contra o seu CNPJ</h2>
+
+  <p>É o inverso da emissão: aqui aparecem as notas que <b>outras empresas</b> emitiram tendo a sua empresa como cliente, consultadas direto do governo. A aba tem dois sub-grupos, <span class="ui">NF-e</span> (nota de mercadoria, de um fornecedor que vendeu produto) e <span class="ui">NFS-e</span> (nota de serviço, de um prestador que atendeu a sua empresa).</p>
+
+  <div class="regra">Receber nota não depende de a sua empresa conseguir <b>emitir</b>. O requisito aqui é só o <b>certificado digital A1</b> configurado (o mesmo da seção 2 das Configurações fiscais). Sem certificado, a aba mostra "Certificado digital necessário: sua empresa ainda não tem certificado A1 cadastrado. Sem ele, nenhuma nota destinada chega até aqui." Uma empresa que nunca emitiu NFS-e própria, mas compra material de fornecedores, pode usar essa aba assim mesmo, desde que tenha o certificado.</div>
+
+  <h3>Ligando o recebimento</h3>
+  <p>Com o certificado em dia, aparece o convite para ligar, separado por tipo: "Ligue para consultar, direto na Receita Federal, as notas de produto que fornecedores emitem contra o CNPJ da sua empresa" (NF-e) e o equivalente para NFS-e, consultado no Ambiente de Dados Nacional. O botão é <span class="ui">Ligar recebimento automático</span>. Ligado, "a primeira sincronização pode levar alguns minutos."</p>
+
+  <p>Depois de ligado, o botão <span class="ui">Sincronizar</span> busca notas novas a qualquer momento, mostrando a data da última sincronização. Sem nota nova: "Nenhuma nota nova. Está tudo em dia." Sem nenhuma nota ainda: "Assim que um fornecedor emitir nota contra o CNPJ da sua empresa, ela aparece aqui automaticamente."</p>
+
+  <h3>O que dá para fazer com uma nota recebida</h3>
+  <ul>
+    <li>Cada linha mostra data de emissão, fornecedor, número, valor e situação (<span class="ui">Autorizada</span>, <span class="ui">Cancelada</span>, <span class="ui">Denegada</span> ou <span class="ui">Substituída</span>).</li>
+    <li>Em NF-e existe também a <span class="ui">Manifestação do destinatário</span>, uma obrigação do comprador junto à Receita: dar <span class="ui">Ciência da operação</span> (libera o documento completo), <span class="ui">Confirmar a operação</span>, declarar <span class="ui">Desconheço esta operação</span> ou <span class="ui">Operação não realizada</span>. É irreversível e exige uma justificativa de 15 a 255 caracteres nos três últimos casos. Antes de dar ciência, a nota aparece com o selo <span class="ui">Resumo</span>, com menos dados.</li>
+    <li>A ação <span class="ui">Lançar conta a pagar</span> cria a despesa no Financeiro já preenchida com os dados da nota. Se a nota trouxer mais de uma parcela combinada com o fornecedor, o sistema avisa antes e cria uma conta a pagar por parcela, nas datas e valores da nota (o campo Valor do formulário de despesa é só um resumo, não governa as parcelas). Nota já lançada mostra o selo <span class="ui">Lançada</span> com o atalho <span class="ui">Ver lançamento</span>.</li>
+  </ul>
+
+  <!-- PRINT FALTANDO: t14-notas-recebidas — aba "Notas recebidas" em /notas-fiscais?tab=recebidas, sub-aba NF-e ou NFS-e, com a listagem de notas de fornecedor/prestador e o botão Sincronizar. Precisa de certificado A1 configurado e recebimento automático ligado no tenant demo, e depende de a Receita/ADN terem alguma nota real contra o CNPJ demo — pode não dar pra reproduzir num ambiente de teste. Declarado em prints/T14.json. -->
+
   <h2 class="suporte">Suporte: problemas comuns</h2>
   <table class="faq">
     <thead><tr><th>O cliente diz</th><th>Causa provável</th><th>O que responder / fazer</th></tr></thead>
     <tbody>
       <tr>
         <td>"Não acho a tela de configuração fiscal no menu"</td>
-        <td>Ela não é uma tela, é um modal</td>
-        <td>A configuração fiscal abre de dentro de Notas Fiscais, pelo botão Configurações fiscais no topo da tela. Não existe item de menu separado.</td>
+        <td>Ela não tem item de menu próprio</td>
+        <td>A configuração fiscal é uma tela própria (/notas-fiscais/configuracoes), mas se chega lá pelo botão Configurações fiscais, dentro de Notas Fiscais. Não existe item de menu separado para ela.</td>
       </tr>
       <tr>
         <td>"Cancelei uma nota e agora não consigo emitir outra igual"</td>
@@ -423,7 +467,7 @@
   <h2 class="suporte">Perguntas frequentes</h2>
   <dl class="qa">
     <dt>Onde fica a configuração fiscal?</dt>
-    <dd>Dentro da tela Notas Fiscais, no botão Configurações fiscais do topo. É um modal com quatro seções: Empresa, Certificado A1, Tributação e Serviços. Não existe página separada nem item de menu próprio.</dd>
+    <dd>É uma tela própria, com quatro seções: Empresa, Certificado A1, Tributação e Serviços. Você chega lá pelo botão Configurações fiscais, dentro da tela Notas Fiscais. Não existe item de menu próprio para ela.</dd>
 
     <dt>Preciso de certificado digital pra emitir?</dt>
     <dd>Sim, um certificado A1 (arquivo .pfx ou .p12, com senha). É o mesmo que o seu contador usa. Sem certificado enviado, a tela volta pro estado guiado e não emite.</dd>
@@ -463,9 +507,18 @@
 
     <dt>Quem da minha equipe pode emitir nota?</dt>
     <dd>Quem tem a permissão de tela Notas Fiscais, na empresa que tem o módulo Emissão de Notas Fiscais contratado. Sem uma das duas coisas, a tela mostra a mensagem de acesso negado. Sem a permissão, ao tentar emitir aparece "Você não tem permissão para emitir notas fiscais."</dd>
+
+    <dt>Dá para emitir nota automaticamente, sem clicar em Nova Nota?</dt>
+    <dd>Sim, para contratos recorrentes. Ligue a chave Nota fiscal automática na aba Financeiro do contrato, escolha quando a nota sai (dia fixo, no vencimento ou quando o cliente pagar) e acompanhe o resultado na aba Emissões automáticas aqui em Notas Fiscais.</dd>
+
+    <dt>Posso emitir para um cliente que não está cadastrado no sistema?</dt>
+    <dd>Pode, pela opção Digitar manualmente no passo Pessoas da emissão. Esse tomador avulso não vira um cadastro em Clientes, vale só para aquela nota.</dd>
+
+    <dt>Como vejo as notas que meus fornecedores emitiram pra minha empresa?</dt>
+    <dd>Na aba Notas recebidas, aqui em Notas Fiscais. Precisa ter certificado digital A1 configurado e ligar o recebimento automático, separado para NF-e (produto) e NFS-e (serviço).</dd>
   </dl>
 
   <div class="glossario">
-    <b>Palavras que o cliente usa pra isso:</b> nota fiscal, nota de serviço, NFS-e, emitir nota, notinha, DANFSE, PDF da nota, XML, chave de acesso, protocolo, ISS, alíquota, retenção, tomador, prestador, certificado digital, A1, inscrição municipal, Simples Nacional, cancelar nota, carta de correção
+    <b>Palavras que o cliente usa pra isso:</b> nota fiscal, nota de serviço, NFS-e, emitir nota, notinha, DANFSE, PDF da nota, XML, chave de acesso, protocolo, ISS, alíquota, retenção, tomador, prestador, certificado digital, A1, inscrição municipal, Simples Nacional, cancelar nota, carta de correção, nota automática, nota recebida, nota do fornecedor, manifestar nota
   </div>
 </section>

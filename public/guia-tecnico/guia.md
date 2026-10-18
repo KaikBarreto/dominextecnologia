@@ -378,7 +378,7 @@ Módulo: a seção White Label exige o módulo White Label. O resto da tela é b
 
 Não procure o botão Salvar: ele não existe nesta tela. A Dominex salva sozinha, cerca de 1 segundo depois que você para de digitar, e também na hora em que você sai de um campo. O selo no canto superior direito diz em que pé está: Salvando… enquanto grava, Alterações não salvas quando há algo pendente e Salvo quando está tudo gravado. Se você sair da tela com uma alteração pendente, ela é enviada mesmo assim.
 
-[Print da tela: Tela Configurações da Dominex na aba Empresa, com o menu de abas à esquerda (Empresa, Regional, Usuários e Permissões, Usabilidade, Atalhos, Aparência, Integrações) e, à direita, os blocos Identidade Visual, Dados Cadastrais, Contato, Endereço, White Label, Documentos Legais e Zona de Perigo. No topo direito aparece o selo Salvo.]
+[Print da tela: Tela Configurações da Dominex na aba Empresa, com o menu de abas à esquerda (Empresa, Regional, Usuários e Permissões, Usabilidade, Atalhos, Aparência, Integrações) e, à direita, os blocos Identidade Visual, Dados Cadastrais, Contato, Endereço, White Label, Documentos Legais, o cartão neutro Exportar meus dados e Zona de Perigo. No topo direito aparece o selo Salvo.]
 
 Configurações, aba Empresa: as sete abas à esquerda e o formulário completo à direita, com o selo Salvo no topo.
 
@@ -503,7 +503,7 @@ Personaliza a faixa que aparece no topo do relatório da OS concluída, aquele d
 
  O White Label muda a aparência, não os dados. Ele não troca o nome da empresa nos documentos (isso é o campo Nome da Empresa) e não tira o crédito "Desenvolvido por Auctus" do rodapé do sistema interno, que é a assinatura da empresa que desenvolve a plataforma.
 
-### 4. Aba Regional: meu idioma × padrões da empresa (idioma, moeda, fuso) e o switch do resultado DISC
+### 4. Aba Regional: meu idioma × padrões da empresa (país, idioma, moeda, fuso) e o switch do resultado DISC
 
 A aba Regional tem três cartões, e a diferença entre os dois primeiros é o ponto que mais confunde.
 
@@ -519,16 +519,17 @@ A aba Regional tem três cartões, e a diferença entre os dois primeiros é o p
 
 #### Cartão Padrões da empresa (só administrador)
 
-Quem não é administrador vê o cartão, mas com o aviso (somente admin) ao lado da descrição e os campos travados.
+Quem não é administrador vê o cartão, mas com o aviso (somente admin) ao lado da descrição e os campos travados. O primeiro campo do cartão é o País da empresa, acima do idioma padrão: "Define os padrões sugeridos de idioma, moeda e fuso. Você pode ajustá-los separadamente."
 
 | Campo | O que faz |
+| País da empresa | Seletor com busca (por país ou moeda). Não é um dado cadastral, é só a FONTE dos padrões sugeridos pra idioma, moeda e fuso. Trocar o país não trava nem converte nada por conta própria. |
 | Idioma padrão da empresa | "Idioma aplicado a todos que não escolheram um pessoalmente." |
-| Moeda | "Moeda de operação usada nos valores do sistema." |
+| Moeda | "Moeda de operação usada nos valores do sistema." Mostra a bandeirinha do país correspondente no seletor. |
 | Fuso horário | "Usado para datas e horários exibidos no sistema." O seletor tem busca própria, com a dica Buscar fuso (ex: Sao Paulo). |
 
-Ao trocar o idioma padrão, o sistema oferece um atalho: aparece a pergunta Usar os padrões de [idioma] para moeda e fuso? com os botões Manter atuais e Usar padrões. Aceitando, ele ajusta moeda e fuso juntos e confirma com Padrões de [idioma] aplicados.
+Trocar o País da empresa para um país cujo idioma, moeda ou fuso padrão seja diferente do que já está configurado abre a pergunta Usar os padrões de [país] para idioma, moeda e fuso?, com Manter atuais e Usar padrões. Aceitando, confirma com Padrões de [país] aplicados. Trocar só o Idioma padrão da empresa (sem tocar no país) continua oferecendo o atalho mais específico de antes, só pra moeda e fuso: Usar os padrões de [idioma] para moeda e fuso?. Os dois atalhos convivem porque país, idioma, moeda e fuso são campos independentes; nenhum trava os outros.
 
-Trocar a moeda não converte valor nenhum. O aviso da própria tela: "A moeda é a de operação da empresa. Trocar não converte os valores já registrados, eles continuam com o número original." Ou seja, um lançamento de 1.500 continua 1.500, só passa a ser exibido com o outro símbolo. Não use a troca de moeda como conversor.
+Trocar a moeda não converte valor nenhum. O aviso da própria tela: "A moeda é a de operação da empresa. Trocar não converte os valores já registrados, eles continuam com o número original." Ou seja, um lançamento de 1.500 continua 1.500, só passa a ser exibido com o outro símbolo. Não use a troca de moeda, nem a troca de país, como conversor.
 
 #### Cartão Perfil Comportamental
 
@@ -538,9 +539,9 @@ Trocar a moeda não converte valor nenhum. O aviso da própria tela: "A moeda é
 
 - Serve pro teste DISC aplicado aos funcionários. Se a sua empresa usa o resultado em processo seletivo, o comum é deixar desligado.
 
-[Print da tela: Aba Regional das Configurações. À esquerda, o menu de abas com Regional em destaque. À direita, o cartão Meu idioma com o seletor de Idioma em Português e o aviso de que é preferência pessoal, e abaixo o cartão Padrões da empresa, com Idioma padrão da empresa em Português, o campo Moeda em BRL — Real brasileiro (R$) e o início do campo Fuso horário.]
+[Print da tela: Aba Regional das Configurações. À esquerda, o menu de abas com Regional em destaque. À direita, o cartão Meu idioma com o seletor de Idioma em Português e o aviso de que é preferência pessoal, e abaixo o cartão Padrões da empresa, com o campo País da empresa em Brasil no topo, Idioma padrão da empresa em Português, o campo Moeda em BRL — Real brasileiro (R$) com a bandeira do Brasil e o início do campo Fuso horário.]
 
-Aba Regional: cartões Meu idioma e Padrões da empresa. O cartão Perfil Comportamental fica logo abaixo, fora do recorte.
+Aba Regional: cartões Meu idioma e Padrões da empresa, agora com o campo País da empresa no topo. O cartão Perfil Comportamental fica logo abaixo, fora do recorte.
 
 ### 5. Aba Usabilidade: auto-salvar OS, mostrar valores, exigir assinatura, fotos no dispositivo, tabelas compactas, confirmar exclusão, feriados na agenda
 
@@ -632,15 +633,35 @@ Essas três escolhas são pessoais e ficam guardadas no navegador de cada um.
 
 Aba Atalhos, com o interruptor geral e a lista de atalhos de Navegação.
 
-### 8. Aba Integrações: Recebimentos (Asaas) e o estado atual do WhatsApp
+### 8. Aba Integrações: WhatsApp (conexão por QR Code e automações) e Recebimentos (Asaas)
 
 A aba Integrações tem duas subabas em pílula: WhatsApp e Recebimentos.
 
-WhatsApp está "Em breve" e não conecta. A subaba WhatsApp aparece com um selo amarelo Em breve e mostra um cartão fixo com o título Avisos por WhatsApp e o texto "Em breve você poderá avisar seus clientes automaticamente pelo WhatsApp. Estamos finalizando os últimos ajustes." Não existe hoje tela de conexão por QR Code, nem gatilho de aviso automático de OS a caminho, iniciada ou concluída. Não prometa esse recurso ao cliente e não ensine passo a passo de conexão.
+O WhatsApp já conecta por QR Code, não é mais só um aviso de "Em breve". Depende do módulo de WhatsApp. Sem o módulo, a subaba mostra Prévia do módulo de WhatsApp: "Você pode conhecer toda a estrutura. Para salvar e ativar as automações, contrate o módulo de WhatsApp." Com o módulo, aparecem seis seções em pílula: Conexão, Automações, Atendimento, Modelos, Campanhas e Histórico.
 
-[Print da tela: Aba Integrações das Configurações na subaba WhatsApp, com a pílula WhatsApp trazendo o selo amarelo Em breve ao lado, ao lado da pílula Recebimentos. Abaixo, o cartão fixo com o ícone do WhatsApp em verde, o título Avisos por WhatsApp, o texto explicando que a função está em ajuste final e o selo laranja Em breve.]
+#### Conexão: parear o número por QR Code
 
-Subaba WhatsApp mostrando o selo Em breve: não existe conexão por QR Code hoje.
+Antes de conectar, a tela mostra o aviso "Entendo que toda automação de WhatsApp fora da API Oficial da Meta tem um risco, ainda que ínfimo, de bloqueio do número, justamente por se tratar de envio automatizado", com uma caixinha de confirmação obrigatória, e a dica de usar um número secundário pra isso (chip separado dos avisos), deixando o WhatsApp principal de atendimento livre de qualquer risco. Marcando a caixinha, o botão Conectar meu WhatsApp libera, gera o QR Code (com uma barra de progresso, "Preparando a conexão e gerando o QR Code…", porque a criação da instância leva alguns segundos) e, depois de parear o celular, o botão vira Confirmar e ativar ou Usar este canal. Dá pra Desconectar e gerar um QR novo a qualquer momento.
+
+Canal não oficial, por QR Code, não é a API Oficial da Meta. A própria tela avisa: "O Dominex reduz o risco com consentimento, fila, aquecimento e limites. Nenhuma integração por QR Code consegue garantir ausência de bloqueio." A conexão oficial pelo Facebook (Meta Cloud API) continua com o selo Em breve, com custos da Meta separados do plano Dominex.
+
+#### Automações: avisos automáticos de OS e de cobrança
+
+A seção Automações liga os avisos automáticos. No domínio Ordens de Serviço, os eventos são Técnico a caminho, Serviço iniciado e OS concluída. No domínio Cobranças, os eventos são Cobrança gerada, Antes do vencimento, No vencimento e Após o vencimento. Cada evento tem a mensagem editável por você.
+
+Antes das automações, a mesma tela traz o ritmo de envio (horário e janela), porque é a régua que protege o número de bloqueio: os avisos de OS seguem a operação (todo dia, dentro do horário comercial estendido), e os avisos de cobrança seguem o comercial (dias úteis, horário comercial), porque o cliente espera uma OS no minuto em que ela acontece, mas não espera (nem quer) cobrança fora de hora.
+
+#### Atendimento, Modelos e Campanhas: prévia da interface
+
+Essas três seções mostram a tela cheia de como vai ficar: a Central de atendimento (inbox por conversa, vinculada a cliente/OS/cobrança), os Modelos de mensagem e as Campanhas de disparo em massa. Todas carregam o selo Prévia funcional da interface: dá pra navegar e entender o desenho, mas ainda não enviam ou recebem mensagem de verdade. O que funciona de ponta a ponta hoje é a Conexão e as Automações de OS/cobrança.
+
+#### Histórico: fila de envios
+
+Mostra os contadores Na fila, Enviado, Entregue, Lido, Ignorado e Falhou, e a lista dos últimos 50 avisos transacionais, com o motivo quando um aviso foi ignorado.
+
+[Print da tela: Aba Integrações das Configurações na subaba WhatsApp, seção Conexão, com a caixinha de risco de bloqueio marcada, o botão Conectar meu WhatsApp, a dica de usar número secundário e, abaixo, a seção Meta Cloud API com o selo Em breve.]
+
+Subaba WhatsApp, seção Conexão: o aviso de risco e o botão para parear por QR Code, antes de conectar.
 
 #### Recebimentos (Asaas)
 
@@ -679,6 +700,12 @@ Não existe configuração do link de avaliação do Google dentro de Configura�
 #### Documentos Legais
 
 No fim da aba Empresa fica o cartão Documentos Legais, "Consulte e baixe os termos que regem o uso do Dominex". O botão Ver termos de uso abre o documento em janela, com opção de Baixar PDF. Abaixo, quando já houve aceite, aparece a linha Aceito em [data] com um sinal verde. É o comprovante de que a sua empresa aceitou os termos, útil em auditoria.
+
+#### Exportar meus dados
+
+Logo abaixo de Documentos Legais, antes da Zona de Perigo, fica o cartão neutro Exportar meus dados: "Baixe uma planilha do Excel com os dados da sua empresa: clientes, equipamentos, ordens de serviço, orçamentos, contratos, financeiro e mais. Serve de backup e para levar seus dados para onde quiser." O botão Exportar dados abre uma janela pra escolher o que entra na planilha, com Marcar tudo e Limpar seleção. Movimentações de Estoque e Ponto vêm desmarcadas por padrão, porque costumam ter muitos registros. O arquivo é gerado na hora e baixado automaticamente, sem passar por e-mail ou suporte.
+
+Diferente da Zona de Perigo, Exportar meus dados não é destrutivo: o cartão é neutro (não vermelho) de propósito. Mas usa a mesma permissão de quem pode Zerar Sistema, então só aparece pra quem tem esse poder.
 
 #### Zona de Perigo
 
@@ -736,7 +763,9 @@ A janela lista, sob o título Serão mantidos:, três coisas: Dados básicos da 
 | O cliente diz | Causa provável | Como resolver |
 | "Não tem botão de salvar nas configurações" | A tela salva sozinha | É assim mesmo. Olhe o selo no topo direito: Salvando, Alterações não salvas ou Salvo. Sair do campo já grava. |
 | "Não consigo mudar o segmento da minha empresa" | Campo somente leitura por definição | Só a Dominex altera o segmento, porque ele define quais ferramentas aparecem. Abra chamado no suporte informando o novo ramo. |
-| "Quero conectar meu WhatsApp e não acho o QR Code" | Recurso ainda não liberado | A aba WhatsApp está marcada como Em breve e mostra só um aviso. Não existe conexão por QR Code hoje. Avise que ainda não está disponível. |
+| "Quero conectar meu WhatsApp e não acho o QR Code" | Falta o módulo, ou não marcou a caixinha de risco | Em Integrações › WhatsApp › Conexão. Sem o módulo, a tela é só prévia (contratar libera). Com o módulo, o botão Conectar meu WhatsApp só libera depois de marcar a caixinha de aceite do risco de bloqueio. |
+| "O cliente não recebeu o aviso de que a OS está a caminho" | Automação desligada, número não conectado, ou fora do horário de envio | Confira em Integrações › WhatsApp › Conexão se o número está conectado, e em Automações se o evento Técnico a caminho está ligado. Avisos de OS saem dentro da janela de operação configurada, não fora dela. |
+| "Consigo já atender cliente pelo WhatsApp dentro do Dominex?" | Expectativa maior que a entrega atual | A seção Atendimento (inbox) é uma prévia funcional da interface, pra mostrar o desenho. Hoje o que funciona de ponta a ponta é a conexão do número e os avisos automáticos de OS e cobrança. |
 | "O CNPJ não aparece no relatório da OS" | Interruptor Exibir em documentos desligado | Vá em Configurações › Empresa e ligue o interruptor ao lado do campo CNPJ/CPF. O dado continua cadastrado, só não estava sendo impresso. |
 | "Ativei o White Label e o logo não mudou" | Nenhum logo específico foi enviado | Sem logo próprio no White Label, o sistema usa o logo da Identidade Visual. Envie o logo completo e o ícone quadrado. |
 | "Mudei a moeda e meus valores ficaram errados" | Expectativa de conversão | Trocar a moeda não converte valor. Os números continuam iguais, só muda o símbolo. Volte a moeda anterior se foi engano. |
@@ -762,6 +791,12 @@ A janela lista, sob o título Serão mantidos:, três coisas: Dados básicos da 
 **P:** Trocar meu idioma muda o idioma dos meus colegas?
 **R:** Não. Meu idioma é pessoal. Quem muda pra todo mundo é o campo Idioma padrão da empresa, e só administrador mexe nele.
 
+**P:** Pra que serve o campo País da empresa?
+**R:** Só pra sugerir os padrões de idioma, moeda e fuso daquele mercado. Não é um dado cadastral e não trava nada: você pode manter idioma, moeda e fuso diferentes do sugerido pelo país.
+
+**P:** O WhatsApp do Dominex já funciona de verdade?
+**R:** A conexão por QR Code e os avisos automáticos de OS e cobrança já funcionam, com o módulo contratado. Atendimento, modelos de mensagem e campanhas ainda são só prévia da interface. A conexão oficial pela Meta (Facebook) continua em breve.
+
 **P:** Onde ligo ou desligo os feriados na agenda?
 **R:** Configurações › Usabilidade › bloco Agenda › Exibir Feriados. Nasce ligado.
 
@@ -783,7 +818,7 @@ A janela lista, sob o título Serão mantidos:, três coisas: Dados básicos da 
 **P:** Onde vejo os termos de uso que aceitei?
 **R:** Em Configurações › Empresa › Documentos Legais › Ver termos de uso. A data do aceite aparece logo abaixo do botão.
 
-Palavras que o cliente usa pra isso: configurações, ajustes, dados da empresa, papel timbrado, logo, marca, cor do sistema, personalizar, tema escuro, fuso, moeda, integrações, chave da Asaas, apagar tudo, zerar, limpar base
+Palavras que o cliente usa pra isso: configurações, ajustes, dados da empresa, papel timbrado, logo, marca, cor do sistema, personalizar, tema escuro, fuso, moeda, país, integrações, chave da Asaas, apagar tudo, zerar, limpar base, conectar WhatsApp, QR Code do WhatsApp, avisar cliente pelo WhatsApp, exportar dados, backup
 
 ---
 
@@ -937,7 +972,8 @@ O interruptor fica fora da área que abre a lista: clicar no nome expande, clica
 | Contratos | Contratos recorrentes, PMOC e as visitas programadas de cada um. |
 | Equipamentos | Cadastro dos equipamentos dos clientes e o histórico de cada um. |
 | Comercial | Clientes | Cadastro de clientes, com contatos, endereços e histórico de atendimento. |
-| CRM | Funil comercial com leads, oportunidades e follow-ups. Também exige o módulo contratado. |
+| CRM/Kanban | Funis Kanban com leads, oportunidades e follow-ups. Também exige o módulo contratado. |
+| Projetos | Obras e projetos que agrupam frentes de trabalho do CRM. Também exige o módulo CRM contratado. É uma permissão própria, separada da tela CRM/Kanban: dá pra liberar quem acompanha obra sem abrir a carteira comercial pra essa pessoa. |
 | Orçamentos | Orçamentos e propostas enviadas aos clientes. |
 | Operacional | Estoque | Materiais, saldos e movimentações de estoque. |
 | Área do Técnico™ | Ferramentas de apoio do técnico em campo, como cálculos e tabelas. |
@@ -971,11 +1007,15 @@ Sem essa ação, o usuário abre a Agenda e vê só as tarefas dele. Com ela lig
 
 #### Gerenciar CRM: o que a pessoa deixa de ver sem ela
 
-Sem essa ação, o usuário que tem a tela CRM liberada não vê mais o funil inteiro: ele passa a ver só as oportunidades em que é responsável (principal ou secundário) ou foi quem cadastrou, mais uma fila especial de oportunidades sem nenhum responsável (a que costuma vir de webhook de captação), que fica visível pra empresa inteira até alguém assumir. Os cartões de resumo do topo do CRM (Total de Leads, Valor Total) também passam a somar só o que a pessoa enxerga, não o total da empresa.
+Sem essa ação, o usuário que tem a tela CRM/Kanban liberada não vê mais o funil inteiro: ele passa a ver só as oportunidades em que é responsável (principal ou secundário) ou foi quem cadastrou, mais uma fila especial de oportunidades sem nenhum responsável (a que costuma vir de webhook de captação), que fica visível pra empresa inteira até alguém assumir. Os cartões de resumo do topo do CRM (Total no funil, Valor Total) também passam a somar só o que a pessoa enxerga, não o total da empresa.
 
-Essa restrição só entra em vigor pra usuário que já recebeu algum permissionamento explícito. Se a sua empresa nunca configurou permissões por pessoa (todo mundo com Acesso Total ou sem nenhuma linha de permissão salva), o comportamento continua sendo o de sempre: qualquer um com a tela CRM aberta vê o funil inteiro.
+Essa restrição só entra em vigor pra usuário que já recebeu algum permissionamento explícito. Se a sua empresa nunca configurou permissões por pessoa (todo mundo com Acesso Total ou sem nenhuma linha de permissão salva), o comportamento continua sendo o de sempre: qualquer um com a tela CRM/Kanban aberta vê o funil inteiro.
 
 Além da ação Gerenciar CRM, um funil individual pode estar restrito a algumas pessoas (o item "Quem pode ver" dentro de Gerenciar Funis, no CRM). Isso é configurado dentro da própria tela do CRM, não neste editor, e só fica disponível pra administrador, gestor ou quem tem Gerenciar Configurações ligada.
+
+#### Projetos: tela própria, sem ação própria
+
+A tela Projetos (capítulo coberto em T10) tem a sua própria permissão de tela, mas não tem uma ação tipo "Gerenciar Projetos" dentro dela. Quem só tem a tela ligada vê a lista de obras e abre o detalhe de cada uma; criar, editar ou excluir um projeto, e criar, editar ou excluir uma frente de trabalho dentro dele, exigem ser administrador, gestor, ou ter a ação Gerenciar Configurações ligada — a mesma régua de quem pode gerenciar funis e etapas no CRM, porque uma frente de trabalho é, por baixo, um funil do CRM.
 
 #### Gerenciar Tarefas: o que a pessoa deixa de ver sem ela
 
@@ -1176,7 +1216,7 @@ Cada plano permite um número de usuários ativos. Usuário desativado não cont
 **P:** Qual a diferença entre Ver Toda a Agenda e Gerenciar Tarefas?
 **R:** Ver Toda a Agenda cobre o calendário. Gerenciar Tarefas cobre o conjunto inteiro de tarefas, incluindo as que nasceram dentro de uma oportunidade do CRM e nunca aparecem no calendário. Pra ver tudo em ambos os lugares, ligue as duas.
 
-Palavras que o cliente usa pra isso: usuário, login, acesso, senha, permissão, cargo, perfil, liberar, bloquear, tirar do sistema, desativar, dar baixa, vaga, limite de usuários, técnico, administrador, master, gerenciar CRM, gerenciar tarefas, ver as tarefas de todo mundo, ver o funil inteiro
+Palavras que o cliente usa pra isso: usuário, login, acesso, senha, permissão, cargo, perfil, liberar, bloquear, tirar do sistema, desativar, dar baixa, vaga, limite de usuários, técnico, administrador, master, gerenciar CRM, gerenciar tarefas, ver as tarefas de todo mundo, ver o funil inteiro, permissão de projetos, quem vê as obras
 
 ---
 
@@ -1221,11 +1261,13 @@ Quem enxerga: quem tem a tela Clientes (screen:customers) e a tela Equipamentos 
 
 A tela Clientes abre em /clientes e lista todos os clientes da sua empresa. Cada linha é um cliente com foto (ou as iniciais do nome num círculo colorido), nome, documento, empresa, tipo (PF ou PJ), telefone, e-mail e cidade.
 
-[Print da tela: Tela de Clientes da Dominex com a barra de busca no topo, o alternador entre visualização em grade e em lista, e a tabela de clientes com colunas Foto, Nome, Empresa, Tipo, Contato, Endereço e Ações. No topo da lista, Cliente Demo e Cliente SoNome QA aparecem cadastrados só com o nome, com Empresa, Contato e Endereço em traço; logo abaixo, clientes completos como Clínica Vida & Saúde já trazem o documento embaixo do nome, telefone e e-mail na coluna Contato e a rua na coluna Endereço.]
+[Print da tela: Tela de Clientes da Dominex com as abas Clientes e Fornecedores no topo, a barra de busca, o alternador entre visualização em grade e em lista, e a tabela de clientes com colunas Foto, Nome, Empresa, Tipo, Contato, Endereço e Ações. No topo da lista, Cliente Demo e Cliente SoNome QA aparecem cadastrados só com o nome, com Empresa, Contato e Endereço em traço; logo abaixo, clientes completos como Clínica Vida & Saúde já trazem o documento embaixo do nome, telefone e e-mail na coluna Contato e a rua na coluna Endereço.]
 
-Tela Clientes: repare a diferença entre um cadastro completo (documento, contato e endereço preenchidos) e um cliente salvo só com o nome, com as demais colunas em traço.
+Tela Clientes: a aba Clientes selecionada (ao lado da aba Fornecedores), e repare a diferença entre um cadastro completo (documento, contato e endereço preenchidos) e um cliente salvo só com o nome, com as demais colunas em traço.
 
 Isso mostra na prática o que a busca vai encontrar: um cliente pode ficar só com o nome por um tempo, e as colunas Empresa, Contato e Endereço simplesmente ficam em traço até alguém completar o cadastro.
+
+Logo abaixo do título da tela existe um segundo nível de navegação com duas abas: Clientes e Fornecedores. Esta seção trata da aba Clientes; a aba Fornecedores guarda o cadastro de quem vende material ou serviço pra sua empresa, e tem tela e campos próprios.
 
 No canto direito, acima da lista, existe um alternador de visualização com duas opções:
 
@@ -1237,23 +1279,27 @@ A escolha entre grade e lista fica salva no seu navegador.
 
 #### Buscar cliente
 
-O campo de busca no topo diz Buscar por nome, empresa, email ou documento... no computador e Buscar clientes... no celular. A busca é tolerante: acha mesmo com acento diferente ou letra maiúscula trocada, e procura em quatro lugares ao mesmo tempo:
+O campo de busca no topo diz Buscar por nome, empresa, contato, documento ou endereço... no computador e Buscar clientes... no celular. A busca é tolerante: acha mesmo com acento diferente, letra maiúscula trocada ou palavras fora de ordem, compara telefone e documento dígito a dígito mesmo com máscara diferente ("(21) 96830-1901" acha "21968301901"), e cobre praticamente todos os dados do cadastro:
 
-- Nome do cliente;
+- Nome, Razão Social e Nome Fantasia;
 
 - E-mail;
 
 - CPF ou CNPJ (campo CPF/CNPJ);
 
-- Razão social (o campo gravado como Razão Social na aba Fiscal).
+- Telefone e Celular;
 
-Não existe busca por telefone, por cidade nem por origem.
+- Endereço completo: rua, número, complemento, bairro, cidade, UF e CEP.
+
+O único dado do cadastro que a busca não alcança é a Origem.
 
 No computador, os títulos Nome, Empresa, Tipo e Endereço são clicáveis e ordenam a tabela. A lista mostra 10 clientes por página por padrão, e o rodapé permite trocar o tamanho da página.
 
 No fim da linha existe um menu de três pontinhos com:
 
 - Visualizar: abre a ficha completa do cliente.
+
+- Criar oportunidade no CRM: só aparece para empresa com o módulo CRM contratado. Abre uma oportunidade já vinculada a esse cliente.
 
 - Editar (em laranja): abre o formulário de cadastro já preenchido.
 
@@ -1293,16 +1339,17 @@ Clicando em Novo Cliente, abre uma janela chamada Novo Cliente (ou Editar Client
 
 #### Campos da aba Contato
 
-[Print da tela: Janela Novo Cliente aberta na aba Contato, com o círculo de foto e o botão Foto no topo, e os campos Nome, Tipo (Pessoa Jurídica), Telefone, Celular, Email, Data de Nascimento, Origem (Nenhuma) e Observações, todos em branco, e os botões Cancelar e Criar no rodapé.]
+[Print da tela: Janela Novo Cliente aberta na aba Contato, com o círculo de foto e o botão Foto no topo, e os campos Nome, Tipo (Pessoa Jurídica), Telefone, Celular, a chave Receber mensagens pelo WhatsApp desabilitada por falta de celular, Email, Data de Nascimento, Origem (Nenhuma) e Observações, todos em branco, e os botões Cancelar e Criar no rodapé.]
 
-Janela Novo Cliente na aba Contato, com todos os campos em branco.
+Janela Novo Cliente na aba Contato, com todos os campos em branco. A chave de WhatsApp só libera depois que um celular válido é digitado.
 
 | Campo | Obrigatório | O que aceita e o que o sistema faz |
 | Foto | Não | Botão que abre a galeria ou a câmera. A imagem é convertida e reduzida antes de subir. Aparece como avatar em toda lista e na ficha. |
 | Nome * | Sim | Mínimo de 2 caracteres. É o nome que aparece em OS, orçamento, contrato e portal. Pode ser apelido comercial. |
 | Tipo | Sim (já vem escolhido) | Pessoa Jurídica ou Pessoa Física. O padrão é Pessoa Jurídica. Define o selo PJ ou PF nas listas. |
 | Telefone | Não | Máscara de telefone fixo, no formato (00) 0000-0000. |
-| Celular | Não | Máscara de celular, no formato (00) 00000-0000. É o número que ganha botão de WhatsApp na ficha. |
+| Celular | Não | Máscara de celular, no formato (00) 00000-0000. É o número que ganha botão de WhatsApp na ficha e que libera a chave de notificação por WhatsApp. |
+| Receber mensagens pelo WhatsApp | Não | Chave liga/desliga. Fica travada e desligada enquanto o Celular não tiver um número válido. Nasce ligada (é um opt-out, não opt-in): libera aviso de OS, cobrança e vencimento por WhatsApp; o cliente pode mandar "PARAR" a qualquer momento para desligar por conta própria. |
 | Email | Não | Se preenchido, precisa ser um e-mail válido. É o mesmo campo do E-mail fiscal da aba Fiscal. |
 | Data de Nascimento | Não | Seletor de data. |
 | Origem | Não | Lista com busca. Traz o catálogo de origens da empresa e permite criar uma origem nova na hora, digitando o nome e confirmando. |
@@ -1394,11 +1441,11 @@ Aba Geral
 
 Aba Campos
 
-[Print da tela: Aba Campos da janela Novo formulário de captação, com a lista de campos (Nome, Tipo de cliente PF/PJ, CPF/CNPJ, E-mail, Telefone, Celular, Razão social, Nome fantasia, CEP, Endereço, Número...), cada um com duas chaves lado a lado, Exibir e Obrigatório. Só o campo Nome está com as duas chaves ligadas.]
+[Print da tela: Aba Campos da janela Novo formulário de captação, com a lista de campos (Nome, Tipo de cliente PF/PJ, CPF/CNPJ, E-mail, Telefone, Celular, Razão social, Nome fantasia, CEP, Endereço, Número... até Foto, por último), cada um com duas chaves lado a lado, Exibir e Obrigatório. Só o campo Nome está com as duas chaves ligadas.]
 
 Aba Campos do formulário de captação: cada campo tem as chaves Exibir e Obrigatório, e só Nome nasce ligado.
 
-Lista os 16 campos que podem aparecer na página pública, cada um com duas chaves: Exibir e Obrigatório. Os campos disponíveis são: Nome, Tipo de cliente (PF/PJ), CPF / CNPJ, E-mail, Telefone, Celular, Razão social, Nome fantasia, CEP, Endereço, Número, Bairro, Complemento, Cidade, Estado (UF) e Observações.
+Lista os 17 campos que podem aparecer na página pública, cada um com duas chaves: Exibir e Obrigatório. Os campos disponíveis são: Nome, Tipo de cliente (PF/PJ), CPF / CNPJ, E-mail, Telefone, Celular, Razão social, Nome fantasia, CEP, Endereço, Número, Bairro, Complemento, Cidade, Estado (UF), Observações e Foto (o visitante pode tirar a foto pela câmera do celular ou escolher da galeria).
 
 Formulário novo já nasce com Nome exibido e obrigatório, e todo o resto desligado. Marcar Obrigatório só faz efeito se o campo estiver exibido. Se você desligar todos, ao salvar aparece Habilite ao menos um campo do formulário.
 
@@ -1443,16 +1490,17 @@ Clicando num cliente, abre a ficha completa. No topo ficam a foto, o nome, o sel
 | Equipamentos | Sempre | Equipamentos daquele cliente, com botão Novo Equipamento já vinculado a ele. |
 | Histórico de OS | Sempre | Todas as ordens de serviço do cliente, com número, status e data, e o botão Nova OS. |
 | Tarefas | Sempre | Tarefas ligadas ao cliente, com data, horário e situação (Pendente, Em andamento, Concluída). |
+| Estoque | Sempre | Cadastro de materiais exclusivo deste cliente (entradas, saídas, saldo mínimo e histórico), separado do estoque da sua empresa. O técnico pode escolher esse estoque ao registrar o consumo numa OS daquele cliente. |
 | Chamados | Só com o módulo Portal do Cliente | Chamados abertos pelo próprio cliente no portal. |
 | Contratos | Sempre | Contratos do cliente, com nome, status, frequência e início, e o botão Novo Contrato. |
-| Financeiro | Só com a permissão Ver Financeiro do Cliente | Lançamentos do cliente, com subabas Tudo, A vencer e Pagas. |
+| Financeiro | Só com a permissão Ver Financeiro do Cliente | Lançamentos do cliente, com subabas Tudo, A vencer e Pagas. O botão Gasto pago pelo cliente registra compra ou despesa que o próprio cliente pagou, só para consulta: não entra em conta, caixa, banco nem DRE da sua empresa. |
 | Cobranças | Conta de recebimento ativa | Cobranças online do cliente, com link de pagamento, envio por WhatsApp e estorno. |
 
  A aba Cobranças faz parte do Financeiro completo desde o Essencial, mas só aparece depois que a conta de recebimento é ativada. Se o cliente reclamar que "sumiu a aba de cobranças", confira primeiro a ativação da conta Asaas. O plano Exceção não possui o grupo Financeiro.
 
 #### Aba Geral por dentro
 
-[Print da tela: Ficha de um cliente sem contato cadastrado, aba Geral. No topo, o avatar, o nome do cliente com selo PJ, a chave Portal Público e o menu Ações. Abaixo, a navegação por abas (Geral, Equipamentos, Histórico de OS, Tarefas, Chamados, Contratos, Financeiro, Cobranças) e o bloco Responsável no Local (falar com), com o estado vazio Nenhum contato cadastrado e o botão Adicionar contato.]
+[Print da tela: Ficha de um cliente sem contato cadastrado, aba Geral. No topo, o avatar, o nome do cliente com selo PJ, a chave Portal Público e o menu Ações. Abaixo, a navegação por abas (Geral, Equipamentos, Histórico de OS, Tarefas, Estoque, Chamados, Contratos, Financeiro, Cobranças) e o bloco Responsável no Local (falar com), com o estado vazio Nenhum contato cadastrado e o botão Adicionar contato.]
 
 Ficha do cliente na aba Geral: topo com Portal Público e Ações, abas do cliente e o bloco Responsável no Local. Este cliente de exemplo ainda não tem CPF/CNPJ, telefone nem endereço preenchidos, por isso os blocos Informações e Endereço não aparecem.
 
@@ -1488,11 +1536,11 @@ Cada contato da lista tem o menu com WhatsApp (só aparece se houver telefone), 
 
 ### 8. Tela Equipamentos: cadastro, categorias e criar o cliente na hora, só com o nome
 
-A tela Equipamentos, em /equipamentos, tem duas abas na lateral (pílulas no celular): Equipamentos e Categorias.
+A tela Equipamentos, em /equipamentos, tem duas abas no topo, no mesmo formato no computador e no celular: Equipamentos e Categorias.
 
-[Print da tela: Tela de Equipamentos da Dominex com as abas Equipamentos e Categorias na lateral, busca, filtros e a lista de equipamentos com colunas Foto, Nome, Local, Cliente, Categoria e Status]
+[Print da tela: Tela de Equipamentos da Dominex com as abas Equipamentos e Categorias no topo, busca, filtros e a lista de equipamentos com colunas Foto, Nome, Local, Cliente, Categoria e Status]
 
-Tela Equipamentos: navegação lateral com Equipamentos e Categorias, busca, filtros e a lista.
+Tela Equipamentos: abas Equipamentos e Categorias no topo, busca, filtros e a lista.
 
 A busca diz Buscar por nome, identificador, marca ou cliente... e procura em cinco campos: nome, identificador, marca, modelo e nome do cliente. Ao lado tem o botão Filtros, com dois filtros de múltipla escolha: Categoria e Cliente. Nenhum marcado significa "mostrar tudo".
 
@@ -1502,9 +1550,9 @@ Criar, editar e excluir equipamento exige a permissão Gerenciar Equipamentos (o
 
 #### Cadastrar um equipamento
 
-[Print da tela: Janela Novo Equipamento, com o quadrado pontilhado Foto/Adicionar, o seletor Cliente com o texto Selecione o cliente, o campo Nome, o campo Identificador travado escrito Gerado automaticamente ao salvar, o campo Validade da Garantia e o campo Observações, todos vazios.]
+[Print da tela: Janela Novo Equipamento, com o quadrado pontilhado Foto/Adicionar, o seletor Cliente com o texto Selecione o cliente e o botão + colado na borda direita do campo, o campo Nome, o campo Identificador travado escrito Gerado automaticamente ao salvar, o campo Validade da Garantia e o campo Observações, todos vazios.]
 
-Janela Novo Equipamento, com o seletor de Cliente e o campo Identificador travado até salvar.
+Janela Novo Equipamento, com o seletor de Cliente (botão + para criar na hora) e o campo Identificador travado até salvar.
 
 O botão Novo Equipamento abre a janela com estes campos:
 
@@ -1524,7 +1572,7 @@ Se faltar um campo marcado como obrigatório, aparece o aviso Preencha os campos
 
 #### Criar o cliente na hora, só com o nome
 
-No campo Cliente *, se você digitar um nome que não existe, aparece a opção de criar. Também existe a opção fixa + Novo cliente dentro da lista. Isso abre a janela Novo cliente com quatro campos: Nome, CPF / CNPJ, E-mail (opcional) e Telefone (opcional), e o botão Criar cliente. O nome que você digitou já vem preenchido.
+No campo Cliente *, ao lado direito do campo existe um botão quadrado com um "+" colado na borda. Esse botão é o único caminho para criar cliente dali: digitar um nome que não existe na busca do campo não abre criação sozinho, só filtra a lista. Clicar no "+" abre a janela Novo cliente com quatro campos: Nome, CPF / CNPJ, E-mail (opcional) e Telefone (opcional), e o botão Criar cliente. Se você já tinha digitado algo na busca do campo Cliente, esse texto já vem preenchido no Nome.
 
 Essa mesma janela se comporta de dois jeitos diferentes, e isso confunde muita gente.
 
@@ -1537,7 +1585,7 @@ Digitando um CNPJ completo nessa janela rápida, o sistema consulta a Receita e 
 
 #### Categorias de equipamento
 
-[Print da tela: Aba Categorias da tela Equipamentos, sem nenhuma categoria criada: navegação lateral com as abas Equipamentos e Categorias, título CATEGORIAS DE EQUIPAMENTOS, o botão Nova Categoria no canto superior direito, o ícone de etiqueta, a mensagem Nenhuma categoria criada, o texto Crie categorias para organizar seus equipamentos e um segundo botão Nova Categoria centralizado.]
+[Print da tela: Aba Categorias da tela Equipamentos, sem nenhuma categoria criada: abas Equipamentos e Categorias no topo, título CATEGORIAS DE EQUIPAMENTOS, o botão Nova Categoria no canto superior direito, o ícone de etiqueta, a mensagem Nenhuma categoria criada, o texto Crie categorias para organizar seus equipamentos e um segundo botão Nova Categoria centralizado.]
 
 Aba Categorias da tela Equipamentos, no estado sem nenhuma categoria criada.
 
@@ -1901,7 +1949,9 @@ Catálogo de Checklists: modelos curados de refrigeração em cima, Catálogo PM
 
 ### 8. Editor de checklist: sim/não, conformidade, texto, número, medição PMOC, seleção, foto, assinatura
 
-Clicando num checklist da lista você entra no editor dele. No topo fica o nome (clique nele para renomear na hora), a contagem de perguntas, a chave Ativo e a lixeira. Logo abaixo, à direita, fica Serviços habilitados. O corpo é a lista de perguntas, na ordem em que o técnico vai ver.
+Clicando num checklist da lista você entra no editor dele. No topo fica o nome (clique nele para renomear na hora), a contagem de perguntas, a chave Ativo e a lixeira. Logo abaixo, à direita, fica Serviços habilitados. O corpo é a lista de perguntas, por padrão na ordem em que o técnico vai ver.
+
+Quando o checklist já tem perguntas, aparece uma barra com três controles acima da lista: um campo de busca (procura por pergunta, descrição ou tipo), um filtro por tipo de resposta e um seletor de ordenação (ordem do checklist, nome da pergunta ou tipo de pergunta, com o clique de novo no mesmo critério invertendo a direção). Com muitas perguntas, a lista ainda é paginada de 20 em 20.
 
 Para adicionar, use Nova Pergunta (no celular, o botão flutuante "Pergunta"). A janela Nova Pergunta tem:
 
@@ -1936,6 +1986,8 @@ Medição PMOC não é um tipo que você escolhe no editor. A lista de tipos ofe
 - Remover pede confirmação: "Remover pergunta?" com o aviso "Esta ação não pode ser desfeita."
 
 - Nas perguntas de Seleção, cada opção pode ser renomeada clicando nela e removida pelo X vermelho.
+
+ Arrastar (ou usar as setas no celular) só funciona com a lista sem busca, sem filtro de tipo e ordenada por "Ordem do checklist" crescente. Com qualquer um desses três ativo, a alça e as setas ficam desativadas, porque a posição que você estaria arrastando não é mais a posição real do checklist. Limpe a busca e o filtro, e volte a ordenação para "Ordem do checklist" pra reordenar de novo.
 
 ### 9. Combinar tipos na mesma pergunta (ex.: sim/não + foto) e exigir câmera
 
@@ -2097,16 +2149,16 @@ Módulo Depende do módulo RH (para Equipes)
 Onde fica: Menu → Ordens de Serviço
 Rotas:/ordens-servico. O link de campo e o link do cliente usam /os-tecnico/<endereço da OS>
 Depende de: ter cliente cadastrado. Tipo de serviço, equipamento e checklist são opcionais, mas mudam muito o resultado
-Quem enxerga: quem tem a tela Ordens de Serviço liberada. As ações Criar OS, Editar OS, Excluir OS e Reabrir OS são permissões separadas. Admin e gestor têm tudo por padrão
+Quem enxerga: quem tem a tela Ordens de Serviço liberada. As ações Criar OS, Editar OS, Excluir OS e Resetar OS são permissões separadas. Admin e gestor têm tudo por padrão
 Módulo: a tela não depende de módulo pago
 
 ### 1. Tela Ordens de Serviço: kanban × lista e os 4 indicadores do topo
 
-A tela se chama Ordens de Serviço, com o subtítulo "Gerencie suas ordens de serviço". Ela tem três abas na navegação lateral: Ordens de Serviço, Relatório e NPS e Satisfação.
+A tela se chama Ordens de Serviço, com o subtítulo "Gerencie suas ordens de serviço". Ela tem quatro abas na navegação lateral: Ordens de Serviço, Chamados, Relatório e NPS e Satisfação.
 
-[Print da tela: Tela Ordens de Serviço da Dominex em visão kanban, com os quatro indicadores no topo (OS Abertas, Concluídas, Atrasadas, Próximos 7 dias) e as colunas de status com os cartões de cada OS]
+[Print da tela: Tela Ordens de Serviço da Dominex em visão kanban, com as quatro abas da navegação lateral (Ordens de Serviço, Chamados, Relatório, NPS e Satisfação), os quatro indicadores no topo (OS Abertas, Concluídas, Atrasadas, Próximos 7 dias) e as colunas de status com os cartões de cada OS]
 
-Tela Ordens de Serviço: indicadores no topo e o kanban por status.
+Tela Ordens de Serviço: as quatro abas, os indicadores no topo e o kanban por status.
 
 #### As duas visões
 
@@ -2114,7 +2166,7 @@ Tela Ordens de Serviço: indicadores no topo e o kanban por status.
 
 - Lista: tabela com as colunas OS, Criador, Cliente, Tipo, Data, Status e Ações, com ordenação por coluna e paginação.
 
-[Print da tela: Tela Ordens de Serviço na visão Lista, com os quatro indicadores no topo e a tabela com as colunas OS, Criador, Cliente, Tipo, Data e Status, mostrando OS agendadas com selo azul LEI 13.589 nas que pertencem a contrato PMOC]
+[Print da tela: Tela Ordens de Serviço na visão Lista, com os quatro indicadores no topo e a tabela com as colunas OS, Criador, Cliente, Tipo, Data e Status, mostrando OS agendadas com selo azul LEI 13.589 nas que pertencem a contrato PMOC e o selo verde Faturada nas OS com receita já lançada]
 
 Visão Lista: mesma tela, em tabela em vez de kanban. O selo "LEI 13.589" identifica OS geradas por contrato PMOC.
 
@@ -2269,7 +2321,7 @@ No kanban, cada coluna é um status. Para mudar o status de uma OS, arraste o ca
 
 Passando o mouse sobre um cartão, aparecem dois botões no canto superior direito: o lápis, que abre a edição (laranja no hover), e a lixeira, que abre a exclusão (vermelha no hover). Cada botão só aparece para quem tem a permissão correspondente. No canto inferior direito do cartão aparece o avatar de quem criou a OS, com o nome no tooltip.
 
-Clicando no cartão, abre o resumo da OS. Nele estão o cliente, o equipamento, o check-in e check-out, as fotos, os detalhes do serviço, os valores e a conformidade PMOC quando houver, mais uma linha de botões redondos: Retomar, Pausar, Finalizar, Reabrir, Editar, Excluir e um botão para copiar o link, além do botão grande embaixo que muda de nome conforme o estado: Preencher OS em OS aberta, Relatório de Serviço em OS concluída. Quando a empresa tem o recurso de consumo de estoque na OS ligado e o técnico lançou material nesse atendimento, o resumo também mostra o bloco Materiais utilizados, só leitura: cada linha traz o material, a quantidade, a unidade e o local de estoque, com o custo da linha e o Custo total ao final (item ainda não baixado do estoque mostra o aviso Ainda não baixado do estoque).
+Clicando no cartão, abre o resumo da OS. Nele estão o cliente, o equipamento, o check-in e check-out, as fotos, os detalhes do serviço, os valores e a conformidade PMOC quando houver, mais uma linha de botões redondos: Retomar, Pausar, Finalizar, Resetar OS (quando a OS já passou de Agendada), Editar, Excluir e um botão para copiar o link, além do botão grande embaixo que muda de nome conforme o estado: Preencher OS em OS aberta, Relatório de Serviço em OS concluída. Quando a empresa tem o recurso de consumo de estoque na OS ligado e o técnico lançou material nesse atendimento, o resumo também mostra o bloco Materiais utilizados, só leitura: cada linha traz o material, a quantidade, a unidade e o local de estoque, com o custo da linha e o Custo total ao final (item ainda não baixado do estoque mostra o aviso Ainda não baixado do estoque).
 
 #### O "+" no cabeçalho da coluna
 
@@ -2393,7 +2445,37 @@ O link não tem senha e não expira: quem tiver o endereço vê aquela OS. Ele m
 
 Quando a OS pertence a um contrato PMOC, a janela de edição mostra uma faixa de identificação no topo e, no campo de descrição, um aviso amarelo: "Esta OS pertence a um contrato PMOC. Os primeiros 200 caracteres deste texto podem aparecer no portal público da unidade, escreva pensando em quem está do outro lado (cliente, fiscal sanitário)." Isso não é erro. É um lembrete de que aquele texto é público.
 
-### 13. Aba Relatório: leitura do dashboard de OS
+### 13. Aba Chamados: pedidos abertos pelo cliente no portal
+
+A aba Chamados, entre Ordens de Serviço e Relatório, reúne as OS que nasceram de um pedido do próprio cliente, feito sem passar pelo seu time: pelo Portal do Cliente ou pelo portal público de um contrato PMOC. O número ao lado do nome da aba mostra quantos chamados estão em aberto agora.
+
+A tela tem busca (por chamado, cliente, equipamento ou contrato), o filtro Chamados abertos / Todos os chamados (abertos é o padrão ao abrir) e o filtro de origem Todos os portais / Portal do Cliente / Portal do Contrato. A lista traz OS, Cliente (com o equipamento embaixo, quando houver), Descrição, Origem, a data em que o chamado foi aberto e o Status, com um ícone de olho pra abrir a OS. Sem nenhum chamado recebido, a tela mostra "Nenhum chamado recebido" com "Os chamados abertos pelos portais aparecerão aqui.".
+
+ Um chamado some da lista de "abertos" quando a OS é concluída ou cancelada, do mesmo jeito que sai dos indicadores de OS Abertas da aba principal. A aba Chamados não cria OS nem muda nada por conta própria: é uma lente sobre as OS que já existem, filtrando pela origem.
+
+[Print da tela: Aba Chamados da tela de Ordens de Serviço, com a busca, os filtros Chamados abertos/Todos os chamados e Todos os portais/Portal do Cliente/Portal do Contrato, e a tabela com OS, Cliente, Descrição, Origem, data de abertura e Status]
+
+Aba Chamados: pedidos de serviço abertos pelo cliente, direto no portal, sem passar pelo seu time.
+
+### 14. Resetar OS e Faturar OS: duas ações por fora do fluxo normal
+
+#### Resetar OS
+
+A ação Resetar OS (ícone de seta circular) mora no resumo da OS e no menu de ações da lista e do kanban. Ela aparece para OS A Caminho, Em Andamento, Pausada ou Concluída, e some em Agendada/Pendente (não faria sentido resetar o que ainda nem começou) e em Cancelada.
+
+Confirmando, a janela pergunta "Resetar OS #N?" com o aviso "A OS voltará para Agendada e poderá ser marcada como A caminho e receber um novo check-in.", e oferece a escolha entre manter o preenchimento anterior (checklists, fotos, assinaturas) ou apagá-lo. A mensagem final confirma qual das duas opções foi aplicada.
+
+ Essa ação substituiu o que antes se chamava Reabrir OS: a permissão no editor de permissões agora se chama Resetar OS, e o comportamento mudou de "reabre pra editar, continuando de onde parou" para "volta pro início do atendimento, com check-in novo". Quem tinha a permissão antiga já tem a nova, sem precisar reconceder nada.
+
+#### Faturar OS
+
+A ação Faturar OS (ícone de recibo) existe no menu de ações da tabela, na lista do celular, no card do kanban e no painel de detalhe da Agenda. Ela só aparece para quem tem a tela Financeiro liberada e a permissão fina de lançar receita de OS; sem isso, nenhum botão novo aparece em lugar nenhum.
+
+Abrindo a ação, a janela oferece duas escolhas: Lançar receita ("Dinheiro que já entrou por este serviço.") ou Gerar cobrança ("PIX, boleto ou link de pagamento pelo Asaas, com vencimento."). É a mesma escolha que já existia no aviso automático ao finalizar a OS, só que disponível a qualquer momento e em qualquer OS, não só no instante de finalizar.
+
+Depois de faturada, um selo aparece ao lado do código da OS em toda tela que lista a OS (tabela, lista do celular, card do kanban, painel da Agenda): Faturada (verde, com o valor lançado) quando há receita, ou Cobrança enviada (azul) quando existe uma cobrança viva. Cobrança viva tem prioridade sobre receita no selo, porque é a informação mais específica no momento.
+
+### 15. Aba Relatório: leitura do dashboard de OS
 
 A aba Relatório transforma as OS em números. Ela respeita o mesmo recorte de período da tela.
 
@@ -2409,19 +2491,21 @@ A aba Relatório transforma as OS em números. Ela respeita o mesmo recorte de p
 
 #### Os gráficos
 
-- OS por Status: rosca com a cor de cada status. Serve para ver gargalo: muita OS parada em "A Caminho" é rota mal planejada, muita em "Pausada" é serviço que não fecha.
+- OS por Status: rosca com a cor de cada status e o total de OS do período no centro. Serve para ver gargalo: muita OS parada em "A Caminho" é rota mal planejada, muita em "Pausada" é serviço que não fecha.
 
 - OS por Tipo de Serviço: barras. Mostra o que a empresa realmente vende, que às vezes não é o que ela acha que vende.
 
-- Volume de OS ao Longo do Tempo: linha por mês. Revela sazonalidade (verão, período de chuva, fim de ano).
+- Volume de OS ao Longo do Tempo: área com duas linhas, Total e Concluídas, por dia quando o período escolhido tem até dois meses, ou por mês em períodos maiores. Revela sazonalidade (verão, período de chuva, fim de ano).
 
-- Faturamento ao Longo do Tempo: linha por mês, em reais.
+- Faturamento ao Longo do Tempo: barras por mês, em reais.
 
 - OS por Dia da Semana: barras. Ajuda a decidir escala e plantão.
 
-[Print da tela: Aba Relatório de Ordens de Serviço com os indicadores Total de OS, Taxa de conclusão, Tempo médio e Faturamento, e os gráficos OS por Status (rosca) e OS por Tipo de Serviço (barras), em uma conta de exemplo com todas as OS ainda agendadas]
+- Saúde do Agendamento: barras horizontais com quatro situações, calculadas só a partir da data agendada e da conclusão real, sem supor prazo contratual nenhum: Concluídas no prazo, Concluídas após a data, Abertas em atraso e Sem data de conclusão.
 
-Aba Relatório: indicadores e gráficos do período escolhido no topo.
+[Print da tela: Aba Relatório de Ordens de Serviço com os indicadores Total de OS, Taxa de conclusão, Tempo médio e Faturamento em cartões coloridos, o gráfico OS por Status em rosca com o total no centro, o gráfico OS por Tipo de Serviço em barras, e mais abaixo os gráficos de Volume de OS ao Longo do Tempo, Faturamento, OS por Dia da Semana e Saúde do Agendamento, em uma conta de exemplo com todas as OS ainda agendadas]
+
+Aba Relatório: indicadores e gráficos do período escolhido no topo, incluindo o gráfico de Saúde do Agendamento.
 
 #### Os dois rankings
 
@@ -2431,7 +2515,7 @@ Aba Relatório: indicadores e gráficos do período escolhido no topo.
 
 Onde não houver dado no período, o gráfico mostra "Sem dados". Isso quase sempre significa período muito estreito, não falta de informação.
 
-### 14. Aba NPS: promotores, neutros, detratores e o comentário aberto do detrator
+### 16. Aba NPS: promotores, neutros, detratores e o comentário aberto do detrator
 
 A aba NPS e Satisfação reúne o que os clientes responderam nas pesquisas geradas ao finalizar OS.
 
@@ -2572,6 +2656,10 @@ Na visão Lista some a grade do calendário e os compromissos do período aparec
 
 Clicando num cartão da Agenda (ou num resultado da busca, ou em Ver detalhes na janela OS Pausadas), abre o resumo daquele compromisso: no computador, um painel à direita da tela; no celular, um painel abaixo do calendário. Para uma OS, o resumo traz o cliente, o endereço, o equipamento (quando houver), os responsáveis, a descrição e a linha do tempo com os horários de início, pausa, retomada e conclusão.
 
+Ao lado do telefone do cliente, tanto numa OS quanto numa Tarefa, fica um ícone de WhatsApp que abre a conversa direto com aquele número, sem precisar copiar e colar. Ele só aparece quando o telefone cadastrado tem dígitos suficientes para formar um link válido.
+
+Para quem tem permissão de faturar, o resumo de uma OS também traz o botão Faturar OS e, quando já existe cobrança ou receita lançada, o selo Faturada ou Cobrança enviada ao lado do nome, exatamente como nas outras telas que mostram OS (tabela, lista do celular e kanban). Não é preciso abrir a Ordem de Serviço só para faturar: a agenda já resolve.
+
 Quando a OS já teve material lançado nela, o resumo também mostra o bloco Materiais utilizados: cada linha traz o material, a quantidade, a unidade e o local de estoque de onde saiu, com o custo de cada linha e o Custo total ao final. Um material ainda não baixado do estoque aparece com o aviso Ainda não baixado do estoque. É a mesma informação que já aparecia na tela de Ordem de Serviço, agora também aqui, sem precisar sair da Agenda.
 
  O bloco Materiais utilizados só aparece quando existe material lançado naquela OS. Sem lançamento nenhum, o bloco simplesmente não aparece. Ele também não existe no resumo de uma Tarefa, porque Tarefa é compromisso interno e não tem consumo de estoque.
@@ -2605,7 +2693,7 @@ A pergunta que abre antes de qualquer formulário: OS ou Tarefa.
 | Responsáveis | Não | Mesmo seletor da OS: aceita pessoas e equipes. |
 | Data, Horário, Duração (min) | Não | Definem o bloco no calendário. |
 | Descrição | Não | "Detalhes da tarefa..." |
-| Recorrência | Não | Mesmas frequências da OS. Ao ligar, o aviso é: "Ativar a recorrência transforma esta tarefa numa série, criando as próximas ocorrências." Ao alterar uma série existente: "Alterar a recorrência atualiza esta tarefa e as próximas da série. As anteriores e as já concluídas permanecem como estão." |
+| Recorrência | Não | Mesmas frequências da OS. Ao ligar, o aviso é: "Ativar a recorrência transforma esta tarefa numa série, criando as próximas ocorrências." Ao alterar uma série existente: "Alterar a recorrência atualiza esta tarefa e as próximas da série. As anteriores e as já concluídas permanecem como estão." A duração aceita Até uma data (data final obrigatória) ou Contínua, sem data para acabar: o sistema cria as próximas ocorrências sozinho, aos poucos, e você encerra quando quiser voltando para "Até uma data" ou excluindo a série. |
 
 Tarefa não é Ordem de Serviço, e essa é a confusão número um da Agenda. A Tarefa aparece só no calendário. Ela não aparece na tela de Ordens de Serviço, não entra nos indicadores de OS, não tem checklist, não tem check-in, não gera link para o cliente, não gera relatório de atendimento e não entra no NPS. Use Tarefa para compromisso interno (reunião, ida ao fornecedor, treinamento, entrega de material) e Ordem de Serviço para tudo que é atendimento a cliente.
 
@@ -2631,11 +2719,13 @@ O arraste avisa o técnico. Mover um compromisso muda a agenda de quem foi escal
 
 Cada compromisso no calendário aparece na cor do tipo de serviço. É por isso que vale a pena escolher cores bem diferentes ao cadastrar os serviços: de longe, a agenda passa a se ler como um mapa, sem precisar abrir cartão nenhum.
 
-O botão Legenda abre a lista Legenda — Tipos de Serviço, com a cor e o nome de cada serviço, mais a entrada Feriado.
+Embaixo do calendário, no computador e no celular, fica uma faixa de legenda com a cor e o nome de cada tipo de serviço, mais a entrada Feriado no fim. A faixa tem sempre a mesma altura (uma linha), não importa quantos tipos de serviço a empresa tenha cadastrado: ela mostra os tipos que aparecem nos compromissos do período visível no calendário e, se o espaço não for suficiente para todos, rola na horizontal. Empresa nova sem nenhuma OS ainda vê uma amostra dos primeiros tipos cadastrados.
 
-[Print da tela: Janela pequena Legenda — Tipos de Serviço aberta no celular, listando a bolinha de cor e o nome de três tipos de serviço: Higienização em amarelo, Manutenção Preventiva em verde e Visita Técnica em cinza]
+Quando existem mais tipos ativos do que os mostrados na faixa, aparece ao final o botão Ver todos (N), com N sendo o total de tipos ativos da empresa. Tocando nele, abre a lista completa, no celular como uma aba que sobe do rodapé, no computador como um balão ao lado do botão.
 
-O botão Legenda só existe na versão para celular da Agenda; no computador a cor de cada serviço já se aprende olhando o cadastro em Serviços. Nesta captura da conta de exemplo aparecem só os tipos de serviço cadastrados, sem nenhum feriado na janela visível.
+[Print da tela: Faixa de legenda abaixo do calendário da Agenda, com os chips coloridos de cada tipo de serviço em uso no período, o chip Feriado ao final e o botão Ver todos abrindo a lista completa de tipos de serviço ativos]
+
+A faixa de legenda mostra só os tipos usados no período visível; o botão Ver todos abre o catálogo completo quando ele não cabe todo na faixa.
 
 #### Feriados
 
@@ -2713,7 +2803,7 @@ Sem o módulo RH, não dá para criar nem editar equipe. A tela Funcionários de
 
 - Descrição é opcional e aparece embaixo do nome no cartão da equipe.
 
-- Em Visual da Equipe você define como ela é reconhecida: uma cor, um ícone escolhido numa grade (pessoas, chave inglesa, raio, escudo, caminhão, martelo, capacete, engrenagem, chama, gota, vento, termômetro, cabo, tomada, lâmpada, manômetro) e, se quiser, uma foto pelo botão Foto. Com foto, ela substitui o ícone no cartão. O botão Remover tira a foto.
+- Em Visual da Equipe você define como ela é reconhecida: uma cor, um ícone escolhido numa grade (pessoas, chave inglesa, raio, escudo, caminhão, martelo, capacete, engrenagem, pulso, chama, gota, vento, termômetro, cabo, tomada, lâmpada, manômetro) e, se quiser, uma foto pelo botão Foto. Com foto, ela substitui o ícone no cartão. O botão Remover tira a foto.
 
 - Em Membros, marque os técnicos. É uma lista com caixinhas e avatar. Quando não há usuário disponível, a mensagem é "Nenhum usuário disponível".
 
@@ -2729,7 +2819,7 @@ Cada equipe vira um cartão com o ícone (ou a foto) na cor escolhida, o nome, a
 
 No topo há uma busca por nome. Sem resultado: "Nenhuma equipe encontrada" e "Tente outro termo de busca.". Sem equipe nenhuma: "Nenhuma equipe cadastrada" e "Cadastre sua primeira equipe para organizar os técnicos."
 
-[Print da tela: Aba Equipes dentro de Funcionários (RH), com o menu lateral (Funcionários, Equipes selecionada, Controle de Ponto, Perfil Comportamental, Organograma), o campo Buscar equipe e o estado vazio: ícone de duas pessoas, Nenhuma equipe cadastrada, Cadastre sua primeira equipe para organizar os técnicos, e o botão Nova equipe]
+[Print da tela: Aba Equipes dentro de Funcionários (RH), com o menu lateral (Funcionários, PJ/MEI, Equipes selecionada, Controle de Ponto, Perfil Comportamental, Organograma, Fluxograma), o campo Buscar equipe e o estado vazio: ícone de duas pessoas, Nenhuma equipe cadastrada, Cadastre sua primeira equipe para organizar os técnicos, e o botão Nova equipe]
 
 Aba Equipes sem nenhuma cadastrada ainda: é aqui, dentro de Funcionários, que a equipe nasce.
 
@@ -3121,12 +3211,14 @@ Algumas empresas ligam um recurso opcional (desligado por padrão, em Configura�
 Com o recurso ligado, o menu de mais ações (o botão de três traços no rodapé) ganha o item Consumir do estoque. Ele abre a janela de mesmo nome, com o aviso "Anote o que você usou. O estoque só baixa quando a OS for finalizada." — ou seja, anotar aqui não mexe em saldo nenhum ainda.
 
 | Campo | Obrigatório | Detalhe |
-| De onde saiu | Sim (só aparece com mais de um local) | Com um único local de estoque na empresa, ele é usado sozinho. Com mais de um, o campo já vem com o último local usado por aquele técnico naquele aparelho, ou o local principal. |
+| De onde saiu | Sim (só aparece quando há escolha) | Com um único local de estoque na empresa, ele é usado sozinho. Com mais de um, o campo já vem com o último local usado por aquele técnico naquele aparelho, ou o local principal. Quando o cliente desta OS tem um estoque próprio cadastrado (material que pertence ao cliente, não à empresa), esse local aparece listado com o selo · Estoque do cliente e tem prioridade na pré-seleção. |
 | Material | Sim | Busca por nome ou código, filtrada pelo local escolhido. Mostra "Tem X Y neste estoque" (X = quantidade, Y = unidade) ou "Sem saldo neste estoque". |
 | Quantidade | Sim | Maior que zero. Passando do saldo disponível, aparece "Você está tirando mais do que tem neste estoque. Dá para continuar, o saldo vai ficar negativo." e o técnico consegue continuar mesmo assim. |
 | Observação | Não | Texto livre. |
 
 Cada item entra na lista Já registrado nesta OS e pode ser editado ou removido enquanto não foi baixado do estoque. Sem internet no momento de anotar, aparece "Sem conexão. O consumo foi guardado no aparelho e será enviado quando a internet voltar.", com o selo Aguardando envio até subir sozinho.
+
+Quando o cliente tem estoque próprio, o app precisa consultar o saldo dele antes de deixar anotar. Se essa consulta falhar, aparece o aviso "Não foi possível consultar o estoque deste cliente" com o botão Tentar novamente, e o técnico não consegue anotar material enquanto isso não resolver, pra nunca arriscar dar baixa no local errado.
 
 ### 10. Finalizar (e o "finalizar parcialmente" em contrato PMOC)
 
@@ -3158,7 +3250,7 @@ No rodapé, o botão verde Finalizar OS encerra o atendimento. Antes de aceitar,
 
 - Mostra "OS finalizada com sucesso!" e a tela vira o relatório do serviço.
 
-Estoque nunca impede a OS de ser finalizada. Sem o recurso "Consumo de estoque na OS" ligado, ou com ele ligado mas sem nenhum material anotado nesta OS, finalizar não mexe em estoque nenhum: a baixa continua acontecendo só na conversão de orçamento em OS e nos lançamentos e inventários da tela de Estoque. Com o recurso ligado e material anotado, ao tocar em Finalizar OS (depois de passar pela sequência de verificação acima) aparece, no lugar da confirmação de sempre, o Resumo do consumo: "Confira o que saiu do estoque nesta OS. Dá para corrigir a quantidade antes de confirmar." Cada linha traz a quantidade (editável) e o saldo projetado, em cinza ("Fica com X") ou em vermelho quando ficaria negativo ("Fica negativo em X"). Dá para remover um item ali mesmo antes de confirmar: se ainda não tinha sido baixado, ele simplesmente não entra na baixa. O botão Confirmar e finalizar tenta dar a baixa e, dê certo ou não, finaliza a OS de qualquer forma: se a baixa falhar (por exemplo, a conexão cair na hora), o aviso é "Não deu para baixar os materiais do estoque" com "A OS foi finalizada mesmo assim. O consumo continua anotado aqui e pode ser confirmado depois."
+Estoque nunca impede a OS de ser finalizada. Sem o recurso "Consumo de estoque na OS" ligado, ou com ele ligado mas sem nenhum material anotado nesta OS, finalizar não mexe em estoque nenhum: a baixa continua acontecendo só na conversão de orçamento em OS e nos lançamentos e inventários da tela de Estoque. Com o recurso ligado e material anotado, ao tocar em Finalizar OS (depois de passar pela sequência de verificação acima) aparece, no lugar da confirmação de sempre, o Resumo do consumo: "Confira o que saiu do estoque nesta OS. Dá para corrigir a quantidade antes de confirmar." Cada linha traz a quantidade (editável) e o saldo projetado, em cinza ("Fica com X") ou em vermelho quando ficaria negativo ("Fica negativo em X"). Dá para remover um item ali mesmo antes de confirmar: se ainda não tinha sido baixado, ele simplesmente não entra na baixa. O botão Confirmar e finalizar tenta dar a baixa e, dê certo ou não, finaliza a OS de qualquer forma: se a baixa falhar (por exemplo, a conexão cair na hora), o aviso é "Não deu para baixar os materiais do estoque" com "A OS foi finalizada mesmo assim. O consumo continua anotado aqui e pode ser confirmado depois." A única exceção é antes de chegar nesse ponto: o botão Confirmar e finalizar fica desativado enquanto houver alguma linha com quantidade zerada ou negativa, ou enquanto o saldo do estoque do cliente não puder ser confirmado ("Não foi possível conferir o saldo do cliente: a finalização ficou bloqueada para evitar uma baixa em local incorreto"). Nesses dois casos, corrigir a quantidade, remover a linha problemática ou tentar a consulta de novo destrava o botão.
 
 #### Finalizar Parcial
 
@@ -3359,8 +3451,8 @@ O botão Cadastrar Material (no celular, o botão flutuante "Material") abre a j
 | Nome do Item * | Sim | Único campo obrigatório. |
 | Código/SKU | Não | Sugestão "Ex: FLT-001". O sistema propõe um código sequencial sozinho, com o selo Auto, e a explicação "Código sequencial sugerido automaticamente (você pode personalizar)." |
 | Categoria | Não | Lista fixa: Peças, Filtros, Gases, Ferramentas, Materiais, Equipamentos e Outros. |
-| Grupo | Não | Diferente da categoria: o grupo é criado por você e serve para organizar do seu jeito. Dá para criar um grupo novo digitando o nome na própria busca. Sem grupo cadastrado, a mensagem é "Nenhum grupo. Crie em Configurações." |
-| Fornecedor | Não | Texto livre com o nome do fornecedor habitual. |
+| Grupo | Não | Diferente da categoria: o grupo é criado por você, tem uma cor própria e serve para organizar do seu jeito. O botão + ao lado do campo abre uma janela rápida só com Nome do grupo e Cor, sem precisar sair do cadastro do material. |
+| Fornecedor | Não | Não é mais texto livre: é um campo de busca ligado ao cadastro de fornecedores, com o botão + para cadastrar um novo sem sair da janela. Material cadastrado antes dessa mudança, sem fornecedor vinculado, mostra abaixo do campo o nome antigo digitado, só como referência. |
 | Descrição | Não | "Descrição detalhada do item..." |
 | Quantidade | Não | Quantidade inicial. Ao cadastrar com quantidade maior que zero, o sistema registra uma entrada no local ativo, com a observação "Cadastro inicial", e o movimento aparece no Kardex. |
 | Unidade | Não | Unidade de medida (un, m, kg, L). Aparece nas listas e no relatório. |
@@ -3369,10 +3461,6 @@ O botão Cadastrar Material (no celular, o botão flutuante "Material") abre a j
 | Locais deste material | Não | Bloco por local de estoque, com a explicação "Marque os locais onde este material está presente. Defina a quantidade mínima para cada local." Tem Marcar todos e Desmarcar todos. |
 
 Categoria e Grupo não são a mesma coisa. Categoria é uma lista fechada, igual para todo mundo (Peças, Filtros, Gases, Ferramentas, Materiais, Equipamentos, Outros). Grupo é livre, criado pela sua empresa em Configurações do Estoque → Grupos de material. Muita gente usa grupo para separar por marca, por linha ou por finalidade.
-
-[Print da tela: Janela Novo Item de Estoque com os campos Nome do Item, Código/SKU com o selo Auto e a sugestão EST-003, Grupo, Fornecedor, Descrição, Quantidade, Unidade, Preço de Custo e Preço de Venda, e o início do bloco Locais deste material com os botões Marcar todos e Desmarcar todos]
-
-Janela Novo Item de Estoque: o único campo obrigatório é o nome, o SKU já vem sugerido.
 
 #### Estoque mínimo e o alerta de estoque baixo
 
@@ -3410,13 +3498,13 @@ O botão Configurações, aba Locais de estoque, é onde os depósitos são cria
 
 - Use Definir como principal para eleger o local padrão, Renomear para trocar o nome e Excluir para remover. Excluir avisa: "O local [nome] será removido. Esta ação não pode ser desfeita."
 
-Com mais de um local, a aba Estoque Atual ganha uma linha de pílulas, uma por depósito. Você troca de depósito tocando na pílula, e os indicadores e a lista passam a refletir só aquele local.
+Com mais de um local, a aba Estoque Atual ganha uma linha de abas sublinhadas, uma por depósito. Você troca de depósito tocando na aba, e os indicadores e a lista passam a refletir só aquele local. O local marcado como Principal aparece com uma estrela ao lado do nome.
 
  Casos comuns de mais de um local: depósito central mais van de cada técnico; ou matriz e filial. Com a van cadastrada como local, dá para saber quanto de gás cada técnico está carregando e repor antes de a rota começar.
 
 #### Definir o que existe em cada local
 
-Ao lado de cada pílula de depósito há uma engrenagem, com o rótulo Configurar itens deste local. Ela abre a janela Configurar [nome do local], com duas abas: Itens e Acesso.
+Ao lado de cada aba de depósito há uma engrenagem, com o rótulo Configurar itens deste local. Ela abre a janela Configurar [nome do local], com duas abas: Itens e Acesso.
 
 Na aba Itens você marca quais materiais existem naquele depósito, com busca, Marcar todos, Desmarcar todos e um atalho Adicionar por grupo para trazer um grupo inteiro de uma vez. A confirmação é "Itens do local atualizados".
 
@@ -3444,7 +3532,7 @@ Na mesma janela de configuração do local existe a aba Acesso. Ali há uma chav
 
 Escolhendo Restrito, aparece a lista de usuários para marcar quem tem acesso. Alguns aparecem com o rótulo Sempre tem acesso (a gestão não pode ser bloqueada do próprio estoque). Salvando, aparece "Acesso do local atualizado".
 
- Um usuário sem acesso a um depósito não vê aquela pílula, não vê o saldo daquele local, não vê os movimentos daquele local no Kardex e não consegue movimentar nada lá. Para ele, é como se aquele depósito não existisse. Isso é permissão, não é bug. Quando alguém reclama que "meu estoque está com menos itens que o do meu sócio", é quase sempre isso.
+ Um usuário sem acesso a um depósito não vê aquela aba, não vê o saldo daquele local, não vê os movimentos daquele local no Kardex e não consegue movimentar nada lá. Para ele, é como se aquele depósito não existisse. Isso é permissão, não é bug. Quando alguém reclama que "meu estoque está com menos itens que o do meu sócio", é quase sempre isso.
 
  O uso mais comum da restrição é a van do técnico: cada um enxerga e movimenta apenas o próprio veículo, e a gestão enxerga tudo. Assim o técnico não dá baixa por engano no material do colega.
 
@@ -3496,6 +3584,8 @@ A aba Compras de Material atende dois momentos diferentes. Nova requisição de 
 
 - Preencha Título *. Sugestão da tela: "Ex.: Reposição de materiais, Junho". Sem título, o aviso é "Dê um título à requisição."
 
+- Escolha o Local de destino: o depósito que vai receber os materiais quando a Ordem de Compra for recebida. Vem pré-selecionado com o local principal, mas pode ser trocado antes de salvar.
+
 - Em Materiais, escolha a origem de cada item: Do estoque (busca no seu cadastro) ou Fora do estoque (você digita o nome de algo que ainda não existe no cadastro, e ele ganha o selo Fora do estoque).
 
 - Preencha Quantidade e Unidade de cada material.
@@ -3505,10 +3595,6 @@ A aba Compras de Material atende dois momentos diferentes. Nova requisição de 
 - Salve. Sem material nenhum, o aviso é "Adicione ao menos um material."
 
 A requisição nasce com o status Aberta e depois pode virar Concluída ou Cancelada. O menu de cada uma traz Editar, Concluir requisição, Reabrir requisição, Cancelar requisição e Excluir.
-
-[Print da tela: Janela Nova Requisição de Compra com o campo Título vazio, o botão âmbar Adicionar itens abaixo do mínimo, a chave Do estoque/Fora do estoque, o campo Adicionar material do estoque, a mensagem Nenhum material adicionado e o campo Observações]
-
-Janela Nova Requisição de Compra: título, materiais (do estoque ou não) e o atalho para o que já está abaixo do mínimo.
 
 #### Registrar uma compra que já aconteceu
 
@@ -3673,10 +3759,6 @@ A tabela mostra Local, SKU, Material, Un., Saldo, Valor (custo) e Projeção ven
 
 O botão Exportar gera PDF e Excel com o título Posição de Estoque e a data no cabeçalho.
 
-[Print da tela: Aba Posição de Estoque com as pílulas Todos os locais, Galpão (teste) e Van 01 (teste), o seletor de data, os cartões Valor em estoque (custo) R$ 900,00 e Projeção de venda R$ 0,00, e a tabela com Local, SKU, Material, Un., Saldo, Valor (custo) e Projeção venda, com a linha Total ao fim]
-
-Posição de Estoque: o mesmo material (Filtro G4) somado nos dois depósitos, com o total no rodapé da tabela.
-
  Essa aba é o que o contador pede no fechamento do ano: o valor do estoque em 31 de dezembro. Também serve para conferir "quanto eu tinha antes daquela obra grande" e para justificar variação de custo entre meses.
 
 ### 11. Aba Relatório: histórico, média paga, projeção e exportação
@@ -3729,7 +3811,7 @@ Saldo atual é o saldo de agora, mesmo quando o período do relatório está no 
 | "A média paga ficou diferente da média que fiz na calculadora" | Média simples, unidades misturadas ou compra sem preço | O relatório usa média ponderada por quantidade de cada material. Itens sem preço ficam fora e aparecem na cobertura de preço. O sistema também não soma kg, metro e unidade numa média geral. |
 | "A compra aparece como Não vinculado no relatório" | A O.C. tradicional não gerou despesa financeira | Isso não significa que está pendente. Significa apenas que aquela Ordem de Compra não tem lançamento financeiro ligado. Compras diretas novas trazem Pago ou Em aberto conforme o que foi informado. |
 | "Finalizei o inventário com número errado" | Fechamento é definitivo | Não dá para desfazer nem cancelar inventário finalizado. O caminho é criar um novo inventário com a contagem correta, ou lançar um ajuste manual editando a quantidade do material. Tudo fica registrado no Kardex. |
-| "O valor investido está diferente do que eu esperava" | Preço de custo desatualizado ou local filtrado | O valor usa o preço de custo cadastrado. Confira também qual depósito está selecionado nas pílulas: o indicador reflete o local ativo. |
+| "O valor investido está diferente do que eu esperava" | Preço de custo desatualizado ou local filtrado | O valor usa o preço de custo cadastrado. Confira também qual depósito está selecionado na aba de local: o indicador reflete o local ativo. |
 | "Consigo importar meus materiais de uma planilha?" | Não existe importação em massa por planilha | Não existe importação de materiais por CSV ou Excel. O caminho mais próximo é o Importar XML (NF-e), que cria os itens a partir da nota do fornecedor e já registra a entrada. |
 | "Sumiu material e ninguém sabe explicar" | Falta olhar o Kardex | Abra Histórico de Materiais (Kardex) (no celular, a aba Histórico), filtre pelo material e leia as colunas de saldo inicial e final. A coluna Origem mostra se a saída veio de OS ou de fornecedor, a coluna Local mostra de qual depósito saiu (em transferência, o par origem → destino), e a coluna Usuário mostra quem lançou. |
 | "Excluí um material sem querer" | Exclusão remove o histórico dele | Excluir material remove também as movimentações dele e desvincula das listas de orçamento e de serviço. Não tem como desfazer. Para tirar de circulação sem perder histórico, zere o saldo e deixe o cadastro parado. |
@@ -3743,7 +3825,7 @@ Saldo atual é o saldo de agora, mesmo quando o período do relatório está no 
 **R:** Categoria é uma lista fixa igual para todos (Peças, Filtros, Gases, Ferramentas, Materiais, Equipamentos, Outros). Grupo é livre, criado pela sua empresa em Configurações do Estoque, e serve para organizar do seu jeito.
 
 **P:** Preciso ter mais de um depósito?
-**R:** Não. Quem tem um só trabalha no local principal e nem vê as pílulas de depósito. Mais de um local só compensa quando existe separação física real, como matriz e filial ou a van de cada técnico.
+**R:** Não. Quem tem um só trabalha no local principal e nem vê as abas de depósito. Mais de um local só compensa quando existe separação física real, como matriz e filial ou a van de cada técnico.
 
 **P:** Dá para o técnico dar baixa de material pelo celular?
 **R:** Pela tela de Estoque, só quem tem a permissão de gerenciar estoque e acesso ao local. Dentro da própria Ordem de Serviço, sim, quando a empresa liga o recurso Consumo de estoque na OS em Configurações → Usabilidade: o técnico anota o material usado durante o atendimento pelo Consumir do estoque do menu de mais ações, e a baixa é confirmada no resumo editável que aparece ao finalizar a OS. Com o recurso desligado, a tela de execução não mostra esse passo.
@@ -3823,15 +3905,15 @@ Rotas:/orcamentos (tela interna), /proposta/:token (link público que o cliente 
 Depende de: T3 (Clientes), T4 (Tipos de Serviço), T8 (Estoque, para puxar material)
 Quem enxerga: quem tiver a permissão de tela
 Orçamentos ligada no editor de permissões (grupo Comercial). Admin e gestor têm por padrão.
-Depende do módulo: a tela de Orçamentos faz parte do kit básico e está em todos os planos. As abas
+Depende do módulo: nenhum. A tela de Orçamentos faz parte do kit básico e está em todos os planos, e desde a versão 1.29.0 a Precificação Avançada (abas
 Custos Globais e
-Precificação, o bloco de BDI dentro do orçamento, o campo de deslocamento e as colunas
+Precificação, bloco de BDI dentro do orçamento, campo de deslocamento e colunas
 Custo e
-Margem da lista exigem o módulo Precificação Avançada.
+Margem) também faz parte de todo plano, do Essencial em diante, sem bloqueio nem limite diferente por plano.
 
 ### 1. Tela Orçamentos: os indicadores (em aberto, taxa de conversão, ticket médio)
 
-A tela abre em Menu → Orçamentos, com uma barra lateral de abas: Orçamentos (a lista), Custos dos Serviços, Custos Globais e Precificação. As duas últimas só aparecem com o módulo Precificação Avançada; não vê-las não é bug, é módulo não contratado.
+A tela abre em Menu → Orçamentos, com uma barra lateral de abas: Orçamentos (a lista), Custos dos Serviços, Custos Globais e Precificação. As quatro aparecem para todo plano, sem exigir módulo.
 
 [Print da tela: Tela Orçamentos com barra lateral de abas, três cartões de indicadores (Em Aberto, Conversão, Ticket Médio), campo de busca e tabela com um orçamento em rascunho]
 
@@ -3858,7 +3940,7 @@ A virada para Expirado só é calculada quando alguém abre a tela de Orçamento
 
 #### Colunas da lista e ações
 
-A tabela traz Nº (número sequencial por empresa), Cliente (com o rótulo (prospecto) quando não é cliente cadastrado, e a linha de visualizações embaixo), Data, Custo, Valor, Margem, Status e Ações. Custo e Margem só aparecem com o módulo Precificação Avançada e em telas largas. A margem é a diferença entre valor e custo em porcentagem: selo verde a partir de 20%, amarelo entre 0% e 19%, vermelho quando o preço ficou abaixo do custo, e traço quando não há custo apurado. Quase todas as colunas ordenam ao toque no cabeçalho, e o rodapé tem paginação.
+A tabela traz Nº (número sequencial por empresa), Cliente (com o rótulo (prospecto) quando não é cliente cadastrado, e a linha de visualizações embaixo), Data, Custo, Valor, Margem, Status e Ações. Custo e Margem aparecem em telas largas, para todo plano. A margem é a diferença entre valor e custo em porcentagem: selo verde a partir de 20%, amarelo entre 0% e 19%, vermelho quando o preço ficou abaixo do custo, e traço quando não há custo apurado. Quase todas as colunas ordenam ao toque no cabeçalho, e o rodapé tem paginação.
 
 O menu de três pontinhos oferece: Visualizar, Abrir proposta em nova guia (pré-visualização, não conta como visualização do cliente), Gerar link da proposta, Aprovar (registrar recebimento) (só em Rascunho e Enviado), Rejeitar (só em Enviado), Converter em OS (só em Aprovado ainda não convertido), Gerar cobrança (com conta de recebimento ativa e cliente cadastrado), Editar em laranja e Excluir em vermelho. Quando o orçamento já gerou lançamento financeiro, aparece o selo Recebido ao lado.
 
@@ -3880,7 +3962,7 @@ O assistente não fecha ao clicar fora. Para sair, use o X do canto ou o botão 
 
 No topo tem uma chave com duas posições:
 
-- Cliente cadastrado: mostra o campo Cliente *, um seletor com busca. É o modo recomendado: o documento sai com CNPJ ou CPF e endereço completo, e só assim dá para gerar cobrança e ligar o orçamento ao histórico do cliente.
+- Cliente cadastrado: mostra o campo Cliente *, um seletor com busca e, colado na borda do campo, um botão de mais (+) que cria o cliente na hora, sem fechar o assistente. É o modo recomendado: o documento sai com CNPJ ou CPF e endereço completo, e só assim dá para gerar cobrança e ligar o orçamento ao histórico do cliente.
 
 - Novo prospecto: mostra Nome *, Telefone e E-mail, para orçar a quem ainda não é cliente sem sujar o cadastro.
 
@@ -3894,13 +3976,13 @@ O botão Salvar rascunho aparece no rodapé em todas as etapas e libera assim qu
 
 Há ainda um resgate rápido: fechando sem salvar, na próxima vez que abrir Novo Orçamento o sistema pergunta se quer retomar. Ele guarda destinatário, quilometragem, desconto, validade, observações, termos e modelo, mas não guarda serviços e materiais.
 
-[Print da tela: Janela Novo Orçamento na etapa 1 de 5 (Destinatário), com a barra de progresso no topo, a chave Cliente cadastrado / Novo prospecto desligada, o campo Cliente com o seletor Selecione o cliente vazio, e os botões Cancelar, Salvar rascunho e Próximo no rodapé]
+[Print da tela: Janela Novo Orçamento na etapa 1 de 5 (Destinatário), com a barra de progresso no topo, a chave Cliente cadastrado / Novo prospecto desligada, o campo Cliente com o seletor Selecione o cliente vazio e o botão de mais colado na borda do campo, e os botões Cancelar, Salvar rascunho e Próximo no rodapé]
 
-Etapa 1 do assistente de Novo Orçamento: a chave entre cliente cadastrado e prospecto avulso, e o seletor de cliente ainda sem escolha.
+Etapa 1 do assistente de Novo Orçamento: a chave entre cliente cadastrado e prospecto avulso, o seletor de cliente ainda sem escolha e o botão de mais para criar cliente na hora.
 
 ### 3. Etapa 2 Serviços: puxando do catálogo e o preço padrão entrando sozinho
 
-A etapa se chama Serviços e mão de obra. Ela tem duas partes: o bloco Configurações BDI (só com o módulo Precificação Avançada) e o bloco Serviços e Mão de Obra.
+A etapa se chama Serviços e mão de obra. Ela tem duas partes: o bloco Configurações BDI e o bloco Serviços e Mão de Obra.
 
 #### O bloco de BDI do orçamento
 
@@ -3954,7 +4036,7 @@ A diferença entre os dois jeitos aparece lá na frente: só o material escolhid
 
 #### Deslocamento
 
-Ainda nesta etapa, com o módulo Precificação Avançada, tem o bloco Deslocamento: você informa a quilometragem e o sistema mostra o valor calculado ao lado, multiplicando pelo custo por quilômetro configurado. Esse valor entra no custo total e aparece na proposta como uma linha própria de deslocamento, se a exibição estiver ligada em Configurar Proposta.
+Ainda nesta etapa tem o bloco Deslocamento: você informa a quilometragem e o sistema mostra o valor calculado ao lado, multiplicando pelo custo por quilômetro configurado. Esse valor entra no custo total e aparece na proposta como uma linha própria de deslocamento, se a exibição estiver ligada em Configurar Proposta.
 
 ### 5. Etapa 4 Desconto: valor fixo × percentual, e o custo de brindes
 
@@ -3984,7 +4066,7 @@ A última etapa se chama Validade e revisão e tem dois campos e o resumo.
 
 - Template da Proposta: escolhe o modelo visual daquele orçamento específico. Orçamento novo já nasce com o modelo Clean selecionado.
 
-Embaixo aparece o Resumo do Orçamento. Com o módulo Precificação Avançada ele mostra BDI calculado, lucro médio ponderado, custo total, deslocamento, preço final e as opções de pagamento (à vista com desconto e parcelado no cartão). Sem o módulo, o resumo é simples: Subtotal Serviços, Subtotal Materiais, Desconto e Total.
+Embaixo aparece o Resumo do Orçamento, sempre com BDI calculado, lucro médio ponderado, custo total, deslocamento, preço final e as opções de pagamento (à vista com desconto e parcelado no cartão).
 
 Sem nenhum item adicionado, no lugar do resumo aparece Adicione ao menos um serviço ou material para finalizar. e o botão de concluir fica travado. Para finalizar são obrigatórias duas coisas: destinatário e pelo menos um item.
 
@@ -3996,7 +4078,7 @@ Editar um orçamento existente substitui a lista inteira de itens pela lista que
 
 Aba Custos dos Serviços, dentro de Orçamentos. É aqui que a precificação automática nasce: você diz uma vez quanto custa executar cada tipo de serviço, e todo orçamento futuro que usar aquele serviço já entra com preço calculado.
 
-No topo tem o seletor Tipo de serviço, com busca. Sem nada escolhido, a tela mostra Selecione um tipo de serviço para configurar custos. Escolhido o serviço, aparecem as sub-abas Mão de obra, Recursos, Materiais e Resumo. As sub-abas Recursos e Resumo exigem o módulo Precificação Avançada.
+No topo tem o seletor Tipo de serviço, com busca. Sem nada escolhido, a tela mostra Selecione um tipo de serviço para configurar custos. Escolhido o serviço, aparecem as sub-abas Mão de obra, Recursos, Materiais e Resumo.
 
 #### Mão de obra
 
@@ -4026,7 +4108,7 @@ Sub-aba Mão de obra dentro de Custos dos Serviços: custo por hora, horas e o C
 
 ### 8. Aba Custos Globais: veículos, ferramentas, brindes, EPI
 
-Aba Custos Globais, título Centro de Custos, com o subtítulo "Cadastre veículos, ferramentas e recursos. O custo/hora é rateado automaticamente." Exige o módulo Precificação Avançada.
+Aba Custos Globais, título Centro de Custos, com o subtítulo "Cadastre veículos, ferramentas e recursos. O custo/hora é rateado automaticamente."
 
 A lógica é simples: uma caminhonete não é custo de um serviço só, é custo da empresa inteira. Você cadastra o custo mensal dela uma vez, diz quantas horas por mês ela roda, e o sistema descobre quanto ela custa por hora. Depois, na aba Custos dos Serviços, você marca quais recursos aquele serviço usa.
 
@@ -4052,7 +4134,7 @@ Centro de Custos sem nenhum recurso cadastrado ainda: os quatro indicadores zera
 
 Não existe uma tela chamada "BDI" no menu do sistema. A precificação por BDI vive em dois lugares: a aba Precificação dentro de Orçamentos, que define o padrão da empresa, e o bloco Configurações BDI dentro de cada orçamento, que ajusta só aquele orçamento. Quem procura BDI em Configurações não vai achar.
 
-A aba Precificação tem o subtítulo Taxas padrão aplicadas em todos os orçamentos via método BDI e exige o módulo Precificação Avançada. Ela é dividida em duas colunas: à esquerda a configuração, à direita o simulador.
+A aba Precificação tem o subtítulo Taxas padrão aplicadas em todos os orçamentos via método BDI. Ela é dividida em duas colunas: à esquerda a configuração, à direita o simulador.
 
 #### O que é BDI, em português de obra
 
@@ -4106,6 +4188,8 @@ A escolha de modelo feita nesta janela é só para você pré-visualizar. Ela n�
 
 - Personalizar Cores: Cor Primária, Cor de Destaque e Fundo do Cabeçalho.
 
+- Tamanho do logo: controle deslizante de 50% a 200%, em passos de 10%. Ajusta o tamanho do logo na proposta mantendo a proporção, tanto na capa/cabeçalho quanto no rodapé/fechamento. Sem ajuste, fica em 100%.
+
 - Mostrar paginação?: exibe "Página XX/YY" no rodapé de cada folha. Vale para Vanguarda, Aurora e Prisma.
 
 - Mostrar deslocamento: exibe a linha de deslocamento no resumo de investimento. Vale para os quatro modelos.
@@ -4114,7 +4198,7 @@ A escolha de modelo feita nesta janela é só para você pré-visualizar. Ela n�
 
 - Seções da proposta: liga, desliga, reordena e escreve o texto padrão das sete seções. São elas: Mensagem de abertura, Formas de pagamento, Informações adicionais, Observações, Sobre a empresa, Garantia e Mensagem de encerramento. A seção Formas de pagamento não tem texto editável: é um bloco calculado a partir do valor do orçamento.
 
-As seções configuráveis só têm efeito no modelo Clean. Nos modelos escuros a estrutura do documento é fixa. E o texto escrito aqui é o padrão: quando o orçamento tem o próprio texto em Observações ou em Condições / Termos, o texto do orçamento vence.
+Ligar/desligar e reordenar as seções só têm efeito no modelo Clean; nos modelos escuros a estrutura do documento é fixa. Já o texto que você escreve na seção Sobre a empresa vale nos quatro modelos. Em qualquer seção com fonte própria no orçamento (Observações ou Condições / Termos), o texto escrito aqui é só o padrão: o texto do orçamento vence.
 
 #### Etapa Revisão
 
@@ -4250,8 +4334,7 @@ Não existe conversão de orçamento em contrato (contrato é sempre montado do 
 
 | O cliente diz | Causa provável | Como resolver |
 | "Meu cliente abriu a proposta mas não aparece o botão de aprovar" | O orçamento ainda está em Rascunho. Os botões Aprovar e Rejeitar só existem no status Enviado. | Peça para usar a ação Gerar link da proposta no menu de três pontinhos: ela copia o link e promove o orçamento para Enviado. O link que já foi mandado continua valendo, é só o cliente recarregar. |
-| "Não acho a tela de BDI no menu" | Não existe tela de BDI. A precificação fica dentro de Orçamentos. | Menu → Orçamentos → aba Precificação para o padrão da empresa, ou o bloco Configurações BDI dentro de cada orçamento, na etapa Serviços e mão de obra. Exige o módulo Precificação Avançada. |
-| "Sumiram as abas Custos Globais e Precificação" | Módulo Precificação Avançada não contratado ou desativado. | Essas abas, o bloco de BDI, o campo de deslocamento e as colunas Custo e Margem são do módulo Precificação Avançada. Sem ele o orçamento funciona, com preço digitado na mão. |
+| "Não acho a tela de BDI no menu" | Não existe tela de BDI. A precificação fica dentro de Orçamentos. | Menu → Orçamentos → aba Precificação para o padrão da empresa, ou o bloco Configurações BDI dentro de cada orçamento, na etapa Serviços e mão de obra. |
 | "Onde eu transformo o orçamento aprovado em contrato?" | Essa função não existe. | Não há botão de orçamento para contrato. Aprove o orçamento e monte o contrato do zero na tela de Contratos, copiando os valores. Vale o mesmo para PMOC. |
 | "O cliente aprovou a proposta e não entrou nada no financeiro" | A aprovação do cliente muda só o status; o lançamento é feito por dentro. | É o comportamento correto. Use Aprovar (registrar recebimento) antes de o cliente responder, ou lance o recebimento direto no Financeiro depois. |
 | "Tentei aprovar de novo e deu erro" | O orçamento já gerou os lançamentos financeiros. | A mensagem é Lançamentos financeiros já foram gerados para este orçamento. A aprovação com lançamento é única; ajuste direto no Financeiro. |
@@ -4345,11 +4428,14 @@ Vídeo na trilha ~30minPré-requisito T9Capítulos 9Módulo CRM
 Parar de perder oportunidade em conversa de WhatsApp: todo pedido de orçamento vira um cartão num funil visível, com dono, valor, probabilidade e próximo passo marcado, do primeiro contato até o negócio fechado.
 
 Módulo Depende do módulo CRM
-Onde fica: Menu → CRM
-Rotas:/crm
+Onde fica: Menu lateral, grupo
+CRM e Projetos, na tela
+CRM/Kanban. O mesmo grupo guarda a tela
+Projetos (capítulo 13), que é uma funcionalidade irmã, não uma aba dentro desta tela.
+Rotas:/crm (este capítulo) e /projetos, /projetos/:id (capítulo 13)
 Depende de: T3 (Clientes) e T9 (Orçamentos)
 Quem enxerga: quem tiver a permissão de tela
-CRM ligada no editor de permissões (grupo Comercial) e pertencer a uma empresa com o módulo CRM ativo. Dentro da tela, quem tem a ação
+CRM/Kanban ligada no editor de permissões (grupo Comercial) e pertencer a uma empresa com o módulo CRM ativo. Dentro da tela, quem tem a ação
 Gerenciar CRM vê o funil inteiro; quem não tem vê só as oportunidades das quais é responsável, co-responsável ou criador. Admin e gestor sempre veem tudo.
 Configuração ligada: o catálogo de
 Origens, em Configurações → Usabilidade, é compartilhado entre o cadastro de clientes e as oportunidades do CRM.
@@ -4360,21 +4446,27 @@ O CRM abre em Menu → CRM. Duas coisas precisam estar verdadeiras para ele exis
 
 Sem o módulo CRM, o item CRMnão aparece no menu, nem no menu lateral do computador nem na gaveta "Mais" do celular. Não há tela cinza, não há mensagem de bloqueio, simplesmente não existe aquele item. Quem procurar o funil e não achar deve conferir primeiro com o responsável pela assinatura se o módulo está contratado. Se o módulo está ativo e mesmo assim a pessoa não vê o CRM, aí sim é permissão: um administrador liga a tela CRM para aquele usuário no editor de permissões.
 
-[Print da tela: Tela CRM com os cartões Total de Leads e Valor Total, campo de busca e o quadro Pipeline de Vendas mostrando o estado inicial, com o convite Configure seu funil de vendas e os botões Começar com estágios padrão e Personalizar estágios]
+[Print da tela: Tela CRM/Kanban com os cartões Total no funil e Valor Total, campo de busca e o quadro com o nome do funil selecionado mostrando o estado inicial, com o convite Configure seu funil e os botões Começar com estágios padrão e Personalizar estágios]
 
-CRM recém-aberto, ainda sem funil montado: o convite Configure seu funil de vendas com os botões de criar os estágios padrão ou personalizar do zero.
+CRM/Kanban recém-aberto, ainda sem funil montado: o convite Configure seu funil com os botões de criar os estágios padrão ou personalizar do zero.
 
 #### O que tem na tela
 
-No topo, o cabeçalho CRM com o subtítulo Gerencie oportunidades e leads e quatro ações: três ícones, Gerenciar estágios, Gerenciar funis e Configurar webhooks, e o botão Nova Oportunidade. No celular, os três ícones ficam dentro da gaveta Filtros, no bloco Configurações, cada um como uma linha de botão com texto.
+No topo, o cabeçalho CRM/Kanban com o subtítulo Gerencie oportunidades e processos, o botão Configurações do CRM/Kanban e o botão Nova oportunidade. Logo abaixo ficam as abas Funil e Tarefas, o campo de busca e o botão Filtros.
+
+Antes existiam três botões de ícone separados no cabeçalho, um para estágios, um para funis e um para webhooks. Eles foram reunidos num botão só, Configurações do CRM/Kanban, que abre uma janela com quatro abas: Funis, Checklists, Etiquetas e Webhooks. Se um cliente antigo disser que "sumiu o botão de gerenciar funis", é isso: está dentro dessa janela, na primeira aba.
+
+O rótulo CRM/Kanban (tela e menu) e o subtítulo Gerencie oportunidades e processos são recentes: a tela existia antes só como CRM, com o subtítulo Gerencie oportunidades e leads. O nome mudou porque a mesma tela agora também hospeda funis que não são de venda (frente de obra do capítulo 13), e "processos" descreve as duas coisas melhor do que "leads".
 
 Logo abaixo do cabeçalho, um alternador de duas abas comanda a tela inteira: Funil, que é o kanban de sempre, e Tarefas, uma lista com as tarefas vinculadas a oportunidades de qualquer funil da empresa. Essa segunda aba é explicada no capítulo 8. O restante deste capítulo trata da aba Funil, que é a que abre por padrão.
 
 Dentro da aba Funil, se a empresa tem mais de um funil cadastrado, aparece um seletor de funil logo abaixo do alternador (capítulo 2). Com um funil só, esse seletor simplesmente não aparece, e a tela funciona exatamente como sempre funcionou.
 
-Em seguida vêm os cartões de resumo. Sempre aparecem dois: Total de Leads e Valor Total. Quando o funil selecionado já tem estágios, aparecem mais dois: o valor acumulado no primeiro estágio marcado como ganho e o valor acumulado no primeiro estágio neutro. Um detalhe que economiza confusão no suporte: os cartões respeitam os filtros e a permissão de visibilidade. Se você filtrou por um vendedor, ou se você não tem a ação Gerenciar CRM e só enxerga as suas próprias oportunidades, o Total de Leads reflete só o que está na sua tela, não o total da empresa.
+Em seguida vêm os cartões de resumo. Sempre aparecem dois: Total no funil e Valor Total. Quando o funil selecionado já tem estágios, aparecem mais dois: o valor acumulado no primeiro estágio marcado como ganho e o valor acumulado no primeiro estágio neutro. Um detalhe que economiza confusão no suporte: os cartões respeitam os filtros e a permissão de visibilidade. Se você filtrou por um vendedor, ou se você não tem a ação Gerenciar CRM e só enxerga as suas próprias oportunidades, o Total no funil reflete só o que está na sua tela, não o total da empresa.
 
-Depois vêm a busca Buscar por título ou cliente..., o botão Filtros e o quadro Pipeline de Vendas, que é o kanban. Quando há filtro ativo, aparece ao lado do título um selo no formato "3 de 12" mostrando quantas oportunidades do funil selecionado passaram pelo filtro.
+O card Total no funil já se chamou Total de Leads. O nome mudou pra não falar de "lead" num funil que, por causa das frentes de obra do capítulo 13, pode estar organizando outra coisa (instalação, compra, processo interno). O número e o lugar continuam os mesmos, só o rótulo trocou.
+
+Depois vêm a busca Buscar por título ou cliente..., o botão Filtros e o quadro do kanban, com o nome do funil selecionado no alto (por padrão, Funil de Vendas). Quando há filtro ativo, aparece ao lado do título um selo no formato "3 de 12" mostrando quantas oportunidades do funil selecionado passaram pelo filtro.
 
 #### Kanban e lista
 
@@ -4390,7 +4482,7 @@ Uma oportunidade sem nenhum responsável não mostra avatar nenhum: ela ganha um
 
 #### O funil vazio
 
-Um funil sem nenhum estágio mostra o convite Configure seu funil de vendas, com o texto "Crie os estágios do pipeline pra começar a organizar suas oportunidades. Use o conjunto padrão ou monte do seu jeito." e dois botões: Começar com estágios padrão e Personalizar estágios.
+Um funil sem nenhum estágio mostra o convite Configure seu funil, com o texto "Crie os estágios do pipeline pra começar a organizar suas oportunidades. Use o conjunto padrão ou monte do seu jeito." e dois botões: Começar com estágios padrão e Personalizar estágios.
 
 O botão de estágios padrão cria cinco colunas de uma vez, prontas para uso, e mostra Estágios padrão criados!. É o caminho recomendado: dá para renomear e recolorir tudo depois.
 
@@ -4405,11 +4497,21 @@ Com os estágios criados mas nenhuma oportunidade, o quadro mostra Nenhuma oport
 
 ### 2. Vários funis: criar, trocar, tornar padrão, "quem pode ver" e excluir
 
-A empresa pode ter mais de um funil comercial, por exemplo um para vendas novas e outro para pós-venda. O botão de ícone Gerenciar funis no cabeçalho (no celular, dentro da gaveta de filtros) abre a janela Gerenciar Funis, descrita como "Crie funis separados para vendas, pós-venda, licitação e outros fluxos comerciais."
+A empresa pode ter mais de um funil comercial, por exemplo um para vendas novas e outro para pós-venda. O botão Configurações do CRM/Kanban no cabeçalho abre a janela de configurações já na aba Funis, que traz o bloco Gerenciar Funis, descrito como "Crie funis separados para vendas, pós-venda, licitação e outros fluxos comerciais. Para organizar uma obra com várias frentes ao mesmo tempo, use Projetos." A última frase é um atalho pro capítulo 13: um funil criado aqui é sempre comercial; quem precisa de várias frentes de trabalho debaixo de uma obra só deve usar a tela Projetos, que cria e gerencia as frentes automaticamente.
+
+[Print da tela: Aba Funis da janela Configurações do CRM/Kanban, com o botão Novo funil, a lista de funis da empresa mostrando para cada um a contagem de etapas e de oportunidades, o selo Padrão no funil principal e o menu de ações da linha]
+
+Aba Funis: a lista de funis da empresa, com a contagem de etapas e de oportunidades de cada um e o selo Padrão.
 
 #### Criar, renomear e reordenar
 
-No bloco pontilhado Novo Funil, digite o nome no campo Nome do funil e toque no botão de mais. Aparece Funil criado com sucesso! e o funil entra no fim da lista. A dica Arraste para reordenar os funis vale pra ordem em que os funis aparecem no seletor do topo da tela. Cada linha tem um menu com Editar (renomear), Quem pode ver e Excluir.
+No bloco pontilhado Novo Funil, digite o nome no campo Nome do funil e toque no botão de mais. Aparece Funil criado com sucesso! e o funil entra no fim da lista. A dica Arraste para reordenar os funis vale pra ordem em que os funis aparecem no seletor do topo da tela; no celular, cada linha também tem uma setinha pra cima e pra baixo, porque arrastar com o dedo numa lista rolável é pouco confiável. Cada linha mostra, embaixo do nome, a contagem "X etapas · Y oportunidades" e, quando o funil ainda não tem nenhuma etapa, o selo Sem etapas. Tocar na setinha de expandir ao lado do nome abre, sem fechar esta janela, um atalho pra gerenciar as etapas daquele funil direto ali. Cada linha também tem um menu com Editar (renomear), Quem pode ver e Excluir.
+
+#### Acompanha valores financeiros: a chave que separa venda de processo
+
+Abrindo um funil em Editar, além do nome e da cor aparece a chave Acompanha valores financeiros, com a explicação "Desligue para funis de projeto ou processo: os indicadores passam a contar cards em vez de somar dinheiro." Ligada (o padrão de todo funil novo criado aqui), o funil se comporta exatamente como descrito neste capítulo: valor estimado, probabilidade, origem, cartão de Valor Total. Desligada, o funil vira um funil de processo: some o vocabulário de venda (Valor Estimado, Probabilidade, Origem desaparecem do formulário da oportunidade, que passa a se chamar "card"), o segundo cartão do topo conta quantos cards estão em andamento em vez de somar R$, e o cabeçalho das colunas do kanban para de repetir "R$ 0,00".
+
+É assim que uma frente de trabalho de um Projeto (capítulo 13) se comporta por baixo dos panos: toda frente nasce com esta chave desligada. Dá pra desligar a mesma chave num funil criado aqui, direto no CRM/Kanban, sem passar por Projetos, se a sua empresa só precisa de um quadro de processo isolado (por exemplo, um funil de onboarding de cliente novo que não deveria falar de dinheiro).
 
 #### Funil padrão
 
@@ -4446,15 +4548,15 @@ Quem tem a ação Gerenciar CRM ligada nunca perde acesso a um funil restrito, m
 
 ### 3. Montar as etapas do funil: criar, renomear, reordenar, ícone e cor
 
-O botão de engrenagem Gerenciar estágios (no celular, dentro da gaveta de filtros, no bloco Configurações) abre a janela Gerenciar Estágios do Pipeline, que passa a operar dentro do funil selecionado no topo da tela. Com mais de um funil, o título da janela muda pra Gerenciar Estágios do Funil "nome", deixando explícito qual funil está sendo editado. As etapas são da sua empresa: nada aqui é fixo no sistema, e o funil de uma empresa nunca aparece para outra.
+As etapas ficam dentro da própria aba Funis: toque na setinha ao lado do nome do funil e o bloco Gerenciar Estágios do Funil "nome" abre logo abaixo, já com as etapas daquele funil. Como cada funil mostra as suas, não existe mais a dúvida de "estou editando as etapas de qual funil". As etapas são da sua empresa: nada aqui é fixo no sistema, e o funil de uma empresa nunca aparece para outra.
 
-[Print da tela: Janela Gerenciar Estágios do Pipeline de uma empresa sem nenhum estágio ainda, com o bloco pontilhado Novo Estágio contendo o campo Nome do estágio, um seletor de ícone, um seletor de cor mostrando o código #6B7280 e o botão de mais, e abaixo a dica Arraste para reordenar os estágios]
+[Print da tela: Janela Gerenciar Estágios do Pipeline de uma empresa sem nenhum estágio ainda, com o botão Novo estágio fechado e, depois de tocado, o bloco com o campo Nome do estágio, um seletor de ícone, um seletor de cor mostrando o código #6B7280 e o botão de mais, e abaixo a dica Arraste para reordenar os estágios]
 
-Janela Gerenciar Estágios do Pipeline, ainda sem nenhum estágio criado: o bloco de criar um novo estágio, com nome, ícone e cor.
+Janela Gerenciar Estágios do Pipeline, ainda sem nenhum estágio criado: o botão Novo estágio aberto, mostrando o bloco de criar um novo estágio, com nome, ícone e cor.
 
 #### Criar
 
-No bloco pontilhado Novo Estágio, digite o nome no campo Nome do estágio, escolha um ícone no seletor Ícone (ou deixe em Sem ícone) e a cor no seletor de cores, e toque no botão de mais. Aparece Estágio criado com sucesso! e o estágio entra no fim do funil selecionado. O botão fica travado enquanto o nome estiver vazio, ou enquanto nenhum funil estiver resolvido.
+O bloco de criação começa fechado, atrás do botão Novo estágio (o ícone de mais sozinho não conta a história toda: é texto mesmo). Tocando nele, o bloco abre com o campo Nome do estágio, o seletor Ícone (ou Sem ícone), o seletor de cor e o botão de confirmar; um X no canto fecha o bloco de volta sem criar nada. Digite o nome, escolha ícone e cor, e toque no botão de mais. Aparece Estágio criado com sucesso!, o bloco fecha sozinho e o estágio entra no fim do funil selecionado. O botão de confirmar fica travado enquanto o nome estiver vazio, ou enquanto nenhum funil estiver resolvido.
 
 #### Renomear, recolorir, trocar o ícone e marcar
 
@@ -4578,7 +4680,29 @@ Quando a oportunidade tem cliente vinculado, aparece o bloco Contato do Cliente 
 
 - O e-mail é um link que abre o programa de e-mail com o destinatário preenchido.
 
-Mais abaixo aparecem as Observações, a data de criação (Criado em:) e há quanto tempo a oportunidade foi mexida pela última vez (Atualizado:).
+Mais abaixo aparecem as Observações, com autosave: ao digitar, um indicador ao lado do título mostra Salvando..., depois Salvo (ou um aviso de erro se a gravação falhar), sem precisar clicar em nenhum botão de salvar. Em seguida vêm a data de criação (Criado em:) e há quanto tempo a oportunidade foi mexida pela última vez (Atualizado:).
+
+#### Etiquetas, checklists e comentários
+
+Fechando a aba Detalhes, três blocos ajudam a organizar o acompanhamento do dia a dia sem precisar de uma Ordem de Serviço:
+
+- Etiquetas: selos coloridos (ex.: "Urgente", "Aguardando cliente") que você cria na aba Etiquetas de Configurações do CRM/Kanban e aplica à oportunidade marcando quantas quiser. Sem nenhuma aplicada, aparece Nenhuma etiqueta aplicada.
+
+- Checklists: listas de itens para marcar, criadas do zero ou a partir de um modelo salvo pela empresa, com barra de progresso. Servem para padronizar um processo comercial (ex.: "documentos do financiamento") sem abrir uma OS.
+
+- Comentários e atividades: no computador, um painel ao lado dos dados (no celular, abaixo deles) com uma caixa para escrever um comentário livre e o botão Comentar. O comentário entra na mesma linha do tempo da aba Histórico, junto com as interações estruturadas e os registros automáticos de troca de etapa — é um jeito mais rápido de deixar um recado sem preencher Tipo de Interação e Descrição.
+
+Etiquetas e modelos de checklist são configurados uma vez pela empresa (administrador ou quem tem Gerenciar Configurações) e depois ficam disponíveis pra aplicar em qualquer oportunidade, do mesmo jeito que os modelos de checklist de OS (T4).
+
+As duas configurações ficam em abas vizinhas dentro de Configurações do CRM/Kanban:
+
+[Print da tela: Aba Etiquetas da janela Configurações do CRM/Kanban, com a explicação de que são marcadores coloridos para identificar oportunidades rapidamente, o botão Nova etiqueta e a lista das etiquetas já criadas, cada uma com os botões de editar e excluir]
+
+Aba Etiquetas: os marcadores coloridos da empresa, criados uma vez e aplicados em qualquer oportunidade.
+
+[Print da tela: Aba Checklists da janela Configurações do CRM/Kanban, com o título Modelos de checklist, a explicação de que padronizam etapas aplicáveis a qualquer oportunidade e o botão Novo modelo]
+
+Aba Checklists: os modelos que padronizam um processo comercial repetido.
 
 #### Aba Histórico: registrar interação
 
@@ -4630,7 +4754,11 @@ Uma tarefa recorrente não aparece uma linha por ocorrência: o card mostra só 
 
 #### A aba Tarefas da tela do CRM
 
-No alternador do topo da tela (capítulo 1), a aba Tarefas é uma terceira superfície, ao lado do kanban. Ela lista, numa tabela corrida, as tarefas vinculadas a oportunidades de qualquer funil da empresa (não só do funil selecionado no seletor), combinando duas regras de visibilidade: só entram tarefas de oportunidades que você já enxerga (a regra do capítulo 9) e, dentro dessas, só as tarefas que a sua permissão de tarefa libera (a regra logo abaixo). Tem busca (Buscar tarefa ou oportunidade...) e um filtro por Responsável. A ordenação é por data, com as vencidas primeiro (selo Atrasada), depois as com data futura, e por último as sem data.
+No alternador do topo da tela (capítulo 1), a aba Tarefas é uma terceira superfície, ao lado do kanban. Ela lista as tarefas vinculadas a oportunidades de qualquer funil comercial da empresa (não só do funil selecionado no seletor), combinando duas regras de visibilidade: só entram tarefas de oportunidades que você já enxerga (a regra do capítulo 9) e, dentro dessas, só as tarefas que a sua permissão de tarefa libera (a regra logo abaixo). Tem busca (Buscar tarefa ou oportunidade...) e um filtro por Responsável, válidos nas três visões abaixo.
+
+"Qualquer funil" aqui quer dizer qualquer funil comercial. Tarefa criada dentro do card de uma frente de trabalho de um Projeto (capítulo 13) não aparece nesta aba: ela vive dentro do próprio Projeto, na aba Tarefas dele. É proposital, pra não misturar numa lista só o "o que eu tenho que fazer de venda" com "o que eu tenho que fazer de obra".
+
+Um alternador de três botões escolhe o formato: Lista (tabela corrida, o formato original, com as vencidas primeiro marcadas com o selo Atrasada, depois as com data futura, e por último as sem data), Kanban (uma coluna por status de tarefa: pendente, em andamento, pausada e concluída, igual ao board de uma OS) e Agenda (agrupada por dia, como um mini-calendário). As três mostram as mesmas tarefas; mudar de formato não muda quais tarefas aparecem, só como elas são organizadas na tela.
 
 Cada linha mostra o título da tarefa, o nome da oportunidade de origem, os avatares dos responsáveis e a data (ou Sem data). Tocar numa linha abre o detalhe da oportunidade dona daquela tarefa (aba Detalhes); a partir daí, entre na aba Tarefas do próprio card pra ver ou editar a tarefa.
 
@@ -4682,9 +4810,9 @@ Webhook é um endereço que outro sistema chama quando alguém preenche um formu
 
 O botão de webhook no cabeçalho (no celular, dentro da gaveta de filtros) abre a janela Webhooks de Leads Externos.
 
-[Print da tela: Janela Webhooks de Leads Externos com o bloco Criar novo webhook contendo os campos Nome e Origem padrão (Sem origem fixa) e o botão Criar webhook, a lista Webhooks configurados vazia com Nenhum webhook cadastrado, e abaixo o bloco Como usar o webhook com os campos obrigatórios name e phone, os opcionais email, source, title, notes e value, e um exemplo de JSON]
+[Print da tela: Janela Webhooks de Leads Externos com o bloco Criar novo webhook contendo os campos Nome, Origem padrão, Funil de destino e Etapa de destino, o botão Criar webhook, a lista Webhooks configurados vazia com Nenhum webhook cadastrado, a nota sobre o cabeçalho x-idempotency-key e abaixo o bloco Como usar o webhook com os campos obrigatórios name, phone ou email, os opcionais source, title, notes e value, e um exemplo de JSON]
 
-Janela Webhooks de Leads Externos: o bloco de criar um novo webhook em cima e, embaixo, a documentação de como outro sistema deve chamá-lo.
+Janela Webhooks de Leads Externos: o bloco de criar um novo webhook, agora com o funil e a etapa de destino, em cima e, embaixo, a documentação de como outro sistema deve chamá-lo.
 
 #### Criar
 
@@ -4694,11 +4822,19 @@ No bloco Criar novo webhook:
 
 - Origem padrão: uma origem do catálogo da empresa, ou Sem origem fixa.
 
-O botão Criar webhook gera o endereço e mostra Webhook criado com sucesso!.
+- Funil de destino: pra qual funil comercial o lead cai. Só aparecem funis comerciais nesta lista: uma frente de trabalho de um Projeto (capítulo 13) nunca pode ser destino de webhook, porque um lead externo chegando ali mexeria no progresso da obra sem ninguém da operação autorizar.
+
+- Etapa de destino: a etapa daquele funil onde o lead entra. Escolher o funil já sugere, sozinho, a primeira etapa que não é de ganho nem de perda; você pode trocar pra outra etapa do mesmo funil.
+
+O botão Criar webhook só libera com nome, funil e etapa preenchidos, e gera o endereço mostrando Webhook criado com sucesso!.
+
+Funil e etapa de destino são novos: antes, todo webhook caía automaticamente no primeiro estágio neutro do funil padrão da empresa. Hoje isso só continua valendo pra webhooks criados antes dessa mudança (capítulo seguinte explica o selo Destino padrão antigo) — todo webhook novo exige escolher o destino explicitamente.
 
 #### A lista de webhooks
 
-Cada webhook aparece com o nome, um selo Ativo ou Inativo, o selo Origem: quando tem origem fixa, uma chave Ativo para ligar e desligar, uma lixeira vermelha, e o campo com a URL completa mais o botão de copiar, que mostra URL copiada! (ou Não foi possível copiar a URL se o navegador bloquear). Sem nenhum, aparece Nenhum webhook cadastrado.
+Cada webhook aparece com o nome, um selo Ativo ou Inativo, o selo Origem: quando tem origem fixa, uma chave Ativo para ligar e desligar, uma lixeira vermelha, e dois seletores, Funil de destino e Etapa de destino, pra trocar pra onde aquele webhook manda os leads sem precisar recriá-lo. Por fim vem o campo com a URL completa mais o botão de copiar, que mostra URL copiada! (ou Não foi possível copiar a URL se o navegador bloquear). Sem nenhum webhook, aparece Nenhum webhook cadastrado.
+
+Um webhook criado antes de funil/etapa existirem mostra Destino padrão antigo no seletor de funil e Primeira etapa disponível no de etapa, em vez de um nome. Ele continua funcionando do jeito antigo (cai no funil padrão da empresa), mas pode ser migrado pra um destino explícito a qualquer momento, só escolhendo funil e etapa nos dois seletores da própria linha.
 
 A URL do webhook termina com um código secreto. Quem tiver esse endereço consegue criar oportunidades no seu funil. Trate como senha: cole só no painel da ferramenta que vai enviar os leads, não publique em grupo de WhatsApp e não deixe em documento compartilhado. Suspeitou de vazamento? Desligue a chave Ativo ou apague o webhook e crie outro, com endereço novo.
 
@@ -4707,15 +4843,18 @@ A URL do webhook termina com um código secreto. Quem tiver esse endereço conse
 A própria janela traz a documentação, no bloco Como usar o webhook: faça uma requisição POST para a URL, com os dados do lead em JSON.
 
 | Campo | Obrigatório | O que é |
-| name | Sim | Nome completo do lead. |
-| phone | Sim | Telefone, apenas números. |
-| email | Não | E-mail do lead. |
+| name | Pelo menos um dos três | Nome completo do lead. |
+| phone | Pelo menos um dos três | Telefone, apenas números. |
+| email | Pelo menos um dos três | E-mail do lead. |
 | source | Não | Origem do lead, por exemplo "Meta Ads". |
 | title | Não | Título personalizado da oportunidade. |
 | notes | Não | Observações adicionais. |
 | value | Não | Valor estimado, em número. |
+| stage_id | Não | Só tem efeito em webhook antigo, sem funil/etapa salvos (capítulo acima). Num webhook com destino configurado, este campo é ignorado: quem define a etapa é sempre a configuração salva na tela, nunca o que vier no envio. |
 
-O exemplo que aparece na tela é um JSON com nome, telefone e e-mail. O sistema é tolerante com os nomes dos campos: aceita nome no lugar de name, telefone ou whatsapp no lugar de phone, valor no lugar de value, e mensagem ou observations no lugar de notes.
+Não é preciso mandar os três campos de identificação (nome, telefone, e-mail); um já basta, mas mandar nenhum deles é recusado. O exemplo que aparece na tela é um JSON com nome, telefone e e-mail. O sistema é tolerante com os nomes dos campos: aceita nome no lugar de name, telefone ou whatsapp no lugar de phone, valor no lugar de value, e mensagem ou observations no lugar de notes.
+
+Pra reenviar uma tentativa sem criar a mesma oportunidade duas vezes (ex.: a ferramenta de automação tentou de novo depois de um erro de rede), mande o mesmo valor no cabeçalho x-idempotency-key nas duas chamadas (ou o mesmo event_id/external_id dentro do JSON). A reentrega com a mesma chave devolve o lead que já existe em vez de duplicar.
 
 #### O que o sistema faz com o que chega
 
@@ -4725,7 +4864,7 @@ O exemplo que aparece na tela é um JSON com nome, telefone e e-mail. O sistema 
 
 - Nome, telefone, e-mail e a fonte são gravados nas Observações da oportunidade, uma informação por linha. O lead não fica vinculado a um cliente cadastrado.
 
-- A oportunidade entra no primeiro estágio neutro do funil padrão da empresa, ou seja, o primeiro que não é de ganho nem de perda.
+- A oportunidade entra no funil e na etapa configurados na tela deste webhook. Só pra webhook antigo, sem destino salvo, vale a regra anterior: a etapa do payload se for válida, senão o primeiro estágio neutro do funil padrão da empresa.
 
 - O lead nasce sem responsável e cai direto na fila compartilhada do capítulo 9, visível pra empresa inteira até alguém assumir.
 
@@ -4735,13 +4874,15 @@ O exemplo que aparece na tela é um JSON com nome, telefone e e-mail. O sistema 
 
 - Código errado, ou webhook desligado na chave Ativo: Webhook inválido ou inativo.
 
+- Sem nome, telefone nem e-mail no envio: Informe ao menos um destes campos: name, phone ou email.
+
 - Chamada que não é POST: Método não permitido.
 
 - Falha no processamento: Erro interno.
 
 Quando dá certo, a resposta traz success junto com o lead criado.
 
-Antes de apontar uma campanha paga para o webhook, faça um envio de teste com um nome fictício e confira se o cartão apareceu no funil, na fila Sem responsável. Só o funil é prova de que o caminho funciona; a mensagem de sucesso da ferramenta que enviou não basta. Testou e o cartão não apareceu? Confira se o webhook está com a chave Ativo ligada, se a URL foi copiada inteira (o código do fim é parte dela) e se o funil padrão tem pelo menos um estágio neutro criado.
+Antes de apontar uma campanha paga para o webhook, faça um envio de teste com um nome fictício e confira se o cartão apareceu no funil, na fila Sem responsável. Só o funil é prova de que o caminho funciona; a mensagem de sucesso da ferramenta que enviou não basta. Testou e o cartão não apareceu? Confira se o webhook está com a chave Ativo ligada, se a URL foi copiada inteira (o código do fim é parte dela) e se o funil e a etapa de destino configurados ainda existem.
 
 O formulário público de cadastro de cliente (o link de captação que você compartilha para o próprio cliente se cadastrar) não cria lead no CRM: ele cria um cliente na tela de Clientes, com a origem marcada como formulário público. São dois caminhos completamente separados. Se você espera ver no funil quem preencheu aquele formulário, não vai encontrar: procure em Clientes.
 
@@ -4753,7 +4894,7 @@ O CRM só vale o que a disciplina de olhar para ele vale. Como o sistema não ma
 
 - Comece pela fila "Sem responsável". Filtre por Vendedor → Sem responsável. Todo lead ali é oportunidade parada esperando alguém assumir; não deixe acumular.
 
-- Abra o CRM e olhe os quatro cartões do topo. Total de Leads e Valor Total dão o tamanho da carteira; os cartões da etapa ganha e da etapa neutra dizem quanto já fechou e quanto está em jogo.
+- Abra o CRM e olhe os quatro cartões do topo. Total no funil e Valor Total dão o tamanho da carteira; os cartões da etapa ganha e da etapa neutra dizem quanto já fechou e quanto está em jogo.
 
 - Varra a coluna da direita para a esquerda. Comece pela etapa mais perto do fechamento: são as oportunidades com maior chance de virar dinheiro esta semana.
 
@@ -4768,6 +4909,92 @@ O CRM só vale o que a disciplina de olhar para ele vale. Como o sistema não ma
 - Uma vez por semana, filtre por vendedor e olhe o Valor Total de cada um. Cinco segundos por pessoa mostram quem está com a carteira cheia e quem precisa de mais lead.
 
 Combine com a tela de Orçamentos: oportunidade que chegou à etapa de proposta deve ter um orçamento correspondente, e o contador de visualizações da proposta diz se o cliente abriu. Funil na etapa de proposta há cinco dias, com a proposta aberta três vezes e sem resposta, é ligação pendente.
+
+### 13. Projetos: obras com frentes de trabalho
+
+Enquanto este capítulo inteiro cuida do funil comercial (fechar a venda), Projetos cuida do que vem depois da venda fechada: executar uma obra que tem várias partes andando ao mesmo tempo (compras, engenharia, instalação, elétrica). É uma funcionalidade irmã do CRM, não uma aba dentro dele, e mora no mesmo grupo do menu, CRM e Projetos.
+
+Onde fica: Menu lateral, grupo
+CRM e Projetos, tela
+Projetos
+Rotas:/projetos (lista) e /projetos/:id (detalhe)
+Quem enxerga: quem tiver a permissão de tela
+Projetos ligada no editor de permissões (grupo Comercial, é uma permissão própria, separada de
+CRM/Kanban) e pertencer a uma empresa com o módulo CRM ativo. Criar, editar e excluir um projeto, ou criar/editar/excluir uma frente dentro dele, exigem ser administrador, gestor, ou ter a ação
+Gerenciar Configurações ligada — não existe uma ação própria só pra Projetos, porque toda frente é, por baixo, um funil do CRM, e escrever num funil já exige esse mesmo nível de acesso.
+
+Essa permissão separada é de propósito: dá pra liberar Projetos pra quem acompanha obra em campo sem abrir pra essa pessoa a carteira comercial inteira (o funil de vendas, os valores das oportunidades).
+
+[Print da tela: Tela Projetos com os cartões Projetos, Em andamento, Atrasados e Concluídos, campo de busca, filtro por Status e a lista de obras com código, nome, cliente, prazo, barra de progresso e selo de status]
+
+Tela Projetos: os quatro cartões de resumo no topo e a lista de obras, cada uma com código, cliente, prazo, progresso e status.
+
+#### A lista de projetos
+
+Quatro cartões no topo: Projetos (total), Em andamento, Atrasados (prazo final já passou e o projeto não está concluído nem cancelado) e Concluídos; tocar nos dois últimos já filtra a lista por aquele status. Busca por nome, código ou cliente, e um filtro por Status. Cada linha mostra o código sequencial da obra (#1, #2...; a numeração é por empresa, não global), o nome, o cliente (ou Projeto interno, pra obra sem cliente, como uma reforma da própria sede), o prazo (ou Sem prazo), uma barra de progresso e o selo de status. Tocar na linha abre o detalhe da obra; o menu de ações da linha (visível só pra quem pode gerenciar) tem Editar e Excluir.
+
+#### Criar ou editar um projeto
+
+O botão Novo projeto abre a janela com os campos:
+
+| Campo | Obrigatório | O que aceita |
+| Nome do projeto | Sim | Texto livre, com o exemplo Ex: Instalação de 80 splits, Indústria X. |
+| Cliente | Não | Seletor de cliente com busca, ou Projeto interno (sem cliente). |
+| Responsável | Não | Um usuário da empresa, ou Sem responsável definido. |
+| Status | Sim, por escolha | Planejada, Em andamento (padrão), Pausada, Concluída ou Cancelada. |
+| Início previsto / Prazo final | Não | Datas; o prazo final não pode ser anterior ao início. |
+| Cor | Sim, com padrão | Identifica a obra na lista e no detalhe. |
+| Descrição | Não | Texto livre, com o exemplo Detalhes da obra.... |
+
+Projeto não tem endereço próprio. É decisão de propósito: o endereço de uma obra é o do cliente dela, ou das Ordens de Serviço que acontecem lá. Duplicar o endereço aqui seria mais um lugar pra desatualizar.
+
+#### Detalhe da obra: Visão geral, Frentes e Tarefas
+
+[Print da tela: Detalhe de um projeto na aba Frentes, mostrando o seletor de frentes de trabalho em abas, o quadro Kanban daquela frente com as colunas A fazer, Em execução, Concluído e Cancelado, e os cards dentro de cada coluna]
+
+Detalhe de um projeto, na aba Frentes: cada frente é um quadro Kanban próprio, igual ao do CRM, com as quatro etapas padrão de obra.
+
+Abrindo uma obra, três abas:
+
+- Visão geral: status, cliente, responsável, datas, descrição, a barra de Progresso da obra e a lista de frentes de trabalho com a contagem de cards de cada uma. Tocar numa frente da lista já leva pra ela na aba Frentes.
+
+- Frentes: o quadro de trabalho em si (explicado abaixo).
+
+- Tarefas: as tarefas criadas de dentro de qualquer card de qualquer frente desta obra, nos formatos Kanban ou Agenda (a mesma régua de visibilidade de tarefa do capítulo 8: quem tem Gerenciar Tarefas vê todas; os demais veem as suas, as que são o técnico, as que criaram ou as da própria equipe). É uma lista só de leitura e andamento: não existe botão de criar tarefa aqui, porque toda tarefa nasce de dentro de um card (aba Tarefas do card, igual ao capítulo 8).
+
+#### Frentes de trabalho: um funil por frente, só que sem vocabulário de venda
+
+Uma frente de trabalho é, por baixo, o mesmo funil do CRM (capítulos 2 e 3), só que vinculado a esta obra e com a chave Acompanha valores financeiros (capítulo 2) desligada de nascença. Por isso ela nunca aparece na tela /crm, e um funil comercial nunca aparece dentro de um projeto: são dois universos separados pelo mesmo mecanismo.
+
+Nova frente pede só Nome da frente (com o exemplo Ex: Instalação, Elétrica, Dutos) e Cor; ela já nasce com quatro etapas prontas, que você pode editar depois pelo mesmo gerenciador de etapas do capítulo 3 (inclusive com o mesmo botão Novo estágio fechado por padrão):
+
+| Etapa padrão | Cor | Marcação |
+| A fazer | Cinza | Neutro |
+| Em execução | Azul | Neutro |
+| Concluído | Verde | Ganho |
+| Cancelado | Vermelho | Perdido |
+
+O quadro de uma frente é deliberadamente mais simples que o kanban comercial: arrastar um card pra Concluído move na hora, sem abrir a janela de Motivo da Perda nem a oferta de lançar receita do capítulo 4 (frente de obra não fala de dinheiro). Tocar num card abre o mesmo Detalhe da oportunidade do capítulo 7, com o vocabulário trocado (título "Editar card" em vez de "Editar Oportunidade", campo "Responsável" em vez de "Vendedor Responsável", "Prazo" em vez de "Previsão Fechamento", e sem os campos Valor Estimado, Probabilidade e Origem) — mas com as mesmas abas Detalhes/Tarefas/Histórico, os mesmos atalhos Criar OS e Criar Tarefa, e as mesmas Etiquetas, Checklists e Comentários do capítulo 7.
+
+Dentro do projeto, o seletor de Estágio na criação/edição de um card só lista as etapas das frentes desta obra, nunca etapas de um funil comercial: escolher uma etapa de outro lugar não é oferecido.
+
+[Print da tela: Janela Novo projeto vazia, com os campos Nome do projeto, Cliente (Projeto interno), Responsável (Sem responsável definido), Status (Em andamento), Início previsto, Prazo final, Cor e Descrição, e os botões Cancelar e Salvar]
+
+Janela Novo projeto sem nada preenchido: só o nome é obrigatório.
+
+#### Progresso da obra: o que o número quer dizer
+
+A barra de Progresso da obra é um número só por projeto, igual pra todo mundo da empresa, mesmo pra quem não enxerga todos os cards. A conta é cards concluídos (em qualquer etapa marcada como ganho, em qualquer frente) dividido por cards não perdidos (concluídos mais os que ainda estão rolando — os cancelados ficam de fora da conta dos dois lados).
+
+A barra aparece como —, nunca 0% nem 100%, quando não há como calcular um número com sentido: nenhuma frente da obra tem etapa marcada como ganho ainda, ou não existe nenhum card além dos cancelados. Passe o mouse no — pra ver a explicação: Configure uma etapa de ganho em alguma frente para ver o progresso.
+
+#### Excluir um projeto
+
+Excluir pede a confirmação Excluir projeto? com o aviso de que projetos com frentes vinculadas não podem ser excluídos. Tentando excluir uma obra que já tem frente (com ou sem card dentro), a mensagem detalha exatamente quantas frentes e quantas oportunidades estão travando a exclusão, e sugere o caminho recomendado: mudar o Status para Cancelada em vez de excluir, pra preservar o histórico.
+
+Uma frente de trabalho só pode virar um funil comercial (ou vice-versa) se estiver vazia de cards, e a empresa nunca pode ficar sem nenhum funil comercial por causa dessa troca. São travas de bastidor, não um botão na tela: hoje não existe um jeito de "promover" uma frente a funil comercial pela interface, então na prática essa fronteira entre os dois universos é definitiva desde a criação.
+
+Um webhook de captação externa (capítulo 11) nunca pode apontar pra uma frente de obra, só pra um funil comercial. Lead de fora não pode cair direto numa obra e alterar o progresso dela sem alguém da operação decidir isso.
 
 ### Suporte: problemas comuns
 
@@ -4789,11 +5016,14 @@ Combine com a tela de Orçamentos: oportunidade que chegou à etapa de proposta 
 | "Criei uma tarefa dentro de uma oportunidade e ela não aparece na Agenda" | A chave Mostrar na agenda estava desligada na criação. | Abra a tarefa dentro do card, na aba Tarefas, e ligue Mostrar na agenda. Ela precisa de uma data pra entrar no calendário. |
 | "Criei uma tarefa na Agenda e ela não aparece na oportunidade" | Tarefa nascida na Agenda nunca fica vinculada a uma oportunidade. | A relação é de mão única: só tarefa criada de dentro do card do CRM pode aparecer na Agenda. O caminho é apagar e recriar a tarefa de dentro da oportunidade certa. |
 | "O sistema distribui os leads entre meus vendedores?" | Não existe distribuição automática. | O Vendedor Responsável é sempre escolhido por uma pessoa (ou assumido da fila). Lead que chega por webhook nasce sem vendedor e cai na fila compartilhada. |
-| "Configurei o webhook e o lead não caiu no funil" | Webhook desligado, URL incompleta, chamada que não é POST, ou funil padrão sem etapa neutra. | Confira a chave Ativo, copie a URL inteira pelo botão de copiar (o código do fim faz parte) e garanta que a chamada é POST com JSON contendo pelo menos nome e telefone. Faça um envio de teste e confira no funil antes de ligar a campanha. |
+| "Configurei o webhook e o lead não caiu no funil" | Webhook desligado, URL incompleta, chamada que não é POST, ou o funil/etapa configurados foram excluídos depois. | Confira a chave Ativo, copie a URL inteira pelo botão de copiar (o código do fim faz parte) e garanta que a chamada é POST com JSON contendo nome, telefone ou e-mail. Confira também se o funil e a etapa de destino na linha do webhook ainda existem. Faça um envio de teste e confira no funil antes de ligar a campanha. |
 | "Mandei o link de cadastro para o cliente preencher e não vi o lead no CRM" | O formulário público de captação cria cliente, não lead. | Procure na tela de Clientes: o cadastro está lá, com a origem de formulário público. São dois caminhos diferentes e não existe ligação automática entre eles. |
 | "O Status do lead e a coluna do kanban estão diferentes" | São dois campos independentes. | O Status é uma lista fixa dentro do detalhe; a coluna é a etapa configurável do funil. Um não mexe no outro. Os números e filtros da tela seguem a etapa. |
 | "Não consigo cadastrar o cliente na hora, dentro da oportunidade" | A criação rápida de cliente exige CPF ou CNPJ. | Aparece Informe o CPF ou CNPJ do cliente para cobrar. Sem o documento, deixe o campo Cliente em branco e vincule depois, pela edição da oportunidade. |
-| "O total de leads mudou sozinho" | Os cartões de resumo respeitam os filtros ativos e a sua permissão de visibilidade. | Limpe os filtros no botão de limpar para voltar ao total que você tem acesso. Com filtro ativo, aparece um selo ao lado de Pipeline de Vendas no formato "3 de 12". |
+| "O total no funil mudou sozinho" | Os cartões de resumo respeitam os filtros ativos e a sua permissão de visibilidade. | Limpe os filtros no botão de limpar para voltar ao total que você tem acesso. Com filtro ativo, aparece um selo ao lado do nome do funil no formato "3 de 12". |
+| "Não acho onde ficam minhas obras" | Projetos é uma tela irmã do CRM, não uma aba dele. | É o item Projetos, dentro do mesmo grupo de menu CRM e Projetos, ao lado de CRM/Kanban. Também exige a permissão de tela Projetos ligada, separada da permissão do CRM. |
+| "A barra de progresso do projeto está travada em um risquinho" | Nenhuma frente da obra tem etapa de ganho configurada, ou só existem cards cancelados. | É esperado: o sistema nunca mostra 0% nem 100% quando não tem como calcular. Abra Frentes → Gerenciar etapas e marque alguma etapa como Ganho. |
+| "Não consigo excluir um projeto" | Ele ainda tem frente de trabalho vinculada (com ou sem card dentro). | A mensagem de erro diz quantas frentes e quantas oportunidades estão travando. Prefira mudar o Status pra Cancelada em vez de excluir, pra manter o histórico da obra. |
 
 ### Perguntas frequentes
 
@@ -4857,7 +5087,19 @@ Combine com a tela de Orçamentos: oportunidade que chegou à etapa de proposta 
 **P:** Meu vendedor consegue ver os leads dos outros?
 **R:** Só se tiver a ação Gerenciar CRM ligada. Sem ela, cada um vê apenas as oportunidades das quais é responsável ou criador, além da fila compartilhada de oportunidades sem responsável.
 
-Palavras que o cliente usa pra isso: funil, funil de vendas, pipeline, kanban de vendas, quadro de vendas, lead, oportunidade, prospect, contato, coluna, etapa, estágio, fase da venda, ganhei, perdi, motivo da perda, follow-up, acompanhamento, próxima ação, origem do lead, de onde veio o cliente, webhook, integração do formulário do site, campanha de anúncio, mais de um funil, vários funis, quem vê o quê, fila sem dono, oportunidade sem vendedor, tarefa da oportunidade
+**P:** Projetos é um módulo separado, pago à parte?
+**R:** Não. Exige o mesmo módulo CRM já contratado para o funil comercial, só com a permissão de tela própria (Projetos) ligada pra quem precisa usar.
+
+**P:** Uma frente de trabalho é a mesma coisa que um funil do CRM?
+**R:** É, por baixo: mesmo quadro Kanban, mesmo mecanismo de etapas. A diferença é que ela nasce vinculada a uma obra, sem falar de valor, e nunca aparece na tela /crm.
+
+**P:** Dá pra transformar um funil comercial numa frente de obra, ou o contrário?
+**R:** Só enquanto o funil estiver vazio de oportunidades, e nunca deixando a empresa sem nenhum funil comercial. Hoje isso não tem um botão dedicado na tela — na prática, decida na criação.
+
+**P:** Lead de webhook pode cair direto numa frente de obra?
+**R:** Não. Um webhook de captação só pode apontar pra um funil comercial. Entrar numa obra sem alguém decidir isso de propósito mudaria o progresso dela de fora pra dentro.
+
+Palavras que o cliente usa pra isso: funil, funil de vendas, pipeline, kanban de vendas, quadro de vendas, lead, oportunidade, prospect, contato, coluna, etapa, estágio, fase da venda, ganhei, perdi, motivo da perda, follow-up, acompanhamento, próxima ação, origem do lead, de onde veio o cliente, webhook, integração do formulário do site, campanha de anúncio, mais de um funil, vários funis, quem vê o quê, fila sem dono, oportunidade sem vendedor, tarefa da oportunidade, etiqueta, checklist da oportunidade, comentário, projeto, obra, frente de trabalho, progresso da obra, funil de processo
 
 ---
 
@@ -4968,25 +5210,28 @@ O menu de ações de cada linha tem Visualizar, Pausar ou Retomar, Editar e Excl
 
 Pausar e retomar existem SÓ na lista. Dentro do contrato aberto não há botão de pausar. Se o cliente perguntar "onde pauso esse contrato", a resposta é: volte para a lista Contratos e use o menu de três pontinhos da linha. Contrato pausado para de gerar visitas novas; as que já foram geradas continuam na agenda.
 
-### 3. Wizard do contrato comum (5 etapas) × wizard PMOC (6 etapas)
+### 3. Wizard do contrato comum (6 etapas na criação) × wizard PMOC (7 etapas na criação)
 
-O botão Novo Contrato abre um assistente em etapas, com a trilha numerada no topo. O número de etapas muda conforme a chave PMOC:
+O botão Novo Contrato abre um assistente em etapas, com a trilha numerada no topo. O número de etapas muda conforme a chave PMOC, e tem uma etapa extra na criação que não aparece na edição:
 
-| Contrato comum (5 etapas) | Contrato PMOC (6 etapas) |
+| Contrato comum (6 etapas na criação) | Contrato PMOC (7 etapas na criação) |
 | 1. Identificação | 1. Identificação |
 | 2. Ambientes e Equipamentos | 2. Unidade & RT |
 | 3. Frequência | 3. Ambientes e Equipamentos |
 | 4. Equipe & Cobrança | 4. Frequência |
-| 5. Revisão | 5. Equipe & Cobrança |
-| | 6. Revisão |
+| 5. Financeiro | 5. Equipe & Cobrança |
+| 6. Revisão | 6. Financeiro |
+| | 7. Revisão |
 
-A diferença é exatamente uma etapa: Unidade & RT, que só existe no PMOC. Os botões de navegação no rodapé são Cancelar, Voltar, Próximo e, na última etapa, Criar Contrato (ou Salvar Alterações em edição).
+A diferença entre contrato comum e PMOC é exatamente uma etapa: Unidade & RT, que só existe no PMOC. Os botões de navegação no rodapé são Cancelar, Voltar, Próximo e, na última etapa, Criar Contrato (ou Salvar Alterações em edição).
+
+A etapa Financeiro só existe na criação, não na edição. Editar um contrato que já existe pula direto de Equipe & Cobrança para Revisão, sem passar por Financeiro. Para mudar a cobrança de um contrato já criado, o caminho é a aba Financeiro do contrato aberto, descrita na seção 11.
 
 #### Etapa 1, Identificação
 
-[Print da tela: Assistente Novo Contrato na etapa 1 de 5, Identificação, com a trilha de etapas no topo (Identificação, Ambientes e Equipamentos, Frequência, Equipe & Cobrança, Revisão), o campo Nome do Contrato com o exemplo Ex: Manutenção Preventiva Mensal — Empresa X, o seletor Cliente com Selecione o cliente, e a chave desligada É um contrato PMOC? com a explicação sobre vincular Responsável Técnico e gerar OSs com selo de conformidade legal.]
+[Print da tela: Assistente Novo Contrato na etapa 1 de 6, Identificação, com a trilha de etapas no topo (Identificação, Ambientes e Equipamentos, Frequência, Equipe & Cobrança, Financeiro, Revisão), o campo Nome do Contrato com o exemplo Ex: Manutenção Preventiva Mensal — Empresa X, o seletor Cliente com Selecione o cliente, e a chave desligada É um contrato PMOC? com a explicação sobre vincular Responsável Técnico e gerar OSs com selo de conformidade legal.]
 
-Assistente Novo Contrato na etapa Identificação, com a trilha de 5 etapas e a chave É um contrato PMOC?.
+Assistente Novo Contrato na etapa Identificação, com a trilha de 6 etapas (a etapa Financeiro entrou depois de Equipe & Cobrança) e a chave É um contrato PMOC?.
 
 | Campo | Obrigatório | Detalhe |
 | Nome do Contrato * | Sim | A tela sugere o formato "Manutenção Preventiva Mensal, Empresa X". A dica embaixo diz "Dê um nome claro que identifique este contrato". |
@@ -5005,9 +5250,9 @@ Esta etapa só aparece com a chave PMOC ligada. Ela responde duas perguntas que 
 
 #### Responsável Técnico (RT)
 
-[Print da tela: Assistente Novo Contrato com a chave PMOC ligada, agora com 6 etapas na trilha (Identificação concluída, e a etapa 2 de 6, Unidade & RT, em destaque, seguida de Ambientes e Equipamentos, Frequência, Equipe & Cobrança e Revisão). Mostra o seletor Responsável Técnico (RT) com Sem RT atribuído e o botão de mais (+), e o bloco Identificação da Unidade com os campos Nome da unidade / local, Endereço (logradouro), Número, Complemento, Bairro, CEP, Cidade e UF.]
+[Print da tela: Assistente Novo Contrato com a chave PMOC ligada, agora com 7 etapas na trilha (Identificação concluída, e a etapa 2 de 7, Unidade & RT, em destaque, seguida de Ambientes e Equipamentos, Frequência, Equipe & Cobrança, Financeiro e Revisão). Mostra o seletor Responsável Técnico (RT) com Sem RT atribuído e o botão de mais (+), e o bloco Identificação da Unidade com os campos Nome da unidade / local, Endereço (logradouro), Número, Complemento, Bairro, CEP, Cidade e UF.]
 
-Etapa Unidade & RT do assistente PMOC, com o seletor de Responsável Técnico e o bloco Identificação da Unidade.
+Etapa Unidade & RT do assistente PMOC, com o seletor de Responsável Técnico e o bloco Identificação da Unidade (trilha de 7 etapas, já com a etapa Financeiro).
 
 É um seletor com os Responsáveis Técnicos ativos da empresa, mais um botão de mais (+) que abre o cadastro rápido sem sair do assistente. O texto de ajuda diz: "Engenheiro ou Técnico em Refrigeração com CFT/CREA que assina o Termo de Responsabilidade Técnica conforme Lei Federal 13.589/2018. Diferente do Técnico Executor (quem executa as OSs no campo)."
 
@@ -5093,6 +5338,12 @@ Ou seja, você não precisa de uma visita por serviço. O sistema junta tudo que
 
 Tentar salvar sem executor mostra Sem responsável pela execução com "Selecione ao menos 1 técnico ou equipe para executar o contrato.", e o assistente volta sozinho para esta etapa.
 
+#### Etapa Financeiro (só na criação)
+
+Etapa nova entre Equipe & Cobrança e Revisão, que só aparece quando o contrato está sendo CRIADO (editar um contrato existente pula direto para a Revisão). A chave Já gerar as parcelas a receber decide se o contrato nasce com cobrança: "Cria as entradas deste contrato no Financeiro, uma por vencimento." Os campos são os mesmos da janela Nova Conta a Receber descrita na seção 11: Descrição, Valor, Conta bancária/caixa, Categoria, Meio de pagamento, Centro de custo (quando a empresa usa), Data de Vencimento, Recorrência, a chave Duração da cobrança e a Quantidade de parcelas.
+
+Desligada a chave, nada é criado agora: "Nenhuma parcela será criada agora. Você lança quando quiser, na aba Financeiro do contrato." Tudo nesta etapa é opcional, pular não impede o contrato de ser criado.
+
 #### Etapa Revisão
 
 A última etapa mostra a Revisão do Contrato em dois formatos ao mesmo tempo: uma Ficha técnica com rótulo e valor (Nome, Cliente, Frequência, Início, Horizonte, Visitas, Ambientes e Equipamentos, Status, Tipo, Responsável Técnico, Técnicos Executores) e uma narrativa escrita em português corrido, explicando o que vai acontecer. Em PMOC ela ainda detalha o Plano por máquina e O que entra na primeira visita.
@@ -5167,7 +5418,7 @@ São quatro documentos, todos em PDF:
 
 | Documento | O que é |
 | Termo de Responsabilidade Técnica (TRT) | Onde o Responsável Técnico assume a responsabilidade pelo plano. Vira a página 2 do Dossiê e também sai como PDF individual. Tem prazo de validade. |
-| Certificado de Conformidade | Página 3 do Dossiê, com o selo da Lei Federal 13.589/2018. Também sai individual e também tem validade. |
+| Certificado de Conformidade | Página 3 do Dossiê, com o selo da Lei Federal 13.589/2018. Também sai individual e também tem validade. O card deste documento tem o botão extra Modelo visual, para escolher a arte de fundo do certificado deste contrato (por padrão herda o modelo configurado em Configurações de Contrato, seção 10). |
 | Dossiê PMOC | "Documento completo: capa + Termo de Responsabilidade Técnica + Certificado de Conformidade + Cronograma Anual." A capa tem visual padrão Dominex e não é editável. |
 | Planilha PMOC | "Identificação do ambiente, Responsável Técnico, relação dos equipamentos climatizados e o plano de manutenção com periodicidade (mensal, trimestral, semestral, anual) e mapa dos 12 meses." |
 
@@ -5265,11 +5516,13 @@ Inativar um RT abre Inativar responsável técnico?: "Este RT não aparecerá ma
 
 #### Aba Documentos das Configurações de Contrato
 
-[Print da tela: Aba Documentos das Configurações de Contrato, com o título Modelos padrão de documentos PMOC e a explicação de que editar aqui não altera contratos já existentes. Dois cards lado a lado: Termo de Responsabilidade Técnica (Página 2 do Dossiê PMOC) e Certificado de Conformidade (Página 3 do Dossiê PMOC, Lei 13.589/2018), cada um com o texto padrão e o link Editar texto. Abaixo, o bloco Validade dos documentos com os campos Validade do TRT (meses) e Validade do Certificado (meses), ambos com 12.]
+[Print da tela: Aba Documentos das Configurações de Contrato, com o título Modelos padrão de documentos PMOC e a explicação de que editar aqui não altera contratos já existentes. Dois cards lado a lado: Termo de Responsabilidade Técnica (Página 2 do Dossiê PMOC), com o texto padrão e o link Editar texto, e Certificado de Conformidade (Página 3 do Dossiê PMOC, Lei 13.589/2018), com o texto padrão, o link Editar texto e o botão Modelo visual. Abaixo, o bloco Validade dos documentos com os campos Validade do TRT (meses) e Validade do Certificado (meses), ambos com 12.]
 
-Aba Documentos das Configurações de Contrato: os modelos padrão do TRT e do Certificado de Conformidade, e a validade dos documentos em meses.
+Aba Documentos das Configurações de Contrato: os modelos padrão do TRT e do Certificado de Conformidade (este com o botão Modelo visual), e a validade dos documentos em meses.
 
 É onde ficam os Modelos padrão de documentos PMOC: "Modelos usados como ponto de partida ao criar um novo contrato PMOC. Editar aqui não altera contratos já existentes." Há um modelo para o Termo de Responsabilidade Técnica e outro para o Certificado de Conformidade, cada um com Editar texto e Restaurar texto padrão. O editor aceita negrito, listas, links e variáveis (que aparecem como etiquetas e são substituídas pelos dados de cada contrato no PDF).
+
+Só o card do Certificado de Conformidade tem o botão extra Modelo visual, que abre um assistente de 3 passos com várias artes prontas (temas claros e escuros) para o fundo do certificado, com pré-visualização ao vivo. O modelo escolhido aqui é o padrão herdado por todo contrato novo; cada contrato pode trocar o próprio modelo visual na sua aba Documentos. Certificado sem modelo escolhido sai com a arte simples de sempre.
 
 Abaixo fica Validade dos documentos: "Quantos meses cada documento gerado fica válido. A data de vencimento é calculada a partir da data de geração." Os campos são Validade do TRT (meses) e Validade do Certificado (meses).
 
@@ -5281,9 +5534,9 @@ A aba Financeiro do contrato mostra quatro indicadores no topo: Previsto, Recebi
 
 #### Criar a cobrança do contrato
 
-[Print da tela: Janela Nova Conta a Receber, com o campo Descrição já pré-preenchido com Mensalidade - PMOC - Clínica Vida & Saúde (sugerido a partir do nome do contrato), o campo Valor (R$) com 0,00, o seletor Conta bancária / caixa com Selecione a conta de recebimento, o seletor Categoria, o campo Data de Vencimento (1ª parcela) e o seletor Recorrência com Única selecionado. O botão do rodapé está desabilitado, escrito Criar Conta a Receber.]
+[Print da tela: Janela Nova Conta a Receber, com o campo Descrição já pré-preenchido com Mensalidade - PMOC - Clínica Vida & Saúde (sugerido a partir do nome do contrato), o campo Valor (R$) com 0,00, o seletor Conta bancária / caixa com Selecione a conta de recebimento, o seletor Categoria, o campo Data de Vencimento (1ª parcela), o seletor Recorrência com Única selecionado e o bloco Duração da cobrança desabilitado com o aviso Escolha uma frequência que se repita. O botão do rodapé está desabilitado, escrito Criar Conta a Receber.]
 
-Janela Nova Conta a Receber da aba Financeiro do contrato: a Descrição já vem como "Mensalidade - PMOC - Clínica Vida & Saúde", puxada do nome do contrato.
+Janela Nova Conta a Receber da aba Financeiro do contrato: a Descrição já vem como "Mensalidade - PMOC - Clínica Vida & Saúde", puxada do nome do contrato, e o bloco Duração da cobrança aparece abaixo da Recorrência.
 
 O botão Nova Receita abre Nova Conta a Receber com estes campos:
 
@@ -5292,17 +5545,27 @@ O botão Nova Receita abre Nova Conta a Receber com estes campos:
 | Valor (R$) | O valor de cada parcela. |
 | Conta bancária / caixa | "Conta para onde o dinheiro vai. Aplicada a todas as parcelas." |
 | Categoria | Categoria financeira da receita. |
+| Centro de custo | Só aparece pra quem tem centro de custo ativo cadastrado. Opcional, herdado por todas as parcelas da série. |
 | Data de Vencimento (1ª parcela) | Data da primeira cobrança. |
 | Recorrência | Única, Mensal, Bimestral, Trimestral, Semestral ou Anual. |
-| Quantidade de parcelas | Quantas cobranças criar de uma vez. |
+| Duração da cobrança | Por um período ou Sem prazo para terminar. Só liga com uma recorrência que se repete; em Única fica desabilitado. |
+| Quantidade de parcelas | Quantas cobranças criar de uma vez. Só aparece com Por um período. |
 
-O botão final vira Criar 12 Parcelas quando há recorrência, ou Criar Conta a Receber quando é única.
+O botão final vira Criar 12 Parcelas quando há recorrência em período fechado, algo como Criar 24 parcelas e renovar sozinho quando é Sem prazo para terminar (o número varia conforme a frequência escolhida), ou Criar Conta a Receber quando é única.
+
+#### Cobrança sem prazo para terminar (janela rolante)
+
+Ligando Sem prazo para terminar, o sistema não fecha a série num número de parcelas: "Sem prazo, o sistema mantém sempre cerca de 2 anos de parcelas criadas à frente e cria as próximas sozinho." O dia de vencimento de toda a série é o dia da primeira parcela. Isso vale só para a cobrança, as visitas continuam seguindo a duração do contrato.
+
+A parcela com cobrança contínua ganha o selo Cobrança contínua, com os botões Alterar (muda a frequência ou o dia de vencimento das próximas parcelas, sem tocar nas que já existem) e Desligar (para de criar parcelas novas; as já criadas continuam como estão, e dá pra religar depois).
 
  A cobrança do contrato é criada separada das visitas. Definir a frequência das visitas não cria a cobrança sozinho: são duas coisas independentes, no mesmo contrato. Um contrato pode ter 12 visitas mensais e uma cobrança anual única, ou 4 visitas trimestrais e 12 parcelas mensais.
 
 #### Marcar como paga e editar
 
 Cada parcela tem os selos Pago, Pendente e Atrasado, e três ações rápidas: Marcar como pago, Editar e Excluir. Ao editar uma parcela, o sistema pergunta Aplicar alterações: "Deseja alterar apenas esta conta ou todas as contas pendentes vinculadas a este contrato?", com os botões Somente esta e Todas pendentes.
+
+Quem tem o módulo de cobranças e uma conta de recebimento ativa ganha uma quarta ação, Cobrar online, direto na parcela: gera um link de pagamento com o valor travado no valor daquela parcela (não dá pra cobrar menos, porque receber menos daria baixa na parcela inteira). Parcela já com cobrança viva mostra o selo Cobrança gerada e o atalho Ver cobrança no lugar.
 
 #### Aplicar a todas
 
@@ -5516,7 +5779,7 @@ A pegadinha número um desta área: link certo, mas o portal desligado. O client
 
 #### Como testar do jeito certo
 
-[Print da tela: Topo da ficha de um cliente, com o avatar, o nome, o selo PJ, a chave Portal Público ligada e o menu Ações aberto mostrando as opções Copiar link do portal, Abrir portal, Editar e Excluir. Abaixo, a navegação por abas do cliente (Geral, Equipamentos, Histórico de OS, Tarefas, Chamados, Contratos, Financeiro, Cobranças).]
+[Print da tela: Topo da ficha de um cliente, com o avatar, o nome, o selo PJ, a chave Portal Público ligada e o menu Ações aberto mostrando as opções Copiar link do portal, Abrir portal, Criar oportunidade, Editar e Excluir. Abaixo, a navegação por abas do cliente (Geral, Equipamentos, Histórico, Tarefas, Estoque, Chamados, Contratos, Financeiro, Cobranças).]
 
 Topo da ficha do cliente: a chave Portal Público e o menu Ações com Copiar link do portal e Abrir portal.
 
@@ -5741,7 +6004,7 @@ A aba NPS e Satisfação, dentro de Ordens de Serviço, é o painel. No topo exi
 
 #### Os quatro indicadores
 
-[Print da tela: Aba NPS e Satisfação da tela Ordens de Serviço, com o filtro de período Este mês e o botão Configurações no topo, os quatro indicadores NPS Score, Média Geral, Respostas e Taxa de Resposta, o gráfico de meia-lua Distribuição NPS com os percentuais de Promotores, Neutros e Detratores, o bloco Média por Categoria (sem avaliação no período) e o bloco Ranking de Técnicos (sem avaliações por técnico no período).]
+[Print da tela: Aba NPS e Satisfação da tela Ordens de Serviço, com o filtro de período Este mês e o botão Configurações no topo à direita, os quatro indicadores NPS Score, Média Geral, Respostas e Taxa de Resposta, o gráfico de meia-lua Distribuição NPS com os percentuais de Promotores, Neutros e Detratores, o bloco Média por Categoria (sem avaliação no período) e o bloco Ranking de Técnicos (sem avaliações por técnico no período).]
 
 Aba NPS e Satisfação: os quatro indicadores no topo e os gráficos de Distribuição NPS e Média por Categoria.
 
@@ -6445,6 +6708,150 @@ O documento carimba o regime usado, com uma linha explicando ("Regime de Caixa: 
 
 O PDF da DRE abre em uma nova aba. Se o navegador estiver bloqueando pop-ups, nada acontece na tela. Libere os pop-ups para o endereço do sistema e clique de novo.
 
+### 15. Conciliar o extrato do banco: subir o .ofx e casar linha por linha
+
+Conciliar é conferir, linha por linha, se o que o banco registrou bate com o que está lançado no sistema. Feito à mão, num extrato de trezentas linhas, é a tarefa que ninguém faz até o contador cobrar. A conciliação faz esse trabalho lado a lado: o extrato de um lado, as movimentações do sistema do outro.
+
+Fica em Financeiro, tela Movimentações, na aba Conciliação, logo abaixo de Visão Geral na lista da esquerda.
+
+[Print da tela: Aba Conciliação dentro de Movimentações Financeiras, com o seletor de conta para conciliar, o botão Como funciona e o estado vazio convidando a importar o extrato ponto ofx]
+
+Financeiro, Movimentações, aba Conciliação. Antes de escolher a conta, a tela só explica o que vai acontecer.
+
+O arquivo vem do seu internet banking. Procure por "exportar extrato" e escolha o formato .ofx, que alguns bancos chamam de "Money" ou "OFX". Não serve PDF nem Excel: o .ofx carrega data, valor e identificador de cada lançamento de um jeito que o sistema lê sem adivinhar.
+
+Um arquivo, uma conta. Se o seu banco exportar várias contas no mesmo arquivo, o sistema recusa e pede para exportar uma por vez. Importar só parte das contas em silêncio esconderia uma conta inteira da conferência.
+
+#### Os dois painéis e o rodapé que fecha
+
+Depois de importar, a tela fica com o extrato do banco à esquerda e, à direita, o painel da linha que você selecionar. O rodapé mostra os três números que importam: Saldo do banco, Saldo conciliado e Diferença.
+
+[Print da tela: Extrato importado com as linhas do banco, selo Pendente em cada uma, valores com sinal de mais e de menos, e o rodapé fixo com Saldo do banco, Saldo conciliado, Diferença e o botão Finalizar conciliação]
+
+Cada linha do extrato com o seu estado. O rodapé fica fixo e acompanha a rolagem.
+
+Só fecha no zero. O botão Finalizar conciliação só habilita quando a diferença está zerada e não sobrou nenhuma linha pendente. Não existe lançamento de ajuste para forçar o fechamento: conciliação que fecha com diferença não conciliou nada.
+
+#### O que fazer com cada linha
+
+Clique numa linha e o painel da direita oferece os destinos possíveis para aquela linha. Linha de entrada e linha de saída não recebem as mesmas opções, porque não fazem sentido as mesmas coisas.
+
+[Print da tela: Painel de ações de uma linha do extrato com os destinos Baixar conta, Criar lançamento, Transferência, Pagar fatura, Vale de funcionário, Buscar lançamento, Inverter sinal e Ignorar]
+
+Os destinos de uma linha de saída. Numa linha de entrada, pagar fatura e vale não aparecem.
+
+| Destino | Quando usar | O que acontece |
+| Casar | o lançamento já existe no sistema | só amarra a linha do banco ao lançamento. Nada é criado nem alterado. Quando existe um candidato exato, ele vem sugerido com um clique. |
+| Baixar conta | é uma conta a pagar ou a receber que venceu | marca como paga, com a data do extrato e a conta conciliada. |
+| Criar lançamento | o movimento não existe no sistema | cria já pago, com a data e o valor da linha. A descrição vem preenchida com o texto do banco. |
+| Transferência | é dinheiro indo de uma conta sua para outra | cria o par: sai de uma, entra na outra. Não vira receita nem despesa. |
+| Pagar fatura | é o pagamento da fatura do cartão | usa o mesmo caminho de pagamento de fatura do sistema. |
+| Vale de funcionário | é um vale que saiu da conta | registra a saída e o vale no histórico do funcionário. |
+| Buscar lançamento | o lançamento existe, mas em outra data | busca sem janela de data, por texto ou por valor. |
+| Ignorar | a linha não é movimento do seu financeiro | tira da conferência. E a diferença sai do zero, então você não consegue fechar ignorando linha de verdade. |
+
+Compra no cartão não aparece como conta a baixar, e isso é de propósito. Despesa de cartão nunca é paga uma a uma: ela só pesa no seu bolso quando a fatura inteira é quitada. Se aparecesse aqui para dar baixa, o gasto contaria duas vezes, na compra e no pagamento da fatura.
+
+#### Desfazer é seguro, e sabe o que desfazer
+
+Toda linha resolvida mostra Desfazer. O que ele faz depende do que foi feito: se o sistema criou o lançamento, desfazer apaga esse lançamento; se você casou com um lançamento que já existia antes, desfazer só desvincula e não encosta no seu dado. Transferência desfeita apaga as duas pernas, nas duas contas.
+
+#### Quando o banco manda o valor com o sinal trocado
+
+Acontece: alguns bancos exportam uma despesa com sinal de entrada, ou mandam o arquivo inteiro com os valores positivos. Quando o tipo informado pelo banco não combina com o sinal do valor, o sistema avisa e marca as linhas suspeitas.
+
+O sistema nunca corrige o valor sozinho. Ele mostra quais linhas estão estranhas e deixa você inverter, de uma vez ou linha a linha. O valor original do arquivo é preservado, a correção fica registrada e pode ser desfeita. Ao inverter, o saldo inicial é recalculado, então a conferência continua fechando.
+
+#### Subir o mesmo extrato de novo não duplica nada
+
+Pode importar o mesmo arquivo quantas vezes quiser. E também funciona no caso chato: quando o banco reexporta o mesmo período com códigos novos, o sistema reconhece as linhas pelo conteúdo e descarta as repetidas, mostrando quais foram e por quê. Nada é descartado em silêncio.
+
+Dá para parar no meio. Ao voltar, a conta mostra o cartão Continuar conciliação com quantas linhas faltam, e o progresso sobrevive até a fechar o navegador. As conciliações já finalizadas ficam guardadas em Conciliações anteriores, em modo leitura. Se precisar mexer numa já finalizada, use Reabrir conciliação.
+
+### 16. Fatura do cartão na conciliação: o que muda e por que a compra não fica paga
+
+A fatura do cartão também entra na conciliação, e é provavelmente onde ela mais vale a pena. Selecione o cartão no seletor de conta, dentro do grupo Cartões, e importe o arquivo da fatura.
+
+O raciocínio muda, porque uma fatura não é um extrato de caixa. A linha não é dinheiro que moveu, é uma compra. E o número de fechamento não é saldo, é o total da fatura.
+
+[Print da tela: Conciliação de fatura de cartão com as linhas de compra e o rodapé mostrando Total da fatura, Compras lançadas e Falta lançar em vez de saldo]
+
+No cartão o rodapé fala a língua da fatura: total, compras lançadas e o que falta lançar.
+
+A diferença é a compra que você esqueceu de lançar. É essa conta que quase ninguém fecha à mão, e é por isso que a despesa de cartão quase sempre aparece menor do que foi de verdade.
+
+Os destinos também mudam. Numa linha de compra você tem Casar com compra já lançada e Lançar compra. Numa linha de crédito, que normalmente é o pagamento da fatura, você tem Casar com pagamento e Pagamento da fatura. Dar baixa, transferência e criar lançamento comum não existem aqui.
+
+A compra lançada pela conciliação nasce não paga, e continua não paga. Ela cai na fatura certa e só é quitada quando você paga a fatura inteira, exatamente como já funcionava ao lançar a compra pela tela do cartão. Casar uma compra com a linha da fatura também não a torna paga: casar registra o vínculo, não quita.
+
+#### Em qual fatura a compra cai
+
+O sistema calcula sozinho, pelo dia de fechamento do seu cartão, e segue a mesma regra do resto do sistema: compra feita no próprio dia do fechamento já vai para a fatura seguinte.
+
+| Fechamento do cartão | Data da compra | Fatura |
+| dia 18 | 05 de agosto | agosto |
+| dia 18 | 17 de agosto | agosto |
+| dia 18 | 18 de agosto | setembro, porque a fatura fecha nesse dia |
+| dia 18 | 25 de agosto | setembro |
+
+Quando você lança a compra pela conciliação, a tela mostra em qual fatura ela caiu. Vale conferir: é a informação que mais gera dúvida depois.
+
+Estorno e devolução de cartão ainda não entram por aqui. Se a fatura tiver um crédito que não é pagamento, lance pelo Financeiro e volte para casar a linha. O sistema recusa com essa orientação em vez de deixar você registrar algo que deixaria a fatura maior que a real.
+
+### 17. Importar movimentações por planilha: o molde, a conferência e o desfazer
+
+Para quem está começando no sistema e tem meses de histórico numa planilha, ou para quem recebe uma relação do contador, existe a importação por planilha. Fica em Financeiro, tela Movimentações, no botão Importar planilha do topo.
+
+[Print da tela: Diálogo Importar planilha financeira com o botão Baixar molde, a área de arrastar a planilha preenchida e a seção recolhível Importações anteriores]
+
+Os dois caminhos: baixar o molde para preencher, ou subir a planilha já pronta.
+
+#### Comece pelo molde
+
+O botão Baixar molde gera uma planilha .xlsx já formatada, com a marca da sua empresa, uma primeira aba de instruções e, na aba de digitação, as suas contas, categorias e centros de custo em listas de escolher. É isso que impede o preenchimento de voltar com nomes que o sistema não conhece.
+
+O molde abre no Excel e no Google Planilhas. As colunas de Tipo, Categoria, Conta e Centro de custo ganham cor conforme o que você escolhe, usando a mesma cor que o item tem no sistema.
+
+O valor é sempre positivo. Quem diz se o dinheiro entrou ou saiu é a coluna Tipo. E cartão de crédito não entra por esta planilha: a fatura do cartão se resolve pela conciliação ou pela tela do cartão.
+
+#### As três colunas de data, e para que serve cada uma
+
+É aqui que a maioria das planilhas sai errada, então vale decorar: a planilha tem três datas e elas respondem perguntas diferentes.
+
+| Coluna | Responde | Quando importa |
+| Data | quando o lançamento aconteceu | sempre, é obrigatória |
+| Vencimento | quando a conta precisa ser paga ou recebida | só quando Pago? for Não |
+| Data do pagamento | quando o dinheiro realmente se moveu | só quando Pago? for Sim |
+
+Conta que ainda vai vencer precisa do Vencimento preenchido. Se a linha não está paga e a célula fica em branco, o sistema entende que ela vence na própria data do lançamento, e aí ela nasce atrasada na sua lista de contas a pagar. Uma compra lançada em 7 de outubro para pagar em boleto de 30 dias precisa ter 6 de novembro no Vencimento.
+
+As três colunas têm seletor de calendário: clique na célula e escolha a data, em vez de digitar. Isso evita o erro mais comum da planilha, que é escrever um dia que não existe naquele mês, tipo 31 de fevereiro ou 31 de novembro. Se acontecer, o sistema avisa na célula certa e deixa aquela linha desmarcada, sem estragar as outras.
+
+Preencher a coluna errada não quebra nada, só é ignorado com aviso: vencimento numa linha paga não tem o que cobrar, e data de pagamento numa linha não paga não existe ainda. Nos dois casos a conferência explica o que foi desconsiderado.
+
+#### Confira antes de gravar
+
+Depois de subir o arquivo, nada é gravado de imediato. A tela mostra a planilha interpretada, linha por linha, com quanto entra, quanto sai e o estado de cada linha.
+
+[Print da tela: Tela de conferência da importação com contadores de prontas, para conferir e duplicadas, totais de entradas e saídas, e a lista de linhas com os selos Pronta, Precisa de atenção e Duplicada]
+
+A conferência mostra o impacto antes de qualquer coisa ser gravada.
+
+| Selo | O que significa | O que fazer |
+| Pronta | o sistema entendeu tudo da linha | nada, já vem marcada para gravar |
+| Precisa de atenção | uma categoria, conta ou centro de custo não existe no seu cadastro | escolher o correspondente ali mesmo, sem voltar para o Excel |
+| Duplicada | já existe um lançamento igual, na mesma data | nada. Vem desmarcada sozinha, e você marca só se quiser mesmo os dois |
+
+Cliente ou fornecedor que não existe no cadastro não bloqueia a linha: ela entra sem o vínculo e o nome é informado. Bloquear por isso faria uma planilha com quatrocentos nomes novos travar as quatrocentas linhas.
+
+Só é gravado o que está marcado. O botão diz quantas linhas vão entrar, e é exatamente esse número que entra.
+
+#### Desfazer a importação inteira
+
+A primeira importação quase sempre sai torta. Por isso existe Desfazer importação, que remove de uma vez tudo o que aquela importação criou, e ele não some depois que você fecha a janela: reabra o Importar planilha e a seção Importações anteriores lista as importações com a data, quantos lançamentos criou e o botão de desfazer.
+
+Lançamento já mexido não é removido, e isso é proteção. Se um lançamento daquela importação já foi conciliado, recebeu anexo, teve recebimento parcial ou virou pagamento de fatura, o desfazer mantém esse e explica o motivo de cada um. O resto sai normalmente.
+
 ### Suporte: problemas comuns
 
 | O cliente diz | Causa provável | Como resolver |
@@ -6549,9 +6956,13 @@ A NFS-e é a nota fiscal do serviço que a sua empresa presta: instalação, man
 
 Módulo Depende do módulo Emissão de Notas Fiscais
 Onde fica: Menu lateral,
-Notas Fiscais. A configuração fiscal é um modal aberto pelo botão
+Notas Fiscais. A configuração fiscal é uma tela própria, aberta pelo botão
 Configurações fiscais dentro dessa mesma tela
-Rotas:/notas-fiscais. O endereço antigo /notas-fiscais/configuracoes redireciona pra /notas-fiscais já abrindo o modal de configuração
+Rotas:/notas-fiscais, com as abas
+Notas Fiscais,
+Relatório fiscal,
+Emissões automáticas e
+Notas recebidas. A configuração fica em /notas-fiscais/configuracoes
 Depende de: T13 (Financeiro)
 Depende do módulo: Emissão de Notas Fiscais
 Quem enxerga: quem tem a permissão de tela
@@ -6585,13 +6996,15 @@ Notas Fiscais antes da configuração: estado guiado com o atalho para as Config
 
 #### A tela depois de configurada
 
-- Quatro indicadores no topo: Autorizadas, Processando, Rejeitadas e Canceladas. Notas com cancelamento em andamento contam junto das autorizadas, porque ainda têm efeito fiscal.
+- Quatro indicadores no topo: Autorizadas, Processando, Rejeitadas e Canceladas. Notas com cancelamento em andamento contam junto das autorizadas, porque ainda têm efeito fiscal. Eles só valem para as abas de emissão, não para Notas recebidas.
 
-- Duas abas: Visão Geral, com as Últimas emissões (as 5 mais recentes), e NFS-e, com a listagem completa, busca e filtro por situação.
+- Quatro abas: Notas Fiscais, com a listagem completa das notas que a sua empresa emite, busca e filtro por situação (é a primeira aba, a tela abre direto nela); Relatório fiscal, com as Últimas emissões (as 5 mais recentes); Emissões automáticas, descrita no capítulo 11; e Notas recebidas, descrita no capítulo 12.
 
 - Um seletor de período no topo, que abre em Todos os tempos de propósito: quem tem poucas notas no mês não pode achar que a tela está vazia.
 
 - O botão flutuante Nova Nota, sempre ao alcance, mesmo com a lista rolada.
+
+A aba Notas Fiscais já se chamou NFS-e, e a Relatório fiscal já se chamou Visão Geral. Se um cliente antigo ainda falar pelos nomes velhos, é a mesma tela.
 
 #### As situações que uma nota pode ter
 
@@ -6603,11 +7016,11 @@ Notas Fiscais antes da configuração: estado guiado com o atalho para as Config
 | Cancelamento em andamento | Você pediu o cancelamento e ele ainda não foi efetivado. A nota continua válida nesse meio-tempo. |
 | Cancelada | Cancelamento efetivado. O documento continua existindo (número e chave são preservados por lei), mas não vale mais para cobrança. |
 
-### 2. Abrindo Configurações (é um modal, não outra tela) — passo Empresa
+### 2. Abrindo Configurações (é uma tela própria, não um modal), passo Empresa
 
-A configuração fiscal não é uma página separada. Ela é um modal que abre de dentro de Notas Fiscais, pelo botão Configurações fiscais no topo (ou pelo botão do estado guiado). O endereço antigo /notas-fiscais/configuracoes continua funcionando, mas só redireciona pra /notas-fiscais abrindo esse mesmo modal. Não procure um item "Configurações fiscais" no menu lateral: ele não existe.
+A configuração fiscal é uma tela própria, no endereço /notas-fiscais/configuracoes. Ela já foi um modal que abria por cima de Notas Fiscais, mas isso mudou: hoje o botão Configurações fiscais no topo (ou o botão do estado guiado) navega pra essa tela, com um botão Voltar para retornar a Notas Fiscais. Não procure um item "Configurações fiscais" no menu lateral: ele não existe, você chega lá pelo botão de dentro de Notas Fiscais.
 
-O modal tem quatro seções numeradas na lateral: 1. Empresa, 2. Certificado A1, 3. Tributação e 4. Serviços. No cabeçalho aparece um selo com a situação atual: Apto a emitir ou Configuração incompleta.
+A tela tem quatro seções numeradas na lateral no desktop (em pílulas, no celular): 1. Empresa, 2. Certificado A1, 3. Tributação e 4. Serviços. No cabeçalho aparece um selo com a situação atual: Apto a emitir ou Configuração incompleta, e um botão Voltar para retornar a Notas Fiscais.
 
 A ordem importa e o sistema força ela: primeiro a empresa é registrada, só depois o certificado é aceito. A dica na tela é literal: "Passo 1 de 2: preencha os dados e registre a empresa. Só depois libera o certificado." Tentando subir o certificado antes, aparece "Registre a empresa antes de subir o certificado. Volte ao passo 1. Empresa e registre a empresa primeiro."
 
@@ -6645,7 +7058,7 @@ Mensagens possíveis:
 
 Município sem cobertura bloqueia a emissão mesmo com todo o resto certo. Verifique a cobertura ANTES de comprar certificado ou prometer nota pro cliente. Se o município não estiver apto, o passo final da emissão mostra "Emissão bloqueada, o município ainda não está liberado para emitir NFS-e. Verifique nas Configurações Fiscais." Não há o que fazer do lado do sistema: depende da prefeitura aderir ao padrão nacional.
 
-[Print da tela: Modal Configurações fiscais na seção 1. Empresa, com o selo laranja Configuração incompleta, o aviso Passo 1 de 2, os campos Razão social / Nome, CNPJ, Inscrição Municipal, o bloco Endereço fiscal com CEP e demais campos, a chave Homologação/Produção, o botão Salvar dados da empresa e, na base, o bloco Status da emissão com os três itens Empresa, Certificado e Município, todos pendentes, e o botão Verificar cobertura do município]
+[Print da tela: Tela Configurações fiscais na seção 1. Empresa, com o selo laranja Configuração incompleta, o aviso Passo 1 de 2, os campos Razão social / Nome, CNPJ, Inscrição Municipal, o bloco Endereço fiscal com CEP e demais campos, a chave Homologação/Produção, o botão Salvar dados da empresa e, na base, o bloco Status da emissão com os três itens Empresa, Certificado e Município, todos pendentes, e o botão Verificar cobertura do município]
 
 Configurações fiscais, seção Empresa: dados cadastrais, chave de ambiente e o bloco Status da emissão.
 
@@ -6677,7 +7090,7 @@ O certificado digital A1 é o arquivo que assina as suas notas. Sem ele, o siste
 
 - Clique em Enviar certificado. A confirmação é "Certificado enviado com sucesso."
 
-[Print da tela: Modal Configurações fiscais na seção 2. Certificado A1, com o aviso 'Registre a empresa antes de subir o certificado', o campo Arquivo do certificado com o botão Selecionar arquivo (.pfx / .p12), o campo opcional Nome do certificado, o campo Senha do certificado com ícone de olho para mostrar, a caixa de Autorização para guardar o certificado com o link Ler a Seção 12 dos Termos de Uso, e o botão Enviar certificado]
+[Print da tela: Tela Configurações fiscais na seção 2. Certificado A1, com o aviso 'Registre a empresa antes de subir o certificado', o campo Arquivo do certificado com o botão Selecionar arquivo (.pfx / .p12), o campo opcional Nome do certificado, o campo Senha do certificado com ícone de olho para mostrar, a caixa de Autorização para guardar o certificado com o link Ler a Seção 12 dos Termos de Uso, e o botão Enviar certificado]
 
 Configurações fiscais, seção Certificado A1: envio do arquivo, senha e a autorização de guarda.
 
@@ -6719,7 +7132,7 @@ Na tela, esta seção se chama 3. Tributação, não "Impostos". E ela é mais e
 
 O botão é Salvar tributação. A confirmação é "Configurações fiscais salvas." e o erro é "Não foi possível salvar as configurações fiscais."
 
-[Print da tela: Modal Configurações fiscais na seção 3. Tributação, com o campo Regime tributário em Simples Nacional, o campo Apuração de tributos no Simples Nacional já preenchido com a primeira opção sugerida, os campos Inscrição Municipal e Inscrição Estadual lado a lado, e o botão Salvar tributação]
+[Print da tela: Tela Configurações fiscais na seção 3. Tributação, com o campo Regime tributário em Simples Nacional, o campo Apuração de tributos no Simples Nacional já preenchido com a primeira opção sugerida, os campos Inscrição Municipal e Inscrição Estadual lado a lado, e o botão Salvar tributação]
 
 Configurações fiscais, seção Tributação: regime tributário, apuração no Simples e as inscrições.
 
@@ -6733,7 +7146,7 @@ A alíquota é a porcentagem do valor do serviço que vai pra prefeitura. Ela va
 
 ### 5. Passo Serviços: código de serviço padrão e NBS
 
-A seção 4. Serviços do modal é o seu catálogo de serviços, o mesmo usado nas ordens de serviço e na agenda, aberto direto na aba fiscal do cadastro. A explicação na tela é: "Cadastre aqui os serviços que você fatura, com os códigos fiscais de cada um. É a mesma lista usada nas ordens de serviço e na agenda: preenchendo os códigos uma vez, toda nota nova já sai preenchida."
+A seção 4. Serviços da tela de configuração é o seu catálogo de serviços, o mesmo usado nas ordens de serviço e na agenda, aberto direto na aba fiscal do cadastro. A explicação na tela é: "Cadastre aqui os serviços que você fatura, com os códigos fiscais de cada um. É a mesma lista usada nas ordens de serviço e na agenda: preenchendo os códigos uma vez, toda nota nova já sai preenchida."
 
 #### Os códigos fiscais de cada serviço
 
@@ -6777,7 +7190,7 @@ Rascunho não consome cota, e reenviar uma nota que ficou rejeitada também não
 
 O botão Nova Nota abre o assistente Nova NFS-e, dividido em quatro abas. No rodapé, sempre visíveis: Cancelar, Salvar rascunho, Voltar e Avançar. No topo, um resumo com Total da nota, Base ISS e um contador de pendências ("3 pendência(s) para emitir" ou "Pronta para emitir"), que ao ser tocado lista o que falta.
 
-[Print da tela: Assistente Nova NFS-e na etapa Pessoas, com Total da nota R$ 0,00 e Base ISS R$ 0,00 no topo, o selo vermelho '6 pendência(s) para emitir' aberto listando o que falta (concluir cadastro da empresa, selecionar o tomador, código de tributação, código NBS e valor de serviço), as quatro abas Pessoas, Serviço, Valores e Revisar e Emitir, o campo Data de competência preenchido e o campo Tomador do serviço vazio com a validação 'Selecione o tomador do serviço']
+[Print da tela: Assistente Nova NFS-e na etapa Pessoas, com Total da nota R$ 0,00 e Base ISS R$ 0,00 no topo, o selo vermelho '6 pendência(s) para emitir' aberto listando o que falta (concluir cadastro da empresa, selecionar o tomador, código de tributação, código NBS e valor de serviço), as quatro abas Pessoas, Serviço, Valores e Revisar e Emitir, o campo Data de competência preenchido, acima do campo Tomador o par de links 'Selecionar cadastrado' e 'Digitar manualmente', e o campo Tomador do serviço vazio com a validação 'Selecione o tomador do serviço']
 
 Assistente Nova NFS-e: o contador de pendências aberto mostra exatamente o que falta preencher para poder emitir.
 
@@ -6788,6 +7201,8 @@ Assistente Nova NFS-e: o contador de pendências aberto mostra exatamente o que 
 | Regime de apuração (Simples Nacional) | Só no Simples | Competência ou Caixa. "Regime de apuração do ISS no Simples Nacional." |
 | Tomador do serviço | Sim | É o seu cliente, quem recebe a nota. Validação: "Selecione o tomador do serviço." |
 | Intermediário do serviço | Não | Só para o caso em que existe um intermediário entre você e o tomador. |
+
+Acima do campo Tomador (e também do Intermediário) existe um par de links, Selecionar cadastrado e Digitar manualmente. O normal é escolher o cliente já cadastrado. "Digitar manualmente" serve para o tomador avulso, que não vira cadastro em Clientes: você preenche nome, documento e endereço só para aquela nota, para o caso raro de cobrar alguém que nunca vai virar cliente de verdade no sistema.
 
 Cliente sem documento trava a nota: "Este cliente está sem CPF/CNPJ. Complete os dados fiscais antes de emitir." Complete a ficha do cliente (aba Fiscal) e volte. Endereço incompleto do cliente também é motivo comum de recusa pela prefeitura.
 
@@ -6921,10 +7336,50 @@ A diferença entre os dois casos, que é a origem do "não consigo emitir de nov
 
 Se você precisa emitir uma segunda nota legítima para o mesmo cliente, com o mesmo valor e a mesma competência (por exemplo, duas visitas idênticas no mesmo mês), mude a discriminação do serviço para diferenciar e, se possível, ajuste a competência. Se ainda assim o sistema disser que já foi emitida, cancele a anterior antes ou fale com o suporte.
 
+### 11. Emissões automáticas: nota de contrato recorrente sem precisar clicar
+
+É possível ligar a emissão automática de NFS-e para as parcelas de um contrato recorrente, em vez de emitir cada nota manualmente. A chave Nota fiscal automática fica na aba Financeiro do contrato, não aqui em Notas Fiscais: "Ligada, o sistema emite a nota fiscal de cada parcela deste contrato sozinho, sem precisar clicar em nada." Ela nasce desligada em todo contrato, inclusive os antigos: ligar é sempre uma ação explícita de alguém da empresa.
+
+A aba Emissões automáticas, aqui em Notas Fiscais, é só para acompanhar o que a automação já fez ou tentou fazer. Não existe lançar uma emissão automática manualmente por aqui: quem liga e desliga é a aba Financeiro do contrato.
+
+#### Quando a nota sai
+
+No contrato, três modos de disparo: Em um dia fixo do mês (você escolhe o dia; se o mês não tiver esse dia, a nota sai no último dia daquele mês, então dia 31 em fevereiro sai no dia 28 ou 29), No vencimento da parcela e Quando o cliente pagar. Neste último, a nota só sai na quitação total da parcela: recebimento parcial não dispara emissão.
+
+Os dados fiscais do serviço (código de tributação, código NBS, código de tributação municipal e alíquota de ISS) são herdados do tipo de serviço do contrato por padrão, mas podem ser sobrescritos contrato a contrato. A descrição do serviço na nota também pode ser personalizada; em branco, usa o nome do tipo de serviço e o mês de referência.
+
+#### O que aparece na aba Emissões automáticas
+
+Os agendamentos ficam agrupados por situação, com o motivo em português e o que fazer: Bloqueadas (assinatura da plataforma irregular, módulo Notas Fiscais fora do plano atual, ou cota mensal esgotada), Falharam, Aguardando decisão, Em andamento, Emitidas e Canceladas.
+
+Competência de mês já fechado não emite sozinha. Se o atraso empurrar a tentativa para depois do mês de competência ter virado, a automação para e o agendamento fica Aguardando decisão: "A competência de [mês] já fechou. Emitir agora lança o serviço num período em que o imposto já foi apurado, o que pode exigir ajuste com o seu contador." É preciso confirmar manualmente em Emitir mesmo assim, ou deixar como está.
+
+Para os casos bloqueados, com falha ou cancelados, a ação Tentar de novo reenvia o agendamento para a fila. A nota, quando sai, pode ser aberta por Ver nota, que leva ao mesmo detalhe de qualquer outra NFS-e.
+
+### 12. Notas recebidas: NF-e e NFS-e que fornecedores emitem contra o seu CNPJ
+
+É o inverso da emissão: aqui aparecem as notas que outras empresas emitiram tendo a sua empresa como cliente, consultadas direto do governo. A aba tem dois sub-grupos, NF-e (nota de mercadoria, de um fornecedor que vendeu produto) e NFS-e (nota de serviço, de um prestador que atendeu a sua empresa).
+
+Receber nota não depende de a sua empresa conseguir emitir. O requisito aqui é só o certificado digital A1 configurado (o mesmo da seção 2 das Configurações fiscais). Sem certificado, a aba mostra "Certificado digital necessário: sua empresa ainda não tem certificado A1 cadastrado. Sem ele, nenhuma nota destinada chega até aqui." Uma empresa que nunca emitiu NFS-e própria, mas compra material de fornecedores, pode usar essa aba assim mesmo, desde que tenha o certificado.
+
+#### Ligando o recebimento
+
+Com o certificado em dia, aparece o convite para ligar, separado por tipo: "Ligue para consultar, direto na Receita Federal, as notas de produto que fornecedores emitem contra o CNPJ da sua empresa" (NF-e) e o equivalente para NFS-e, consultado no Ambiente de Dados Nacional. O botão é Ligar recebimento automático. Ligado, "a primeira sincronização pode levar alguns minutos."
+
+Depois de ligado, o botão Sincronizar busca notas novas a qualquer momento, mostrando a data da última sincronização. Sem nota nova: "Nenhuma nota nova. Está tudo em dia." Sem nenhuma nota ainda: "Assim que um fornecedor emitir nota contra o CNPJ da sua empresa, ela aparece aqui automaticamente."
+
+#### O que dá para fazer com uma nota recebida
+
+- Cada linha mostra data de emissão, fornecedor, número, valor e situação (Autorizada, Cancelada, Denegada ou Substituída).
+
+- Em NF-e existe também a Manifestação do destinatário, uma obrigação do comprador junto à Receita: dar Ciência da operação (libera o documento completo), Confirmar a operação, declarar Desconheço esta operação ou Operação não realizada. É irreversível e exige uma justificativa de 15 a 255 caracteres nos três últimos casos. Antes de dar ciência, a nota aparece com o selo Resumo, com menos dados.
+
+- A ação Lançar conta a pagar cria a despesa no Financeiro já preenchida com os dados da nota. Se a nota trouxer mais de uma parcela combinada com o fornecedor, o sistema avisa antes e cria uma conta a pagar por parcela, nas datas e valores da nota (o campo Valor do formulário de despesa é só um resumo, não governa as parcelas). Nota já lançada mostra o selo Lançada com o atalho Ver lançamento.
+
 ### Suporte: problemas comuns
 
 | O cliente diz | Causa provável | Como resolver |
-| "Não acho a tela de configuração fiscal no menu" | Ela não é uma tela, é um modal | A configuração fiscal abre de dentro de Notas Fiscais, pelo botão Configurações fiscais no topo da tela. Não existe item de menu separado. |
+| "Não acho a tela de configuração fiscal no menu" | Ela não tem item de menu próprio | A configuração fiscal é uma tela própria (/notas-fiscais/configuracoes), mas se chega lá pelo botão Configurações fiscais, dentro de Notas Fiscais. Não existe item de menu separado para ela. |
 | "Cancelei uma nota e agora não consigo emitir outra igual" | Confusão entre reaproveitar e criar novo documento | Nota cancelada nunca é reaproveitada: o sistema emite um documento novo, com número e chave novos, e mantém a cancelada na lista. Se a mensagem foi "Nota fiscal já emitida para este cliente e valor", existe uma nota AUTORIZADA igual, não cancelada. Confira a lista antes. |
 | "A nota foi autorizada mas não tem link do PDF" | O PDF é gerado sob demanda | Não existe link fixo. Clique em Baixar PDF na linha da nota: o documento é gerado na hora e baixa como arquivo. Leva alguns segundos e mostra "Gerando o PDF da nota...". |
 | "Não aparece o botão Baixar PDF" | Situação da nota não permite | O botão aparece em nota autorizada, com cancelamento em andamento ou cancelada. Em rascunho e em nota rejeitada ele não aparece, porque não existe documento. |
@@ -6942,7 +7397,7 @@ Se você precisa emitir uma segunda nota legítima para o mesmo cliente, com o m
 ### Perguntas frequentes
 
 **P:** Onde fica a configuração fiscal?
-**R:** Dentro da tela Notas Fiscais, no botão Configurações fiscais do topo. É um modal com quatro seções: Empresa, Certificado A1, Tributação e Serviços. Não existe página separada nem item de menu próprio.
+**R:** É uma tela própria, com quatro seções: Empresa, Certificado A1, Tributação e Serviços. Você chega lá pelo botão Configurações fiscais, dentro da tela Notas Fiscais. Não existe item de menu próprio para ela.
 
 **P:** Preciso de certificado digital pra emitir?
 **R:** Sim, um certificado A1 (arquivo .pfx ou .p12, com senha). É o mesmo que o seu contador usa. Sem certificado enviado, a tela volta pro estado guiado e não emite.
@@ -6983,7 +7438,16 @@ Se você precisa emitir uma segunda nota legítima para o mesmo cliente, com o m
 **P:** Quem da minha equipe pode emitir nota?
 **R:** Quem tem a permissão de tela Notas Fiscais, na empresa que tem o módulo Emissão de Notas Fiscais contratado. Sem uma das duas coisas, a tela mostra a mensagem de acesso negado. Sem a permissão, ao tentar emitir aparece "Você não tem permissão para emitir notas fiscais."
 
-Palavras que o cliente usa pra isso: nota fiscal, nota de serviço, NFS-e, emitir nota, notinha, DANFSE, PDF da nota, XML, chave de acesso, protocolo, ISS, alíquota, retenção, tomador, prestador, certificado digital, A1, inscrição municipal, Simples Nacional, cancelar nota, carta de correção
+**P:** Dá para emitir nota automaticamente, sem clicar em Nova Nota?
+**R:** Sim, para contratos recorrentes. Ligue a chave Nota fiscal automática na aba Financeiro do contrato, escolha quando a nota sai (dia fixo, no vencimento ou quando o cliente pagar) e acompanhe o resultado na aba Emissões automáticas aqui em Notas Fiscais.
+
+**P:** Posso emitir para um cliente que não está cadastrado no sistema?
+**R:** Pode, pela opção Digitar manualmente no passo Pessoas da emissão. Esse tomador avulso não vira um cadastro em Clientes, vale só para aquela nota.
+
+**P:** Como vejo as notas que meus fornecedores emitiram pra minha empresa?
+**R:** Na aba Notas recebidas, aqui em Notas Fiscais. Precisa ter certificado digital A1 configurado e ligar o recebimento automático, separado para NF-e (produto) e NFS-e (serviço).
+
+Palavras que o cliente usa pra isso: nota fiscal, nota de serviço, NFS-e, emitir nota, notinha, DANFSE, PDF da nota, XML, chave de acesso, protocolo, ISS, alíquota, retenção, tomador, prestador, certificado digital, A1, inscrição municipal, Simples Nacional, cancelar nota, carta de correção, nota automática, nota recebida, nota do fornecedor, manifestar nota
 
 ---
 
@@ -7019,29 +7483,33 @@ Cadastro funcional, movimentações financeiras do funcionário, pagamento e con
 
 Vídeo na trilha ~35minPré-requisito T14Capítulos 10Módulo Funcionários / RH
 
-Aqui vive o time interno da sua empresa: cadastro do funcionário, salário, vale, falta, bônus, ponto eletrônico batido pelo celular e a folha de pagamento caindo sozinha no financeiro. É o módulo que tira a planilha paralela de cima da mesa.
+Aqui vive o time interno da sua empresa: cadastro do funcionário, salário, vale, falta, bônus, ponto eletrônico batido pelo celular e a folha de pagamento caindo sozinha no financeiro. Também vive aqui o cadastro de prestador PJ/MEI, com contrato e pagamento sem folha. É o módulo que tira a planilha paralela de cima da mesa.
 
 Módulo Depende do módulo Funcionários / RH
 Onde fica: Menu lateral,
-Funcionários. O ponto do gestor, as equipes, o perfil comportamental e o organograma são abas dentro dessa mesma tela
-Rotas:/funcionarios, /funcionarios/perfil/:codigo, /funcionarios/organograma. O ponto do funcionário fica numa página pública, /ponto/:codigo, que abre sem login
+Funcionários. O ponto do gestor, os prestadores PJ/MEI, as equipes, o perfil comportamental, o organograma e o fluxograma são abas dentro dessa mesma tela
+Rotas:/funcionarios, /funcionarios/perfil/:codigo, /funcionarios/organograma, /funcionarios/fluxogramas. O ponto do funcionário fica numa página pública, /ponto/:codigo, que abre sem login, e o ponto em grupo (quiosque de tablet) fica em /ponto/empresa/:codigo
 Depende de: T14 (Notas Fiscais)
 Depende do módulo: Funcionários / RH
 Quem enxerga: quem tem a permissão de tela
 Funcionários. A aba de ponto só aparece para administrador, gestor ou quem tem permissão de gerenciar ponto ou funcionários
 
-### 1. Tela Funcionários e suas 5 abas
+### 1. Tela Funcionários e suas abas (Funcionários, PJ/MEI, Equipes, Ponto, Perfil, Organograma e Fluxograma)
 
 A tela se chama Funcionários (RH) e o subtítulo é "Gerencie funcionários, vales, pagamentos e extratos". Do lado esquerdo (no celular, num carrossel de pílulas) ficam as abas:
 
 | Aba | O que tem dentro |
-| Funcionários | A lista do time, com busca, ordenação e as ações de cada pessoa. |
+| Funcionários | A lista do time em regime CLT ou Informal, com busca, ordenação e as ações de cada pessoa. Prestador PJ/MEI não aparece aqui. |
+| PJ/MEI | A lista separada dos prestadores de serviço (regime PJ ou MEI), com CNPJ, contrato vigente e vigência. Ver capítulo 6. |
 | Equipes | Montagem das equipes que aparecem na agenda e nas ordens de serviço. |
 | Controle de Ponto | O painel do gestor sobre o ponto: Hoje, Histórico, Relatório e Config. |
 | Perfil Comportamental | Os perfis DISC do time. |
 | Organograma | O quadro visual da estrutura da empresa. |
+| Fluxograma | Desenhe os processos da empresa em um fluxograma e documente o passo a passo (POP) de cada etapa, com exportação em PDF. |
 
-A aba Controle de Ponto só aparece para administrador, gestor ou usuário com permissão de gerenciar ponto ou gerenciar funcionários. Quem não tem essas permissões vê quatro abas, não cinco. Isso não é erro de carregamento.
+A aba Controle de Ponto só aparece para administrador, gestor ou usuário com permissão de gerenciar ponto ou gerenciar funcionários. Quem não tem essas permissões vê uma aba a menos. Isso não é erro de carregamento.
+
+A aba PJ/MEI e a aba Funcionários são listas separadas de propósito, pedido explícito do time: um prestador PJ/MEI nunca aparece na lista de funcionários CLT/Informal, e vice-versa. O contador no topo da tela conta só CLT/Informal, nunca os prestadores PJ/MEI.
 
 Não existe uma tela separada de ponto para o gestor. O acompanhamento do ponto é uma aba dentro de Funcionários. O único endereço de ponto que existe fora daqui é o link público do funcionário, que é individual e serve só pra ele bater o ponto.
 
@@ -7061,9 +7529,9 @@ A tela inteira depende do módulo. Sem ele, ao clicar no menu ou abrir o endere�
 
 - Sem ninguém cadastrado: "Nenhum funcionário cadastrado. Clique em 'Novo Funcionário' para começar."
 
-[Print da tela: Tela Funcionários (RH) com as abas Funcionários, Equipes, Controle de Ponto, Perfil Comportamental e Organograma na lateral, e a lista de funcionários com colunas Funcionário, Cargo, Contato, Salário, Saldo e Ações]
+[Print da tela: Tela Funcionários (RH) com as abas Funcionários, PJ/MEI, Equipes, Controle de Ponto, Perfil Comportamental, Organograma e Fluxograma na lateral, e a lista de funcionários com colunas Funcionário, Cargo, Contato, Salário, Saldo e Ações]
 
-Funcionários (RH): as abas na lateral e a lista do time com salário e saldo de cada pessoa.
+Funcionários (RH): as abas na lateral, incluindo a aba PJ/MEI, e a lista do time CLT/Informal com salário e saldo de cada pessoa.
 
 #### Excluir funcionário
 
@@ -7075,7 +7543,9 @@ A confirmação muda conforme o caso:
 
 ### 2. Cadastro: dados, foto, chave PIX, admissão
 
-O botão Novo Funcionário abre um formulário com três abas: Dados, Pagamento e Perfil. O botão de salvar fica fixo no rodapé, então dá pra salvar de qualquer aba. Ele é Criar Funcionário na criação e Salvar na edição.
+O botão Novo Funcionário abre um formulário com quatro abas: Dados, Pagamento, Ponto e Perfil. O botão de salvar fica fixo no rodapé, então dá pra salvar de qualquer aba. Ele é Criar Funcionário na criação e Salvar na edição.
+
+A aba Ponto tem seção própria, separada da aba Pagamento. Quem aprendeu numa versão antiga do sistema pode procurar o ponto eletrônico dentro de Pagamento e não vai achar: ele mudou de lugar. Veja o capítulo 9.
 
 #### Campos da aba Dados
 
@@ -7098,7 +7568,7 @@ O formulário guarda rascunho do que você digitou. Se fechar sem querer no meio
 
 ### 3. Remuneração: salário, custo mensal e os campos CLT (CBO, matrícula, dependentes, VT)
 
-Na tela, esta aba se chama Pagamento, não "Remuneração". É a segunda das três abas do formulário do funcionário.
+Na tela, esta aba se chama Pagamento, não "Remuneração". É a segunda das quatro abas do formulário do funcionário.
 
 #### Salário e custo mensal
 
@@ -7108,7 +7578,7 @@ Na tela, esta aba se chama Pagamento, não "Remuneração". É a segunda das tr�
 
 #### Contrato de trabalho
 
-A seção Contrato de trabalho tem uma chave de Regime. Escolhendo CLT, aparecem os campos formais:
+A seção Contrato de trabalho tem a chave de Regime, com três opções: Informal, CLT e PJ/MEI. Escolhendo CLT, aparecem os campos formais:
 
 | Campo | O que é |
 | CBO | Classificação Brasileira de Ocupações, o código oficial do cargo. Exemplo na tela: "7156-10". |
@@ -7117,6 +7587,8 @@ A seção Contrato de trabalho tem uma chave de Regime. Escolhendo CLT, aparecem
 | Vale-transporte | Chave liga/desliga. Ligada, aparece o Valor mensal do VT. |
 
 Esses campos alimentam o holerite gerado no pagamento em modo CLT. Fora do regime CLT eles não aparecem e não são exigidos.
+
+Escolhendo PJ/MEI no Regime, o formulário muda de figura: some o Custo mensal, somem os campos CLT, some a Configuração de Pagamento, e entram o CNPJ, a razão social e uma aba Contrato nova. É o assunto do capítulo 6. O campo Salário também some, e no lugar aparece Valor de referência (opcional), que não é o que o prestador recebe, só uma referência de custo pra orçamento de OS.
 
 O aviso que a própria tela de pagamento CLT exibe vale como régua: "Valores calculados com base nas tabelas vigentes de INSS, IRRF e FGTS. São estimativas, confirme com o seu contador antes de fechar a folha." O Dominex organiza e documenta o pagamento, ele não substitui a contabilidade.
 
@@ -7137,9 +7609,11 @@ Ainda na aba Pagamento, a seção Configuração de Pagamento é a que faz a fol
 
 Escolhendo Dia útil, o sistema conta apenas os dias em que se trabalha, pulando sábados, domingos e feriados cadastrados. Assim, "5º dia útil" cai numa data diferente a cada mês, exatamente como acontece na prática. Escolhendo Dia corrido, o sistema usa o número do calendário e, em meses curtos, encaixa no último dia disponível (dia 31 em fevereiro vira 28 ou 29).
 
-[Print da tela: Formulário Novo Funcionário na aba Pagamento, com os campos Salário e Custo mensal total (com botão Calcular) no topo, o bloco Contrato de trabalho com a chave Regime em Informal/CLT, os campos CBO, Matrícula, Dependentes (IRRF) e a chave Vale-transporte, e abaixo o bloco Configuração de Pagamento com Frequência em Mensal e Tipo de dia em Dia útil]
+[Print da tela: Formulário Novo Funcionário na aba Pagamento, com os campos Salário e Custo mensal total (com botão Calcular) no topo, o seletor de três opções Informal/CLT/PJ-MEI em Contrato de trabalho, com CLT selecionado mostrando CBO, Matrícula, Dependentes (IRRF) e a chave Vale-transporte, e abaixo o bloco Configuração de Pagamento com Frequência em Mensal e Tipo de dia em Dia útil]
 
-Novo Funcionário, aba Pagamento: salário, custo mensal, dados do contrato de trabalho e a configuração que faz a folha aparecer sozinha em Contas a Pagar.
+Novo Funcionário, aba Pagamento: salário, custo mensal, o seletor de regime (Informal/CLT/PJ-MEI) e a configuração que faz a folha aparecer sozinha em Contas a Pagar. O ponto eletrônico não aparece mais aqui: tem aba própria (capítulo 9).
+
+A Configuração de Pagamento (frequência e dia do mês) só vale pra CLT e Informal. Prestador PJ/MEI não tem folha: o dia e o valor de pagamento vêm do Contrato, capítulo 6.
 
 ### 5. Vincular acesso ao sistema: criando o login do funcionário
 
@@ -7173,9 +7647,70 @@ Ainda na aba Pagamento, no fim do formulário, existem duas seções diferentes 
 
 O acesso criado por aqui nasce com perfil Técnico. Se essa pessoa precisar de outras telas (financeiro, contratos, orçamentos), o ajuste é feito depois no editor de permissões, na tela de usuários. Cadastrar como funcionário não dá acesso a nada além do perfil Técnico.
 
-### 6. Vale, falta e bônus — o que vira despesa na hora e o que só entra na folha
+### 6. Prestador PJ/MEI: cadastro, contrato de prestação de serviço e pagamento sem folha
 
-Cada funcionário tem um saldo, que aparece na lista e no card. O saldo parte do salário e é ajustado pelas movimentações. As três movimentações são Vale, Bônus e Falta, todas no menu de ações da linha.
+A aba PJ/MEI cadastra quem presta serviço pra empresa sem vínculo CLT: autônomo com CNPJ, ou MEI. É uma lista e um fluxo de pagamento separados dos funcionários, porque prestador não tem salário, não bate ponto e não entra na folha automática.
+
+#### A lista de prestadores
+
+Busca por nome ou CNPJ, botão Novo prestador. As colunas são Prestador, CNPJ, Valor (do contrato vigente, com o sufixo /mês, /OS, /hora ou /diária) e Vigência. Sem contrato vigente, a coluna de valor e a de vigência mostram "Sem contrato". O menu de ações de cada linha é mais curto que o da aba Funcionários: só Extrato, Pagamento, Editar e Excluir. Não existe Vale, Bônus nem Falta pra prestador PJ/MEI: esses conceitos são de salário CLT/Informal e não se aplicam a quem é pago por contrato de prestação de serviço.
+
+Sem ninguém cadastrado: "Nenhum prestador PJ/MEI. Cadastre um prestador PJ ou MEI para controlar contrato e pagamentos."
+
+#### Cadastro do prestador
+
+O cadastro é o mesmo formulário de funcionário, mas com o Regime em PJ/MEI (veja capítulo 3). Na aba Dados, os campos são os mesmos (Nome, CPF, Telefone, Email, Endereço etc.). Na aba Pagamento, o bloco Dados do prestador PJ/MEI traz:
+
+| Campo | Obrigatório | Observação |
+| CNPJ | Não, mas se preenchido precisa ser válido | Dígito errado trava o salvamento: "CNPJ inválido. Confira o número digitado." |
+| Razão social | Não | Sai no recibo de prestação de serviços, junto com o nome e o CNPJ do prestador. |
+| É MEI (Microempreendedor Individual) | Não | Chave liga/desliga, só pra identificar o tipo de prestador. |
+
+O título do formulário vira Novo Prestador / Editar Prestador, e o botão de criação é Criar Prestador, não "Criar Funcionário".
+
+Trocar o Regime de um funcionário existente para PJ/MEI desliga o ponto eletrônico na hora, mesmo que você não toque na chave. O sistema avisa: "Ponto eletrônico desativado: o regime PJ/MEI não usa ponto." Não é só esconder o campo, é desligar de verdade, porque prestador PJ/MEI não bate ponto.
+
+#### Aba Contrato: vigência, valor, forma de cobrança
+
+Só aparece com o Regime em PJ/MEI, é a quarta aba do formulário (depois de Dados, Pagamento e, no lugar de Ponto, Contrato). Antes de salvar o prestador pela primeira vez, ela mostra "Salve o cadastro do prestador para registrar o contrato."
+
+Sem contrato ainda, o aviso é "Nenhum contrato ainda. Registre o contrato para controlar vigência, valor e forma de cobrança." com o botão Novo contrato. O formulário de contrato tem:
+
+| Campo | Observação |
+| Início e Fim | O contrato nasce com data de fim preenchível, não indeterminado. A chave Prazo indeterminado remove a exigência de fim. |
+| Forma de cobrança | Mensal, Por OS, Por hora ou Por diária. |
+| Valor | O valor combinado com o prestador. |
+| Dia de pagamento | Opcional, só de referência: não gera folha nem conta a pagar automática. |
+| Reajuste anual (%) | Opcional, de referência pra renovação. |
+| Observações | Texto livre. |
+
+O contrato vigente mostra um selo de vigência: Ativo (verde), Vence em N dias (âmbar, aviso de contrato vencendo) ou Vencido (vermelho). O mesmo selo aparece na coluna Vigência da lista de prestadores.
+
+- Renovar: abre um novo contrato que começa no dia seguinte ao fim do atual, com os mesmos valores pré-preenchidos pra ajustar.
+
+- Encerrar: pede confirmação ("Encerrar contrato? O contrato atual será marcado como encerrado. O histórico é preservado.") e marca o contrato atual como encerrado, mantendo o histórico visível abaixo.
+
+- Com o histórico preenchido e nenhum contrato vigente, o aviso muda para "Nenhum contrato vigente. O último contrato foi encerrado. Registre um novo para continuar o pagamento."
+
+#### Pagar o prestador: valor combinado, nota fiscal e sem desconto de imposto
+
+A ação Pagamento na aba PJ/MEI abre o mesmo modal de pagamento, travado no modo PJ/MEI (não dá pra escolher Informal ou CLT pra um prestador). Os campos são:
+
+- Valor combinado: pré-preenchido pelo valor do contrato vigente quando a forma de cobrança é Mensal ("Pré-preenchido pelo contrato vigente. Pode ser ajustado."). Nas outras formas de cobrança (por OS, hora ou diária), o valor varia a cada pagamento e o campo nasce vazio, com o aviso "Nenhum contrato vigente encontrado para este prestador. Informe o valor manualmente." quando não há contrato.
+
+- Nº da nota fiscal (opcional): texto livre, sai impresso no recibo.
+
+- Categoria: a categoria financeira do lançamento. Nasce pré-selecionada em CSP - Mão de Obra Avulsa (categoria de sistema), mas pode ser trocada, por exemplo se o prestador for administrativo. É obrigatória: sem categoria escolhida o pagamento não é liberado.
+
+O aviso no resumo é direto: "Prestação de serviço PJ/MEI: sem desconto de INSS, IRRF ou FGTS." Não existe cálculo de encargo nesse modo, só o valor combinado.
+
+Pagamento de PJ/MEI não entra na folha. A despesa vai pra categoria CSP - Mão de Obra Avulsa, separada da categoria Folha de Pagamento usada por CLT/Informal (capítulo 11). Isso existe de propósito: misturar os dois inflaria o custo de pessoal (CLT/Informal) na DRE com gasto que é, na verdade, terceirização.
+
+Ao confirmar, o sistema gera o recibo de prestação de serviços (nunca holerite, PJ/MEI não tem folha), com o título "RECIBO DE PRESTAÇÃO DE SERVIÇOS" e a seção "DADOS DO PRESTADOR" trazendo nome, razão social, CNPJ, número da nota fiscal (se preenchido) e a competência do mês.
+
+### 7. Vale, falta e bônus — o que vira despesa na hora e o que só entra na folha
+
+Cada funcionário CLT ou Informal tem um saldo, que aparece na lista e no card. O saldo parte do salário e é ajustado pelas movimentações. As três movimentações são Vale, Bônus e Falta, todas no menu de ações da linha. Prestador PJ/MEI não tem nada disso: veja o capítulo 6.
 
 Esta é a confusão número um deste módulo.Vale gera despesa no financeiro na hora, porque o dinheiro sai da conta naquele momento. Bônus e Faltanão geram nada no financeiro na hora: eles são só saldo interno do funcionário e entram no caixa quando a folha é paga. Por isso um bônus lançado hoje não aparece no extrato da conta bancária hoje. Não é erro.
 
@@ -7213,9 +7748,9 @@ Esta é a confusão número um deste módulo.Vale gera despesa no financeiro na 
 
 A ação Extrato abre o histórico completo daquela pessoa, com o resumo Bônus, Vales, Faltas e Saldo, e a coluna Saldo após em cada linha. Dali dá pra exportar e gerar recibos. Excluir uma movimentação avisa: "Excluir movimentação? Esta ação não pode ser desfeita. Os saldos serão recalculados."
 
-### 7. Pagar funcionário: modo informal × CLT (com holerite) e o desconto do vale
+### 8. Pagar funcionário: modo informal × CLT (com holerite) e o desconto do vale
 
-A ação Pagamento abre o modal com o Tipo de pagamento, que tem duas opções: Normal / Informal e CLT.
+A ação Pagamento, na aba Funcionários, abre o modal com o Tipo de pagamento, travado em duas opções para quem é CLT ou Informal: Normal / Informal e CLT. Pra prestador PJ/MEI, o mesmo modal abre travado num terceiro modo, só dele: veja o pagamento de PJ/MEI no capítulo 6.
 
 #### Modo Normal / Informal
 
@@ -7261,13 +7796,13 @@ O holerite abre em uma nova aba e pode ser bloqueado pelo navegador. Se aparecer
 
 Depois disso, o sistema pergunta se você quer o recibo: "Deseja gerar Recibo? O recibo do pagamento será aberto em uma nova página para impressão ou download em PDF." Há dois formatos, A4 (imprimível) ("Folha inteira, ideal para arquivar e imprimir") e Térmico 80mm ("Comprovante para impressora de cupom").
 
-### 8. Ponto: gerar o link público do funcionário e bater ponto pelo celular
+### 9. Ponto: gerar o link público do funcionário e bater ponto pelo celular
 
-O ponto eletrônico do Dominex não exige que o funcionário tenha login. Ele bate o ponto por um link exclusivo, aberto no navegador do celular.
+O ponto eletrônico do Dominex não exige que o funcionário tenha login. Ele bate o ponto por um link exclusivo, aberto no navegador do celular. Só existe pra regime CLT e Informal: PJ/MEI não usa ponto (capítulo 6).
 
 #### Gerar o link
 
-- Edite o funcionário e vá até a seção Ponto eletrônico, na aba Pagamento. A descrição é "Gera um link público pro funcionário bater o ponto pelo celular".
+- Edite o funcionário e vá até a aba Ponto do formulário (não é mais dentro da aba Pagamento). A descrição é "Gera um link público pro funcionário bater o ponto pelo celular".
 
 - Ligue a chave, que passa de Desativado para Ativado.
 
@@ -7279,6 +7814,8 @@ O ponto eletrônico do Dominex não exige que o funcionário tenha login. Ele ba
 
 Se a cópia automática falhar, aparece "Não foi possível copiar" e o link é mostrado na mensagem pra você copiar à mão. Erro ao gerar: "Erro ao gerar link do ponto".
 
+Essa aba Ponto também é onde fica o PIN opcional do ponto (protege a batida num tablet compartilhado ou num link pessoal) e o cadastro facial guiado, usado tanto na identificação do quiosque quanto na confirmação por selfie.
+
 #### O que o funcionário vê
 
 Abrindo o link no celular, ele vê uma página só dele, com o nome, a foto e o cargo, o título PONTO ELETRÔNICO e um botão grande com a próxima batida:
@@ -7287,10 +7824,14 @@ Abrindo o link no celular, ele vê uma página só dele, com o nome, a foto e o 
 | Ainda não bateu | "Você ainda não bateu o ponto hoje" | Registrar Entrada |
 | Trabalhando | "Trabalhando" | Iniciar Intervalo |
 | Em intervalo | "Em intervalo" | Voltar do Intervalo |
-| Depois do intervalo | "Trabalhando" | Registrar Saída |
-| Encerrou | "Jornada concluída" | Mostra PONTO DO DIA CONCLUÍDO |
+| Depois do intervalo (sem bater intervalo) | "Trabalhando" | Mostra Iniciar Intervalo e Registrar Saída juntos: a saída não depende mais de bater intervalo antes |
+| Jornada encerrada no dia | "Jornada concluída" | Registrar Nova Entrada, pra abrir uma segunda jornada no mesmo dia |
 
 Abaixo fica o bloco Registros de hoje, com a linha do tempo das batidas: Entrada, Início do intervalo, Fim do intervalo e Saída.
+
+Jornada encerrada não é um beco sem saída. Depois de bater a saída, o botão não trava num aviso final: ele vira Registrar Nova Entrada, porque o dia pode ter mais de uma jornada (plantão, chamado noturno, retorno depois de um intervalo longo). Um funcionário que bate entrada de manhã, saída no fim da tarde e é chamado de novo às 22h abre uma SEGUNDA jornada no mesmo dia, não um erro. No Histórico do gestor, dia com mais de uma jornada ganha o selo N jornadas.
+
+A jornada, não o relógio da meia-noite, decide em qual dia a batida entra. Uma saída de madrugada (por padrão, antes das 05:00) com a entrada ainda aberta no dia anterior é contada no dia em que a jornada COMEÇOU, não no dia do relógio. Isso evita o banco de horas acusar falta numa jornada que só terminou depois da virada do dia. O horário desse corte é ajustável em Config, capítulo 10.
 
 #### O fluxo de bater o ponto
 
@@ -7308,7 +7849,7 @@ Link desativado ou errado mostra "Link inválido ou desativado. Este link de pon
 
 Selfie e localização só aparecem se a empresa exigir, nas Configurações da aba de ponto. Numa empresa que não liga nenhum dos dois, o funcionário toca no botão, confirma e pronto. Se um funcionário reclamar que "não pede foto", confira primeiro a configuração antes de suspeitar do aparelho dele.
 
-### 9. Aba Ponto do gestor: Hoje, Histórico, Relatório, Configurações (exigir selfie e localização)
+### 10. Aba Ponto do gestor: Hoje, Histórico, Relatório, Configurações (exigir selfie e localização)
 
 A aba Controle de Ponto, dentro de Funcionários, tem quatro sub-abas: Hoje, Histórico, Relatório e Config.
 
@@ -7340,6 +7881,8 @@ Serve pra quando o funcionário esqueceu de bater ou o celular falhou. Campos: T
 
 - Situações do dia: Em andamento, Completo, Incompleto, Justificado, Feriado e Folga.
 
+- Dia com mais de uma jornada ganha o selo N jornadas, e a saída que empurrou a batida pro dia seguinte aparece marcada (ex.: "01:10 +1"), pra não parecer erro de digitação.
+
 - Totais no rodapé: Esperado, Trabalhado e Saldo.
 
 - Vazio: "Nenhum registro de ponto. Ainda não há registros de ponto no período."
@@ -7358,7 +7901,7 @@ Serve pra quando o funcionário esqueceu de bater ou o celular falhou. Campos: T
 
 #### Config
 
-Duas partes. A Jornada Padrão da Empresa vale pra todo mundo, e a Jornada Individual permite ajustar pessoa por pessoa, dia a dia da semana, inclusive marcando Folga. Quem não tem jornada própria mostra "Herda empresa (08:00-18:00)".
+Três partes. A Jornada Padrão da Empresa vale pra todo mundo, o link do Ponto em Grupo (quiosque) fica logo abaixo dela, e a Jornada Individual permite ajustar pessoa por pessoa, dia a dia da semana, inclusive marcando Folga. Quem não tem jornada própria mostra "Herda empresa (08:00-18:00)".
 
 | Configuração | O que faz |
 | Entrada padrão e Saída padrão | O horário esperado. É o que gera a coluna Esperado e o Saldo. |
@@ -7368,20 +7911,27 @@ Duas partes. A Jornada Padrão da Empresa vale pra todo mundo, e a Jornada Indiv
 | Raio máximo (metros) | Distância aceita em relação ao ponto de referência. A dica é "0 = sem restrição". |
 | Tolerância atraso (min) | Quantos minutos além do horário ainda não contam como atraso. |
 | Permitir fora do horário | Se o funcionário pode bater ponto fora da jornada prevista. |
+| Batidas da madrugada contam para o dia anterior até | O horário de corte da jornada noturna (padrão 05:00). "Quem entra à noite e sai depois da meia-noite tem as horas somadas no dia em que começou a trabalhar." |
 
 O botão é Salvar configurações. Na jornada individual, Salvar jornada.
 
-[Print da tela: Sub-aba Config do Controle de Ponto, com o bloco Jornada Padrão da Empresa mostrando Entrada padrão 08:00, Saída padrão 05:00 PM e Intervalo 60 minutos, as chaves Exigir selfie e Exigir geolocalização ligadas, os campos Raio máximo (metros) e Tolerância atraso (min), a chave Permitir fora do horário ligada, o botão Salvar configurações, e abaixo o início da tabela Jornada Individual com um funcionário por linha e a jornada de cada dia da semana]
+#### Ponto em Grupo (quiosque de tablet)
 
-Controle de Ponto, sub-aba Config: a jornada padrão da empresa e as chaves de selfie, geolocalização e tolerância.
+Além do link individual de cada funcionário, existe um link ÚNICO da empresa, pensado pra ficar aberto num tablet fixo (recepção, oficina, obra): o time inteiro bate o ponto por ali, escolhendo o próprio nome na lista, sem precisar do celular pessoal. O cartão Link do quiosque de ponto fica na sub-aba Config, com Copiar link, Abrir quiosque e Baixar QR Code. Há também um atalho mobile, Ponto em grupo (quiosque), pra abrir, copiar ou compartilhar esse mesmo link direto do celular do gestor.
 
-### 10. A folha aparecendo sozinha em Contas a Pagar e sendo quitada de lá
+O quiosque reconhece o funcionário por reconhecimento facial guiado (cadastro de rosto feito uma vez, na aba Ponto do cadastro) quando a empresa exige, além de aceitar PIN por funcionário pra proteger a batida no tablet compartilhado.
+
+[Print da tela: Sub-aba Config do Controle de Ponto, com o bloco Jornada Padrão da Empresa mostrando Entrada padrão 08:00, Saída padrão 05:00 PM, Intervalo 60 minutos e o campo Batidas da madrugada contam para o dia anterior até, as chaves Exigir selfie e Exigir geolocalização ligadas, os campos Raio máximo (metros) e Tolerância atraso (min), a chave Permitir fora do horário ligada, o botão Salvar configurações, o cartão Link do quiosque de ponto, e abaixo o início da tabela Jornada Individual com um funcionário por linha e a jornada de cada dia da semana]
+
+Controle de Ponto, sub-aba Config: a jornada padrão da empresa, o corte da jornada noturna, o link do quiosque e as chaves de selfie, geolocalização e tolerância.
+
+### 11. A folha aparecendo sozinha em Contas a Pagar e sendo quitada de lá
 
 Não existe botão "Gerar Folha" no Dominex. Não procure na tela de Funcionários nem no Financeiro: ele não existe. A folha é gerada automaticamente pelo sistema, uma vez por dia, e aparece sozinha em Financeiro, tela Contas, aba A Pagar.
 
 #### Como a folha nasce
 
-- Uma vez por dia, de madrugada, o sistema percorre todos os funcionários ativos com salário maior que zero.
+- Uma vez por dia, de madrugada, o sistema percorre todos os funcionários ativos com salário maior que zero e regime CLT ou Informal. Prestador PJ/MEI nunca entra nessa varredura (capítulo 6).
 
 - Para cada um, calcula as datas de pagamento dos próximos 35 dias, usando a Configuração de Pagamento do cadastro (frequência, tipo de dia e dia escolhido).
 
@@ -7401,13 +7951,13 @@ Não existe botão "Gerar Folha" no Dominex. Não procure na tela de Funcionári
 
 Existem dois caminhos, e os dois terminam no mesmo lugar:
 
-- Pelo Financeiro: em Contas, aba A Pagar, a linha da folha tem um ícone de pessoas. Clicando em pagar, abre o modal de pagamento do funcionário (o mesmo do capítulo anterior), já com o período preenchido. A confirmação é "Folha quitada com sucesso". Erro: "Erro ao pagar folha".
+- Pelo Financeiro: em Contas, aba A Pagar, a linha da folha tem um ícone de pessoas. Clicando em pagar, abre o modal de pagamento do funcionário do capítulo 8, já com o período preenchido. A confirmação é "Folha quitada com sucesso". Erro: "Erro ao pagar folha".
 
 - Pelo RH: na tela Funcionários, ação Pagamento. Nesse caso, o sistema procura uma folha pendente daquele funcionário e quita ela, em vez de criar uma despesa nova.
 
 O caminho completo é sempre o mesmo: ponto → horas → folha → conta a pagar. O ponto registra a jornada, as horas viram saldo e faltas, a folha nasce sozinha em Contas a Pagar e o pagamento fecha o ciclo. Se algum passo parecer fora do lugar, comece conferindo o cadastro do funcionário, que é onde ficam salário e configuração de pagamento.
 
-### 11. Abas Comportamental (DISC) e Organograma
+### 12. Abas Comportamental (DISC), Organograma e Fluxograma
 
 #### Perfil Comportamental (DISC)
 
@@ -7445,6 +7995,10 @@ A aba Organograma é um quadro visual: "Monte a estrutura da sua empresa em um q
 
 Organograma: a lista de quadros salvos, com o atalho para criar um novo.
 
+#### Fluxograma (processos e POP)
+
+A aba Fluxograma tem a mesma lógica de "vários quadros salvos" do Organograma, mas pra desenhar processos: "Desenhe os processos da empresa em um fluxograma e documente como cada etapa deve ser feita." Cada etapa do fluxo pode ter um Procedimento Operacional Padrão (POP) descrito por dentro, com exportação em PDF pra treinar a equipe ou deixar impresso na parede.
+
 ### Suporte: problemas comuns
 
 | O cliente diz | Causa provável | Como resolver |
@@ -7455,7 +8009,12 @@ Organograma: a lista de quadros salvos, com o atalho para criar um novo.
 | "Paguei o funcionário e o holerite não abriu" | Pop-up bloqueado | O holerite CLT abre em nova aba. Libere os pop-ups para o endereço do sistema. O pagamento já foi registrado, então não repita: reabra o holerite pelo extrato do funcionário. |
 | "Criei o funcionário mas ele não consegue entrar no sistema" | Acesso não foi criado ou falhou | Cadastrar funcionário não cria login. É preciso ligar "Criar acesso ao sistema" com o e-mail preenchido e senha de pelo menos 6 caracteres. Se apareceu "Funcionário criado, mas erro ao criar acesso", edite o funcionário e tente de novo. |
 | "O funcionário não recebeu a senha" | A senha só é mostrada uma vez | A confirmação "Acesso ao sistema criado!" traz o e-mail e a senha, e ela não é exibida de novo. Se ninguém anotou, redefina a senha pela tela de usuários. |
-| "O link do ponto do funcionário não abre" | Ponto desativado no cadastro | A mensagem é "Link inválido ou desativado". Edite o funcionário, ligue a chave Ponto eletrônico, salve e envie o link novo. |
+| "O link do ponto do funcionário não abre" | Ponto desativado no cadastro | A mensagem é "Link inválido ou desativado". Edite o funcionário, vá na aba Ponto, ligue a chave, salve e envie o link novo. |
+| "Troquei o funcionário pra PJ e ele não bate ponto mais" | Comportamento correto | PJ/MEI não usa ponto eletrônico. Ao trocar o regime, o sistema desliga a chave de ponto na hora, mesmo que ela não tenha sido tocada, e avisa "Ponto eletrônico desativado: o regime PJ/MEI não usa ponto." |
+| "Cadastrei um prestador PJ e não achei Vale, Bônus ou Falta no menu dele" | Comportamento correto | A aba PJ/MEI tem um menu de ações mais curto (Extrato, Pagamento, Editar, Excluir). Vale, Bônus e Falta são conceitos de salário CLT/Informal e não existem pra prestador pago por contrato. |
+| "O pagamento do prestador PJ está inflando o custo de funcionário na DRE" | Categoria errada no pagamento | Pagamento de PJ/MEI deve ficar na categoria CSP - Mão de Obra Avulsa, nunca na categoria Funcionários/Folha. Confira a categoria escolhida no modal de Pagamento do prestador. |
+| "Bati a saída e o ponto ficou travado, sem jeito de bater de novo" | Expectativa de dia único | Não trava. Depois da saída, o botão vira "Registrar Nova Entrada" pra abrir uma segunda jornada no mesmo dia (plantão, chamado noturno). O selo "Jornada concluída" não é um fim definitivo. |
+| "Onde fica o link do ponto em grupo (quiosque)?" | Procurando no lugar errado | Em Funcionários, aba Controle de Ponto, sub-aba Config, cartão Link do quiosque de ponto. É um link único da empresa pra deixar fixo num tablet, diferente do link individual de cada funcionário. |
 | "O ponto não pede selfie" | A empresa não exige selfie | Selfie e localização só aparecem se estiverem ligadas em Funcionários, aba Controle de Ponto, sub-aba Config. Não é problema do celular do funcionário. |
 | "O funcionário não consegue bater o ponto, fala de localização" | Permissão de localização negada no navegador, com a exigência ligada | A mensagem é "Não foi possível obter a localização. Verifique as permissões do navegador." Peça pra ele liberar a localização para o site. Se a empresa não exige, ele pode usar "Continuar sem localização". |
 | "O funcionário esqueceu de bater a saída" | Registro faltando no dia | Em Funcionários, aba Controle de Ponto, sub-aba Hoje, use Registro manual na linha dele. O tipo, o horário e a justificativa são obrigatórios, e o lançamento fica registrado. |
@@ -7479,7 +8038,16 @@ Organograma: a lista de quadros salvos, com o atalho para criar um novo.
 **R:** Sim. As equipes vivem na aba Equipes dentro de Funcionários, que depende do módulo Funcionários / RH. Sem o módulo, não há como criar nem editar equipe.
 
 **P:** O funcionário precisa de login pra bater ponto?
-**R:** Não. O ponto é batido por um link público e individual, aberto no navegador do celular, sem senha. Ligue a chave Ponto eletrônico no cadastro dele e envie o link.
+**R:** Não. O ponto é batido por um link público e individual, aberto no navegador do celular, sem senha. Ligue a chave na aba Ponto do cadastro dele e envie o link.
+
+**P:** Qual a diferença entre o link individual de ponto e o quiosque?
+**R:** O link individual é de UM funcionário, gerado no cadastro dele. O quiosque é um link ÚNICO da empresa, pensado pra ficar fixo num tablet: o time inteiro bate o ponto por ali, escolhendo o próprio nome. Fica em Funcionários, aba Controle de Ponto, sub-aba Config.
+
+**P:** O que diferencia um funcionário PJ/MEI de um CLT ou Informal?
+**R:** Prestador PJ/MEI tem aba própria (PJ/MEI), não tem salário nem ponto, é pago por um Contrato (valor + forma de cobrança) em vez de folha, e recebe recibo de prestação de serviços, não holerite. CLT e Informal usam salário, saldo com vale/bônus/falta, ponto eletrônico e folha automática.
+
+**P:** O pagamento de um prestador PJ/MEI entra na folha de pagamento?
+**R:** Não. A despesa vai para a categoria de sistema CSP - Mão de Obra Avulsa, separada da categoria Folha de Pagamento usada por CLT/Informal, pra não inflar o custo de pessoal na DRE.
 
 **P:** Como faço pra exigir foto e localização no ponto?
 **R:** Em Funcionários, aba Controle de Ponto, sub-aba Config. Ligue Exigir selfie e Exigir geolocalização. Sem essas chaves ligadas, o funcionário bate o ponto direto, sem foto e sem localização.
@@ -7508,7 +8076,7 @@ Organograma: a lista de quadros salvos, com o atalho para criar um novo.
 **P:** Posso ter mais de um organograma?
 **R:** Sim. Cada organograma tem nome próprio, é salvo automaticamente e pode ser exportado em PNG ou PDF.
 
-Palavras que o cliente usa pra isso: RH, funcionário, colaborador, equipe, ponto, bater ponto, cartão de ponto, espelho de ponto, banco de horas, vale, adiantamento, bônus, falta, DSR, folha, folha de pagamento, holerite, contracheque, recibo, CLT, CBO, vale-transporte, salário, admissão, organograma, DISC, perfil comportamental
+Palavras que o cliente usa pra isso: RH, funcionário, colaborador, equipe, ponto, bater ponto, cartão de ponto, espelho de ponto, banco de horas, vale, adiantamento, bônus, falta, DSR, folha, folha de pagamento, holerite, contracheque, recibo, CLT, CBO, vale-transporte, salário, admissão, organograma, DISC, perfil comportamental, PJ, MEI, prestador, autônomo, CNPJ, razão social, nota fiscal, contrato de prestação de serviço, terceirizado, quiosque, ponto em grupo, tablet de ponto, fluxograma, processo, POP
 
 ---
 
@@ -7649,13 +8217,19 @@ Gerenciar Meu Plano abre uma janela dividida em duas partes: à esquerda o monta
 
 #### O aviso de upgrade e de downgrade
 
-- Subindo de plano, aparece uma faixa verde: "Upgrade: os recursos são liberados na hora e o novo valor já entra na próxima cobrança."
+- Subindo de plano, aparece uma faixa verde: "Upgrade: você paga apenas o ajuste proporcional e os recursos são liberados após a confirmação."
 
-- Descendo de plano, aparece uma faixa amarela: "Downgrade agendado: você mantém o plano atual até o fim do período já pago. O novo valor de R$ X/mês passa a valer na próxima cobrança."
+- Descendo de plano, aparece uma faixa amarela: "Downgrade agendado: você mantém o plano atual até o fim do período já pago. O novo valor de R$ X/mês passa a valer na próxima cobrança, sem reembolso do ciclo atual."
 
 - Se o plano escolhido comporta menos usuários do que a empresa tem hoje, o sistema abre uma etapa pedindo pra reduzir os usuários antes de aplicar a mudança. Ele não escolhe quem sai por você.
 
 Para confirmar, use o botão do painel da direita: Aplicar plano no ciclo mensal ou Pagar e ativar (anual) no ciclo anual. Enquanto processa, ele mostra Aplicando....
+
+Upgrade agora tem cobrança imediata, mas só do valor proporcional. Ao confirmar qualquer upgrade (trocar pra um plano mais caro, somar um módulo pago, somar usuário extra ou subir o nível de NFS-e), a janela fecha e o sistema leva direto pro checkout com o resumo do upgrade: o seu plano atual, a etiqueta Cobrança proporcional hoje com o valor a pagar agora, a data e o valor cheio da próxima renovação, e, quando existir, a faixa Crédito do período já pago, descontando os dias que você já pagou e ainda não usou no plano antigo. O texto de apoio avisa: "Você paga somente pelo período restante. O plano será liberado após a confirmação." O pagamento é por Pix, Boleto ou Cartão, do mesmo jeito que numa venda nova. O módulo, o plano novo, o usuário extra ou o nível de NFS-e só entram no ar depois que esse pagamento é confirmado, não antes.
+
+ Se o upgrade também muda o ciclo de mensal pra anual, o Cartão de crédito não aparece como forma de pagamento nesse checkout específico: a troca pro anual é sempre à vista, por Pix ou Boleto, e a data de vencimento é reiniciada a partir de hoje para o novo ciclo de um ano.
+
+Downgrade continua sem cobrança nenhuma no momento da troca. Reduzir de plano, tirar um módulo ou diminuir usuários não passa pelo checkout: a mudança só entra em vigor na próxima cobrança, pelo valor novo, e você mantém o que já pagou até lá.
 
 ### 4. Gerenciar Meu Plano — aba Personalizado: montar módulo a módulo + usuários extras
 
@@ -7665,9 +8239,11 @@ A aba Personalizado é o montador: você começa do kit básico e vai somando s�
 
 - No topo aparece o módulo básico em verde, com a etiqueta Sempre incluso e o preço dele. Não dá pra tirar.
 
-- Abaixo, sob o título Adicione módulos:, cada módulo tem nome, descrição e preço mensal. Clicar marca ou desmarca, e o cartão fica verde quando está selecionado.
+- Logo abaixo, uma linha verde pra cada módulo que já vem grátis em todos os planos: Portal do Cliente, Orçamentos e Precificação, e Perguntas em vídeo nos checklists. Cada uma traz a etiqueta Grátis e incluso em todos os planos, sem checkbox: não dá pra desmarcar porque não é uma escolha, é um benefício que vem de fábrica.
 
-- Se você marcar o módulo de notas fiscais, aparece a seção Nível de Notas Fiscais (NFS-e), com os níveis disponíveis, o limite de notas por mês de cada um e o preço. O nível atual vem marcado com (atual), e níveis abaixo do seu ficam desabilitados. O aviso: "O novo nível é liberado imediatamente e o valor entra na próxima cobrança."
+- Abaixo, sob o título Adicione módulos:, ficam só os módulos pagos: Gestão de Contratos e PMOC, Funcionários/RH, CRM, Emissão de Notas Fiscais e White Label. Cada um tem nome, descrição e preço mensal. Clicar marca ou desmarca, e o cartão fica verde quando está selecionado.
+
+- Se você marcar o módulo de notas fiscais, aparece a seção Nível de Notas Fiscais (NFS-e), com os níveis disponíveis, o limite de notas por mês de cada um e o preço. O nível atual vem marcado com (atual), e níveis abaixo do seu ficam desabilitados. Subir de nível é um upgrade como outro qualquer: o pagamento proporcional acontece no checkout, e a nova cota só libera depois da confirmação.
 
 - Em Usuários adicionais:, os botões de mais e menos aumentam ou diminuem os extras. A linha mostra quantos estão inclusos, quantos são extras e o valor vigente.
 
@@ -7675,9 +8251,11 @@ A aba Personalizado é o montador: você começa do kit básico e vai somando s�
 
 - Confirme no botão do painel.
 
-[Print da tela: Janela Gerenciar Meu Plano na aba Personalizado. À esquerda, o seletor de Ciclo (Mensal/Anual), o cartão verde Módulo Básico com Sempre incluso, e sob Adicione módulos a lista com Gestão de Contratos e PMOC, Funcionários/RH, CRM, Emissão de Notas Fiscais, Precificação Avançada e Portal do Cliente, todos marcados e em verde, cada um com nome, descrição curta e preço mensal. À direita, o painel Seu Plano listando cada item selecionado com o preço, o seletor de Ciclo repetido e o Total mensal em destaque.]
+ A caixa de aviso que fica dentro da seção de NFS-e, dizendo "o novo nível é liberado imediatamente e o valor entra na próxima cobrança", está desatualizada no próprio sistema e não é mais verdade: o fluxo real, hoje, é o pagamento proporcional no checkout descrito mais abaixo, igual a qualquer outro upgrade. Vale o que acontece na tela de pagamento, não essa frase.
 
-Aba Personalizado: módulos marcados em verde à esquerda, painel Seu Plano com o total recalculado à direita.
+[Print da tela: Janela Gerenciar Meu Plano na aba Personalizado. À esquerda, o seletor de Ciclo (Mensal/Anual), o cartão verde Módulo Básico com Sempre incluso, as linhas verdes dos módulos grátis Portal do Cliente, Orçamentos e Precificação e Perguntas em vídeo nos checklists com a etiqueta Grátis e incluso em todos os planos, e sob Adicione módulos a lista dos módulos pagos: Gestão de Contratos e PMOC, Funcionários/RH, CRM, Emissão de Notas Fiscais e White Label, cada um com nome, descrição curta e preço mensal. À direita, o painel Seu Plano listando cada item selecionado com o preço, o seletor de Ciclo repetido e o Total mensal em destaque.]
+
+Aba Personalizado: módulo básico e módulos grátis em verde, módulos pagos sob "Adicione módulos", e o painel Seu Plano com o total recalculado à direita.
 
 #### Regras que o sistema aplica
 
@@ -7697,22 +8275,23 @@ O botão Cancelar assinatura, ao lado de Gerenciar Meu Plano, abre um fluxo de t
 
 ### 5. O catálogo de módulos explicado em uma frase cada
 
-Módulo é um pedaço do sistema contratado pela empresa inteira. Os preços aparecem sempre atualizados dentro do montador e na janela Módulo não disponível, por isso não decore valor: olhe na tela.
+Módulo é um pedaço do sistema contratado pela empresa inteira. A maioria é paga e soma no montador, mas alguns já vêm grátis em qualquer plano pago, marcados abaixo. Os preços aparecem sempre atualizados dentro do montador e na janela Módulo não disponível, por isso não decore valor: olhe na tela.
 
 | Módulo | O que ele libera |
 | Módulo Básico | O kit dos planos a partir do Essencial: Ordens de Serviço, Agenda, Dashboard, Orçamentos, Serviços, Mapa ao Vivo, Clientes, Equipamentos, Estoque e o Financeiro completo, incluindo Contas a Pagar/Receber, DRE, DFC e Cobranças online. |
-| Gestão de Contratos e PMOC | Contratos recorrentes, portal do contrato e do PMOC pro cliente, e os documentos (TRT, Certificado, Cronograma e Dossiê). |
-| Funcionários / RH | Cadastro de funcionários, equipes, ponto eletrônico e as movimentações financeiras dos colaboradores. |
-| CRM | Funil de vendas com leads, etapas, interações e captação por link. |
-| Emissão de Notas Fiscais | Emissão de NFS-e direto do sistema, com níveis de cota mensal. |
-| Precificação Avançada | BDI, custos globais de recursos e precificação detalhada de serviços e orçamentos. |
-| Portal do Cliente | A área em que o seu cliente acompanha as OS e os equipamentos dele por link. |
-| White Label | Personalização completa da marca: logo, cores e ícone do sistema, inclusive nos documentos que o cliente recebe. |
-| Usuário extra | Não é uma tela, é uma vaga a mais de usuário ativo no plano. O valor vigente aparece no montador. |
+| Gestão de Contratos e PMOC (pago) | Contratos recorrentes, portal do contrato e do PMOC pro cliente, e os documentos (TRT, Certificado, Cronograma e Dossiê). |
+| Funcionários / RH (pago) | Cadastro de funcionários, equipes, ponto eletrônico e as movimentações financeiras dos colaboradores. |
+| CRM (pago) | Funil de vendas com leads, etapas, interações e captação por link. |
+| Emissão de Notas Fiscais (pago) | Emissão de NFS-e direto do sistema, com níveis de cota mensal. |
+| Precificação Avançada (grátis, incluso em todos os planos) | BDI, custos globais de recursos e precificação detalhada de serviços e orçamentos. |
+| Portal do Cliente (grátis, incluso em todos os planos) | A área em que o seu cliente acompanha as OS e os equipamentos dele por link. |
+| Perguntas em vídeo nos checklists (grátis, incluso em todos os planos) | O técnico grava ou recebe uma pergunta em vídeo dentro do checklist da OS, em vez de só texto. |
+| White Label (pago) | Personalização completa da marca: logo, cores e ícone do sistema, inclusive nos documentos que o cliente recebe. |
+| Usuário extra (pago) | Não é uma tela, é uma vaga a mais de usuário ativo no plano. O valor vigente aparece no montador. |
 
 #### Como saber o que você já tem
 
-- Abra Gerenciar Meu Plano na aba Personalizado: os módulos já contratados vêm marcados em verde.
+- Abra Gerenciar Meu Plano na aba Personalizado: os módulos pagos já contratados vêm marcados em verde sob Adicione módulos, e os módulos grátis aparecem sempre em verde mais acima, contratado ou não.
 
 - O cartão Sua Assinatura mostra o plano e a contagem de módulos.
 
@@ -7806,7 +8385,7 @@ No fim da tela de Assinatura fica o cartão Histórico de pagamentos, com a desc
 | "Meu valor está diferente do site" | Preço promocional ou plano personalizado | O valor da tela é o efetivo da empresa, já com promoção ou preço negociado. No plano Personalizado, o valor é a soma dos módulos e usuários contratados. |
 | "Marquei Anual no cartão e não veio desconto" | Comportamento esperado | O desconto vigente do ciclo anual vale só para pagamento à vista, por Pix ou Boleto. No cartão a cobrança é sempre mensal recorrente. |
 | "Não acho o plano Personalizado pra comprar" | Ele não é vendido na escolha de plano | O Personalizado é montado em Assinatura › Gerenciar Meu Plano › aba Personalizado. Ele não aparece na tela de escolha de plano do checkout. |
-| "Contratei um módulo e ele não apareceu" | A página ainda estava com dados antigos | Recarregue a página. O upgrade libera na hora. Se persistir, confirme na aba Personalizado se o módulo ficou marcado. |
+| "Contratei um módulo e ele não apareceu" | O upgrade abriu o checkout e o pagamento do ajuste proporcional ainda não foi confirmado | Upgrade de plano, módulo, usuário extra ou nível de NFS-e passa pelo checkout: o recurso só libera depois que esse pagamento é confirmado. Veja o Histórico de pagamentos; se a linha está Pendente, aguarde a compensação (Pix é na hora, boleto leva até três dias úteis). |
 | "Não consigo trocar por um plano menor" | A empresa tem mais usuários do que o plano novo comporta | O sistema pede pra reduzir os usuários antes. Desative os usuários que não usam mais e tente de novo. |
 | "Sumiram recursos depois que assinei" | Fim do período de teste | Durante o teste tudo fica liberado. Ao assinar, valem os módulos do plano escolhido. Contrate os que faltam em Gerenciar Meu Plano. |
 | "Cancelei e perdi o acesso na hora?" | Dúvida sobre o efeito do cancelamento | Não. Cancelar interrompe a renovação automática e você mantém o acesso até o fim do período já pago. Dá pra reativar depois. |
@@ -7819,10 +8398,10 @@ No fim da tela de Assinatura fica o cartão Histórico de pagamentos, com a desc
 **R:** Em Assinatura, no bloco principal, campo Valor mensal. O mesmo valor aparece no selo do cartão Sua Assinatura.
 
 **P:** Como contrato um módulo novo?
-**R:** Assinatura › Gerenciar Meu Plano › aba Personalizado, marque o módulo e confirme no painel da direita. Os recursos são liberados na hora e o valor entra na próxima cobrança.
+**R:** Assinatura › Gerenciar Meu Plano › aba Personalizado, marque o módulo e confirme no painel da direita. Isso é um upgrade: o sistema leva você pro checkout pra pagar o ajuste proporcional, e o módulo libera depois que esse pagamento é confirmado.
 
 **P:** Se eu subir de plano hoje, pago proporcional?
-**R:** Os recursos são liberados imediatamente e o novo valor entra na próxima cobrança. Não há cobrança avulsa no momento da troca.
+**R:** Sim. Ao confirmar o upgrade, você vai pro checkout pagar só a diferença proporcional ao tempo que falta até o seu próximo vencimento. Os recursos novos liberam depois que esse pagamento é confirmado, não antes.
 
 **P:** Se eu descer de plano, perco os recursos na hora?
 **R:** Não. O downgrade é agendado: você mantém o plano atual até o fim do período já pago e o valor novo passa a valer na próxima cobrança.

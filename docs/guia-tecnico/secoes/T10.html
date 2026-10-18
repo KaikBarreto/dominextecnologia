@@ -4,10 +4,10 @@
   <p class="lead">Parar de perder oportunidade em conversa de WhatsApp: todo pedido de orçamento vira um cartão num funil visível, com dono, valor, probabilidade e próximo passo marcado, do primeiro contato até o negócio fechado.</p>
 
   <div class="meta">
-    <span><b>Onde fica:</b> Menu → CRM</span>
-    <span><b>Rotas:</b> <code>/crm</code></span>
+    <span><b>Onde fica:</b> Menu lateral, grupo <span class="ui">CRM e Projetos</span>, na tela <span class="ui">CRM/Kanban</span>. O mesmo grupo guarda a tela <span class="ui">Projetos</span> (capítulo 13), que é uma funcionalidade irmã, não uma aba dentro desta tela.</span>
+    <span><b>Rotas:</b> <code>/crm</code> (este capítulo) e <code>/projetos</code>, <code>/projetos/:id</code> (capítulo 13)</span>
     <span><b>Depende de:</b> T3 (Clientes) e T9 (Orçamentos)</span>
-    <span><b>Quem enxerga:</b> quem tiver a permissão de tela <span class="ui">CRM</span> ligada no editor de permissões (grupo Comercial) <b>e</b> pertencer a uma empresa com o módulo CRM ativo. Dentro da tela, quem tem a ação <span class="ui">Gerenciar CRM</span> vê o funil inteiro; quem não tem vê só as oportunidades das quais é responsável, co-responsável ou criador. Admin e gestor sempre veem tudo.</span>
+    <span><b>Quem enxerga:</b> quem tiver a permissão de tela <span class="ui">CRM/Kanban</span> ligada no editor de permissões (grupo Comercial) <b>e</b> pertencer a uma empresa com o módulo CRM ativo. Dentro da tela, quem tem a ação <span class="ui">Gerenciar CRM</span> vê o funil inteiro; quem não tem vê só as oportunidades das quais é responsável, co-responsável ou criador. Admin e gestor sempre veem tudo.</span>
     <span><b>Configuração ligada:</b> o catálogo de <span class="ui">Origens</span>, em Configurações → Usabilidade, é compartilhado entre o cadastro de clientes e as oportunidades do CRM.</span>
   </div>
 
@@ -18,20 +18,23 @@
   <div class="aviso">Sem o módulo CRM, o item <span class="ui">CRM</span> <b>não aparece no menu</b>, nem no menu lateral do computador nem na gaveta "Mais" do celular. Não há tela cinza, não há mensagem de bloqueio, simplesmente não existe aquele item. Quem procurar o funil e não achar deve conferir primeiro com o responsável pela assinatura se o módulo está contratado. Se o módulo está ativo e mesmo assim a pessoa não vê o CRM, aí sim é permissão: um administrador liga a tela <span class="ui">CRM</span> para aquele usuário no editor de permissões.</div>
 
   <figure>
-    <img src="img/t10-crm.png" alt="Tela CRM com os cartões Total de Leads e Valor Total, campo de busca e o quadro Pipeline de Vendas mostrando o estado inicial, com o convite Configure seu funil de vendas e os botões Começar com estágios padrão e Personalizar estágios">
-    <figcaption>CRM recém-aberto, ainda sem funil montado: o convite <span class="ui">Configure seu funil de vendas</span> com os botões de criar os estágios padrão ou personalizar do zero.</figcaption>
+    <img src="img/t10-crm.png" alt="Tela CRM/Kanban com os cartões Total no funil e Valor Total, campo de busca e o quadro com o nome do funil selecionado mostrando o estado inicial, com o convite Configure seu funil e os botões Começar com estágios padrão e Personalizar estágios">
+    <figcaption>CRM/Kanban recém-aberto, ainda sem funil montado: o convite <span class="ui">Configure seu funil</span> com os botões de criar os estágios padrão ou personalizar do zero.</figcaption>
   </figure>
 
   <h3>O que tem na tela</h3>
-  <p>No topo, o cabeçalho <span class="ui">CRM</span> com o subtítulo <span class="ui">Gerencie oportunidades e leads</span> e quatro ações: três ícones, <span class="ui">Gerenciar estágios</span>, <span class="ui">Gerenciar funis</span> e <span class="ui">Configurar webhooks</span>, e o botão <span class="ui">Nova Oportunidade</span>. No celular, os três ícones ficam dentro da gaveta <span class="ui">Filtros</span>, no bloco <span class="ui">Configurações</span>, cada um como uma linha de botão com texto.</p>
+  <p>No topo, o cabeçalho <span class="ui">CRM/Kanban</span> com o subtítulo <span class="ui">Gerencie oportunidades e processos</span>, o botão <span class="ui">Configurações do CRM/Kanban</span> e o botão <span class="ui">Nova oportunidade</span>. Logo abaixo ficam as abas <span class="ui">Funil</span> e <span class="ui">Tarefas</span>, o campo de busca e o botão <span class="ui">Filtros</span>.</p>
+  <div class="dica">Antes existiam três botões de ícone separados no cabeçalho, um para estágios, um para funis e um para webhooks. Eles foram reunidos num botão só, <span class="ui">Configurações do CRM/Kanban</span>, que abre uma janela com quatro abas: <span class="ui">Funis</span>, <span class="ui">Checklists</span>, <span class="ui">Etiquetas</span> e <span class="ui">Webhooks</span>. Se um cliente antigo disser que "sumiu o botão de gerenciar funis", é isso: está dentro dessa janela, na primeira aba.</div>
+  <div class="dica">O rótulo <span class="ui">CRM/Kanban</span> (tela e menu) e o subtítulo <span class="ui">Gerencie oportunidades e processos</span> são recentes: a tela existia antes só como <span class="ui">CRM</span>, com o subtítulo <span class="ui">Gerencie oportunidades e leads</span>. O nome mudou porque a mesma tela agora também hospeda funis que não são de venda (frente de obra do capítulo 13), e "processos" descreve as duas coisas melhor do que "leads".</div>
 
   <p>Logo abaixo do cabeçalho, um alternador de duas abas comanda a tela inteira: <span class="ui">Funil</span>, que é o kanban de sempre, e <span class="ui">Tarefas</span>, uma lista com as tarefas vinculadas a oportunidades de qualquer funil da empresa. Essa segunda aba é explicada no capítulo 8. O restante deste capítulo trata da aba <span class="ui">Funil</span>, que é a que abre por padrão.</p>
 
   <p>Dentro da aba <span class="ui">Funil</span>, se a empresa tem mais de um funil cadastrado, aparece um seletor de funil logo abaixo do alternador (capítulo 2). Com um funil só, esse seletor simplesmente não aparece, e a tela funciona exatamente como sempre funcionou.</p>
 
-  <p>Em seguida vêm os cartões de resumo. Sempre aparecem dois: <span class="ui">Total de Leads</span> e <span class="ui">Valor Total</span>. Quando o funil selecionado já tem estágios, aparecem mais dois: o valor acumulado no primeiro estágio marcado como ganho e o valor acumulado no primeiro estágio neutro. Um detalhe que economiza confusão no suporte: <b>os cartões respeitam os filtros e a permissão de visibilidade</b>. Se você filtrou por um vendedor, ou se você não tem a ação <span class="ui">Gerenciar CRM</span> e só enxerga as suas próprias oportunidades, o Total de Leads reflete só o que está na sua tela, não o total da empresa.</p>
+  <p>Em seguida vêm os cartões de resumo. Sempre aparecem dois: <span class="ui">Total no funil</span> e <span class="ui">Valor Total</span>. Quando o funil selecionado já tem estágios, aparecem mais dois: o valor acumulado no primeiro estágio marcado como ganho e o valor acumulado no primeiro estágio neutro. Um detalhe que economiza confusão no suporte: <b>os cartões respeitam os filtros e a permissão de visibilidade</b>. Se você filtrou por um vendedor, ou se você não tem a ação <span class="ui">Gerenciar CRM</span> e só enxerga as suas próprias oportunidades, o Total no funil reflete só o que está na sua tela, não o total da empresa.</p>
+  <div class="aviso">O card <span class="ui">Total no funil</span> já se chamou <span class="ui">Total de Leads</span>. O nome mudou pra não falar de "lead" num funil que, por causa das frentes de obra do capítulo 13, pode estar organizando outra coisa (instalação, compra, processo interno). O número e o lugar continuam os mesmos, só o rótulo trocou.</div>
 
-  <p>Depois vêm a busca <span class="ui">Buscar por título ou cliente...</span>, o botão <span class="ui">Filtros</span> e o quadro <span class="ui">Pipeline de Vendas</span>, que é o kanban. Quando há filtro ativo, aparece ao lado do título um selo no formato "3 de 12" mostrando quantas oportunidades do funil selecionado passaram pelo filtro.</p>
+  <p>Depois vêm a busca <span class="ui">Buscar por título ou cliente...</span>, o botão <span class="ui">Filtros</span> e o quadro do kanban, com o nome do funil selecionado no alto (por padrão, <span class="ui">Funil de Vendas</span>). Quando há filtro ativo, aparece ao lado do título um selo no formato "3 de 12" mostrando quantas oportunidades do funil selecionado passaram pelo filtro.</p>
 
   <h3>Kanban e lista</h3>
   <p>No computador a visão é sempre o <b>kanban</b>: uma coluna por estágio, lado a lado, com rolagem horizontal quando há muitos estágios. Cada coluna tem um cabeçalho colorido com, opcionalmente, um ícone escolhido para o estágio, o nome do estágio, a quantidade de oportunidades e a soma dos valores (mesmo quando é R$ 0,00, a linha de valor sempre aparece, pra todas as colunas ficarem com a mesma altura de cabeçalho), e uma área rolável com os cartões, também padronizada na mesma altura entre as colunas.</p>
@@ -42,7 +45,7 @@
   <div class="aviso">Uma oportunidade <b>sem nenhum responsável</b> não mostra avatar nenhum: ela ganha um selo amarelo de atenção com o texto <span class="ui">Sem responsável</span>. São as oportunidades da fila compartilhada, explicadas no capítulo 9.</div>
 
   <h3>O funil vazio</h3>
-  <p>Um funil sem nenhum estágio mostra o convite <span class="ui">Configure seu funil de vendas</span>, com o texto "Crie os estágios do pipeline pra começar a organizar suas oportunidades. Use o conjunto padrão ou monte do seu jeito." e dois botões: <span class="ui">Começar com estágios padrão</span> e <span class="ui">Personalizar estágios</span>.</p>
+  <p>Um funil sem nenhum estágio mostra o convite <span class="ui">Configure seu funil</span>, com o texto "Crie os estágios do pipeline pra começar a organizar suas oportunidades. Use o conjunto padrão ou monte do seu jeito." e dois botões: <span class="ui">Começar com estágios padrão</span> e <span class="ui">Personalizar estágios</span>.</p>
   <p>O botão de estágios padrão cria cinco colunas de uma vez, prontas para uso, e mostra <span class="ui">Estágios padrão criados!</span>. É o caminho recomendado: dá para renomear e recolorir tudo depois.</p>
   <table class="dados">
     <thead><tr><th>Estágio padrão</th><th>Cor</th><th>Marcação</th></tr></thead>
@@ -58,12 +61,19 @@
 
   <h2>2. Vários funis: criar, trocar, tornar padrão, "quem pode ver" e excluir</h2>
 
-  <p>A empresa pode ter mais de um funil comercial, por exemplo um para vendas novas e outro para pós-venda. O botão de ícone <span class="ui">Gerenciar funis</span> no cabeçalho (no celular, dentro da gaveta de filtros) abre a janela <span class="ui">Gerenciar Funis</span>, descrita como "Crie funis separados para vendas, pós-venda, licitação e outros fluxos comerciais."</p>
+  <p>A empresa pode ter mais de um funil comercial, por exemplo um para vendas novas e outro para pós-venda. O botão <span class="ui">Configurações do CRM/Kanban</span> no cabeçalho abre a janela de configurações já na aba <span class="ui">Funis</span>, que traz o bloco <span class="ui">Gerenciar Funis</span>, descrito como "Crie funis separados para vendas, pós-venda, licitação e outros fluxos comerciais. Para organizar uma obra com várias frentes ao mesmo tempo, use Projetos." A última frase é um atalho pro capítulo 13: um funil criado aqui é sempre <b>comercial</b>; quem precisa de várias frentes de trabalho debaixo de uma obra só deve usar a tela <span class="ui">Projetos</span>, que cria e gerencia as frentes automaticamente.</p>
 
-  <!-- PRINT FALTANDO: t10-gerenciar-funis — janela Gerenciar Funis com dados fictícios. Não publicar referência de imagem antes da captura auditada. -->
+  <figure>
+    <img src="img/t10-gerenciar-funis.png" alt="Aba Funis da janela Configurações do CRM/Kanban, com o botão Novo funil, a lista de funis da empresa mostrando para cada um a contagem de etapas e de oportunidades, o selo Padrão no funil principal e o menu de ações da linha">
+    <figcaption>Aba <span class="ui">Funis</span>: a lista de funis da empresa, com a contagem de etapas e de oportunidades de cada um e o selo <span class="ui">Padrão</span>.</figcaption>
+  </figure>
 
   <h3>Criar, renomear e reordenar</h3>
-  <p>No bloco pontilhado <span class="ui">Novo Funil</span>, digite o nome no campo <span class="ui">Nome do funil</span> e toque no botão de mais. Aparece <span class="ui">Funil criado com sucesso!</span> e o funil entra no fim da lista. A dica <span class="ui">Arraste para reordenar os funis</span> vale pra ordem em que os funis aparecem no seletor do topo da tela. Cada linha tem um menu com <span class="ui">Editar</span> (renomear), <span class="ui">Quem pode ver</span> e <span class="ui">Excluir</span>.</p>
+  <p>No bloco pontilhado <span class="ui">Novo Funil</span>, digite o nome no campo <span class="ui">Nome do funil</span> e toque no botão de mais. Aparece <span class="ui">Funil criado com sucesso!</span> e o funil entra no fim da lista. A dica <span class="ui">Arraste para reordenar os funis</span> vale pra ordem em que os funis aparecem no seletor do topo da tela; no celular, cada linha também tem uma setinha pra cima e pra baixo, porque arrastar com o dedo numa lista rolável é pouco confiável. Cada linha mostra, embaixo do nome, a contagem "X etapas · Y oportunidades" e, quando o funil ainda não tem nenhuma etapa, o selo <span class="ui">Sem etapas</span>. Tocar na setinha de expandir ao lado do nome abre, sem fechar esta janela, um atalho pra gerenciar as etapas daquele funil direto ali. Cada linha também tem um menu com <span class="ui">Editar</span> (renomear), <span class="ui">Quem pode ver</span> e <span class="ui">Excluir</span>.</p>
+
+  <h3>Acompanha valores financeiros: a chave que separa venda de processo</h3>
+  <p>Abrindo um funil em <span class="ui">Editar</span>, além do nome e da cor aparece a chave <span class="ui">Acompanha valores financeiros</span>, com a explicação "Desligue para funis de projeto ou processo: os indicadores passam a contar cards em vez de somar dinheiro." Ligada (o padrão de todo funil novo criado aqui), o funil se comporta exatamente como descrito neste capítulo: valor estimado, probabilidade, origem, cartão de Valor Total. Desligada, o funil vira um <b>funil de processo</b>: some o vocabulário de venda (Valor Estimado, Probabilidade, Origem desaparecem do formulário da oportunidade, que passa a se chamar "card"), o segundo cartão do topo conta quantos cards estão em andamento em vez de somar R$, e o cabeçalho das colunas do kanban para de repetir "R$ 0,00".</p>
+  <div class="regra">É assim que uma frente de trabalho de um <span class="ui">Projeto</span> (capítulo 13) se comporta por baixo dos panos: toda frente nasce com esta chave desligada. Dá pra desligar a mesma chave num funil criado aqui, direto no CRM/Kanban, sem passar por Projetos, se a sua empresa só precisa de um quadro de processo isolado (por exemplo, um funil de onboarding de cliente novo que não deveria falar de dinheiro).</div>
 
   <h3>Funil padrão</h3>
   <p>Um dos funis é sempre o <b>padrão</b>, com o selo azul <span class="ui">Padrão</span>. É o funil que abre quando você entra no CRM pela primeira vez, ou quando a sua preferência de funil (guardada no seu navegador) aponta pra um funil que não existe mais. Qualquer outro funil vira padrão pelo botão <span class="ui">Tornar padrão</span> na própria linha, confirmado com <span class="ui">Funil padrão atualizado!</span>.</p>
@@ -99,15 +109,15 @@
 
   <h2>3. Montar as etapas do funil: criar, renomear, reordenar, ícone e cor</h2>
 
-  <p>O botão de engrenagem <span class="ui">Gerenciar estágios</span> (no celular, dentro da gaveta de filtros, no bloco Configurações) abre a janela <span class="ui">Gerenciar Estágios do Pipeline</span>, que passa a operar dentro do funil selecionado no topo da tela. Com mais de um funil, o título da janela muda pra <span class="ui">Gerenciar Estágios do Funil "nome"</span>, deixando explícito qual funil está sendo editado. As etapas são <b>da sua empresa</b>: nada aqui é fixo no sistema, e o funil de uma empresa nunca aparece para outra.</p>
+  <p>As etapas ficam dentro da própria aba <span class="ui">Funis</span>: toque na setinha ao lado do nome do funil e o bloco <span class="ui">Gerenciar Estágios do Funil "nome"</span> abre logo abaixo, já com as etapas daquele funil. Como cada funil mostra as suas, não existe mais a dúvida de "estou editando as etapas de qual funil". As etapas são <b>da sua empresa</b>: nada aqui é fixo no sistema, e o funil de uma empresa nunca aparece para outra.</p>
 
   <figure>
-    <img src="img/t10-gerenciar-estagios.png" alt="Janela Gerenciar Estágios do Pipeline de uma empresa sem nenhum estágio ainda, com o bloco pontilhado Novo Estágio contendo o campo Nome do estágio, um seletor de ícone, um seletor de cor mostrando o código #6B7280 e o botão de mais, e abaixo a dica Arraste para reordenar os estágios">
-    <figcaption>Janela Gerenciar Estágios do Pipeline, ainda sem nenhum estágio criado: o bloco de criar um novo estágio, com nome, ícone e cor.</figcaption>
+    <img src="img/t10-gerenciar-estagios.png" alt="Janela Gerenciar Estágios do Pipeline de uma empresa sem nenhum estágio ainda, com o botão Novo estágio fechado e, depois de tocado, o bloco com o campo Nome do estágio, um seletor de ícone, um seletor de cor mostrando o código #6B7280 e o botão de mais, e abaixo a dica Arraste para reordenar os estágios">
+    <figcaption>Janela Gerenciar Estágios do Pipeline, ainda sem nenhum estágio criado: o botão <span class="ui">Novo estágio</span> aberto, mostrando o bloco de criar um novo estágio, com nome, ícone e cor.</figcaption>
   </figure>
 
   <h3>Criar</h3>
-  <p>No bloco pontilhado <span class="ui">Novo Estágio</span>, digite o nome no campo <span class="ui">Nome do estágio</span>, escolha um ícone no seletor <span class="ui">Ícone</span> (ou deixe em <span class="ui">Sem ícone</span>) e a cor no seletor de cores, e toque no botão de mais. Aparece <span class="ui">Estágio criado com sucesso!</span> e o estágio entra no fim do funil selecionado. O botão fica travado enquanto o nome estiver vazio, ou enquanto nenhum funil estiver resolvido.</p>
+  <p>O bloco de criação começa <b>fechado</b>, atrás do botão <span class="ui">Novo estágio</span> (o ícone de mais sozinho não conta a história toda: é texto mesmo). Tocando nele, o bloco abre com o campo <span class="ui">Nome do estágio</span>, o seletor <span class="ui">Ícone</span> (ou <span class="ui">Sem ícone</span>), o seletor de cor e o botão de confirmar; um X no canto fecha o bloco de volta sem criar nada. Digite o nome, escolha ícone e cor, e toque no botão de mais. Aparece <span class="ui">Estágio criado com sucesso!</span>, o bloco fecha sozinho e o estágio entra no fim do funil selecionado. O botão de confirmar fica travado enquanto o nome estiver vazio, ou enquanto nenhum funil estiver resolvido.</p>
 
   <h3>Renomear, recolorir, trocar o ícone e marcar</h3>
   <p>Cada linha da lista tem um menu com <span class="ui">Editar</span> (laranja) e <span class="ui">Excluir</span> (vermelho). Em <span class="ui">Editar</span>, a linha abre no modo de edição com o campo de nome, o seletor de ícone, o seletor de cor e as duas chaves <span class="ui">Ganho</span> e <span class="ui">Perdido</span>. O X descarta e o visto confirma. Confirmando, aparece <span class="ui">Estágio atualizado!</span>.</p>
@@ -264,7 +274,28 @@
     <li>Ao lado do telefone aparece o botão verde <span class="ui">WhatsApp</span>, que abre a conversa com aquele número já selecionado. O sistema arruma o número sozinho, tirando parênteses, traços e espaços, e acrescentando o código do Brasil quando falta.</li>
     <li>O <b>e-mail</b> é um link que abre o programa de e-mail com o destinatário preenchido.</li>
   </ul>
-  <p>Mais abaixo aparecem as <span class="ui">Observações</span>, a data de criação (<span class="ui">Criado em:</span>) e há quanto tempo a oportunidade foi mexida pela última vez (<span class="ui">Atualizado:</span>).</p>
+  <p>Mais abaixo aparecem as <span class="ui">Observações</span>, com <b>autosave</b>: ao digitar, um indicador ao lado do título mostra <span class="ui">Salvando...</span>, depois <span class="ui">Salvo</span> (ou um aviso de erro se a gravação falhar), sem precisar clicar em nenhum botão de salvar. Em seguida vêm a data de criação (<span class="ui">Criado em:</span>) e há quanto tempo a oportunidade foi mexida pela última vez (<span class="ui">Atualizado:</span>).</p>
+
+  <h3>Etiquetas, checklists e comentários</h3>
+  <p>Fechando a aba <span class="ui">Detalhes</span>, três blocos ajudam a organizar o acompanhamento do dia a dia sem precisar de uma Ordem de Serviço:</p>
+  <ul>
+    <li><span class="ui">Etiquetas</span>: selos coloridos (ex.: "Urgente", "Aguardando cliente") que você cria na aba <span class="ui">Etiquetas</span> de <span class="ui">Configurações do CRM/Kanban</span> e aplica à oportunidade marcando quantas quiser. Sem nenhuma aplicada, aparece <span class="ui">Nenhuma etiqueta aplicada</span>.</li>
+    <li><span class="ui">Checklists</span>: listas de itens para marcar, criadas do zero ou a partir de um modelo salvo pela empresa, com barra de progresso. Servem para padronizar um processo comercial (ex.: "documentos do financiamento") sem abrir uma OS.</li>
+    <li><span class="ui">Comentários e atividades</span>: no computador, um painel ao lado dos dados (no celular, abaixo deles) com uma caixa para escrever um comentário livre e o botão <span class="ui">Comentar</span>. O comentário entra na <b>mesma linha do tempo</b> da aba <span class="ui">Histórico</span>, junto com as interações estruturadas e os registros automáticos de troca de etapa — é um jeito mais rápido de deixar um recado sem preencher Tipo de Interação e Descrição.</li>
+  </ul>
+  <div class="dica">Etiquetas e modelos de checklist são configurados uma vez pela empresa (administrador ou quem tem <span class="ui">Gerenciar Configurações</span>) e depois ficam disponíveis pra aplicar em qualquer oportunidade, do mesmo jeito que os modelos de checklist de OS (T4).</div>
+
+  <p>As duas configurações ficam em abas vizinhas dentro de <span class="ui">Configurações do CRM/Kanban</span>:</p>
+
+  <figure>
+    <img src="img/t10-etiquetas.png" alt="Aba Etiquetas da janela Configurações do CRM/Kanban, com a explicação de que são marcadores coloridos para identificar oportunidades rapidamente, o botão Nova etiqueta e a lista das etiquetas já criadas, cada uma com os botões de editar e excluir">
+    <figcaption>Aba <span class="ui">Etiquetas</span>: os marcadores coloridos da empresa, criados uma vez e aplicados em qualquer oportunidade.</figcaption>
+  </figure>
+
+  <figure>
+    <img src="img/t10-checklists.png" alt="Aba Checklists da janela Configurações do CRM/Kanban, com o título Modelos de checklist, a explicação de que padronizam etapas aplicáveis a qualquer oportunidade e o botão Novo modelo">
+    <figcaption>Aba <span class="ui">Checklists</span>: os modelos que padronizam um processo comercial repetido.</figcaption>
+  </figure>
 
   <h3>Aba Histórico: registrar interação</h3>
   <p>É o coração do acompanhamento. O botão <span class="ui">Nova Interação</span> abre o bloco <span class="ui">Registrar Interação</span> com quatro campos:</p>
@@ -311,7 +342,9 @@
   <div class="regra">Uma tarefa <b>recorrente</b> não aparece uma linha por ocorrência: o card mostra só a próxima ocorrência pendente, com o selo <span class="ui">Recorrente</span>, exatamente como a Agenda faz. É a mesma regra nos dois lugares, de propósito, pra não mostrar números diferentes de "quantas tarefas" conforme a tela.</div>
 
   <h3>A aba Tarefas da tela do CRM</h3>
-  <p>No alternador do topo da tela (capítulo 1), a aba <span class="ui">Tarefas</span> é uma terceira superfície, ao lado do kanban. Ela lista, numa tabela corrida, as tarefas vinculadas a oportunidades de <b>qualquer funil</b> da empresa (não só do funil selecionado no seletor), combinando duas regras de visibilidade: só entram tarefas de oportunidades que você já enxerga (a regra do capítulo 9) e, dentro dessas, só as tarefas que a sua permissão de tarefa libera (a regra logo abaixo). Tem busca (<span class="ui">Buscar tarefa ou oportunidade...</span>) e um filtro por <span class="ui">Responsável</span>. A ordenação é por data, com as <b>vencidas primeiro</b> (selo <span class="ui">Atrasada</span>), depois as com data futura, e por último as sem data.</p>
+  <p>No alternador do topo da tela (capítulo 1), a aba <span class="ui">Tarefas</span> é uma terceira superfície, ao lado do kanban. Ela lista as tarefas vinculadas a oportunidades de <b>qualquer funil comercial</b> da empresa (não só do funil selecionado no seletor), combinando duas regras de visibilidade: só entram tarefas de oportunidades que você já enxerga (a regra do capítulo 9) e, dentro dessas, só as tarefas que a sua permissão de tarefa libera (a regra logo abaixo). Tem busca (<span class="ui">Buscar tarefa ou oportunidade...</span>) e um filtro por <span class="ui">Responsável</span>, válidos nas três visões abaixo.</p>
+  <div class="regra">"Qualquer funil" aqui quer dizer qualquer funil <b>comercial</b>. Tarefa criada dentro do card de uma <b>frente de trabalho</b> de um Projeto (capítulo 13) não aparece nesta aba: ela vive dentro do próprio Projeto, na aba Tarefas dele. É proposital, pra não misturar numa lista só o "o que eu tenho que fazer de venda" com "o que eu tenho que fazer de obra".</div>
+  <p>Um alternador de três botões escolhe o formato: <span class="ui">Lista</span> (tabela corrida, o formato original, com as <b>vencidas primeiro</b> marcadas com o selo <span class="ui">Atrasada</span>, depois as com data futura, e por último as sem data), <span class="ui">Kanban</span> (uma coluna por status de tarefa: pendente, em andamento, pausada e concluída, igual ao board de uma OS) e <span class="ui">Agenda</span> (agrupada por dia, como um mini-calendário). As três mostram as mesmas tarefas; mudar de formato não muda quais tarefas aparecem, só como elas são organizadas na tela.</p>
   <p>Cada linha mostra o título da tarefa, o nome da oportunidade de origem, os avatares dos responsáveis e a data (ou <span class="ui">Sem data</span>). Tocar numa linha abre o detalhe da oportunidade dona daquela tarefa (aba Detalhes); a partir daí, entre na aba Tarefas do próprio card pra ver ou editar a tarefa.</p>
   <p>Sem nenhuma tarefa vinculada em nenhuma oportunidade, aparece <span class="ui">Nenhuma tarefa vinculada a oportunidades</span> com "Crie tarefas dentro de uma oportunidade para acompanhá-las aqui.". Com filtro sem resultado, é <span class="ui">Nenhuma tarefa encontrada</span> / "Tente ajustar a busca ou os filtros.".</p>
 
@@ -353,8 +386,8 @@
   <p>O botão de webhook no cabeçalho (no celular, dentro da gaveta de filtros) abre a janela <span class="ui">Webhooks de Leads Externos</span>.</p>
 
   <figure>
-    <img src="img/t10-webhooks.png" alt="Janela Webhooks de Leads Externos com o bloco Criar novo webhook contendo os campos Nome e Origem padrão (Sem origem fixa) e o botão Criar webhook, a lista Webhooks configurados vazia com Nenhum webhook cadastrado, e abaixo o bloco Como usar o webhook com os campos obrigatórios name e phone, os opcionais email, source, title, notes e value, e um exemplo de JSON">
-    <figcaption>Janela Webhooks de Leads Externos: o bloco de criar um novo webhook em cima e, embaixo, a documentação de como outro sistema deve chamá-lo.</figcaption>
+    <img src="img/t10-webhooks.png" alt="Janela Webhooks de Leads Externos com o bloco Criar novo webhook contendo os campos Nome, Origem padrão, Funil de destino e Etapa de destino, o botão Criar webhook, a lista Webhooks configurados vazia com Nenhum webhook cadastrado, a nota sobre o cabeçalho x-idempotency-key e abaixo o bloco Como usar o webhook com os campos obrigatórios name, phone ou email, os opcionais source, title, notes e value, e um exemplo de JSON">
+    <figcaption>Janela Webhooks de Leads Externos: o bloco de criar um novo webhook, agora com o funil e a etapa de destino, em cima e, embaixo, a documentação de como outro sistema deve chamá-lo.</figcaption>
   </figure>
 
   <h3>Criar</h3>
@@ -362,11 +395,15 @@
   <ul>
     <li><span class="ui">Nome</span>: como você reconhece essa fonte, com o exemplo <span class="ui">Ex: Meta Ads - Campanha Março</span>. Esse nome também vira o título padrão dos leads que entrarem por ali.</li>
     <li><span class="ui">Origem padrão</span>: uma origem do catálogo da empresa, ou <span class="ui">Sem origem fixa</span>.</li>
+    <li><span class="ui">Funil de destino</span>: pra qual funil comercial o lead cai. Só aparecem funis comerciais nesta lista: uma frente de trabalho de um Projeto (capítulo 13) nunca pode ser destino de webhook, porque um lead externo chegando ali mexeria no progresso da obra sem ninguém da operação autorizar.</li>
+    <li><span class="ui">Etapa de destino</span>: a etapa daquele funil onde o lead entra. Escolher o funil já sugere, sozinho, a primeira etapa que não é de ganho nem de perda; você pode trocar pra outra etapa do mesmo funil.</li>
   </ul>
-  <p>O botão <span class="ui">Criar webhook</span> gera o endereço e mostra <span class="ui">Webhook criado com sucesso!</span>.</p>
+  <p>O botão <span class="ui">Criar webhook</span> só libera com nome, funil e etapa preenchidos, e gera o endereço mostrando <span class="ui">Webhook criado com sucesso!</span>.</p>
+  <div class="regra">Funil e etapa de destino são novos: antes, todo webhook caía automaticamente no primeiro estágio neutro do funil padrão da empresa. Hoje isso só continua valendo pra webhooks <b>criados antes dessa mudança</b> (capítulo seguinte explica o selo <span class="ui">Destino padrão antigo</span>) — todo webhook novo exige escolher o destino explicitamente.</div>
 
   <h3>A lista de webhooks</h3>
-  <p>Cada webhook aparece com o nome, um selo <span class="ui">Ativo</span> ou <span class="ui">Inativo</span>, o selo <span class="ui">Origem:</span> quando tem origem fixa, uma chave <span class="ui">Ativo</span> para ligar e desligar, uma lixeira vermelha, e o campo com a URL completa mais o botão de copiar, que mostra <span class="ui">URL copiada!</span> (ou <span class="ui">Não foi possível copiar a URL</span> se o navegador bloquear). Sem nenhum, aparece <span class="ui">Nenhum webhook cadastrado.</span></p>
+  <p>Cada webhook aparece com o nome, um selo <span class="ui">Ativo</span> ou <span class="ui">Inativo</span>, o selo <span class="ui">Origem:</span> quando tem origem fixa, uma chave <span class="ui">Ativo</span> para ligar e desligar, uma lixeira vermelha, e dois seletores, <span class="ui">Funil de destino</span> e <span class="ui">Etapa de destino</span>, pra trocar pra onde aquele webhook manda os leads sem precisar recriá-lo. Por fim vem o campo com a URL completa mais o botão de copiar, que mostra <span class="ui">URL copiada!</span> (ou <span class="ui">Não foi possível copiar a URL</span> se o navegador bloquear). Sem nenhum webhook, aparece <span class="ui">Nenhum webhook cadastrado.</span></p>
+  <div class="aviso">Um webhook criado <b>antes</b> de funil/etapa existirem mostra <span class="ui">Destino padrão antigo</span> no seletor de funil e <span class="ui">Primeira etapa disponível</span> no de etapa, em vez de um nome. Ele continua funcionando do jeito antigo (cai no funil padrão da empresa), mas pode ser migrado pra um destino explícito a qualquer momento, só escolhendo funil e etapa nos dois seletores da própria linha.</div>
 
   <div class="perigo">A URL do webhook <b>termina com um código secreto</b>. Quem tiver esse endereço consegue criar oportunidades no seu funil. Trate como senha: cole só no painel da ferramenta que vai enviar os leads, não publique em grupo de WhatsApp e não deixe em documento compartilhado. Suspeitou de vazamento? Desligue a chave <span class="ui">Ativo</span> ou apague o webhook e crie outro, com endereço novo.</div>
 
@@ -375,23 +412,26 @@
   <table class="dados">
     <thead><tr><th>Campo</th><th>Obrigatório</th><th>O que é</th></tr></thead>
     <tbody>
-      <tr><td><code>name</code></td><td>Sim</td><td>Nome completo do lead.</td></tr>
-      <tr><td><code>phone</code></td><td>Sim</td><td>Telefone, apenas números.</td></tr>
-      <tr><td><code>email</code></td><td>Não</td><td>E-mail do lead.</td></tr>
+      <tr><td><code>name</code></td><td>Pelo menos um dos três</td><td>Nome completo do lead.</td></tr>
+      <tr><td><code>phone</code></td><td>Pelo menos um dos três</td><td>Telefone, apenas números.</td></tr>
+      <tr><td><code>email</code></td><td>Pelo menos um dos três</td><td>E-mail do lead.</td></tr>
       <tr><td><code>source</code></td><td>Não</td><td>Origem do lead, por exemplo "Meta Ads".</td></tr>
       <tr><td><code>title</code></td><td>Não</td><td>Título personalizado da oportunidade.</td></tr>
       <tr><td><code>notes</code></td><td>Não</td><td>Observações adicionais.</td></tr>
       <tr><td><code>value</code></td><td>Não</td><td>Valor estimado, em número.</td></tr>
+      <tr><td><code>stage_id</code></td><td>Não</td><td>Só tem efeito em webhook antigo, sem funil/etapa salvos (capítulo acima). Num webhook com destino configurado, este campo é <b>ignorado</b>: quem define a etapa é sempre a configuração salva na tela, nunca o que vier no envio.</td></tr>
     </tbody>
   </table>
-  <p>O exemplo que aparece na tela é um JSON com nome, telefone e e-mail. O sistema é tolerante com os nomes dos campos: aceita <code>nome</code> no lugar de <code>name</code>, <code>telefone</code> ou <code>whatsapp</code> no lugar de <code>phone</code>, <code>valor</code> no lugar de <code>value</code>, e <code>mensagem</code> ou <code>observations</code> no lugar de <code>notes</code>.</p>
+  <p>Não é preciso mandar os três campos de identificação (nome, telefone, e-mail); um já basta, mas mandar nenhum deles é recusado. O exemplo que aparece na tela é um JSON com nome, telefone e e-mail. O sistema é tolerante com os nomes dos campos: aceita <code>nome</code> no lugar de <code>name</code>, <code>telefone</code> ou <code>whatsapp</code> no lugar de <code>phone</code>, <code>valor</code> no lugar de <code>value</code>, e <code>mensagem</code> ou <code>observations</code> no lugar de <code>notes</code>.</p>
+
+  <div class="dica">Pra reenviar uma tentativa sem criar a mesma oportunidade duas vezes (ex.: a ferramenta de automação tentou de novo depois de um erro de rede), mande o mesmo valor no cabeçalho <code>x-idempotency-key</code> nas duas chamadas (ou o mesmo <code>event_id</code>/<code>external_id</code> dentro do JSON). A reentrega com a mesma chave devolve o lead que já existe em vez de duplicar.</div>
 
   <h3>O que o sistema faz com o que chega</h3>
   <ul>
     <li>O <b>título</b> vira o que veio em <code>title</code>; sem isso, vira "Lead via" seguido do nome do webhook.</li>
     <li>A <b>origem</b> obedece a esta ordem: a origem fixa do webhook vence; sem ela, vale a que veio no envio; sem nenhuma das duas, fica "Webhook Externo".</li>
     <li>Nome, telefone, e-mail e a fonte são gravados nas <b>Observações</b> da oportunidade, uma informação por linha. O lead não fica vinculado a um cliente cadastrado.</li>
-    <li>A oportunidade entra no <b>primeiro estágio neutro</b> do funil padrão da empresa, ou seja, o primeiro que não é de ganho nem de perda.</li>
+    <li>A oportunidade entra no <b>funil e na etapa configurados na tela deste webhook</b>. Só pra webhook antigo, sem destino salvo, vale a regra anterior: a etapa do payload se for válida, senão o primeiro estágio neutro do funil padrão da empresa.</li>
     <li>O lead nasce <b>sem responsável</b> e cai direto na fila compartilhada do capítulo 9, visível pra empresa inteira até alguém assumir.</li>
   </ul>
 
@@ -399,12 +439,13 @@
   <ul>
     <li>Sem código na URL: <span class="ui">Token do webhook é obrigatório</span>.</li>
     <li>Código errado, ou webhook desligado na chave <span class="ui">Ativo</span>: <span class="ui">Webhook inválido ou inativo</span>.</li>
+    <li>Sem nome, telefone nem e-mail no envio: <span class="ui">Informe ao menos um destes campos: name, phone ou email</span>.</li>
     <li>Chamada que não é POST: <span class="ui">Método não permitido</span>.</li>
     <li>Falha no processamento: <span class="ui">Erro interno</span>.</li>
   </ul>
   <p>Quando dá certo, a resposta traz <code>success</code> junto com o lead criado.</p>
 
-  <div class="aviso">Antes de apontar uma campanha paga para o webhook, faça um <b>envio de teste</b> com um nome fictício e confira se o cartão apareceu no funil, na fila <span class="ui">Sem responsável</span>. Só o funil é prova de que o caminho funciona; a mensagem de sucesso da ferramenta que enviou não basta. Testou e o cartão não apareceu? Confira se o webhook está com a chave <span class="ui">Ativo</span> ligada, se a URL foi copiada inteira (o código do fim é parte dela) e se o funil padrão tem pelo menos um estágio neutro criado.</div>
+  <div class="aviso">Antes de apontar uma campanha paga para o webhook, faça um <b>envio de teste</b> com um nome fictício e confira se o cartão apareceu no funil, na fila <span class="ui">Sem responsável</span>. Só o funil é prova de que o caminho funciona; a mensagem de sucesso da ferramenta que enviou não basta. Testou e o cartão não apareceu? Confira se o webhook está com a chave <span class="ui">Ativo</span> ligada, se a URL foi copiada inteira (o código do fim é parte dela) e se o funil e a etapa de destino configurados ainda existem.</div>
 
   <div class="regra">O <b>formulário público de cadastro de cliente</b> (o link de captação que você compartilha para o próprio cliente se cadastrar) <b>não cria lead no CRM</b>: ele cria um <b>cliente</b> na tela de Clientes, com a origem marcada como formulário público. São dois caminhos completamente separados. Se você espera ver no funil quem preencheu aquele formulário, não vai encontrar: procure em Clientes.</div>
 
@@ -416,7 +457,7 @@
 
   <ol>
     <li><b>Comece pela fila "Sem responsável".</b> Filtre por Vendedor → Sem responsável. Todo lead ali é oportunidade parada esperando alguém assumir; não deixe acumular.</li>
-    <li><b>Abra o CRM e olhe os quatro cartões do topo.</b> Total de Leads e Valor Total dão o tamanho da carteira; os cartões da etapa ganha e da etapa neutra dizem quanto já fechou e quanto está em jogo.</li>
+    <li><b>Abra o CRM e olhe os quatro cartões do topo.</b> Total no funil e Valor Total dão o tamanho da carteira; os cartões da etapa ganha e da etapa neutra dizem quanto já fechou e quanto está em jogo.</li>
     <li><b>Varra a coluna da direita para a esquerda.</b> Comece pela etapa mais perto do fechamento: são as oportunidades com maior chance de virar dinheiro esta semana.</li>
     <li><b>Abra cada cartão parado e olhe a linha <span class="ui">Atualizado:</span></b>, que mostra há quanto tempo ninguém mexe naquela oportunidade. Passou de uma semana sem interação, ou está esperando resposta, ligue.</li>
     <li><b>Registre toda conversa como interação</b>, mesmo a que não deu em nada. Se o próximo passo tem data marcada, crie uma <b>Tarefa</b> em vez de só anotar a Próxima Ação, pra ela aparecer na sua Agenda.</li>
@@ -426,6 +467,84 @@
   </ol>
 
   <div class="dica">Combine com a tela de Orçamentos: oportunidade que chegou à etapa de proposta deve ter um orçamento correspondente, e o contador de visualizações da proposta diz se o cliente abriu. Funil na etapa de proposta há cinco dias, com a proposta aberta três vezes e sem resposta, é ligação pendente.</div>
+
+  <h2>13. Projetos: obras com frentes de trabalho</h2>
+
+  <p>Enquanto este capítulo inteiro cuida do funil <b>comercial</b> (fechar a venda), <span class="ui">Projetos</span> cuida do que vem <b>depois</b> da venda fechada: executar uma obra que tem várias partes andando ao mesmo tempo (compras, engenharia, instalação, elétrica). É uma funcionalidade irmã do CRM, não uma aba dentro dele, e mora no mesmo grupo do menu, <span class="ui">CRM e Projetos</span>.</p>
+
+  <div class="meta">
+    <span><b>Onde fica:</b> Menu lateral, grupo <span class="ui">CRM e Projetos</span>, tela <span class="ui">Projetos</span></span>
+    <span><b>Rotas:</b> <code>/projetos</code> (lista) e <code>/projetos/:id</code> (detalhe)</span>
+    <span><b>Quem enxerga:</b> quem tiver a permissão de tela <span class="ui">Projetos</span> ligada no editor de permissões (grupo Comercial, é uma permissão própria, separada de <span class="ui">CRM/Kanban</span>) <b>e</b> pertencer a uma empresa com o módulo CRM ativo. Criar, editar e excluir um projeto, ou criar/editar/excluir uma frente dentro dele, exigem ser administrador, gestor, ou ter a ação <span class="ui">Gerenciar Configurações</span> ligada — não existe uma ação própria só pra Projetos, porque toda frente é, por baixo, um funil do CRM, e escrever num funil já exige esse mesmo nível de acesso.</span>
+  </div>
+
+  <p>Essa permissão separada é de propósito: dá pra liberar <span class="ui">Projetos</span> pra quem acompanha obra em campo sem abrir pra essa pessoa a carteira comercial inteira (o funil de vendas, os valores das oportunidades).</p>
+
+  <figure>
+    <img src="img/t10-projetos-lista.png" alt="Tela Projetos com os cartões Projetos, Em andamento, Atrasados e Concluídos, campo de busca, filtro por Status e a lista de obras com código, nome, cliente, prazo, barra de progresso e selo de status">
+    <figcaption>Tela <span class="ui">Projetos</span>: os quatro cartões de resumo no topo e a lista de obras, cada uma com código, cliente, prazo, progresso e status.</figcaption>
+  </figure>
+
+  <h3>A lista de projetos</h3>
+  <p>Quatro cartões no topo: <span class="ui">Projetos</span> (total), <span class="ui">Em andamento</span>, <span class="ui">Atrasados</span> (prazo final já passou e o projeto não está concluído nem cancelado) e <span class="ui">Concluídos</span>; tocar nos dois últimos já filtra a lista por aquele status. Busca por nome, código ou cliente, e um filtro por <span class="ui">Status</span>. Cada linha mostra o código sequencial da obra (<span class="ui">#1</span>, <span class="ui">#2</span>...; a numeração é por empresa, não global), o nome, o cliente (ou <span class="ui">Projeto interno</span>, pra obra sem cliente, como uma reforma da própria sede), o prazo (ou <span class="ui">Sem prazo</span>), uma barra de progresso e o selo de status. Tocar na linha abre o detalhe da obra; o menu de ações da linha (visível só pra quem pode gerenciar) tem <span class="ui">Editar</span> e <span class="ui">Excluir</span>.</p>
+
+  <h3>Criar ou editar um projeto</h3>
+  <p>O botão <span class="ui">Novo projeto</span> abre a janela com os campos:</p>
+  <table class="dados">
+    <thead><tr><th>Campo</th><th>Obrigatório</th><th>O que aceita</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Nome do projeto</span></td><td>Sim</td><td>Texto livre, com o exemplo <span class="ui">Ex: Instalação de 80 splits, Indústria X</span>.</td></tr>
+      <tr><td><span class="ui">Cliente</span></td><td>Não</td><td>Seletor de cliente com busca, ou <span class="ui">Projeto interno (sem cliente)</span>.</td></tr>
+      <tr><td><span class="ui">Responsável</span></td><td>Não</td><td>Um usuário da empresa, ou <span class="ui">Sem responsável definido</span>.</td></tr>
+      <tr><td><span class="ui">Status</span></td><td>Sim, por escolha</td><td><span class="ui">Planejada</span>, <span class="ui">Em andamento</span> (padrão), <span class="ui">Pausada</span>, <span class="ui">Concluída</span> ou <span class="ui">Cancelada</span>.</td></tr>
+      <tr><td><span class="ui">Início previsto</span> / <span class="ui">Prazo final</span></td><td>Não</td><td>Datas; o prazo final não pode ser anterior ao início.</td></tr>
+      <tr><td><span class="ui">Cor</span></td><td>Sim, com padrão</td><td>Identifica a obra na lista e no detalhe.</td></tr>
+      <tr><td><span class="ui">Descrição</span></td><td>Não</td><td>Texto livre, com o exemplo <span class="ui">Detalhes da obra...</span>.</td></tr>
+    </tbody>
+  </table>
+  <div class="regra">Projeto <b>não tem endereço próprio</b>. É decisão de propósito: o endereço de uma obra é o do cliente dela, ou das Ordens de Serviço que acontecem lá. Duplicar o endereço aqui seria mais um lugar pra desatualizar.</div>
+
+  <h3>Detalhe da obra: Visão geral, Frentes e Tarefas</h3>
+  <figure>
+    <img src="img/t10-projeto-detalhe.png" alt="Detalhe de um projeto na aba Frentes, mostrando o seletor de frentes de trabalho em abas, o quadro Kanban daquela frente com as colunas A fazer, Em execução, Concluído e Cancelado, e os cards dentro de cada coluna">
+    <figcaption>Detalhe de um projeto, na aba <span class="ui">Frentes</span>: cada frente é um quadro Kanban próprio, igual ao do CRM, com as quatro etapas padrão de obra.</figcaption>
+  </figure>
+  <p>Abrindo uma obra, três abas:</p>
+  <ul>
+    <li><span class="ui">Visão geral</span>: status, cliente, responsável, datas, descrição, a barra de <span class="ui">Progresso da obra</span> e a lista de frentes de trabalho com a contagem de cards de cada uma. Tocar numa frente da lista já leva pra ela na aba Frentes.</li>
+    <li><span class="ui">Frentes</span>: o quadro de trabalho em si (explicado abaixo).</li>
+    <li><span class="ui">Tarefas</span>: as tarefas criadas de dentro de qualquer card de qualquer frente desta obra, nos formatos Kanban ou Agenda (a mesma régua de visibilidade de tarefa do capítulo 8: quem tem <span class="ui">Gerenciar Tarefas</span> vê todas; os demais veem as suas, as que são o técnico, as que criaram ou as da própria equipe). É uma lista <b>só de leitura e andamento</b>: não existe botão de criar tarefa aqui, porque toda tarefa nasce de dentro de um card (aba Tarefas do card, igual ao capítulo 8).</li>
+  </ul>
+
+  <h3>Frentes de trabalho: um funil por frente, só que sem vocabulário de venda</h3>
+  <p>Uma <b>frente de trabalho</b> é, por baixo, o mesmo funil do CRM (capítulos 2 e 3), só que vinculado a esta obra e com a chave <span class="ui">Acompanha valores financeiros</span> (capítulo 2) desligada de nascença. Por isso ela nunca aparece na tela <code>/crm</code>, e um funil comercial nunca aparece dentro de um projeto: são dois universos separados pelo mesmo mecanismo.</p>
+  <p><span class="ui">Nova frente</span> pede só <span class="ui">Nome da frente</span> (com o exemplo <span class="ui">Ex: Instalação, Elétrica, Dutos</span>) e <span class="ui">Cor</span>; ela já nasce com quatro etapas prontas, que você pode editar depois pelo mesmo gerenciador de etapas do capítulo 3 (inclusive com o mesmo botão <span class="ui">Novo estágio</span> fechado por padrão):</p>
+  <table class="dados">
+    <thead><tr><th>Etapa padrão</th><th>Cor</th><th>Marcação</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">A fazer</span></td><td>Cinza</td><td>Neutro</td></tr>
+      <tr><td><span class="ui">Em execução</span></td><td>Azul</td><td>Neutro</td></tr>
+      <tr><td><span class="ui">Concluído</span></td><td>Verde</td><td>Ganho</td></tr>
+      <tr><td><span class="ui">Cancelado</span></td><td>Vermelho</td><td>Perdido</td></tr>
+    </tbody>
+  </table>
+  <p>O quadro de uma frente é deliberadamente mais simples que o kanban comercial: arrastar um card pra <span class="ui">Concluído</span> move na hora, sem abrir a janela de <span class="ui">Motivo da Perda</span> nem a oferta de lançar receita do capítulo 4 (frente de obra não fala de dinheiro). Tocar num card abre o mesmo <span class="ui">Detalhe da oportunidade</span> do capítulo 7, com o vocabulário trocado (título "Editar card" em vez de "Editar Oportunidade", campo "Responsável" em vez de "Vendedor Responsável", "Prazo" em vez de "Previsão Fechamento", e sem os campos Valor Estimado, Probabilidade e Origem) — mas com as mesmas abas Detalhes/Tarefas/Histórico, os mesmos atalhos <span class="ui">Criar OS</span> e <span class="ui">Criar Tarefa</span>, e as mesmas Etiquetas, Checklists e Comentários do capítulo 7.</p>
+  <p>Dentro do projeto, o seletor de <span class="ui">Estágio</span> na criação/edição de um card só lista as etapas <b>das frentes desta obra</b>, nunca etapas de um funil comercial: escolher uma etapa de outro lugar não é oferecido.</p>
+
+  <figure>
+    <img src="img/t10-novo-projeto.png" alt="Janela Novo projeto vazia, com os campos Nome do projeto, Cliente (Projeto interno), Responsável (Sem responsável definido), Status (Em andamento), Início previsto, Prazo final, Cor e Descrição, e os botões Cancelar e Salvar">
+    <figcaption>Janela <span class="ui">Novo projeto</span> sem nada preenchido: só o nome é obrigatório.</figcaption>
+  </figure>
+
+  <h3>Progresso da obra: o que o número quer dizer</h3>
+  <p>A barra de <span class="ui">Progresso da obra</span> é <b>um número só por projeto</b>, igual pra todo mundo da empresa, mesmo pra quem não enxerga todos os cards. A conta é cards <b>concluídos</b> (em qualquer etapa marcada como ganho, em qualquer frente) dividido por cards <b>não perdidos</b> (concluídos mais os que ainda estão rolando — os cancelados ficam de fora da conta dos dois lados).</p>
+  <div class="aviso">A barra aparece como <span class="ui">—</span>, nunca 0% nem 100%, quando não há como calcular um número com sentido: nenhuma frente da obra tem etapa marcada como ganho ainda, ou não existe nenhum card além dos cancelados. Passe o mouse no <span class="ui">—</span> pra ver a explicação: <span class="ui">Configure uma etapa de ganho em alguma frente para ver o progresso</span>.</div>
+
+  <h3>Excluir um projeto</h3>
+  <p>Excluir pede a confirmação <span class="ui">Excluir projeto?</span> com o aviso de que projetos com frentes vinculadas não podem ser excluídos. Tentando excluir uma obra que já tem frente (com ou sem card dentro), a mensagem detalha exatamente quantas frentes e quantas oportunidades estão travando a exclusão, e sugere o caminho recomendado: mudar o <span class="ui">Status</span> para <span class="ui">Cancelada</span> em vez de excluir, pra preservar o histórico.</p>
+
+  <div class="regra">Uma frente de trabalho só pode virar um funil comercial (ou vice-versa) se estiver <b>vazia de cards</b>, e a empresa nunca pode ficar sem nenhum funil comercial por causa dessa troca. São travas de bastidor, não um botão na tela: hoje não existe um jeito de "promover" uma frente a funil comercial pela interface, então na prática essa fronteira entre os dois universos é definitiva desde a criação.</div>
+  <div class="regra">Um webhook de captação externa (capítulo 11) <b>nunca</b> pode apontar pra uma frente de obra, só pra um funil comercial. Lead de fora não pode cair direto numa obra e alterar o progresso dela sem alguém da operação decidir isso.</div>
 
   <h2 class="suporte">Suporte: problemas comuns</h2>
   <table class="faq">
@@ -518,8 +637,8 @@
       </tr>
       <tr>
         <td>"Configurei o webhook e o lead não caiu no funil"</td>
-        <td>Webhook desligado, URL incompleta, chamada que não é POST, ou funil padrão sem etapa neutra.</td>
-        <td>Confira a chave <span class="ui">Ativo</span>, copie a URL inteira pelo botão de copiar (o código do fim faz parte) e garanta que a chamada é POST com JSON contendo pelo menos nome e telefone. Faça um envio de teste e confira no funil antes de ligar a campanha.</td>
+        <td>Webhook desligado, URL incompleta, chamada que não é POST, ou o funil/etapa configurados foram excluídos depois.</td>
+        <td>Confira a chave <span class="ui">Ativo</span>, copie a URL inteira pelo botão de copiar (o código do fim faz parte) e garanta que a chamada é POST com JSON contendo nome, telefone ou e-mail. Confira também se o funil e a etapa de destino na linha do webhook ainda existem. Faça um envio de teste e confira no funil antes de ligar a campanha.</td>
       </tr>
       <tr>
         <td>"Mandei o link de cadastro para o cliente preencher e não vi o lead no CRM"</td>
@@ -537,9 +656,24 @@
         <td>Aparece <span class="ui">Informe o CPF ou CNPJ do cliente para cobrar.</span> Sem o documento, deixe o campo Cliente em branco e vincule depois, pela edição da oportunidade.</td>
       </tr>
       <tr>
-        <td>"O total de leads mudou sozinho"</td>
+        <td>"O total no funil mudou sozinho"</td>
         <td>Os cartões de resumo respeitam os filtros ativos e a sua permissão de visibilidade.</td>
-        <td>Limpe os filtros no botão de limpar para voltar ao total que você tem acesso. Com filtro ativo, aparece um selo ao lado de Pipeline de Vendas no formato "3 de 12".</td>
+        <td>Limpe os filtros no botão de limpar para voltar ao total que você tem acesso. Com filtro ativo, aparece um selo ao lado do nome do funil no formato "3 de 12".</td>
+      </tr>
+      <tr>
+        <td>"Não acho onde ficam minhas obras"</td>
+        <td>Projetos é uma tela irmã do CRM, não uma aba dele.</td>
+        <td>É o item <span class="ui">Projetos</span>, dentro do mesmo grupo de menu <span class="ui">CRM e Projetos</span>, ao lado de <span class="ui">CRM/Kanban</span>. Também exige a permissão de tela <span class="ui">Projetos</span> ligada, separada da permissão do CRM.</td>
+      </tr>
+      <tr>
+        <td>"A barra de progresso do projeto está travada em um risquinho"</td>
+        <td>Nenhuma frente da obra tem etapa de ganho configurada, ou só existem cards cancelados.</td>
+        <td>É esperado: o sistema nunca mostra 0% nem 100% quando não tem como calcular. Abra Frentes → Gerenciar etapas e marque alguma etapa como Ganho.</td>
+      </tr>
+      <tr>
+        <td>"Não consigo excluir um projeto"</td>
+        <td>Ele ainda tem frente de trabalho vinculada (com ou sem card dentro).</td>
+        <td>A mensagem de erro diz quantas frentes e quantas oportunidades estão travando. Prefira mudar o Status pra Cancelada em vez de excluir, pra manter o histórico da obra.</td>
       </tr>
     </tbody>
   </table>
@@ -605,9 +739,21 @@
 
     <dt>Meu vendedor consegue ver os leads dos outros?</dt>
     <dd>Só se tiver a ação Gerenciar CRM ligada. Sem ela, cada um vê apenas as oportunidades das quais é responsável ou criador, além da fila compartilhada de oportunidades sem responsável.</dd>
+
+    <dt>Projetos é um módulo separado, pago à parte?</dt>
+    <dd>Não. Exige o mesmo módulo CRM já contratado para o funil comercial, só com a permissão de tela própria (Projetos) ligada pra quem precisa usar.</dd>
+
+    <dt>Uma frente de trabalho é a mesma coisa que um funil do CRM?</dt>
+    <dd>É, por baixo: mesmo quadro Kanban, mesmo mecanismo de etapas. A diferença é que ela nasce vinculada a uma obra, sem falar de valor, e nunca aparece na tela /crm.</dd>
+
+    <dt>Dá pra transformar um funil comercial numa frente de obra, ou o contrário?</dt>
+    <dd>Só enquanto o funil estiver vazio de oportunidades, e nunca deixando a empresa sem nenhum funil comercial. Hoje isso não tem um botão dedicado na tela — na prática, decida na criação.</dd>
+
+    <dt>Lead de webhook pode cair direto numa frente de obra?</dt>
+    <dd>Não. Um webhook de captação só pode apontar pra um funil comercial. Entrar numa obra sem alguém decidir isso de propósito mudaria o progresso dela de fora pra dentro.</dd>
   </dl>
 
   <div class="glossario">
-    <b>Palavras que o cliente usa pra isso:</b> funil, funil de vendas, pipeline, kanban de vendas, quadro de vendas, lead, oportunidade, prospect, contato, coluna, etapa, estágio, fase da venda, ganhei, perdi, motivo da perda, follow-up, acompanhamento, próxima ação, origem do lead, de onde veio o cliente, webhook, integração do formulário do site, campanha de anúncio, mais de um funil, vários funis, quem vê o quê, fila sem dono, oportunidade sem vendedor, tarefa da oportunidade
+    <b>Palavras que o cliente usa pra isso:</b> funil, funil de vendas, pipeline, kanban de vendas, quadro de vendas, lead, oportunidade, prospect, contato, coluna, etapa, estágio, fase da venda, ganhei, perdi, motivo da perda, follow-up, acompanhamento, próxima ação, origem do lead, de onde veio o cliente, webhook, integração do formulário do site, campanha de anúncio, mais de um funil, vários funis, quem vê o quê, fila sem dono, oportunidade sem vendedor, tarefa da oportunidade, etiqueta, checklist da oportunidade, comentário, projeto, obra, frente de trabalho, progresso da obra, funil de processo
   </div>
 </section>

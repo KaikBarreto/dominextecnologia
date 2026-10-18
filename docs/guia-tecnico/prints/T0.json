@@ -4,13 +4,30 @@
     {
       "id": "t0-central-ajuda",
       "url": "/dashboard",
-      "legenda": "Painel lateral da Central de Ajuda aberto, com a lista de perguntas frequentes recolhida.",
+      "legenda": "Painel lateral da Central de Ajuda aberto, com a lista de perguntas frequentes recolhida. RECAPTURA 18/10/2026: a conta demo passou a ter chamados de cliente pendentes, e o dashboard abre com um aviso modal (\"Você tem N chamados de cliente aguardando\") que fica POR CIMA e engole o clique no menu da conta. Por isso o primeiro passo dispensa o aviso; ele é opcional porque some quando não há chamado pendente.",
       "passos": [
-        { "esperar": 3500 },
-        { "clicarSeletor": "[aria-label=\"Menu da conta\"]" },
-        { "esperar": 900 },
-        { "clicar": "Central de Ajuda" },
-        { "esperar": 1200 }
+        {
+          "esperar": 3500
+        },
+        {
+          "clicar": "Depois",
+          "opcional": true
+        },
+        {
+          "esperar": 800
+        },
+        {
+          "clicarSeletor": "[aria-label=\"Menu da conta\"]"
+        },
+        {
+          "esperar": 1200
+        },
+        {
+          "clicar": "Central de Ajuda"
+        },
+        {
+          "esperar": 1500
+        }
       ],
       "recorte": "dialog"
     }
