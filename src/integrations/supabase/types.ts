@@ -3630,6 +3630,70 @@ export type Database = {
           },
         ]
       }
+      customer_portal_credentials: {
+        Row: {
+          failed_attempts: number
+          locked_until: string | null
+          password_hash: string
+          portal_id: string
+          updated_at: string
+        }
+        Insert: {
+          failed_attempts?: number
+          locked_until?: string | null
+          password_hash: string
+          portal_id: string
+          updated_at?: string
+        }
+        Update: {
+          failed_attempts?: number
+          locked_until?: string | null
+          password_hash?: string
+          portal_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_portal_credentials_portal_id_fkey"
+            columns: ["portal_id"]
+            isOneToOne: true
+            referencedRelation: "customer_portals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_portal_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          portal_id: string
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          portal_id: string
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          portal_id?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_portal_sessions_portal_id_fkey"
+            columns: ["portal_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_portals: {
         Row: {
           created_at: string
@@ -3637,6 +3701,8 @@ export type Database = {
           id: string
           is_active: boolean
           is_public: boolean
+          password_enabled: boolean
+          permissions: Json
           token: string
         }
         Insert: {
@@ -3645,6 +3711,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_public?: boolean
+          password_enabled?: boolean
+          permissions?: Json
           token?: string
         }
         Update: {
@@ -3653,6 +3721,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_public?: boolean
+          password_enabled?: boolean
+          permissions?: Json
           token?: string
         }
         Relationships: [
@@ -14775,7 +14845,14 @@ export type Database = {
           is_active: boolean
         }[]
       }
-      get_portal_data: { Args: { p_token: string }; Returns: Json }
+      get_customer_portal_settings: {
+        Args: { p_customer_id: string }
+        Returns: Json
+      }
+      get_portal_data: {
+        Args: { p_token: string; p_session_token?: string | null }
+        Returns: Json
+      }
       get_profile_company_id: { Args: { _user_id: string }; Returns: string }
       get_public_os: { Args: { p_os_id: string }; Returns: Json }
       get_public_os_by_code: { Args: { p_code: string }; Returns: Json }
@@ -14789,6 +14866,33 @@ export type Database = {
           code: string
           name: string
         }[]
+      }
+      create_customer_portal_ticket: {
+        Args: {
+          p_description: string
+          p_equipment_id?: string | null
+          p_session_token: string | null
+          p_token: string
+        }
+        Returns: Json
+      }
+      create_contract_portal_ticket: {
+        Args: { p_description: string; p_token: string }
+        Returns: Json
+      }
+      customer_portal_login: {
+        Args: { p_password: string; p_token: string }
+        Returns: Json
+      }
+      save_customer_portal_settings: {
+        Args: {
+          p_customer_id: string
+          p_is_active: boolean
+          p_password: string | null
+          p_password_enabled: boolean
+          p_permissions: Json
+        }
+        Returns: Json
       }
       get_quote_by_token: {
         Args: { _token: string }

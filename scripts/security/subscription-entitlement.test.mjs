@@ -8,6 +8,10 @@ const migrationPath = new URL(
   '../../supabase/migrations/20261004213000_tenant_subscription_entitlement_rls.sql',
   import.meta.url,
 );
+const customerPortalMigrationPath = new URL(
+  '../../supabase/migrations/20261018234000_customer_portal_password_and_permissions.sql',
+  import.meta.url,
+);
 
 test('entitlement canônico mantém carência, fail-closed e bypass explícito', async () => {
   const sql = await readFile(migrationPath, 'utf8');
@@ -20,7 +24,7 @@ test('entitlement canônico mantém carência, fail-closed e bypass explícito',
   assert.match(sql, /GRANT EXECUTE[\s\S]+?TO authenticated, service_role/);
 });
 
-test('policies finais aplicam entitlement sem substituir portais anon ou service_role', async () => {
+test('policies finais aplicam entitlement e mantêm portais públicos com menor privilégio', async () => {
   const { policies } = await auditMigrationDirectory(
     `${process.cwd()}/supabase/migrations`,
   );
@@ -56,15 +60,25 @@ test('policies finais aplicam entitlement sem substituir portais anon ou service
     ),
     'policy anon de customers foi removida',
   );
-  assert.ok(
+  assert.equal(
     critical.some(
       (policy) => policy.relation.table === 'service_orders' && policy.roles.includes('anon'),
     ),
-    'policy anon de service_orders foi removida',
+    false,
+    'service_orders não deve aceitar INSERT anon direto; portais usam RPC validada',
   );
   assert.equal(
     critical.some((policy) => policy.roles.includes('service_role')),
     false,
     'service_role não deve depender de policy; mantém BYPASSRLS',
   );
+});
+
+test('chamados públicos passam por RPC e o INSERT anon direto fica revogado', async () => {
+  const sql = await readFile(customerPortalMigrationPath, 'utf8');
+
+  assert.match(sql, /CREATE OR REPLACE FUNCTION public\.create_customer_portal_ticket/);
+  assert.match(sql, /CREATE OR REPLACE FUNCTION public\.create_contract_portal_ticket/);
+  assert.match(sql, /DROP POLICY IF EXISTS "Public can create portal tickets"/);
+  assert.match(sql, /REVOKE INSERT ON TABLE public\.service_orders FROM anon/);
 });

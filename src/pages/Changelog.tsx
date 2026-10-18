@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.21',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Configure o Portal direto no cadastro do cliente',
+        description: 'A criação e a edição de clientes ganharam a aba Portal. Nela você ativa ou desativa o acesso, copia o link exclusivo e escolhe o que aquele cliente pode consultar, sem precisar procurar essa configuração em outra tela.',
+        category: 'recurso',
+      },
+      {
+        title: 'Proteja o Portal com uma senha própria para cada cliente',
+        description: 'A senha é opcional. Quando ligada, nenhum dado do cliente é entregue antes do login, tentativas incorretas em sequência bloqueiam temporariamente o acesso e trocar a senha encerra as sessões anteriores. O cliente também pode sair do Portal quando estiver usando um computador compartilhado.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Libere somente as informações que cada cliente precisa',
+        description: 'Você decide separadamente se o Portal mostra ordens de serviço, equipamentos, contratos, cobranças e o botão de abrir chamados. O que estiver desligado não fica apenas escondido na tela: deixa de ser enviado para o navegador e não pode ser acessado pelo link público.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cadastro rápido não duplica mais o cliente quando o Portal falha ao salvar',
+        description: 'Se a configuração do Portal encontrar algum problema depois que o cliente já foi criado, a janela continua aberta e uma nova tentativa reaproveita o mesmo cadastro, sem gerar cliente duplicado.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.36.20',
     date: '18 de outubro de 2026',
     type: 'patch',

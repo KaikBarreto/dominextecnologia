@@ -188,11 +188,12 @@ export default function Customers() {
 
   const handleSubmit = async (data: any) => {
     if (editingCustomer) {
-      await updateCustomer.mutateAsync({ ...data, id: editingCustomer.id });
+      const updated = await updateCustomer.mutateAsync({ ...data, id: editingCustomer.id });
+      return updated;
     } else {
-      await createCustomer.mutateAsync(data);
+      const created = await createCustomer.mutateAsync(data);
+      return created;
     }
-    setEditingCustomer(null);
   };
 
   const handleEdit = (customer: Customer, e?: React.MouseEvent) => {
@@ -652,7 +653,10 @@ export default function Customers() {
 
       <CustomerFormDialog
         open={formOpen}
-        onOpenChange={setFormOpen}
+        onOpenChange={(open) => {
+          setFormOpen(open);
+          if (!open) setEditingCustomer(null);
+        }}
         customer={editingCustomer}
         onSubmit={handleSubmit}
         isLoading={createCustomer.isPending || updateCustomer.isPending}

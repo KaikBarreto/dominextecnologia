@@ -1890,6 +1890,7 @@ export function ServiceOrderFormDialog({
             setSelectedCustomerId(newId);
             resetEquipmentSelection();
           }
+          return result;
         }}
         isLoading={createCustomer.isPending}
       />

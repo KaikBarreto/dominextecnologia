@@ -60,7 +60,6 @@ import { PortalContactButton } from '@/components/portal/PortalContactButton';
 import { idealForeground } from '@/lib/colorContrast';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { getErrorMessage } from '@/utils/errorMessages';
-import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import type {
   PortalHealthStatus,
@@ -96,7 +95,7 @@ import {
  * Gating:
  *  - Documentos: SÓ contrato PMOC + `documents_released`.
  *  - Histórico PMOC: SÓ contrato PMOC + `documents_released`.
- *  - "Abrir chamado": customer_id do payload; insere em service_orders via anon.
+ *  - "Abrir chamado": RPC pública valida o token e deriva o contrato/cliente no servidor.
  */
 
 // ── Constantes de estilo ──────────────────────────────────────────────────────
@@ -436,42 +435,14 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
   const [ticketDesc, setTicketDesc] = useState('');
   const [ticketSubmitting, setTicketSubmitting] = useState(false);
 
-  // IDs de contexto vêm de payload.contract (contract.id desde 1.12.0).
-  // Leitura defensiva: pode ser null em payloads antigos ou de outra versão.
-  const customerId = contract.customer_id ?? null;
-  const companyId = contract.company_id ?? null;
-  const contractId = contract.id ?? null;
-
   const handleSubmitTicket = async () => {
     if (ticketDesc.trim().length < 10) return;
-    if (!customerId || !companyId) {
-      toast({
-        variant: 'destructive',
-        title: t.ticketErrorTitle,
-        description: !customerId
-          ? 'customer_id indisponível neste portal.'
-          : 'company_id indisponível neste portal.',
-      });
-      return;
-    }
     setTicketSubmitting(true);
     try {
-      // A RLS "Public can create portal tickets" permite anon INSERT com origin='portal'.
-      // O trigger check_portal_ticket_antispam() valida >= 10 chars e rate-limit no server.
-      // company_id: obrigatorio no INSERT (NOT NULL, sem auto-preenchimento no anon).
-      // Vem de contract.company_id exposto no payload da edge.
-      const insertPayload = normalizeOptionalForeignKeys({
-        customer_id: customerId,
-        company_id: companyId,
-        contract_id: contractId,
-        description: ticketDesc.trim(),
-        os_type: 'manutencao_corretiva',
-        status: 'pendente',
-        origin: 'portal',
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any, ['customer_id', 'company_id', 'contract_id']);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await supabaseAnon.from('service_orders').insert(insertPayload as any);
+      const { error } = await supabaseAnon.rpc('create_contract_portal_ticket', {
+        p_token: token ?? '',
+        p_description: ticketDesc.trim(),
+      });
       if (error) throw error;
       toast({ title: t.ticketSuccess });
       setShowTicketModal(false);
@@ -547,7 +518,7 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
       activeSection={activeTab}
       onSectionChange={setActiveTab}
       footerStatus={footerStatus ?? undefined}
-      footerCtaLabel={customerId && companyId ? t.openTicketHere : undefined}
+      footerCtaLabel={t.openTicketHere}
       onFooterCta={() => setShowTicketModal(true)}
       navLabel={t.sidebarNavLabel}
     >

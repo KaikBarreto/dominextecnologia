@@ -159,6 +159,7 @@ export function PessoasStep({
     if (!tomador) return;
     const updated = await updateCustomer.mutateAsync({ ...data, id: tomador.id });
     onTomadorChange(updated as unknown as NfseCustomer);
+    return updated;
   };
 
   const competenciaError = errors.find(

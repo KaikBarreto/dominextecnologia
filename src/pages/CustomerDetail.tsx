@@ -48,8 +48,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useQueryClient } from '@tanstack/react-query';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
-import { Switch } from '@/components/ui/switch';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { CustomerTransactionDetailModal } from '@/components/financial/CustomerTransactionDetailModal';
 import { ChargeDialog } from '@/components/financial/ChargeDialog';
@@ -193,8 +191,6 @@ export default function CustomerDetail() {
   const [editingContact, setEditingContact] = useState<typeof contacts[0] | null>(null);
   const [deleteContactId, setDeleteContactId] = useState<string | null>(null);
   const [portalLink, setPortalLink] = useState<string | null>(null);
-  const [portalIsPublic, setPortalIsPublic] = useState(true);
-  const [updatingPortalVisibility, setUpdatingPortalVisibility] = useState(false);
   const [contractFormOpen, setContractFormOpen] = useState(false);
   const [opportunityOpen, setOpportunityOpen] = useState(false);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
@@ -623,7 +619,7 @@ export default function CustomerDetail() {
     let active = true;
     supabase
       .from('customer_portals')
-      .select('token, is_public')
+      .select('token')
       .eq('customer_id', id)
       .eq('is_active', true)
       .limit(1)
@@ -631,30 +627,10 @@ export default function CustomerDetail() {
       .then(({ data }) => {
         if (active && data) {
           setPortalLink(`${window.location.origin}/portal/${(data as any).token}`);
-          // is_public default = ligado (true) quando ainda não carregou / coluna ausente.
-          setPortalIsPublic((data as any).is_public !== false);
         }
       });
     return () => { active = false; };
   }, [id]);
-
-  const handleTogglePortalPublic = async (next: boolean) => {
-    if (!id) return;
-    const prev = portalIsPublic;
-    setPortalIsPublic(next); // otimista
-    setUpdatingPortalVisibility(true);
-    const { error } = await supabase
-      .from('customer_portals')
-      .update({ is_public: next } as any)
-      .eq('customer_id', id);
-    setUpdatingPortalVisibility(false);
-    if (error) {
-      setPortalIsPublic(prev);
-      toast({ variant: 'destructive', title: t.portalUpdateError, description: getErrorMessage(error) });
-      return;
-    }
-    toast({ title: next ? t.portalPublicOn : t.portalPublicOff });
-  };
 
   if (isLoading) {
     return <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>;
@@ -741,28 +717,6 @@ export default function CustomerDetail() {
           </div>
         </div>
         <div className="ml-auto shrink-0 flex items-center gap-2 sm:gap-3">
-          {hasPortal && portalLink && (
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                    <span className="text-xs sm:text-sm font-medium text-muted-foreground whitespace-nowrap">
-                      {t.portalPublicLabel}
-                    </span>
-                    <Switch
-                      checked={portalIsPublic}
-                      disabled={updatingPortalVisibility}
-                      onCheckedChange={handleTogglePortalPublic}
-                      aria-label={t.ariaPortal}
-                    />
-                  </label>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-[260px]">
-                  <p>{t.portalPublicTooltip}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
           <RowActionsMenu
             label={t.actions}
             triggerClassName="border border-border px-3"
@@ -1997,7 +1951,7 @@ export default function CustomerDetail() {
         onOpenChange={setEditCustomerOpen}
         customer={customer}
         onSubmit={async (data: any) => {
-          await updateCustomer.mutateAsync({ id: customer.id, ...data });
+          return updateCustomer.mutateAsync({ id: customer.id, ...data });
         }}
         isLoading={updateCustomer.isPending}
       />
