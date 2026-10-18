@@ -20,6 +20,7 @@ import { useLocaleFormatters } from '@/lib/format/hooks';
 import { useCashFlowForecast } from '@/hooks/useCashFlowForecast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { UNASSIGNED_ACCOUNT_ID } from '@/lib/cash-flow-forecast';
 
 const HORIZONTES = [15, 30] as const;
@@ -44,6 +45,14 @@ export function CashFlowForecast() {
   const { money } = useLocaleFormatters();
   const isMobile = useIsMobile();
   const [horizonDays, setHorizonDays] = useState<number>(15);
+  /**
+   * Célula aberta no painel de detalhe. É o quadro "Descrição | Valor" do
+   * painel do BPO: ele perguntou "existe um mundo no qual eu clico na despesa
+   * e consigo ter o visual do que é? no dia 22 lancei 2 alimentação, um lanche
+   * de 25 e um almoço de 100, seria interessante enxergar isso separado".
+   * Os lançamentos já viajam em `day.events`, então é só desenhar.
+   */
+  const [celula, setCelula] = useState<{ data: string; categoria: string | null } | null>(null);
 
   const { forecast, isLoading } = useCashFlowForecast({ horizonDays });
 
@@ -116,6 +125,19 @@ export function CashFlowForecast() {
 
     return [saldoInicial, recebimentos, totalSaidas, ...categorias, saldoFinal];
   }, [forecast]);
+
+  /** Lançamentos por trás da célula aberta. */
+  const detalhe = useMemo(() => {
+    if (!forecast || !celula) return null;
+    const dia = forecast.days.find((d) => d.date === celula.data);
+    if (!dia) return null;
+    const itens = dia.events.filter((ev) => {
+      if (celula.categoria === null) return true;
+      return (ev.categoryName || 'Sem categoria') === celula.categoria;
+    });
+    const total = itens.reduce((a, ev) => a + (ev.direction === 'in' ? ev.amountCents : -ev.amountCents), 0) / 100;
+    return { dia, itens, total };
+  }, [forecast, celula]);
 
   if (isLoading) {
     return (
@@ -201,7 +223,7 @@ export function CashFlowForecast() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/40">
-                <th className="text-left font-medium px-3 py-2 sticky left-0 bg-muted/40 z-10 min-w-[180px]">
+                <th className="text-left font-medium px-3 py-2 sticky left-0 z-20 min-w-[180px] bg-card border-r">
                   Fluxo de caixa
                 </th>
                 <th className="text-right font-medium px-3 py-2 min-w-[110px] border-l">Dívida</th>
@@ -231,8 +253,13 @@ export function CashFlowForecast() {
                 >
                   <td
                     className={cn(
-                      'px-3 py-2 sticky left-0 z-10 whitespace-nowrap',
-                      linha.tipo === 'saldo' ? 'bg-muted/20 font-semibold' : 'bg-card',
+                      // ⚠️ Fundo OPACO obrigatório numa coluna fixa. Com
+                      // `bg-muted/20` (20% de opacidade) o conteúdo que rola
+                      // passava POR BAIXO e aparecia sobreposto ao rótulo —
+                      // "0Saldo inicial2,00". A distinção das linhas de saldo
+                      // fica no peso da fonte e na borda da coluna congelada.
+                      'px-3 py-2 sticky left-0 z-20 whitespace-nowrap bg-card border-r',
+                      linha.tipo === 'saldo' && 'font-semibold',
                       linha.tipo === 'categoria' && 'pl-6 text-xs',
                     )}
                   >
@@ -243,19 +270,44 @@ export function CashFlowForecast() {
                       ? <span className={linha.tipo === 'entrada' ? 'text-warning' : 'text-destructive'}>{fmt(linha.divida)}</span>
                       : <span className="text-muted-foreground/40">—</span>}
                   </td>
-                  {linha.porDia.map((valor, i) => (
-                    <td
-                      key={forecast.days[i].date}
-                      className={cn(
-                        'px-3 py-2 text-right tabular-nums',
-                        linha.tipo === 'entrada' && valor > 0 && 'text-success',
-                        linha.tipo === 'saidaTotal' && valor > 0 && 'text-destructive',
-                        linha.tipo === 'saldo' && valor < 0 && 'text-destructive',
-                      )}
-                    >
-                      {valor === 0 ? <span className="text-muted-foreground/30">—</span> : fmt(valor)}
-                    </td>
-                  ))}
+                  {linha.porDia.map((valor, i) => {
+                    const dia = forecast.days[i];
+                    // Saldo é cálculo, não lançamento: não há o que abrir.
+                    const abrivel = valor !== 0 && linha.tipo !== 'saldo';
+                    return (
+                      <td
+                        key={dia.date}
+                        className={cn(
+                          'px-3 py-2 text-right tabular-nums',
+                          linha.tipo === 'entrada' && valor > 0 && 'text-success',
+                          linha.tipo === 'saidaTotal' && valor > 0 && 'text-destructive',
+                          linha.tipo === 'saldo' && valor < 0 && 'text-destructive',
+                          abrivel && 'cursor-pointer hover:bg-muted/40 transition-colors',
+                        )}
+                        onClick={abrivel
+                          ? () => setCelula({
+                              data: dia.date,
+                              categoria: linha.tipo === 'categoria' ? linha.rotulo : null,
+                            })
+                          : undefined}
+                        role={abrivel ? 'button' : undefined}
+                        tabIndex={abrivel ? 0 : undefined}
+                        onKeyDown={abrivel
+                          ? (e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                setCelula({
+                                  data: dia.date,
+                                  categoria: linha.tipo === 'categoria' ? linha.rotulo : null,
+                                });
+                              }
+                            }
+                          : undefined}
+                      >
+                        {valor === 0 ? <span className="text-muted-foreground/30">—</span> : fmt(valor)}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
@@ -272,7 +324,7 @@ export function CashFlowForecast() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/20">
-                <th className="text-left font-medium px-3 py-2 sticky left-0 bg-muted/20 z-10 min-w-[180px]">Conta</th>
+                <th className="text-left font-medium px-3 py-2 sticky left-0 z-20 min-w-[180px] bg-card border-r">Conta</th>
                 {forecast.days.map((d) => (
                   <th key={d.date} className="text-right font-medium px-3 py-2 min-w-[110px] whitespace-nowrap">
                     {diaCurto(d.date)}
@@ -283,7 +335,7 @@ export function CashFlowForecast() {
             <tbody>
               {forecast.startingBalanceByAccount.map((conta) => (
                 <tr key={conta.accountId} className="border-t">
-                  <td className="px-3 py-2 sticky left-0 bg-card z-10 whitespace-nowrap">
+                  <td className="px-3 py-2 sticky left-0 z-20 whitespace-nowrap bg-card border-r">
                     {conta.name}
                     {conta.accountId === UNASSIGNED_ACCOUNT_ID && (
                       <span className="ml-1 text-[11px] text-muted-foreground">(sem conta)</span>
@@ -396,6 +448,44 @@ export function CashFlowForecast() {
         Previsão otimista: considera que tudo será pago e recebido no vencimento. O que já venceu e não foi
         baixado aparece na coluna Dívida e não é descontado do saldo.
       </p>
+
+      <ResponsiveModal
+        open={!!celula}
+        onOpenChange={(aberto) => { if (!aberto) setCelula(null); }}
+        title={celula ? `${celula.categoria ?? 'Movimentações'} · ${diaCurto(celula.data)}` : ''}
+        description={detalhe ? `${detalhe.itens.length} ${detalhe.itens.length === 1 ? 'lançamento' : 'lançamentos'}` : undefined}
+      >
+        {detalhe && (
+          <div className="space-y-2">
+            <div className="divide-y rounded-md border max-h-80 overflow-y-auto">
+              {detalhe.itens.map((ev) => (
+                <div key={ev.id} className="px-3 py-2 flex items-start justify-between gap-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate">{ev.label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {ev.categoryName ?? 'Sem categoria'}
+                      {ev.isEstimate && ' · valor estimado'}
+                    </p>
+                  </div>
+                  <span className={cn(
+                    'tabular-nums font-medium shrink-0',
+                    ev.direction === 'in' ? 'text-success' : 'text-destructive',
+                  )}>
+                    {ev.direction === 'in' ? '+' : '-'} {fmt(ev.amountCents / 100)}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between px-1 text-sm font-semibold">
+              <span>Total do dia</span>
+              <span className="tabular-nums">{fmt(Math.abs(detalhe.total))}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Para editar ou dar baixa, abra o lançamento em Contas a Pagar/Receber.
+            </p>
+          </div>
+        )}
+      </ResponsiveModal>
     </div>
   );
 }

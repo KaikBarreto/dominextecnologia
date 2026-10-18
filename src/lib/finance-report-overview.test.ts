@@ -52,7 +52,10 @@ describe('buildFinanceReportOverview', () => {
       netRevenue: 900.05,
       grossProfit: 699.9,
       result: 649.7,
-      margin: expect.closeTo(69.98300169983),
+      // Margem LÍQUIDA: result 649,70 ÷ grossRevenue 1000,10.
+      // Era 69,983% quando a conta usava grossProfit (margem bruta); mudou em
+      // 18/10/2026 — ver a nota grande em `finance-report-overview.ts`.
+      margin: expect.closeTo(64.96350364963503),
     });
     expect(result.monthly).toEqual([{ key: '2026-09', revenue: 1000.1, expense: 350.4 }]);
     expect(result.revenueCategories).toEqual([{ name: 'Serviços', value: 1000.1 }]);
@@ -115,5 +118,134 @@ describe('buildFinanceReportOverview', () => {
     expect(result.totals.expenses).toBe(0);
     expect(result.totals.result).toBe(2_000);
     expect(result.movementCount).toBe(1);
+  });
+});
+
+describe('margem é LÍQUIDA (resultado ÷ faturamento), não bruta', () => {
+  /**
+   * Caso real do BPO financeiro, 18/10/2026. Ele lançou exatamente estes
+   * quatro valores e a tela mostrou 80%, que é só "100% menos o imposto" e
+   * não diz nada. Numa empresa de serviço, que quase nunca cadastra CMV, a
+   * margem BRUTA é inútil porque o lucro bruto vira a própria receita líquida.
+   */
+  const transactions = [
+    transaction('faturamento', { amount: 5000 }),
+    transaction('imposto', { transaction_type: 'saida', amount: 1000, category: 'ISS' }),
+    transaction('aluguel', { transaction_type: 'saida', amount: 2500, category: 'Aluguel' }),
+    transaction('alimentacao', { transaction_type: 'saida', amount: 125, category: 'Alimentação' }),
+  ];
+  const groups = new Map([
+    ['ISS', 'impostos'],
+    ['Aluguel', 'opex'],
+    ['Alimentação', 'opex'],
+  ]);
+
+  const r = buildFinanceReportOverview({
+    transactions,
+    regime: 'caixa',
+    today: '2026-09-28',
+    categoryDreGroups: groups,
+    costCenterOrder: [],
+  });
+
+  it('faturamento é tudo que entrou, sem descontar imposto', () => {
+    expect(r.totals.grossRevenue).toBe(5000);
+  });
+
+  it('o resultado continua certo', () => {
+    expect(r.totals.result).toBe(1375);
+  });
+
+  it('a margem é 27,5% e NÃO 80%', () => {
+    expect(r.totals.margin).toBeCloseTo(27.5, 4);
+  });
+
+  it('sem faturamento no período, a margem é zero em vez de dividir por zero', () => {
+    const vazio = buildFinanceReportOverview({
+      transactions: [transaction('so-despesa', { transaction_type: 'saida', amount: 300, category: 'Aluguel' })],
+      regime: 'caixa',
+      today: '2026-09-28',
+      categoryDreGroups: new Map([['Aluguel', 'opex']]),
+      costCenterOrder: [],
+    });
+    expect(vazio.totals.margin).toBe(0);
+  });
+});
+
+describe('agrupar subcategorias na categoria pai', () => {
+  // Pedido do BPO: "agrupar as categorias" para não ler 30 linhas de centavo.
+  const transactions = [
+    transaction('r1', { amount: 1_000, category: 'Manutenção' }),
+    transaction('r2', { amount: 500, category: 'Instalação' }),
+    transaction('d1', { transaction_type: 'saida', amount: 300, category: 'Combustível' }),
+    transaction('d2', { transaction_type: 'saida', amount: 200, category: 'Pneus' }),
+    transaction('d3', { transaction_type: 'saida', amount: 120, category: 'Aluguel' }),
+  ];
+  const groups = new Map([
+    ['Combustível', 'opex'],
+    ['Pneus', 'opex'],
+    ['Aluguel', 'opex'],
+  ]);
+  const parents = new Map([
+    ['Manutenção', 'Serviços'],
+    ['Instalação', 'Serviços'],
+    ['Combustível', 'Frota'],
+    ['Pneus', 'Frota'],
+  ]);
+  const run = (groupCategories: boolean) => buildFinanceReportOverview({
+    transactions,
+    regime: 'caixa',
+    today: '2026-09-28',
+    categoryDreGroups: groups,
+    costCenterOrder: [],
+    categoryParents: parents,
+    groupCategories,
+  });
+
+  it('desligado, cada subcategoria é uma linha (comportamento de antes)', () => {
+    const r = run(false);
+    expect(r.expenseCategories.map((row) => row.name)).toEqual(['Combustível', 'Pneus', 'Aluguel']);
+    expect(r.revenueCategories.map((row) => row.name)).toEqual(['Manutenção', 'Instalação']);
+  });
+
+  it('ligado, as filhas somam dentro do pai e a categoria sem pai fica como está', () => {
+    const r = run(true);
+    expect(r.expenseCategories).toEqual([
+      { name: 'Frota', value: 500 },
+      { name: 'Aluguel', value: 120 },
+    ]);
+    expect(r.revenueCategories).toEqual([{ name: 'Serviços', value: 1500 }]);
+  });
+
+  it('agrupar não cria nem some dinheiro: o total é idêntico nas duas visões', () => {
+    const soma = (rows: Array<{ value: number }>) => rows.reduce((t, row) => t + row.value, 0);
+    expect(soma(run(true).expenseCategories)).toBe(soma(run(false).expenseCategories));
+    expect(soma(run(true).revenueCategories)).toBe(soma(run(false).revenueCategories));
+  });
+
+  it('agrupar NÃO mexe nos KPIs nem na classificação do DRE', () => {
+    // A filha pode ter `dre_group` diferente do pai; quem classifica é a
+    // categoria do lançamento, não o rótulo exibido.
+    const comGrupo = run(true);
+    const semGrupo = run(false);
+    expect(comGrupo.totals).toEqual(semGrupo.totals);
+    expect(comGrupo.monthly).toEqual(semGrupo.monthly);
+  });
+
+  it('subcategoria de outro grupo do DRE não migra de grupo ao ser agrupada', () => {
+    const r = buildFinanceReportOverview({
+      transactions: [
+        transaction('filha-cmv', { transaction_type: 'saida', amount: 400, category: 'Peças' }),
+      ],
+      regime: 'caixa',
+      today: '2026-09-28',
+      // "Peças" é CMV, mas o pai "Frota" é despesa operacional.
+      categoryDreGroups: new Map([['Peças', 'cmv'], ['Frota', 'opex']]),
+      costCenterOrder: [],
+      categoryParents: new Map([['Peças', 'Frota']]),
+      groupCategories: true,
+    });
+    expect(r.expenseCategories).toEqual([{ name: 'Frota', value: 400 }]);
+    expect(r.totals.grossProfit).toBe(-400); // entrou como CMV, não como opex
   });
 });

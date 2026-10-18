@@ -42,6 +42,43 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.20',
+    date: '18 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nova aba Análise nos relatórios do financeiro',
+        description: 'Compare o seu faturamento e as suas despesas mês a mês, trimestre a trimestre ou ano a ano, do jeito que você escolher, com a variação em relação ao período anterior. Período sem movimento aparece zerado em vez de desaparecer, para você não confundir um mês parado com um mês que não existiu.',
+        category: 'recurso',
+      },
+      {
+        title: 'Descubra quais clientes realmente dão lucro',
+        description: 'A mesma aba traz o ranking dos seus maiores clientes e, ao lado do faturamento de cada um, quanto sobrou de verdade. Quem fatura mais não é sempre quem dá mais lucro: um cliente de dez mil reais que custa nove mil deixa menos que um de quatro mil que custa mil. Dá para reordenar a lista pela margem.',
+        category: 'recurso',
+      },
+      {
+        title: 'A Margem do relatório agora mostra o que sobra de verdade',
+        description: 'O card de Margem estava comparando o lucro antes das despesas com o faturamento, e por isso aparecia alto demais em quem presta serviço. Agora ele mostra quanto sobra de cada cem reais que entraram, depois de tudo. O card ao lado também passou a mostrar o Faturamento, que é tudo que entrou, em vez da receita já descontada de imposto.',
+        category: 'correcao',
+      },
+      {
+        title: 'Clique em qualquer valor do fluxo de caixa para ver de onde ele vem',
+        description: 'Na previsão dia a dia, clicar num valor abre a lista dos lançamentos daquele dia e daquela categoria, um por um, com descrição e valor, e o total do dia no pé. Serve para responder na hora o "cento e vinte e cinco reais de alimentação no dia 22, o que é isso?".',
+        category: 'melhoria',
+      },
+      {
+        title: 'Some as subcategorias na categoria principal',
+        description: 'Quem usa subcategorias ganhou uma chave na Visão Geral para ler os gráficos agrupados: combustível e pneus aparecem somados em frota, por exemplo. É só leitura, os totais e a DRE não mudam. Desligando a chave, cada subcategoria volta a ser uma linha.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Os valores não ficam mais escondidos atrás da primeira coluna',
+        description: 'Na tabela do fluxo de caixa, ao rolar para o lado, os números passavam por trás da coluna de categorias e ficavam ilegíveis. Corrigido.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.36.19',
     date: '18 de outubro de 2026',
     type: 'patch',

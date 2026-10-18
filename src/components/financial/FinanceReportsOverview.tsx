@@ -14,7 +14,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { BarChart3, CircleDollarSign, Gauge, ReceiptText, TrendingUp } from 'lucide-react';
+import { BarChart3, CircleDollarSign, Gauge, ListTree, ReceiptText, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -29,6 +29,9 @@ import {
   buildFinanceReportOverview,
   type FinanceReportCategoryRow,
 } from '@/lib/finance-report-overview';
+import { buildCategoryTree } from '@/lib/category-tree';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import type { DreRegime } from '@/lib/dre-regime';
 import type { FinancialTransaction } from '@/types/database';
 import type { DateRange } from '@/components/ui/DateRangeFilter';
@@ -57,21 +60,43 @@ export function FinanceReportsOverview({
   isLoading = false,
 }: FinanceReportsOverviewProps) {
   const [regime, setRegime] = useState<DreRegime>('caixa');
+  // Padrão agrupado: é como o BPO pediu para ler o relatório. Quem não usa
+  // subcategoria não vê diferença nenhuma, nem o controle.
+  const [groupCategories, setGroupCategories] = useState(true);
   const { categories, isLoading: isLoadingCategories } = useFinancialCategories();
   const { costCenters, isLoading: isLoadingCostCenters } = useCostCenters();
   const { settings, isLoading: isLoadingSettings } = useCompanySettings();
   const { locale, currency, timezone } = useAppLocaleContext();
   const isMobile = useIsMobile();
+  const intlLocale = locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR';
   const money = (value: number) => formatMoney(value, currency, locale);
   const compactMoney = (value: number) => new Intl.NumberFormat(
-    locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR',
+    intlLocale,
     { style: 'currency', currency, notation: 'compact', maximumFractionDigits: 1 },
   ).format(value);
+  // Vírgula decimal, não ponto: o relatório é lido em PT-BR.
+  const pct = (value: number) => `${new Intl.NumberFormat(intlLocale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(value)}%`;
 
   const categoryDreGroups = useMemo(
     () => new Map(categories.map((category) => [category.name, category.dre_group])),
     [categories],
   );
+  /**
+   * `subcategoria → nome da categoria pai`. É por NOME porque é o nome que o
+   * lançamento guarda (mesma régua do DRE).
+   */
+  const categoryParents = useMemo(() => {
+    const tree = buildCategoryTree(categories as any[]);
+    const map = new Map<string, string>();
+    (categories as any[]).forEach((category) => {
+      const parent = tree.parentOf(category);
+      if (parent) map.set(category.name, parent.name);
+    });
+    return map;
+  }, [categories]);
   const costCenterOrder = useMemo(
     () => costCenters.slice().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map((center) => center.id),
     [costCenters],
@@ -89,8 +114,10 @@ export function FinanceReportsOverview({
       dreStartDate: (settings as { dre_start_date?: string | null } | null)?.dre_start_date,
       categoryDreGroups,
       costCenterOrder,
+      categoryParents,
+      groupCategories,
     }),
-    [categoryDreGroups, costCenterOrder, range, regime, settings, timezone, transactions],
+    [categoryDreGroups, categoryParents, costCenterOrder, groupCategories, range, regime, settings, timezone, transactions],
   );
 
   const categoryLimit = isMobile ? 5 : 7;
@@ -161,19 +188,19 @@ export function FinanceReportsOverview({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <InsightKpi
           label="Margem"
-          value={`${report.totals.margin.toFixed(1)}%`}
+          value={pct(report.totals.margin)}
           icon={Gauge}
           className={report.totals.margin >= 0 ? 'bg-success' : 'bg-destructive'}
         />
         <InsightKpi
-          label="Receita líquida"
-          value={isMobile ? compactMoney(report.totals.netRevenue) : money(report.totals.netRevenue)}
-          fullValue={money(report.totals.netRevenue)}
+          label="Faturamento"
+          value={isMobile ? compactMoney(report.totals.grossRevenue) : money(report.totals.grossRevenue)}
+          fullValue={money(report.totals.grossRevenue)}
           icon={CircleDollarSign}
           className="bg-info"
         />
         <InsightKpi
-          label="Resultado (EBITDA)"
+          label="Resultado"
           value={isMobile ? compactMoney(report.totals.result) : money(report.totals.result)}
           fullValue={money(report.totals.result)}
           icon={report.totals.result >= 0 ? TrendingUp : ReceiptText}
@@ -215,6 +242,20 @@ export function FinanceReportsOverview({
           )}
         </CardContent>
       </Card>
+
+      {categoryParents.size > 0 ? (
+        <div className="flex items-center justify-end gap-2.5">
+          <ListTree className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          <Label htmlFor="reports-group-categories" className="cursor-pointer text-xs text-muted-foreground">
+            Somar subcategorias na categoria principal
+          </Label>
+          <Switch
+            id="reports-group-categories"
+            checked={groupCategories}
+            onCheckedChange={setGroupCategories}
+          />
+        </div>
+      ) : null}
 
       <div className="grid gap-5 lg:grid-cols-2">
         <CategoryDistribution title="Receitas por categoria" rows={revenueCategories} money={money} />

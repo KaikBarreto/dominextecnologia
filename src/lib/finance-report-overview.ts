@@ -60,6 +60,18 @@ interface BuildFinanceReportOverviewInput {
   dreStartDate?: string | null;
   categoryDreGroups?: ReadonlyMap<string, string | null>;
   costCenterOrder?: string[];
+  /**
+   * `subcategoria → nome da categoria pai`. É por NOME porque é o nome que o
+   * lançamento guarda (`financial_transactions.category` é `text`, não é FK).
+   */
+  categoryParents?: ReadonlyMap<string, string>;
+  /**
+   * Soma as fatias de subcategoria dentro da categoria pai nas listas de
+   * categoria (só na APRESENTAÇÃO). A classificação do DRE continua sendo
+   * feita pela categoria do lançamento: subcategoria `opex` de um pai `cmv`
+   * continua contando como `opex` nos totais, como no DRE.
+   */
+  groupCategories?: boolean;
 }
 
 function toCents(value: number | string | null | undefined): number {
@@ -87,6 +99,8 @@ export function buildFinanceReportOverview({
   dreStartDate,
   categoryDreGroups = new Map(),
   costCenterOrder,
+  categoryParents,
+  groupCategories = false,
 }: BuildFinanceReportOverviewInput): FinanceReportOverviewData {
   const parentsWithPartialReceipt = new Set<string>();
   for (const transaction of transactions) {
@@ -121,9 +135,17 @@ export function buildFinanceReportOverview({
   const revenueCategories = new Map<string, number>();
   const expenseCategories = new Map<string, number>();
 
+  // Rótulo que vai para as listas de categoria. Somar a filha dentro do pai
+  // preserva o total: cada lançamento continua entrando em exatamente uma
+  // chave.
+  const displayNameOf = (category: string): string => (
+    groupCategories ? (categoryParents?.get(category) ?? category) : category
+  );
+
   for (const transaction of visible) {
     const cents = toCents(transaction.amount);
     const category = transaction.category?.trim() || 'Sem categoria';
+    const displayCategory = displayNameOf(category);
     const effectiveDate = getDreEffectiveDate(transaction, regime);
     const monthKey = effectiveDate && /^\d{4}-\d{2}/.test(effectiveDate)
       ? effectiveDate.slice(0, 7)
@@ -131,7 +153,7 @@ export function buildFinanceReportOverview({
 
     if (transaction.transaction_type === 'entrada') {
       grossRevenueCents += cents;
-      revenueCategories.set(category, (revenueCategories.get(category) ?? 0) + cents);
+      revenueCategories.set(displayCategory, (revenueCategories.get(displayCategory) ?? 0) + cents);
       if (monthKey) {
         const row = monthly.get(monthKey) ?? { revenueCents: 0, expenseCents: 0 };
         row.revenueCents += cents;
@@ -140,7 +162,7 @@ export function buildFinanceReportOverview({
       continue;
     }
 
-    expenseCategories.set(category, (expenseCategories.get(category) ?? 0) + cents);
+    expenseCategories.set(displayCategory, (expenseCategories.get(displayCategory) ?? 0) + cents);
     const group = classifyDreCategory(category, categoryDreGroups.get(category));
     if (group === 'impostos') taxesCents += cents;
     else if (group === 'cmv') costOfServicesCents += cents;
@@ -170,7 +192,18 @@ export function buildFinanceReportOverview({
       netRevenue: fromCents(netRevenueCents),
       grossProfit: fromCents(grossProfitCents),
       result: fromCents(resultCents),
-      margin: grossRevenueCents > 0 ? (grossProfitCents / grossRevenueCents) * 100 : 0,
+      /**
+       * Margem LÍQUIDA: resultado ÷ faturamento.
+       *
+       * ⚠️ Até 18/10/2026 isto era `grossProfit / grossRevenue` (margem
+       * BRUTA). Numa empresa de serviço, que quase nunca cadastra CMV, o lucro
+       * bruto é igual à receita líquida, então a "margem" virava apenas
+       * "100% menos o percentual de imposto" e não dizia nada. O BPO financeiro
+       * pegou com um caso real: R$ 5.000 de receita, R$ 1.000 de imposto,
+       * R$ 2.500 de aluguel e R$ 125 de alimentação mostravam 80%, quando o
+       * número que interessa é 1.375 / 5.000 = 27,5%.
+       */
+      margin: grossRevenueCents > 0 ? (resultCents / grossRevenueCents) * 100 : 0,
     },
     monthly: Array.from(monthly, ([key, value]) => ({
       key,

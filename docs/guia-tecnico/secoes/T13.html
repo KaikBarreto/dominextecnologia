@@ -700,6 +700,10 @@
 
   <p>Para sair da dívida, basta dar baixa no lançamento, seja ele a pagar ou a receber.</p>
 
+  <h3>Clicar no valor para ver de onde ele vem</h3>
+
+  <p>Todo valor da tabela é clicável (menos as linhas de saldo). Ao clicar, abre a lista dos lançamentos daquele dia e daquela categoria, um por um, com descrição e valor, e o total do dia no pé. É a resposta para "R$ 125,00 de alimentação em 22/10, o que é isso?".</p>
+
   <h3>Mais de uma conta: o erro que custa caro</h3>
 
   <div class="aviso"><b>Somar todas as contas esconde o problema.</b> Uma empresa com R$ 50 mil no total pode ter R$ 25 mil em cada uma de duas contas. Se um débito automático de R$ 30 mil cai numa delas, o total continua parecendo saudável e a conta fura: tarifa, juros de cheque especial, débito devolvido. E você só descobre no dia seguinte.</div>
@@ -735,6 +739,38 @@
   <div class="regra"><b>Lançar aporte como receita faz a empresa pagar imposto sobre ele.</b> Para a Receita, tudo que entra é venda até que se prove o contrário. Por isso existe a categoria separada: ela entra no caixa e fica fora do resultado.</div>
 
   <p>As quatro aparecem nas listas da conciliação bancária e no molde de importação por planilha, então dá para classificar por qualquer um dos caminhos.</p>
+
+  <h2>19. Análise: comparar períodos e descobrir qual cliente realmente dá lucro</h2>
+
+  <p>Fica em <span class="ui">Financeiro</span>, <span class="ui">Relatórios</span>, aba <span class="ui">Análise</span>. Responde duas perguntas que a Visão Geral não responde: "estou melhorando ou piorando?" e "quem são meus melhores clientes de verdade?".</p>
+
+  <h3>Receita × despesa, período contra período</h3>
+
+  <p>Você escolhe o agrupamento (<span class="ui">Mês a mês</span>, <span class="ui">Trimestre</span> ou <span class="ui">Ano</span>) e quantos períodos comparar. O gráfico traz as barras de receita e despesa com a linha do resultado em cima, e a tabela embaixo repete os números com a variação do faturamento em relação ao período anterior.</p>
+
+  <div class="regra">Período sem nenhum movimento <b>aparece zerado</b>, não desaparece da lista. Um mês faltando daria a impressão de que o movimento foi contínuo. E a variação só aparece quando o período anterior teve faturamento: sair de R$ 0,00 para R$ 5.000,00 não é "aumento infinito", é simplesmente o primeiro faturamento.</div>
+
+  <p>Esta aba <b>ignora o seletor de período do topo</b> de propósito: a pergunta aqui é justamente comparar um período com os anteriores, e um filtro por fora recortaria a própria comparação.</p>
+
+  <h3>Ranking de clientes e a margem de cada um</h3>
+
+  <p>A tabela lista os clientes por faturamento (Top 5, 10 ou 25), com o percentual que cada um representa do total, o custo direto lançado no nome dele, a sobra e a margem. O seletor <span class="ui">Melhor margem</span> reordena pela margem.</p>
+
+  <div class="aviso"><b>O cliente que mais fatura não é necessariamente o que mais dá lucro.</b> Um cliente de R$ 10.000,00 com R$ 9.000,00 de custo deixa R$ 1.000,00 (10%). Outro de R$ 4.000,00 com R$ 1.000,00 de custo deixa R$ 3.000,00 (75%). É por isso que a coluna de margem existe ao lado da de faturamento.</div>
+
+  <p>Para a margem sair certa, a despesa precisa estar lançada <b>com o cliente vinculado</b>. Aluguel, folha e energia não pertencem a cliente nenhum: esse total aparece no aviso abaixo da tabela, justamente para explicar por que a soma das sobras por cliente não é o resultado da empresa.</p>
+
+  <p>Cliente que só gerou despesa no período aparece com margem <span class="ui">—</span>, não com 0%. Sem faturamento não existe margem para calcular, e mostrar 0% esconderia o prejuízo.</p>
+
+  <h3>Agrupar as categorias na Visão Geral</h3>
+
+  <p>Quem usa subcategorias tem, na aba <span class="ui">Visão Geral</span>, a chave <span class="ui">Somar subcategorias na categoria principal</span>, ligada por padrão. Ligada, "Software" e "Telefonia" aparecem somados em "Despesas Administrativas". Desligada, cada subcategoria volta a ser uma linha.</p>
+
+  <div class="regra">Agrupar muda só a leitura dos gráficos de categoria. Os cards de Margem, Faturamento e Resultado, a DRE e os totais <b>não mudam</b>: o grupo da DRE continua sendo o da categoria do lançamento, então uma subcategoria de custo dentro de uma categoria de despesa operacional continua contando como custo no resultado.</div>
+
+  <h3>O card Margem</h3>
+
+  <p>A <span class="ui">Margem</span> da Visão Geral é o <b>resultado dividido pelo faturamento</b>: de cada R$ 100,00 que entraram, quanto sobrou no fim. O card ao lado mostra <span class="ui">Faturamento</span>, que é tudo que entrou, sem descontar imposto.</p>
 
   <h2 class="suporte">Suporte: problemas comuns</h2>
   <table class="faq">
