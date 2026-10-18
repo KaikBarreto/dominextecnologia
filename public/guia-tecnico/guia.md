@@ -6191,7 +6191,7 @@ Financeiro, tela Relatório, aba Visão Geral: cards do período, saldo por cont
 
 O Dominex permite gerar link de pagamento (Pix, boleto ou cartão) pra você cobrar o seu cliente. O dinheiro cai na sua conta Asaas: você conecta a sua própria chave em Configurações, aba Integrações. Isso não tem nenhuma relação com a mensalidade que você paga pelo sistema, que é outro assunto e vive na tela Assinatura.
 
-- Com a conta ligada, aparece o botão Cobrar no topo do Financeiro, que abre o formulário Nova cobrança com cliente, valor, vencimento, descrição e forma de pagamento (Pix, boleto, Pix e boleto, cartão de crédito, ou deixar o cliente escolher).
+- Com a conta ligada, a tela Cobranças ganha o botão Nova cobrança, que abre um assistente de quatro abas: Cobrança (cliente, ordem de serviço opcional, valor, vencimento e descrição), Pagamento (Pix, boleto, Pix e boleto, cartão de crédito, ou deixar o cliente escolher), Encargos (multa, juros e desconto por antecipação) e Financeiro (para onde o dinheiro entra quando o cliente pagar). Dá para preencher só a primeira aba e usar Gerar agora, ou percorrer as quatro com Avançar.
 
 - Com a conta ainda não ativa, o botão vira Ir para Integrações. A mensagem é: "Para cobrar seus clientes online, ative a integração de recebimentos em Configurações, Integrações."
 

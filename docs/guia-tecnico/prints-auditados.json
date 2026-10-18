@@ -231,37 +231,37 @@
   },
   "t13-cartao-faturas.png": {
     "auditado_em": "2026-10-18",
-    "hash": "08027da1353273e469104d1286acbba4b98bdbc248d4dd05c72cc6c281b66a36",
+    "hash": "4d32e65d429ace749647876f305576b1d55129f5cfcf38aab7ebb68927c23db4",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t13-categorias.png": {
     "auditado_em": "2026-10-18",
-    "hash": "19f0ac3c753249ce063f40066db854fb3e75e7befba92ecf43eb0e75941be7a5",
+    "hash": "ef3f71093d0a05c0b945626c1f3ee46abb928f6184962810ed653121ef0ddbc4",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t13-cobrar-modal.png": {
-    "auditado_em": "2026-09-06",
-    "hash": "46ef2d99e61399d512af7f4356a8e47fdc0b4b34c21481a10f84616d66d56f81",
+    "auditado_em": "2026-10-18",
+    "hash": "aaf968fa092993a3f78f6355d3c730fd49220fa3f4edff198d3c483495bbec29",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t13-conciliacao-aba.png": {
     "auditado_em": "2026-10-18",
-    "hash": "a73ef248eb0a8a01cb70d4a0f6327049dea8b21e6a971ce50141e03e0a2dc7da",
+    "hash": "f0066655ea5046a7e4abdc947ebb9672799f568893ed57e1f05f3593f5ecae22",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t13-conciliacao-cartao.png": {
     "auditado_em": "2026-10-18",
-    "hash": "2abd31adfdf27427d53feca7f4d06ea8cdb8f6c53ae66b3af516fd239653f4ac",
+    "hash": "cd183cea95e214ffa1c5b4a12a049ae9400087d281adf7dd46e09e78431330ed",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t13-conciliacao-destinos.png": {
     "auditado_em": "2026-10-18",
-    "hash": "93e013468950a12c0c08f628b834df26e2e700bfda4f9fad2115d046c10761cb",
+    "hash": "b9e06c37783d3690a7785d955a9d7ffd05b7dad67741807cb3a6460170ab9b47",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t13-conciliacao-extrato.png": {
     "auditado_em": "2026-10-18",
-    "hash": "7cb291c66d0009b786fe70654b6371165d0c9a40cdd24abcdae95f3bdd783497",
+    "hash": "290d5cbc55d11dec7ffc0a523c2e6f98e29c32a2edc353f9261c0c46996ca058",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t13-financeiro-contas.png": {
@@ -296,7 +296,7 @@
   },
   "t13-planilha-dialogo.png": {
     "auditado_em": "2026-10-18",
-    "hash": "cf421a9ad2a2d6749931e70300d4f46acb9f2840c6ad3e62ee421d699bfe63c8",
+    "hash": "92b1a172b48239229f24f750ad9e2696abb673df3547a54bb668bd53e849930c",
     "hash_regioes": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
   },
   "t14-como-funciona.png": {

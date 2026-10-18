@@ -1,0 +1,43 @@
+{
+ "o_que_e": "Clientes do tenant de QA que eu marquei como apagados em 18/10/2026 porque o NOME estava duplicado e o duplicado inerte atrapalhava a importacao por planilha (o sistema nao adivinha qual dos dois e, avisa e importa sem vinculo).",
+ "como_desfazer": "update customers set is_deleted=false where id in (...)",
+ "atencao": "Os dois ultimos (Clinica Vida & Saude e Padaria Trigo Dourado) tinham 1 OS cada; a OS foi repontada para a copia que ficou. Ver os-repontadas.json antes de restaurar.",
+ "clientes": [
+  {
+   "id": "5eed0000-0000-4000-8000-000000000024",
+   "name": "Drogaria São Rafael"
+  },
+  {
+   "id": "5eed0000-0000-4000-8000-000000000022",
+   "name": "Academia Corpo em Forma"
+  },
+  {
+   "id": "266d09ad-c3cc-4cb4-9a2e-625cf706a0c5",
+   "name": "Centro Empresarial Atlântico"
+  },
+  {
+   "id": "afec9a46-2cb3-49cb-8288-228deec92b69",
+   "name": "Supermercado Bom Preço Ltda"
+  },
+  {
+   "id": "5eed0000-0000-4000-8000-000000000023",
+   "name": "Frigorífico Serra Fria Ltda"
+  },
+  {
+   "id": "b725bbfb-008f-49b2-b632-6d376f8982dc",
+   "name": "Condomínio Jardim das Flores"
+  },
+  {
+   "id": "89242ff0-52c1-4ddb-9316-4938d463d46c",
+   "name": "Clínica Vida & Saúde"
+  },
+  {
+   "id": "da2aa8aa-bd05-41c1-a264-2e6a57ebfebd",
+   "name": "Padaria Trigo Dourado ME"
+  },
+  {
+   "id": "c6689783-552a-496b-9ea3-7ad94abe9e93",
+   "name": "João"
+  }
+ ]
+}
