@@ -130,6 +130,8 @@ export interface ServiceOrder {
   client_signature?: string;
   notes?: string;
   contract_id?: string;
+  /** Orçamento comercial que originou a OS, quando criada pela ação Gerar OS. */
+  quote_id?: string | null;
   created_by?: string;
   team_id?: string;
   form_template_id?: string;

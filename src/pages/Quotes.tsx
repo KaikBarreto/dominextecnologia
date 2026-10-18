@@ -159,6 +159,7 @@ function QuotesList() {
   const { isActive: isPaymentActive } = useTenantPaymentAccount();
   const showChargeAction = hasCobrancas && isPaymentActive;
   const { hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
+  const canCreateOS = isAdminOrGestor() || hasPermission('fn:create_os');
   // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
   // admin/gestor sempre; para os demais, SÓ com registro em user_permissions
   // contendo a permissão (ou o curinga '*'). O fallback legado do
@@ -476,7 +477,7 @@ function QuotesList() {
       });
     }
 
-    if (q.status === 'aprovado' && !q.converted_to_os_id) {
+    if (canCreateOS && q.status === 'aprovado' && !q.converted_to_os_id) {
       actions.push({
         key: 'convert',
         label: tq.actionConvertOS,
@@ -819,7 +820,7 @@ function QuotesList() {
                             icon: ArrowRight,
                             onClick: () => convertToServiceOrder.mutate(q),
                             disabled: isConverting,
-                            hidden: !(q.status === 'aprovado' && !q.converted_to_os_id),
+                            hidden: !canCreateOS || !(q.status === 'aprovado' && !q.converted_to_os_id),
                           },
                           {
                             label: tq.actionViewTransaction,

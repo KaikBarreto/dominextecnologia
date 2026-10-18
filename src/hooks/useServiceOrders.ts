@@ -13,6 +13,13 @@ import {
   type ScheduleBookingOverride,
 } from '@/lib/scheduleBooking';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import {
+  SERVICE_ORDER_BUDGET_KEY,
+  SERVICE_ORDER_SERVICE_TYPES_KEY,
+  syncServiceOrderBudget,
+  syncServiceOrderServiceTypes,
+} from '@/hooks/useServiceOrderBudget';
+import type { ServiceOrderBudgetItem } from '@/lib/serviceOrderBudget';
 
 export interface ServiceOrderEquipmentItem {
   equipment_id: string;
@@ -71,6 +78,10 @@ export interface ServiceOrderInput extends ScheduleBookingOverride {
   team_id?: string;
   os_type: OsType;
   service_type_id?: string;
+  /** Relação completa; service_type_id continua espelhando o primeiro. */
+  service_type_ids?: string[];
+  /** Itens comerciais previstos. Não representam consumo real de estoque. */
+  budget_items?: ServiceOrderBudgetItem[];
   status?: OsStatus;
   scheduled_date?: string;
   scheduled_time?: string;
@@ -244,7 +255,14 @@ export function useServiceOrders() {
     mutationFn: async (input: ServiceOrderInput) => {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
-      const { equipment_items, assignee_user_ids, assignee_team_ids, ...restWithBooking } = input;
+      const {
+        equipment_items,
+        assignee_user_ids,
+        assignee_team_ids,
+        service_type_ids,
+        budget_items,
+        ...restWithBooking
+      } = input;
       const rest = { ...restWithBooking };
       delete rest.schedule_override;
       delete rest.schedule_override_reason;
@@ -283,6 +301,13 @@ export function useServiceOrders() {
           p_assignee_user_ids: assignee_user_ids ?? [],
         } as never);
         if (error) throw normalizeScheduleBookingError(error);
+        const createdId = (data as any)?.id;
+        if (createdId && service_type_ids !== undefined) {
+          await syncServiceOrderServiceTypes(createdId, service_type_ids);
+        }
+        if (createdId && budget_items !== undefined) {
+          await syncServiceOrderBudget(createdId, budget_items);
+        }
         return data;
       }
 
@@ -319,11 +344,20 @@ export function useServiceOrders() {
         if (aErr) console.error('Error inserting assignees:', aErr);
       }
 
+      if (service_type_ids !== undefined) {
+        await syncServiceOrderServiceTypes(data.id, service_type_ids);
+      }
+      if (budget_items !== undefined) {
+        await syncServiceOrderBudget(data.id, budget_items);
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_BUDGET_KEY] });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_SERVICE_TYPES_KEY] });
       toast({ title: 'Ordem de serviço criada com sucesso!' });
     },
     onError: (error: Error) => {
@@ -348,6 +382,8 @@ export function useServiceOrders() {
       id,
       assignee_user_ids,
       equipment_items,
+      service_type_ids,
+      budget_items,
       schedule_override,
       schedule_override_reason,
       schedule_request_id,
@@ -538,6 +574,14 @@ export function useServiceOrders() {
         if (scopeError) throw scopeError;
       }
 
+      if (service_type_ids !== undefined) {
+        await syncServiceOrderServiceTypes(id, service_type_ids);
+      }
+
+      if (budget_items !== undefined) {
+        await syncServiceOrderBudget(id, budget_items);
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -545,6 +589,8 @@ export function useServiceOrders() {
       queryClient.invalidateQueries({ queryKey: ['paused-orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['service-ratings'] });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_BUDGET_KEY] });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_SERVICE_TYPES_KEY] });
       toast({ title: 'OS atualizada com sucesso!' });
     },
     onError: (error: Error) => {

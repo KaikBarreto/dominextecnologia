@@ -142,6 +142,7 @@ export const os = {
 
       // Steps
       stepClient: 'Cliente e Serviço',
+      stepBudget: 'Orçamento',
       stepEquipment: 'Equipamentos e Checklists',
       stepDetails: 'Agendamento e Detalhes',
 
@@ -168,7 +169,7 @@ export const os = {
       placeholderAddress: 'Rua, Avenida...',
       labelNeighborhood: 'Bairro',
       labelStateCity: 'UF / Cidade',
-      labelServiceType: 'Tipo de Serviço',
+      labelServiceType: 'Tipos de Serviço',
       placeholderSelectService: 'Selecione',
       placeholderSearchService: 'Buscar tipo de serviço...',
       noServiceType: 'Nenhum',
@@ -748,6 +749,7 @@ export const os = {
       // Cabeçalho / navegação
       btnBack: 'Voltar',
       osPrefix: 'OS',
+      servicesLabel: 'Serviços desta OS',
 
       // Sidebar desktop — seções de contexto
       sidebarSectionClient: 'Cliente',
@@ -1835,6 +1837,7 @@ export const os = {
       titleCreate: 'New work order',
       titleEdit: 'Edit work order',
       stepClient: 'Customer & Service',
+      stepBudget: 'Budget',
       stepEquipment: 'Equipment & Checklists',
       stepDetails: 'Scheduling & Details',
       btnBack: 'Back',
@@ -1857,7 +1860,7 @@ export const os = {
       placeholderAddress: 'Street, Avenue...',
       labelNeighborhood: 'Neighborhood',
       labelStateCity: 'State / City',
-      labelServiceType: 'Service type',
+      labelServiceType: 'Service types',
       placeholderSelectService: 'Select',
       placeholderSearchService: 'Search service type...',
       noServiceType: 'None',
@@ -2386,6 +2389,7 @@ export const os = {
     technicianFlow: {
       btnBack: 'Back',
       osPrefix: 'WO',
+      servicesLabel: 'Services in this work order',
       sidebarSectionClient: 'Customer',
       sidebarSectionTechnician: 'Technician',
       sidebarSectionExecution: 'Execution',
@@ -3414,6 +3418,7 @@ export const os = {
       titleCreate: 'Nueva orden de trabajo',
       titleEdit: 'Editar orden',
       stepClient: 'Cliente y servicio',
+      stepBudget: 'Presupuesto',
       stepEquipment: 'Equipos y listas',
       stepDetails: 'Programación y detalles',
       btnBack: 'Atrás',
@@ -3436,7 +3441,7 @@ export const os = {
       placeholderAddress: 'Calle, Avenida...',
       labelNeighborhood: 'Barrio',
       labelStateCity: 'Estado / Ciudad',
-      labelServiceType: 'Tipo de servicio',
+      labelServiceType: 'Tipos de servicio',
       placeholderSelectService: 'Seleccionar',
       placeholderSearchService: 'Buscar tipo de servicio...',
       noServiceType: 'Ninguno',
@@ -3965,6 +3970,7 @@ export const os = {
     technicianFlow: {
       btnBack: 'Atrás',
       osPrefix: 'OT',
+      servicesLabel: 'Servicios de esta orden',
       sidebarSectionClient: 'Cliente',
       sidebarSectionTechnician: 'Técnico',
       sidebarSectionExecution: 'Ejecución',
@@ -4993,6 +4999,7 @@ export const os = {
       titleCreate: 'Nouveau bon de travail',
       titleEdit: 'Modifier le bon',
       stepClient: 'Client et service',
+      stepBudget: 'Devis',
       stepEquipment: 'Équipements et listes',
       stepDetails: 'Planification et détails',
       btnBack: 'Retour',
@@ -5015,7 +5022,7 @@ export const os = {
       placeholderAddress: 'Rue, Avenue...',
       labelNeighborhood: 'Quartier',
       labelStateCity: 'Région / Ville',
-      labelServiceType: 'Type de service',
+      labelServiceType: 'Types de service',
       placeholderSelectService: 'Sélectionner',
       placeholderSearchService: 'Rechercher un type de service...',
       noServiceType: 'Aucun',
@@ -5544,6 +5551,7 @@ export const os = {
     technicianFlow: {
       btnBack: 'Retour',
       osPrefix: 'BT',
+      servicesLabel: 'Services de ce bon',
       sidebarSectionClient: 'Client',
       sidebarSectionTechnician: 'Technicien',
       sidebarSectionExecution: 'Exécution',

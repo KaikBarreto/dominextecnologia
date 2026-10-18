@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.22',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Crie uma única OS com vários tipos de serviço',
+        description: 'Agora a mesma ordem de serviço pode reunir dois ou mais serviços. Na criação da OS, você adiciona, organiza e remove os serviços em uma lista expansível, sem precisar abrir uma OS separada para cada atividade.',
+        category: 'recurso',
+      },
+      {
+        title: 'Aplique o checklist certo em cada equipamento',
+        description: 'Cada equipamento da OS mostra seus próprios checklists e identifica claramente a qual serviço cada um pertence. Isso facilita conferir o que será executado e evita misturar tarefas de serviços diferentes.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Gere a OS direto de um orçamento aprovado',
+        description: 'A ação Gerar OS leva para a nova ordem o cliente, os serviços, os materiais e os valores do orçamento. O total também fica sugerido no faturamento da OS e continua editável antes de salvar.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.36.21',
     date: '19 de outubro de 2026',
     type: 'patch',

@@ -10888,6 +10888,142 @@ export type Database = {
           },
         ]
       }
+      service_order_budget_items: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string
+          details: string | null
+          id: string
+          inventory_id: string | null
+          item_type: string
+          position: number
+          quantity: number
+          service_order_id: string
+          service_type_id: string | null
+          source_quote_item_id: string | null
+          total_price: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description: string
+          details?: string | null
+          id?: string
+          inventory_id?: string | null
+          item_type?: string
+          position?: number
+          quantity?: number
+          service_order_id: string
+          service_type_id?: string | null
+          source_quote_item_id?: string | null
+          total_price?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string
+          details?: string | null
+          id?: string
+          inventory_id?: string | null
+          item_type?: string
+          position?: number
+          quantity?: number
+          service_order_id?: string
+          service_type_id?: string | null
+          source_quote_item_id?: string | null
+          total_price?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_order_budget_items_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_budget_items_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_budget_items_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_budget_items_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_budget_items_source_quote_item_id_fkey"
+            columns: ["source_quote_item_id"]
+            isOneToOne: false
+            referencedRelation: "quote_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_order_service_types: {
+        Row: {
+          company_id: string
+          created_at: string
+          position: number
+          service_order_id: string
+          service_type_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          position?: number
+          service_order_id: string
+          service_type_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          position?: number
+          service_order_id?: string
+          service_type_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_order_service_types_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_service_types_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_service_types_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_orders: {
         Row: {
           check_in_by: string | null
@@ -14640,6 +14776,16 @@ export type Database = {
       generate_pmoc_token: { Args: never; Returns: string }
       generate_ponto_slug: { Args: { p_employee_id: string }; Returns: string }
       generate_public_short_code: { Args: { p_len?: number }; Returns: string }
+      generate_service_order_from_quote: {
+        Args: { p_quote_id: string }
+        Returns: Database["public"]["Tables"]["service_orders"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "service_orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       generate_recurrence_dates: {
         Args: {
           p_end_date: string
@@ -15886,6 +16032,14 @@ export type Database = {
       }
       sync_service_order_scope: {
         Args: { _items: Json; _service_order_id: string }
+        Returns: Json
+      }
+      sync_service_order_budget: {
+        Args: { p_items: Json; p_service_order_id: string }
+        Returns: Json
+      }
+      sync_service_order_service_types: {
+        Args: { p_service_order_id: string; p_service_type_ids: string[] }
         Returns: Json
       }
       tenant_charges_without_receivable: {

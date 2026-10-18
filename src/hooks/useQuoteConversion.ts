@@ -10,6 +10,7 @@ import { buildInstallmentPlan } from '@/lib/finance-installments';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { resolveSystemCategoryNameFresh } from '@/hooks/useFinancialCategories';
+import { SERVICE_ORDER_BUDGET_KEY, SERVICE_ORDER_SERVICE_TYPES_KEY } from '@/hooks/useServiceOrderBudget';
 
 interface ApproveQuoteParams {
   quote: Quote;
@@ -172,64 +173,20 @@ export function useQuoteConversion() {
     mutationFn: async (quote: Quote) => {
       if (!user?.id) throw new Error('Usuário não autenticado');
       if (quote.converted_to_os_id) throw new Error('Orçamento já foi convertido');
-
-      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
-      const company_id = await getCurrentUserCompanyId();
-
-      const serviceOrderPayload = normalizeOptionalForeignKeys(
-        {
-          customer_id: quote.customer_id,
-          service_type_id: quote.quote_items?.[0]?.service_type_id || null,
-          status: 'agendada',
-          total_value: quote.final_price || quote.total_value || 0,
-          description: `Convertido do Orçamento #${quote.quote_number}`,
-          notes: quote.notes,
-          quote_id: quote.id,
-          created_by: user.id,
-        } as any,
-        ['customer_id', 'service_type_id']
-      );
-
-      const { data: serviceOrder, error: osError } = await supabase
-        .from('service_orders')
-        .insert(serviceOrderPayload)
-        .select()
-        .single();
-      if (osError) throw osError;
-
-      const quoteItems = quote.quote_items || [];
-      const materialItems = quoteItems.filter(i => i.item_type === 'material' && i.inventory_id && i.quantity > 0);
-
-      if (materialItems.length > 0) {
-        // Escreve pelo caminho atômico único (register_inventory_movement).
-        // Ele resolve o estoque principal (p_stock_id NULL) e move o saldo em
-        // inventory_stock_levels; inventory.quantity reflete via trigger.
-        for (const i of materialItems) {
-          const { error: movError } = await supabase.rpc('register_inventory_movement', {
-            p_inventory_id: i.inventory_id!,
-            p_movement_type: 'saida',
-            p_quantity: -Math.abs(i.quantity),
-            p_service_order_id: serviceOrder.id,
-            p_notes: `Consumo do Orçamento #${quote.quote_number}`,
-          });
-          if (movError) throw movError;
-        }
-      }
-
-      const { error: quoteError } = await supabase
-        .from('quotes')
-        .update({ converted_to_os_id: serviceOrder.id, status: 'convertido' })
-        .eq('id', quote.id);
-      if (quoteError) throw quoteError;
-
-      return serviceOrder;
+      const { data, error } = await supabase.rpc('generate_service_order_from_quote', {
+        p_quote_id: quote.id,
+      });
+      if (error) throw error;
+      return data;
     },
-    onSuccess: (so) => {
+    onSuccess: () => {
       invalidateAll();
-      toast({ title: 'Orçamento convertido!', description: `OS criada com sucesso.` });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_BUDGET_KEY] });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_SERVICE_TYPES_KEY] });
+      toast({ title: 'OS gerada com sucesso!', description: 'Serviços, materiais e valores do orçamento foram copiados.' });
     },
     onError: (e: any) => {
-      toast({ variant: 'destructive', title: 'Erro na conversão', description: getErrorMessage(e) });
+      toast({ variant: 'destructive', title: 'Não foi possível gerar a OS', description: getErrorMessage(e) });
     },
   });
 
