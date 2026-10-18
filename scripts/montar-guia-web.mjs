@@ -26,6 +26,37 @@ const DEST = path.resolve("public/guia-tecnico");
 const CAPS = JSON.parse(fs.readFileSync(path.join(ROOT, "grade/capitulos.json"), "utf8"));
 const VERSAO = (fs.readFileSync("src/config/version.ts", "utf8").match(/["'](\d+\.\d+\.\d+)["']/) || [])[1] || "";
 const DIM_ARQ = path.join(ROOT, "img-otim/_dimensoes.json");
+
+/**
+ * Botão flutuante de baixar o PDF. O CSS da classe `.baixar` existe neste
+ * arquivo desde a primeira versão, mas o botão nunca chegou a ser renderizado
+ * — a página ficou sem nenhuma forma de chegar no PDF, e o arquivo publicado
+ * no Storage virou órfão (ninguém no sistema apontava para ele). Religado em
+ * 18/10/2026 a pedido do CEO.
+ *
+ * Aponta para o Storage, não para um arquivo dentro de public/: o PDF tem
+ * ~8 MB e é regerado por inteiro a cada release (ver o comentário em
+ * `pdfNoPublic`). O bucket "guia-tecnico" precisa estar PÚBLICO, senão a URL
+ * responde 400 e o botão quebra em silêncio — `scripts/publicar-pdf-guia.mjs`
+ * avisa quando isso acontece.
+ *
+ * O peso sai do arquivo local recém-gerado, que é exatamente o que acabou de
+ * subir. Se ele não existir (build sem PDF), o botão sai sem o peso em vez de
+ * mentir um número.
+ */
+function botaoBaixarPdf() {
+  const url = process.env.GUIA_PDF_URL
+    || "https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/guia-tecnico/Guia-Tecnico-Dominex.pdf";
+  let peso = "";
+  try {
+    const mb = fs.statSync(path.join(ROOT, "Guia-Tecnico-Dominex.pdf")).size / 1048576;
+    peso = `<span class="peso">PDF · ${mb.toFixed(1)} MB</span>`;
+  } catch { /* sem PDF local: botão sai sem o peso */ }
+  return `<a class="baixar" href="${url}" target="_blank" rel="noopener" download>
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+  <span>Baixar o guia</span>${peso}
+</a>`;
+}
 const DIMENSOES = fs.existsSync(DIM_ARQ) ? JSON.parse(fs.readFileSync(DIM_ARQ, "utf8")) : {};
 
 const ORDEM = Array.from({ length: 18 }, (_, i) => `T${i}`);
@@ -404,8 +435,12 @@ function main() {
   for (const f of fs.readdirSync(path.join(ROOT, "fonts"))) {
     fs.copyFileSync(path.join(ROOT, "fonts", f), path.join(DEST, "fonts", f));
   }
-  // O PDF comercial não é publicado nem referenciado nesta rota. Se sobrou uma
-  // cópia antiga dentro de public, remove para não voltar ao site por acidente.
+  // O PDF NÃO é copiado para dentro de public/ de propósito: são ~8 MB que
+  // mudam por inteiro a cada release, e versionar isso deixaria uma cópia nova
+  // no histórico do git para sempre. Ele mora no Storage do Supabase (bucket
+  // público "guia-tecnico", ver scripts/publicar-pdf-guia.mjs) e o botão
+  // flutuante desta página aponta para lá. Se sobrou uma cópia antiga dentro de
+  // public, remove para não servir PDF desatualizado por acidente.
   const pdfNoPublic = path.join(DEST, "Guia-Tecnico-Dominex.pdf");
   if (fs.existsSync(pdfNoPublic)) fs.unlinkSync(pdfNoPublic);
 
@@ -831,6 +866,7 @@ document.querySelectorAll('main table').forEach(function (t) {
   d.appendChild(t);
 });
 </script>
+${botaoBaixarPdf()}
 </body></html>`;
 
   fs.writeFileSync(path.join(DEST, "index.html"), html.replace(/[ \t]+$/gm, ""));
