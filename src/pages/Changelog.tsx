@@ -42,7 +42,7 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.37.1',
+    version: '1.36.18',
     date: '18 de outubro de 2026',
     type: 'patch',
     changes: [
@@ -69,9 +69,9 @@ export const changelog: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.37.0',
+    version: '1.36.17',
     date: '18 de outubro de 2026',
-    type: 'minor',
+    type: 'patch',
     changes: [
       {
         title: 'Concilie o extrato do banco sem conferir linha por linha na mão',
