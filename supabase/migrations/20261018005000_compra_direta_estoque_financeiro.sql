@@ -1,3 +1,24 @@
+-- RENUMERADA de 20261017180000 -> 20261018005000 em 2026-10-18.
+--
+-- Por que: o timestamp 20261017180000 ja estava ocupado em
+-- supabase_migrations.schema_migrations por `projetos_onda1_tabela_e_contador`,
+-- aplicada por uma sessao paralela (o projeto Supabase e compartilhado entre os
+-- worktrees). O `schema_migrations` guarda apenas a VERSAO -- nao o nome nem o
+-- hash -- entao o `db push` considerou esta migration "ja aplicada", respondeu
+-- "Remote database is up to date" e PULOU o arquivo em silencio. Resultado: o
+-- arquivo foi commitado em origin/main (01ad7cd4) sem que uma unica linha
+-- tivesse rodado, e `registrar_compra_material_direta`,
+-- `get_material_purchase_report`, `compras.flow_type` e
+-- `compra_ordens.financial_transaction_id` nunca existiram no banco -- a tela de
+-- compra direta e o relatorio de compras quebravam para o cliente.
+--
+-- A linha 20261017180000 do remoto NAO foi tocada: ela pertence legitimamente a
+-- migration da outra sessao. O unico problema era o nome deste arquivo.
+--
+-- Licao: nunca derivar o timestamp do `ls` local; checar o max(version) REMOTO
+-- imediatamente antes de nomear o arquivo, e depois do push conferir o objeto de
+-- verdade (pg_proc / information_schema), porque "up to date" nao e prova.
+
 -- Compra direta de materiais: compra + entrada no estoque + financeiro em UMA
 -- transacao. O fluxo de requisicao/cotacao/O.C. continua inalterado.
 --
@@ -595,6 +616,13 @@ DROP TRIGGER IF EXISTS guard_direct_purchase_order_item_immutable ON public.comp
 CREATE TRIGGER guard_direct_purchase_order_item_immutable
   BEFORE UPDATE OR DELETE ON public.compra_ordem_itens
   FOR EACH ROW EXECUTE FUNCTION public.guard_direct_purchase_child_immutable();
+
+-- Estes dois guards sao SECURITY INVOKER de proposito (so leem OLD/NEW), mas
+-- nem por isso `anon` precisa de EXECUTE: funcao de trigger nunca e chamada
+-- direto. Fechar o grant mantem a regra "nada SECURITY DEFINER nem de guard ao
+-- alcance de anon" valendo para o conjunto inteiro desta migration.
+REVOKE ALL ON FUNCTION public.guard_direct_purchase_immutable() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.guard_direct_purchase_child_immutable() FROM PUBLIC, anon;
 
 CREATE OR REPLACE FUNCTION public.guard_direct_purchase_financial_immutable()
 RETURNS trigger

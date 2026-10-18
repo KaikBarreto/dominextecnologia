@@ -5,8 +5,11 @@ import { AccountFormDialog } from './AccountFormDialog';
 import { AdjustBalanceDialog } from './AdjustBalanceDialog';
 import { CreditCardBillPanel } from './CreditCardBillPanel';
 import { TransferFormDialog } from './TransferFormDialog';
+import { ImportSpreadsheetDialog } from './ImportSpreadsheetDialog';
 import { BankLogo } from './BankInstitutionCombobox';
+import { ReconciliationTab } from '@/components/reconciliation/ReconciliationTab';
 import { useFinancialAccounts, type FinancialAccount } from '@/hooks/useFinancialAccounts';
+import type { ReconciliationTabState } from '@/lib/reconciliation/types';
 import { useRecalculateBills } from '@/hooks/useRecalculateBills';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -21,7 +24,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   MoreVertical, Pencil, Trash2, ArrowLeftRight, Plus, CreditCard,
-  Landmark, Wallet, LayoutDashboard, Calculator, Loader2, SlidersHorizontal,
+  Landmark, Wallet, LayoutDashboard, Calculator, Loader2, SlidersHorizontal, Scale,
+  Upload,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { idealForeground } from '@/lib/colorContrast';
@@ -34,6 +38,8 @@ import { walkAccountBalance } from '@/lib/finance-balance';
 import { buildPaymentGroupIndex } from '@/lib/finance-batch-payment';
 
 const ALL_TAB = '__all__';
+/** Aba neutra "Conciliação" — vive logo depois de "Visão Geral", sem accentColor. */
+const RECONCILE_TAB = '__reconcile__';
 
 function getTypeIcon(type: string) {
   if (type === 'caixa') return Wallet;
@@ -121,6 +127,13 @@ export function FinanceMovimentacoes({
   const recalculateBills = useRecalculateBills();
 
   const [activeTab, setActiveTab] = useState<string>(ALL_TAB);
+  // Estado da conciliação (conta + import em aberto) controlado AQUI, não
+  // dentro do ReconciliationTab: trocar para "Visão Geral" e voltar não pode
+  // perder a conciliação em andamento.
+  const [reconciliationState, setReconciliationState] = useState<ReconciliationTabState>({
+    accountId: null,
+    importId: null,
+  });
 
   // Compra no cartão NÃO é movimento de caixa: o caixa só mexeu quando a fatura
   // foi paga. Desde que pagar a fatura por inteiro passou a quitar as compras
@@ -163,6 +176,8 @@ export function FinanceMovimentacoes({
   const [formOpen, setFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<FinancialAccount | null>(null);
   const [formDefaultType, setFormDefaultType] = useState('banco');
+  // Importação financeira por planilha (.xlsx) — upload/conferência/gravação vivem no próprio dialog.
+  const [importSpreadsheetOpen, setImportSpreadsheetOpen] = useState(false);
 
   const [transferOpen, setTransferOpen] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState<FinancialAccount | null>(null);
@@ -314,6 +329,10 @@ export function FinanceMovimentacoes({
     const result: SettingsTab[] = [
       // Visão Geral: aba neutra (sem cor) — card consolidado + todas as movimentações.
       { value: ALL_TAB, label: fin.movements.sidebar.overviewTab, icon: LayoutDashboard },
+      // Conciliação: aba neutra também (sem accentColor) — vive entre "Visão
+      // Geral" e os grupos de conta/cartão, igual ao lugar conceitual que
+      // ocupa no EcoSistema (aba dentro de Movimentações Bancárias).
+      { value: RECONCILE_TAB, label: fin.reconciliation.tabLabel, icon: Scale },
     ];
     for (const a of cashBankAccounts) {
       const balance = balances[a.id] ?? a.initial_balance;
@@ -499,6 +518,23 @@ export function FinanceMovimentacoes({
     [fin.movements.sidebar.groupCards]: addButton(fin.movements.sidebar.newCard, () => openNewAccount('cartao')),
   } : undefined;
 
+  // "Importar planilha" fica sempre visível, ao lado das ações globais — no
+  // mobile só o ícone (texto quebraria a faixa compacta do topo), no desktop
+  // com o rótulo. Abre `ImportSpreadsheetDialog`, que concentra upload,
+  // conferência e gravação (useFinancialImport é a única fronteira do Supabase).
+  const importSpreadsheetButton = (
+    <Button
+      variant="outline"
+      size="sm"
+      className="gap-1.5 shrink-0"
+      aria-label={fin.spreadsheetImport.headerButton}
+      onClick={() => setImportSpreadsheetOpen(true)}
+    >
+      <Upload className="h-4 w-4" />
+      {!isMobile && fin.spreadsheetImport.headerButton}
+    </Button>
+  );
+
   return (
     <div className="space-y-4">
       {isMobile ? (
@@ -506,14 +542,20 @@ export function FinanceMovimentacoes({
            agora vive no card da aba Visão Geral, não mais aqui no topo). */
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-base font-bold">{fin.movements.header.titleMobile}</h2>
-          {globalActions}
+          <div className="flex items-center gap-2 shrink-0">
+            {importSpreadsheetButton}
+            {globalActions}
+          </div>
         </div>
       ) : (
         /* Barra de ações globais (o card "Saldo Total" saiu do topo — virou o
            card consolidado da aba Visão Geral). */
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-bold">{fin.movements.header.titleDesktop}</h2>
-          {globalActions}
+          <div className="flex items-center gap-2 shrink-0">
+            {importSpreadsheetButton}
+            {globalActions}
+          </div>
         </div>
       )}
 
@@ -526,7 +568,9 @@ export function FinanceMovimentacoes({
         // footers "+") só aparecem quando o próprio grupo já tem alguma aba —
         // ou seja, só depois que o tenant tem pelo menos um cartão (item 6).
       >
-        {activeTab === ALL_TAB ? (
+        {activeTab === RECONCILE_TAB ? (
+          <ReconciliationTab state={reconciliationState} onStateChange={setReconciliationState} />
+        ) : activeTab === ALL_TAB ? (
           <div className="space-y-4">
             {/* Topo da Visão Geral. Quando há distribuição (2+ contas positivas),
                 no desktop fica lado a lado: saldo total + faturas empilhados à
@@ -752,6 +796,9 @@ export function FinanceMovimentacoes({
         onSubmit={async (d) => { await transfer.mutateAsync(d); }}
         isLoading={transfer.isPending}
       />
+
+      {/* Importação financeira por planilha (.xlsx) */}
+      <ImportSpreadsheetDialog open={importSpreadsheetOpen} onOpenChange={setImportSpreadsheetOpen} />
 
       {/* Drawer de ações da conta (mobile) */}
       <ResponsiveModal

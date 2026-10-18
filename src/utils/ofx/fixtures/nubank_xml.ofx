@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?OFX OFXHEADER="200" VERSION="220" SECURITY="NONE" OLDFILEUID="NONE" NEWFILEUID="NONE"?>
+<OFX>
+  <BANKMSGSRSV1>
+    <STMTTRNRS>
+      <TRNUID>2001</TRNUID>
+      <STATUS>
+        <CODE>0</CODE>
+        <SEVERITY>INFO</SEVERITY>
+      </STATUS>
+      <STMTRS>
+        <CURDEF>BRL</CURDEF>
+        <BANKACCTFROM>
+          <BANKID>0260</BANKID>
+          <ACCTID>9876543-2</ACCTID>
+          <ACCTTYPE>CHECKING</ACCTTYPE>
+        </BANKACCTFROM>
+        <BANKTRANLIST>
+          <DTSTART>20260701000000[-3:BRT]</DTSTART>
+          <DTEND>20260725000000[-3:BRT]</DTEND>
+          <STMTTRN>
+            <TRNTYPE>CREDIT</TRNTYPE>
+            <DTPOSTED>20260710120000[-3:BRT]</DTPOSTED>
+            <TRNAMT>500.00</TRNAMT>
+            <FITID>NU2026071000001</FITID>
+            <MEMO>Transferência recebida</MEMO>
+          </STMTTRN>
+          <STMTTRN>
+            <TRNTYPE>DEBIT</TRNTYPE>
+            <DTPOSTED>20260712120000[-3:BRT]</DTPOSTED>
+            <TRNAMT>-89.90</TRNAMT>
+            <FITID>NU2026071200002</FITID>
+            <MEMO>Compra no débito</MEMO>
+          </STMTTRN>
+        </BANKTRANLIST>
+        <LEDGERBAL>
+          <BALAMT>410.10</BALAMT>
+          <DTASOF>20260725000000[-3:BRT]</DTASOF>
+        </LEDGERBAL>
+      </STMTRS>
+    </STMTTRNRS>
+  </BANKMSGSRSV1>
+</OFX>

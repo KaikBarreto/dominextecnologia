@@ -122,7 +122,6 @@ export type Database = {
           is_default: boolean
           name: string
           position: number
-          tracks_value: boolean
           updated_at: string
         }
         Insert: {
@@ -132,7 +131,6 @@ export type Database = {
           is_default?: boolean
           name: string
           position?: number
-          tracks_value?: boolean
           updated_at?: string
         }
         Update: {
@@ -142,7 +140,6 @@ export type Database = {
           is_default?: boolean
           name?: string
           position?: number
-          tracks_value?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -798,6 +795,181 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      bank_statement_entries: {
+        Row: {
+          account_id: string
+          amount: number
+          company_id: string
+          created_at: string
+          dedup_key: string
+          effective_amount: number | null
+          fitid: string | null
+          id: string
+          import_id: string
+          memo: string | null
+          name: string | null
+          posted_at: string
+          sign_flipped: boolean
+          sign_flipped_at: string | null
+          sign_flipped_by: string | null
+          sign_suspect: boolean
+          status: string
+          trn_type: string | null
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          company_id: string
+          created_at?: string
+          dedup_key: string
+          effective_amount?: number | null
+          fitid?: string | null
+          id?: string
+          import_id: string
+          memo?: string | null
+          name?: string | null
+          posted_at: string
+          sign_flipped?: boolean
+          sign_flipped_at?: string | null
+          sign_flipped_by?: string | null
+          sign_suspect?: boolean
+          status?: string
+          trn_type?: string | null
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          company_id?: string
+          created_at?: string
+          dedup_key?: string
+          effective_amount?: number | null
+          fitid?: string | null
+          id?: string
+          import_id?: string
+          memo?: string | null
+          name?: string | null
+          posted_at?: string
+          sign_flipped?: boolean
+          sign_flipped_at?: string | null
+          sign_flipped_by?: string | null
+          sign_suspect?: boolean
+          status?: string
+          trn_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_statement_entries_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "financial_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_statement_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_statement_entries_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "bank_statement_imports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_statement_imports: {
+        Row: {
+          account_id: string
+          acct_id: string | null
+          bank_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          entry_count: number
+          file_hash: string
+          file_name: string | null
+          finalized_at: string | null
+          finalized_by: string | null
+          id: string
+          kind: string
+          ledger_balance: number | null
+          ledger_balance_date: string | null
+          opening_balance: number
+          period_end: string | null
+          period_start: string | null
+          reopen_count: number
+          reopened_at: string | null
+          reopened_by: string | null
+          status: string
+        }
+        Insert: {
+          account_id: string
+          acct_id?: string | null
+          bank_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          entry_count?: number
+          file_hash: string
+          file_name?: string | null
+          finalized_at?: string | null
+          finalized_by?: string | null
+          id?: string
+          kind?: string
+          ledger_balance?: number | null
+          ledger_balance_date?: string | null
+          opening_balance?: number
+          period_end?: string | null
+          period_start?: string | null
+          reopen_count?: number
+          reopened_at?: string | null
+          reopened_by?: string | null
+          status?: string
+        }
+        Update: {
+          account_id?: string
+          acct_id?: string | null
+          bank_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          entry_count?: number
+          file_hash?: string
+          file_name?: string | null
+          finalized_at?: string | null
+          finalized_by?: string | null
+          id?: string
+          kind?: string
+          ledger_balance?: number | null
+          ledger_balance_date?: string | null
+          opening_balance?: number
+          period_end?: string | null
+          period_start?: string | null
+          reopen_count?: number
+          reopened_at?: string | null
+          reopened_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_statement_imports_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "financial_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_statement_imports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       blog_categories: {
         Row: {
@@ -1592,9 +1764,9 @@ export type Database = {
           logo_url: string | null
           name: string
           neighborhood: string | null
+          os_finish_revenue_prompt_enabled: boolean
           os_social_image_mode: string
           os_social_image_url: string | null
-          os_finish_revenue_prompt_enabled: boolean
           os_stock_consumption_enabled: boolean
           phone: string | null
           proposal_customization: Json | null
@@ -1643,9 +1815,9 @@ export type Database = {
           logo_url?: string | null
           name?: string
           neighborhood?: string | null
+          os_finish_revenue_prompt_enabled?: boolean
           os_social_image_mode?: string
           os_social_image_url?: string | null
-          os_finish_revenue_prompt_enabled?: boolean
           os_stock_consumption_enabled?: boolean
           phone?: string | null
           proposal_customization?: Json | null
@@ -1694,9 +1866,9 @@ export type Database = {
           logo_url?: string | null
           name?: string
           neighborhood?: string | null
+          os_finish_revenue_prompt_enabled?: boolean
           os_social_image_mode?: string
           os_social_image_url?: string | null
-          os_finish_revenue_prompt_enabled?: boolean
           os_stock_consumption_enabled?: boolean
           phone?: string | null
           proposal_customization?: Json | null
@@ -2075,7 +2247,7 @@ export type Database = {
           {
             foreignKeyName: "compra_ordens_financial_transaction_id_fkey"
             columns: ["financial_transaction_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "financial_transactions"
             referencedColumns: ["id"]
           },
@@ -3144,6 +3316,7 @@ export type Database = {
           is_default: boolean
           name: string
           position: number
+          project_id: string | null
           tracks_value: boolean
           updated_at: string
         }
@@ -3155,6 +3328,7 @@ export type Database = {
           is_default?: boolean
           name: string
           position?: number
+          project_id?: string | null
           tracks_value?: boolean
           updated_at?: string
         }
@@ -3166,6 +3340,7 @@ export type Database = {
           is_default?: boolean
           name?: string
           position?: number
+          project_id?: string | null
           tracks_value?: boolean
           updated_at?: string
         }
@@ -3175,6 +3350,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_pipelines_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -4357,6 +4539,69 @@ export type Database = {
           },
         ]
       }
+      employee_contracts: {
+        Row: {
+          amount: number
+          billing_type: string
+          company_id: string
+          created_at: string
+          employee_id: string
+          end_date: string | null
+          id: string
+          notes: string | null
+          payment_day: number | null
+          readjustment_percent: number | null
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          billing_type: string
+          company_id: string
+          created_at?: string
+          employee_id: string
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          payment_day?: number | null
+          readjustment_percent?: number | null
+          start_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billing_type?: string
+          company_id?: string
+          created_at?: string
+          employee_id?: string
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          payment_day?: number | null
+          readjustment_percent?: number | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_contracts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_face_calibration_attempts: {
         Row: {
           avg_distance: number | null
@@ -4703,6 +4948,9 @@ export type Database = {
           phone: string | null
           photo_url: string | null
           pix_key: string | null
+          pj_cnpj: string | null
+          pj_is_mei: boolean
+          pj_legal_name: string | null
           ponto_enabled: boolean
           ponto_slug: string | null
           position: string | null
@@ -4737,6 +4985,9 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           pix_key?: string | null
+          pj_cnpj?: string | null
+          pj_is_mei?: boolean
+          pj_legal_name?: string | null
           ponto_enabled?: boolean
           ponto_slug?: string | null
           position?: string | null
@@ -4771,6 +5022,9 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           pix_key?: string | null
+          pj_cnpj?: string | null
+          pj_is_mei?: boolean
+          pj_legal_name?: string | null
           ponto_enabled?: boolean
           ponto_slug?: string | null
           position?: string | null
@@ -5394,6 +5648,114 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "financial_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_import_rows: {
+        Row: {
+          company_id: string
+          content_key: string
+          created_at: string
+          financial_transaction_id: string
+          id: string
+          import_id: string
+          row_number: number
+        }
+        Insert: {
+          company_id: string
+          content_key: string
+          created_at?: string
+          financial_transaction_id: string
+          id?: string
+          import_id: string
+          row_number: number
+        }
+        Update: {
+          company_id?: string
+          content_key?: string
+          created_at?: string
+          financial_transaction_id?: string
+          id?: string
+          import_id?: string
+          row_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_import_rows_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_import_rows_financial_transaction_id_fkey"
+            columns: ["financial_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_import_rows_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "financial_imports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_imports: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          created_count: number
+          file_hash: string
+          file_name: string | null
+          id: string
+          reverted_at: string | null
+          reverted_by: string | null
+          row_count: number
+          skipped_count: number
+          source: string
+          status: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          created_count?: number
+          file_hash: string
+          file_name?: string | null
+          id?: string
+          reverted_at?: string | null
+          reverted_by?: string | null
+          row_count?: number
+          skipped_count?: number
+          source?: string
+          status?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          created_count?: number
+          file_hash?: string
+          file_name?: string | null
+          id?: string
+          reverted_at?: string | null
+          reverted_by?: string | null
+          row_count?: number
+          skipped_count?: number
+          source?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_imports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -8316,6 +8678,95 @@ export type Database = {
           },
         ]
       }
+      project_number_counters: {
+        Row: {
+          company_id: string
+          next_value: number
+        }
+        Insert: {
+          company_id: string
+          next_value?: number
+        }
+        Update: {
+          company_id?: string
+          next_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_number_counters_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          code: number
+          color: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          responsible_user_id: string | null
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          code: number
+          color?: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          responsible_user_id?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: number
+          color?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          responsible_user_id?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       proposal_templates: {
         Row: {
           created_at: string
@@ -9118,6 +9569,86 @@ export type Database = {
             columns: ["proposal_template_id"]
             isOneToOne: false
             referencedRelation: "proposal_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reconciliation_matches: {
+        Row: {
+          card_bill_id: string | null
+          company_id: string
+          confidence: string
+          created_at: string
+          created_by: string | null
+          employee_movement_id: string | null
+          entry_id: string
+          financial_transaction_id: string
+          id: string
+          match_type: string
+          transfer_pair_created: boolean
+          transfer_pair_id: string | null
+          undo_snapshot: Json | null
+          value_difference: number
+        }
+        Insert: {
+          card_bill_id?: string | null
+          company_id: string
+          confidence?: string
+          created_at?: string
+          created_by?: string | null
+          employee_movement_id?: string | null
+          entry_id: string
+          financial_transaction_id: string
+          id?: string
+          match_type: string
+          transfer_pair_created?: boolean
+          transfer_pair_id?: string | null
+          undo_snapshot?: Json | null
+          value_difference?: number
+        }
+        Update: {
+          card_bill_id?: string | null
+          company_id?: string
+          confidence?: string
+          created_at?: string
+          created_by?: string | null
+          employee_movement_id?: string | null
+          entry_id?: string
+          financial_transaction_id?: string
+          id?: string
+          match_type?: string
+          transfer_pair_created?: boolean
+          transfer_pair_id?: string | null
+          undo_snapshot?: Json | null
+          value_difference?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reconciliation_matches_card_bill_id_fkey"
+            columns: ["card_bill_id"]
+            isOneToOne: false
+            referencedRelation: "credit_card_bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliation_matches_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliation_matches_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: true
+            referencedRelation: "bank_statement_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliation_matches_financial_transaction_id_fkey"
+            columns: ["financial_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
             referencedColumns: ["id"]
           },
         ]
@@ -13220,9 +13751,327 @@ export type Database = {
       _affiliates_slugify: { Args: { p_name: string }; Returns: string }
       _assert_super_admin: { Args: never; Returns: undefined }
       _cs_checkup_responsavel: { Args: never; Returns: string }
+      _financial_import_assert_write: {
+        Args: { p_company_id: string }
+        Returns: undefined
+      }
+      _financial_import_company: { Args: never; Returns: string }
+      _financial_import_norm: { Args: { p_text: string }; Returns: string }
+      _financial_import_payment_method: {
+        Args: { p_text: string }
+        Returns: string
+      }
+      _financial_import_resolve: {
+        Args: { p_company_id: string; p_rows: Json }
+        Returns: Database["public"]["CompositeTypes"]["financial_import_resolved_row"][]
+        SetofOptions: {
+          from: "*"
+          to: "financial_import_resolved_row"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      _financial_import_uuid: { Args: { p_text: string }; Returns: string }
       _recalculate_employee_movement_balances: {
         Args: { p_employee_id: string }
         Returns: undefined
+      }
+      _reconcile_assert_company: {
+        Args: { p_company_id: string }
+        Returns: undefined
+      }
+      _reconcile_assert_kind: {
+        Args: { p_entry_id: string; p_expected: string }
+        Returns: undefined
+      }
+      _reconcile_assert_write: {
+        Args: { p_company_id: string }
+        Returns: undefined
+      }
+      _reconcile_card_bill_candidates: {
+        Args: { p_entry_id: string }
+        Returns: {
+          account_id: string
+          account_name: string
+          amount_paid: number
+          bill_total: number
+          closing_date: string
+          due_date: string
+          id: string
+          is_closed: boolean
+          reference_month: string
+          remaining: number
+          status: string
+        }[]
+      }
+      _reconcile_card_payment_candidates: {
+        Args: {
+          p_date_window_days?: number
+          p_entry_id: string
+          p_include_matched?: boolean
+          p_tolerance?: number
+        }
+        Returns: {
+          account_id: string | null
+          accrual_amount: number | null
+          amount: number
+          amount_received: number
+          asaas_payment_id: string | null
+          bill_id: string | null
+          billing_reminder_resolved_at: string | null
+          billing_reminder_resolved_by: string | null
+          cancelled_at: string | null
+          cancelled_reason: string | null
+          card_installments: number | null
+          category: string | null
+          company_id: string
+          contract_id: string | null
+          cost_center_id: string | null
+          created_at: string
+          created_by: string | null
+          credit_card_bill_date: string | null
+          customer_id: string | null
+          description: string
+          due_date: string | null
+          employee_id: string | null
+          id: string
+          installment_group_id: string | null
+          installment_number: number | null
+          installment_total: number | null
+          is_paid: boolean | null
+          notes: string | null
+          paid_date: string | null
+          parent_transaction_id: string | null
+          payment_group_id: string | null
+          payment_method: string | null
+          payroll_kind: string | null
+          payroll_period: string | null
+          receipt_url: string | null
+          service_order_id: string | null
+          supplier_id: string | null
+          tenant_charge_id: string | null
+          transaction_date: string
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          transfer_pair_id: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "financial_transactions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      _reconcile_card_purchase_candidates: {
+        Args: {
+          p_date_window_days?: number
+          p_entry_id: string
+          p_include_matched?: boolean
+          p_query?: string
+          p_tolerance?: number
+        }
+        Returns: {
+          account_id: string | null
+          accrual_amount: number | null
+          amount: number
+          amount_received: number
+          asaas_payment_id: string | null
+          bill_id: string | null
+          billing_reminder_resolved_at: string | null
+          billing_reminder_resolved_by: string | null
+          cancelled_at: string | null
+          cancelled_reason: string | null
+          card_installments: number | null
+          category: string | null
+          company_id: string
+          contract_id: string | null
+          cost_center_id: string | null
+          created_at: string
+          created_by: string | null
+          credit_card_bill_date: string | null
+          customer_id: string | null
+          description: string
+          due_date: string | null
+          employee_id: string | null
+          id: string
+          installment_group_id: string | null
+          installment_number: number | null
+          installment_total: number | null
+          is_paid: boolean | null
+          notes: string | null
+          paid_date: string | null
+          parent_transaction_id: string | null
+          payment_group_id: string | null
+          payment_method: string | null
+          payroll_kind: string | null
+          payroll_period: string | null
+          receipt_url: string | null
+          service_order_id: string | null
+          supplier_id: string | null
+          tenant_charge_id: string | null
+          transaction_date: string
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          transfer_pair_id: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "financial_transactions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      _reconcile_lock_entry: {
+        Args: { p_entry_id: string; p_require_pending?: boolean }
+        Returns: {
+          account_id: string
+          amount: number
+          company_id: string
+          created_at: string
+          dedup_key: string
+          effective_amount: number | null
+          fitid: string | null
+          id: string
+          import_id: string
+          memo: string | null
+          name: string | null
+          posted_at: string
+          sign_flipped: boolean
+          sign_flipped_at: string | null
+          sign_flipped_by: string | null
+          sign_suspect: boolean
+          status: string
+          trn_type: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "bank_statement_entries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      _reconcile_match_candidates: {
+        Args: {
+          p_date_window_days?: number
+          p_entry_id: string
+          p_include_matched?: boolean
+          p_query?: string
+          p_tolerance?: number
+        }
+        Returns: {
+          account_id: string | null
+          accrual_amount: number | null
+          amount: number
+          amount_received: number
+          asaas_payment_id: string | null
+          bill_id: string | null
+          billing_reminder_resolved_at: string | null
+          billing_reminder_resolved_by: string | null
+          cancelled_at: string | null
+          cancelled_reason: string | null
+          card_installments: number | null
+          category: string | null
+          company_id: string
+          contract_id: string | null
+          cost_center_id: string | null
+          created_at: string
+          created_by: string | null
+          credit_card_bill_date: string | null
+          customer_id: string | null
+          description: string
+          due_date: string | null
+          employee_id: string | null
+          id: string
+          installment_group_id: string | null
+          installment_number: number | null
+          installment_total: number | null
+          is_paid: boolean | null
+          notes: string | null
+          paid_date: string | null
+          parent_transaction_id: string | null
+          payment_group_id: string | null
+          payment_method: string | null
+          payroll_kind: string | null
+          payroll_period: string | null
+          receipt_url: string | null
+          service_order_id: string | null
+          supplier_id: string | null
+          tenant_charge_id: string | null
+          transaction_date: string
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          transfer_pair_id: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "financial_transactions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      _reconcile_recalc_opening: {
+        Args: { p_import_id: string }
+        Returns: number
+      }
+      _reconcile_settle_candidates: {
+        Args: { p_entry_id: string; p_query?: string; p_tolerance?: number }
+        Returns: {
+          account_id: string | null
+          accrual_amount: number | null
+          amount: number
+          amount_received: number
+          asaas_payment_id: string | null
+          bill_id: string | null
+          billing_reminder_resolved_at: string | null
+          billing_reminder_resolved_by: string | null
+          cancelled_at: string | null
+          cancelled_reason: string | null
+          card_installments: number | null
+          category: string | null
+          company_id: string
+          contract_id: string | null
+          cost_center_id: string | null
+          created_at: string
+          created_by: string | null
+          credit_card_bill_date: string | null
+          customer_id: string | null
+          description: string
+          due_date: string | null
+          employee_id: string | null
+          id: string
+          installment_group_id: string | null
+          installment_number: number | null
+          installment_total: number | null
+          is_paid: boolean | null
+          notes: string | null
+          paid_date: string | null
+          parent_transaction_id: string | null
+          payment_group_id: string | null
+          payment_method: string | null
+          payroll_kind: string | null
+          payroll_period: string | null
+          receipt_url: string | null
+          service_order_id: string | null
+          supplier_id: string | null
+          tenant_charge_id: string | null
+          transaction_date: string
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          transfer_pair_id: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "financial_transactions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      _reconcile_tx_json: {
+        Args: {
+          p_effective: number
+          p_t: Database["public"]["Tables"]["financial_transactions"]["Row"]
+        }
+        Returns: Json
       }
       _register_time_punch_core: {
         Args: {
@@ -13276,6 +14125,10 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_financial_import: {
+        Args: { p_file_hash: string; p_file_name: string; p_rows: Json }
+        Returns: Json
+      }
       apply_subscription_upgrade_payment: {
         Args: {
           p_asaas_payment_id: string
@@ -13322,6 +14175,15 @@ export type Database = {
       assign_next_lead_salesperson: { Args: never; Returns: string }
       auth_user_exists_by_email: { Args: { p_email: string }; Returns: boolean }
       auth_user_id_by_email: { Args: { p_email: string }; Returns: string }
+      bank_entry_content_key: {
+        Args: {
+          p_amount: number
+          p_memo: string
+          p_name: string
+          p_posted_at: string
+        }
+        Returns: string
+      }
       brt_today: { Args: never; Returns: string }
       buscar_guia: {
         Args: {
@@ -13397,6 +14259,10 @@ export type Database = {
         }
         Returns: number
       }
+      compute_credit_card_bill_date: {
+        Args: { p_account_id: string; p_transaction_date: string }
+        Returns: string
+      }
       compute_next_expiration: {
         Args: { p_current: string; p_cycle: string }
         Returns: string
@@ -13415,6 +14281,21 @@ export type Database = {
           p_employee_id: string
           p_expected_type: string
           p_proof_hash: string
+        }
+        Returns: Json
+      }
+      create_bank_statement_import: {
+        Args: {
+          p_account_id: string
+          p_acct_id: string
+          p_bank_id: string
+          p_entries: Json
+          p_file_hash: string
+          p_file_name: string
+          p_ledger_balance: number
+          p_ledger_balance_date: string
+          p_period_end: string
+          p_period_start: string
         }
         Returns: Json
       }
@@ -13465,6 +14346,10 @@ export type Database = {
           p_service_order_id?: string
           p_tenant_charge_id: string
         }
+        Returns: string
+      }
+      credit_card_bill_date_for: {
+        Args: { p_closing_day: number; p_transaction_date: string }
         Returns: string
       }
       credit_ltv_once_for_payment: {
@@ -13633,13 +14518,30 @@ export type Database = {
           inserted_count: number
         }[]
       }
+      finalize_bank_reconciliation: {
+        Args: { p_import_id: string }
+        Returns: Json
+      }
       finalize_inventory_count: {
         Args: { p_count_id: string; p_notes?: string }
         Returns: Json
       }
+      financial_import_content_key: {
+        Args: {
+          p_account_id: string
+          p_date: string
+          p_description: string
+          p_signed_amount: number
+        }
+        Returns: string
+      }
       fiscal_texto_busca: { Args: { p_texto: string }; Returns: string }
       fisqal_next_dps_number: {
         Args: { p_company_id: string }
+        Returns: number
+      }
+      ft_signed_amount: {
+        Args: { p_amount: number; p_type: string }
         Returns: number
       }
       generate_payroll_for_employee:
@@ -13679,6 +14581,10 @@ export type Database = {
           p_timezone?: string
           p_to?: string
         }
+        Returns: Json
+      }
+      get_bank_reconciliation_state: {
+        Args: { p_import_id: string }
         Returns: Json
       }
       get_company_health_scores: {
@@ -13733,6 +14639,35 @@ export type Database = {
       get_instance_recommendation: { Args: never; Returns: Json }
       get_landing_whatsapp_numbers: { Args: never; Returns: string[] }
       get_lead_capture_form: { Args: { p_short_code: string }; Returns: Json }
+      get_material_purchase_report: {
+        Args: {
+          p_created_by_ids?: string[]
+          p_end_date?: string
+          p_group_ids?: string[]
+          p_start_date?: string
+          p_stock_ids?: string[]
+          p_supplier_ids?: string[]
+        }
+        Returns: {
+          average_paid: number
+          current_balance: number
+          group_color: string
+          group_id: string
+          group_name: string
+          history: Json
+          inventory_id: string
+          last_purchase_date: string
+          material_name: string
+          priced_quantity: number
+          purchase_count: number
+          purchased_quantity: number
+          purchased_total: number
+          registered_sale_price: number
+          sku: string
+          unit: string
+          unpriced_quantity: number
+        }[]
+      }
       get_nfse_emissions_paged: {
         Args: {
           p_date_end?: string
@@ -13932,36 +14867,8 @@ export type Database = {
           utm_key: string
         }[]
       }
+      get_statement_imports: { Args: { p_account_id: string }; Returns: Json }
       get_stock_access: { Args: { p_stock_id: string }; Returns: Json }
-      get_material_purchase_report: {
-        Args: {
-          p_created_by_ids?: string[]
-          p_end_date?: string
-          p_group_ids?: string[]
-          p_start_date?: string
-          p_stock_ids?: string[]
-          p_supplier_ids?: string[]
-        }
-        Returns: {
-          average_paid: number | null
-          current_balance: number
-          group_color: string | null
-          group_id: string | null
-          group_name: string | null
-          history: Json
-          inventory_id: string
-          last_purchase_date: string | null
-          material_name: string
-          purchase_count: number
-          priced_quantity: number
-          purchased_quantity: number
-          purchased_total: number
-          registered_sale_price: number
-          sku: string
-          unit: string
-          unpriced_quantity: number
-        }[]
-      }
       get_stock_balance_at_date: {
         Args: { p_at: string; p_stock_ids?: string[] }
         Returns: {
@@ -14099,6 +15006,7 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: number
       }
+      next_project_code: { Args: { p_company_id: string }; Returns: number }
       nfse_auto_adiar: {
         Args: { p_job_id: string; p_mensagem: string; p_status: string }
         Returns: undefined
@@ -14291,6 +15199,20 @@ export type Database = {
           transaction_count: number
         }[]
       }
+      preview_financial_import: {
+        Args: { p_file_hash: string; p_rows: Json }
+        Returns: Json
+      }
+      project_progress_summary: {
+        Args: never
+        Returns: {
+          active_count: number
+          done_count: number
+          has_won_stage: boolean
+          lost_count: number
+          project_id: string
+        }[]
+      }
       prune_db_health_history: { Args: never; Returns: number }
       public_api_assert_integration: {
         Args: { p_integration_id: string; p_required_scope?: string }
@@ -14434,6 +15356,119 @@ export type Database = {
         Args: { p_company_id: string; p_date: string; p_employee_id: string }
         Returns: undefined
       }
+      reconcile_card_pay_bill: {
+        Args: {
+          p_amount?: number
+          p_bill_id: string
+          p_entry_id: string
+          p_notes?: string
+          p_payment_account_id: string
+        }
+        Returns: Json
+      }
+      reconcile_create_card_purchase: {
+        Args: {
+          p_category_id: string
+          p_cost_center_id?: string
+          p_description?: string
+          p_entry_id: string
+          p_notes?: string
+          p_supplier_id?: string
+        }
+        Returns: Json
+      }
+      reconcile_create_employee_movement: {
+        Args: {
+          p_cost_center_id?: string
+          p_description?: string
+          p_employee_id: string
+          p_entry_id: string
+          p_idempotency_key: string
+          p_kind: string
+        }
+        Returns: Json
+      }
+      reconcile_create_transaction: {
+        Args: {
+          p_category_id: string
+          p_cost_center_id?: string
+          p_customer_id?: string
+          p_description: string
+          p_entry_id: string
+          p_notes?: string
+          p_supplier_id?: string
+        }
+        Returns: Json
+      }
+      reconcile_create_transfer: {
+        Args: {
+          p_description?: string
+          p_entry_id: string
+          p_other_account_id: string
+        }
+        Returns: Json
+      }
+      reconcile_flip_sign: {
+        Args: { p_entry_ids: string[]; p_flipped: boolean }
+        Returns: Json
+      }
+      reconcile_ignore_entries_batch: {
+        Args: { p_entry_ids: string[]; p_import_id: string }
+        Returns: Json
+      }
+      reconcile_ignore_entry: { Args: { p_entry_id: string }; Returns: Json }
+      reconcile_list_card_bills: { Args: { p_entry_id: string }; Returns: Json }
+      reconcile_list_transfer_legs: {
+        Args: { p_entry_id: string }
+        Returns: Json
+      }
+      reconcile_match_card_bill_payment: {
+        Args: { p_entry_id: string; p_financial_transaction_id: string }
+        Returns: Json
+      }
+      reconcile_match_card_purchase: {
+        Args: {
+          p_allow_any_date?: boolean
+          p_entry_id: string
+          p_financial_transaction_id: string
+        }
+        Returns: Json
+      }
+      reconcile_match_existing: {
+        Args: {
+          p_allow_any_date?: boolean
+          p_confidence?: string
+          p_entry_id: string
+          p_financial_transaction_id: string
+        }
+        Returns: Json
+      }
+      reconcile_pay_card_bill: {
+        Args: {
+          p_amount?: number
+          p_bill_id: string
+          p_entry_id: string
+          p_notes?: string
+        }
+        Returns: Json
+      }
+      reconcile_search_candidates: {
+        Args: { p_entry_id: string; p_query?: string }
+        Returns: Json
+      }
+      reconcile_search_card_purchases: {
+        Args: { p_entry_id: string; p_query?: string }
+        Returns: Json
+      }
+      reconcile_settle_transaction: {
+        Args: { p_entry_id: string; p_financial_transaction_id: string }
+        Returns: Json
+      }
+      reconcile_unignore_entries_batch: {
+        Args: { p_entry_ids: string[]; p_import_id: string }
+        Returns: Json
+      }
+      reconcile_unmatch_entry: { Args: { p_entry_id: string }; Returns: Json }
       record_certificate_custody_consent: {
         Args: { p_version?: string }
         Returns: undefined
@@ -14503,24 +15538,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      registrar_compra_material_direta: {
-        Args: {
-          p_account_id: string
-          p_category_id: string
-          p_client_request_id: string
-          p_description: string | null
-          p_due_date: string | null
-          p_is_paid: boolean
-          p_items: Json
-          p_notes: string | null
-          p_paid_date: string | null
-          p_payment_method: string | null
-          p_purchase_date: string
-          p_stock_id: string
-          p_supplier_id: string
-        }
-        Returns: Json
-      }
       register_manual_company_payment: {
         Args: {
           p_amount: number
@@ -14576,6 +15593,28 @@ export type Database = {
         }
         Returns: Json
       }
+      registrar_compra_material_direta: {
+        Args: {
+          p_account_id: string
+          p_category_id: string
+          p_client_request_id: string
+          p_description: string
+          p_due_date: string
+          p_is_paid: boolean
+          p_items: Json
+          p_notes: string
+          p_paid_date: string
+          p_payment_method: string
+          p_purchase_date: string
+          p_stock_id: string
+          p_supplier_id: string
+        }
+        Returns: Json
+      }
+      reopen_bank_reconciliation: {
+        Args: { p_import_id: string }
+        Returns: Json
+      }
       replace_contract_plan_activities: {
         Args: { p_activities: Json; p_contract_id: string }
         Returns: number
@@ -14620,6 +15659,7 @@ export type Database = {
         Args: { p_transaction_id: string }
         Returns: Json
       }
+      revert_financial_import: { Args: { p_import_id: string }; Returns: Json }
       schedule_book_service_order: {
         Args: {
           p_ends_at: string
@@ -15048,7 +16088,44 @@ export type Database = {
       transaction_type: "entrada" | "saida"
     }
     CompositeTypes: {
-      [_ in never]: never
+      financial_import_resolved_row: {
+        row_number: number | null
+        content_key: string | null
+        batch_rank: number | null
+        existing_count: number | null
+        status: string | null
+        transaction_date: string | null
+        transaction_type: string | null
+        description: string | null
+        amount: number | null
+        signed_amount: number | null
+        is_paid: boolean | null
+        paid_date: string | null
+        notes: string | null
+        category_input: string | null
+        category_id: string | null
+        category_name: string | null
+        category_status: string | null
+        account_input: string | null
+        account_id: string | null
+        account_name: string | null
+        account_type: string | null
+        account_status: string | null
+        cost_center_input: string | null
+        cost_center_id: string | null
+        cost_center_name: string | null
+        cost_center_status: string | null
+        payment_method_input: string | null
+        payment_method: string | null
+        payment_method_status: string | null
+        counterparty_input: string | null
+        customer_id: string | null
+        supplier_id: string | null
+        counterparty_name: string | null
+        counterparty_status: string | null
+        is_duplicate: boolean | null
+        issues: Json | null
+      }
     }
   }
 }
