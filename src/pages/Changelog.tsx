@@ -42,6 +42,38 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.0',
+    date: '18 de outubro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Concilie o extrato do banco sem conferir linha por linha na mão',
+        description: 'Baixe o arquivo .ofx no seu internet banking, suba no sistema e ele mostra cada linha do extrato ao lado do que já existe lançado. Quando encontra o lançamento equivalente, sugere o casamento com um clique. Quando não encontra, você resolve ali mesmo: dá baixa numa conta a pagar ou a receber que venceu, cria o lançamento que faltava, ou registra como transferência entre as suas próprias contas, que não vira receita nem despesa. No fim, só fecha quando o saldo do sistema bate com o do banco no centavo, então não dá para encerrar uma conciliação que não fecha. Dá para parar no meio e continuar depois, inclusive em outro dia.',
+        category: 'recurso',
+      },
+      {
+        title: 'A fatura do cartão também entra na conciliação',
+        description: 'O arquivo da fatura mostra o total que o banco está cobrando ao lado das compras que você já lançou, e a diferença é exatamente o que falta registrar. É a conta que quase ninguém fecha na mão, e por isso a despesa de cartão quase sempre fica menor do que foi de verdade. Aqui a compra nunca entra como paga: ela cai na fatura certa, respeitando o dia de fechamento do seu cartão, e só é quitada quando você paga a fatura inteira, como já funcionava antes.',
+        category: 'recurso',
+      },
+      {
+        title: 'Extrato com valor de sinal trocado não estraga a conferência',
+        description: 'Alguns bancos exportam uma despesa com sinal de entrada, ou mandam o arquivo inteiro com os valores positivos. Quando isso acontece, o sistema avisa quais linhas estão estranhas e deixa você inverter, de uma vez ou linha a linha. O valor original do arquivo nunca é alterado sozinho, a correção é sempre sua e pode ser desfeita. E se você subir o mesmo extrato de novo, ou um extrato que o banco reexportou com códigos novos, nada é duplicado: ele mostra o que foi descartado e por quê.',
+        category: 'recurso',
+      },
+      {
+        title: 'Importe movimentações financeiras por planilha',
+        description: 'Em Movimentações agora existe o botão Importar planilha. Baixe o molde já formatado, com a sua marca, instruções na primeira aba e as suas contas e categorias em listas de escolher, para ninguém digitar um nome que o sistema não conhece. Depois de preencher, você sobe o arquivo e confere na tela, linha por linha, antes de qualquer coisa ser gravada: ele mostra quanto entra, quanto sai, o que está pronto, o que precisa de ajuste e o que já existe no sistema. Linha repetida vem desmarcada sozinha. E se a importação sair errada, dá para desfazer inteira, inclusive voltando depois para fazer isso.',
+        category: 'recurso',
+      },
+      {
+        title: 'Registro de compra direta de materiais voltou a funcionar',
+        description: 'O registro de compra direta e o relatório de compras por material estavam apresentando erro ao serem usados. A causa era uma parte da atualização anterior que não chegou a ser concluída no servidor. Corrigido, e as duas telas voltaram a funcionar normalmente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.36.16',
     date: '17 de outubro de 2026',
     type: 'patch',

@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.36.16";
+export const APP_VERSION = "1.37.0";
 
-export const VERSION_NOTES = "Todo campo de data do sistema passou a abrir o calendário do Dominex, agora com seletor de mês e ano, e a conta a pagar já aceita o vencimento na hora de criar.";
+export const VERSION_NOTES = "Agora dá para subir o extrato do banco e a fatura do cartão e conferir, linha por linha, o que já está no sistema e o que falta lançar. E dá para importar movimentações por planilha, com um molde pronto para preencher.";
