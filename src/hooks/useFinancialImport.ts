@@ -59,6 +59,12 @@ export async function parseAndHashFinancialSheet(
 export interface FinancialImportRowInput {
   row_number: number;
   date: string; // YYYY-MM-DD
+  /**
+   * Vencimento (coluna "Vencimento" do molde). Opcional: em branco numa linha
+   * não paga o servidor usa a data do lançamento, e em linha paga ele ignora
+   * com aviso. Ver `ParsedRow.dueDate`.
+   */
+  due_date: string | null; // YYYY-MM-DD
   type: 'entrada' | 'saida';
   description: string;
   amount: number;
@@ -69,6 +75,10 @@ export interface FinancialImportRowInput {
   cost_center: string | null;
   cost_center_id?: string;
   payment_method: string | null;
+  /** Molde novo (colunas "Cliente"/"Fornecedor" separadas, desde 2026-10-18). */
+  customer: string | null;
+  supplier: string | null;
+  /** Molde VELHO (coluna única "Cliente/Fornecedor") — compatibilidade. Precedência no servidor: `*_id` > `customer`/`supplier` > `counterparty`. */
   counterparty: string | null;
   customer_id?: string;
   supplier_id?: string;
@@ -137,6 +147,7 @@ export function buildFinancialImportPayload(
     const payloadRow: FinancialImportRowInput = {
       row_number: row.rowNumber,
       date: row.date as string,
+      due_date: row.dueDate,
       type: row.type as 'entrada' | 'saida',
       description: row.description as string,
       amount: row.amount as number,
@@ -144,6 +155,8 @@ export function buildFinancialImportPayload(
       account: row.account,
       cost_center: row.costCenter,
       payment_method: override?.payment_method ?? row.paymentMethod,
+      customer: row.customer,
+      supplier: row.supplier,
       counterparty: row.counterparty,
       is_paid: row.isPaid,
       paid_date: row.paidDate,
@@ -195,6 +208,8 @@ export interface FinancialImportPreviewRow {
   existing_count: number;
   status: FinancialImportRowStatus;
   date: string;
+  /** Vencimento JÁ RESOLVIDO pelo servidor (fallback e regra de linha paga aplicados). */
+  due_date: string | null;
   transaction_type: 'entrada' | 'saida';
   description: string;
   amount: number;

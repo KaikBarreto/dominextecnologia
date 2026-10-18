@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.1',
+    date: '18 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'A planilha de importação agora tem Vencimento',
+        description: 'Antes, uma conta que você lançava hoje para vencer no mês que vem entrava vencendo hoje, ou seja, já nascia atrasada na sua lista de contas a pagar. Agora o molde tem a coluna Vencimento, com seletor de calendário para você não errar a data, e é ela que o sistema usa para cobrar e marcar atraso. Se deixar em branco, a conta vence na própria data do lançamento, e a planilha que você já tinha baixado antes continua funcionando do mesmo jeito.',
+        category: 'melhoria',
+      },
+      {
+        title: 'A conferência parou de reclamar de planilha preenchida do jeito certo',
+        description: 'O molde pede para você escrever o valor sempre positivo e deixar a coluna Tipo dizer se é entrada ou saída. Mesmo assim, toda despesa estava sendo marcada para conferir, como se o valor estivesse errado. Numa planilha de trezentas linhas corretas eram trezentos avisos, e aí o aviso que importa de verdade se perdia no meio. Agora só avisa quando o valor está negativo e o Tipo diz Entrada, que é a única contradição de verdade.',
+        category: 'correcao',
+      },
+      {
+        title: 'Data que o sistema não consegue ler não entra mais chutada',
+        description: 'Se você escrevesse algo como mês que vem numa célula de data, o sistema escolhia uma data por conta própria e gravava sem falar nada. Agora ele mostra o problema na tela de conferência e deixa a linha desmarcada, então nada entra sem você ver e decidir.',
+        category: 'correcao',
+      },
+      {
+        title: 'Uma data impossível, como 31 de fevereiro, não derruba mais a conferência inteira',
+        description: 'Digitar 31/02 ou 31/11 numa planilha é erro comum, e antes isso fazia a tela de conferência falhar por completo, como se o arquivo todo estivesse ruim. Agora o sistema aponta só a célula errada e as outras linhas continuam valendo. A mesma coisa vale para a data de pagamento ilegível, que antes era descartada em silêncio e agora aparece como aviso.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.37.0',
     date: '18 de outubro de 2026',
     type: 'minor',

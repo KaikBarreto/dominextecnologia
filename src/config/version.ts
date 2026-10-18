@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.37.0";
+export const APP_VERSION = "1.37.1";
 
-export const VERSION_NOTES = "Agora dá para subir o extrato do banco e a fatura do cartão e conferir, linha por linha, o que já está no sistema e o que falta lançar. E dá para importar movimentações por planilha, com um molde pronto para preencher.";
+export const VERSION_NOTES = "A planilha de importação financeira agora tem a coluna Vencimento, então conta a pagar não nasce mais atrasada. E a conferência parou de dar alarme falso em planilha preenchida do jeito certo.";

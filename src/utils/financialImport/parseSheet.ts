@@ -35,12 +35,36 @@ export interface ParsedRow {
   /** Mensagens PT-BR, uma por problema. Vazio quando `state === 'ready'`. */
   issues: string[];
   date: string | null; // YYYY-MM-DD
+  /**
+   * Vencimento (coluna "Vencimento" do molde, `due_date` no banco). Só tem
+   * efeito em linha NÃO paga — é a data que a lista de contas a pagar ordena e
+   * usa pra marcar atraso. Em branco numa linha não paga, o servidor cai no
+   * fallback "vence na data do lançamento" (compatibilidade com o molde antigo,
+   * que não tinha esta coluna); em linha PAGA o servidor ignora e avisa, porque
+   * conta já paga não tem vencimento a cobrar.
+   */
+  dueDate: string | null; // YYYY-MM-DD
   type: 'entrada' | 'saida' | null;
   description: string | null;
   /** SEMPRE positivo — a direção vem de `type`, nunca do sinal. */
   amount: number | null;
   category: string | null;
   account: string | null;
+  /**
+   * Coluna "Cliente" (molde novo). `null` quando a linha não preencheu essa
+   * coluna — inclusive quando a planilha é do molde VELHO (uma coluna só,
+   * "Cliente/Fornecedor") e só `counterparty` está preenchido.
+   */
+  customer: string | null;
+  /** Coluna "Fornecedor" (molde novo). Mesma regra de `customer`. */
+  supplier: string | null;
+  /**
+   * Coluna ÚNICA "Cliente/Fornecedor" do molde VELHO (antes de 2026-10-18) —
+   * mantida só por COMPATIBILIDADE: planilha antiga que o cliente já tinha
+   * baixada não pode quebrar. Molde novo nunca escreve esta coluna; o
+   * servidor decide a precedência (`customer_id`/`supplier_id` >
+   * `customer`/`supplier` > `counterparty`).
+   */
   counterparty: string | null;
   costCenter: string | null;
   paymentMethod: string | null;
@@ -63,11 +87,14 @@ const MAX_ROWS = 5000;
 
 type ColumnKey =
   | 'date'
+  | 'dueDate'
   | 'type'
   | 'description'
   | 'amount'
   | 'category'
   | 'account'
+  | 'customer'
+  | 'supplier'
   | 'counterparty'
   | 'costCenter'
   | 'paymentMethod'
@@ -84,6 +111,17 @@ type ColumnKey =
  */
 const COLUMN_ALIASES: Record<ColumnKey, string[]> = {
   date: ['data', 'date', 'fecha', 'data da movimentacao', 'data movimentacao', 'dt'],
+  dueDate: [
+    'vencimento',
+    'due date',
+    'vencimiento',
+    'echeance',
+    'data de vencimento',
+    'data do vencimento',
+    'data vencimento',
+    'dt vencimento',
+    'vence em',
+  ],
   type: [
     'tipo',
     'type',
@@ -111,6 +149,15 @@ const COLUMN_ALIASES: Record<ColumnKey, string[]> = {
   ],
   category: ['categoria', 'category', 'categorie'],
   account: ['conta', 'account', 'compte', 'cuenta', 'conta bancaria', 'conta financeira'],
+  customer: ['cliente', 'customer', 'client'],
+  supplier: ['fornecedor', 'supplier', 'vendor', 'proveedor', 'fournisseur'],
+  /**
+   * Coluna ÚNICA do molde VELHO (antes de 2026-10-18, quando "Cliente" e
+   * "Fornecedor" eram uma coluna só, "Cliente/Fornecedor"). Mantida só com as
+   * formas COMBINADAS (duas palavras+separador) — as palavras soltas foram
+   * pra `customer`/`supplier` acima. Planilha antiga que o cliente já tinha
+   * baixada continua reconhecida; molde novo nunca escreve esta coluna.
+   */
   counterparty: [
     'cliente/fornecedor',
     'cliente ou fornecedor',
@@ -119,13 +166,6 @@ const COLUMN_ALIASES: Record<ColumnKey, string[]> = {
     'customer/supplier',
     'cliente/proveedor',
     'client/fournisseur',
-    'cliente',
-    'fornecedor',
-    'customer',
-    'supplier',
-    'vendor',
-    'proveedor',
-    'fournisseur',
   ],
   costCenter: [
     'centro de custo',
@@ -173,9 +213,21 @@ const COLUMN_ALIASES: Record<ColumnKey, string[]> = {
  */
 const COLUMN_MATCH_ORDER: ColumnKey[] = [
   'paidDate',
+  // `dueDate` ANTES de `date`: "Data de vencimento" contém "data", e se a
+  // coluna genérica processasse primeiro ela engoliria esse cabeçalho e a
+  // planilha importaria com o vencimento no lugar da data do lançamento.
+  'dueDate',
   'costCenter',
   'paymentMethod',
+  // `counterparty` (combinada, "Cliente/Fornecedor") antes de `customer`/
+  // `supplier` (palavra solta): não é estritamente necessário — os aliases
+  // de `counterparty` são todos de duas palavras+separador, nunca batem por
+  // igualdade exata nem por substring num header de uma palavra só ("Cliente"
+  // sozinho não contém "cliente/fornecedor") — mas mantém a leitura alinhada
+  // com a especificidade das outras colunas.
   'counterparty',
+  'customer',
+  'supplier',
   'isPaid',
   'category',
   'account',
@@ -258,6 +310,18 @@ function parseDateText(raw: string): string | null {
   if (!(month >= 1 && month <= 12) || !(day >= 1 && day <= 31) || !(year >= 1900 && year <= 2100)) {
     return null;
   }
+  // O dia tem que existir NAQUELE mês, não só ser <= 31.
+  //
+  // ⚠️ A checagem de faixa acima, sozinha, aceitava "31/02/2026" e devolvia
+  // `2026-02-31`. Isso não é teórico: 31/02, 31/04, 31/06, 31/09 e 31/11 são
+  // erros de digitação banais. O texto saía daqui SEM NENHUM aviso, casava com
+  // o `^\d{4}-\d{2}-\d{2}$` do servidor e estourava no `::date` — derrubando a
+  // conferência INTEIRA com erro, não só aquela linha (medido em 18/10/2026).
+  // O servidor agora se protege (`ft_try_parse_iso_date`), mas o aviso tem que
+  // nascer aqui: é aqui que a gente sabe o que o cliente digitou e consegue
+  // dizer qual célula está errada.
+  const diasNoMes = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  if (day > diasNoMes) return null;
   return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
@@ -567,11 +631,22 @@ export async function parseFinancialSheet(bytes: ArrayBuffer): Promise<ParsedShe
     const typeText = textCell(getCell(row, 'type'));
     const categoryText = textCell(getCell(row, 'category'));
     const accountText = textCell(getCell(row, 'account'));
+    const customerText = textCell(getCell(row, 'customer'));
+    const supplierText = textCell(getCell(row, 'supplier'));
     const counterpartyText = textCell(getCell(row, 'counterparty'));
     const costCenterText = textCell(getCell(row, 'costCenter'));
+    // Passthrough cru, de propósito: o molde escreve o RÓTULO humano no
+    // idioma do tenant (`paymentMethodLabels`, `templateCopy.ts`), e o
+    // servidor (`_financial_import_payment_method`, migration
+    // `20261018121000_importacao_financeira_planilha.sql`) já aceita tanto o
+    // código canônico quanto o rótulo nos 4 idiomas, casando por igualdade
+    // exata normalizada — não há nada pra este parser classificar aqui
+    // (diferente de Tipo/Pago?, que SÃO classificados abaixo). Qualquer texto
+    // que o molde escreveu volta intacto; quem resolve é o servidor.
     const paymentMethodText = textCell(getCell(row, 'paymentMethod'));
     const isPaidRaw = textCell(getCell(row, 'isPaid'));
     const paidDateRaw = getCell(row, 'paidDate');
+    const dueDateRaw = getCell(row, 'dueDate');
     const notesText = textCell(getCell(row, 'notes'));
 
     const date = excelDateToIso(dateRaw, XLSX.SSF);
@@ -587,11 +662,14 @@ export async function parseFinancialSheet(bytes: ArrayBuffer): Promise<ParsedShe
         state: 'skipped',
         issues: [],
         date: null,
+        dueDate: null,
         type: null,
         description: null,
         amount: null,
         category: null,
         account: null,
+        customer: null,
+        supplier: null,
         counterparty: null,
         costCenter: null,
         paymentMethod: null,
@@ -619,16 +697,36 @@ export async function parseFinancialSheet(bytes: ArrayBuffer): Promise<ParsedShe
     const signDir: 'entrada' | 'saida' | null =
       rawAmount === null || rawAmount === 0 ? null : rawAmount > 0 ? 'entrada' : 'saida';
 
+    /**
+     * O conflito só existe quando o valor é NEGATIVO e o Tipo diz "Entrada".
+     *
+     * ⚠️ Antes a trava era `typeFromText !== signDir`, o que fazia valor
+     * POSITIVO com Tipo "Saída" virar conflito — e isso é exatamente o que a
+     * aba "Leia primeiro" do molde MANDA o cliente fazer ("o valor deve ser
+     * sempre positivo, é a coluna Tipo que diz se é entrada ou saída").
+     * Resultado, medido em 18/10/2026 com uma planilha de QA de 22 linhas: 15
+     * caíram em "precisa conferir" com esse aviso. Numa planilha de 300 linhas
+     * preenchida CORRETAMENTE, seriam 300 avisos e a importação viraria
+     * inútil — o cliente desistiria ou (pior) aprovaria tudo no automático e
+     * pararia de ler os avisos que importam.
+     *
+     * A raiz do erro foi tratar número positivo como uma AFIRMAÇÃO de direção.
+     * Neste molde não é: positivo é o padrão instruído, não carrega direção
+     * nenhuma. Só o sinal NEGATIVO é o cliente afirmando algo — e aí, se ele
+     * também escreveu "Entrada", as duas afirmações se contradizem de fato.
+     * (No OFX é o contrário: lá o sinal vem do banco e é informação de
+     * verdade, por isso `parseOfx.ts` mantém a checagem nos dois sentidos.)
+     */
+    const sinalContradizTipo = typeFromText === 'entrada' && signDir === 'saida';
+
     let type: 'entrada' | 'saida' | null = null;
     if (typeText && typeFromText === null) {
       issues.push(`Tipo "${typeText}" não reconhecido (use Entrada ou Saída).`);
-    } else if (typeFromText && signDir && typeFromText !== signDir) {
-      // Sinal brigando com o Tipo: a direção vem do Tipo (regra explícita),
-      // mas a linha SEMPRE vai pra conferência — nunca escolhe em silêncio.
+    } else if (typeFromText && sinalContradizTipo) {
+      // A direção vem do Tipo (regra explícita), mas a linha SEMPRE vai pra
+      // conferência — nunca escolhe em silêncio.
       issues.push(
-        `Valor e Tipo não combinam: Tipo diz "${typeText}", mas o valor tem sinal de ${
-          signDir === 'entrada' ? 'entrada' : 'saída'
-        }. Confira qual está certo.`,
+        `Valor e Tipo não combinam: Tipo diz "${typeText}", mas o valor está negativo (sinal de saída). Confira qual está certo.`,
       );
       type = typeFromText;
     } else if (typeFromText) {
@@ -664,6 +762,19 @@ export async function parseFinancialSheet(bytes: ArrayBuffer): Promise<ParsedShe
       paidDate = date;
     }
 
+    // Vencimento: só formato é validado aqui. As duas regras de NEGÓCIO (em
+    // branco numa linha não paga vira a data do lançamento; preenchido numa
+    // linha paga é ignorado com aviso) são do servidor, igual já acontece com
+    // `paid_date` — é lá que elas aparecem na tela de conferência, e deixar a
+    // decisão num só lugar evita o parser e o resolvedor discordarem.
+    let dueDate: string | null = null;
+    if (textCell(dueDateRaw) !== null) {
+      dueDate = excelDateToIso(dueDateRaw, XLSX.SSF);
+      if (dueDate === null) {
+        issues.push(`Vencimento inválido: "${String(dueDateRaw)}".`);
+      }
+    }
+
     const state: RowState = issues.length > 0 ? 'needs_review' : 'ready';
 
     rows.push({
@@ -671,11 +782,14 @@ export async function parseFinancialSheet(bytes: ArrayBuffer): Promise<ParsedShe
       state,
       issues,
       date,
+      dueDate,
       type,
       description: descriptionText,
       amount,
       category: categoryText,
       account: accountText,
+      customer: customerText,
+      supplier: supplierText,
       counterparty: counterpartyText,
       costCenter: costCenterText,
       paymentMethod: paymentMethodText,

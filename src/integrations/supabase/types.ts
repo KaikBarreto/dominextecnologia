@@ -16095,6 +16095,7 @@ export type Database = {
         existing_count: number | null
         status: string | null
         transaction_date: string | null
+        due_date: string | null
         transaction_type: string | null
         description: string | null
         amount: number | null
@@ -16125,6 +16126,12 @@ export type Database = {
         counterparty_status: string | null
         is_duplicate: boolean | null
         issues: Json | null
+        customer_input: string | null
+        customer_name: string | null
+        customer_status: string | null
+        supplier_input: string | null
+        supplier_name: string | null
+        supplier_status: string | null
       }
     }
   }

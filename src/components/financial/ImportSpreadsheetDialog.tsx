@@ -13,8 +13,10 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { useCostCenters } from '@/hooks/useCostCenters';
-import { PAYMENT_METHOD_CODES } from '@/lib/finance-payment-methods';
+import { useCustomers } from '@/hooks/useCustomers';
+import { useSuppliers } from '@/hooks/useSuppliers';
 import { downloadFinancialImportTemplate, type FinancialTemplateLogo } from '@/utils/financialImport/buildTemplate';
+import { paymentMethodLabels } from '@/utils/financialImport/templateCopy';
 import type { ParsedRow } from '@/utils/financialImport/parseSheet';
 import {
   useFinancialImport,
@@ -39,6 +41,17 @@ function formatDateBR(iso: string | null): string {
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!m) return iso;
   return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+/**
+ * `FinancialCategory.type` é `string` solto no banco (coluna sem enum), mas o
+ * vocabulário real é `entrada | saida | ambos` (ver
+ * `src/lib/financial-category-filter.ts`). Valor fora disso (não deveria
+ * existir, mas é defesa) cai em `'ambos'` — NUNCA é excluída da planilha:
+ * recusar `'ambos'` já foi bug nosso.
+ */
+function categoryTemplateType(type: string): 'entrada' | 'saida' | 'ambos' {
+  return type === 'entrada' || type === 'saida' ? type : 'ambos';
 }
 
 /** `.png`/`.jpg`/`.jpeg` reconhecidos pelo `exceljs`. Qualquer outro (svg, webp) → sem logo. */
@@ -80,6 +93,8 @@ export function ImportSpreadsheetDialog({ open, onOpenChange }: ImportSpreadshee
   const { accounts } = useFinancialAccounts();
   const { categories } = useFinancialCategories();
   const { costCenters, activeCostCenters } = useCostCenters();
+  const { customers } = useCustomers();
+  const { suppliers } = useSuppliers();
   const { preview, apply, revert } = useFinancialImport();
 
   const [isDragOver, setIsDragOver] = useState(false);
@@ -116,15 +131,36 @@ export function ImportSpreadsheetDialog({ open, onOpenChange }: ImportSpreadshee
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  /**
+   * Problemas que o PARSER achou, por número de linha — o servidor não tem
+   * como ver a maioria deles (o parser zera o campo ilegível antes de enviar),
+   * então sem isto eles desapareciam da conferência. Ver o comentário grande em
+   * `ImportRowsList`, prop `clientIssues`.
+   */
+  const clientIssues = useMemo(() => {
+    const mapa: Record<number, string[]> = {};
+    for (const row of parsedRows ?? []) {
+      if (row.state !== 'skipped' && row.issues.length > 0) mapa[row.rowNumber] = row.issues;
+    }
+    return mapa;
+  }, [parsedRows]);
+
   // Sempre que uma nova conferência chega do servidor, a seleção parte do
   // default (pronta = marcada, duplicada/bloqueada = desmarcada) — reprocessar
   // depois de corrigir um campo reaplica esse default.
+  //
+  // Linha que o PARSER reprovou também nasce DESMARCADA, mesmo que o servidor
+  // diga "ready": é o caso do vencimento ilegível, em que o servidor aplica o
+  // fallback e fica satisfeito. Marcar sozinho ali seria gravar uma data que o
+  // cliente não escreveu e não viu.
   useEffect(() => {
     if (!preview.data || preview.data.already_imported) return;
     const next: Record<number, boolean> = {};
-    for (const row of preview.data.rows) next[row.row_number] = row.status === 'ready';
+    for (const row of preview.data.rows) {
+      next[row.row_number] = row.status === 'ready' && !(clientIssues[row.row_number]?.length > 0);
+    }
     setSelected(next);
-  }, [preview.data]);
+  }, [preview.data, clientIssues]);
 
   const handleDownloadTemplate = async () => {
     setIsGeneratingTemplate(true);
@@ -146,9 +182,18 @@ export function ImportSpreadsheetDialog({ open, onOpenChange }: ImportSpreadshee
         accounts: accounts
           .filter((a) => a.is_active && a.type !== 'cartao')
           .map((a) => ({ name: a.name, color: a.color })),
-        categories: categories.filter((c) => c.is_active).map((c) => ({ name: c.name, color: c.color })),
+        categories: categories
+          .filter((c) => c.is_active)
+          .map((c) => ({ name: c.name, color: c.color, type: categoryTemplateType(c.type) })),
         costCenters: activeCostCenters.map((c) => ({ name: c.name, color: c.color })),
-        paymentMethods: [...PAYMENT_METHOD_CODES],
+        // Sem `color`: cliente/fornecedor não têm cor de cadastro, só dropdown.
+        customers: customers.map((c) => ({ name: c.name })),
+        suppliers: suppliers.map((s) => ({ name: s.name })),
+        // Rótulo humano no idioma do tenant ("Cartão de Débito"), nunca o
+        // código cru ("cartao_debito") — o servidor aceita os dois na
+        // leitura, mas o arquivo que sai do sistema (com logo) não pode
+        // mostrar código de banco pro contador do cliente.
+        paymentMethods: paymentMethodLabels(locale),
         locale,
         currencyCode: currency,
       });
@@ -443,6 +488,7 @@ export function ImportSpreadsheetDialog({ open, onOpenChange }: ImportSpreadshee
               categories={categories}
               accounts={accounts}
               costCenters={costCenters}
+              clientIssues={clientIssues}
               locale={locale}
               currency={currency}
             />
