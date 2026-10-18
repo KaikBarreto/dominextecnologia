@@ -306,3 +306,40 @@ describe('canRenameCategory — quem a tela libera', () => {
     expect(resolveSystemCategoryName(ambiguo, 'receipt_fee')).toBe('Tarifas e Taxas');
   });
 });
+
+describe('as 4 categorias do fluxo de caixa previsto (colisão dupla no trio)', () => {
+  const quatro = [
+    { id: 'ap', name: 'Aporte de sócios', type: 'entrada', dre_group: 'outros', dfc_group: 'financiamento', is_system: true, is_active: true },
+    { id: 'rg', name: 'Resgate de aplicação', type: 'entrada', dre_group: 'outros', dfc_group: 'investimento', is_system: true, is_active: true },
+    { id: 'di', name: 'Distribuição de lucros', type: 'saida', dre_group: 'nao_operacional', dfc_group: 'financiamento', is_system: true, is_active: true },
+    { id: 'al', name: 'Aplicação financeira', type: 'saida', dre_group: 'nao_operacional', dfc_group: 'investimento', is_system: true, is_active: true },
+  ];
+
+  it.each([
+    ['Aporte de sócios', 'partner_contribution'],
+    ['Resgate de aplicação', 'investment_redemption'],
+    ['Distribuição de lucros', 'profit_distribution'],
+    ['Aplicação financeira', 'investment_outflow'],
+  ])('"%s" resolve no papel %s, mesmo com o trio empatado', (nome, papel) => {
+    const cat = quatro.find((c) => c.name === nome)!;
+    expect(getSystemCategoryRole(cat)).toBe(papel);
+  });
+
+  it('o cliente CONSEGUE renomear as quatro', () => {
+    // Sem o quarto critério, nenhuma seria dona única do papel e
+    // `canRenameCategory` travaria o nome das quatro.
+    for (const cat of quatro) {
+      expect(canRenameCategory(quatro, cat)).toBe(true);
+    }
+  });
+
+  it('o aporte não é confundido com o resgate (os dois são entrada/outros)', () => {
+    expect(resolveSystemCategoryName(quatro, 'partner_contribution')).toBe('Aporte de sócios');
+    expect(resolveSystemCategoryName(quatro, 'investment_redemption')).toBe('Resgate de aplicação');
+  });
+
+  it('papel antigo, sem quarto critério, segue resolvendo pelo trio', () => {
+    const tarifa = { id: 't', name: 'Tarifas e Taxas', type: 'saida', dre_group: 'impostos', is_system: true, is_active: true };
+    expect(getSystemCategoryRole(tarifa)).toBe('receipt_fee');
+  });
+});

@@ -49,6 +49,7 @@ const makeAccount = (id: string, name: string): FinancialAccount => ({
   icon: 'landmark',
   is_active: true,
   sort_order: 0,
+  is_cash_account: true,
   created_at: '2026-09-27T00:00:00Z',
   updated_at: '2026-09-27T00:00:00Z',
 });

@@ -23,6 +23,21 @@ export interface FinancialAccount {
   payment_due_days?: number | null;
   due_day?: number | null;
   credit_limit?: number | null;
+  /**
+   * A conta compõe o CAIXA OPERACIONAL no fluxo de caixa previsto.
+   *
+   * Conta de poupança/investimento deve ficar `false`: assim guardar dinheiro
+   * nela aparece como SAÍDA do caixa, e resgatar aparece como ENTRADA, que é
+   * o comportamento que o dono espera. Com `true` (o padrão), transferir entre
+   * duas contas do caixa é neutro, como deve ser.
+   *
+   * ⚠️ Mutável e sem histórico: desmarcar hoje reclassifica transferências
+   * passadas. É aceitável num relatório de PREVISÃO e proibido no DRE e no DFC
+   * realizado, que são publicados ao cliente. Nunca importe esta flag lá.
+   *
+   * Cartão de crédito ignora a flag — não é caixa.
+   */
+  is_cash_account: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +58,7 @@ export interface AccountInput {
   payment_due_days?: number | null;
   due_day?: number | null;
   credit_limit?: number | null;
+  is_cash_account?: boolean;
 }
 
 export interface TransferInput {

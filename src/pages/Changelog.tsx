@@ -42,6 +42,38 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.19',
+    date: '18 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Veja como vai ficar o seu caixa nos próximos 15 dias, dia a dia',
+        description: 'O relatório de fluxo de caixa deixou de olhar só para trás. Agora ele mostra, dia por dia, quanto você tem hoje, o que entra, o que sai separado por categoria e quanto sobra no fim de cada dia. Tudo que já venceu e ninguém deu baixa aparece numa coluna de dívidas ao lado, para você saber o quanto a previsão está otimista. Dá para olhar 15 ou 30 dias à frente.',
+        category: 'recurso',
+      },
+      {
+        title: 'O sistema avisa quando uma conta vai ficar negativa, mesmo com o total positivo',
+        description: 'Uma empresa com cinquenta mil reais no total pode ter vinte e cinco mil em cada uma de duas contas. Se um débito automático de trinta mil cai numa delas, o total continua parecendo saudável e a conta fura, com tarifa e juros. Agora a tela mostra o saldo de cada conta em cada dia e acende em vermelho o dia em que alguma estoura.',
+        category: 'recurso',
+      },
+      {
+        title: 'Poupança e investimento não contam mais como dinheiro disponível',
+        description: 'Ao cadastrar uma conta existe a opção de dizer se ela faz parte do caixa da empresa, ligada por padrão. Desligue na conta de poupança ou investimento: aí guardar dinheiro nela aparece como saída do caixa, e resgatar aparece como entrada. Sem isso, o dinheiro guardado continuava sendo contado como se estivesse disponível para pagar as contas do dia a dia.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Aporte de sócio e distribuição de lucro agora têm lugar certo',
+        description: 'Chegaram quatro categorias prontas: aporte de sócios, distribuição de lucros, aplicação financeira e resgate de aplicação. Elas existem porque esse dinheiro não é receita nem despesa da operação. Lançar um aporte como receita faz a empresa pagar imposto sobre dinheiro que não foi venda. A distribuição de lucro passa a aparecer na DRE abaixo do resultado, sem mexer no desempenho da operação.',
+        category: 'melhoria',
+      },
+      {
+        title: 'A DRE mostra o percentual de cada linha sobre o faturamento',
+        description: 'Ao lado de cada valor aparece quanto ele representa do faturamento do período. É assim que se compara um mês com outro sem se enganar pelo tamanho: dez mil reais de despesa num mês de cem mil é bem diferente dos mesmos dez mil num mês de trinta.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.36.18',
     date: '18 de outubro de 2026',
     type: 'patch',

@@ -406,9 +406,15 @@
       <tr><td><span class="ui">(=) Lucro Bruto</span></td><td>Receita líquida menos o CSP. Mostra também a margem em porcentagem.</td></tr>
       <tr><td><span class="ui">(-) Despesas Operacionais (OPEX)</span></td><td>Todo o resto das saídas.</td></tr>
       <tr><td><span class="ui">(=) Resultado Líquido (EBITDA)</span></td><td>O número final, com o rótulo <span class="ui">Superávit</span>, <span class="ui">Déficit</span> ou <span class="ui">Equilibrado</span>.</td></tr>
+      <tr><td><span class="ui">(-) Despesas Não Operacionais</span></td><td>Distribuição de lucros, investimento e manutenção de bens. Ficam <b>abaixo</b> do resultado porque não mudam o desempenho da operação, mas saem do caixa.</td></tr>
+      <tr><td><span class="ui">(=) Resultado Final</span></td><td>O que sobra depois de tudo. Só aparece quando existe alguma despesa não operacional no período.</td></tr>
     </tbody>
   </table>
   <p>Cada bloco abre e fecha, mostrando as categorias que compõem o total. No topo há três indicadores: <span class="ui">Margem</span>, <span class="ui">Receita Líq.</span> e <span class="ui">EBITDA</span>, e um gráfico <span class="ui">Evolução Receita × Despesas</span> mês a mês.</p>
+
+  <p>Ao lado de cada valor aparece o <b>percentual sobre o faturamento</b>, que é como se compara um mês com o outro sem se enganar pelo tamanho. Uma despesa de R$ 10 mil num mês de R$ 100 mil é bem diferente da mesma despesa num mês de R$ 30 mil.</p>
+
+  <div class="dica"><b>Aporte de sócio não aparece na DRE</b>, e isso é proposital: dinheiro que o sócio coloca não é receita de venda nem de serviço. Ele aparece só no fluxo de caixa. Já a distribuição de lucro aparece, abaixo do resultado, para você enxergar quanto saiu.</div>
 
   <h3>O botão Caixa × Competência</h3>
   <p>No cabeçalho escuro da tabela existe um botão de duas posições. Ele muda a régua que a DRE usa pra decidir em qual mês cada lançamento entra. Em linguagem de dono de empresa:</p>
@@ -665,6 +671,70 @@
   <p>A primeira importação quase sempre sai torta. Por isso existe <span class="ui">Desfazer importação</span>, que remove de uma vez tudo o que aquela importação criou, e ele <b>não some depois que você fecha a janela</b>: reabra o <span class="ui">Importar planilha</span> e a seção <span class="ui">Importações anteriores</span> lista as importações com a data, quantos lançamentos criou e o botão de desfazer.</p>
 
   <div class="aviso"><b>Lançamento já mexido não é removido, e isso é proteção.</b> Se um lançamento daquela importação já foi conciliado, recebeu anexo, teve recebimento parcial ou virou pagamento de fatura, o desfazer mantém esse e explica o motivo de cada um. O resto sai normalmente.</div>
+
+<h2>18. Fluxo de caixa dos próximos dias: o que entra, o que sai e o que ficou pendurado</h2>
+
+  <p>A DRE conta o passado: como foi o mês que fechou. O fluxo de caixa conta o presente e o futuro: como vão ficar as contas nos próximos dias. São perguntas diferentes, e é por isso que os dois números quase nunca batem.</p>
+
+  <p>Fica em <span class="ui">Financeiro</span>, <span class="ui">Relatórios</span>, aba <span class="ui">DFC - Fluxo de Caixa</span>. A aba tem duas visões no topo:</p>
+
+  <table class="dados">
+    <thead><tr><th>Visão</th><th>Responde</th><th>Quem usa</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Previsto</span></td><td>"vou conseguir pagar as contas até o fim do mês?"</td><td>o dono, todo dia</td></tr>
+      <tr><td><span class="ui">Realizado</span></td><td>"para onde o dinheiro foi no período?"</td><td>o contador</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Os cinco números do topo</h3>
+
+  <p><span class="ui">Saldo atual</span>, <span class="ui">A receber</span> e <span class="ui">A pagar</span> nos próximos 15 dias, e as <span class="ui">Dívidas</span> dos dois lados: o que já venceu e ninguém deu baixa.</p>
+
+  <div class="regra"><b>A previsão é otimista, de propósito.</b> Ela considera que tudo vai ser pago e recebido na data de vencimento. É assim que fluxo de caixa funciona: sem essa premissa não há previsão nenhuma. O que já venceu e não foi baixado sai dessa conta e vai para a coluna de dívida.</div>
+
+  <h3>A tabela, dia a dia</h3>
+
+  <p>Cada coluna é um dia. As linhas são o saldo inicial, o que entra, o que sai quebrado por categoria, e o saldo final. O saldo final de um dia é o saldo inicial do seguinte, e o primeiro começa no saldo real das suas contas.</p>
+
+  <p>Antes dos dias existe a coluna <span class="ui">Dívida</span>, e ela <b>não é descontada do saldo</b>. O motivo: a previsão já contou aquela conta no dia em que ela venceu. Descontar de novo seria contar a mesma conta duas vezes. A dívida fica ao lado como um aviso: "seu saldo previsto está otimista neste valor".</p>
+
+  <p>Para sair da dívida, basta dar baixa no lançamento, seja ele a pagar ou a receber.</p>
+
+  <h3>Mais de uma conta: o erro que custa caro</h3>
+
+  <div class="aviso"><b>Somar todas as contas esconde o problema.</b> Uma empresa com R$ 50 mil no total pode ter R$ 25 mil em cada uma de duas contas. Se um débito automático de R$ 30 mil cai numa delas, o total continua parecendo saudável e a conta fura: tarifa, juros de cheque especial, débito devolvido. E você só descobre no dia seguinte.</div>
+
+  <p>Por isso a tela sempre mostra o <span class="ui">saldo por conta</span>, dia a dia, e acende em vermelho o dia em que qualquer conta fica negativa, mesmo quando o total está positivo.</p>
+
+  <h3>Conta que não é caixa: poupança e investimento</h3>
+
+  <p>Ao cadastrar ou editar uma conta existe a chave <span class="ui">Faz parte do caixa da empresa</span>, ligada por padrão.</p>
+
+  <p>Desligue em conta de poupança ou investimento. Com ela desligada, transferir dinheiro para lá aparece como <b>saída do caixa</b>, e resgatar aparece como <b>entrada</b>, que é exatamente o que acontece na prática: o dinheiro continua sendo da empresa, mas saiu de onde as contas são pagas.</p>
+
+  <div class="aviso"><b>Se você não desligar, o dinheiro guardado continua contando como se estivesse disponível</b> para pagar as contas do dia a dia, e a previsão fica otimista demais.</div>
+
+  <h3>Dinheiro sem conta definida</h3>
+
+  <p>Lançamento sem conta informada entra no total, mas num grupo chamado <span class="ui">Sem conta definida</span>, e a tela avisa quanto é. Isso existe para ser honesto: enquanto houver dinheiro ali, o alerta de conta negativa fica menos preciso, porque o sistema não sabe de qual conta aquele valor sai.</p>
+
+  <h3>Aporte, distribuição de lucro e dinheiro guardado</h3>
+
+  <p>O sistema já vem com quatro categorias prontas para o dinheiro que <b>não é receita nem despesa da operação</b>:</p>
+
+  <table class="dados">
+    <thead><tr><th>Categoria</th><th>O que é</th><th>Aparece na DRE?</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">Aporte de sócios</span></td><td>dinheiro que o sócio coloca na empresa</td><td>Não. Não é receita de nada</td></tr>
+      <tr><td><span class="ui">Distribuição de lucros</span></td><td>lucro que sai para os sócios</td><td>Sim, abaixo do resultado</td></tr>
+      <tr><td><span class="ui">Aplicação financeira</span></td><td>dinheiro que a empresa guarda</td><td>Sim, abaixo do resultado</td></tr>
+      <tr><td><span class="ui">Resgate de aplicação</span></td><td>o mesmo dinheiro voltando</td><td>Não</td></tr>
+    </tbody>
+  </table>
+
+  <div class="regra"><b>Lançar aporte como receita faz a empresa pagar imposto sobre ele.</b> Para a Receita, tudo que entra é venda até que se prove o contrário. Por isso existe a categoria separada: ela entra no caixa e fica fora do resultado.</div>
+
+  <p>As quatro aparecem nas listas da conciliação bancária e no molde de importação por planilha, então dá para classificar por qualquer um dos caminhos.</p>
 
   <h2 class="suporte">Suporte: problemas comuns</h2>
   <table class="faq">

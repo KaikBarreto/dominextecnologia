@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { CashFlowForecast } from './CashFlowForecast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   DropdownMenu,
@@ -118,6 +119,18 @@ function transactionCountLabel(count: number): string {
 }
 
 export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDFCProps) {
+  /**
+   * Duas lentes sobre o mesmo assunto, e as duas têm razão de existir:
+   *
+   * - **Previsto** é o que o dono olha todo dia: os próximos 15 dias, dia a
+   *   dia, com o que vai entrar, o que vai sair e o que já venceu. É o padrão.
+   * - **Realizado** é o demonstrativo contábil pelo método direto, agrupado
+   *   por atividade. Não se joga fora: é o que o contador pede.
+   *
+   * Elas usam motores DIFERENTES de propósito (ver o aviso no topo de
+   * `src/lib/cash-flow-forecast.ts`).
+   */
+  const [lente, setLente] = useState<'previsto' | 'realizado'>('previsto');
   const { categories, isLoading: isLoadingCategories } = useFinancialCategories();
   const { accounts, isLoading: isLoadingAccounts } = useFinancialAccounts();
   const { costCenters, isLoading: isLoadingCostCenters } = useCostCenters();
@@ -484,8 +497,37 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
     return `${compactBase(value / 1_000)} mil`;
   };
 
+  const seletorDeLente = (
+    <div className="flex items-center gap-1 rounded-lg bg-muted/40 p-1 w-fit">
+      <Button
+        size="sm"
+        variant={lente === 'previsto' ? 'default' : 'ghost'}
+        onClick={() => setLente('previsto')}
+      >
+        Previsto
+      </Button>
+      <Button
+        size="sm"
+        variant={lente === 'realizado' ? 'default' : 'ghost'}
+        onClick={() => setLente('realizado')}
+      >
+        Realizado
+      </Button>
+    </div>
+  );
+
+  if (lente === 'previsto') {
+    return (
+      <section className="space-y-4" aria-labelledby="dfc-title">
+        {seletorDeLente}
+        <CashFlowForecast />
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-5 sm:space-y-6" aria-labelledby="dfc-title">
+      {seletorDeLente}
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <DfcKpi label="Saldo inicial" shortLabel="Inicial" value={kpiMoney(report.openingBalance)} fullValue={money(report.openingBalance)} icon={PiggyBank} className="bg-info" />
         <DfcKpi

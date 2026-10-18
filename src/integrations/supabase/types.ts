@@ -1749,6 +1749,7 @@ export type Database = {
         Row: {
           address: string | null
           address_number: string | null
+          cash_flow_overdue_window_days: number
           city: string | null
           company_id: string | null
           complement: string | null
@@ -1800,6 +1801,7 @@ export type Database = {
         Insert: {
           address?: string | null
           address_number?: string | null
+          cash_flow_overdue_window_days?: number
           city?: string | null
           company_id?: string | null
           complement?: string | null
@@ -1851,6 +1853,7 @@ export type Database = {
         Update: {
           address?: string | null
           address_number?: string | null
+          cash_flow_overdue_window_days?: number
           city?: string | null
           company_id?: string | null
           complement?: string | null
@@ -5528,6 +5531,7 @@ export type Database = {
           institution_ispb: string | null
           institution_name: string | null
           is_active: boolean
+          is_cash_account: boolean
           name: string
           payment_due_days: number | null
           sort_order: number | null
@@ -5549,6 +5553,7 @@ export type Database = {
           institution_ispb?: string | null
           institution_name?: string | null
           is_active?: boolean
+          is_cash_account?: boolean
           name: string
           payment_due_days?: number | null
           sort_order?: number | null
@@ -5570,6 +5575,7 @@ export type Database = {
           institution_ispb?: string | null
           institution_name?: string | null
           is_active?: boolean
+          is_cash_account?: boolean
           name?: string
           payment_due_days?: number | null
           sort_order?: number | null
@@ -14236,6 +14242,10 @@ export type Database = {
       }
       can_manage_system: { Args: { _user_id: string }; Returns: boolean }
       can_manage_users: { Args: { _user_id: string }; Returns: boolean }
+      cash_flow_opening_balances: {
+        Args: { p_today: string }
+        Returns: { account_id: string; balance: number }[]
+      }
       check_email_available: { Args: { _email: string }; Returns: boolean }
       close_due_credit_card_bills: { Args: never; Returns: number }
       commit_os_material_consumption: {

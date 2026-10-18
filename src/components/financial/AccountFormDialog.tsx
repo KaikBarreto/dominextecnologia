@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -68,6 +69,7 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
   const [type, setType] = useState('banco');
   const [institution, setInstitution] = useState<{ code: number | null; name: string; ispb?: string | null } | null>(null);
   const [initialBalance, setInitialBalance] = useState(0);
+  const [isCashAccount, setIsCashAccount] = useState(true);
   const [color, setColor] = useState('#3b82f6');
   const [closingDay, setClosingDay] = useState<number>(10);
   const [dueDay, setDueDay] = useState<number>(20);
@@ -83,13 +85,14 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
         ? { code: editing.institution_code ?? null, name: editing.institution_name, ispb: editing.institution_ispb }
         : (editing.bank_name ? { code: null, name: editing.bank_name } : null));
       setInitialBalance(editing.initial_balance);
+      setIsCashAccount(editing.is_cash_account !== false);
       setColor(editing.color);
       setClosingDay(editing.closing_day ?? 10);
       setDueDay(editing.due_day ?? (editing.payment_due_days ? (editing.closing_day ?? 10) + editing.payment_due_days : 20));
       setCreditLimit(editing.credit_limit ?? 0);
     } else {
       // Na criação, respeita o nome pré-preenchido (quick-create do SearchableSelect).
-      setName(initialName ?? ''); setType(defaultType); setInstitution(null); setInitialBalance(0); setColor('#3b82f6');
+      setName(initialName ?? ''); setType(defaultType); setInstitution(null); setInitialBalance(0); setIsCashAccount(true); setColor('#3b82f6');
       setClosingDay(10); setDueDay(20); setCreditLimit(0);
     }
   }, [open, editing, defaultType, initialName]);
@@ -104,6 +107,8 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
       institution_name: institution?.name ?? null,
       institution_ispb: institution?.ispb ?? null,
       initial_balance: initialBalance,
+      // Cartão nunca compõe o caixa — a coluna existe mas é ignorada lá.
+      is_cash_account: type === 'cartao' ? false : isCashAccount,
       color,
       ...(type === 'cartao' ? {
         closing_day: closingDay,
@@ -249,6 +254,26 @@ export function AccountFormDialog({ open, onOpenChange, editing, defaultType = '
             <Input placeholder="0,00" value={balanceDisplay} onChange={handleCurrencyChange} onPaste={handleCurrencyPaste} inputMode="numeric" />
             {editing && (
               <p className="text-xs text-muted-foreground">⚠️ {t.initialBalanceEditWarning}</p>
+            )}
+          </div>
+        )}
+
+        {/* Perímetro do caixa. Cartão não tem a opção: fatura não é caixa. */}
+        {type !== 'cartao' && (
+          <div className="space-y-1.5 rounded-lg border p-3">
+            <div className="flex items-start justify-between gap-3">
+              <Label htmlFor="conta-compoe-caixa" className="cursor-pointer leading-snug">
+                {t.cashAccountLabel}
+              </Label>
+              <Switch
+                id="conta-compoe-caixa"
+                checked={isCashAccount}
+                onCheckedChange={setIsCashAccount}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">{t.cashAccountHint}</p>
+            {!isCashAccount && (
+              <p className="text-xs text-warning">⚠️ {t.cashAccountOffWarning}</p>
             )}
           </div>
         )}

@@ -9,6 +9,7 @@ import {
   isPaidDateAllowedInTz,
   isDreExcludedGroup,
   classifyDreCategory,
+  DRE_NON_OPERATING_GROUP,
   parseDreDate,
   type DreTransactionLike,
 } from './dre-regime';
@@ -563,5 +564,39 @@ describe('isPaidDateAllowedInTz', () => {
     expect(isPaidDateAllowedInTz(ONTEM, null)).toBe(true);
     expect(isPaidDateAllowedInTz(ONTEM, 'Fuso/Inexistente')).toBe(true);
     expect(isPaidDateAllowedInTz('2099-12-31', 'Fuso/Inexistente')).toBe(false);
+  });
+});
+
+describe('classifyDreCategory — grupo não operacional', () => {
+  it('"nao_operacional" é respeitado e NÃO vira opex', () => {
+    // A regressão mais perigosa deste trabalho: sem o tratamento explícito,
+    // o valor desconhecido cairia no `return 'opex'` final e a distribuição
+    // de lucro entraria nas despesas operacionais, mentindo no resultado
+    // líquido — o oposto do que o BPO pediu.
+    expect(classifyDreCategory('Distribuição de lucros', 'nao_operacional')).toBe('nao_operacional');
+  });
+
+  it('o cadastro vence o nome: categoria com cara de custo mas marcada como não operacional', () => {
+    // 'Material' bateria no regex de CMV. O `dre_group` tem que vencer.
+    expect(classifyDreCategory('Material de investimento', 'nao_operacional')).toBe('nao_operacional');
+  });
+
+  it('os três grupos de cima continuam intactos', () => {
+    expect(classifyDreCategory('Qualquer', 'impostos')).toBe('impostos');
+    expect(classifyDreCategory('Qualquer', 'cmv')).toBe('cmv');
+    expect(classifyDreCategory('Qualquer', 'opex')).toBe('opex');
+  });
+
+  it('sem cadastro, o fallback por nome segue como era', () => {
+    expect(classifyDreCategory('ISS sobre serviço', null)).toBe('impostos');
+    expect(classifyDreCategory('Compra de material', null)).toBe('cmv');
+    expect(classifyDreCategory('Aluguel', null)).toBe('opex');
+  });
+
+  it('"outros" NÃO é a mesma coisa que "nao_operacional"', () => {
+    // 'outros' some do DRE inteiro (aporte de sócio); 'nao_operacional'
+    // aparece abaixo do resultado (distribuição de lucro).
+    expect(isDreExcludedGroup('outros')).toBe(true);
+    expect(isDreExcludedGroup(DRE_NON_OPERATING_GROUP)).toBe(false);
   });
 });
