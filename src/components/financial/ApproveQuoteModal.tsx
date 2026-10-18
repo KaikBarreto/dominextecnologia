@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -321,7 +322,7 @@ export function ApproveQuoteModal({
                 </div>
                 <div>
                   <Label>{t.receivedDateLabel}</Label>
-                  <Input type="date" value={paidDate} onChange={(e) => setPaidDate(e.target.value)} />
+                  <DatePicker value={paidDate} onValueChange={setPaidDate} />
                 </div>
               </div>
 
@@ -421,10 +422,9 @@ export function ApproveQuoteModal({
                 </div>
                 <div>
                   <Label>{t.firstDueDateLabel}</Label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={firstDueDate}
-                    onChange={(e) => setFirstDueDate(e.target.value)}
+                    onValueChange={setFirstDueDate}
                     className={cn(!firstDueDate && 'border-destructive focus-visible:ring-destructive')}
                   />
                 </div>

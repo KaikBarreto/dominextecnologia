@@ -4,7 +4,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -275,11 +275,14 @@ export default function TechnicianTracking() {
         {!isMobile && (
           <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2 block">{tTracking.filterDate}</label>
         )}
-        <Input
-          type="date"
+        <DatePicker
           value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
+          onValueChange={setSelectedDate}
+          placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
           className="w-full"
+          // Sem `clearable`: `selectedDate` alimenta `format(new Date(...))`
+          // em vários pontos do resumo (linha 357/364/406/413) sem guarda
+          // contra string vazia — diferente do filtro par da TrackingHistoryTab.
         />
       </div>
     </div>
@@ -387,10 +390,10 @@ export default function TechnicianTracking() {
               <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2 block">
                 {tTracking.filterDate}
               </label>
-              <Input
-                type="date"
+              <DatePicker
                 value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
+                onValueChange={setSelectedDate}
+                placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
                 className="w-full"
               />
             </div>

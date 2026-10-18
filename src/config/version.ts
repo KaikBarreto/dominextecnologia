@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.36.12";
+export const APP_VERSION = "1.36.16";
 
-export const VERSION_NOTES = "Agora é possível registrar uma compra de material com entrada no estoque e lançamento no Financeiro de uma só vez, além de acompanhar histórico, média paga e exportações no relatório por material.";
+export const VERSION_NOTES = "Todo campo de data do sistema passou a abrir o calendário do Dominex, agora com seletor de mês e ano, e a conta a pagar já aceita o vencimento na hora de criar.";

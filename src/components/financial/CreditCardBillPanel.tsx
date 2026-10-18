@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -667,7 +668,7 @@ export function CreditCardBillPanel({ account, accounts, onClose, hideHeader }: 
 
             <div className="space-y-1.5">
               <Label>{cc.payDate}</Label>
-              <Input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} />
+              <DatePicker value={payDate} onValueChange={setPayDate} />
             </div>
 
             <div className="space-y-1.5">

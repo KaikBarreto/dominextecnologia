@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -3929,12 +3930,13 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
 
                     <div className="space-y-2">
                       <Label>{tFin.firstDueLabel}</Label>
-                      <Input
-                        type="date"
+                      {/* Sempre cai no fallback de startDate quando vazio, então não precisa de clearable */}
+                      <DatePicker
                         min={finDueDateMin}
                         max={finDueDateMax}
                         value={finFirstDueDate || startDate}
-                        onChange={(e) => setFinFirstDueDate(e.target.value)}
+                        onValueChange={setFinFirstDueDate}
+                        placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
                       />
                       <p className="text-xs text-muted-foreground">{tFin.firstDueHint}</p>
                       {finDueDateYearInvalid && (

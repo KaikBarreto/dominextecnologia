@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
@@ -8,6 +8,21 @@ import { buttonVariants } from "@/components/ui/button";
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
 function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+  /**
+   * `captionLayout="dropdown-buttons"` troca o título "Outubro 2026" por dois
+   * seletores (mês e ano). Sem isso, chegar numa data de nascimento era descer
+   * de mês em mês na setinha, dezenas de cliques.
+   *
+   * O projeto NÃO importa o `style.css` do react-day-picker (o visual sai todo
+   * de `classNames` + Tailwind). Então as classes do modo dropdown precisam ser
+   * escritas aqui à mão: a lib renderia um `<select>` REAL por cima de um rótulo
+   * `caption_label` (`aria-hidden`), e é o CSS da lib que deixa o select
+   * invisível. Sem ele, apareciam os dois — select cru do sistema E o rótulo.
+   * Abaixo: select transparente sobreposto (mantém o menu nativo, que no mobile
+   * vira a roleta do SO) e o rótulo estilizado no tema por cima.
+   */
+  const isDropdownCaption = (props.captionLayout ?? "").startsWith("dropdown");
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
@@ -16,7 +31,18 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
+        caption_label: isDropdownCaption
+          ? "relative z-10 inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium capitalize transition-colors hover:bg-muted"
+          : "text-sm font-medium",
+        caption_dropdowns: "relative inline-flex items-center gap-1",
+        dropdown_month: "relative inline-flex items-center",
+        dropdown_year: "relative inline-flex items-center",
+        // Select real, invisível e sobreposto ao rótulo: o clique/tap cai nele.
+        dropdown:
+          "absolute inset-0 z-20 h-full w-full cursor-pointer appearance-none border-0 bg-transparent p-0 text-transparent opacity-0 focus-visible:outline-none",
+        dropdown_icon: "h-3.5 w-3.5 shrink-0 opacity-60",
+        // `vhidden` guarda o rótulo acessível: some da tela, fica pro leitor.
+        vhidden: "sr-only",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
@@ -44,6 +70,7 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
       components={{
         IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
         IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
+        IconDropdown: ({ ..._props }) => <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />,
       }}
       {...props}
     />

@@ -39,6 +39,8 @@ import {
   Crown,
   Video,
   BarChart3,
+  FolderKanban,
+  KanbanSquare,
 } from 'lucide-react';
 import { OperacionalIcon, AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
@@ -100,7 +102,19 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
     ],
   },
-  { title: 'CRM/Kanban', icon: ListFilter, path: '/crm', screenKey: 'screen:crm', moduleKey: 'crm' },
+  // Os dois são quadros Kanban e andam juntos (um projeto AGRUPA funis), mas
+  // continuam telas separadas de propósito: `screen:projects` é permissão
+  // própria, então dá pra liberar Projetos pro pessoal de obra sem abrir a
+  // carteira comercial. O grupo só deixa o parentesco óbvio no menu.
+  // Régua do CEO, 2026-10-17.
+  {
+    title: 'CRM e Projetos',
+    icon: KanbanSquare,
+    children: [
+      { title: 'CRM/Kanban', icon: ListFilter, path: '/crm', screenKey: 'screen:crm', moduleKey: 'crm' },
+      { title: 'Projetos', icon: FolderKanban, path: '/projetos', screenKey: 'screen:projects', moduleKey: 'crm' },
+    ],
+  },
   {
     title: 'Financeiro',
     icon: DollarSign,

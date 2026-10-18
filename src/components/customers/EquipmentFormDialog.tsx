@@ -7,6 +7,7 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -415,7 +416,16 @@ export function EquipmentFormDialog({
                       <FormLabel>{fc.label}{fc.is_required && ' *'}</FormLabel>
                       <FormControl>
                         {fc.field_type === 'date' ? (
-                          <Input type="date" {...field} value={field.value ?? ''} />
+                          // "Limpar" só no campo que PODE ficar vazio: num
+                          // campo obrigatório a ação existiria só pra ser
+                          // barrada pela validação logo em seguida.
+                          <DatePicker
+                            value={field.value ?? ''}
+                            onValueChange={field.onChange}
+                            placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
+                            clearable={!fc.is_required}
+                            clearLabel={MESSAGES[locale].app.common.clear}
+                          />
                         ) : fc.field_type === 'number' ? (
                           <NumericInput
                             decimal
@@ -447,10 +457,14 @@ export function EquipmentFormDialog({
                     {fc.label}{fc.is_required && ' *'}
                   </FormLabel>
                   {fc.field_type === 'date' ? (
-                    <Input
-                      type="date"
+                    // Mesma regra do campo dinâmico acima: "Limpar" só no que
+                    // pode ficar vazio.
+                    <DatePicker
                       value={customFieldValues[fc.field_key] ?? ''}
-                      onChange={(e) => setCustom(e.target.value)}
+                      onValueChange={setCustom}
+                      placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
+                      clearable={!fc.is_required}
+                      clearLabel={MESSAGES[locale].app.common.clear}
                     />
                   ) : fc.field_type === 'number' ? (
                     <NumericInput
@@ -506,7 +520,16 @@ export function EquipmentFormDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{tf.fieldWarranty}</FormLabel>
-                  <FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl>
+                  {/* Campo opcional (z.string().optional()), por isso clearable */}
+                  <FormControl>
+                    <DatePicker
+                      value={field.value ?? ''}
+                      onValueChange={field.onChange}
+                      placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
+                      clearable
+                      clearLabel={MESSAGES[locale].app.common.clear}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

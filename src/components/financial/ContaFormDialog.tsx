@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -402,7 +403,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
           </div>
           <div className="space-y-1.5">
             <Label>{t.dueDateLabel}</Label>
-            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            <DatePicker value={dueDate} onValueChange={setDueDate} />
           </div>
 
           {/* Account selector — required. Em recebimento (entrada), cartão de

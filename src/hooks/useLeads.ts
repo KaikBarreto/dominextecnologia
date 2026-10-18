@@ -225,6 +225,13 @@ export function useLeads() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      // Onda 1 de Projetos (2026-10-17): um lead novo pode nascer direto numa
+      // etapa de uma frente de obra (crm_pipelines.project_id) — isso muda
+      // active_count daquele projeto. Sem isto a barra de progresso da obra
+      // fica velha até o usuário trocar de tela (React Query não sabe que a
+      // RPC `project_progress_summary` depende de `leads`, são caminhos
+      // independentes).
+      queryClient.invalidateQueries({ queryKey: ['project_progress'] });
       toast({ title: 'Lead criado com sucesso!' });
     },
     onError: (error) => {
@@ -327,6 +334,13 @@ export function useLeads() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['lead_interactions', variables.id] });
+      // Onda 1 de Projetos: este é o caminho de ARRASTAR O CARD entre etapas
+      // (drag-and-drop do kanban, select de estágio no detalhe, confirmação
+      // de perda — todos passam por `updateLead` quando `stage_id` muda). Se
+      // a etapa pertence a uma frente de obra, done_count/active_count/
+      // lost_count daquele projeto mudam na hora — sem isto a barra de
+      // progresso ficaria "velha" até trocar de tela.
+      queryClient.invalidateQueries({ queryKey: ['project_progress'] });
       toast({ title: 'Lead atualizado com sucesso!' });
     },
     onError: (error) => {
@@ -401,6 +415,9 @@ export function useLeads() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      // Onda 1 de Projetos: excluir um card muda active_count (e done_count,
+      // se o card excluído estava na etapa de ganho) do projeto dono da frente.
+      queryClient.invalidateQueries({ queryKey: ['project_progress'] });
       toast({ title: 'Lead removido com sucesso!' });
     },
     onError: (error) => {

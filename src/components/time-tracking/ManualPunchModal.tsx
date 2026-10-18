@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -92,7 +93,7 @@ export function ManualPunchModal({ open, onOpenChange, employeeId, employeeName,
         {isEdit && (
           <div className="space-y-2">
             <Label>{t.dateLabel}</Label>
-            <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+            <DatePicker value={date} onValueChange={setDate} />
           </div>
         )}
         <div className="space-y-2">

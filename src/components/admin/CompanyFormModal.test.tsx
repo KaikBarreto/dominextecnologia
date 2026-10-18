@@ -210,3 +210,11 @@ describe('CompanyFormModal — piso de usuários do plano', () => {
     expect(input.value).toBe('5');
   });
 });
+
+describe('CompanyFormModal — campo "Vencimento"', () => {
+  it('usa o DatePicker do sistema, sem input date nativo do navegador', () => {
+    mount();
+    clickTab('Comercial');
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+  });
+});

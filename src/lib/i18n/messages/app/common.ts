@@ -57,6 +57,18 @@ export const common = {
       start: 'Início',
       end: 'Fim',
     },
+    // Campo de data e de data+hora do sistema (DatePicker / DateTimePicker)
+    datePicker: {
+      placeholder: 'dd/mm/aaaa',
+      dateTimePlaceholder: 'dd/mm/aaaa --:--',
+      hour: 'Hora',
+      hours: 'Horas',
+      minutes: 'Minutos',
+      now: 'Agora',
+      done: 'Concluir',
+      selectDate: 'Selecionar data',
+      selectDateTime: 'Selecionar data e hora',
+    },
     // Paginação de tabela (DataTablePagination)
     pagination: {
       // {from}, {to} e {total} são substituídos pelo componente
@@ -230,6 +242,17 @@ export const common = {
       start: 'Start',
       end: 'End',
     },
+    datePicker: {
+      placeholder: 'mm/dd/yyyy',
+      dateTimePlaceholder: 'mm/dd/yyyy --:--',
+      hour: 'Time',
+      hours: 'Hours',
+      minutes: 'Minutes',
+      now: 'Now',
+      done: 'Done',
+      selectDate: 'Select date',
+      selectDateTime: 'Select date and time',
+    },
     pagination: {
       showing: 'Showing {from}-{to} of {total}',
       perPage: 'Per page',
@@ -386,6 +409,17 @@ export const common = {
       start: 'Inicio',
       end: 'Fin',
     },
+    datePicker: {
+      placeholder: 'dd/mm/aaaa',
+      dateTimePlaceholder: 'dd/mm/aaaa --:--',
+      hour: 'Hora',
+      hours: 'Horas',
+      minutes: 'Minutos',
+      now: 'Ahora',
+      done: 'Listo',
+      selectDate: 'Seleccionar fecha',
+      selectDateTime: 'Seleccionar fecha y hora',
+    },
     pagination: {
       showing: 'Mostrando {from}-{to} de {total}',
       perPage: 'Por página',
@@ -541,6 +575,17 @@ export const common = {
       selectPeriod: 'Sélectionnez la période',
       start: 'Début',
       end: 'Fin',
+    },
+    datePicker: {
+      placeholder: 'jj/mm/aaaa',
+      dateTimePlaceholder: 'jj/mm/aaaa --:--',
+      hour: 'Heure',
+      hours: 'Heures',
+      minutes: 'Minutes',
+      now: 'Maintenant',
+      done: 'Terminer',
+      selectDate: 'Sélectionner une date',
+      selectDateTime: 'Sélectionner la date et l\u2019heure',
     },
     pagination: {
       showing: 'Affichage de {from}-{to} sur {total}',

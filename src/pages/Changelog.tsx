@@ -42,6 +42,79 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.16',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'O calendário de datas agora é o mesmo em todo o sistema',
+        description: 'Antes, clicar num campo de data abria o calendário do próprio navegador: um visual diferente em cada computador, fora do estilo do sistema e às vezes até em outro idioma. Agora todos os campos de data abrem o calendário do Dominex, igual em qualquer lugar e no idioma da sua empresa. Ele também ganhou seletor de mês e de ano, então achar uma data antiga, como a de nascimento de um funcionário, deixou de ser um sobe e desce mês a mês. Os campos que pedem data e hora juntas, como a data de corte da posição de estoque, seguem o mesmo padrão, com uma roleta para escolher o horário.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Conta a pagar já aceita o vencimento na hora de criar',
+        description: 'Ao lançar uma despesa e desligar a opção Já foi pago, o campo de vencimento aparece na mesma hora. Antes ele só existia depois, ao editar a conta, então quem lançava precisava salvar e abrir de novo só para informar a data. Preencher continua sendo opcional, e quando a despesa é parcelada as parcelas passam a ser contadas a partir do vencimento que você informar.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.36.15',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'CRM/Kanban e Projetos agora ficam juntos no menu',
+        description: 'Os dois passaram a ficar no mesmo grupo do menu, chamado CRM e Projetos, porque um projeto agrupa quadros Kanban. Continuam sendo duas telas com permissões separadas, então ainda dá para liberar Projetos para a equipe de obra sem abrir a carteira comercial. As telas também ganharam uma orientação explicando quando usar cada uma.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.36.14',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Projetos: acompanhe uma obra inteira em um lugar só',
+        description: 'Chegou a tela Projetos, para quem já usa o CRM/Kanban. Crie o projeto, por exemplo a instalação de 80 máquinas em uma indústria, e dentro dele crie quantas frentes de trabalho quiser: compras, engenharia, operacional. Cada frente é um quadro próprio com as etapas dela, e o projeto mostra a barra de progresso da obra e as tarefas de cada card. As frentes já nascem com as etapas certas, sem valores e sem probabilidade de fechamento.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cards de funis de processo não falam mais de venda',
+        description: 'Em qualquer funil com a opção de acompanhar valores desligada, o card deixa de pedir valor estimado, probabilidade e origem do lead. O campo de vendedor passa a se chamar responsável e a previsão de fechamento passa a se chamar prazo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.36.13',
+    date: '17 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Prestadores PJ e MEI em uma aba própria',
+        description: 'Funcionários (RH) ganhou a aba PJ/MEI, separada da equipe fixa. O cadastro do prestador pede CNPJ, confere o número e busca a razão social automaticamente. Ponto eletrônico, vale transporte, dependentes e folha não aparecem mais para quem é prestador, e quem já batia ponto tem o registro desativado ao mudar de regime.',
+        category: 'recurso',
+      },
+      {
+        title: 'Contrato do prestador com aviso de vencimento',
+        description: 'Agora é possível registrar início, fim, valor e forma de cobrança do contrato, seja mensal, por serviço, por hora ou por diária. Dá para renovar mantendo o contrato anterior no histórico ou encerrar quando quiser, e a lista avisa quando a vigência está perto de terminar.',
+        category: 'recurso',
+      },
+      {
+        title: 'Recibo de prestação de serviço no pagamento',
+        description: 'Ao pagar um prestador, o valor já vem do contrato vigente e é possível guardar o número da nota recebida. O recibo gerado é de prestação de serviço, sem nenhum desconto de imposto, e a despesa entra como custo de mão de obra avulsa, separada da folha de funcionários.',
+        category: 'recurso',
+      },
+      {
+        title: 'Nome da conta no recibo de pagamento',
+        description: 'O recibo emitido logo após o pagamento mostrava um código interno no campo Forma de Pagamento. Agora exibe o nome da conta utilizada, inclusive nos recibos de pagamentos anteriores.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.36.12',
     date: '17 de outubro de 2026',
     type: 'patch',

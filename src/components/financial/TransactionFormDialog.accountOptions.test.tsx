@@ -460,8 +460,17 @@ describe('TransactionFormDialog — vencimento da conta futura do CRM', () => {
     expect(document.body.textContent).toContain(`${MESSAGES['pt-br'].app.finance.accounts.table.dueDate} *`);
   });
 
-  it('não muda os demais lançamentos que não ativaram a regra do CRM', () => {
-    mount('entrada');
+  // Antes, o vencimento só existia no fluxo do CRM: lançar uma conta a pagar
+  // pelo Financeiro com "Já foi pago" desligado não tinha onde informar a data,
+  // e ela só reaparecia no Editar da lista de Contas (que é outro formulário).
+  it('oferece o vencimento, opcional, em qualquer lançamento ainda não pago', () => {
+    const dueDateLabel = MESSAGES['pt-br'].app.finance.accounts.table.dueDate;
+    mount('saida');
+
+    // Com "Já foi pago" LIGADO (padrão) o campo não faz sentido e some.
+    expect(document.body.textContent).not.toContain(
+      MESSAGES['pt-br'].app.finance.transactionForm.dueDateHint,
+    );
 
     const paidSwitch = document.querySelector('[role="switch"]');
     expect(paidSwitch).toBeTruthy();
@@ -470,7 +479,81 @@ describe('TransactionFormDialog — vencimento da conta futura do CRM', () => {
       paidSwitch!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
 
-    expect(document.body.textContent).not.toContain(`${MESSAGES['pt-br'].app.finance.accounts.table.dueDate} *`);
+    expect(document.body.textContent).toContain(dueDateLabel);
+    // Sem asterisco: aqui o vencimento é opcional (o `*` é só do fluxo do CRM).
+    expect(document.body.textContent).not.toContain(`${dueDateLabel} *`);
+    expect(document.body.textContent).toContain(
+      MESSAGES['pt-br'].app.finance.transactionForm.dueDateHint,
+    );
+  });
+
+  it('deixa salvar a conta em aberto sem vencimento, mandando null', async () => {
+    localStorage.setItem('fin_last_account_id', 'acc-banco');
+    const onSubmit = vi.fn().mockResolvedValue({ ids: ['txn-1'] });
+    mount('saida', false, onSubmit);
+
+    const setNativeValue = (element: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+      const proto = element instanceof HTMLTextAreaElement
+        ? window.HTMLTextAreaElement.prototype
+        : window.HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(proto, 'value')!.set!.call(element, value);
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    const description = document.querySelector(`textarea[placeholder="${tf.descriptionPlaceholder}"]`) as HTMLTextAreaElement;
+    const amount = document.querySelector(`input[placeholder="${tf.amountPlaceholder}"]`) as HTMLInputElement;
+
+    act(() => {
+      setNativeValue(description, 'Conta a pagar sem data definida');
+      setNativeValue(amount, '25000');
+      document.querySelector<HTMLElement>('[role="switch"]')!.click();
+    });
+
+    const save = Array.from(document.querySelectorAll('button'))
+      .find((button) => button.textContent?.trim() === tf.saveLabel);
+
+    await act(async () => {
+      save!.click();
+      await Promise.resolve();
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      is_paid: false,
+      due_date: null,
+    }));
+  });
+
+  it('não manda vencimento quando o lançamento já está pago', async () => {
+    localStorage.setItem('fin_last_account_id', 'acc-banco');
+    const onSubmit = vi.fn().mockResolvedValue({ ids: ['txn-1'] });
+    mount('saida', false, onSubmit);
+
+    const setNativeValue = (element: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+      const proto = element instanceof HTMLTextAreaElement
+        ? window.HTMLTextAreaElement.prototype
+        : window.HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(proto, 'value')!.set!.call(element, value);
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    const description = document.querySelector(`textarea[placeholder="${tf.descriptionPlaceholder}"]`) as HTMLTextAreaElement;
+    const amount = document.querySelector(`input[placeholder="${tf.amountPlaceholder}"]`) as HTMLInputElement;
+
+    act(() => {
+      setNativeValue(description, 'Despesa já quitada');
+      setNativeValue(amount, '5000');
+    });
+
+    const save = Array.from(document.querySelectorAll('button'))
+      .find((button) => button.textContent?.trim() === tf.saveLabel);
+
+    await act(async () => {
+      save!.click();
+      await Promise.resolve();
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ is_paid: true }));
+    expect(onSubmit.mock.calls[0][0].due_date).toBeUndefined();
   });
 
   it('envia o vencimento escolhido no payload da conta ainda não recebida', async () => {

@@ -8,6 +8,7 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -384,7 +385,16 @@ export function CustomerFormDialog({
                 <FormField control={form.control} name="birth_date" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t.birthDate}</FormLabel>
-                    <FormControl><Input type="date" {...field} /></FormControl>
+                    {/* Campo opcional (z.string().optional()), por isso clearable */}
+                    <FormControl>
+                      <DatePicker
+                        value={field.value ?? ''}
+                        onValueChange={field.onChange}
+                        placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
+                        clearable
+                        clearLabel={MESSAGES[locale].app.common.clear}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

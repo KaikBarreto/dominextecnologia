@@ -15,6 +15,11 @@ export interface CrmPipeline {
    *  migration 20261017131000_crm_pipeline_tracks_value.sql. Default do
    *  banco é `true`, então nunca degrada funil existente. */
   tracks_value: boolean;
+  /** NULL = funil comercial (aparece em /crm). Preenchido = frente de um
+   *  Projeto (gestão de obras) — aparece só dentro do projeto, nunca em
+   *  /crm. Coluna já existe no banco (migrations 20261017180000/181000/
+   *  182000); este hook só lê funis comerciais (ver queryFn abaixo). */
+  project_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -77,17 +82,33 @@ function describePipelineDeleteError(error: unknown): string {
  * mantido por trigger no banco a partir do stage_id (ver migration
  * 20260918100000_crm_multi_pipeline.sql) — este hook NUNCA escreve
  * pipeline_id de lead diretamente.
+ *
+ * Onda 1 de Projetos (gestão de obras, 2026-10-17): este hook é o de /crm e
+ * só devolve funis COMERCIAIS (`project_id IS NULL`). Frentes de projeto
+ * (`project_id NOT NULL`) ficam de fora — a tela de Projeto (outro Dev) terá
+ * seu próprio hook com filtro oposto.
+ *
+ * A queryKey é `['crm_pipelines', 'global']`, não `['crm_pipelines']` puro:
+ * se /crm e a futura tela de Projeto compartilhassem a MESMA entrada do
+ * React Query com filtros diferentes, o quadro de /crm passaria a mostrar
+ * frentes de projeto (ou vice-versa) dependendo de qual tela montou
+ * primeiro — bug intermitente, dependente de ordem de navegação, invisível
+ * em teste unitário. As mutations abaixo invalidam só o prefixo curto
+ * `['crm_pipelines']` (match por prefixo, `exact: false` é o default do
+ * React Query) justamente pra atingir os dois namespaces de uma vez — não
+ * troque isso pra chave longa.
  */
 export function useCrmPipelines() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: pipelines = NO_PIPELINES, isLoading, error } = useQuery({
-    queryKey: ['crm_pipelines'],
+    queryKey: ['crm_pipelines', 'global'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('crm_pipelines')
         .select('*')
+        .is('project_id', null)
         .order('position', { ascending: true });
 
       if (error) throw error;
@@ -224,6 +245,11 @@ export function useCrmPipelines() {
       // backend). Não é a segurança de verdade — quem excluir por SQL direto
       // não passa por aqui; é só pra não abrir um estado vazio que a tela do
       // D2 não sabe desenhar.
+      // Onda 1 de Projetos (2026-10-17): `pipelines` aqui já é só a lista
+      // comercial (`project_id IS NULL`, ver queryFn acima), então esta
+      // guarda passou a significar "último funil COMERCIAL da empresa" —
+      // que é exatamente o correto: frentes de projeto não contam pra essa
+      // trava, e não deveriam.
       if (pipelines.length <= 1) {
         throw new Error('PIPELINE_LAST_ONE');
       }

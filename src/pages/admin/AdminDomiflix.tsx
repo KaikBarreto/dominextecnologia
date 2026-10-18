@@ -5,6 +5,8 @@ import domiflixLogoLight from "@/assets/domiflix-logo-horizontal.png";
 import { typography } from "@/lib/typography";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { DateTimePicker } from "@/components/ui/DateTimePicker";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -402,10 +404,10 @@ function TitleFormDialog({
               </div>
               <div className="col-span-2 space-y-1.5">
                 <Label>Data/Hora da Live</Label>
-                <Input
-                  type="datetime-local"
+                <DateTimePicker
                   value={form.live_scheduled_at}
-                  onChange={(e) => setForm({ ...form, live_scheduled_at: e.target.value })}
+                  onValueChange={(v) => setForm({ ...form, live_scheduled_at: v })}
+                  placeholder="dd/mm/aaaa --:--"
                 />
               </div>
             </>
@@ -632,10 +634,12 @@ function EpisodeFormDialog({
 
           <div className="col-span-2 space-y-1.5">
             <Label>Data de Gravação</Label>
-            <Input
-              type="date"
+            <DatePicker
               value={form.recorded_at}
-              onChange={(e) => setForm({ ...form, recorded_at: e.target.value })}
+              onValueChange={(v) => setForm({ ...form, recorded_at: v })}
+              placeholder="dd/mm/aaaa"
+              clearable
+              clearLabel="Limpar"
             />
           </div>
         </div>

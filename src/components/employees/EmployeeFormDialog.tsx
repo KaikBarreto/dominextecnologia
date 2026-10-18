@@ -8,6 +8,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
@@ -21,8 +22,11 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { useToast } from '@/hooks/use-toast';
 import { Employee, PaymentFrequency, PaymentDayType } from '@/hooks/useEmployees';
 import { useUsers } from '@/hooks/useUsers';
-import { cpfCnpjMask, phoneMask, pixKeyMask } from '@/utils/masks';
+import { cpfCnpjMask, phoneMask, pixKeyMask, cnpjMask } from '@/utils/masks';
+import { isValidCnpj } from '@/utils/cnpjValidation';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
+import { EmployeeContractSection } from '@/components/employees/EmployeeContractSection';
+import { CnpjDocumentInput } from '@/components/customers/CnpjDocumentInput';
 import { centsFromPastedAmount } from '@/lib/money-paste-mask';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
@@ -43,15 +47,22 @@ interface EmployeeFormDialogProps {
   isPending?: boolean;
   /** Usado APENAS no fluxo "salvar+gerar DISC" na criação. Retorna o funcionário criado. */
   onCreateForDisc?: (data: Partial<Employee>) => Promise<{ id: string; name: string }>;
+  /**
+   * Regime pré-selecionado numa CRIAÇÃO nova (ignorado em edição). A aba
+   * PJ/MEI abre o cadastro já travado em 'pj', pra não nascer errado e ter
+   * que trocar o regime manualmente.
+   */
+  defaultRegime?: 'informal' | 'clt' | 'pj';
 }
 
-export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isPending, onCreateForDisc }: EmployeeFormDialogProps) {
+export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isPending, onCreateForDisc, defaultRegime }: EmployeeFormDialogProps) {
   const { toast } = useToast();
   const { users } = useUsers();
   const { locale, currency } = useAppLocaleContext();
   const maskCurrency = (value: string) => currencyMask(value, currency, locale);
   const t = MESSAGES[locale].app.employees.form;
   const tv = MESSAGES[locale].app.employees.form.validations;
+  const tToasts = MESSAGES[locale].app.employees.toasts;
   const isEditing = !!employee;
   const { monthlyHours: resolvedMonthlyHours } = useEmployeeWorkHours(employee?.id || null);
   const [name, setName] = useState('');
@@ -79,19 +90,25 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [paymentDay, setPaymentDay] = useState<number>(5);
   const [paymentDay2, setPaymentDay2] = useState<number>(20);
   const [paymentWeekday, setPaymentWeekday] = useState<number>(5);
-  // Campos CLT
-  const [employmentRegime, setEmploymentRegime] = useState<'informal' | 'clt'>('informal');
+  // Campos CLT / PJ
+  const [employmentRegime, setEmploymentRegime] = useState<'informal' | 'clt' | 'pj'>('informal');
   const [dependentsCount, setDependentsCount] = useState<string>('0');
   const [vtEnabled, setVtEnabled] = useState<boolean>(false);
   const [vtMonthlyValue, setVtMonthlyValue] = useState<string>('');
   const [cbo, setCbo] = useState<string>('');
   const [matricula, setMatricula] = useState<string>('');
+  // Campos PJ/MEI (só usados quando employmentRegime === 'pj')
+  const [pjCnpj, setPjCnpj] = useState<string>('');
+  const [pjLegalName, setPjLegalName] = useState<string>('');
+  const [pjIsMei, setPjIsMei] = useState<boolean>(false);
   const TAB_DADOS = 'dados';
   const TAB_REMUNERACAO = 'remuneracao';
   const TAB_PONTO = 'ponto';
+  const TAB_CONTRACT = 'contract';
   const TAB_DISC = 'disc';
-  type TabKey = typeof TAB_DADOS | typeof TAB_REMUNERACAO | typeof TAB_PONTO | typeof TAB_DISC;
+  type TabKey = typeof TAB_DADOS | typeof TAB_REMUNERACAO | typeof TAB_PONTO | typeof TAB_CONTRACT | typeof TAB_DISC;
   const [activeTab, setActiveTab] = useState<TabKey>(TAB_DADOS);
+  const isPj = employmentRegime === 'pj';
   // ID do funcionário recém-criado no fluxo "salvar+gerar DISC" na criação.
   const [createdEmployeeId, setCreatedEmployeeId] = useState<string | null>(null);
   const [createdEmployeeName, setCreatedEmployeeName] = useState<string | null>(null);
@@ -141,12 +158,15 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         setPaymentDay(employee?.payment_day ?? 5);
         setPaymentDay2(employee?.payment_day_2 ?? 20);
         setPaymentWeekday(employee?.payment_weekday ?? 5);
-        setEmploymentRegime(employee?.employment_regime ?? 'informal');
+        setEmploymentRegime(employee?.employment_regime ?? defaultRegime ?? 'informal');
         setDependentsCount(String(employee?.dependents_count ?? 0));
         setVtEnabled(employee?.vt_enabled ?? false);
         setVtMonthlyValue(employee?.vt_monthly_value ? currencyMask(String(Math.round(employee.vt_monthly_value * 100)), currency, locale) : '');
         setCbo(employee?.cbo ?? '');
         setMatricula(employee?.matricula ?? '');
+        setPjCnpj(employee?.pj_cnpj ? cnpjMask(employee.pj_cnpj) : '');
+        setPjLegalName(employee?.pj_legal_name ?? '');
+        setPjIsMei(employee?.pj_is_mei ?? false);
       }
       setPhotoUrl(employee?.photo_url || '');
       setPontoEnabled(employee?.ponto_enabled ?? false);
@@ -220,7 +240,9 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         pix_key: pixKey || null,
         photo_url: photoUrl || null,
         user_id: linkedUserId,
-        ponto_enabled: pontoEnabled,
+        // PJ/MEI nunca usa ponto, mesmo que o toggle não tenha sido tocado
+        // nesta sessão de edição (ex.: criação direto como PJ).
+        ponto_enabled: employmentRegime === 'pj' ? false : pontoEnabled,
         payment_frequency: paymentFrequency,
         payment_day_type: paymentFrequency === 'weekly' ? 'calendar' : paymentDayType,
         payment_day: paymentFrequency === 'weekly' ? null : paymentDay,
@@ -232,6 +254,9 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         vt_monthly_value: parseCurrency(vtMonthlyValue),
         cbo: cbo || null,
         matricula: matricula || null,
+        pj_cnpj: pjCnpj || null,
+        pj_legal_name: pjLegalName || null,
+        pj_is_mei: pjIsMei,
       });
       draft.clearDraft();
       setCreatedEmployeeId(created.id);
@@ -243,12 +268,35 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
     }
   };
 
+  // Troca de regime: PJ/MEI não usa ponto eletrônico. Se o funcionário tinha
+  // o ponto ligado e vira PJ, desliga EXPLICITAMENTE aqui (não basta esconder
+  // o campo, senão ele continua batendo ponto) e avisa com um toast ANTES de
+  // salvar. Também tira o usuário de uma aba que deixou de existir no modo novo.
+  const handleRegimeChange = (next: 'informal' | 'clt' | 'pj') => {
+    setEmploymentRegime(next);
+    if (next === 'pj' && pontoEnabled) {
+      setPontoEnabled(false);
+      toast({ title: tToasts.pontoDisabledForPj });
+    }
+    if (activeTab === TAB_PONTO && next === 'pj') setActiveTab(TAB_DADOS);
+    if (activeTab === TAB_CONTRACT && next !== 'pj') setActiveTab(TAB_DADOS);
+  };
+
+  // CNPJ só é obrigatório estar CORRETO se preenchido (campo em si é opcional,
+  // mas dígito errado nunca pode ser salvo).
+  const validatePjCnpj = (): boolean => {
+    if (employmentRegime !== 'pj') return true;
+    if (!pjCnpj.trim()) return true;
+    return isValidCnpj(pjCnpj);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { setActiveTab(TAB_DADOS); toast({ variant: 'destructive', title: tv.nameRequired }); return; }
     if (createAccess && !email.trim()) { setActiveTab(TAB_DADOS); toast({ variant: 'destructive', title: tv.emailRequired }); return; }
     const finalPassword = useTemporaryPassword ? (password || generatePassword()) : password;
     if (createAccess && finalPassword.length < 6) { setActiveTab(TAB_REMUNERACAO); toast({ variant: 'destructive', title: tv.passwordMinLength }); return; }
+    if (!validatePjCnpj()) { setActiveTab(TAB_REMUNERACAO); toast({ variant: 'destructive', title: t.pj.cnpjInvalid }); return; }
     draft.clearDraft();
     onSubmit({
       name: name.trim(),
@@ -264,7 +312,9 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       pix_key: pixKey || null,
       photo_url: photoUrl || null,
       user_id: linkedUserId,
-      ponto_enabled: pontoEnabled,
+      // PJ/MEI nunca usa ponto, mesmo que o toggle não tenha sido tocado nesta
+      // sessão de edição (a régua é: trocar pra PJ desliga o ponto sempre).
+      ponto_enabled: employmentRegime === 'pj' ? false : pontoEnabled,
       payment_frequency: paymentFrequency,
       payment_day_type: paymentFrequency === 'weekly' ? 'calendar' : paymentDayType,
       payment_day: paymentFrequency === 'weekly' ? null : paymentDay,
@@ -276,6 +326,9 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       vt_monthly_value: parseCurrency(vtMonthlyValue),
       cbo: cbo || null,
       matricula: matricula || null,
+      pj_cnpj: pjCnpj || null,
+      pj_legal_name: pjLegalName || null,
+      pj_is_mei: pjIsMei,
       _createAccess: createAccess,
       _password: finalPassword,
     } as any);
@@ -293,14 +346,19 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       {!alreadyCreatedViaDisc && (
         <Button type="submit" form="employee-form" disabled={isPending}>
           {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {employee ? t.submitEdit : t.submitNew}
+          {employee ? t.submitEdit : (isPj ? t.submitNewPj : t.submitNew)}
         </Button>
       )}
     </div>
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={employee ? t.titleEdit : t.titleNew} footer={footer}>
+    <ResponsiveModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={employee ? (isPj ? t.titleEditPj : t.titleEdit) : (isPj ? t.titleNewPj : t.titleNew)}
+      footer={footer}
+    >
       <DraftResumeDialog
         open={draft.showResumePrompt}
         onResume={() => {
@@ -320,7 +378,10 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
             tabs={[
               { value: TAB_DADOS, label: t.tabData },
               { value: TAB_REMUNERACAO, label: t.tabPayment },
-              { value: TAB_PONTO, label: t.tabTimeclock },
+              // PJ/MEI não usa ponto eletrônico — a aba some, não só o conteúdo.
+              ...(isPj ? [] : [{ value: TAB_PONTO, label: t.tabTimeclock }]),
+              // Contrato só existe pra PJ/MEI (duração/valor/cobrança do serviço).
+              ...(isPj ? [{ value: TAB_CONTRACT, label: t.tabContract }] : []),
               { value: TAB_DISC, label: t.tabDisc },
             ]}
             activeTab={activeTab}
@@ -387,7 +448,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           </div>
           <div className="space-y-1.5">
             <Label>{t.fields.hireDate}</Label>
-            <Input type="date" value={hireDate} onChange={e => setHireDate(e.target.value)} />
+            <DatePicker value={hireDate} onValueChange={setHireDate} />
           </div>
           <div className="space-y-1.5">
             <Label>{t.fields.pixKey}</Label>
@@ -400,97 +461,160 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           <TabsContent value={TAB_REMUNERACAO} className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label>{t.fields.salary}</Label>
+            {/* PJ/MEI não tem "salário" (quem define o valor é o Contrato) —
+                este campo some do rótulo CLT e vira referência opcional, só
+                pra alimentar estimativas de custo de mão de obra na OS. */}
+            <Label>{isPj ? t.fields.salaryPj : t.fields.salary}</Label>
             <Input value={salary} onChange={e => setSalary(maskCurrency(e.target.value))} onPaste={handleCurrencyFieldPaste(setSalary)} placeholder={maskCurrency('0')} />
+            {isPj && <p className="text-[11px] text-muted-foreground">{t.fields.salaryPjHint}</p>}
           </div>
-          <div className="space-y-1.5">
-            <Label>{t.fields.monthlyCost}</Label>
-            <div className="flex gap-1">
-              <Input value={monthlyCost} onChange={e => setMonthlyCost(maskCurrency(e.target.value))} onPaste={handleCurrencyFieldPaste(setMonthlyCost)} placeholder={maskCurrency('0')} />
-              <Button type="button" variant="outline" size="sm" className="h-10 px-2 shrink-0" onClick={() => setShowCostCalc(true)} title={t.fields.monthlyCostHint}>
-                <Calculator className="h-4 w-4 mr-1" />
-                {t.fields.calculateButton}
-              </Button>
+          {/* Custo mensal + calculadora de encargos CLT: não se aplica a PJ/MEI
+              (prestador não tem folha, logo não tem encargo pra calcular). */}
+          {!isPj && (
+            <div className="space-y-1.5">
+              <Label>{t.fields.monthlyCost}</Label>
+              <div className="flex gap-1">
+                <Input value={monthlyCost} onChange={e => setMonthlyCost(maskCurrency(e.target.value))} onPaste={handleCurrencyFieldPaste(setMonthlyCost)} placeholder={maskCurrency('0')} />
+                <Button type="button" variant="outline" size="sm" className="h-10 px-2 shrink-0" onClick={() => setShowCostCalc(true)} title={t.fields.monthlyCostHint}>
+                  <Calculator className="h-4 w-4 mr-1" />
+                  {t.fields.calculateButton}
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">{t.fields.monthlyCostHint}</p>
             </div>
-            <p className="text-[11px] text-muted-foreground">{t.fields.monthlyCostHint}</p>
-          </div>
+          )}
         </div>
 
-        {/* Campos CLT */}
+        {/* Regime de contratação: Informal / CLT / PJ-MEI (3 opções — mesmo
+            padrão visual do seletor de modo do EmployeePaymentModal). */}
         <div className="rounded-lg border p-3 space-y-4">
           <Label className="text-sm font-medium">{t.clt.sectionTitle}</Label>
-
-          {/* Regime: Informal / CLT */}
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs text-muted-foreground">{t.clt.regimeLabel}</Label>
-            <LabeledSwitch
-              value={employmentRegime}
-              onChange={(v) => setEmploymentRegime(v as 'informal' | 'clt')}
-              off={{ value: 'informal', label: 'Informal' }}
-              on={{ value: 'clt', label: 'CLT' }}
-              aria-label={t.clt.regimeAriaLabel}
-            />
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            {/* CBO */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t.clt.cboLabel}</Label>
-              <Input
-                value={cbo}
-                onChange={e => setCbo(e.target.value)}
-                placeholder={t.clt.cboPlaceholder}
-              />
-            </div>
-
-            {/* Matrícula */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t.clt.matriculaLabel}</Label>
-              <Input
-                value={matricula}
-                onChange={e => setMatricula(e.target.value)}
-                placeholder={t.clt.matriculaPlaceholder}
-              />
-            </div>
-
-            {/* Dependentes */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t.clt.dependentsLabel}</Label>
-              <NumericInput
-                value={dependentsCount}
-                onValueChange={setDependentsCount}
-                placeholder={t.clt.dependentsPlaceholder}
-              />
+            <div className="flex rounded-md border overflow-hidden text-sm" aria-label={t.clt.regimeAriaLabel}>
+              {(['informal', 'clt', 'pj'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  className={`flex-1 px-3 py-1.5 transition-colors ${
+                    employmentRegime === m
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                  onClick={() => handleRegimeChange(m)}
+                >
+                  {t.clt.regimeOptions[m]}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Vale-transporte */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs text-muted-foreground">{t.clt.vtLabel}</Label>
-              <LabeledSwitch
-                value={vtEnabled ? 'on' : 'off'}
-                onChange={(v) => setVtEnabled(v === 'on')}
-                off={{ value: 'off', label: 'Não' }}
-                on={{ value: 'on', label: 'Sim' }}
-                aria-label={t.clt.vtAriaLabel}
-              />
-            </div>
-            {vtEnabled && (
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t.clt.vtMonthlyLabel}</Label>
-                <Input
-                  value={vtMonthlyValue}
-                  onChange={e => setVtMonthlyValue(maskCurrency(e.target.value))}
-                  onPaste={handleCurrencyFieldPaste(setVtMonthlyValue)}
-                  placeholder={maskCurrency('0')}
+          {/* Campos CLT — não se aplicam a Informal nem a PJ/MEI */}
+          {!isPj && (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {/* CBO */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">{t.clt.cboLabel}</Label>
+                  <Input
+                    value={cbo}
+                    onChange={e => setCbo(e.target.value)}
+                    placeholder={t.clt.cboPlaceholder}
+                  />
+                </div>
+
+                {/* Matrícula */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">{t.clt.matriculaLabel}</Label>
+                  <Input
+                    value={matricula}
+                    onChange={e => setMatricula(e.target.value)}
+                    placeholder={t.clt.matriculaPlaceholder}
+                  />
+                </div>
+
+                {/* Dependentes */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">{t.clt.dependentsLabel}</Label>
+                  <NumericInput
+                    value={dependentsCount}
+                    onValueChange={setDependentsCount}
+                    placeholder={t.clt.dependentsPlaceholder}
+                  />
+                </div>
+              </div>
+
+              {/* Vale-transporte */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground">{t.clt.vtLabel}</Label>
+                  <LabeledSwitch
+                    value={vtEnabled ? 'on' : 'off'}
+                    onChange={(v) => setVtEnabled(v === 'on')}
+                    off={{ value: 'off', label: 'Não' }}
+                    on={{ value: 'on', label: 'Sim' }}
+                    aria-label={t.clt.vtAriaLabel}
+                  />
+                </div>
+                {vtEnabled && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">{t.clt.vtMonthlyLabel}</Label>
+                    <Input
+                      value={vtMonthlyValue}
+                      onChange={e => setVtMonthlyValue(maskCurrency(e.target.value))}
+                      onPaste={handleCurrencyFieldPaste(setVtMonthlyValue)}
+                      placeholder={maskCurrency('0')}
+                    />
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Bloco PJ/MEI — só aparece com regime = 'pj' */}
+          {isPj && (
+            <div className="space-y-3">
+              <Label className="text-xs text-muted-foreground">{t.pj.sectionTitle}</Label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">{t.pj.cnpjLabel}</Label>
+                  <CnpjDocumentInput
+                    value={pjCnpj}
+                    onChange={setPjCnpj}
+                    cnpjOnly
+                    placeholder={t.pj.cnpjPlaceholder}
+                    onDataFound={(data) => {
+                      if (data.razaoSocial) setPjLegalName(data.razaoSocial);
+                    }}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">{t.pj.legalNameLabel}</Label>
+                  <Input
+                    value={pjLegalName}
+                    onChange={e => setPjLegalName(e.target.value)}
+                    placeholder={t.pj.legalNamePlaceholder}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">{t.pj.isMeiLabel}</Label>
+                <LabeledSwitch
+                  value={pjIsMei ? 'on' : 'off'}
+                  onChange={(v) => setPjIsMei(v === 'on')}
+                  off={{ value: 'off', label: 'Não' }}
+                  on={{ value: 'on', label: 'Sim' }}
+                  aria-label={t.pj.isMeiAriaLabel}
                 />
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
-        {/* Configuração de pagamento */}
+        {/* Configuração de pagamento: ciclo de FOLHA (frequência/dia que o
+            cron de Contas a Pagar lê) — não se aplica a PJ/MEI, que é pago
+            pelo Contrato (valor + dia + forma de cobrança), não por folha. */}
+        {!isPj && (
         <div className="rounded-lg border p-3 space-y-3">
           <Label className="text-sm font-medium">{t.paymentConfig.sectionTitle}</Label>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -571,6 +695,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
             {t.paymentConfig.hint}
           </p>
         </div>
+        )}
 
         {/* Link to existing user */}
         <div className="rounded-lg border p-3 space-y-2">
@@ -672,6 +797,10 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
                 pointSlug={employee?.ponto_slug ?? null}
               />
             )}
+          </TabsContent>
+
+          <TabsContent value={TAB_CONTRACT} className="space-y-4">
+            <EmployeeContractSection employeeId={employee?.id ?? null} />
           </TabsContent>
 
           <TabsContent value={TAB_DISC} className="space-y-4">

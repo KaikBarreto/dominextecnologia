@@ -10,6 +10,7 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -1359,7 +1360,7 @@ export function ServiceOrderFormDialog({
                 {assigneeSection}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField control={form.control} name="scheduled_date" render={({ field }) => (
-                    <FormItem><FormLabel>{t.labelScheduledDate}</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>{t.labelScheduledDate}</FormLabel><FormControl><DatePicker value={field.value ?? ''} onValueChange={field.onChange} placeholder={MESSAGES[locale].app.common.datePicker.placeholder} clearable clearLabel={MESSAGES[locale].app.common.clear} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="scheduled_time" render={({ field }) => (
                     <FormItem><FormLabel>{t.labelScheduledTime}</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
@@ -1713,7 +1714,7 @@ export function ServiceOrderFormDialog({
               {assigneeSection}
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField control={form.control} name="scheduled_date" render={({ field }) => (
-                  <FormItem><FormLabel>{t.labelScheduledDate}</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>{t.labelScheduledDate}</FormLabel><FormControl><DatePicker value={field.value ?? ''} onValueChange={field.onChange} placeholder={MESSAGES[locale].app.common.datePicker.placeholder} clearable clearLabel={MESSAGES[locale].app.common.clear} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="scheduled_time" render={({ field }) => (
                   <FormItem><FormLabel>{t.labelScheduledTime}</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
@@ -1788,11 +1789,11 @@ export function ServiceOrderFormDialog({
                         <Label className="text-xs">
                           {t.recurrenceUntil} <span className="text-destructive">*</span>
                         </Label>
-                        <Input
-                          type="date"
+                        <DatePicker
                           value={recurrenceEndDate}
-                          onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                          aria-invalid={!recurrenceEndDate}
+                          onValueChange={setRecurrenceEndDate}
+                          placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
+                          ariaInvalid={!recurrenceEndDate}
                         />
                       </div>
                     </div>

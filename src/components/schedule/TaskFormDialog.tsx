@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -349,12 +350,18 @@ export function TaskFormDialog({
                 <span className="text-muted-foreground font-normal"> {t.dateOptionalHint}</span>
               )}
             </Label>
-            <Input
-              type="date"
+            <DatePicker
               value={scheduledDate}
-              onChange={(e) => setScheduledDate(e.target.value)}
-              required={isCrmTask && showInSchedule}
-              aria-invalid={isCrmTask && showInSchedule && !scheduledDate}
+              onValueChange={setScheduledDate}
+              placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
+              // O gatilho é um `<button>`, então não existe `required` nativo:
+              // quem barra o submit continua sendo o JS do handleSubmit e o
+              // `disabled` do botão de salvar. `ariaInvalid` mantém o aviso pro
+              // leitor de tela que o `<input>` dava.
+              ariaInvalid={isCrmTask && showInSchedule && !scheduledDate}
+              // Opcional quando "Mostrar na agenda" está desligado (Onda E).
+              clearable
+              clearLabel={MESSAGES[locale].app.common.clear}
             />
           </div>
           <div className="space-y-2">
@@ -453,11 +460,13 @@ export function TaskFormDialog({
                   <Label className="text-xs">
                     {t.labelUntil} <span className="text-destructive">*</span>
                   </Label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={recurrenceEndDate}
-                    onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                    aria-invalid={!recurrenceEndDate}
+                    onValueChange={setRecurrenceEndDate}
+                    placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
+                    // Campo obrigatório quando visível; useTaskSubmit já barra
+                    // a série sem data final com mensagem própria.
+                    ariaInvalid={!recurrenceEndDate}
                   />
                 </div>
               )}

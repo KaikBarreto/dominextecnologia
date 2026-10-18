@@ -13,6 +13,7 @@ import { todayInTz } from '@/lib/timezone';
 import {
   Users, Plus, Search, Clock, UsersRound, UserRound, Briefcase,
   FileText, Banknote, Gift, AlertCircle, CreditCard, Pencil, Archive, Brain, Network, Workflow,
+  Building2,
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,8 @@ import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
 import { EmployeeCard } from '@/components/employees/EmployeeCard';
 import { EmployeesListView } from '@/components/employees/EmployeesListView';
+import { EmployeesPjListView, ContractVigenciaStatusBadge } from '@/components/employees/EmployeesPjListView';
+import { useActiveEmployeeContractsMap } from '@/hooks/useEmployeeContracts';
 import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
 import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { useViewMode } from '@/hooks/useViewMode';
@@ -156,6 +159,11 @@ export default function Employees() {
   );
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('az');
+  // Busca/ordenação da aba PJ/MEI são ISOLADAS da aba Funcionários (abas
+  // diferentes, listas diferentes — misturar o estado confundiria o usuário
+  // ao trocar de aba com um termo de busca ainda digitado).
+  const [pjSearch, setPjSearch] = useState('');
+  const [pjSort, setPjSort] = useState('az');
   // Modo de exibição da tab de funcionários: 'list' (default) ou 'grid' (cards).
   const [viewMode, setViewMode] = useViewMode('employees-view-mode');
   const [formOpen, setFormOpen] = useState(false);
@@ -184,6 +192,13 @@ export default function Employees() {
   const activeEmployees = useMemo(
     () => employees.filter((employee) => employee.is_active !== false),
     [employees],
+  );
+  // Contador do cabeçalho: decisão do CEO, não existe contador de PJ. Conta
+  // só informal/CLT, sempre — independe da aba aberta (achado em QA: o
+  // badge somava os PJ e divergia do que a aba Funcionários listava).
+  const headerEmployeeCount = useMemo(
+    () => activeEmployees.filter((employee) => employee.employment_regime !== 'pj').length,
+    [activeEmployees],
   );
 
   // ── Deep-link do Perfil Comportamental ──────────────────────────────────────
@@ -354,6 +369,7 @@ export default function Employees() {
   const tabs: SettingsTab[] = useMemo(() => {
     const base: SettingsTab[] = [
       { value: 'list', label: t.tabs.list, icon: UserRound },
+      { value: 'pj', label: t.tabs.pj, icon: Building2 },
       { value: 'teams', label: t.tabs.teams, icon: UsersRound },
     ];
     if (canManageTime) {
@@ -414,10 +430,12 @@ export default function Employees() {
     return calculateEmployeeBalance(movements, emp?.salary || 0);
   }, [activeEmployeeId, movements, employees]);
 
+  // Aba Funcionários: só informal/CLT. PJ/MEI tem aba própria (abaixo) — o
+  // CEO pediu explicitamente que a lista não misture os dois.
   const filtered = useMemo(() => {
     const result = activeEmployees.filter(e =>
-      fuzzyIncludes(e.name, search) ||
-      fuzzyIncludes(e.position, search)
+      e.employment_regime !== 'pj' &&
+      (fuzzyIncludes(e.name, search) || fuzzyIncludes(e.position, search))
     );
     switch (sort) {
       case 'az': result.sort((a, b) => a.name.localeCompare(b.name)); break;
@@ -426,6 +444,23 @@ export default function Employees() {
     }
     return result;
   }, [activeEmployees, search, sort]);
+
+  // Aba PJ/MEI: só regime 'pj'. Busca por nome ou CNPJ (fuzzyIncludes já
+  // normaliza acento/ordem — mesma régua única de busca do resto do app).
+  const filteredPj = useMemo(() => {
+    const result = activeEmployees.filter(e =>
+      e.employment_regime === 'pj' &&
+      (fuzzyIncludes(e.name, pjSearch) || fuzzyIncludes(e.pj_cnpj, pjSearch))
+    );
+    switch (pjSort) {
+      case 'az': result.sort((a, b) => a.name.localeCompare(b.name)); break;
+      case 'newest': result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); break;
+      case 'oldest': result.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); break;
+    }
+    return result;
+  }, [activeEmployees, pjSearch, pjSort]);
+
+  const { activeContractsMap } = useActiveEmployeeContractsMap();
 
   // Gera (idempotente) o slug do ponto público e copia o link de entrada no ato.
   // `wasEnabled` = estado anterior; só notifica/copia quando o ponto ACABOU de
@@ -616,6 +651,17 @@ export default function Employees() {
     accrualAmount?: number;
     /** Centro de custo (obra/projeto/setor) escolhido na hora do pagamento. Sempre opcional. */
     costCenterId?: string | null;
+    /**
+     * `'Funcionários'` é o default (CLT/informal, inalterado). PJ/MEI manda o
+     * NOME já resolvido pelo `EmployeePaymentModal`
+     * (`resolveDefaultPjCategoryName`/`CategorySelectField`) — decisão do CEO:
+     * pagamento de PJ não entra na folha, pra não inflar o custo de pessoal na
+     * DRE. NUNCA um literal solto aqui: `financial_transactions.category` é
+     * cópia de texto (não FK) e um nome que não existe em
+     * `financial_categories` da empresa nasce órfão (sem cor/ícone, fora do
+     * DRE — ver `src/lib/finance-system-categories.ts`).
+     */
+    category?: string;
   }) => {
     const today = todayInTz(timezone);
     try {
@@ -625,7 +671,7 @@ export default function Employees() {
         transaction_type: input.type,
         amount: input.amount,
         description: input.description,
-        category: 'Funcionários',
+        category: input.category || 'Funcionários',
         transaction_date: today,
         paid_date: today,
         is_paid: true,
@@ -740,6 +786,20 @@ export default function Employees() {
     // mudem depois.
     const identity = payload.mode === 'clt' ? buildHoleriteIdentity(companySettings, emp) : undefined;
 
+    // PJ/MEI: mesma lógica, mas a identidade congelada é a do PRESTADOR
+    // (razão social + CNPJ), pra reabrir o recibo de prestação de serviços
+    // fielmente mesmo que a razão social/CNPJ mude depois.
+    const competenciaStr = (() => {
+      const d = todayInTz(timezone);
+      return `${d.slice(5, 7)}/${d.slice(0, 4)}`;
+    })();
+    const pjIdentity = payload.mode === 'pj' ? {
+      legalName: emp.pj_legal_name,
+      cnpj: emp.pj_cnpj,
+      invoiceNumber: payload.invoiceNumber ?? null,
+      competencia: competenciaStr,
+    } : undefined;
+
     const paymentDetails = {
       salary: sal,
       bonus: activeBalance.totalBonus,
@@ -752,10 +812,12 @@ export default function Employees() {
       // Snapshot congelado do modo de pagamento — vive no MESMO payment_details
       // que hoje já vai pro movimento `ajuste` (é dali que o Extract lê).
       mode: payload.mode,
-      holerite: payload.holeriteSnapshot ?? { mode: 'informal' },
+      holerite: payload.holeriteSnapshot ?? { mode: payload.mode === 'pj' ? 'pj' : 'informal' },
       // Identidade congelada: empresa + funcionário no momento do pagamento.
       // Permite reproduzir o holerite CLT fielmente via extrato.
       ...(identity ? { holeriteIdentity: identity } : {}),
+      // Identidade congelada do prestador PJ/MEI (reaberta pelo extrato).
+      ...(pjIdentity ? { pjProviderIdentity: pjIdentity } : {}),
     };
 
     // 1. Register payment movement
@@ -764,7 +826,7 @@ export default function Employees() {
       type: 'pagamento',
       amount: toPay,
       balance_after: 0,
-      description: payload.description || 'Pagamento de salário',
+      description: payload.description || (payload.mode === 'pj' ? 'Pagamento de serviço prestado' : 'Pagamento de salário'),
       payment_method: payload.accountId,
       created_by: user?.id,
     }, {
@@ -842,15 +904,23 @@ export default function Employees() {
             await registerFinancialTransaction({
               type: 'saida',
               amount: toPay,
-              description: `Pagamento de salário - ${emp.name}`,
+              description: payload.mode === 'pj' ? `Pagamento de serviço, ${emp.name}` : `Pagamento de salário - ${emp.name}`,
               notes: payload.description,
               accountId: payload.accountId,
               employeeId: emp.id,
-              payrollKind: 'salary',
+              // PJ/MEI não é folha: sem `payrollKind`, não entra nas métricas de
+              // pendência de folha nem no agrupamento "salary" da DRE.
+              payrollKind: payload.mode === 'pj' ? undefined : 'salary',
               // Caminho sem folha pendente: a linha já NASCE líquida, então sem
               // `accrual_amount` a Competência perderia o vale do ciclo.
               accrualAmount,
               costCenterId: payload.costCenterId,
+              // PJ: nome já resolvido pelo modal (linha real de
+              // `financial_categories`, nunca um literal inventado aqui). O
+              // modal bloqueia o submit sem categoria escolhida — o fallback
+              // pra 'Funcionários' é só defesa contra estado impossível, pra
+              // o pagamento nunca travar por falta de categoria.
+              category: payload.mode === 'pj' ? (payload.category || 'Funcionários') : 'Funcionários',
             });
           }
         } catch (err) {
@@ -887,7 +957,10 @@ export default function Employees() {
             type: 'pagamento',
             amount: toPay,
             balance_after: 0,
-            description: payload.description || 'Pagamento de salário',
+            // Mesma expressão da linha 822 (o movimento gravado no banco) —
+            // reabrir o recibo tinha esse texto chumbado, mentindo "salário"
+            // num pagamento PJ que o banco já registrava certo (achado em QA).
+            description: payload.description || (payload.mode === 'pj' ? 'Pagamento de serviço prestado' : 'Pagamento de salário'),
             payment_method: payload.accountId,
             payment_details: paymentDetails,
             created_at: new Date().toISOString(),
@@ -928,6 +1001,19 @@ export default function Employees() {
 
   const fmtCurrency = (v: number) => formatMoney(v, currency, locale);
 
+  // `employee_movements.payment_method` grava o accountId (uuid) — fica
+  // assim pra sempre, é referência estável e mudar exigiria migration pro
+  // histórico. O que muda é só a EXIBIÇÃO: resolve o nome aqui, no render do
+  // recibo, com a MESMA régua de `EmployeeExtract.accountName` (conta
+  // apagada ou id desconhecido cai no fallback "Conta bancária", nunca mostra
+  // o uuid cru nem fica vazio). Mesmo hook de contas que a tela já carrega
+  // (`useFinancialAccounts`) — nenhuma consulta nova ao Supabase.
+  const accountName = (accountId?: string | null) => {
+    if (!accountId) return '';
+    const acc = allAccounts.find((a) => a.id === accountId);
+    return acc?.name || t.extract.fallbacks.bankAccount;
+  };
+
   const getInitials = (name: string) =>
     name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
 
@@ -941,8 +1027,8 @@ export default function Employees() {
         icon={Briefcase}
         actions={
           isMobile ? (
-            <Badge variant="secondary" className="text-[10px]">{activeEmployees.length}</Badge>
-          ) : <Badge variant="secondary">{activeEmployees.length}</Badge>
+            <Badge variant="secondary" className="text-[10px]">{headerEmployeeCount}</Badge>
+          ) : <Badge variant="secondary">{headerEmployeeCount}</Badge>
         }
       />
 
@@ -1153,6 +1239,105 @@ export default function Employees() {
               />
             )}
           </div>
+        ) : activeTab === 'pj' ? (
+          // -------------------------------------------------------------------
+          // Aba PJ/MEI: mesmo cadastro (employees.employment_regime = 'pj'),
+          // lista SEPARADA. Colunas próprias (CNPJ, contrato, valor, vigência)
+          // em vez de salário/ponto — nenhum dos dois se aplica a prestador.
+          // -------------------------------------------------------------------
+          <div className="space-y-4">
+            {isMobile ? (
+              <MobileListToolbar
+                searchValue={pjSearch}
+                onSearchChange={setPjSearch}
+                searchPlaceholder={t.pjTab.searchPlaceholderMobile}
+              >
+                <Select value={pjSort} onValueChange={setPjSort}>
+                  <SelectTrigger className="h-10 w-[150px] shrink-0"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="az">{t.toolbar.sortAz}</SelectItem>
+                    <SelectItem value="newest">{t.toolbar.sortNewest}</SelectItem>
+                    <SelectItem value="oldest">{t.toolbar.sortOldest}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </MobileListToolbar>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={t.pjTab.searchPlaceholder}
+                    value={pjSearch}
+                    onChange={e => setPjSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <Select value={pjSort} onValueChange={setPjSort}>
+                  <SelectTrigger className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="az">{t.toolbar.sortAz}</SelectItem>
+                    <SelectItem value="newest">{t.toolbar.sortNewest}</SelectItem>
+                    <SelectItem value="oldest">{t.toolbar.sortOldest}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button onClick={openNewEmployee} className="gap-1.5">
+                  <Plus className="h-4 w-4" /> {t.pjTab.toolbarNew}
+                </Button>
+              </div>
+            )}
+
+            {isLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map(i => <div key={i} className="h-[72px] rounded-lg bg-muted animate-pulse" />)}
+              </div>
+            ) : filteredPj.length === 0 ? (
+              <EmptyState
+                icon={<Building2 className="h-12 w-12" />}
+                title={pjSearch ? t.empty.noResults : t.pjTab.empty.title}
+                description={pjSearch ? t.empty.noResultsDescription : t.pjTab.empty.description}
+              />
+            ) : isMobile ? (
+              <div className="rounded-xl border bg-card overflow-hidden">
+                {filteredPj.map((emp) => {
+                  const contract = activeContractsMap.get(emp.id);
+                  const itemActions: ItemAction[] = [
+                    { key: 'extract', label: t.actions.view, icon: <FileText className="h-4 w-4" />, onClick: () => setExtractEmployee(emp) },
+                    { key: 'payment', label: t.actions.payment, icon: <CreditCard className="h-4 w-4" />, onClick: () => setPaymentEmployee(emp) },
+                    { key: 'edit', label: t.actions.edit, icon: <Pencil className="h-4 w-4" />, variant: 'edit' as const, onClick: () => { setEditingEmployee(emp); setFormOpen(true); } },
+                    { key: 'archive', label: t.actions.delete, icon: <Archive className="h-4 w-4" />, variant: 'destructive' as const, onClick: () => setEmployeeToArchive(emp) },
+                  ];
+                  const subtitleParts = [emp.pj_cnpj, contract ? `${fmtCurrency(contract.amount)} ${t.pjTab.billingSuffix[contract.billing_type]}` : t.pjTab.noContract].filter(Boolean);
+                  return (
+                    <MobileListItem
+                      key={emp.id}
+                      onClick={() => setExtractEmployee(emp)}
+                      actions={itemActions}
+                      leading={
+                        <Avatar className="h-10 w-10">
+                          <SignedAvatarImage src={emp.photo_url} alt={emp.name} />
+                          <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                            {getInitials(emp.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                      }
+                      title={emp.name}
+                      subtitle={subtitleParts.join(' • ')}
+                      trailing={contract ? <ContractVigenciaStatusBadge contract={contract} timezone={timezone} /> : undefined}
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <EmployeesPjListView
+                employees={filteredPj}
+                activeContractsMap={activeContractsMap}
+                onEdit={(emp) => { setEditingEmployee(emp); setFormOpen(true); }}
+                onArchive={(emp) => setEmployeeToArchive(emp)}
+                onPayment={(emp) => setPaymentEmployee(emp)}
+                onExtract={(emp) => setExtractEmployee(emp)}
+              />
+            )}
+          </div>
         ) : activeTab === 'teams' ? (
           <TeamsPanel />
         ) : activeTab === 'behavioral' ? (
@@ -1176,11 +1361,11 @@ export default function Employees() {
         ) : null}
       </SettingsSidebarLayout>
 
-      {/* FAB mobile-only — só na tab de lista. Desktop usa botão inline na toolbar. */}
-      {isMobile && activeTab === 'list' && (
+      {/* FAB mobile-only — só nas tabs de lista (Funcionários e PJ/MEI). Desktop usa botão inline na toolbar. */}
+      {isMobile && (activeTab === 'list' || activeTab === 'pj') && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label={t.toolbar.fabLabel}
+          label={activeTab === 'pj' ? t.pjTab.fabLabel : t.toolbar.fabLabel}
           onClick={openNewEmployee}
         />
       )}
@@ -1196,6 +1381,7 @@ export default function Employees() {
           const newEmp = await createEmployee.mutateAsync(data as any);
           return { id: newEmp.id, name: newEmp.name };
         }}
+        defaultRegime={activeTab === 'pj' ? 'pj' : undefined}
       />
 
       {movementEmployee && (
@@ -1225,6 +1411,10 @@ export default function Employees() {
           dependentsCount={paymentEmployee.dependents_count}
           vtEnabled={paymentEmployee.vt_enabled}
           vtMonthlyValue={paymentEmployee.vt_monthly_value}
+          pjActiveContract={(() => {
+            const c = activeContractsMap.get(paymentEmployee.id);
+            return c ? { amount: c.amount, billing_type: c.billing_type } : null;
+          })()}
           onSubmit={handlePayment}
           isPending={addMovement.isPending}
         />
@@ -1294,15 +1484,30 @@ export default function Employees() {
             <AlertDialogCancel>{t.receiptConfirm.cancelLabel}</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
               if (receiptConfirmData) {
+                // PJ/MEI: troca o cabeçalho "funcionário" por "prestador" usando a
+                // identidade congelada no momento do pagamento (payment_details).
+                const details = receiptConfirmData.movement?.payment_details as
+                  | { pjProviderIdentity?: { legalName?: string | null; cnpj?: string | null; invoiceNumber?: string | null; competencia?: string } }
+                  | undefined;
+                // Recibo mostra o NOME da conta, nunca o uuid cru que
+                // `payment_method` grava no banco (bug antigo, achado em QA).
+                // `generateReceiptHTML` lê `movement.payment_method` direto
+                // quando nenhum `payment` explícito é passado — resolve o
+                // nome ANTES, sem alterar o que já foi gravado no movimento.
+                const resolvedMovement = {
+                  ...receiptConfirmData.movement,
+                  payment_method: accountName(receiptConfirmData.movement.payment_method) || t.extract.fallbacks.bankAccount,
+                };
                 const html = generateReceiptHTML({
                   employeeName: receiptConfirmData.employee.name,
                   salary: receiptConfirmData.employee.salary || 0,
-                  movement: receiptConfirmData.movement,
+                  movement: resolvedMovement,
                   companySettings,
                   whiteLabel: wlEnabled,
                   generatedByName: profile?.full_name || undefined,
                   locale,
                   timeZone: timezone,
+                  ...(details?.pjProviderIdentity ? { pjProvider: details.pjProviderIdentity } : {}),
                 });
                 const blob = new Blob([html], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);

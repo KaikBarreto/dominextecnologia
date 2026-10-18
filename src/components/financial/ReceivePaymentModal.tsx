@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -282,10 +283,10 @@ export function ReceivePaymentModal({
           </div>
           <div>
             <Label>{t.receivedDateLabel}</Label>
-            {/* "Já foi recebido" é sempre passado. `max` barra o calendário
-                nativo; o disabled do botão Confirmar é quem garante de
-                verdade, porque dá pra digitar a data manualmente. */}
-            <Input type="date" max={todayInTz(timezone)} value={paidDate} onChange={e => setPaidDate(e.target.value)} />
+            {/* "Já foi recebido" é sempre passado. `max` apaga as datas
+                futuras do calendário; o disabled do botão Confirmar sustenta a
+                regra pra valor que já veio de fora. */}
+            <DatePicker max={todayInTz(timezone)} value={paidDate} onValueChange={setPaidDate} />
             {paidDateInvalid && (
               <p className="text-xs text-destructive mt-1">{t.validations.dateFuture}</p>
             )}
@@ -346,10 +347,9 @@ export function ReceivePaymentModal({
         {isPartial && (
           <div>
             <Label>{t.newDueDateLabel}</Label>
-            <Input
-              type="date"
+            <DatePicker
               value={novoVencimento}
-              onChange={e => setNovoVencimento(e.target.value)}
+              onValueChange={setNovoVencimento}
               className={cn(novoVencimentoInvalido && 'border-destructive focus-visible:ring-destructive')}
             />
             <p className="text-xs text-muted-foreground mt-1">

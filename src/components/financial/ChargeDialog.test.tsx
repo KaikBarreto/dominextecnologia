@@ -152,6 +152,23 @@ vi.mock('@/components/financial/CategorySelectField', () => ({
   ),
 }));
 
+// Mock do DatePicker (campo de Vencimento): troca o calendário por um
+// `<input>` simples, no mesmo padrão dos outros mocks deste arquivo (o foco
+// aqui é a reorganização em abas e a validação, não o widget de calendário em
+// si — isso já é coberto em SubscriptionDialog.test.tsx). Mantém `id`/`value`/
+// `className` pra não quebrar as asserções existentes (`q('#charge-due')`,
+// destaque `border-destructive`).
+vi.mock('@/components/ui/DatePicker', () => ({
+  DatePicker: (props: any) => (
+    <input
+      id={props.id}
+      className={props.className}
+      value={props.value}
+      onChange={(e: any) => props.onValueChange(e.target.value)}
+    />
+  ),
+}));
+
 vi.mock('@/components/BrandedQRCode', () => ({
   BrandedQRCode: () => null,
 }));
@@ -248,6 +265,12 @@ describe('ChargeDialog — reorganização em abas', () => {
     expect(q('#charge-due')).toBeTruthy();
     // Campo só existente na aba Pagamento ainda não está na tela.
     expect(text()).not.toContain('Forma de pagamento');
+  });
+
+  it('usa o DatePicker do sistema no vencimento, sem input date nativo do navegador', () => {
+    mount();
+    expect(q('#charge-due')).toBeTruthy();
+    expect(document.querySelector('input[type="date"]')).toBeNull();
   });
 
   it('trocar para a aba Pagamento mostra a forma de pagamento e esconde os campos de Cobrança', () => {

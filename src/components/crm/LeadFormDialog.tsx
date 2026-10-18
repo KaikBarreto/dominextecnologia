@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -29,10 +30,12 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useUsers } from '@/hooks/useUsers';
 import { useCrmStages } from '@/hooks/useCrmStages';
 import { useCrmPipelines } from '@/hooks/useCrmPipelines';
+import { useProjectPipelines } from '@/hooks/useProjectPipelines';
 import { IconPreview } from '@/components/customers/originIcons';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { readPastedCents } from '@/lib/money-paste-mask';
+import { cn } from '@/lib/utils';
 
 interface LeadFormDialogProps {
   open: boolean;
@@ -56,9 +59,19 @@ interface LeadFormDialogProps {
    * acaso. Ignorado em edição (o estágio já vem do lead).
    */
   presetPipelineId?: string | null;
+  /**
+   * Onda 1 de "Projetos" (gestão de obras, 2026-10-17): presente quando este
+   * formulário abre DE DENTRO de um Projeto. Escopa o agrupamento de etapas
+   * por funil aos funis DAQUELE projeto (`useProjectPipelines`), nunca aos
+   * funis comerciais — sem isso, criar/editar uma oportunidade dentro de um
+   * projeto ofereceria etapas de funil de VENDA no mesmo select, e escolher
+   * uma moveria o card da obra pro quadro comercial. `null`/ausente preserva
+   * o caminho comercial de sempre.
+   */
+  projectId?: string | null;
 }
 
-export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId, presetPipelineId }: LeadFormDialogProps) {
+export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId, presetPipelineId, projectId = null }: LeadFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
   const tOrigins = MESSAGES[locale].app.equipment.origins;
@@ -72,9 +85,29 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId, pre
   // Escolher uma etapa de outro funil MOVE a oportunidade pra ele — o banco
   // resolve pipeline_id sozinho a partir do stage_id (ver useLeads.ts / a
   // migration do D1); esta tela só avisa que isso vai acontecer.
-  const { pipelines } = useCrmPipelines();
+  // Onda 1 de Projetos: os dois hooks são SEMPRE chamados (nunca
+  // condicionalmente — Rules of Hooks); `useProjectPipelines` fica com a
+  // query desabilitada quando `projectId` é nulo. `pipelines` é a lista
+  // efetiva: comercial fora de projeto, escopada ao projeto quando presente.
+  const { pipelines: commercialPipelines } = useCrmPipelines();
+  const { pipelines: projectPipelines } = useProjectPipelines(projectId);
+  const pipelines = projectId ? projectPipelines : commercialPipelines;
   const hasMultiplePipelines = pipelines.length > 1;
   const isEditing = !!lead;
+
+  // Etapas candidatas = SÓ as dos funis em escopo (comerciais fora de projeto,
+  // as frentes do projeto quando `projectId` está presente). `stages` vem de
+  // `useCrmStages` sem nenhum filtro — traz todas as etapas da empresa.
+  // Usar a lista crua aqui vazava etapa comercial ("Lead", "Proposta",
+  // "Fechado (Ganho)") pra dentro de uma frente de obra, e escolher uma delas
+  // move o card pro funil comercial, porque `trg_leads_resolve_pipeline`
+  // recalcula o `pipeline_id` a partir do `stage_id`. Provado no navegador em
+  // 2026-10-17, com um projeto de uma frente só — o caminho que o
+  // `hasMultiplePipelines` deixava passar.
+  const scopedStages = useMemo(() => {
+    const ids = new Set(pipelines.map((p) => p.id));
+    return stages.filter((s) => ids.has(s.pipeline_id));
+  }, [stages, pipelines]);
 
   // Primeiro estágio do funil de onde a tela veio (presetPipelineId), se veio
   // de algum; senão o primeiro em ordem global (comportamento pré-D2).
@@ -83,9 +116,9 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId, pre
   // `stages` diretamente o rodaria de novo a cada refetch que troca a
   // identidade do array sem trocar o conteúdo.
   const defaultStageIdForNewLead = useMemo(() => {
-    const scoped = presetPipelineId ? stages.filter((s) => s.pipeline_id === presetPipelineId) : stages;
-    return (scoped.length > 0 ? scoped[0].id : stages[0]?.id) ?? null;
-  }, [stages, presetPipelineId]);
+    const scoped = presetPipelineId ? stages.filter((s) => s.pipeline_id === presetPipelineId) : scopedStages;
+    return (scoped.length > 0 ? scoped[0].id : scopedStages[0]?.id ?? stages[0]?.id) ?? null;
+  }, [stages, scopedStages, presetPipelineId]);
 
   const [formData, setFormData] = useState<Partial<LeadInsert>>({
     title: '',
@@ -97,6 +130,31 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId, pre
     expected_close_date: null,
     notes: '',
   });
+
+  // Funis que não rastreiam valor (`tracks_value: false` — obra/processo,
+  // 2026-10-17) escondem vocabulário de venda (Valor Estimado, Probabilidade,
+  // Origem) e renomeiam Vendedor→Responsável, Previsão Fechamento→Prazo.
+  //
+  // A régua é SEMPRE o funil REAL do estágio selecionado agora
+  // (`formData.stage_id`), nunca `projectId` nem a cardinalidade de
+  // `pipelines` — foi exatamente decidir por cardinalidade que vazou etapa
+  // comercial pra dentro de uma frente de obra (ver o comentário de
+  // `stageOptions` em LeadDetailModal.tsx e o teste
+  // LeadDetailModal.singleFrontStages.test.tsx). Um funil comercial criado
+  // fora de "Projetos" também pode ter `tracks_value: false` (ex: a empresa
+  // criou um funil de processo direto no CRM comum) — por isso a busca é
+  // sempre pelo funil do estágio, nunca pelo contexto de onde o dialog abriu.
+  //
+  // Ausente/indeterminado = true: nunca degrada o caminho comercial enquanto
+  // a query do funil ainda não resolveu.
+  const currentPipelineForValueTracking = useMemo(() => {
+    const stageId = formData.stage_id;
+    if (!stageId) return null;
+    const stage = stages.find((s) => s.id === stageId);
+    if (!stage) return null;
+    return pipelines.find((p) => p.id === stage.pipeline_id) ?? null;
+  }, [formData.stage_id, stages, pipelines]);
+  const tracksValue = currentPipelineForValueTracking?.tracks_value !== false;
 
   // Responsáveis (Onda C — multi-responsável): o primeiro da lista é o
   // principal (convenção explicada no hint abaixo do campo). Persistido à
@@ -174,13 +232,21 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId, pre
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
-            {isEditing ? t.form.titleEdit : t.form.titleNew}
+            {/* Criar E editar seguem a mesma régua: num funil de processo o
+                título dizia "Editar Oportunidade" enquanto o de criação já
+                dizia "Novo card" — os dois diálogos se contradiziam na mesma
+                tela. */}
+            {isEditing
+              ? (tracksValue ? t.form.titleEdit : t.form.titleEditProcess)
+              : (tracksValue ? t.form.titleNew : t.form.titleNewProcess)}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="title">{t.form.opportunityTitle}</Label>
+            {/* Mesma régua do título do diálogo: num funil de processo o campo
+                dizia "Título da Oportunidade" logo abaixo de "Editar card". */}
+            <Label htmlFor="title">{tracksValue ? t.form.opportunityTitle : t.form.cardTitle}</Label>
             <Input
               id="title"
               value={formData.title}
@@ -225,7 +291,7 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId, pre
                 selectedTeamIds={[]}
                 onChangeUsers={setAssigneeUserIds}
                 onChangeTeams={() => {}}
-                label={t.form.salesperson}
+                label={tracksValue ? t.form.salesperson : t.form.responsibleLabel}
                 usersLabel={t.form.salespersonUsersLabel}
               />
               <p className="text-xs text-muted-foreground">{t.form.salespersonHint}</p>
@@ -260,28 +326,33 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId, pre
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="source">{t.form.origin}</Label>
-              <OriginSelectField
-                id="source"
-                value={formData.source || 'none'}
-                onValueChange={(value) => handleChange('source', value === 'none' ? '' : value)}
-                placeholder={t.form.originPlaceholder}
-                searchPlaceholder={t.form.originSearch}
-                allowNone
-                noneValue="none"
-                noneLabel={t.form.originNone}
-                createDialogTitle={tOrigins.quickCreateTitle}
-                createNameLabel={tOrigins.quickCreateNameLabel}
-                createNamePlaceholder={tOrigins.quickCreateNamePlaceholder}
-                createColorLabel={tOrigins.quickCreateColorLabel}
-                createIconLabel={tOrigins.quickCreateIconLabel}
-                createSubmitLabel={tOrigins.quickCreateSubmit}
-                createCancelLabel={tOrigins.quickCreateCancel}
-                createAriaLabel={tOrigins.createAriaLabel}
-              />
-            </div>
+          {/* Origem é vocabulário de LEAD (Site, Instagram, Google...) — some
+              em funil que não rastreia valor (obra/processo). O select de
+              Etapa fica sozinho na linha quando isso acontece. */}
+          <div className={cn('grid gap-4', tracksValue ? 'sm:grid-cols-2' : 'sm:grid-cols-1')}>
+            {tracksValue && (
+              <div className="space-y-2">
+                <Label htmlFor="source">{t.form.origin}</Label>
+                <OriginSelectField
+                  id="source"
+                  value={formData.source || 'none'}
+                  onValueChange={(value) => handleChange('source', value === 'none' ? '' : value)}
+                  placeholder={t.form.originPlaceholder}
+                  searchPlaceholder={t.form.originSearch}
+                  allowNone
+                  noneValue="none"
+                  noneLabel={t.form.originNone}
+                  createDialogTitle={tOrigins.quickCreateTitle}
+                  createNameLabel={tOrigins.quickCreateNameLabel}
+                  createNamePlaceholder={tOrigins.quickCreateNamePlaceholder}
+                  createColorLabel={tOrigins.quickCreateColorLabel}
+                  createIconLabel={tOrigins.quickCreateIconLabel}
+                  createSubmitLabel={tOrigins.quickCreateSubmit}
+                  createCancelLabel={tOrigins.quickCreateCancel}
+                  createAriaLabel={tOrigins.createAriaLabel}
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="stage_id">{t.form.stage}</Label>
@@ -328,7 +399,7 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId, pre
                           </SelectGroup>
                         );
                       })
-                    : stages.map((stage) => (
+                    : scopedStages.map((stage) => (
                         <SelectItem key={stage.id} value={stage.id}>
                           <div className="flex items-center gap-2">
                             {stage.icon ? (
@@ -353,74 +424,86 @@ export function LeadFormDialog({ open, onOpenChange, lead, presetCustomerId, pre
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="value">{t.form.estimatedValue}</Label>
-              <Input
-                id="value"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.value || 0}
-                onChange={(e) => handleChange('value', parseFloat(e.target.value) || 0)}
-                onPaste={(e) => {
-                  // Colar valor pronto (ex. "4.550" de uma planilha) num
-                  // `<input type="number">` é lido pelo navegador como
-                  // decimal internacional e vira 4,55 — 1000x menor (bug
-                  // real do sócio). `readPastedCents` lê o texto como valor
-                  // de verdade em PT-BR/internacional antes do navegador
-                  // decidir sozinho.
-                  const cents = readPastedCents(e);
-                  if (cents == null) return;
-                  handleChange('value', cents / 100);
-                }}
-              />
-            </div>
+          {/* Valor Estimado e Probabilidade são vocabulário de VENDA — somem
+              em funil que não rastreia valor (obra/processo). Os dois campos
+              continuam no `formData` com o default de sempre (0 / 50), só não
+              aparecem na tela: esconder sem isso quebraria o payload de um
+              jeito invisível. */}
+          <div className={cn('grid gap-4', tracksValue ? 'sm:grid-cols-3' : 'sm:grid-cols-1')}>
+            {tracksValue && (
+              <div className="space-y-2">
+                <Label htmlFor="value">{t.form.estimatedValue}</Label>
+                <Input
+                  id="value"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.value || 0}
+                  onChange={(e) => handleChange('value', parseFloat(e.target.value) || 0)}
+                  onPaste={(e) => {
+                    // Colar valor pronto (ex. "4.550" de uma planilha) num
+                    // `<input type="number">` é lido pelo navegador como
+                    // decimal internacional e vira 4,55 — 1000x menor (bug
+                    // real do sócio). `readPastedCents` lê o texto como valor
+                    // de verdade em PT-BR/internacional antes do navegador
+                    // decidir sozinho.
+                    const cents = readPastedCents(e);
+                    if (cents == null) return;
+                    handleChange('value', cents / 100);
+                  }}
+                />
+              </div>
+            )}
+
+            {tracksValue && (
+              <div className="space-y-2">
+                <Label htmlFor="probability">{t.form.probability}</Label>
+                {/* Probabilidade é PORCENTAGEM: 0 a 100, e o campo precisa poder
+                    ficar vazio enquanto se digita.
+
+                    Antes era `type="number"` com `value={x || 50}`:
+                    (1) o `max="100"` do HTML é só dica visual, então dava pra
+                        gravar 500% de probabilidade;
+                    (2) apagar o último dígito fazia o valor cair em NaN, o `|| 50`
+                        repunha 50 na hora e era literalmente impossível apagar o
+                        primeiro dígito.
+                    Agora o estado é a string crua digitada, o clamp acontece na
+                    entrada e o campo vazio só vira número ao sair do campo. */}
+                <Input
+                  id="probability"
+                  inputMode="numeric"
+                  value={probabilityText}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '');
+                    if (digits === '') {
+                      setProbabilityText('');
+                      return;
+                    }
+                    const clamped = Math.min(100, parseInt(digits, 10));
+                    setProbabilityText(String(clamped));
+                    handleChange('probability', clamped);
+                  }}
+                  onBlur={() => {
+                    // Sair do campo vazio grava 0, não repõe um palpite.
+                    if (probabilityText === '') {
+                      setProbabilityText('0');
+                      handleChange('probability', 0);
+                    }
+                  }}
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
-              <Label htmlFor="probability">{t.form.probability}</Label>
-              {/* Probabilidade é PORCENTAGEM: 0 a 100, e o campo precisa poder
-                  ficar vazio enquanto se digita.
-
-                  Antes era `type="number"` com `value={x || 50}`:
-                  (1) o `max="100"` do HTML é só dica visual, então dava pra
-                      gravar 500% de probabilidade;
-                  (2) apagar o último dígito fazia o valor cair em NaN, o `|| 50`
-                      repunha 50 na hora e era literalmente impossível apagar o
-                      primeiro dígito.
-                  Agora o estado é a string crua digitada, o clamp acontece na
-                  entrada e o campo vazio só vira número ao sair do campo. */}
-              <Input
-                id="probability"
-                inputMode="numeric"
-                value={probabilityText}
-                onChange={(e) => {
-                  const digits = e.target.value.replace(/\D/g, '');
-                  if (digits === '') {
-                    setProbabilityText('');
-                    return;
-                  }
-                  const clamped = Math.min(100, parseInt(digits, 10));
-                  setProbabilityText(String(clamped));
-                  handleChange('probability', clamped);
-                }}
-                onBlur={() => {
-                  // Sair do campo vazio grava 0, não repõe um palpite.
-                  if (probabilityText === '') {
-                    setProbabilityText('0');
-                    handleChange('probability', 0);
-                  }
-                }}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="expected_close_date">{t.form.closeDate}</Label>
-              <Input
+              <Label htmlFor="expected_close_date">{tracksValue ? t.form.closeDate : t.form.deadlineLabel}</Label>
+              {/* Campo opcional (pode voltar a ficar vazio), por isso clearable */}
+              <DatePicker
                 id="expected_close_date"
-                type="date"
                 value={formData.expected_close_date || ''}
-                onChange={(e) => handleChange('expected_close_date', e.target.value || null)}
+                onValueChange={(v) => handleChange('expected_close_date', v || null)}
+                placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
+                clearable
+                clearLabel={MESSAGES[locale].app.common.clear}
               />
             </div>
           </div>

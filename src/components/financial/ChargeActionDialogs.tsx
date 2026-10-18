@@ -10,6 +10,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -140,11 +141,10 @@ export function ChargeActionDialogs({ actions }: { actions: ChargeActions }) {
             <Label htmlFor="edit-charge-due" className="text-sm font-medium">
               {t.editDialog.fields.dueDate}
             </Label>
-            <Input
+            <DatePicker
               id="edit-charge-due"
-              type="date"
               value={actions.editDueDate}
-              onChange={(e) => actions.setEditDueDate(e.target.value)}
+              onValueChange={actions.setEditDueDate}
             />
           </div>
 

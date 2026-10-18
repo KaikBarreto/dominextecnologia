@@ -48,6 +48,14 @@ vi.mock('@/hooks/useCrmStages', () => ({
 vi.mock('@/hooks/useCrmPipelines', () => ({
   useCrmPipelines: () => ({ pipelines: [{ id: 'pipeline-1', name: 'Funil de Vendas', is_default: true }] }),
 }));
+// Onda 1 de Projetos (2026-10-17): LeadDetailModal passou a chamar
+// useProjectPipelines SEMPRE (nunca condicionalmente — Rules of Hooks), com a
+// query desabilitada quando `projectId` é nulo. Mesmo cuidado já aplicado a
+// useCrmPipelineAccess abaixo: sem QueryClient no teste, o hook real derruba
+// a montagem — e o caso sob teste (autosave/histórico) não envolve projeto.
+vi.mock('@/hooks/useProjectPipelines', () => ({
+  useProjectPipelines: () => ({ pipelines: [] }),
+}));
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({ user: { id: 'user-1' }, isAdminOrGestor: () => true, hasPermission: () => true }),
 }));
@@ -233,5 +241,18 @@ describe('LeadDetailModal — aba Histórico mostra mudança de estágio (prova 
     expect(desc).toBeTruthy();
     const byLine = qAll('p').find((p) => /Ana Vendedora/i.test(p.textContent || ''));
     expect(byLine).toBeTruthy();
+  });
+
+  it('usa o DatePicker do sistema pro campo "Próxima ação em", sem input date nativo do navegador', () => {
+    mount(BASE_LEAD);
+    clickHistoryTab();
+
+    const newInteractionBtn = qAll('button').find((b) => /nova interação/i.test(b.textContent || ''));
+    expect(newInteractionBtn).toBeTruthy();
+    act(() => {
+      newInteractionBtn!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(document.querySelector('input[type="date"]')).toBeNull();
   });
 });

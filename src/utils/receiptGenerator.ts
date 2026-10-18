@@ -40,6 +40,17 @@ interface ReceiptData {
   payment?: PaymentBreakdown;
   /** Dados do vale (quando kind='vale'). */
   vale?: ValeBreakdown;
+  /**
+   * Preenchido só no pagamento PJ/MEI: troca "DADOS DO FUNCIONÁRIO" por
+   * "DADOS DO PRESTADOR" (razão social + CNPJ) e o título do documento vira
+   * "RECIBO DE PRESTAÇÃO DE SERVIÇOS" — nunca holerite, PJ não tem folha.
+   */
+  pjProvider?: {
+    legalName?: string | null;
+    cnpj?: string | null;
+    invoiceNumber?: string | null;
+    competencia?: string;
+  };
   /** Locale do usuário que gera o documento. Padrão: 'pt-br'. */
   locale?: LocaleCode;
   /**
@@ -146,11 +157,12 @@ const escapeHtml = (v: string): string =>
   v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 export function generateReceiptHTML(data: ReceiptData): string {
-  const { employeeName, salary, movement, companySettings, whiteLabel, generatedByName, payment, vale } = data;
+  const { employeeName, salary, movement, companySettings, whiteLabel, generatedByName, payment, vale, pjProvider } = data;
   const locale = data.locale ?? 'pt-br';
   const t = MESSAGES[locale].app.employees.receiptGenerator;
   const kind = data.kind ?? 'pagamento';
   const isVale = kind === 'vale';
+  const isPj = !isVale && !!pjProvider;
   const fmt = (value: number) => formatMoney(value, companySettings?.currency || 'BRL', locale);
 
   const headerHTML = renderHeader(companySettings);
@@ -162,7 +174,20 @@ export function generateReceiptHTML(data: ReceiptData): string {
     hour: '2-digit', minute: '2-digit',
   });
 
-  const docTitle = isVale ? t.titleAdvance : t.titlePayment;
+  const docTitle = isVale ? t.titleAdvance : isPj ? t.titlePaymentPj : t.titlePayment;
+
+  // ---- Cabeçalho de identidade: prestador PJ troca "funcionário" por
+  // "prestador" (razão social + CNPJ + nota fiscal + competência). ----
+  const identitySectionTitle = isPj ? t.sectionProvider : t.sectionEmployee;
+  const identityRows = isPj
+    ? [
+        `<div class="row"><span class="label">${t.fieldName}</span><span class="value">${escapeHtml(employeeName)}</span></div>`,
+        pjProvider?.legalName ? `<div class="row"><span class="label">${t.fieldLegalName}</span><span class="value">${escapeHtml(pjProvider.legalName)}</span></div>` : '',
+        pjProvider?.cnpj ? `<div class="row"><span class="label">${t.fieldCnpj}</span><span class="value">${escapeHtml(pjProvider.cnpj)}</span></div>` : '',
+        pjProvider?.invoiceNumber ? `<div class="row"><span class="label">${t.fieldInvoiceNumber}</span><span class="value">${escapeHtml(pjProvider.invoiceNumber)}</span></div>` : '',
+        pjProvider?.competencia ? `<div class="row"><span class="label">${t.fieldCompetencia}</span><span class="value">${escapeHtml(pjProvider.competencia)}</span></div>` : '',
+      ].filter(Boolean).join('\n')
+    : `<div class="row"><span class="label">${t.fieldName}</span><span class="value">${escapeHtml(employeeName)}</span></div>`;
 
   // ---- Corpo (detalhamento) ----
   let bodyHTML = '';
@@ -192,6 +217,25 @@ ${v.description ? `<div class="row">
 </div>` : ''}`;
     totalLabel = t.totalAdvanceLabel;
     totalValue = v.amount;
+  } else if (isPj) {
+    // PJ/MEI: recibo de prestação de serviços, SEM salário/vales/faltas —
+    // esses conceitos não existem fora de CLT/informal. Zero cálculo de imposto.
+    const details = movement.payment_details || {};
+    const p = payment ?? {
+      valorPago: Number(details.amountPaid) || Math.abs(movement.amount),
+      paymentMethod: movement.payment_method || details.paymentMethod || t.notProvided,
+    };
+    bodyHTML = `
+<div class="row">
+  <span class="label">${t.fieldPaymentMethod}</span>
+  <span class="value">${escapeHtml(p.paymentMethod)}</span>
+</div>
+${movement.description ? `<div class="row">
+  <span class="label">${t.fieldNotes}</span>
+  <span class="value">${escapeHtml(movement.description)}</span>
+</div>` : ''}`;
+    totalLabel = t.totalPaymentLabel;
+    totalValue = p.valorPago;
   } else {
     // Breakdown explícito tem prioridade; fallback lê payment_details do movimento.
     const details = movement.payment_details || {};
@@ -286,11 +330,8 @@ ${headerHTML}
 <h1>${docTitle}</h1>
 <p class="date-sub">${t.issuedAt} ${dateStr}</p>
 
-<p class="section-title">${t.sectionEmployee}</p>
-<div class="row">
-  <span class="label">${t.fieldName}</span>
-  <span class="value">${escapeHtml(employeeName)}</span>
-</div>
+<p class="section-title">${identitySectionTitle}</p>
+${identityRows}
 
 <br/>
 <p class="section-title">${isVale ? t.sectionAdvance : t.sectionDetail}</p>
@@ -311,7 +352,7 @@ ${extraAfterTotal}
   <div class="sig-block">
     <div class="sig-line"></div>
     <p class="sig-name">${escapeHtml(employeeName)}</p>
-    <p class="sig-role">${t.signatureEmployee}</p>
+    <p class="sig-role">${isPj ? t.signatureProvider : t.signatureEmployee}</p>
   </div>
 </div>
 

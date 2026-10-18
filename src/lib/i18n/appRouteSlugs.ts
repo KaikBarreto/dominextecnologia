@@ -52,6 +52,7 @@ const SEGMENTS: Record<string, SegmentTranslations> = {
   clientes: { en: 'customers', es: 'clientes', fr: 'clients' },
   equipamentos: { en: 'equipment', es: 'equipos', fr: 'equipements' },
   crm: { en: 'crm', es: 'crm', fr: 'crm' },
+  projetos: { en: 'projects', es: 'proyectos', fr: 'projets' },
   orcamentos: { en: 'quotes', es: 'presupuestos', fr: 'devis' },
   estoque: { en: 'inventory', es: 'inventario', fr: 'stock' },
   financeiro: { en: 'finance', es: 'finanzas', fr: 'finances' },
@@ -118,6 +119,8 @@ const ROUTES: AppRouteDef[] = [
   { key: 'equipment', base: '/equipamentos' },
   { key: 'equipmentDetail', base: '/equipamentos/:id' },
   { key: 'crm', base: '/crm' },
+  { key: 'projects', base: '/projetos' },
+  { key: 'projectDetail', base: '/projetos/:id' },
   { key: 'quotes', base: '/orcamentos' },
   { key: 'inventory', base: '/estoque' },
   // Financeiro é um GRUPO: raiz + telas operacionais, cobrança, relatórios e

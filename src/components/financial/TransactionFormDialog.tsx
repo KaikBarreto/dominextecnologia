@@ -802,9 +802,10 @@ export function TransactionFormDialog({
   const { locale, currency, timezone } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const tf = fin.transactionForm;
-  // Faixa de ano aceita nos campos de data digitados à mão (`min`/`max` do
-  // `<input type="date">`). É só a dica visual do calendário nativo — quem
-  // barra de verdade um ano como 2123 é a validação do zod no schema.
+  // Faixa de ano aceita nos campos de data (`min`/`max` do `DatePicker`).
+  // Limita o que o calendário navega e oferece no seletor de ano; quem barra
+  // de verdade um ano como 2123 continua sendo a validação do zod no schema,
+  // porque o valor também pode chegar de rascunho salvo ou de prefill.
   const dateInputMin = `${MIN_TRANSACTION_YEAR}-01-01`;
   const dateInputMax = `${new Date().getFullYear() + MAX_TRANSACTION_YEAR_AHEAD}-12-31`;
   const { categories: dbCategories, createCategory } = useFinancialCategories();
@@ -979,9 +980,12 @@ export function TransactionFormDialog({
   const watchedDate = form.watch('transaction_date');
   const watchedPaymentMethod = form.watch('payment_method');
   const watchedInstallmentCount = form.watch('installment_count') ?? 1;
-  const installmentStartDate = requireDueDateWhenUnpaid && !isPaid
-    ? (form.watch('due_date') || watchedDate)
-    : watchedDate;
+  // Onde a 1ª parcela cai. Acompanha `buildInstallmentPlan` no useFinancial,
+  // que usa `due_date || transaction_date`: com o vencimento agora disponível
+  // em qualquer fluxo, o preview tem que partir do mesmo lugar que a gravação
+  // — senão a tela mostrava a 1ª parcela num mês e o banco gravava noutro.
+  const watchedDueDate = form.watch('due_date');
+  const installmentStartDate = !isPaid ? (watchedDueDate || watchedDate) : watchedDate;
 
   // A pergunta "como o dinheiro entra na sua conta?" está na tela?
   const askCardReceiptMode = canAskCardReceiptMode && needsCardReceiptChoice({
@@ -1143,12 +1147,14 @@ export function TransactionFormDialog({
         card_installments: cardInstallments,
         is_paid: isPaidFinal,
         paid_date: isPaidFinal ? (data.paid_date || data.transaction_date) : undefined,
-        // No CRM, vencimento só existe quando a venda ainda não foi recebida.
-        // Se o usuário voltar o toggle para "já recebido", não persiste a data
-        // que ficou escondida no formulário.
-        ...(requireDueDateWhenUnpaid
-          ? { due_date: isPaidFinal ? undefined : data.due_date }
-          : {}),
+        // Vencimento só existe enquanto a conta está EM ABERTO.
+        // - Em aberto: grava o que está na tela; vazio vira `null` de propósito,
+        //   pra apagar pela tela ter efeito (undefined some do payload do
+        //   supabase-js e o update deixaria o valor antigo lá).
+        // - Já pago/recebido: `undefined`, ou seja, NÃO viaja. Criando, nasce
+        //   sem vencimento (não persiste data escondida no form); editando,
+        //   preserva o vencimento que a conta já tinha antes da baixa.
+        due_date: isPaidFinal ? undefined : (data.due_date || null),
         payment_method: data.payment_method || null,
         account_id: data.account_id || null,
         // Igual ao cost_center_id logo abaixo: opcional, vazio vira `null`. Se
@@ -1758,9 +1764,10 @@ export function TransactionFormDialog({
                   perguntar, uma conta de janeiro baixada em março voltava pra
                   janeiro e mexia num mês já fechado.
                   Trava de "não pode ser no futuro": validação no schema
-                  (isPaidDateAllowedInTz) + `max` aqui, que barra o calendário
-                  nativo mas não a digitação manual — por isso a validação no
-                  submit é quem garante de verdade. Dado antigo com data
+                  (isPaidDateAllowedInTz) + `max` aqui, que apaga as datas
+                  futuras do calendário. A validação no submit continua sendo a
+                  garantia, porque o valor também chega de rascunho salvo e de
+                  prefill, que não passam pelo calendário. Dado antigo com data
                   futura (gravado antes desta trava existir) não é barrado
                   enquanto não for TROCADO: só aparece o aviso abaixo. */}
               {isPaid && (
@@ -1794,10 +1801,22 @@ export function TransactionFormDialog({
                 )} />
               )}
 
-              {!isPaid && requireDueDateWhenUnpaid && (
+              {/* Vencimento — aparece sempre que o switch está DESLIGADO, em
+                  qualquer fluxo. Antes só existia quando `requireDueDateWhenUnpaid`
+                  estava ligado (só a venda ganha no CRM), então quem lançava uma
+                  conta a pagar pelo Financeiro não tinha onde informar o
+                  vencimento na CRIAÇÃO: o campo só reaparecia no Editar da lista
+                  de Contas, que é outro formulário.
+                  Obrigatório continua SÓ no fluxo que pede (a trava é do schema);
+                  nos demais é opcional e pode ficar em branco, que a lista de
+                  Contas já sabe mostrar como "sem vencimento". */}
+              {!isPaid && (
                 <FormField control={form.control} name="due_date" render={({ field }) => (
                   <FormItem className="p-3">
-                    <FormLabel>{fin.accounts.table.dueDate} *</FormLabel>
+                    <FormLabel>
+                      {fin.accounts.table.dueDate}
+                      {requireDueDateWhenUnpaid && ' *'}
+                    </FormLabel>
                     <FormControl>
                       <DatePicker
                         value={field.value ?? ''}
@@ -1805,8 +1824,13 @@ export function TransactionFormDialog({
                         min={dateInputMin}
                         max={dateInputMax}
                         placeholder={tf.datePlaceholder}
+                        clearable={!requireDueDateWhenUnpaid}
+                        clearLabel={MESSAGES[locale].app.common.clear}
                       />
                     </FormControl>
+                    {!requireDueDateWhenUnpaid && (
+                      <p className="text-xs text-muted-foreground">{tf.dueDateHint}</p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )} />

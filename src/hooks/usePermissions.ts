@@ -23,6 +23,7 @@ import {
   Briefcase,
   Handshake,
   Settings,
+  FolderKanban,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -50,6 +51,7 @@ export const SCREEN_PERMISSIONS = [
   { key: 'screen:equipment', label: 'Equipamentos', description: 'Cadastro dos equipamentos dos clientes e o histórico de cada um.', icon: Boxes, group: 'Serviços', category: 'servicos' },
   { key: 'screen:customers', label: 'Clientes e Fornecedores', description: 'Cadastro de clientes e fornecedores, com contatos, endereços e históricos.', icon: Users, group: 'Comercial', category: 'comercial' },
   { key: 'screen:crm', label: 'CRM/Kanban', description: 'Funis Kanban com leads, oportunidades e follow-ups (também exige o módulo contratado).', icon: ListFilter, group: 'Comercial', category: 'comercial' },
+  { key: 'screen:projects', label: 'Projetos', description: 'Obras e projetos que agrupam frentes de trabalho do CRM (também exige o módulo CRM contratado).', icon: FolderKanban, group: 'Comercial', category: 'comercial' },
   { key: 'screen:quotes', label: 'Orçamentos', description: 'Orçamentos e propostas enviadas aos clientes.', icon: FileText, group: 'Comercial', category: 'comercial' },
   { key: 'screen:inventory', label: 'Estoque', description: 'Materiais, saldos e movimentações de estoque.', icon: Package, group: 'Operacional', category: 'operacional' },
   { key: 'screen:technician_tools', label: 'Área do Técnico™', description: 'Ferramentas de apoio do técnico em campo, como cálculos e tabelas.', icon: HardHat, group: 'Operacional', category: 'operacional' },

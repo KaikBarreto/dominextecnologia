@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
@@ -330,9 +331,28 @@ export function MaterialPurchaseReportTab() {
 
       {(periodPreset === 'custom' || startDate || endDate) && (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Input type="date" value={startDate} max={endDate || today} onChange={(event) => { setPeriodPreset('custom'); setStartDate(event.target.value); }} aria-label={t.startDate} />
+          {/* Par de filtros sem `<Label>` visível: quem nomeia os dois campos
+              pro leitor de tela é o `ariaLabel`. */}
+          <DatePicker
+            value={startDate}
+            onValueChange={(value) => { setPeriodPreset('custom'); setStartDate(value); }}
+            max={endDate || today}
+            placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
+            ariaLabel={t.startDate}
+            clearable
+            clearLabel={MESSAGES[locale].app.common.clear}
+          />
           <span className="hidden text-muted-foreground sm:inline">—</span>
-          <Input type="date" value={endDate} min={startDate || undefined} max={today} onChange={(event) => { setPeriodPreset('custom'); setEndDate(event.target.value); }} aria-label={t.endDate} />
+          <DatePicker
+            value={endDate}
+            onValueChange={(value) => { setPeriodPreset('custom'); setEndDate(value); }}
+            min={startDate || undefined}
+            max={today}
+            placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
+            ariaLabel={t.endDate}
+            clearable
+            clearLabel={MESSAGES[locale].app.common.clear}
+          />
         </div>
       )}
 

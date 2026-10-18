@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -1034,7 +1035,13 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="flex items-center gap-2"><Calendar className="h-4 w-4" />Vencimento *</Label>
-                <Input type="date" value={formData.subscription_expires_at} onChange={e => updateField('subscription_expires_at', e.target.value)} />
+                <DatePicker
+                  value={formData.subscription_expires_at}
+                  onValueChange={(v) => updateField('subscription_expires_at', v)}
+                  placeholder="dd/mm/aaaa"
+                  clearable
+                  clearLabel="Limpar"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Ciclo de Cobrança</Label>

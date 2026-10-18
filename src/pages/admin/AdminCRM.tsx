@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -1033,11 +1034,23 @@ function FiltersForm({
           <div className="grid grid-cols-2 gap-2 mt-2">
             <div>
               <Label className="text-xs text-muted-foreground">De</Label>
-              <Input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} />
+              <DatePicker
+                value={filterDateFrom}
+                onValueChange={setFilterDateFrom}
+                placeholder="dd/mm/aaaa"
+                clearable
+                clearLabel="Limpar"
+              />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Até</Label>
-              <Input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} />
+              <DatePicker
+                value={filterDateTo}
+                onValueChange={setFilterDateTo}
+                placeholder="dd/mm/aaaa"
+                clearable
+                clearLabel="Limpar"
+              />
             </div>
           </div>
         )}

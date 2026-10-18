@@ -14,6 +14,7 @@ import { CheckSquare, Plus, Check, Trash2, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -117,12 +118,13 @@ function TaskCreateForm({ onClose }: TaskFormProps) {
         <Label htmlFor="task-date" className="text-sm font-medium">
           {t.fieldDate} <span className="text-destructive">*</span>
         </Label>
-        <Input
+        <DatePicker
           id="task-date"
-          type="date"
           value={taskDate}
-          onChange={(e) => setTaskDate(e.target.value)}
-          required
+          onValueChange={setTaskDate}
+          placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
+          // Sempre pré-preenchido com `today` (fuso da empresa), nunca fica
+          // vazio na prática — não precisa de `clearable`.
         />
       </div>
 

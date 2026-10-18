@@ -29,6 +29,7 @@ import type { FinancialTransaction } from '@/types/database';
 import { format, isBefore, addDays, startOfDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -1788,10 +1789,10 @@ export function FinanceContas({
             <div className="space-y-1.5">
               <Label>{fin.accounts.payExpenseModal.paymentDate}</Label>
               {/* "Já foi pago" é sempre passado: não existe pagamento no
-                  futuro. `max` barra o calendário nativo; o disabled do botão
-                  Confirmar (acima) é quem garante de verdade, porque dá pra
-                  digitar a data manualmente. */}
-              <Input type="date" max={todayInTz(timezone)} value={payDespDate} onChange={e => setPayDespDate(e.target.value)} />
+                  futuro. `max` apaga as datas futuras do calendário; o disabled
+                  do botão Confirmar (acima) sustenta a regra pra valor que já
+                  veio de fora. */}
+              <DatePicker max={todayInTz(timezone)} value={payDespDate} onValueChange={setPayDespDate} />
               {payDespDate && !isPaidDateAllowedInTz(payDespDate, timezone) && (
                 <p className="text-xs text-destructive">{fin.accounts.payExpenseModal.paymentDateFuture}</p>
               )}

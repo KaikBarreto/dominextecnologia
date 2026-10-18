@@ -145,6 +145,10 @@ export const crm = {
       valueNotSet: 'Não informado',
       probability: 'Probabilidade',
       closeDate: 'Previsão Fechamento',
+      // Mesmo campo (expected_close_date) em funil que não rastreia valor
+      // (tracks_value=false): "Prazo" lê melhor numa obra/processo do que
+      // "Previsão Fechamento", que é vocabulário de venda.
+      deadlineLabel: 'Prazo',
       closeDateNotSet: 'Não definida',
       origin: 'Origem',
       originNotSet: 'Não informada',
@@ -192,8 +196,14 @@ export const crm = {
     // ── LeadFormDialog ──
     form: {
       titleNew: 'Nova Oportunidade',
+      // Funil que não rastreia valor (tracks_value=false, obra/processo): o
+      // botão que abre este diálogo já diz "Novo card" — o título tinha que
+      // parar de contradizer.
+      titleNewProcess: 'Novo card',
       titleEdit: 'Editar Oportunidade',
+      titleEditProcess: 'Editar card',
       opportunityTitle: 'Título da Oportunidade *',
+      cardTitle: 'Título do card *',
       opportunityTitlePlaceholder: 'Ex: Instalação de 3 splits',
       customer: 'Cliente',
       customerNone: 'Nenhum cliente',
@@ -203,6 +213,10 @@ export const crm = {
       customerCreateAlways: 'Cadastrar novo cliente',
       customerLockedHint: 'Cliente definido pela ficha de onde você abriu esta oportunidade.',
       salesperson: 'Vendedor Responsável',
+      // Mesmo campo (assignee) em funil que não rastreia valor
+      // (tracks_value=false): "Responsável" é vocabulário de processo, sem o
+      // "Vendedor" que não existe numa obra.
+      responsibleLabel: 'Responsável',
       salespersonNone: 'Não atribuído',
       salespersonPlaceholder: 'Atribuir a vendedor',
       salespersonUsersLabel: 'Vendedores',
@@ -219,6 +233,8 @@ export const crm = {
       estimatedValue: 'Valor Estimado (R$)',
       probability: 'Probabilidade (%)',
       closeDate: 'Previsão Fechamento',
+      // Mesmo campo (expected_close_date) em funil que não rastreia valor.
+      deadlineLabel: 'Prazo',
       notes: 'Observações',
       notesPlaceholder: 'Detalhes da oportunidade...',
       cancel: 'Cancelar',
@@ -272,7 +288,7 @@ export const crm = {
     // ── PipelineManagerDialog (Onda D — multi-pipeline) ──
     pipelines: {
       title: 'Gerenciar Funis',
-      subtitle: 'Crie funis separados para vendas, pós-venda, licitação e outros fluxos comerciais.',
+      subtitle: 'Crie funis separados para vendas, pós-venda, licitação e outros fluxos comerciais. Para organizar uma obra com várias frentes ao mesmo tempo, use Projetos.',
       newPipelineLabel: 'Novo Funil',
       namePlaceholder: 'Nome do funil',
       dragHint: 'Arraste para reordenar os funis',
@@ -1315,6 +1331,7 @@ export const crm = {
       valueNotSet: 'Not provided',
       probability: 'Probability',
       closeDate: 'Expected Close',
+      deadlineLabel: 'Deadline',
       closeDateNotSet: 'Not set',
       origin: 'Source',
       originNotSet: 'Not provided',
@@ -1358,8 +1375,11 @@ export const crm = {
 
     form: {
       titleNew: 'New Opportunity',
+      titleNewProcess: 'New card',
       titleEdit: 'Edit Opportunity',
+      titleEditProcess: 'Edit card',
       opportunityTitle: 'Opportunity Title *',
+      cardTitle: 'Card title *',
       opportunityTitlePlaceholder: 'e.g. Installation of 3 units',
       customer: 'Customer',
       customerNone: 'No customer',
@@ -1369,6 +1389,7 @@ export const crm = {
       customerCreateAlways: 'Add new customer',
       customerLockedHint: 'Customer set from the record where you opened this opportunity.',
       salesperson: 'Assigned Salesperson',
+      responsibleLabel: 'Assignee',
       salespersonNone: 'Unassigned',
       salespersonPlaceholder: 'Assign to salesperson',
       salespersonUsersLabel: 'Salespeople',
@@ -1385,6 +1406,7 @@ export const crm = {
       estimatedValue: 'Estimated Value',
       probability: 'Probability (%)',
       closeDate: 'Expected Close Date',
+      deadlineLabel: 'Deadline',
       notes: 'Notes',
       notesPlaceholder: 'Opportunity details...',
       cancel: 'Cancel',
@@ -1435,7 +1457,7 @@ export const crm = {
 
     pipelines: {
       title: 'Manage Pipelines',
-      subtitle: 'Create separate pipelines for sales, after sales, bidding and other workflows.',
+      subtitle: 'Create separate pipelines for sales, after sales, bidding and other workflows. To organise a job site with several work fronts at once, use Projects.',
       newPipelineLabel: 'New Pipeline',
       namePlaceholder: 'Pipeline name',
       dragHint: 'Drag to reorder pipelines',
@@ -2404,6 +2426,7 @@ export const crm = {
       valueNotSet: 'No informado',
       probability: 'Probabilidad',
       closeDate: 'Cierre Estimado',
+      deadlineLabel: 'Plazo',
       closeDateNotSet: 'No definida',
       origin: 'Origen',
       originNotSet: 'No informado',
@@ -2447,8 +2470,11 @@ export const crm = {
 
     form: {
       titleNew: 'Nueva Oportunidad',
+      titleNewProcess: 'Nueva tarjeta',
       titleEdit: 'Editar Oportunidad',
+      titleEditProcess: 'Editar tarjeta',
       opportunityTitle: 'Título de la Oportunidad *',
+      cardTitle: 'Título de la tarjeta *',
       opportunityTitlePlaceholder: 'Ej: Instalación de 3 equipos',
       customer: 'Cliente',
       customerNone: 'Sin cliente',
@@ -2458,6 +2484,7 @@ export const crm = {
       customerCreateAlways: 'Registrar nuevo cliente',
       customerLockedHint: 'Cliente definido desde la ficha donde abriste esta oportunidad.',
       salesperson: 'Vendedor Responsable',
+      responsibleLabel: 'Responsable',
       salespersonNone: 'Sin asignar',
       salespersonPlaceholder: 'Asignar a vendedor',
       salespersonUsersLabel: 'Vendedores',
@@ -2474,6 +2501,7 @@ export const crm = {
       estimatedValue: 'Valor Estimado',
       probability: 'Probabilidad (%)',
       closeDate: 'Fecha de Cierre Estimada',
+      deadlineLabel: 'Plazo',
       notes: 'Observaciones',
       notesPlaceholder: 'Detalles de la oportunidad...',
       cancel: 'Cancelar',
@@ -2524,7 +2552,7 @@ export const crm = {
 
     pipelines: {
       title: 'Gestionar Embudos',
-      subtitle: 'Crea embudos separados para ventas, posventa, licitaciones y otros flujos.',
+      subtitle: 'Crea embudos separados para ventas, posventa, licitaciones y otros flujos. Para organizar una obra con varios frentes a la vez, usa Proyectos.',
       newPipelineLabel: 'Nuevo Embudo',
       namePlaceholder: 'Nombre del embudo',
       dragHint: 'Arrastra para reordenar los embudos',
@@ -3495,6 +3523,7 @@ export const crm = {
       valueNotSet: 'Non renseigné',
       probability: 'Probabilité',
       closeDate: 'Clôture Prévue',
+      deadlineLabel: 'Délai',
       closeDateNotSet: 'Non définie',
       origin: 'Source',
       originNotSet: 'Non renseignée',
@@ -3538,8 +3567,11 @@ export const crm = {
 
     form: {
       titleNew: 'Nouvelle Opportunité',
+      titleNewProcess: 'Nouvelle carte',
       titleEdit: 'Modifier l\'Opportunité',
+      titleEditProcess: 'Modifier la carte',
       opportunityTitle: 'Titre de l\'Opportunité *',
+      cardTitle: 'Titre de la carte *',
       opportunityTitlePlaceholder: 'Ex : Installation de 3 unités',
       customer: 'Client',
       customerNone: 'Aucun client',
@@ -3549,6 +3581,7 @@ export const crm = {
       customerCreateAlways: 'Ajouter un nouveau client',
       customerLockedHint: 'Client défini depuis la fiche où vous avez ouvert cette opportunité.',
       salesperson: 'Commercial Responsable',
+      responsibleLabel: 'Responsable',
       salespersonNone: 'Non assigné',
       salespersonPlaceholder: 'Assigner à un commercial',
       salespersonUsersLabel: 'Commerciaux',
@@ -3565,6 +3598,7 @@ export const crm = {
       estimatedValue: 'Valeur Estimée',
       probability: 'Probabilité (%)',
       closeDate: 'Date de Clôture Prévue',
+      deadlineLabel: 'Délai',
       notes: 'Remarques',
       notesPlaceholder: "Détails de l'opportunité...",
       cancel: 'Annuler',
@@ -3615,7 +3649,7 @@ export const crm = {
 
     pipelines: {
       title: 'Gérer les Pipelines',
-      subtitle: `Créez des pipelines séparés pour les ventes, le service après vente, les appels d'offres et autres flux.`,
+      subtitle: `Créez des pipelines séparés pour les ventes, le service après vente, les appels d'offres et autres flux. Pour organiser un chantier avec plusieurs fronts de travail, utilisez Projets.`,
       newPipelineLabel: 'Nouveau Pipeline',
       namePlaceholder: 'Nom du pipeline',
       dragHint: 'Glissez pour réorganiser les pipelines',

@@ -3,7 +3,7 @@
 // lido como meia-noite UTC e, no fuso do Brasil (UTC-3), volta como dia 18 —
 // a data escolhida pelo usuário mudaria sozinha.
 import { describe, it, expect } from 'vitest';
-import { parseIsoDate, toIsoDate } from './DatePicker';
+import { parseIsoDate, resolveYearRange, toIsoDate } from './DatePicker';
 
 describe('parseIsoDate', () => {
   it('mantém o dia escolhido, sem deslocar pelo fuso', () => {
@@ -39,5 +39,51 @@ describe('toIsoDate', () => {
     for (const iso of ['2026-01-01', '2026-02-28', '2026-09-19', '2026-12-31']) {
       expect(toIsoDate(parseIsoDate(iso)!)).toBe(iso);
     }
+  });
+});
+
+// O seletor de ano do calendário precisa cobrir o que o campo pede (min/max),
+// o uso normal (data de nascimento pra trás, contrato longo pra frente) e o
+// que JÁ está gravado — dado legado fora da janela não pode ficar preso.
+describe('resolveYearRange', () => {
+  const hoje = new Date(2026, 9, 17); // 17/10/2026
+
+  it('sem min/max, abre 100 anos pra trás e 20 pra frente', () => {
+    expect(resolveYearRange(undefined, undefined, undefined, hoje)).toEqual({
+      fromYear: 1926,
+      toYear: 2046,
+    });
+  });
+
+  it('respeita min/max quando o campo declara limite', () => {
+    const min = new Date(2020, 0, 1);
+    const max = new Date(2027, 11, 31);
+    expect(resolveYearRange(undefined, min, max, hoje)).toEqual({
+      fromYear: 2020,
+      toYear: 2027,
+    });
+  });
+
+  it('estica a janela pra caber o valor já gravado fora do limite', () => {
+    const min = new Date(2020, 0, 1);
+    const max = new Date(2027, 11, 31);
+    const legado = new Date(1998, 4, 10);
+    expect(resolveYearRange(legado, min, max, hoje)).toEqual({
+      fromYear: 1998,
+      toYear: 2027,
+    });
+
+    const futuro = new Date(2099, 0, 1);
+    expect(resolveYearRange(futuro, min, max, hoje)).toEqual({
+      fromYear: 2020,
+      toYear: 2099,
+    });
+  });
+
+  it('min depois de max não deixa o calendário sem nenhum mês navegável', () => {
+    const min = new Date(2030, 0, 1);
+    const max = new Date(2020, 0, 1);
+    const { fromYear, toYear } = resolveYearRange(undefined, min, max, hoje);
+    expect(toYear).toBeGreaterThanOrEqual(fromYear);
   });
 });

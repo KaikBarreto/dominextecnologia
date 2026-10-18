@@ -39,6 +39,15 @@ vi.mock('@/hooks/useCrmStages', () => ({
 vi.mock('@/hooks/useCrmPipelines', () => ({
   useCrmPipelines: () => ({ pipelines: [{ id: 'pipeline-1', name: 'Funil de Vendas', is_default: true }] }),
 }));
+// Onda 1 de Projetos (2026-10-17): LeadFormDialog passou a chamar
+// useProjectPipelines SEMPRE (nunca condicionalmente — Rules of Hooks), com a
+// query desabilitada quando `projectId` é nulo. Sem QueryClient no teste, o
+// hook real derruba a montagem — mesmo cuidado já aplicado a
+// useCrmPipelineAccess em LeadDetailModal.test.tsx. O caso sob teste aqui
+// (campo de valor estimado) não envolve projeto.
+vi.mock('@/hooks/useProjectPipelines', () => ({
+  useProjectPipelines: () => ({ pipelines: [] }),
+}));
 vi.mock('@/components/customers/CustomerSelectField', () => ({ CustomerSelectField: () => null }));
 vi.mock('@/components/customers/OriginSelectField', () => ({ OriginSelectField: () => null }));
 
@@ -136,5 +145,11 @@ describe('LeadFormDialog — campo de valor estimado (prova real de DOM)', () =>
     expect(updateLead.mutateAsync).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'lead-1', title: 'Nome atualizado' }),
     );
+  });
+
+  it('usa o DatePicker do sistema pra "Previsão de fechamento", sem input date nativo do navegador', () => {
+    mount();
+    expect(q('#expected_close_date')).toBeInstanceOf(HTMLButtonElement);
+    expect(document.querySelector('input[type="date"]')).toBeNull();
   });
 });
