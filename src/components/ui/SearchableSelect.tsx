@@ -50,6 +50,8 @@ interface SearchableSelectProps {
   searchPlaceholder?: string;
   emptyMessage?: string;
   className?: string;
+  /** Ajuste visual opcional do indicador de abertura dentro de campos compostos. */
+  indicatorClassName?: string;
   disabled?: boolean;
   /**
    * Conteúdo custom exibido quando NÃO há nenhuma opção cadastrada (lista vazia),
@@ -95,6 +97,7 @@ export function SearchableSelect({
   searchPlaceholder = 'Buscar...',
   emptyMessage = 'Nenhum resultado encontrado.',
   className,
+  indicatorClassName,
   disabled,
   emptyContent,
   onCreateOption,
@@ -231,7 +234,7 @@ export function SearchableSelect({
             {selected?.icon}
             <span className="truncate">{selected ? selected.label : placeholder}</span>
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronsUpDown className={cn('ml-2 h-4 w-4 shrink-0 self-center opacity-50', indicatorClassName)} />
         </Button>
       </PopoverTrigger>
       <PopoverContent

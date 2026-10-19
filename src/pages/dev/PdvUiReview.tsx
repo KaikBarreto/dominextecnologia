@@ -821,6 +821,7 @@ function CurrentSale() {
     discountPlaceholder: t.cashier.cart.discountPlaceholder,
     total: t.cashier.cart.total,
     customerLabel: t.cashier.cart.customerLabel,
+    customerNone: t.cashier.cart.customerNone,
     customerPlaceholder: t.cashier.cart.customerPlaceholder,
     customerSearchPlaceholder: t.cashier.cart.customerSearchPlaceholder,
     customerEmpty: t.cashier.cart.customerEmpty,

@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 
 export interface PdvCartSummaryTexts {
   customerLabel: string;
+  customerNone: string;
   customerPlaceholder: string;
   customerSearchPlaceholder: string;
   customerEmpty: string;
@@ -107,7 +108,7 @@ export function PdvCartSummary({
         customers={customers}
         allowNone
         noneValue="_none"
-        noneLabel={texts.customerPlaceholder}
+        noneLabel={texts.customerNone}
         placeholder={texts.customerPlaceholder}
         searchPlaceholder={texts.customerSearchPlaceholder}
         emptyMessage={texts.customerEmpty}

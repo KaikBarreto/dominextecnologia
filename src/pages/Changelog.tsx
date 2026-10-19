@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.17',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Opção sem cliente ou fornecedor em primeiro lugar',
+        description: 'Os seletores do PDV agora mostram “Sem cliente” e “Sem fornecedor” no topo da lista, facilitando limpar a escolha durante o preenchimento. O ícone de abertura também fica centralizado no campo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.16',
     date: '19 de outubro de 2026',
     type: 'patch',

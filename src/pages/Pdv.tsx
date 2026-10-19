@@ -1354,6 +1354,7 @@ export default function Pdv() {
       discountPlaceholder: t.cart.discountPlaceholder,
       total: t.cart.total,
       customerLabel: t.cart.customerLabel,
+      customerNone: t.cart.customerNone,
       customerPlaceholder: t.cart.customerPlaceholder,
       customerSearchPlaceholder: t.cart.customerSearchPlaceholder,
       customerEmpty: t.cart.customerEmpty,

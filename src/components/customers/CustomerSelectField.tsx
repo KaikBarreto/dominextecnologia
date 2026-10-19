@@ -132,6 +132,7 @@ export function CustomerSelectField({
             searchPlaceholder={searchPlaceholder}
             emptyMessage={emptyMessage}
             disabled={disabled}
+            indicatorClassName="-translate-y-2"
             className="h-7 min-w-0 justify-between border-0 bg-transparent p-0 text-sm font-semibold shadow-none hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
           />
         </div>

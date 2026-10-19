@@ -227,7 +227,7 @@ export const inventory = {
       confirm: 'Registrar compra',
       fields: {
         description: 'Descrição', descriptionPlaceholder: 'Ex.: Reposição de cobre',
-        supplier: 'Fornecedor', supplierPlaceholder: 'Selecione o fornecedor', supplierSearch: 'Buscar fornecedor...', supplierEmpty: 'Nenhum fornecedor encontrado.',
+        supplier: 'Fornecedor', supplierNone: 'Sem fornecedor', supplierPlaceholder: 'Selecione o fornecedor', supplierSearch: 'Buscar fornecedor...', supplierEmpty: 'Nenhum fornecedor encontrado.',
         stock: 'Local de estoque', stockPlaceholder: 'Selecione o local', purchaseDate: 'Data da compra',
         category: 'Categoria financeira', categoryPlaceholder: 'Selecione a categoria', categoryEmpty: 'Nenhuma categoria de despesa disponível.',
         account: 'Conta financeira', accountPlaceholder: 'Selecione a conta', accountEmpty: 'Nenhuma conta elegível disponível.',
@@ -1201,7 +1201,7 @@ export const inventory = {
       successTitle: 'Purchase recorded', successDescription: 'Stock and finance were updated.', errorTitle: 'Could not record the purchase',
       cancel: 'Cancel', saving: 'Recording...', confirm: 'Record purchase',
       fields: {
-        description: 'Description', descriptionPlaceholder: 'E.g. Copper restock', supplier: 'Supplier', supplierPlaceholder: 'Select supplier', supplierSearch: 'Search supplier...', supplierEmpty: 'No supplier found.',
+        description: 'Description', descriptionPlaceholder: 'E.g. Copper restock', supplier: 'Supplier', supplierNone: 'No supplier', supplierPlaceholder: 'Select supplier', supplierSearch: 'Search supplier...', supplierEmpty: 'No supplier found.',
         stock: 'Stock location', stockPlaceholder: 'Select location', purchaseDate: 'Purchase date', category: 'Financial category', categoryPlaceholder: 'Select category', categoryEmpty: 'No expense category available.',
         account: 'Financial account', accountPlaceholder: 'Select account', accountEmpty: 'No eligible account available.', paymentStatus: 'Payment status', paymentMethod: 'Payment method', paidDate: 'Payment date', dueDate: 'Due date',
         notes: 'Notes', notesPlaceholder: 'Additional purchase information',
@@ -2165,7 +2165,7 @@ export const inventory = {
       successTitle: 'Compra registrada', successDescription: 'El stock y las finanzas fueron actualizados.', errorTitle: 'No se pudo registrar la compra',
       cancel: 'Cancelar', saving: 'Registrando...', confirm: 'Registrar compra',
       fields: {
-        description: 'Descripción', descriptionPlaceholder: 'Ej.: Reposición de cobre', supplier: 'Proveedor', supplierPlaceholder: 'Selecciona el proveedor', supplierSearch: 'Buscar proveedor...', supplierEmpty: 'No se encontró ningún proveedor.',
+        description: 'Descripción', descriptionPlaceholder: 'Ej.: Reposición de cobre', supplier: 'Proveedor', supplierNone: 'Sin proveedor', supplierPlaceholder: 'Selecciona el proveedor', supplierSearch: 'Buscar proveedor...', supplierEmpty: 'No se encontró ningún proveedor.',
         stock: 'Ubicación de stock', stockPlaceholder: 'Selecciona la ubicación', purchaseDate: 'Fecha de compra', category: 'Categoría financiera', categoryPlaceholder: 'Selecciona la categoría', categoryEmpty: 'No hay categorías de gasto disponibles.',
         account: 'Cuenta financiera', accountPlaceholder: 'Selecciona la cuenta', accountEmpty: 'No hay cuentas elegibles disponibles.', paymentStatus: 'Estado del pago', paymentMethod: 'Forma de pago', paidDate: 'Fecha de pago', dueDate: 'Vencimiento',
         notes: 'Observaciones', notesPlaceholder: 'Información adicional sobre la compra',
@@ -3129,7 +3129,7 @@ export const inventory = {
       successTitle: 'Achat enregistré', successDescription: 'Le stock et les finances ont été mis à jour.', errorTitle: `Impossible d'enregistrer l'achat`,
       cancel: 'Annuler', saving: 'Enregistrement...', confirm: `Enregistrer l'achat`,
       fields: {
-        description: 'Description', descriptionPlaceholder: 'Ex. Réapprovisionnement en cuivre', supplier: 'Fournisseur', supplierPlaceholder: 'Sélectionnez le fournisseur', supplierSearch: 'Rechercher un fournisseur...', supplierEmpty: 'Aucun fournisseur trouvé.',
+        description: 'Description', descriptionPlaceholder: 'Ex. Réapprovisionnement en cuivre', supplier: 'Fournisseur', supplierNone: 'Sans fournisseur', supplierPlaceholder: 'Sélectionnez le fournisseur', supplierSearch: 'Rechercher un fournisseur...', supplierEmpty: 'Aucun fournisseur trouvé.',
         stock: 'Emplacement du stock', stockPlaceholder: `Sélectionnez l'emplacement`, purchaseDate: `Date d'achat`, category: 'Catégorie financière', categoryPlaceholder: 'Sélectionnez la catégorie', categoryEmpty: 'Aucune catégorie de dépense disponible.',
         account: 'Compte financier', accountPlaceholder: 'Sélectionnez le compte', accountEmpty: 'Aucun compte éligible disponible.', paymentStatus: 'État du paiement', paymentMethod: 'Mode de paiement', paidDate: 'Date de paiement', dueDate: 'Échéance',
         notes: 'Notes', notesPlaceholder: `Informations supplémentaires sur l'achat`,

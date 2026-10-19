@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.16";
+export const APP_VERSION = "1.37.17";
 
 export const VERSION_NOTES =
-  "Cliente e fornecedor agora podem ser cadastrados por um botão rápido ao lado do seletor, com nomes mais fáceis de identificar nos pedidos.";
+  "Os seletores do PDV agora mostram primeiro as opções para deixar a venda sem cliente ou limpar o fornecedor, com indicador alinhado ao centro do campo.";

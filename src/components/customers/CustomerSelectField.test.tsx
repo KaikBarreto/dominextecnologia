@@ -38,15 +38,20 @@ describe('CustomerSelectField', () => {
         createLabel="Cadastrar novo cliente"
         value="customer-1"
         customers={customers}
+        allowNone
+        noneValue="_none"
+        noneLabel="Sem cliente"
         onValueChange={() => {}}
       />,
     );
 
     const quickAdd = screen.getByRole('button', { name: 'Cadastrar novo cliente' });
     expect(quickAdd).toHaveClass('w-14', 'bg-foreground', 'text-background');
+    expect(screen.getByRole('combobox').querySelector('.lucide-chevrons-up-down')).toHaveClass('-translate-y-2');
 
     fireEvent.click(screen.getByRole('combobox'));
     expect(screen.queryByText('Cadastrar novo cliente')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('option')[0]).toHaveTextContent('Sem cliente');
 
     fireEvent.click(quickAdd);
     expect(screen.getByText('Cadastro rápido')).toBeVisible();

@@ -44,6 +44,7 @@ import { typography } from '@/lib/typography';
 import { cn } from '@/lib/utils';
 
 const purchaseCode = (sequence: number) => `PC-${String(sequence).padStart(3, '0')}`;
+const NO_SUPPLIER_VALUE = '_none';
 
 export default function PdvPurchase() {
   const navigate = useNavigate();
@@ -94,8 +95,11 @@ export default function PdvPurchase() {
 
   const formatCurrency = (value: number) => formatMoney(value, currency, locale);
   const supplierOptions = useMemo(
-    () => suppliers.map((supplier) => ({ value: supplier.id, label: supplier.name })),
-    [suppliers],
+    () => [
+      { value: NO_SUPPLIER_VALUE, label: t.fields.supplierNone },
+      ...suppliers.map((supplier) => ({ value: supplier.id, label: supplier.name })),
+    ],
+    [suppliers, t.fields.supplierNone],
   );
   const accountOptions = useMemo(
     () => eligibleAccounts.map((account) => ({ value: account.id, label: account.name })),
@@ -276,10 +280,13 @@ export default function PdvPurchase() {
                     options={supplierOptions}
                     value={activeDraft.supplierId}
                     disabled={busy}
-                    onValueChange={(supplierId) => patchDraft(draftId, { supplierId })}
+                    onValueChange={(supplierId) => patchDraft(draftId, {
+                      supplierId: supplierId === NO_SUPPLIER_VALUE ? '' : supplierId,
+                    })}
                     placeholder={t.fields.supplierPlaceholder}
                     searchPlaceholder={t.fields.supplierSearch}
                     emptyMessage={t.fields.supplierEmpty}
+                    indicatorClassName="self-center"
                     className="h-10 min-w-0 flex-1 rounded-none border-0 bg-transparent px-3 shadow-none hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
                   <Button
