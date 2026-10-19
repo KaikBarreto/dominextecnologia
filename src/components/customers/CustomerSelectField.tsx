@@ -44,7 +44,7 @@ export interface CustomerSelectFieldProps {
   variant?: 'default' | 'summary';
   /** Rótulo contextual mostrado acima do nome no modo `summary`. */
   summaryLabel?: string;
-  /** Ação persistente no rodapé da busca no modo `summary`. */
+  /** Rótulo acessível do quick-add externo no modo `summary`. */
   createLabel?: string;
 }
 
@@ -104,37 +104,50 @@ export function CustomerSelectField({
     setQuickOpen(true);
   };
 
+  const quickAddLabel = createLabel ?? 'Criar cliente';
   const field = variant === 'summary' ? (
     <div
       className={cn(
-        'flex min-h-14 w-full items-center gap-3 rounded-md border border-input bg-background px-3 py-2 ring-offset-background transition-colors hover:bg-muted/50 focus-within:border-ring focus-within:ring-1 focus-within:ring-ring',
+        'flex min-h-14 w-full overflow-hidden rounded-md border border-input bg-background ring-offset-background transition-colors focus-within:border-ring focus-within:ring-1 focus-within:ring-ring',
         className,
       )}
     >
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <UserRound className="h-4 w-4" aria-hidden="true" />
-      </span>
-      <div className="min-w-0 flex-1">
-        {summaryLabel && (
-          <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {summaryLabel}
-          </span>
-        )}
-        <SearchableSelect
-          id={id}
-          options={options}
-          value={value}
-          onValueChange={onValueChange}
-          onSearchChange={setSearchQuery}
-          onCreateOption={(query) => handleCreateClick(query)}
-          createAlwaysLabel={createLabel}
-          placeholder={placeholder}
-          searchPlaceholder={searchPlaceholder}
-          emptyMessage={emptyMessage}
-          disabled={disabled}
-          className="h-7 min-w-0 justify-between border-0 bg-transparent p-0 text-sm font-semibold shadow-none hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-        />
+      <div className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 hover:bg-muted/50">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <UserRound className="h-4 w-4" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          {summaryLabel && (
+            <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {summaryLabel}
+            </span>
+          )}
+          <SearchableSelect
+            id={id}
+            options={options}
+            value={value}
+            onValueChange={onValueChange}
+            onSearchChange={setSearchQuery}
+            placeholder={placeholder}
+            searchPlaceholder={searchPlaceholder}
+            emptyMessage={emptyMessage}
+            disabled={disabled}
+            className="h-7 min-w-0 justify-between border-0 bg-transparent p-0 text-sm font-semibold shadow-none hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
+        </div>
       </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        disabled={disabled}
+        onClick={() => handleCreateClick()}
+        className="h-auto w-14 self-stretch shrink-0 rounded-none border-l border-background/15 bg-foreground text-background hover:bg-foreground/90 hover:text-background focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-background"
+        aria-label={quickAddLabel}
+        title={quickAddLabel}
+      >
+        <Plus className="h-4 w-4" />
+      </Button>
     </div>
   ) : (
       <div
@@ -162,7 +175,8 @@ export function CustomerSelectField({
           disabled={disabled}
           onClick={() => handleCreateClick()}
           className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
-          aria-label="Criar cliente"
+          aria-label={quickAddLabel}
+          title={quickAddLabel}
         >
           <Plus className="h-4 w-4" />
         </Button>

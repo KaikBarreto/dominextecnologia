@@ -53,8 +53,10 @@ interface PdvOrderSwitcherProps {
   header?: boolean;
 }
 
-const COL_CODE = 'w-20 sm:w-24';
-const COL_VALUE = 'w-28 sm:w-36';
+// Código e valor ocupam apenas o necessário; o nome recebe a largura útil.
+// Antes, o valor reservava 9rem e truncava clientes cedo mesmo em telas largas.
+const COL_CODE = 'w-16 sm:w-20';
+const COL_VALUE = 'w-24 sm:w-28';
 
 export function PdvOrderSwitcher({
   orders,
@@ -89,7 +91,7 @@ export function PdvOrderSwitcher({
       <span className={cn(compact ? 'w-12' : COL_CODE, 'shrink-0 text-center text-sm font-bold tabular-nums')}>
         {order.code}
       </span>
-      <span className={cn(compact ? 'w-24' : COL_VALUE, 'shrink-0 text-right text-sm font-bold tabular-nums')}>
+      <span className={cn(compact ? 'w-20 sm:w-24' : COL_VALUE, 'shrink-0 text-right text-sm font-bold tabular-nums')}>
         {formatCurrency(order.total)}
       </span>
       <span className="min-w-0 flex-1 truncate text-sm">
@@ -145,7 +147,7 @@ export function PdvOrderSwitcher({
                 <ChevronDown className={cn('h-4 w-4 shrink-0 transition-transform', open && 'rotate-180')} />
               </button>
             </PopoverTrigger>
-            <PopoverContent align={embedded || header ? 'end' : 'start'} className="w-[var(--radix-popover-trigger-width)] min-w-[min(34rem,calc(100vw-2rem))] overflow-hidden p-0">
+            <PopoverContent align={embedded || header ? 'end' : 'start'} className="w-[var(--radix-popover-trigger-width)] min-w-[min(38rem,calc(100vw-2rem))] overflow-hidden p-0">
               <div className="max-h-[min(28rem,70vh)] overflow-y-auto">
                 {orders.map((order) => {
                   const selected = order.id === activeId;

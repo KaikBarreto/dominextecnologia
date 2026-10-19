@@ -13,6 +13,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { InventoryMaterialSelect } from '@/components/inventory/InventoryMaterialSelect';
+import { SupplierFormDialog } from '@/components/inventory/SupplierFormDialog';
 import { PdvPurchaseSwitcher } from '@/components/pdv/PdvPurchaseSwitcher';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -50,6 +51,7 @@ export default function PdvPurchase() {
   const { locale, currency, timezone } = useAppLocaleContext();
   const { toast } = useToast();
   const t = MESSAGES[locale].app.inventory.directPurchase;
+  const supplierFormTexts = MESSAGES[locale].app.inventory.supplierForm;
   const tf = MESSAGES[locale].app.finance.transactionForm;
   const tw = getPdvPurchaseWorkspaceMessages(locale);
   const canRegister = useCanRegisterDirectMaterialPurchase();
@@ -61,6 +63,7 @@ export default function PdvPurchase() {
   const { registerPurchase } = useDirectMaterialPurchase();
   const submittingDraftIdRef = useRef<string | null>(null);
   const [submittingDraftId, setSubmittingDraftId] = useState<string | null>(null);
+  const [supplierCreateDraftId, setSupplierCreateDraftId] = useState<string | null>(null);
 
   const today = todayInTz(timezone);
   const eligibleAccounts = useMemo(
@@ -266,8 +269,32 @@ export default function PdvPurchase() {
                 <Input id={`purchase-description-${draftId}`} value={activeDraft.description} disabled={busy} onChange={(event) => patchDraft(draftId, { description: event.target.value })} placeholder={t.fields.descriptionPlaceholder} />
               </div>
               <div className="space-y-1.5">
-                <Label>{t.fields.supplier} *</Label>
-                <SearchableSelect options={supplierOptions} value={activeDraft.supplierId} disabled={busy} onValueChange={(supplierId) => patchDraft(draftId, { supplierId })} placeholder={t.fields.supplierPlaceholder} searchPlaceholder={t.fields.supplierSearch} emptyMessage={t.fields.supplierEmpty} />
+                <Label htmlFor={`purchase-supplier-${draftId}`}>{t.fields.supplier} *</Label>
+                <div className="flex h-10 overflow-hidden rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring">
+                  <SearchableSelect
+                    id={`purchase-supplier-${draftId}`}
+                    options={supplierOptions}
+                    value={activeDraft.supplierId}
+                    disabled={busy}
+                    onValueChange={(supplierId) => patchDraft(draftId, { supplierId })}
+                    placeholder={t.fields.supplierPlaceholder}
+                    searchPlaceholder={t.fields.supplierSearch}
+                    emptyMessage={t.fields.supplierEmpty}
+                    className="h-10 min-w-0 flex-1 rounded-none border-0 bg-transparent px-3 shadow-none hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={busy}
+                    onClick={() => setSupplierCreateDraftId(draftId)}
+                    className="h-10 w-10 shrink-0 rounded-none border-l border-background/15 bg-foreground text-background hover:bg-foreground/90 hover:text-background focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-background"
+                    aria-label={supplierFormTexts.titleNew}
+                    title={supplierFormTexts.titleNew}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label>{t.fields.stock} *</Label>
@@ -340,6 +367,18 @@ export default function PdvPurchase() {
           </Card>
         </aside>
       </div>
+
+      <SupplierFormDialog
+        open={supplierCreateDraftId != null}
+        onOpenChange={(open) => {
+          if (!open) setSupplierCreateDraftId(null);
+        }}
+        onCreated={(supplier) => {
+          const targetDraftId = supplierCreateDraftId;
+          if (targetDraftId) patchDraft(targetDraftId, { supplierId: supplier.id });
+          setSupplierCreateDraftId(null);
+        }}
+      />
     </div>
   );
 }

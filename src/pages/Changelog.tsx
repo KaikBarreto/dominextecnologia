@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.16',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastro rápido ao lado do seletor',
+        description: 'Cliente e fornecedor agora podem ser cadastrados pelo botão “+” ao lado do campo, sem precisar procurar a ação no fim da lista.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Nomes mais visíveis ao trocar de pedido',
+        description: 'O seletor de vendas e compras reserva mais espaço para o nome do cliente ou fornecedor e mantém o valor em uma coluna mais compacta.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.15',
     date: '19 de outubro de 2026',
     type: 'patch',

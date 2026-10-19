@@ -82,7 +82,7 @@ export function PdvPurchaseSwitcher({
         <PackagePlus className="h-4 w-4" aria-hidden="true" />
       </span>
       <span className={cn('shrink-0 text-center text-xs font-bold tabular-nums sm:text-sm', compact ? 'w-14' : 'w-16 sm:w-20')}>{order.code}</span>
-      <span className={cn('shrink-0 text-right text-xs font-bold tabular-nums sm:text-sm', compact ? 'w-24' : 'w-24 sm:w-36')}>
+      <span className={cn('shrink-0 text-right text-xs font-bold tabular-nums sm:text-sm', compact ? 'w-20 sm:w-24' : 'w-24 sm:w-28')}>
         {formatCurrency(order.total)}
       </span>
       <span className="min-w-0 flex-1 truncate text-sm">
@@ -113,7 +113,7 @@ export function PdvPurchaseSwitcher({
           <div className={cn('hidden items-center sm:flex', embedded ? 'h-8 gap-2 border-b border-border/70 px-3' : 'mb-1.5 gap-3 px-3')}>
             <span className={cn(embedded ? 'hidden' : 'w-7')} aria-hidden="true" />
             <span className={cn(embedded ? 'w-14' : 'w-20', 'text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground')}>{texts.code}</span>
-            <span className={cn(embedded ? 'w-24' : 'w-36', 'text-right text-[11px] font-semibold uppercase tracking-widest text-muted-foreground')}>{texts.value}</span>
+            <span className={cn(embedded ? 'w-20 sm:w-24' : 'w-24 sm:w-28', 'text-right text-[11px] font-semibold uppercase tracking-widest text-muted-foreground')}>{texts.value}</span>
             <span className="min-w-0 flex-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{texts.supplier}</span>
             <span className={cn(embedded ? 'w-10' : 'w-7')} aria-hidden="true" />
           </div>
@@ -132,7 +132,7 @@ export function PdvPurchaseSwitcher({
                 <ChevronDown className={cn('h-4 w-4 shrink-0 transition-transform', open && 'rotate-180')} aria-hidden="true" />
               </button>
             </PopoverTrigger>
-            <PopoverContent align={embedded || header ? 'end' : 'start'} className="w-[var(--radix-popover-trigger-width)] min-w-[min(36rem,calc(100vw-2rem))] overflow-hidden p-0">
+            <PopoverContent align={embedded || header ? 'end' : 'start'} className="w-[var(--radix-popover-trigger-width)] min-w-[min(38rem,calc(100vw-2rem))] overflow-hidden p-0">
               <div className="max-h-[min(28rem,70vh)] overflow-y-auto">
                 {orders.map((order) => {
                   const selected = order.id === activeId;
