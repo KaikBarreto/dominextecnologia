@@ -81,4 +81,23 @@ describe('PdvPurchaseSwitcher', () => {
     expect(container.querySelector('[data-embedded="true"]')).toHaveClass('border-b');
     expect(screen.getByRole('button', { name: 'Novo pedido' })).toHaveClass('rounded-none');
   });
+
+  it('tem versão compacta de uma linha para o cabeçalho da compra', () => {
+    const { container } = render(
+      <PdvPurchaseSwitcher
+        header
+        orders={orders}
+        activeId="filled"
+        formatCurrency={(value) => `R$ ${value.toFixed(2)}`}
+        texts={texts}
+        onSelect={() => {}}
+        onCreate={() => {}}
+        onDelete={() => {}}
+      />,
+    );
+
+    expect(container.querySelector('[data-header="true"]')).toBeInTheDocument();
+    expect(screen.queryByText('Código')).not.toBeInTheDocument();
+    expect(screen.getByText('Fornecedor Sul')).toBeVisible();
+  });
 });

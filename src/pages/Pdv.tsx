@@ -34,7 +34,8 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { fuzzyIncludesAny, cn } from '@/lib/utils';
-import { formatMoney, formatNumber, getCurrencySymbol, parseMoney, toBcp47 } from '@/lib/format';
+import { formatMoney, getCurrencySymbol, toBcp47 } from '@/lib/format';
+import { typography } from '@/lib/typography';
 import { todayInTz } from '@/lib/timezone';
 import { useToast } from '@/hooks/use-toast';
 import { useInventory } from '@/hooks/useInventory';
@@ -380,7 +381,6 @@ export default function Pdv() {
       return 2;
     }
   }, [currency, locale]);
-  const currencyMinorScale = 10 ** currencyFractionDigits;
 
   function handleTransactionDateChange(value: string) {
     updateActiveDraft((draft) => ({
@@ -1287,24 +1287,6 @@ export default function Pdv() {
     cardCompact,
   ]);
 
-  function handleDiscountChange(raw: string) {
-    const digits = raw.replace(/\D/g, '');
-    setCart((prev) => setDiscount(prev, parseInt(digits || '0', 10) / currencyMinorScale));
-  }
-  function handleDiscountPaste(e: React.ClipboardEvent<HTMLInputElement>) {
-    const value = parseMoney(e.clipboardData.getData('text'), locale);
-    if (value == null) return;
-    e.preventDefault();
-    const minor = Math.round(value * currencyMinorScale);
-    setCart((prev) => setDiscount(prev, minor / currencyMinorScale));
-  }
-  const discountDisplay = cart.discount
-    ? formatNumber(cart.discount, locale, {
-        minimumFractionDigits: currencyFractionDigits,
-        maximumFractionDigits: currencyFractionDigits,
-      })
-    : '';
-
   function handleConfirmClearCart() {
     if (!activeDraftId) return;
     attemptByDraftRef.current.delete(activeDraftId);
@@ -1318,32 +1300,32 @@ export default function Pdv() {
     focusSearch();
   }
 
+  const orderSwitcherProps = {
+    orders: orderSwitcherItems,
+    activeId: activeDraftId ?? '',
+    formatCurrency,
+    texts: t.orders,
+    onSelect: (draftId: string) => {
+      setPaymentOpen(false);
+      paymentSnapshotRef.current = null;
+      selectDraft(draftId);
+      setTimeout(() => searchInputRef.current?.focus(), 0);
+    },
+    onCreate: handleCreateDraft,
+    onDelete: handleDeleteDraft,
+    disabled: createOrder.isPending || settleOrder.isPending || replaceOrder.isPending,
+  };
+
   const cartPanelProps = {
-    orderSwitcher: (
-      <PdvOrderSwitcher
-        embedded
-        orders={orderSwitcherItems}
-        activeId={activeDraftId ?? ''}
-        formatCurrency={formatCurrency}
-        texts={t.orders}
-        onSelect={(draftId: string) => {
-          setPaymentOpen(false);
-          paymentSnapshotRef.current = null;
-          selectDraft(draftId);
-          setTimeout(() => searchInputRef.current?.focus(), 0);
-        }}
-        onCreate={handleCreateDraft}
-        onDelete={handleDeleteDraft}
-        disabled={createOrder.isPending || settleOrder.isPending || replaceOrder.isPending}
-      />
-    ),
+    orderSwitcher: isMobileCart ? <PdvOrderSwitcher embedded {...orderSwitcherProps} /> : undefined,
     cart,
     customers,
     formatCurrency,
     currencySymbol,
-    discountDisplay,
-    onDiscountChange: handleDiscountChange,
-    onDiscountPaste: handleDiscountPaste,
+    locale,
+    currencyFractionDigits,
+    onSetDiscountAmount: (discountAmount: number) =>
+      setCart((prev) => setDiscount(prev, discountAmount)),
     onIncrement: (id: string, delta: number) => setCart((prev) => incrementLineQuantity(prev, id, delta)),
     onSetQuantity: (id: string, quantity: number) => setCart((prev) => setLineQuantity(prev, id, quantity)),
     onSetLineDiscount: (id: string, discountAmount: number) =>
@@ -1373,6 +1355,9 @@ export default function Pdv() {
       total: t.cart.total,
       customerLabel: t.cart.customerLabel,
       customerPlaceholder: t.cart.customerPlaceholder,
+      customerSearchPlaceholder: t.cart.customerSearchPlaceholder,
+      customerEmpty: t.cart.customerEmpty,
+      customerCreate: t.cart.customerCreate,
       removeLine: t.cart.removeLine,
       clearCart: t.cart.clearCart,
       noPhoto: t.stock.noPhoto,
@@ -1381,6 +1366,7 @@ export default function Pdv() {
       quantityEditLabel: t.cart.quantityEditLabel,
       itemDiscount: t.cart.itemDiscount,
       itemDiscountPlaceholder: t.cart.itemDiscountPlaceholder,
+      discountEditor: t.cart.discountEditor,
       paymentLabel: t.actions.payment,
       paymentShortcut: t.actions.paymentShortcut,
       finalizeLabel: t.actions.finalize,
@@ -1453,32 +1439,40 @@ export default function Pdv() {
     .map((part) => part[0]?.toLocaleUpperCase(locale))
     .join('') || 'OP';
   const activeTerminalName = terminals.find((terminal) => terminal.id === terminalId)?.name ?? '';
+  const desktopOrderSwitcher = (
+    <div className="hidden w-[22rem] shrink-0 md:block lg:w-[25rem] min-[1280px]:w-[30rem]">
+      <PdvOrderSwitcher header {...orderSwitcherProps} />
+    </div>
+  );
   const fullHeaderBlock = (
-    <header className="flex items-center border-b border-border pb-3">
-      <Button type="button" variant="ghost" size="icon" onClick={() => navigate(PDV_PANEL_PATH)} aria-label={t.backToCashPanel}>
-        <ArrowLeft className="h-4 w-4" />
-      </Button>
-      <div className="min-w-0">
-        <h1 className="truncate text-xl font-extrabold tracking-tight text-foreground">{t.title}</h1>
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          <span className={cn('inline-flex items-center gap-1.5 font-semibold', hasOpenCashSession ? 'text-success' : 'text-warning')}>
-            <span className={cn('h-2 w-2 rounded-full', hasOpenCashSession ? 'bg-success' : 'bg-warning')} />
-            {hasOpenCashSession ? t.header.cashOpen : t.header.cashClosed}
-          </span>
-          {activeTerminalName && <span>{activeTerminalName}</span>}
-          {operatorName && (
-            <span className="inline-flex items-center gap-1.5">
-              <Avatar className="h-5 w-5 ring-1 ring-border">
-                <AvatarImage src={profile?.avatar_url ?? undefined} alt={operatorName} className="object-cover" />
-                <AvatarFallback className="bg-primary text-[8px] font-bold text-primary-foreground">
-                  {operatorInitials}
-                </AvatarFallback>
-              </Avatar>
-              {t.header.operator.replace('{name}', operatorName)}
+    <header className="flex items-center gap-4 border-b border-border pb-3">
+      <div className="flex min-w-0 flex-1 items-center">
+        <Button type="button" variant="ghost" size="icon" onClick={() => navigate(PDV_PANEL_PATH)} aria-label={t.backToCashPanel}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div className="min-w-0">
+          <h1 className={cn(typography.pageTitle, 'truncate')}>{t.title}</h1>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span className={cn('inline-flex items-center gap-1.5 font-semibold', hasOpenCashSession ? 'text-success' : 'text-warning')}>
+              <span className={cn('h-2 w-2 rounded-full', hasOpenCashSession ? 'bg-success' : 'bg-warning')} />
+              {hasOpenCashSession ? t.header.cashOpen : t.header.cashClosed}
             </span>
-          )}
+            {activeTerminalName && <span>{activeTerminalName}</span>}
+            {operatorName && (
+              <span className="inline-flex items-center gap-1.5">
+                <Avatar className="h-5 w-5 ring-1 ring-border">
+                  <AvatarImage src={profile?.avatar_url ?? undefined} alt={operatorName} className="object-cover" />
+                  <AvatarFallback className="bg-primary text-[8px] font-bold text-primary-foreground">
+                    {operatorInitials}
+                  </AvatarFallback>
+                </Avatar>
+                {t.header.operator.replace('{name}', operatorName)}
+              </span>
+            )}
+          </div>
         </div>
       </div>
+      {desktopOrderSwitcher}
     </header>
   );
   const compactHeaderBlock = (
@@ -1486,7 +1480,8 @@ export default function Pdv() {
       <Button type="button" variant="ghost" size="icon" onClick={() => navigate(PDV_PANEL_PATH)} aria-label={t.backToCashPanel}>
         <ArrowLeft className="h-4 w-4" />
       </Button>
-      <h1 className="min-w-0 flex-1 truncate text-xl font-extrabold tracking-tight text-foreground">{t.title}</h1>
+      <h1 className={cn(typography.pageTitle, 'min-w-0 flex-1 truncate')}>{t.title}</h1>
+      {desktopOrderSwitcher}
       <Avatar className="h-7 w-7 ring-1 ring-border">
         <AvatarImage src={profile?.avatar_url ?? undefined} alt={operatorName} className="object-cover" />
         <AvatarFallback className="bg-primary text-[9px] font-bold text-primary-foreground">{operatorInitials}</AvatarFallback>

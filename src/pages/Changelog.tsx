@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.15',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Venda com o visual aprovado no preview',
+        description: 'Itens, cliente, descontos e total ficaram mais claros. A troca entre pedidos agora fica ao lado do título e as fotos dos itens podem ser abertas em tela cheia.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Caixa mais direto para conferir',
+        description: 'Dinheiro em caixa e saldos aparecem maiores e bem distribuídos, com ações rápidas e histórico preservados no estilo já conhecido.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Compras com melhor aproveitamento de espaço',
+        description: 'A troca entre compras foi integrada ao cabeçalho, deixando o formulário mais organizado no computador e no celular.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.14',
     date: '19 de outubro de 2026',
     type: 'patch',

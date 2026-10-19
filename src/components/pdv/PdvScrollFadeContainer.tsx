@@ -35,7 +35,6 @@ function useScrollEdges<T extends HTMLElement>(deps: unknown[]): { ref: React.Re
         ? prev
         : { atTop, atBottom, hasOverflow },
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -70,6 +69,8 @@ interface PdvScrollFadeContainerProps {
   recomputeDeps?: unknown[];
   /** Classes do container de scroll (altura fixa, etc). */
   className?: string;
+  /** Editor inline aberto: mantém o conteúdo totalmente opaco durante a edição. */
+  fadeDisabled?: boolean;
 }
 
 /**
@@ -91,12 +92,17 @@ interface PdvScrollFadeContainerProps {
  * `bg-background`. `mask-image` desvanece a OPACIDADE do conteúdo em si,
  * então funciona em cima de qualquer cor de fundo sem precisar saber qual é.
  */
-export function PdvScrollFadeContainer({ children, recomputeDeps = [], className }: PdvScrollFadeContainerProps) {
+export function PdvScrollFadeContainer({
+  children,
+  recomputeDeps = [],
+  className,
+  fadeDisabled = false,
+}: PdvScrollFadeContainerProps) {
   const { ref, edges } = useScrollEdges<HTMLDivElement>(recomputeDeps);
   const { atTop, atBottom, hasOverflow } = edges;
 
-  const showTopFade = hasOverflow && !atTop;
-  const showBottomFade = hasOverflow && !atBottom;
+  const showTopFade = !fadeDisabled && hasOverflow && !atTop;
+  const showBottomFade = !fadeDisabled && hasOverflow && !atBottom;
 
   // Máscara combinada: cada borda vira opaca→transparente só quando o fade
   // daquele lado está ativo (black = mostra, transparent = esconde). Quando

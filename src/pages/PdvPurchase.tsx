@@ -39,6 +39,8 @@ import {
 } from '@/lib/pdv/purchase-drafts';
 import { getPdvPurchaseWorkspaceMessages } from '@/lib/pdv/purchase-workspace-messages';
 import { todayInTz } from '@/lib/timezone';
+import { typography } from '@/lib/typography';
+import { cn } from '@/lib/utils';
 
 const purchaseCode = (sequence: number) => `PC-${String(sequence).padStart(3, '0')}`;
 
@@ -228,18 +230,19 @@ export default function PdvPurchase() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-3 sm:p-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Button type="button" variant="ghost" className="-ml-3 mb-1 gap-2" onClick={() => navigate(localizeAppPath('/pdv', locale))}>
-            <ArrowLeft className="h-4 w-4" /> {tw.back}
+    <div className="flex w-full flex-col gap-4">
+      <header className="flex items-center gap-4 border-b border-border pb-3">
+        <div className="flex min-w-0 flex-1 items-center">
+          <Button type="button" variant="ghost" size="icon" onClick={() => navigate(localizeAppPath('/pdv', locale))} aria-label={tw.back}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-2xl font-bold tracking-tight">{tw.title}</h1>
-          <p className="text-sm text-muted-foreground">{tw.subtitle}</p>
+          <div className="min-w-0">
+            <h1 className={cn(typography.pageTitle, 'truncate')}>{tw.title}</h1>
+            <p className="truncate text-sm text-muted-foreground">{tw.subtitle}</p>
+          </div>
         </div>
-        <div className="rounded-lg bg-primary/10 px-4 py-2 text-right">
-          <p className="text-xs font-medium text-muted-foreground">{t.items.total}</p>
-          <p className="text-2xl font-black tabular-nums text-primary">{formatCurrency(total)}</p>
+        <div className="hidden w-[30rem] shrink-0 xl:block">
+          <PdvPurchaseSwitcher {...purchaseSwitcherProps} header />
         </div>
       </header>
 
@@ -317,9 +320,6 @@ export default function PdvPurchase() {
 
         <aside className="space-y-5 xl:sticky xl:top-4">
           <Card className="overflow-hidden">
-            <div className="hidden xl:block">
-              <PdvPurchaseSwitcher {...purchaseSwitcherProps} embedded />
-            </div>
             <CardHeader><CardTitle className="text-base">{tw.financialTitle}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5"><Label>{t.fields.category} *</Label><SearchableSelect options={categoryOptions} value={activeDraft.categoryId} disabled={busy} onValueChange={(categoryId) => patchDraft(draftId, { categoryId })} placeholder={t.fields.categoryPlaceholder} searchPlaceholder={tf.categorySearchPlaceholder} emptyMessage={t.fields.categoryEmpty} /></div>

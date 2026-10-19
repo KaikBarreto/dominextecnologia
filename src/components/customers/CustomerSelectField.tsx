@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { QuickCustomerDialog } from '@/components/financial/QuickCustomerDialog';
@@ -40,6 +40,12 @@ export interface CustomerSelectFieldProps {
   className?: string;
   /** Repassado ao combobox interno, pra `<Label htmlFor>` focar o campo certo. */
   id?: string;
+  /** Tratamento visual compacto do resumo do PDV, com contexto dentro do campo. */
+  variant?: 'default' | 'summary';
+  /** Rótulo contextual mostrado acima do nome no modo `summary`. */
+  summaryLabel?: string;
+  /** Ação persistente no rodapé da busca no modo `summary`. */
+  createLabel?: string;
 }
 
 /**
@@ -67,6 +73,9 @@ export function CustomerSelectField({
   defaultCustomerKind,
   className,
   id,
+  variant = 'default',
+  summaryLabel,
+  createLabel,
 }: CustomerSelectFieldProps) {
   const [quickOpen, setQuickOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,7 +95,8 @@ export function CustomerSelectField({
     })),
   ];
 
-  const handleCreateClick = () => {
+  const handleCreateClick = (query = searchQuery) => {
+    setSearchQuery(query);
     if (onCreateFull) {
       onCreateFull();
       return;
@@ -94,8 +104,39 @@ export function CustomerSelectField({
     setQuickOpen(true);
   };
 
-  return (
-    <>
+  const field = variant === 'summary' ? (
+    <div
+      className={cn(
+        'flex min-h-14 w-full items-center gap-3 rounded-md border border-input bg-background px-3 py-2 ring-offset-background transition-colors hover:bg-muted/50 focus-within:border-ring focus-within:ring-1 focus-within:ring-ring',
+        className,
+      )}
+    >
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <UserRound className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        {summaryLabel && (
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {summaryLabel}
+          </span>
+        )}
+        <SearchableSelect
+          id={id}
+          options={options}
+          value={value}
+          onValueChange={onValueChange}
+          onSearchChange={setSearchQuery}
+          onCreateOption={(query) => handleCreateClick(query)}
+          createAlwaysLabel={createLabel}
+          placeholder={placeholder}
+          searchPlaceholder={searchPlaceholder}
+          emptyMessage={emptyMessage}
+          disabled={disabled}
+          className="h-7 min-w-0 justify-between border-0 bg-transparent p-0 text-sm font-semibold shadow-none hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+        />
+      </div>
+    </div>
+  ) : (
       <div
         className={cn(
           'flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0',
@@ -119,13 +160,18 @@ export function CustomerSelectField({
           variant="ghost"
           size="icon"
           disabled={disabled}
-          onClick={handleCreateClick}
+          onClick={() => handleCreateClick()}
           className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
           aria-label="Criar cliente"
         >
           <Plus className="h-4 w-4" />
         </Button>
       </div>
+  );
+
+  return (
+    <>
+      {field}
 
       {/* Quick-create embutido — só existe quando o pai não trouxe o próprio
           fluxo completo via `onCreateFull`. */}

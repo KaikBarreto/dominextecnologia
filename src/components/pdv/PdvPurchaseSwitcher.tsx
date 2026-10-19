@@ -47,6 +47,8 @@ interface PdvPurchaseSwitcherProps {
   disabled?: boolean;
   /** Integra o seletor à borda superior do painel do pedido. */
   embedded?: boolean;
+  /** Versão de uma linha para o lado direito do cabeçalho da página. */
+  header?: boolean;
 }
 
 export function PdvPurchaseSwitcher({
@@ -59,6 +61,7 @@ export function PdvPurchaseSwitcher({
   onDelete,
   disabled,
   embedded = false,
+  header = false,
 }: PdvPurchaseSwitcherProps) {
   const [open, setOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PdvPurchaseSwitcherItem | null>(null);
@@ -101,29 +104,35 @@ export function PdvPurchaseSwitcher({
 
   return (
     <>
-      <div className={cn('w-full', embedded && 'border-b border-border bg-card')} data-embedded={embedded || undefined}>
-        <div className={cn('hidden items-center sm:flex', embedded ? 'h-8 gap-2 border-b border-border/70 px-3' : 'mb-1.5 gap-3 px-3')}>
-          <span className={cn(embedded ? 'hidden' : 'w-7')} aria-hidden="true" />
-          <span className={cn(embedded ? 'w-14' : 'w-20', 'text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground')}>{texts.code}</span>
-          <span className={cn(embedded ? 'w-24' : 'w-36', 'text-right text-[11px] font-semibold uppercase tracking-widest text-muted-foreground')}>{texts.value}</span>
-          <span className="min-w-0 flex-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{texts.supplier}</span>
-          <span className={cn(embedded ? 'w-10' : 'w-7')} aria-hidden="true" />
-        </div>
+      <div
+        className={cn('w-full', embedded && 'border-b border-border bg-card')}
+        data-embedded={embedded || undefined}
+        data-header={header || undefined}
+      >
+        {!header && (
+          <div className={cn('hidden items-center sm:flex', embedded ? 'h-8 gap-2 border-b border-border/70 px-3' : 'mb-1.5 gap-3 px-3')}>
+            <span className={cn(embedded ? 'hidden' : 'w-7')} aria-hidden="true" />
+            <span className={cn(embedded ? 'w-14' : 'w-20', 'text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground')}>{texts.code}</span>
+            <span className={cn(embedded ? 'w-24' : 'w-36', 'text-right text-[11px] font-semibold uppercase tracking-widest text-muted-foreground')}>{texts.value}</span>
+            <span className="min-w-0 flex-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{texts.supplier}</span>
+            <span className={cn(embedded ? 'w-10' : 'w-7')} aria-hidden="true" />
+          </div>
+        )}
         <div className={cn('flex overflow-hidden border border-foreground/15', embedded ? 'border-x-0 border-y-0 shadow-none' : 'rounded-lg shadow-sm')}>
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <button
                 type="button"
                 disabled={disabled || !active}
-                className={cn('flex h-12 min-w-0 flex-1 items-center bg-foreground text-left text-background transition-colors hover:bg-foreground/90 disabled:opacity-60', embedded ? 'gap-2 px-3' : 'gap-2 px-2 sm:gap-3 sm:px-3')}
+                className={cn('flex h-12 min-w-0 flex-1 items-center bg-foreground text-left text-background transition-colors hover:bg-foreground/90 disabled:opacity-60', embedded || header ? 'gap-2 px-3' : 'gap-2 px-2 sm:gap-3 sm:px-3')}
                 aria-expanded={open}
               >
-                {active ? row(active, true, embedded) : null}
+                {active ? row(active, true, embedded || header) : null}
                 {orders.length > 1 && <span className="shrink-0 text-xs text-background/70">({orders.length})</span>}
                 <ChevronDown className={cn('h-4 w-4 shrink-0 transition-transform', open && 'rotate-180')} aria-hidden="true" />
               </button>
             </PopoverTrigger>
-            <PopoverContent align={embedded ? 'end' : 'start'} className="w-[var(--radix-popover-trigger-width)] min-w-[min(36rem,calc(100vw-2rem))] overflow-hidden p-0">
+            <PopoverContent align={embedded || header ? 'end' : 'start'} className="w-[var(--radix-popover-trigger-width)] min-w-[min(36rem,calc(100vw-2rem))] overflow-hidden p-0">
               <div className="max-h-[min(28rem,70vh)] overflow-y-auto">
                 {orders.map((order) => {
                   const selected = order.id === activeId;
@@ -153,9 +162,9 @@ export function PdvPurchaseSwitcher({
               </div>
             </PopoverContent>
           </Popover>
-          <Button type="button" variant="secondary" disabled={disabled} className={cn('h-12 shrink-0 rounded-none border-l border-background/15 font-semibold', embedded ? 'px-3' : 'px-4')} onClick={onCreate} aria-label={texts.newOrder}>
+          <Button type="button" variant="secondary" disabled={disabled} className={cn('h-12 shrink-0 rounded-none border-l border-background/15 font-semibold', embedded || header ? 'px-3' : 'px-4')} onClick={onCreate} aria-label={texts.newOrder}>
             <Plus className="h-4 w-4" aria-hidden="true" />
-            <span className={cn(embedded ? 'sr-only' : 'hidden sm:inline')}>{texts.newOrder}</span>
+            <span className={cn(embedded || header ? 'sr-only' : 'hidden sm:inline')}>{texts.newOrder}</span>
           </Button>
         </div>
       </div>

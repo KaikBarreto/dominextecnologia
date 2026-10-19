@@ -1,7 +1,8 @@
-import { Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { X } from 'lucide-react';
 import { PdvQuantityStepper } from '@/components/pdv/PdvQuantityStepper';
+import { PdvInlineDiscountEditor, type PdvInlineDiscountEditorTexts } from '@/components/pdv/PdvInlineDiscountEditor';
 import type { CartLine } from '@/lib/pdv/cart';
+import type { LocaleCode } from '@/lib/i18n/locales';
 import { PdvProductName } from '@/components/pdv/PdvProductName';
 import { PdvProductImagePreview } from '@/components/pdv/PdvProductImagePreview';
 
@@ -14,10 +15,14 @@ interface PdvCartLineRowProps {
   removeLabel: string;
   quantityEditLabel: string;
   discountLabel: string;
-  discountPlaceholder: string;
+  discountEditorTexts: PdvInlineDiscountEditorTexts;
+  currencySymbol: string;
+  locale: LocaleCode;
+  currencyFractionDigits: number;
   onIncrement: (inventoryId: string, delta: number) => void;
   onSetQuantity: (inventoryId: string, quantity: number) => void;
   onSetLineDiscount: (inventoryId: string, discountAmount: number) => void;
+  onDiscountEditingChange?: (editing: boolean) => void;
   onRemove: (inventoryId: string) => void;
   /** Enter na edição de quantidade devolve o foco pra busca (balcão é fila). */
   onConfirmQuantityEdit?: () => void;
@@ -37,10 +42,14 @@ export function PdvCartLineRow({
   removeLabel,
   quantityEditLabel,
   discountLabel,
-  discountPlaceholder,
+  discountEditorTexts,
+  currencySymbol,
+  locale,
+  currencyFractionDigits,
   onIncrement,
   onSetQuantity,
   onSetLineDiscount,
+  onDiscountEditingChange,
   onRemove,
   onConfirmQuantityEdit,
 }: PdvCartLineRowProps) {
@@ -49,14 +58,14 @@ export function PdvCartLineRow({
   const lineTotal = lineGross - lineDiscount;
 
   return (
-    <div className="flex items-center gap-2 py-2.5">
+    <div className="flex gap-3 py-3">
       <PdvProductImagePreview
         imageUrl={line.imageUrl}
         name={line.name}
         fallbackLabel={noPhotoLabel}
         openLabel={openPhotoLabel}
         viewerDescription={photoViewerDescription}
-        className="h-10 w-10 shrink-0 rounded-md object-cover"
+        className="h-12 w-12 shrink-0 rounded-md bg-muted/50 object-cover"
       />
       <div className="min-w-0 flex-1">
         {/* `PdvProductName` MEDE a largura real antes de cortar e só corta
@@ -66,56 +75,62 @@ export function PdvCartLineRow({
             que cortava praticamente todo nome de peça já na segunda palavra.
             Sem `min-h`: nome curto fica em 1 linha, só o longo cresce e deixa
             a linha mais alta. */}
-        <PdvProductName
-          name={line.name}
-          className="min-w-0 text-sm font-medium text-foreground"
-        />
-        <p className="text-xs text-muted-foreground">{formatCurrency(line.unitPrice)}</p>
-        <label className="mt-1 flex max-w-40 items-center gap-1.5 text-[11px] text-muted-foreground">
-          <span className="shrink-0">{discountLabel}</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            max={lineGross}
-            step="0.01"
-            value={lineDiscount || ''}
-            placeholder={discountPlaceholder}
-            onChange={(event) => onSetLineDiscount(line.inventoryId, Number(event.target.value))}
-            className="h-6 min-w-0 flex-1 border-0 border-b border-input bg-transparent px-1 text-right text-xs tabular-nums outline-none focus:border-primary focus:ring-0"
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <PdvProductName
+              name={line.name}
+              className="min-w-0 text-sm font-semibold leading-snug text-foreground"
+            />
+            <p className="mt-1 text-xs tabular-nums text-muted-foreground">
+              {formatCurrency(line.unitPrice)}
+            </p>
+            <PdvInlineDiscountEditor
+              variant="line"
+              label={discountLabel}
+              baseAmount={lineGross}
+              discountAmount={lineDiscount}
+              formatCurrency={formatCurrency}
+              currencySymbol={currencySymbol}
+              locale={locale}
+              currencyFractionDigits={currencyFractionDigits}
+              texts={discountEditorTexts}
+              onApply={(amount) => onSetLineDiscount(line.inventoryId, amount)}
+              onEditingChange={onDiscountEditingChange}
+            />
+          </div>
+          <button
+            type="button"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => onRemove(line.inventoryId)}
+            aria-label={removeLabel}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <PdvQuantityStepper
+            size="sm"
+            className="shrink-0"
+            quantity={line.quantity}
+            availableQuantity={line.availableQuantity}
+            onIncrement={(delta) => onIncrement(line.inventoryId, delta)}
+            onSetQuantity={(quantity) => onSetQuantity(line.inventoryId, quantity)}
+            onConfirmEdit={onConfirmQuantityEdit}
+            decrementAriaLabel="-"
+            incrementAriaLabel="+"
+            editAriaLabel={quantityEditLabel}
           />
-        </label>
-      </div>
-      <PdvQuantityStepper
-        size="sm"
-        className="shrink-0"
-        quantity={line.quantity}
-        availableQuantity={line.availableQuantity}
-        onIncrement={(delta) => onIncrement(line.inventoryId, delta)}
-        onSetQuantity={(quantity) => onSetQuantity(line.inventoryId, quantity)}
-        onConfirmEdit={onConfirmQuantityEdit}
-        decrementAriaLabel="-"
-        incrementAriaLabel="+"
-        editAriaLabel={quantityEditLabel}
-      />
-      <span className="w-20 shrink-0 text-right text-sm font-bold tabular-nums">
-        {lineDiscount > 0 && (
-          <span className="block text-[10px] font-normal text-muted-foreground line-through">
-            {formatCurrency(lineGross)}
+          <span className="flex flex-col items-end text-sm font-bold tabular-nums">
+            {lineDiscount > 0 && (
+              <span className="text-[10px] font-normal text-muted-foreground line-through">
+                {formatCurrency(lineGross)}
+              </span>
+            )}
+            {formatCurrency(lineTotal)}
           </span>
-        )}
-        {formatCurrency(lineTotal)}
-      </span>
-      <Button
-        type="button"
-        variant="destructive-ghost"
-        size="icon"
-        className="h-8 w-8 shrink-0"
-        onClick={() => onRemove(line.inventoryId)}
-        aria-label={removeLabel}
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+        </div>
+      </div>
     </div>
   );
 }

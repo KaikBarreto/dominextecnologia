@@ -5,9 +5,10 @@ import { PdvCartLineRow } from '@/components/pdv/PdvCartLineRow';
 import { PdvCartSummary, type PdvCartSummaryTexts } from '@/components/pdv/PdvCartSummary';
 import { PdvScrollFadeContainer } from '@/components/pdv/PdvScrollFadeContainer';
 import type { CartState } from '@/lib/pdv/cart';
+import type { LocaleCode } from '@/lib/i18n/locales';
 import type { Customer } from '@/types/database';
 import { cn } from '@/lib/utils';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 export interface PdvCartPanelTexts extends PdvCartSummaryTexts {
   title: string;
@@ -32,9 +33,9 @@ interface PdvCartPanelProps {
   customers: Customer[];
   formatCurrency: (value: number) => string;
   currencySymbol: string;
-  discountDisplay: string;
-  onDiscountChange: (raw: string) => void;
-  onDiscountPaste: (e: React.ClipboardEvent<HTMLInputElement>) => void;
+  locale?: LocaleCode;
+  currencyFractionDigits?: number;
+  onSetDiscountAmount: (discountAmount: number) => void;
   onIncrement: (inventoryId: string, delta: number) => void;
   onSetQuantity: (inventoryId: string, quantity: number) => void;
   onSetLineDiscount: (inventoryId: string, discountAmount: number) => void;
@@ -67,9 +68,9 @@ export function PdvCartPanel({
   customers,
   formatCurrency,
   currencySymbol,
-  discountDisplay,
-  onDiscountChange,
-  onDiscountPaste,
+  locale = 'pt-br',
+  currencyFractionDigits = 2,
+  onSetDiscountAmount,
   onIncrement,
   onSetQuantity,
   onSetLineDiscount,
@@ -86,6 +87,7 @@ export function PdvCartPanel({
   className,
 }: PdvCartPanelProps) {
   const itemCount = cart.lines.reduce((sum, l) => sum + l.quantity, 0);
+  const [editingLineDiscount, setEditingLineDiscount] = useState<string | null>(null);
 
   return (
     <div className={cn('flex h-full flex-col', className)}>
@@ -117,7 +119,8 @@ export function PdvCartPanel({
 
       <PdvScrollFadeContainer
         className="h-72 shrink-0 px-4"
-        recomputeDeps={[cart.lines.length]}
+        recomputeDeps={[cart.lines.length, editingLineDiscount]}
+        fadeDisabled={editingLineDiscount != null}
       >
         {cart.lines.length === 0 ? (
           <EmptyState
@@ -139,10 +142,22 @@ export function PdvCartPanel({
                 removeLabel={texts.removeLine}
                 quantityEditLabel={texts.quantityEditLabel}
                 discountLabel={texts.itemDiscount}
-                discountPlaceholder={texts.itemDiscountPlaceholder}
+                discountEditorTexts={texts.discountEditor}
+                currencySymbol={currencySymbol}
+                locale={locale}
+                currencyFractionDigits={currencyFractionDigits}
                 onIncrement={onIncrement}
                 onSetQuantity={onSetQuantity}
                 onSetLineDiscount={onSetLineDiscount}
+                onDiscountEditingChange={(editing) =>
+                  setEditingLineDiscount((current) =>
+                    editing
+                      ? line.inventoryId
+                      : current === line.inventoryId
+                        ? null
+                        : current,
+                  )
+                }
                 onRemove={onRemove}
                 onConfirmQuantityEdit={onConfirmQuantityEdit}
               />
@@ -156,9 +171,9 @@ export function PdvCartPanel({
         customers={customers}
         formatCurrency={formatCurrency}
         currencySymbol={currencySymbol}
-        discountDisplay={discountDisplay}
-        onDiscountChange={onDiscountChange}
-        onDiscountPaste={onDiscountPaste}
+        locale={locale}
+        currencyFractionDigits={currencyFractionDigits}
+        onSetDiscountAmount={onSetDiscountAmount}
         onCustomerChange={onCustomerChange}
         onRequestPayment={onRequestPayment}
         cashClosed={cashClosed}

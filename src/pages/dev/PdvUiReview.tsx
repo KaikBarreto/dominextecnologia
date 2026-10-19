@@ -648,6 +648,11 @@ function usePreviewCart() {
       setOrderDiscount(parsed > 0 ? { mode: "value", value: parsed } : null);
       setCart((current) => setDiscount(current, parsed));
     },
+    setDiscountAmount: (amount: number) => {
+      setDiscountDisplay(formatEditableNumber(amount));
+      setOrderDiscount(amount > 0 ? { mode: "value", value: amount } : null);
+      setCart((current) => setDiscount(current, amount));
+    },
     setOrderDiscount: (
       discount: DiscountDefinition | null,
       baseAmount: number,
@@ -817,6 +822,9 @@ function CurrentSale() {
     total: t.cashier.cart.total,
     customerLabel: t.cashier.cart.customerLabel,
     customerPlaceholder: t.cashier.cart.customerPlaceholder,
+    customerSearchPlaceholder: t.cashier.cart.customerSearchPlaceholder,
+    customerEmpty: t.cashier.cart.customerEmpty,
+    customerCreate: t.cashier.cart.customerCreate,
     removeLine: t.cashier.cart.removeLine,
     clearCart: t.cashier.cart.clearCart,
     noPhoto: t.cashier.stock.noPhoto,
@@ -826,6 +834,7 @@ function CurrentSale() {
     quantityEditLabel: t.cashier.cart.quantityEditLabel,
     itemDiscount: t.cashier.cart.itemDiscount,
     itemDiscountPlaceholder: t.cashier.cart.itemDiscountPlaceholder,
+    discountEditor: t.cashier.cart.discountEditor,
     paymentLabel: t.cashier.actions.payment,
     paymentShortcut: t.cashier.actions.paymentShortcut,
     finalizeLabel: t.cashier.actions.finalize,
@@ -842,9 +851,9 @@ function CurrentSale() {
     customers,
     formatCurrency: money,
     currencySymbol,
-    discountDisplay: cartState.discountDisplay,
-    onDiscountChange: cartState.changeDiscount,
-    onDiscountPaste: () => undefined,
+    locale: "pt-br" as const,
+    currencyFractionDigits: 2,
+    onSetDiscountAmount: cartState.setDiscountAmount,
     onSetLineDiscount: cartState.setCartLineDiscount,
     onCustomerChange: cartState.setCustomer,
     onRequestPayment: () => undefined,

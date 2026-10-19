@@ -2,14 +2,19 @@ import { CreditCard, SlidersHorizontal, Vault } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
+import { PdvInlineDiscountEditor, type PdvInlineDiscountEditorTexts } from '@/components/pdv/PdvInlineDiscountEditor';
 import type { CartState } from '@/lib/pdv/cart';
 import { computeItemDiscountTotal, computeSubtotal, computeTotal } from '@/lib/pdv/cart';
+import type { LocaleCode } from '@/lib/i18n/locales';
 import type { Customer } from '@/types/database';
 import { cn } from '@/lib/utils';
 
 export interface PdvCartSummaryTexts {
   customerLabel: string;
   customerPlaceholder: string;
+  customerSearchPlaceholder: string;
+  customerEmpty: string;
+  customerCreate: string;
   subtotal: string;
   itemDiscounts: string;
   discount: string;
@@ -25,6 +30,7 @@ export interface PdvCartSummaryTexts {
   cashClosedAction: string;
   /** Rótulo do botão que abre `PdvAdvancedOptionsDialog`. */
   advancedOptionsTrigger: string;
+  discountEditor: PdvInlineDiscountEditorTexts;
 }
 
 interface PdvCartSummaryProps {
@@ -32,9 +38,9 @@ interface PdvCartSummaryProps {
   customers: Customer[];
   formatCurrency: (value: number) => string;
   currencySymbol: string;
-  discountDisplay: string;
-  onDiscountChange: (raw: string) => void;
-  onDiscountPaste: (e: React.ClipboardEvent<HTMLInputElement>) => void;
+  locale?: LocaleCode;
+  currencyFractionDigits?: number;
+  onSetDiscountAmount: (discountAmount: number) => void;
   onCustomerChange: (id: string | null) => void;
   /** Abre o diálogo de pagamento (F4 e F9 caem aqui). */
   onRequestPayment: () => void;
@@ -65,9 +71,9 @@ export function PdvCartSummary({
   customers,
   formatCurrency,
   currencySymbol,
-  discountDisplay,
-  onDiscountChange,
-  onDiscountPaste,
+  locale = 'pt-br',
+  currencyFractionDigits = 2,
+  onSetDiscountAmount,
   onCustomerChange,
   onRequestPayment,
   cashClosed,
@@ -92,22 +98,22 @@ export function PdvCartSummary({
     // direita e precisa poder rolar se sobrar pouca altura (tablet com
     // numpad embaixo, por exemplo).
     <div className={cn('space-y-3 px-4 py-3', className)}>
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground" htmlFor="pdv-customer">
-          {texts.customerLabel}
-        </label>
-        <CustomerSelectField
-          id="pdv-customer"
-          value={cart.customerId ?? undefined}
-          customers={customers}
-          allowNone
-          noneValue="_none"
-          noneLabel={texts.customerPlaceholder}
-          placeholder={texts.customerPlaceholder}
-          defaultCustomerKind="loja"
-          onValueChange={(id) => onCustomerChange(id === '_none' ? null : id)}
-        />
-      </div>
+      <CustomerSelectField
+        id="pdv-customer"
+        variant="summary"
+        summaryLabel={texts.customerLabel}
+        createLabel={texts.customerCreate}
+        value={cart.customerId ?? undefined}
+        customers={customers}
+        allowNone
+        noneValue="_none"
+        noneLabel={texts.customerPlaceholder}
+        placeholder={texts.customerPlaceholder}
+        searchPlaceholder={texts.customerSearchPlaceholder}
+        emptyMessage={texts.customerEmpty}
+        defaultCustomerKind="loja"
+        onValueChange={(id) => onCustomerChange(id === '_none' ? null : id)}
+      />
 
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">{texts.subtotal}</span>
@@ -121,42 +127,23 @@ export function PdvCartSummary({
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-3 text-sm">
-        <label htmlFor="pdv-discount" className="text-muted-foreground">
-          {texts.discount}
-        </label>
-        <div className="relative w-28">
-          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-            {currencySymbol}
-          </span>
-          <input
-            id="pdv-discount"
-            type="text"
-            inputMode="numeric"
-            placeholder={texts.discountPlaceholder}
-            value={discountDisplay}
-            onChange={(e) => onDiscountChange(e.target.value)}
-            onPaste={onDiscountPaste}
-            className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-2 text-right text-sm tabular-nums focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          />
-        </div>
-      </div>
+      <PdvInlineDiscountEditor
+        variant="order"
+        label={texts.discount}
+        baseAmount={Math.max(0, subtotal - itemDiscounts)}
+        discountAmount={cart.discount}
+        formatCurrency={formatCurrency}
+        currencySymbol={currencySymbol}
+        locale={locale}
+        currencyFractionDigits={currencyFractionDigits}
+        texts={texts.discountEditor}
+        onApply={onSetDiscountAmount}
+      />
 
       <div className="flex items-center justify-between border-t border-border pt-2">
         <span className="text-base font-bold">{texts.total}</span>
         <span className="text-2xl font-extrabold tabular-nums">{formatCurrency(total)}</span>
       </div>
-
-      <Button type="button" variant="outline" className="relative w-full" onClick={onOpenAdvancedOptions}>
-        <SlidersHorizontal className="h-4 w-4" />
-        {texts.advancedOptionsTrigger}
-        {advancedOptionsActive && (
-          <span
-            aria-hidden="true"
-            className="absolute right-2 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-primary"
-          />
-        )}
-      </Button>
 
       {/* Caixa fechado não impede a venda (PIX, cartão e fiado seguem), então
           é AVISO com o caminho pro painel, nunca bloqueio da tela. */}
@@ -197,16 +184,30 @@ export function PdvCartSummary({
         <Button
           type="button"
           disabled={!canPay}
-          className="h-14 w-full text-lg font-bold"
+          className="relative h-14 w-full justify-center px-12 text-lg font-bold"
           onClick={onRequestPayment}
         >
-          <CreditCard className="h-5 w-5" />
-          {texts.finalizeLabel}
-          <kbd className="ml-1.5 rounded border border-current/30 px-1.5 py-0.5 text-[10px] opacity-70">
+          <span className="flex items-center justify-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            {texts.finalizeLabel}
+          </span>
+          <kbd className="absolute right-4 rounded border border-current/30 px-1.5 py-0.5 text-[10px] opacity-70">
             {texts.finalizeShortcut}
           </kbd>
         </Button>
       </div>
+
+      <button
+        type="button"
+        className="relative flex w-full items-center justify-center gap-2 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        onClick={onOpenAdvancedOptions}
+      >
+        <SlidersHorizontal className="h-3.5 w-3.5" />
+        {texts.advancedOptionsTrigger}
+        {advancedOptionsActive && (
+          <span aria-hidden="true" className="h-2 w-2 rounded-full bg-primary" />
+        )}
+      </button>
     </div>
   );
 }

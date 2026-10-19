@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.14";
+export const APP_VERSION = "1.37.15";
 
 export const VERSION_NOTES =
-  "O seletor de pedidos ficou mais integrado ao PDV, e o histórico do Caixa voltou a carregar corretamente.";
+  "Caixa, Compra e Venda receberam o visual aprovado no preview, com pedidos mais claros e descontos mais fáceis de usar.";

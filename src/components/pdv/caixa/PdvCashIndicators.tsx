@@ -53,12 +53,9 @@ const ACCOUNT_TONES = [
 ] as const;
 
 /**
- * Os dois cards de indicador do topo do caixa.
- *
- * Régua: o card-herói é SATURADO (`bg-primary`) com `text-primary-foreground`
- * (nunca `text-white`: a primária é a cor do tenant e no tema escuro ela é
- * quase branca). O card de contas é BRANCO com o ícone branco direto em cima de
- * um bloco saturado, sem círculo translúcido atrás.
+ * Faixa financeira do topo do caixa, no molde aprovado da EcoSistema: duas
+ * colunas abertas, números dominantes e separação só por alinhamento/divisor.
+ * Cor saturada fica reservada às ações rápidas e aos chips das contas.
  */
 export function PdvCashIndicators({
   cashTexts,
@@ -89,17 +86,25 @@ export function PdvCashIndicators({
   const remaining = accounts.length - visibleAccounts.length;
 
   return (
-    <div className="grid w-full gap-4 lg:grid-cols-2">
-      <section className="flex min-w-0 flex-col justify-between rounded-2xl bg-primary p-5 text-primary-foreground shadow-sm sm:p-6 lg:min-h-[260px]">
+    <div
+      className={cn(
+        'grid w-full gap-5',
+        canManageBankAccounts && 'lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-0',
+      )}
+    >
+      <section className="flex min-w-0 flex-col justify-between lg:min-h-[220px] lg:pr-6">
         <div>
-          <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary-foreground/80">
+          <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             <Banknote className="h-5 w-5" />
             {cashTexts.title}
           </h2>
           <div className="mt-4 flex min-w-0 items-center gap-2">
-            <p className="min-w-0 truncate text-4xl font-extrabold tracking-tight tabular-nums sm:text-5xl xl:text-6xl">
+            <p className={cn(
+              'min-w-0 truncate text-4xl font-extrabold tracking-tight tabular-nums sm:text-5xl xl:text-6xl',
+              drawerAmount < 0 && 'text-destructive',
+            )}>
               {isDrawerLoading ? (
-                <Skeleton className="h-12 w-52 bg-primary-foreground/20 sm:h-14" />
+                <Skeleton className="h-12 w-52 sm:h-14" />
               ) : (
                 <PdvAnimatedMoney value={drawerAmount} visible={valuesVisible} money={money} />
               )}
@@ -110,12 +115,12 @@ export function PdvCashIndicators({
               variant="ghost"
               aria-label={valuesVisible ? cashTexts.hide : cashTexts.show}
               onClick={onToggleValues}
-              className="h-9 w-9 shrink-0 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
+              className="h-9 w-9 shrink-0"
             >
               {valuesVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
             </Button>
           </div>
-          <p className="mt-2 text-xs text-primary-foreground/75">
+          <p className="mt-2 text-xs text-muted-foreground">
             {cashTexts.openedAt.replace('{datetime}', dateTime(openedAt))}
             {operatorName ? ` ${cashTexts.operator.replace('{name}', operatorName)}` : ''}
             {terminalName ? ` · ${terminalName}` : ''}
@@ -123,13 +128,13 @@ export function PdvCashIndicators({
 
           {canManageBankAccounts && isCofreLoading && (
             <div className="mt-5 space-y-2">
-              <Skeleton className="h-4 w-full bg-primary-foreground/20" />
-              <Skeleton className="h-4 w-4/5 bg-primary-foreground/20" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-4/5" />
             </div>
           )}
 
           {canManageBankAccounts && !isCofreLoading && isCofreUnavailable && (
-            <p className="mt-4 text-xs font-medium text-primary-foreground/80">
+            <p className="mt-4 text-xs font-medium text-muted-foreground">
               {unavailableText}
             </p>
           )}
@@ -139,23 +144,23 @@ export function PdvCashIndicators({
               {cofre?.conta_nome ? (
                 <>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-primary-foreground/75">{cashTexts.cofreAvailable}</span>
+                    <span className="text-muted-foreground">{cashTexts.cofreAvailable}</span>
                     <span className="font-bold tabular-nums">
                       <PdvAnimatedMoney value={cofre.disponivel} visible={valuesVisible} money={money} />
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-primary-foreground/75">{cashTexts.cofreReserved}</span>
+                    <span className="text-muted-foreground">{cashTexts.cofreReserved}</span>
                     <span className="font-bold tabular-nums">
                       <PdvAnimatedMoney value={cofre.reservado} visible={valuesVisible} money={money} />
                     </span>
                   </div>
                   {!cofre.controle_estrito && (
-                    <p className="pt-1 text-xs text-primary-foreground/75">{cashTexts.strictOff}</p>
+                    <p className="pt-1 text-xs text-muted-foreground">{cashTexts.strictOff}</p>
                   )}
                 </>
               ) : (
-                <p className="flex items-center gap-1.5 text-primary-foreground/75">
+                <p className="flex items-center gap-1.5 text-muted-foreground">
                   <LockKeyhole className="h-3.5 w-3.5 shrink-0" />
                   {cashTexts.cofreMissing}
                 </p>
@@ -168,14 +173,14 @@ export function PdvCashIndicators({
           type="button"
           disabled={isDrawerLoading || isCofreUnavailable}
           onClick={onClose}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg border border-primary-foreground/30 bg-primary-foreground/10 py-2.5 text-[13px] font-semibold uppercase tracking-widest text-primary-foreground transition-colors hover:border-red-600 hover:bg-red-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-primary-foreground/30 disabled:hover:bg-primary-foreground/10"
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-muted/40 py-2.5 text-[13px] font-semibold uppercase tracking-widest text-foreground transition-colors hover:border-red-600 hover:bg-red-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-muted/40 disabled:hover:text-foreground"
         >
           {cashTexts.close}
         </button>
       </section>
 
       {canManageBankAccounts && (
-        <section className="flex min-w-0 flex-col justify-between rounded-2xl border bg-card p-5 shadow-sm sm:p-6 lg:min-h-[260px]">
+        <section className="flex min-w-0 flex-col justify-between lg:min-h-[220px] lg:border-l lg:pl-6">
           <div>
             <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               <Landmark className="h-5 w-5" />
