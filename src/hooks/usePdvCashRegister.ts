@@ -114,6 +114,22 @@ export interface PdvSessionOrder {
   replaces_order_number: number | null;
 }
 
+type PdvSessionOrderRow = Omit<PdvSessionOrder, 'replaces_order_number'>;
+
+export function attachReplacementOrderNumbers(
+  orders: PdvSessionOrderRow[],
+  replacedOrders: Array<Pick<PdvSessionOrder, 'id' | 'number'>>,
+): PdvSessionOrder[] {
+  const numberById = new Map(replacedOrders.map((order) => [order.id, order.number]));
+
+  return orders.map((order) => ({
+    ...order,
+    replaces_order_number: order.replaces_order_id
+      ? (numberById.get(order.replaces_order_id) ?? null)
+      : null,
+  }));
+}
+
 export interface PdvSessionOrderItem {
   order_id: string;
   inventory_id: string | null;
@@ -539,24 +555,23 @@ export function usePdvCashSessionDetail(session: PdvCashSession | null) {
 
       const ordersRes = await supabase
         .from('pdv_orders')
-        .select('id, number, total, subtotal, discount_amount, status, customer_id, stock_id, notes, paid_at, created_at, replaces_order_id, replaces_order:pdv_orders!pdv_orders_replaces_order_id_fkey(number)')
+        .select('id, number, total, subtotal, discount_amount, status, customer_id, stock_id, notes, paid_at, created_at, replaces_order_id')
         .eq('cash_session_id', sessionId)
+        .eq('company_id', session.company_id)
         .in('status', ['pago', 'entregue'])
         .order('created_at', { ascending: false });
       if (ordersRes.error) throw ordersRes.error;
-      const orders = (ordersRes.data ?? []).map((raw) => {
-        const row = raw as unknown as Omit<PdvSessionOrder, 'replaces_order_number'> & {
-          replaces_order?: { number: number } | null;
-        };
-        const { replaces_order: replacesOrder, ...order } = row;
-        return {
-          ...order,
-          replaces_order_number: replacesOrder?.number ?? null,
-        } as PdvSessionOrder;
-      });
-      const orderIds = orders.map((o) => o.id);
+      const orderRows = (ordersRes.data ?? []) as PdvSessionOrderRow[];
+      const orderIds = orderRows.map((order) => order.id);
+      const replacedOrderIds = [
+        ...new Set(
+          orderRows
+            .map((order) => order.replaces_order_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
 
-      const [itemsRes, paymentsRes, movementsRes, txnsRes] = await Promise.all([
+      const [itemsRes, paymentsRes, movementsRes, txnsRes, replacedOrdersRes] = await Promise.all([
         orderIds.length
           ? supabase
               .from('pdv_order_items')
@@ -591,12 +606,24 @@ export function usePdvCashSessionDetail(session: PdvCashSession | null) {
               .gte('created_at', windowStart)
               .lte('created_at', windowEnd),
         ).then((data) => ({ data, error: null })),
+        replacedOrderIds.length
+          ? supabase
+              .from('pdv_orders')
+              .select('id, number')
+              .eq('company_id', session.company_id)
+              .in('id', replacedOrderIds)
+          : Promise.resolve({ data: [], error: null } as never),
       ]);
 
       if (itemsRes.error) throw itemsRes.error;
       if (paymentsRes.error) throw paymentsRes.error;
       if (movementsRes.error) throw movementsRes.error;
+      if (replacedOrdersRes.error) throw replacedOrdersRes.error;
 
+      const orders = attachReplacementOrderNumbers(
+        orderRows,
+        (replacedOrdersRes.data ?? []) as Array<Pick<PdvSessionOrder, 'id' | 'number'>>,
+      );
       const items = (itemsRes.data ?? []) as PdvSessionOrderItem[];
       const payments = (paymentsRes.data ?? []).map((raw) => {
         const row = raw as unknown as Omit<PdvSessionPayment, 'transaction_date'> & {

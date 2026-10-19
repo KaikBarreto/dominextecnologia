@@ -68,6 +68,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { PdvCartItemsTable } from "@/components/pdv/PdvCartItemsTable";
 import { PdvCartPanel } from "@/components/pdv/PdvCartPanel";
 import { PdvCartSummary } from "@/components/pdv/PdvCartSummary";
+import { PdvOrderSwitcher } from "@/components/pdv/PdvOrderSwitcher";
 import {
   PdvProductCard,
   type PdvGridProduct,
@@ -1201,6 +1202,7 @@ function ProposedOrderPanel({
     src: string;
     alt: string;
   } | null>(null);
+  const [activePreviewOrder, setActivePreviewOrder] = useState("preview-current");
 
   const updateBottomFade = () => {
     const viewport = itemsViewportRef.current;
@@ -1226,6 +1228,35 @@ function ProposedOrderPanel({
   return (
     <>
       <Card className="self-start overflow-hidden border-foreground/15 shadow-none md:max-h-full md:overflow-y-auto md:overscroll-contain">
+        <PdvOrderSwitcher
+          embedded
+          orders={[
+            {
+              id: "preview-current",
+              code: "#1842",
+              customer: "Cliente balcão",
+              total,
+              itemCount: count,
+              hasContent: true,
+            },
+            {
+              id: "preview-next",
+              code: "#1843",
+              customer: "",
+              total: 0,
+              itemCount: 0,
+              hasContent: false,
+            },
+          ]}
+          activeId={activePreviewOrder}
+          formatCurrency={money}
+          texts={t.cashier.orders}
+          onSelect={setActivePreviewOrder}
+          onCreate={() => setActivePreviewOrder("preview-next")}
+          onDelete={(id) => {
+            if (id === "preview-next") setActivePreviewOrder("preview-current");
+          }}
+        />
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div>
             <h2 className="font-bold">Pedido atual</h2>

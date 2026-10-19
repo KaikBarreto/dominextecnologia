@@ -47,6 +47,8 @@ interface PdvOrderSwitcherProps {
   onCreate: () => void;
   onDelete: (id: string) => void;
   disabled?: boolean;
+  /** Integra o seletor à borda superior do painel do pedido. */
+  embedded?: boolean;
 }
 
 const COL_CODE = 'w-20 sm:w-24';
@@ -61,6 +63,7 @@ export function PdvOrderSwitcher({
   onCreate,
   onDelete,
   disabled,
+  embedded = false,
 }: PdvOrderSwitcherProps) {
   const [open, setOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PdvOrderSwitcherItem | null>(null);
@@ -75,15 +78,15 @@ export function PdvOrderSwitcher({
     setPendingDelete(order);
   };
 
-  const row = (order: PdvOrderSwitcherItem, activeRow: boolean) => (
+  const row = (order: PdvOrderSwitcherItem, activeRow: boolean, compact = false) => (
     <>
-      <span className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-full bg-current/10 sm:flex">
+      <span className={cn('h-7 w-7 shrink-0 items-center justify-center rounded-full bg-current/10', compact ? 'hidden' : 'hidden sm:flex')}>
         <ShoppingCart className="h-4 w-4" />
       </span>
-      <span className={cn(COL_CODE, 'shrink-0 text-center text-sm font-bold tabular-nums')}>
+      <span className={cn(compact ? 'w-12' : COL_CODE, 'shrink-0 text-center text-sm font-bold tabular-nums')}>
         {order.code}
       </span>
-      <span className={cn(COL_VALUE, 'shrink-0 text-right text-sm font-bold tabular-nums')}>
+      <span className={cn(compact ? 'w-24' : COL_VALUE, 'shrink-0 text-right text-sm font-bold tabular-nums')}>
         {formatCurrency(order.total)}
       </span>
       <span className="min-w-0 flex-1 truncate text-sm">
@@ -94,7 +97,7 @@ export function PdvOrderSwitcher({
           {texts.editBadge}
         </span>
       )}
-      <span className={cn('w-7 shrink-0 text-center text-xs tabular-nums', activeRow ? 'text-background/70' : 'text-muted-foreground')}>
+      <span className={cn(compact ? 'hidden' : 'w-7 shrink-0 text-center text-xs tabular-nums', activeRow ? 'text-background/70' : 'text-muted-foreground')}>
         {order.itemCount}
       </span>
     </>
@@ -102,38 +105,38 @@ export function PdvOrderSwitcher({
 
   return (
     <>
-      <div className="w-full">
-        <div className="mb-1.5 hidden items-center gap-3 px-3 sm:flex">
-          <span className="w-7 shrink-0" aria-hidden />
-          <span className={cn(COL_CODE, 'shrink-0 text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground')}>
+      <div className={cn('w-full', embedded && 'border-b border-border bg-card')} data-embedded={embedded || undefined}>
+        <div className={cn('hidden items-center sm:flex', embedded ? 'h-8 gap-2 border-b border-border/70 px-3' : 'mb-1.5 gap-3 px-3')}>
+          <span className={cn(embedded ? 'hidden' : 'w-7 shrink-0')} aria-hidden />
+          <span className={cn(embedded ? 'w-12' : COL_CODE, 'shrink-0 text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground')}>
             {texts.number}
           </span>
-          <span className={cn(COL_VALUE, 'shrink-0 text-right text-[11px] font-semibold uppercase tracking-widest text-muted-foreground')}>
+          <span className={cn(embedded ? 'w-24' : COL_VALUE, 'shrink-0 text-right text-[11px] font-semibold uppercase tracking-widest text-muted-foreground')}>
             {texts.value}
           </span>
           <span className="min-w-0 flex-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
             {texts.customer}
           </span>
-          <span className="w-7 shrink-0" aria-hidden />
+          <span className={cn(embedded ? 'w-10' : 'w-7', 'shrink-0')} aria-hidden />
         </div>
 
-        <div className="flex w-full overflow-hidden rounded-lg border border-foreground/15 shadow-sm">
+        <div className={cn('flex w-full overflow-hidden border border-foreground/15', embedded ? 'border-x-0 border-y-0 shadow-none' : 'rounded-lg shadow-sm')}>
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <button
                 type="button"
                 disabled={disabled || !active}
-                className="flex h-12 min-w-0 flex-1 items-center gap-3 bg-foreground px-3 text-left text-background transition-colors hover:bg-foreground/90 disabled:opacity-60"
+                className={cn('flex h-12 min-w-0 flex-1 items-center bg-foreground text-left text-background transition-colors hover:bg-foreground/90 disabled:opacity-60', embedded ? 'gap-2 px-3' : 'gap-3 px-3')}
                 aria-expanded={open}
               >
-                {active ? row(active, true) : null}
+                {active ? row(active, true, embedded) : null}
                 {orders.length > 1 && (
                   <span className="shrink-0 text-xs text-background/70">({orders.length})</span>
                 )}
                 <ChevronDown className={cn('h-4 w-4 shrink-0 transition-transform', open && 'rotate-180')} />
               </button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] min-w-[min(34rem,calc(100vw-2rem))] overflow-hidden p-0">
+            <PopoverContent align={embedded ? 'end' : 'start'} className="w-[var(--radix-popover-trigger-width)] min-w-[min(34rem,calc(100vw-2rem))] overflow-hidden p-0">
               <div className="max-h-[min(28rem,70vh)] overflow-y-auto">
                 {orders.map((order) => {
                   const selected = order.id === activeId;
@@ -176,11 +179,12 @@ export function PdvOrderSwitcher({
             type="button"
             variant="secondary"
             disabled={disabled}
-            className="h-12 shrink-0 rounded-none border-l border-background/15 px-4 font-semibold"
+            className={cn('h-12 shrink-0 rounded-none border-l border-background/15 font-semibold', embedded ? 'px-3' : 'px-4')}
             onClick={onCreate}
+            aria-label={texts.newOrder}
           >
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">{texts.newOrder}</span>
+            <span className={cn(embedded ? 'sr-only' : 'hidden sm:inline')}>{texts.newOrder}</span>
           </Button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.13";
+export const APP_VERSION = "1.37.14";
 
 export const VERSION_NOTES =
-  "O PDV agora permite manter várias vendas e compras abertas com segurança, enquanto o Caixa atualiza os saldos com mais rapidez.";
+  "O seletor de pedidos ficou mais integrado ao PDV, e o histórico do Caixa voltou a carregar corretamente.";

@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.14',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Troca de pedidos mais clara',
+        description: 'O seletor de vendas e compras em andamento agora fica integrado ao topo do pedido, com mais espaço para identificar o cliente ou fornecedor.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Histórico do Caixa disponível novamente',
+        description: 'Corrigimos o erro que podia impedir o carregamento das transações do caixa após a edição de uma venda.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.37.13',
     date: '19 de outubro de 2026',
     type: 'patch',

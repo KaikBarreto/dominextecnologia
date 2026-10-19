@@ -63,4 +63,22 @@ describe('PdvOrderSwitcher', () => {
     fireEvent.click(screen.getByRole('button', { name: /^#2 R\$/ }));
     expect(onSelect).toHaveBeenCalledWith('filled');
   });
+
+  it('pode ficar integrado ao topo do painel sem espaçamento externo', () => {
+    const { container } = render(
+      <PdvOrderSwitcher
+        embedded
+        orders={orders}
+        activeId="filled"
+        formatCurrency={(value) => `R$ ${value.toFixed(2)}`}
+        texts={texts}
+        onSelect={() => {}}
+        onCreate={() => {}}
+        onDelete={() => {}}
+      />,
+    );
+
+    expect(container.querySelector('[data-embedded="true"]')).toHaveClass('border-b');
+    expect(screen.getByRole('button', { name: 'Novo pedido' })).toHaveClass('rounded-none');
+  });
 });

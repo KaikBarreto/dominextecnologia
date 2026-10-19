@@ -210,6 +210,22 @@ export default function PdvPurchase() {
   const draftId = activeDraft.id;
   const total = pdvPurchaseDraftTotal(activeDraft);
   const busy = registerPurchase.isPending || submittingDraftId != null;
+  const purchaseSwitcherProps = {
+    orders: switcherOrders,
+    activeId: workspace.activeId,
+    formatCurrency,
+    texts: tw,
+    onSelect: selectDraft,
+    onCreate: () => {
+      if (workspace.drafts.length >= MAX_PDV_PURCHASE_DRAFTS) {
+        toast({ title: tw.limitReached });
+        return;
+      }
+      createDraft();
+    },
+    onDelete: deleteDraft,
+    disabled: busy,
+  };
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-3 sm:p-6">
@@ -227,22 +243,9 @@ export default function PdvPurchase() {
         </div>
       </header>
 
-      <PdvPurchaseSwitcher
-        orders={switcherOrders}
-        activeId={workspace.activeId}
-        formatCurrency={formatCurrency}
-        texts={tw}
-        onSelect={selectDraft}
-        onCreate={() => {
-          if (workspace.drafts.length >= MAX_PDV_PURCHASE_DRAFTS) {
-            toast({ title: tw.limitReached });
-            return;
-          }
-          createDraft();
-        }}
-        onDelete={deleteDraft}
-        disabled={busy}
-      />
+      <div className="xl:hidden">
+        <PdvPurchaseSwitcher {...purchaseSwitcherProps} />
+      </div>
 
       {syncIssue && (
         <NoticeBanner variant={syncIssue === 'conflict' ? 'warning' : 'info'}>
@@ -313,7 +316,10 @@ export default function PdvPurchase() {
         </div>
 
         <aside className="space-y-5 xl:sticky xl:top-4">
-          <Card>
+          <Card className="overflow-hidden">
+            <div className="hidden xl:block">
+              <PdvPurchaseSwitcher {...purchaseSwitcherProps} embedded />
+            </div>
             <CardHeader><CardTitle className="text-base">{tw.financialTitle}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5"><Label>{t.fields.category} *</Label><SearchableSelect options={categoryOptions} value={activeDraft.categoryId} disabled={busy} onValueChange={(categoryId) => patchDraft(draftId, { categoryId })} placeholder={t.fields.categoryPlaceholder} searchPlaceholder={tf.categorySearchPlaceholder} emptyMessage={t.fields.categoryEmpty} /></div>

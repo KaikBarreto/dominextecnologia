@@ -1319,6 +1319,24 @@ export default function Pdv() {
   }
 
   const cartPanelProps = {
+    orderSwitcher: (
+      <PdvOrderSwitcher
+        embedded
+        orders={orderSwitcherItems}
+        activeId={activeDraftId ?? ''}
+        formatCurrency={formatCurrency}
+        texts={t.orders}
+        onSelect={(draftId: string) => {
+          setPaymentOpen(false);
+          paymentSnapshotRef.current = null;
+          selectDraft(draftId);
+          setTimeout(() => searchInputRef.current?.focus(), 0);
+        }}
+        onCreate={handleCreateDraft}
+        onDelete={handleDeleteDraft}
+        disabled={createOrder.isPending || settleOrder.isPending || replaceOrder.isPending}
+      />
+    ),
     cart,
     customers,
     formatCurrency,
@@ -1491,22 +1509,6 @@ export default function Pdv() {
           {headerCompressed ? fullHeaderBlock : compactHeaderBlock}
         </div>
       </div>
-
-      <PdvOrderSwitcher
-        orders={orderSwitcherItems}
-        activeId={activeDraftId ?? ''}
-        formatCurrency={formatCurrency}
-        texts={t.orders}
-        onSelect={(draftId) => {
-          setPaymentOpen(false);
-          paymentSnapshotRef.current = null;
-          selectDraft(draftId);
-          setTimeout(() => searchInputRef.current?.focus(), 0);
-        }}
-        onCreate={handleCreateDraft}
-        onDelete={handleDeleteDraft}
-        disabled={createOrder.isPending || settleOrder.isPending || replaceOrder.isPending}
-      />
 
       {syncIssue && (
         <NoticeBanner variant={syncIssue === 'conflict' ? 'warning' : 'info'}>
@@ -1730,7 +1732,7 @@ export default function Pdv() {
         {/* O painel completo do pedido fica à direita, como no preview
             aprovado: lista com altura contida/rolagem + resumo + CTA. */}
         {!isMobileCart && (
-          <Card className="w-full shrink-0 overflow-hidden border-foreground/15 shadow-none md:h-full md:w-[22rem] lg:w-[25rem]">
+          <Card className="w-full shrink-0 overflow-hidden border-foreground/15 shadow-none md:h-full md:w-[22rem] lg:w-[25rem] min-[1280px]:w-[30rem]">
             <CardContent className="h-full p-0">
               <PdvCartPanel {...cartPanelProps} />
             </CardContent>

@@ -7,6 +7,7 @@ import { PdvScrollFadeContainer } from '@/components/pdv/PdvScrollFadeContainer'
 import type { CartState } from '@/lib/pdv/cart';
 import type { Customer } from '@/types/database';
 import { cn } from '@/lib/utils';
+import type { ReactNode } from 'react';
 
 export interface PdvCartPanelTexts extends PdvCartSummaryTexts {
   title: string;
@@ -25,6 +26,8 @@ export interface PdvCartPanelTexts extends PdvCartSummaryTexts {
 }
 
 interface PdvCartPanelProps {
+  /** Seletor do pedido ativo. Fica colado ao topo do painel, sem padding externo. */
+  orderSwitcher?: ReactNode;
   cart: CartState;
   customers: Customer[];
   formatCurrency: (value: number) => string;
@@ -59,6 +62,7 @@ interface PdvCartPanelProps {
  * intacto pro mobile não regredir.
  */
 export function PdvCartPanel({
+  orderSwitcher,
   cart,
   customers,
   formatCurrency,
@@ -85,6 +89,7 @@ export function PdvCartPanel({
 
   return (
     <div className={cn('flex h-full flex-col', className)}>
+      {orderSwitcher && <div className="shrink-0">{orderSwitcher}</div>}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
