@@ -72,4 +72,31 @@ describe('WhatsappAutomationSettings', () => {
     expect(updated.os.events.a_caminho.enabled).toBe(false);
     expect(updated.os.events.em_andamento.enabled).toBe(true);
   });
+
+  it('mostra a nova copy de cobrança sem campos internos', () => {
+    act(() => {
+      root.render(
+        <WhatsappAutomationSettings
+          locale="pt-br"
+          enabled
+          preferences={DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES}
+          isSaving={false}
+          isDirty={false}
+          onEnabledChange={() => {}}
+          onPreferencesChange={() => {}}
+          onSave={() => {}}
+        />,
+      );
+    });
+
+    const billingTab = Array.from(container.querySelectorAll('[role="radio"]'))
+      .find((element) => element.textContent?.includes('Cobranças'));
+    expect(billingTab).toBeTruthy();
+    act(() => billingTab?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    expect(container.textContent).toContain('nova cobrança da Clima Forte Serviços');
+    expect(container.textContent).toContain('Se você já realizou o pagamento, desconsidere esta mensagem.');
+    expect(container.textContent).not.toContain('Quem gerou');
+    expect(container.textContent).not.toContain('Descrição');
+  });
 });

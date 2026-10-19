@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.3',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cobranças pelo WhatsApp mais claras para o cliente',
+        description: 'As mensagens automáticas de cobrança agora mostram o nome da empresa remetente e somente as informações necessárias. Também orientam o cliente a desconsiderar o aviso quando o pagamento já tiver sido realizado e indicam o próprio WhatsApp como canal para tirar dúvidas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.2',
     date: '19 de outubro de 2026',
     type: 'patch',

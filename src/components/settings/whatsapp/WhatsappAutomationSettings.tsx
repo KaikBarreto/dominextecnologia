@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import {
-  AlignLeft,
   Banknote,
   CalendarClock,
   CheckCircle2,
@@ -11,7 +10,6 @@ import {
   ReceiptText,
   Save,
   ShieldCheck,
-  UserRound,
   Wrench,
   type LucideIcon,
 } from 'lucide-react';
@@ -80,8 +78,6 @@ const COPY = {
     billingContent: 'Informações da cobrança',
     amount: 'Valor',
     paymentLink: 'Link de pagamento',
-    createdBy: 'Quem gerou',
-    descriptionField: 'Descrição',
     beforeDays: 'Quantos dias antes',
     afterDays: 'Quantos dias depois',
     days: 'dias',
@@ -109,7 +105,7 @@ const COPY = {
     os: 'Work orders', billing: 'Charges', chooseEvent: 'Choose when to send', chooseEventHint: 'Tap an event in the list to edit its message below.', editingBadge: 'Editing',
     eventEnabled: 'Send this message', template: 'Message template', templateHint: 'Final texts will be linked to templates approved by the provider.',
     templates: { automatic: 'Automatic rotation · recommended', objective: 'Objective', cordial: 'Friendly', detailed: 'Detailed' },
-    osLink: 'Include work order tracking link', billingContent: 'Charge information', amount: 'Amount', paymentLink: 'Payment link', createdBy: 'Created by', descriptionField: 'Description',
+    osLink: 'Include work order tracking link', billingContent: 'Charge information', amount: 'Amount', paymentLink: 'Payment link',
     beforeDays: 'Days before', afterDays: 'Days after', days: 'days', preview: 'Message preview', previewHint: 'Illustrative data — no message will be sent at this stage.',
     active: 'Active', inactive: 'Inactive', companyPreview: 'Your company', illustrativePreview: 'Illustrative preview',
     customerRule: 'Only customers with “Receive WhatsApp messages” enabled will be considered.',
@@ -125,7 +121,7 @@ const COPY = {
     os: 'Órdenes de trabajo', billing: 'Cobros', chooseEvent: 'Elige cuándo enviar', chooseEventHint: 'Toca un evento de la lista para editar su mensaje aquí abajo.', editingBadge: 'Editando',
     eventEnabled: 'Enviar este mensaje', template: 'Modelo del mensaje', templateHint: 'Los textos finales se vincularán a plantillas aprobadas por el proveedor.',
     templates: { automatic: 'Rotación automática · recomendada', objective: 'Objetiva', cordial: 'Cordial', detailed: 'Detallada' },
-    osLink: 'Incluir enlace de seguimiento de la orden', billingContent: 'Información del cobro', amount: 'Importe', paymentLink: 'Enlace de pago', createdBy: 'Quién lo generó', descriptionField: 'Descripción',
+    osLink: 'Incluir enlace de seguimiento de la orden', billingContent: 'Información del cobro', amount: 'Importe', paymentLink: 'Enlace de pago',
     beforeDays: 'Cuántos días antes', afterDays: 'Cuántos días después', days: 'días', preview: 'Vista previa', previewHint: 'Datos ilustrativos — no se enviará ningún mensaje en esta etapa.',
     active: 'Activa', inactive: 'Inactiva', companyPreview: 'Tu empresa', illustrativePreview: 'Vista previa ilustrativa',
     customerRule: 'Solo se considerarán clientes con “Recibir mensajes por WhatsApp” activo.',
@@ -142,7 +138,7 @@ const COPY = {
     editingBadge: 'Modification',
     eventEnabled: 'Envoyer ce message', template: 'Modèle du message', templateHint: 'Les textes finaux seront liés aux modèles approuvés par le fournisseur.',
     templates: { automatic: 'Rotation automatique · recommandée', objective: 'Direct', cordial: 'Cordial', detailed: 'Détaillé' },
-    osLink: 'Inclure le lien de suivi du bon', billingContent: 'Informations de facturation', amount: 'Montant', paymentLink: 'Lien de paiement', createdBy: 'Créé par', descriptionField: 'Description',
+    osLink: 'Inclure le lien de suivi du bon', billingContent: 'Informations de facturation', amount: 'Montant', paymentLink: 'Lien de paiement',
     beforeDays: 'Jours avant', afterDays: 'Jours après', days: 'jours', preview: 'Aperçu du message', previewHint: 'Données illustratives — aucun message ne sera envoyé à ce stade.',
     active: 'Active', inactive: 'Inactive', companyPreview: 'Votre entreprise', illustrativePreview: 'Aperçu illustratif',
     customerRule: 'Seuls les clients ayant activé « Recevoir des messages WhatsApp » seront concernés.',
@@ -463,8 +459,6 @@ export function WhatsappAutomationSettings({
                     <div className="grid gap-2 sm:grid-cols-2">
                       <OptionRow icon={Banknote} label={copy.amount} compact checked={preferences.billing.includeAmount} disabled={readOnly} onCheckedChange={(includeAmount) => updateBilling({ includeAmount })} />
                       <OptionRow icon={ExternalLink} label={copy.paymentLink} compact checked={preferences.billing.includePaymentLink} disabled={readOnly} onCheckedChange={(includePaymentLink) => updateBilling({ includePaymentLink })} />
-                      <OptionRow icon={UserRound} label={copy.createdBy} compact checked={preferences.billing.includeCreatedBy} disabled={readOnly} onCheckedChange={(includeCreatedBy) => updateBilling({ includeCreatedBy })} />
-                      <OptionRow icon={AlignLeft} label={copy.descriptionField} compact checked={preferences.billing.includeDescription} disabled={readOnly} onCheckedChange={(includeDescription) => updateBilling({ includeDescription })} />
                     </div>
                   </div>
                 </>

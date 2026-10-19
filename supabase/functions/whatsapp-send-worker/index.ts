@@ -31,6 +31,7 @@ type Job = {
 
 type SettingsData = { automation_preferences: unknown };
 type CustomerData = { name: string };
+type CompanyData = { name: string };
 
 function timingSafeEqual(a: string, b: string): boolean {
   const left = new TextEncoder().encode(a);
@@ -56,6 +57,14 @@ function dateBr(value: string | null): string {
   if (!value) return "não informado";
   const [year, month, day] = value.slice(0, 10).split("-");
   return year && month && day ? `${day}/${month}/${year}` : value;
+}
+
+function whatsappPlainText(value: string | null | undefined, fallback: string): string {
+  const sanitized = (value ?? "")
+    .replace(/[\r\n*_~`]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return sanitized || fallback;
 }
 
 function pref<T>(record: unknown, path: string[], fallback: T): T {
@@ -423,10 +432,16 @@ async function buildOsMessage(supabase: SupabaseClient, job: Job, settings: Sett
   return lines.join("\n");
 }
 
-async function buildBillingMessage(supabase: SupabaseClient, job: Job, settings: SettingsData, customer: CustomerData) {
+async function buildBillingMessage(
+  supabase: SupabaseClient,
+  job: Job,
+  settings: SettingsData,
+  customer: CustomerData,
+  company: CompanyData,
+) {
   const { data: charge } = await supabase
     .from("tenant_charges")
-    .select("id, company_id, value, due_date, description, public_short_code, created_by, status")
+    .select("id, company_id, value, due_date, public_short_code, status")
     .eq("id", job.source_id)
     .eq("company_id", job.company_id)
     .maybeSingle();
@@ -436,53 +451,59 @@ async function buildBillingMessage(supabase: SupabaseClient, job: Job, settings:
   const style = pickStyle(pref(settings.automation_preferences, ["billing", "events", key, "template"], "automatic"));
   const before = pref(settings.automation_preferences, ["billing", "daysBeforeDue"], 3);
   const after = pref(settings.automation_preferences, ["billing", "daysAfterDue"], 2);
+  const companyName = `*${whatsappPlainText(company.name, "Sua empresa")}*`;
   const openings = {
     created: {
-      objective: "Uma nova cobrança foi gerada.",
-      cordial: "Passando para avisar que uma nova cobrança foi gerada para você.",
-      detailed: "Uma nova cobrança referente aos serviços contratados foi gerada.",
+      objective: `Você recebeu uma nova cobrança da ${companyName}.`,
+      cordial: `Passando para avisar que você recebeu uma nova cobrança da ${companyName}.`,
+      detailed: `Uma nova cobrança da ${companyName} foi gerada para você.`,
     },
     before_due: {
-      objective: `Sua cobrança vence em ${before} dias.`,
-      cordial: `Este é um lembrete amigável: sua cobrança vence em ${before} dias.`,
-      detailed: `Lembramos que existe uma cobrança com vencimento próximo, em ${before} dias.`,
+      objective: `Uma cobrança da ${companyName} vence em ${before} dias.`,
+      cordial: `A ${companyName} lembra que sua cobrança vence em ${before} dias.`,
+      detailed: `Você possui uma cobrança da ${companyName} com vencimento em ${before} dias.`,
     },
     due_today: {
-      objective: "Sua cobrança vence hoje.", cordial: "Passando para lembrar que sua cobrança vence hoje.",
-      detailed: "A cobrança abaixo chegou à data de vencimento hoje.",
+      objective: `Uma cobrança da ${companyName} vence hoje.`,
+      cordial: `A ${companyName} lembra que sua cobrança vence hoje.`,
+      detailed: `Você possui uma cobrança da ${companyName} com vencimento hoje.`,
     },
     after_due: {
-      objective: `Sua cobrança venceu há ${after} dias.`,
-      cordial: `Notamos que sua cobrança venceu há ${after} dias. Se já pagou, desconsidere este aviso.`,
-      detailed: `A cobrança abaixo está vencida há ${after} dias. Caso o pagamento já tenha sido realizado, desconsidere esta mensagem.`,
+      objective: `Uma cobrança da ${companyName} venceu há ${after} dias.`,
+      cordial: `A ${companyName} lembra que sua cobrança venceu há ${after} dias.`,
+      detailed: `Você possui uma cobrança da ${companyName} vencida há ${after} dias.`,
     },
   }[key];
   if (!openings) return null;
 
-  let createdBy = "Sistema";
-  if (charge.created_by && pref(settings.automation_preferences, ["billing", "includeCreatedBy"], false)) {
-    const { data: profile } = await supabase.from("profiles").select("full_name").eq("user_id", charge.created_by).maybeSingle();
-    createdBy = profile?.full_name || "Sistema";
-  }
   const details = [
     pref(settings.automation_preferences, ["billing", "includeAmount"], true) ? `*Valor:* ${money(charge.value)}` : null,
     `*Vencimento:* ${dateBr(charge.due_date)}`,
-    pref(settings.automation_preferences, ["billing", "includeDescription"], true) && charge.description ? `*Descrição:* ${charge.description}` : null,
-    pref(settings.automation_preferences, ["billing", "includeCreatedBy"], false) ? `*Gerada por:* ${createdBy}` : null,
     pref(settings.automation_preferences, ["billing", "includePaymentLink"], true) && charge.public_short_code
       ? `*Pagar agora:* https://dominex.app/pagar/${charge.public_short_code}`
       : null,
   ].filter(Boolean);
-  return [`Olá, ${customer.name}!`, "", openings[style], "", ...details].join("\n");
+  return [
+    `Olá, ${customer.name}!`,
+    "",
+    openings[style],
+    "",
+    ...details,
+    "",
+    "Se você já realizou o pagamento, desconsidere esta mensagem.",
+    "",
+    "Em caso de dúvida, fale com a nossa equipe por aqui.",
+  ].join("\n");
 }
 
 async function processJob(supabase: SupabaseClient, job: Job) {
-  const [{ data: connection }, { data: settings }, { data: customer }, moduleResult] = await Promise.all([
+  const [{ data: connection }, { data: settings }, { data: customer }, { data: company }, moduleResult] = await Promise.all([
     supabase.from("whatsapp_connections").select("*").eq("id", job.connection_id).eq("company_id", job.company_id).maybeSingle(),
     supabase.from("company_whatsapp_settings").select("*").eq("company_id", job.company_id).maybeSingle(),
     job.customer_id
       ? supabase.from("customers").select("id, company_id, name, phone, celular, whatsapp_notifications_enabled, whatsapp_opt_out_at").eq("id", job.customer_id).eq("company_id", job.company_id).maybeSingle()
       : Promise.resolve({ data: null }),
+    supabase.from("companies").select("name").eq("id", job.company_id).maybeSingle(),
     supabase.rpc("company_has_module", { p_company_id: job.company_id, p_module_code: "whatsapp" }),
   ]);
 
@@ -582,9 +603,23 @@ async function processJob(supabase: SupabaseClient, job: Job) {
     }
   }
 
-  const text = job.source_type === "service_order"
-    ? await buildOsMessage(supabase, job, settings, customer)
-    : await buildBillingMessage(supabase, job, settings, customer);
+  let text: string | null;
+  if (job.source_type === "service_order") {
+    text = await buildOsMessage(supabase, job, settings, customer);
+  } else {
+    // O nome identifica o remetente antes do link de pagamento. Sem ele, não
+    // enviamos uma cobrança genérica que possa parecer fraude ao cliente.
+    if (!company?.name?.trim()) {
+      return deferJob(
+        supabase,
+        job,
+        "company_name_unavailable",
+        "O nome da empresa está indisponível para montar a mensagem.",
+        new Date(Date.now() + 300 * 1000),
+      );
+    }
+    text = await buildBillingMessage(supabase, job, settings, customer, company);
+  }
   if (!text) return skipJob(supabase, job, "source_unavailable", "A origem não existe mais ou a cobrança já foi paga.", phone);
 
   const prefs = settings.automation_preferences;

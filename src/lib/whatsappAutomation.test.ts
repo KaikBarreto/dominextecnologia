@@ -36,11 +36,11 @@ describe('whatsappAutomation', () => {
     expect(normalized.billing.events.created.template).toBe('automatic');
   });
 
-  it('reflete as opções de conteúdo na prévia da cobrança', () => {
+  it('remove campos internos antigos e identifica a empresa na prévia da cobrança', () => {
     const preferences = normalizeWhatsappAutomationPreferences({
       billing: {
         includeAmount: false,
-        includeDescription: false,
+        includeDescription: true,
         includeCreatedBy: true,
         includePaymentLink: true,
       },
@@ -52,8 +52,13 @@ describe('whatsappAutomation', () => {
 
     expect(preview).not.toContain('*Valor:*');
     expect(preview).not.toContain('*Descrição:*');
-    expect(preview).toContain('*Gerada por:*');
+    expect(preview).not.toContain('*Gerada por:*');
+    expect(preview).toContain('nova cobrança da *Clima Forte Serviços*');
     expect(preview).toContain('*Pagar agora:* https://www.dominex.app/pagar/8F2K9Q');
+    expect(preview).toContain('Se você já realizou o pagamento, desconsidere esta mensagem.');
+    expect(preview).toContain('Em caso de dúvida, fale com a nossa equipe por aqui.');
+    expect(preferences.billing.includeDescription).toBe(false);
+    expect(preferences.billing.includeCreatedBy).toBe(false);
   });
 
   it('nasce com duas janelas: OS larga e cobrança comercial', () => {

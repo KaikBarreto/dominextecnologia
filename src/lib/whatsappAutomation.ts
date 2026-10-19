@@ -63,7 +63,9 @@ export interface WhatsappAutomationPreferences {
   billing: {
     includeAmount: boolean;
     includePaymentLink: boolean;
+    /** @deprecated Campo legado: dados internos nunca saem na mensagem. */
     includeCreatedBy: boolean;
+    /** @deprecated Campo legado: a descrição interna nunca sai na mensagem. */
     includeDescription: boolean;
     events: Record<WhatsappBillingEventKey, WhatsappAutomationRule>;
     daysBeforeDue: number;
@@ -97,7 +99,7 @@ export const DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES: WhatsappAutomationPreferen
     includeAmount: true,
     includePaymentLink: true,
     includeCreatedBy: false,
-    includeDescription: true,
+    includeDescription: false,
     events: {
       created: { enabled: true, template: 'automatic' },
       before_due: { enabled: true, template: 'cordial' },
@@ -253,14 +255,10 @@ export function normalizeWhatsappAutomationPreferences(
         billing.includePaymentLink,
         defaults.billing.includePaymentLink,
       ),
-      includeCreatedBy: readBoolean(
-        billing.includeCreatedBy,
-        defaults.billing.includeCreatedBy,
-      ),
-      includeDescription: readBoolean(
-        billing.includeDescription,
-        defaults.billing.includeDescription,
-      ),
+      // Decisão de produto (19/10/2026): estes campos são internos e não
+      // podem reaparecer por causa de uma preferência antiga salva no JSONB.
+      includeCreatedBy: false,
+      includeDescription: false,
       events: {
         created: normalizeRule(billingEvents.created, defaults.billing.events.created),
         before_due: normalizeRule(
@@ -292,6 +290,7 @@ export function countEnabledWhatsappAutomations(
 }
 
 interface PreviewFixture {
+  company: string;
   customer: string;
   technician: string;
   service: string;
@@ -299,12 +298,11 @@ interface PreviewFixture {
   osLink: string;
   amount: string;
   dueDate: string;
-  description: string;
-  createdBy: string;
   paymentLink: string;
 }
 
 export const WHATSAPP_PREVIEW_FIXTURE: PreviewFixture = {
+  company: 'Clima Forte Serviços',
   customer: 'Mariana',
   technician: 'Carlos',
   service: 'Manutenção preventiva',
@@ -312,8 +310,6 @@ export const WHATSAPP_PREVIEW_FIXTURE: PreviewFixture = {
   osLink: 'https://www.dominex.app/os/1048',
   amount: 'R$ 480,00',
   dueDate: '18/10/2026',
-  description: 'Manutenção preventiva de outubro',
-  createdBy: 'Sistema · Assinatura recorrente',
   paymentLink: 'https://www.dominex.app/pagar/8F2K9Q',
 };
 
@@ -358,38 +354,47 @@ function buildBillingPreview(
   fixture: PreviewFixture,
 ): string {
   const resolved = resolveStyle(style);
+  const company = `*${fixture.company}*`;
   const opening = {
     created: {
-      objective: 'Uma nova cobrança foi gerada.',
-      cordial: 'Passando para avisar que uma nova cobrança foi gerada para você.',
-      detailed: 'Uma nova cobrança referente aos serviços contratados foi gerada.',
+      objective: `Você recebeu uma nova cobrança da ${company}.`,
+      cordial: `Passando para avisar que você recebeu uma nova cobrança da ${company}.`,
+      detailed: `Uma nova cobrança da ${company} foi gerada para você.`,
     },
     before_due: {
-      objective: `Sua cobrança vence em ${preferences.daysBeforeDue} dias.`,
-      cordial: `Este é um lembrete amigável: sua cobrança vence em ${preferences.daysBeforeDue} dias.`,
-      detailed: `Lembramos que existe uma cobrança com vencimento próximo, em ${preferences.daysBeforeDue} dias.`,
+      objective: `Uma cobrança da ${company} vence em ${preferences.daysBeforeDue} dias.`,
+      cordial: `A ${company} lembra que sua cobrança vence em ${preferences.daysBeforeDue} dias.`,
+      detailed: `Você possui uma cobrança da ${company} com vencimento em ${preferences.daysBeforeDue} dias.`,
     },
     due_today: {
-      objective: 'Sua cobrança vence hoje.',
-      cordial: 'Passando para lembrar que sua cobrança vence hoje.',
-      detailed: 'A cobrança abaixo chegou à data de vencimento hoje.',
+      objective: `Uma cobrança da ${company} vence hoje.`,
+      cordial: `A ${company} lembra que sua cobrança vence hoje.`,
+      detailed: `Você possui uma cobrança da ${company} com vencimento hoje.`,
     },
     after_due: {
-      objective: `Sua cobrança venceu há ${preferences.daysAfterDue} dias.`,
-      cordial: `Notamos que sua cobrança venceu há ${preferences.daysAfterDue} dias. Se já pagou, desconsidere este aviso.`,
-      detailed: `A cobrança abaixo está vencida há ${preferences.daysAfterDue} dias. Caso o pagamento já tenha sido realizado, desconsidere esta mensagem.`,
+      objective: `Uma cobrança da ${company} venceu há ${preferences.daysAfterDue} dias.`,
+      cordial: `A ${company} lembra que sua cobrança venceu há ${preferences.daysAfterDue} dias.`,
+      detailed: `Você possui uma cobrança da ${company} vencida há ${preferences.daysAfterDue} dias.`,
     },
   }[key][resolved];
 
   const details = [
     preferences.includeAmount ? `*Valor:* ${fixture.amount}` : null,
     `*Vencimento:* ${fixture.dueDate}`,
-    preferences.includeDescription ? `*Descrição:* ${fixture.description}` : null,
-    preferences.includeCreatedBy ? `*Gerada por:* ${fixture.createdBy}` : null,
     preferences.includePaymentLink ? `*Pagar agora:* ${fixture.paymentLink}` : null,
   ].filter((line): line is string => Boolean(line));
 
-  return [`Olá, ${fixture.customer}!`, '', opening, '', ...details].join('\n');
+  return [
+    `Olá, ${fixture.customer}!`,
+    '',
+    opening,
+    '',
+    ...details,
+    '',
+    'Se você já realizou o pagamento, desconsidere esta mensagem.',
+    '',
+    'Em caso de dúvida, fale com a nossa equipe por aqui.',
+  ].join('\n');
 }
 
 export function buildWhatsappMessagePreview(
