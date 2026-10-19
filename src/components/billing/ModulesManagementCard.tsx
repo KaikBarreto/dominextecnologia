@@ -34,6 +34,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import {
   BASE_SUBSCRIPTION_MODULE_CODE,
   CUSTOM_PLAN_INCLUDED_USERS,
+  EXCEPTION_PLAN_CODE,
   EXTRA_USER_MODULE_CODE,
   FREE_BASE_MODULE_CODES,
   REQUIRED_CUSTOM_MODULE_CODES,
@@ -179,8 +180,14 @@ export function ModulesManagementCard({
   const currentBillingCycle = (company?.billing_cycle as 'monthly' | 'yearly') || 'monthly';
 
   // Planos prontos (sem o personalizado), ordenados por preço.
+  // O EXCEÇÃO fica de fora: é concessão atribuída só pelo time Dominex e nunca
+  // pode aparecer em superfície de autoatendimento (aqui o cliente escolheria
+  // sozinho o plano de R$ 97). Quem já está nele continua nele — a troca é feita
+  // pelo painel master; o nome do plano atual segue vindo de `allPlans`.
   const presetPlans = useMemo(
-    () => allPlans.filter((p) => p.code !== 'personalizado').sort((a, b) => a.price - b.price),
+    () => allPlans
+      .filter((p) => p.code !== 'personalizado' && p.code !== EXCEPTION_PLAN_CODE)
+      .sort((a, b) => a.price - b.price),
     [allPlans],
   );
 

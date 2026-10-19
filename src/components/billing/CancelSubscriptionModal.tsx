@@ -11,6 +11,7 @@ import { StepTransition } from '@/components/ui/step-transition';
 import { useCancelSubscription } from '@/hooks/useCancelSubscription';
 import { usePlanChange } from '@/hooks/usePlanChange';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { EXCEPTION_PLAN_CODE } from '@/lib/subscriptionCatalog';
 import { DowngradeOfferCard } from './DowngradeOfferCard';
 import { getCompanyWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { format } from 'date-fns';
@@ -70,8 +71,11 @@ export function CancelSubscriptionModal({
 
   // Plano mais barato disponível: preço menor que o valor efetivo atual,
   // com preço > 0, diferente do plano atual. O mais próximo (maior preço menor).
+  // O EXCEÇÃO nunca entra: é concessão do time Dominex, e como é o mais barato
+  // do catálogo ele venceria essa escolha e viraria oferta de autoatendimento.
   const cheaperPlan = allPlans
-    .filter((p) => p.price < effectiveValue && p.price > 0 && p.code !== currentPlanCode)
+    .filter((p) => p.price < effectiveValue && p.price > 0
+      && p.code !== currentPlanCode && p.code !== EXCEPTION_PLAN_CODE)
     .sort((a, b) => b.price - a.price)[0] ?? null;
 
   const savings = cheaperPlan ? effectiveValue - cheaperPlan.price : 0;
