@@ -10814,6 +10814,62 @@ export type Database = {
           },
         ]
       }
+      service_order_equipment_service_types: {
+        Row: {
+          company_id: string
+          created_at: string
+          equipment_id: string
+          position: number
+          service_order_id: string
+          service_type_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          equipment_id: string
+          position?: number
+          service_order_id: string
+          service_type_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          equipment_id?: string
+          position?: number
+          service_order_id?: string
+          service_type_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_order_equipment_service_types_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_equipment_service_types_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_equipment_service_types_order_service_fkey"
+            columns: ["service_order_id", "service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_order_service_types"
+            referencedColumns: ["service_order_id", "service_type_id"]
+          },
+          {
+            foreignKeyName: "service_order_equipment_service_types_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_order_materials: {
         Row: {
           committed_quantity: number
@@ -16031,6 +16087,10 @@ export type Database = {
         Returns: Json
       }
       sync_service_order_scope: {
+        Args: { _items: Json; _service_order_id: string }
+        Returns: Json
+      }
+      sync_service_order_scope_with_services: {
         Args: { _items: Json; _service_order_id: string }
         Returns: Json
       }

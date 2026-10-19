@@ -7,11 +7,18 @@ import {
 
 export const SERVICE_ORDER_BUDGET_KEY = 'service-order-budget';
 export const SERVICE_ORDER_SERVICE_TYPES_KEY = 'service-order-service-types';
+export const SERVICE_ORDER_EQUIPMENT_SERVICES_KEY = 'service-order-equipment-services';
 
 export interface ServiceOrderServiceTypeSummary {
   id: string;
   name: string;
   color: string | null;
+}
+
+export interface ServiceOrderEquipmentServiceType {
+  equipment_id: string;
+  position: number;
+  service_type: ServiceOrderServiceTypeSummary;
 }
 
 export async function syncServiceOrderBudget(
@@ -88,6 +95,35 @@ export function useServiceOrderServiceTypeDetails(serviceOrderId?: string | null
       return rows
         .map(row => Array.isArray(row.service_type) ? row.service_type[0] : row.service_type)
         .filter((serviceType): serviceType is ServiceOrderServiceTypeSummary => !!serviceType?.id);
+    },
+  });
+}
+
+export function useServiceOrderEquipmentServiceTypes(serviceOrderId?: string | null) {
+  return useQuery({
+    queryKey: [SERVICE_ORDER_EQUIPMENT_SERVICES_KEY, serviceOrderId],
+    enabled: !!serviceOrderId,
+    queryFn: async (): Promise<ServiceOrderEquipmentServiceType[]> => {
+      const { data, error } = await supabase
+        .from('service_order_equipment_service_types')
+        .select('equipment_id, position, service_type:service_types(id, name, color)')
+        .eq('service_order_id', serviceOrderId!)
+        .order('equipment_id', { ascending: true })
+        .order('position', { ascending: true });
+      if (error) throw error;
+
+      return ((data ?? []) as unknown as Array<{
+        equipment_id: string;
+        position: number;
+        service_type: ServiceOrderServiceTypeSummary | ServiceOrderServiceTypeSummary[] | null;
+      }>).flatMap(row => {
+        const serviceType = Array.isArray(row.service_type) ? row.service_type[0] : row.service_type;
+        return serviceType ? [{
+          equipment_id: row.equipment_id,
+          position: row.position,
+          service_type: serviceType,
+        }] : [];
+      });
     },
   });
 }

@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.23',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Escolha o serviço de cada equipamento da OS',
+        description: 'Em uma OS com vários serviços, cada equipamento ganhou seu próprio gerenciamento. Você pode adicionar ou remover os serviços que serão executados nele, e os checklists são ajustados automaticamente para mostrar somente o que corresponde àquela escolha.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Técnico vê serviço e checklist sem misturar equipamentos',
+        description: 'Durante o preenchimento, cada equipamento identifica os serviços recebidos e exibe seus respectivos checklists. O visual também ficou mais limpo, sem uma caixa colorida desnecessária envolvendo as perguntas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.36.22',
     date: '19 de outubro de 2026',
     type: 'patch',

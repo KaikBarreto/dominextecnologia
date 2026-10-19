@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.36.22";
+export const APP_VERSION = "1.36.23";
 
-export const VERSION_NOTES = "Agora uma ordem de serviço pode reunir vários serviços, valores e materiais. Orçamentos aprovados geram a OS já preenchida, e cada equipamento mostra os checklists correspondentes com o serviço identificado.";
+export const VERSION_NOTES = "Em uma OS com vários serviços, agora você define exatamente quais serviços serão feitos em cada equipamento. Os checklists acompanham essa escolha e aparecem identificados para o técnico durante a execução.";

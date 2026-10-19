@@ -72,10 +72,12 @@ import {
   serviceOrderBudgetSignature,
   type ServiceOrderBudgetItem,
 } from '@/lib/serviceOrderBudget';
+import { groupScopeItems } from '@/hooks/useServiceOrders';
 import {
+  checklistMatchesEquipmentServices,
   checklistMatchesSelectedServices,
-  getAutomaticChecklistTemplateIds,
   mergeServiceTypeIds,
+  reconcileEquipmentChecklistTemplateIds,
 } from '@/lib/serviceOrderServices';
 
 const serviceOrderSchema = z.object({
@@ -124,10 +126,14 @@ const STEPS = [
  * `equipment_items` no save. Importa quem está no conjunto, não a ordem.
  */
 export const scopeSignature = (
-  items: Array<{ equipment_id?: string | null; form_template_id?: string | null }>,
+  items: Array<{
+    equipment_id?: string | null;
+    form_template_id?: string | null;
+    service_type_ids?: string[];
+  }>,
 ): string =>
   items
-    .map(i => `${i.equipment_id ?? ''}::${i.form_template_id ?? ''}`)
+    .map(i => `${i.equipment_id ?? ''}::${i.form_template_id ?? ''}::${Array.from(new Set(i.service_type_ids ?? [])).sort().join(',')}`)
     .sort()
     .join('|');
 
@@ -157,6 +163,7 @@ export function ServiceOrderFormDialog({
   const [quickCreateServiceTypeOpen, setQuickCreateServiceTypeOpen] = useState(false);
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
   const [equipmentTemplateMap, setEquipmentTemplateMap] = useState<Record<string, string[]>>({});
+  const [equipmentServiceTypeMap, setEquipmentServiceTypeMap] = useState<Record<string, string[]>>({});
   const [selectedStandaloneTemplateIds, setSelectedStandaloneTemplateIds] = useState<string[]>([]);
   // Trava contra corrida: `loadExistingEquipmentItems` é assíncrono e só popula os
   // estados acima quando termina. Se o usuário salvar ANTES disso, os estados
@@ -269,14 +276,6 @@ export function ServiceOrderFormDialog({
     ));
   }, [templates, selectedServiceTypeIds]);
 
-  // Só os checklists explicitamente ligados a um dos serviços são aplicados
-  // automaticamente ao equipamento. Templates globais continuam disponíveis,
-  // mas não entram à força no escopo.
-  const automaticTemplateIds = useMemo(
-    () => getAutomaticChecklistTemplateIds(templates, selectedServiceTypeIds),
-    [templates, selectedServiceTypeIds],
-  );
-
   const computedDate = useMemo(() => {
     if (serviceOrder?.scheduled_date) return serviceOrder.scheduled_date;
     if (defaultDate) return defaultDate;
@@ -352,15 +351,34 @@ export function ServiceOrderFormDialog({
   // Load existing equipment items when editing
   const loadExistingEquipmentItems = async (osId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('service_order_equipment')
-        .select('equipment_id, form_template_id')
-        .eq('service_order_id', osId);
+      const [scopeResult, servicesResult] = await Promise.all([
+        supabase
+          .from('service_order_equipment')
+          .select('equipment_id, form_template_id')
+          .eq('service_order_id', osId),
+        supabase
+          .from('service_order_equipment_service_types')
+          .select('equipment_id, service_type_id, position')
+          .eq('service_order_id', osId)
+          .order('position', { ascending: true }),
+      ]);
+      const { data, error } = scopeResult;
       // Leitura falhou: NÃO liberar `scopeLoaded`. Com a trava fechada o save
       // manda `equipment_items: undefined` (não encosta no escopo) em vez de
       // assumir "a OS não tem escopo" e apagar tudo.
-      if (error) return;
-      loadedScopeSigRef.current = scopeSignature((data as any[]) ?? []);
+      if (error || servicesResult.error) return;
+      const serviceMap: Record<string, string[]> = {};
+      (servicesResult.data ?? []).forEach((row: any) => {
+        if (!serviceMap[row.equipment_id]) serviceMap[row.equipment_id] = [];
+        if (!serviceMap[row.equipment_id].includes(row.service_type_id)) {
+          serviceMap[row.equipment_id].push(row.service_type_id);
+        }
+      });
+      const scopeWithServices = ((data as any[]) ?? []).map(item => ({
+        ...item,
+        service_type_ids: item.equipment_id ? (serviceMap[item.equipment_id] ?? []) : [],
+      }));
+      loadedScopeSigRef.current = scopeSignature(scopeWithServices);
       if (data && data.length > 0) {
         const eqIdSet = new Set<string>();
         const templateMap: Record<string, string[]> = {};
@@ -381,6 +399,7 @@ export function ServiceOrderFormDialog({
         const eqIds = Array.from(eqIdSet);
         if (eqIds.length > 0) setSelectedEquipmentIds(eqIds);
         if (Object.keys(templateMap).length > 0) setEquipmentTemplateMap(templateMap);
+        setEquipmentServiceTypeMap(serviceMap);
         if (standaloneIds.length > 0) setSelectedStandaloneTemplateIds(standaloneIds);
       }
       // Só aqui, com a leitura confirmada: destrava o envio de `equipment_items`.
@@ -400,6 +419,7 @@ export function ServiceOrderFormDialog({
       loadedServiceTypesSigRef.current = null;
       setSelectedEquipmentIds(serviceOrder?.equipment_id ? [serviceOrder.equipment_id] : []);
       setEquipmentTemplateMap({});
+      setEquipmentServiceTypeMap({});
       setSelectedStandaloneTemplateIds([]);
       setScopeLoaded(false);
       loadedScopeSigRef.current = null;
@@ -581,10 +601,19 @@ export function ServiceOrderFormDialog({
     const equipment_items = [
       ...effectiveEquipmentIds.flatMap(eqId => {
         const templates = equipmentTemplateMap[eqId] || [];
+        const serviceTypeIds = equipmentServiceTypeMap[eqId] || [];
         if (templates.length === 0) {
-          return [{ equipment_id: eqId, form_template_id: undefined as string | undefined }];
+          return [{
+            equipment_id: eqId,
+            form_template_id: undefined as string | undefined,
+            service_type_ids: serviceTypeIds,
+          }];
         }
-        return templates.map(tId => ({ equipment_id: eqId, form_template_id: tId as string | undefined }));
+        return templates.map(tId => ({
+          equipment_id: eqId,
+          form_template_id: tId as string | undefined,
+          service_type_ids: serviceTypeIds,
+        }));
       }),
       ...selectedStandaloneTemplateIds.map(tId => ({
         equipment_id: undefined as string | undefined,
@@ -666,18 +695,15 @@ export function ServiceOrderFormDialog({
           );
           await supabase.from('service_order_assignees').insert(assigneeRows);
         }
-        if (equipment_items.length > 0) {
-          const eqRows = created.flatMap((row: any) =>
-            equipment_items.map(item => ({
-              service_order_id: row.id,
-              equipment_id: item.equipment_id || null,
-              form_template_id: item.form_template_id || null,
-            }))
-          );
-          await supabase.from('service_order_equipment').insert(eqRows);
-        }
         await Promise.all(created.map(async (row: any) => {
           await syncServiceOrderServiceTypes(row.id, selectedServiceTypeIds);
+          if (equipment_items.length > 0) {
+            const { error: scopeError } = await supabase.rpc('sync_service_order_scope_with_services' as any, {
+              _service_order_id: row.id,
+              _items: groupScopeItems(equipment_items) as any,
+            });
+            if (scopeError) throw scopeError;
+          }
           await syncServiceOrderBudget(row.id, budgetItems);
         }));
       }
@@ -728,10 +754,19 @@ export function ServiceOrderFormDialog({
     const equipItems = [
       ...selectedEquipmentIds.flatMap(eqId => {
         const templates = equipmentTemplateMap[eqId] || [];
+        const serviceTypeIds = equipmentServiceTypeMap[eqId] || [];
         if (templates.length === 0) {
-          return [{ equipment_id: eqId, form_template_id: undefined as string | undefined }];
+          return [{
+            equipment_id: eqId,
+            form_template_id: undefined as string | undefined,
+            service_type_ids: serviceTypeIds,
+          }];
         }
-        return templates.map(tId => ({ equipment_id: eqId, form_template_id: tId as string | undefined }));
+        return templates.map(tId => ({
+          equipment_id: eqId,
+          form_template_id: tId as string | undefined,
+          service_type_ids: serviceTypeIds,
+        }));
       }),
       ...selectedStandaloneTemplateIds.map(tId => ({
         equipment_id: undefined as string | undefined,
@@ -875,6 +910,7 @@ export function ServiceOrderFormDialog({
               scheduled_time,
               service_type_ids,
               budget_items,
+              equipment_items,
               ...editableFields
             } = cleanedData;
             const updatePayload = normalizeOptionalForeignKeys(editableFields, [
@@ -897,6 +933,13 @@ export function ServiceOrderFormDialog({
               }
               if (service_type_ids !== undefined) {
                 await syncServiceOrderServiceTypes(os.id, service_type_ids);
+              }
+              if (equipment_items !== undefined) {
+                const { error: scopeError } = await supabase.rpc('sync_service_order_scope_with_services' as any, {
+                  _service_order_id: os.id,
+                  _items: groupScopeItems(equipment_items) as any,
+                });
+                if (scopeError) throw scopeError;
               }
               if (budget_items !== undefined) {
                 await syncServiceOrderBudget(os.id, budget_items);
@@ -923,18 +966,24 @@ export function ServiceOrderFormDialog({
   const resetEquipmentSelection = () => {
     setSelectedEquipmentIds([]);
     setEquipmentTemplateMap({});
+    setEquipmentServiceTypeMap({});
     setExpandedEquipmentIds([]);
   };
 
   const toggleEquipment = (eqId: string) => {
     setSelectedEquipmentIds(prev => {
       if (prev.includes(eqId)) return prev.filter(id => id !== eqId);
-      if (automaticTemplateIds.length > 0) {
-        setEquipmentTemplateMap(current => ({
-          ...current,
-          [eqId]: Array.from(new Set([...(current[eqId] || []), ...automaticTemplateIds])),
-        }));
-      }
+      const serviceTypeIds = equipmentServiceTypeMap[eqId] ?? selectedServiceTypeIds;
+      setEquipmentServiceTypeMap(current => ({ ...current, [eqId]: serviceTypeIds }));
+      setEquipmentTemplateMap(current => ({
+        ...current,
+        [eqId]: reconcileEquipmentChecklistTemplateIds(
+          templates,
+          current[eqId] || [],
+          serviceTypeIds,
+          selectedServiceTypeIds,
+        ),
+      }));
       return [...prev, eqId];
     });
   };
@@ -979,23 +1028,49 @@ export function ServiceOrderFormDialog({
       ids,
       budgetItems.map(item => item.service_type_id),
     );
+    const addedIds = reconciledIds.filter(id => !selectedServiceTypeIds.includes(id));
     setSelectedServiceTypeIds(reconciledIds);
     form.setValue('service_type_id', reconciledIds[0] ?? '');
 
-    // Checklists explicitamente ligados aos novos serviços entram como sugestão
-    // automática em cada equipamento já selecionado. Nunca removemos checklist
-    // manual quando um serviço sai, para não destruir escopo/respostas sem ação
-    // explícita do usuário.
-    const linkedTemplateIds = getAutomaticChecklistTemplateIds(templates, reconciledIds);
-    if (linkedTemplateIds.length > 0) {
-      setEquipmentTemplateMap(prev => {
-        const next = { ...prev };
-        for (const equipmentId of selectedEquipmentIds) {
-          next[equipmentId] = Array.from(new Set([...(next[equipmentId] || []), ...linkedTemplateIds]));
-        }
-        return next;
-      });
+    // Serviço novo entra, por padrão, nos equipamentos já marcados. A partir daí
+    // cada card pode ser refinado separadamente. Serviço removido da OS sai de
+    // todos os equipamentos e seus checklists exclusivos deixam o escopo.
+    const nextEquipmentServices = { ...equipmentServiceTypeMap };
+    const nextEquipmentTemplates = { ...equipmentTemplateMap };
+    for (const equipmentId of selectedEquipmentIds) {
+      const currentIds = nextEquipmentServices[equipmentId] ?? selectedServiceTypeIds;
+      let nextIds = Array.from(new Set([
+        ...currentIds.filter(id => reconciledIds.includes(id)),
+        ...addedIds,
+      ]));
+      if (nextIds.length === 0 && reconciledIds.length > 0) nextIds = [reconciledIds[0]];
+      nextEquipmentServices[equipmentId] = nextIds;
+      nextEquipmentTemplates[equipmentId] = reconcileEquipmentChecklistTemplateIds(
+        templates,
+        nextEquipmentTemplates[equipmentId] || [],
+        nextIds,
+        reconciledIds,
+      );
     }
+    setEquipmentServiceTypeMap(nextEquipmentServices);
+    setEquipmentTemplateMap(nextEquipmentTemplates);
+  };
+
+  const handleEquipmentServicesChange = (equipmentId: string, ids: string[]) => {
+    const nextIds = Array.from(new Set(ids.filter(id => selectedServiceTypeIds.includes(id))));
+    // Enquanto a OS tiver serviços, todo equipamento precisa dizer ao menos um.
+    if (selectedServiceTypeIds.length > 0 && nextIds.length === 0) return;
+
+    setEquipmentServiceTypeMap(prev => ({ ...prev, [equipmentId]: nextIds }));
+    setEquipmentTemplateMap(prev => ({
+      ...prev,
+      [equipmentId]: reconcileEquipmentChecklistTemplateIds(
+        templates,
+        prev[equipmentId] || [],
+        nextIds,
+        selectedServiceTypeIds,
+      ),
+    }));
   };
 
   const handleBudgetItemsChange = (items: ServiceOrderBudgetItem[]) => {
@@ -1128,14 +1203,23 @@ export function ServiceOrderFormDialog({
                     } else {
                       const ids = equipment.map(eq => eq.id);
                       setSelectedEquipmentIds(ids);
-                      if (automaticTemplateIds.length > 0) {
-                        setEquipmentTemplateMap(prev => Object.fromEntries(
-                          ids.map(id => [
+                      setEquipmentServiceTypeMap(prev => Object.fromEntries(
+                        ids.map(id => [id, prev[id] ?? selectedServiceTypeIds]),
+                      ));
+                      setEquipmentTemplateMap(prev => Object.fromEntries(
+                        ids.map(id => {
+                          const serviceTypeIds = equipmentServiceTypeMap[id] ?? selectedServiceTypeIds;
+                          return [
                             id,
-                            Array.from(new Set([...(prev[id] || []), ...automaticTemplateIds])),
-                          ]),
-                        ));
-                      }
+                            reconcileEquipmentChecklistTemplateIds(
+                              templates,
+                              prev[id] || [],
+                              serviceTypeIds,
+                              selectedServiceTypeIds,
+                            ),
+                          ];
+                        }),
+                      ));
                     }
                   }}
                 >
@@ -1176,7 +1260,20 @@ export function ServiceOrderFormDialog({
               const checked = selectedEquipmentIds.includes(eq.id);
               const expanded = expandedEquipmentIds.includes(eq.id);
               const selectedTemplates = equipmentTemplateMap[eq.id] || [];
-              const availableTemplates = filteredTemplates.filter(tmpl => !selectedTemplates.includes(tmpl.id));
+              const equipmentServiceTypeIds = equipmentServiceTypeMap[eq.id] ?? selectedServiceTypeIds;
+              const equipmentTemplates = templates.filter(template => checklistMatchesEquipmentServices(
+                template,
+                equipmentServiceTypeIds,
+                selectedServiceTypeIds,
+              ));
+              const availableTemplates = equipmentTemplates.filter(tmpl => !selectedTemplates.includes(tmpl.id));
+              const equipmentServices = equipmentServiceTypeIds
+                .map(serviceId => serviceTypes.find(service => service.id === serviceId))
+                .filter((service): service is NonNullable<typeof service> => !!service);
+              const availableEquipmentServices = selectedServiceTypeIds
+                .filter(serviceId => !equipmentServiceTypeIds.includes(serviceId))
+                .map(serviceId => serviceTypes.find(service => service.id === serviceId))
+                .filter((service): service is NonNullable<typeof service> => !!service);
               return (
                 <div
                   key={eq.id}
@@ -1240,14 +1337,80 @@ export function ServiceOrderFormDialog({
 
                   {/* Painel expansível de checklists deste equipamento */}
                   {checked && expanded && (
-                    <div className="border-t px-3 py-3 space-y-2">
+                    <div className="border-t px-3 py-3 space-y-4">
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
+                            {t.equipmentServicesTitle}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {t.equipmentServicesHelp}
+                          </p>
+                        </div>
+                        {equipmentServices.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {equipmentServices.map(service => (
+                              <Badge
+                                key={service.id}
+                                variant="secondary"
+                                className="h-7 gap-1.5 pl-2 pr-1 text-xs font-medium"
+                              >
+                                <span
+                                  className="h-2 w-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: service.color || '#64748b' }}
+                                />
+                                <span className="max-w-48 truncate">{service.name}</span>
+                                <button
+                                  type="button"
+                                  className="inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground hover:bg-background hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
+                                  disabled={equipmentServiceTypeIds.length === 1 && selectedServiceTypeIds.length > 0}
+                                  title={equipmentServiceTypeIds.length === 1 ? t.equipmentServiceRequired : `${t.btnRemoveEquipmentService} ${service.name}`}
+                                  aria-label={`${t.btnRemoveEquipmentService} ${service.name}`}
+                                  onClick={() => handleEquipmentServicesChange(
+                                    eq.id,
+                                    equipmentServiceTypeIds.filter(id => id !== service.id),
+                                  )}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">{t.equipmentServicesEmpty}</p>
+                        )}
+                        {availableEquipmentServices.length > 0 && (
+                          <SearchableSelect
+                            value=""
+                            onValueChange={(value) => {
+                              if (value && value !== 'none') {
+                                handleEquipmentServicesChange(eq.id, [...equipmentServiceTypeIds, value]);
+                              }
+                            }}
+                            options={availableEquipmentServices.map(service => ({
+                              value: service.id,
+                              label: service.name,
+                            }))}
+                            placeholder={t.placeholderAddEquipmentService}
+                            searchPlaceholder={t.searchServicePlaceholder}
+                            emptyMessage={t.noServicesFound}
+                          />
+                        )}
+                      </div>
+
+                      <div className="border-t border-border/60 pt-3 space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
+                          {t.equipmentChecklistsTitle}
+                        </p>
                       {selectedTemplates.length > 0 && (
                         <div className="space-y-2">
                           {selectedTemplates.map(tId => {
-                            const tmpl = filteredTemplates.find(item => item.id === tId);
+                            const tmpl = templates.find(item => item.id === tId);
                             const linkedServices = (tmpl?.service_type_ids ?? [])
                               .map(serviceId => serviceTypes.find(service => service.id === serviceId))
-                              .filter((service): service is NonNullable<typeof service> => !!service);
+                              .filter((service): service is NonNullable<typeof service> => (
+                                !!service && equipmentServiceTypeIds.includes(service.id)
+                              ));
                             return (
                               <div key={tId} className="flex items-start gap-2 rounded-lg border bg-card px-2.5 py-2 shadow-sm">
                                 <ClipboardList className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
@@ -1314,6 +1477,7 @@ export function ServiceOrderFormDialog({
                           searchPlaceholder={t.searchChecklistPlaceholder}
                           emptyMessage={t.checklistNoneAvailable}
                         />
+                      </div>
                       </div>
                     </div>
                   )}

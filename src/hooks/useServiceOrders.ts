@@ -15,6 +15,7 @@ import {
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import {
   SERVICE_ORDER_BUDGET_KEY,
+  SERVICE_ORDER_EQUIPMENT_SERVICES_KEY,
   SERVICE_ORDER_SERVICE_TYPES_KEY,
   syncServiceOrderBudget,
   syncServiceOrderServiceTypes,
@@ -22,8 +23,10 @@ import {
 import type { ServiceOrderBudgetItem } from '@/lib/serviceOrderBudget';
 
 export interface ServiceOrderEquipmentItem {
-  equipment_id: string;
+  equipment_id?: string;
   form_template_id?: string;
+  /** Serviços executados especificamente neste equipamento. */
+  service_type_ids?: string[];
 }
 
 /** Linha plana do payload de escopo que chega do formulário de OS: uma linha
@@ -33,6 +36,7 @@ export interface ServiceOrderEquipmentItem {
 export interface RawScopeItem {
   equipment_id?: string;
   form_template_id?: string;
+  service_type_ids?: string[];
 }
 
 /** Formato aceito pela RPC `sync_service_order_scope` / `edit_service_order_scope`:
@@ -41,6 +45,7 @@ export interface RawScopeItem {
 export interface GroupedScopeItem {
   equipment_id: string | null;
   form_template_ids: string[];
+  service_type_ids: string[];
 }
 
 /**
@@ -53,21 +58,27 @@ export interface GroupedScopeItem {
  */
 export function groupScopeItems(items: RawScopeItem[]): GroupedScopeItem[] {
   const order: Array<string | null> = [];
-  const map = new Map<string | null, string[]>();
+  const map = new Map<string | null, { templateIds: string[]; serviceTypeIds: string[] }>();
   for (const item of items) {
     const key = item.equipment_id ?? null;
     if (!map.has(key)) {
-      map.set(key, []);
+      map.set(key, { templateIds: [], serviceTypeIds: [] });
       order.push(key);
     }
-    const list = map.get(key)!;
-    if (item.form_template_id && !list.includes(item.form_template_id)) {
-      list.push(item.form_template_id);
+    const group = map.get(key)!;
+    if (item.form_template_id && !group.templateIds.includes(item.form_template_id)) {
+      group.templateIds.push(item.form_template_id);
+    }
+    for (const serviceTypeId of item.service_type_ids ?? []) {
+      if (!group.serviceTypeIds.includes(serviceTypeId)) {
+        group.serviceTypeIds.push(serviceTypeId);
+      }
     }
   }
   return order.map(key => ({
     equipment_id: key,
-    form_template_ids: map.get(key)!,
+    form_template_ids: map.get(key)!.templateIds,
+    service_type_ids: key === null ? [] : map.get(key)!.serviceTypeIds,
   }));
 }
 
@@ -305,6 +316,13 @@ export function useServiceOrders() {
         if (createdId && service_type_ids !== undefined) {
           await syncServiceOrderServiceTypes(createdId, service_type_ids);
         }
+        if (createdId && equipment_items !== undefined) {
+          const { error: scopeError } = await supabase.rpc('sync_service_order_scope_with_services' as any, {
+            _service_order_id: createdId,
+            _items: groupScopeItems(equipment_items) as any,
+          });
+          if (scopeError) throw scopeError;
+        }
         if (createdId && budget_items !== undefined) {
           await syncServiceOrderBudget(createdId, budget_items);
         }
@@ -318,19 +336,6 @@ export function useServiceOrders() {
         .single();
       
       if (error) throw normalizeScheduleBookingError(error);
-
-      // Insert equipment items into junction table
-      if (equipment_items && equipment_items.length > 0) {
-        const rows = equipment_items.map(item => ({
-          service_order_id: data.id,
-          equipment_id: item.equipment_id,
-          form_template_id: item.form_template_id || null,
-        }));
-        const { error: eqError } = await supabase
-          .from('service_order_equipment')
-          .insert(rows);
-        if (eqError) console.error('Error inserting equipment items:', eqError);
-      }
 
       // Insert assignees into junction table
       if (assignee_user_ids && assignee_user_ids.length > 0) {
@@ -347,6 +352,13 @@ export function useServiceOrders() {
       if (service_type_ids !== undefined) {
         await syncServiceOrderServiceTypes(data.id, service_type_ids);
       }
+      if (equipment_items !== undefined) {
+        const { error: scopeError } = await supabase.rpc('sync_service_order_scope_with_services' as any, {
+          _service_order_id: data.id,
+          _items: groupScopeItems(equipment_items) as any,
+        });
+        if (scopeError) throw scopeError;
+      }
       if (budget_items !== undefined) {
         await syncServiceOrderBudget(data.id, budget_items);
       }
@@ -358,6 +370,7 @@ export function useServiceOrders() {
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_BUDGET_KEY] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_SERVICE_TYPES_KEY] });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_EQUIPMENT_SERVICES_KEY] });
       toast({ title: 'Ordem de serviço criada com sucesso!' });
     },
     onError: (error: Error) => {
@@ -560,22 +573,25 @@ export function useServiceOrders() {
         }
       }
 
+      // A lista global precisa existir antes do vínculo equipamento×serviço,
+      // cuja FK garante que nenhum serviço estranho seja atribuído à OS.
+      if (service_type_ids !== undefined) {
+        await syncServiceOrderServiceTypes(id, service_type_ids);
+      }
+
       // Sync equipment items if provided. Via RPC atômica (nunca delete+insert
       // direto do client): a RPC também limpa respostas órfãs em
       // `form_responses` quando um checklist sai do escopo — o delete+insert
-      // antigo deixava respostas fantasma aparecendo no relatório/link público.
+      // antigo deixava respostas fantasma aparecendo no relatório/link público —
+      // e agora persiste os serviços específicos de cada equipamento.
       // `[]` é um valor válido ("limpar o escopo inteiro"), não "não fazer nada".
       if (equipment_items !== undefined) {
         const scopeItems = groupScopeItems(equipment_items);
-        const { error: scopeError } = await supabase.rpc('sync_service_order_scope' as any, {
+        const { error: scopeError } = await supabase.rpc('sync_service_order_scope_with_services' as any, {
           _service_order_id: id,
           _items: scopeItems as any,
         });
         if (scopeError) throw scopeError;
-      }
-
-      if (service_type_ids !== undefined) {
-        await syncServiceOrderServiceTypes(id, service_type_ids);
       }
 
       if (budget_items !== undefined) {
@@ -591,6 +607,7 @@ export function useServiceOrders() {
       queryClient.invalidateQueries({ queryKey: ['service-ratings'] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_BUDGET_KEY] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_SERVICE_TYPES_KEY] });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_EQUIPMENT_SERVICES_KEY] });
       toast({ title: 'OS atualizada com sucesso!' });
     },
     onError: (error: Error) => {

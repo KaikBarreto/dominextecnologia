@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  checklistMatchesEquipmentServices,
   checklistMatchesSelectedServices,
   getAutomaticChecklistTemplateIds,
   mergeServiceTypeIds,
+  reconcileEquipmentChecklistTemplateIds,
 } from './serviceOrderServices';
 
 const templates = [
@@ -29,5 +31,26 @@ describe('serviceOrderServices', () => {
   it('incorpora serviços presentes nos itens sem duplicar a seleção', () => {
     expect(mergeServiceTypeIds(['cleaning'], ['install', 'cleaning', null]))
       .toEqual(['cleaning', 'install']);
+  });
+
+  it('mostra no equipamento apenas checklists globais e dos serviços atribuídos a ele', () => {
+    expect(
+      templates
+        .filter(template => checklistMatchesEquipmentServices(
+          template,
+          ['cleaning'],
+          ['cleaning', 'install'],
+        ))
+        .map(template => template.id),
+    ).toEqual(['global', 'cleaning']);
+  });
+
+  it('remove checklist incompatível e adiciona o automático ao trocar o serviço do equipamento', () => {
+    expect(reconcileEquipmentChecklistTemplateIds(
+      templates,
+      ['global', 'cleaning'],
+      ['install'],
+      ['cleaning', 'install'],
+    )).toEqual(['global', 'install']);
   });
 });

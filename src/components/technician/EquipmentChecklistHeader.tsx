@@ -206,7 +206,7 @@ export function EquipmentChecklistHeader({
           </div>
         )}
         {subtitle && (
-          <p className={cn('text-xs font-medium truncate mt-0.5', t.subtitle)}>{subtitle}</p>
+          <div className={cn('text-xs font-medium min-w-0 mt-0.5', t.subtitle)}>{subtitle}</div>
         )}
         {brandModel && (
           <p className={cn('text-xs mt-0.5 truncate', t.muted)}>{brandModel}</p>
