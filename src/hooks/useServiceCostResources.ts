@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { useMemo } from 'react';
 import { getErrorMessage } from '@/utils/errorMessages';
 import type { CostResource } from './useCostResources';
@@ -30,6 +31,8 @@ export interface LinkedResource extends ServiceCostResource {
 export function useServiceCostResources(serviceId: string | null, serviceHours: number = 1) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { profile } = useAuth();
+  const companyId = profile?.company_id ?? null;
 
   // Fetch linked resources for this service
   const linkedQuery = useQuery({
@@ -47,12 +50,20 @@ export function useServiceCostResources(serviceId: string | null, serviceHours: 
   });
 
   // Fetch all active resources with rates
+  // Filtro por company_id é UX; a fronteira de segurança é a RLS de
+  // `cost_resources` (a view `cost_resources_with_rate` roda com
+  // security_invoker). Antes desta guarda a query vinha SEM recorte de
+  // empresa e a view ignorava RLS: usuário da empresa A enxergava
+  // recurso e custo/hora da empresa B na tela de custo do serviço.
+  // companyId entra na queryKey pra o cache não vazar na troca de usuário.
   const allResourcesQuery = useQuery({
-    queryKey: ['cost-resources-active'],
+    queryKey: ['cost-resources-active', companyId],
+    enabled: !!companyId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('cost_resources_with_rate')
         .select('*')
+        .eq('company_id', companyId!)
         .eq('is_active', true)
         .order('category')
         .order('name');

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Wand2, Plus, Loader2 } from 'lucide-react';
+import { Wand2, Plus, Loader2, ImageIcon, X, ScanBarcode } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,9 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ColorPicker } from '@/components/ui/ColorPicker';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
+import { SignedImg } from '@/components/ui/SignedImg';
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useInventory, type InventoryItem, type InventoryItemInsert } from '@/hooks/useInventory';
 import { useStocks } from '@/hooks/useStocks';
@@ -21,6 +24,26 @@ import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { INVENTORY_UNITS as UNITS } from '@/lib/inventoryUnits';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { tenantFileOptions, currentCompanyId } from '@/utils/tenantStorage';
+import { buildStorageFilePath } from '@/utils/storagePath';
+import { processImageFile } from '@/utils/imageConvert';
+import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
+import { getErrorMessage } from '@/utils/errorMessages';
+
+/** Bucket `inventory-photos`: privado, por empresa. Ver tenantStorage.ts. */
+const PHOTO_BUCKET = 'inventory-photos';
+/** Mesmo limite e lista de tipos da policy do bucket — validado no client
+ *  ANTES do upload, pra nunca devolver o erro cru do servidor pro usuário. */
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const ALLOWED_PHOTO_MIME = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/avif',
+  'image/heic',
+  'image/heif',
+]);
 
 interface InventoryFormDialogProps {
   open: boolean;
@@ -45,6 +68,8 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
   const { stocks, isLoading: stocksLoading } = useStocks();
   const { suppliers } = useSuppliers();
   const { groups, createGroup } = useMaterialGroups();
+  const { hasModule } = useCompanyModules();
+  const pdvEnabled = hasModule('pdv');
   const isEditing = !!item;
 
   const [formData, setFormData] = useState<Partial<InventoryItemInsert>>({
@@ -54,6 +79,33 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
   // Quick-create de grupo de material (botão "+" ao lado do seletor).
   const [groupFormOpen, setGroupFormOpen] = useState(false);
   const [groupSearchQuery, setGroupSearchQuery] = useState('');
+
+  // ── Foto (bucket privado inventory-photos) ─────────────────────────────
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
+  // Pasta do item NOVO ainda sem id: um uuid de sessão (a policy exige
+  // `<company_id>/<algo>/<arquivo>`, e o plano permite uuid quando o
+  // inventory_id ainda não existe). Reaproveitado se o usuário troca a foto
+  // mais de uma vez antes de salvar; sorteado de novo a cada abertura "Novo".
+  const newItemPhotoFolderRef = useRef(crypto.randomUUID());
+
+  // ── Código de barras: texto + is_sellable (PDV) ─────────────────────────
+  const [barcode, setBarcode] = useState('');
+  const [isSellable, setIsSellable] = useState(true);
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
+
+  // Leitor USB (pistola): ativo só enquanto este diálogo está aberto e o
+  // quick-create de grupo (dialog aninhado) não está. onScan sobrescreve o
+  // campo e devolve o foco pra ele — "quem consome é dono de limpar o
+  // próprio estado", conforme o contrato do hook.
+  useBarcodeScanner({
+    enabled: open && !groupFormOpen,
+    onScan: (code) => {
+      setBarcode(code);
+      barcodeInputRef.current?.focus();
+    },
+  });
 
   // Texto CRU dos campos numéricos (quantidade e preços). O número em formData segue
   // sendo o que vai pro save; este espelho existe porque um input controlado por NUMBER
@@ -135,10 +187,17 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
           cost_price: toNumericText(item.cost_price),
           sale_price: toNumericText(item.sale_price),
         });
+        setPhotoUrl(item.image_url || '');
+        setBarcode(item.barcode || '');
+        setIsSellable(item.is_sellable ?? true);
         return;
       }
       setFormData({ name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier_id: null });
       setNumericText({ quantity: '', cost_price: '', sale_price: '' });
+      setPhotoUrl('');
+      setBarcode('');
+      setIsSellable(true);
+      newItemPhotoFolderRef.current = crypto.randomUUID();
       if (!open) return;
       try {
         setIsSkuGenerating(true);
@@ -188,8 +247,17 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     if (!stocksHydrated) return;
     let savedItemId: string | null = null;
 
-    // Normaliza SKU: vazio ou só espaços → null, para não colidir com UNIQUE(company_id, sku)
-    const normalized = { ...formData, sku: formData.sku?.trim() ? formData.sku.trim() : null };
+    // Normaliza SKU e código de barras: vazio/só espaços → null, para não
+    // colidir com os índices únicos parciais (company_id, sku) / (company_id, barcode).
+    const normalized = {
+      ...formData,
+      sku: formData.sku?.trim() ? formData.sku.trim() : null,
+      barcode: barcode.trim() ? barcode.trim() : null,
+      image_url: photoUrl || null,
+      // is_sellable só é editável com o módulo PDV; sem o módulo, nunca
+      // sobrescreve o default (true) da coluna com um estado que a tela nem mostrou.
+      ...(pdvEnabled ? { is_sellable: isSellable } : {}),
+    };
 
     if (isEditing && item) {
       // Use stock-specific qty as the "previous" so the adjustment targets the
@@ -279,6 +347,55 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     handleChange(field, raw.trim() === '' ? 0 : (parseFloat(raw.replace(',', '.')) || 0));
   };
 
+  /**
+   * Upload da foto do item pro bucket privado `inventory-photos`.
+   * Valida tipo ANTES de processar (HEIC/HEIF entra aqui como válido e sai
+   * convertido em JPEG por `processImageFile`) e tamanho DEPOIS de comprimir
+   * (é o que de fato sobe). O caminho começa com o company_id — exigência da
+   * policy — seguido do id do item (ou de um uuid de sessão, pra item ainda
+   * não salvo).
+   */
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    const looksHeic = /\.(heic|heif)$/i.test(file.name);
+    if (!ALLOWED_PHOTO_MIME.has(file.type) && !looksHeic) {
+      toast({ variant: 'destructive', title: t.fields.photoErrorType });
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      const processed = await processImageFile(file);
+      if (processed.size > MAX_PHOTO_BYTES) {
+        toast({ variant: 'destructive', title: t.fields.photoErrorSize });
+        return;
+      }
+
+      const companyId = await currentCompanyId();
+      if (!companyId) throw new Error('Empresa não encontrada para o usuário.');
+
+      const folderId = item?.id || newItemPhotoFolderRef.current;
+      const path = buildStorageFilePath({ folder: `${companyId}/${folderId}`, fileName: processed.name });
+
+      const { error: uploadError } = await supabase.storage
+        .from(PHOTO_BUCKET)
+        .upload(path, processed, await tenantFileOptions({ contentType: processed.type || undefined }));
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+      setPhotoUrl(publicUrl);
+    } catch (err) {
+      toast({ variant: 'destructive', title: t.fields.photoErrorUpload, description: getErrorMessage(err) });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleRemovePhoto = () => setPhotoUrl('');
+
   const allPresent = stocks.length > 0 && stocks.every((s) => stockPresenceMap[s.id] !== false);
   const nonePresent = stocks.length > 0 && stocks.every((s) => stockPresenceMap[s.id] === false);
 
@@ -327,6 +444,110 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
             </div>
             <Input value={formData.sku || ''} onChange={(e) => handleChange('sku', e.target.value)} placeholder={t.fields.skuPlaceholder} />
             <p className="text-xs text-muted-foreground">{t.fields.skuHint}</p>
+          </div>
+        </div>
+
+        {/* Foto + Código de barras (módulo PDV e Loja: catálogo com foto e código) */}
+        <div className="grid gap-4 sm:grid-cols-[112px_1fr]">
+          <div className="space-y-2">
+            <Label>{t.fields.photo}</Label>
+            <div className="flex flex-col items-center gap-2">
+              <button
+                type="button"
+                onClick={() => photoUrl && setPhotoViewerOpen(true)}
+                disabled={uploadingPhoto || !photoUrl}
+                className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-input bg-muted flex items-center justify-center disabled:cursor-default"
+                aria-label={t.fields.photo}
+              >
+                {photoUrl ? (
+                  <SignedImg
+                    src={photoUrl}
+                    alt={formData.name || t.fields.photo}
+                    className="h-20 w-20 object-cover"
+                  />
+                ) : (
+                  <ImageIcon className="h-6 w-6 text-muted-foreground/60" aria-hidden="true" />
+                )}
+                {uploadingPhoto && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                    <Loader2 className="h-5 w-5 text-white animate-spin" />
+                  </div>
+                )}
+                {photoUrl && !uploadingPhoto && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-label={t.fields.photoRemove}
+                    onClick={(e) => { e.stopPropagation(); handleRemovePhoto(); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handleRemovePhoto(); } }}
+                    className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground"
+                  >
+                    <X className="h-3 w-3" />
+                  </span>
+                )}
+              </button>
+              <label className={uploadingPhoto ? 'pointer-events-none opacity-60' : undefined}>
+                <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" asChild disabled={uploadingPhoto}>
+                  <span>{photoUrl ? t.fields.photoChange : t.fields.photoAdd}</span>
+                </Button>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif"
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                  disabled={uploadingPhoto}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="inventory-barcode">{t.fields.barcode}</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="inventory-barcode"
+                  ref={barcodeInputRef}
+                  value={barcode}
+                  onChange={(e) => setBarcode(e.target.value)}
+                  placeholder={t.fields.barcodePlaceholder}
+                  className="flex-1"
+                  // Código, não quantidade: nunca NumericInput — vide régua de UI.
+                  inputMode="text"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => barcodeInputRef.current?.focus()}
+                  aria-label={t.fields.barcodeScanButton}
+                  title={t.fields.barcodeScanButton}
+                >
+                  <ScanBarcode className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">{t.fields.barcodeScanHint}</p>
+              {/* Geração automática (prefixo + sequencial + dígito verificador) depende
+                  de RPC ainda não implementada (pdv_generate_barcode) — fora desta entrega. */}
+              <p className="text-xs text-muted-foreground/70">{t.fields.barcodeAutoHint}</p>
+            </div>
+
+            {pdvEnabled && (
+              <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2">
+                <div>
+                  <p className="text-sm font-medium">{t.fields.isSellable}</p>
+                  <p className="text-xs text-muted-foreground">{t.fields.isSellableHint}</p>
+                </div>
+                <LabeledSwitch
+                  value={isSellable ? 'on' : 'off'}
+                  onChange={(v) => setIsSellable(v === 'on')}
+                  off={{ value: 'off', label: t.fields.isSellableOff }}
+                  on={{ value: 'on', label: t.fields.isSellableOn }}
+                  aria-label={t.fields.isSellable}
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -545,6 +766,16 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
       submitLabel={t.save}
       cancelLabel={t.cancel}
     />
+
+    {/* Viewer dedicado da foto — nunca abrir em nova aba (régua de UI). */}
+    {photoUrl && (
+      <ImagePreviewModal
+        src={photoUrl}
+        alt={formData.name || t.fields.photo}
+        open={photoViewerOpen}
+        onClose={() => setPhotoViewerOpen(false)}
+      />
+    )}
     </>
   );
 }

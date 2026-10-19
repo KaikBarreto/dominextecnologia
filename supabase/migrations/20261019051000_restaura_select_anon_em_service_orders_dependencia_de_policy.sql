@@ -1,0 +1,80 @@
+-- Restaura o SELECT de anon em public.service_orders: NAO era privilegio morto
+--
+-- Correcao da migration imediatamente anterior (20261019050000), minha, do
+-- mesmo dia. Ela revogou 32 pares (relacao, privilegio) de anon classificados
+-- como "privilegio morto". A classificacao usou UM criterio:
+--   "existe policy permissiva alcancando anon NESTA relacao, para ESTE comando?"
+-- Esse criterio esta INCOMPLETO. Falta o segundo consumidor de um GRANT:
+--
+--   O Postgres exige privilegio nas tabelas CITADAS DENTRO da expressao de uma
+--   policy, nao so na tabela que a policy protege. Avaliar uma policy que faz
+--   EXISTS (SELECT 1 FROM outra_tabela ...) exige SELECT em `outra_tabela` pelo
+--   papel que esta lendo. Sem o GRANT, a leitura nao devolve 0 linhas: ela
+--   ABORTA com 42501 nomeando a tabela de dentro.
+--
+-- Dependencia inversa medida em pg_policy (expressao de toda policy que
+-- alcanca anon, cruzada com as tabelas do schema public que ela cita):
+--   quotes          <- quote_items."Public can view quote_items by valid quote"
+--                      quote_items."Public view quote_items via quote"
+--   service_orders  <- form_responses."Public submit form_responses via portal"
+--                      technician_locations."Public view technician_locations via portal"
+--   service_ratings <- form_responses."Public submit form_responses via portal"
+--                      technician_locations."Public view technician_locations via portal"
+--
+-- `quotes` sobreviveu porque tem policy anon propria e caiu na lista de manter.
+-- `service_orders` NAO tem policy anon nenhuma hoje, entao caiu na lista de
+-- revogar -- e isso esta errado: o GRANT dele sustenta a avaliacao de DUAS
+-- policies anon deliberadas de portal publico. Revogado, ele transforma a
+-- unica correcao que falta (ver RELATORIO abaixo) em correcao que nao funciona,
+-- e o rastro aponta pra migration errada.
+--
+-- Por que restaurar e seguro, e nao "reabrir superficie":
+--   public.service_orders esta com RLS LIGADA e tem exatamente 2 policies, as
+--   duas {authenticated} ("Users manage entitled own company service_orders" e
+--   "Tarefas visiveis a quem e responsavel"). Nenhuma alcanca anon. Logo anon
+--   com SELECT le ZERO linhas -- medido com a chave anon real via PostgREST,
+--   antes da 20261019050000: GET /service_orders -> [] (HTTP 200, 0 linhas).
+--   O GRANT e tranca unica, nao porta: serve so pra policy de OUTRA tabela
+--   poder ser avaliada.
+--
+-- INSERT/UPDATE/DELETE de anon em service_orders NAO voltam. O INSERT do portal
+-- ('origin=portal') ja nao existia antes de qualquer migration desta rodada
+-- (medido: has_table_privilege('anon', 'service_orders', 'INSERT') = false e
+-- zero policies de INSERT alcancando anon) -- o caminho novo sao as RPCs
+-- SECURITY DEFINER create_contract_portal_ticket / create_customer_portal_ticket.
+--
+-- Idempotente: GRANT repetido e no-op.
+
+GRANT SELECT ON TABLE public.service_orders TO anon;
+
+COMMENT ON TABLE public.service_orders IS
+  'OS/tarefa do tenant. O GRANT de SELECT para anon NAO e privilegio morto e nao deve ser revogado por varredura automatica: ele sustenta a AVALIACAO das policies anon de public.form_responses ("Public submit form_responses via portal") e public.technician_locations ("Public view technician_locations via portal"), que citam service_orders dentro do EXISTS. Sem o GRANT essas leituras abortam com 42501 em vez de devolver 0 linhas. anon le 0 linhas desta tabela: RLS ligada e as 2 policies sao {authenticated}.';
+
+-- ===========================================================================
+-- RELATORIO -- o que FALTA e e decisao do Tech Lead, nao aplicado aqui
+--
+-- public.service_ratings perdeu o SELECT de anon na 20261018211000 (ela consta
+-- na lista v_acidentais daquela migration, que ja esta em producao). Como as
+-- duas policies acima tambem citam service_ratings, a revogacao quebrou a
+-- avaliacao delas. Medido com a chave anon real HOJE:
+--   GET  /technician_locations -> 42501 permission denied for table service_ratings
+--   POST /form_responses       -> 42501 permission denied for table service_ratings
+-- Nao e consequencia desta rodada: ja estava assim desde ontem.
+--
+-- Impacto de cliente: o mapa de rastreio publico (PublicTrackingMap) nao mostra
+-- a posicao do tecnico pro cliente anonimo. O lado do form_responses esta
+-- latente (nenhum arquivo de src/ insere form_responses com o client anon; o
+-- checklist publico e lido pelo payload de get_public_os e a avaliacao vai pela
+-- RPC submit_public_os_rating).
+--
+-- O conserto de uma linha seria:
+--   GRANT SELECT ON TABLE public.service_ratings TO anon;
+-- e ele e tao seguro quanto o desta migration (service_ratings tem RLS ligada e
+-- UMA policy, FOR ALL TO authenticated -> anon leria 0 linhas). NAO foi aplicado
+-- aqui de proposito: re-conceder privilegio que outra sessao revogou ontem, no
+-- dia do release, sem o Tech Lead decidir, e pior que reportar. Alem disso,
+-- sozinho ele NAO conserta o mapa de rastreio: technician_locations continuaria
+-- devolvendo 0 linhas, porque as policies passam por service_orders e anon nao
+-- tem policy nenhuma la. O conserto de verdade do mapa e devolver a ultima
+-- posicao dentro de get_public_os (RPC) e trocar o fetch em src/.
+-- ===========================================================================

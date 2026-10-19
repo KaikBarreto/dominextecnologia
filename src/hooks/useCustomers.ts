@@ -34,6 +34,11 @@ export interface CustomerInput {
   // Coordenadas geocodificadas no cadastro/edição (mapa de rota instantâneo).
   latitude?: number;
   longitude?: number;
+  // Tipo de atendimento (multi-seleção, módulo PDV). Omitido = não toca a
+  // coluna (edição sem o módulo preserva o valor atual; criação cai no
+  // DEFAULT do banco: is_service_customer=true, is_store_customer=false).
+  is_service_customer?: boolean;
+  is_store_customer?: boolean;
 }
 
 export function useCustomers() {

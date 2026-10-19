@@ -110,6 +110,26 @@ export function useStocks(customerId?: string | null) {
     },
   });
 
+  /**
+   * Define a finalidade do local (`operacional` | `pdv`) — módulo PDV e Loja.
+   * Coluna simples (`stocks.purpose`), sem RPC: mesmo padrão de `renameStock`.
+   * Quem chama garante que só expõe isto com `hasModule('pdv')` — sem o
+   * módulo, todo local nasce e permanece `'operacional'` (default da coluna).
+   */
+  const updateStockPurpose = useMutation({
+    mutationFn: async ({ id, purpose }: { id: string; purpose: 'operacional' | 'pdv' }) => {
+      const { error } = await supabase.from('stocks').update({ purpose } as StockUpdate).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stocks'] });
+      toast({ title: 'Tipo do local atualizado!' });
+    },
+    onError: (err) => {
+      toast({ variant: 'destructive', title: 'Erro ao atualizar o tipo do local', description: getErrorMessage(err) });
+    },
+  });
+
   const setDefaultStock = useMutation({
     mutationFn: async (stockId: string) => {
       const { error } = await supabase.rpc('set_default_stock', { p_stock_id: stockId });
@@ -171,6 +191,7 @@ export function useStocks(customerId?: string | null) {
     renameStock,
     deleteStock,
     setDefaultStock,
+    updateStockPurpose,
     transferStock,
   };
 }

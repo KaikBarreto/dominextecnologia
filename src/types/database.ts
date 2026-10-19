@@ -74,6 +74,15 @@ export interface Customer {
   inscricao_estadual?: string | null;
   street_number?: string;
   ibge_municipality_code?: string;
+  // Tipo de atendimento (multi-seleção, módulo PDV e Loja — 2026-10).
+  // Backfill: todo cliente pré-existente nasceu com is_service_customer=true,
+  // is_store_customer=false. Sem o módulo, a UI nem expõe este campo.
+  is_service_customer?: boolean;
+  is_store_customer?: boolean;
+  // Limite de fiado da loja (módulo PDV). `null`/ausente = sem limite definido
+  // (a RPC de venda avisa). O SALDO DEVEDOR nunca vive aqui: é a soma de
+  // `customer_credit_ledger` (ver usePdvCustomerCredit).
+  credit_limit?: number | null;
   created_at: string;
   updated_at: string;
 }

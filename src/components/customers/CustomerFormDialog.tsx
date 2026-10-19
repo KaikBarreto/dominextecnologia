@@ -12,12 +12,14 @@ import { DatePicker } from '@/components/ui/DatePicker';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { OriginSelectField } from '@/components/customers/OriginSelectField';
 import { Loader2, Upload, Users, User, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
 import { CepLookup } from '@/components/CepLookup';
@@ -64,6 +66,12 @@ const customerSchema = z.object({
   inscricao_municipal: z.string().optional(),
   inscricao_estadual: z.string().optional(),
   ibge_municipality_code: z.string().optional(),
+  // Tipo de atendimento (módulo PDV e Loja). Multi-seleção de verdade: pode
+  // marcar os dois, ou nenhum — não é erro de validação, ver handleSubmit.
+  // Opcionais aqui de propósito: sem o módulo, o campo nem entra no reset do
+  // form, e omitimos do payload final pra não sobrescrever o que já existe.
+  is_service_customer: z.boolean().optional(),
+  is_store_customer: z.boolean().optional(),
 });
 
 type CustomerFormData = z.infer<typeof customerSchema>;
@@ -74,6 +82,7 @@ const EMPTY_FORM: CustomerFormData = {
   whatsapp_notifications_enabled: true,
   complement: '', neighborhood: '', city: '', state: '', zip_code: '',
   notes: '', origin: '', inscricao_municipal: '', inscricao_estadual: '', ibge_municipality_code: '',
+  is_service_customer: true, is_store_customer: false,
 };
 
 interface CustomerFormDialogProps {
@@ -82,11 +91,21 @@ interface CustomerFormDialogProps {
   customer?: Customer | null;
   onSubmit: (data: CustomerFormData & { street_number?: string; latitude?: number; longitude?: number }) => Promise<void>;
   isLoading?: boolean;
+  /**
+   * Default do "Atende como" ao CRIAR (ignorado ao editar, que sempre lê o
+   * valor real do cliente). `'servico'` é o default de hoje (OS, orçamento,
+   * contrato, cadastro direto em Clientes); `'loja'` é só pro quick-create
+   * de dentro do PDV. Sem efeito nenhum se a empresa não tiver o módulo
+   * `pdv` — o campo nem aparece e o valor nasce do DEFAULT do banco.
+   */
+  defaultCustomerKind?: 'servico' | 'loja';
 }
 
 export function CustomerFormDialog({
-  open, onOpenChange, customer, onSubmit, isLoading,
+  open, onOpenChange, customer, onSubmit, isLoading, defaultCustomerKind = 'servico',
 }: CustomerFormDialogProps) {
+  const { hasModule } = useCompanyModules();
+  const hasPdvModule = hasModule('pdv');
   const [activeTab, setActiveTab] = useState<'contato' | 'fiscal'>('contato');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -137,6 +156,20 @@ export function CustomerFormDialog({
       if (!isEditing && draft.hasDraft && draft.draftData) {
         // Draft will be applied when user accepts via DraftResumeDialog
       } else {
+        // "Atende como" — ao editar, lê o valor real do cliente (sempre
+        // presente desde o backfill da migration do PDV: todo cliente
+        // pré-existente nasceu is_service_customer=true/is_store_customer=
+        // false). Ao criar, aplica o default contextual pedido pelo caller
+        // (OS/orçamento/contrato = 'servico'; PDV = 'loja'; cadastro direto
+        // em Clientes não passa a prop e cai em 'servico', igual hoje).
+        const kindDefaults = isEditing
+          ? {
+              is_service_customer: customer?.is_service_customer ?? true,
+              is_store_customer: customer?.is_store_customer ?? false,
+            }
+          : defaultCustomerKind === 'loja'
+            ? { is_service_customer: false, is_store_customer: true }
+            : { is_service_customer: true, is_store_customer: false };
         form.reset({
           name: customer?.name ?? '',
           customer_type: (customer?.customer_type as CustomerType) ?? 'pj',
@@ -160,6 +193,7 @@ export function CustomerFormDialog({
           inscricao_municipal: (customer as any)?.inscricao_municipal ?? '',
           inscricao_estadual: (customer as any)?.inscricao_estadual ?? '',
           ibge_municipality_code: (customer as any)?.ibge_municipality_code ?? '',
+          ...kindDefaults,
         });
       }
     }
@@ -198,7 +232,7 @@ export function CustomerFormDialog({
         }
       }
 
-      const cleanedData = {
+      const cleanedData: Record<string, unknown> = {
         ...data,
         whatsapp_notifications_enabled:
           data.whatsapp_notifications_enabled && (data.celular || '').replace(/\D/g, '').length >= 10,
@@ -208,7 +242,15 @@ export function CustomerFormDialog({
         ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
         ...(photo_url ? { photo_url } : {}),
       };
-      await onSubmit(cleanedData);
+      // Sem o módulo PDV, o payload não leva estas duas chaves — nem pra
+      // criar (cai no DEFAULT do banco) nem pra editar (preserva o valor
+      // atual na linha, nunca sobrescreve). Isto é a prova de "formulário
+      // idêntico ao de hoje" no nível do contrato de dados, não só da UI.
+      if (!hasPdvModule) {
+        delete cleanedData.is_service_customer;
+        delete cleanedData.is_store_customer;
+      }
+      await onSubmit(cleanedData as unknown as CustomerFormData & { street_number?: string; latitude?: number; longitude?: number });
       draft.clearDraft();
       form.reset();
       setActiveTab('contato');
@@ -315,6 +357,46 @@ export function CustomerFormDialog({
                     <FormMessage />
                   </FormItem>
                 )} />
+                {/* "Atende como" — multi-seleção de verdade (Serviço e Loja não são
+                    exclusivos: a mesma refrigeração que atende o condomínio vende
+                    peça no balcão pra ele). Por isso dois Checkbox, não LabeledSwitch
+                    (que é pra escolha binária A-ou-B). Só existe com o módulo PDV —
+                    sem ele, nem estas duas chaves entram no payload (ver handleSubmit). */}
+                {hasPdvModule && (
+                  <div className="sm:col-span-2 rounded-lg border bg-muted/20 px-4 py-3">
+                    <p className="text-sm font-medium mb-2">{t.kindLabel}</p>
+                    <div className="flex flex-wrap gap-4">
+                      <FormField control={form.control} name="is_service_customer" render={({ field }) => (
+                        <FormItem className="flex items-center gap-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value ?? false}
+                              onCheckedChange={field.onChange}
+                              id="customer-kind-service"
+                            />
+                          </FormControl>
+                          <FormLabel htmlFor="customer-kind-service" className="font-normal cursor-pointer">
+                            {t.kindService}
+                          </FormLabel>
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="is_store_customer" render={({ field }) => (
+                        <FormItem className="flex items-center gap-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value ?? false}
+                              onCheckedChange={field.onChange}
+                              id="customer-kind-store"
+                            />
+                          </FormControl>
+                          <FormLabel htmlFor="customer-kind-store" className="font-normal cursor-pointer">
+                            {t.kindStore}
+                          </FormLabel>
+                        </FormItem>
+                      )} />
+                    </div>
+                  </div>
+                )}
                 <FormField control={form.control} name="phone" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t.phone}</FormLabel>

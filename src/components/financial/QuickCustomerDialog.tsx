@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { CnpjDocumentInput, type CnpjData } from '@/components/customers/CnpjDocumentInput';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -20,6 +21,14 @@ interface QuickCustomerDialogProps {
   onCreated: (customerId: string) => void;
   /** Exige CPF/CNPJ (default true — cobrança Asaas). Passe false em contextos sem cobrança (ex: equipamento). */
   requireDocument?: boolean;
+  /**
+   * Default do "Atende como" ao criar (módulo PDV). `'servico'` é o default
+   * hoje (todo chamador atual é serviço/CRM/financeiro). Sem efeito se a
+   * empresa não tiver o módulo `pdv` — não grava a coluna nesse caso, igual
+   * ao `CustomerFormDialog`. Pronto pra quando o PDV ganhar seletor de
+   * cliente próprio e passar `'loja'`.
+   */
+  defaultCustomerKind?: 'servico' | 'loja';
 }
 
 /**
@@ -33,11 +42,14 @@ export function QuickCustomerDialog({
   onOpenChange,
   onCreated,
   requireDocument = true,
+  defaultCustomerKind = 'servico',
 }: QuickCustomerDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.cobrar.quickCustomer;
   const { toast } = useToast();
   const { createCustomer } = useCustomers();
+  const { hasModule } = useCompanyModules();
+  const hasPdvModule = hasModule('pdv');
 
   const [name, setName] = useState(initialName);
   const [document, setDocument] = useState('');
@@ -88,6 +100,12 @@ export function QuickCustomerDialog({
         document: document.trim() || undefined,
         email: email.trim() || undefined,
         celular: phone.trim() || undefined,
+        // Sem o módulo PDV, não grava a coluna — igual ao CustomerFormDialog.
+        ...(hasPdvModule
+          ? defaultCustomerKind === 'loja'
+            ? { is_service_customer: false, is_store_customer: true }
+            : { is_service_customer: true, is_store_customer: false }
+          : {}),
       });
       onCreated(created.id);
       handleOpenChange(false);

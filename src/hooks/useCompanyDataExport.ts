@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -60,6 +61,14 @@ import {
 //
 // 6. Fronteira do Supabase: todo `supabase.from(...)` desta feature está NESTE
 //    arquivo. O gerador recebe dados prontos e não conhece banco.
+//
+// 7. MÓDULO PAGO NÃO VAZA NO EXPORT. Os grupos do PDV e Loja (`pdvOrders`,
+//    `customerCredit`) só existem pra quem contratou o add-on `pdv`. Empresa
+//    sem o módulo tem que receber um arquivo IDÊNTICO ao de antes do PDV
+//    existir: nem checkbox, nem aba, nem aba VAZIA, nem linha no Resumo. O
+//    gate é `PDV_EXPORT_GROUPS` + `hasModule('pdv')`, aplicado nos dois
+//    lugares: na lista que o dialog desenha (`groups`) E dentro do `run`
+//    (quem manda um `selection` com a chave do PDV na mão não ganha a aba).
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Um checkbox no dialog. Pode gerar 1 ou 2 abas no arquivo. */
@@ -74,7 +83,10 @@ export type ExportGroupKey =
   | 'inventoryMovements' // aba: Movimentações de Estoque
   | 'employees'          // aba: Funcionários
   | 'leads'              // aba: CRM / Leads
-  | 'timeRecords';       // aba: Ponto
+  | 'timeRecords'        // aba: Ponto
+  // ── Módulo pago `pdv` (PDV e Loja). Só aparecem com o add-on contratado. ──
+  | 'pdvOrders'          // abas: Vendas PDV + Itens + Pagamentos
+  | 'customerCredit';    // aba: Fiado dos Clientes (customer_credit_ledger)
 
 /** Uma aba no .xlsx. */
 export type ExportSheetKey =
@@ -82,7 +94,8 @@ export type ExportSheetKey =
   | 'serviceOrders' | 'serviceMaterials' | 'quotes' | 'quoteItems'
   | 'contracts' | 'contractItems' | 'financialTransactions'
   | 'financialAccounts' | 'inventory' | 'inventoryMovements'
-  | 'employees' | 'leads' | 'timeRecords';
+  | 'employees' | 'leads' | 'timeRecords'
+  | 'pdvOrders' | 'pdvOrderItems' | 'pdvOrderPayments' | 'customerCredit';
 
 /** Ordem dos checkboxes no dialog E das abas dentro do arquivo. */
 export const EXPORT_GROUPS: readonly ExportGroupKey[] = [
@@ -94,10 +107,20 @@ export const EXPORT_GROUPS: readonly ExportGroupKey[] = [
   'financial',
   'inventory',
   'inventoryMovements',
+  'pdvOrders',
+  'customerCredit',
   'employees',
   'leads',
   'timeRecords',
 ];
+
+/**
+ * Grupos que só existem com o add-on `pdv` contratado (ver regra 7 no topo).
+ * Quem não tem o módulo nem vê o checkbox nem recebe a aba.
+ */
+export const PDV_EXPORT_GROUPS: readonly ExportGroupKey[] = ['pdvOrders', 'customerCredit'];
+
+const PDV_EXPORT_GROUP_SET = new Set<ExportGroupKey>(PDV_EXPORT_GROUPS);
 
 /** Quais abas cada checkbox gera (na ordem em que entram no arquivo). */
 export const EXPORT_GROUP_SHEETS: Record<ExportGroupKey, readonly ExportSheetKey[]> = {
@@ -109,6 +132,8 @@ export const EXPORT_GROUP_SHEETS: Record<ExportGroupKey, readonly ExportSheetKey
   financial: ['financialTransactions', 'financialAccounts'],
   inventory: ['inventory'],
   inventoryMovements: ['inventoryMovements'],
+  pdvOrders: ['pdvOrders', 'pdvOrderItems', 'pdvOrderPayments'],
+  customerCredit: ['customerCredit'],
   employees: ['employees'],
   leads: ['leads'],
   timeRecords: ['timeRecords'],
@@ -127,6 +152,11 @@ export const DEFAULT_EXPORT_SELECTION: Record<ExportGroupKey, boolean> = {
   financial: true,
   inventory: true,
   inventoryMovements: false,
+  // Portabilidade LGPD (Art. 18, V): o histórico de compras e, sobretudo, o
+  // SALDO DE FIADO são dado financeiro do titular. Vêm marcados. Empresa sem o
+  // add-on `pdv` nunca vê estas duas chaves (ver `groups` abaixo).
+  pdvOrders: true,
+  customerCredit: true,
   employees: true,
   leads: true,
   timeRecords: false,
@@ -140,6 +170,11 @@ export interface ExportProgress {
 }
 
 export interface UseCompanyDataExportResult {
+  /**
+   * Grupos que ESTA empresa pode exportar, na ordem do arquivo. É o que o
+   * dialog desenha: sem o add-on `pdv`, as chaves do PDV não entram aqui.
+   */
+  groups: readonly ExportGroupKey[];
   /** Lê, monta o .xlsx e dispara o download. Rejeita com Error em falha. */
   run: (selection: Record<ExportGroupKey, boolean>) => Promise<void>;
   progress: ExportProgress | null;
@@ -250,9 +285,19 @@ const M = (key: string, width?: number) => col(key, 'money', width);
 export function useCompanyDataExport(): UseCompanyDataExportResult {
   const { locale, currency, timezone } = useAppLocaleContext();
   const { settings } = useCompanySettings();
+  const { hasModule } = useCompanyModules();
   const [progress, setProgress] = useState<ExportProgress | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Gate do add-on `pdv` (regra 7 no topo). `hasModule` devolve false enquanto
+  // carrega, então o pior caso é o grupo aparecer um instante depois — nunca
+  // aparecer pra quem não contratou.
+  const hasPdv = hasModule('pdv');
+  const availableGroups = useMemo<readonly ExportGroupKey[]>(
+    () => (hasPdv ? EXPORT_GROUPS : EXPORT_GROUPS.filter((g) => !PDV_EXPORT_GROUP_SET.has(g))),
+    [hasPdv],
+  );
 
   const reset = useCallback(() => {
     setProgress(null);
@@ -261,7 +306,9 @@ export function useCompanyDataExport(): UseCompanyDataExportResult {
 
   const run = useCallback(
     async (selection: Record<ExportGroupKey, boolean>) => {
-      const groups = EXPORT_GROUPS.filter((g) => selection[g]);
+      // Filtra pelos grupos DISPONÍVEIS, não por EXPORT_GROUPS: o gate do
+      // módulo vale também pra quem chamar `run` com a chave do PDV na mão.
+      const groups = availableGroups.filter((g) => selection[g]);
       if (groups.length === 0) {
         const message = 'Selecione pelo menos um conjunto de dados para exportar.';
         setError(message);
@@ -297,10 +344,10 @@ export function useCompanyDataExport(): UseCompanyDataExportResult {
         setIsRunning(false);
       }
     },
-    [locale, currency, timezone, settings?.name],
+    [locale, currency, timezone, settings?.name, availableGroups],
   );
 
-  return { run, progress, isRunning, error, reset };
+  return { groups: availableGroups, run, progress, isRunning, error, reset };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -470,6 +517,37 @@ async function collectSheets({
     active: msg.equipment.statusActive,
     inactive: msg.equipment.statusInactive,
   };
+  // pdv_order_payments.method (Pagamentos das Vendas → Forma de Pagamento) —
+  // MESMO dicionário do modal de pagamento do PDV. 'pontos' só existe na Onda 4
+  // e não tem rótulo lá, então reusa o do histórico do caixa.
+  const pdvMethods = msg.pdv.cashier.payment.methods;
+  const pdvPaymentMethodMap: Record<string, string> = {
+    dinheiro: pdvMethods.dinheiro,
+    pix: pdvMethods.pix,
+    debito: pdvMethods.debito,
+    credito: pdvMethods.credito,
+    transferencia: pdvMethods.transferencia,
+    fiado: pdvMethods.fiado,
+    pontos: msg.pdv.cashPanel.history.methodPontos,
+  };
+  // pdv_orders.status — não há tela que mostre o status cru do pedido hoje
+  // (a venda simples nasce e morre em segundos); rótulos novos em
+  // dataExport.values.
+  const pdvOrderStatusMap: Record<string, string> = {
+    rascunho: dxValues.pdvStatusRascunho,
+    aguardando_pagamento: dxValues.pdvStatusAguardandoPagamento,
+    pago: dxValues.pdvStatusPago,
+    entregue: dxValues.pdvStatusEntregue,
+    cancelado: dxValues.pdvStatusCancelado,
+  };
+  // customer_credit_ledger.kind (Fiado dos Clientes → Tipo de Lançamento) —
+  // idem: sem tela que exiba o kind cru; rótulos novos em dataExport.values.
+  const creditKindMap: Record<string, string> = {
+    venda_fiado: dxValues.creditKindVendaFiado,
+    pagamento: dxValues.creditKindPagamento,
+    ajuste: dxValues.creditKindAjuste,
+    credito: dxValues.creditKindCredito,
+  };
   // employees.employment_regime (Funcionários → Regime de Contratação) — o
   // LabeledSwitch do formulário grava com esse texto literal, igual nos 4
   // idiomas (não há dicionário i18n pra esse campo na tela).
@@ -511,6 +589,10 @@ async function collectSheets({
     lookup('service_orders', () => loadLabelMap('service_orders', 'id', 'order_number'));
   const inventoryNamesMap = () => lookup('inventory', () => loadLabelMap('inventory', 'id', 'name'));
   const inventorySkusMap = () => lookup('inventory_sku', () => loadLabelMap('inventory', 'id', 'sku'));
+  const pdvTerminalsMap = () => lookup('pdv_terminals', () => loadLabelMap('pdv_terminals', 'id', 'name'));
+  // Número VISÍVEL do pedido do PDV. É o que amarra itens, pagamentos e o
+  // extrato de fiado às vendas sem exportar nenhum UUID.
+  const pdvOrderNumbersMap = () => lookup('pdv_orders', () => loadLabelMap('pdv_orders', 'id', 'number'));
 
   // ── Progresso ──────────────────────────────────────────────────────────────
   const total = groups.reduce((acc, g) => acc + EXPORT_GROUP_SHEETS[g].length, 0);
@@ -1034,6 +1116,148 @@ async function collectSheets({
             ref(inventorySkus, r.inventory_id), ref(stocks, r.stock_id),
             n(r.quantity), n(r.unit_cost), n(r.stock_before), n(r.stock_after),
             ref(suppliers, r.supplier_id), n(ref(orderNumbers, r.service_order_id)), s(r.notes),
+          ]),
+        });
+        break;
+      }
+
+      // ── PDV e Loja: Vendas + Itens + Pagamentos (add-on `pdv`) ─────────────
+      // Só chega aqui quem tem o módulo: o gate está em `availableGroups`.
+      case 'pdvOrders': {
+        const customers = await customersMap();
+        const profiles = await profilesMap();
+        const stocks = await stocksMap();
+        const terminals = await pdvTerminalsMap();
+
+        // `client_request_id` (chave de idempotência do fechamento),
+        // `cash_session_id` e `coupon_id` NÃO entram: id interno sem leitura
+        // possível pro cliente. O amarrador das três abas é `number`, que é o
+        // número do pedido que o cliente vê no comprovante.
+        const rows = await readSheet('pdvOrders', (onPage) =>
+          fetchAllPaged(
+            'pdv_orders',
+            'id, number, status, customer_id, salesperson_id, stock_id, terminal_id, subtotal, ' +
+              'discount_amount, points_redeemed, total, notes, created_at, paid_at, delivered_at, ' +
+              'cancelled_at, cancelled_by, cancelled_reason',
+            { orderBy: ['number', 'id'], onPage },
+          ),
+        );
+        sheets.push({
+          key: 'pdvOrders',
+          columns: [
+            N('number'), T('status'), T('customer', 32), T('salesperson', 24),
+            T('stock', 22), T('terminal', 22),
+            M('subtotal'), M('discount_amount'), N('points_redeemed'), M('total'),
+            T('notes', 40), T('created_at'), T('paid_at', 18), T('delivered_at', 18),
+            T('cancelled_at', 18), T('cancelled_by', 24), T('cancelled_reason', 28),
+          ],
+          rows: rows.map((r) => [
+            n(r.number), enumLabel(pdvOrderStatusMap, r.status), ref(customers, r.customer_id),
+            ref(profiles, r.salesperson_id), ref(stocks, r.stock_id), ref(terminals, r.terminal_id),
+            n(r.subtotal), n(r.discount_amount), n(r.points_redeemed), n(r.total),
+            s(r.notes), d(r.created_at), dt(r.paid_at), dt(r.delivered_at),
+            dt(r.cancelled_at), ref(profiles, r.cancelled_by), s(r.cancelled_reason),
+          ]),
+        });
+
+        // Prime o mapa de números com o que já foi lido (evita reler a tabela
+        // nas abas de itens/pagamentos e no extrato de fiado).
+        if (!cache.has('pdv_orders')) {
+          const map = new Map<string, string>();
+          for (const r of rows) if (r.id != null) map.set(String(r.id), String(r.number ?? ''));
+          cache.set('pdv_orders', map);
+        }
+
+        const orderNumbers = await pdvOrderNumbersMap();
+        const inventoryNames = await inventoryNamesMap();
+        const inventorySkus = await inventorySkusMap();
+
+        // `pdv_order_items` não tem created_at: a ordem estável é
+        // (order_id, sort_order, id).
+        const items = await readSheet('pdvOrderItems', (onPage) =>
+          fetchAllPaged(
+            'pdv_order_items',
+            'id, order_id, inventory_id, description, quantity, unit_price, discount_amount, ' +
+              'total, unit_cost, sort_order',
+            { orderBy: ['order_id', 'sort_order', 'id'], onPage },
+          ),
+        );
+        sheets.push({
+          key: 'pdvOrderItems',
+          columns: [
+            N('number'), N('sort_order'), T('description', 36), T('item', 32), T('sku'),
+            N('quantity'), M('unit_price'), M('discount_amount'), M('total'), M('unit_cost'),
+          ],
+          rows: items.map((r) => [
+            n(ref(orderNumbers, r.order_id)), n(r.sort_order), s(r.description),
+            ref(inventoryNames, r.inventory_id), ref(inventorySkus, r.inventory_id),
+            n(r.quantity), n(r.unit_price), n(r.discount_amount), n(r.total), n(r.unit_cost),
+          ]),
+        });
+
+        const accounts = await accountsMap();
+        // Venda mista é regra no balcão: uma linha POR forma de pagamento.
+        const payments = await readSheet('pdvOrderPayments', (onPage) =>
+          fetchAllPaged(
+            'pdv_order_payments',
+            'id, order_id, method, amount, change_amount, financial_account_id, received_at',
+            { orderBy: ['received_at', 'id'], onPage },
+          ),
+        );
+        sheets.push({
+          key: 'pdvOrderPayments',
+          columns: [
+            N('number'), T('method'), M('amount'), M('change_amount'),
+            T('account', 24), T('received_at', 18),
+          ],
+          rows: payments.map((r) => [
+            n(ref(orderNumbers, r.order_id)), enumLabel(pdvPaymentMethodMap, r.method),
+            n(r.amount), n(r.change_amount), ref(accounts, r.financial_account_id), dt(r.received_at),
+          ]),
+        });
+        break;
+      }
+
+      // ── Fiado dos Clientes (customer_credit_ledger) ────────────────────────
+      // O CENTRO da portabilidade (LGPD Art. 18, V): é dívida de pessoa física
+      // na loja. `amount` é ASSINADO (positivo aumenta a dívida, negativo
+      // abate) e o saldo NUNCA é coluna em `customers` — é a soma do extrato.
+      // Por isso a aba leva a coluna `balance`: saldo acumulado do cliente
+      // DEPOIS daquele lançamento, o que faz a última linha de cada cliente ser
+      // o saldo devedor atual dele. Nada aqui é calculado por fora do que o
+      // banco devolveu.
+      case 'customerCredit': {
+        const customers = await customersMap();
+        const orderNumbers = await pdvOrderNumbersMap();
+
+        const rows = await readSheet('customerCredit', (onPage) =>
+          fetchAllPaged(
+            'customer_credit_ledger',
+            'id, customer_id, kind, amount, order_id, notes, created_at',
+            // Agrupado por cliente e em ordem cronológica: é o que faz o saldo
+            // acumulado fechar linha a linha, inclusive entre páginas.
+            { orderBy: ['customer_id', 'created_at', 'id'], onPage },
+          ),
+        );
+
+        const runningByCustomer = new Map<string, number>();
+        const balances = rows.map((r) => {
+          const key = String(r.customer_id ?? '');
+          const next = (runningByCustomer.get(key) ?? 0) + (Number(r.amount) || 0);
+          runningByCustomer.set(key, next);
+          // Centavos: evita 0.30000000000000004 no extrato.
+          return Math.round(next * 100) / 100;
+        });
+
+        sheets.push({
+          key: 'customerCredit',
+          columns: [
+            T('customer', 32), T('created_at', 18), T('kind'), M('amount'), M('balance'),
+            N('number'), T('notes', 40),
+          ],
+          rows: rows.map((r, i) => [
+            ref(customers, r.customer_id), dt(r.created_at), enumLabel(creditKindMap, r.kind),
+            n(r.amount), balances[i], n(ref(orderNumbers, r.order_id)), s(r.notes),
           ]),
         });
         break;

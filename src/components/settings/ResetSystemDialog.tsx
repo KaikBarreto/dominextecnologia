@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useResetSystem, type ResetOptions } from '@/hooks/useResetSystem';
 import { cn } from '@/lib/utils';
 
@@ -24,13 +25,15 @@ import { cn } from '@/lib/utils';
  * Estrutura (de cima pra baixo):
  *  - Subtítulo com nome da empresa em destaque.
  *  - Master checkbox "Marcar tudo".
- *  - 4 grupos expansíveis (Collapsible) com "Selecionar tudo do grupo" por grupo.
+ *  - Grupos expansíveis (Collapsible) com "Selecionar tudo do grupo" por grupo.
+ *    O grupo "PDV e Loja" só aparece pra quem tem o módulo `pdv`.
  *  - Avisos vermelhos (irreversibilidade + lista do que é preservado).
  *  - Confirmação por digitação do nome da empresa.
  *  - Footer com Cancelar / Sim, Zerar Sistema.
  *
  * Regras de UI:
- *  - "Marcar tudo" liga/desliga todos os 11 itens.
+ *  - "Marcar tudo" liga/desliga todos os itens VISÍVEIS (item de módulo não
+ *    contratado não entra na conta nem no disparo).
  *  - Cada grupo tem seu próprio "Selecionar tudo do grupo".
  *  - Marcar Materiais auto-marca Estoque e bloqueia desmarcar Estoque.
  *  - Botão final disabled se: 0 selecionados / nome não bate / loading / offline.
@@ -146,10 +149,30 @@ const GROUPS: ReadonlyArray<GroupConfig> = [
       },
     ],
   },
+  // PDV e Loja: add-on pago. Este grupo SO aparece pra quem tem o modulo
+  // (`hasModule('pdv')`), senao a empresa que nao comprou o PDV veria uma
+  // opcao de apagar algo que ela nao tem. Ver `visibleGroups` abaixo.
+  {
+    id: 'pdv',
+    label: 'PDV e Loja',
+    items: [
+      {
+        key: 'delete_pdv',
+        title: 'Vendas, caixa e fiado',
+        description:
+          'Remove as vendas do PDV, o historico de caixa, os terminais e o fiado dos clientes',
+      },
+    ],
+  },
 ];
 
-/** Todos os checkboxes em ordem plana, pra calcular "selecionar tudo". */
-const ALL_CHECKBOXES: ReadonlyArray<CheckboxConfig> = GROUPS.flatMap((g) => g.items);
+/**
+ * Grupos que dependem de modulo pago. Quem nao tem o modulo nao ve o grupo,
+ * e por consequencia "Marcar tudo" nunca liga a flag dele.
+ */
+const MODULE_GATED_GROUPS: Readonly<Record<string, 'pdv'>> = {
+  pdv: 'pdv',
+};
 
 const EMPTY_OPTIONS: ResetOptions = {
   delete_customers: false,
@@ -163,6 +186,7 @@ const EMPTY_OPTIONS: ResetOptions = {
   delete_financial_categories: false,
   delete_employees: false,
   delete_custom_configs: false,
+  delete_pdv: false,
 };
 
 /**
@@ -181,6 +205,7 @@ const STEP_LABEL: Record<string, string> = {
   stock: 'Estoque de Materiais',
   materials: 'Cadastro de Materiais',
   customers: 'Clientes',
+  pdv: 'PDV, Caixa e Fiado',
 };
 
 // ===== Sub-componente de grupo =====
@@ -310,7 +335,19 @@ export function ResetSystemDialog({
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.settings.resetSystem;
   const { toast } = useToast();
+  const { hasModule } = useCompanyModules();
   const { reset, isLoading, currentStep, currentStepIndex, totalSteps } = useResetSystem();
+
+  // Grupos atras de modulo pago caem fora pra quem nao contratou. Nao e so
+  // estetica: sem isso a empresa sem PDV ganharia um checkbox "apagar vendas"
+  // de um modulo que ela nao tem, e "Marcar tudo" dispararia um step de
+  // expurgo do PDV sem motivo nenhum.
+  const visibleGroups = GROUPS.filter((g) => {
+    const moduleCode = MODULE_GATED_GROUPS[g.id];
+    return !moduleCode || hasModule(moduleCode);
+  });
+
+  const visibleCheckboxes = visibleGroups.flatMap((g) => g.items);
 
   const [options, setOptions] = useState<ResetOptions>(EMPTY_OPTIONS);
   const [confirmName, setConfirmName] = useState('');
@@ -343,7 +380,8 @@ export function ResetSystemDialog({
     [options],
   );
 
-  const allSelected = selectedCount === ALL_CHECKBOXES.length;
+  const allSelected =
+    visibleCheckboxes.length > 0 && selectedCount === visibleCheckboxes.length;
 
   const nameMatches =
     confirmName.trim() === companyName.trim() && companyName.trim().length > 0;
@@ -355,7 +393,7 @@ export function ResetSystemDialog({
   const handleToggleAll = (checked: boolean) => {
     setOptions((prev) => {
       const next = { ...prev };
-      for (const cfg of ALL_CHECKBOXES) {
+      for (const cfg of visibleCheckboxes) {
         next[cfg.key] = checked;
       }
       return next;
@@ -498,14 +536,14 @@ export function ResetSystemDialog({
           <span className="text-sm font-semibold text-foreground">{t.selectAll}</span>
           {selectedCount > 0 && (
             <span className="ml-auto text-xs text-muted-foreground">
-              {t.selectedCount.replace('{count}', String(selectedCount)).replace('{total}', String(ALL_CHECKBOXES.length))}
+              {t.selectedCount.replace('{count}', String(selectedCount)).replace('{total}', String(visibleCheckboxes.length))}
             </span>
           )}
         </label>
 
         {/* 4 grupos expansiveis */}
         <div className="space-y-2">
-          {GROUPS.map((group) => {
+          {visibleGroups.map((group) => {
             const groupKey = group.id === 'rh-inventario' ? 'rh_inventario' : group.id;
             const tGroup = (t.groups as Record<string, { label?: string; [k: string]: { title?: string; description?: string } | string | undefined }>)[groupKey];
             return (

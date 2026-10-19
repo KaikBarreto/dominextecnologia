@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, useNavigate, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLocaleProvider } from "@/contexts/AppLocaleContext";
 import { useForcedLogout } from "@/hooks/useForcedLogout";
@@ -146,6 +146,14 @@ const CRM = React.lazy(() => import("./pages/CRM"));
 const Projects = React.lazy(() => import("./pages/Projects"));
 const ProjectDetail = React.lazy(() => import("./pages/ProjectDetail"));
 const Inventory = React.lazy(() => import("./pages/Inventory"));
+// PDV e Loja (add-on pago `pdv`). Pedidos e Expedição (modo balcão) chegam na Onda 2.
+// `PdvCaixa` é o PAINEL (a raiz /pdv); `Pdv` é a tela de VENDA (o carrinho), hoje
+// sub-tela em /pdv/venda — ver o bloco de rotas do PDV lá embaixo.
+const PdvCaixa = React.lazy(() => import("./pages/PdvCaixa"));
+const Pdv = React.lazy(() => import("./pages/Pdv"));
+const PdvCashHistory = React.lazy(() => import("./pages/PdvCashHistory"));
+const PdvReports = React.lazy(() => import("./pages/PdvReports"));
+const PdvSettings = React.lazy(() => import("./pages/PdvSettings"));
 const Finance = React.lazy(() => import("./pages/Finance"));
 const FiscalSettings = React.lazy(() => import("./pages/FiscalSettings"));
 const NotasFiscais = React.lazy(() => import("./pages/NotasFiscais"));
@@ -205,6 +213,7 @@ const AdminAffiliates = React.lazy(() => import("./pages/admin/AdminAffiliates")
 const AdminAffiliateDetail = React.lazy(() => import("./pages/admin/AdminAffiliateDetail"));
 const AdminDomiflix = React.lazy(() => import("./pages/admin/AdminDomiflix"));
 const AdminCobrancas = React.lazy(() => import("./pages/admin/AdminCobrancas"));
+const AdminNotices = React.lazy(() => import("./pages/admin/AdminNotices"));
 
 // Domiflix — fullscreen, fora do caminho da landing → tudo lazy.
 const DomiflixLayout = React.lazy(() =>
@@ -272,6 +281,13 @@ function useDefaultRoute() {
     ['screen:customers', '/clientes'],
     ['screen:equipment', '/equipamentos'],
     ['screen:dashboard', '/dashboard'],
+    // Operador de caixa (balconista) costuma ter SÓ as telas do PDV liberadas.
+    // Sem esta linha ele cairia no fallback /perfil ao entrar. Fica por ÚLTIMO
+    // de propósito: quem tem agenda/OS/clientes continua caindo onde caía.
+    // '/pdv' é o PAINEL do caixa (não o carrinho), que é o destino certo: ele
+    // abre o caixa antes de vender, e um carrinho vazio sem caixa aberto não
+    // teria o que fazer.
+    ['screen:pdv', '/pdv'],
   ];
   for (const [key, path] of appCandidates) {
     if (hasScreenAccess(key) && hasScreen(key)) return path;
@@ -452,25 +468,38 @@ function AdminScreenRoute({
 }
 
 // Module-gated route — shows gate modal if module not available
+// ⚠️ NÃO reintroduza `<Navigate>` ao lado do `<ModuleGateModal>` aqui. Era assim
+// que estava até 18/10/2026, e o convite de upgrade NUNCA aparecia: o `<Navigate>`
+// troca a location no primeiro effect, o elemento da rota desmonta, e o portal do
+// Radix vai junto. O modal vivia cerca de um frame. Quem não tinha o add-on era
+// bloqueado corretamente, mas nunca recebia a oferta (valia pro `nfe` também).
+//
+// O redirect agora é IMPERATIVO, no fechamento do modal, e isso não é estilo, é o
+// que elimina uma corrida: o CTA do modal faz `onOpenChange(false)` e DEPOIS
+// `navigate('/assinatura?addModule=...')`. Com `<Navigate>` em tempo de renderização,
+// os dois disputavam e o usuário podia cair no dashboard em vez da assinatura. Com
+// duas chamadas imperativas na mesma pilha, a ORDEM é determinística e a última
+// vence, que é a da assinatura.
+//
+// A tela fica vazia atrás do modal de propósito: esta rota é filha do `<AppLayout />`,
+// então o usuário continua vendo o shell do app (menu e cabeçalho), não uma página
+// branca.
 function ModuleRoute({ moduleKey, children }: { moduleKey: ModuleCode; children: React.ReactNode }) {
   const { hasModule, isLoading } = useCompanyModules();
-  const [gateOpen, setGateOpen] = React.useState(false);
   const defaultRoute = useDefaultRoute();
+  const navigate = useNavigate();
   const info = MODULE_INFO[moduleKey];
 
   if (isLoading) return <LoadingSpinner />;
   if (!hasModule(moduleKey)) {
     return (
-      <>
-        <Navigate to={defaultRoute} replace />
-        <ModuleGateModal
-          open={true}
-          onOpenChange={(open) => { if (!open) setGateOpen(false); }}
-          moduleName={info?.name || moduleKey}
-          moduleDescription={info?.description}
-          moduleCode={moduleKey}
-        />
-      </>
+      <ModuleGateModal
+        open
+        onOpenChange={(open) => { if (!open) navigate(defaultRoute, { replace: true }); }}
+        moduleName={info?.name || moduleKey}
+        moduleDescription={info?.description}
+        moduleCode={moduleKey}
+      />
     );
   }
   return <>{children}</>;
@@ -754,6 +783,36 @@ const AppRoutes = () => (
       {localizedAppRoutes('projectDetail', <PermissionRoute screenKey="screen:projects"><ModuleRoute moduleKey="crm"><ProjectDetail /></ModuleRoute></PermissionRoute>)}
       {localizedAppRoutes('quotes', <PermissionRoute screenKey="screen:quotes"><Quotes /></PermissionRoute>)}
       {localizedAppRoutes('inventory', <PermissionRoute screenKey="screen:inventory"><Inventory /></PermissionRoute>)}
+      {/* PDV e Loja (add-on pago `pdv`).
+          ⚠️ ORDEM DOS GUARDS: aqui o `ModuleRoute` fica POR FORA do
+          `PermissionRoute`, invertido em relação a CRM/Contratos/RH. Motivo: as
+          telas do PDV estão em SCREEN_TO_MODULE_MAP, então `hasScreen` já devolve
+          false sem o módulo e o `PermissionRoute` redirecionaria ANTES do
+          `ModuleRoute` rodar — o convite de upgrade (ModuleGateModal com CTA
+          /assinatura?addModule=pdv) nunca seria alcançado. Com o módulo primeiro,
+          quem não contratou vê a oferta; quem contratou segue pro gate de
+          permissão por usuário. O bloqueio é o mesmo nos dois casos.
+
+          ⚠️ A RAIZ /pdv É O PAINEL DO CAIXA (`PdvCaixa`), não o carrinho
+          (mudança pedida pelo CEO em 18/10/2026). A tela de VENDA (`Pdv`) é
+          sub-tela em /pdv/venda, aberta pelo botão "Nova venda" do painel; ela
+          NÃO tem item de menu de propósito.
+
+          ⚠️ SCREENKEY COMPARTILHADA: painel e venda usam a MESMA
+          `screen:pdv`. Quem pode operar o caixa pode vender — a venda é o ato
+          central do caixa, não uma tela de gestão separada. Uma `screen:pdv_sale`
+          própria obrigaria o admin a marcar DUAS permissões pra uma coisa só, e o
+          erro mais provável (marcar o painel e esquecer a venda) entregaria um
+          caixa que não vende. Também evitaria menos do que parece: a key nova
+          precisaria entrar em SCREEN_TO_MODULE_MAP pra não nascer liberada por
+          default (ver useCompanyModules.pdv.test.ts). Se um dia existir o papel
+          "confere o caixa mas não vende", a key nasce então — hoje seria
+          permissão especulativa. */}
+      {localizedAppRoutes('pdv', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv"><PdvCaixa /></PermissionRoute></ModuleRoute>)}
+      {localizedAppRoutes('pdvSale', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv"><Pdv /></PermissionRoute></ModuleRoute>)}
+      {localizedAppRoutes('pdvCashHistory', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_cash_history"><PdvCashHistory /></PermissionRoute></ModuleRoute>)}
+      {localizedAppRoutes('pdvReports', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_reports"><PdvReports /></PermissionRoute></ModuleRoute>)}
+      {localizedAppRoutes('pdvSettings', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_settings"><PdvSettings /></PermissionRoute></ModuleRoute>)}
       {/* "Financeiro" é um grupo de telas orientadas por tarefa; cada rota tem
           no máximo uma alternância local entre conteúdos irmãos. */}
       {localizedTemplatesFor('finance').map((tpl) => (
@@ -827,6 +886,11 @@ const AppRoutes = () => (
       <Route path="/admin/configuracoes" element={<AdminScreenRoute screenKey="admin_configuracoes"><AdminSettings /></AdminScreenRoute>} />
       <Route path="/admin/domiflix" element={<AdminScreenRoute screenKey="admin_domiflix"><AdminDomiflix /></AdminScreenRoute>} />
       <Route path="/admin/cobrancas" element={<AdminScreenRoute screenKey="admin_cobrancas"><AdminCobrancas /></AdminScreenRoute>} />
+      {/* Avisos do sistema: super_admin publica faixa de aviso dentro do app do
+          cliente (uma empresa ou a base toda). masterOnly: nao e delegavel a
+          vendedor-admin hoje. A RLS ja aceita delegar pela permissao
+          `admin_avisos` quando o CEO quiser. */}
+      <Route path="/admin/avisos" element={<AdminScreenRoute screenKey="admin_avisos" masterOnly><AdminNotices /></AdminScreenRoute>} />
       <Route path="/admin/estatisticas" element={<AdminScreenRoute screenKey="admin_estatisticas" masterOnly><AdminEstatisticas /></AdminScreenRoute>} />
       {/* A tela de monitoramento do banco virou a aba "Banco de dados" de
           /admin/estatisticas. A rota antiga continua VIVA como redirect (não

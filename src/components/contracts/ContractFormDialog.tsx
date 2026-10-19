@@ -4546,6 +4546,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     <CustomerFormDialog
       open={showQuickCustomer}
       onOpenChange={setShowQuickCustomer}
+      defaultCustomerKind="servico"
       onSubmit={async (data) => {
         const result = await createCustomer.mutateAsync(data as CustomerInput);
         if (result?.id) {

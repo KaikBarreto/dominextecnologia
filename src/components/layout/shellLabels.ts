@@ -39,6 +39,15 @@ const TITLE_TO_KEY: Record<string, keyof ShellMenu> = {
   Contratos: 'contracts',
   Funcionários: 'employees',
   Estoque: 'inventory',
+  // PDV e Loja (add-on pago `pdv`). Os títulos são únicos neste mapa de
+  // propósito: 'Relatórios' já pertence ao Financeiro e 'Configurações' não é
+  // item de menu, então os rótulos do PDV nasceram como 'Relatórios da Loja' e
+  // 'Configurações do PDV' pra cada um ter a SUA tradução.
+  PDV: 'pdv',
+  Caixa: 'pdvCashier',
+  'Histórico de Caixa': 'pdvCashHistory',
+  'Relatórios da Loja': 'pdvReports',
+  'Configurações do PDV': 'pdvSettings',
   CRM: 'crm',
   'Visão Geral': 'financeOverview',
   'Movimentações Financeiras': 'financeMovements',

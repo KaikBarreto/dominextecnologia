@@ -31,6 +31,7 @@ import { NotificationsBell } from '@/components/notifications/NotificationsBell'
 import { AdminNotificationBell } from '@/components/admin/AdminNotificationBell';
 import { AppLanguageSwitcher } from '@/components/i18n/AppLanguageSwitcher';
 import { HeaderClock } from '@/components/layout/HeaderClock';
+import { SystemNoticeBanners } from '@/components/notices/SystemNoticeBanners';
 import { TasksDrawer } from '@/components/tasks/TasksDrawer';
 import { DailyTasksPopup } from '@/components/tasks/DailyTasksPopup';
 import {
@@ -180,6 +181,7 @@ function SidebarShell() {
         <SidebarInset className="flex flex-col min-w-0 max-w-full overflow-hidden">
           <DesktopSidebarHeader />
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
+            <SystemNoticeBanners scope="global" />
             <RouteTransition>
               <Outlet />
             </RouteTransition>
@@ -260,6 +262,7 @@ function TopbarShell() {
     <div className="flex min-h-screen w-full max-w-full flex-col min-w-0">
       <TopNavbar />
       <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
+        <SystemNoticeBanners scope="global" />
         <RouteTransition>
           <Outlet />
         </RouteTransition>
@@ -310,6 +313,7 @@ function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
         className="flex-1 overflow-x-hidden min-w-0 max-w-full bg-background"
       >
         <main className="p-4 pb-[calc(8rem+env(safe-area-inset-bottom))] bg-background">
+          <SystemNoticeBanners scope="global" />
           <RouteTransition>
             <Outlet />
           </RouteTransition>

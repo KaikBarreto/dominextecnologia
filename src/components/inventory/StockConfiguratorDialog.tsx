@@ -4,7 +4,7 @@
  * Mobile = drawer (ResponsiveModal), desktop = modal.
  */
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Package, Search, Settings2, Users, AlertCircle } from 'lucide-react';
+import { Package, Search, Settings2, Users, AlertCircle, Tag } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
@@ -23,7 +23,8 @@ import { useStockAccess } from '@/hooks/useStockAccess';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import type { Stock } from '@/hooks/useStocks';
+import { useStocks, type Stock } from '@/hooks/useStocks';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
 
 /** Papéis que sempre têm acesso a qualquer local (o banco os libera sozinho). */
 const ALWAYS_ACCESS_ROLES = ['admin', 'gestor', 'super_admin'];
@@ -44,6 +45,9 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
   const { toast } = useToast();
   const { items, isLoading: itemsLoading, getPresenceForStock, addGroupToStock, setStockMaterials, stockLevelsLoaded } = useInventory();
   const { groups } = useMaterialGroups();
+  const { updateStockPurpose } = useStocks();
+  const { hasModule } = useCompanyModules();
+  const pdvEnabled = hasModule('pdv');
 
   const [search, setSearch] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
@@ -90,8 +94,30 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, stock.id, stocksSectionReady]);
 
-  // --- Aba ativa (Itens | Acesso) ---
-  const [activeTab, setActiveTab] = useState<'items' | 'access'>('items');
+  // --- Aba ativa (Itens | Acesso | Tipo) ---
+  const [activeTab, setActiveTab] = useState<'items' | 'access' | 'purpose'>('items');
+
+  // --- Tipo do local (Loja | Operacional) — só com o módulo PDV e Loja ---
+  const [purpose, setPurpose] = useState<'operacional' | 'pdv'>('operacional');
+  const [isSavingPurpose, setIsSavingPurpose] = useState(false);
+
+  // Hidrata a partir do `stock` real a cada abertura/troca de local — nunca
+  // do default, pra não "resetar" visualmente um local que já é da loja.
+  useEffect(() => {
+    setPurpose(stock.purpose === 'pdv' ? 'pdv' : 'operacional');
+  }, [stock.id, stock.purpose, open]);
+
+  const handleSavePurpose = async () => {
+    setIsSavingPurpose(true);
+    try {
+      await updateStockPurpose.mutateAsync({ id: stock.id, purpose });
+      onOpenChange(false);
+    } catch {
+      // erro já tratado pelo hook (toast)
+    } finally {
+      setIsSavingPurpose(false);
+    }
+  };
 
   // --- Acesso por local ---
   const { users, error: usersError } = useUsers();
@@ -258,13 +284,22 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
               {isSaving ? t.saving : t.save}
             </Button>
           </div>
-        ) : (
+        ) : activeTab === 'access' ? (
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={isSavingAccess}>
               {t.cancel}
             </Button>
             <Button onClick={handleSaveAccess} disabled={isSavingAccess} className="flex-1">
               {isSavingAccess ? t.access.saving : t.access.save}
+            </Button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={isSavingPurpose}>
+              {t.cancel}
+            </Button>
+            <Button onClick={handleSavePurpose} disabled={isSavingPurpose} className="flex-1">
+              {isSavingPurpose ? t.purpose.saving : t.purpose.save}
             </Button>
           </div>
         )
@@ -274,10 +309,15 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
         <MobilePillTabs
           variant="underline"
           activeTab={activeTab}
-          onTabChange={(v) => setActiveTab(v as 'items' | 'access')}
+          onTabChange={(v) => setActiveTab(v as 'items' | 'access' | 'purpose')}
           tabs={[
             { value: 'items', label: t.access.tabItems, icon: <Package className="h-4 w-4" /> },
             { value: 'access', label: t.access.tabLabel, icon: <Users className="h-4 w-4" /> },
+            // Só com o módulo PDV e Loja — sem ele a aba nem existe (a tela
+            // de configuração de local fica idêntica ao que já era).
+            ...(pdvEnabled
+              ? [{ value: 'purpose', label: t.purpose.tabLabel, icon: <Tag className="h-4 w-4" /> }]
+              : []),
           ]}
         />
 
@@ -481,6 +521,23 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
               </div>
             )
           )}
+        </div>
+        )}
+
+        {activeTab === 'purpose' && pdvEnabled && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-medium">{t.purpose.label}</span>
+            <LabeledSwitch
+              value={purpose}
+              onChange={(v) => setPurpose(v)}
+              off={{ value: 'operacional', label: t.purpose.operationalLabel }}
+              on={{ value: 'pdv', label: t.purpose.storeLabel }}
+              size="default"
+              aria-label={t.purpose.label}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">{t.purpose.hint}</p>
         </div>
         )}
       </div>

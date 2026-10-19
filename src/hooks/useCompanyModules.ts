@@ -22,7 +22,8 @@ export type ModuleCode =
   | 'extra_user'
   | 'video_questions'
   | 'whatsapp'
-  | 'cobrancas';
+  | 'cobrancas'
+  | 'pdv';
 
 /**
  * Mapeamento screen → module_code.
@@ -65,6 +66,18 @@ const SCREEN_TO_MODULE_MAP: Record<string, ModuleCode> = {
   // funil do CRM, e o CEO decidiu não criar módulo pago novo pra isso — quem
   // tem CRM tem Projetos, sem cobrança adicional.
   'screen:projects': 'crm',
+  // PDV e Loja (add-on pago, 2026-10). NENHUM plano pronto inclui `pdv`: a
+  // empresa só enxerga estas telas se contratou o add-on (company_modules) ou
+  // está em trial ativo. Por isso NÃO existe linha nova em `planAllowsScreen`
+  // nem em `included_modules` de plano — o gate é o módulo, e só ele.
+  // `screen:pdv_orders` / `screen:pdv_dispatch` (modo balcão) já entram no mapa
+  // pra que a Onda 2 só precise criar a rota, sem voltar aqui.
+  'screen:pdv': 'pdv',
+  'screen:pdv_orders': 'pdv',
+  'screen:pdv_dispatch': 'pdv',
+  'screen:pdv_cash_history': 'pdv',
+  'screen:pdv_reports': 'pdv',
+  'screen:pdv_settings': 'pdv',
 };
 
 interface CompanyModule {

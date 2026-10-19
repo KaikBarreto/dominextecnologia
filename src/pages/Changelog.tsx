@@ -43,9 +43,64 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 export const changelog: ChangelogEntry[] = [
   {
     version: '1.37.0',
-    date: '18 de outubro de 2026',
+    date: '19 de outubro de 2026',
     type: 'minor',
     changes: [
+      {
+        title: 'Chegou o PDV: venda de balcão dentro do mesmo sistema',
+        description: 'Quem atende no balcão além de prestar serviço agora vende pelo Dominex, com o mesmo estoque, os mesmos clientes e o mesmo financeiro. Você busca o produto pelo nome ou passa o leitor de código de barras, monta o carrinho, escolhe como o cliente pagou e finaliza. A venda já baixa o estoque, já entra no financeiro na conta certa e já aparece no histórico do cliente, sem você lançar nada duas vezes. Aceita pagamento misto, como metade no pix e metade em dinheiro, calcula o troco e permite desconto. É um módulo à parte: quem não contratar continua com o sistema exatamente como está hoje.',
+        category: 'recurso',
+      },
+      {
+        title: 'O dinheiro da gaveta agora tem controle de verdade',
+        description: 'O caixa abre com um valor, e esse valor sai do dinheiro disponível da empresa enquanto estiver aberto, então dois caixas não podem abrir contando com a mesma nota. Durante o dia dá para registrar retirada e reforço de dinheiro. No fim, você conta a gaveta e informa quanto tinha: o sistema mostra quanto deveria ter, aponta a sobra ou a falta e já lança a diferença no financeiro. Se preferir não controlar isso, dá para desligar a exigência nas configurações.',
+        category: 'recurso',
+      },
+      {
+        title: 'Venda no fiado com a conta corrente do cliente',
+        description: 'Dá para vender fiado e o valor fica registrado na ficha do cliente, com extrato de tudo que ele comprou e pagou. A venda no fiado não entra como dinheiro recebido: vira uma conta a receber com vencimento, como qualquer outra, e some de lá quando ele paga. Você também pode definir um limite por cliente, e o sistema avisa quando a compra passa do limite.',
+        category: 'recurso',
+      },
+      {
+        title: 'Produto com foto e código de barras',
+        description: 'Cada material pode ter foto, e na tela de venda os produtos aparecem com a imagem, o nome em destaque, o preço e quanto tem em estoque. Dá para cadastrar o código de barras do fabricante ou gerar um código interno, com o prefixo da sua empresa, para itens que não têm código. Quando a foto não tem o formato da moldura, o espaço que sobra é preenchido pela própria foto desfocada, em vez de uma faixa cinza.',
+        category: 'recurso',
+      },
+      {
+        title: 'Separe o estoque da loja do estoque de serviço',
+        description: 'Os locais de estoque passam a poder ser marcados como da loja ou operacionais, e a venda de balcão só tira do estoque da loja. A peça sai do depósito para a loja pela transferência entre locais, que já existia. No cadastro de cliente dá para dizer se ele é cliente de serviço, de loja ou os dois, e filtrar a lista por isso.',
+        category: 'recurso',
+      },
+      {
+        title: 'Lançamento feito à noite não cai mais no dia seguinte',
+        description: 'Quem usa o sistema depois das nove da noite podia ver um lançamento nascer com a data do dia seguinte, porque o servidor virava o dia antes da sua cidade. Agora a data vem sempre do fuso da sua empresa, configurado em Configurações. Corrigimos também os lançamentos que já tinham nascido com a data trocada, e a mesma correção foi aplicada na folha de pagamento e nos lançamentos de contrato.',
+        category: 'correcao',
+      },
+      {
+        title: 'Avisos importantes aparecem dentro do sistema',
+        description: 'Quando precisarmos comunicar algo que afeta a sua conta, o aviso passa a aparecer no topo do sistema, sem depender de você ver a mensagem no WhatsApp ou no e-mail.',
+        category: 'recurso',
+      },
+      {
+        title: 'O cliente volta a ver o técnico no mapa de acompanhamento',
+        description: 'No link de acompanhamento que o cliente recebe, o técnico tinha parado de aparecer no mapa a caminho. Corrigido. De quebra, a atualização da posição ficou mais de mil vezes mais leve, o que faz diferença para quem acompanha pelo celular, no 4G, esperando o atendimento.',
+        category: 'correcao',
+      },
+      {
+        title: 'Zerar Sistema voltou a concluir',
+        description: 'A limpeza do sistema parava logo no começo, com erro, em qualquer empresa. A causa era uma etapa que tentava apagar algo que não existe mais. Corrigido, e a limpeza agora percorre todas as etapas. Três etapas ainda podem falhar em situações específicas e estão sendo tratadas, então, se acontecer, é só nos avisar.',
+        category: 'correcao',
+      },
+      {
+        title: 'Abrir chamado pelo portal público voltou a funcionar',
+        description: 'No portal do contrato e no portal do cliente, o botão de abrir chamado estava recusando o envio. Corrigido, e agora a mensagem de erro, quando houver, aparece em português e explica o motivo, em vez de mostrar um código.',
+        category: 'correcao',
+      },
+      {
+        title: 'Reforço de segurança no acesso aos dados',
+        description: 'Revisamos quem pode ler o quê sem estar logado e fechamos todos os pontos em que informação da sua empresa poderia ser consultada de fora. Nada precisa ser feito por você, e nenhum acesso legítimo mudou.',
+        category: 'seguranca',
+      },
       {
         title: 'Concilie o extrato do banco sem conferir linha por linha na mão',
         description: 'Baixe o arquivo .ofx no seu internet banking, suba no sistema e ele mostra cada linha do extrato ao lado do que já existe lançado. Quando encontra o lançamento equivalente, sugere o casamento com um clique. Quando não encontra, você resolve ali mesmo: dá baixa numa conta a pagar ou a receber que venceu, cria o lançamento que faltava, ou registra como transferência entre as suas próprias contas, que não vira receita nem despesa. No fim, só fecha quando o saldo do sistema bate com o do banco no centavo, então não dá para encerrar uma conciliação que não fecha. Dá para parar no meio e continuar depois, inclusive em outro dia.',

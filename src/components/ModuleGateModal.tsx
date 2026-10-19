@@ -138,6 +138,10 @@ export const MODULE_INFO: Record<string, { name: string; description: string }> 
     name: 'Portal do Cliente',
     description: 'Área exclusiva para o cliente acompanhar OS e equipamentos',
   },
+  pdv: {
+    name: 'PDV e Loja',
+    description: 'Caixa de balcão com controle do dinheiro, venda de peças por código de barras, fiado na ficha do cliente e o resultado da loja separado do serviço',
+  },
   white_label: {
     name: 'White Label',
     description: 'Personalização completa da marca: logo, cores e ícone do sistema',

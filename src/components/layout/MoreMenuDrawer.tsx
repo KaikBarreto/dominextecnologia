@@ -41,6 +41,8 @@ import {
   BarChart3,
   FolderKanban,
   KanbanSquare,
+  Store,
+  ShoppingCart,
 } from 'lucide-react';
 import { OperacionalIcon, AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
@@ -100,6 +102,24 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Contratos', icon: ScrollText, path: '/contratos', screenKey: 'screen:contracts' },
       { title: 'Funcionários', icon: Briefcase, path: '/funcionarios', screenKey: 'screen:employees', moduleKey: 'rh' },
       { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
+    ],
+  },
+  // ── PDV e Loja (add-on pago `pdv`) ──────────────────────────────────────────
+  // ⚠️ ESTE ARRAY TEM QUE ESPELHAR o `tenantMenuItems` de `SidebarMenuContent.tsx`.
+  // Este drawer é a ÚNICA porta do menu completo no celular (o bottom nav tem
+  // slots fixos). O PDV é usado em TABLET e CELULAR no balcão, então faltar aqui
+  // seria pior que faltar no desktop. Pedidos e Expedição chegam na Onda 2
+  // (modo balcão), junto com as telas — ver comentário no sidebar.
+  // "Caixa" (/pdv) é o PAINEL; a venda (/pdv/venda) é sub-tela sem item de menu.
+  {
+    title: 'PDV',
+    icon: Store,
+    moduleKey: 'pdv',
+    children: [
+      { title: 'Caixa', icon: ShoppingCart, path: '/pdv', screenKey: 'screen:pdv', moduleKey: 'pdv' },
+      { title: 'Histórico de Caixa', icon: HistoryIcon, path: '/pdv/caixas', screenKey: 'screen:pdv_cash_history', moduleKey: 'pdv' },
+      { title: 'Relatórios da Loja', icon: BarChart3, path: '/pdv/relatorios', screenKey: 'screen:pdv_reports', moduleKey: 'pdv' },
+      { title: 'Configurações do PDV', icon: SettingsIcon, path: '/pdv/configuracoes', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
     ],
   },
   // Os dois são quadros Kanban e andam juntos (um projeto AGRUPA funis), mas

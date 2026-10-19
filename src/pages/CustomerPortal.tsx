@@ -32,7 +32,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
-import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
 import DarkVeil from '@/components/ui/DarkVeil';
 import PortalUnavailable from '@/components/portal/PortalUnavailable';
@@ -51,6 +50,7 @@ import {
 import { OSRatingSurvey } from '@/components/technician/OSRatingSurvey';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
+import { createCustomerPortalTicket } from '@/utils/customerPortalApi';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { PortalChargesSection } from '@/components/portal/PortalChargesSection';
@@ -419,7 +419,7 @@ interface ContentProps {
 const PORTAL_ACCENT_PRIMARY = '#00C684';
 
 function CustomerPortalContent({
-  token: _token,
+  token,
   customer,
   companySettings,
   equipment,
@@ -629,27 +629,29 @@ function CustomerPortalContent({
     if (ticketDesc.trim().length < 10) return;
     setTicketSubmitting(true);
     try {
-      const company_id = customer.company_id;
-      const insertPayload = normalizeOptionalForeignKeys({
-        customer_id: customer.id,
-        equipment_id: ticketEquipmentId || null,
-        description: ticketDesc,
-        os_type: 'manutencao_corretiva',
-        status: 'pendente',
-        origin: 'portal',
-        company_id,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any, ['customer_id', 'equipment_id']);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await supabase.from('service_orders').insert(insertPayload as any);
-      if (error) throw error;
+      // Antes daqui havia um INSERT direto em `service_orders`. Desde
+      // 18/10/2026 o `anon` não tem INSERT na tabela e o botão devolvia
+      // `42501 permission denied for table service_orders` pro cliente final.
+      // Agora a criação passa pela RPC SECURITY DEFINER (ver
+      // createCustomerPortalTicket), que revalida portal/permissão/assinatura/
+      // módulo e resolve customer e company pelo token, sem confiar no client.
+      await createCustomerPortalTicket(token, ticketDesc, ticketEquipmentId);
       toast({ title: t.ticketSuccess });
       setShowTicketForm(false);
       setTicketDesc('');
       setTicketEquipmentId('');
       await onReload();
     } catch (err: unknown) {
-      toast({ variant: 'destructive', title: t.ticketErrorTitle, description: getErrorMessage(err) });
+      // O cliente final nunca lê código de banco: traduz pelo SQLSTATE da RPC
+      // pro idioma do portal, e só cai no genérico quando o erro é outro.
+      const code = (err as { code?: string } | null)?.code;
+      const description =
+        code === '22023'
+          ? t.ticketDescMinLength
+          : code === '42501'
+            ? t.ticketErrorUnavailable
+            : getErrorMessage(err);
+      toast({ variant: 'destructive', title: t.ticketErrorTitle, description });
     } finally {
       setTicketSubmitting(false);
     }

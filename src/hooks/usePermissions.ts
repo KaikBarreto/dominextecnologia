@@ -24,6 +24,11 @@ import {
   Handshake,
   Settings,
   FolderKanban,
+  Store,
+  ShoppingCart,
+  PackageCheck,
+  History,
+  BarChart3,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -33,6 +38,12 @@ export const SCREEN_CATEGORIES: Record<string, { label: string; icon: LucideIcon
   servicos: { label: 'Serviços', icon: Wrench },
   comercial: { label: 'Comercial', icon: Handshake },
   operacional: { label: 'Operacional', icon: Package },
+  // PDV e Loja ganha categoria PRÓPRIA (e não entra em "Operacional") porque são
+  // 6 telas de um add-on pago: juntas em Operacional elas afogariam Estoque,
+  // Mapa e Área do Técnico no editor de permissões. A ordem do editor é a ordem
+  // deste objeto (CATEGORY_ORDER = Object.keys), então PDV fica entre Operacional
+  // e Financeiro, espelhando a posição do grupo no menu.
+  pdv: { label: 'PDV e Loja', icon: Store },
   financeiro: { label: 'Financeiro', icon: DollarSign },
   administracao: { label: 'Administração', icon: Settings },
 };
@@ -56,6 +67,23 @@ export const SCREEN_PERMISSIONS = [
   { key: 'screen:inventory', label: 'Estoque', description: 'Materiais, saldos e movimentações de estoque.', icon: Package, group: 'Operacional', category: 'operacional' },
   { key: 'screen:technician_tools', label: 'Área do Técnico™', description: 'Ferramentas de apoio do técnico em campo, como cálculos e tabelas.', icon: HardHat, group: 'Operacional', category: 'operacional' },
   { key: 'screen:tracking', label: 'Mapa e Rastreamento', description: 'Mapa ao vivo com a posição das equipes em campo.', icon: Map, group: 'Operacional', category: 'operacional' },
+  // ── PDV e Loja (add-on pago `pdv`) ──────────────────────────────────────────
+  // Marcar estas telas NÃO libera o PDV: o gate comercial é o módulo `pdv`
+  // (SCREEN_TO_MODULE_MAP em useCompanyModules + moduleKey no menu). Sem o
+  // add-on contratado, nada aqui aparece pro usuário, mesmo marcado.
+  // Esta ÚNICA permissão libera o painel do caixa E a tela de venda (o carrinho),
+  // que é sub-tela dele. É de propósito: quem opera o caixa vende. A descrição diz
+  // os dois pra ninguém marcar achando que liberou só a conferência do dinheiro.
+  { key: 'screen:pdv', label: 'Caixa e Venda (PDV)', description: 'Painel do caixa: abre e fecha o caixa, controla o dinheiro da gaveta e o cofre e lança entradas e saídas. Libera também a tela de venda, onde monta o carrinho e recebe o pagamento.', icon: ShoppingCart, group: 'PDV e Loja', category: 'pdv' },
+  // Pedidos e Expedição só existem no modo balcão (pré-venda), que chega na
+  // Onda 2. A tela ainda não existe; a permissão já fica catalogada pra que a
+  // Onda 2 crie só a rota. A descrição avisa o admin disso, pra ninguém marcar
+  // e ficar esperando um item de menu que ainda não nasceu.
+  { key: 'screen:pdv_orders', label: 'Pedidos do Balcão (PDV)', description: 'Tela do vendedor que monta o pedido sem receber o dinheiro. Disponível quando a empresa usar o PDV no modo balcão.', icon: ClipboardList, group: 'PDV e Loja', category: 'pdv' },
+  { key: 'screen:pdv_dispatch', label: 'Expedição (PDV)', description: 'Fila de pedidos já pagos para conferir e entregar ao cliente. Disponível quando a empresa usar o PDV no modo balcão.', icon: PackageCheck, group: 'PDV e Loja', category: 'pdv' },
+  { key: 'screen:pdv_cash_history', label: 'Histórico de Caixa (PDV)', description: 'Aberturas e fechamentos de caixa, sangrias, suprimentos e a conferência do dinheiro contado.', icon: History, group: 'PDV e Loja', category: 'pdv' },
+  { key: 'screen:pdv_reports', label: 'Relatórios da Loja (PDV)', description: 'Vendas, lucro e desempenho do balcão, com o custo de cada item vendido.', icon: BarChart3, group: 'PDV e Loja', category: 'pdv' },
+  { key: 'screen:pdv_settings', label: 'Configurações do PDV', description: 'Caixas da loja, conta do cofre, etiquetas e modo de operação do balcão.', icon: Settings, group: 'PDV e Loja', category: 'pdv' },
   { key: 'screen:finance', label: 'Financeiro', description: 'Visão geral, movimentações e contas a pagar e receber.', icon: DollarSign, group: 'Financeiro', category: 'financeiro' },
   { key: 'screen:fiscal_notes', label: 'Notas Fiscais', description: 'Emissão e consulta de notas fiscais de serviço (também exige o módulo contratado).', icon: Receipt, group: 'Financeiro', category: 'financeiro' },
   { key: 'screen:employees', label: 'Funcionários', description: 'Cadastro de funcionários, folha de pagamento e controle de ponto.', icon: Briefcase, group: 'Administração', category: 'administracao' },

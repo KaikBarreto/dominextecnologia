@@ -21,6 +21,7 @@ import { DashboardOSEvolution } from '@/components/dashboard/DashboardOSEvolutio
 import { DashboardCriticalOS, type CriticalOS } from '@/components/dashboard/DashboardCriticalOS';
 import { DashboardPortalCalls } from '@/components/dashboard/DashboardPortalCalls';
 import { PortalCallsAlert } from '@/components/dashboard/PortalCallsAlert';
+import { SystemNoticeBanners } from '@/components/notices/SystemNoticeBanners';
 import { DashboardStatusSummary } from '@/components/dashboard/DashboardStatusSummary';
 import { DashboardTopTechnicians, type TechnicianPerf } from '@/components/dashboard/DashboardTopTechnicians';
 import { DashboardOSByType } from '@/components/dashboard/DashboardOSByType';
@@ -329,6 +330,10 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-[100dvh] space-y-5 lg:space-y-6">
+      {/* Avisos publicados pela Dominex. O painel inicial recebe os dois escopos
+          (`dashboard` e `global`); as outras telas recebem só o `global`, no
+          AppLayout. */}
+      <SystemNoticeBanners scope="dashboard" />
       {/* Aviso dispensável de chamados abertos — aparece uma vez por lote novo */}
       <PortalCallsAlert
         portalCalls={stats?.portalCalls ?? []}

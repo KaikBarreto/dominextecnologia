@@ -1878,10 +1878,11 @@ export function ServiceOrderFormDialog({
         />
       )}
 
-      {/* Quick create customer */}
+      {/* Quick create customer — nasce "Serviço" (criado de dentro de uma OS). */}
       <CustomerFormDialog
         open={quickCreateCustomerOpen}
         onOpenChange={setQuickCreateCustomerOpen}
+        defaultCustomerKind="servico"
         onSubmit={async (data: any) => {
           const result = await createCustomer.mutateAsync(data);
           if (result) {

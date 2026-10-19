@@ -1,5 +1,6 @@
 import type { PortalPayload } from '@/types/pmocPortal';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { buildSlugSegment } from '@/utils/prettyLinks';
 
 /**
@@ -143,6 +144,38 @@ export async function fetchPmocPortal(token: string): Promise<PortalPayload> {
     if (err instanceof Error && err.message === 'portal_not_found') throw err;
     throw new Error('portal_network_error');
   }
+}
+
+/**
+ * Abre um chamado (OS corretiva) a partir do Portal do Contrato.
+ *
+ * Esta funcao e a FRONTEIRA do Supabase pra essa acao: a pagina nao escreve em
+ * `service_orders`. O papel `anon` nao tem INSERT nessa tabela (a varredura de
+ * 18/10/2026 revogou o privilegio e o botao passou a devolver
+ * `42501 permission denied for table service_orders` na cara do cliente final),
+ * entao quem cria a linha e a RPC SECURITY DEFINER
+ * `create_contract_portal_ticket`, que resolve customer/company/contract pelo
+ * PROPRIO token do portal e revalida no servidor: contrato vivo, portal publico,
+ * assinatura da empresa, modulo "Portal do Cliente" e tamanho da descricao.
+ *
+ * `token` e o mesmo da URL do portal: 32 hex (`public_pmoc_token`) OU slug
+ * terminando no codigo curto de 12 chars (`public_short_code`). A RPC aceita as
+ * duas formas, com a mesma regra da edge `pmoc-portal-share`.
+ *
+ * Erros propagados crus (o chamador traduz pelo `code`, pra sair no idioma do
+ * portal e nao no texto do banco):
+ *  - `42501` — portal indisponivel, privado, assinatura vencida ou modulo fora.
+ *  - `22023` — descricao fora da faixa de 10 a 2000 caracteres.
+ */
+export async function createPmocPortalTicket(
+  token: string,
+  description: string,
+): Promise<void> {
+  const { error } = await supabaseAnon.rpc('create_contract_portal_ticket', {
+    p_token: token,
+    p_description: description.trim(),
+  });
+  if (error) throw error;
 }
 
 // ---------------------------------------------------------------------------

@@ -49,6 +49,7 @@ import { os } from './os';
 import { customers } from './customers';
 import { finance } from './finance';
 import { inventory } from './inventory';
+import { pdv } from './pdv';
 import { schedule } from './schedule';
 import { pmoc } from './pmoc';
 import { crm } from './crm';
@@ -65,6 +66,7 @@ import { discProfile } from './discProfile';
 import { charges } from './charges';
 import { processes } from './processes';
 import { projects } from './projects';
+import { notices } from './notices';
 
 // Registre cada domínio novo aqui (import acima + linha em sliceForLocale abaixo).
 function sliceForLocale(locale: LocaleCode) {
@@ -76,6 +78,7 @@ function sliceForLocale(locale: LocaleCode) {
     customers: customers[locale],
     finance: finance[locale],
     inventory: inventory[locale],
+    pdv: pdv[locale],
     schedule: schedule[locale],
     pmoc: pmoc[locale],
     crm: crm[locale],
@@ -92,6 +95,7 @@ function sliceForLocale(locale: LocaleCode) {
     charges: charges[locale],
     processes: processes[locale],
     projects: projects[locale],
+    notices: notices[locale],
     // <dominio>: <dominio>[locale],
   };
 }

@@ -80,6 +80,7 @@ import type { LucideIcon } from 'lucide-react';
 import { phoneMask } from '@/utils/masks';
 import { CustomerStockTab } from '@/components/customers/CustomerStockTab';
 import { CustomerExpenseDialog } from '@/components/customers/CustomerExpenseDialog';
+import { CustomerDeleteDebtNotice } from '@/components/customers/CustomerDeleteDebtNotice';
 import { useCustomerPaidExpenses, type CustomerPaidExpense } from '@/hooks/useCustomerPaidExpenses';
 import { buildPortalCallsPath } from '@/lib/portalCalls';
 
@@ -2017,6 +2018,15 @@ export default function CustomerDetail() {
             <AlertDialogTitle>{t.deleteCustomerTitle}</AlertDialogTitle>
             <AlertDialogDescription>{t.deleteCustomerConfirm.replace('{name}', customer.name)}</AlertDialogDescription>
           </AlertDialogHeader>
+          {/* O MESMO aviso de fiado que a lista (`Customers.tsx`) já mostra:
+              existem DOIS caminhos de exclusão de cliente (a lista e esta
+              ficha) e avisar só num deles é pior que não avisar, porque passa
+              a sensação de que "quando tem dívida o sistema avisa".
+              Fora do `AlertDialogDescription` de propósito: aquele é um `<p>`
+              e banner dentro de `<p>` é HTML inválido. `customerId` nulo com o
+              diálogo fechado pra não consultar saldo à toa. Sem o módulo PDV o
+              componente devolve `null` antes de qualquer consulta. */}
+          <CustomerDeleteDebtNotice customerId={deleteConfirmOpen ? customer.id : null} />
           <AlertDialogFooter>
             <AlertDialogCancel>{tCustomers.cancel}</AlertDialogCancel>
             <AlertDialogAction

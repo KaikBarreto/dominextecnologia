@@ -30,6 +30,13 @@ export interface CustomerSelectFieldProps {
   onCreateFull?: () => void;
   /** Chamado após criar pelo QuickCustomerDialog embutido (além de já selecionar). */
   onCreated?: (id: string) => void;
+  /**
+   * Default do "Atende como" no quick-create embutido (módulo PDV). Repassado
+   * direto pro `QuickCustomerDialog` — ver lá a regra completa. Sem efeito
+   * quando `onCreateFull` está presente (o pai controla o próprio
+   * `CustomerFormDialog` e sua própria prop `defaultCustomerKind`).
+   */
+  defaultCustomerKind?: 'servico' | 'loja';
   className?: string;
   /** Repassado ao combobox interno, pra `<Label htmlFor>` focar o campo certo. */
   id?: string;
@@ -57,6 +64,7 @@ export function CustomerSelectField({
   requireDocument = false,
   onCreateFull,
   onCreated,
+  defaultCustomerKind,
   className,
   id,
 }: CustomerSelectFieldProps) {
@@ -127,6 +135,7 @@ export function CustomerSelectField({
           initialName={searchQuery}
           onOpenChange={setQuickOpen}
           requireDocument={requireDocument}
+          defaultCustomerKind={defaultCustomerKind}
           onCreated={(newId) => {
             onValueChange(newId);
             onCreated?.(newId);

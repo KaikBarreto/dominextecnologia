@@ -11,6 +11,11 @@ const PRIVATE_BUCKETS = [
   // público de OS / modo=cliente em TechnicianOS.tsx renderiza fotos de
   // form_responses sem auth → quebrava com "Erro" na miniatura pro cliente).
   'team-photos',
+  // Módulo PDV e Loja (1.37, Onda 1): bucket nasce privado, com as policies de
+  // storage.objects já recortando por company_id (migration canônica de
+  // 20261016). Foto de produto não tem portal público hoje — sem motivo pra
+  // reabrir, diferente de os-photos.
+  'inventory-photos',
 ] as const;
 const SIGNED_TTL_SECONDS = 3600; // 1 hora
 

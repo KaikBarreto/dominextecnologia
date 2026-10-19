@@ -28,6 +28,14 @@ export const customers = {
     colContact: 'Contato',
     colAddress: 'Endereço',
     colActions: 'Ações',
+    // ── Tipo de atendimento (filtro + selo na lista, módulo PDV e Loja) ──
+    colKind: 'Atende como',
+    kindFilterLabel: 'Atende como',
+    kindFilterAll: 'Todos',
+    kindFilterService: 'Serviço',
+    kindFilterStore: 'Loja',
+    kindBadgeService: 'Serviço',
+    kindBadgeStore: 'Loja',
     // ── Ações de linha ──
     view: 'Visualizar',
     edit: 'Editar',
@@ -46,6 +54,10 @@ export const customers = {
     // ── Diálogo de exclusão ──
     deleteTitle: 'Excluir cliente',
     deleteConfirm: 'Tem certeza que deseja excluir o cliente "{name}"? Esta ação não pode ser desfeita.',
+    // Aviso de fiado em aberto (módulo PDV e Loja). Só aparece pra quem tem o
+    // add-on e só quando há saldo devedor. Ver CustomerDeleteDebtNotice.tsx.
+    deleteDebtTitle: 'Fiado em aberto: {value}',
+    deleteDebtBody: 'Ao excluir, este saldo deixa de aparecer no app e a cobrança fica sem registro. Se já recebeu, registre o pagamento antes de excluir.',
     cancel: 'Cancelar',
     // ── Form (CustomerFormDialog.tsx) ──
     form: {
@@ -62,6 +74,10 @@ export const customers = {
       type: 'Tipo',
       typePj: 'Pessoa Jurídica',
       typePf: 'Pessoa Física',
+      // "Atende como" — módulo PDV e Loja (multi-seleção: pode ser os dois)
+      kindLabel: 'Atende como',
+      kindService: 'Serviço',
+      kindStore: 'Loja',
       company: 'Empresa',
       companyPlaceholder: 'Nome da empresa',
       razaoSocial: 'Razão Social',
@@ -404,6 +420,7 @@ export const customers = {
       ticketDescMinLength: 'Descreva o problema com pelo menos 10 caracteres.',
       ticketSuccess: 'Chamado aberto com sucesso!',
       ticketErrorTitle: 'Erro ao abrir chamado',
+      ticketErrorUnavailable: 'Este portal não está aceitando chamados agora. Fale com a empresa responsável pela manutenção.',
       // Status de OS
       statusPendente: 'Pendente',
       statusEmAndamento: 'Em andamento',
@@ -545,6 +562,14 @@ export const customers = {
     colContact: 'Contact',
     colAddress: 'Address',
     colActions: 'Actions',
+    // ── Customer kind (filter + list badge, PDV & Store module) ──
+    colKind: 'Serves as',
+    kindFilterLabel: 'Serves as',
+    kindFilterAll: 'All',
+    kindFilterService: 'Service',
+    kindFilterStore: 'Store',
+    kindBadgeService: 'Service',
+    kindBadgeStore: 'Store',
     view: 'View',
     edit: 'Edit',
     delete: 'Delete',
@@ -560,6 +585,8 @@ export const customers = {
     emptyNoneDescClick: 'Click "New Customer" to get started',
     deleteTitle: 'Delete customer',
     deleteConfirm: 'Are you sure you want to delete the customer "{name}"? This action cannot be undone.',
+    deleteDebtTitle: 'Open store credit: {value}',
+    deleteDebtBody: 'Once deleted, this balance stops showing up in the app and the debt is left with no record. If it has already been paid, record the payment before deleting.',
     cancel: 'Cancel',
     form: {
       titleNew: 'New Customer',
@@ -575,6 +602,10 @@ export const customers = {
       type: 'Type',
       typePj: 'Company',
       typePf: 'Individual',
+      // "Serves as" — PDV and Store module (multi-select: can be both)
+      kindLabel: 'Serves as',
+      kindService: 'Service',
+      kindStore: 'Store',
       company: 'Company',
       companyPlaceholder: 'Company name',
       razaoSocial: 'Legal name',
@@ -881,6 +912,7 @@ export const customers = {
       ticketDescMinLength: 'Please describe the issue with at least 10 characters.',
       ticketSuccess: 'Ticket opened successfully!',
       ticketErrorTitle: 'Error opening ticket',
+      ticketErrorUnavailable: 'This portal is not accepting tickets right now. Please contact the company in charge of maintenance.',
       statusPendente: 'Pending',
       statusEmAndamento: 'In progress',
       statusACaminho: 'On the way',
@@ -1015,6 +1047,14 @@ export const customers = {
     colContact: 'Contacto',
     colAddress: 'Dirección',
     colActions: 'Acciones',
+    // ── Tipo de atención (filtro + selo en la lista, módulo PDV y Tienda) ──
+    colKind: 'Atiende como',
+    kindFilterLabel: 'Atiende como',
+    kindFilterAll: 'Todos',
+    kindFilterService: 'Servicio',
+    kindFilterStore: 'Tienda',
+    kindBadgeService: 'Servicio',
+    kindBadgeStore: 'Tienda',
     view: 'Ver',
     edit: 'Editar',
     delete: 'Eliminar',
@@ -1030,6 +1070,8 @@ export const customers = {
     emptyNoneDescClick: 'Haz clic en "Nuevo Cliente" para comenzar',
     deleteTitle: 'Eliminar cliente',
     deleteConfirm: '¿Estás seguro de que deseas eliminar al cliente "{name}"? Esta acción no se puede deshacer.',
+    deleteDebtTitle: 'Cuenta pendiente: {value}',
+    deleteDebtBody: 'Al eliminar, este saldo deja de aparecer en la app y la deuda queda sin registro. Si ya lo cobraste, registra el pago antes de eliminar.',
     cancel: 'Cancelar',
     form: {
       titleNew: 'Nuevo Cliente',
@@ -1045,6 +1087,10 @@ export const customers = {
       type: 'Tipo',
       typePj: 'Persona Jurídica',
       typePf: 'Persona Física',
+      // "Atiende como" — módulo PDV y Tienda (multi-selección: puede ser ambos)
+      kindLabel: 'Atiende como',
+      kindService: 'Servicio',
+      kindStore: 'Tienda',
       company: 'Empresa',
       companyPlaceholder: 'Nombre de la empresa',
       razaoSocial: 'Razón social',
@@ -1351,6 +1397,7 @@ export const customers = {
       ticketDescMinLength: 'Describe el problema con al menos 10 caracteres.',
       ticketSuccess: '¡Solicitud abierta con éxito!',
       ticketErrorTitle: 'Error al abrir solicitud',
+      ticketErrorUnavailable: 'Este portal no está aceptando solicitudes ahora. Comuníquese con la empresa responsable del mantenimiento.',
       statusPendente: 'Pendiente',
       statusEmAndamento: 'En progreso',
       statusACaminho: 'En camino',
@@ -1485,6 +1532,14 @@ export const customers = {
     colContact: 'Contact',
     colAddress: 'Adresse',
     colActions: 'Actions',
+    // ── Type de client (filtre + badge dans la liste, module PDV et Boutique) ──
+    colKind: 'Dessert comme',
+    kindFilterLabel: 'Dessert comme',
+    kindFilterAll: 'Tous',
+    kindFilterService: 'Service',
+    kindFilterStore: 'Boutique',
+    kindBadgeService: 'Service',
+    kindBadgeStore: 'Boutique',
     view: 'Voir',
     edit: 'Modifier',
     delete: 'Supprimer',
@@ -1500,6 +1555,8 @@ export const customers = {
     emptyNoneDescClick: 'Cliquez sur « Nouveau Client » pour commencer',
     deleteTitle: 'Supprimer le client',
     deleteConfirm: 'Êtes-vous sûr de vouloir supprimer le client « {name} » ? Cette action est irréversible.',
+    deleteDebtTitle: 'Compte client en cours : {value}',
+    deleteDebtBody: `Après la suppression, ce solde n'apparaît plus dans l'application et la dette reste sans trace. S'il a déjà été réglé, enregistrez le paiement avant de supprimer.`,
     cancel: 'Annuler',
     form: {
       titleNew: 'Nouveau Client',
@@ -1515,6 +1572,10 @@ export const customers = {
       type: 'Type',
       typePj: 'Personne Morale',
       typePf: 'Personne Physique',
+      // "Dessert comme" — module PDV et Boutique (multi-sélection : peut être les deux)
+      kindLabel: 'Dessert comme',
+      kindService: 'Service',
+      kindStore: 'Boutique',
       company: 'Entreprise',
       companyPlaceholder: `Nom de l'entreprise`,
       razaoSocial: 'Raison sociale',
@@ -1821,6 +1882,7 @@ export const customers = {
       ticketDescMinLength: 'Décrivez le problème avec au moins 10 caractères.',
       ticketSuccess: 'Ticket ouvert avec succès !',
       ticketErrorTitle: 'Erreur lors de l\'ouverture du ticket',
+      ticketErrorUnavailable: 'Ce portail n\'accepte pas de tickets pour le moment. Contactez la société responsable de la maintenance.',
       statusPendente: 'En attente',
       statusEmAndamento: 'En cours',
       statusACaminho: 'En route',

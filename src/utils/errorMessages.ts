@@ -313,6 +313,10 @@ const CONSTRAINT_MESSAGES: Array<{ constraint: string; text: string }> = [
     constraint: 'financial_categories_company_id_name_key',
     text: 'Já existe uma categoria com esse nome. Escolha outro nome.',
   },
+  {
+    constraint: 'uniq_inventory_company_barcode',
+    text: 'Já existe um material cadastrado com este código de barras.',
+  },
 ];
 
 export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {

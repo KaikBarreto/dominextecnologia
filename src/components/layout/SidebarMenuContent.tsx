@@ -34,11 +34,14 @@ import {
   HeartPulse,
   Handshake,
   Newspaper,
+  Megaphone,
   Video,
   Crown,
   BarChart3,
   FolderKanban,
   KanbanSquare,
+  Store,
+  ShoppingCart,
 } from 'lucide-react';
 import { OperacionalIcon, AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -118,6 +121,39 @@ const tenantMenuItems: MenuItem[] = [
       // quick-create vir pelo modal de contrato (parallel work — Cliente PMOC).
     ],
   },
+  // ── PDV e Loja (add-on pago `pdv`) ──────────────────────────────────────────
+  // POSIÇÃO: logo depois de "Gestão" (onde moram Estoque e Clientes, os dois
+  // cadastros que o PDV consome) e antes de CRM/Projetos. O PDV é operação de
+  // LOJA do dia a dia, então fica alto no menu pro balconista, e vizinho do
+  // Estoque, que é de onde a peça sai.
+  //
+  // GATE: `moduleKey: 'pdv'` no GRUPO e em cada filho. Sem o add-on contratado
+  // (ou trial ativo), `hasModule('pdv')` é false, o grupo some inteiro e nenhum
+  // filho sobra — o `filterByAccess` derruba os dois níveis.
+  //
+  // ONDA 2 (modo balcão): 'Pedidos' (screen:pdv_orders) e 'Expedição'
+  // (screen:pdv_dispatch) NÃO entram aqui agora. Eles só fazem sentido com
+  // `company_settings.pdv_mode = 'balcao'`, que ainda não existe, e as telas
+  // também não — item de menu apontando pra rota inexistente é bug, não
+  // adiantamento. Entram junto com as telas, gateados pelo modo.
+  //
+  // ⚠️ "Caixa" (/pdv) é o PAINEL do caixa (abrir/fechar, gaveta, cofre, entradas
+  // e saídas, histórico do dia). A tela de VENDA (o carrinho) mora em /pdv/venda
+  // e NÃO tem item de menu de propósito (CEO, 18/10/2026): o balconista entra
+  // sempre pelo caixa e abre a venda no botão "Nova venda". Não acrescentar item
+  // de menu pra ela — daria dois caminhos pro mesmo fluxo e deixaria vender com
+  // o caixa fechado como se fosse normal.
+  {
+    title: 'PDV',
+    icon: Store,
+    moduleKey: 'pdv',
+    children: [
+      { title: 'Caixa', icon: ShoppingCart, path: '/pdv', screenKey: 'screen:pdv', moduleKey: 'pdv' },
+      { title: 'Histórico de Caixa', icon: HistoryIcon, path: '/pdv/caixas', screenKey: 'screen:pdv_cash_history', moduleKey: 'pdv' },
+      { title: 'Relatórios da Loja', icon: BarChart3, path: '/pdv/relatorios', screenKey: 'screen:pdv_reports', moduleKey: 'pdv' },
+      { title: 'Configurações do PDV', icon: SettingsIcon, path: '/pdv/configuracoes', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
+    ],
+  },
   // Os dois são quadros Kanban e andam juntos (um projeto AGRUPA funis), mas
   // continuam telas separadas de propósito: `screen:projects` é permissão
   // própria, então dá pra liberar Projetos pro pessoal de obra sem abrir a
@@ -160,6 +196,7 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Health Score', icon: HeartPulse, path: '/admin/health-score', screenKey: 'admin_health_score' },
   { title: 'Cobranças', icon: CreditCard, path: '/admin/cobrancas', screenKey: 'admin_cobrancas' },
   { title: 'Blog', icon: Newspaper, path: '/admin/blog', screenKey: 'admin_blog', masterOnly: true },
+  { title: 'Avisos', icon: Megaphone, path: '/admin/avisos', screenKey: 'admin_avisos', masterOnly: true },
   // Estatísticas engloba o antigo "Banco de Dados" (/admin/monitoramento) como
   // aba, mais Sistema (uso da base) e Infra. masterOnly: vendedor-admin NÃO vê.
   // ⚠️ Este array é O menu do painel admin. `AdminSidebarNav.tsx` é código

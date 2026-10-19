@@ -55,6 +55,11 @@ const SEGMENTS: Record<string, SegmentTranslations> = {
   projetos: { en: 'projects', es: 'proyectos', fr: 'projets' },
   orcamentos: { en: 'quotes', es: 'presupuestos', fr: 'devis' },
   estoque: { en: 'inventory', es: 'inventario', fr: 'stock' },
+  // 'pdv' é tratado como ACRÔNIMO de mercado, igual 'crm': a sigla internacional
+  // equivalente é POS (Point of Sale), reconhecida nos 3 idiomas. Traduzir por
+  // extenso ('punto-de-venta', 'point-de-vente') daria URLs longas e inconsistentes
+  // com o resto do registro, que usa segmentos curtos.
+  pdv: { en: 'pos', es: 'pos', fr: 'pos' },
   financeiro: { en: 'finance', es: 'finanzas', fr: 'finances' },
   'notas-fiscais': { en: 'invoices', es: 'facturas', fr: 'factures' },
   pmoc: { en: 'maintenance-plans', es: 'planes-mantenimiento', fr: 'plans-maintenance' },
@@ -75,6 +80,13 @@ const SEGMENTS: Record<string, SegmentTranslations> = {
   movimentacoes: { en: 'movements', es: 'movimientos', fr: 'mouvements' },
   contas: { en: 'accounts', es: 'cuentas', fr: 'comptes' },
   cobrancas: { en: 'charges', es: 'cobros', fr: 'encaissements' },
+  // Sub-segmento do PDV: a lista de sessões de caixa (histórico de aberturas e
+  // fechamentos). Só o PDV usa 'caixas' hoje.
+  caixas: { en: 'registers', es: 'cajas', fr: 'caisses' },
+  // Sub-segmento do PDV: a tela de VENDA (o carrinho), sub-tela do Caixa aberta
+  // pelo botão "Nova venda". Termo de mercado por idioma (sale/venta/vente), não
+  // 'checkout' — 'checkout' já é o nome da tela de assinatura do SaaS.
+  venda: { en: 'sale', es: 'venta', fr: 'vente' },
   'configuracoes-financeiras': { en: 'financial-settings', es: 'configuracion-financiera', fr: 'parametres-financiers' },
   organograma: { en: 'organogram', es: 'organigrama', fr: 'organigramme' },
   fluxogramas: { en: 'flowcharts', es: 'diagramas-de-flujo', fr: 'logigrammes' },
@@ -123,6 +135,18 @@ const ROUTES: AppRouteDef[] = [
   { key: 'projectDetail', base: '/projetos/:id' },
   { key: 'quotes', base: '/orcamentos' },
   { key: 'inventory', base: '/estoque' },
+  // PDV e Loja (add-on pago `pdv`). A raiz '/pdv' é o PAINEL DO CAIXA (abrir e
+  // fechar o caixa, dinheiro na gaveta, cofre, entradas e saídas, histórico); as
+  // demais são sub-telas. A VENDA (o carrinho) é sub-tela em '/pdv/venda',
+  // alcançada pelo botão "Nova venda" do painel — NÃO tem item de menu próprio
+  // (decisão do CEO 18/10/2026: o fluxo entra sempre pelo caixa).
+  // 'pdvOrders' (/pdv/pedidos) e 'pdvDispatch' (/pdv/expedicao) só entram na
+  // Onda 2 (modo balcão) — sem tela, sem rota, sem item de menu.
+  { key: 'pdv', base: '/pdv' },
+  { key: 'pdvSale', base: '/pdv/venda' },
+  { key: 'pdvCashHistory', base: '/pdv/caixas' },
+  { key: 'pdvReports', base: '/pdv/relatorios' },
+  { key: 'pdvSettings', base: '/pdv/configuracoes' },
   // Financeiro é um GRUPO: raiz + telas operacionais, cobrança, relatórios e
   // configurações próprias. Todos os segmentos traduzem.
   { key: 'finance', base: '/financeiro' },

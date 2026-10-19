@@ -1,11 +1,57 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { fetchOSRMRoute, geocodeAddress, buildCustomerAddress } from '@/utils/geolocation';
 import type { OSRMRoute } from '@/utils/geolocation';
 import { addBaseLayer, type MapBaseLayer } from '@/lib/mapTiles';
 import 'leaflet/dist/leaflet.css';
+
+/**
+ * Ultima posicao do tecnico, exatamente como vem de
+ * `get_public_os.technician_location` e da RPC irma
+ * `get_public_os_technician_location`.
+ *
+ * O visitante anonimo recebe SO estes 4 campos: nao vem `address` (o logradouro
+ * reverso de onde o tecnico esta, que seria entregar endereco de funcionario de
+ * graca), nem `user_id`, `company_id` ou `id`.
+ */
+type TechnicianLocation = {
+  lat: number;
+  lng: number;
+  event_type: string;
+  created_at: string;
+};
+
+/** Subset de `get_public_os` que este mapa consome. */
+type PublicOsMapPayload = {
+  customer_geo?: Record<string, unknown> | null;
+  technician_location?: TechnicianLocation | null;
+};
+
+/**
+ * `event_type` que significa "o tecnico esta vindo". Só estes acendem o banner
+ * de ETA. `check_in`/`check_out` entram na mesma tabela e NAO sao deslocamento.
+ */
+const EN_ROUTE_EVENTS = ['en_route', 'tracking'];
+
+/**
+ * Intervalo do poll da posicao. 20 s, escolhido pela cadencia REAL do dado e
+ * pelo 4G de quem esta esperando o tecnico na porta, nao por ser redondo:
+ *
+ *  - o app do tecnico empurra posicao a cada 30 s (`INTERVAL_MS` em
+ *    `useTechnicianLocations`), e a mediana medida em producao nos ultimos
+ *    60 dias bate: 30,5 s (p25 28 s, p75 35 s, n=1934). Pollar mais rapido que
+ *    isso nao traz informacao nova, so consome dado do cliente final;
+ *  - pollar a 30 s alinharia com a escrita e, no pior caso de fase, deixaria a
+ *    posicao ~60 s velha na tela. 20 s garante pelo menos um poll dentro de cada
+ *    janela de escrita e limita o atraso visivel a ~50 s;
+ *  - a RPC irma devolve 129 bytes. Pollar o `get_public_os` inteiro no mesmo
+ *    ritmo custaria 136 KB por ciclo (~1.055x mais) — foi o motivo de existir
+ *    uma RPC so pra isso.
+ *
+ * A janela ja e curta por construcao: o mapa so monta com a OS em `a_caminho`.
+ */
+const POLL_INTERVAL_MS = 20_000;
 
 interface PublicTrackingMapProps {
   serviceOrderId: string;
@@ -25,14 +71,40 @@ export function PublicTrackingMap({ serviceOrderId }: PublicTrackingMapProps) {
   const [isEnRoute, setIsEnRoute] = useState(false);
   const mapInitialized = useRef(false);
 
-  // Fetch customer coords for this OS.
-  // Página PÚBLICA (cliente anônimo): lê pela RPC SECURITY DEFINER `get_public_os`
-  // (recebe só o id da OS), em vez de varrer service_orders/customers direto.
+  // Aplica a última posição vinda do servidor. Único ponto que escreve
+  // `latestLoc`/`isEnRoute`, usado tanto pela carga inicial quanto pelo poll.
+  const applyLocation = useCallback((loc: TechnicianLocation | null | undefined) => {
+    if (!loc || loc.lat == null || loc.lng == null) return;
+    setLatestLoc({ lat: Number(loc.lat), lng: Number(loc.lng) });
+    setIsEnRoute(EN_ROUTE_EVENTS.includes(loc.event_type));
+  }, []);
+
+  // CARGA INICIAL: UMA chamada da RPC SECURITY DEFINER `get_public_os` traz o
+  // destino (`customer_geo`) E a última posição do técnico
+  // (`technician_location`). Antes eram duas idas: esta RPC mais um
+  // `supabase.from('technician_locations')` direto, que morreu na varredura de
+  // 18/10/2026 com `42501 permission denied for table service_ratings` — a
+  // policy de anon em technician_locations cita service_ratings no EXISTS, e o
+  // Postgres exige privilégio na tabela citada DENTRO da expressão.
+  //
+  // Devolver o GRANT não resolveria: a MESMA policy também cita
+  // service_orders, que não tem policy nenhuma pra anon, então o EXISTS externo
+  // nunca é verdadeiro e a leitura direta devolve zero linha em silêncio (pior
+  // que o erro, porque ninguém percebe). Por isso a posição vem por RPC.
   useEffect(() => {
-    const fetchCustomer = async () => {
+    let cancelled = false;
+
+    const loadInitial = async () => {
       const { data, error } = await supabaseAnon.rpc('get_public_os', { p_os_id: serviceOrderId });
-      if (error || !data) return;
-      const geo = (data as any).customer_geo;
+      if (cancelled || error || !data) return;
+      const payload = data as PublicOsMapPayload;
+
+      // Posição primeiro: é de graça (já veio no payload) e põe o técnico no
+      // mapa na hora, sem esperar o geocode do destino, que pode entrar na
+      // fila do Nominatim.
+      applyLocation(payload.technician_location);
+
+      const geo = payload.customer_geo as Record<string, any> | null | undefined;
       if (!geo) return;
 
       let lat = geo.lat ? Number(geo.lat) : null;
@@ -44,34 +116,17 @@ export function PublicTrackingMap({ serviceOrderId }: PublicTrackingMapProps) {
         const addr = buildCustomerAddress(geo);
         if (!addr) return;
         const coords = await geocodeAddress(addr);
-        if (!coords) return;
+        if (cancelled || !coords) return;
         lat = coords.lat;
         lng = coords.lng;
       }
 
-      setCustomerCoords({ lat, lng });
+      if (!cancelled) setCustomerCoords({ lat, lng });
     };
-    fetchCustomer();
-  }, [serviceOrderId]);
 
-  const fetchLatest = async () => {
-    const { data }: { data: any[] | null } = await supabase
-      .from('technician_locations' as any)
-      .select('*')
-      .eq('service_order_id', serviceOrderId)
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (data && data.length > 0) {
-      setLatestLoc({ lat: data[0].lat, lng: data[0].lng });
-      const enRoute = data[0].event_type === 'en_route' || data[0].event_type === 'tracking';
-      setIsEnRoute(enRoute);
-    }
-  };
-
-  useEffect(() => {
-    fetchLatest();
-  }, [serviceOrderId]);
+    loadInitial();
+    return () => { cancelled = true; };
+  }, [serviceOrderId, applyLocation]);
 
   // Calculate route when tech is en_route and we have both positions
   useEffect(() => {
@@ -239,33 +294,37 @@ export function PublicTrackingMap({ serviceOrderId }: PublicTrackingMapProps) {
     drawRoute();
   }, [routeInfo]);
 
-  // Realtime updates — filtro por service_order_id (v1.9.26 auditoria)
-  // Página PÚBLICA de tracking (cliente final, sem auth): não há company_id
-  // disponível no client. O isolamento é feito pelo filtro server-side em
-  // service_order_id (a OS é única por tenant, então só inserts dessa OS
-  // chegam pelo canal — não vaza tráfego de outras companies).
+  // ATUALIZAÇÃO CONTÍNUA: poll da RPC irmã, não Realtime.
+  //
+  // Aqui havia um canal `postgres_changes` em technician_locations. Ele não
+  // entrega nada pro visitante anônimo: o Realtime avalia a MESMA policy da
+  // leitura direta, sob o MESMO papel `anon`, então cai no mesmo buraco (citação
+  // de service_ratings e de service_orders dentro da expressão). Como o
+  // anônimo não pode depender de policy aninhada, a posição passa a vir por
+  // RPC SECURITY DEFINER, e a atualização vira poll.
+  //
+  // Sem `tick()` imediato de propósito: a carga inicial acima já trouxe a
+  // posição no mesmo payload, então disparar agora seria uma ida repetida.
   useEffect(() => {
-    const channel = supabase
-      .channel(`public-tracking-${serviceOrderId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'technician_locations',
-          filter: `service_order_id=eq.${serviceOrderId}`,
-        },
-        (payload: any) => {
-          const newLoc = { lat: payload.new.lat, lng: payload.new.lng };
-          const enRoute = payload.new.event_type === 'en_route' || payload.new.event_type === 'tracking';
-          setLatestLoc(newLoc);
-          setIsEnRoute(enRoute);
-        }
-      )
-      .subscribe();
+    let cancelled = false;
 
-    return () => { supabase.removeChannel(channel); };
-  }, [serviceOrderId]);
+    const tick = async () => {
+      const { data, error } = await supabaseAnon.rpc(
+        'get_public_os_technician_location',
+        { p_os_id: serviceOrderId },
+      );
+      // Falha de rede/servidor não apaga o técnico do mapa: mantém a última
+      // posição conhecida e tenta no próximo ciclo.
+      if (cancelled || error) return;
+      applyLocation(data as TechnicianLocation | null);
+    };
+
+    const timer = setInterval(tick, POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [serviceOrderId, applyLocation]);
 
   return (
     <Card className="overflow-hidden">

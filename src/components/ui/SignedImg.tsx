@@ -12,6 +12,29 @@ interface SignedImgProps extends Omit<ImgProps, 'src'> {
    * Default: 'Imagem indisponível'.
    */
   fallbackLabel?: string;
+  /**
+   * Classes de uma CÓPIA DECORATIVA da mesma imagem, renderizada ANTES da
+   * imagem real (logo, atrás dela na pintura). Serve pro preenchimento
+   * desfocado de letterbox: quando a foto não tem a proporção da caixa,
+   * `object-contain` deixa barra vazia nas laterais ou no topo, e esta cópia
+   * em `object-cover` + `blur` preenche esse vazio com a própria foto em vez
+   * de um cinza chapado (pedido do CEO 2026-10-19 na grade do PDV).
+   *
+   * POR QUE ISTO MORA AQUI e não no componente que consome: a resolução da
+   * URL assinada acontece DENTRO deste componente (`useSignedUrl`), e
+   * `resolveStorageUrl` não tem deduplicação de chamada em voo — só cache de
+   * resultado. Dois `SignedImg` (ou dois `useSignedUrl`) pro mesmo arquivo
+   * erram o cache juntos e disparam DUAS `createSignedUrl`. Na grade do PDV,
+   * com 38 produtos, isso seria 38 idas extras ao servidor só pra desenhar um
+   * borrão. Com a cópia aqui dentro, a URL é assinada UMA vez e o segundo
+   * `<img>` sai do cache HTTP do navegador (mesma URL), sem rede nenhuma.
+   *
+   * Omitido (padrão) = nada muda: um `<img>` só, como sempre foi.
+   *
+   * Vazio e sem `src` resolvido não renderiza nada — o placeholder "sem foto"
+   * não ganha borrão de imagem que não existe.
+   */
+  blurFillClassName?: string;
 }
 
 /**
@@ -26,7 +49,13 @@ interface SignedImgProps extends Omit<ImgProps, 'src'> {
  *
  * Preserva todas as props do <img> (className, onClick, alt, etc.).
  */
-export function SignedImg({ src, fallbackLabel = 'Imagem indisponível', className, ...rest }: SignedImgProps) {
+export function SignedImg({
+  src,
+  fallbackLabel = 'Imagem indisponível',
+  className,
+  blurFillClassName,
+  ...rest
+}: SignedImgProps) {
   const resolved = useSignedUrl(src);
   const [errored, setErrored] = useState(false);
 
@@ -57,12 +86,28 @@ export function SignedImg({ src, fallbackLabel = 'Imagem indisponível', classNa
     );
   }
 
-  return (
+  const img = (
     <img
       {...rest}
       src={effectiveSrc}
       className={className}
       onError={() => setErrored(true)}
     />
+  );
+
+  if (!blurFillClassName) return img;
+
+  return (
+    <>
+      {/* Decorativa: é a MESMA imagem de novo, então fica fora da árvore de
+          acessibilidade (`aria-hidden` + `alt=""`) pra o leitor de tela não
+          anunciar a foto duas vezes. Sem `onError`/`onLoad` de propósito: quem
+          manda no estado de carregamento é o `<img>` de verdade abaixo — se
+          esta falhar, o resultado é só não ter borrão, nunca um placeholder
+          duplicado. `draggable={false}`: arrastar a cópia borrada não faz
+          sentido nenhum. */}
+      <img src={effectiveSrc} alt="" aria-hidden="true" draggable={false} className={blurFillClassName} />
+      {img}
+    </>
   );
 }

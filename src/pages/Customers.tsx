@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { fuzzyIncludesAny, cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { Users, Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye, ClipboardList, Handshake, Truck } from 'lucide-react';
+import { Users, Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye, ClipboardList, Handshake, Truck, Wrench, Store } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { SegmentedControl, type SegmentedControlOption } from '@/components/ui/SegmentedControl';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -20,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useCustomers } from '@/hooks/useCustomers';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
+import { CustomerDeleteDebtNotice } from '@/components/customers/CustomerDeleteDebtNotice';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useTableSort } from '@/hooks/useTableSort';
@@ -42,6 +44,24 @@ import { SuppliersTab } from '@/components/customers/SuppliersTab';
 
 type CustomersMainTab = 'clientes' | 'fornecedores';
 
+export type CustomerKindFilter = 'all' | 'servico' | 'loja';
+
+/**
+ * Cliente marcado como os DOIS tipos (Serviço e Loja) tem que aparecer nos
+ * dois filtros — por isso a checagem é "tem a flag", nunca igualdade
+ * estrita (`=== true && === false`), que esconderia o cliente que é os dois
+ * de qualquer filtro específico. `'all'` não filtra nada (inclusive quem não
+ * marcou nenhum dos dois).
+ */
+export function matchesCustomerKindFilter(
+  customer: Pick<Customer, 'is_service_customer' | 'is_store_customer'>,
+  filter: CustomerKindFilter,
+): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'servico') return !!customer.is_service_customer;
+  return !!customer.is_store_customer;
+}
+
 // Gera iniciais (máx 2 caracteres) para avatar fallback.
 function getInitials(name?: string) {
   if (!name) return '?';
@@ -62,18 +82,74 @@ function colorFromName(name?: string): string {
   return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
 }
 
+/**
+ * Selo de "Atende como" (Serviço/Loja) — só renderiza com o módulo PDV
+ * (checagem fica no caller). Saturado com ícone e texto brancos, nunca
+ * contorno dessaturado. `iconOnly` troca o `Badge` com texto por um círculo
+ * saturado só com o ícone (uso em linha de lista mobile, onde o espaço
+ * aperta) — ainda acessível via `title`/`aria-label`.
+ */
+function CustomerKindBadges({
+  customer,
+  t,
+  iconOnly,
+}: {
+  customer: Pick<Customer, 'is_service_customer' | 'is_store_customer'>;
+  t: typeof MESSAGES['pt-br']['app']['customers'];
+  iconOnly?: boolean;
+}) {
+  if (!customer.is_service_customer && !customer.is_store_customer) return null;
+  return (
+    <div className="flex items-center gap-1">
+      {customer.is_service_customer && (
+        iconOnly ? (
+          <span
+            title={t.kindBadgeService}
+            aria-label={t.kindBadgeService}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-info text-white"
+          >
+            <Wrench className="h-3 w-3" />
+          </span>
+        ) : (
+          <Badge variant="info" className="gap-1 text-[10px] px-2 py-0.5">
+            <Wrench className="h-3 w-3" />
+            {t.kindBadgeService}
+          </Badge>
+        )
+      )}
+      {customer.is_store_customer && (
+        iconOnly ? (
+          <span
+            title={t.kindBadgeStore}
+            aria-label={t.kindBadgeStore}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success text-white"
+          >
+            <Store className="h-3 w-3" />
+          </span>
+        ) : (
+          <Badge variant="success" className="gap-1 text-[10px] px-2 py-0.5">
+            <Store className="h-3 w-3" />
+            {t.kindBadgeStore}
+          </Badge>
+        )
+      )}
+    </div>
+  );
+}
+
 interface CustomerGridCardProps {
   customer: Customer;
   isMobile: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  pdvEnabled: boolean;
   onOpen: () => void;
   onEdit: (e?: React.MouseEvent) => void;
   onDelete: (e?: React.MouseEvent) => void;
   t: typeof MESSAGES['pt-br']['app']['customers'];
 }
 
-function CustomerGridCard({ customer, isMobile, canEdit, canDelete, onOpen, onEdit, onDelete, t }: CustomerGridCardProps) {
+function CustomerGridCard({ customer, isMobile, canEdit, canDelete, pdvEnabled, onOpen, onEdit, onDelete, t }: CustomerGridCardProps) {
   const subtitleParts = [customer.phone || customer.celular, customer.city].filter(Boolean);
   const subtitle = subtitleParts.length > 0
     ? subtitleParts.join(' • ')
@@ -99,12 +175,15 @@ function CustomerGridCard({ customer, isMobile, canEdit, canDelete, onOpen, onEd
           <p className="font-medium truncate">{customer.name}</p>
           <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
         </div>
-        <Badge
-          variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}
-          className="text-[10px] px-2 py-0.5"
-        >
-          {customer.customer_type === 'pj' ? t.typePj : t.typePf}
-        </Badge>
+        <div className="flex items-center justify-center gap-1.5">
+          <Badge
+            variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}
+            className="text-[10px] px-2 py-0.5"
+          >
+            {customer.customer_type === 'pj' ? t.typePj : t.typePf}
+          </Badge>
+          {pdvEnabled && <CustomerKindBadges customer={customer} t={t} />}
+        </div>
         {!isMobile && (canEdit || canDelete) && (
           <div className="flex items-center gap-1 pt-1" onClick={(e) => e.stopPropagation()}>
             {canEdit && (
@@ -140,6 +219,9 @@ export default function Customers() {
   const [leadFormsOpen, setLeadFormsOpen] = useState(false);
   const [opportunityCustomer, setOpportunityCustomer] = useState<Customer | null>(null);
   const [viewMode, setViewMode] = useViewMode('customers-view-mode');
+  // Filtro "Atende como" (Serviço/Loja) — só existe pra quem tem o módulo PDV.
+  const [customerKindFilter, setCustomerKindFilter] = useState<CustomerKindFilter>('all');
+  const pdvEnabled = hasModule('pdv');
   // Aba Fornecedores: pedido do CEO pra dar um lugar próprio ao cadastro que
   // hoje só existe dentro de Compras (Estoque). Herda a permissão de tela
   // desta página (screen:customers) — não é um módulo pago à parte, igual
@@ -180,7 +262,7 @@ export default function Customers() {
         customer.zip_code,
       ],
       searchTerm,
-    ),
+    ) && (!pdvEnabled || matchesCustomerKindFilter(customer, customerKindFilter)),
   );
 
   const { sortedItems, sortConfig, handleSort } = useTableSort(filteredCustomers);
@@ -258,6 +340,26 @@ export default function Customers() {
         activeTab={mainTab}
         onTabChange={(v) => setMainTab(v as CustomersMainTab)}
       />
+
+      {/* Filtro "Atende como" (Serviço/Loja) — só existe com o módulo PDV.
+          Pills de seleção única (SegmentedControl), fora da MobileListToolbar
+          porque a 2ª linha dela já está no limite de 3 controles (Origens,
+          Formulários, Visualização); vive aqui, logo abaixo das abas
+          Clientes/Fornecedores, igual em mobile e desktop. */}
+      {mainTab === 'clientes' && pdvEnabled && (
+        <SegmentedControl<CustomerKindFilter>
+          aria-label={t.kindFilterLabel}
+          size="sm"
+          className="sm:max-w-sm"
+          options={[
+            { value: 'all', label: t.kindFilterAll },
+            { value: 'servico', label: t.kindFilterService, icon: <Wrench className="h-3.5 w-3.5" /> },
+            { value: 'loja', label: t.kindFilterStore, icon: <Store className="h-3.5 w-3.5" /> },
+          ] satisfies SegmentedControlOption<CustomerKindFilter>[]}
+          value={customerKindFilter}
+          onValueChange={setCustomerKindFilter}
+        />
+      )}
 
       {mainTab === 'fornecedores' ? (
         <SuppliersTab />
@@ -346,6 +448,7 @@ export default function Customers() {
                     isMobile={isMobile}
                     canEdit={canEditCustomer}
                     canDelete={canDeleteCustomer}
+                    pdvEnabled={pdvEnabled}
                     onOpen={() => navigate(`/clientes/${customer.id}`)}
                     onEdit={(e) => handleEdit(customer, e)}
                     onDelete={(e) => handleDeleteClick(customer, e)}
@@ -456,12 +559,16 @@ export default function Customers() {
                           : (customer.company_name || customer.email || '—')
                       }
                       trailing={
-                        <Badge
-                          variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}
-                          className="text-[10px] px-2 py-0.5"
-                        >
-                          {customer.customer_type === 'pj' ? t.typePj : t.typePf}
-                        </Badge>
+                        <div className="flex flex-col items-end gap-1">
+                          <Badge
+                            variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}
+                            className="text-[10px] px-2 py-0.5"
+                          >
+                            {customer.customer_type === 'pj' ? t.typePj : t.typePf}
+                          </Badge>
+                          {/* Mobile: espaço curto, vira só ícone (com title/aria-label). */}
+                          {pdvEnabled && <CustomerKindBadges customer={customer} t={t} iconOnly />}
+                        </div>
                       }
                     />
                   );
@@ -526,6 +633,9 @@ export default function Customers() {
                             <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>{t.colName}</SortableTableHead>
                             <SortableTableHead sortKey="company_name" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">{t.colCompany}</SortableTableHead>
                             <SortableTableHead sortKey="customer_type" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">{t.colType}</SortableTableHead>
+                            {pdvEnabled && (
+                              <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">{t.colKind}</TableHead>
+                            )}
                             <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider">{t.colContact}</TableHead>
                             <SortableTableHead sortKey="city" sortConfig={sortConfig} onSort={handleSort} className="hidden xl:table-cell">{t.colAddress}</SortableTableHead>
                             <TableHead className="w-[100px] text-xs uppercase tracking-wider">{t.colActions}</TableHead>
@@ -559,6 +669,11 @@ export default function Customers() {
                                   {customer.customer_type === 'pj' ? t.typePj : t.typePf}
                                 </Badge>
                               </TableCell>
+                              {pdvEnabled && (
+                                <TableCell className="hidden lg:table-cell">
+                                  <CustomerKindBadges customer={customer} t={t} />
+                                </TableCell>
+                              )}
                               <TableCell className="hidden sm:table-cell">
                                 <div className="space-y-1">
                                   {(customer.phone || customer.celular) && (
@@ -666,6 +781,10 @@ export default function Customers() {
               {t.deleteConfirm.replace('{name}', customerToDelete?.name ?? '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {/* Fiado em aberto: só renderiza algo com o módulo PDV E com dívida.
+              FORA do AlertDialogDescription de propósito (é um <p>, e banner
+              dentro de <p> é HTML inválido). */}
+          <CustomerDeleteDebtNotice customerId={deleteDialogOpen ? customerToDelete?.id ?? null : null} />
           <AlertDialogFooter>
             <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
             <AlertDialogAction

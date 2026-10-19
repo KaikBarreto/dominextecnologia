@@ -34,6 +34,10 @@ import {
   Crown,
   FolderKanban,
   KanbanSquare,
+  Store,
+  ShoppingCart,
+  History as HistoryIcon,
+  BarChart3,
 } from 'lucide-react';
 import { AreaTecnicoIcon, OperacionalIcon } from '@/components/icons/MenuIcons';
 import {
@@ -102,6 +106,23 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Contratos', icon: ScrollText, path: '/contratos', screenKey: 'screen:contracts' },
       { title: 'Funcionários', icon: Briefcase, path: '/funcionarios', screenKey: 'screen:employees', moduleKey: 'rh' },
       { title: 'Estoque', icon: Package, path: '/estoque', screenKey: 'screen:inventory' },
+    ],
+  },
+  // ── PDV e Loja (add-on pago `pdv`) ──────────────────────────────────────────
+  // ⚠️ ESPELHA o `tenantMenuItems` de `SidebarMenuContent.tsx`. Esta é a nav
+  // HORIZONTAL (preferência do usuário em Configurações): item que só existe no
+  // sidebar fica invisível pra quem escolheu a barra de cima.
+  // Pedidos e Expedição chegam na Onda 2 (modo balcão). "Caixa" (/pdv) é o
+  // PAINEL; a venda (/pdv/venda) é sub-tela sem item de menu — ver o sidebar.
+  {
+    title: 'PDV',
+    icon: Store,
+    moduleKey: 'pdv',
+    children: [
+      { title: 'Caixa', icon: ShoppingCart, path: '/pdv', screenKey: 'screen:pdv', moduleKey: 'pdv' },
+      { title: 'Histórico de Caixa', icon: HistoryIcon, path: '/pdv/caixas', screenKey: 'screen:pdv_cash_history', moduleKey: 'pdv' },
+      { title: 'Relatórios da Loja', icon: BarChart3, path: '/pdv/relatorios', screenKey: 'screen:pdv_reports', moduleKey: 'pdv' },
+      { title: 'Configurações do PDV', icon: SettingsIcon, path: '/pdv/configuracoes', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
     ],
   },
   // Os dois são quadros Kanban e andam juntos (um projeto AGRUPA funis), mas

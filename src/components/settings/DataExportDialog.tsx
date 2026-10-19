@@ -10,7 +10,6 @@ import { MESSAGES } from '@/lib/i18n';
 import { useToast } from '@/hooks/use-toast';
 import {
   DEFAULT_EXPORT_SELECTION,
-  EXPORT_GROUPS,
   useCompanyDataExport,
   type ExportGroupKey,
 } from '@/hooks/useCompanyDataExport';
@@ -21,7 +20,9 @@ import {
  * Estrutura (de cima pra baixo):
  *  - Descrição curta.
  *  - Master checkbox "Marcar tudo" / "Limpar seleção".
- *  - Lista de checkboxes, um por ExportGroupKey (rótulo via i18n `groups`).
+ *  - Lista de checkboxes, um por grupo DISPONÍVEL pra esta empresa (`groups`
+ *    do hook; rótulo via i18n `groups`). Grupo de módulo pago que a empresa
+ *    não contratou não aparece aqui — e, por lei da casa, nem gera aba vazia.
  *  - Aviso das abas pesadas (inventoryMovements/timeRecords vêm desmarcadas).
  *  - Barra de progresso durante a exportação.
  *  - Footer com Cancelar / Exportar.
@@ -43,7 +44,7 @@ export function DataExportDialog({
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.settings.dataExport;
   const { toast } = useToast();
-  const { run, progress, isRunning, error, reset } = useCompanyDataExport();
+  const { groups, run, progress, isRunning, error, reset } = useCompanyDataExport();
 
   const [selection, setSelection] = useState<Record<ExportGroupKey, boolean>>(
     DEFAULT_EXPORT_SELECTION,
@@ -57,20 +58,25 @@ export function DataExportDialog({
     }
   }, [open, reset]);
 
+  // Conta SÓ os grupos disponíveis: a chave de um módulo não contratado fica
+  // em `selection` (vem `true` do default), mas não pode contar pro "Marcar
+  // tudo" nem habilitar o botão sozinha.
   const selectedCount = useMemo(
-    () => Object.values(selection).filter(Boolean).length,
-    [selection],
+    () => groups.filter((key) => selection[key]).length,
+    [groups, selection],
   );
 
-  const allSelected = selectedCount === EXPORT_GROUPS.length;
+  const allSelected = groups.length > 0 && selectedCount === groups.length;
   const canConfirm = selectedCount > 0 && !isRunning;
 
   const handleToggleAll = (checked: boolean) => {
-    const next = {} as Record<ExportGroupKey, boolean>;
-    for (const key of EXPORT_GROUPS) {
-      next[key] = checked;
-    }
-    setSelection(next);
+    setSelection((prev) => {
+      const next = { ...prev };
+      for (const key of groups) {
+        next[key] = checked;
+      }
+      return next;
+    });
   };
 
   const handleToggle = (key: ExportGroupKey, checked: boolean) => {
@@ -178,7 +184,7 @@ export function DataExportDialog({
 
         {/* Lista de checkboxes — um por grupo */}
         <div className="space-y-0.5">
-          {EXPORT_GROUPS.map((key) => {
+          {groups.map((key) => {
             const isChecked = selection[key];
             return (
               <label

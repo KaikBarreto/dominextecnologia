@@ -7,6 +7,8 @@ function stock(id: string, customerId: string | null): Stock {
     company_id: 'company-1',
     name: id,
     is_default: id === 'general',
+    // Todo local nasce 'operacional'; 'pdv' só existe com o módulo PDV contratado.
+    purpose: 'operacional',
     sort_order: 0,
     created_at: '2026-10-13T00:00:00.000Z',
     updated_at: '2026-10-13T00:00:00.000Z',

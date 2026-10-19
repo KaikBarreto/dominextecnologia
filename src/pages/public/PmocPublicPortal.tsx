@@ -49,6 +49,7 @@ import {
 import { cn } from '@/lib/utils';
 import {
   fetchPmocPortal,
+  createPmocPortalTicket,
   buildPmocPortalUrl,
   PortalModuleUnavailableError,
   PortalPrivateError,
@@ -58,9 +59,7 @@ import { PublicPortalShell, type PortalNavSection } from '@/components/portal/Pu
 import { PortalChargesSection } from '@/components/portal/PortalChargesSection';
 import { PortalContactButton } from '@/components/portal/PortalContactButton';
 import { idealForeground } from '@/lib/colorContrast';
-import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { getErrorMessage } from '@/utils/errorMessages';
-import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import type {
   PortalHealthStatus,
@@ -438,46 +437,37 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
 
   // IDs de contexto vêm de payload.contract (contract.id desde 1.12.0).
   // Leitura defensiva: pode ser null em payloads antigos ou de outra versão.
+  // Só gateiam a visibilidade do CTA; quem resolve os IDs do chamado é a RPC,
+  // a partir do token do portal.
   const customerId = contract.customer_id ?? null;
   const companyId = contract.company_id ?? null;
-  const contractId = contract.id ?? null;
 
   const handleSubmitTicket = async () => {
     if (ticketDesc.trim().length < 10) return;
-    if (!customerId || !companyId) {
-      toast({
-        variant: 'destructive',
-        title: t.ticketErrorTitle,
-        description: !customerId
-          ? 'customer_id indisponível neste portal.'
-          : 'company_id indisponível neste portal.',
-      });
-      return;
-    }
     setTicketSubmitting(true);
     try {
-      // A RLS "Public can create portal tickets" permite anon INSERT com origin='portal'.
-      // O trigger check_portal_ticket_antispam() valida >= 10 chars e rate-limit no server.
-      // company_id: obrigatorio no INSERT (NOT NULL, sem auto-preenchimento no anon).
-      // Vem de contract.company_id exposto no payload da edge.
-      const insertPayload = normalizeOptionalForeignKeys({
-        customer_id: customerId,
-        company_id: companyId,
-        contract_id: contractId,
-        description: ticketDesc.trim(),
-        os_type: 'manutencao_corretiva',
-        status: 'pendente',
-        origin: 'portal',
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any, ['customer_id', 'company_id', 'contract_id']);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await supabaseAnon.from('service_orders').insert(insertPayload as any);
-      if (error) throw error;
+      // Antes daqui havia um INSERT direto em `service_orders` com a chave
+      // anônima, amarrado numa policy "Public can create portal tickets" que
+      // não existe mais: desde 18/10/2026 o `anon` não tem INSERT na tabela e o
+      // botão devolvia `42501 permission denied for table service_orders` pro
+      // cliente final. Agora a criação passa pela RPC SECURITY DEFINER
+      // (ver createPmocPortalTicket), que revalida portal/assinatura/módulo e
+      // resolve customer/company/contract pelo token, sem confiar no client.
+      await createPmocPortalTicket(token, ticketDesc);
       toast({ title: t.ticketSuccess });
       setShowTicketModal(false);
       setTicketDesc('');
     } catch (err: unknown) {
-      toast({ variant: 'destructive', title: t.ticketErrorTitle, description: getErrorMessage(err) });
+      // O cliente final nunca lê código de banco: traduz pelo SQLSTATE da RPC
+      // pro idioma do portal, e só cai no genérico quando o erro é outro.
+      const code = (err as { code?: string } | null)?.code;
+      const description =
+        code === '22023'
+          ? t.ticketDescMinLength
+          : code === '42501'
+            ? t.ticketErrorUnavailable
+            : getErrorMessage(err);
+      toast({ variant: 'destructive', title: t.ticketErrorTitle, description });
     } finally {
       setTicketSubmitting(false);
     }

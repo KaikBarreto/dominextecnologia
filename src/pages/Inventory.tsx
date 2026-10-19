@@ -84,6 +84,8 @@ import { generateInventoryReportPdf } from '@/utils/inventoryPdfGenerator';
 import { generateInventoryExcel } from '@/utils/inventoryExcelGenerator';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
+import type { Stock } from '@/hooks/useStocks';
 import { useToast } from '@/hooks/use-toast';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { InventoryKardexTab } from '@/components/inventory/InventoryKardexTab';
@@ -105,6 +107,19 @@ export default function Inventory() {
   const { settings: companySettings } = useCompanySettings();
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
   const { toast } = useToast();
+  const { hasModule } = useCompanyModules();
+  // Agrupamento Loja × Operacional das pílulas de local — só existe com o
+  // módulo PDV e Loja. Sem o módulo, `pdvEnabled` é false e a tela usa os
+  // mesmos blocos de markup de sempre (não os agrupados), byte a byte.
+  const pdvEnabled = hasModule('pdv');
+  const stockGroups: { key: string; label: string | null; stocks: Stock[] }[] = pdvEnabled
+    ? (
+        [
+          { key: 'pdv', label: t.stocks.groupStore, stocks: stocks.filter((s) => s.purpose === 'pdv') },
+          { key: 'operacional', label: t.stocks.groupOperational, stocks: stocks.filter((s) => s.purpose !== 'pdv') },
+        ].filter((g) => g.stocks.length > 0)
+      )
+    : [];
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -261,6 +276,99 @@ export default function Inventory() {
     setConfiguratorStockId(stockId);
     setConfiguratorOpen(true);
   };
+
+  // Pílula de local (mobile) — extraída pra ser chamada tanto pelo bloco "sem
+  // módulo PDV" (lista plana, markup intacto) quanto pelo bloco agrupado
+  // (Loja/Operacional). Mesmo JSX nos dois casos, nenhuma diferença visual.
+  const renderMobileStockPill = (s: Stock) => {
+    const isActive = resolvedStockId === s.id;
+    return (
+      <div
+        key={s.id}
+        className={cn(
+          'inline-flex shrink-0 items-center -mb-px border-b-2 text-sm font-medium transition-colors',
+          isActive
+            ? 'border-primary text-primary'
+            : 'border-transparent text-muted-foreground',
+        )}
+      >
+        <span
+          role="tab"
+          aria-selected={isActive}
+          tabIndex={0}
+          onClick={() => setActiveStockId(s.id)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveStockId(s.id); } }}
+          className="flex h-9 items-center gap-1.5 pl-3.5 pr-1.5 cursor-pointer select-none hover:text-foreground active:scale-95"
+        >
+          {s.name}
+          {s.is_default && (
+            <Star className="h-3 w-3 text-warning fill-warning shrink-0" />
+          )}
+        </span>
+        <span
+          role="button"
+          tabIndex={0}
+          aria-label={t.stockConfigurator.gearIconLabel}
+          onClick={(e) => openConfigurator(s.id, e)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              openConfigurator(s.id, e);
+            }
+          }}
+          className="flex items-center justify-center h-8 w-8 mr-0.5 rounded-sm cursor-pointer text-current opacity-70 hover:opacity-100 active:scale-90 transition-opacity"
+        >
+          <Settings className="h-3.5 w-3.5" />
+        </span>
+      </div>
+    );
+  };
+
+  // Mesma ideia, versão desktop.
+  const renderDesktopStockPill = (s: Stock) => (
+    // Container da pill — não é <button> para evitar button-in-button
+    // ao aninhar a engrenagem. A área de troca de aba é um <span role="tab">.
+    <div
+      key={s.id}
+      className={cn(
+        'inline-flex items-center border-b-2 -mb-px transition-colors',
+        resolvedStockId === s.id
+          ? 'border-primary text-primary'
+          : 'border-transparent text-muted-foreground',
+      )}
+    >
+      {/* Área clicável de troca de aba */}
+      <span
+        role="tab"
+        aria-selected={resolvedStockId === s.id}
+        tabIndex={0}
+        onClick={() => setActiveStockId(s.id)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveStockId(s.id); } }}
+        className="flex items-center gap-1.5 pl-3 pr-1 py-2 text-sm font-medium cursor-pointer select-none hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+      >
+        {s.name}
+        {s.is_default && (
+          <Star className="h-3 w-3 text-warning fill-warning" />
+        )}
+      </span>
+      {/* Engrenagem de configuração — irmã da área de aba, não filha */}
+      <span
+        role="button"
+        tabIndex={0}
+        aria-label={t.stockConfigurator.gearIconLabel}
+        onClick={(e) => openConfigurator(s.id, e)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openConfigurator(s.id, e);
+          }
+        }}
+        className="flex items-center justify-center h-6 w-6 mr-1 rounded cursor-pointer opacity-40 hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+      >
+        <Settings className="h-3.5 w-3.5" />
+      </span>
+    </div>
+  );
 
   const openExport = (format: ExportFormat) => {
     setExportFormat(format);
@@ -567,103 +675,53 @@ export default function Inventory() {
             {stocks.length > 1 && (
               <>
                 {isMobile ? (
-                  // Pílulas de local QUEBRAM LINHA no mobile (flex-wrap) em vez de
-                  // rolar horizontalmente: nomes de local variam bastante em
-                  // tamanho e, com a engrenagem junto, ficavam apertados demais
-                  // dentro do carrossel de MobilePillTabs. Mesmo padrão
-                  // tab+gear-como-irmãos do desktop (evita button-in-button).
-                  <div className="flex gap-1 overflow-x-auto border-b no-scrollbar" role="tablist">
-                    {stocks.map((s) => {
-                      const isActive = resolvedStockId === s.id;
-                      return (
-                        <div
-                          key={s.id}
-                          className={cn(
-                            'inline-flex shrink-0 items-center -mb-px border-b-2 text-sm font-medium transition-colors',
-                            isActive
-                              ? 'border-primary text-primary'
-                              : 'border-transparent text-muted-foreground',
+                  pdvEnabled ? (
+                    // Com o módulo PDV e Loja: agrupado em Loja / Operacional.
+                    <div className="space-y-2">
+                      {stockGroups.map((group) => (
+                        <div key={group.key} className="space-y-1">
+                          {group.label && (
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground px-0.5">
+                              {group.label}
+                            </p>
                           )}
-                        >
-                          <span
-                            role="tab"
-                            aria-selected={isActive}
-                            tabIndex={0}
-                            onClick={() => setActiveStockId(s.id)}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveStockId(s.id); } }}
-                            className="flex h-9 items-center gap-1.5 pl-3.5 pr-1.5 cursor-pointer select-none hover:text-foreground active:scale-95"
-                          >
-                            {s.name}
-                            {s.is_default && (
-                              <Star className="h-3 w-3 text-warning fill-warning shrink-0" />
-                            )}
-                          </span>
-                          <span
-                            role="button"
-                            tabIndex={0}
-                            aria-label={t.stockConfigurator.gearIconLabel}
-                            onClick={(e) => openConfigurator(s.id, e)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                openConfigurator(s.id, e);
-                              }
-                            }}
-                            className="flex items-center justify-center h-8 w-8 mr-0.5 rounded-sm cursor-pointer text-current opacity-70 hover:opacity-100 active:scale-90 transition-opacity"
-                          >
-                            <Settings className="h-3.5 w-3.5" />
-                          </span>
+                          <div className="flex gap-1 overflow-x-auto border-b no-scrollbar" role="tablist">
+                            {group.stocks.map((s) => renderMobileStockPill(s))}
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    // Pílulas de local QUEBRAM LINHA no mobile (flex-wrap) em vez de
+                    // rolar horizontalmente: nomes de local variam bastante em
+                    // tamanho e, com a engrenagem junto, ficavam apertados demais
+                    // dentro do carrossel de MobilePillTabs. Mesmo padrão
+                    // tab+gear-como-irmãos do desktop (evita button-in-button).
+                    <div className="flex gap-1 overflow-x-auto border-b no-scrollbar" role="tablist">
+                      {stocks.map((s) => renderMobileStockPill(s))}
+                    </div>
+                  )
                 ) : (
-                  <div className="flex gap-1 border-b">
-                    {stocks.map((s) => (
-                      // Container da pill — não é <button> para evitar button-in-button
-                      // ao aninhar a engrenagem. A área de troca de aba é um <span role="tab">.
-                      <div
-                        key={s.id}
-                        className={cn(
-                          'inline-flex items-center border-b-2 -mb-px transition-colors',
-                          resolvedStockId === s.id
-                            ? 'border-primary text-primary'
-                            : 'border-transparent text-muted-foreground',
-                        )}
-                      >
-                        {/* Área clicável de troca de aba */}
-                        <span
-                          role="tab"
-                          aria-selected={resolvedStockId === s.id}
-                          tabIndex={0}
-                          onClick={() => setActiveStockId(s.id)}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveStockId(s.id); } }}
-                          className="flex items-center gap-1.5 pl-3 pr-1 py-2 text-sm font-medium cursor-pointer select-none hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
-                        >
-                          {s.name}
-                          {s.is_default && (
-                            <Star className="h-3 w-3 text-warning fill-warning" />
+                  pdvEnabled ? (
+                    <div className="space-y-2">
+                      {stockGroups.map((group) => (
+                        <div key={group.key} className="space-y-1">
+                          {group.label && (
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground px-0.5">
+                              {group.label}
+                            </p>
                           )}
-                        </span>
-                        {/* Engrenagem de configuração — irmã da área de aba, não filha */}
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          aria-label={t.stockConfigurator.gearIconLabel}
-                          onClick={(e) => openConfigurator(s.id, e)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              openConfigurator(s.id, e);
-                            }
-                          }}
-                          className="flex items-center justify-center h-6 w-6 mr-1 rounded cursor-pointer opacity-40 hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        >
-                          <Settings className="h-3.5 w-3.5" />
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                          <div className="flex gap-1 border-b">
+                            {group.stocks.map((s) => renderDesktopStockPill(s))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex gap-1 border-b">
+                      {stocks.map((s) => renderDesktopStockPill(s))}
+                    </div>
+                  )
                 )}
               </>
             )}
