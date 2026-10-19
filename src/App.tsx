@@ -154,6 +154,11 @@ const Pdv = React.lazy(() => import("./pages/Pdv"));
 const PdvCashHistory = React.lazy(() => import("./pages/PdvCashHistory"));
 const PdvReports = React.lazy(() => import("./pages/PdvReports"));
 const PdvSettings = React.lazy(() => import("./pages/PdvSettings"));
+// Laboratório visual isolado do PDV. A rota só existe no dev server e o
+// conteúdo usa fixtures locais: não consulta dados reais nem passa pelos gates.
+const PdvUiReview = import.meta.env.DEV
+  ? React.lazy(() => import("./pages/dev/PdvUiReview"))
+  : null;
 const Finance = React.lazy(() => import("./pages/Finance"));
 const FiscalSettings = React.lazy(() => import("./pages/FiscalSettings"));
 const NotasFiscais = React.lazy(() => import("./pages/NotasFiscais"));
@@ -662,6 +667,9 @@ function localizedAppRoutes(key: string, element: React.ReactNode): React.ReactE
 const AppRoutes = () => (
   <React.Suspense fallback={<LoadingSpinner />}>
   <Routes>
+    {PdvUiReview && (
+      <Route path="/__dev/pdv-ui-review/*" element={<PdvUiReview />} />
+    )}
     {/* Rotas públicas de marketing SEM prefixo = pt-br (canônicas). O layout
         monta a auto-detecção client-side (só para humano) que, sem cookie e com
         navigator.language en/es/fr, redireciona pro idioma detectado. */}

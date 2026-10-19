@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.5',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Pagamento em dinheiro mais simples no PDV',
+        description: 'Ao finalizar uma venda com uma única forma de pagamento em dinheiro, o caixa agora pede apenas quanto o cliente entregou. O total continua em destaque e o troco é calculado sem repetir o valor da venda em outro campo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.4',
     date: '19 de outubro de 2026',
     type: 'patch',

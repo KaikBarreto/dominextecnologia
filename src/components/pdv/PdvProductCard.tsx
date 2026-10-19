@@ -59,6 +59,18 @@ interface PdvProductCardProps {
    * (`text-[10px]`/`leading-none`) ≈10px ≈ 142px.
    */
   compact?: boolean;
+  /**
+   * Proporção reservada para a foto. `landscape` mantém o comportamento atual;
+   * `square` atende catálogos cuja fotografia de produto nasce em 1:1.
+   * A imagem continua com `object-contain`, então mudar a moldura não corta a peça.
+   */
+  imageAspect?: 'landscape' | 'square';
+  /**
+   * Tratamento do espaço atrás da imagem. `blur` preserva o preenchimento atual
+   * para fotografias; `cutout` usa uma superfície neutra para PNG/WebP com
+   * transparência, evitando transformar logos e recortes em uma mancha de cor.
+   */
+  imageBackdrop?: 'blur' | 'cutout';
 }
 
 /**
@@ -77,6 +89,8 @@ function PdvProductCardImpl({
   noPhotoLabel,
   onSelect,
   compact = false,
+  imageAspect = 'landscape',
+  imageBackdrop = 'blur',
 }: PdvProductCardProps) {
   const outOfStock = product.availableQuantity <= 0;
 
@@ -110,7 +124,7 @@ function PdvProductCardImpl({
           precisa ficar fora do escopo da opacidade, senão o vermelho lava
           pra um salmão pálido — exatamente o antipadrão que a régua proíbe.
 
-          `aspect-[4/3]` (não `aspect-square`): com a grade populada (38
+          A variante `landscape` continua em `aspect-[4/3]`: com a grade populada (38
           produtos, foto+saldo reais) a foto quadrada em 221px de card total
           deixava só ~97px pro nome+preço+saldo, e o preço ficava fora da
           janela de rolagem (medido 2026-10-18, regressão do Finalizar
@@ -119,8 +133,11 @@ function PdvProductCardImpl({
           visíveis na própria célula. */}
       <div
         className={cn(
-          'relative w-full bg-muted/40',
-          compact ? 'h-16' : 'aspect-[4/3]',
+          'relative w-full',
+          imageBackdrop === 'cutout' && product.imageUrl
+            ? 'bg-[radial-gradient(circle_at_50%_42%,hsl(var(--background))_0%,hsl(var(--muted)/0.72)_100%)]'
+            : 'bg-muted/40',
+          imageAspect === 'square' ? 'aspect-square' : compact ? 'h-16' : 'aspect-[4/3]',
           outOfStock && 'opacity-60',
         )}
       >
@@ -170,10 +187,14 @@ function PdvProductCardImpl({
           alt={product.name}
           fallbackLabel={noPhotoLabel}
           className={cn('absolute inset-0 h-full w-full object-contain', !photoReady && 'opacity-0')}
-          blurFillClassName={cn(
-            'absolute inset-0 h-full w-full scale-110 object-cover blur-xl',
-            !photoReady && 'opacity-0',
-          )}
+          blurFillClassName={
+            imageBackdrop === 'blur'
+              ? cn(
+                  'absolute inset-0 h-full w-full scale-110 object-cover blur-xl',
+                  !photoReady && 'opacity-0',
+                )
+              : undefined
+          }
           onLoad={() => setPhotoReady(true)}
         />
       </div>
@@ -236,10 +257,14 @@ export const PdvProductCard = memo(PdvProductCardImpl);
  * Pedido do CEO 2026-10-18: "faça o carregamento de tudo ser amigável com
  * skeletons".
  */
-export function PdvProductCardSkeleton() {
+export function PdvProductCardSkeleton({
+  imageAspect = 'landscape',
+}: {
+  imageAspect?: 'landscape' | 'square';
+} = {}) {
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-background">
-      <Skeleton className="aspect-[4/3] w-full rounded-none" />
+      <Skeleton className={cn(imageAspect === 'square' ? 'aspect-square' : 'aspect-[4/3]', 'w-full rounded-none')} />
       <div className="flex flex-col gap-1.5 p-2">
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-2/3" />

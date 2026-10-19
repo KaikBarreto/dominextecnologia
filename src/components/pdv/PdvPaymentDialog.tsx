@@ -501,6 +501,10 @@ export function PdvPaymentDialog({
             const rowChange = computeRowChange(row);
             const meta = METHOD_META[row.method];
             const Icon = meta.icon;
+            // Forma única em dinheiro: o valor da venda já está no placar e
+            // corresponde ao total. No modo múltiplo o campo continua porque
+            // define quanto da parcela será pago em dinheiro.
+            const showPaymentAmount = multiplePayments || row.method !== 'dinheiro';
             return (
               <div
                 key={row.id}
@@ -520,34 +524,37 @@ export function PdvPaymentDialog({
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`pdv-pay-amount-${row.id}`}>{texts.amountLabel}</Label>
-                    <PdvMoneyInput
-                      id={`pdv-pay-amount-${row.id}`}
-                      value={row.amount}
-                      autoFocus={sortedRows[0]?.id === row.id}
-                      onChange={(value) => patchRow(row.id, { amount: value })}
-                    />
-                    {rows.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => fillRemaining(row.id)}
-                      >
-                        {texts.fillRemaining}
-                      </Button>
-                    )}
-                  </div>
+                <div className={cn('grid grid-cols-1 gap-3', showPaymentAmount && 'sm:grid-cols-2')}>
+                  {showPaymentAmount && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`pdv-pay-amount-${row.id}`}>{texts.amountLabel}</Label>
+                      <PdvMoneyInput
+                        id={`pdv-pay-amount-${row.id}`}
+                        value={row.amount}
+                        autoFocus={sortedRows[0]?.id === row.id}
+                        onChange={(value) => patchRow(row.id, { amount: value })}
+                      />
+                      {rows.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => fillRemaining(row.id)}
+                        >
+                          {texts.fillRemaining}
+                        </Button>
+                      )}
+                    </div>
+                  )}
 
                   {row.method === 'dinheiro' && (
-                    <div className="space-y-1.5">
+                    <div className={cn('space-y-1.5', !showPaymentAmount && 'sm:max-w-sm')}>
                       <Label htmlFor={`pdv-pay-tendered-${row.id}`}>{texts.tenderedLabel}</Label>
                       <PdvMoneyInput
                         id={`pdv-pay-tendered-${row.id}`}
                         value={row.tendered}
+                        autoFocus={!showPaymentAmount && sortedRows[0]?.id === row.id}
                         onChange={(value) => patchRow(row.id, { tendered: value })}
                       />
                       <p className="text-xs text-muted-foreground">
