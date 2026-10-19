@@ -23,7 +23,16 @@ import { ImportRowStatusBadge } from './ImportRowStatusBadge';
 
 const PAGE_SIZE = 50;
 
-/** `2026-10-18` → `18/10/2026`. Nunca `new Date(iso)` (UTC voltaria um dia). */
+/**
+ * `2026-10-18` → `18/10/2026`. Nunca `new Date(iso)` (UTC voltaria um dia).
+ *
+ * Usado também pra segunda linha da célula de data, o VENCIMENTO, que só
+ * aparece em linha NÃO paga com vencimento resolvido — é o único caso em que
+ * `due_date` tem efeito (o servidor devolve NULL em linha paga). Vai junto da
+ * data em vez de virar coluna própria porque a tabela já tem 7 colunas e o CEO
+ * não aceita tabela apertada; o dado precisa estar VISÍVEL na conferência de
+ * todo jeito, senão o cliente grava um vencimento que nunca viu.
+ */
 function formatDateBR(iso: string | null): string {
   if (!iso) return '';
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -31,8 +40,8 @@ function formatDateBR(iso: string | null): string {
   return `${m[3]}/${m[2]}/${m[1]}`;
 }
 
-function rowNeedsAttention(row: FinancialImportPreviewRow): boolean {
-  return row.status !== 'ready' || row.issues.length > 0;
+function rowNeedsAttention(row: FinancialImportPreviewRow, clientIssues: string[] = []): boolean {
+  return row.status !== 'ready' || row.issues.length > 0 || clientIssues.length > 0;
 }
 
 interface ImportRowsListProps {
@@ -44,6 +53,21 @@ interface ImportRowsListProps {
   categories: FinancialCategory[];
   accounts: FinancialAccount[];
   costCenters: CostCenter[];
+  /**
+   * Problemas que o PARSER do navegador achou, por número de linha.
+   *
+   * ⚠️ Esta tela desenha o que o SERVIDOR devolve. Todo problema que o parser
+   * achou e o servidor não consegue redescobrir — porque o parser já zerou o
+   * campo antes de enviar — simplesmente DESAPARECIA. Provado em 18/10/2026
+   * com uma planilha de QA: a célula de vencimento escrita "mes que vem" saía
+   * como "Pronta, vence 15/10/2026" (a data do lançamento, via fallback do
+   * servidor), sem uma palavra sobre o texto ilegível. O sistema inventava uma
+   * data em silêncio. Vale pro vencimento E pra data de pagamento.
+   *
+   * Regra: quem achou o problema mostra o problema. Linha com problema de
+   * parser também NÃO vem marcada por padrão — o cliente tem que escolher.
+   */
+  clientIssues: Record<number, string[]>;
   locale: LocaleCode;
   currency: string;
 }
@@ -62,6 +86,7 @@ export function ImportRowsList({
   categories,
   accounts,
   costCenters,
+  clientIssues,
   locale,
   currency,
 }: ImportRowsListProps) {
@@ -73,8 +98,12 @@ export function ImportRowsList({
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const filtered = useMemo(
-    () => (attentionOnly ? rows.filter(rowNeedsAttention) : rows),
-    [rows, attentionOnly],
+    () => (attentionOnly ? rows.filter((r) => rowNeedsAttention(r, clientIssues[r.row_number])) : rows),
+    // `clientIssues` É dependência. Em 18/10/2026 um `useMemo` com deps
+    // incompletas deixou o botão "Desfazer" da conciliação travado em produção
+    // por um dia — o memo nunca recomputava porque a dep que mudava não estava
+    // na lista. Não repetir.
+    [rows, attentionOnly, clientIssues],
   );
   const visibleRows = filtered.slice(0, visibleCount);
 
@@ -175,11 +204,16 @@ export function ImportRowsList({
     );
   };
 
-  /** Mensagens das issues de erro (bloqueiam) separadas das de aviso (não bloqueiam, ex: contraparte). */
+  /**
+   * Issues de erro (bloqueiam) separadas das de aviso (não bloqueiam, ex:
+   * contraparte) — e, por último, os problemas achados pelo PARSER, que o
+   * servidor não tem como ver (ver `clientIssues` nas props).
+   */
   const rowIssueMessages = (row: FinancialImportPreviewRow) => {
     const errors = row.issues.filter((i) => i.severity === 'error');
     const warnings = row.issues.filter((i) => i.severity === 'warning');
-    return { errors, warnings };
+    const doParser = clientIssues[row.row_number] ?? [];
+    return { errors, warnings, doParser };
   };
 
   const header = (
@@ -210,7 +244,7 @@ export function ImportRowsList({
         {header}
         <div className="space-y-2">
           {visibleRows.map((row) => {
-            const { errors, warnings } = rowIssueMessages(row);
+            const { errors, warnings, doParser } = rowIssueMessages(row);
             const isChecked = !!selected[row.row_number];
             return (
               <div
@@ -230,7 +264,14 @@ export function ImportRowsList({
                     />
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{row.description}</p>
-                      <p className="text-xs text-muted-foreground tabular-nums">{formatDateBR(row.date)}</p>
+                      <p className="text-xs text-muted-foreground tabular-nums">
+                        {formatDateBR(row.date)}
+                        {!row.is_paid && row.due_date && (
+                          <span className="ml-1.5">
+                            · {t.dueDateLine.replace('{date}', formatDateBR(row.due_date))}
+                          </span>
+                        )}
+                      </p>
                     </div>
                   </div>
                   <ImportRowStatusBadge status={row.status} locale={locale} />
@@ -270,6 +311,12 @@ export function ImportRowsList({
                   </div>
                 )}
 
+                {doParser.map((mensagem, i) => (
+                  <p key={`p${i}`} className="flex items-start gap-1.5 text-xs text-warning">
+                    <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+                    {mensagem}
+                  </p>
+                ))}
                 {errors.map((issue, i) => (
                   <p key={i} className="flex items-start gap-1.5 text-xs text-destructive">
                     <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
@@ -312,7 +359,7 @@ export function ImportRowsList({
           </TableHeader>
           <TableBody>
             {visibleRows.map((row) => {
-              const { errors, warnings } = rowIssueMessages(row);
+              const { errors, warnings, doParser } = rowIssueMessages(row);
               const isChecked = !!selected[row.row_number];
               return (
                 <TableRow key={row.row_number} className={cn(row.status === 'blocked' && 'bg-destructive/5')}>
@@ -323,7 +370,14 @@ export function ImportRowsList({
                       disabled={row.status === 'blocked'}
                     />
                   </TableCell>
-                  <TableCell className="tabular-nums whitespace-nowrap">{formatDateBR(row.date)}</TableCell>
+                  <TableCell className="tabular-nums whitespace-nowrap">
+                    {formatDateBR(row.date)}
+                    {!row.is_paid && row.due_date && (
+                      <p className="text-xs text-muted-foreground">
+                        {t.dueDateLine.replace('{date}', formatDateBR(row.due_date))}
+                      </p>
+                    )}
+                  </TableCell>
                   <TableCell className="max-w-[220px]">
                     <p className="truncate">{row.description}</p>
                     {errors.map((issue, i) => (
@@ -336,6 +390,12 @@ export function ImportRowsList({
                       <p key={i} className="flex items-start gap-1 text-xs text-warning mt-0.5">
                         <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
                         {issue.message}
+                      </p>
+                    ))}
+                    {doParser.map((mensagem, i) => (
+                      <p key={`p${i}`} className="flex items-start gap-1 text-xs text-warning mt-0.5">
+                        <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+                        {mensagem}
                       </p>
                     ))}
                     {row.status === 'duplicate' && (

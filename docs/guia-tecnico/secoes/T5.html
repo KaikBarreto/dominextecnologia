@@ -7,17 +7,17 @@
     <span><b>Onde fica:</b> Menu → Ordens de Serviço</span>
     <span><b>Rotas:</b> <code>/ordens-servico</code>. O link de campo e o link do cliente usam <code>/os-tecnico/&lt;endereço da OS&gt;</code></span>
     <span><b>Depende de:</b> ter cliente cadastrado. Tipo de serviço, equipamento e checklist são opcionais, mas mudam muito o resultado</span>
-    <span><b>Quem enxerga:</b> quem tem a tela <b>Ordens de Serviço</b> liberada. As ações <b>Criar OS</b>, <b>Editar OS</b>, <b>Excluir OS</b> e <b>Reabrir OS</b> são permissões separadas. Admin e gestor têm tudo por padrão</span>
+    <span><b>Quem enxerga:</b> quem tem a tela <b>Ordens de Serviço</b> liberada. As ações <b>Criar OS</b>, <b>Editar OS</b>, <b>Excluir OS</b> e <b>Resetar OS</b> são permissões separadas. Admin e gestor têm tudo por padrão</span>
     <span><b>Módulo:</b> a tela não depende de módulo pago</span>
   </div>
 
   <h2>1. Tela Ordens de Serviço: kanban × lista e os 4 indicadores do topo</h2>
 
-  <p>A tela se chama <span class="ui">Ordens de Serviço</span>, com o subtítulo "Gerencie suas ordens de serviço". Ela tem três abas na navegação lateral: <span class="ui">Ordens de Serviço</span>, <span class="ui">Relatório</span> e <span class="ui">NPS e Satisfação</span>.</p>
+  <p>A tela se chama <span class="ui">Ordens de Serviço</span>, com o subtítulo "Gerencie suas ordens de serviço". Ela tem quatro abas na navegação lateral: <span class="ui">Ordens de Serviço</span>, <span class="ui">Chamados</span>, <span class="ui">Relatório</span> e <span class="ui">NPS e Satisfação</span>.</p>
 
   <figure>
-    <img src="img/t5-ordens-servico.png" alt="Tela Ordens de Serviço da Dominex em visão kanban, com os quatro indicadores no topo (OS Abertas, Concluídas, Atrasadas, Próximos 7 dias) e as colunas de status com os cartões de cada OS">
-    <figcaption>Tela Ordens de Serviço: indicadores no topo e o kanban por status.</figcaption>
+    <img src="img/t5-ordens-servico.png" alt="Tela Ordens de Serviço da Dominex em visão kanban, com as quatro abas da navegação lateral (Ordens de Serviço, Chamados, Relatório, NPS e Satisfação), os quatro indicadores no topo (OS Abertas, Concluídas, Atrasadas, Próximos 7 dias) e as colunas de status com os cartões de cada OS">
+    <figcaption>Tela Ordens de Serviço: as quatro abas, os indicadores no topo e o kanban por status.</figcaption>
   </figure>
 
   <h3>As duas visões</h3>
@@ -28,7 +28,7 @@
   </ul>
 
   <figure>
-    <img src="img/t5-lista-os.png" alt="Tela Ordens de Serviço na visão Lista, com os quatro indicadores no topo e a tabela com as colunas OS, Criador, Cliente, Tipo, Data e Status, mostrando OS agendadas com selo azul LEI 13.589 nas que pertencem a contrato PMOC">
+    <img src="img/t5-lista-os.png" alt="Tela Ordens de Serviço na visão Lista, com os quatro indicadores no topo e a tabela com as colunas OS, Criador, Cliente, Tipo, Data e Status, mostrando OS agendadas com selo azul LEI 13.589 nas que pertencem a contrato PMOC e o selo verde Faturada nas OS com receita já lançada">
     <figcaption>Visão Lista: mesma tela, em tabela em vez de kanban. O selo "LEI 13.589" identifica OS geradas por contrato PMOC.</figcaption>
   </figure>
 
@@ -248,7 +248,7 @@
 
   <p>Passando o mouse sobre um cartão, aparecem dois botões no canto superior direito: o lápis, que abre a edição (laranja no hover), e a lixeira, que abre a exclusão (vermelha no hover). Cada botão só aparece para quem tem a permissão correspondente. No canto inferior direito do cartão aparece o avatar de quem criou a OS, com o nome no tooltip.</p>
 
-  <p>Clicando no cartão, abre o resumo da OS. Nele estão o cliente, o equipamento, o check-in e check-out, as fotos, os detalhes do serviço, os valores e a conformidade PMOC quando houver, mais uma linha de botões redondos: <span class="ui">Retomar</span>, <span class="ui">Pausar</span>, <span class="ui">Finalizar</span>, <span class="ui">Reabrir</span>, <span class="ui">Editar</span>, <span class="ui">Excluir</span> e um botão para copiar o link, além do botão grande embaixo que muda de nome conforme o estado: <span class="ui">Preencher OS</span> em OS aberta, <span class="ui">Relatório de Serviço</span> em OS concluída. Quando a empresa tem o recurso de consumo de estoque na OS ligado e o técnico lançou material nesse atendimento, o resumo também mostra o bloco <span class="ui">Materiais utilizados</span>, só leitura: cada linha traz o material, a quantidade, a unidade e o local de estoque, com o custo da linha e o <span class="ui">Custo total</span> ao final (item ainda não baixado do estoque mostra o aviso <span class="ui">Ainda não baixado do estoque</span>).</p>
+  <p>Clicando no cartão, abre o resumo da OS. Nele estão o cliente, o equipamento, o check-in e check-out, as fotos, os detalhes do serviço, os valores e a conformidade PMOC quando houver, mais uma linha de botões redondos: <span class="ui">Retomar</span>, <span class="ui">Pausar</span>, <span class="ui">Finalizar</span>, <span class="ui">Resetar OS</span> (quando a OS já passou de Agendada), <span class="ui">Editar</span>, <span class="ui">Excluir</span> e um botão para copiar o link, além do botão grande embaixo que muda de nome conforme o estado: <span class="ui">Preencher OS</span> em OS aberta, <span class="ui">Relatório de Serviço</span> em OS concluída. Quando a empresa tem o recurso de consumo de estoque na OS ligado e o técnico lançou material nesse atendimento, o resumo também mostra o bloco <span class="ui">Materiais utilizados</span>, só leitura: cada linha traz o material, a quantidade, a unidade e o local de estoque, com o custo da linha e o <span class="ui">Custo total</span> ao final (item ainda não baixado do estoque mostra o aviso <span class="ui">Ainda não baixado do estoque</span>).</p>
 
   <h3>O "+" no cabeçalho da coluna</h3>
 
@@ -411,7 +411,42 @@
 
   <p>Quando a OS pertence a um contrato PMOC, a janela de edição mostra uma faixa de identificação no topo e, no campo de descrição, um aviso amarelo: "Esta OS pertence a um contrato PMOC. Os primeiros 200 caracteres deste texto podem aparecer no portal público da unidade, escreva pensando em quem está do outro lado (cliente, fiscal sanitário)." <b>Isso não é erro.</b> É um lembrete de que aquele texto é público.</p>
 
-  <h2>13. Aba Relatório: leitura do dashboard de OS</h2>
+  <h2>13. Aba Chamados: pedidos abertos pelo cliente no portal</h2>
+
+  <p>A aba <span class="ui">Chamados</span>, entre <span class="ui">Ordens de Serviço</span> e <span class="ui">Relatório</span>, reúne as OS que nasceram de um pedido do próprio cliente, feito sem passar pelo seu time: pelo Portal do Cliente ou pelo portal público de um contrato PMOC. O número ao lado do nome da aba mostra quantos chamados estão em aberto agora.</p>
+
+  <p>A tela tem busca (por chamado, cliente, equipamento ou contrato), o filtro <span class="ui">Chamados abertos</span> / <span class="ui">Todos os chamados</span> (abertos é o padrão ao abrir) e o filtro de origem <span class="ui">Todos os portais</span> / <span class="ui">Portal do Cliente</span> / <span class="ui">Portal do Contrato</span>. A lista traz <span class="ui">OS</span>, <span class="ui">Cliente</span> (com o equipamento embaixo, quando houver), <span class="ui">Descrição</span>, <span class="ui">Origem</span>, a data em que o chamado foi aberto e o <span class="ui">Status</span>, com um ícone de olho pra abrir a OS. Sem nenhum chamado recebido, a tela mostra "Nenhum chamado recebido" com "Os chamados abertos pelos portais aparecerão aqui.".</p>
+
+  <div class="regra">
+    Um chamado some da lista de "abertos" quando a OS é concluída ou cancelada, do mesmo jeito que sai dos indicadores de <span class="ui">OS Abertas</span> da aba principal. A aba Chamados não cria OS nem muda nada por conta própria: é uma lente sobre as OS que já existem, filtrando pela origem.
+  </div>
+
+  <figure>
+    <img src="img/t5-aba-chamados.png" alt="Aba Chamados da tela de Ordens de Serviço, com a busca, os filtros Chamados abertos/Todos os chamados e Todos os portais/Portal do Cliente/Portal do Contrato, e a tabela com OS, Cliente, Descrição, Origem, data de abertura e Status">
+    <figcaption>Aba Chamados: pedidos de serviço abertos pelo cliente, direto no portal, sem passar pelo seu time.</figcaption>
+  </figure>
+
+  <h2>14. Resetar OS e Faturar OS: duas ações por fora do fluxo normal</h2>
+
+  <h3>Resetar OS</h3>
+
+  <p>A ação <span class="ui">Resetar OS</span> (ícone de seta circular) mora no resumo da OS e no menu de ações da lista e do kanban. Ela aparece para OS <span class="ui">A Caminho</span>, <span class="ui">Em Andamento</span>, <span class="ui">Pausada</span> ou <span class="ui">Concluída</span>, e some em <span class="ui">Agendada</span>/<span class="ui">Pendente</span> (não faria sentido resetar o que ainda nem começou) e em <span class="ui">Cancelada</span>.</p>
+
+  <p>Confirmando, a janela pergunta "Resetar OS #N?" com o aviso "A OS voltará para Agendada e poderá ser marcada como A caminho e receber um novo check-in.", e oferece a escolha entre manter o preenchimento anterior (checklists, fotos, assinaturas) ou apagá-lo. A mensagem final confirma qual das duas opções foi aplicada.</p>
+
+  <div class="aviso">
+    Essa ação substituiu o que antes se chamava <b>Reabrir OS</b>: a permissão no editor de permissões agora se chama <span class="ui">Resetar OS</span>, e o comportamento mudou de "reabre pra editar, continuando de onde parou" para "volta pro início do atendimento, com check-in novo". Quem tinha a permissão antiga já tem a nova, sem precisar reconceder nada.
+  </div>
+
+  <h3>Faturar OS</h3>
+
+  <p>A ação <span class="ui">Faturar OS</span> (ícone de recibo) existe no menu de ações da tabela, na lista do celular, no card do kanban e no painel de detalhe da Agenda. Ela só aparece para quem tem a tela <span class="ui">Financeiro</span> liberada e a permissão fina de lançar receita de OS; sem isso, nenhum botão novo aparece em lugar nenhum.</p>
+
+  <p>Abrindo a ação, a janela oferece duas escolhas: <span class="ui">Lançar receita</span> ("Dinheiro que já entrou por este serviço.") ou <span class="ui">Gerar cobrança</span> ("PIX, boleto ou link de pagamento pelo Asaas, com vencimento."). É a mesma escolha que já existia no aviso automático ao finalizar a OS, só que disponível a qualquer momento e em qualquer OS, não só no instante de finalizar.</p>
+
+  <p>Depois de faturada, um selo aparece ao lado do código da OS em toda tela que lista a OS (tabela, lista do celular, card do kanban, painel da Agenda): <span class="ui">Faturada</span> (verde, com o valor lançado) quando há receita, ou <span class="ui">Cobrança enviada</span> (azul) quando existe uma cobrança viva. Cobrança viva tem prioridade sobre receita no selo, porque é a informação mais específica no momento.</p>
+
+  <h2>15. Aba Relatório: leitura do dashboard de OS</h2>
 
   <p>A aba <span class="ui">Relatório</span> transforma as OS em números. Ela respeita o mesmo recorte de período da tela.</p>
 
@@ -425,16 +460,17 @@
 
   <h3>Os gráficos</h3>
   <ul>
-    <li><span class="ui">OS por Status</span>: rosca com a cor de cada status. Serve para ver gargalo: muita OS parada em "A Caminho" é rota mal planejada, muita em "Pausada" é serviço que não fecha.</li>
+    <li><span class="ui">OS por Status</span>: rosca com a cor de cada status e o total de OS do período no centro. Serve para ver gargalo: muita OS parada em "A Caminho" é rota mal planejada, muita em "Pausada" é serviço que não fecha.</li>
     <li><span class="ui">OS por Tipo de Serviço</span>: barras. Mostra o que a empresa realmente vende, que às vezes não é o que ela acha que vende.</li>
-    <li><span class="ui">Volume de OS ao Longo do Tempo</span>: linha por mês. Revela sazonalidade (verão, período de chuva, fim de ano).</li>
-    <li><span class="ui">Faturamento ao Longo do Tempo</span>: linha por mês, em reais.</li>
+    <li><span class="ui">Volume de OS ao Longo do Tempo</span>: área com duas linhas, <span class="ui">Total</span> e <span class="ui">Concluídas</span>, por dia quando o período escolhido tem até dois meses, ou por mês em períodos maiores. Revela sazonalidade (verão, período de chuva, fim de ano).</li>
+    <li><span class="ui">Faturamento ao Longo do Tempo</span>: barras por mês, em reais.</li>
     <li><span class="ui">OS por Dia da Semana</span>: barras. Ajuda a decidir escala e plantão.</li>
+    <li><span class="ui">Saúde do Agendamento</span>: barras horizontais com quatro situações, calculadas só a partir da data agendada e da conclusão real, sem supor prazo contratual nenhum: <span class="ui">Concluídas no prazo</span>, <span class="ui">Concluídas após a data</span>, <span class="ui">Abertas em atraso</span> e <span class="ui">Sem data de conclusão</span>.</li>
   </ul>
 
   <figure>
-    <img src="img/t5-aba-relatorio.png" alt="Aba Relatório de Ordens de Serviço com os indicadores Total de OS, Taxa de conclusão, Tempo médio e Faturamento, e os gráficos OS por Status (rosca) e OS por Tipo de Serviço (barras), em uma conta de exemplo com todas as OS ainda agendadas">
-    <figcaption>Aba Relatório: indicadores e gráficos do período escolhido no topo.</figcaption>
+    <img src="img/t5-aba-relatorio.png" alt="Aba Relatório de Ordens de Serviço com os indicadores Total de OS, Taxa de conclusão, Tempo médio e Faturamento em cartões coloridos, o gráfico OS por Status em rosca com o total no centro, o gráfico OS por Tipo de Serviço em barras, e mais abaixo os gráficos de Volume de OS ao Longo do Tempo, Faturamento, OS por Dia da Semana e Saúde do Agendamento, em uma conta de exemplo com todas as OS ainda agendadas">
+    <figcaption>Aba Relatório: indicadores e gráficos do período escolhido no topo, incluindo o gráfico de Saúde do Agendamento.</figcaption>
   </figure>
 
   <h3>Os dois rankings</h3>
@@ -445,7 +481,7 @@
 
   <p>Onde não houver dado no período, o gráfico mostra "Sem dados". Isso quase sempre significa período muito estreito, não falta de informação.</p>
 
-  <h2>14. Aba NPS: promotores, neutros, detratores e o comentário aberto do detrator</h2>
+  <h2>16. Aba NPS: promotores, neutros, detratores e o comentário aberto do detrator</h2>
 
   <p>A aba <span class="ui">NPS e Satisfação</span> reúne o que os clientes responderam nas pesquisas geradas ao finalizar OS.</p>
 

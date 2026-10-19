@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, type FormEvent, type ReactNode } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import {
   Package,
@@ -18,6 +18,8 @@ import {
   User,
   Users,
   CreditCard,
+  LockKeyhole,
+  LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -153,7 +155,7 @@ interface PortalCharge {
 }
 
 interface PortalPayload {
-  access?: 'granted' | 'denied' | 'module_unavailable';
+  access?: 'granted' | 'denied' | 'module_unavailable' | 'password_required';
   viewer_can_fill?: boolean;
   company_name?: string | null;
   customer: Customer;
@@ -163,7 +165,24 @@ interface PortalPayload {
   equipment_field_config?: FieldConfig[];
   contracts?: PortalContractSummary[];
   charges?: PortalCharge[];
+  permissions?: PortalPermissions;
 }
+
+interface PortalPermissions {
+  service_orders: boolean;
+  equipment: boolean;
+  contracts: boolean;
+  charges: boolean;
+  ticket_requests: boolean;
+}
+
+const DEFAULT_PORTAL_PERMISSIONS: PortalPermissions = {
+  service_orders: true,
+  equipment: true,
+  contracts: true,
+  charges: true,
+  ticket_requests: true,
+};
 
 // Cores de badge por status (fundo saturado + texto branco, regra Dominex).
 const OS_STATUS_STYLE: Record<string, { badgeClass: string }> = {
@@ -225,6 +244,7 @@ function filterOutInternalTasks<T>(orders: T[] | null | undefined): T[] {
 
 export default function CustomerPortal() {
   const { token } = useParams<{ token: string }>();
+  const sessionKey = `dominex_customer_portal_session_${token ?? ''}`;
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
@@ -239,17 +259,30 @@ export default function CustomerPortal() {
   const [moduleUnavailable, setModuleUnavailable] = useState(false);
   const [unavailableCompanyName, setUnavailableCompanyName] = useState<string | null>(null);
   const [viewerCanFill, setViewerCanFill] = useState(false);
+  const [permissions, setPermissions] = useState<PortalPermissions>(DEFAULT_PORTAL_PERMISSIONS);
+  const [passwordRequired, setPasswordRequired] = useState(false);
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [loggingIn, setLoggingIn] = useState(false);
+  const [sessionToken, setSessionToken] = useState(() => {
+    if (typeof window === 'undefined' || !token) return '';
+    return window.sessionStorage.getItem(`dominex_customer_portal_session_${token}`) ?? '';
+  });
 
   // Carrega TUDO que o portal precisa numa unica RPC SECURITY DEFINER que valida
   // o token internamente. Sem leituras anon diretas de tabelas do tenant.
-  const loadPortalData = async () => {
+  const loadPortalData = useCallback(async (activeSession: string) => {
     setLoading(true);
     setError(null);
     setAccessDenied(false);
     setModuleUnavailable(false);
+    setPasswordRequired(false);
     try {
       const { data, error: rpcError } = await supabase
-        .rpc('get_portal_data', { p_token: token! });
+        .rpc('get_portal_data', {
+          p_token: token!,
+          p_session_token: activeSession || null,
+        });
 
       if (rpcError || !data) {
         setError('portal_not_found');
@@ -273,7 +306,20 @@ export default function CustomerPortal() {
         return;
       }
 
+      if (payload.access === 'password_required') {
+        setPasswordRequired(true);
+        setViewerCanFill(false);
+        setCustomer(null);
+        if (activeSession && typeof window !== 'undefined') {
+          window.sessionStorage.removeItem(sessionKey);
+          setSessionToken('');
+        }
+        setLoading(false);
+        return;
+      }
+
       setViewerCanFill(payload.viewer_can_fill === true);
+      setPermissions(payload.permissions ?? DEFAULT_PORTAL_PERMISSIONS);
       setCustomer(payload.customer);
       setCompanySettings(payload.company_settings ?? null);
       setEquipment(payload.equipment ?? []);
@@ -292,11 +338,58 @@ export default function CustomerPortal() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sessionKey, token]);
 
   useEffect(() => {
-    loadPortalData();
-  }, [token]);
+    const storedSession = typeof window !== 'undefined'
+      ? window.sessionStorage.getItem(sessionKey) ?? ''
+      : '';
+    setSessionToken(storedSession);
+    void loadPortalData(storedSession);
+  }, [loadPortalData, sessionKey]);
+
+  const handlePortalLogin = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!token || loggingIn || !password) return;
+    setLoggingIn(true);
+    setLoginError(null);
+    try {
+      const { data, error: loginRpcError } = await supabaseAnon.rpc('customer_portal_login', {
+        p_token: token,
+        p_password: password,
+      });
+      if (loginRpcError || !data || typeof data !== 'object') {
+        setLoginError('Não foi possível entrar. Tente novamente.');
+        return;
+      }
+      const result = data as Record<string, unknown>;
+      if (result.ok !== true || typeof result.session_token !== 'string') {
+        setLoginError(result.error === 'locked'
+          ? 'Muitas tentativas incorretas. Aguarde 15 minutos e tente novamente.'
+          : 'Senha inválida. Confira e tente novamente.');
+        return;
+      }
+      const nextSession = result.session_token;
+      window.sessionStorage.setItem(sessionKey, nextSession);
+      setSessionToken(nextSession);
+      setPassword('');
+      await loadPortalData(nextSession);
+    } catch {
+      setLoginError('Não foi possível entrar. Tente novamente.');
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+
+  const handlePortalLogout = () => {
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem(sessionKey);
+    }
+    setSessionToken('');
+    setPassword('');
+    setLoginError(null);
+    void loadPortalData('');
+  };
 
   // Realtime: quando uma OS do cliente muda, recarrega o portal pela RPC validada
   // por token (nao lemos service_orders direto - RLS sem token).
@@ -307,11 +400,11 @@ export default function CustomerPortal() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'service_orders', filter: `customer_id=eq.${customer.id}` },
-        () => { loadPortalData(); },
+        () => { void loadPortalData(sessionToken); },
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [customer?.id]);
+  }, [customer?.id, loadPortalData, sessionToken]);
 
   if (loading) {
     return (
@@ -323,6 +416,49 @@ export default function CustomerPortal() {
 
   if (moduleUnavailable) {
     return <PortalUnavailable companyName={unavailableCompanyName} />;
+  }
+
+  if (passwordRequired) {
+    return (
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+        <div className="absolute inset-0 z-0">
+          <DarkVeil hueShift={53} speed={0.5} />
+        </div>
+        <Card className="relative z-10 w-full max-w-sm border-white/15 bg-background/95 shadow-2xl backdrop-blur">
+          <CardContent className="space-y-6 p-6">
+            <div className="space-y-2 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <LockKeyhole className="h-6 w-6" />
+              </div>
+              <h1 className="text-2xl font-bold">Portal protegido</h1>
+              <p className="text-sm text-muted-foreground">
+                Digite a senha fornecida pela empresa para acessar seus dados.
+              </p>
+            </div>
+            <form onSubmit={handlePortalLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="customer-portal-login-password">Senha</Label>
+                <Input
+                  id="customer-portal-login-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  autoFocus
+                />
+              </div>
+              {loginError && (
+                <p role="alert" className="text-sm text-destructive">{loginError}</p>
+              )}
+              <Button type="submit" className="w-full" disabled={loggingIn || !password}>
+                {loggingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Entrar no portal
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (accessDenied) {
@@ -389,8 +525,11 @@ export default function CustomerPortal() {
         serviceOrders={serviceOrders}
         contracts={contracts}
         charges={charges}
+        permissions={permissions}
+        sessionToken={sessionToken}
         viewerCanFill={viewerCanFill}
-        onReload={loadPortalData}
+        onReload={() => loadPortalData(sessionToken)}
+        onLogout={sessionToken ? handlePortalLogout : undefined}
       />
     </PublicAppLocaleProvider>
   );
@@ -409,8 +548,11 @@ interface ContentProps {
   serviceOrders: ServiceOrder[];
   contracts: PortalContractSummary[];
   charges: PortalCharge[];
+  permissions: PortalPermissions;
+  sessionToken: string;
   viewerCanFill: boolean;
   onReload: () => Promise<void>;
+  onLogout?: () => void;
 }
 
 // Teal padrao Dominex (token --primary ~#00C684). Valor hex pra poder ir inline e
@@ -427,8 +569,11 @@ function CustomerPortalContent({
   serviceOrders,
   contracts,
   charges,
+  permissions,
+  sessionToken,
   viewerCanFill,
   onReload,
+  onLogout,
 }: ContentProps) {
   const [searchParams] = useSearchParams();
   const eqParam = searchParams.get('eq');
@@ -437,13 +582,13 @@ function CustomerPortalContent({
   const { locale, timezone, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.customers.portal;
 
-  const OS_STATUS_LABEL: Record<string, string> = {
+  const OS_STATUS_LABEL = useMemo<Record<string, string>>(() => ({
     pendente: t.statusPendente,
     em_andamento: t.statusEmAndamento,
     a_caminho: t.statusACaminho,
     concluida: t.statusConcluida,
     cancelada: t.statusCancelada,
-  };
+  }), [t]);
 
   // ── Estado do modal de chamado ──
   const [showTicketForm, setShowTicketForm] = useState(false);
@@ -493,7 +638,7 @@ function CustomerPortalContent({
         fuzzyIncludes(statusLabel, osSearch)
       );
     });
-  }, [serviceOrders, osSearch]);
+  }, [OS_STATUS_LABEL, serviceOrders, osSearch]);
 
   const filteredEquipment = useMemo(() => {
     if (!eqSearch.trim()) return equipment;
@@ -626,7 +771,7 @@ function CustomerPortalContent({
   };
 
   const handleSubmitTicket = async () => {
-    if (ticketDesc.trim().length < 10) return;
+    if (!permissions.ticket_requests || ticketDesc.trim().length < 10) return;
     setTicketSubmitting(true);
     try {
       // Antes daqui havia um INSERT direto em `service_orders`. Desde
@@ -635,7 +780,10 @@ function CustomerPortalContent({
       // Agora a criação passa pela RPC SECURITY DEFINER (ver
       // createCustomerPortalTicket), que revalida portal/permissão/assinatura/
       // módulo e resolve customer e company pelo token, sem confiar no client.
-      await createCustomerPortalTicket(token, ticketDesc, ticketEquipmentId);
+      // `sessionToken` é a sessão do portal com senha, a MESMA que autorizou a
+      // leitura: sem ela, um portal protegido aceitaria chamado de quem não
+      // passou pela senha.
+      await createCustomerPortalTicket(token, ticketDesc, sessionToken, ticketEquipmentId);
       toast({ title: t.ticketSuccess });
       setShowTicketForm(false);
       setTicketDesc('');
@@ -1194,18 +1342,28 @@ function CustomerPortalContent({
   );
 
   // ── Secoes de navegacao (mobile: pilulas; desktop: sidebar) ──
-  const navSections = [
-    { value: 'os', label: t.tabOs, icon: <ClipboardList className="h-4 w-4 shrink-0" /> },
-    { value: 'equipamentos', label: t.tabEquipment, icon: <Package className="h-4 w-4 shrink-0" /> },
+  const navSections = useMemo(() => [
+    ...(permissions.service_orders
+      ? [{ value: 'os', label: t.tabOs, icon: <ClipboardList className="h-4 w-4 shrink-0" /> }]
+      : []),
+    ...(permissions.equipment
+      ? [{ value: 'equipamentos', label: t.tabEquipment, icon: <Package className="h-4 w-4 shrink-0" /> }]
+      : []),
     // Aba Contratos: so aparece quando o cliente tem ao menos 1 contrato
-    ...(contracts.length > 0
+    ...(permissions.contracts && contracts.length > 0
       ? [{ value: 'contratos', label: t.sectionContracts, icon: <FileText className="h-4 w-4 shrink-0" /> }]
       : []),
     // Aba Cobranças: so aparece quando o cliente tem ao menos 1 cobranca
-    ...(charges.length > 0
+    ...(permissions.charges && charges.length > 0
       ? [{ value: 'cobrancas', label: t.sectionCharges, icon: <CreditCard className="h-4 w-4 shrink-0" /> }]
       : []),
-  ];
+  ], [charges.length, contracts.length, permissions, t]);
+
+  useEffect(() => {
+    if (navSections.length > 0 && !navSections.some((section) => section.value === activeTab)) {
+      setActiveTab(navSections[0].value);
+    }
+  }, [activeTab, navSections]);
 
   // ── Render principal com PublicPortalShell ──
   return (
@@ -1215,31 +1373,52 @@ function CustomerPortalContent({
       title={companySettings?.name || t.defaultTitle}
       subtitle={`${t.greeting} ${customer.name}`}
       headerAction={
-        <PortalContactButton
-          phone={companySettings?.phone}
-          email={companySettings?.email}
-          textColor={headerTextColor}
-        />
+        <div className="flex items-center gap-1.5">
+          <PortalContactButton
+            phone={companySettings?.phone}
+            email={companySettings?.email}
+            textColor={headerTextColor}
+          />
+          {onLogout && (
+            <button
+              type="button"
+              onClick={onLogout}
+              aria-label={MESSAGES[locale].app.shell.account.logout}
+              title={MESSAGES[locale].app.shell.account.logout}
+              className="flex h-9 w-9 items-center justify-center rounded-full transition-opacity active:opacity-70"
+              style={{ background: 'rgba(255,255,255,0.18)' }}
+            >
+              <LogOut className="h-4 w-4" style={{ color: headerTextColor }} />
+            </button>
+          )}
+        </div>
       }
       navSections={navSections}
       activeSection={activeTab}
       onSectionChange={setActiveTab}
-      footerCtaLabel={t.openTicket}
-      onFooterCta={() => setShowTicketForm(true)}
+      footerCtaLabel={permissions.ticket_requests ? t.openTicket : undefined}
+      onFooterCta={permissions.ticket_requests ? () => setShowTicketForm(true) : undefined}
       navLabel={t.sidebarNavLabel}
     >
       {/* Campo de busca de OS — no topo da aba */}
-      {activeTab === 'os' && (
+      {permissions.service_orders && activeTab === 'os' && (
         <div className="mb-4">
           {osSearchBar}
         </div>
       )}
 
       {/* Conteudo das abas */}
-      {activeTab === 'os' && osTabContent}
-      {activeTab === 'equipamentos' && eqTabContent}
-      {activeTab === 'contratos' && contractsTabContent}
-      {activeTab === 'cobrancas' && (
+      {navSections.length === 0 && (
+        <Card>
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            A empresa ainda não liberou conteúdos para este portal.
+          </CardContent>
+        </Card>
+      )}
+      {permissions.service_orders && activeTab === 'os' && osTabContent}
+      {permissions.equipment && activeTab === 'equipamentos' && eqTabContent}
+      {permissions.contracts && activeTab === 'contratos' && contractsTabContent}
+      {permissions.charges && activeTab === 'cobrancas' && (
         <PortalChargesSection
           charges={charges}
           t={{
@@ -1259,7 +1438,7 @@ function CustomerPortalContent({
       )}
 
       {/* Modal de chamado (preservado integralmente) */}
-      <ResponsiveModal
+      {permissions.ticket_requests && <ResponsiveModal
         open={showTicketForm}
         onOpenChange={(v) => {
           // Modal de criar/editar nao fecha ao clicar fora (regra-lei UI).
@@ -1308,7 +1487,7 @@ function CustomerPortalContent({
             {t.ticketSubmit}
           </Button>
         </div>
-      </ResponsiveModal>
+      </ResponsiveModal>}
 
       {/* Avaliacao de OS — OSRatingSurvey (mesmo componente do link publico) */}
       {ratingOsId && ratingData && (

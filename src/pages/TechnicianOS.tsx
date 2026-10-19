@@ -113,6 +113,11 @@ import { OsConsumptionSummaryDialog } from '@/components/service-orders/OsConsum
 import { useOsMaterials, useOsStockConsumptionEnabled, type CommitLineInput } from '@/hooks/useOsMaterials';
 import { useOsFinishRevenuePrompt } from '@/hooks/useOsFinishRevenuePrompt';
 import { OsFinishRevenueDialog } from '@/components/financial/OsFinishRevenueDialog';
+import {
+  useServiceOrderEquipmentServiceTypes,
+  useServiceOrderServiceTypeDetails,
+  type ServiceOrderServiceTypeSummary,
+} from '@/hooks/useServiceOrderBudget';
 
 interface OSPhoto {
   id: string;
@@ -133,7 +138,14 @@ interface EquipmentItem {
    */
   environment_name?: string | null;
   equipment: { id: string; name: string; brand: string | null; model: string | null; location: string | null; photo_url: string | null; category: { id: string; name: string; color: string } | null } | null;
-  form_template: { id: string; name: string } | null;
+  form_template: {
+    id: string;
+    name: string;
+    service_type_links?: Array<{
+      service_type_id: string;
+      service_type: { id: string; name: string; color: string | null } | null;
+    }>;
+  } | null;
 }
 
 /**
@@ -176,6 +188,8 @@ function OsEquipmentAccordionItem({
   registerAutoFill,
   visibility,
   validations,
+  activeServiceTypeIds,
+  equipmentServices,
   tFlow,
 }: {
   /** Chave do accordion = por EQUIPAMENTO (equipment_id ou standalone). */
@@ -206,6 +220,10 @@ function OsEquipmentAccordionItem({
    * Usado só pra montar o selo de pendência/concluído de CADA checklist aninhado.
    */
   validations: Record<string, FormValidationResult>;
+  /** Serviços que realmente pertencem à OS; evita mostrar vínculos extras do template. */
+  activeServiceTypeIds: string[];
+  /** Serviços executados especificamente neste equipamento. */
+  equipmentServices: ServiceOrderServiceTypeSummary[];
   tFlow: typeof MESSAGES['pt-br']['app']['os']['technicianFlow'];
 }) {
   // SÓ o equipamento ABERTO fica sticky (mesmo critério do PMOC) — evita
@@ -282,6 +300,19 @@ function OsEquipmentAccordionItem({
           photo={equipment?.photo_url ?? null}
           name={headerName}
           category={equipment?.category ?? null}
+          subtitle={equipment && equipmentServices.length > 0 ? (
+            <span className="flex flex-wrap gap-1 pt-0.5">
+              {equipmentServices.map(service => (
+                <Badge key={service.id} variant="secondary" className="gap-1 px-1.5 py-0 text-[10px] font-medium">
+                  <span
+                    className="h-1.5 w-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: service.color || '#64748b' }}
+                  />
+                  {service.name}
+                </Badge>
+              ))}
+            </span>
+          ) : undefined}
           // Contagem de checklists só quando há mais de um (evita ruído no caso
           // comum de 1 checklist por equipamento).
           itemsLabel={hasMultiple ? (checklists.length === 1 ? tFlow.checklistsCountSingular : tFlow.checklistsCountPlural.replace('{n}', String(checklists.length))) : undefined}
@@ -311,7 +342,7 @@ function OsEquipmentAccordionItem({
         {/* Um checklist → render direto. Vários → cada um num bloco com o nome do
             checklist (mesmo padrão do TemplateActivityBlock da visita PMOC), mas
             cada par mantém sua própria validação/respostas/visibilidade. */}
-        {hasMultiple ? (
+        {equipment || hasMultiple ? (
           <div className="space-y-4 pt-1">
             {checklists.map(({ item, itemKey }) => {
               // Cabeçalho clicável que expande/colapsa AS PERGUNTAS deste checklist
@@ -325,21 +356,41 @@ function OsEquipmentAccordionItem({
               // "Concluído"; com obrigatórias → contador "X de Y" (respondidas/
               // obrigatórias); sem obrigatórias e sem validação → "Pendente".
               const checklistComplete = v ? v.isValid : false;
+              const equipmentServiceIds = new Set(equipmentServices.map(service => service.id));
+              const linkedServices = (item.form_template?.service_type_links ?? [])
+                .map(link => link.service_type)
+                .filter((service): service is NonNullable<typeof service> => (
+                  !!service
+                  && (activeServiceTypeIds.length === 0 || activeServiceTypeIds.includes(service.id))
+                  && (!equipment || equipmentServiceIds.size === 0 || equipmentServiceIds.has(service.id))
+                ));
               return (
-                <div
-                  key={itemKey}
-                  className="rounded-lg border border-primary/30 bg-primary/[0.03] overflow-hidden"
-                >
+                <div key={itemKey}>
                   <button
                     type="button"
                     aria-expanded={open}
                     onClick={() => toggleChecklist(itemKey)}
-                    className="flex w-full items-center gap-2 p-2.5 text-left transition-colors hover:bg-primary/[0.06]"
+                    className="flex w-full items-center gap-2 p-2.5 text-left transition-colors hover:bg-muted/40"
                   >
                     <ClipboardCheck className="h-4 w-4 text-primary shrink-0" />
-                    <p className="text-sm font-semibold text-foreground flex-1 min-w-0 break-words">
-                      {item.form_template?.name || 'Checklist'}
-                    </p>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <p className="text-sm font-semibold text-foreground break-words">
+                        {item.form_template?.name || 'Checklist'}
+                      </p>
+                      {linkedServices.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {linkedServices.map(service => (
+                            <Badge key={service.id} variant="secondary" className="gap-1 px-1.5 py-0 text-[10px] font-medium">
+                              <span
+                                className="h-1.5 w-1.5 rounded-full shrink-0"
+                                style={{ backgroundColor: service.color || '#64748b' }}
+                              />
+                              {service.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     {checklistComplete ? (
                       <Badge variant="success" className="gap-1 shrink-0 text-[10px]">
                         <Check className="h-3 w-3" /> {tFlow.checklistBadgeDone}
@@ -370,6 +421,7 @@ function OsEquipmentAccordionItem({
                       serviceOrderId={serviceOrderId}
                       templateId={item.form_template_id!}
                       equipmentId={item.equipment_id || undefined}
+                      plainQuestionSurface
                       readOnly={readOnly}
                       onValidationChange={(result) => onValidationChange(itemKey, result)}
                       registerAutoFill={(fn) => registerAutoFill(itemKey, fn)}
@@ -385,6 +437,7 @@ function OsEquipmentAccordionItem({
             serviceOrderId={serviceOrderId}
             templateId={checklists[0].item.form_template_id!}
             equipmentId={checklists[0].item.equipment_id || undefined}
+            plainQuestionSurface
             readOnly={readOnly}
             onValidationChange={(result) => onValidationChange(checklists[0].itemKey, result)}
             registerAutoFill={(fn) => registerAutoFill(checklists[0].itemKey, fn)}
@@ -474,6 +527,22 @@ function TechnicianOSInner() {
   // que o helper de visibilidade usa por equipamento.
   const [excludedQuestionsByEquipment, setExcludedQuestionsByEquipment] = useState<Map<string, Set<string>>>(new Map());
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const serviceTypesQuery = useServiceOrderServiceTypeDetails(
+    isAuthenticated === true ? resolvedOsId : null,
+  );
+  const activeServiceTypes = serviceTypesQuery.data ?? [];
+  const equipmentServicesQuery = useServiceOrderEquipmentServiceTypes(
+    isAuthenticated === true ? resolvedOsId : null,
+  );
+  const explicitEquipmentServices = useMemo(() => {
+    const map = new Map<string, ServiceOrderServiceTypeSummary[]>();
+    for (const row of equipmentServicesQuery.data ?? []) {
+      const list = map.get(row.equipment_id) ?? [];
+      list.push(row.service_type);
+      map.set(row.equipment_id, list);
+    }
+    return map;
+  }, [equipmentServicesQuery.data]);
   const [publicFormResponses, setPublicFormResponses] = useState<any[]>([]);
   // Checklist da visita no MODO ANÔNIMO: a RLS bloqueia service_order_activities
   // pro anon, então as atividades já vêm no payload da RPC get_public_os (chave
@@ -1014,12 +1083,37 @@ function TechnicianOSInner() {
           equipment_id,
           form_template_id,
           equipment:equipment(id, name, brand, model, location, photo_url, category:equipment_categories(id, name, color)),
-          form_template:form_templates(id, name)
+          form_template:form_templates(
+            id,
+            name,
+            service_type_links:form_template_service_types(
+              service_type_id,
+              service_type:service_types(id, name, color)
+            )
+          )
         `)
         .eq('service_order_id', resolvedOsId);
 
       if (error) throw error;
-      const items = (data || []) as unknown as EquipmentItem[];
+      const unwrap = <T,>(value: T | T[] | null): T | null => (
+        Array.isArray(value) ? (value[0] ?? null) : value
+      );
+      const items = ((data || []) as any[]).map(row => {
+        const formTemplate = unwrap(row.form_template);
+        return {
+          ...row,
+          equipment: unwrap(row.equipment),
+          form_template: formTemplate
+            ? {
+                ...formTemplate,
+                service_type_links: (formTemplate.service_type_links ?? []).map((link: any) => ({
+                  ...link,
+                  service_type: unwrap(link.service_type),
+                })),
+              }
+            : null,
+        };
+      }) as EquipmentItem[];
 
       // Ambiente por equipamento (modo autenticado): o anônimo já recebe
       // `environment_name` pronto do payload de get_public_os. Aqui resolvemos via
@@ -3635,6 +3729,27 @@ function TechnicianOSInner() {
               <Wrench className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{osTypeLabel}</span>
             </div>
+            {activeServiceTypes.length > 0 && (
+              <div className="mt-1 flex flex-col items-center gap-1" aria-label={tFlow.servicesLabel}>
+                <span className="text-[10px] font-semibold uppercase tracking-wider opacity-75">
+                  {tFlow.servicesLabel}
+                </span>
+                <div className="flex flex-wrap justify-center gap-1.5">
+                  {activeServiceTypes.map(service => (
+                    <span
+                      key={service.id}
+                      className="inline-flex items-center gap-1 rounded-full bg-primary-foreground/15 px-2 py-0.5 text-[11px] font-semibold"
+                    >
+                      <span
+                        className="h-1.5 w-1.5 rounded-full ring-1 ring-primary-foreground/50"
+                        style={{ backgroundColor: service.color || 'currentColor' }}
+                      />
+                      {service.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             {serviceOrder.scheduled_date && (
               <div className="mt-1 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium opacity-85">
                 <Calendar className="h-3.5 w-3.5 shrink-0" />
@@ -3995,6 +4110,21 @@ function TechnicianOSInner() {
                     environmentByEquipmentId(firstItem.equipment_id) ||
                     group.equipment?.location ||
                     null;
+                  const explicitServices = firstItem.equipment_id
+                    ? explicitEquipmentServices.get(firstItem.equipment_id) ?? []
+                    : [];
+                  const inferredServiceIds = new Set(
+                    group.checklists.flatMap(({ item }) => (
+                      item.form_template?.service_type_links ?? []
+                    ).map(link => link.service_type_id)),
+                  );
+                  const equipmentServices = explicitServices.length > 0
+                    ? explicitServices
+                    : firstItem.equipment_id
+                      ? activeServiceTypes.filter(service => (
+                          inferredServiceIds.size === 0 || inferredServiceIds.has(service.id)
+                        ))
+                      : [];
                   return (
                     <OsEquipmentAccordionItem
                       key={group.groupKey}
@@ -4017,6 +4147,8 @@ function TechnicianOSInner() {
                       registerAutoFill={registerFormAutoFill}
                       visibility={visibilityForEquipment(firstItem.equipment_id)}
                       validations={formValidations}
+                      activeServiceTypeIds={activeServiceTypes.map(service => service.id)}
+                      equipmentServices={equipmentServices}
                       tFlow={tFlow}
                     />
                   );
@@ -4091,6 +4223,7 @@ function TechnicianOSInner() {
                 <DynamicFormQuestions
                   serviceOrderId={resolvedOsId!}
                   templateId={serviceOrder.form_template_id}
+                  plainQuestionSurface
                   readOnly={isPaused}
                   onValidationChange={(result) => setFormValidations(prev => ({ ...prev, legacy: result }))}
                   registerAutoFill={(fn) => registerFormAutoFill('legacy', fn)}

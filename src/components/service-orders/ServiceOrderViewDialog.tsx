@@ -34,6 +34,9 @@ import { useOsRevenueSummary } from '@/hooks/useOsRevenueSummary';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useOsBillingAction } from '@/hooks/useOsBillingAction';
 import { OsBillingDialog } from './OsBillingDialog';
+import { useServiceOrderBudget, useServiceOrderServiceTypes } from '@/hooks/useServiceOrderBudget';
+import { ServiceOrderBudgetSection } from './ServiceOrderBudgetSection';
+import { useServiceTypes } from '@/hooks/useServiceTypes';
 
 interface OSPhoto {
   id: string;
@@ -122,6 +125,9 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
   const { toast } = useToast();
   const isCompact = useIsCompact();
   const { isPmoc: isPmocOrder } = useIsPmocOrder(serviceOrderId);
+  const budgetQuery = useServiceOrderBudget(open ? serviceOrderId : null);
+  const serviceTypesQuery = useServiceOrderServiceTypes(open ? serviceOrderId : null);
+  const { serviceTypes } = useServiceTypes();
 
   const openPreview = (urls: string[], index: number) => {
     setGalleryImages(urls);
@@ -311,6 +317,23 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         )}
       </div>
 
+      {(serviceTypesQuery.data?.length ?? 0) > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {serviceTypesQuery.data!.map(id => {
+            const serviceType = serviceTypes.find(type => type.id === id);
+            return (
+              <Badge key={id} variant="outline" className="gap-1.5">
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: serviceType?.color || '#64748b' }}
+                />
+                {serviceType?.name || 'Serviço'}
+              </Badge>
+            );
+          })}
+        </div>
+      )}
+
       <Card>
         <CardHeader className="py-3"><CardTitle className="text-sm flex items-center gap-2"><User className="h-4 w-4" /> {tv.sectionCustomer}</CardTitle></CardHeader>
         <CardContent className="pt-0 text-sm">
@@ -370,6 +393,16 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
 
       {/* Consumo de estoque (v1.22.0) — bloco somente leitura pra gestão. Some
           sozinho quando não há material lançado nesta OS. */}
+      <Card>
+        <CardContent className="p-4">
+          <ServiceOrderBudgetSection
+            items={budgetQuery.data ?? []}
+            loading={budgetQuery.isLoading}
+            totalValue={serviceOrder.total_value}
+          />
+        </CardContent>
+      </Card>
+
       <OsMaterialsSection serviceOrderId={serviceOrder.id} />
 
       {(() => {
@@ -617,7 +650,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         </Card>
       )}
 
-      {(serviceOrder.labor_value || serviceOrder.parts_value || serviceOrder.total_value) && (
+      {(budgetQuery.data?.length ?? 0) === 0 && (serviceOrder.labor_value || serviceOrder.parts_value || serviceOrder.total_value) && (
         <Card>
           <CardContent className="py-3">
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">{tv.labelLabor}</span><span>{formatCurrency(serviceOrder.labor_value)}</span></div>

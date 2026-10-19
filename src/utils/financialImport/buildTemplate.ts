@@ -30,6 +30,7 @@ import {
   SHEET_NAME_TEXTS,
   TEMPLATE_TEXTS,
   localeText,
+  paymentMethodCodeForLabel,
   type MovementColumnKey,
   type MovementValueTexts,
   type SheetNameTexts,
@@ -37,6 +38,7 @@ import {
   type TemplateTexts,
 } from './templateCopy';
 import { idealForeground } from '@/lib/colorContrast';
+import type { PaymentMethodCode } from '@/lib/finance-payment-methods';
 
 export type { SupportedLocale } from './templateCopy';
 
@@ -63,9 +65,20 @@ export interface FinancialTemplateInput {
    * Sem `color`, o item só entra no dropdown, sem cor.
    */
   accounts: TemplateOption[];
-  categories: TemplateOption[];
+  /** Cada categoria carrega o próprio `type` — é o que decide em qual (ou nas duas) listas da coluna "Categoria" ela entra. Ver `splitCategoriesByType`. */
+  categories: CategoryTemplateOption[];
   costCenters: TemplateOption[];
-  /** Formas de pagamento não têm cor de cadastro — só dropdown. */
+  /** Cadastro do tenant. Sem `color` de propósito — "Cliente"/"Fornecedor" só têm dropdown, nunca formatação condicional (não existe cor de cliente/fornecedor no cadastro). */
+  customers: TemplateOption[];
+  suppliers: TemplateOption[];
+  /**
+   * RÓTULOS (não código cru), já no idioma do tenant — ex: "Cartão de Débito",
+   * não "cartao_debito". Quem monta a lista é `paymentMethodLabels(locale)`
+   * de `templateCopy.ts`; o servidor aceita os dois na leitura, mas um
+   * arquivo com logo que sai do sistema não pode mostrar código de banco pro
+   * contador do cliente. Sem cor de cadastro — a cor que existe aqui
+   * (`PAYMENT_METHOD_COLOR_ARGB`) é semântica fixa, não vem do banco.
+   */
   paymentMethods: string[];
   locale: SupportedLocale;
   /** Código ISO da moeda (ex: `'BRL'`), usado só pra formatar a célula de Valor. */
@@ -95,9 +108,67 @@ export interface TemplateOption {
   color?: string | null;
 }
 
+/**
+ * Categoria carrega o próprio `type` (vocabulário de `financial_categories.type`
+ * no banco, ver `src/lib/financial-category-filter.ts`). `'ambos'` é conceito
+ * LEGÍTIMO do Dominex — entra nas DUAS listas (entrada e saída) da coluna
+ * "Categoria", nunca é recusada.
+ */
+export interface CategoryTemplateOption extends TemplateOption {
+  type: 'entrada' | 'saida' | 'ambos';
+}
+
+/**
+ * Separa a lista de categorias em "aceitas no Tipo = Entrada" e "aceitas no
+ * Tipo = Saída" — mesma regra de `filterCategoriesByTransactionType`
+ * (`src/lib/financial-category-filter.ts`), reimplementada aqui (sem
+ * `is_active` pra checar: quem chama já manda só categoria ativa) porque
+ * aquele helper espera `CategoryLike` com `is_active` e este arquivo não tem
+ * acesso a hook/Supabase. Categoria `'ambos'` entra nas duas.
+ */
+function splitCategoriesByType(categories: CategoryTemplateOption[]): {
+  entrada: CategoryTemplateOption[];
+  saida: CategoryTemplateOption[];
+} {
+  return {
+    entrada: categories.filter((c) => c.type === 'entrada' || c.type === 'ambos'),
+    saida: categories.filter((c) => c.type === 'saida' || c.type === 'ambos'),
+  };
+}
+
+/** Pago? segue a semântica do app: quitado verde, pendente vermelho. */
+const PAID_YES_ARGB = 'FF15803D';
+const PAID_NO_ARGB = 'FFDC2626';
+
 /** Entrada e saída seguem a semântica do app: verde recebe, vermelho sai. */
 const INCOME_ARGB = 'FF16A34A';
 const EXPENSE_ARGB = 'FFDC2626';
+
+/**
+ * Fundo de ALERTA da camada 2 da validação de Categoria x Tipo (ver
+ * `applyCategoryValidationAndFlag`) — cor de aviso, nunca reaproveitada de
+ * `INCOME_ARGB`/`EXPENSE_ARGB` pra não ser confundida com "Tipo = Saída".
+ */
+const CATEGORY_MISMATCH_ARGB = 'FFEF4444';
+
+/**
+ * Paleta FIXA por forma de pagamento — SEMÂNTICA, decidida em código, NÃO
+ * vem de cadastro (`payment_method` não tem cor no banco, diferente de
+ * conta/categoria/centro de custo). Direção escolhida: dinheiro e Pix em
+ * verdes distintos (pra não confundir com o verde de "Entrada"), cartões em
+ * azul/roxo, transferência em ciano, boleto em âmbar, cheque em cinza-
+ * azulado. Saturação alta de propósito — texto branco (`idealForeground`)
+ * precisa ficar legível em cima.
+ */
+const PAYMENT_METHOD_COLOR_ARGB: Record<PaymentMethodCode, string> = {
+  dinheiro: 'FF15803D', // verde escuro (green-700)
+  pix: 'FF0D9488', // teal/verde-azulado (teal-600) — distinto do verde de "Entrada" e do dinheiro
+  cartao_debito: 'FF2563EB', // azul (blue-600)
+  cartao_credito: 'FF7C3AED', // roxo (violet-600)
+  transferencia: 'FF0891B2', // ciano (cyan-600)
+  boleto: 'FFD97706', // âmbar (amber-600)
+  cheque: 'FF475569', // cinza-azulado (slate-600)
+};
 
 /**
  * Teto de regras de formatação condicional POR COLUNA.
@@ -219,9 +290,15 @@ const MOVEMENT_COLUMN_LAYOUT: Array<{ key: MovementColumnKey; required: boolean;
   { key: 'amount', required: true, width: 16 },
   { key: 'category', required: true, width: 22 },
   { key: 'account', required: true, width: 22 },
-  { key: 'counterparty', required: false, width: 26 },
+  { key: 'customer', required: false, width: 22 },
+  { key: 'supplier', required: false, width: 22 },
   { key: 'costCenter', required: false, width: 20 },
   { key: 'paymentMethod', required: false, width: 22 }, // "Forma de pagamento" = 18
+  // Vencimento vem ANTES de "Pago?"/"Data do pagamento" de propósito: as três
+  // colunas contam a mesma história (esta conta já saiu? quando vence? quando
+  // saiu?) e ficam lado a lado pra quem está digitando. Só tem efeito em linha
+  // NÃO paga — em linha paga o servidor ignora e avisa na conferência.
+  { key: 'dueDate', required: false, width: 14 },
   { key: 'isPaid', required: false, width: 12 },
   { key: 'paidDate', required: false, width: 21 },      // "Data do pagamento" = 17
   { key: 'notes', required: false, width: 30 },
@@ -423,9 +500,26 @@ function buildReadmeSheet(
 
 interface ListsRanges {
   accounts: string;
-  categories: string;
+  /** Categorias compatíveis com Tipo = Entrada (inclui as `'ambos'`). */
+  categoriesEntrada: string;
+  /** Categorias compatíveis com Tipo = Saída (inclui as `'ambos'`). */
+  categoriesSaida: string;
   costCenters: string;
   paymentMethods: string;
+  customers: string;
+  suppliers: string;
+  /**
+   * TODAS as categorias, sem duplicar as de tipo `'ambos'`. É esta a lista que
+   * alimenta o dropdown da coluna Categoria.
+   *
+   * ⚠️ Por que não a validação DEPENDENTE do Tipo: a versão com `INDIRECT` só
+   * funciona no Excel, e no Google Sheets ela não é descartada — é importada e
+   * **resolve vazia**, deixando o cliente com um seletor sem nenhuma opção.
+   * Lista sem opção é pior que lista longa. O descompasso entre Tipo e
+   * Categoria continua coberto pela formatação condicional, que funciona nos
+   * dois mundos, e pelo servidor, que recusa categoria de tipo incompatível.
+   */
+  categoriesTodas: string;
 }
 
 /**
@@ -435,20 +529,36 @@ interface ListsRanges {
  * "Movimentações" vai referenciar.
  */
 function computeListsRanges(input: FinancialTemplateInput, listsSheetName: string): ListsRanges {
+  const { entrada, saida } = splitCategoriesByType(input.categories);
   const rangeEnd = Math.max(
     LIST_ROWS_MIN,
     input.accounts.length + 10,
-    input.categories.length + 10,
+    entrada.length + 10,
+    saida.length + 10,
     input.costCenters.length + 10,
     input.paymentMethods.length + 10,
+    input.customers.length + 10,
+    input.suppliers.length + 10,
   );
   return {
     accounts: `${listsSheetName}!$A$2:$A$${rangeEnd}`,
-    categories: `${listsSheetName}!$B$2:$B$${rangeEnd}`,
-    costCenters: `${listsSheetName}!$C$2:$C$${rangeEnd}`,
-    paymentMethods: `${listsSheetName}!$D$2:$D$${rangeEnd}`,
+    categoriesEntrada: `${listsSheetName}!$B$2:$B$${rangeEnd}`,
+    categoriesSaida: `${listsSheetName}!$C$2:$C$${rangeEnd}`,
+    costCenters: `${listsSheetName}!$D$2:$D$${rangeEnd}`,
+    paymentMethods: `${listsSheetName}!$E$2:$E$${rangeEnd}`,
+    customers: `${listsSheetName}!$F$2:$F$${rangeEnd}`,
+    suppliers: `${listsSheetName}!$G$2:$G$${rangeEnd}`,
+    categoriesTodas: `${listsSheetName}!$H$2:$H$${rangeEnd}`,
   };
 }
+
+/**
+ * Nomes definidos (workbook-level) que alimentam a validação DEPENDENTE da
+ * coluna "Categoria" — ver `applyCategoryValidationAndFlag`. Não traduzidos
+ * (são internos, só aparecem no Gerenciador de Nomes do Excel).
+ */
+const CATEGORY_ENTRADA_NAME = 'cat_entrada';
+const CATEGORY_SAIDA_NAME = 'cat_saida';
 
 /**
  * Cria a aba "Listas" propriamente (depois da "Movimentações" já existir, pra
@@ -456,24 +566,46 @@ function computeListsRanges(input: FinancialTemplateInput, listsSheetName: strin
  * 3-Listas, como no plano — a fórmula de validação já foi calculada por
  * `computeListsRanges` e não depende da ordem de criação).
  */
-function createListsSheet(workbook: ExcelWorkbook, input: FinancialTemplateInput, listsSheetName: string): void {
+function createListsSheet(
+  workbook: ExcelWorkbook,
+  input: FinancialTemplateInput,
+  listsSheetName: string,
+  listsRanges: ListsRanges,
+): void {
   const sheet = workbook.addWorksheet(listsSheetName, { state: 'hidden' });
   // `veryHidden` existe no exceljs, mas o Google Sheets reclama dele em alguns
   // casos — `hidden` já some da barra de abas e importa sem erro nos dois.
   sheet.getCell('A1').value = 'Contas';
-  sheet.getCell('B1').value = 'Categorias';
-  sheet.getCell('C1').value = 'Centros de custo';
-  sheet.getCell('D1').value = 'Formas de pagamento';
+  sheet.getCell('B1').value = 'Categorias (entrada)';
+  sheet.getCell('C1').value = 'Categorias (saída)';
+  sheet.getCell('D1').value = 'Centros de custo';
+  sheet.getCell('E1').value = 'Formas de pagamento';
+  sheet.getCell('F1').value = 'Clientes';
+  sheet.getCell('G1').value = 'Fornecedores';
+  sheet.getCell('H1').value = 'Categorias (todas)';
 
   const fillColumn = (col: string, values: string[]) => {
     values.forEach((value, idx) => {
       sheet.getCell(`${col}${idx + 2}`).value = value;
     });
   };
+  const { entrada, saida } = splitCategoriesByType(input.categories);
   fillColumn('A', input.accounts.map((o) => o.name));
-  fillColumn('B', input.categories.map((o) => o.name));
-  fillColumn('C', input.costCenters.map((o) => o.name));
-  fillColumn('D', input.paymentMethods);
+  fillColumn('B', entrada.map((o) => o.name));
+  fillColumn('C', saida.map((o) => o.name));
+  fillColumn('D', input.costCenters.map((o) => o.name));
+  fillColumn('E', input.paymentMethods);
+  fillColumn('F', input.customers.map((o) => o.name));
+  fillColumn('G', input.suppliers.map((o) => o.name));
+  // Dedup pelo nome: categoria 'ambos' aparece em entrada E saída, e
+  // apareceria duas vezes no dropdown se a lista fosse a concatenação crua.
+  fillColumn('H', [...new Set([...entrada, ...saida].map((o) => o.name))]);
+
+  // Nome definido pros dois ranges de categoria — alimenta o INDIRECT da
+  // validação dependente da coluna "Categoria" (CAMADA 1, só Excel de
+  // verdade — ver `applyCategoryValidationAndFlag`).
+  workbook.definedNames.add(listsRanges.categoriesEntrada, CATEGORY_ENTRADA_NAME);
+  workbook.definedNames.add(listsRanges.categoriesSaida, CATEGORY_SAIDA_NAME);
 }
 
 /* ─────────────────────────── aba "Movimentações" ─────────────────────────── */
@@ -541,6 +673,123 @@ function applyListValidation(
   }
 }
 
+/**
+ * CAMADA 1 da validação de Categoria x Tipo — validação DEPENDENTE: a lista
+ * que aparece no dropdown muda conforme o valor da coluna "Tipo" NA MESMA
+ * LINHA (`INDIRECT(IF(<tipo>="Saída", "cat_saida", "cat_entrada"))`, sobre os
+ * nomes definidos criados em `createListsSheet`).
+ *
+ * ⚠️ SÓ FUNCIONA NO EXCEL DE VERDADE. O Google Sheets, na importação de um
+ * `.xlsx` com essa validação (`type: 'list'` + `formulae` sendo uma FÓRMULA
+ * em vez de um range/lista literal), NÃO aplica a regra — ele importa o
+ * arquivo sem erro, mas a célula fica livre pra qualquer texto, sem
+ * dropdown. Isso é uma limitação conhecida e documentada do Sheets com
+ * validação por fórmula dependente de outra célula da MESMA linha; não é bug
+ * nosso e não tem workaround só com `.xlsx` (o workaround de verdade seria
+ * gerar a planilha via Google Sheets API, fora de escopo aqui). Por isso
+ * existe a CAMADA 2 (`applyCategoryConditionalFormatting`, chamada em
+ * seguida): ela é formatação condicional, não validação, e funciona IGUAL
+ * nos dois mundos — é a que de fato protege o cliente que abre no Sheets.
+ */
+function applyDependentCategoryValidation(
+  sheet: ExcelWorksheet,
+  categoryColLetter: string,
+  typeColLetter: string,
+  valueTexts: MovementValueTexts,
+  firstRow: number,
+  lastRow: number,
+): void {
+  const saidaLiteral = valueTexts.saida.replace(/"/g, '""');
+  for (let r = firstRow; r <= lastRow; r++) {
+    sheet.getCell(`${categoryColLetter}${r}`).dataValidation = {
+      type: 'list',
+      allowBlank: true,
+      formulae: [
+        `INDIRECT(IF(${typeColLetter}${r}="${saidaLiteral}","${CATEGORY_SAIDA_NAME}","${CATEGORY_ENTRADA_NAME}"))`,
+      ],
+      showErrorMessage: true,
+      errorStyle: 'warning',
+      errorTitle: 'Categoria fora do Tipo',
+      error: 'Escolha uma categoria da lista do Tipo desta linha (Entrada ou Saída).',
+    };
+  }
+}
+
+/**
+ * CAMADA 2 da validação de Categoria x Tipo — formatação condicional por
+ * EXPRESSÃO que acende um fundo de ALERTA quando a categoria escolhida não
+ * pertence à lista do Tipo da mesma linha. Funciona IGUAL no Excel e no
+ * Google Sheets (formatação condicional, nunca ignorada como a validação da
+ * CAMADA 1 acima) — é a camada que de fato salva o cliente que abre no
+ * Sheets, onde o dropdown dependente simplesmente não aparece.
+ *
+ * Combinada na MESMA chamada de `addConditionalFormatting` com a cor por
+ * valor de cada categoria (igual às outras colunas), com o alerta em
+ * PRIORIDADE 1 (precedência sobre as demais) — pra nunca ficar escondido
+ * debaixo da cor normal da categoria quando as duas regras batem na mesma
+ * célula.
+ */
+function applyCategoryConditionalFormatting(
+  sheet: ExcelWorksheet,
+  categoryColLetter: string,
+  typeColLetter: string,
+  valueTexts: MovementValueTexts,
+  firstRow: number,
+  lastRow: number,
+  categories: CategoryTemplateOption[],
+): void {
+  const saidaLiteral = valueTexts.saida.replace(/"/g, '""');
+  const anchorCat = `${categoryColLetter}${firstRow}`;
+  const anchorType = `${typeColLetter}${firstRow}`;
+  const mismatchFormula =
+    `AND(${anchorCat}<>"",${anchorType}<>"",` +
+    `IF(${anchorType}="${saidaLiteral}",COUNTIF(${CATEGORY_SAIDA_NAME},${anchorCat})=0,` +
+    `COUNTIF(${CATEGORY_ENTRADA_NAME},${anchorCat})=0))`;
+
+  const colorItems = categories
+    .map((o) => ({ name: o.name, argb: optionalHexToArgb(o.color) }))
+    .filter((o): o is { name: string; argb: string } => o.argb !== null)
+    .slice(0, MAX_COLOR_RULES);
+
+  sheet.addConditionalFormatting({
+    ref: `${categoryColLetter}${firstRow}:${categoryColLetter}${lastRow}`,
+    rules: [
+      {
+        type: 'expression' as const,
+        priority: 1,
+        formulae: [mismatchFormula],
+        style: {
+          fill: {
+            type: 'pattern' as const,
+            pattern: 'solid' as const,
+            bgColor: { argb: CATEGORY_MISMATCH_ARGB },
+            fgColor: { argb: CATEGORY_MISMATCH_ARGB },
+          },
+          font: {
+            color: { argb: optionalHexToArgb(idealForeground(`#${CATEGORY_MISMATCH_ARGB.slice(2)}`)) ?? WHITE_ARGB },
+            bold: true,
+          },
+        },
+      },
+      ...colorItems.map((item, idx) => ({
+        type: 'cellIs' as const,
+        operator: 'equal' as const,
+        priority: idx + 2,
+        formulae: [`"${item.name.replace(/"/g, '""')}"`],
+        style: {
+          fill: {
+            type: 'pattern' as const,
+            pattern: 'solid' as const,
+            bgColor: { argb: item.argb },
+            fgColor: { argb: item.argb },
+          },
+          font: { color: { argb: optionalHexToArgb(idealForeground(`#${item.argb.slice(2)}`)) ?? WHITE_ARGB }, bold: true },
+        },
+      })),
+    ],
+  });
+}
+
 function columnLetter(index: number): string {
   // index 1-based (1 = A)
   let n = index;
@@ -561,6 +810,7 @@ function buildMovementsSheet(
   sheetNames: SheetNameTexts,
   movementColumns: MovementColumnDef[],
   valueTexts: MovementValueTexts,
+  texts: TemplateTexts,
 ): void {
   const sheet = workbook.addWorksheet(sheetNames.movements, {
     views: [{ state: 'frozen', ySplit: 1 }],
@@ -582,11 +832,40 @@ function buildMovementsSheet(
     };
   });
 
-  // Área de digitação com zebra e borda suave: sem isso a aba é uma grade crua e
-  // o cliente não enxerga onde é pra escrever. Só as primeiras linhas recebem
-  // estilo — a validação (dropdown) vai até 2000, mas pintar 2000 × 12 células
-  // engorda o arquivo à toa.
-  const STYLED_ROWS_END = 120;
+  const colIndex = (key: MovementColumnKey) => movementColumns.findIndex((c) => c.key === key) + 1;
+  const dateColIdx = colIndex('date');
+  const paidDateColIdx = colIndex('paidDate');
+  const dueDateColIdx = colIndex('dueDate');
+  const amountColIdx = colIndex('amount');
+  const descriptionColIdx = colIndex('description');
+
+  // Área de digitação com zebra, borda suave, alinhamento e formato de
+  // data/moeda — tudo NA CÉLULA, dentro do MESMO laço, e cobrindo a MESMA
+  // faixa da validação (até `MOVEMENT_DATA_ROWS_END`).
+  //
+  // ⚠️ Antes isto era `sheet.getColumn(...).numFmt =` / `.alignment =`
+  // (formato DE COLUNA) e o laço de zebra/borda só ia até a linha 120. O
+  // Google Sheets IGNORA formato de coluna quando a célula tem estilo
+  // próprio — e o laço de zebra/borda cria estilo pra TODA célula de 2 a
+  // 120 (fill OU border, sempre pelo menos a borda). Resultado, visto pelo
+  // CEO em 18/10/2026: "21/10" em vez de "21/10/2026", "500" em vez de
+  // "R$ 500,00", linhas 2-120 desalinhadas — e, ironicamente, linhas 121+
+  // apareciam CERTAS, porque não tinham estilo de célula pra sombrear o da
+  // coluna. A correção: aplicar `numFmt`/`alignment` na CÉLULA, no mesmo
+  // laço que pinta zebra/borda, e subir esse laço pra cobrir a mesma faixa
+  // da validação — não só os primeiros 120. O formato DE COLUNA abaixo
+  // continua existindo como REFORÇO (linha colada manualmente além de
+  // `MOVEMENT_DATA_ROWS_END`), mas quem vale é o da célula.
+  //
+  // Regra de alinhamento do CEO: tudo centralizado (horizontal e vertical),
+  // MENOS Descrição, que fica à esquerda (e centralizada na vertical).
+  //
+  // Peso do arquivo: subir de 120 pra `MOVEMENT_DATA_ROWS_END` (2000) linhas
+  // estilizadas multiplica por ~17x a quantidade de células com estilo
+  // próprio (2000×12 contra 120×12). Decisão: subir mesmo assim — ver a
+  // medição real no comentário de `buildFinancialImportWorkbook` e no plano
+  // (arquivo ainda fica na faixa de algumas centenas de KB, não MB).
+  const STYLED_ROWS_END = MOVEMENT_DATA_ROWS_END;
   for (let r = 2; r <= STYLED_ROWS_END; r += 1) {
     const linha = sheet.getRow(r);
     linha.height = 19;
@@ -599,22 +878,30 @@ function buildMovementsSheet(
         bottom: { style: 'hair', color: { argb: LIGHT_BORDER_ARGB_SOFT } },
         right: { style: 'hair', color: { argb: LIGHT_BORDER_ARGB_SOFT } },
       };
+      cell.alignment =
+        c === descriptionColIdx
+          ? { horizontal: 'left', vertical: 'middle' }
+          : { horizontal: 'center', vertical: 'middle' };
+      if (c === dateColIdx || c === paidDateColIdx || c === dueDateColIdx) {
+        cell.numFmt = 'dd/mm/yyyy';
+      } else if (c === amountColIdx) {
+        cell.numFmt = currencyNumFmt(input.currencyCode);
+      }
     }
   }
 
-  const colIndex = (key: MovementColumnKey) => movementColumns.findIndex((c) => c.key === key) + 1;
-
-  // Formato de moeda na coluna Valor, formato de data nas colunas de data.
-  sheet.getColumn(colIndex('amount')).numFmt = currencyNumFmt(input.currencyCode);
-  sheet.getColumn(colIndex('date')).numFmt = 'dd/mm/yyyy';
-  sheet.getColumn(colIndex('paidDate')).numFmt = 'dd/mm/yyyy';
-  // Data centralizada e valor à direita: número alinhado à esquerda é o que faz
-  // uma planilha parecer "crua" mesmo com tudo certo.
-  sheet.getColumn(colIndex('date')).alignment = { horizontal: 'center' };
-  sheet.getColumn(colIndex('paidDate')).alignment = { horizontal: 'center' };
-  sheet.getColumn(colIndex('amount')).alignment = { horizontal: 'right' };
-  sheet.getColumn(colIndex('isPaid')).alignment = { horizontal: 'center' };
-  sheet.getColumn(colIndex('type')).alignment = { horizontal: 'center' };
+  // Formato/alinhamento DE COLUNA — reforço pra linha colada manualmente
+  // ALÉM de `STYLED_ROWS_END` (hoje inexistente, já que as duas faixas são
+  // iguais, mas documentado caso uma volte a divergir). Mesma regra da célula:
+  // tudo centralizado, menos Descrição (à esquerda).
+  sheet.getColumn(amountColIdx).numFmt = currencyNumFmt(input.currencyCode);
+  sheet.getColumn(dateColIdx).numFmt = 'dd/mm/yyyy';
+  sheet.getColumn(paidDateColIdx).numFmt = 'dd/mm/yyyy';
+  sheet.getColumn(dueDateColIdx).numFmt = 'dd/mm/yyyy';
+  for (let c = 1; c <= movementColumns.length; c += 1) {
+    sheet.getColumn(c).alignment =
+      c === descriptionColIdx ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+  }
 
   const firstDataRow = 2;
   applyListValidation(
@@ -631,10 +918,18 @@ function buildMovementsSheet(
     firstDataRow,
     MOVEMENT_DATA_ROWS_END,
   );
+  // Categoria: lista COMPLETA (funciona no Excel e no Google Sheets).
+  //
+  // ⚠️ Já foi uma validação DEPENDENTE do Tipo, com `INDIRECT`. Revertida em
+  // 18/10/2026 porque o Google Sheets não descarta a regra: importa e resolve
+  // VAZIA, e o cliente abre o seletor de Categoria sem nenhuma opção. Seletor
+  // vazio é pior que lista longa. Quem garante a coerência Tipo × Categoria é
+  // a formatação condicional de descompasso (abaixo, funciona nos dois) e o
+  // servidor, que recusa categoria de tipo incompatível na importação.
   applyListValidation(
     sheet,
     columnLetter(colIndex('category')),
-    [listsRanges.categories],
+    [listsRanges.categoriesTodas],
     firstDataRow,
     MOVEMENT_DATA_ROWS_END,
   );
@@ -647,11 +942,48 @@ function buildMovementsSheet(
   );
   applyListValidation(
     sheet,
+    columnLetter(colIndex('customer')),
+    [listsRanges.customers],
+    firstDataRow,
+    MOVEMENT_DATA_ROWS_END,
+  );
+  applyListValidation(
+    sheet,
+    columnLetter(colIndex('supplier')),
+    [listsRanges.suppliers],
+    firstDataRow,
+    MOVEMENT_DATA_ROWS_END,
+  );
+  applyListValidation(
+    sheet,
     columnLetter(colIndex('costCenter')),
     [listsRanges.costCenters],
     firstDataRow,
     MOVEMENT_DATA_ROWS_END,
   );
+  // Data e Data do pagamento ganham validação de DATA.
+  //
+  // Além de barrar texto que não é data, é isso que faz o Google Sheets
+  // desenhar o CALENDÁRIO na célula: ele mostra o seletor quando a célula tem
+  // regra de data. O Excel não desenha calendário, mas recusa o valor inválido
+  // com a mensagem abaixo. Nos dois casos o cliente para de digitar "21/13" ou
+  // "ontem" e o leitor não precisa adivinhar.
+  for (const chave of ['date', 'paidDate', 'dueDate'] as const) {
+    const letra = columnLetter(colIndex(chave));
+    for (let r = firstDataRow; r <= MOVEMENT_DATA_ROWS_END; r += 1) {
+      sheet.getCell(`${letra}${r}`).dataValidation = {
+        type: 'date',
+        operator: 'between',
+        allowBlank: true,
+        showErrorMessage: true,
+        errorStyle: 'stop',
+        errorTitle: texts.dateErrorTitle,
+        error: texts.dateErrorMessage,
+        formulae: [new Date(2000, 0, 1), new Date(2100, 11, 31)],
+      };
+    }
+  }
+
   applyListValidation(
     sheet,
     columnLetter(colIndex('paymentMethod')),
@@ -661,9 +993,11 @@ function buildMovementsSheet(
   );
 
   // ── Cor por valor: a planilha passa a falar a mesma língua visual do app ──
-  // Tipo: semântica fixa (entra verde, sai vermelho). As outras três herdam a
-  // cor do próprio cadastro do tenant, então categoria "Impostos" fica da mesma
-  // cor aqui e na tela.
+  // Tipo: semântica fixa (entra verde, sai vermelho). Categoria combina cor +
+  // alerta de descompasso na mesma regra (ver `applyCategoryConditionalFormatting`).
+  // Conta/Centro de custo herdam a cor do próprio cadastro do tenant. Forma de
+  // pagamento usa a paleta fixa `PAYMENT_METHOD_COLOR_ARGB` (não vem de
+  // cadastro — formas de pagamento não têm cor no banco).
   applyValueColorRules(sheet, columnLetter(colIndex('type')), firstDataRow, MOVEMENT_DATA_ROWS_END, [
     { name: valueTexts.entrada, argb: INCOME_ARGB },
     { name: valueTexts.saida, argb: EXPENSE_ARGB },
@@ -674,9 +1008,25 @@ function buildMovementsSheet(
       .map((o) => ({ name: o.name, argb: optionalHexToArgb(o.color) }))
       .filter((o): o is { name: string; argb: string } => o.argb !== null);
 
-  applyValueColorRules(sheet, columnLetter(colIndex('category')), firstDataRow, MOVEMENT_DATA_ROWS_END, comCor(input.categories));
+  applyCategoryConditionalFormatting(
+    sheet,
+    columnLetter(colIndex('category')),
+    columnLetter(colIndex('type')),
+    valueTexts,
+    firstDataRow,
+    MOVEMENT_DATA_ROWS_END,
+    input.categories,
+  );
   applyValueColorRules(sheet, columnLetter(colIndex('account')), firstDataRow, MOVEMENT_DATA_ROWS_END, comCor(input.accounts));
   applyValueColorRules(sheet, columnLetter(colIndex('costCenter')), firstDataRow, MOVEMENT_DATA_ROWS_END, comCor(input.costCenters));
+
+  const paymentMethodColorItems = input.paymentMethods
+    .map((label) => {
+      const code = paymentMethodCodeForLabel(label, input.locale);
+      return code ? { name: label, argb: PAYMENT_METHOD_COLOR_ARGB[code] } : null;
+    })
+    .filter((item): item is { name: string; argb: string } => item !== null);
+  applyValueColorRules(sheet, columnLetter(colIndex('paymentMethod')), firstDataRow, MOVEMENT_DATA_ROWS_END, paymentMethodColorItems);
 }
 
 /* ─────────────────────────── montagem + download ─────────────────────────── */
@@ -699,8 +1049,8 @@ export async function buildFinancialImportWorkbook(input: FinancialTemplateInput
 
   buildReadmeSheet(workbook, input, texts, primaryArgb, sheetNames, movementColumns);
   const listsRanges = computeListsRanges(input, sheetNames.lists);
-  buildMovementsSheet(workbook, input, primaryArgb, listsRanges, sheetNames, movementColumns, valueTexts);
-  createListsSheet(workbook, input, sheetNames.lists);
+  buildMovementsSheet(workbook, input, primaryArgb, listsRanges, sheetNames, movementColumns, valueTexts, texts);
+  createListsSheet(workbook, input, sheetNames.lists, listsRanges);
 
   // "Leia primeiro" é a 1ª aba adicionada (índice 0) e tem que abrir ativa.
   workbook.views = [

@@ -81,27 +81,32 @@
     <b>Pausar e retomar existem SÓ na lista.</b> Dentro do contrato aberto não há botão de pausar. Se o cliente perguntar "onde pauso esse contrato", a resposta é: volte para a lista <span class="ui">Contratos</span> e use o menu de três pontinhos da linha. Contrato pausado para de gerar visitas novas; as que já foram geradas continuam na agenda.
   </div>
 
-  <h2>3. Wizard do contrato comum (5 etapas) × wizard PMOC (6 etapas)</h2>
+  <h2>3. Wizard do contrato comum (6 etapas na criação) × wizard PMOC (7 etapas na criação)</h2>
 
-  <p>O botão <span class="ui">Novo Contrato</span> abre um assistente em etapas, com a trilha numerada no topo. O número de etapas muda conforme a chave PMOC:</p>
+  <p>O botão <span class="ui">Novo Contrato</span> abre um assistente em etapas, com a trilha numerada no topo. O número de etapas muda conforme a chave PMOC, e tem uma etapa extra na criação que não aparece na edição:</p>
 
   <table class="dados">
-    <thead><tr><th>Contrato comum (5 etapas)</th><th>Contrato PMOC (6 etapas)</th></tr></thead>
+    <thead><tr><th>Contrato comum (6 etapas na criação)</th><th>Contrato PMOC (7 etapas na criação)</th></tr></thead>
     <tbody>
       <tr><td>1. <span class="ui">Identificação</span></td><td>1. <span class="ui">Identificação</span></td></tr>
       <tr><td>2. <span class="ui">Ambientes e Equipamentos</span></td><td>2. <span class="ui">Unidade &amp; RT</span></td></tr>
       <tr><td>3. <span class="ui">Frequência</span></td><td>3. <span class="ui">Ambientes e Equipamentos</span></td></tr>
       <tr><td>4. <span class="ui">Equipe &amp; Cobrança</span></td><td>4. <span class="ui">Frequência</span></td></tr>
-      <tr><td>5. <span class="ui">Revisão</span></td><td>5. <span class="ui">Equipe &amp; Cobrança</span></td></tr>
-      <tr><td></td><td>6. <span class="ui">Revisão</span></td></tr>
+      <tr><td>5. <span class="ui">Financeiro</span></td><td>5. <span class="ui">Equipe &amp; Cobrança</span></td></tr>
+      <tr><td>6. <span class="ui">Revisão</span></td><td>6. <span class="ui">Financeiro</span></td></tr>
+      <tr><td></td><td>7. <span class="ui">Revisão</span></td></tr>
     </tbody>
   </table>
-  <p>A diferença é exatamente uma etapa: <span class="ui">Unidade &amp; RT</span>, que só existe no PMOC. Os botões de navegação no rodapé são <span class="ui">Cancelar</span>, <span class="ui">Voltar</span>, <span class="ui">Próximo</span> e, na última etapa, <span class="ui">Criar Contrato</span> (ou <span class="ui">Salvar Alterações</span> em edição).</p>
+  <p>A diferença entre contrato comum e PMOC é exatamente uma etapa: <span class="ui">Unidade &amp; RT</span>, que só existe no PMOC. Os botões de navegação no rodapé são <span class="ui">Cancelar</span>, <span class="ui">Voltar</span>, <span class="ui">Próximo</span> e, na última etapa, <span class="ui">Criar Contrato</span> (ou <span class="ui">Salvar Alterações</span> em edição).</p>
+
+  <div class="regra">
+    <b>A etapa Financeiro só existe na criação, não na edição.</b> Editar um contrato que já existe pula direto de <span class="ui">Equipe &amp; Cobrança</span> para <span class="ui">Revisão</span>, sem passar por Financeiro. Para mudar a cobrança de um contrato já criado, o caminho é a aba <span class="ui">Financeiro</span> do contrato aberto, descrita na seção 11.
+  </div>
 
   <h3>Etapa 1, Identificação</h3>
   <figure>
-    <img src="img/t11-novo-contrato-identificacao.png" alt="Assistente Novo Contrato na etapa 1 de 5, Identificação, com a trilha de etapas no topo (Identificação, Ambientes e Equipamentos, Frequência, Equipe & Cobrança, Revisão), o campo Nome do Contrato com o exemplo Ex: Manutenção Preventiva Mensal — Empresa X, o seletor Cliente com Selecione o cliente, e a chave desligada É um contrato PMOC? com a explicação sobre vincular Responsável Técnico e gerar OSs com selo de conformidade legal.">
-    <figcaption>Assistente Novo Contrato na etapa Identificação, com a trilha de 5 etapas e a chave É um contrato PMOC?.</figcaption>
+    <img src="img/t11-novo-contrato-identificacao.png" alt="Assistente Novo Contrato na etapa 1 de 6, Identificação, com a trilha de etapas no topo (Identificação, Ambientes e Equipamentos, Frequência, Equipe & Cobrança, Financeiro, Revisão), o campo Nome do Contrato com o exemplo Ex: Manutenção Preventiva Mensal — Empresa X, o seletor Cliente com Selecione o cliente, e a chave desligada É um contrato PMOC? com a explicação sobre vincular Responsável Técnico e gerar OSs com selo de conformidade legal.">
+    <figcaption>Assistente Novo Contrato na etapa Identificação, com a trilha de 6 etapas (a etapa Financeiro entrou depois de Equipe &amp; Cobrança) e a chave É um contrato PMOC?.</figcaption>
   </figure>
   <table class="dados">
     <thead><tr><th>Campo</th><th>Obrigatório</th><th>Detalhe</th></tr></thead>
@@ -122,8 +127,8 @@
 
   <h3>Responsável Técnico (RT)</h3>
   <figure>
-    <img src="img/t11-wizard-pmoc-unidade.png" alt="Assistente Novo Contrato com a chave PMOC ligada, agora com 6 etapas na trilha (Identificação concluída, e a etapa 2 de 6, Unidade & RT, em destaque, seguida de Ambientes e Equipamentos, Frequência, Equipe & Cobrança e Revisão). Mostra o seletor Responsável Técnico (RT) com Sem RT atribuído e o botão de mais (+), e o bloco Identificação da Unidade com os campos Nome da unidade / local, Endereço (logradouro), Número, Complemento, Bairro, CEP, Cidade e UF.">
-    <figcaption>Etapa Unidade & RT do assistente PMOC, com o seletor de Responsável Técnico e o bloco Identificação da Unidade.</figcaption>
+    <img src="img/t11-wizard-pmoc-unidade.png" alt="Assistente Novo Contrato com a chave PMOC ligada, agora com 7 etapas na trilha (Identificação concluída, e a etapa 2 de 7, Unidade & RT, em destaque, seguida de Ambientes e Equipamentos, Frequência, Equipe & Cobrança, Financeiro e Revisão). Mostra o seletor Responsável Técnico (RT) com Sem RT atribuído e o botão de mais (+), e o bloco Identificação da Unidade com os campos Nome da unidade / local, Endereço (logradouro), Número, Complemento, Bairro, CEP, Cidade e UF.">
+    <figcaption>Etapa Unidade & RT do assistente PMOC, com o seletor de Responsável Técnico e o bloco Identificação da Unidade (trilha de 7 etapas, já com a etapa Financeiro).</figcaption>
   </figure>
   <p>É um seletor com os Responsáveis Técnicos ativos da empresa, mais um botão de mais (+) que abre o cadastro rápido sem sair do assistente. O texto de ajuda diz: "Engenheiro ou Técnico em Refrigeração com CFT/CREA que assina o Termo de Responsabilidade Técnica conforme Lei Federal 13.589/2018. Diferente do Técnico Executor (quem executa as OSs no campo)."</p>
 
@@ -218,6 +223,10 @@
   </table>
   <p>Tentar salvar sem executor mostra <span class="ui">Sem responsável pela execução</span> com "Selecione ao menos 1 técnico ou equipe para executar o contrato.", e o assistente volta sozinho para esta etapa.</p>
 
+  <h3>Etapa Financeiro (só na criação)</h3>
+  <p>Etapa nova entre Equipe &amp; Cobrança e Revisão, que só aparece quando o contrato está sendo CRIADO (editar um contrato existente pula direto para a Revisão). A chave <span class="ui">Já gerar as parcelas a receber</span> decide se o contrato nasce com cobrança: "Cria as entradas deste contrato no Financeiro, uma por vencimento." Os campos são os mesmos da janela <span class="ui">Nova Conta a Receber</span> descrita na seção 11: Descrição, Valor, Conta bancária/caixa, Categoria, Meio de pagamento, Centro de custo (quando a empresa usa), Data de Vencimento, Recorrência, a chave <span class="ui">Duração da cobrança</span> e a Quantidade de parcelas.</p>
+  <p>Desligada a chave, nada é criado agora: "Nenhuma parcela será criada agora. Você lança quando quiser, na aba Financeiro do contrato." Tudo nesta etapa é opcional, pular não impede o contrato de ser criado.</p>
+
   <h3>Etapa Revisão</h3>
   <p>A última etapa mostra a <span class="ui">Revisão do Contrato</span> em dois formatos ao mesmo tempo: uma <span class="ui">Ficha técnica</span> com rótulo e valor (Nome, Cliente, Frequência, Início, Horizonte, Visitas, Ambientes e Equipamentos, Status, Tipo, Responsável Técnico, Técnicos Executores) e uma narrativa escrita em português corrido, explicando o que vai acontecer. Em PMOC ela ainda detalha o <span class="ui">Plano por máquina</span> e <span class="ui">O que entra na primeira visita</span>.</p>
 
@@ -301,7 +310,7 @@
     <thead><tr><th>Documento</th><th>O que é</th></tr></thead>
     <tbody>
       <tr><td><span class="ui">Termo de Responsabilidade Técnica</span> (TRT)</td><td>Onde o Responsável Técnico assume a responsabilidade pelo plano. Vira a página 2 do Dossiê e também sai como PDF individual. Tem prazo de validade.</td></tr>
-      <tr><td><span class="ui">Certificado de Conformidade</span></td><td>Página 3 do Dossiê, com o selo da Lei Federal 13.589/2018. Também sai individual e também tem validade.</td></tr>
+      <tr><td><span class="ui">Certificado de Conformidade</span></td><td>Página 3 do Dossiê, com o selo da Lei Federal 13.589/2018. Também sai individual e também tem validade. O card deste documento tem o botão extra <span class="ui">Modelo visual</span>, para escolher a arte de fundo do certificado deste contrato (por padrão herda o modelo configurado em Configurações de Contrato, seção 10).</td></tr>
       <tr><td><span class="ui">Dossiê PMOC</span></td><td>"Documento completo: capa + Termo de Responsabilidade Técnica + Certificado de Conformidade + Cronograma Anual." A capa tem visual padrão Dominex e não é editável.</td></tr>
       <tr><td><span class="ui">Planilha PMOC</span></td><td>"Identificação do ambiente, Responsável Técnico, relação dos equipamentos climatizados e o plano de manutenção com periodicidade (mensal, trimestral, semestral, anual) e mapa dos 12 meses."</td></tr>
     </tbody>
@@ -405,10 +414,11 @@
 
   <h3>Aba Documentos das Configurações de Contrato</h3>
   <figure>
-    <img src="img/t11-configuracoes-contrato-documentos.png" alt="Aba Documentos das Configurações de Contrato, com o título Modelos padrão de documentos PMOC e a explicação de que editar aqui não altera contratos já existentes. Dois cards lado a lado: Termo de Responsabilidade Técnica (Página 2 do Dossiê PMOC) e Certificado de Conformidade (Página 3 do Dossiê PMOC, Lei 13.589/2018), cada um com o texto padrão e o link Editar texto. Abaixo, o bloco Validade dos documentos com os campos Validade do TRT (meses) e Validade do Certificado (meses), ambos com 12.">
-    <figcaption>Aba Documentos das Configurações de Contrato: os modelos padrão do TRT e do Certificado de Conformidade, e a validade dos documentos em meses.</figcaption>
+    <img src="img/t11-configuracoes-contrato-documentos.png" alt="Aba Documentos das Configurações de Contrato, com o título Modelos padrão de documentos PMOC e a explicação de que editar aqui não altera contratos já existentes. Dois cards lado a lado: Termo de Responsabilidade Técnica (Página 2 do Dossiê PMOC), com o texto padrão e o link Editar texto, e Certificado de Conformidade (Página 3 do Dossiê PMOC, Lei 13.589/2018), com o texto padrão, o link Editar texto e o botão Modelo visual. Abaixo, o bloco Validade dos documentos com os campos Validade do TRT (meses) e Validade do Certificado (meses), ambos com 12.">
+    <figcaption>Aba Documentos das Configurações de Contrato: os modelos padrão do TRT e do Certificado de Conformidade (este com o botão Modelo visual), e a validade dos documentos em meses.</figcaption>
   </figure>
   <p>É onde ficam os <span class="ui">Modelos padrão de documentos PMOC</span>: "Modelos usados como ponto de partida ao criar um novo contrato PMOC. Editar aqui não altera contratos já existentes." Há um modelo para o Termo de Responsabilidade Técnica e outro para o Certificado de Conformidade, cada um com <span class="ui">Editar texto</span> e <span class="ui">Restaurar texto padrão</span>. O editor aceita negrito, listas, links e variáveis (que aparecem como etiquetas e são substituídas pelos dados de cada contrato no PDF).</p>
+  <p>Só o card do Certificado de Conformidade tem o botão extra <span class="ui">Modelo visual</span>, que abre um assistente de 3 passos com várias artes prontas (temas claros e escuros) para o fundo do certificado, com pré-visualização ao vivo. O modelo escolhido aqui é o padrão herdado por todo contrato novo; cada contrato pode trocar o próprio modelo visual na sua aba Documentos. Certificado sem modelo escolhido sai com a arte simples de sempre.</p>
   <p>Abaixo fica <span class="ui">Validade dos documentos</span>: "Quantos meses cada documento gerado fica válido. A data de vencimento é calculada a partir da data de geração." Os campos são <span class="ui">Validade do TRT (meses)</span> e <span class="ui">Validade do Certificado (meses)</span>.</p>
 
   <div class="dica">
@@ -421,8 +431,8 @@
 
   <h3>Criar a cobrança do contrato</h3>
   <figure>
-    <img src="img/t11-contrato-nova-receita.png" alt="Janela Nova Conta a Receber, com o campo Descrição já pré-preenchido com Mensalidade - PMOC - Clínica Vida & Saúde (sugerido a partir do nome do contrato), o campo Valor (R$) com 0,00, o seletor Conta bancária / caixa com Selecione a conta de recebimento, o seletor Categoria, o campo Data de Vencimento (1ª parcela) e o seletor Recorrência com Única selecionado. O botão do rodapé está desabilitado, escrito Criar Conta a Receber.">
-    <figcaption>Janela Nova Conta a Receber da aba Financeiro do contrato: a Descrição já vem como "Mensalidade - PMOC - Clínica Vida & Saúde", puxada do nome do contrato.</figcaption>
+    <img src="img/t11-contrato-nova-receita.png" alt="Janela Nova Conta a Receber, com o campo Descrição já pré-preenchido com Mensalidade - PMOC - Clínica Vida & Saúde (sugerido a partir do nome do contrato), o campo Valor (R$) com 0,00, o seletor Conta bancária / caixa com Selecione a conta de recebimento, o seletor Categoria, o campo Data de Vencimento (1ª parcela), o seletor Recorrência com Única selecionado e o bloco Duração da cobrança desabilitado com o aviso Escolha uma frequência que se repita. O botão do rodapé está desabilitado, escrito Criar Conta a Receber.">
+    <figcaption>Janela Nova Conta a Receber da aba Financeiro do contrato: a Descrição já vem como "Mensalidade - PMOC - Clínica Vida & Saúde", puxada do nome do contrato, e o bloco Duração da cobrança aparece abaixo da Recorrência.</figcaption>
   </figure>
   <p>O botão <span class="ui">Nova Receita</span> abre <span class="ui">Nova Conta a Receber</span> com estes campos:</p>
   <table class="dados">
@@ -432,12 +442,18 @@
       <tr><td><span class="ui">Valor (R$)</span></td><td>O valor de cada parcela.</td></tr>
       <tr><td><span class="ui">Conta bancária / caixa</span></td><td>"Conta para onde o dinheiro vai. Aplicada a todas as parcelas."</td></tr>
       <tr><td><span class="ui">Categoria</span></td><td>Categoria financeira da receita.</td></tr>
+      <tr><td><span class="ui">Centro de custo</span></td><td>Só aparece pra quem tem centro de custo ativo cadastrado. Opcional, herdado por todas as parcelas da série.</td></tr>
       <tr><td><span class="ui">Data de Vencimento (1ª parcela)</span></td><td>Data da primeira cobrança.</td></tr>
       <tr><td><span class="ui">Recorrência</span></td><td><span class="ui">Única</span>, <span class="ui">Mensal</span>, <span class="ui">Bimestral</span>, <span class="ui">Trimestral</span>, <span class="ui">Semestral</span> ou <span class="ui">Anual</span>.</td></tr>
-      <tr><td><span class="ui">Quantidade de parcelas</span></td><td>Quantas cobranças criar de uma vez.</td></tr>
+      <tr><td><span class="ui">Duração da cobrança</span></td><td><span class="ui">Por um período</span> ou <span class="ui">Sem prazo para terminar</span>. Só liga com uma recorrência que se repete; em <span class="ui">Única</span> fica desabilitado.</td></tr>
+      <tr><td><span class="ui">Quantidade de parcelas</span></td><td>Quantas cobranças criar de uma vez. Só aparece com <span class="ui">Por um período</span>.</td></tr>
     </tbody>
   </table>
-  <p>O botão final vira <span class="ui">Criar 12 Parcelas</span> quando há recorrência, ou <span class="ui">Criar Conta a Receber</span> quando é única.</p>
+  <p>O botão final vira <span class="ui">Criar 12 Parcelas</span> quando há recorrência em período fechado, algo como <span class="ui">Criar 24 parcelas e renovar sozinho</span> quando é <span class="ui">Sem prazo para terminar</span> (o número varia conforme a frequência escolhida), ou <span class="ui">Criar Conta a Receber</span> quando é única.</p>
+
+  <h3>Cobrança sem prazo para terminar (janela rolante)</h3>
+  <p>Ligando <span class="ui">Sem prazo para terminar</span>, o sistema não fecha a série num número de parcelas: "Sem prazo, o sistema mantém sempre cerca de 2 anos de parcelas criadas à frente e cria as próximas sozinho." O dia de vencimento de toda a série é o dia da primeira parcela. Isso vale só para a cobrança, as visitas continuam seguindo a duração do contrato.</p>
+  <p>A parcela com cobrança contínua ganha o selo <span class="ui">Cobrança contínua</span>, com os botões <span class="ui">Alterar</span> (muda a frequência ou o dia de vencimento das próximas parcelas, sem tocar nas que já existem) e <span class="ui">Desligar</span> (para de criar parcelas novas; as já criadas continuam como estão, e dá pra religar depois).</p>
 
   <div class="regra">
     A cobrança do contrato é criada <b>separada</b> das visitas. Definir a frequência das visitas não cria a cobrança sozinho: são duas coisas independentes, no mesmo contrato. Um contrato pode ter 12 visitas mensais e uma cobrança anual única, ou 4 visitas trimestrais e 12 parcelas mensais.
@@ -445,6 +461,7 @@
 
   <h3>Marcar como paga e editar</h3>
   <p>Cada parcela tem os selos <span class="ui">Pago</span>, <span class="ui">Pendente</span> e <span class="ui">Atrasado</span>, e três ações rápidas: <span class="ui">Marcar como pago</span>, <span class="ui">Editar</span> e <span class="ui">Excluir</span>. Ao editar uma parcela, o sistema pergunta <span class="ui">Aplicar alterações</span>: "Deseja alterar apenas esta conta ou todas as contas pendentes vinculadas a este contrato?", com os botões <span class="ui">Somente esta</span> e <span class="ui">Todas pendentes</span>.</p>
+  <p>Quem tem o módulo de cobranças e uma conta de recebimento ativa ganha uma quarta ação, <span class="ui">Cobrar online</span>, direto na parcela: gera um link de pagamento com o valor travado no valor daquela parcela (não dá pra cobrar menos, porque receber menos daria baixa na parcela inteira). Parcela já com cobrança viva mostra o selo <span class="ui">Cobrança gerada</span> e o atalho <span class="ui">Ver cobrança</span> no lugar.</p>
 
   <h3>Aplicar a todas</h3>
   <p>O botão <span class="ui">Aplicar a todas</span> resolve contratos antigos cujas parcelas nasceram sem conta bancária ou sem categoria. A janela explica: "Define a conta bancária e/ou categoria em <b>todas as parcelas</b> deste contrato de uma vez. Deixe um campo em branco para não alterá-lo." A confirmação diz quantas parcelas foram atualizadas.</p>

@@ -25,6 +25,14 @@ const costCentersState = vi.hoisted(() => ({
   costCenters: [] as Array<{ id: string; name: string; color: string }>,
 }));
 
+// A aba do fluxo de caixa tem DUAS lentes e abre na "Previsto", que busca
+// dados próprios e precisa de sessão. Este arquivo testa a lente REALIZADA
+// (o demonstrativo por atividade), então a outra entra como dublê. O previsto
+// tem suíte própria em `src/lib/cash-flow-forecast*.test.ts`.
+vi.mock('./CashFlowForecast', () => ({
+  CashFlowForecast: () => null,
+}));
+
 vi.mock('@/hooks/useFinancialCategories', () => ({
   useFinancialCategories: () => categoriesState,
 }));
@@ -88,6 +96,21 @@ describe('FinanceDFC', () => {
     container.remove();
   });
 
+  /**
+   * A aba abre na lente "Previsto". Estes testes são da lente REALIZADA, então
+   * clicam para trocar — como o usuário faria, em vez de um prop só de teste.
+   */
+  const abrirRealizado = () => {
+    const botao = Array.from(container.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Realizado',
+    );
+    if (!botao) throw new Error('não achei o botão da lente Realizado');
+    act(() => {
+      botao.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+  };
+
+
   it('reconcilia saldos e detalha subcategoria, centro de custo e lançamento', () => {
     categoriesState.categories = [
       { id: 'cat-parent', name: 'Ativos', parent_id: null, color: '#7c3aed', icon: 'Landmark', dfc_group: 'investimento' },
@@ -123,6 +146,7 @@ describe('FinanceDFC', () => {
         />,
       );
     });
+    abrirRealizado();
 
     const text = container.textContent ?? '';
     expect(text).toContain('BRL 1300.00');
@@ -184,6 +208,7 @@ describe('FinanceDFC', () => {
     act(() => {
       root.render(<FinanceDFC transactions={[]} />);
     });
+    abrirRealizado();
     expect(container.textContent).toContain('Nenhuma movimentação realizada no período');
     expect(container.textContent).toContain('Somente realizado');
   });

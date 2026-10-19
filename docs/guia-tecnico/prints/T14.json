@@ -3,72 +3,57 @@
     "prints": [
         {
             "id": "t14-config-fiscal-empresa",
-            "url": "/notas-fiscais",
-            "legenda": "Modal Configurações fiscais na seção 1. Empresa, com razão social, CNPJ, endereço fiscal, a chave Homologação/Produção e o bloco Status da emissão.",
+            "url": "/notas-fiscais/configuracoes?tab=empresa",
+            "legenda": "Tela Configurações fiscais na seção 1. Empresa, com razão social, CNPJ, endereço fiscal, a chave Homologação/Produção e o bloco Status da emissão.",
             "viewport": { "largura": 1440, "altura": 2200 },
             "passos": [
                 {
                     "esperar": 3000
-                },
-                {
-                    "clicar": "Configurações fiscais"
-                },
-                {
-                    "esperar": 1500
                 }
             ],
-            "recorte": "dialog"
+            "recorte": "main",
+            "observacao": "RECAPTURAR (não é só o PNG, é o spec): a commit 85af174c (1.25.10, depois do baseline de 06/09/2026) tirou a configuração fiscal do modal e virou tela própria (FiscalSettings.tsx, em '/notas-fiscais/configuracoes', layout SettingsSidebarLayout igual outras telas de configuração — sidebar no desktop, pílulas no celular). O 'recorte':'dialog' antigo não bate mais com nada: não existe mais dialog pra selecionar. Passei a navegar direto pro endereço com '?tab=empresa' em vez de clicar em 'Configurações fiscais' dentro de /notas-fiscais — mais direto e não depende do estado da tela anterior. Os campos, textos e validações de cada seção (Empresa, Certificado A1, Tributação) continuam os mesmos, só o contêiner mudou de modal pra tela."
         },
         {
             "id": "t14-config-fiscal-certificado",
-            "url": "/notas-fiscais",
-            "legenda": "Modal Configurações fiscais na seção 2. Certificado A1, com o seletor de arquivo .pfx/.p12, o campo de senha e a caixa de autorização de guarda do certificado.",
+            "url": "/notas-fiscais/configuracoes?tab=certificado",
+            "legenda": "Tela Configurações fiscais na seção 2. Certificado A1, com o seletor de arquivo .pfx/.p12, o campo de senha e a caixa de autorização de guarda do certificado.",
             "passos": [
                 {
                     "esperar": 3000
-                },
-                {
-                    "clicar": "Configurações fiscais"
-                },
-                {
-                    "esperar": 1500
-                },
-                {
-                    "clicar": "Certificado A1"
-                },
-                {
-                    "esperar": 1500
                 }
             ],
-            "recorte": "dialog"
+            "recorte": "main",
+            "observacao": "RECAPTURAR pelo mesmo motivo do t14-config-fiscal-empresa: configuração fiscal virou tela própria na 1.25.10 (commit 85af174c), não é mais modal. Navega direto pro endereço com '?tab=certificado' (a seção abre nessa aba sozinha, sem precisar clicar em 'Certificado A1' depois de abrir)."
         },
         {
             "id": "t14-config-fiscal-tributacao",
-            "url": "/notas-fiscais",
-            "legenda": "Modal Configurações fiscais na seção 3. Tributação, com Regime tributário, Inscrição Municipal e Inscrição Estadual.",
+            "url": "/notas-fiscais/configuracoes?tab=impostos",
+            "legenda": "Tela Configurações fiscais na seção 3. Tributação, com Regime tributário, Inscrição Municipal e Inscrição Estadual.",
             "passos": [
                 {
                     "esperar": 3000
-                },
-                {
-                    "clicar": "Configurações fiscais"
-                },
-                {
-                    "esperar": 1500
-                },
-                {
-                    "clicar": "Tributação"
-                },
-                {
-                    "esperar": 1500
                 }
             ],
-            "recorte": "dialog"
+            "recorte": "main",
+            "observacao": "RECAPTURAR pelo mesmo motivo do t14-config-fiscal-empresa: configuração fiscal virou tela própria na 1.25.10 (commit 85af174c), não é mais modal. O param de URL é '?tab=impostos' (chave interna da seção), mesmo a seção se chamando 'Tributação' na tela — confirmado em FiscalSettings.tsx."
+        },
+        {
+            "id": "t14-notas-fiscais",
+            "url": "/notas-fiscais",
+            "legenda": "Tela Notas Fiscais no estado inicial, com o selo verde 0/200 emitidas este mês, o bloco Como funciona fechado, o card Configure seus dados fiscais com botão Configurações fiscais e o botão flutuante Nova Nota no canto inferior direito.",
+            "passos": [
+                {
+                    "esperar": 3000
+                }
+            ],
+            "recorte": "main",
+            "observacao": "Print já existe (docs/guia-tecnico/img-otim/t14-notas-fiscais.jpg), mas sem spec declarado em nenhum prints/*.json — por isso o guia-impacto.mjs nunca o enxergou pra reavaliar. Reconstruí o spec a partir do HTML (figure já existente em T14.html) pra fechar esse buraco. RECAPTURAR mesmo assim: a sub-nav de 4 abas (Notas Fiscais, Relatório fiscal, Emissões automáticas, Notas recebidas) passou a aparecer SEMPRE, inclusive antes da configuração fiscal (comentário em NotasFiscais.tsx: 'antes o estado guiado substituía a tela inteira e Notas recebidas ficava INALCANÇÁVEL — provado no navegador em 24/09/2026'). No PNG atual (06/09/2026) o card 'Configure seus dados fiscais' ocupa a tela sem nenhuma aba por cima; hoje ele aparece POR DENTRO da aba 'Notas Fiscais', com a sub-nav visível acima dele."
         },
         {
             "id": "t14-nova-nota-stepper",
             "url": "/notas-fiscais",
-            "legenda": "Assistente Nova NFS-e na etapa Pessoas, com as quatro abas Pessoas, Serviço, Valores e Revisar e Emitir, e o resumo com o contador de pendências.",
+            "legenda": "Assistente Nova NFS-e na etapa Pessoas, com as quatro abas Pessoas, Serviço, Valores e Revisar e Emitir, o resumo com o contador de pendências e o par de links Selecionar cadastrado / Digitar manualmente acima do campo Tomador.",
             "passos": [
                 {
                     "esperar": 3000
@@ -80,7 +65,8 @@
                     "esperar": 2000
                 }
             ],
-            "recorte": "dialog"
+            "recorte": "dialog",
+            "observacao": "RECAPTURAR: o PNG atual foi tirado em 06/09/2026 (baseline 0ee741b2, 23:34). A commit e02c21a4 ('NFS-e com tomador avulso'), que acrescentou o par de links 'Selecionar cadastrado'/'Digitar manualmente' acima dos campos Tomador e Intermediário (componente PartyModeToggle em PessoasStep.tsx), entrou só ~10h depois, às 09:30 do dia seguinte — então o print provavelmente NÃO mostra esse toggle, que hoje aparece sempre, mesmo no estado padrão. Continua batendo em tudo o mais (pendências, abas, campo Tomador vazio); o modal (ResponsiveModal/Dialog) continua modal, só falta esse elemento."
         },
         {
             "id": "t14-como-funciona",
@@ -98,6 +84,30 @@
                 }
             ],
             "recorte": "main"
+        },
+        {
+            "id": "t14-emissoes-automaticas",
+            "url": "/notas-fiscais?tab=automaticas",
+            "legenda": "Aba Emissões automáticas em Notas Fiscais, com os agendamentos de NFS-e de contratos recorrentes agrupados por situação (Bloqueadas, Falharam, Aguardando decisão, Em andamento, Emitidas, Canceladas).",
+            "passos": [
+                {
+                    "esperar": 3000
+                }
+            ],
+            "recorte": "main",
+            "observacao": "NOVO (capítulo 11 do T14.html, feature da 1.33.x — commit 644af55c, 'emissão automática de NFS-e por contrato recorrente'). Sem spec anterior porque o assunto não existia no guia de 06/09/2026. Para capturar de verdade precisa de pelo menos um contrato do tenant demo com 'Nota fiscal automática' ligado (aba Financeiro do contrato) e algum agendamento já processado pela fila nfse_auto_jobs — hoje a aba provavelmente mostra o estado vazio ('Nenhuma emissão automática ainda'). Avaliar com o Tech Lead se liga a automação num contrato demo pra esse print valer a pena, ou se o estado vazio já basta pro guia."
+        },
+        {
+            "id": "t14-notas-recebidas",
+            "url": "/notas-fiscais?tab=recebidas",
+            "legenda": "Aba Notas recebidas em Notas Fiscais, com as sub-abas NF-e e NFS-e, o botão Sincronizar e a listagem de notas emitidas por fornecedores e prestadores contra o CNPJ da empresa.",
+            "passos": [
+                {
+                    "esperar": 3000
+                }
+            ],
+            "recorte": "main",
+            "observacao": "NOVO (capítulo 12 do T14.html, feature da 1.25.10 — commit 85af174c, 'notas destinadas NF-e/NFS-e'). Sem spec anterior pelo mesmo motivo do anterior. Depende do certificado A1 do tenant demo e, pra mostrar nota de verdade (não o estado vazio), depende de a Receita Federal/Ambiente de Dados Nacional terem alguma NF-e ou NFS-e real emitida contra o CNPJ da empresa demo — o que pode não ser reproduzível num ambiente de teste. Avaliar com o Tech Lead se o estado vazio ('Nenhuma nota recebida ainda' ou o aviso de certificado necessário) já serve pro guia."
         }
     ]
 }

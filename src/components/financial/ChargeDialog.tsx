@@ -1217,7 +1217,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                   onSubmit={async (data) => {
                     // O form já validou os campos (zod); o cast só reconcilia o
                     // tipo inferido do resolver com o input do hook.
-                    await updateCustomer.mutateAsync({ ...(data as CustomerInput), id: selectedCustomer.id });
+                    return updateCustomer.mutateAsync({ ...(data as CustomerInput), id: selectedCustomer.id });
                   }}
                   isLoading={updateCustomer.isPending}
                 />

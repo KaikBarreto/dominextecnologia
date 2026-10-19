@@ -4,7 +4,7 @@
     {
       "id": "t1-regional",
       "url": "/configuracoes?tab=regional",
-      "legenda": "Aba Regional das Configurações: cartões Meu idioma, Padrões da empresa (idioma padrão, moeda e fuso horário) e Perfil Comportamental. Nenhum campo é alterado na captura.",
+      "legenda": "Aba Regional das Configurações: cartões Meu idioma, Padrões da empresa (País da empresa, idioma padrão, moeda e fuso horário) e Perfil Comportamental. Nenhum campo é alterado na captura.",
       "passos": [
         { "esperar": 3500 }
       ],
@@ -31,7 +31,7 @@
     {
       "id": "t1-integracoes-whatsapp",
       "url": "/configuracoes?tab=integracoes",
-      "legenda": "Aba Integrações na subaba WhatsApp, mostrando o selo amarelo Em breve na pílula e o cartão fixo Avisos por WhatsApp. Prova visual de que não existe conexão por QR Code hoje.",
+      "legenda": "Aba Integrações na subaba WhatsApp, seção Conexão, com o aviso de risco de bloqueio, a caixinha de aceite, o botão Conectar meu WhatsApp (sem conectar de verdade) e, abaixo, o bloco Meta Cloud API com o selo Em breve. Capturar SEM concluir a conexão nem gerar o QR Code de verdade: o QR é sensível (pareia um número real) e não deve aparecer escaneável no guia público.",
       "passos": [
         { "esperar": 3500 }
       ],

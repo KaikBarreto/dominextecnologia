@@ -122,9 +122,12 @@ interface DynamicFormQuestionsProps {
    * finalizar". Só conformidade/boolean: texto/número/seleção NUNCA são tocados.
    */
   registerAutoFill?: (fn: (() => Promise<void>) | null) => void;
+  /** Remove a superfície cinza de cada pergunta quando o checklist já está
+   * dentro de um bloco próprio (como na execução da OS). */
+  plainQuestionSurface?: boolean;
 }
 
-export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, onValidationChange, readOnly = false, visibility, registerAutoFill }: DynamicFormQuestionsProps) {
+export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, onValidationChange, readOnly = false, visibility, registerAutoFill, plainQuestionSurface = false }: DynamicFormQuestionsProps) {
   const { toast } = useToast();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.dynamicForm;
@@ -905,7 +908,13 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
         const showReadOnly = hasAnswer && !isEditing && question.question_type !== 'photo';
         
         return (
-          <div key={question.id} className="space-y-2 p-3 rounded-lg bg-muted/30">
+          <div
+            key={question.id}
+            className={cn(
+              'space-y-2 p-3 rounded-lg',
+              plainQuestionSurface ? 'bg-transparent' : 'bg-muted/30',
+            )}
+          >
             {/* Cabeçalho como <div> (NÃO <label>): um <label> nativo envolvendo os
                 botões reencaminha o toque como clique sintético pro controle
                 associado. No mobile, esse clique-fantasma chega DEPOIS do

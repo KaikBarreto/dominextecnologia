@@ -36,6 +36,25 @@ vi.mock('@/hooks/useCompanyModules', () => ({
   useCompanyModules: () => ({ hasModule: (code: string) => (code === 'pdv' ? state.hasPdv : true) }),
 }));
 
+// O componente passou a consultar as configurações do Portal do Cliente (veio
+// da 1.36.21). O hook real roda em react-query e exigiria um
+// QueryClientProvider aqui ("No QueryClient set"). Este teste é sobre o
+// "Atende como", então o Portal entra como stand-in inerte.
+vi.mock('@/hooks/useCustomerPortalSettings', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/useCustomerPortalSettings')>();
+  return {
+    ...actual,
+    useCustomerPortalSettings: () => ({
+      settings: null,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      saveSettings: vi.fn(),
+      isSaving: false,
+    }),
+  };
+});
+
 // Stand-ins leves — nada aqui importa pro teste do "Atende como".
 vi.mock('@/components/customers/OriginSelectField', () => ({ OriginSelectField: () => null }));
 vi.mock('@/components/CepLookup', () => ({ CepLookup: () => null }));

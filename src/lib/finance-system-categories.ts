@@ -61,7 +61,13 @@
  * não vê diferença nenhuma.
  */
 
-export type SystemCategoryRole = 'receipt_fee' | 'service_revenue';
+export type SystemCategoryRole =
+  | 'receipt_fee'
+  | 'service_revenue'
+  | 'partner_contribution'
+  | 'profit_distribution'
+  | 'investment_outflow'
+  | 'investment_redemption';
 
 export interface SystemCategoryRoleSpec {
   role: SystemCategoryRole;
@@ -73,6 +79,23 @@ export interface SystemCategoryRoleSpec {
   seedName: string;
   type: 'entrada' | 'saida';
   dreGroup: string;
+  /**
+   * Quarto critério de identidade, usado só quando o trio
+   * (`is_system`, `type`, `dre_group`) empata.
+   *
+   * ⚠️ Virou obrigatório em 18/10/2026, com as 4 categorias do fluxo de caixa
+   * previsto. Elas criam DUAS colisões no trio:
+   *   (true, entrada, outros)          → Aporte de sócios  · Resgate de aplicação
+   *   (true, saida,   nao_operacional) → Aplicação finan.  · Distribuição de lucros
+   *
+   * Sem desempate, NENHUMA das quatro seria dona única do seu papel, e o efeito
+   * prático é pior que confusão interna: `canRenameCategory` TRAVARIA o nome
+   * das quatro, e o cliente não conseguiria renomear "Aporte de sócios".
+   *
+   * `dfc_group` separa os quatro com folga, e isso foi medido nas 62 empresas:
+   * o quarteto (company_id, type, dre_group, dfc_group) é único.
+   */
+  dfcGroup?: string;
 }
 
 export const SYSTEM_CATEGORY_ROLES: Record<SystemCategoryRole, SystemCategoryRoleSpec> = {
@@ -82,6 +105,38 @@ export const SYSTEM_CATEGORY_ROLES: Record<SystemCategoryRole, SystemCategoryRol
     seedName: 'Tarifas e Taxas',
     type: 'saida',
     dreGroup: 'impostos',
+  },
+  /** Dinheiro que o sócio coloca na empresa. NÃO é receita e fica fora do DRE. */
+  partner_contribution: {
+    role: 'partner_contribution',
+    seedName: 'Aporte de sócios',
+    type: 'entrada',
+    dreGroup: 'outros',
+    dfcGroup: 'financiamento',
+  },
+  /** Lucro que sai para os sócios. Aparece ABAIXO do resultado líquido. */
+  profit_distribution: {
+    role: 'profit_distribution',
+    seedName: 'Distribuição de lucros',
+    type: 'saida',
+    dreGroup: 'nao_operacional',
+    dfcGroup: 'financiamento',
+  },
+  /** Dinheiro que a empresa guarda (poupança, CDB). Sai do caixa, segue no patrimônio. */
+  investment_outflow: {
+    role: 'investment_outflow',
+    seedName: 'Aplicação financeira',
+    type: 'saida',
+    dreGroup: 'nao_operacional',
+    dfcGroup: 'investimento',
+  },
+  /** O mesmo dinheiro voltando para o caixa. Não é receita. */
+  investment_redemption: {
+    role: 'investment_redemption',
+    seedName: 'Resgate de aplicação',
+    type: 'entrada',
+    dreGroup: 'outros',
+    dfcGroup: 'investimento',
   },
   /** Receita gerada pela aprovação de orçamento. */
   service_revenue: {
@@ -126,9 +181,20 @@ export interface SystemCategoryLike {
   name: string;
   type: string;
   dre_group?: string | null;
+  dfc_group?: string | null;
   is_system?: boolean | null;
   is_active?: boolean | null;
   sort_order?: number | null;
+}
+
+/**
+ * O quarto critério só entra quando o papel o declara. Papel antigo
+ * (`receipt_fee`, `service_revenue`) não tem `dfcGroup` e segue resolvendo
+ * pelo trio — nada do que já funcionava muda de comportamento.
+ */
+function matchesDfcGroup(cat: SystemCategoryLike, spec: SystemCategoryRoleSpec): boolean {
+  if (!spec.dfcGroup) return true;
+  return norm(cat.dfc_group) === norm(spec.dfcGroup);
 }
 
 const norm = (value: string | null | undefined): string =>
@@ -191,6 +257,7 @@ export function findRoleCandidates<T extends SystemCategoryLike>(
         isActive(cat) &&
         cat.type === spec.type &&
         norm(cat.dre_group) === norm(spec.dreGroup) &&
+        matchesDfcGroup(cat, spec) &&
         !isForeignName(cat.name, spec),
     )
     .sort((a, b) => compareCandidates(a, b, spec));
@@ -285,6 +352,7 @@ export function getSystemCategoryRole(
     if (
       cat.type === spec.type &&
       norm(cat.dre_group) === norm(spec.dreGroup) &&
+      matchesDfcGroup(cat, spec) &&
       !isForeignName(cat.name, spec)
     ) {
       return role;

@@ -8,7 +8,7 @@ describe('groupScopeItems — agrupamento do escopo de OS pra RPC sync_service_o
       { form_template_id: 'tpl-avulso-2' },
     ]);
     expect(result).toEqual([
-      { equipment_id: null, form_template_ids: ['tpl-avulso-1', 'tpl-avulso-2'] },
+      { equipment_id: null, form_template_ids: ['tpl-avulso-1', 'tpl-avulso-2'], service_type_ids: [] },
     ]);
   });
 
@@ -17,7 +17,7 @@ describe('groupScopeItems — agrupamento do escopo de OS pra RPC sync_service_o
       { equipment_id: 'equip-1' },
     ]);
     expect(result).toEqual([
-      { equipment_id: 'equip-1', form_template_ids: [] },
+      { equipment_id: 'equip-1', form_template_ids: [], service_type_ids: [] },
     ]);
   });
 
@@ -28,7 +28,7 @@ describe('groupScopeItems — agrupamento do escopo de OS pra RPC sync_service_o
       { equipment_id: 'equip-1', form_template_id: 'tpl-b' },
     ]);
     expect(result).toEqual([
-      { equipment_id: 'equip-1', form_template_ids: ['tpl-a', 'tpl-b'] },
+      { equipment_id: 'equip-1', form_template_ids: ['tpl-a', 'tpl-b'], service_type_ids: [] },
     ]);
   });
 
@@ -40,10 +40,21 @@ describe('groupScopeItems — agrupamento do escopo de OS pra RPC sync_service_o
       { equipment_id: 'equip-1', form_template_id: 'tpl-b' },
     ]);
     expect(result).toEqual([
-      { equipment_id: 'equip-1', form_template_ids: ['tpl-a', 'tpl-b'] },
-      { equipment_id: null, form_template_ids: ['tpl-avulso'] },
-      { equipment_id: 'equip-2', form_template_ids: [] },
+      { equipment_id: 'equip-1', form_template_ids: ['tpl-a', 'tpl-b'], service_type_ids: [] },
+      { equipment_id: null, form_template_ids: ['tpl-avulso'], service_type_ids: [] },
+      { equipment_id: 'equip-2', form_template_ids: [], service_type_ids: [] },
     ]);
+  });
+
+  it('deduplica os serviços do equipamento mesmo quando repetidos por checklist', () => {
+    expect(groupScopeItems([
+      { equipment_id: 'equip-1', form_template_id: 'tpl-a', service_type_ids: ['cleaning', 'install'] },
+      { equipment_id: 'equip-1', form_template_id: 'tpl-b', service_type_ids: ['install'] },
+    ])).toEqual([{
+      equipment_id: 'equip-1',
+      form_template_ids: ['tpl-a', 'tpl-b'],
+      service_type_ids: ['cleaning', 'install'],
+    }]);
   });
 
   it('array vazio devolve array vazio (limpar o escopo inteiro)', () => {

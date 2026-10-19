@@ -4,7 +4,7 @@
     {
       "id": "t16-gerenciar-plano-personalizado",
       "url": "/assinatura",
-      "legenda": "Janela Gerenciar Meu Plano aberta na aba Personalizado, com a lista de módulos à esquerda e o painel Seu Plano à direita mostrando o total mensal. Nada é aplicado, só a visualização da aba.",
+      "legenda": "Janela Gerenciar Meu Plano aberta na aba Personalizado: módulo básico e os módulos grátis (Portal do Cliente, Orçamentos e Precificação, Perguntas em vídeo nos checklists) em verde no topo, sem checkbox, e só embaixo, sob 'Adicione módulos', os módulos pagos com checkbox e preço. Painel Seu Plano à direita com o total mensal. Nada é aplicado, só a visualização da aba.",
       "passos": [
         { "esperar": 3500 },
         { "clicar": "Gerenciar Meu Plano" },

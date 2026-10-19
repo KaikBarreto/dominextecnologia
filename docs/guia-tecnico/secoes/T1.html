@@ -16,7 +16,7 @@
   </div>
 
   <figure>
-    <img src="img/t1-configuracoes.png" alt="Tela Configurações da Dominex na aba Empresa, com o menu de abas à esquerda (Empresa, Regional, Usuários e Permissões, Usabilidade, Atalhos, Aparência, Integrações) e, à direita, os blocos Identidade Visual, Dados Cadastrais, Contato, Endereço, White Label, Documentos Legais e Zona de Perigo. No topo direito aparece o selo Salvo.">
+    <img src="img/t1-configuracoes.png" alt="Tela Configurações da Dominex na aba Empresa, com o menu de abas à esquerda (Empresa, Regional, Usuários e Permissões, Usabilidade, Atalhos, Aparência, Integrações) e, à direita, os blocos Identidade Visual, Dados Cadastrais, Contato, Endereço, White Label, Documentos Legais, o cartão neutro Exportar meus dados e Zona de Perigo. No topo direito aparece o selo Salvo.">
     <figcaption>Configurações, aba Empresa: as sete abas à esquerda e o formulário completo à direita, com o selo <span class="ui">Salvo</span> no topo.</figcaption>
   </figure>
 
@@ -153,7 +153,7 @@
     O White Label muda a aparência, não os dados. Ele <b>não</b> troca o nome da empresa nos documentos (isso é o campo <span class="ui">Nome da Empresa</span>) e <b>não</b> tira o crédito "Desenvolvido por Auctus" do rodapé do sistema interno, que é a assinatura da empresa que desenvolve a plataforma.
   </div>
 
-  <h2>4. Aba Regional: meu idioma × padrões da empresa (idioma, moeda, fuso) e o switch do resultado DISC</h2>
+  <h2>4. Aba Regional: meu idioma × padrões da empresa (país, idioma, moeda, fuso) e o switch do resultado DISC</h2>
 
   <p>A aba <span class="ui">Regional</span> tem três cartões, e a diferença entre os dois primeiros é o ponto que mais confunde.</p>
 
@@ -166,20 +166,21 @@
   </ul>
 
   <h3>Cartão <span class="ui">Padrões da empresa</span> (só administrador)</h3>
-  <p>Quem não é administrador vê o cartão, mas com o aviso <span class="ui">(somente admin)</span> ao lado da descrição e os campos travados.</p>
+  <p>Quem não é administrador vê o cartão, mas com o aviso <span class="ui">(somente admin)</span> ao lado da descrição e os campos travados. O primeiro campo do cartão é o <span class="ui">País da empresa</span>, acima do idioma padrão: "Define os padrões sugeridos de idioma, moeda e fuso. Você pode ajustá-los separadamente."</p>
   <table class="dados">
     <thead><tr><th>Campo</th><th>O que faz</th></tr></thead>
     <tbody>
+      <tr><td><span class="ui">País da empresa</span></td><td>Seletor com busca (por país ou moeda). Não é um dado cadastral, é só a FONTE dos padrões sugeridos pra idioma, moeda e fuso. Trocar o país não trava nem converte nada por conta própria.</td></tr>
       <tr><td><span class="ui">Idioma padrão da empresa</span></td><td>"Idioma aplicado a todos que não escolheram um pessoalmente."</td></tr>
-      <tr><td><span class="ui">Moeda</span></td><td>"Moeda de operação usada nos valores do sistema."</td></tr>
+      <tr><td><span class="ui">Moeda</span></td><td>"Moeda de operação usada nos valores do sistema." Mostra a bandeirinha do país correspondente no seletor.</td></tr>
       <tr><td><span class="ui">Fuso horário</span></td><td>"Usado para datas e horários exibidos no sistema." O seletor tem busca própria, com a dica <span class="ui">Buscar fuso (ex: Sao Paulo)</span>.</td></tr>
     </tbody>
   </table>
 
-  <p>Ao trocar o idioma padrão, o sistema oferece um atalho: aparece a pergunta <span class="ui">Usar os padrões de [idioma] para moeda e fuso?</span> com os botões <span class="ui">Manter atuais</span> e <span class="ui">Usar padrões</span>. Aceitando, ele ajusta moeda e fuso juntos e confirma com <span class="ui">Padrões de [idioma] aplicados</span>.</p>
+  <p>Trocar o <span class="ui">País da empresa</span> para um país cujo idioma, moeda ou fuso padrão seja diferente do que já está configurado abre a pergunta <span class="ui">Usar os padrões de [país] para idioma, moeda e fuso?</span>, com <span class="ui">Manter atuais</span> e <span class="ui">Usar padrões</span>. Aceitando, confirma com <span class="ui">Padrões de [país] aplicados</span>. Trocar só o <span class="ui">Idioma padrão da empresa</span> (sem tocar no país) continua oferecendo o atalho mais específico de antes, só pra moeda e fuso: <span class="ui">Usar os padrões de [idioma] para moeda e fuso?</span>. Os dois atalhos convivem porque país, idioma, moeda e fuso são campos independentes; nenhum trava os outros.</p>
 
   <div class="aviso">
-    <b>Trocar a moeda não converte valor nenhum.</b> O aviso da própria tela: "A moeda é a de operação da empresa. Trocar não converte os valores já registrados, eles continuam com o número original." Ou seja, um lançamento de 1.500 continua 1.500, só passa a ser exibido com o outro símbolo. Não use a troca de moeda como conversor.
+    <b>Trocar a moeda não converte valor nenhum.</b> O aviso da própria tela: "A moeda é a de operação da empresa. Trocar não converte os valores já registrados, eles continuam com o número original." Ou seja, um lançamento de 1.500 continua 1.500, só passa a ser exibido com o outro símbolo. Não use a troca de moeda, nem a troca de país, como conversor.
   </div>
 
   <h3>Cartão <span class="ui">Perfil Comportamental</span></h3>
@@ -190,8 +191,8 @@
   </ul>
 
   <figure>
-    <img src="img/t1-regional.png" alt="Aba Regional das Configurações. À esquerda, o menu de abas com Regional em destaque. À direita, o cartão Meu idioma com o seletor de Idioma em Português e o aviso de que é preferência pessoal, e abaixo o cartão Padrões da empresa, com Idioma padrão da empresa em Português, o campo Moeda em BRL — Real brasileiro (R$) e o início do campo Fuso horário.">
-    <figcaption>Aba Regional: cartões Meu idioma e Padrões da empresa. O cartão Perfil Comportamental fica logo abaixo, fora do recorte.</figcaption>
+    <img src="img/t1-regional.png" alt="Aba Regional das Configurações. À esquerda, o menu de abas com Regional em destaque. À direita, o cartão Meu idioma com o seletor de Idioma em Português e o aviso de que é preferência pessoal, e abaixo o cartão Padrões da empresa, com o campo País da empresa em Brasil no topo, Idioma padrão da empresa em Português, o campo Moeda em BRL — Real brasileiro (R$) com a bandeira do Brasil e o início do campo Fuso horário.">
+    <figcaption>Aba Regional: cartões Meu idioma e Padrões da empresa, agora com o campo País da empresa no topo. O cartão Perfil Comportamental fica logo abaixo, fora do recorte.</figcaption>
   </figure>
 
   <h2>5. Aba Usabilidade: auto-salvar OS, mostrar valores, exigir assinatura, fotos no dispositivo, tabelas compactas, confirmar exclusão, feriados na agenda</h2>
@@ -294,17 +295,32 @@
     <figcaption>Aba Atalhos, com o interruptor geral e a lista de atalhos de Navegação.</figcaption>
   </figure>
 
-  <h2>8. Aba Integrações: Recebimentos (Asaas) e o estado atual do WhatsApp</h2>
+  <h2>8. Aba Integrações: WhatsApp (conexão por QR Code e automações) e Recebimentos (Asaas)</h2>
 
   <p>A aba <span class="ui">Integrações</span> tem duas subabas em pílula: <span class="ui">WhatsApp</span> e <span class="ui">Recebimentos</span>.</p>
 
-  <div class="perigo">
-    <b>WhatsApp está "Em breve" e não conecta.</b> A subaba <span class="ui">WhatsApp</span> aparece com um selo amarelo <span class="ui">Em breve</span> e mostra um cartão fixo com o título <span class="ui">Avisos por WhatsApp</span> e o texto "Em breve você poderá avisar seus clientes automaticamente pelo WhatsApp. Estamos finalizando os últimos ajustes." <b>Não existe hoje</b> tela de conexão por QR Code, nem gatilho de aviso automático de OS a caminho, iniciada ou concluída. Não prometa esse recurso ao cliente e não ensine passo a passo de conexão.
+  <div class="aviso">
+    <b>O WhatsApp já conecta por QR Code, não é mais só um aviso de "Em breve".</b> Depende do módulo de WhatsApp. Sem o módulo, a subaba mostra <span class="ui">Prévia do módulo de WhatsApp</span>: "Você pode conhecer toda a estrutura. Para salvar e ativar as automações, contrate o módulo de WhatsApp." Com o módulo, aparecem seis seções em pílula: <span class="ui">Conexão</span>, <span class="ui">Automações</span>, <span class="ui">Atendimento</span>, <span class="ui">Modelos</span>, <span class="ui">Campanhas</span> e <span class="ui">Histórico</span>.
   </div>
 
+  <h3>Conexão: parear o número por QR Code</h3>
+  <p>Antes de conectar, a tela mostra o aviso "Entendo que toda automação de WhatsApp fora da API Oficial da Meta tem um risco, ainda que ínfimo, de bloqueio do número, justamente por se tratar de envio automatizado", com uma caixinha de confirmação obrigatória, e a dica de usar um número secundário pra isso (chip separado dos avisos), deixando o WhatsApp principal de atendimento livre de qualquer risco. Marcando a caixinha, o botão <span class="ui">Conectar meu WhatsApp</span> libera, gera o QR Code (com uma barra de progresso, "Preparando a conexão e gerando o QR Code…", porque a criação da instância leva alguns segundos) e, depois de parear o celular, o botão vira <span class="ui">Confirmar e ativar</span> ou <span class="ui">Usar este canal</span>. Dá pra <span class="ui">Desconectar</span> e gerar um QR novo a qualquer momento.</p>
+
+  <div class="regra"><b>Canal não oficial, por QR Code, não é a API Oficial da Meta.</b> A própria tela avisa: "O Dominex reduz o risco com consentimento, fila, aquecimento e limites. Nenhuma integração por QR Code consegue garantir ausência de bloqueio." A conexão oficial pelo Facebook (<span class="ui">Meta Cloud API</span>) continua com o selo <span class="ui">Em breve</span>, com custos da Meta separados do plano Dominex.</div>
+
+  <h3>Automações: avisos automáticos de OS e de cobrança</h3>
+  <p>A seção <span class="ui">Automações</span> liga os avisos automáticos. No domínio <span class="ui">Ordens de Serviço</span>, os eventos são <span class="ui">Técnico a caminho</span>, <span class="ui">Serviço iniciado</span> e <span class="ui">OS concluída</span>. No domínio <span class="ui">Cobranças</span>, os eventos são <span class="ui">Cobrança gerada</span>, <span class="ui">Antes do vencimento</span>, <span class="ui">No vencimento</span> e <span class="ui">Após o vencimento</span>. Cada evento tem a mensagem editável por você.</p>
+  <p>Antes das automações, a mesma tela traz o ritmo de envio (horário e janela), porque é a régua que protege o número de bloqueio: os avisos de OS seguem a operação (todo dia, dentro do horário comercial estendido), e os avisos de cobrança seguem o comercial (dias úteis, horário comercial), porque o cliente espera uma OS no minuto em que ela acontece, mas não espera (nem quer) cobrança fora de hora.</p>
+
+  <h3>Atendimento, Modelos e Campanhas: prévia da interface</h3>
+  <p>Essas três seções mostram a tela cheia de como vai ficar: a <span class="ui">Central de atendimento</span> (inbox por conversa, vinculada a cliente/OS/cobrança), os <span class="ui">Modelos</span> de mensagem e as <span class="ui">Campanhas</span> de disparo em massa. Todas carregam o selo <span class="ui">Prévia funcional da interface</span>: dá pra navegar e entender o desenho, mas ainda não enviam ou recebem mensagem de verdade. O que funciona de ponta a ponta hoje é a Conexão e as Automações de OS/cobrança.</p>
+
+  <h3>Histórico: fila de envios</h3>
+  <p>Mostra os contadores <span class="ui">Na fila</span>, <span class="ui">Enviado</span>, <span class="ui">Entregue</span>, <span class="ui">Lido</span>, <span class="ui">Ignorado</span> e <span class="ui">Falhou</span>, e a lista dos últimos 50 avisos transacionais, com o motivo quando um aviso foi ignorado.</p>
+
   <figure>
-    <img src="img/t1-integracoes-whatsapp.png" alt="Aba Integrações das Configurações na subaba WhatsApp, com a pílula WhatsApp trazendo o selo amarelo Em breve ao lado, ao lado da pílula Recebimentos. Abaixo, o cartão fixo com o ícone do WhatsApp em verde, o título Avisos por WhatsApp, o texto explicando que a função está em ajuste final e o selo laranja Em breve.">
-    <figcaption>Subaba WhatsApp mostrando o selo Em breve: não existe conexão por QR Code hoje.</figcaption>
+    <img src="img/t1-integracoes-whatsapp.png" alt="Aba Integrações das Configurações na subaba WhatsApp, seção Conexão, com a caixinha de risco de bloqueio marcada, o botão Conectar meu WhatsApp, a dica de usar número secundário e, abaixo, a seção Meta Cloud API com o selo Em breve.">
+    <figcaption>Subaba WhatsApp, seção Conexão: o aviso de risco e o botão para parear por QR Code, antes de conectar.</figcaption>
   </figure>
 
   <h3>Recebimentos (Asaas)</h3>
@@ -345,6 +361,11 @@
 
   <h3>Documentos Legais</h3>
   <p>No fim da aba <span class="ui">Empresa</span> fica o cartão <span class="ui">Documentos Legais</span>, "Consulte e baixe os termos que regem o uso do Dominex". O botão <span class="ui">Ver termos de uso</span> abre o documento em janela, com opção de <span class="ui">Baixar PDF</span>. Abaixo, quando já houve aceite, aparece a linha <span class="ui">Aceito em [data]</span> com um sinal verde. É o comprovante de que a sua empresa aceitou os termos, útil em auditoria.</p>
+
+  <h3>Exportar meus dados</h3>
+  <p>Logo abaixo de Documentos Legais, antes da Zona de Perigo, fica o cartão neutro <span class="ui">Exportar meus dados</span>: "Baixe uma planilha do Excel com os dados da sua empresa: clientes, equipamentos, ordens de serviço, orçamentos, contratos, financeiro e mais. Serve de backup e para levar seus dados para onde quiser." O botão <span class="ui">Exportar dados</span> abre uma janela pra escolher o que entra na planilha, com <span class="ui">Marcar tudo</span> e <span class="ui">Limpar seleção</span>. Movimentações de Estoque e Ponto vêm desmarcadas por padrão, porque costumam ter muitos registros. O arquivo é gerado na hora e baixado automaticamente, sem passar por e-mail ou suporte.</p>
+
+  <div class="aviso">Diferente da Zona de Perigo, <span class="ui">Exportar meus dados</span> não é destrutivo: o cartão é neutro (não vermelho) de propósito. Mas usa a mesma permissão de quem pode Zerar Sistema, então só aparece pra quem tem esse poder.</div>
 
   <h3>Zona de Perigo</h3>
   <p>Um cartão vermelho no fim da aba <span class="ui">Empresa</span>, com o título <span class="ui">Zona de Perigo</span> e a advertência "Ações irreversíveis. Revise cuidadosamente antes de confirmar". Dentro, a ação <span class="ui">Zerar Sistema</span>, descrita como "Exclui dados operacionais selecionados. Dados da empresa e usuários são preservados. Toda operação fica registrada em log de auditoria".</p>
@@ -420,8 +441,18 @@
       </tr>
       <tr>
         <td>"Quero conectar meu WhatsApp e não acho o QR Code"</td>
-        <td>Recurso ainda não liberado</td>
-        <td>A aba WhatsApp está marcada como Em breve e mostra só um aviso. Não existe conexão por QR Code hoje. Avise que ainda não está disponível.</td>
+        <td>Falta o módulo, ou não marcou a caixinha de risco</td>
+        <td>Em Integrações › WhatsApp › Conexão. Sem o módulo, a tela é só prévia (contratar libera). Com o módulo, o botão Conectar meu WhatsApp só libera depois de marcar a caixinha de aceite do risco de bloqueio.</td>
+      </tr>
+      <tr>
+        <td>"O cliente não recebeu o aviso de que a OS está a caminho"</td>
+        <td>Automação desligada, número não conectado, ou fora do horário de envio</td>
+        <td>Confira em Integrações › WhatsApp › Conexão se o número está conectado, e em Automações se o evento Técnico a caminho está ligado. Avisos de OS saem dentro da janela de operação configurada, não fora dela.</td>
+      </tr>
+      <tr>
+        <td>"Consigo já atender cliente pelo WhatsApp dentro do Dominex?"</td>
+        <td>Expectativa maior que a entrega atual</td>
+        <td>A seção Atendimento (inbox) é uma prévia funcional da interface, pra mostrar o desenho. Hoje o que funciona de ponta a ponta é a conexão do número e os avisos automáticos de OS e cobrança.</td>
       </tr>
       <tr>
         <td>"O CNPJ não aparece no relatório da OS"</td>
@@ -478,6 +509,12 @@
     <dt>Trocar meu idioma muda o idioma dos meus colegas?</dt>
     <dd>Não. Meu idioma é pessoal. Quem muda pra todo mundo é o campo Idioma padrão da empresa, e só administrador mexe nele.</dd>
 
+    <dt>Pra que serve o campo País da empresa?</dt>
+    <dd>Só pra sugerir os padrões de idioma, moeda e fuso daquele mercado. Não é um dado cadastral e não trava nada: você pode manter idioma, moeda e fuso diferentes do sugerido pelo país.</dd>
+
+    <dt>O WhatsApp do Dominex já funciona de verdade?</dt>
+    <dd>A conexão por QR Code e os avisos automáticos de OS e cobrança já funcionam, com o módulo contratado. Atendimento, modelos de mensagem e campanhas ainda são só prévia da interface. A conexão oficial pela Meta (Facebook) continua em breve.</dd>
+
     <dt>Onde ligo ou desligo os feriados na agenda?</dt>
     <dd>Configurações › Usabilidade › bloco Agenda › Exibir Feriados. Nasce ligado.</dd>
 
@@ -501,6 +538,6 @@
   </dl>
 
   <div class="glossario">
-    <b>Palavras que o cliente usa pra isso:</b> configurações, ajustes, dados da empresa, papel timbrado, logo, marca, cor do sistema, personalizar, tema escuro, fuso, moeda, integrações, chave da Asaas, apagar tudo, zerar, limpar base
+    <b>Palavras que o cliente usa pra isso:</b> configurações, ajustes, dados da empresa, papel timbrado, logo, marca, cor do sistema, personalizar, tema escuro, fuso, moeda, país, integrações, chave da Asaas, apagar tudo, zerar, limpar base, conectar WhatsApp, QR Code do WhatsApp, avisar cliente pelo WhatsApp, exportar dados, backup
   </div>
 </section>

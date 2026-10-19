@@ -139,6 +139,8 @@ export interface ServiceOrder {
   client_signature?: string;
   notes?: string;
   contract_id?: string;
+  /** Orçamento comercial que originou a OS, quando criada pela ação Gerar OS. */
+  quote_id?: string | null;
   created_by?: string;
   team_id?: string;
   form_template_id?: string;
@@ -320,6 +322,15 @@ export interface FinancialTransaction {
   /** Cobrança online que originou a conta/baixa/tarifa (escopo sempre protegido por RLS da empresa). */
   tenant_charge_id?: string | null;
   credit_card_bill_date?: string | null;
+  /**
+   * Fatura de cartão que este lançamento quita. Existe no banco desde sempre,
+   * mas faltava NESTE tipo — e `src/lib/dfc.ts` depende dele para não contar
+   * em dobro o pagamento de fatura. Funcionava só porque `useFinancial` faz
+   * `select('*')` e o campo viajava sem tipo: qualquer `select` mais estreito
+   * ou `.map()` que reconstruísse o objeto apagaria a exceção EM SILÊNCIO,
+   * sem o TypeScript reclamar. Adicionado em 18/10/2026.
+   */
+  bill_id?: string | null;
   employee_id?: string | null;
   payroll_period?: string | null;
   payroll_kind?: 'salary' | 'vale' | 'bonus' | 'rescission' | null;

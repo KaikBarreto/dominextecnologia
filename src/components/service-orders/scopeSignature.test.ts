@@ -52,4 +52,28 @@ describe('scopeSignature — detecta mudança real no escopo da OS', () => {
       scopeSignature([{ equipment_id: 'equip-1', form_template_id: 'tpl-a' }]),
     );
   });
+
+  it('trocar os serviços do equipamento muda a assinatura', () => {
+    expect(scopeSignature([{
+      equipment_id: 'equip-1',
+      form_template_id: 'tpl-a',
+      service_type_ids: ['cleaning'],
+    }])).not.toBe(scopeSignature([{
+      equipment_id: 'equip-1',
+      form_template_id: 'tpl-a',
+      service_type_ids: ['install'],
+    }]));
+  });
+
+  it('a ordem dos serviços do equipamento não muda a assinatura', () => {
+    expect(scopeSignature([{
+      equipment_id: 'equip-1',
+      form_template_id: 'tpl-a',
+      service_type_ids: ['install', 'cleaning'],
+    }])).toBe(scopeSignature([{
+      equipment_id: 'equip-1',
+      form_template_id: 'tpl-a',
+      service_type_ids: ['cleaning', 'install'],
+    }]));
+  });
 });

@@ -95,7 +95,7 @@ import {
  * Gating:
  *  - Documentos: SÓ contrato PMOC + `documents_released`.
  *  - Histórico PMOC: SÓ contrato PMOC + `documents_released`.
- *  - "Abrir chamado": customer_id do payload; insere em service_orders via anon.
+ *  - "Abrir chamado": RPC pública valida o token e deriva o contrato/cliente no servidor.
  */
 
 // ── Constantes de estilo ──────────────────────────────────────────────────────
@@ -435,13 +435,6 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
   const [ticketDesc, setTicketDesc] = useState('');
   const [ticketSubmitting, setTicketSubmitting] = useState(false);
 
-  // IDs de contexto vêm de payload.contract (contract.id desde 1.12.0).
-  // Leitura defensiva: pode ser null em payloads antigos ou de outra versão.
-  // Só gateiam a visibilidade do CTA; quem resolve os IDs do chamado é a RPC,
-  // a partir do token do portal.
-  const customerId = contract.customer_id ?? null;
-  const companyId = contract.company_id ?? null;
-
   const handleSubmitTicket = async () => {
     if (ticketDesc.trim().length < 10) return;
     setTicketSubmitting(true);
@@ -537,7 +530,7 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
       activeSection={activeTab}
       onSectionChange={setActiveTab}
       footerStatus={footerStatus ?? undefined}
-      footerCtaLabel={customerId && companyId ? t.openTicketHere : undefined}
+      footerCtaLabel={t.openTicketHere}
       onFooterCta={() => setShowTicketModal(true)}
       navLabel={t.sidebarNavLabel}
     >

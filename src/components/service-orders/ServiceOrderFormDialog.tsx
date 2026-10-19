@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, ChevronRight, ChevronLeft, ChevronDown, Plus, Check, Eye, MapPin, Repeat, AlertTriangle, MapPinned, ClipboardList, Wrench } from 'lucide-react';
+import { Loader2, ChevronRight, ChevronLeft, ChevronDown, Plus, Check, Eye, MapPin, Repeat, AlertTriangle, MapPinned, ClipboardList, Wrench, X, Copy } from 'lucide-react';
 import { geocodeAddress, buildServiceAddress } from '@/utils/geolocation';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -29,7 +29,6 @@ import { useProfiles } from '@/hooks/useProfiles';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
-import { useServiceTypeCategories } from '@/hooks/useServiceTypeCategories';
 import { useTeams } from '@/hooks/useTeams';
 import { useNpsSettings } from '@/hooks/useNpsSettings';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
@@ -61,6 +60,25 @@ import { generateRecurrenceDates, findRecurrenceIssue, weekdaysToPersist, resolv
 import { formatDate } from '@/lib/format';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { OsMaterialsSection } from '@/components/service-orders/OsMaterialsSection';
+import { ServiceTypesMultiSelect } from '@/components/service-orders/ServiceTypesMultiSelect';
+import { ServiceOrderBudgetSection } from '@/components/service-orders/ServiceOrderBudgetSection';
+import {
+  syncServiceOrderBudget,
+  syncServiceOrderServiceTypes,
+  useServiceOrderBudget,
+  useServiceOrderServiceTypes,
+} from '@/hooks/useServiceOrderBudget';
+import {
+  serviceOrderBudgetSignature,
+  type ServiceOrderBudgetItem,
+} from '@/lib/serviceOrderBudget';
+import { groupScopeItems } from '@/hooks/useServiceOrders';
+import {
+  checklistMatchesEquipmentServices,
+  checklistMatchesSelectedServices,
+  mergeServiceTypeIds,
+  reconcileEquipmentChecklistTemplateIds,
+} from '@/lib/serviceOrderServices';
 
 const serviceOrderSchema = z.object({
   customer_id: z.string().optional(),
@@ -108,10 +126,14 @@ const STEPS = [
  * `equipment_items` no save. Importa quem está no conjunto, não a ordem.
  */
 export const scopeSignature = (
-  items: Array<{ equipment_id?: string | null; form_template_id?: string | null }>,
+  items: Array<{
+    equipment_id?: string | null;
+    form_template_id?: string | null;
+    service_type_ids?: string[];
+  }>,
 ): string =>
   items
-    .map(i => `${i.equipment_id ?? ''}::${i.form_template_id ?? ''}`)
+    .map(i => `${i.equipment_id ?? ''}::${i.form_template_id ?? ''}::${Array.from(new Set(i.service_type_ids ?? [])).sort().join(',')}`)
     .sort()
     .join('|');
 
@@ -125,18 +147,23 @@ export function ServiceOrderFormDialog({
   const { data: technicians } = useProfiles();
   const { templates } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
-  const { categories: serviceTypeCategories } = useServiceTypeCategories();
   const { teams, teamsWithMembers } = useTeams();
   const { settings: npsSettings } = useNpsSettings();
   const isEditing = !!serviceOrder;
   const [step, setStep] = useState(0);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(serviceOrder?.customer_id ?? defaultCustomerId);
-  const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | undefined>(serviceOrder?.service_type_id ?? undefined);
+  const [selectedServiceTypeIds, setSelectedServiceTypeIds] = useState<string[]>(
+    serviceOrder?.service_type_id ? [serviceOrder.service_type_id] : [],
+  );
+  const [budgetItems, setBudgetItems] = useState<ServiceOrderBudgetItem[]>([]);
+  const loadedBudgetSigRef = useRef<string | null>(null);
+  const loadedServiceTypesSigRef = useRef<string | null>(null);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [quickCreateCustomerOpen, setQuickCreateCustomerOpen] = useState(false);
   const [quickCreateServiceTypeOpen, setQuickCreateServiceTypeOpen] = useState(false);
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
   const [equipmentTemplateMap, setEquipmentTemplateMap] = useState<Record<string, string[]>>({});
+  const [equipmentServiceTypeMap, setEquipmentServiceTypeMap] = useState<Record<string, string[]>>({});
   const [selectedStandaloneTemplateIds, setSelectedStandaloneTemplateIds] = useState<string[]>([]);
   // Trava contra corrida: `loadExistingEquipmentItems` é assíncrono e só popula os
   // estados acima quando termina. Se o usuário salvar ANTES disso, os estados
@@ -154,6 +181,8 @@ export function ServiceOrderFormDialog({
   const loadedScopeSigRef = useRef<string | null>(null);
   // Equipamentos com o painel de checklists expandido (chevron) na etapa 2.
   const [expandedEquipmentIds, setExpandedEquipmentIds] = useState<string[]>([]);
+  const [copySourceEquipmentId, setCopySourceEquipmentId] = useState<string | null>(null);
+  const [copyTargetEquipmentIds, setCopyTargetEquipmentIds] = useState<string[]>([]);
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [requireTechSignature, setRequireTechSignature] = useState(false);
   const [requireClientSignature, setRequireClientSignature] = useState(false);
@@ -192,8 +221,17 @@ export function ServiceOrderFormDialog({
   const [contractDateDialogOpen, setContractDateDialogOpen] = useState(false);
   const [recurrenceEditDialogOpen, setRecurrenceEditDialogOpen] = useState(false);
   const [pendingEditData, setPendingEditData] = useState<ServiceOrderFormData | null>(null);
+  const [scopeRemovalConfirmed, setScopeRemovalConfirmed] = useState(false);
+  const [scopeRemovalWarning, setScopeRemovalWarning] = useState<{
+    data: ServiceOrderFormData;
+    answeredResponses: number;
+    checklists: number;
+    mode?: 'continue' | 'recurrence_all';
+  } | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const budgetQuery = useServiceOrderBudget(isEditing ? serviceOrder?.id : null);
+  const serviceTypesQuery = useServiceOrderServiceTypes(isEditing ? serviceOrder?.id : null);
 
   // Onda B v1.9.1 — warning na descrição quando a OS pertence a contrato PMOC.
   // Os primeiros 200 caracteres aparecem no portal público da unidade.
@@ -236,26 +274,16 @@ export function ServiceOrderFormDialog({
     }
   }, [t]);
 
-  const selectedServiceType = useMemo(
-    () => serviceTypes.find(st => st.id === selectedServiceTypeId),
-    [serviceTypes, selectedServiceTypeId]
-  );
-
   const showEquipmentStep = useMemo(() => {
-    if (!selectedServiceTypeId || selectedServiceTypeId === 'none') return true;
-    return selectedServiceType?.requires_equipment ?? true;
-  }, [selectedServiceTypeId, selectedServiceType]);
+    if (selectedServiceTypeIds.length === 0) return true;
+    return selectedServiceTypeIds.some(id => serviceTypes.find(st => st.id === id)?.requires_equipment ?? true);
+  }, [selectedServiceTypeIds, serviceTypes]);
 
   const filteredTemplates = useMemo(() => {
-    return templates.filter((t) => {
-      if (!t.is_active) return false;
-      if (!selectedServiceTypeId) return true;
-      const serviceTypeIds = (t as any).service_type_ids as string[] | undefined;
-      const appliesToAll = (t as any).applies_to_all_services || !serviceTypeIds || serviceTypeIds.length === 0;
-      if (appliesToAll) return true;
-      return serviceTypeIds.includes(selectedServiceTypeId);
-    });
-  }, [templates, selectedServiceTypeId]);
+    return templates.filter(template => (
+      checklistMatchesSelectedServices(template, selectedServiceTypeIds)
+    ));
+  }, [templates, selectedServiceTypeIds]);
 
   const computedDate = useMemo(() => {
     if (serviceOrder?.scheduled_date) return serviceOrder.scheduled_date;
@@ -286,7 +314,11 @@ export function ServiceOrderFormDialog({
     },
   });
 
-  type OSDraft = ServiceOrderFormData & { _selectedCustomerId?: string; _selectedServiceTypeId?: string };
+  type OSDraft = ServiceOrderFormData & {
+    _selectedCustomerId?: string;
+    _selectedServiceTypeIds?: string[];
+    _budgetItems?: ServiceOrderBudgetItem[];
+  };
   const draft = useFormDraft<OSDraft>({ key: 'service-order-form', isOpen: open, isEditing });
 
   // Save draft on changes
@@ -316,22 +348,46 @@ export function ServiceOrderFormDialog({
 
   useEffect(() => {
     if (open && !isEditing && !draft.showResumePrompt) {
-      draft.saveDraft({ ...watchedValues, _selectedCustomerId: selectedCustomerId, _selectedServiceTypeId: selectedServiceTypeId });
+      draft.saveDraft({
+        ...watchedValues,
+        _selectedCustomerId: selectedCustomerId,
+        _selectedServiceTypeIds: selectedServiceTypeIds,
+        _budgetItems: budgetItems,
+      });
     }
-  }, [watchedValues, selectedCustomerId, selectedServiceTypeId, open, isEditing, draft.showResumePrompt]);
+  }, [watchedValues, selectedCustomerId, selectedServiceTypeIds, budgetItems, open, isEditing, draft.showResumePrompt]);
 
   // Load existing equipment items when editing
   const loadExistingEquipmentItems = async (osId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('service_order_equipment')
-        .select('equipment_id, form_template_id')
-        .eq('service_order_id', osId);
+      const [scopeResult, servicesResult] = await Promise.all([
+        supabase
+          .from('service_order_equipment')
+          .select('equipment_id, form_template_id')
+          .eq('service_order_id', osId),
+        supabase
+          .from('service_order_equipment_service_types')
+          .select('equipment_id, service_type_id, position')
+          .eq('service_order_id', osId)
+          .order('position', { ascending: true }),
+      ]);
+      const { data, error } = scopeResult;
       // Leitura falhou: NÃO liberar `scopeLoaded`. Com a trava fechada o save
       // manda `equipment_items: undefined` (não encosta no escopo) em vez de
       // assumir "a OS não tem escopo" e apagar tudo.
-      if (error) return;
-      loadedScopeSigRef.current = scopeSignature((data as any[]) ?? []);
+      if (error || servicesResult.error) return;
+      const serviceMap: Record<string, string[]> = {};
+      (servicesResult.data ?? []).forEach((row: any) => {
+        if (!serviceMap[row.equipment_id]) serviceMap[row.equipment_id] = [];
+        if (!serviceMap[row.equipment_id].includes(row.service_type_id)) {
+          serviceMap[row.equipment_id].push(row.service_type_id);
+        }
+      });
+      const scopeWithServices = ((data as any[]) ?? []).map(item => ({
+        ...item,
+        service_type_ids: item.equipment_id ? (serviceMap[item.equipment_id] ?? []) : [],
+      }));
+      loadedScopeSigRef.current = scopeSignature(scopeWithServices);
       if (data && data.length > 0) {
         const eqIdSet = new Set<string>();
         const templateMap: Record<string, string[]> = {};
@@ -352,6 +408,7 @@ export function ServiceOrderFormDialog({
         const eqIds = Array.from(eqIdSet);
         if (eqIds.length > 0) setSelectedEquipmentIds(eqIds);
         if (Object.keys(templateMap).length > 0) setEquipmentTemplateMap(templateMap);
+        setEquipmentServiceTypeMap(serviceMap);
         if (standaloneIds.length > 0) setSelectedStandaloneTemplateIds(standaloneIds);
       }
       // Só aqui, com a leitura confirmada: destrava o envio de `equipment_items`.
@@ -364,8 +421,14 @@ export function ServiceOrderFormDialog({
   useEffect(() => {
     if (open) {
       setStep(0);
+      setBudgetItems([]);
+      loadedBudgetSigRef.current = null;
+      const fallbackServiceIds = serviceOrder?.service_type_id ? [serviceOrder.service_type_id] : [];
+      setSelectedServiceTypeIds(fallbackServiceIds);
+      loadedServiceTypesSigRef.current = null;
       setSelectedEquipmentIds(serviceOrder?.equipment_id ? [serviceOrder.equipment_id] : []);
       setEquipmentTemplateMap({});
+      setEquipmentServiceTypeMap({});
       setSelectedStandaloneTemplateIds([]);
       setScopeLoaded(false);
       loadedScopeSigRef.current = null;
@@ -436,7 +499,6 @@ export function ServiceOrderFormDialog({
           form_template_id: serviceOrder?.form_template_id ?? '',
         });
         setSelectedCustomerId(serviceOrder?.customer_id ?? defaultCustomerId);
-        setSelectedServiceTypeId(serviceOrder?.service_type_id ?? undefined);
       }
       // Load existing equipment items from junction table when editing
       if (isEditing && serviceOrder?.id) {
@@ -444,6 +506,24 @@ export function ServiceOrderFormDialog({
       }
     }
   }, [open, serviceOrder, computedDate, computedTime]);
+
+  useEffect(() => {
+    if (!open || !isEditing || !budgetQuery.data) return;
+    setBudgetItems(budgetQuery.data);
+    loadedBudgetSigRef.current = serviceOrderBudgetSignature(budgetQuery.data);
+  }, [open, isEditing, budgetQuery.data]);
+
+  useEffect(() => {
+    if (!open || !isEditing || !serviceTypesQuery.data) return;
+    const ids = serviceTypesQuery.data.length > 0
+      ? serviceTypesQuery.data
+      : serviceOrder?.service_type_id
+        ? [serviceOrder.service_type_id]
+        : [];
+    setSelectedServiceTypeIds(ids);
+    form.setValue('service_type_id', ids[0] ?? '');
+    loadedServiceTypesSigRef.current = JSON.stringify(ids);
+  }, [open, isEditing, serviceTypesQuery.data, serviceOrder?.service_type_id]);
 
   // Seed do toggle "Gerar Pesquisa de Satisfação?" — separado para reagir ao
   // carregamento assíncrono do padrão da empresa sem clobberar os demais campos.
@@ -530,10 +610,19 @@ export function ServiceOrderFormDialog({
     const equipment_items = [
       ...effectiveEquipmentIds.flatMap(eqId => {
         const templates = equipmentTemplateMap[eqId] || [];
+        const serviceTypeIds = equipmentServiceTypeMap[eqId] || [];
         if (templates.length === 0) {
-          return [{ equipment_id: eqId, form_template_id: undefined as string | undefined }];
+          return [{
+            equipment_id: eqId,
+            form_template_id: undefined as string | undefined,
+            service_type_ids: serviceTypeIds,
+          }];
         }
-        return templates.map(tId => ({ equipment_id: eqId, form_template_id: tId as string | undefined }));
+        return templates.map(tId => ({
+          equipment_id: eqId,
+          form_template_id: tId as string | undefined,
+          service_type_ids: serviceTypeIds,
+        }));
       }),
       ...selectedStandaloneTemplateIds.map(tId => ({
         equipment_id: undefined as string | undefined,
@@ -615,16 +704,17 @@ export function ServiceOrderFormDialog({
           );
           await supabase.from('service_order_assignees').insert(assigneeRows);
         }
-        if (equipment_items.length > 0) {
-          const eqRows = created.flatMap((row: any) =>
-            equipment_items.map(item => ({
-              service_order_id: row.id,
-              equipment_id: item.equipment_id || null,
-              form_template_id: item.form_template_id || null,
-            }))
-          );
-          await supabase.from('service_order_equipment').insert(eqRows);
-        }
+        await Promise.all(created.map(async (row: any) => {
+          await syncServiceOrderServiceTypes(row.id, selectedServiceTypeIds);
+          if (equipment_items.length > 0) {
+            const { error: scopeError } = await supabase.rpc('sync_service_order_scope_with_services' as any, {
+              _service_order_id: row.id,
+              _items: groupScopeItems(equipment_items) as any,
+            });
+            if (scopeError) throw scopeError;
+          }
+          await syncServiceOrderBudget(row.id, budgetItems);
+        }));
       }
 
       editToast({ title: t.toastRecurringCreated.replace('{n}', String(dates.length)) });
@@ -643,6 +733,8 @@ export function ServiceOrderFormDialog({
       technician_id: techId,
       team_id: teamId,
       service_type_id: data.service_type_id === 'none' ? undefined : (data.service_type_id || undefined),
+      service_type_ids: selectedServiceTypeIds,
+      budget_items: budgetItems,
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
       equipment_id: effectiveEquipmentIds[0] || undefined,
@@ -671,10 +763,19 @@ export function ServiceOrderFormDialog({
     const equipItems = [
       ...selectedEquipmentIds.flatMap(eqId => {
         const templates = equipmentTemplateMap[eqId] || [];
+        const serviceTypeIds = equipmentServiceTypeMap[eqId] || [];
         if (templates.length === 0) {
-          return [{ equipment_id: eqId, form_template_id: undefined as string | undefined }];
+          return [{
+            equipment_id: eqId,
+            form_template_id: undefined as string | undefined,
+            service_type_ids: serviceTypeIds,
+          }];
         }
-        return templates.map(tId => ({ equipment_id: eqId, form_template_id: tId as string | undefined }));
+        return templates.map(tId => ({
+          equipment_id: eqId,
+          form_template_id: tId as string | undefined,
+          service_type_ids: serviceTypeIds,
+        }));
       }),
       ...selectedStandaloneTemplateIds.map(tId => ({
         equipment_id: undefined as string | undefined,
@@ -687,6 +788,16 @@ export function ServiceOrderFormDialog({
       technician_id: techId,
       team_id: teamId,
       service_type_id: data.service_type_id === 'none' ? undefined : (data.service_type_id || undefined),
+      service_type_ids:
+        loadedServiceTypesSigRef.current !== null
+        && JSON.stringify(selectedServiceTypeIds) !== loadedServiceTypesSigRef.current
+          ? selectedServiceTypeIds
+          : undefined,
+      budget_items:
+        loadedBudgetSigRef.current !== null
+        && serviceOrderBudgetSignature(budgetItems) !== loadedBudgetSigRef.current
+          ? budgetItems
+          : undefined,
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
       form_template_id: equipmentTemplateMap[selectedEquipmentIds[0] || '']?.[0]
@@ -709,7 +820,7 @@ export function ServiceOrderFormDialog({
     };
   };
 
-  const handleEditSubmit = async (data: ServiceOrderFormData) => {
+  const continueEditSubmit = async (data: ServiceOrderFormData, confirmedRemoval = false) => {
     // Check if this is a contract OS and date changed
     const isContractOS = !!(serviceOrder as any)?.contract_id;
     const isRecurrenceOS = !!(serviceOrder as any)?.recurrence_group_id;
@@ -717,6 +828,7 @@ export function ServiceOrderFormDialog({
 
     if (isContractOS && dateChanged) {
       setPendingEditData(data);
+      setScopeRemovalConfirmed(confirmedRemoval);
       setContractDateDialogOpen(true);
       return;
     }
@@ -724,14 +836,40 @@ export function ServiceOrderFormDialog({
     // If this OS belongs to a recurrence group, ask if changes should apply to all
     if (isRecurrenceOS) {
       setPendingEditData(data);
+      setScopeRemovalConfirmed(confirmedRemoval);
       setRecurrenceEditDialogOpen(true);
       return;
     }
 
     const cleanedData = await buildEditPayload(data);
-    await onSubmit(cleanedData);
+    await onSubmit({
+      ...cleanedData,
+      ...(confirmedRemoval ? { confirm_scope_response_deletion: true } : {}),
+    } as any);
     form.reset();
     onOpenChange(false);
+  };
+
+  const handleEditSubmit = async (data: ServiceOrderFormData) => {
+    if (!serviceOrder) return;
+    const payload = await buildEditPayload(data);
+    if (payload.equipment_items !== undefined) {
+      const { data: preview, error } = await supabase.rpc('preview_service_order_scope_removal' as any, {
+        _service_order_id: serviceOrder.id,
+        _items: groupScopeItems(payload.equipment_items) as any,
+      });
+      if (error) {
+        editToast({ variant: 'destructive', title: t.scopeRemovalPreviewError, description: getErrorMessage(error) });
+        return;
+      }
+      const answeredResponses = Number((preview as any)?.answered_responses ?? 0);
+      const checklists = Number((preview as any)?.checklists ?? 0);
+      if (answeredResponses > 0) {
+        setScopeRemovalWarning({ data, answeredResponses, checklists, mode: 'continue' });
+        return;
+      }
+    }
+    await continueEditSubmit(data);
   };
 
   const handleContractDateChoice = async (applyToFuture: boolean) => {
@@ -739,7 +877,10 @@ export function ServiceOrderFormDialog({
     setContractDateDialogOpen(false);
 
     const cleanedData = await buildEditPayload(pendingEditData);
-    await onSubmit(cleanedData);
+    await onSubmit({
+      ...cleanedData,
+      ...(scopeRemovalConfirmed ? { confirm_scope_response_deletion: true } : {}),
+    } as any);
 
     if (applyToFuture) {
       try {
@@ -778,16 +919,56 @@ export function ServiceOrderFormDialog({
     }
 
     setPendingEditData(null);
+    setScopeRemovalConfirmed(false);
     form.reset();
     onOpenChange(false);
   };
 
-  const handleRecurrenceEditChoice = async (applyToAll: boolean) => {
+  const handleRecurrenceEditChoice = async (applyToAll: boolean, confirmedFutureRemoval = false) => {
     if (!pendingEditData || !serviceOrder) return;
-    setRecurrenceEditDialogOpen(false);
 
     const cleanedData = await buildEditPayload(pendingEditData);
-    await onSubmit(cleanedData);
+    if (applyToAll && !confirmedFutureRemoval && cleanedData.equipment_items !== undefined) {
+      const groupId = (serviceOrder as any).recurrence_group_id;
+      const { data: groupOrders, error: groupError } = await supabase
+        .from('service_orders')
+        .select('id, scheduled_date')
+        .eq('recurrence_group_id', groupId)
+        .neq('id', serviceOrder.id);
+      if (groupError) {
+        editToast({ variant: 'destructive', title: t.scopeRemovalPreviewError, description: getErrorMessage(groupError) });
+        return;
+      }
+      const todayStr = new Date().toISOString().split('T')[0];
+      const futureOrders = (groupOrders ?? []).filter(order => order.scheduled_date && order.scheduled_date >= todayStr);
+      const previews = await Promise.all(futureOrders.map(order => supabase.rpc('preview_service_order_scope_removal' as any, {
+        _service_order_id: order.id,
+        _items: groupScopeItems(cleanedData.equipment_items!) as any,
+      })));
+      const previewError = previews.find(result => result.error)?.error;
+      if (previewError) {
+        editToast({ variant: 'destructive', title: t.scopeRemovalPreviewError, description: getErrorMessage(previewError) });
+        return;
+      }
+      const answeredResponses = previews.reduce((total, result) => total + Number((result.data as any)?.answered_responses ?? 0), 0);
+      const checklists = previews.reduce((total, result) => total + Number((result.data as any)?.checklists ?? 0), 0);
+      if (answeredResponses > 0) {
+        setRecurrenceEditDialogOpen(false);
+        setScopeRemovalWarning({
+          data: pendingEditData,
+          answeredResponses,
+          checklists,
+          mode: 'recurrence_all',
+        });
+        return;
+      }
+    }
+
+    setRecurrenceEditDialogOpen(false);
+    await onSubmit({
+      ...cleanedData,
+      ...((scopeRemovalConfirmed || confirmedFutureRemoval) ? { confirm_scope_response_deletion: true } : {}),
+    } as any);
 
     if (applyToAll) {
       try {
@@ -803,7 +984,14 @@ export function ServiceOrderFormDialog({
           const futureOrders = groupOrders.filter(o => o.scheduled_date && o.scheduled_date >= todayStr);
 
           if (futureOrders.length > 0) {
-            const { scheduled_date, scheduled_time, ...editableFields } = cleanedData;
+            const {
+              scheduled_date,
+              scheduled_time,
+              service_type_ids,
+              budget_items,
+              equipment_items,
+              ...editableFields
+            } = cleanedData;
             const updatePayload = normalizeOptionalForeignKeys(editableFields, [
               'technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id',
             ] as any);
@@ -822,6 +1010,20 @@ export function ServiceOrderFormDialog({
                   );
                 }
               }
+              if (service_type_ids !== undefined) {
+                await syncServiceOrderServiceTypes(os.id, service_type_ids);
+              }
+              if (equipment_items !== undefined) {
+                const { error: scopeError } = await supabase.rpc('sync_service_order_scope_with_services' as any, {
+                  _service_order_id: os.id,
+                  _items: groupScopeItems(equipment_items) as any,
+                  _confirm_response_deletion: scopeRemovalConfirmed || confirmedFutureRemoval,
+                });
+                if (scopeError) throw scopeError;
+              }
+              if (budget_items !== undefined) {
+                await syncServiceOrderBudget(os.id, budget_items);
+              }
             }
           }
           queryClient.invalidateQueries({ queryKey: ['service-orders'] });
@@ -833,6 +1035,7 @@ export function ServiceOrderFormDialog({
     }
 
     setPendingEditData(null);
+    setScopeRemovalConfirmed(false);
     form.reset();
     onOpenChange(false);
   };
@@ -844,13 +1047,26 @@ export function ServiceOrderFormDialog({
   const resetEquipmentSelection = () => {
     setSelectedEquipmentIds([]);
     setEquipmentTemplateMap({});
+    setEquipmentServiceTypeMap({});
     setExpandedEquipmentIds([]);
   };
 
   const toggleEquipment = (eqId: string) => {
-    setSelectedEquipmentIds(prev =>
-      prev.includes(eqId) ? prev.filter(id => id !== eqId) : [...prev, eqId]
-    );
+    setSelectedEquipmentIds(prev => {
+      if (prev.includes(eqId)) return prev.filter(id => id !== eqId);
+      const serviceTypeIds = equipmentServiceTypeMap[eqId] ?? selectedServiceTypeIds;
+      setEquipmentServiceTypeMap(current => ({ ...current, [eqId]: serviceTypeIds }));
+      setEquipmentTemplateMap(current => ({
+        ...current,
+        [eqId]: reconcileEquipmentChecklistTemplateIds(
+          templates,
+          current[eqId] || [],
+          serviceTypeIds,
+          selectedServiceTypeIds,
+        ),
+      }));
+      return [...prev, eqId];
+    });
   };
 
   const toggleEquipmentExpanded = (eqId: string) => {
@@ -861,9 +1077,10 @@ export function ServiceOrderFormDialog({
 
   const STEPS_WITH_LABELS = useMemo(() => [
     { key: 'client' as const, label: t.stepClient },
+    { key: 'budget' as const, label: t.stepBudget },
     { key: 'equipment' as const, label: t.stepEquipment },
     { key: 'details' as const, label: t.stepDetails },
-  ], [t.stepClient, t.stepEquipment, t.stepDetails]);
+  ], [t.stepClient, t.stepBudget, t.stepEquipment, t.stepDetails]);
 
   // A etapa "Equipamentos e Checklists" agora sempre aparece: além do CRUD de
   // equipamentos (condicional ao tipo de serviço), ela hospeda os "Checklists
@@ -883,6 +1100,93 @@ export function ServiceOrderFormDialog({
   const goNext = () => { if (step < activeSteps.length - 1 && canGoNext()) setStep(step + 1); };
   const goBack = () => { if (step > 0) setStep(step - 1); };
   const isLastStep = step === activeSteps.length - 1;
+
+  const handleServiceTypesChange = (ids: string[]) => {
+    // Uma linha de serviço no orçamento também define o escopo operacional da
+    // OS. Enquanto a linha existir, o tipo não pode desaparecer do seletor —
+    // senão o valor seria faturado sem levar seus checklists/equipamentos.
+    const reconciledIds = mergeServiceTypeIds(
+      ids,
+      budgetItems.map(item => item.service_type_id),
+    );
+    const addedIds = reconciledIds.filter(id => !selectedServiceTypeIds.includes(id));
+    setSelectedServiceTypeIds(reconciledIds);
+    form.setValue('service_type_id', reconciledIds[0] ?? '');
+
+    // Serviço novo entra, por padrão, nos equipamentos já marcados. A partir daí
+    // cada card pode ser refinado separadamente. Serviço removido da OS sai de
+    // todos os equipamentos e seus checklists exclusivos deixam o escopo.
+    const nextEquipmentServices = { ...equipmentServiceTypeMap };
+    const nextEquipmentTemplates = { ...equipmentTemplateMap };
+    for (const equipmentId of selectedEquipmentIds) {
+      const currentIds = nextEquipmentServices[equipmentId] ?? selectedServiceTypeIds;
+      let nextIds = Array.from(new Set([
+        ...currentIds.filter(id => reconciledIds.includes(id)),
+        ...addedIds,
+      ]));
+      if (nextIds.length === 0 && reconciledIds.length > 0) nextIds = [reconciledIds[0]];
+      nextEquipmentServices[equipmentId] = nextIds;
+      nextEquipmentTemplates[equipmentId] = reconcileEquipmentChecklistTemplateIds(
+        templates,
+        nextEquipmentTemplates[equipmentId] || [],
+        nextIds,
+        reconciledIds,
+      );
+    }
+    setEquipmentServiceTypeMap(nextEquipmentServices);
+    setEquipmentTemplateMap(nextEquipmentTemplates);
+  };
+
+  const handleEquipmentServicesChange = (equipmentId: string, ids: string[]) => {
+    const nextIds = Array.from(new Set(ids.filter(id => selectedServiceTypeIds.includes(id))));
+    // Enquanto a OS tiver serviços, todo equipamento precisa dizer ao menos um.
+    if (selectedServiceTypeIds.length > 0 && nextIds.length === 0) return;
+
+    setEquipmentServiceTypeMap(prev => ({ ...prev, [equipmentId]: nextIds }));
+    setEquipmentTemplateMap(prev => ({
+      ...prev,
+      [equipmentId]: reconcileEquipmentChecklistTemplateIds(
+        templates,
+        prev[equipmentId] || [],
+        nextIds,
+        selectedServiceTypeIds,
+      ),
+    }));
+  };
+
+  const openCopyScope = (sourceEquipmentId: string) => {
+    setCopySourceEquipmentId(sourceEquipmentId);
+    setCopyTargetEquipmentIds(selectedEquipmentIds.filter(id => id !== sourceEquipmentId));
+  };
+
+  const applyCopiedScope = () => {
+    if (!copySourceEquipmentId) return;
+    const sourceServices = equipmentServiceTypeMap[copySourceEquipmentId] ?? selectedServiceTypeIds;
+    const sourceTemplates = equipmentTemplateMap[copySourceEquipmentId] ?? [];
+    setEquipmentServiceTypeMap(prev => ({
+      ...prev,
+      ...Object.fromEntries(copyTargetEquipmentIds.map(id => [id, [...sourceServices]])),
+    }));
+    setEquipmentTemplateMap(prev => ({
+      ...prev,
+      ...Object.fromEntries(copyTargetEquipmentIds.map(id => [id, [...sourceTemplates]])),
+    }));
+    editToast({
+      title: t.copyScopeSuccess,
+      description: t.copyScopeSuccessDescription.replace('{n}', String(copyTargetEquipmentIds.length)),
+    });
+    setCopySourceEquipmentId(null);
+    setCopyTargetEquipmentIds([]);
+  };
+
+  const handleBudgetItemsChange = (items: ServiceOrderBudgetItem[]) => {
+    setBudgetItems(items);
+    const merged = mergeServiceTypeIds(
+      selectedServiceTypeIds,
+      items.map(item => item.service_type_id),
+    );
+    if (merged.length !== selectedServiceTypeIds.length) handleServiceTypesChange(merged);
+  };
 
   // Bloco reutilizado nos dois modos (criar/editar): endereço de serviço próprio
   // da OS. Alavanca ligada revela campos estruturados (mesmo padrão do avulso).
@@ -975,6 +1279,59 @@ export function ServiceOrderFormDialog({
     />
   );
 
+  const scopeSummary = (
+    <section className="rounded-lg border bg-card p-3 space-y-3">
+      <div>
+        <h3 className="text-sm font-semibold">{t.scopeSummaryTitle}</h3>
+        <p className="text-xs text-muted-foreground">{t.scopeSummaryDescription}</p>
+      </div>
+      {selectedEquipmentIds.length === 0 && selectedStandaloneTemplateIds.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t.scopeSummaryEmpty}</p>
+      ) : (
+        <div className="divide-y">
+          {selectedEquipmentIds.map(equipmentId => {
+            const item = equipment.find(eq => eq.id === equipmentId);
+            const services = (equipmentServiceTypeMap[equipmentId] ?? selectedServiceTypeIds)
+              .map(id => serviceTypes.find(service => service.id === id))
+              .filter((service): service is NonNullable<typeof service> => !!service);
+            const checklistNames = (equipmentTemplateMap[equipmentId] ?? [])
+              .map(id => templates.find(template => template.id === id)?.name)
+              .filter((name): name is string => !!name);
+            return (
+              <div key={equipmentId} className="py-3 first:pt-0 last:pb-0 space-y-2">
+                <p className="text-sm font-medium">{item?.name ?? t.checklistEquipmentFallback}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {services.map(service => (
+                    <Badge key={service.id} variant="secondary" className="gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: service.color || '#64748b' }} />
+                      {service.name}
+                    </Badge>
+                  ))}
+                  {services.length === 0 && <span className="text-xs text-destructive">{t.scopeSummaryNoService}</span>}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <ClipboardList className="mr-1 inline h-3.5 w-3.5" />
+                  {checklistNames.length > 0 ? checklistNames.join(' · ') : t.scopeSummaryNoChecklist}
+                </p>
+              </div>
+            );
+          })}
+          {selectedStandaloneTemplateIds.length > 0 && (
+            <div className="py-3 first:pt-0 last:pb-0">
+              <p className="text-sm font-medium">{t.standaloneSectionTitle}</p>
+              <p className="text-xs text-muted-foreground">
+                {selectedStandaloneTemplateIds
+                  .map(id => templates.find(template => template.id === id)?.name)
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+
   // Etapa 2 completa — "Equipamentos e Checklists". Reunimos o CRUD de
   // equipamentos (cada um expansível com os checklists dele dentro, espelhando a
   // UX do EditOsScopeDrawer) e, logo abaixo, a seção fixa de "Checklists avulsos"
@@ -1003,7 +1360,25 @@ export function ServiceOrderFormDialog({
                     if (selectedEquipmentIds.length === equipment.length) {
                       setSelectedEquipmentIds([]);
                     } else {
-                      setSelectedEquipmentIds(equipment.map(eq => eq.id));
+                      const ids = equipment.map(eq => eq.id);
+                      setSelectedEquipmentIds(ids);
+                      setEquipmentServiceTypeMap(prev => Object.fromEntries(
+                        ids.map(id => [id, prev[id] ?? selectedServiceTypeIds]),
+                      ));
+                      setEquipmentTemplateMap(prev => Object.fromEntries(
+                        ids.map(id => {
+                          const serviceTypeIds = equipmentServiceTypeMap[id] ?? selectedServiceTypeIds;
+                          return [
+                            id,
+                            reconcileEquipmentChecklistTemplateIds(
+                              templates,
+                              prev[id] || [],
+                              serviceTypeIds,
+                              selectedServiceTypeIds,
+                            ),
+                          ];
+                        }),
+                      ));
                     }
                   }}
                 >
@@ -1044,7 +1419,20 @@ export function ServiceOrderFormDialog({
               const checked = selectedEquipmentIds.includes(eq.id);
               const expanded = expandedEquipmentIds.includes(eq.id);
               const selectedTemplates = equipmentTemplateMap[eq.id] || [];
-              const availableTemplates = filteredTemplates.filter(tmpl => !selectedTemplates.includes(tmpl.id));
+              const equipmentServiceTypeIds = equipmentServiceTypeMap[eq.id] ?? selectedServiceTypeIds;
+              const equipmentTemplates = templates.filter(template => checklistMatchesEquipmentServices(
+                template,
+                equipmentServiceTypeIds,
+                selectedServiceTypeIds,
+              ));
+              const availableTemplates = equipmentTemplates.filter(tmpl => !selectedTemplates.includes(tmpl.id));
+              const equipmentServices = equipmentServiceTypeIds
+                .map(serviceId => serviceTypes.find(service => service.id === serviceId))
+                .filter((service): service is NonNullable<typeof service> => !!service);
+              const availableEquipmentServices = selectedServiceTypeIds
+                .filter(serviceId => !equipmentServiceTypeIds.includes(serviceId))
+                .map(serviceId => serviceTypes.find(service => service.id === serviceId))
+                .filter((service): service is NonNullable<typeof service> => !!service);
               return (
                 <div
                   key={eq.id}
@@ -1108,30 +1496,141 @@ export function ServiceOrderFormDialog({
 
                   {/* Painel expansível de checklists deste equipamento */}
                   {checked && expanded && (
-                    <div className="border-t px-3 py-3 space-y-2">
-                      {selectedTemplates.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {selectedTemplates.map(tId => {
-                            const tmpl = filteredTemplates.find(tmpl => tmpl.id === tId);
-                            return (
-                              <Badge key={tId} variant="secondary" className="gap-1 pr-1">
-                                {tmpl?.name || t.checklistStandalone}
+                    <div className="border-t px-3 py-3 space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
+                              {t.equipmentServicesTitle}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {t.equipmentServicesHelp}
+                            </p>
+                          </div>
+                          {selectedEquipmentIds.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 shrink-0 gap-1.5 text-xs"
+                              onClick={() => openCopyScope(eq.id)}
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                              {t.copyScopeButton}
+                            </Button>
+                          )}
+                        </div>
+                        {equipmentServices.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {equipmentServices.map(service => (
+                              <Badge
+                                key={service.id}
+                                variant="secondary"
+                                className="h-7 gap-1.5 pl-2 pr-1 text-xs font-medium"
+                              >
+                                <span
+                                  className="h-2 w-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: service.color || '#64748b' }}
+                                />
+                                <span className="max-w-48 truncate">{service.name}</span>
                                 <button
                                   type="button"
-                                  className="ml-1 rounded-full hover:bg-muted p-0.5"
+                                  className="inline-flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground hover:bg-background hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
+                                  disabled={equipmentServiceTypeIds.length === 1 && selectedServiceTypeIds.length > 0}
+                                  title={equipmentServiceTypeIds.length === 1 ? t.equipmentServiceRequired : `${t.btnRemoveEquipmentService} ${service.name}`}
+                                  aria-label={`${t.btnRemoveEquipmentService} ${service.name}`}
+                                  onClick={() => handleEquipmentServicesChange(
+                                    eq.id,
+                                    equipmentServiceTypeIds.filter(id => id !== service.id),
+                                  )}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">{t.equipmentServicesEmpty}</p>
+                        )}
+                        {availableEquipmentServices.length > 0 && (
+                          <SearchableSelect
+                            value=""
+                            onValueChange={(value) => {
+                              if (value && value !== 'none') {
+                                handleEquipmentServicesChange(eq.id, [...equipmentServiceTypeIds, value]);
+                              }
+                            }}
+                            options={availableEquipmentServices.map(service => ({
+                              value: service.id,
+                              label: service.name,
+                            }))}
+                            placeholder={t.placeholderAddEquipmentService}
+                            searchPlaceholder={t.searchServicePlaceholder}
+                            emptyMessage={t.noServicesFound}
+                          />
+                        )}
+                      </div>
+
+                      <div className="border-t border-border/60 pt-3 space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
+                          {t.equipmentChecklistsTitle}
+                        </p>
+                      {selectedTemplates.length > 0 && (
+                        <div className="space-y-2">
+                          {selectedTemplates.map(tId => {
+                            const tmpl = templates.find(item => item.id === tId);
+                            const linkedServices = (tmpl?.service_type_ids ?? [])
+                              .map(serviceId => serviceTypes.find(service => service.id === serviceId))
+                              .filter((service): service is NonNullable<typeof service> => (
+                                !!service && equipmentServiceTypeIds.includes(service.id)
+                              ));
+                            return (
+                              <div key={tId} className="flex items-start gap-2 rounded-lg border bg-card px-2.5 py-2 shadow-sm">
+                                <ClipboardList className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                                <div className="min-w-0 flex-1 space-y-1">
+                                  <p className="text-sm font-medium leading-5">{tmpl?.name || t.checklistStandalone}</p>
+                                  {linkedServices.length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                      {linkedServices.map(service => (
+                                        <Badge key={service.id} variant="secondary" className="gap-1 px-1.5 py-0 text-[10px] font-medium">
+                                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: service.color || '#64748b' }} />
+                                          {service.name}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 shrink-0"
+                                  title={t.btnPreviewChecklist}
+                                  aria-label={`${t.btnPreviewChecklist}: ${tmpl?.name || t.checklistStandalone}`}
+                                  onClick={() => setPreviewTemplateId(tId)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                                  title={`Remover ${tmpl?.name || t.checklistStandalone}`}
+                                  aria-label={`Remover ${tmpl?.name || t.checklistStandalone}`}
                                   onClick={() => setEquipmentTemplateMap(prev => ({
                                     ...prev,
                                     [eq.id]: (prev[eq.id] || []).filter(id => id !== tId),
                                   }))}
                                 >
-                                  ✕
-                                </button>
-                              </Badge>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
                             );
                           })}
                         </div>
                       )}
-                      <div className="flex gap-2 items-center">
+                      <div className="flex items-center gap-2">
                         <SearchableSelect
                           className="flex-1"
                           value=""
@@ -1151,17 +1650,7 @@ export function ServiceOrderFormDialog({
                           searchPlaceholder={t.searchChecklistPlaceholder}
                           emptyMessage={t.checklistNoneAvailable}
                         />
-                        {selectedTemplates.length > 0 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            title={t.btnPreviewChecklist}
-                            onClick={() => setPreviewTemplateId(selectedTemplates[0])}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        )}
+                      </div>
                       </div>
                     </div>
                   )}
@@ -1184,16 +1673,43 @@ export function ServiceOrderFormDialog({
           <p className="text-xs text-muted-foreground">{t.standaloneSectionHint}</p>
         </div>
         {selectedStandaloneTemplateIds.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div className="space-y-2">
             {selectedStandaloneTemplateIds.map(tId => {
-              const tmpl = filteredTemplates.find(tmpl => tmpl.id === tId);
+              const tmpl = filteredTemplates.find(item => item.id === tId);
+              const linkedServices = (tmpl?.service_type_ids ?? [])
+                .map(serviceId => serviceTypes.find(service => service.id === serviceId))
+                .filter((service): service is NonNullable<typeof service> => !!service);
               return (
-                <Badge key={tId} variant="secondary" className="gap-1 pr-1">
-                  {tmpl?.name || t.checklistStandalone}
-                  <button type="button" className="ml-1 rounded-full hover:bg-muted p-0.5" onClick={() => setSelectedStandaloneTemplateIds(prev => prev.filter(id => id !== tId))}>
-                    ✕
-                  </button>
-                </Badge>
+                <div key={tId} className="flex items-start gap-2 rounded-lg border bg-card px-2.5 py-2 shadow-sm">
+                  <ClipboardList className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="text-sm font-medium leading-5">{tmpl?.name || t.checklistStandalone}</p>
+                    {linkedServices.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {linkedServices.map(service => (
+                          <Badge key={service.id} variant="secondary" className="gap-1 px-1.5 py-0 text-[10px] font-medium">
+                            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: service.color || '#64748b' }} />
+                            {service.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" title={t.btnPreview} onClick={() => setPreviewTemplateId(tId)}>
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                    title={`Remover ${tmpl?.name || t.checklistStandalone}`}
+                    aria-label={`Remover ${tmpl?.name || t.checklistStandalone}`}
+                    onClick={() => setSelectedStandaloneTemplateIds(prev => prev.filter(id => id !== tId))}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               );
             })}
           </div>
@@ -1211,13 +1727,44 @@ export function ServiceOrderFormDialog({
             searchPlaceholder={t.searchChecklistPlaceholder}
             emptyMessage={t.checklistNoneAvailable}
           />
-          {selectedStandaloneTemplateIds.length > 0 && (
-            <Button type="button" variant="ghost" size="icon" title={t.btnPreview} onClick={() => setPreviewTemplateId(selectedStandaloneTemplateIds[0])}>
-              <Eye className="h-4 w-4" />
-            </Button>
-          )}
         </div>
       </div>
+
+      <AlertDialog open={!!copySourceEquipmentId} onOpenChange={(value) => { if (!value) setCopySourceEquipmentId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.copyScopeTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{t.copyScopeDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="max-h-64 space-y-2 overflow-y-auto py-1">
+            {selectedEquipmentIds.filter(id => id !== copySourceEquipmentId).map(id => {
+              const item = equipment.find(eq => eq.id === id);
+              return (
+                <label key={id} className="flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5">
+                  <Checkbox
+                    checked={copyTargetEquipmentIds.includes(id)}
+                    onCheckedChange={() => setCopyTargetEquipmentIds(prev => (
+                      prev.includes(id) ? prev.filter(value => value !== id) : [...prev, id]
+                    ))}
+                  />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium">{item?.name ?? t.checklistEquipmentFallback}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {[item?.brand, item?.model, item?.identifier].filter(Boolean).join(' · ') || t.equipmentNoDetails}
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.btnCancel}</AlertDialogCancel>
+            <AlertDialogAction disabled={copyTargetEquipmentIds.length === 0} onClick={applyCopiedScope}>
+              {t.copyScopeConfirm.replace('{n}', String(copyTargetEquipmentIds.length))}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 
@@ -1310,45 +1857,27 @@ export function ServiceOrderFormDialog({
                 <FormField control={form.control} name="service_type_id" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t.labelServiceType}</FormLabel>
-                    <div className="flex">
-                      <div className="flex-1">
-                        <FormControl>
-                          <SearchableSelect
-                            options={[
-                              { value: 'none', label: t.noServiceType },
-                              ...serviceTypes.filter(st => st.is_active).map((st) => ({
-                                value: st.id,
-                                label: st.name,
-                                icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />,
-                                sublabel: st.category_id
-                                  ? (serviceTypeCategories.find(c => c.id === st.category_id)?.name)
-                                  : undefined,
-                              })),
-                            ]}
-                            value={field.value || 'none'}
-                            onValueChange={(v) => { field.onChange(v); setSelectedServiceTypeId(v === 'none' ? undefined : v); }}
-                            placeholder={t.placeholderSelectService}
-                            searchPlaceholder={t.placeholderSearchService}
-                            className="rounded-r-none"
-                          />
-                        </FormControl>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        aria-label="Criar tipo de serviço"
-                        title="Criar tipo de serviço"
-                        onClick={() => setQuickCreateServiceTypeOpen(true)}
-                        className="rounded-l-none border-l-0 bg-muted hover:bg-primary hover:text-primary-foreground"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <FormControl>
+                      <ServiceTypesMultiSelect
+                        services={serviceTypes.filter(st => st.is_active)}
+                        selectedIds={selectedServiceTypeIds}
+                        onChange={handleServiceTypesChange}
+                        lockedIds={budgetItems.map(item => item.service_type_id).filter((id): id is string => !!id)}
+                        onCreate={() => setQuickCreateServiceTypeOpen(true)}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
               </div>
+            )}
+
+            {currentStepKey === 'budget' && (
+              <ServiceOrderBudgetSection
+                items={budgetItems}
+                onChange={handleBudgetItemsChange}
+                loading={isEditing && budgetQuery.isLoading}
+              />
             )}
 
             {/* Step 2: Equipamentos e Checklists */}
@@ -1357,6 +1886,7 @@ export function ServiceOrderFormDialog({
             {/* Step 3: Agendamento e Detalhes */}
             {currentStepKey === 'details' && (
               <div className="space-y-4">
+                {scopeSummary}
                 {assigneeSection}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField control={form.control} name="scheduled_date" render={({ field }) => (
@@ -1476,6 +2006,38 @@ export function ServiceOrderFormDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!scopeRemovalWarning} onOpenChange={(value) => { if (!value) setScopeRemovalWarning(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.scopeRemovalTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t.scopeRemovalDescription
+                .replace('{answers}', String(scopeRemovalWarning?.answeredResponses ?? 0))
+                .replace('{checklists}', String(scopeRemovalWarning?.checklists ?? 0))}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <NoticeBanner variant="warning">{t.scopeRemovalWarning}</NoticeBanner>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.btnCancel}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                const warning = scopeRemovalWarning;
+                const pending = warning?.data;
+                setScopeRemovalWarning(null);
+                if (warning?.mode === 'recurrence_all') {
+                  void handleRecurrenceEditChoice(true, true);
+                } else if (pending) {
+                  void continueEditSubmit(pending, true);
+                }
+              }}
+            >
+              {t.scopeRemovalConfirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       </>
     );
   }
@@ -1515,10 +2077,14 @@ export function ServiceOrderFormDialog({
         open={draft.showResumePrompt}
         onResume={() => {
           if (draft.draftData) {
-            const { _selectedCustomerId, _selectedServiceTypeId, ...formValues } = draft.draftData;
+            const { _selectedCustomerId, _selectedServiceTypeIds, _budgetItems, ...formValues } = draft.draftData;
             form.reset(formValues);
             if (_selectedCustomerId) setSelectedCustomerId(_selectedCustomerId);
-            if (_selectedServiceTypeId) setSelectedServiceTypeId(_selectedServiceTypeId);
+            if (_selectedServiceTypeIds) {
+              setSelectedServiceTypeIds(_selectedServiceTypeIds);
+              form.setValue('service_type_id', _selectedServiceTypeIds[0] ?? '');
+            }
+            if (_budgetItems) setBudgetItems(_budgetItems);
           }
           draft.acceptDraft();
         }}
@@ -1664,45 +2230,26 @@ export function ServiceOrderFormDialog({
               <FormField control={form.control} name="service_type_id" render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t.labelServiceType}</FormLabel>
-                  <div className="flex">
-                    <div className="flex-1">
-                      <FormControl>
-                        <SearchableSelect
-                          options={[
-                            { value: 'none', label: t.noServiceType },
-                            ...serviceTypes.filter(st => st.is_active).map((st) => ({
-                              value: st.id,
-                              label: st.name,
-                              icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />,
-                              sublabel: st.category_id
-                                ? (serviceTypeCategories.find(c => c.id === st.category_id)?.name)
-                                : undefined,
-                            })),
-                          ]}
-                          value={field.value || 'none'}
-                          onValueChange={(v) => { field.onChange(v); setSelectedServiceTypeId(v === 'none' ? undefined : v); }}
-                          placeholder={t.placeholderSelectService}
-                          searchPlaceholder={t.placeholderSearchService}
-                          className="rounded-r-none"
-                        />
-                      </FormControl>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      aria-label="Criar tipo de serviço"
-                      title="Criar tipo de serviço"
-                      onClick={() => setQuickCreateServiceTypeOpen(true)}
-                      className="rounded-l-none border-l-0 bg-muted hover:bg-primary hover:text-primary-foreground"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <FormControl>
+                    <ServiceTypesMultiSelect
+                      services={serviceTypes.filter(st => st.is_active)}
+                      selectedIds={selectedServiceTypeIds}
+                      onChange={handleServiceTypesChange}
+                      lockedIds={budgetItems.map(item => item.service_type_id).filter((id): id is string => !!id)}
+                      onCreate={() => setQuickCreateServiceTypeOpen(true)}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
             </div>
+          )}
+
+          {currentStepKey === 'budget' && (
+            <ServiceOrderBudgetSection
+              items={budgetItems}
+              onChange={handleBudgetItemsChange}
+            />
           )}
 
           {/* Step 2: Equipamentos e Checklists */}
@@ -1711,6 +2258,7 @@ export function ServiceOrderFormDialog({
           {/* Step 3: Agendamento e Detalhes */}
           {currentStepKey === 'details' && (
             <div className="space-y-4">
+              {scopeSummary}
               {assigneeSection}
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField control={form.control} name="scheduled_date" render={({ field }) => (
@@ -1891,6 +2439,7 @@ export function ServiceOrderFormDialog({
             setSelectedCustomerId(newId);
             resetEquipmentSelection();
           }
+          return result;
         }}
         isLoading={createCustomer.isPending}
       />
@@ -1901,8 +2450,7 @@ export function ServiceOrderFormDialog({
         onOpenChange={setQuickCreateServiceTypeOpen}
         onCreated={(created) => {
           // A lista de tipos já é invalidada pela mutation; seleciona o recém-criado.
-          form.setValue('service_type_id', created.id);
-          setSelectedServiceTypeId(created.id);
+          handleServiceTypesChange([...selectedServiceTypeIds, created.id]);
         }}
       />
 

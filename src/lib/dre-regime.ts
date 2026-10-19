@@ -282,7 +282,21 @@ export function getDreAmount(
 }
 
 /** As três "linhas de despesa" da DRE, abaixo da Receita Líquida. */
-export type DreExpenseGroup = 'impostos' | 'cmv' | 'opex';
+export type DreExpenseGroup = 'impostos' | 'cmv' | 'opex' | 'nao_operacional';
+
+/**
+ * Grupo que fica ABAIXO do resultado líquido, no bloco "Despesas não
+ * operacionais" (distribuição de lucros, investimento, manutenção de
+ * imobilizado). Desenho do BPO financeiro (18/10/2026): a distribuição de
+ * dividendo entra no DRE "pra ter essa visibilidade", mas depois do
+ * resultado, porque não muda o operacional.
+ *
+ * ⚠️ NÃO confundir com `DRE_EXCLUDED_GROUP` ('outros'), que some do DRE
+ * inteiro. São coisas diferentes e a diferença é decisão do BPO: aporte de
+ * sócio é 'outros' (não entra no DRE de jeito nenhum, "aporte não é receita
+ * de nada"); distribuição de lucro é 'nao_operacional' (entra, abaixo).
+ */
+export const DRE_NON_OPERATING_GROUP = 'nao_operacional';
 
 /**
  * Classifica uma categoria de SAÍDA num dos três grupos da DRE. Extraída de
@@ -302,6 +316,12 @@ export function classifyDreCategory(
 ): DreExpenseGroup {
   if (dreGroup === 'impostos') return 'impostos';
   if (dreGroup === 'cmv') return 'cmv';
+  // ⚠️ Precisa vir ANTES do fallback por regex. Sem esta linha,
+  // 'nao_operacional' cairia em 'opex' no `return` final e a distribuição de
+  // lucro entraria nas despesas operacionais, MENTINDO no resultado líquido —
+  // exatamente o oposto do que o BPO pediu. É a regressão mais perigosa deste
+  // trabalho; `dre-regime.test.ts` trava isso.
+  if (dreGroup === DRE_NON_OPERATING_GROUP) return DRE_NON_OPERATING_GROUP;
   const lower = (category || '').toLowerCase();
   if (/imposto|taxa|tributo|icms|iss|pis|cofins/.test(lower)) return 'impostos';
   if (/custo|material|peça|peca|fornecedor|insumo/.test(lower)) return 'cmv';

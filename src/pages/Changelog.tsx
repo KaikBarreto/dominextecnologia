@@ -101,6 +101,197 @@ export const changelog: ChangelogEntry[] = [
         description: 'Revisamos quem pode ler o quê sem estar logado e fechamos todos os pontos em que informação da sua empresa poderia ser consultada de fora. Nada precisa ser feito por você, e nenhum acesso legítimo mudou.',
         category: 'seguranca',
       },
+    ],
+  },
+  {
+    version: '1.36.24',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Distribua os serviços antes de gerar a OS',
+        description: 'Ao gerar uma OS pelo orçamento, você escolhe em quais equipamentos cada serviço será executado. Os checklists correspondentes já são aplicados automaticamente.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Copie a configuração entre equipamentos',
+        description: 'Serviços e checklists configurados em um equipamento podem ser copiados para os demais. Antes de salvar, uma revisão mostra claramente o que será feito em cada equipamento.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Respostas preenchidas protegidas',
+        description: 'Ao remover um equipamento ou checklist que já tenha respostas, o sistema avisa quantas informações serão apagadas e exige confirmação. Em ordens de contrato, o histórico permanece protegido.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
+    version: '1.36.23',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Escolha o serviço de cada equipamento da OS',
+        description: 'Em uma OS com vários serviços, cada equipamento ganhou seu próprio gerenciamento. Você pode adicionar ou remover os serviços que serão executados nele, e os checklists são ajustados automaticamente para mostrar somente o que corresponde àquela escolha.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Técnico vê serviço e checklist sem misturar equipamentos',
+        description: 'Durante o preenchimento, cada equipamento identifica os serviços recebidos e exibe seus respectivos checklists. O visual também ficou mais limpo, sem uma caixa colorida desnecessária envolvendo as perguntas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.36.22',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Crie uma única OS com vários tipos de serviço',
+        description: 'Agora a mesma ordem de serviço pode reunir dois ou mais serviços. Na criação da OS, você adiciona, organiza e remove os serviços em uma lista expansível, sem precisar abrir uma OS separada para cada atividade.',
+        category: 'recurso',
+      },
+      {
+        title: 'Aplique o checklist certo em cada equipamento',
+        description: 'Cada equipamento da OS mostra seus próprios checklists e identifica claramente a qual serviço cada um pertence. Isso facilita conferir o que será executado e evita misturar tarefas de serviços diferentes.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Gere a OS direto de um orçamento aprovado',
+        description: 'A ação Gerar OS leva para a nova ordem o cliente, os serviços, os materiais e os valores do orçamento. O total também fica sugerido no faturamento da OS e continua editável antes de salvar.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.36.21',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Configure o Portal direto no cadastro do cliente',
+        description: 'A criação e a edição de clientes ganharam a aba Portal. Nela você ativa ou desativa o acesso, copia o link exclusivo e escolhe o que aquele cliente pode consultar, sem precisar procurar essa configuração em outra tela.',
+        category: 'recurso',
+      },
+      {
+        title: 'Proteja o Portal com uma senha própria para cada cliente',
+        description: 'A senha é opcional. Quando ligada, nenhum dado do cliente é entregue antes do login, tentativas incorretas em sequência bloqueiam temporariamente o acesso e trocar a senha encerra as sessões anteriores. O cliente também pode sair do Portal quando estiver usando um computador compartilhado.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Libere somente as informações que cada cliente precisa',
+        description: 'Você decide separadamente se o Portal mostra ordens de serviço, equipamentos, contratos, cobranças e o botão de abrir chamados. O que estiver desligado não fica apenas escondido na tela: deixa de ser enviado para o navegador e não pode ser acessado pelo link público.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cadastro rápido não duplica mais o cliente quando o Portal falha ao salvar',
+        description: 'Se a configuração do Portal encontrar algum problema depois que o cliente já foi criado, a janela continua aberta e uma nova tentativa reaproveita o mesmo cadastro, sem gerar cliente duplicado.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.36.20',
+    date: '18 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nova aba Análise nos relatórios do financeiro',
+        description: 'Compare o seu faturamento e as suas despesas mês a mês, trimestre a trimestre ou ano a ano, do jeito que você escolher, com a variação em relação ao período anterior. Período sem movimento aparece zerado em vez de desaparecer, para você não confundir um mês parado com um mês que não existiu.',
+        category: 'recurso',
+      },
+      {
+        title: 'Descubra quais clientes realmente dão lucro',
+        description: 'A mesma aba traz o ranking dos seus maiores clientes e, ao lado do faturamento de cada um, quanto sobrou de verdade. Quem fatura mais não é sempre quem dá mais lucro: um cliente de dez mil reais que custa nove mil deixa menos que um de quatro mil que custa mil. Dá para reordenar a lista pela margem.',
+        category: 'recurso',
+      },
+      {
+        title: 'A Margem do relatório agora mostra o que sobra de verdade',
+        description: 'O card de Margem estava comparando o lucro antes das despesas com o faturamento, e por isso aparecia alto demais em quem presta serviço. Agora ele mostra quanto sobra de cada cem reais que entraram, depois de tudo. O card ao lado também passou a mostrar o Faturamento, que é tudo que entrou, em vez da receita já descontada de imposto.',
+        category: 'correcao',
+      },
+      {
+        title: 'Clique em qualquer valor do fluxo de caixa para ver de onde ele vem',
+        description: 'Na previsão dia a dia, clicar num valor abre a lista dos lançamentos daquele dia e daquela categoria, um por um, com descrição e valor, e o total do dia no pé. Serve para responder na hora o "cento e vinte e cinco reais de alimentação no dia 22, o que é isso?".',
+        category: 'melhoria',
+      },
+      {
+        title: 'Some as subcategorias na categoria principal',
+        description: 'Quem usa subcategorias ganhou uma chave na Visão Geral para ler os gráficos agrupados: combustível e pneus aparecem somados em frota, por exemplo. É só leitura, os totais e a DRE não mudam. Desligando a chave, cada subcategoria volta a ser uma linha.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Os valores não ficam mais escondidos atrás da primeira coluna',
+        description: 'Na tabela do fluxo de caixa, ao rolar para o lado, os números passavam por trás da coluna de categorias e ficavam ilegíveis. Corrigido.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.36.19',
+    date: '18 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Veja como vai ficar o seu caixa nos próximos 15 dias, dia a dia',
+        description: 'O relatório de fluxo de caixa deixou de olhar só para trás. Agora ele mostra, dia por dia, quanto você tem hoje, o que entra, o que sai separado por categoria e quanto sobra no fim de cada dia. Tudo que já venceu e ninguém deu baixa aparece numa coluna de dívidas ao lado, para você saber o quanto a previsão está otimista. Dá para olhar 15 ou 30 dias à frente.',
+        category: 'recurso',
+      },
+      {
+        title: 'O sistema avisa quando uma conta vai ficar negativa, mesmo com o total positivo',
+        description: 'Uma empresa com cinquenta mil reais no total pode ter vinte e cinco mil em cada uma de duas contas. Se um débito automático de trinta mil cai numa delas, o total continua parecendo saudável e a conta fura, com tarifa e juros. Agora a tela mostra o saldo de cada conta em cada dia e acende em vermelho o dia em que alguma estoura.',
+        category: 'recurso',
+      },
+      {
+        title: 'Poupança e investimento não contam mais como dinheiro disponível',
+        description: 'Ao cadastrar uma conta existe a opção de dizer se ela faz parte do caixa da empresa, ligada por padrão. Desligue na conta de poupança ou investimento: aí guardar dinheiro nela aparece como saída do caixa, e resgatar aparece como entrada. Sem isso, o dinheiro guardado continuava sendo contado como se estivesse disponível para pagar as contas do dia a dia.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Aporte de sócio e distribuição de lucro agora têm lugar certo',
+        description: 'Chegaram quatro categorias prontas: aporte de sócios, distribuição de lucros, aplicação financeira e resgate de aplicação. Elas existem porque esse dinheiro não é receita nem despesa da operação. Lançar um aporte como receita faz a empresa pagar imposto sobre dinheiro que não foi venda. A distribuição de lucro passa a aparecer na DRE abaixo do resultado, sem mexer no desempenho da operação.',
+        category: 'melhoria',
+      },
+      {
+        title: 'A DRE mostra o percentual de cada linha sobre o faturamento',
+        description: 'Ao lado de cada valor aparece quanto ele representa do faturamento do período. É assim que se compara um mês com outro sem se enganar pelo tamanho: dez mil reais de despesa num mês de cem mil é bem diferente dos mesmos dez mil num mês de trinta.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.36.18',
+    date: '18 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'A planilha de importação agora tem Vencimento',
+        description: 'Antes, uma conta que você lançava hoje para vencer no mês que vem entrava vencendo hoje, ou seja, já nascia atrasada na sua lista de contas a pagar. Agora o molde tem a coluna Vencimento, com seletor de calendário para você não errar a data, e é ela que o sistema usa para cobrar e marcar atraso. Se deixar em branco, a conta vence na própria data do lançamento, e a planilha que você já tinha baixado antes continua funcionando do mesmo jeito.',
+        category: 'melhoria',
+      },
+      {
+        title: 'A conferência parou de reclamar de planilha preenchida do jeito certo',
+        description: 'O molde pede para você escrever o valor sempre positivo e deixar a coluna Tipo dizer se é entrada ou saída. Mesmo assim, toda despesa estava sendo marcada para conferir, como se o valor estivesse errado. Numa planilha de trezentas linhas corretas eram trezentos avisos, e aí o aviso que importa de verdade se perdia no meio. Agora só avisa quando o valor está negativo e o Tipo diz Entrada, que é a única contradição de verdade.',
+        category: 'correcao',
+      },
+      {
+        title: 'Data que o sistema não consegue ler não entra mais chutada',
+        description: 'Se você escrevesse algo como mês que vem numa célula de data, o sistema escolhia uma data por conta própria e gravava sem falar nada. Agora ele mostra o problema na tela de conferência e deixa a linha desmarcada, então nada entra sem você ver e decidir.',
+        category: 'correcao',
+      },
+      {
+        title: 'Uma data impossível, como 31 de fevereiro, não derruba mais a conferência inteira',
+        description: 'Digitar 31/02 ou 31/11 numa planilha é erro comum, e antes isso fazia a tela de conferência falhar por completo, como se o arquivo todo estivesse ruim. Agora o sistema aponta só a célula errada e as outras linhas continuam valendo. A mesma coisa vale para a data de pagamento ilegível, que antes era descartada em silêncio e agora aparece como aviso.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.36.17',
+    date: '18 de outubro de 2026',
+    type: 'patch',
+    changes: [
       {
         title: 'Concilie o extrato do banco sem conferir linha por linha na mão',
         description: 'Baixe o arquivo .ofx no seu internet banking, suba no sistema e ele mostra cada linha do extrato ao lado do que já existe lançado. Quando encontra o lançamento equivalente, sugere o casamento com um clique. Quando não encontra, você resolve ali mesmo: dá baixa numa conta a pagar ou a receber que venceu, cria o lançamento que faltava, ou registra como transferência entre as suas próprias contas, que não vira receita nem despesa. No fim, só fecha quando o saldo do sistema bate com o do banco no centavo, então não dá para encerrar uma conciliação que não fecha. Dá para parar no meio e continuar depois, inclusive em outro dia.',

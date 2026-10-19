@@ -1,10 +1,11 @@
 import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, BriefcaseBusiness, FileBarChart, LayoutDashboard, Layers, RefreshCw, Tags, Wallet } from 'lucide-react';
+import { BarChart3, BriefcaseBusiness, FileBarChart, LayoutDashboard, Layers, LineChart, RefreshCw, Tags, Wallet } from 'lucide-react';
 import { FinanceOverview } from './FinanceOverview';
 import { FinanceReportsOverview } from './FinanceReportsOverview';
 import { FinanceDRE } from './FinanceDRE';
 import { FinanceDFC } from './FinanceDFC';
+import { FinanceAnalysis } from './FinanceAnalysis';
 import { FinanceAccountingPackage } from './FinanceAccountingPackage';
 import { FinanceCategorias } from './FinanceCategorias';
 import { FinanceCostCenters } from './FinanceCostCenters';
@@ -80,6 +81,7 @@ export function FinanceRelatorio({
         { value: 'dre', label: fin.report.tabs.incomeStatement, icon: FileBarChart },
         { value: 'dfc', label: fin.report.tabs.cashFlowStatement, icon: BarChart3 },
         { value: 'contabilidade', label: fin.report.tabs.accounting, icon: BriefcaseBusiness },
+        { value: 'analise', label: fin.report.tabs.analysis, icon: LineChart },
       ];
     }
     if (section === 'cobrancas') {
@@ -149,6 +151,8 @@ export function FinanceRelatorio({
           range={dateRange}
           canIncludeSubscriptionProjections={hasChargeModule}
         />
+      ) : safeTab === 'analise' ? (
+        <FinanceAnalysis transactions={allTransactions} isLoading={isLoading} />
       ) : safeTab === 'contabilidade' ? (
         <FinanceAccountingPackage
           transactions={allTransactions}

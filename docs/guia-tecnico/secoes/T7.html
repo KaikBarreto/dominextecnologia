@@ -259,8 +259,8 @@
     <tbody>
       <tr>
         <td><span class="ui">De onde saiu</span></td>
-        <td>Sim (só aparece com mais de um local)</td>
-        <td>Com um único local de estoque na empresa, ele é usado sozinho. Com mais de um, o campo já vem com o último local usado por aquele técnico naquele aparelho, ou o local principal.</td>
+        <td>Sim (só aparece quando há escolha)</td>
+        <td>Com um único local de estoque na empresa, ele é usado sozinho. Com mais de um, o campo já vem com o último local usado por aquele técnico naquele aparelho, ou o local principal. Quando o cliente desta OS tem um estoque próprio cadastrado (material que pertence ao cliente, não à empresa), esse local aparece listado com o selo <span class="ui">· Estoque do cliente</span> e tem prioridade na pré-seleção.</td>
       </tr>
       <tr>
         <td><span class="ui">Material</span></td>
@@ -281,6 +281,8 @@
   </table>
 
   <p>Cada item entra na lista <span class="ui">Já registrado nesta OS</span> e pode ser editado ou removido enquanto não foi baixado do estoque. Sem internet no momento de anotar, aparece "Sem conexão. O consumo foi guardado no aparelho e será enviado quando a internet voltar.", com o selo <span class="ui">Aguardando envio</span> até subir sozinho.</p>
+
+  <div class="aviso">Quando o cliente tem estoque próprio, o app precisa consultar o saldo dele antes de deixar anotar. Se essa consulta falhar, aparece o aviso "Não foi possível consultar o estoque deste cliente" com o botão <span class="ui">Tentar novamente</span>, e o técnico não consegue anotar material enquanto isso não resolver, pra nunca arriscar dar baixa no local errado.</div>
 
   <h2>10. Finalizar (e o "finalizar parcialmente" em contrato PMOC)</h2>
 
@@ -308,7 +310,7 @@
   </ul>
 
   <div class="regra">
-    <b>Estoque nunca impede a OS de ser finalizada.</b> Sem o recurso "Consumo de estoque na OS" ligado, ou com ele ligado mas sem nenhum material anotado nesta OS, finalizar não mexe em estoque nenhum: a baixa continua acontecendo só na conversão de orçamento em OS e nos lançamentos e inventários da tela de Estoque. Com o recurso ligado <b>e</b> material anotado, ao tocar em <span class="ui">Finalizar OS</span> (depois de passar pela sequência de verificação acima) aparece, no lugar da confirmação de sempre, o <span class="ui">Resumo do consumo</span>: "Confira o que saiu do estoque nesta OS. Dá para corrigir a quantidade antes de confirmar." Cada linha traz a quantidade (editável) e o saldo projetado, em cinza ("Fica com X") ou em vermelho quando ficaria negativo ("Fica negativo em X"). Dá para remover um item ali mesmo antes de confirmar: se ainda não tinha sido baixado, ele simplesmente não entra na baixa. O botão <span class="ui">Confirmar e finalizar</span> tenta dar a baixa e, dê certo ou não, finaliza a OS de qualquer forma: se a baixa falhar (por exemplo, a conexão cair na hora), o aviso é "Não deu para baixar os materiais do estoque" com "A OS foi finalizada mesmo assim. O consumo continua anotado aqui e pode ser confirmado depois."
+    <b>Estoque nunca impede a OS de ser finalizada.</b> Sem o recurso "Consumo de estoque na OS" ligado, ou com ele ligado mas sem nenhum material anotado nesta OS, finalizar não mexe em estoque nenhum: a baixa continua acontecendo só na conversão de orçamento em OS e nos lançamentos e inventários da tela de Estoque. Com o recurso ligado <b>e</b> material anotado, ao tocar em <span class="ui">Finalizar OS</span> (depois de passar pela sequência de verificação acima) aparece, no lugar da confirmação de sempre, o <span class="ui">Resumo do consumo</span>: "Confira o que saiu do estoque nesta OS. Dá para corrigir a quantidade antes de confirmar." Cada linha traz a quantidade (editável) e o saldo projetado, em cinza ("Fica com X") ou em vermelho quando ficaria negativo ("Fica negativo em X"). Dá para remover um item ali mesmo antes de confirmar: se ainda não tinha sido baixado, ele simplesmente não entra na baixa. O botão <span class="ui">Confirmar e finalizar</span> tenta dar a baixa e, dê certo ou não, finaliza a OS de qualquer forma: se a baixa falhar (por exemplo, a conexão cair na hora), o aviso é "Não deu para baixar os materiais do estoque" com "A OS foi finalizada mesmo assim. O consumo continua anotado aqui e pode ser confirmado depois." A única exceção é <b>antes</b> de chegar nesse ponto: o botão <span class="ui">Confirmar e finalizar</span> fica desativado enquanto houver alguma linha com quantidade zerada ou negativa, ou enquanto o saldo do estoque do cliente não puder ser confirmado ("Não foi possível conferir o saldo do cliente: a finalização ficou bloqueada para evitar uma baixa em local incorreto"). Nesses dois casos, corrigir a quantidade, remover a linha problemática ou tentar a consulta de novo destrava o botão.
   </div>
 
   <h3>Finalizar Parcial</h3>

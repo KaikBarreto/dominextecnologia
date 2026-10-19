@@ -17,7 +17,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { OriginSelectField } from '@/components/customers/OriginSelectField';
-import { Loader2, Upload, Users, User, FileText } from 'lucide-react';
+import { Loader2, Upload, Users, User, FileText, MonitorSmartphone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { processImageFile } from '@/utils/imageConvert';
@@ -36,6 +36,12 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import type { Customer, CustomerType } from '@/types/database';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { tenantFileOptions } from '@/utils/tenantStorage';
+import { CustomerPortalSettingsTab } from '@/components/customers/CustomerPortalSettingsTab';
+import {
+  DEFAULT_CUSTOMER_PORTAL_SETTINGS,
+  useCustomerPortalSettings,
+  type CustomerPortalSettings,
+} from '@/hooks/useCustomerPortalSettings';
 
 
 const customerSchema = z.object({
@@ -89,7 +95,7 @@ interface CustomerFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   customer?: Customer | null;
-  onSubmit: (data: CustomerFormData & { street_number?: string; latitude?: number; longitude?: number }) => Promise<void>;
+  onSubmit: (data: CustomerFormData & { street_number?: string; latitude?: number; longitude?: number }) => Promise<{ id?: string } | void>;
   isLoading?: boolean;
   /**
    * Default do "Atende como" ao CRIAR (ignorado ao editar, que sempre lê o
@@ -106,10 +112,14 @@ export function CustomerFormDialog({
 }: CustomerFormDialogProps) {
   const { hasModule } = useCompanyModules();
   const hasPdvModule = hasModule('pdv');
-  const [activeTab, setActiveTab] = useState<'contato' | 'fiscal'>('contato');
+  const [activeTab, setActiveTab] = useState<'contato' | 'fiscal' | 'portal'>('contato');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [portalSettings, setPortalSettings] = useState<CustomerPortalSettings>(DEFAULT_CUSTOMER_PORTAL_SETTINGS);
+  const [portalPassword, setPortalPassword] = useState('');
+  const [portalPasswordConfirmation, setPortalPasswordConfirmation] = useState('');
+  const [persistedCustomerId, setPersistedCustomerId] = useState<string | null>(null);
   // Coordenadas capturadas ao escolher uma sugestão do autocomplete de endereço.
   // Se ficar null no save, tentamos geocodificar o endereço digitado (best-effort).
   const [pickedCoords, setPickedCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -119,6 +129,10 @@ export function CustomerFormDialog({
   const tOrigins = MESSAGES[locale].app.equipment.origins;
 
   const isEditing = !!customer;
+  const portal = useCustomerPortalSettings(
+    customer?.id ?? persistedCustomerId,
+    open && !!(customer?.id ?? persistedCustomerId),
+  );
   const draft = useFormDraft<CustomerFormData>({ key: 'customer-form', isOpen: open, isEditing });
 
   const form = useForm<CustomerFormData>({
@@ -147,6 +161,10 @@ export function CustomerFormDialog({
       setActiveTab('contato');
       setPhotoFile(null);
       setPhotoPreview((customer as any)?.photo_url || null);
+      setPersistedCustomerId(null);
+      setPortalSettings(DEFAULT_CUSTOMER_PORTAL_SETTINGS);
+      setPortalPassword('');
+      setPortalPasswordConfirmation('');
       // Pré-carrega coords já salvas no cliente (edição); novo cliente começa sem coords.
       const lat = (customer as any)?.latitude;
       const lng = (customer as any)?.longitude;
@@ -197,7 +215,13 @@ export function CustomerFormDialog({
         });
       }
     }
-  }, [open, customer]);
+  }, [open, customer?.id]);
+
+  useEffect(() => {
+    if (open && portal.settings) {
+      setPortalSettings(portal.settings);
+    }
+  }, [open, portal.settings]);
 
   const uploadPhoto = async (): Promise<string | undefined> => {
     if (!photoFile) return undefined;
@@ -212,45 +236,79 @@ export function CustomerFormDialog({
   const handleSubmit = async (data: CustomerFormData) => {
     setUploadingPhoto(true);
     try {
-      let photo_url: string | undefined;
-      if (photoFile) {
-        photo_url = await uploadPhoto();
-      }
-
-      // Coordenadas do cliente: usa o que foi escolhido no autocomplete; senão,
-      // tenta geocodificar o endereço digitado (best-effort, nunca trava o cadastro).
-      let coords = pickedCoords;
-      if (!coords) {
-        const addressStr = buildCustomerAddress({
-          address: data.address,
-          city: data.city,
-          state: data.state,
-          zip_code: data.zip_code,
-        });
-        if (addressStr) {
-          coords = await geocodeAddress(addressStr); // retorna null em falha/timeout
+      if (portalSettings.passwordEnabled) {
+        const needsPassword = !portalSettings.passwordConfigured || portalPassword.length > 0;
+        const passwordBytes = new TextEncoder().encode(portalPassword).length;
+        if (needsPassword && (portalPassword.length < 8 || passwordBytes > 72)) {
+          setActiveTab('portal');
+          throw new Error('A senha do portal precisa ter ao menos 8 caracteres e no máximo 72 bytes.');
+        }
+        if (needsPassword && portalPassword !== portalPasswordConfirmation) {
+          setActiveTab('portal');
+          throw new Error('A confirmação da senha do portal não confere.');
         }
       }
 
-      const cleanedData: Record<string, unknown> = {
-        ...data,
-        whatsapp_notifications_enabled:
-          data.whatsapp_notifications_enabled && (data.celular || '').replace(/\D/g, '').length >= 10,
-        birth_date: data.birth_date || undefined,
-        // Espelha o número do endereço na coluna fiscal usada pela emissão de NFS-e.
-        street_number: data.address_number || undefined,
-        ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
-        ...(photo_url ? { photo_url } : {}),
-      };
-      // Sem o módulo PDV, o payload não leva estas duas chaves — nem pra
-      // criar (cai no DEFAULT do banco) nem pra editar (preserva o valor
-      // atual na linha, nunca sobrescreve). Isto é a prova de "formulário
-      // idêntico ao de hoje" no nível do contrato de dados, não só da UI.
-      if (!hasPdvModule) {
-        delete cleanedData.is_service_customer;
-        delete cleanedData.is_store_customer;
+      let targetCustomerId = persistedCustomerId;
+      if (!targetCustomerId) {
+        let photo_url: string | undefined;
+        if (photoFile) {
+          photo_url = await uploadPhoto();
+        }
+
+        // Coordenadas do cliente: usa o que foi escolhido no autocomplete; senão,
+        // tenta geocodificar o endereço digitado (best-effort, nunca trava o cadastro).
+        let coords = pickedCoords;
+        if (!coords) {
+          const addressStr = buildCustomerAddress({
+            address: data.address,
+            city: data.city,
+            state: data.state,
+            zip_code: data.zip_code,
+          });
+          if (addressStr) {
+            coords = await geocodeAddress(addressStr); // retorna null em falha/timeout
+          }
+        }
+
+        const cleanedData = {
+          ...data,
+          whatsapp_notifications_enabled:
+            data.whatsapp_notifications_enabled && (data.celular || '').replace(/\D/g, '').length >= 10,
+          birth_date: data.birth_date || undefined,
+          // Espelha o número do endereço na coluna fiscal usada pela emissão de NFS-e.
+          street_number: data.address_number || undefined,
+          ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
+          ...(photo_url ? { photo_url } : {}),
+        };
+        // Sem o módulo PDV, o payload não leva estas duas chaves — nem pra
+        // criar (cai no DEFAULT do banco) nem pra editar (preserva o valor
+        // atual na linha, nunca sobrescreve). Isto é a prova de "formulário
+        // idêntico ao de hoje" no nível do contrato de dados, não só da UI.
+        const payload: Record<string, unknown> = { ...cleanedData };
+        if (!hasPdvModule) {
+          delete payload.is_service_customer;
+          delete payload.is_store_customer;
+        }
+        const savedCustomer = await onSubmit(payload as unknown as Parameters<typeof onSubmit>[0]);
+        const savedCustomerId = savedCustomer && typeof savedCustomer === 'object'
+          ? savedCustomer.id
+          : undefined;
+        targetCustomerId = customer?.id ?? savedCustomerId ?? null;
+        if (!targetCustomerId) {
+          throw new Error('O cliente foi salvo, mas o identificador não retornou para configurar o portal.');
+        }
+        setPersistedCustomerId(targetCustomerId);
       }
-      await onSubmit(cleanedData as unknown as CustomerFormData & { street_number?: string; latitude?: number; longitude?: number });
+
+      const savedPortal = await portal.saveSettings({
+        targetCustomerId,
+        settings: portalSettings,
+        password: portalSettings.passwordEnabled && portalPassword ? portalPassword : null,
+      });
+      setPortalSettings(savedPortal);
+      setPortalPassword('');
+      setPortalPasswordConfirmation('');
       draft.clearDraft();
       form.reset();
       setActiveTab('contato');
@@ -266,13 +324,19 @@ export function CustomerFormDialog({
   // o usuário veja a mensagem mesmo se estiver na aba Fiscal ao salvar.
   const onInvalid = () => setActiveTab('contato');
 
+  const portalUnavailable = !!customer && (!!portal.error || portal.isLoading);
   const footer = (
     <div className="flex justify-end gap-2">
       <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
         {t.cancel}
       </Button>
-      <Button type="submit" form="customer-form" disabled={isLoading || uploadingPhoto} className="text-white">
-        {(isLoading || uploadingPhoto) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+      <Button
+        type="submit"
+        form="customer-form"
+        disabled={isLoading || uploadingPhoto || portal.isSaving || portalUnavailable}
+        className="text-white"
+      >
+        {(isLoading || uploadingPhoto || portal.isSaving) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         {customer ? t.save : t.create}
       </Button>
     </div>
@@ -294,8 +358,8 @@ export function CustomerFormDialog({
 
       <Form {...form}>
         <form id="customer-form" onSubmit={form.handleSubmit(handleSubmit, onInvalid)} className="space-y-4">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'contato' | 'fiscal')}>
-            <TabsList variant="underline" className="grid w-full grid-cols-2">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'contato' | 'fiscal' | 'portal')}>
+            <TabsList variant="underline" className="grid w-full grid-cols-3">
               <TabsTrigger variant="underline" value="contato" className="flex items-center gap-2 text-xs sm:text-sm">
                 <User className="h-4 w-4" />
                 {t.tabContact}
@@ -303,6 +367,10 @@ export function CustomerFormDialog({
               <TabsTrigger variant="underline" value="fiscal" className="flex items-center gap-2 text-xs sm:text-sm">
                 <FileText className="h-4 w-4" />
                 {t.tabFiscal}
+              </TabsTrigger>
+              <TabsTrigger variant="underline" value="portal" className="flex items-center gap-2 text-xs sm:text-sm">
+                <MonitorSmartphone className="h-4 w-4" />
+                Portal
               </TabsTrigger>
             </TabsList>
 
@@ -685,6 +753,21 @@ export function CustomerFormDialog({
                 {/* ibge_municipality_code é preenchido automaticamente pelo CEP ou pelo
                     StateCitySelector — não é exposto ao usuário como campo editável */}
               </div>
+            </TabsContent>
+
+            <TabsContent value="portal" className="mt-4">
+              <CustomerPortalSettingsTab
+                settings={portalSettings}
+                onSettingsChange={setPortalSettings}
+                password={portalPassword}
+                onPasswordChange={setPortalPassword}
+                passwordConfirmation={portalPasswordConfirmation}
+                onPasswordConfirmationChange={setPortalPasswordConfirmation}
+                isEditing={isEditing}
+                isLoading={isEditing && portal.isLoading}
+                error={isEditing ? portal.error : null}
+                onRetry={() => { void portal.refetch(); }}
+              />
             </TabsContent>
           </Tabs>
         </form>

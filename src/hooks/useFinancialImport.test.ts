@@ -16,11 +16,14 @@ function makeRow(overrides: Partial<ParsedRow> = {}): ParsedRow {
     state: 'ready',
     issues: [],
     date: '2026-10-18',
+    dueDate: null,
     type: 'saida',
     description: 'Compra de material',
     amount: 150.5,
     category: 'Material',
     account: 'Banco Principal',
+    customer: null,
+    supplier: 'Fornecedor X',
     counterparty: 'Fornecedor X',
     costCenter: null,
     paymentMethod: 'pix',
@@ -71,6 +74,7 @@ describe('buildFinancialImportPayload', () => {
     expect(rows[0]).toEqual({
       row_number: 2,
       date: '2026-10-18',
+      due_date: null,
       type: 'saida',
       description: 'Compra de material',
       amount: 150.5,
@@ -78,11 +82,21 @@ describe('buildFinancialImportPayload', () => {
       account: 'Banco Principal',
       cost_center: null,
       payment_method: 'pix',
+      customer: null,
+      supplier: 'Fornecedor X',
       counterparty: 'Fornecedor X',
       is_paid: true,
       paid_date: '2026-10-18',
       notes: null,
     });
+  });
+
+  it('vencimento da planilha atravessa o payload como `due_date` (sem o campo, conta a pagar nasce atrasada)', () => {
+    const { rows } = buildFinancialImportPayload([
+      makeRow({ isPaid: false, paidDate: null, dueDate: '2026-11-15' }),
+    ]);
+    expect(rows[0].due_date).toBe('2026-11-15');
+    expect(rows[0].is_paid).toBe(false);
   });
 
   it('linha "skipped" não entra no payload NEM na contagem de excluídas (não é erro, é linha vazia)', () => {

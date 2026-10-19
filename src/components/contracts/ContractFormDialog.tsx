@@ -4555,7 +4555,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           setEnvironments([]);
           setSelectedEnvKey(null);
         }
-        setShowQuickCustomer(false);
+        return result;
       }}
       isLoading={createCustomer.isPending}
     />

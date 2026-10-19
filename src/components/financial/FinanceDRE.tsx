@@ -357,6 +357,7 @@ export function FinanceDRE({
   const [showImpostos, setShowImpostos] = useState(false);
   const [showCpv, setShowCpv] = useState(false);
   const [showOpex, setShowOpex] = useState(false);
+  const [showNonOperating, setShowNonOperating] = useState(false);
   const [showReceita, setShowReceita] = useState(false);
   const [showCostCenters, setShowCostCenters] = useState(false);
   const [expandedCostCenterIds, setExpandedCostCenterIds] = useState<Set<string>>(new Set());
@@ -414,15 +415,17 @@ export function FinanceDRE({
   const classifyCategory = (category: string | null) =>
     classifyDreCategory(category, categoryDreGroupMap.get(category || ''));
 
-  const { dre, impostosCategories, cmvCategories, opexCategories, receitaCategories, categoryTxnsMap } = useMemo(() => {
+  const { dre, impostosCategories, cmvCategories, opexCategories, naoOperacionalCategories, receitaCategories, categoryTxnsMap } = useMemo(() => {
     let receitaBruta = 0;
     let impostos = 0;
     let cmv = 0;
     let opex = 0;
+    let naoOperacional = 0;
 
     const impostosMap = new Map<string, number>();
     const cmvMap = new Map<string, number>();
     const opexMap = new Map<string, number>();
+    const naoOperacionalMap = new Map<string, number>();
     const receitaMap = new Map<string, number>();
     // Transações de CADA categoria, prontas pra alimentar o 3º nível (quebra
     // por centro de custo ao expandir uma categoria). Chave = `${grupo}:${nome}`,
@@ -454,6 +457,14 @@ export function FinanceDRE({
           cmv += amount;
           cmvMap.set(cat, (cmvMap.get(cat) || 0) + amount);
           pushTxn(`cmv:${cat}`, t);
+        } else if (cls === 'nao_operacional') {
+          // Fica ABAIXO do resultado líquido. Não entra no operacional, por
+          // decisão do BPO: distribuição de lucro e investimento não mudam o
+          // resultado da operação, mas precisam aparecer "pra ter essa
+          // visibilidade".
+          naoOperacional += amount;
+          naoOperacionalMap.set(cat, (naoOperacionalMap.get(cat) || 0) + amount);
+          pushTxn(`nao_operacional:${cat}`, t);
         } else {
           opex += amount;
           opexMap.set(cat, (opexMap.get(cat) || 0) + amount);
@@ -465,6 +476,9 @@ export function FinanceDRE({
     const receitaLiquida = receitaBruta - impostos;
     const lucroBruto = receitaLiquida - cmv;
     const resultadoLiquido = lucroBruto - opex;
+    // Resultado FINAL = depois do não operacional. O líquido continua sendo o
+    // resultado da OPERAÇÃO e não é afetado por distribuição/investimento.
+    const resultadoFinal = resultadoLiquido - naoOperacional;
     const margem = receitaBruta > 0 ? (lucroBruto / receitaBruta) * 100 : 0;
 
     const mapToArray = (map: Map<string, number>, group: string): CategoryBreakdown[] =>
@@ -476,10 +490,11 @@ export function FinanceDRE({
         .sort((a, b) => b.value - a.value);
 
     return {
-      dre: { receitaBruta, impostos, receitaLiquida, cmv, lucroBruto, opex, resultadoLiquido, margem },
+      dre: { receitaBruta, impostos, receitaLiquida, cmv, lucroBruto, opex, resultadoLiquido, naoOperacional, resultadoFinal, margem },
       impostosCategories: mapToArray(impostosMap, 'impostos'),
       cmvCategories: mapToArray(cmvMap, 'cmv'),
       opexCategories: mapToArray(opexMap, 'opex'),
+      naoOperacionalCategories: mapToArray(naoOperacionalMap, 'nao_operacional'),
       receitaCategories: mapToArray(receitaMap, 'receita'),
       categoryTxnsMap: txnsByKey,
     };
@@ -630,6 +645,19 @@ export function FinanceDRE({
     } finally {
       setIsExporting(false);
     }
+  };
+
+  /**
+   * Percentual da linha sobre o FATURAMENTO (receita bruta), como o BPO pediu:
+   * "e sempre mostrando %, em relação ao faturamento".
+   *
+   * Sem faturamento no período não existe base de comparação — devolve string
+   * vazia em vez de "0,0%" ou "Infinity%", que seriam os dois jeitos de
+   * mentir aqui.
+   */
+  const pctOfRevenue = (value: number): string => {
+    if (!dre.receitaBruta) return '';
+    return `${((value / dre.receitaBruta) * 100).toFixed(1)}%`;
   };
 
   const ResultIcon = dre.resultadoLiquido > 0 ? TrendingUp : dre.resultadoLiquido < 0 ? TrendingDown : Minus;
@@ -916,9 +944,16 @@ export function FinanceDRE({
       )}
       <div className="px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between border-t border-border/30">
         <span className="text-sm text-foreground/80 pl-2 sm:pl-4 font-medium">{fin.dre.table.total}</span>
-        <span className={cn('text-sm font-medium', isNegative ? 'text-destructive' : 'text-success')}>
-          {isNegative ? `-${fmt(total)}` : fmt(total)}
-        </span>
+        <div className="flex items-baseline gap-2">
+          <span className={cn('text-sm font-medium', isNegative ? 'text-destructive' : 'text-success')}>
+            {isNegative ? `-${fmt(total)}` : fmt(total)}
+          </span>
+          {pctOfRevenue(total) && (
+            <span className="text-xs text-muted-foreground tabular-nums w-12 text-right">
+              {pctOfRevenue(total)}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1086,7 +1121,12 @@ export function FinanceDRE({
           {/* Receita Líquida */}
           <div className={cn('px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between', dre.receitaLiquida >= 0 ? 'bg-success' : 'bg-destructive')}>
             <span className="text-sm font-semibold text-white">{fin.dre.table.netRevenue}</span>
-            <span className="text-base font-bold text-white">{fmt(dre.receitaLiquida)}</span>
+            <div className="flex flex-col items-end">
+              <span className="text-base font-bold text-white">{fmt(dre.receitaLiquida)}</span>
+              {pctOfRevenue(dre.receitaLiquida) && (
+                <span className="text-xs text-white/80 tabular-nums">{pctOfRevenue(dre.receitaLiquida)}</span>
+              )}
+            </div>
           </div>
 
           {/* CSP - Custo do Serviço Prestado — idem: sempre na tela. */}
@@ -1105,7 +1145,12 @@ export function FinanceDRE({
               <span className="text-sm font-semibold text-white">{fin.dre.table.grossProfit}</span>
               <span className="text-xs text-white/80">{fin.dre.table.margin}: {dre.margem.toFixed(1)}%</span>
             </div>
-            <span className="text-base font-bold text-white">{fmt(dre.lucroBruto)}</span>
+            <div className="flex flex-col items-end">
+              <span className="text-base font-bold text-white">{fmt(dre.lucroBruto)}</span>
+              {pctOfRevenue(dre.lucroBruto) && (
+                <span className="text-xs text-white/80 tabular-nums">{pctOfRevenue(dre.lucroBruto)}</span>
+              )}
+            </div>
           </div>
 
           {/* OPEX */}
@@ -1129,10 +1174,47 @@ export function FinanceDRE({
                 </span>
               </div>
             </div>
-            <span className="text-lg sm:text-xl font-bold text-white flex-shrink-0 ml-2">
-              {fmt(dre.resultadoLiquido)}
-            </span>
+            <div className="flex flex-col items-end flex-shrink-0 ml-2">
+              <span className="text-lg sm:text-xl font-bold text-white">{fmt(dre.resultadoLiquido)}</span>
+              {pctOfRevenue(dre.resultadoLiquido) && (
+                <span className="text-xs text-white/80 tabular-nums">{pctOfRevenue(dre.resultadoLiquido)}</span>
+              )}
+            </div>
           </div>
+
+          {/* Despesas não operacionais — ABAIXO do resultado líquido, de
+              propósito. Distribuição de lucro e investimento não mudam o
+              resultado da OPERAÇÃO, mas o dono precisa ver (desenho do BPO
+              financeiro, 18/10/2026). Aporte de sócio NÃO aparece aqui: ele é
+              `dre_group = 'outros'` e fica fora do DRE inteiro. */}
+          <CollapsibleSection
+            label={fin.dre.table.nonOperating}
+            total={dre.naoOperacional}
+            categories={naoOperacionalCategories}
+            open={showNonOperating}
+            onToggle={() => setShowNonOperating(!showNonOperating)}
+            groupKey="nao_operacional"
+          />
+
+          {/* Resultado final só aparece quando há não operacional. Sem isso
+              ele seria idêntico ao resultado líquido e viraria ruído. */}
+          {dre.naoOperacional !== 0 && (
+            <div className={cn(
+              'px-3 sm:px-4 py-4 sm:py-5 flex items-center justify-between',
+              dre.resultadoFinal > 0 ? 'bg-success' : dre.resultadoFinal < 0 ? 'bg-destructive' : 'bg-muted-foreground',
+            )}>
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm sm:text-base font-bold text-white truncate">{fin.dre.table.finalResult}</span>
+                <span className="text-xs text-white/80">{fin.dre.table.nonOperatingHint}</span>
+              </div>
+              <div className="flex flex-col items-end flex-shrink-0 ml-2">
+                <span className="text-lg sm:text-xl font-bold text-white">{fmt(dre.resultadoFinal)}</span>
+                {pctOfRevenue(dre.resultadoFinal) && (
+                  <span className="text-xs text-white/80 tabular-nums">{pctOfRevenue(dre.resultadoFinal)}</span>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Foto OPERACIONAL atual, separada da cadeia de contas do DRE. Ela
               não muda com período/regime: soma os saldos de hoje, recebíveis,

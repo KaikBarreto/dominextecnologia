@@ -19,13 +19,12 @@ import { supabase } from '@/integrations/supabase/client';
  * `ticket_requests`, assinatura da empresa, módulo "Portal do Cliente", tamanho
  * da descrição e se o equipamento informado é mesmo daquele cliente.
  *
- * `p_session_token` vai `null` de propósito, igual à LEITURA: a RPC só consulta
- * esse parâmetro quando o portal tem `password_enabled`, e o overload
- * `get_portal_data(p_token)` que a página usa pra ler já passa `NULL` no mesmo
- * parâmetro. Portal com senha não tem nenhuma tela que emita sessão hoje (nem a
- * leitura sabe tratar o `access: 'password_required'` que a RPC devolveria), então
- * não há valor legítimo a passar. Se um dia o portal com senha ganhar tela, a
- * sessão emitida por ela entra aqui e no `get_portal_data` de 2 argumentos juntas.
+ * `sessionToken` é a sessão do PORTAL COM SENHA (não a sessão do app). A RPC só
+ * consulta esse parâmetro quando o portal tem `password_enabled`, comparando
+ * `sha256(token)` com `customer_portal_sessions.token_hash` ainda vigente. A
+ * página mantém esse token (`CustomerPortal.tsx`) e o repassa também na leitura,
+ * então o chamado segue a MESMA sessão que autorizou a leitura. Portal sem senha
+ * manda `null` e a RPC nem olha.
  *
  * Usa o client com sessão (mesmo da leitura) e não o `supabaseAnon`: visitante
  * sem login cai em `anon`, que é o caso que estamos consertando, e membro logado
@@ -41,11 +40,12 @@ import { supabase } from '@/integrations/supabase/client';
 export async function createCustomerPortalTicket(
   token: string,
   description: string,
+  sessionToken: string | null,
   equipmentId?: string | null,
 ): Promise<void> {
   const { error } = await supabase.rpc('create_customer_portal_ticket', {
     p_token: token,
-    p_session_token: null,
+    p_session_token: sessionToken || null,
     p_description: description.trim(),
     // Sem equipamento = NULL explícito (a RPC só valida quando vem preenchido).
     p_equipment_id: equipmentId || null,

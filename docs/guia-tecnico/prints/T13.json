@@ -24,13 +24,13 @@
       "legenda": "Modal Nova Transação organizado em seções: O que é (tipo, categoria, descrição, cliente e fornecedor vinculados), Dinheiro (valor, conta, forma de pagamento, Data do lançamento e Data do pagamento), Mais detalhes e Parcelas. As duas datas são diferentes de propósito: a Data do lançamento é quando o fato aconteceu e conta no Regime de Competência; a Data do pagamento é quando o dinheiro se moveu e conta no Regime de Caixa.",
       "passos": [
         {
-          "esperar": 2500
+          "esperar": 3000
         },
         {
-          "clicar": "Transação"
+          "clicar": "Nova movimentação"
         },
         {
-          "esperar": 1500
+          "esperar": 1800
         }
       ],
       "recorte": "dialog"
@@ -48,15 +48,17 @@
     },
     {
       "id": "t13-cobrar-modal",
-      "url": "/financeiro/relatorio",
-      "legenda": "Modal Nova cobrança (recebimento do cliente pelo Asaas da própria empresa), dividido em quatro abas: Cobrança (cliente, valor, vencimento, descrição), Pagamento (forma, parcelas, quem paga a taxa), Encargos (multa, juros, desconto) e Financeiro (lançar no Financeiro, categoria, centro de custo). O valor líquido que a empresa recebe fica fixo no rodapé, visível em qualquer aba.",
+      "url": "/financeiro/cobrancas",
+      "legenda": "Formulário Nova cobrança, aba Cobrança: cliente, ordem de serviço opcional, valor, vencimento (com a frase que explica como a data cai no regime de competência) e descrição. No topo as abas Cobrança, Pagamento, Encargos e Financeiro; embaixo, Gerar agora e Avançar. Abrir o formulário NÃO gera cobrança — quem gera é \"Gerar agora\", e nenhum spec clica nele. RECAPTURA 18/10/2026: a imagem publicada estava velha (formulário de página única, com um botão \"Gerar cobrança\"); virou um assistente de 4 abas e ganhou o vínculo com ordem de serviço. Estava marcado como não capturável, mas a nota errava duas coisas: a conta demo JÁ tem recebimento online ativo, e o botão é \"Nova cobrança\" na tela Cobranças, não \"Cobrar\" no relatório.",
       "passos": [
         {
-          "esperar": 2500
+          "esperar": 3500
         },
         {
-          "clicar": "Cobrar",
-          "opcional": true
+          "clicar": "Nova cobrança"
+        },
+        {
+          "esperarTexto": "Gere um link de pagamento"
         },
         {
           "esperar": 1500
@@ -81,6 +83,221 @@
         }
       ],
       "recorte": "main"
+    },
+    {
+      "id": "t13-conciliacao-aba",
+      "url": "/financeiro/movimentacoes",
+      "legenda": "Aba Conciliação em Movimentações Financeiras, com o seletor de conta e o estado inicial que explica o que vai acontecer.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Conciliação"
+        },
+        {
+          "esperar": 2000
+        }
+      ],
+      "recorte": "main"
+    },
+    {
+      "id": "t13-conciliacao-extrato",
+      "url": "/financeiro/movimentacoes",
+      "legenda": "Extrato importado com as linhas do banco, o selo de estado de cada uma e o rodapé com Saldo do banco, Saldo conciliado e Diferença.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Conciliação"
+        },
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "Selecione a conta"
+        },
+        {
+          "esperar": 1500
+        },
+        {
+          "clicarSeletor": "[role=\"option\"]:has-text(\"Caixa da Empresa\")"
+        },
+        {
+          "esperar": 3000
+        },
+        {
+          "esperarTexto": "Continuar conciliação"
+        },
+        {
+          "clicarSeletor": "button:has-text(\"Continuar\"):not(:has-text(\"conciliação\"))"
+        },
+        {
+          "esperarTexto": "Saldo do extrato"
+        },
+        {
+          "esperar": 1500
+        }
+      ],
+      "recorte": "main",
+      "viewport": {
+        "largura": 1440,
+        "altura": 780
+      },
+      "observacao": "Altura curta de proposito: no recorte main a tela da conciliacao deixa muito branco embaixo e a imagem encolhe no PDF."
+    },
+    {
+      "id": "t13-conciliacao-destinos",
+      "url": "/financeiro/movimentacoes",
+      "legenda": "Painel de ações de uma linha de saída do extrato, com os destinos disponíveis para aquela linha.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Conciliação"
+        },
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "Selecione a conta"
+        },
+        {
+          "esperar": 1500
+        },
+        {
+          "clicarSeletor": "[role=\"option\"]:has-text(\"Caixa da Empresa\")"
+        },
+        {
+          "esperar": 3000
+        },
+        {
+          "esperarTexto": "Continuar conciliação"
+        },
+        {
+          "clicarSeletor": "button:has-text(\"Continuar\"):not(:has-text(\"conciliação\"))"
+        },
+        {
+          "esperarTexto": "Saldo do extrato"
+        },
+        {
+          "clicar": "TARIFA PACOTE"
+        },
+        {
+          "esperarTexto": "Criar lançamento"
+        },
+        {
+          "esperar": 1200
+        }
+      ],
+      "recorte": "main",
+      "viewport": {
+        "largura": 1440,
+        "altura": 780
+      },
+      "observacao": "Altura curta de proposito: no recorte main a tela da conciliacao deixa muito branco embaixo e a imagem encolhe no PDF."
+    },
+    {
+      "id": "t13-conciliacao-cartao",
+      "url": "/financeiro/movimentacoes",
+      "legenda": "Conciliação de fatura de cartão: o rodapé mostra Total da fatura, Compras lançadas e Falta lançar, em vez de saldo.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Conciliação"
+        },
+        {
+          "esperar": 2500
+        },
+        {
+          "clicar": "Selecione a conta"
+        },
+        {
+          "esperar": 1500
+        },
+        {
+          "clicarSeletor": "[role=\"option\"]:has-text(\"Cartão da Empresa\")"
+        },
+        {
+          "esperar": 3000
+        },
+        {
+          "esperarTexto": "Continuar conciliação"
+        },
+        {
+          "clicarSeletor": "button:has-text(\"Continuar\"):not(:has-text(\"conciliação\"))"
+        },
+        {
+          "esperarTexto": "Total da fatura"
+        },
+        {
+          "esperar": 1500
+        }
+      ],
+      "recorte": "main",
+      "viewport": {
+        "largura": 1440,
+        "altura": 780
+      },
+      "observacao": "Altura curta de proposito: no recorte main a tela da conciliacao deixa muito branco embaixo e a imagem encolhe no PDF."
+    },
+    {
+      "id": "t13-planilha-dialogo",
+      "url": "/financeiro/movimentacoes",
+      "legenda": "Diálogo Importar planilha financeira: baixar o molde, enviar a planilha preenchida e a lista de importações anteriores.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Importar planilha"
+        },
+        {
+          "esperarTexto": "Baixar molde"
+        },
+        {
+          "esperar": 1500
+        }
+      ],
+      "recorte": "dialog"
+    },
+    {
+      "id": "t13-planilha-conferencia",
+      "url": "/financeiro/movimentacoes",
+      "legenda": "Tela de conferência da importação por planilha: os contadores de prontas, para conferir e duplicadas, os totais de entradas e saídas, e a lista linha a linha com os selos e o motivo de cada pendência. RECAPTURA 18/10/2026: antes este print saía IDÊNTICO ao t13-planilha-dialogo (a janela de upload), porque o roteiro parava no 'Baixar molde' e a conferência só existe depois de um arquivo subir. Agora o passo enviarArquivo sobe a planilha de exemplo versionada. Subir o arquivo NÃO grava nada: a conferência vem do preview, que é somente-leitura.",
+      "passos": [
+        {
+          "esperar": 3000
+        },
+        {
+          "clicar": "Importar planilha"
+        },
+        {
+          "esperarTexto": "Baixar molde"
+        },
+        {
+          "esperar": 1200
+        },
+        {
+          "enviarArquivo": "docs/guia-tecnico/fixtures/exemplo-importacao-financeira.xlsx"
+        },
+        {
+          "esperarTexto": "para conferir"
+        },
+        {
+          "esperar": 2000
+        }
+      ],
+      "recorte": "dialog",
+      "viewport": {
+        "largura": 1680,
+        "altura": 1050
+      },
+      "nota": "Requer planilha de exemplo carregada; o Tech Lead injeta o arquivo antes da captura."
     }
   ]
 }
