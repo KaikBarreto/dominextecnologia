@@ -61,6 +61,8 @@ export interface PdvPaymentDialogProps {
   customerCredit: PdvCustomerCredit | null;
   /** Contas que podem receber Pix, transferência e cartão (sem cartão de crédito). */
   accounts: Array<{ id: string; name: string }>;
+  /** Pode selecionar contas em pagamentos, sem necessariamente ver seus saldos. */
+  canUseBankAccounts: boolean;
   /** Há caixa ABERTO? Sem ele a RPC recusa venda em dinheiro. */
   hasOpenCashSession: boolean;
   /** A empresa aponta conta de cofre em Configurações do PDV? */
@@ -144,6 +146,7 @@ export function PdvPaymentDialog({
   customerName,
   customerCredit,
   accounts,
+  canUseBankAccounts,
   hasOpenCashSession,
   hasCofreAccount,
   onGoToCashPanel,
@@ -159,6 +162,9 @@ export function PdvPaymentDialog({
   const submitGuard = useRef(false);
 
   const canReceiveCash = hasOpenCashSession && hasCofreAccount;
+  const availableMethods = canUseBankAccounts
+    ? PAYMENT_METHOD_ORDER
+    : PAYMENT_METHOD_ORDER.filter((method) => !requiresAccount(method));
 
   /**
    * Abriu: uma linha só, já com o total inteiro (modo ÚNICO, o caminho de 95%
@@ -167,7 +173,9 @@ export function PdvPaymentDialog({
    */
   useEffect(() => {
     if (!open) return;
-    const method: PdvPaymentMethod = canReceiveCash ? 'dinheiro' : 'pix';
+    const method: PdvPaymentMethod = canReceiveCash
+      ? 'dinheiro'
+      : (availableMethods.find((candidate) => candidate !== 'dinheiro') ?? 'fiado');
     setRows([newPaymentRow(method, total, { accountId: accounts[0]?.id ?? null })]);
     setMultiplePayments(false);
     setServerError(null);
@@ -289,7 +297,8 @@ export function PdvPaymentDialog({
     setMultiplePayments(isMultiple);
     if (!isMultiple) {
       setRows((prev) => {
-        const method = sortByCanonicalOrder(prev)[0]?.method ?? (canReceiveCash ? 'dinheiro' : 'pix');
+        const method = sortByCanonicalOrder(prev)[0]?.method
+          ?? (canReceiveCash ? 'dinheiro' : (availableMethods[0] ?? 'fiado'));
         return [newPaymentRow(method, total, { accountId: accounts[0]?.id ?? null })];
       });
     }
@@ -469,7 +478,7 @@ export function PdvPaymentDialog({
             fundo saturado + texto branco; inativo = neutro de verdade
             (outline), nunca pastel — régua do CEO. */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {PAYMENT_METHOD_ORDER.map((method) => {
+          {availableMethods.map((method) => {
             const meta = METHOD_META[method];
             const Icon = meta.icon;
             const active = rows.some((row) => row.method === method);

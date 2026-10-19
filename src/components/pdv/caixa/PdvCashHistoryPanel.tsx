@@ -6,7 +6,6 @@ import {
   FileDown,
   FileSpreadsheet,
   FileText,
-  ListFilter,
   Pencil,
   ReceiptText,
   Search,
@@ -19,10 +18,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Label } from '@/components/ui/label';
+import { FilterButton } from '@/components/ui/FilterButton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { MobilePillTabs, type PillTab } from '@/components/mobile/MobilePillTabs';
@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils';
 import {
   filterPdvLedger,
   paginate,
+  pdvLedgerAccountNames,
   planLedgerReversal,
   type PdvLedgerEntry,
   type PdvLedgerKind,
@@ -45,6 +46,7 @@ import {
   exportPdvCashHistoryExcel,
   exportPdvCashHistoryPdf,
 } from '@/utils/pdvCashHistoryExport';
+import { PdvMoneyInput } from '@/components/pdv/caixa/PdvMoneyInput';
 
 type HistoryTexts = (typeof pdv)['pt-br']['cashPanel']['history'];
 
@@ -104,6 +106,9 @@ export function PdvCashHistoryPanel({
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState<PdvLedgerKind | 'all'>('all');
   const [methodGroup, setMethodGroup] = useState<PdvMethodGroup>('todas');
+  const [account, setAccount] = useState('all');
+  const [minAmount, setMinAmount] = useState(0);
+  const [maxAmount, setMaxAmount] = useState(0);
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState<'excel' | 'pdf' | null>(null);
@@ -140,9 +145,23 @@ export function PdvCashHistoryPanel({
     { value: 'pix_transferencia', label: texts.methodPix },
   ];
 
+  const accountOptions = useMemo(
+    () => Array.from(new Set(entries.flatMap(pdvLedgerAccountNames))).sort((a, b) => a.localeCompare(b)),
+    [entries],
+  );
+  const activeFilterCount = Number(kind !== 'all') + Number(account !== 'all')
+    + Number(minAmount > 0 || maxAmount > 0);
+
   const filtered = useMemo(
-    () => filterPdvLedger(entries, { search, kind: kind === 'all' ? null : kind, methodGroup }),
-    [entries, search, kind, methodGroup],
+    () => filterPdvLedger(entries, {
+      search,
+      kind: kind === 'all' ? null : kind,
+      methodGroup,
+      account: account === 'all' ? null : account,
+      minAmount: minAmount > 0 ? minAmount : null,
+      maxAmount: maxAmount > 0 ? maxAmount : null,
+    }),
+    [entries, search, kind, methodGroup, account, minAmount, maxAmount],
   );
 
   const pageData = paginate(filtered, page, PER_PAGE);
@@ -161,6 +180,14 @@ export function PdvCashHistoryPanel({
       else next.add(key);
       return next;
     });
+  }
+
+  function clearAdvancedFilters() {
+    setKind('all');
+    setAccount('all');
+    setMinAmount(0);
+    setMaxAmount(0);
+    setPage(1);
   }
 
   function methodLabel(method: string): string {
@@ -285,36 +312,44 @@ export function PdvCashHistoryPanel({
           />
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                className="min-w-32 justify-between gap-2 sm:min-w-36"
-              >
-                <ListFilter className="h-4 w-4" />
-                <span className="truncate">
-                  {kind === 'all' ? texts.columnType : kindLabels[kind]}
-                </span>
-                <ChevronDown className="ml-auto h-4 w-4 opacity-60" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuRadioGroup
-                value={kind}
-                onValueChange={resetPage((value: string) =>
-                  setKind(value as PdvLedgerKind | 'all'),
-                )}
-              >
-                <DropdownMenuRadioItem value="all">{texts.typeAll}</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="venda">{texts.kindSale}</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="receita">{texts.kindRevenue}</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="despesa">{texts.kindExpense}</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="sangria">{texts.kindBleed}</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="suprimento">{texts.kindSupply}</DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <FilterButton
+            activeCount={activeFilterCount}
+            onClear={clearAdvancedFilters}
+            label={texts.filters}
+            className="w-full justify-center sm:w-auto"
+          >
+            <div className="space-y-1.5">
+              <Label>{texts.filterType}</Label>
+              <Select value={kind} onValueChange={resetPage((value: string) => setKind(value as PdvLedgerKind | 'all'))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{texts.typeAll}</SelectItem>
+                  <SelectItem value="venda">{texts.kindSale}</SelectItem>
+                  <SelectItem value="receita">{texts.kindRevenue}</SelectItem>
+                  <SelectItem value="despesa">{texts.kindExpense}</SelectItem>
+                  <SelectItem value="sangria">{texts.kindBleed}</SelectItem>
+                  <SelectItem value="suprimento">{texts.kindSupply}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>{texts.filterAccount}</Label>
+              <Select value={account} onValueChange={resetPage(setAccount)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{texts.filterAllAccounts}</SelectItem>
+                  {accountOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>{texts.filterAmount}</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <PdvMoneyInput value={minAmount} onChange={resetPage(setMinAmount)} placeholder={texts.filterMinimum} />
+                <PdvMoneyInput value={maxAmount} onChange={resetPage(setMaxAmount)} placeholder={texts.filterMaximum} />
+              </div>
+            </div>
+          </FilterButton>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

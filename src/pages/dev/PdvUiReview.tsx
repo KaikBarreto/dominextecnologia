@@ -6,14 +6,12 @@ import {
   Banknote,
   Barcode,
   Check,
-  ChevronDown,
   ChevronRight,
   CircleArrowDown,
   CircleX,
   CreditCard,
   DollarSign,
   Eye,
-  HandCoins,
   Minus,
   Moon,
   Paperclip,
@@ -1127,6 +1125,7 @@ function ProposedSale() {
         customerName="Cliente balcão"
         customerCredit={{ creditLimit: 1000, debt: 120 }}
         accounts={[{ id: "account-preview", name: "Conta principal" }]}
+        canUseBankAccounts
         hasOpenCashSession
         hasCofreAccount
         onGoToCashPanel={() => setPaymentOpen(false)}
@@ -1987,6 +1986,7 @@ function CurrentCash() {
           { id: "3", name: "Carteira da loja", balance: 680 },
         ]}
         accountsTotal={16940.75}
+        canManageBankAccounts
         valuesVisible
         onToggleValues={() => undefined}
         onClose={() => undefined}
@@ -2157,15 +2157,6 @@ function ProposedCash() {
           <EcoCashAction icon={TrendingUp} label="Nova receita" tone="revenue" />
         </div>
       </section>
-
-      <button
-        type="button"
-        className="flex min-h-11 w-fit items-center justify-center gap-2 rounded-lg border border-border bg-card px-3.5 text-[11px] font-semibold uppercase tracking-widest text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      >
-        <HandCoins className="h-4 w-4" />
-        Saldo de cliente/fornecedor
-        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-      </button>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">

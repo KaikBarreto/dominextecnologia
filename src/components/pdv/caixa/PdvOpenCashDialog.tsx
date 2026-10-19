@@ -29,6 +29,8 @@ interface PdvOpenCashDialogProps {
   lastClosedCounted?: number | null;
   /** Mostra a saída "Ajustar o saldo do cofre" (permissão financeira). */
   canAdjustCofre: boolean;
+  /** Revela o saldo disponível do cofre e a sugestão calculada. */
+  canViewCofreBalance: boolean;
   onAdjustCofre: () => void;
   onConfirm: (args: { terminalId: string; openingAmount: number }) => Promise<void>;
 }
@@ -49,6 +51,7 @@ export function PdvOpenCashDialog({
   cofre,
   lastClosedCounted,
   canAdjustCofre,
+  canViewCofreBalance,
   onAdjustCofre,
   onConfirm,
 }: PdvOpenCashDialogProps) {
@@ -85,8 +88,9 @@ export function PdvOpenCashDialog({
       await onConfirm({ terminalId, openingAmount: amount });
       onOpenChange(false);
     } catch (error) {
-      setServerError(pdvCashErrorMessage(error));
-      setCofreBlocked(isCofreLimitError(error));
+      const isLimitError = isCofreLimitError(error);
+      setServerError(isLimitError && !canViewCofreBalance ? texts.cofreLimitHidden : pdvCashErrorMessage(error));
+      setCofreBlocked(isLimitError);
     } finally {
       setSubmitting(false);
       submitGuard.current = false;
@@ -151,13 +155,13 @@ export function PdvOpenCashDialog({
             <Vault className="mt-0.5 h-4 w-4 shrink-0" />
             {texts.cofreRule}
           </p>
-          {hasCofreAccount ? (
+          {hasCofreAccount && canViewCofreBalance ? (
             <p className="text-sm font-semibold tabular-nums">
               {texts.cofreAvailable.replace('{value}', money(cofre.disponivel))}
             </p>
-          ) : (
+          ) : !hasCofreAccount ? (
             <p className="text-sm font-semibold">{texts.cofreMissing}</p>
-          )}
+          ) : null}
           {!strict && <p className="text-xs text-muted-foreground">{texts.strictOff}</p>}
         </div>
 
@@ -166,7 +170,7 @@ export function PdvOpenCashDialog({
         {/* As duas saídas do beco sem saída. */}
         {cofreBlocked && (
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button
+            {canViewCofreBalance && <Button
               type="button"
               variant="outline"
               className="flex-1"
@@ -177,7 +181,7 @@ export function PdvOpenCashDialog({
               }}
             >
               {texts.reduce}
-            </Button>
+            </Button>}
             {canAdjustCofre && (
               <Button type="button" variant="outline" className="flex-1" onClick={onAdjustCofre}>
                 {texts.adjustCofre}

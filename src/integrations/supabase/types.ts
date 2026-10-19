@@ -16218,6 +16218,7 @@ export type Database = {
         Returns: Json
       }
       pdv_cofre_balance: { Args: never; Returns: Json }
+      list_usable_financial_accounts: { Args: never; Returns: Json }
       pdv_cofre_snapshot: {
         Args: { p_company_id: string }
         Returns: {

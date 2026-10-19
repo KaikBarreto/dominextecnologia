@@ -122,7 +122,7 @@ export function FinanceMovimentacoes({
   const fmt = (v: number) => formatMoney(v, currency, locale);
   const {
     accounts, balances, cardBillTotals,
-    deleteAccount, transfer,
+    deleteAccount, transfer, canManageBankAccounts,
   } = useFinancialAccounts();
   const recalculateBills = useRecalculateBills();
 
@@ -225,12 +225,14 @@ export function FinanceMovimentacoes({
   );
 
   const openNewAccount = (initialType: string) => {
+    if (!canManageBankAccounts) return;
     setEditingAccount(null);
     setFormDefaultType(initialType);
     setFormOpen(true);
   };
 
   const openEditAccount = (a: FinancialAccount) => {
+    if (!canManageBankAccounts) return;
     setEditingAccount(a);
     setFormOpen(true);
   };
@@ -239,12 +241,12 @@ export function FinanceMovimentacoes({
   // pela diferença até o saldo desejado. Só faz sentido pra conta/caixa
   // (cartão não tem saldo de conta) — o UI já condiciona a exibição do item.
   const handleAdjustBalance = (a: FinancialAccount) => {
-    if (a.type === 'cartao') return;
+    if (!canManageBankAccounts || a.type === 'cartao') return;
     setAdjustingAccount(a);
   };
 
   const handleConfirmDelete = async () => {
-    if (!deletingAccount) return;
+    if (!canManageBankAccounts || !deletingAccount) return;
     const wasActive = activeTab === deletingAccount.id;
     await deleteAccount.mutateAsync(deletingAccount.id);
     setDeletingAccount(null);
@@ -253,6 +255,7 @@ export function FinanceMovimentacoes({
 
   // Menu de 3 pontinhos (desktop) de cada conta/cartão.
   const renderRightMenu = (a: FinancialAccount) => {
+    if (!canManageBankAccounts) return null;
     const isCard = a.type === 'cartao';
     return (
       <DropdownMenu>
@@ -341,9 +344,9 @@ export function FinanceMovimentacoes({
         label: a.name,
         icon: getTypeIcon(a.type),
         group: hasCards ? fin.movements.sidebar.groupAccounts : undefined,
-        sublabel: fmt(balance),
+        sublabel: canManageBankAccounts ? fmt(balance) : undefined,
         // No mobile a pill mostra só o saldo (cabe ao lado do nome).
-        mobileSublabel: fmt(balance),
+        mobileSublabel: canManageBankAccounts ? fmt(balance) : undefined,
         rightElement: renderRightMenu(a),
         // Ativo/hover usa a cor da conta com fundo SATURADO + texto branco (estilo EcoSistema).
         accentColor: a.color || undefined,
@@ -358,11 +361,11 @@ export function FinanceMovimentacoes({
         label: a.name,
         icon: CreditCard,
         group: fin.movements.sidebar.groupCards,
-        sublabel: availableLimit !== null
+        sublabel: !canManageBankAccounts ? undefined : availableLimit !== null
           ? `${fin.movements.hero.openInvoice} ${fmt(billTotal)} · ${fin.movements.hero.available} ${fmt(availableLimit)}`
           : `${fin.movements.hero.openInvoice} ${fmt(billTotal)}`,
         // Pill mobile: só a fatura (o "Disp." fica longo demais pra pill).
-        mobileSublabel: fmt(billTotal),
+        mobileSublabel: canManageBankAccounts ? fmt(billTotal) : undefined,
         rightElement: renderRightMenu(a),
         // Cartão também assume sua cor no ativo/hover (fundo saturado + branco).
         accentColor: a.color || undefined,
@@ -371,7 +374,7 @@ export function FinanceMovimentacoes({
     }
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cashBankAccounts, cardAccounts, balances, cardBillTotals, activeTab]);
+  }, [cashBankAccounts, cardAccounts, balances, cardBillTotals, activeTab, canManageBankAccounts]);
 
   const selectedAccount = activeTab === ALL_TAB
     ? null
@@ -423,6 +426,18 @@ export function FinanceMovimentacoes({
   const renderAccountHeader = (a: FinancialAccount) => {
     const Icon = getTypeIcon(a.type);
     const hasInst = !!(a.institution_name || a.bank_name);
+    if (!canManageBankAccounts) {
+      return (
+        <div className="flex items-center gap-3 rounded-xl border bg-card p-4">
+          {hasInst ? (
+            <BankLogo plated code={a.institution_code} name={a.institution_name || a.bank_name} size={36} />
+          ) : (
+            <div className="rounded-full bg-muted p-2.5"><Icon className="h-5 w-5" /></div>
+          )}
+          <p className="truncate font-semibold">{a.name}</p>
+        </div>
+      );
+    }
     const balance = balances[a.id] ?? a.initial_balance;
 
     const useAccountColor = balance > 0 && !!a.color;
@@ -480,7 +495,7 @@ export function FinanceMovimentacoes({
   // seus footers "+") ficam escondidos — regra do item 6 —, então o "+" do
   // topo vira a ÚNICA porta de entrada pra criar o primeiro cartão no desktop.
   // Categorias foi movida para a aba própria na tela de Relatório.
-  const globalActions = (isMobile || !hasCards) ? (
+  const globalActions = canManageBankAccounts && (isMobile || !hasCards) ? (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button size="sm" className="gap-1.5 shrink-0" aria-label={fin.movements.header.addButton}>
@@ -513,7 +528,7 @@ export function FinanceMovimentacoes({
   // Footer POR GRUPO: "+ Nova Conta" ao fim das Contas Bancárias e "+ Novo Cartão"
   // ao fim dos Cartões (desktop). Só existe quando há cartão — sem cartão,
   // não há seções (item 6) e a criação vive no "+" do topo.
-  const groupFooters = !isMobile && hasCards ? {
+  const groupFooters = canManageBankAccounts && !isMobile && hasCards ? {
     [fin.movements.sidebar.groupAccounts]: addButton(fin.movements.sidebar.newAccount, () => openNewAccount('banco')),
     [fin.movements.sidebar.groupCards]: addButton(fin.movements.sidebar.newCard, () => openNewAccount('cartao')),
   } : undefined;
@@ -579,7 +594,7 @@ export function FinanceMovimentacoes({
                 sempre empilhado. */}
             {(() => {
               const showDist = pieData.length >= 2;
-              const hasTop = cashBankAccounts.length > 0 || cardAccounts.length > 0;
+              const hasTop = canManageBankAccounts && (cashBankAccounts.length > 0 || cardAccounts.length > 0);
               if (!showDist && !hasTop) return null;
 
               /* Card-herói do SALDO TOTAL. Sem cor de conta única na Visão Geral
@@ -924,6 +939,18 @@ export function FinanceMovimentacoes({
   // idealForeground), com degradê escuro neutro só quando não há cor.
   function renderCardHeader(a: FinancialAccount) {
     const hasInst = !!(a.institution_name || a.bank_name);
+    if (!canManageBankAccounts) {
+      return (
+        <div className="flex items-center gap-3 rounded-xl border bg-card p-4">
+          {hasInst ? (
+            <BankLogo plated code={a.institution_code} name={a.institution_name || a.bank_name} size={36} />
+          ) : (
+            <div className="rounded-full bg-muted p-2.5"><CreditCard className="h-5 w-5" /></div>
+          )}
+          <p className="truncate font-semibold">{a.name}</p>
+        </div>
+      );
+    }
     const billTotal = cardBillTotals[a.id] ?? 0;
     const hasLimit = !!a.credit_limit;
     const availableLimit = hasLimit ? a.credit_limit! - billTotal : null;

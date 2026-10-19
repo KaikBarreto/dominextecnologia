@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.8',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Contas bancárias com acesso separado',
+        description: 'Agora é possível permitir que uma pessoa use contas em pagamentos e recebimentos sem revelar saldos. A visualização de valores e a manutenção das contas ficam reservadas a quem possui a permissão de gerenciamento.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Filtros completos no histórico do Caixa',
+        description: 'O histórico ganhou um painel compacto para filtrar por tipo de transação, conta envolvida e faixa de valor, mantendo as formas de pagamento em abas rápidas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.7',
     date: '19 de outubro de 2026',
     type: 'patch',

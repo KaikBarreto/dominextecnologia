@@ -417,10 +417,10 @@ describe('ledgerMatchesMethodGroup', () => {
 describe('filterPdvLedger', () => {
   const entries = buildPdvLedger({
     orders: [
-      { id: 'o1', number: 7, total: 90, customerName: 'José Antônio', occurredAt: '2026-10-18T10:00:00.000Z', methods: ['dinheiro'] },
+      { id: 'o1', number: 7, total: 90, customerName: 'José Antônio', occurredAt: '2026-10-18T10:00:00.000Z', methods: ['dinheiro'], payments: [{ method: 'dinheiro', amount: 90, changeAmount: 0, accountName: 'Cofre' }] },
     ],
     transactions: [
-      { id: 't1', description: 'Manutenção do ar', amount: 40, transactionType: 'saida', paymentMethod: 'pix', customerName: null, occurredAt: '2026-10-18T11:00:00.000Z' },
+      { id: 't1', description: 'Manutenção do ar', amount: 40, transactionType: 'saida', paymentMethod: 'pix', customerName: null, occurredAt: '2026-10-18T11:00:00.000Z', accountName: 'Banco principal' },
     ],
     movements: [],
     labels: LABELS,
@@ -441,6 +441,16 @@ describe('filterPdvLedger', () => {
 
   it('busca pelo número do pedido', () => {
     expect(filterPdvLedger(entries, { search: '7' }).map((e) => e.id)).toEqual(['o1']);
+  });
+
+  it('filtra pela conta envolvida, inclusive em pagamentos da venda', () => {
+    expect(filterPdvLedger(entries, { account: 'Cofre' }).map((e) => e.id)).toEqual(['o1']);
+    expect(filterPdvLedger(entries, { account: 'Banco principal' }).map((e) => e.id)).toEqual(['t1']);
+  });
+
+  it('filtra por faixa de valor inclusiva', () => {
+    expect(filterPdvLedger(entries, { minAmount: 50 }).map((e) => e.id)).toEqual(['o1']);
+    expect(filterPdvLedger(entries, { maxAmount: 50 }).map((e) => e.id)).toEqual(['t1']);
   });
 
   it('filtro vazio devolve tudo', () => {

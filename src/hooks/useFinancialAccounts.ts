@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
+import { useBankPermissions } from '@/hooks/useBankPermissions';
 
 export interface FinancialAccount {
   id: string;
@@ -72,6 +73,7 @@ export interface TransferInput {
 export function useFinancialAccounts() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { canUseBankAccounts, canManageBankAccounts } = useBankPermissions();
   const queryClient = useQueryClient();
 
   const invalidateAll = () => {
@@ -82,15 +84,28 @@ export function useFinancialAccounts() {
   };
 
   const accountsQuery = useQuery({
-    queryKey: ['financial-accounts'],
+    queryKey: ['financial-accounts', canManageBankAccounts ? 'manage' : 'use'],
+    enabled: canUseBankAccounts,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('financial_accounts')
-        .select('*')
-        .order('sort_order', { ascending: true })
-        .order('name', { ascending: true });
+      // Quem só USA contas recebe nome/id e metadados operacionais, mas o
+      // saldo inicial nem trafega pelo navegador. Gerente recebe a linha
+      // completa porque pode ver saldos e manter o cadastro.
+      if (canManageBankAccounts) {
+        const { data, error } = await supabase
+          .from('financial_accounts')
+          .select('*')
+          .order('sort_order', { ascending: true })
+          .order('name', { ascending: true });
+        if (error) throw error;
+        return data as FinancialAccount[];
+      }
+
+      const { data, error } = await supabase.rpc('list_usable_financial_accounts');
       if (error) throw error;
-      return data as FinancialAccount[];
+      const safeAccounts = Array.isArray(data)
+        ? data as unknown as Array<Omit<FinancialAccount, 'initial_balance'>>
+        : [];
+      return safeAccounts.map((account) => ({ ...account, initial_balance: 0 })) as FinancialAccount[];
     },
   });
 
@@ -98,7 +113,8 @@ export function useFinancialAccounts() {
   // Credit card (cartao) accounts are excluded from real cash balance;
   // their "balance" is the open bill amount (total of uncommitted card spend).
   const balancesQuery = useQuery({
-    queryKey: ['account-balances'],
+    queryKey: ['account-balances', canManageBankAccounts],
+    enabled: canManageBankAccounts,
     queryFn: async () => {
       const { data: accounts, error: accErr } = await supabase
         .from('financial_accounts')
@@ -167,6 +183,7 @@ export function useFinancialAccounts() {
 
   const createAccount = useMutation({
     mutationFn: async (input: AccountInput) => {
+      if (!canManageBankAccounts) throw new Error('Sem permissão para gerenciar contas bancárias.');
       const companyId = await getCompanyId();
       if (!companyId) throw new Error('Empresa não encontrada');
       const { data, error } = await supabase
@@ -183,6 +200,7 @@ export function useFinancialAccounts() {
 
   const updateAccount = useMutation({
     mutationFn: async ({ id, ...input }: AccountInput & { id: string }) => {
+      if (!canManageBankAccounts) throw new Error('Sem permissão para gerenciar contas bancárias.');
       const { data, error } = await supabase
         .from('financial_accounts')
         .update(input)
@@ -198,6 +216,7 @@ export function useFinancialAccounts() {
 
   const deleteAccount = useMutation({
     mutationFn: async (id: string) => {
+      if (!canManageBankAccounts) throw new Error('Sem permissão para gerenciar contas bancárias.');
       const { error } = await supabase
         .from('financial_accounts')
         .delete()
@@ -221,6 +240,7 @@ export function useFinancialAccounts() {
   // por conta, não por lançamento de transferência.
   const transfer = useMutation({
     mutationFn: async (input: TransferInput) => {
+      if (!canManageBankAccounts) throw new Error('Sem permissão para gerenciar contas bancárias.');
       const pairId = crypto.randomUUID();
       const desc = input.description || 'Transferência entre contas';
 
@@ -269,7 +289,9 @@ export function useFinancialAccounts() {
     isLoading: accountsQuery.isLoading,
     // Algumas telas só precisam do cadastro das contas. A visão geral, que
     // exibe valores, espera esta flag também para não mostrar R$ 0 provisório.
-    isLoadingBalances: balancesQuery.isLoading,
+    isLoadingBalances: canManageBankAccounts && balancesQuery.isLoading,
+    canUseBankAccounts,
+    canManageBankAccounts,
     createAccount,
     updateAccount,
     deleteAccount,

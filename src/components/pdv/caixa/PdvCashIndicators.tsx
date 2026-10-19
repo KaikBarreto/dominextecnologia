@@ -25,6 +25,8 @@ interface PdvCashIndicatorsProps {
   cofre: { disponivel: number; reservado: number; conta_nome: string | null; controle_estrito: boolean } | null;
   accounts: AccountBalanceLine[];
   accountsTotal: number;
+  /** Só gestores de contas veem saldos do cofre e das contas bancárias. */
+  canManageBankAccounts: boolean;
   valuesVisible: boolean;
   onToggleValues: () => void;
   onClose: () => void;
@@ -55,6 +57,7 @@ export function PdvCashIndicators({
   cofre,
   accounts,
   accountsTotal,
+  canManageBankAccounts,
   valuesVisible,
   onToggleValues,
   onClose,
@@ -69,7 +72,7 @@ export function PdvCashIndicators({
   const remaining = accounts.length - visibleAccounts.length;
 
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
+    <div className={cn('grid gap-3', canManageBankAccounts && 'lg:grid-cols-2')}>
       {/* ── Dinheiro em caixa (card-herói saturado) ───────────────────────── */}
       <Card className="border-0 bg-primary text-primary-foreground">
         <CardContent className="flex h-full flex-col gap-3 p-4 sm:p-5">
@@ -101,7 +104,7 @@ export function PdvCashIndicators({
           </p>
 
           {/* A linha do COFRE: é o que diferencia este caixa de uma gaveta solta. */}
-          <div className="mt-auto space-y-1 border-t border-primary-foreground/40 pt-3 text-xs">
+          {canManageBankAccounts && <div className="mt-auto space-y-1 border-t border-primary-foreground/40 pt-3 text-xs">
             {cofre?.conta_nome ? (
               <>
                 <div className="flex items-center justify-between gap-3">
@@ -120,7 +123,7 @@ export function PdvCashIndicators({
                 {cashTexts.cofreMissing}
               </p>
             )}
-          </div>
+          </div>}
 
           <Button
             type="button"
@@ -133,7 +136,7 @@ export function PdvCashIndicators({
       </Card>
 
       {/* ── Saldo em conta (card branco) ──────────────────────────────────── */}
-      <Card>
+      {canManageBankAccounts && <Card>
         <CardContent className="flex h-full flex-col gap-3 p-4 sm:p-5">
           <div className="flex items-center gap-2">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-info">
@@ -185,7 +188,7 @@ export function PdvCashIndicators({
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 }

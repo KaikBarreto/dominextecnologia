@@ -471,14 +471,33 @@ export interface LedgerFilter {
   /** `null` = todos os tipos. */
   kind?: PdvLedgerKind | null;
   methodGroup?: PdvMethodGroup;
+  /** Nome exato da conta envolvida em qualquer ponta da transação. */
+  account?: string | null;
+  minAmount?: number | null;
+  maxAmount?: number | null;
+}
+
+export function pdvLedgerAccountNames(entry: PdvLedgerEntry): string[] {
+  return Array.from(new Set([
+    entry.detail.accountName,
+    entry.detail.fromAccountName,
+    entry.detail.toAccountName,
+    ...(entry.detail.payments ?? []).map((payment) => payment.accountName),
+  ].filter((name): name is string => !!name)));
 }
 
 /** Busca pela régua única (`fuzzyIncludes`: tolera acento e ordem de palavras). */
 export function filterPdvLedger(entries: PdvLedgerEntry[], filter: LedgerFilter): PdvLedgerEntry[] {
-  const { search = '', kind = null, methodGroup = 'todas' } = filter || {};
+  const {
+    search = '', kind = null, methodGroup = 'todas', account = null,
+    minAmount = null, maxAmount = null,
+  } = filter || {};
   return (entries ?? []).filter((e) => {
     if (kind && e.kind !== kind) return false;
     if (!ledgerMatchesMethodGroup(e, methodGroup)) return false;
+    if (account && !pdvLedgerAccountNames(e).includes(account)) return false;
+    if (minAmount != null && e.amount < minAmount) return false;
+    if (maxAmount != null && e.amount > maxAmount) return false;
     if (search && search.trim()) {
       return fuzzyIncludesAny([e.label, e.customerName, e.reference], search);
     }

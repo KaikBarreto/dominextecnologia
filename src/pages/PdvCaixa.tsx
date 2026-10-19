@@ -15,6 +15,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useFinancialAccounts, type FinancialAccount } from '@/hooks/useFinancialAccounts';
+import { useBankPermissions } from '@/hooks/useBankPermissions';
 import {
   usePdvCashRegister,
   usePdvCashSessionDetail,
@@ -99,6 +100,7 @@ export default function PdvCaixa() {
   // exclusão que o banco recusa. Mesma linha do TransactionListPanel.
   const canDeleteFinance =
     isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
+  const { canUseBankAccounts, canManageBankAccounts } = useBankPermissions();
 
   const {
     terminals,
@@ -187,22 +189,22 @@ export default function PdvCaixa() {
    */
   const transferableAccounts = useMemo(
     () =>
-      accounts
+      (canManageBankAccounts ? accounts : [])
         .filter((acc) => acc.is_active && acc.type !== 'cartao' && acc.id !== cofre?.conta_id)
         .map((acc) => ({ id: acc.id, name: acc.name })),
-    [accounts, cofre?.conta_id],
+    [accounts, canManageBankAccounts, cofre?.conta_id],
   );
 
   const accountLines = useMemo(
     () =>
-      accounts
+      (canManageBankAccounts ? accounts : [])
         .filter((acc) => acc.is_active && acc.type !== 'cartao' && acc.id !== cofre?.conta_id)
         .map((acc) => ({
           id: acc.id,
           name: acc.name,
           balance: balances[acc.id] ?? Number(acc.initial_balance ?? 0),
         })),
-    [accounts, balances, cofre?.conta_id],
+    [accounts, balances, canManageBankAccounts, cofre?.conta_id],
   );
   const accountsTotal = useMemo(
     () => accountLines.reduce((sum, acc) => sum + acc.balance, 0),
@@ -650,9 +652,9 @@ export default function PdvCaixa() {
       ) : (
         <>
           {isLoadingCofre || isLoadingBalances || detail.isLoading ? (
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className={canManageBankAccounts ? 'grid gap-3 lg:grid-cols-2' : 'grid gap-3'}>
               <Skeleton className="h-64 w-full" />
-              <Skeleton className="h-64 w-full" />
+              {canManageBankAccounts && <Skeleton className="h-64 w-full" />}
             </div>
           ) : (
             <PdvCashIndicators
@@ -665,6 +667,7 @@ export default function PdvCaixa() {
               cofre={cofre}
               accounts={accountLines}
               accountsTotal={accountsTotal}
+              canManageBankAccounts={canManageBankAccounts}
               valuesVisible={valuesVisible}
               onToggleValues={toggleValues}
               onClose={() => setCloseDialogOpen(true)}
@@ -757,7 +760,8 @@ export default function PdvCaixa() {
         terminals={terminals}
         cofre={cofre}
         lastClosedCounted={lastClosed?.counted_amount ?? null}
-        canAdjustCofre={canManageFinance && !!cofre?.conta_id}
+        canAdjustCofre={canManageBankAccounts && !!cofre?.conta_id}
+        canViewCofreBalance={canManageBankAccounts}
         onAdjustCofre={() => {
           const account = accounts.find((acc) => acc.id === cofre?.conta_id) ?? null;
           setAdjustAccount(account);
@@ -786,7 +790,7 @@ export default function PdvCaixa() {
           texts={t.movementDialog}
           accounts={transferableAccounts}
           drawerAmount={drawerAmount}
-          canChooseAccount={canManageFinance}
+          canChooseAccount={canUseBankAccounts}
           onConfirm={handleMovement}
         />
       )}

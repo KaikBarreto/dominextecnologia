@@ -109,6 +109,8 @@ export const FUNCTION_PERMISSIONS = [
   { key: 'fn:manage_finance', label: 'Gerenciar Financeiro', description: 'Criar e editar transações financeiras', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
   { key: 'fn:delete_finance', label: 'Excluir Lançamento Financeiro', description: 'Excluir transações financeiras (contas a pagar, contas a receber e movimentações)', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
   { key: 'fn:view_finance_totals', label: 'Ver Totais Financeiros', description: 'Visualizar saldos, totais e projeções', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
+  { key: 'fn:use_bank_accounts', label: 'Usar Contas Bancárias', description: 'Selecionar contas em pagamentos e recebimentos, sem visualizar saldos bancários', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
+  { key: 'fn:manage_bank_accounts', label: 'Gerenciar Contas Bancárias', description: 'Visualizar saldos e cadastrar, editar, ajustar ou excluir contas bancárias', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
   // Mora na tela de OS (`relatedScreen`) porque é lá que a ação acontece — o fechamento
   // da OS —, mas é do grupo Financeiro porque o que ela libera é lançar dinheiro.
   // Gate em `src/hooks/useCanLaunchOsRevenue.ts` (NÃO usa hasPermission — ver comentário lá).

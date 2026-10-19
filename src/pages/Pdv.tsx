@@ -42,6 +42,7 @@ import { useMaterialGroups } from '@/hooks/useMaterialGroups';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { useBankPermissions } from '@/hooks/useBankPermissions';
 import { usePdvCashRegister } from '@/hooks/usePdvCashRegister';
 import {
   usePdvSale,
@@ -187,6 +188,7 @@ export default function Pdv() {
   const { groups, isLoading: groupsLoading } = useMaterialGroups();
   const { customers, isLoading: customersLoading } = useCustomers();
   const { accounts, isLoading: accountsLoading } = useFinancialAccounts();
+  const { canUseBankAccounts } = useBankPermissions();
   // Terminal, sessão aberta e cofre vêm do MESMO hook do painel do Caixa
   // (`/pdv`), pra a venda e o painel nunca discordarem sobre qual caixa está
   // aberto nem sobre qual conta é o cofre.
@@ -1465,6 +1467,7 @@ export default function Pdv() {
         customerName={customerName}
         customerCredit={customerCredit}
         accounts={paymentAccounts}
+        canUseBankAccounts={canUseBankAccounts}
         hasOpenCashSession={hasOpenCashSession}
         hasCofreAccount={hasCofreAccount}
         onGoToCashPanel={() => navigate(PDV_PANEL_PATH)}
