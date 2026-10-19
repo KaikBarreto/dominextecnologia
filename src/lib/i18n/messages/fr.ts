@@ -314,7 +314,6 @@ export const frOverrides: MessagesOverride = {
     linkTerms: 'Conditions d’utilisation',
     linkPrivacy: 'Politique de confidentialité',
     copyright: 'Tous droits réservés. Conçu pour les équipes qui maîtrisent le terrain.',
-    madeBy: 'Réalisé par',
   },
 
   pageChrome: {
@@ -895,7 +894,6 @@ export const frOverrides: MessagesOverride = {
 
   // ── Pied de page système ────────────────────────────────────────────────────
   systemFooter: {
-    developedBy: 'Développé par',
     rights: 'Tous droits réservés',
     refreshTitle: 'Actualiser l’application',
     refreshing: 'Actualisation de l’application...',

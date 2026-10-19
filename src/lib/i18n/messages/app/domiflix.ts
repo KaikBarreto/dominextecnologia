@@ -175,7 +175,6 @@ export const domiflix = {
       clearSearch: 'Limpar busca',
       noResults: 'Nenhum resultado para "{{query}}"',
       backToSystem: 'Voltar ao sistema',
-      developedBy: 'Desenvolvido por',
       copyright: 'Copyright © {{year}} | Todos os Direitos Reservados',
     },
 
@@ -348,7 +347,6 @@ export const domiflix = {
       clearSearch: 'Clear search',
       noResults: 'No results for "{{query}}"',
       backToSystem: 'Back to system',
-      developedBy: 'Developed by',
       copyright: 'Copyright © {{year}} | All Rights Reserved',
     },
 
@@ -516,7 +514,6 @@ export const domiflix = {
       clearSearch: 'Limpiar búsqueda',
       noResults: 'Sin resultados para "{{query}}"',
       backToSystem: 'Volver al sistema',
-      developedBy: 'Desarrollado por',
       copyright: 'Copyright © {{year}} | Todos los derechos reservados',
     },
 
@@ -684,7 +681,6 @@ export const domiflix = {
       clearSearch: 'Effacer la recherche',
       noResults: 'Aucun résultat pour "{{query}}"',
       backToSystem: 'Retour au système',
-      developedBy: 'Développé par',
       copyright: 'Copyright © {{year}} | Tous droits réservés',
     },
 

@@ -314,7 +314,6 @@ export const esOverrides: MessagesOverride = {
     linkTerms: 'Términos de uso',
     linkPrivacy: 'Política de Privacidad',
     copyright: 'Todos los derechos reservados. Hecho para equipos que dominan el campo.',
-    madeBy: 'Desarrollado por',
   },
 
   pageChrome: {
@@ -894,7 +893,6 @@ export const esOverrides: MessagesOverride = {
 
   // ── Pie del sistema ─────────────────────────────────────────────────────────
   systemFooter: {
-    developedBy: 'Desarrollado por',
     rights: 'Todos los Derechos Reservados',
     refreshTitle: 'Actualizar la aplicación',
     refreshing: 'Actualizando la aplicación...',

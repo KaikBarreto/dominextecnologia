@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.1',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Rodapés mais limpos em todo o sistema',
+        description: 'Removemos o crédito de desenvolvimento dos rodapés do sistema, do Domiflix e do site público. A versão, o botão de atualização e os direitos autorais continuam disponíveis onde se aplicam.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.0',
     date: '19 de outubro de 2026',
     type: 'minor',
@@ -8906,7 +8918,7 @@ export const changelog: ChangelogEntry[] = [
     changes: [
       {
         title: 'Login no celular ganha título "LOGIN", rodapé com versão, e textos em CAPS',
-        description: 'Pequenos ajustes no novo login mobile: agora aparece o título "LOGIN" em cima do formulário (igual a versão do computador), os links "ESQUECI MINHA SENHA" e "AINDA NÃO TEM CONTA? CADASTRE-SE" estão em caixa alta com espaçamento de letras, e o rodapé com versão do sistema, link "Desenvolvido por Auctus", copyright e botão de atualizar voltou pro fim da gaveta de login. A gaveta também ganhou uma margem inferior um pouco maior pra ficar mais confortável visualmente.',
+        description: 'Pequenos ajustes no novo login mobile: agora aparece o título "LOGIN" em cima do formulário (igual a versão do computador), os links "ESQUECI MINHA SENHA" e "AINDA NÃO TEM CONTA? CADASTRE-SE" estão em caixa alta com espaçamento de letras, e o rodapé com versão do sistema, copyright e botão de atualizar voltou pro fim da gaveta de login. A gaveta também ganhou uma margem inferior um pouco maior pra ficar mais confortável visualmente.',
         category: 'melhoria',
       },
       {
@@ -9231,7 +9243,7 @@ export const changelog: ChangelogEntry[] = [
     changes: [
       {
         title: 'Rodapé com versão e botão de atualizar voltou no celular',
-        description: 'O rodapé com a versão do sistema, link "Desenvolvido por Auctus", copyright e botão de atualizar (limpa cache e recarrega) tinha sumido do celular e tablet depois da reformulação do menu lateral. Agora voltou em dois lugares: no fim de cada tela do app (rolando até o final) e no rodapé do menu "Mais". Quem usa no computador continua vendo o rodapé como antes.',
+        description: 'O rodapé com a versão do sistema, copyright e botão de atualizar (limpa cache e recarrega) tinha sumido do celular e tablet depois da reformulação do menu lateral. Agora voltou em dois lugares: no fim de cada tela do app (rolando até o final) e no rodapé do menu "Mais". Quem usa no computador continua vendo o rodapé como antes.',
         category: 'correcao',
       },
     ],

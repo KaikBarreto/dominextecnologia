@@ -4401,7 +4401,7 @@ function TechnicianOSInner() {
         {/* Finalizar/Pausar no mobile: consolidados no rodapé fixo abaixo
             (faixa preta). Nada inline aqui pra não duplicar a mesma ação. */}
 
-        {/* Rodapé do sistema (versão + Desenvolvido por Auctus + Atualizar) —
+        {/* Rodapé do sistema (versão + copyright + Atualizar) —
             rola junto com o conteúdo. Variante light (fundo claro do conteúdo). */}
         <div className="pt-4">
           <SystemFooter />

@@ -15,7 +15,7 @@ export function SystemFooter({ variant = 'light' }: SystemFooterProps) {
   const [refreshing, setRefreshing] = useState(false);
   // Site público roda sob /en, /es, /fr → urlLocale reflete a URL.
   // App logado roda sem prefixo → urlLocale === 'pt-br'; usa o idioma REAL do app.
-  // "Dominex vX" e "Auctus" (marca/versão) NÃO traduzem.
+  // "Dominex vX" (marca/versão) não traduz.
   const { locale: urlLocale } = useLocale();
   const { locale: appLocale } = useAppLocaleContext();
   const locale = urlLocale !== 'pt-br' ? urlLocale : appLocale;
@@ -48,15 +48,6 @@ export function SystemFooter({ variant = 'light' }: SystemFooterProps) {
         <Link to="/changelog" className={linkClass}>
           Dominex v{APP_VERSION}
         </Link>
-        {` · ${t.developedBy} `}
-        <a
-          href="https://auctustech.com.br"
-          target="_blank"
-          rel="noopener noreferrer"
-          className={linkClass}
-        >
-          Auctus
-        </a>
       </p>
       <p>Copyright © {new Date().getFullYear()} | {t.rights}</p>
     </div>

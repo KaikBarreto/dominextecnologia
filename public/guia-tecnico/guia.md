@@ -303,7 +303,7 @@ O Domiflix é a área de treinamento em vídeo da Dominex, no formato de um serv
 
 #### Onde ver o que mudou no sistema
 
-No rodapé de qualquer tela aparece Dominex v1.22.5 · Desenvolvido por Auctus. Clicar no número da versão abre a tela de novidades, com a lista das melhorias, correções e recursos novos, em português e sem termo técnico. Ao lado do número existe um ícone de recarregar: ele limpa o cache do navegador e recarrega o sistema, e é a primeira coisa a tentar quando a tela parece "presa" numa versão antiga.
+No rodapé de qualquer tela aparece Dominex v1.22.5. Clicar no número da versão abre a tela de novidades, com a lista das melhorias, correções e recursos novos, em português e sem termo técnico. Ao lado do número existe um ícone de recarregar: ele limpa o cache do navegador e recarrega o sistema, e é a primeira coisa a tentar quando a tela parece "presa" numa versão antiga.
 
 ### Suporte: problemas comuns
 
@@ -501,7 +501,7 @@ Personaliza a faixa que aparece no topo do relatório da OS concluída, aquele d
 
 - Logo com fundo branco em tema escuro fica ruim: prefira PNG transparente.
 
- O White Label muda a aparência, não os dados. Ele não troca o nome da empresa nos documentos (isso é o campo Nome da Empresa) e não tira o crédito "Desenvolvido por Auctus" do rodapé do sistema interno, que é a assinatura da empresa que desenvolve a plataforma.
+ O White Label muda a aparência, não os dados. Ele não troca o nome da empresa nos documentos; isso é definido pelo campo Nome da Empresa.
 
 ### 4. Aba Regional: meu idioma × padrões da empresa (país, idioma, moeda, fuso) e o switch do resultado DISC
 
@@ -8700,7 +8700,7 @@ Uma hora por mês, de preferência nos primeiros dias, com o filtro em Mês pass
 
 #### Novidades do sistema
 
-- No rodapé de qualquer tela aparece Dominex v1.22.5 · Desenvolvido por Auctus. Clicar no número da versão abre a tela de novidades.
+- No rodapé de qualquer tela aparece Dominex v1.22.5. Clicar no número da versão abre a tela de novidades.
 
 - A tela se chama Novidades e tem uma busca (Buscar atualizações...) e filtros: Todas, Recursos, Melhorias, Correções e Segurança.
 

@@ -62,8 +62,8 @@ import { cn } from "@/lib/utils";
 import { idealForeground } from "@/lib/colorContrast";
 import { reverseGeocode } from "@/utils/reverseGeocode";
 import { REPORT_HEADER_DARK_GRADIENT } from "@/components/technician/ReportHeader";
-// Sub-rodapé padrão da plataforma (versão + "Desenvolvido por Auctus" +
-// copyright + botão de atualizar). Reusado, NÃO recriado. variant="dark" pro
+// Sub-rodapé padrão da plataforma (versão + copyright + botão de atualizar).
+// Reusado, NÃO recriado. variant="dark" pro
 // fundo escuro do rodapé sticky. Renderizado SEMPRE (inclusive white-label —
 // Tech Lead confirma com o CEO depois).
 import { SystemFooter } from "@/components/layout/SystemFooter";
@@ -1386,8 +1386,8 @@ export function PontoScreen({ identity, faceProof, onBack, onPunchSuccess }: Pon
             </div>
           )}
 
-          {/* Sub-rodapé do rodapé: versão + "Desenvolvido por Auctus" +
-              copyright + botão de atualizar. Reusa o componente da plataforma.
+          {/* Sub-rodapé do rodapé: versão + copyright + botão de atualizar.
+              Reusa o componente da plataforma.
               Pequeno respiro acima (pt-1), centralizado. Renderizado SEMPRE. */}
           <div className="pt-1">
             <SystemFooter variant="dark" />

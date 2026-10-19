@@ -25,7 +25,7 @@ interface PortalStickyFooterProps {
  *   - Fundo claro (bg-card) + borda superior sutil.
  *   - Status opcional acima do CTA.
  *   - CTA grande com a cor de marca da empresa.
- *   - SystemFooter (versao + "Desenvolvido por Auctus") na base.
+ *   - SystemFooter (versão + copyright + atualização) na base.
  *   - Respeita safe-area-inset-bottom (notch do iPhone).
  */
 export function PortalStickyFooter({

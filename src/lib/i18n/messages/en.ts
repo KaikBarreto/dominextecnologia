@@ -314,7 +314,6 @@ export const enOverrides: MessagesOverride = {
     linkTerms: 'Terms of use',
     linkPrivacy: 'Privacy Policy',
     copyright: 'All rights reserved. Built for teams that master the field.',
-    madeBy: 'Built by',
   },
 
   pageChrome: {
@@ -894,7 +893,6 @@ export const enOverrides: MessagesOverride = {
 
   // ── System footer ───────────────────────────────────────────────────────────
   systemFooter: {
-    developedBy: 'Developed by',
     rights: 'All Rights Reserved',
     refreshTitle: 'Refresh app',
     refreshing: 'Refreshing app...',

@@ -116,7 +116,6 @@ export const ptBr = {
     linkTerms: 'Termos de uso',
     linkPrivacy: 'Política de Privacidade',
     copyright: 'Todos os direitos reservados. Feito para quem domina o campo.',
-    madeBy: 'Criado por',
   },
 
   // ── Chrome das páginas de segmento/módulo (strings cravadas no JSX) ────────
@@ -984,9 +983,8 @@ export const ptBr = {
   // ── Rodapé do sistema (SystemFooter) ────────────────────────────────────────
   // Usado no login/cadastro (páginas públicas, i18n-aware sob /en, /es, /fr) e
   // no app logado (rotas sem prefixo → cai no pt-br, que é o idioma do app hoje).
-  // "Dominex vX" e "Auctus" (marca/versão) NÃO traduzem.
+  // "Dominex vX" (marca/versão) não traduz.
   systemFooter: {
-    developedBy: 'Desenvolvido por',
     // "Copyright © 2026 | Todos os Direitos Reservados"
     rights: 'Todos os Direitos Reservados',
     refreshTitle: 'Atualizar sistema',

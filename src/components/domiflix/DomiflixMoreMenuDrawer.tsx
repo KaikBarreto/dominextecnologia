@@ -416,7 +416,7 @@ export function DomiflixMoreMenuDrawer({ open, onOpenChange }: DomiflixMoreMenuD
                 />
               </Link>
 
-              {/* Versão + Desenvolvido por Auctus */}
+              {/* Versão do sistema */}
               <div className="flex items-center gap-1.5 text-[11px] text-white/55">
                 <Link
                   to="/changelog"
@@ -425,18 +425,6 @@ export function DomiflixMoreMenuDrawer({ open, onOpenChange }: DomiflixMoreMenuD
                 >
                   Dominex v{APP_VERSION}
                 </Link>
-                <span>•</span>
-                <span>
-                  {t.menu.developedBy}{" "}
-                  <a
-                    href="https://auctustech.com.br"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-semibold transition-colors hover:text-white"
-                  >
-                    Auctus
-                  </a>
-                </span>
               </div>
 
               {/* Copyright */}

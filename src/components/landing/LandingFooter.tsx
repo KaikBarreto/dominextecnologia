@@ -146,20 +146,9 @@ export default function LandingFooter() {
           </div>
         </div>
 
-        <div className="border-t border-white/5 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="border-t border-white/5 pt-6 flex items-center justify-center">
           <p className="text-xs text-white/50">
             © {new Date().getFullYear()} Dominex. {f.copyright}
-          </p>
-          <p className="text-xs text-white/50">
-            {f.madeBy}{' '}
-            <a
-              href="https://auctustech.com.br"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-bold text-white/70 hover:text-white transition-colors"
-            >
-              Auctus
-            </a>
           </p>
         </div>
       </div>

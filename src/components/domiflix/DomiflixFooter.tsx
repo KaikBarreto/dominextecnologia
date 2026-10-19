@@ -89,7 +89,7 @@ export function DomiflixFooter() {
         </div>
       </div>
 
-      {/* Copyright do sistema (versão, desenvolvido por Auctus, etc.) */}
+      {/* Rodapé do sistema (versão e copyright) */}
       <div className="mt-4">
         <SystemFooter variant="dark" />
       </div>
