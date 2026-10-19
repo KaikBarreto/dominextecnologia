@@ -298,6 +298,12 @@ export default function Pdv() {
   const saleEditDraft = activeDraft ? saleEditDrafts[activeDraft.id] ?? null : null;
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+  const cartAdditionSequenceRef = useRef(0);
+  const [cartAdditionFeedback, setCartAdditionFeedback] = useState<{
+    draftId: string;
+    inventoryId: string;
+    sequence: number;
+  } | null>(null);
   const [paymentOpen, setPaymentOpen] = useState(false);
   // "Opções avançadas" (retrodatar o lançamento + anexar foto, pedido do CEO
   // 2026-10-19) e a observação do pedido, que mora ao lado delas na coluna da
@@ -686,6 +692,14 @@ export default function Pdv() {
       return;
     }
     setCart(result.cart);
+    if (activeDraftId) {
+      cartAdditionSequenceRef.current += 1;
+      setCartAdditionFeedback({
+        draftId: activeDraftId,
+        inventoryId: p.inventoryId,
+        sequence: cartAdditionSequenceRef.current,
+      });
+    }
   }
 
   function handleProductSelect(product: PdvGridProduct) {
@@ -830,6 +844,7 @@ export default function Pdv() {
       toast({ title: t.orders.limitReached });
       return;
     }
+    setCartAdditionFeedback(null);
     createDraft();
     setPaymentOpen(false);
     paymentSnapshotRef.current = null;
@@ -837,6 +852,7 @@ export default function Pdv() {
   }
 
   function handleDeleteDraft(draftId: string) {
+    setCartAdditionFeedback(null);
     attemptByDraftRef.current.delete(draftId);
     clearSaleEditContext(draftId);
     setAttachmentsByDraft((current) => {
@@ -1290,6 +1306,7 @@ export default function Pdv() {
   function handleConfirmClearCart() {
     if (!activeDraftId) return;
     attemptByDraftRef.current.delete(activeDraftId);
+    setCartAdditionFeedback(null);
     setCart((prev) => clearCart(prev));
     // Observação, data retroativa e fotos pendentes são deste RASCUNHO de
     // pedido, não do cliente (que `clearCart` preserva de propósito) —
@@ -1308,6 +1325,7 @@ export default function Pdv() {
     onSelect: (draftId: string) => {
       setPaymentOpen(false);
       paymentSnapshotRef.current = null;
+      setCartAdditionFeedback(null);
       selectDraft(draftId);
       setTimeout(() => searchInputRef.current?.focus(), 0);
     },
@@ -1342,6 +1360,13 @@ export default function Pdv() {
     onConfirmQuantityEdit: focusSearch,
     onOpenAdvancedOptions: () => setAdvancedOptionsOpen(true),
     advancedOptionsActive: transactionDate !== maxTransactionDate || pendingAttachments.length > 0,
+    additionFeedback:
+      cartAdditionFeedback?.draftId === activeDraftId
+        ? {
+            inventoryId: cartAdditionFeedback.inventoryId,
+            sequence: cartAdditionFeedback.sequence,
+          }
+        : undefined,
     texts: {
       title: t.cart.title,
       itemsCount: t.cart.itemsCount,

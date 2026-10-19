@@ -50,6 +50,8 @@ interface PdvCartPanelProps {
   /** Abre `PdvAdvancedOptionsDialog` (retrodatar + anexar foto). */
   onOpenAdvancedOptions: () => void;
   advancedOptionsActive: boolean;
+  /** Último produto adicionado ao pedido ativo, usado só para feedback visual. */
+  additionFeedback?: { inventoryId: string; sequence: number };
   texts: PdvCartPanelTexts;
   className?: string;
 }
@@ -83,6 +85,7 @@ export function PdvCartPanel({
   onConfirmQuantityEdit,
   onOpenAdvancedOptions,
   advancedOptionsActive,
+  additionFeedback,
   texts,
   className,
 }: PdvCartPanelProps) {
@@ -121,6 +124,7 @@ export function PdvCartPanel({
         className="h-72 shrink-0 px-4"
         recomputeDeps={[cart.lines.length, editingLineDiscount]}
         fadeDisabled={editingLineDiscount != null}
+        scrollToEndKey={additionFeedback?.sequence}
       >
         {cart.lines.length === 0 ? (
           <EmptyState
@@ -160,6 +164,11 @@ export function PdvCartPanel({
                 }
                 onRemove={onRemove}
                 onConfirmQuantityEdit={onConfirmQuantityEdit}
+                additionSequence={
+                  additionFeedback?.inventoryId === line.inventoryId
+                    ? additionFeedback.sequence
+                    : undefined
+                }
               />
             ))}
           </div>

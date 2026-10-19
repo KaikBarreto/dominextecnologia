@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.18',
+    date: '20 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Último produto sempre visível no carrinho',
+        description: 'Ao adicionar um produto, a lista acompanha automaticamente até o item mais recente e destaca sua entrada. Produtos repetidos somam a quantidade e passam para o fim da lista.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.17',
     date: '19 de outubro de 2026',
     type: 'patch',

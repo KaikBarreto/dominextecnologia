@@ -601,6 +601,11 @@ function ReviewFrame() {
 
 function usePreviewCart() {
   const [cart, setCart] = useState<CartState>(initialCart);
+  const additionSequenceRef = useRef(0);
+  const [additionFeedback, setAdditionFeedback] = useState<{
+    inventoryId: string;
+    sequence: number;
+  } | null>(null);
   const [notes, setNotes] = useState("Entregar controle já com pilhas.");
   const [discountDisplay, setDiscountDisplay] = useState("10,00");
   const [orderDiscount, setOrderDiscount] = useState<DiscountDefinition | null>(
@@ -615,10 +620,16 @@ function usePreviewCart() {
     cart,
     orderDiscount,
     lineDiscounts,
+    additionFeedback,
     notes,
     discountDisplay,
     setNotes,
     addProduct: (product: PdvGridProduct) => {
+      additionSequenceRef.current += 1;
+      setAdditionFeedback({
+        inventoryId: product.inventoryId,
+        sequence: additionSequenceRef.current,
+      });
       setCart((current) => addItem(current, product).cart);
     },
     increment: (id: string, delta: number) =>
@@ -636,6 +647,7 @@ function usePreviewCart() {
       });
     },
     clear: () => {
+      setAdditionFeedback(null);
       setCart({ ...initialCart, lines: [], discount: 0 });
       setOrderDiscount(null);
       setLineDiscounts({});
@@ -1121,6 +1133,7 @@ function ProposedSale() {
 
         <ProposedOrderPanel
           cart={cartState.cart}
+          additionFeedback={cartState.additionFeedback}
           onIncrement={cartState.increment}
           onSetQuantity={cartState.setQuantity}
           onRemove={cartState.remove}
@@ -1165,6 +1178,7 @@ function ProposedSale() {
 
 function ProposedOrderPanel({
   cart,
+  additionFeedback,
   total,
   onIncrement,
   onSetQuantity,
@@ -1180,6 +1194,7 @@ function ProposedOrderPanel({
   onOpenPayment,
 }: {
   cart: CartState;
+  additionFeedback: { inventoryId: string; sequence: number } | null;
   total: number;
   onIncrement: (id: string, delta: number) => void;
   onSetQuantity: (id: string, quantity: number) => void;
@@ -1234,6 +1249,20 @@ function ProposedOrderPanel({
     };
     // A quantidade de linhas altera o overflow; quantidade por linha não altera a altura.
   }, [cart.lines.length]);
+
+  useEffect(() => {
+    if (!additionFeedback) return;
+    const frame = window.requestAnimationFrame(() => {
+      const viewport = itemsViewportRef.current;
+      if (!viewport) return;
+      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+      viewport.scrollTo({
+        top: viewport.scrollHeight,
+        behavior: reduceMotion ? 'auto' : 'smooth',
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [additionFeedback]);
 
   return (
     <>
@@ -1335,7 +1364,18 @@ function ProposedOrderPanel({
                 );
 
                 return (
-                  <div key={line.inventoryId} className="flex gap-3 py-3">
+                  <div
+                    key={
+                      additionFeedback?.inventoryId === line.inventoryId
+                        ? `${line.inventoryId}-${additionFeedback.sequence}`
+                        : line.inventoryId
+                    }
+                    className={cn(
+                      'flex gap-3 py-3',
+                      additionFeedback?.inventoryId === line.inventoryId &&
+                        'animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none',
+                    )}
+                  >
                     {line.imageUrl ? (
                       <button
                         type="button"

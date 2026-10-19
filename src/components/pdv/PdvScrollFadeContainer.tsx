@@ -19,7 +19,11 @@ const EDGE_TOLERANCE_PX = 2;
  * não em `src/hooks/`, porque o escopo deste Dev é só `src/components/pdv/`
  * e `src/lib/pdv/`). Porta do `useScrollEdges` da EcoSistema.
  */
-function useScrollEdges<T extends HTMLElement>(deps: unknown[]): { ref: React.RefObject<T>; edges: ScrollEdges } {
+function useScrollEdges<T extends HTMLElement>(deps: unknown[]): {
+  ref: React.RefObject<T>;
+  edges: ScrollEdges;
+  recompute: () => void;
+} {
   const ref = useRef<T>(null);
   const [edges, setEdges] = useState<ScrollEdges>({ atTop: true, atBottom: true, hasOverflow: false });
 
@@ -59,7 +63,7 @@ function useScrollEdges<T extends HTMLElement>(deps: unknown[]): { ref: React.Re
     };
   }, [recompute]);
 
-  return { ref, edges };
+  return { ref, edges, recompute };
 }
 
 interface PdvScrollFadeContainerProps {
@@ -71,6 +75,8 @@ interface PdvScrollFadeContainerProps {
   className?: string;
   /** Editor inline aberto: mantém o conteúdo totalmente opaco durante a edição. */
   fadeDisabled?: boolean;
+  /** Evento de adição: cada chave nova leva a lista ao item mais recente no fim. */
+  scrollToEndKey?: number;
 }
 
 /**
@@ -97,9 +103,30 @@ export function PdvScrollFadeContainer({
   recomputeDeps = [],
   className,
   fadeDisabled = false,
+  scrollToEndKey,
 }: PdvScrollFadeContainerProps) {
-  const { ref, edges } = useScrollEdges<HTMLDivElement>(recomputeDeps);
+  const { ref, edges, recompute } = useScrollEdges<HTMLDivElement>(recomputeDeps);
   const { atTop, atBottom, hasOverflow } = edges;
+  const lastHandledScrollKeyRef = useRef<number | null>(null);
+
+  useLayoutEffect(() => {
+    if (scrollToEndKey == null || lastHandledScrollKeyRef.current === scrollToEndKey) return;
+    lastHandledScrollKeyRef.current = scrollToEndKey;
+
+    const frame = window.requestAnimationFrame(() => {
+      const element = ref.current;
+      if (!element) return;
+      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+      if (typeof element.scrollTo === 'function') {
+        element.scrollTo({ top: element.scrollHeight, behavior: reduceMotion ? 'auto' : 'smooth' });
+      } else {
+        element.scrollTop = element.scrollHeight;
+      }
+      recompute();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [recompute, ref, scrollToEndKey]);
 
   const showTopFade = !fadeDisabled && hasOverflow && !atTop;
   const showBottomFade = !fadeDisabled && hasOverflow && !atBottom;
