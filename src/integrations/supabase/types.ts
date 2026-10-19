@@ -14833,7 +14833,7 @@ export type Database = {
       generate_ponto_slug: { Args: { p_employee_id: string }; Returns: string }
       generate_public_short_code: { Args: { p_len?: number }; Returns: string }
       generate_service_order_from_quote: {
-        Args: { p_quote_id: string }
+        Args: { p_equipment_services?: Json; p_quote_id: string }
         Returns: Database["public"]["Tables"]["service_orders"]["Row"]
         SetofOptions: {
           from: "*"
@@ -16091,6 +16091,14 @@ export type Database = {
         Returns: Json
       }
       sync_service_order_scope_with_services: {
+        Args: {
+          _confirm_response_deletion?: boolean
+          _items: Json
+          _service_order_id: string
+        }
+        Returns: Json
+      }
+      preview_service_order_scope_removal: {
         Args: { _items: Json; _service_order_id: string }
         Returns: Json
       }

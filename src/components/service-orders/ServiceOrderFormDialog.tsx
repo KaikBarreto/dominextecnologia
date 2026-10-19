@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, ChevronRight, ChevronLeft, ChevronDown, Plus, Check, Eye, MapPin, Repeat, AlertTriangle, MapPinned, ClipboardList, Wrench, X } from 'lucide-react';
+import { Loader2, ChevronRight, ChevronLeft, ChevronDown, Plus, Check, Eye, MapPin, Repeat, AlertTriangle, MapPinned, ClipboardList, Wrench, X, Copy } from 'lucide-react';
 import { geocodeAddress, buildServiceAddress } from '@/utils/geolocation';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -181,6 +181,8 @@ export function ServiceOrderFormDialog({
   const loadedScopeSigRef = useRef<string | null>(null);
   // Equipamentos com o painel de checklists expandido (chevron) na etapa 2.
   const [expandedEquipmentIds, setExpandedEquipmentIds] = useState<string[]>([]);
+  const [copySourceEquipmentId, setCopySourceEquipmentId] = useState<string | null>(null);
+  const [copyTargetEquipmentIds, setCopyTargetEquipmentIds] = useState<string[]>([]);
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [requireTechSignature, setRequireTechSignature] = useState(false);
   const [requireClientSignature, setRequireClientSignature] = useState(false);
@@ -219,6 +221,13 @@ export function ServiceOrderFormDialog({
   const [contractDateDialogOpen, setContractDateDialogOpen] = useState(false);
   const [recurrenceEditDialogOpen, setRecurrenceEditDialogOpen] = useState(false);
   const [pendingEditData, setPendingEditData] = useState<ServiceOrderFormData | null>(null);
+  const [scopeRemovalConfirmed, setScopeRemovalConfirmed] = useState(false);
+  const [scopeRemovalWarning, setScopeRemovalWarning] = useState<{
+    data: ServiceOrderFormData;
+    answeredResponses: number;
+    checklists: number;
+    mode?: 'continue' | 'recurrence_all';
+  } | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const budgetQuery = useServiceOrderBudget(isEditing ? serviceOrder?.id : null);
@@ -811,7 +820,7 @@ export function ServiceOrderFormDialog({
     };
   };
 
-  const handleEditSubmit = async (data: ServiceOrderFormData) => {
+  const continueEditSubmit = async (data: ServiceOrderFormData, confirmedRemoval = false) => {
     // Check if this is a contract OS and date changed
     const isContractOS = !!(serviceOrder as any)?.contract_id;
     const isRecurrenceOS = !!(serviceOrder as any)?.recurrence_group_id;
@@ -819,6 +828,7 @@ export function ServiceOrderFormDialog({
 
     if (isContractOS && dateChanged) {
       setPendingEditData(data);
+      setScopeRemovalConfirmed(confirmedRemoval);
       setContractDateDialogOpen(true);
       return;
     }
@@ -826,14 +836,40 @@ export function ServiceOrderFormDialog({
     // If this OS belongs to a recurrence group, ask if changes should apply to all
     if (isRecurrenceOS) {
       setPendingEditData(data);
+      setScopeRemovalConfirmed(confirmedRemoval);
       setRecurrenceEditDialogOpen(true);
       return;
     }
 
     const cleanedData = await buildEditPayload(data);
-    await onSubmit(cleanedData);
+    await onSubmit({
+      ...cleanedData,
+      ...(confirmedRemoval ? { confirm_scope_response_deletion: true } : {}),
+    } as any);
     form.reset();
     onOpenChange(false);
+  };
+
+  const handleEditSubmit = async (data: ServiceOrderFormData) => {
+    if (!serviceOrder) return;
+    const payload = await buildEditPayload(data);
+    if (payload.equipment_items !== undefined) {
+      const { data: preview, error } = await supabase.rpc('preview_service_order_scope_removal' as any, {
+        _service_order_id: serviceOrder.id,
+        _items: groupScopeItems(payload.equipment_items) as any,
+      });
+      if (error) {
+        editToast({ variant: 'destructive', title: t.scopeRemovalPreviewError, description: getErrorMessage(error) });
+        return;
+      }
+      const answeredResponses = Number((preview as any)?.answered_responses ?? 0);
+      const checklists = Number((preview as any)?.checklists ?? 0);
+      if (answeredResponses > 0) {
+        setScopeRemovalWarning({ data, answeredResponses, checklists, mode: 'continue' });
+        return;
+      }
+    }
+    await continueEditSubmit(data);
   };
 
   const handleContractDateChoice = async (applyToFuture: boolean) => {
@@ -841,7 +877,10 @@ export function ServiceOrderFormDialog({
     setContractDateDialogOpen(false);
 
     const cleanedData = await buildEditPayload(pendingEditData);
-    await onSubmit(cleanedData);
+    await onSubmit({
+      ...cleanedData,
+      ...(scopeRemovalConfirmed ? { confirm_scope_response_deletion: true } : {}),
+    } as any);
 
     if (applyToFuture) {
       try {
@@ -880,16 +919,56 @@ export function ServiceOrderFormDialog({
     }
 
     setPendingEditData(null);
+    setScopeRemovalConfirmed(false);
     form.reset();
     onOpenChange(false);
   };
 
-  const handleRecurrenceEditChoice = async (applyToAll: boolean) => {
+  const handleRecurrenceEditChoice = async (applyToAll: boolean, confirmedFutureRemoval = false) => {
     if (!pendingEditData || !serviceOrder) return;
-    setRecurrenceEditDialogOpen(false);
 
     const cleanedData = await buildEditPayload(pendingEditData);
-    await onSubmit(cleanedData);
+    if (applyToAll && !confirmedFutureRemoval && cleanedData.equipment_items !== undefined) {
+      const groupId = (serviceOrder as any).recurrence_group_id;
+      const { data: groupOrders, error: groupError } = await supabase
+        .from('service_orders')
+        .select('id, scheduled_date')
+        .eq('recurrence_group_id', groupId)
+        .neq('id', serviceOrder.id);
+      if (groupError) {
+        editToast({ variant: 'destructive', title: t.scopeRemovalPreviewError, description: getErrorMessage(groupError) });
+        return;
+      }
+      const todayStr = new Date().toISOString().split('T')[0];
+      const futureOrders = (groupOrders ?? []).filter(order => order.scheduled_date && order.scheduled_date >= todayStr);
+      const previews = await Promise.all(futureOrders.map(order => supabase.rpc('preview_service_order_scope_removal' as any, {
+        _service_order_id: order.id,
+        _items: groupScopeItems(cleanedData.equipment_items!) as any,
+      })));
+      const previewError = previews.find(result => result.error)?.error;
+      if (previewError) {
+        editToast({ variant: 'destructive', title: t.scopeRemovalPreviewError, description: getErrorMessage(previewError) });
+        return;
+      }
+      const answeredResponses = previews.reduce((total, result) => total + Number((result.data as any)?.answered_responses ?? 0), 0);
+      const checklists = previews.reduce((total, result) => total + Number((result.data as any)?.checklists ?? 0), 0);
+      if (answeredResponses > 0) {
+        setRecurrenceEditDialogOpen(false);
+        setScopeRemovalWarning({
+          data: pendingEditData,
+          answeredResponses,
+          checklists,
+          mode: 'recurrence_all',
+        });
+        return;
+      }
+    }
+
+    setRecurrenceEditDialogOpen(false);
+    await onSubmit({
+      ...cleanedData,
+      ...((scopeRemovalConfirmed || confirmedFutureRemoval) ? { confirm_scope_response_deletion: true } : {}),
+    } as any);
 
     if (applyToAll) {
       try {
@@ -938,6 +1017,7 @@ export function ServiceOrderFormDialog({
                 const { error: scopeError } = await supabase.rpc('sync_service_order_scope_with_services' as any, {
                   _service_order_id: os.id,
                   _items: groupScopeItems(equipment_items) as any,
+                  _confirm_response_deletion: scopeRemovalConfirmed || confirmedFutureRemoval,
                 });
                 if (scopeError) throw scopeError;
               }
@@ -955,6 +1035,7 @@ export function ServiceOrderFormDialog({
     }
 
     setPendingEditData(null);
+    setScopeRemovalConfirmed(false);
     form.reset();
     onOpenChange(false);
   };
@@ -1073,6 +1154,31 @@ export function ServiceOrderFormDialog({
     }));
   };
 
+  const openCopyScope = (sourceEquipmentId: string) => {
+    setCopySourceEquipmentId(sourceEquipmentId);
+    setCopyTargetEquipmentIds(selectedEquipmentIds.filter(id => id !== sourceEquipmentId));
+  };
+
+  const applyCopiedScope = () => {
+    if (!copySourceEquipmentId) return;
+    const sourceServices = equipmentServiceTypeMap[copySourceEquipmentId] ?? selectedServiceTypeIds;
+    const sourceTemplates = equipmentTemplateMap[copySourceEquipmentId] ?? [];
+    setEquipmentServiceTypeMap(prev => ({
+      ...prev,
+      ...Object.fromEntries(copyTargetEquipmentIds.map(id => [id, [...sourceServices]])),
+    }));
+    setEquipmentTemplateMap(prev => ({
+      ...prev,
+      ...Object.fromEntries(copyTargetEquipmentIds.map(id => [id, [...sourceTemplates]])),
+    }));
+    editToast({
+      title: t.copyScopeSuccess,
+      description: t.copyScopeSuccessDescription.replace('{n}', String(copyTargetEquipmentIds.length)),
+    });
+    setCopySourceEquipmentId(null);
+    setCopyTargetEquipmentIds([]);
+  };
+
   const handleBudgetItemsChange = (items: ServiceOrderBudgetItem[]) => {
     setBudgetItems(items);
     const merged = mergeServiceTypeIds(
@@ -1171,6 +1277,59 @@ export function ServiceOrderFormDialog({
       onChangeTeams={setSelectedAssigneeTeamIds}
       label={t.labelAssignees}
     />
+  );
+
+  const scopeSummary = (
+    <section className="rounded-lg border bg-card p-3 space-y-3">
+      <div>
+        <h3 className="text-sm font-semibold">{t.scopeSummaryTitle}</h3>
+        <p className="text-xs text-muted-foreground">{t.scopeSummaryDescription}</p>
+      </div>
+      {selectedEquipmentIds.length === 0 && selectedStandaloneTemplateIds.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t.scopeSummaryEmpty}</p>
+      ) : (
+        <div className="divide-y">
+          {selectedEquipmentIds.map(equipmentId => {
+            const item = equipment.find(eq => eq.id === equipmentId);
+            const services = (equipmentServiceTypeMap[equipmentId] ?? selectedServiceTypeIds)
+              .map(id => serviceTypes.find(service => service.id === id))
+              .filter((service): service is NonNullable<typeof service> => !!service);
+            const checklistNames = (equipmentTemplateMap[equipmentId] ?? [])
+              .map(id => templates.find(template => template.id === id)?.name)
+              .filter((name): name is string => !!name);
+            return (
+              <div key={equipmentId} className="py-3 first:pt-0 last:pb-0 space-y-2">
+                <p className="text-sm font-medium">{item?.name ?? t.checklistEquipmentFallback}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {services.map(service => (
+                    <Badge key={service.id} variant="secondary" className="gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: service.color || '#64748b' }} />
+                      {service.name}
+                    </Badge>
+                  ))}
+                  {services.length === 0 && <span className="text-xs text-destructive">{t.scopeSummaryNoService}</span>}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <ClipboardList className="mr-1 inline h-3.5 w-3.5" />
+                  {checklistNames.length > 0 ? checklistNames.join(' · ') : t.scopeSummaryNoChecklist}
+                </p>
+              </div>
+            );
+          })}
+          {selectedStandaloneTemplateIds.length > 0 && (
+            <div className="py-3 first:pt-0 last:pb-0">
+              <p className="text-sm font-medium">{t.standaloneSectionTitle}</p>
+              <p className="text-xs text-muted-foreground">
+                {selectedStandaloneTemplateIds
+                  .map(id => templates.find(template => template.id === id)?.name)
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   );
 
   // Etapa 2 completa — "Equipamentos e Checklists". Reunimos o CRUD de
@@ -1339,13 +1498,27 @@ export function ServiceOrderFormDialog({
                   {checked && expanded && (
                     <div className="border-t px-3 py-3 space-y-4">
                       <div className="space-y-2">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
-                            {t.equipmentServicesTitle}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {t.equipmentServicesHelp}
-                          </p>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
+                              {t.equipmentServicesTitle}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {t.equipmentServicesHelp}
+                            </p>
+                          </div>
+                          {selectedEquipmentIds.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 shrink-0 gap-1.5 text-xs"
+                              onClick={() => openCopyScope(eq.id)}
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                              {t.copyScopeButton}
+                            </Button>
+                          )}
                         </div>
                         {equipmentServices.length > 0 ? (
                           <div className="flex flex-wrap gap-1.5">
@@ -1556,6 +1729,42 @@ export function ServiceOrderFormDialog({
           />
         </div>
       </div>
+
+      <AlertDialog open={!!copySourceEquipmentId} onOpenChange={(value) => { if (!value) setCopySourceEquipmentId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.copyScopeTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{t.copyScopeDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="max-h-64 space-y-2 overflow-y-auto py-1">
+            {selectedEquipmentIds.filter(id => id !== copySourceEquipmentId).map(id => {
+              const item = equipment.find(eq => eq.id === id);
+              return (
+                <label key={id} className="flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5">
+                  <Checkbox
+                    checked={copyTargetEquipmentIds.includes(id)}
+                    onCheckedChange={() => setCopyTargetEquipmentIds(prev => (
+                      prev.includes(id) ? prev.filter(value => value !== id) : [...prev, id]
+                    ))}
+                  />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium">{item?.name ?? t.checklistEquipmentFallback}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {[item?.brand, item?.model, item?.identifier].filter(Boolean).join(' · ') || t.equipmentNoDetails}
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.btnCancel}</AlertDialogCancel>
+            <AlertDialogAction disabled={copyTargetEquipmentIds.length === 0} onClick={applyCopiedScope}>
+              {t.copyScopeConfirm.replace('{n}', String(copyTargetEquipmentIds.length))}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 
@@ -1677,6 +1886,7 @@ export function ServiceOrderFormDialog({
             {/* Step 3: Agendamento e Detalhes */}
             {currentStepKey === 'details' && (
               <div className="space-y-4">
+                {scopeSummary}
                 {assigneeSection}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField control={form.control} name="scheduled_date" render={({ field }) => (
@@ -1792,6 +2002,38 @@ export function ServiceOrderFormDialog({
             </AlertDialogAction>
             <AlertDialogAction onClick={() => handleRecurrenceEditChoice(true)}>
               {t.recurrenceEditAll}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!scopeRemovalWarning} onOpenChange={(value) => { if (!value) setScopeRemovalWarning(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.scopeRemovalTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t.scopeRemovalDescription
+                .replace('{answers}', String(scopeRemovalWarning?.answeredResponses ?? 0))
+                .replace('{checklists}', String(scopeRemovalWarning?.checklists ?? 0))}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <NoticeBanner variant="warning">{t.scopeRemovalWarning}</NoticeBanner>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.btnCancel}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                const warning = scopeRemovalWarning;
+                const pending = warning?.data;
+                setScopeRemovalWarning(null);
+                if (warning?.mode === 'recurrence_all') {
+                  void handleRecurrenceEditChoice(true, true);
+                } else if (pending) {
+                  void continueEditSubmit(pending, true);
+                }
+              }}
+            >
+              {t.scopeRemovalConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -2016,6 +2258,7 @@ export function ServiceOrderFormDialog({
           {/* Step 3: Agendamento e Detalhes */}
           {currentStepKey === 'details' && (
             <div className="space-y-4">
+              {scopeSummary}
               {assigneeSection}
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField control={form.control} name="scheduled_date" render={({ field }) => (

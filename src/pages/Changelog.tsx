@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.36.24',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Distribua os serviços antes de gerar a OS',
+        description: 'Ao gerar uma OS pelo orçamento, você escolhe em quais equipamentos cada serviço será executado. Os checklists correspondentes já são aplicados automaticamente.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Copie a configuração entre equipamentos',
+        description: 'Serviços e checklists configurados em um equipamento podem ser copiados para os demais. Antes de salvar, uma revisão mostra claramente o que será feito em cada equipamento.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Respostas preenchidas protegidas',
+        description: 'Ao remover um equipamento ou checklist que já tenha respostas, o sistema avisa quantas informações serão apagadas e exige confirmação. Em ordens de contrato, o histórico permanece protegido.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.36.23',
     date: '19 de outubro de 2026',
     type: 'patch',

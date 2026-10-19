@@ -114,6 +114,8 @@ export interface ServiceOrderInput extends ScheduleBookingOverride {
   service_latitude?: number | null;
   service_longitude?: number | null;
   equipment_items?: ServiceOrderEquipmentItem[];
+  /** Confirma conscientemente a remoção de respostas de checklists fora do novo escopo. */
+  confirm_scope_response_deletion?: boolean;
   assignee_user_ids?: string[];
   assignee_team_ids?: string[];
   // Onda E do overhaul do CRM — tarefa vinculada a uma oportunidade.
@@ -272,6 +274,7 @@ export function useServiceOrders() {
         assignee_team_ids,
         service_type_ids,
         budget_items,
+        confirm_scope_response_deletion,
         ...restWithBooking
       } = input;
       const rest = { ...restWithBooking };
@@ -320,6 +323,7 @@ export function useServiceOrders() {
           const { error: scopeError } = await supabase.rpc('sync_service_order_scope_with_services' as any, {
             _service_order_id: createdId,
             _items: groupScopeItems(equipment_items) as any,
+            _confirm_response_deletion: confirm_scope_response_deletion ?? false,
           });
           if (scopeError) throw scopeError;
         }
@@ -356,6 +360,7 @@ export function useServiceOrders() {
         const { error: scopeError } = await supabase.rpc('sync_service_order_scope_with_services' as any, {
           _service_order_id: data.id,
           _items: groupScopeItems(equipment_items) as any,
+          _confirm_response_deletion: confirm_scope_response_deletion ?? false,
         });
         if (scopeError) throw scopeError;
       }
@@ -397,6 +402,7 @@ export function useServiceOrders() {
       equipment_items,
       service_type_ids,
       budget_items,
+      confirm_scope_response_deletion,
       schedule_override,
       schedule_override_reason,
       schedule_request_id,
@@ -590,6 +596,7 @@ export function useServiceOrders() {
         const { error: scopeError } = await supabase.rpc('sync_service_order_scope_with_services' as any, {
           _service_order_id: id,
           _items: scopeItems as any,
+          _confirm_response_deletion: confirm_scope_response_deletion ?? false,
         });
         if (scopeError) throw scopeError;
       }

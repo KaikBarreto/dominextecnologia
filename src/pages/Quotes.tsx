@@ -33,6 +33,7 @@ import { useQuoteChargedIds } from '@/hooks/useQuoteChargedIds';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { QuoteFormDialog } from '@/components/quotes/QuoteFormDialog';
 import { QuoteViewDialog } from '@/components/quotes/QuoteViewDialog';
+import { QuoteServiceDistributionDialog } from '@/components/quotes/QuoteServiceDistributionDialog';
 import { ApproveQuoteModal } from '@/components/financial/ApproveQuoteModal';
 import { ChargeDialog } from '@/components/financial/ChargeDialog';
 import { ProposalConfigDialog } from '@/components/quotes/ProposalConfigDialog';
@@ -218,6 +219,7 @@ function QuotesList() {
   const [configOpen, setConfigOpen] = useState(false);
   const [approvingQuote, setApprovingQuote] = useState<Quote | null>(null);
   const [chargeQuote, setChargeQuote] = useState<Quote | null>(null);
+  const [distributingQuote, setDistributingQuote] = useState<Quote | null>(null);
   // Desfazer recebimento: orçamento em confirmação + prévia dos lançamentos.
   const [undoQuote, setUndoQuote] = useState<Quote | null>(null);
   const [undoPreview, setUndoPreview] = useState<{ txns: FinancialTransaction[]; orphan: boolean } | null>(null);
@@ -482,7 +484,7 @@ function QuotesList() {
         key: 'convert',
         label: tq.actionConvertOS,
         icon: <ArrowRight className="h-4 w-4" />,
-        onClick: () => convertToServiceOrder.mutate(q),
+        onClick: () => setDistributingQuote(q),
       });
     }
 
@@ -818,7 +820,7 @@ function QuotesList() {
                           {
                             label: tq.actionConvertOS,
                             icon: ArrowRight,
-                            onClick: () => convertToServiceOrder.mutate(q),
+                            onClick: () => setDistributingQuote(q),
                             disabled: isConverting,
                             hidden: !canCreateOS || !(q.status === 'aprovado' && !q.converted_to_os_id),
                           },
@@ -1004,6 +1006,20 @@ function QuotesList() {
           source={{ type: 'quote', id: chargeQuote.id }}
         />
       )}
+
+      <QuoteServiceDistributionDialog
+        open={!!distributingQuote}
+        quote={distributingQuote}
+        loading={isConverting}
+        onOpenChange={(value) => { if (!value && !isConverting) setDistributingQuote(null); }}
+        onConfirm={(equipmentServices) => {
+          if (!distributingQuote) return;
+          convertToServiceOrder.mutate(
+            { quote: distributingQuote, equipmentServices },
+            { onSuccess: () => setDistributingQuote(null) },
+          );
+        }}
+      />
     </div>
   );
 }

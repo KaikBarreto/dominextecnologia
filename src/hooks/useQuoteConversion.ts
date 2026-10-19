@@ -11,6 +11,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { resolveSystemCategoryNameFresh } from '@/hooks/useFinancialCategories';
 import { SERVICE_ORDER_BUDGET_KEY, SERVICE_ORDER_SERVICE_TYPES_KEY } from '@/hooks/useServiceOrderBudget';
+import type { QuoteEquipmentServiceAssignment } from '@/lib/quoteServiceDistribution';
 
 interface ApproveQuoteParams {
   quote: Quote;
@@ -170,11 +171,18 @@ export function useQuoteConversion() {
   };
 
   const convertToServiceOrder = useMutation({
-    mutationFn: async (quote: Quote) => {
+    mutationFn: async ({
+      quote,
+      equipmentServices,
+    }: {
+      quote: Quote;
+      equipmentServices: QuoteEquipmentServiceAssignment[];
+    }) => {
       if (!user?.id) throw new Error('Usuário não autenticado');
       if (quote.converted_to_os_id) throw new Error('Orçamento já foi convertido');
       const { data, error } = await supabase.rpc('generate_service_order_from_quote', {
         p_quote_id: quote.id,
+        p_equipment_services: equipmentServices as any,
       });
       if (error) throw error;
       return data;
@@ -183,7 +191,7 @@ export function useQuoteConversion() {
       invalidateAll();
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_BUDGET_KEY] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_SERVICE_TYPES_KEY] });
-      toast({ title: 'OS gerada com sucesso!', description: 'Serviços, materiais e valores do orçamento foram copiados.' });
+      toast({ title: 'OS gerada com sucesso!', description: 'Serviços, equipamentos, checklists, materiais e valores foram copiados.' });
     },
     onError: (e: any) => {
       toast({ variant: 'destructive', title: 'Não foi possível gerar a OS', description: getErrorMessage(e) });
