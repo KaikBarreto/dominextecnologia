@@ -271,6 +271,7 @@ export function PdvCashHistoryPanel({
         tabs={methodTabs}
         activeTab={methodGroup}
         onTabChange={resetPage((v: string) => setMethodGroup(v as PdvMethodGroup))}
+        variant="underline"
       />
 
       <div className="flex flex-col gap-2 sm:flex-row">

@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.7',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Navegação mais clara no histórico do Caixa',
+        description: 'As formas de pagamento do histórico agora aparecem como abas simples, facilitando alternar entre todas as transações, dinheiro, Pix e transferências.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.6',
     date: '19 de outubro de 2026',
     type: 'patch',

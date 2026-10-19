@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.6";
+export const APP_VERSION = "1.37.7";
 
 export const VERSION_NOTES =
-  "O histórico do Caixa agora pode ser filtrado por tipo e exportado em Excel ou PDF, respeitando o idioma e a moeda da empresa.";
+  "As formas de pagamento do histórico do Caixa agora aparecem em abas mais claras, facilitando alternar entre todas as transações, dinheiro, Pix e transferências.";

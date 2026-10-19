@@ -6,10 +6,14 @@ import {
   Banknote,
   Barcode,
   Check,
+  ChevronDown,
   ChevronRight,
+  CircleArrowDown,
+  CircleX,
   CreditCard,
   DollarSign,
   Eye,
+  HandCoins,
   Minus,
   Moon,
   Paperclip,
@@ -23,7 +27,6 @@ import {
   TrendingDown,
   TrendingUp,
   UserRound,
-  UsersRound,
   X,
 } from "lucide-react";
 import {
@@ -2096,13 +2099,13 @@ function ProposedCash() {
               />
             </div>
           </div>
-          <Button
+          <button
             type="button"
-            variant="outline"
-            className="mt-3 w-full uppercase tracking-[0.12em] hover:border-destructive hover:bg-destructive hover:text-destructive-foreground"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-muted/60 py-2.5 text-[13px] font-semibold uppercase tracking-widest text-foreground transition-colors hover:border-red-600 hover:bg-red-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
+            <CircleX className="h-4 w-4" />
             Fechar caixa
-          </Button>
+          </button>
         </section>
 
         <section className="flex min-w-0 flex-1 flex-col justify-between lg:min-h-[220px] lg:border-l lg:pl-6">
@@ -2125,31 +2128,44 @@ function ProposedCash() {
               </span>
             </div>
           </div>
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            <Button type="button" variant="outline" className="gap-2 uppercase tracking-[0.1em]">
-              <ArrowUpFromLine className="h-4 w-4" /> Sangria
-            </Button>
-            <Button type="button" variant="outline" className="gap-2 uppercase tracking-[0.1em]">
-              <Plus className="h-4 w-4" /> Nova movimentação
-            </Button>
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-row">
+            <button
+              type="button"
+              className="flex min-h-11 min-w-0 items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap rounded-xl border border-border bg-card px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-foreground shadow-sm transition hover:bg-muted active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-0 sm:rounded-lg sm:py-2.5"
+            >
+              <CircleArrowDown className="h-4 w-4 shrink-0" />
+              <span className="sm:hidden">Saque/sangria</span>
+              <span className="hidden sm:inline">Saque / sangria</span>
+            </button>
+            <button
+              type="button"
+              className="flex min-h-11 min-w-0 items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap rounded-xl border border-border bg-card px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-foreground shadow-sm transition hover:bg-muted active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-0 sm:rounded-lg sm:py-2.5"
+            >
+              <Plus className="h-4 w-4 shrink-0" />
+              <span className="sm:hidden">Movimentação</span>
+              <span className="hidden sm:inline">Nova movimentação bancária</span>
+            </button>
           </div>
         </section>
       </div>
 
       <section aria-label="Ações rápidas do caixa">
         <div className="grid grid-cols-4 gap-2 sm:gap-3">
-          <EcoCashAction icon={Scale} label="Nova compra" tone="purchase" />
           <EcoCashAction icon={DollarSign} label="Nova venda" tone="sale" />
+          <EcoCashAction icon={Scale} label="Nova compra" tone="purchase" />
           <EcoCashAction icon={TrendingDown} label="Nova despesa" tone="expense" />
           <EcoCashAction icon={TrendingUp} label="Nova receita" tone="revenue" />
         </div>
       </section>
 
-      <Button type="button" variant="outline" className="gap-2">
-        <UsersRound className="h-4 w-4" />
+      <button
+        type="button"
+        className="flex min-h-11 w-fit items-center justify-center gap-2 rounded-lg border border-border bg-card px-3.5 text-[11px] font-semibold uppercase tracking-widest text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        <HandCoins className="h-4 w-4" />
         Saldo de cliente/fornecedor
-        <ChevronRight className="ml-auto h-4 w-4 rotate-90" />
-      </Button>
+        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+      </button>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
