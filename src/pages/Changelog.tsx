@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.13',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Várias vendas e compras ao mesmo tempo',
+        description: 'O PDV agora permite alternar entre vários pedidos em andamento sem misturar produtos, clientes, fornecedores, valores ou anexos.',
+        category: 'recurso',
+      },
+      {
+        title: 'Venda e compra com a nova experiência do PDV',
+        description: 'As telas reais receberam o layout aprovado, com catálogo por seções, fotos dos produtos, descontos mais compactos, anexos com progresso e finalização mais clara.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Caixa sempre atualizado',
+        description: 'Os saldos e totais do Caixa agora carregam de forma independente, animam as mudanças de valor e se atualizam ao voltar de uma venda, compra ou movimentação financeira.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.37.12',
     date: '19 de outubro de 2026',
     type: 'patch',

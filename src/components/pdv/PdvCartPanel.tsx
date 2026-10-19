@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { PdvCartLineRow } from '@/components/pdv/PdvCartLineRow';
 import { PdvCartSummary, type PdvCartSummaryTexts } from '@/components/pdv/PdvCartSummary';
+import { PdvScrollFadeContainer } from '@/components/pdv/PdvScrollFadeContainer';
 import type { CartState } from '@/lib/pdv/cart';
 import type { Customer } from '@/types/database';
 import { cn } from '@/lib/utils';
@@ -10,11 +11,14 @@ import { cn } from '@/lib/utils';
 export interface PdvCartPanelTexts extends PdvCartSummaryTexts {
   title: string;
   itemsCount: string;
+  draftHint: string;
   empty: string;
   emptyHint: string;
   removeLine: string;
   clearCart: string;
   noPhoto: string;
+  openProductPhoto: string;
+  productPhotoViewerDescription: string;
   quantityEditLabel: string;
   itemDiscount: string;
   itemDiscountPlaceholder: string;
@@ -39,9 +43,6 @@ interface PdvCartPanelProps {
   onGoToCashPanel: () => void;
   /** Enter na edição de quantidade devolve o foco pra busca (balcão é fila). */
   onConfirmQuantityEdit?: () => void;
-  /** `pdv_orders.notes`. */
-  notes: string;
-  onNotesChange: (value: string) => void;
   /** Abre `PdvAdvancedOptionsDialog` (retrodatar + anexar foto). */
   onOpenAdvancedOptions: () => void;
   advancedOptionsActive: boolean;
@@ -75,8 +76,6 @@ export function PdvCartPanel({
   cashClosed,
   onGoToCashPanel,
   onConfirmQuantityEdit,
-  notes,
-  onNotesChange,
   onOpenAdvancedOptions,
   advancedOptionsActive,
   texts,
@@ -87,30 +86,34 @@ export function PdvCartPanel({
   return (
     <div className={cn('flex h-full flex-col', className)}>
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="flex items-center gap-2">
-          <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">{texts.title}</span>
-          {itemCount > 0 && (
-            <span className="text-xs text-muted-foreground">
-              {texts.itemsCount.replace('{count}', String(itemCount))}
-            </span>
-          )}
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+            <span className="font-bold">{texts.title}</span>
+          </div>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {texts.itemsCount.replace('{count}', String(itemCount))} · {texts.draftHint}
+          </p>
         </div>
         {cart.lines.length > 0 && (
           <Button
             type="button"
             variant="destructive-ghost"
-            size="icon"
-            className="h-8 w-8"
+            size="sm"
+            className="h-8"
             onClick={onRequestClearCart}
             aria-label={texts.clearCart}
           >
             <Trash2 className="h-4 w-4" />
+            <span className="hidden sm:inline">{texts.clearCart}</span>
           </Button>
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4">
+      <PdvScrollFadeContainer
+        className="h-72 shrink-0 px-4"
+        recomputeDeps={[cart.lines.length]}
+      >
         {cart.lines.length === 0 ? (
           <EmptyState
             icon={<ShoppingCart className="h-10 w-10" />}
@@ -126,6 +129,8 @@ export function PdvCartPanel({
                 line={line}
                 formatCurrency={formatCurrency}
                 noPhotoLabel={texts.noPhoto}
+                openPhotoLabel={texts.openProductPhoto}
+                photoViewerDescription={texts.productPhotoViewerDescription}
                 removeLabel={texts.removeLine}
                 quantityEditLabel={texts.quantityEditLabel}
                 discountLabel={texts.itemDiscount}
@@ -139,7 +144,7 @@ export function PdvCartPanel({
             ))}
           </div>
         )}
-      </div>
+      </PdvScrollFadeContainer>
 
       <PdvCartSummary
         cart={cart}
@@ -153,12 +158,10 @@ export function PdvCartPanel({
         onRequestPayment={onRequestPayment}
         cashClosed={cashClosed}
         onGoToCashPanel={onGoToCashPanel}
-        notes={notes}
-        onNotesChange={onNotesChange}
         onOpenAdvancedOptions={onOpenAdvancedOptions}
         advancedOptionsActive={advancedOptionsActive}
         texts={texts}
-        className="shrink-0 border-t border-border"
+        className="min-h-0 flex-1 overflow-y-auto border-t border-border bg-muted/30"
       />
     </div>
   );

@@ -1,11 +1,10 @@
-import { useRef } from 'react';
-import { Camera, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { DatePicker } from '@/components/ui/DatePicker';
-import { cn } from '@/lib/utils';
+import { Textarea } from '@/components/ui/textarea';
+import { PdvAttachmentUploader } from '@/components/pdv/PdvAttachmentUploader';
 import type { pdv } from '@/lib/i18n/messages/app/pdv';
 
 type AdvancedOptionsTexts = (typeof pdv)['pt-br']['cashier']['advancedOptions'];
@@ -17,12 +16,22 @@ export interface PdvPendingAttachment {
   id: string;
   file: File;
   previewUrl: string;
+  /** Omitido por chamadores antigos equivale a `ready`. */
+  status?: 'pending' | 'processing' | 'ready' | 'error';
+  /** Percentual de preparação deste arquivo, sempre normalizado na UI. */
+  progress?: number;
+  /** Mensagem exibida somente quando `status` é `error`. */
+  errorMessage?: string;
 }
 
 export interface PdvAdvancedOptionsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   texts: AdvancedOptionsTexts;
+  notes: string;
+  onNotesChange: (value: string) => void;
+  notesLabel: string;
+  notesPlaceholder: string;
   /**
    * `yyyy-MM-dd`. NASCE preenchido com o dia da empresa (`maxDate`) — nunca
    * vazio, pro operador VER a data que vai ser lançada em vez de adivinhar
@@ -58,6 +67,10 @@ export function PdvAdvancedOptionsDialog({
   open,
   onOpenChange,
   texts,
+  notes,
+  onNotesChange,
+  notesLabel,
+  notesPlaceholder,
   transactionDate,
   onTransactionDateChange,
   maxDate,
@@ -67,8 +80,6 @@ export function PdvAdvancedOptionsDialog({
   attaching,
   disabled,
 }: PdvAdvancedOptionsDialogProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   // Retroativa = qualquer data diferente de hoje (o DatePicker já trava o
   // futuro via `max`, então "diferente de hoje" só pode ser passado).
   const isRetroactive = transactionDate !== maxDate;
@@ -81,12 +92,27 @@ export function PdvAdvancedOptionsDialog({
       description={texts.description}
       className="sm:max-w-[480px]"
       footer={
-        <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
-          {texts.close}
-        </Button>
+        <div className="flex w-full justify-end">
+          <Button type="button" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
+            {texts.close}
+          </Button>
+        </div>
       }
     >
       <div className="space-y-5">
+        <div className="space-y-1.5">
+          <Label htmlFor="pdv-adv-notes">{notesLabel}</Label>
+          <Textarea
+            id="pdv-adv-notes"
+            value={notes}
+            onChange={(event) => onNotesChange(event.target.value)}
+            placeholder={notesPlaceholder}
+            rows={3}
+            className="resize-none"
+            disabled={disabled}
+          />
+        </div>
+
         <div className="space-y-1.5">
           <Label htmlFor="pdv-adv-date">{texts.dateLabel}</Label>
           <DatePicker
@@ -101,59 +127,15 @@ export function PdvAdvancedOptionsDialog({
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <Label>{texts.photosLabel}</Label>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={disabled || attaching}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {attaching ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Camera className="h-4 w-4" />
-              )}
-              {attaching ? texts.attaching : texts.attach}
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                const files = Array.from(e.target.files ?? []);
-                if (files.length) onAttachFiles(files);
-                e.target.value = '';
-              }}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">{texts.photosHint}</p>
-
-          {pendingAttachments.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {pendingAttachments.map((p) => (
-                <div
-                  key={p.id}
-                  className={cn(
-                    'relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border bg-muted',
-                  )}
-                >
-                  <img src={p.previewUrl} alt={p.file.name} className="h-full w-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => onRemoveAttachment(p.id)}
-                    aria-label={texts.removePhoto}
-                    className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+          <Label>{texts.photosLabel}</Label>
+          <PdvAttachmentUploader
+            attachments={pendingAttachments}
+            onAttachFiles={onAttachFiles}
+            onRemoveAttachment={onRemoveAttachment}
+            attaching={attaching}
+            disabled={disabled}
+            texts={texts}
+          />
         </div>
       </div>
     </ResponsiveModal>

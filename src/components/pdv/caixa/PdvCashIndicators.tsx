@@ -1,8 +1,10 @@
 import { Banknote, CircleArrowDown, Eye, EyeOff, Landmark, LockKeyhole, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { pdv } from '@/lib/i18n/messages/app/pdv';
+import { PdvAnimatedMoney } from '@/components/pdv/caixa/PdvAnimatedMoney';
 
 type CashCardTexts = (typeof pdv)['pt-br']['cashPanel']['cashCard'];
 type AccountCardTexts = (typeof pdv)['pt-br']['cashPanel']['accountCard'];
@@ -26,6 +28,12 @@ interface PdvCashIndicatorsProps {
   accountsTotal: number;
   /** Só gestores de contas veem saldos do cofre e das contas bancárias. */
   canManageBankAccounts: boolean;
+  isDrawerLoading: boolean;
+  isCofreLoading: boolean;
+  isAccountsLoading: boolean;
+  isCofreUnavailable: boolean;
+  isAccountsUnavailable: boolean;
+  unavailableText: string;
   valuesVisible: boolean;
   onToggleValues: () => void;
   onClose: () => void;
@@ -63,6 +71,12 @@ export function PdvCashIndicators({
   accounts,
   accountsTotal,
   canManageBankAccounts,
+  isDrawerLoading,
+  isCofreLoading,
+  isAccountsLoading,
+  isCofreUnavailable,
+  isAccountsUnavailable,
+  unavailableText,
   valuesVisible,
   onToggleValues,
   onClose,
@@ -71,22 +85,24 @@ export function PdvCashIndicators({
   money,
   dateTime,
 }: PdvCashIndicatorsProps) {
-  const hidden = '•••••';
-  const show = (value: number) => (valuesVisible ? money(value) : hidden);
   const visibleAccounts = accounts.slice(0, MAX_ACCOUNT_LINES);
   const remaining = accounts.length - visibleAccounts.length;
 
   return (
-    <div className="flex flex-col gap-5 lg:flex-row">
-      <section className="flex min-w-0 flex-col justify-between lg:min-h-[220px] lg:w-[440px] lg:shrink-0">
+    <div className="grid w-full gap-4 lg:grid-cols-2">
+      <section className="flex min-w-0 flex-col justify-between rounded-2xl bg-primary p-5 text-primary-foreground shadow-sm sm:p-6 lg:min-h-[260px]">
         <div>
-          <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary-foreground/80">
             <Banknote className="h-5 w-5" />
             {cashTexts.title}
           </h2>
-          <div className="mt-3 flex items-center gap-1">
-            <p className="text-4xl font-extrabold tracking-tight tabular-nums lg:text-5xl">
-              {show(drawerAmount)}
+          <div className="mt-4 flex min-w-0 items-center gap-2">
+            <p className="min-w-0 truncate text-4xl font-extrabold tracking-tight tabular-nums sm:text-5xl xl:text-6xl">
+              {isDrawerLoading ? (
+                <Skeleton className="h-12 w-52 bg-primary-foreground/20 sm:h-14" />
+              ) : (
+                <PdvAnimatedMoney value={drawerAmount} visible={valuesVisible} money={money} />
+              )}
             </p>
             <Button
               type="button"
@@ -94,35 +110,52 @@ export function PdvCashIndicators({
               variant="ghost"
               aria-label={valuesVisible ? cashTexts.hide : cashTexts.show}
               onClick={onToggleValues}
-              className="h-8 w-8 shrink-0"
+              className="h-9 w-9 shrink-0 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
             >
               {valuesVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
             </Button>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-2 text-xs text-primary-foreground/75">
             {cashTexts.openedAt.replace('{datetime}', dateTime(openedAt))}
             {operatorName ? ` ${cashTexts.operator.replace('{name}', operatorName)}` : ''}
             {terminalName ? ` · ${terminalName}` : ''}
           </p>
 
-          {canManageBankAccounts && (
+          {canManageBankAccounts && isCofreLoading && (
+            <div className="mt-5 space-y-2">
+              <Skeleton className="h-4 w-full bg-primary-foreground/20" />
+              <Skeleton className="h-4 w-4/5 bg-primary-foreground/20" />
+            </div>
+          )}
+
+          {canManageBankAccounts && !isCofreLoading && isCofreUnavailable && (
+            <p className="mt-4 text-xs font-medium text-primary-foreground/80">
+              {unavailableText}
+            </p>
+          )}
+
+          {canManageBankAccounts && !isCofreLoading && !isCofreUnavailable && (
             <div className="mt-4 space-y-1.5 text-xs sm:text-sm">
               {cofre?.conta_nome ? (
                 <>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">{cashTexts.cofreAvailable}</span>
-                    <span className="font-bold tabular-nums">{show(cofre.disponivel)}</span>
+                    <span className="text-primary-foreground/75">{cashTexts.cofreAvailable}</span>
+                    <span className="font-bold tabular-nums">
+                      <PdvAnimatedMoney value={cofre.disponivel} visible={valuesVisible} money={money} />
+                    </span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">{cashTexts.cofreReserved}</span>
-                    <span className="font-bold tabular-nums">{show(cofre.reservado)}</span>
+                    <span className="text-primary-foreground/75">{cashTexts.cofreReserved}</span>
+                    <span className="font-bold tabular-nums">
+                      <PdvAnimatedMoney value={cofre.reservado} visible={valuesVisible} money={money} />
+                    </span>
                   </div>
                   {!cofre.controle_estrito && (
-                    <p className="pt-1 text-xs text-muted-foreground">{cashTexts.strictOff}</p>
+                    <p className="pt-1 text-xs text-primary-foreground/75">{cashTexts.strictOff}</p>
                   )}
                 </>
               ) : (
-                <p className="flex items-center gap-1.5 text-muted-foreground">
+                <p className="flex items-center gap-1.5 text-primary-foreground/75">
                   <LockKeyhole className="h-3.5 w-3.5 shrink-0" />
                   {cashTexts.cofreMissing}
                 </p>
@@ -133,25 +166,41 @@ export function PdvCashIndicators({
 
         <button
           type="button"
+          disabled={isDrawerLoading || isCofreUnavailable}
           onClick={onClose}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-muted/60 py-2.5 text-[13px] font-semibold uppercase tracking-widest text-foreground transition-colors hover:border-red-600 hover:bg-red-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg border border-primary-foreground/30 bg-primary-foreground/10 py-2.5 text-[13px] font-semibold uppercase tracking-widest text-primary-foreground transition-colors hover:border-red-600 hover:bg-red-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-primary-foreground/30 disabled:hover:bg-primary-foreground/10"
         >
           {cashTexts.close}
         </button>
       </section>
 
       {canManageBankAccounts && (
-        <section className="flex min-w-0 flex-1 flex-col justify-between lg:min-h-[220px] lg:border-l lg:pl-6">
+        <section className="flex min-w-0 flex-col justify-between rounded-2xl border bg-card p-5 shadow-sm sm:p-6 lg:min-h-[260px]">
           <div>
             <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               <Landmark className="h-5 w-5" />
               {accountTexts.title}
             </h2>
-            <p className="mt-3 text-3xl font-extrabold tracking-tight tabular-nums lg:text-4xl">
-              {show(accountsTotal)}
+            <p className="mt-4 min-w-0 truncate text-4xl font-extrabold tracking-tight tabular-nums sm:text-5xl xl:text-6xl">
+              {isAccountsLoading ? (
+                <Skeleton className="h-12 w-52 sm:h-14" />
+              ) : isAccountsUnavailable ? (
+                '—'
+              ) : (
+                <PdvAnimatedMoney value={accountsTotal} visible={valuesVisible} money={money} />
+              )}
             </p>
 
-            {accounts.length === 0 ? (
+            {isAccountsLoading ? (
+              <div className="mt-5 flex gap-2">
+                <Skeleton className="h-6 w-28 rounded-full" />
+                <Skeleton className="h-6 w-36 rounded-full" />
+              </div>
+            ) : isAccountsUnavailable ? (
+              <div className="mt-4">
+                <NoticeBanner variant="warning">{unavailableText}</NoticeBanner>
+              </div>
+            ) : accounts.length === 0 ? (
               <div className="mt-4">
                 <NoticeBanner variant="neutral">{accountTexts.empty}</NoticeBanner>
               </div>
@@ -164,9 +213,10 @@ export function PdvCashIndicators({
                       'max-w-full truncate rounded-full px-2.5 py-1 text-[10px] font-bold text-white',
                       ACCOUNT_TONES[index % ACCOUNT_TONES.length],
                     )}
-                    title={`${acc.name}: ${show(acc.balance)}`}
+                    title={`${acc.name}: ${valuesVisible ? money(acc.balance) : '•••••'}`}
                   >
-                    {acc.name}&nbsp; {show(acc.balance)}
+                    {acc.name}&nbsp;{' '}
+                    <PdvAnimatedMoney value={acc.balance} visible={valuesVisible} money={money} />
                   </span>
                 ))}
                 {remaining > 0 && (
@@ -182,6 +232,7 @@ export function PdvCashIndicators({
             <Button
               type="button"
               variant="outline"
+              disabled={isDrawerLoading || isAccountsLoading || isAccountsUnavailable || isCofreUnavailable}
               className="min-h-11 gap-1.5 text-[11px] font-semibold uppercase tracking-wider sm:min-h-0"
               onClick={onBleed}
             >
@@ -191,6 +242,7 @@ export function PdvCashIndicators({
             <Button
               type="button"
               variant="outline"
+              disabled={isDrawerLoading || isAccountsLoading || isAccountsUnavailable || isCofreUnavailable}
               className="min-h-11 gap-1.5 text-[11px] font-semibold uppercase tracking-wider sm:min-h-0"
               onClick={onSupply}
             >

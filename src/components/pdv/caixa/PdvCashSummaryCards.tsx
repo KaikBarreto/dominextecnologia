@@ -2,6 +2,7 @@ import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { cn } from '@/lib/utils';
 import type { SessionResult } from '@/lib/pdv/cash';
 import type { pdv } from '@/lib/i18n/messages/app/pdv';
+import { PdvAnimatedMoney } from '@/components/pdv/caixa/PdvAnimatedMoney';
 
 type SummaryTexts = (typeof pdv)['pt-br']['cashPanel']['summary'];
 
@@ -31,8 +32,6 @@ export function PdvCashSummaryCards({
   money,
   number,
 }: PdvCashSummaryCardsProps) {
-  const hidden = '•••••';
-  const show = (value: number) => (valuesVisible ? money(value) : hidden);
   const profitPositive = result.profit >= 0;
 
   return (
@@ -44,17 +43,23 @@ export function PdvCashSummaryCards({
       <div className="grid grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-4">
         <SummaryValue
           label={texts.sold}
-          value={show(result.sold)}
+          value={result.sold}
+          valuesVisible={valuesVisible}
+          money={money}
           className="text-green-600 dark:text-green-500"
         />
         <SummaryValue
           label={texts.purchased}
-          value={show(result.cmv)}
+          value={result.cmv}
+          valuesVisible={valuesVisible}
+          money={money}
           className="text-blue-600 dark:text-blue-500"
         />
         <SummaryValue
           label={texts.profit}
-          value={show(result.profit)}
+          value={result.profit}
+          valuesVisible={valuesVisible}
+          money={money}
           className={cn(
             profitPositive
               ? 'text-orange-600 dark:text-orange-500'
@@ -71,7 +76,9 @@ export function PdvCashSummaryCards({
         />
         <SummaryValue
           label={texts.expenses}
-          value={show(result.expenses)}
+          value={result.expenses}
+          valuesVisible={valuesVisible}
+          money={money}
           className="text-red-600 dark:text-red-500"
         />
       </div>
@@ -90,11 +97,15 @@ export function PdvCashSummaryCards({
 function SummaryValue({
   label,
   value,
+  valuesVisible,
+  money,
   className,
   helper,
 }: {
   label: string;
-  value: string;
+  value: number;
+  valuesVisible: boolean;
+  money: (value: number) => string;
   className: string;
   helper?: string;
 }) {
@@ -104,7 +115,7 @@ function SummaryValue({
         {label}
       </p>
       <p className={cn('truncate text-xl font-extrabold tabular-nums sm:text-2xl', className)}>
-        {value}
+        <PdvAnimatedMoney value={value} visible={valuesVisible} money={money} />
       </p>
       {helper && <p className="text-[10px] text-muted-foreground sm:text-xs">{helper}</p>}
     </div>

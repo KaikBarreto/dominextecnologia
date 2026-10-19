@@ -67,7 +67,10 @@ export function useDirectMaterialPurchase() {
       queryClient.invalidateQueries({ queryKey: ['low-stock'] });
       queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-accounts'] });
       queryClient.invalidateQueries({ queryKey: ['account-balances'] });
+      queryClient.invalidateQueries({ queryKey: ['pdv-cofre-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] });
       toast({ title: t.successTitle, description: t.successDescription });
     },
     onError: (error) => {

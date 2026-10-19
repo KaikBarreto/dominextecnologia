@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Search, ShoppingBasket, CheckCircle2, X, ArrowLeft } from 'lucide-react';
+import { ShoppingCart, Search, ShoppingBasket, CheckCircle2, X, ArrowLeft, Barcode } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { MobilePillTabs, type PillTab } from '@/components/mobile/MobilePillTabs';
@@ -45,6 +46,7 @@ import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useBankPermissions } from '@/hooks/useBankPermissions';
 import { usePdvCashRegister } from '@/hooks/usePdvCashRegister';
+import { usePdvSaleDraftWorkspace } from '@/hooks/usePdvSaleDraftWorkspace';
 import {
   usePdvSale,
   usePdvCustomerCredit,
@@ -63,18 +65,18 @@ import {
   setLineDiscount,
   setLineQuantity,
   computeTotal,
+  computeSubtotal,
   type CartProduct,
   type CartState,
 } from '@/lib/pdv/cart';
 import { PdvProductCard, type PdvGridProduct } from '@/components/pdv/PdvProductCard';
 import { PdvCartPanel } from '@/components/pdv/PdvCartPanel';
-import { PdvCartSummary } from '@/components/pdv/PdvCartSummary';
-import { PdvCartItemsTable } from '@/components/pdv/PdvCartItemsTable';
-import { PdvNumpad } from '@/components/pdv/PdvNumpad';
 import { PdvSkeleton } from '@/components/pdv/PdvSkeleton';
 import { PdvPaymentDialog } from '@/components/pdv/PdvPaymentDialog';
 import { PdvQuickQuantityDialog } from '@/components/pdv/PdvQuickQuantityDialog';
 import { PdvAdvancedOptionsDialog, type PdvPendingAttachment } from '@/components/pdv/PdvAdvancedOptionsDialog';
+import { PdvOrderSwitcher } from '@/components/pdv/PdvOrderSwitcher';
+import { hasPdvSaleDraftContent, MAX_PDV_SALE_DRAFTS, type PdvSaleAttempt } from '@/lib/pdv/sale-drafts';
 import {
   clearPdvSaleEditDraft,
   isPdvSaleEditDraft,
@@ -242,19 +244,59 @@ export default function Pdv() {
     cashLoading;
 
   const pdvStocks = useMemo(() => stocks.filter((s) => s.purpose === 'pdv'), [stocks]);
-  const [selectedStockId, setSelectedStockId] = useState<string | null>(null);
-  useEffect(() => {
-    if (!selectedStockId && pdvStocks.length > 0) setSelectedStockId(pdvStocks[0].id);
-  }, [pdvStocks, selectedStockId]);
+  const maxTransactionDate = todayInTz(timezone);
+  const draftOwner = useMemo(
+    () => user?.id && profile?.company_id
+      ? { userId: user.id, companyId: profile.company_id }
+      : null,
+    [profile?.company_id, user?.id],
+  );
+  const {
+    workspace: draftWorkspace,
+    activeDraft,
+    updateDraft,
+    updateActiveDraft,
+    createDraft,
+    selectDraft,
+    deleteDraft,
+    syncIssue,
+  } = usePdvSaleDraftWorkspace({
+    owner: draftOwner,
+    transactionDate: maxTransactionDate,
+    defaultStockId: pdvStocks[0]?.id ?? null,
+  });
+
+  const cart = activeDraft?.cart ?? EMPTY_CART;
+  const activeDraftId = activeDraft?.id ?? null;
+  const selectedStockId = activeDraft?.stockId ?? pdvStocks[0]?.id ?? null;
+  const orderNotes = activeDraft?.notes ?? '';
+  const transactionDate = activeDraft?.transactionDate ?? maxTransactionDate;
+
+  const setCart = useCallback((next: SetStateAction<CartState>) => {
+    updateActiveDraft((draft) => ({
+      ...draft,
+      cart: typeof next === 'function' ? next(draft.cart) : next,
+      // Alterar qualquer dado material invalida a tentativa anterior deste
+      // pedido, mas não toca nas tentativas dos outros rascunhos.
+      attempt: null,
+    }));
+  }, [updateActiveDraft]);
+
+  const setSelectedStockId = useCallback((stockId: string | null) => {
+    updateActiveDraft((draft) => ({ ...draft, stockId, attempt: null }));
+  }, [updateActiveDraft]);
+
+  const setOrderNotes = useCallback((notes: string) => {
+    updateActiveDraft((draft) => ({ ...draft, notes, attempt: null }));
+  }, [updateActiveDraft]);
 
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
-  const [cart, setCart] = useState(EMPTY_CART);
   const editSourceOrderId = new URLSearchParams(location.search).get('editar');
-  const [saleEditDraft, setSaleEditDraft] = useState<PdvSaleEditDraft | null>(null);
+  const [saleEditDrafts, setSaleEditDrafts] = useState<Record<string, PdvSaleEditDraft>>({});
+  const saleEditDraft = activeDraft ? saleEditDrafts[activeDraft.id] ?? null : null;
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
-  const [discountCents, setDiscountCents] = useState(0);
   const [paymentOpen, setPaymentOpen] = useState(false);
   // "Opções avançadas" (retrodatar o lançamento + anexar foto, pedido do CEO
   // 2026-10-19) e a observação do pedido, que mora ao lado delas na coluna da
@@ -266,14 +308,8 @@ export default function Pdv() {
   // adivinhar por um texto cinza). O servidor só recebe data quando ela é
   // DIFERENTE do dia da empresa (ver `handleFinalizeSale`); igual a hoje
   // continua mandando `null`, caminho feliz intacto.
-  const [orderNotes, setOrderNotes] = useState('');
-  const [transactionDate, setTransactionDate] = useState(() => todayInTz(timezone));
-  // Marca que o OPERADOR escolheu uma data (não é só o relógio correndo).
-  // Sem isto, o efeito abaixo (que resincroniza com o dia da empresa quando
-  // `timezone` chega do servidor, trocando o fuso-padrão pelo real) pisaria
-  // por cima de uma escolha deliberada de data retroativa.
-  const transactionDateTouchedRef = useRef(false);
-  const [pendingAttachments, setPendingAttachments] = useState<PdvPendingAttachment[]>([]);
+  const [attachmentsByDraft, setAttachmentsByDraft] = useState<Record<string, PdvPendingAttachment[]>>({});
+  const pendingAttachments = activeDraft ? attachmentsByDraft[activeDraft.id] ?? [] : [];
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(false);
   // Modal rápido de "quantos?" — só no caminho da BUSCA (ver
@@ -294,15 +330,29 @@ export default function Pdv() {
    * idempotência, pra o retry reaproveitar os dois. `signature` amarra a
    * tentativa ao carrinho que a originou (ver `cartSignature`).
    */
-  const attemptRef = useRef<{ signature: string; orderId: string | null; clientRequestId: string } | null>(
-    null,
-  );
-  const editDraftHydratedRef = useRef(false);
+  const attemptByDraftRef = useRef<Map<string, PdvSaleAttempt>>(new Map());
+  const paymentSnapshotRef = useRef<{
+    draftId: string;
+    cart: CartState;
+    stockId: string | null;
+    notes: string;
+    transactionDate: string;
+    editDraft: PdvSaleEditDraft | null;
+    attachments: PdvPendingAttachment[];
+  } | null>(null);
+  const editDraftHydratedRef = useRef<Set<string>>(new Set());
 
   // Rascunho é isolado por usuário + empresa e por pedido. Em terminal
   // compartilhado, trocar de conta nunca pode exibir dados da venda anterior.
   useEffect(() => {
-    if (saleEditDraft || !editSourceOrderId || !user?.id || !profile?.company_id) return;
+    if (!activeDraft || !editSourceOrderId || !user?.id || !profile?.company_id) return;
+    const alreadyAssigned = Object.entries(saleEditDrafts).find(
+      ([, draft]) => draft.sourceOrderId === editSourceOrderId,
+    );
+    if (alreadyAssigned) {
+      if (alreadyAssigned[0] !== activeDraft.id) selectDraft(alreadyAssigned[0]);
+      return;
+    }
     const stateDraft = (location.state as { pdvSaleEditDraft?: PdvSaleEditDraft } | null)
       ?.pdvSaleEditDraft;
     const owner = { userId: user.id, companyId: profile.company_id };
@@ -313,12 +363,12 @@ export default function Pdv() {
             ...owner,
           });
     if (draft) {
-      setSaleEditDraft(draft);
+      setSaleEditDrafts((current) => ({ ...current, [activeDraft.id]: draft }));
       return;
     }
     toast({ variant: 'destructive', title: t.editDraft.missing });
     navigate(PDV_SALE_PATH, { replace: true });
-  }, [editSourceOrderId, location.state, navigate, profile?.company_id, saleEditDraft, t.editDraft.missing, toast, user?.id]);
+  }, [activeDraft, editSourceOrderId, location.state, navigate, profile?.company_id, saleEditDrafts, selectDraft, t.editDraft.missing, toast, user?.id]);
 
   const formatCurrency = (value: number) => formatMoney(value, currency, locale);
   const currencySymbol = useMemo(() => getCurrencySymbol(currency, locale), [currency, locale]);
@@ -332,24 +382,13 @@ export default function Pdv() {
   }, [currency, locale]);
   const currencyMinorScale = 10 ** currencyFractionDigits;
 
-  // "Hoje" no fuso DA EMPRESA, não no do aparelho — é o teto que o servidor
-  // também usa (`public.company_today`) pra recusar data futura em
-  // `pdv_settle_order`. O `DatePicker` já trava no `max`; o servidor valida
-  // de novo (defesa em profundidade).
-  const maxTransactionDate = todayInTz(timezone);
-
-  // `timezone` nasce com o fuso-PADRÃO (`America/Sao_Paulo`, ver
-  // `AppLocaleContext`) e troca pelo fuso REAL da empresa quando
-  // `company_settings` carrega. Se isso acontecer bem na virada do dia (os
-  // dois fusos discordando sobre "hoje"), o campo precisa acompanhar — MAS só
-  // enquanto o operador não tiver escolhido uma data com a própria mão.
-  useEffect(() => {
-    if (!transactionDateTouchedRef.current) setTransactionDate(maxTransactionDate);
-  }, [maxTransactionDate]);
-
   function handleTransactionDateChange(value: string) {
-    transactionDateTouchedRef.current = true;
-    setTransactionDate(value);
+    updateActiveDraft((draft) => ({
+      ...draft,
+      transactionDate: value,
+      transactionDateTouched: true,
+      attempt: null,
+    }));
   }
 
   /**
@@ -360,47 +399,85 @@ export default function Pdv() {
    * `order_id` — ver `handleFinalizeSale`.
    */
   async function handleAttachFiles(files: File[]) {
+    if (!activeDraft) return;
+    const draftId = activeDraft.id;
     setAttachmentBusy(true);
-    try {
-      const next: PdvPendingAttachment[] = [];
-      for (const file of files) {
-        if (!file.type.startsWith('image/')) continue;
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) continue;
+      const id = crypto.randomUUID();
+      const sourcePreviewUrl = URL.createObjectURL(file);
+      setAttachmentsByDraft((current) => ({
+        ...current,
+        [draftId]: [
+          ...(current[draftId] ?? []),
+          { id, file, previewUrl: sourcePreviewUrl, status: 'processing', progress: 12 },
+        ],
+      }));
+      try {
         const compressed = await processImageFile(file);
-        next.push({ id: crypto.randomUUID(), file: compressed, previewUrl: URL.createObjectURL(compressed) });
+        const compressedPreviewUrl = URL.createObjectURL(compressed);
+        setAttachmentsByDraft((current) => ({
+          ...current,
+          [draftId]: (current[draftId] ?? []).map((attachment) =>
+            attachment.id === id
+              ? { ...attachment, file: compressed, previewUrl: compressedPreviewUrl, status: 'ready', progress: 100 }
+              : attachment,
+          ),
+        }));
+        URL.revokeObjectURL(sourcePreviewUrl);
+      } catch {
+        setAttachmentsByDraft((current) => ({
+          ...current,
+          [draftId]: (current[draftId] ?? []).map((attachment) =>
+            attachment.id === id
+              ? { ...attachment, status: 'error', progress: 0, errorMessage: t.toast.attachFailed }
+              : attachment,
+          ),
+        }));
       }
-      if (next.length) setPendingAttachments((prev) => [...prev, ...next]);
-    } catch {
-      toast({ variant: 'destructive', title: t.toast.attachFailed });
-    } finally {
-      setAttachmentBusy(false);
     }
+    setAttachmentBusy(false);
   }
 
   function handleRemoveAttachment(id: string) {
-    setPendingAttachments((prev) => {
-      const target = prev.find((p) => p.id === id);
+    if (!activeDraft) return;
+    const draftId = activeDraft.id;
+    setAttachmentsByDraft((current) => {
+      const list = current[draftId] ?? [];
+      const target = list.find((p) => p.id === id);
       if (target) URL.revokeObjectURL(target.previewUrl);
-      return prev.filter((p) => p.id !== id);
+      return { ...current, [draftId]: list.filter((p) => p.id !== id) };
     });
   }
 
   /** Abandona observação, data retroativa e fotos pendentes do rascunho atual. */
-  function resetOrderDraftExtras() {
-    setOrderNotes('');
-    transactionDateTouchedRef.current = false;
-    setTransactionDate(maxTransactionDate);
-    setPendingAttachments((prev) => {
-      prev.forEach((p) => URL.revokeObjectURL(p.previewUrl));
-      return [];
+  function resetOrderDraftExtras(draftId = activeDraft?.id) {
+    if (!draftId) return;
+    updateDraft(draftId, (draft) => ({
+      ...draft,
+      notes: '',
+      transactionDate: maxTransactionDate,
+      transactionDateTouched: false,
+      attempt: null,
+    }));
+    setAttachmentsByDraft((current) => {
+      (current[draftId] ?? []).forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      const { [draftId]: _removed, ...rest } = current;
+      return rest;
     });
   }
 
-  function clearSaleEditContext() {
-    if (!saleEditDraft) return;
-    clearPdvSaleEditDraft(saleEditDraft.sourceOrderId);
-    setSaleEditDraft(null);
-    editDraftHydratedRef.current = false;
-    navigate(PDV_SALE_PATH, { replace: true });
+  function clearSaleEditContext(draftId = activeDraft?.id) {
+    if (!draftId) return;
+    const editDraft = saleEditDrafts[draftId];
+    if (!editDraft) return;
+    clearPdvSaleEditDraft(editDraft.sourceOrderId);
+    setSaleEditDrafts((current) => {
+      const { [draftId]: _removed, ...rest } = current;
+      return rest;
+    });
+    editDraftHydratedRef.current.delete(draftId);
+    if (editSourceOrderId === editDraft.sourceOrderId) navigate(PDV_SALE_PATH, { replace: true });
   }
 
   // Produtos vendáveis, com saldo calculado no local selecionado. Filtra pela
@@ -436,64 +513,73 @@ export default function Pdv() {
   // quantidade original mesmo quando ela consumiu as últimas unidades; a RPC
   // restaura a origem antes de baixar a substituta, na mesma transação.
   useEffect(() => {
-    if (!saleEditDraft || editDraftHydratedRef.current || isLoadingPdv) return;
+    if (!activeDraftId || !saleEditDraft || editDraftHydratedRef.current.has(activeDraftId) || isLoadingPdv) return;
+    const draftId = activeDraftId;
     const draftStockId =
       saleEditDraft.stockId && pdvStocks.some((stock) => stock.id === saleEditDraft.stockId)
         ? saleEditDraft.stockId
         : (selectedStockId ?? pdvStocks[0]?.id ?? null);
     if (!draftStockId) return;
 
-    setSelectedStockId(draftStockId);
-    setCart({
-      customerId: saleEditDraft.customerId,
-      discount: saleEditDraft.discountAmount,
-      lines: saleEditDraft.items.map((source) => {
-        const current = items.find((item) => item.id === source.inventoryId);
-        return {
-          inventoryId: source.inventoryId,
-          name: source.description,
-          imageUrl: current?.image_url ?? null,
-          unitPrice: source.unitPrice,
-          unitCost: source.unitCost,
-          discountAmount: source.discountAmount,
-          quantity: source.quantity,
-          availableQuantity: Math.max(
-            source.quantity,
-            getQuantityForStock(source.inventoryId, draftStockId),
-          ),
-        };
-      }),
-    });
-    setDiscountCents(Math.round(saleEditDraft.discountAmount * currencyMinorScale));
-    setOrderNotes(saleEditDraft.notes);
-    transactionDateTouchedRef.current = true;
-    setTransactionDate(saleEditDraft.transactionDate);
-    editDraftHydratedRef.current = true;
+    updateDraft(draftId, (draft) => ({
+      ...draft,
+      stockId: draftStockId,
+      cart: {
+        customerId: saleEditDraft.customerId,
+        discount: saleEditDraft.discountAmount,
+        lines: saleEditDraft.items.map((source) => {
+          const current = items.find((item) => item.id === source.inventoryId);
+          return {
+            inventoryId: source.inventoryId,
+            name: source.description,
+            imageUrl: current?.image_url ?? null,
+            unitPrice: source.unitPrice,
+            unitCost: source.unitCost,
+            discountAmount: source.discountAmount,
+            quantity: source.quantity,
+            availableQuantity: Math.max(
+              source.quantity,
+              getQuantityForStock(source.inventoryId, draftStockId),
+            ),
+          };
+        }),
+      },
+      notes: saleEditDraft.notes,
+      transactionDate: saleEditDraft.transactionDate,
+      transactionDateTouched: true,
+      attempt: null,
+    }));
+    editDraftHydratedRef.current.add(draftId);
   }, [
+    activeDraftId,
     saleEditDraft,
     isLoadingPdv,
     pdvStocks,
     selectedStockId,
     items,
     getQuantityForStock,
-    currencyMinorScale,
+    updateDraft,
   ]);
 
   // Atualiza o teto quando o saldo do catálogo mudar, sem jamais baixar do que
   // já está no carrinho. A RPC continua sendo a autoridade final de estoque.
   useEffect(() => {
-    if (!saleEditDraft || !editDraftHydratedRef.current || !selectedStockId) return;
-    setCart((current) => ({
-      ...current,
-      lines: current.lines.map((line) => ({
-        ...line,
-        availableQuantity: Math.max(
-          line.quantity,
-          getQuantityForStock(line.inventoryId, selectedStockId),
-        ),
-      })),
+    if (!activeDraftId || !saleEditDraft || !editDraftHydratedRef.current.has(activeDraftId) || !selectedStockId) return;
+    const draftId = activeDraftId;
+    updateDraft(draftId, (draft) => ({
+      ...draft,
+      cart: {
+        ...draft.cart,
+        lines: draft.cart.lines.map((line) => ({
+          ...line,
+          availableQuantity: Math.max(
+            line.quantity,
+            getQuantityForStock(line.inventoryId, selectedStockId),
+          ),
+        })),
+      },
     }));
-  }, [saleEditDraft, selectedStockId, items, getQuantityForStock]);
+  }, [activeDraftId, saleEditDraft, selectedStockId, items, getQuantityForStock, updateDraft]);
 
   const categoryFiltered = useMemo(() => {
     if (activeCategory === 'all') return sellableProducts;
@@ -503,8 +589,28 @@ export default function Pdv() {
   const searchFiltered = useMemo(() => {
     const { term } = extractMultiplierPrefix(search);
     if (!term.trim()) return categoryFiltered;
-    return categoryFiltered.filter((p) => fuzzyIncludesAny([p.name, p.barcode], term));
-  }, [categoryFiltered, search]);
+    return categoryFiltered.filter((p) => {
+      const groupName = groups.find((group) => group.id === p.groupId)?.name ?? '';
+      return fuzzyIncludesAny([p.name, p.barcode, groupName], term);
+    });
+  }, [categoryFiltered, groups, search]);
+
+  const catalogSections = useMemo(() => {
+    const byGroup = new Map<string | null, typeof searchFiltered>();
+    for (const product of searchFiltered) {
+      const current = byGroup.get(product.groupId) ?? [];
+      current.push(product);
+      byGroup.set(product.groupId, current);
+    }
+    return [
+      ...groups
+        .map((group) => ({ id: group.id, label: group.name, items: byGroup.get(group.id) ?? [] }))
+        .filter((section) => section.items.length > 0),
+      ...(byGroup.get(null)?.length
+        ? [{ id: 'uncategorized', label: t.categories.uncategorized, items: byGroup.get(null)! }]
+        : []),
+    ];
+  }, [groups, searchFiltered, t.categories.uncategorized]);
 
   const categoryTabs: PillTab[] = useMemo(
     () => [
@@ -580,6 +686,16 @@ export default function Pdv() {
       return;
     }
     setCart(result.cart);
+  }
+
+  function handleProductSelect(product: PdvGridProduct) {
+    const { term } = extractMultiplierPrefix(search);
+    if (term.trim()) {
+      setQuickQuantityProduct(product);
+      return;
+    }
+    tryAdd(product, 1);
+    focusSearch();
   }
 
   function focusSearch() {
@@ -685,17 +801,70 @@ export default function Pdv() {
     [accounts, cofre?.conta_id],
   );
 
-  const { credit: customerCredit } = usePdvCustomerCredit(cart.customerId);
+  // O diálogo sempre lê o snapshot congelado no instante em que foi aberto.
+  // Trocar de pedido noutra aba ou por evento de storage enquanto o modal
+  // está aberto nunca pode mudar cliente, total ou crédito no meio da cobrança.
+  const paymentCart = paymentOpen && paymentSnapshotRef.current
+    ? paymentSnapshotRef.current.cart
+    : cart;
+  const { credit: customerCredit } = usePdvCustomerCredit(paymentCart.customerId);
   const customerName = useMemo(
-    () => customers.find((c) => c.id === cart.customerId)?.name ?? null,
-    [customers, cart.customerId],
+    () => customers.find((c) => c.id === paymentCart.customerId)?.name ?? null,
+    [customers, paymentCart.customerId],
+  );
+  const orderSwitcherItems = useMemo(
+    () => draftWorkspace.drafts.map((draft) => ({
+      id: draft.id,
+      code: `#${draft.sequence}`,
+      customer: customers.find((customer) => customer.id === draft.cart.customerId)?.name ?? '',
+      total: computeTotal(draft.cart),
+      itemCount: draft.cart.lines.reduce((sum, line) => sum + line.quantity, 0),
+      hasContent: hasPdvSaleDraftContent(draft) || (attachmentsByDraft[draft.id]?.length ?? 0) > 0,
+      editing: !!saleEditDrafts[draft.id],
+    })),
+    [attachmentsByDraft, customers, draftWorkspace.drafts, saleEditDrafts],
   );
 
+  function handleCreateDraft() {
+    if (draftWorkspace.drafts.length >= MAX_PDV_SALE_DRAFTS) {
+      toast({ title: t.orders.limitReached });
+      return;
+    }
+    createDraft();
+    setPaymentOpen(false);
+    paymentSnapshotRef.current = null;
+    setTimeout(() => searchInputRef.current?.focus(), 0);
+  }
+
+  function handleDeleteDraft(draftId: string) {
+    attemptByDraftRef.current.delete(draftId);
+    clearSaleEditContext(draftId);
+    setAttachmentsByDraft((current) => {
+      (current[draftId] ?? []).forEach((attachment) => URL.revokeObjectURL(attachment.previewUrl));
+      const { [draftId]: _removed, ...rest } = current;
+      return rest;
+    });
+    deleteDraft(draftId);
+    setTimeout(() => searchInputRef.current?.focus(), 0);
+  }
+
   function openPayment() {
-    if (!canPay) {
+    if (!canPay || !activeDraft) {
       toast({ variant: 'destructive', title: t.payment.issues.sem_itens });
       return;
     }
+    paymentSnapshotRef.current = {
+      draftId: activeDraft.id,
+      cart: {
+        ...activeDraft.cart,
+        lines: activeDraft.cart.lines.map((line) => ({ ...line })),
+      },
+      stockId: activeDraft.stockId,
+      notes: activeDraft.notes,
+      transactionDate: activeDraft.transactionDate,
+      editDraft: saleEditDrafts[activeDraft.id] ?? null,
+      attachments: [...(attachmentsByDraft[activeDraft.id] ?? [])],
+    };
     setSaleSuccess(null);
     setCartDrawerOpen(false);
     setPaymentOpen(true);
@@ -712,9 +881,14 @@ export default function Pdv() {
    *
    * Erro sobe pro diálogo, que mostra o texto PT-BR do servidor via
    * `pdvCashErrorMessage` (nunca `getErrorMessage`, que engoliria a mensagem).
-   */
+  */
   async function handleFinalizeSale(payments: Parameters<typeof settleOrder.mutateAsync>[0]['payments']) {
-    const saleItems = cart.lines.map((line) => ({
+    const snapshot = paymentSnapshotRef.current;
+    if (!snapshot) throw new Error(t.payment.issues.sem_itens);
+    const { draftId, cart: paymentCart, stockId, notes, transactionDate: paymentDate } = snapshot;
+    const editDraft = snapshot.editDraft;
+    const attachments = snapshot.attachments.filter((attachment) => (attachment.status ?? 'ready') === 'ready');
+    const saleItems = paymentCart.lines.map((line) => ({
       inventoryId: line.inventoryId,
       description: line.name,
       quantity: line.quantity,
@@ -725,32 +899,35 @@ export default function Pdv() {
 
     let result: PdvSettleResult;
 
-    if (saleEditDraft) {
+    if (editDraft) {
       // ÚNICA escrita financeira do fluxo de edição. Se qualquer validação,
       // estorno, item, pagamento ou baixa de estoque falhar, o PostgreSQL
       // reverte tudo e a venda original continua paga.
       result = await replaceOrder.mutateAsync({
-        sourceOrderId: saleEditDraft.sourceOrderId,
-        customerId: cart.customerId,
+        sourceOrderId: editDraft.sourceOrderId,
+        customerId: paymentCart.customerId,
         terminalId,
-        stockId: selectedStockId,
+        stockId,
         cashSessionId,
-        discountAmount: cart.discount,
-        notes: orderNotes,
+        discountAmount: paymentCart.discount,
+        notes,
         items: saleItems,
         payments,
-        clientRequestId: saleEditDraft.clientRequestId,
-        transactionDate,
+        clientRequestId: editDraft.clientRequestId,
+        transactionDate: paymentDate,
       });
 
       // Fotos novas não participam do saldo/estoque. Elas sobem depois da
       // substituição atômica; falha de Storage gera aviso, nunca meia venda.
       let attachmentFailed = false;
-      for (const pending of pendingAttachments) {
+      for (const pending of attachments) {
         try {
           await uploadAttachment.mutateAsync({ orderId: result.order_id, file: pending.file });
           URL.revokeObjectURL(pending.previewUrl);
-          setPendingAttachments((prev) => prev.filter((p) => p.id !== pending.id));
+          setAttachmentsByDraft((current) => ({
+            ...current,
+            [draftId]: (current[draftId] ?? []).filter((item) => item.id !== pending.id),
+          }));
         } catch {
           attachmentFailed = true;
         }
@@ -758,47 +935,60 @@ export default function Pdv() {
       if (attachmentFailed) toast({ variant: 'destructive', title: t.toast.attachFailed });
     } else {
       const signature = cartSignature(
-        cart,
-        selectedStockId,
+        paymentCart,
+        stockId,
         cashSessionId,
-        orderNotes,
-        transactionDate,
+        notes,
+        paymentDate,
         null,
       );
-      let attempt = attemptRef.current;
+      let attempt = attemptByDraftRef.current.get(draftId)
+        ?? draftWorkspace.drafts.find((draft) => draft.id === draftId)?.attempt
+        ?? null;
       if (!attempt || attempt.signature !== signature) {
         attempt = { signature, orderId: null, clientRequestId: crypto.randomUUID() };
-        attemptRef.current = attempt;
+        attemptByDraftRef.current.set(draftId, attempt);
+        updateDraft(draftId, (draft) => ({ ...draft, attempt }));
       }
 
       if (!attempt.orderId) {
         attempt.orderId = await createOrder.mutateAsync({
-          customerId: cart.customerId,
+          customerId: paymentCart.customerId,
           terminalId,
-          stockId: selectedStockId,
+          stockId,
           cashSessionId,
-          discountAmount: cart.discount,
-          notes: orderNotes,
+          discountAmount: paymentCart.discount,
+          notes,
           replacesOrderId: null,
           items: saleItems,
         });
+        attemptByDraftRef.current.set(draftId, { ...attempt });
+        updateDraft(draftId, (draft) => ({ ...draft, attempt: { ...attempt! } }));
       }
+      const createdOrderId = attempt.orderId;
+      if (!createdOrderId) throw new Error(t.payment.issues.sem_itens);
 
-      for (const pending of pendingAttachments) {
+      for (const pending of attachments) {
         try {
-          await uploadAttachment.mutateAsync({ orderId: attempt.orderId, file: pending.file });
+          await uploadAttachment.mutateAsync({ orderId: createdOrderId, file: pending.file });
         } catch {
           throw new Error(t.toast.attachFailed);
         }
         URL.revokeObjectURL(pending.previewUrl);
-        setPendingAttachments((prev) => prev.filter((p) => p.id !== pending.id));
+        setAttachmentsByDraft((current) => ({
+          ...current,
+          [draftId]: (current[draftId] ?? []).filter((item) => item.id !== pending.id),
+        }));
+        // Se a liquidação falhar depois do upload, o retry conserva somente
+        // as fotos ainda não enviadas e não duplica anexos já persistidos.
+        snapshot.attachments = snapshot.attachments.filter((item) => item.id !== pending.id);
       }
 
       result = await settleOrder.mutateAsync({
-        orderId: attempt.orderId,
+        orderId: createdOrderId,
         payments,
         clientRequestId: attempt.clientRequestId,
-        transactionDate: transactionDate === maxTransactionDate ? null : transactionDate,
+        transactionDate: paymentDate === maxTransactionDate ? null : paymentDate,
       });
     }
 
@@ -810,19 +1000,18 @@ export default function Pdv() {
     // Deu certo: a tentativa morre, o carrinho zera e o foco volta pra busca.
     // Balcão é fila — a tela tem que estar pronta pro próximo cliente sem
     // clique extra, então o sucesso é um aviso na tela, não um modal.
-    attemptRef.current = null;
+    attemptByDraftRef.current.delete(draftId);
+    paymentSnapshotRef.current = null;
     setPaymentOpen(false);
-    // `EMPTY_CART`, não `clearCart`: o `clearCart` PRESERVA o cliente de
-    // propósito (cancelar o carrinho e remontar pro mesmo cliente é o caso
-    // normal), mas depois da venda FECHADA o próximo da fila é outra pessoa.
-    // Herdar o cliente aqui faria a próxima venda no fiado cair na ficha de
-    // quem já foi embora — erro de dinheiro, não de UI.
-    setCart(EMPTY_CART);
-    setDiscountCents(0);
-    clearSaleEditContext();
-    // Observação/data já foram consumidas por este pedido; fotos já subiram
-    // no loop acima (a lista já está vazia, mas o revoke+reset é defensivo).
-    resetOrderDraftExtras();
+    clearSaleEditContext(draftId);
+    setAttachmentsByDraft((current) => {
+      (current[draftId] ?? []).forEach((attachment) => URL.revokeObjectURL(attachment.previewUrl));
+      const { [draftId]: _removed, ...rest } = current;
+      return rest;
+    });
+    // Remove EXATAMENTE o rascunho finalizado. Outro pedido que esteja ativo
+    // (por storage event/troca rápida) não é limpo nem recebe o cliente dele.
+    deleteDraft(draftId);
     setSaleSuccess({
       number: Number(result.numero) || 0,
       total: Number(result.total) || 0,
@@ -1098,22 +1287,8 @@ export default function Pdv() {
     cardCompact,
   ]);
 
-  function handleNumpadDigit(digit: string) {
-    setSearch((prev) => prev + digit);
-    searchInputRef.current?.focus();
-  }
-  function handleNumpadMultiplier() {
-    setSearch((prev) => `${prev}*`);
-    searchInputRef.current?.focus();
-  }
-  function handleNumpadBackspace() {
-    setSearch((prev) => prev.slice(0, -1));
-    searchInputRef.current?.focus();
-  }
-
   function handleDiscountChange(raw: string) {
     const digits = raw.replace(/\D/g, '');
-    setDiscountCents(parseInt(digits || '0', 10));
     setCart((prev) => setDiscount(prev, parseInt(digits || '0', 10) / currencyMinorScale));
   }
   function handleDiscountPaste(e: React.ClipboardEvent<HTMLInputElement>) {
@@ -1121,25 +1296,24 @@ export default function Pdv() {
     if (value == null) return;
     e.preventDefault();
     const minor = Math.round(value * currencyMinorScale);
-    setDiscountCents(minor);
     setCart((prev) => setDiscount(prev, minor / currencyMinorScale));
   }
-  const discountDisplay = discountCents
-    ? formatNumber(discountCents / currencyMinorScale, locale, {
+  const discountDisplay = cart.discount
+    ? formatNumber(cart.discount, locale, {
         minimumFractionDigits: currencyFractionDigits,
         maximumFractionDigits: currencyFractionDigits,
       })
     : '';
 
   function handleConfirmClearCart() {
-    attemptRef.current = null;
+    if (!activeDraftId) return;
+    attemptByDraftRef.current.delete(activeDraftId);
     setCart((prev) => clearCart(prev));
-    setDiscountCents(0);
     // Observação, data retroativa e fotos pendentes são deste RASCUNHO de
     // pedido, não do cliente (que `clearCart` preserva de propósito) —
     // cancelar o carrinho abandona o rascunho inteiro.
-    resetOrderDraftExtras();
-    clearSaleEditContext();
+    resetOrderDraftExtras(activeDraftId);
+    clearSaleEditContext(activeDraftId);
     setConfirmClearOpen(false);
     focusSearch();
   }
@@ -1166,13 +1340,12 @@ export default function Pdv() {
     // busca — mesma régua de velocidade do balcão que já vale pro Enter com
     // 1 resultado de busca.
     onConfirmQuantityEdit: focusSearch,
-    notes: orderNotes,
-    onNotesChange: setOrderNotes,
     onOpenAdvancedOptions: () => setAdvancedOptionsOpen(true),
     advancedOptionsActive: transactionDate !== maxTransactionDate || pendingAttachments.length > 0,
     texts: {
       title: t.cart.title,
       itemsCount: t.cart.itemsCount,
+      draftHint: t.cart.draftHint,
       empty: t.cart.empty,
       emptyHint: t.cart.emptyHint,
       subtotal: t.cart.subtotal,
@@ -1185,6 +1358,8 @@ export default function Pdv() {
       removeLine: t.cart.removeLine,
       clearCart: t.cart.clearCart,
       noPhoto: t.stock.noPhoto,
+      openProductPhoto: t.cart.openProductPhoto,
+      productPhotoViewerDescription: t.cart.productPhotoViewerDescription,
       quantityEditLabel: t.cart.quantityEditLabel,
       itemDiscount: t.cart.itemDiscount,
       itemDiscountPlaceholder: t.cart.itemDiscountPlaceholder,
@@ -1198,54 +1373,6 @@ export default function Pdv() {
       notesLabel: t.cart.notesLabel,
       notesPlaceholder: t.cart.notesPlaceholder,
       advancedOptionsTrigger: t.advancedOptions.trigger,
-    },
-  };
-
-  // Desktop/tablet: resumo (coluna da direita) e itens (tabela, coluna dos
-  // produtos) ficam separados — ver `PdvCartSummary`/`PdvCartItemsTable`.
-  // Mobile continua intacto com `cartPanelProps` (drawer, PdvCartPanel acima).
-  const cartSummaryProps = {
-    cart,
-    customers,
-    formatCurrency,
-    currencySymbol,
-    discountDisplay,
-    onDiscountChange: handleDiscountChange,
-    onDiscountPaste: handleDiscountPaste,
-    onCustomerChange: cartPanelProps.onCustomerChange,
-    onRequestPayment: cartPanelProps.onRequestPayment,
-    cashClosed: cartPanelProps.cashClosed,
-    onGoToCashPanel: cartPanelProps.onGoToCashPanel,
-    notes: cartPanelProps.notes,
-    onNotesChange: cartPanelProps.onNotesChange,
-    onOpenAdvancedOptions: cartPanelProps.onOpenAdvancedOptions,
-    advancedOptionsActive: cartPanelProps.advancedOptionsActive,
-    texts: cartPanelProps.texts,
-  };
-  const cartItemsProps = {
-    cart,
-    formatCurrency,
-    onIncrement: cartPanelProps.onIncrement,
-    onSetQuantity: cartPanelProps.onSetQuantity,
-    onSetLineDiscount: cartPanelProps.onSetLineDiscount,
-    onRemove: cartPanelProps.onRemove,
-    onRequestClearCart: cartPanelProps.onRequestClearCart,
-    onConfirmQuantityEdit: cartPanelProps.onConfirmQuantityEdit,
-    texts: {
-      title: t.cart.title,
-      itemsCount: t.cart.itemsCount,
-      empty: t.cart.empty,
-      emptyHint: t.cart.emptyHint,
-      removeLine: t.cart.removeLine,
-      clearCart: t.cart.clearCart,
-      noPhoto: t.stock.noPhoto,
-      columnProduct: t.cart.columnProduct,
-      columnQuantity: t.cart.columnQuantity,
-      quantityEditLabel: t.cart.quantityEditLabel,
-      discountLabel: t.cart.itemDiscount,
-      discountPlaceholder: t.cart.itemDiscountPlaceholder,
-      columnUnitPrice: t.cart.columnUnitPrice,
-      columnLineTotal: t.cart.columnLineTotal,
     },
   };
 
@@ -1300,28 +1427,53 @@ export default function Pdv() {
   // fluxo normal (visível) e o outro escondido numa sonda (`headerProbeRef`),
   // só pra medir "quanto esse troca economizaria" sem precisar de uma
   // segunda rodada de render pra decidir.
+  const operatorName = profile?.full_name?.trim() || user?.email || '';
+  const operatorInitials = operatorName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toLocaleUpperCase(locale))
+    .join('') || 'OP';
+  const activeTerminalName = terminals.find((terminal) => terminal.id === terminalId)?.name ?? '';
   const fullHeaderBlock = (
-    <div className="flex flex-col gap-4">
-      {backToCashPanel}
-      <PageHeader title={t.title} subtitle={t.subtitle} icon={ShoppingCart} />
-    </div>
+    <header className="flex items-center border-b border-border pb-3">
+      <Button type="button" variant="ghost" size="icon" onClick={() => navigate(PDV_PANEL_PATH)} aria-label={t.backToCashPanel}>
+        <ArrowLeft className="h-4 w-4" />
+      </Button>
+      <div className="min-w-0">
+        <h1 className="truncate text-xl font-extrabold tracking-tight text-foreground">{t.title}</h1>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <span className={cn('inline-flex items-center gap-1.5 font-semibold', hasOpenCashSession ? 'text-success' : 'text-warning')}>
+            <span className={cn('h-2 w-2 rounded-full', hasOpenCashSession ? 'bg-success' : 'bg-warning')} />
+            {hasOpenCashSession ? t.header.cashOpen : t.header.cashClosed}
+          </span>
+          {activeTerminalName && <span>{activeTerminalName}</span>}
+          {operatorName && (
+            <span className="inline-flex items-center gap-1.5">
+              <Avatar className="h-5 w-5 ring-1 ring-border">
+                <AvatarImage src={profile?.avatar_url ?? undefined} alt={operatorName} className="object-cover" />
+                <AvatarFallback className="bg-primary text-[8px] font-bold text-primary-foreground">
+                  {operatorInitials}
+                </AvatarFallback>
+              </Avatar>
+              {t.header.operator.replace('{name}', operatorName)}
+            </span>
+          )}
+        </div>
+      </div>
+    </header>
   );
   const compactHeaderBlock = (
-    <div className="flex items-center gap-3">
-      <button
-        type="button"
-        onClick={() => navigate(PDV_PANEL_PATH)}
-        className="inline-flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
+    <header className="flex items-center gap-2 border-b border-border pb-2">
+      <Button type="button" variant="ghost" size="icon" onClick={() => navigate(PDV_PANEL_PATH)} aria-label={t.backToCashPanel}>
         <ArrowLeft className="h-4 w-4" />
-        {t.backToCashPanel}
-      </button>
-      <div className="h-5 w-px shrink-0 bg-border" aria-hidden="true" />
-      <div className="flex min-w-0 items-center gap-2">
-        <ShoppingCart className="h-6 w-6 shrink-0 text-foreground/70" />
-        <h1 className="truncate text-xl font-bold tracking-tight text-foreground">{t.title}</h1>
-      </div>
-    </div>
+      </Button>
+      <h1 className="min-w-0 flex-1 truncate text-xl font-extrabold tracking-tight text-foreground">{t.title}</h1>
+      <Avatar className="h-7 w-7 ring-1 ring-border">
+        <AvatarImage src={profile?.avatar_url ?? undefined} alt={operatorName} className="object-cover" />
+        <AvatarFallback className="bg-primary text-[9px] font-bold text-primary-foreground">{operatorInitials}</AvatarFallback>
+      </Avatar>
+    </header>
   );
 
   return (
@@ -1339,6 +1491,28 @@ export default function Pdv() {
           {headerCompressed ? fullHeaderBlock : compactHeaderBlock}
         </div>
       </div>
+
+      <PdvOrderSwitcher
+        orders={orderSwitcherItems}
+        activeId={activeDraftId ?? ''}
+        formatCurrency={formatCurrency}
+        texts={t.orders}
+        onSelect={(draftId) => {
+          setPaymentOpen(false);
+          paymentSnapshotRef.current = null;
+          selectDraft(draftId);
+          setTimeout(() => searchInputRef.current?.focus(), 0);
+        }}
+        onCreate={handleCreateDraft}
+        onDelete={handleDeleteDraft}
+        disabled={createOrder.isPending || settleOrder.isPending || replaceOrder.isPending}
+      />
+
+      {syncIssue && (
+        <NoticeBanner variant={syncIssue === 'conflict' ? 'warning' : 'info'}>
+          {t.draftSync[syncIssue]}
+        </NoticeBanner>
+      )}
 
       {saleEditDraft && (
         <NoticeBanner
@@ -1409,10 +1583,10 @@ export default function Pdv() {
               altura do carrinho pra decidir quantas linhas cabem. Mantém o
               MESMO `gap-3` que já existia entre busca e pills (visual
               idêntico a antes; só agrupou numa `div` pra dar um ref comum). */}
-          <div ref={topControlsRef} className="flex flex-col gap-3">
+          <div ref={topControlsRef} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-sm">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Barcode className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   ref={searchInputRef}
                   autoFocus
@@ -1420,8 +1594,11 @@ export default function Pdv() {
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={handleSearchKeyDown}
                   placeholder={t.search.placeholder}
-                  className="pl-9"
+                  className="h-12 pl-10 pr-14 text-base"
                 />
+                <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground sm:inline-flex">
+                  F2
+                </span>
               </div>
               {pdvStocks.length > 1 && (
                 <Select value={selectedStockId ?? undefined} onValueChange={setSelectedStockId}>
@@ -1508,13 +1685,9 @@ export default function Pdv() {
                 cn('flex-1 overflow-y-auto pr-1', GRID_FLOOR_CLASS[cardCompact ? 'compact' : 'full']),
             )}
           >
-            <div
-              ref={gridRef}
-              tabIndex={-1}
-              className="grid grid-cols-2 gap-2 outline-none min-[768px]:grid-cols-3 min-[1024px]:grid-cols-4 min-[1280px]:grid-cols-5"
-            >
+            <div ref={gridRef} tabIndex={-1} className="space-y-5 outline-none">
               {searchFiltered.length === 0 ? (
-                <div className="col-span-full">
+                <div>
                   <EmptyState
                     icon={<Search className="h-10 w-10" />}
                     title={sellableProducts.length === 0 ? t.emptyCatalog.title : t.search.noResults}
@@ -1522,75 +1695,44 @@ export default function Pdv() {
                   />
                 </div>
               ) : (
-                searchFiltered.map((p) => (
-                  <PdvProductCard
-                    key={p.inventoryId}
-                    product={p}
-                    formatCurrency={formatCurrency}
-                    outOfStockLabel={t.stock.outOfStock}
-                    availableLabel={t.stock.available}
-                    noPhotoLabel={t.stock.noPhoto}
-                    compact={cardCompact}
-                    onSelect={(product) => {
-                      // Modal de quantidade SÓ no caminho da busca: card
-                      // clicado com texto digitado na busca é "escolher um
-                      // item pela busca" (pedido do CEO 2026-10-18). Grade
-                      // sem busca ativa (navegação por toque) continua
-                      // direto — ali o toque É o gesto, parar pra perguntar
-                      // quantidade mataria a velocidade do balcão.
-                      const { term } = extractMultiplierPrefix(search);
-                      if (term.trim()) {
-                        setQuickQuantityProduct(product);
-                        return;
-                      }
-                      tryAdd(product, 1);
-                      focusSearch();
-                    }}
-                  />
+                catalogSections.map((section) => (
+                  <section key={section.id} aria-labelledby={`pdv-catalog-${section.id}`}>
+                    <div className="mb-2 flex items-center gap-2.5">
+                      <h2 id={`pdv-catalog-${section.id}`} className="shrink-0 text-sm font-bold text-foreground">
+                        {section.label}
+                      </h2>
+                      <div className="h-px min-w-4 flex-1 bg-border" aria-hidden="true" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 min-[768px]:grid-cols-3 min-[1024px]:grid-cols-4 min-[1280px]:grid-cols-5">
+                      {section.items.map((product) => (
+                        <PdvProductCard
+                          key={product.inventoryId}
+                          product={product}
+                          formatCurrency={formatCurrency}
+                          outOfStockLabel={t.stock.outOfStock}
+                          availableLabel={t.stock.available}
+                          noPhotoLabel={t.stock.noPhoto}
+                          compact={cardCompact}
+                          imageAspect="square"
+                          imageBackdrop="cutout"
+                          onSelect={handleProductSelect}
+                        />
+                      ))}
+                    </div>
+                  </section>
                 ))
               )}
             </div>
           </div>
 
-          {/* Itens do carrinho: desceram pra esta coluna, logo abaixo da
-              grade (desktop/tablet only — mobile usa o drawer de sempre).
-
-              ALTURA FIXA, não mais `min-h-[104px]` crescendo com o conteúdo
-              — pedido original do CEO 2026-10-19 ("a altura de quando tem 5
-              itens diferentes"), AJUSTADA no mesmo dia pra ser DERIVADA do
-              viewport (teto de 5 linhas, chão de 3 — ver `cartLines` no
-              `useLayoutEffect` acima): em telas mais baixas (1366×768) 5
-              linhas não cabem sem rolar a página, então a tela aceita até 3.
-              MEDIDO com Playwright (getBoundingClientRect): barra "Carrinho N
-              itens" = 53px, cabeçalho da tabela = 32px, cada linha = 48,5px
-              → `cartTableHeightPx`/`CART_HEIGHT_CLASS`. Fica CONGELADA
-              durante a venda (carrinho com item) — nunca muda de linhas
-              debaixo do dedo do operador. Passa do teto escolhido: fade +
-              chevron por dentro (`PdvScrollFadeContainer`), SEM "ver mais"
-              clicável — é scroll puro, então nunca cresce. */}
-          {!isMobileCart && (
-            <PdvCartItemsTable
-              {...cartItemsProps}
-              className={cn(CART_HEIGHT_CLASS[cartLines] ?? CART_HEIGHT_CLASS[CART_LINES_MAX], 'shrink-0')}
-            />
-          )}
         </div>
 
-        {/* Coluna da direita: só o RESUMO (cliente, subtotal, desconto,
-            total, aviso, ações). Sem lista de itens — ela desceu pra coluna
-            dos produtos. Sem numpad no desktop (fica só no tablet). */}
+        {/* O painel completo do pedido fica à direita, como no preview
+            aprovado: lista com altura contida/rolagem + resumo + CTA. */}
         {!isMobileCart && (
-          <Card className="w-full shrink-0 md:h-full md:w-80 lg:w-96">
-            <CardContent className="flex h-full flex-col justify-end p-0">
-              <PdvCartSummary {...cartSummaryProps} className="flex-1 overflow-y-auto" />
-              {showNumpad && (
-                <PdvNumpad
-                  onDigit={handleNumpadDigit}
-                  onMultiplier={handleNumpadMultiplier}
-                  onBackspace={handleNumpadBackspace}
-                  onEnter={handleSearchEnter}
-                />
-              )}
+          <Card className="w-full shrink-0 overflow-hidden border-foreground/15 shadow-none md:h-full md:w-[22rem] lg:w-[25rem]">
+            <CardContent className="h-full p-0">
+              <PdvCartPanel {...cartPanelProps} />
             </CardContent>
           </Card>
         )}
@@ -1650,10 +1792,13 @@ export default function Pdv() {
 
       <PdvPaymentDialog
         open={paymentOpen}
-        onOpenChange={setPaymentOpen}
+        onOpenChange={(open) => {
+          setPaymentOpen(open);
+          if (!open) paymentSnapshotRef.current = null;
+        }}
         texts={t.payment}
-        total={total}
-        itemCount={cart.lines.length}
+        total={computeTotal(paymentCart)}
+        itemCount={paymentCart.lines.length}
         customerName={customerName}
         customerCredit={customerCredit}
         accounts={paymentAccounts}
@@ -1668,6 +1813,10 @@ export default function Pdv() {
         open={advancedOptionsOpen}
         onOpenChange={setAdvancedOptionsOpen}
         texts={t.advancedOptions}
+        notes={orderNotes}
+        onNotesChange={setOrderNotes}
+        notesLabel={t.cart.notesLabel}
+        notesPlaceholder={t.cart.notesPlaceholder}
         transactionDate={transactionDate}
         onTransactionDateChange={handleTransactionDateChange}
         maxDate={maxTransactionDate}

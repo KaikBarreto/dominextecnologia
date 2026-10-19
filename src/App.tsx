@@ -151,6 +151,7 @@ const Inventory = React.lazy(() => import("./pages/Inventory"));
 // sub-tela em /pdv/venda — ver o bloco de rotas do PDV lá embaixo.
 const PdvCaixa = React.lazy(() => import("./pages/PdvCaixa"));
 const Pdv = React.lazy(() => import("./pages/Pdv"));
+const PdvPurchase = React.lazy(() => import("./pages/PdvPurchase"));
 const PdvCashHistory = React.lazy(() => import("./pages/PdvCashHistory"));
 const PdvReports = React.lazy(() => import("./pages/PdvReports"));
 const PdvSettings = React.lazy(() => import("./pages/PdvSettings"));
@@ -818,6 +819,7 @@ const AppRoutes = () => (
           permissão especulativa. */}
       {localizedAppRoutes('pdv', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv"><PdvCaixa /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvSale', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv"><Pdv /></PermissionRoute></ModuleRoute>)}
+      {localizedAppRoutes('pdvPurchase', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv"><PdvPurchase /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvCashHistory', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_cash_history"><PdvCashHistory /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvReports', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_reports"><PdvReports /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvSettings', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_settings"><PdvSettings /></PermissionRoute></ModuleRoute>)}

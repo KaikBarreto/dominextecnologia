@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useIsCompact } from "@/hooks/use-mobile";
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
 
 /**
  * Botão "FECHAR" rotulado, canto superior direito do header do modal.
@@ -20,21 +21,32 @@ import { useIsCompact } from "@/hooks/use-mobile";
 const modalCloseButtonClass =
   "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:bg-destructive hover:text-white active:bg-destructive active:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none";
 
+const MODAL_CLOSE_LABEL = {
+  'pt-br': 'Fechar',
+  en: 'Close',
+  es: 'Cerrar',
+  fr: 'Fermer',
+} as const;
+
 const ModalCloseButton = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ className, ...props }, ref) => (
-  <button
-    ref={ref}
-    type="button"
-    aria-label="Fechar"
-    className={cn(modalCloseButtonClass, className)}
-    {...props}
-  >
-    <X className="h-4 w-4" aria-hidden="true" />
-    <span>FECHAR</span>
-  </button>
-));
+>(({ className, children, 'aria-label': ariaLabel, ...props }, ref) => {
+  const { locale } = useAppLocaleContext();
+  const label = typeof ariaLabel === 'string' ? ariaLabel : MODAL_CLOSE_LABEL[locale];
+  return (
+    <button
+      ref={ref}
+      type="button"
+      aria-label={label}
+      className={cn(modalCloseButtonClass, className)}
+      {...props}
+    >
+      <X className="h-4 w-4" aria-hidden="true" />
+      <span>{children ?? label}</span>
+    </button>
+  );
+});
 ModalCloseButton.displayName = "ModalCloseButton";
 
 /**

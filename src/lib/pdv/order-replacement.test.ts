@@ -23,7 +23,7 @@ describe('contrato da edição segura de venda do PDV', () => {
 
   it('a finalização da edição chama uma única RPC de substituição', () => {
     const finalizeStart = saleScreen.indexOf('async function handleFinalizeSale');
-    const editStart = saleScreen.indexOf('if (saleEditDraft) {', finalizeStart);
+    const editStart = saleScreen.indexOf('if (editDraft) {', finalizeStart);
     const editBranch = saleScreen.slice(
       editStart,
       saleScreen.indexOf('} else {', editStart),

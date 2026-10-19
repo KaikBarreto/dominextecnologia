@@ -1,14 +1,16 @@
 import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SignedImg } from '@/components/ui/SignedImg';
 import { PdvQuantityStepper } from '@/components/pdv/PdvQuantityStepper';
 import type { CartLine } from '@/lib/pdv/cart';
 import { PdvProductName } from '@/components/pdv/PdvProductName';
+import { PdvProductImagePreview } from '@/components/pdv/PdvProductImagePreview';
 
 interface PdvCartLineRowProps {
   line: CartLine;
   formatCurrency: (value: number) => string;
   noPhotoLabel: string;
+  openPhotoLabel: string;
+  photoViewerDescription: string;
   removeLabel: string;
   quantityEditLabel: string;
   discountLabel: string;
@@ -30,6 +32,8 @@ export function PdvCartLineRow({
   line,
   formatCurrency,
   noPhotoLabel,
+  openPhotoLabel,
+  photoViewerDescription,
   removeLabel,
   quantityEditLabel,
   discountLabel,
@@ -46,10 +50,12 @@ export function PdvCartLineRow({
 
   return (
     <div className="flex items-center gap-2 py-2.5">
-      <SignedImg
-        src={line.imageUrl}
-        alt={line.name}
+      <PdvProductImagePreview
+        imageUrl={line.imageUrl}
+        name={line.name}
         fallbackLabel={noPhotoLabel}
+        openLabel={openPhotoLabel}
+        viewerDescription={photoViewerDescription}
         className="h-10 w-10 shrink-0 rounded-md object-cover"
       />
       <div className="min-w-0 flex-1">

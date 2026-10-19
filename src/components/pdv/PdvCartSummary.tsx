@@ -1,7 +1,5 @@
 import { CreditCard, SlidersHorizontal, Vault } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import type { CartState } from '@/lib/pdv/cart';
@@ -25,9 +23,6 @@ export interface PdvCartSummaryTexts {
   cashClosedTitle: string;
   cashClosedDescription: string;
   cashClosedAction: string;
-  /** Observação do pedido (depois do total, antes de finalizar — pedido do CEO 2026-10-19). */
-  notesLabel: string;
-  notesPlaceholder: string;
   /** Rótulo do botão que abre `PdvAdvancedOptionsDialog`. */
   advancedOptionsTrigger: string;
 }
@@ -46,9 +41,6 @@ interface PdvCartSummaryProps {
   /** Não há sessão de caixa aberta: mostra o aviso e o caminho pro painel. */
   cashClosed: boolean;
   onGoToCashPanel: () => void;
-  /** `pdv_orders.notes`. */
-  notes: string;
-  onNotesChange: (value: string) => void;
   /** Abre `PdvAdvancedOptionsDialog` (retrodatar + anexar foto). */
   onOpenAdvancedOptions: () => void;
   /** Data retroativa escolhida ou foto(s) pendente(s) — pinta o ponto no botão. */
@@ -80,8 +72,6 @@ export function PdvCartSummary({
   onRequestPayment,
   cashClosed,
   onGoToCashPanel,
-  notes,
-  onNotesChange,
   onOpenAdvancedOptions,
   advancedOptionsActive,
   texts,
@@ -157,26 +147,6 @@ export function PdvCartSummary({
         <span className="text-2xl font-extrabold tabular-nums">{formatCurrency(total)}</span>
       </div>
 
-      {/* Observação do pedido + "Opções avançadas" (retrodatar o lançamento,
-          anexar foto) — DEPOIS do total, ANTES de finalizar: ordem explícita
-          do CEO 2026-10-19. O comportamento do botão/diálogo é copiado do
-          `AdvancedOptionsPopover` da EcoSistema; a POSIÇÃO na tela é a pedida
-          aqui, não a da EcoSistema (lá o campo de observação vem antes do
-          bloco de totais). */}
-      <div className="space-y-1.5">
-        <Label htmlFor="pdv-order-notes" className="text-xs font-medium text-muted-foreground">
-          {texts.notesLabel}
-        </Label>
-        <Textarea
-          id="pdv-order-notes"
-          value={notes}
-          onChange={(e) => onNotesChange(e.target.value)}
-          placeholder={texts.notesPlaceholder}
-          rows={2}
-          className="min-h-[60px] resize-none text-sm"
-        />
-      </div>
-
       <Button type="button" variant="outline" className="relative w-full" onClick={onOpenAdvancedOptions}>
         <SlidersHorizontal className="h-4 w-4" />
         {texts.advancedOptionsTrigger}
@@ -223,29 +193,17 @@ export function PdvCartSummary({
           não disputa espaço com o rótulo. "Pagamento"/F4 vira ação
           SECUNDÁRIA (ghost, texto menor) logo abaixo: mesmo destino, menos
           peso visual. */}
-      <div className="flex flex-col gap-2">
+      <div>
         <Button
           type="button"
           disabled={!canPay}
-          className="h-14 w-full text-base font-semibold"
+          className="h-14 w-full text-lg font-bold"
           onClick={onRequestPayment}
         >
           <CreditCard className="h-5 w-5" />
           {texts.finalizeLabel}
           <kbd className="ml-1.5 rounded border border-current/30 px-1.5 py-0.5 text-[10px] opacity-70">
             {texts.finalizeShortcut}
-          </kbd>
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={!canPay}
-          className="h-9 w-full text-sm text-muted-foreground"
-          onClick={onRequestPayment}
-        >
-          {texts.paymentLabel}
-          <kbd className="ml-1 rounded border border-current/30 px-1 text-[10px] opacity-70">
-            {texts.paymentShortcut}
           </kbd>
         </Button>
       </div>

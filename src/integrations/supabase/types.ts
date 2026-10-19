@@ -8620,6 +8620,59 @@ export type Database = {
           },
         ]
       }
+      pdv_order_drafts: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          deleted_by: string | null
+          draft_type: string
+          id: string
+          last_client_request_id: string
+          last_request_kind: string
+          payload: Json
+          revision: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          draft_type: string
+          id: string
+          last_client_request_id: string
+          last_request_kind?: string
+          payload: Json
+          revision?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          draft_type?: string
+          id?: string
+          last_client_request_id?: string
+          last_request_kind?: string
+          payload?: Json
+          revision?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdv_order_drafts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pdv_order_attachments: {
         Row: {
           company_id: string
@@ -16203,6 +16256,7 @@ export type Database = {
           transaction_count: number
         }[]
       }
+      pdv_assert_draft_access: { Args: never; Returns: string }
       pdv_assert_ref_company: {
         Args: {
           p_company_id: string
@@ -16250,7 +16304,31 @@ export type Database = {
         }[]
       }
       pdv_commit_order_stock: { Args: { p_order_id: string }; Returns: Json }
+      pdv_delete_order_draft: {
+        Args: {
+          p_client_request_id: string
+          p_draft_id: string
+          p_expected_revision: number
+        }
+        Returns: Database["public"]["Tables"]["pdv_order_drafts"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "pdv_order_drafts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       pdv_fmt_brl: { Args: { p_value: number }; Returns: string }
+      pdv_list_order_drafts: {
+        Args: { p_draft_type?: string; p_include_deleted?: boolean }
+        Returns: Database["public"]["Tables"]["pdv_order_drafts"]["Row"][]
+        SetofOptions: {
+          from: "*"
+          to: "pdv_order_drafts"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       pdv_open_cash_session: {
         Args: { p_opening_amount: number; p_terminal_id: string }
         Returns: {
@@ -16293,6 +16371,36 @@ export type Database = {
         Args: { p_movement_id: string; p_reason: string }
         Returns: Json
       }
+      pdv_restore_order_draft: {
+        Args: {
+          p_client_request_id: string
+          p_draft_id: string
+          p_expected_revision: number
+        }
+        Returns: Database["public"]["Tables"]["pdv_order_drafts"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "pdv_order_drafts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      pdv_save_order_draft: {
+        Args: {
+          p_client_request_id: string
+          p_draft_id: string
+          p_draft_type: string
+          p_expected_revision: number
+          p_payload: Json
+        }
+        Returns: Database["public"]["Tables"]["pdv_order_drafts"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "pdv_order_drafts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       pdv_settle_order: {
         Args: {
           p_client_request_id: string
@@ -16301,6 +16409,10 @@ export type Database = {
           p_transaction_date?: string
         }
         Returns: Json
+      }
+      pdv_validate_draft_payload: {
+        Args: { p_draft_id: string; p_draft_type: string; p_payload: Json }
+        Returns: undefined
       }
       preview_financial_import: {
         Args: { p_file_hash: string; p_rows: Json }

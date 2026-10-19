@@ -1,9 +1,9 @@
 import { ShoppingCart, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SignedImg } from '@/components/ui/SignedImg';
 import { PdvProductName } from '@/components/pdv/PdvProductName';
 import { PdvQuantityStepper } from '@/components/pdv/PdvQuantityStepper';
 import { PdvScrollFadeContainer } from '@/components/pdv/PdvScrollFadeContainer';
+import { PdvProductImagePreview } from '@/components/pdv/PdvProductImagePreview';
 import type { CartState } from '@/lib/pdv/cart';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +15,8 @@ export interface PdvCartItemsTexts {
   removeLine: string;
   clearCart: string;
   noPhoto: string;
+  openProductPhoto: string;
+  productPhotoViewerDescription: string;
   columnProduct: string;
   columnQuantity: string;
   quantityEditLabel: string;
@@ -139,10 +141,12 @@ export function PdvCartItemsTable({
                   <tr key={line.inventoryId}>
                     <td className="px-4 py-2">
                       <div className="flex min-w-0 items-center gap-2">
-                        <SignedImg
-                          src={line.imageUrl}
-                          alt={line.name}
+                        <PdvProductImagePreview
+                          imageUrl={line.imageUrl}
+                          name={line.name}
                           fallbackLabel={texts.noPhoto}
+                          openLabel={texts.openProductPhoto}
+                          viewerDescription={texts.productPhotoViewerDescription}
                           className="h-8 w-8 shrink-0 rounded-md object-cover"
                         />
                         {/* `PdvProductName` MEDE a largura real da coluna e só

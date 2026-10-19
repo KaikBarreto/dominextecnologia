@@ -81,6 +81,8 @@ export function useFinancialAccounts() {
     queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
     queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
     queryClient.invalidateQueries({ queryKey: ['account-balances'] });
+    queryClient.invalidateQueries({ queryKey: ['pdv-cofre-balance'] });
+    queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] });
   };
 
   const accountsQuery = useQuery({
@@ -287,9 +289,17 @@ export function useFinancialAccounts() {
     balances: balancesQuery.data?.balances ?? {},
     cardBillTotals: balancesQuery.data?.cardBillTotals ?? {},
     isLoading: accountsQuery.isLoading,
+    isError: accountsQuery.isError,
+    error: accountsQuery.error ?? null,
     // Algumas telas só precisam do cadastro das contas. A visão geral, que
     // exibe valores, espera esta flag também para não mostrar R$ 0 provisório.
     isLoadingBalances: canManageBankAccounts && balancesQuery.isLoading,
+    isErrorBalances: canManageBankAccounts && balancesQuery.isError,
+    balancesError: balancesQuery.error ?? null,
+    refetch: () => {
+      accountsQuery.refetch();
+      balancesQuery.refetch();
+    },
     canUseBankAccounts,
     canManageBankAccounts,
     createAccount,

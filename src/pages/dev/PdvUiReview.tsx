@@ -806,6 +806,7 @@ function CurrentSale() {
   const texts = {
     title: t.cashier.cart.title,
     itemsCount: t.cashier.cart.itemsCount,
+    draftHint: t.cashier.cart.draftHint,
     empty: t.cashier.cart.empty,
     emptyHint: t.cashier.cart.emptyHint,
     subtotal: t.cashier.cart.subtotal,
@@ -818,6 +819,9 @@ function CurrentSale() {
     removeLine: t.cashier.cart.removeLine,
     clearCart: t.cashier.cart.clearCart,
     noPhoto: t.cashier.stock.noPhoto,
+    openProductPhoto: t.cashier.cart.openProductPhoto,
+    productPhotoViewerDescription:
+      t.cashier.cart.productPhotoViewerDescription,
     quantityEditLabel: t.cashier.cart.quantityEditLabel,
     itemDiscount: t.cashier.cart.itemDiscount,
     itemDiscountPlaceholder: t.cashier.cart.itemDiscountPlaceholder,
@@ -905,6 +909,8 @@ function CurrentSale() {
                 removeLine: texts.removeLine,
                 clearCart: texts.clearCart,
                 noPhoto: texts.noPhoto,
+                openProductPhoto: t.cashier.cart.openProductPhoto,
+                productPhotoViewerDescription: t.cashier.cart.productPhotoViewerDescription,
                 columnProduct: t.cashier.cart.columnProduct,
                 columnQuantity: t.cashier.cart.columnQuantity,
                 quantityEditLabel: texts.quantityEditLabel,
@@ -2006,6 +2012,12 @@ function CurrentCash() {
         ]}
         accountsTotal={16940.75}
         canManageBankAccounts
+        isDrawerLoading={false}
+        isCofreLoading={false}
+        isAccountsLoading={false}
+        isCofreUnavailable={false}
+        isAccountsUnavailable={false}
+        unavailableText="Valores indisponíveis"
         valuesVisible
         onToggleValues={() => undefined}
         onClose={() => undefined}

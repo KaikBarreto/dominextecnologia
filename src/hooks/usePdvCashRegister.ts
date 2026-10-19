@@ -10,7 +10,7 @@
  * `src/lib/pdv/cash.ts`, espelhando a fórmula da RPC.
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -223,6 +223,7 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
       if (error) throw error;
       return (data ?? []) as PdvTerminal[];
     },
+    staleTime: 5 * 60 * 1000,
   });
 
   /**
@@ -254,6 +255,8 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
       const lastClosed = ((closedRes.data ?? []) as PdvCashSession[])[0] ?? null;
       return { openSessions, lastClosed };
     },
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
 
   // Nome do operador é conteúdo secundário. Antes, esta terceira chamada de
@@ -287,6 +290,8 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
       if (error) throw error;
       return data as unknown as PdvCofreBalance;
     },
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
 
   const openSessions = useMemo(
@@ -419,6 +424,8 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
     /** Carregando o essencial da tela (terminal + sessão). Skeleton depende disto. */
     isLoading: terminalsQuery.isLoading || sessionsQuery.isLoading,
     isLoadingCofre: cofreQuery.isLoading,
+    isErrorCofre: cofreQuery.isError,
+    cofreError: cofreQuery.error ?? null,
     /**
      * Falhou ao LER o essencial. A tela precisa disto separado do "zero
      * terminais": sem isso, servidor fora do ar vira "Nenhum caixa cadastrado"
@@ -431,6 +438,7 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
       sessionsQuery.refetch();
       cofreQuery.refetch();
     },
+    refetchCofre: cofreQuery.refetch,
     openSession,
     closeSession,
     registerMovement,
@@ -467,6 +475,43 @@ export function usePdvLedgerTransaction(transactionId: string | null) {
 }
 
 /**
+ * Nomes apenas dos clientes que aparecem no turno em foco.
+ *
+ * O Caixa antes montava este mapa chamando `useCustomers()`, que baixa todas as
+ * colunas de todos os clientes (com paginacao) no carregamento inicial. Aqui a
+ * lista e secundaria, minima e explicitamente limitada a empresa da sessao.
+ */
+export function usePdvCashCustomerNames(
+  customerIds: string[],
+  companyId: string | null | undefined,
+) {
+  const ids = useMemo(
+    () => Array.from(new Set(customerIds.filter(Boolean))).sort(),
+    [customerIds],
+  );
+
+  const query = useQuery({
+    queryKey: ['pdv-cash-customer-names', companyId ?? null, ...ids],
+    enabled: !!companyId && ids.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('id, name')
+        .eq('company_id', companyId as string)
+        .in('id', ids);
+      if (error) throw error;
+
+      const names: Record<string, string> = {};
+      for (const customer of data ?? []) names[customer.id] = customer.name;
+      return names;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  return query.data ?? {};
+}
+
+/**
  * Tudo o que a sessão em foco movimentou: vendas, itens (pro CMV), pagamentos,
  * sangrias/suprimentos e os lançamentos avulsos do caixa.
  *
@@ -482,6 +527,7 @@ export function usePdvLedgerTransaction(transactionId: string | null) {
  * receita nem despesa.
  */
 export function usePdvCashSessionDetail(session: PdvCashSession | null) {
+  const queryClient = useQueryClient();
   const sessionId = session?.id ?? null;
 
   const query = useQuery({
@@ -591,7 +637,66 @@ export function usePdvCashSessionDetail(session: PdvCashSession | null) {
 
       return { orders, items, payments, movements, transactions };
     },
+    // Ao voltar da Venda ou do Financeiro, revalida mesmo que outro fluxo tenha
+    // esquecido uma invalidacao. Durante refetch, o cache anterior continua na
+    // tela e os valores animam ate o novo total — sem skeleton regressivo.
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
+
+  useEffect(() => {
+    if (!sessionId || !session?.company_id) return;
+
+    const refreshDetail = () => {
+      queryClient.invalidateQueries({ queryKey: SESSION_KEYS.detail(sessionId) });
+    };
+    const refreshFinancial = () => {
+      refreshDetail();
+      queryClient.invalidateQueries({ queryKey: ['account-balances'] });
+      queryClient.invalidateQueries({ queryKey: SESSION_KEYS.cofre });
+    };
+
+    // Filtro por company_id e session_id e obrigatorio: alem de reduzir trafego,
+    // impede que eventos de outro tenant provoquem leituras cruzadas ou revelem
+    // padrao de atividade. RLS continua sendo a barreira final no servidor.
+    const channel = supabase
+      .channel(`pdv-cash-live:${session.company_id}:${sessionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'financial_transactions',
+          filter: `company_id=eq.${session.company_id}`,
+        },
+        refreshFinancial,
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'pdv_orders',
+          filter: `cash_session_id=eq.${sessionId}`,
+        },
+        refreshDetail,
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'pdv_cash_movements',
+          filter: `session_id=eq.${sessionId}`,
+        },
+        refreshFinancial,
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [queryClient, session?.company_id, sessionId]);
 
   return {
     orders: query.data?.orders ?? [],
@@ -600,5 +705,8 @@ export function usePdvCashSessionDetail(session: PdvCashSession | null) {
     movements: query.data?.movements ?? [],
     transactions: query.data?.transactions ?? [],
     isLoading: !!sessionId && query.isLoading,
+    isError: !!sessionId && query.isError,
+    error: query.error ?? null,
+    refetch: query.refetch,
   };
 }

@@ -20,12 +20,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useLocaleFormatters } from '@/lib/format/hooks';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { useCustomers } from '@/hooks/useCustomers';
+import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useFinancialAccounts, type FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { useBankPermissions } from '@/hooks/useBankPermissions';
 import {
   usePdvCashRegister,
+  usePdvCashCustomerNames,
   usePdvCashSessionDetail,
   usePdvLedgerTransaction,
 } from '@/hooks/usePdvCashRegister';
@@ -125,6 +126,7 @@ export default function PdvCaixa() {
     cofre,
     isLoading,
     isLoadingCofre,
+    isErrorCofre,
     isError,
     error: loadError,
     refetch,
@@ -136,9 +138,16 @@ export default function PdvCaixa() {
     refetchCash,
   } = usePdvCashRegister(focusedSessionId);
   const detail = usePdvCashSessionDetail(session);
-  const { accounts, balances, isLoadingBalances } = useFinancialAccounts();
-  const { customers } = useCustomers();
-  const { createTransaction, updateTransaction } = useFinancial();
+  const {
+    accounts,
+    balances,
+    isLoadingBalances,
+    isError: isAccountsError,
+    isErrorBalances,
+  } = useFinancialAccounts();
+  // O Caixa usa somente as mutations. Evita baixar lista + resumo completos do
+  // Financeiro em paralelo com os dados críticos do turno.
+  const { createTransaction, updateTransaction } = useFinancial({ loadData: false });
 
   const [valuesVisible, setValuesVisible] = useState(true);
   const [openDialogOpen, setOpenDialogOpen] = useState(false);
@@ -186,11 +195,14 @@ export default function PdvCaixa() {
     [terminals, lastClosed?.terminal_id],
   );
 
-  const customerNames = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const c of (customers ?? []) as Array<{ id: string; name: string }>) map[c.id] = c.name;
-    return map;
-  }, [customers]);
+  const customerIds = useMemo(
+    () => [
+      ...detail.orders.map((order) => order.customer_id),
+      ...detail.transactions.map((transaction) => transaction.customer_id),
+    ].filter((id): id is string => Boolean(id)),
+    [detail.orders, detail.transactions],
+  );
+  const customerNames = usePdvCashCustomerNames(customerIds, session?.company_id);
 
   const accountNames = useMemo(() => {
     const map: Record<string, string> = {};
@@ -755,9 +767,10 @@ export default function PdvCaixa() {
       )}
 
       {!session ? (
-        <PdvCashClosedCard
-          texts={t.closed}
-          canOpen
+          <PdvCashClosedCard
+            texts={t.closed}
+            canOpen={!isLoadingCofre && !isErrorCofre}
+            disabledReason={isErrorCofre ? t.loadError.description : undefined}
           onOpen={() => setOpenDialogOpen(true)}
           lastClosed={
             lastClosed
@@ -778,32 +791,31 @@ export default function PdvCaixa() {
         />
       ) : (
         <>
-          {isLoadingCofre || isLoadingBalances || detail.isLoading ? (
-            <div className={canManageBankAccounts ? 'grid gap-3 lg:grid-cols-2' : 'grid gap-3'}>
-              <Skeleton className="h-64 w-full" />
-              {canManageBankAccounts && <Skeleton className="h-64 w-full" />}
-            </div>
-          ) : (
-            <PdvCashIndicators
-              cashTexts={t.cashCard}
-              accountTexts={t.accountCard}
-              drawerAmount={drawerAmount}
-              openedAt={session.opened_at}
-              operatorName={session.opened_by ? (operators[session.opened_by] ?? null) : null}
-              terminalName={terminalName}
-              cofre={cofre}
-              accounts={accountLines}
-              accountsTotal={accountsTotal}
-              canManageBankAccounts={canManageBankAccounts}
-              valuesVisible={valuesVisible}
-              onToggleValues={toggleValues}
-              onClose={() => setCloseDialogOpen(true)}
-              onBleed={() => setMovementKind('sangria')}
-              onSupply={() => setMovementKind('suprimento')}
-              money={money}
-              dateTime={dateTime}
-            />
-          )}
+          <PdvCashIndicators
+            cashTexts={t.cashCard}
+            accountTexts={t.accountCard}
+            drawerAmount={drawerAmount}
+            openedAt={session.opened_at}
+            operatorName={session.opened_by ? (operators[session.opened_by] ?? null) : null}
+            terminalName={terminalName}
+            cofre={cofre}
+            accounts={accountLines}
+            accountsTotal={accountsTotal}
+            canManageBankAccounts={canManageBankAccounts}
+            isDrawerLoading={detail.isLoading || detail.isError}
+            isCofreLoading={isLoadingCofre}
+            isAccountsLoading={isLoadingBalances}
+            isCofreUnavailable={isErrorCofre}
+            isAccountsUnavailable={isAccountsError || isErrorBalances}
+            unavailableText={t.loadError.description}
+            valuesVisible={valuesVisible}
+            onToggleValues={toggleValues}
+            onClose={() => setCloseDialogOpen(true)}
+            onBleed={() => setMovementKind('sangria')}
+            onSupply={() => setMovementKind('suprimento')}
+            money={money}
+            dateTime={dateTime}
+          />
 
           <div className="grid grid-cols-4 gap-2 sm:gap-3" aria-label={t.actions.aria}>
             <CashAction
@@ -816,11 +828,7 @@ export default function PdvCaixa() {
               icon={Scale}
               label={t.actions.newPurchase}
               tone="purchase"
-              onClick={() =>
-                navigate('/estoque', {
-                  state: { inventoryTab: 'compras', openNewPurchase: true },
-                })
-              }
+              onClick={() => navigate(localizeAppPath('/pdv/compra', locale))}
             />
             <CashAction
               icon={TrendingDown}
@@ -840,7 +848,21 @@ export default function PdvCaixa() {
             />
           </div>
 
-          {detail.isLoading ? (
+          {detail.isError ? (
+            <Card>
+              <CardContent className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+                <AlertTriangle className="h-10 w-10 text-destructive" />
+                <h2 className="text-base font-bold text-destructive">{t.loadError.title}</h2>
+                <p className="max-w-md text-sm text-muted-foreground">{t.loadError.description}</p>
+                <p className="max-w-md text-xs text-muted-foreground">
+                  {pdvCashErrorMessage(detail.error)}
+                </p>
+                <Button type="button" variant="outline" onClick={() => detail.refetch()}>
+                  {t.loadError.retry}
+                </Button>
+              </CardContent>
+            </Card>
+          ) : detail.isLoading ? (
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
               {[0, 1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-24 w-full" />
@@ -856,20 +878,22 @@ export default function PdvCaixa() {
             />
           )}
 
-          <PdvCashHistoryPanel
-            texts={t.history}
-            entries={ledger}
-            isLoading={detail.isLoading}
-            valuesVisible={valuesVisible}
-            money={money}
-            dateTime={dateTime}
-            number={number}
-            canManageFinance={canManageFinance}
-            canDeleteFinance={canDeleteFinance}
-            canEditPdvSales={canEditPdvSales}
-            onEdit={handleLedgerEdit}
-            onDelete={handleLedgerDelete}
-          />
+          {!detail.isError && (
+            <PdvCashHistoryPanel
+              texts={t.history}
+              entries={ledger}
+              isLoading={detail.isLoading}
+              valuesVisible={valuesVisible}
+              money={money}
+              dateTime={dateTime}
+              number={number}
+              canManageFinance={canManageFinance}
+              canDeleteFinance={canDeleteFinance}
+              canEditPdvSales={canEditPdvSales}
+              onEdit={handleLedgerEdit}
+              onDelete={handleLedgerDelete}
+            />
+          )}
         </>
       )}
 
@@ -970,13 +994,15 @@ export default function PdvCaixa() {
         />
       )}
 
-      <AdjustBalanceDialog
-        open={adjustAccount != null}
-        onOpenChange={(v) => {
-          if (!v) setAdjustAccount(null);
-        }}
-        account={adjustAccount}
-      />
+      {adjustAccount && (
+        <AdjustBalanceDialog
+          open
+          onOpenChange={(v) => {
+            if (!v) setAdjustAccount(null);
+          }}
+          account={adjustAccount}
+        />
+      )}
 
       {/* Espelho na gaveta do lançamento avulso em dinheiro. */}
       <ResponsiveModal

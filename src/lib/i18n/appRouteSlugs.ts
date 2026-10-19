@@ -83,6 +83,7 @@ const SEGMENTS: Record<string, SegmentTranslations> = {
   // Sub-segmento do PDV: a lista de sessões de caixa (histórico de aberturas e
   // fechamentos). Só o PDV usa 'caixas' hoje.
   caixas: { en: 'registers', es: 'cajas', fr: 'caisses' },
+  compra: { en: 'purchase', es: 'compra', fr: 'achat' },
   // Sub-segmento do PDV: a tela de VENDA (o carrinho), sub-tela do Caixa aberta
   // pelo botão "Nova venda". Termo de mercado por idioma (sale/venta/vente), não
   // 'checkout' — 'checkout' já é o nome da tela de assinatura do SaaS.
@@ -144,6 +145,7 @@ const ROUTES: AppRouteDef[] = [
   // Onda 2 (modo balcão) — sem tela, sem rota, sem item de menu.
   { key: 'pdv', base: '/pdv' },
   { key: 'pdvSale', base: '/pdv/venda' },
+  { key: 'pdvPurchase', base: '/pdv/compra' },
   { key: 'pdvCashHistory', base: '/pdv/caixas' },
   { key: 'pdvReports', base: '/pdv/relatorios' },
   { key: 'pdvSettings', base: '/pdv/configuracoes' },

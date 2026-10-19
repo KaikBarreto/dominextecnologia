@@ -26,6 +26,19 @@ export const pdv = {
       title: 'Nova venda',
       subtitle: 'Monte o carrinho e finalize a venda de balcão',
       backToCashPanel: 'Voltar para o caixa',
+      header: { cashOpen: 'Caixa aberto', cashClosed: 'Caixa fechado', operator: 'Operador: {name}' },
+      orders: {
+        number: 'Número', value: 'Valor', customer: 'Cliente', newOrder: 'Novo pedido',
+        unnamedCustomer: 'Sem cliente', editBadge: 'Edição', deleteLabel: 'Excluir pedido',
+        deleteTitle: 'Excluir este pedido?',
+        deleteDescription: 'Somente este rascunho será apagado. Os outros pedidos continuarão intactos.',
+        keepOrder: 'Manter pedido', confirmDelete: 'Excluir pedido',
+        limitReached: 'O limite de 20 pedidos simultâneos foi atingido.',
+      },
+      draftSync: {
+        conflict: 'Este pedido foi alterado em outra aba ou dispositivo. A cópia local foi preservada; revise antes de continuar.',
+        unavailable: 'Os pedidos continuam salvos neste dispositivo, mas a sincronização online está indisponível.',
+      },
       editDraft: {
         title: 'Editando a venda {reference}',
         description: 'A venda original continua válida. Ela só será substituída quando esta edição for finalizada.',
@@ -47,6 +60,7 @@ export const pdv = {
       },
       categories: {
         all: 'Todos',
+        uncategorized: 'Sem categoria',
       },
       stock: {
         locationLabel: 'Local de venda',
@@ -55,8 +69,9 @@ export const pdv = {
         noPhoto: 'Sem foto',
       },
       cart: {
-        title: 'Carrinho',
+        title: 'Pedido atual',
         itemsCount: '{count} itens',
+        draftHint: 'venda ainda não finalizada',
         empty: 'Nenhum item no carrinho ainda',
         emptyHint: 'Toque em um produto ou escaneie o código de barras',
         viewCart: 'Ver carrinho',
@@ -74,6 +89,8 @@ export const pdv = {
         quantityEditLabel: 'Editar quantidade',
         itemDiscount: 'Desconto',
         itemDiscountPlaceholder: '0,00',
+        openProductPhoto: 'Ver foto de {name} em tela cheia',
+        productPhotoViewerDescription: 'Visualização da foto do produto em tela cheia.',
         columnUnitPrice: 'Unitário',
         columnLineTotal: 'Total',
         notesLabel: 'Observações do pedido',
@@ -90,9 +107,9 @@ export const pdv = {
       // EcoSistema (pedido do CEO 2026-10-19), adaptado pro `ResponsiveModal`
       // da casa (vira drawer no mobile).
       advancedOptions: {
-        trigger: 'Opções avançadas',
-        title: 'Opções avançadas',
-        description: 'Ajustes usados de vez em quando nesta venda.',
+        trigger: 'Observação, data e anexos',
+        title: 'Observação, data e anexos',
+        description: 'Detalhes opcionais que acompanham esta venda.',
         dateLabel: 'Data do lançamento',
         dateHint: 'Vem com hoje. Mude para lançar uma venda de um dia anterior.',
         dateRetroactiveNotice:
@@ -102,7 +119,14 @@ export const pdv = {
         attaching: 'Enviando...',
         removePhoto: 'Remover foto',
         photosHint: 'Comprimidas automaticamente antes de enviar.',
-        close: 'Fechar',
+        dropPhotos: 'Arraste fotos aqui',
+        selectMany: 'ou selecione várias de uma vez',
+        selectedPhotos: 'Fotos selecionadas',
+        ready: 'Pronto',
+        processing: 'Processando {progress}%',
+        waiting: 'Aguardando {progress}%',
+        failed: 'Falha ao preparar arquivo',
+        close: 'Concluir',
       },
       // PAGAMENTO (F4). Pagamento misto é regra no balcão, então a copy fala em
       // "formas de pagamento" no plural e o placar mostra quanto falta.
@@ -539,6 +563,19 @@ export const pdv = {
       title: 'New sale',
       subtitle: 'Build the cart and complete the counter sale',
       backToCashPanel: 'Back to the register',
+      header: { cashOpen: 'Register open', cashClosed: 'Register closed', operator: 'Operator: {name}' },
+      orders: {
+        number: 'Number', value: 'Amount', customer: 'Customer', newOrder: 'New order',
+        unnamedCustomer: 'No customer', editBadge: 'Editing', deleteLabel: 'Delete order',
+        deleteTitle: 'Delete this order?',
+        deleteDescription: 'Only this draft will be deleted. Your other orders will remain unchanged.',
+        keepOrder: 'Keep order', confirmDelete: 'Delete order',
+        limitReached: 'The limit of 20 simultaneous orders has been reached.',
+      },
+      draftSync: {
+        conflict: 'This order changed in another tab or device. The local copy was preserved; review it before continuing.',
+        unavailable: 'Orders remain saved on this device, but online sync is unavailable.',
+      },
       editDraft: {
         title: 'Editing sale {reference}',
         description: 'The original sale is still valid. It will only be replaced when this edit is completed.',
@@ -557,6 +594,7 @@ export const pdv = {
       },
       categories: {
         all: 'All',
+        uncategorized: 'Uncategorized',
       },
       stock: {
         locationLabel: 'Sales location',
@@ -565,8 +603,9 @@ export const pdv = {
         noPhoto: 'No photo',
       },
       cart: {
-        title: 'Cart',
+        title: 'Current order',
         itemsCount: '{count} items',
+        draftHint: 'sale not completed yet',
         empty: 'No items in the cart yet',
         emptyHint: 'Tap a product or scan the barcode',
         viewCart: 'View cart',
@@ -584,6 +623,8 @@ export const pdv = {
         quantityEditLabel: 'Edit quantity',
         itemDiscount: 'Discount',
         itemDiscountPlaceholder: '0.00',
+        openProductPhoto: 'View {name} photo in full screen',
+        productPhotoViewerDescription: 'Full-screen product photo preview.',
         columnUnitPrice: 'Unit price',
         columnLineTotal: 'Total',
         notesLabel: 'Order notes',
@@ -596,9 +637,9 @@ export const pdv = {
         finalizeShortcut: 'F9',
       },
       advancedOptions: {
-        trigger: 'Advanced options',
-        title: 'Advanced options',
-        description: 'Settings used now and then on this sale.',
+        trigger: 'Notes, date and attachments',
+        title: 'Notes, date and attachments',
+        description: 'Optional details attached to this sale.',
         dateLabel: 'Transaction date',
         dateHint: 'Defaults to today. Change it to record a sale from an earlier day.',
         dateRetroactiveNotice:
@@ -608,7 +649,14 @@ export const pdv = {
         attaching: 'Uploading...',
         removePhoto: 'Remove photo',
         photosHint: 'Automatically compressed before upload.',
-        close: 'Close',
+        dropPhotos: 'Drop photos here',
+        selectMany: 'or select several at once',
+        selectedPhotos: 'Selected photos',
+        ready: 'Ready',
+        processing: 'Processing {progress}%',
+        waiting: 'Waiting {progress}%',
+        failed: 'Could not prepare file',
+        close: 'Done',
       },
       payment: {
         title: 'Payment',
@@ -1036,6 +1084,19 @@ export const pdv = {
       title: 'Nueva venta',
       subtitle: 'Arme el carrito y finalice la venta de mostrador',
       backToCashPanel: 'Volver a la caja',
+      header: { cashOpen: 'Caja abierta', cashClosed: 'Caja cerrada', operator: 'Operador: {name}' },
+      orders: {
+        number: 'Número', value: 'Importe', customer: 'Cliente', newOrder: 'Nuevo pedido',
+        unnamedCustomer: 'Sin cliente', editBadge: 'Edición', deleteLabel: 'Eliminar pedido',
+        deleteTitle: '¿Eliminar este pedido?',
+        deleteDescription: 'Solo se eliminará este borrador. Los demás pedidos seguirán intactos.',
+        keepOrder: 'Mantener pedido', confirmDelete: 'Eliminar pedido',
+        limitReached: 'Se alcanzó el límite de 20 pedidos simultáneos.',
+      },
+      draftSync: {
+        conflict: 'Este pedido cambió en otra pestaña o dispositivo. La copia local se conservó; revísela antes de continuar.',
+        unavailable: 'Los pedidos siguen guardados en este dispositivo, pero la sincronización en línea no está disponible.',
+      },
       editDraft: {
         title: 'Editando la venta {reference}',
         description: 'La venta original sigue válida. Solo será sustituida al finalizar esta edición.',
@@ -1054,6 +1115,7 @@ export const pdv = {
       },
       categories: {
         all: 'Todos',
+        uncategorized: 'Sin categoría',
       },
       stock: {
         locationLabel: 'Local de venta',
@@ -1062,8 +1124,9 @@ export const pdv = {
         noPhoto: 'Sin foto',
       },
       cart: {
-        title: 'Carrito',
+        title: 'Pedido actual',
         itemsCount: '{count} artículos',
+        draftHint: 'venta aún no finalizada',
         empty: 'Todavía no hay artículos en el carrito',
         emptyHint: 'Toque un producto o escanee el código de barras',
         viewCart: 'Ver carrito',
@@ -1081,6 +1144,8 @@ export const pdv = {
         quantityEditLabel: 'Editar cantidad',
         itemDiscount: 'Descuento',
         itemDiscountPlaceholder: '0,00',
+        openProductPhoto: 'Ver la foto de {name} en pantalla completa',
+        productPhotoViewerDescription: 'Vista de la foto del producto en pantalla completa.',
         columnUnitPrice: 'Unitario',
         columnLineTotal: 'Total',
         notesLabel: 'Observaciones del pedido',
@@ -1093,9 +1158,9 @@ export const pdv = {
         finalizeShortcut: 'F9',
       },
       advancedOptions: {
-        trigger: 'Opciones avanzadas',
-        title: 'Opciones avanzadas',
-        description: 'Ajustes usados de vez en cuando en esta venta.',
+        trigger: 'Observación, fecha y adjuntos',
+        title: 'Observación, fecha y adjuntos',
+        description: 'Detalles opcionales que acompañan esta venta.',
         dateLabel: 'Fecha del movimiento',
         dateHint: 'Viene con hoy. Cámbiela para registrar una venta de un día anterior.',
         dateRetroactiveNotice:
@@ -1105,7 +1170,14 @@ export const pdv = {
         attaching: 'Enviando...',
         removePhoto: 'Quitar foto',
         photosHint: 'Comprimidas automáticamente antes de enviar.',
-        close: 'Cerrar',
+        dropPhotos: 'Arrastre fotos aquí',
+        selectMany: 'o seleccione varias a la vez',
+        selectedPhotos: 'Fotos seleccionadas',
+        ready: 'Listo',
+        processing: 'Procesando {progress}%',
+        waiting: 'En espera {progress}%',
+        failed: 'No se pudo preparar el archivo',
+        close: 'Concluir',
       },
       payment: {
         title: 'Cobro',
@@ -1531,6 +1603,19 @@ export const pdv = {
       title: 'Nouvelle vente',
       subtitle: 'Composez le panier et finalisez la vente au comptoir',
       backToCashPanel: 'Retour à la caisse',
+      header: { cashOpen: 'Caisse ouverte', cashClosed: 'Caisse fermée', operator: 'Opérateur : {name}' },
+      orders: {
+        number: 'Numéro', value: 'Montant', customer: 'Client', newOrder: 'Nouvelle commande',
+        unnamedCustomer: 'Sans client', editBadge: 'Modification', deleteLabel: 'Supprimer la commande',
+        deleteTitle: 'Supprimer cette commande ?',
+        deleteDescription: 'Seul ce brouillon sera supprimé. Les autres commandes resteront intactes.',
+        keepOrder: 'Garder la commande', confirmDelete: 'Supprimer la commande',
+        limitReached: 'La limite de 20 commandes simultanées a été atteinte.',
+      },
+      draftSync: {
+        conflict: `Cette commande a été modifiée dans un autre onglet ou appareil. La copie locale a été conservée ; vérifiez-la avant de continuer.`,
+        unavailable: `Les commandes restent enregistrées sur cet appareil, mais la synchronisation en ligne est indisponible.`,
+      },
       editDraft: {
         title: 'Modification de la vente {reference}',
         description: "La vente d’origine reste valide. Elle ne sera remplacée qu’à la finalisation de cette modification.",
@@ -1549,6 +1634,7 @@ export const pdv = {
       },
       categories: {
         all: 'Tous',
+        uncategorized: 'Sans catégorie',
       },
       stock: {
         locationLabel: 'Point de vente',
@@ -1557,8 +1643,9 @@ export const pdv = {
         noPhoto: 'Pas de photo',
       },
       cart: {
-        title: 'Panier',
+        title: 'Commande actuelle',
         itemsCount: '{count} articles',
+        draftHint: 'vente non finalisée',
         empty: 'Aucun article dans le panier pour le moment',
         emptyHint: 'Touchez un produit ou scannez le code-barres',
         viewCart: 'Voir le panier',
@@ -1576,6 +1663,8 @@ export const pdv = {
         quantityEditLabel: 'Modifier la quantité',
         itemDiscount: 'Remise',
         itemDiscountPlaceholder: '0,00',
+        openProductPhoto: 'Voir la photo de {name} en plein écran',
+        productPhotoViewerDescription: 'Aperçu de la photo du produit en plein écran.',
         columnUnitPrice: 'Prix unitaire',
         columnLineTotal: 'Total',
         notesLabel: 'Notes de la commande',
@@ -1588,9 +1677,9 @@ export const pdv = {
         finalizeShortcut: 'F9',
       },
       advancedOptions: {
-        trigger: 'Options avancées',
-        title: 'Options avancées',
-        description: 'Réglages utilisés de temps en temps sur cette vente.',
+        trigger: 'Note, date et pièces jointes',
+        title: 'Note, date et pièces jointes',
+        description: 'Détails facultatifs joints à cette vente.',
         dateLabel: "Date de l'opération",
         dateHint: "Par défaut, aujourd'hui. Modifiez-la pour enregistrer une vente d'un jour antérieur.",
         dateRetroactiveNotice:
@@ -1600,7 +1689,14 @@ export const pdv = {
         attaching: 'Envoi...',
         removePhoto: 'Retirer la photo',
         photosHint: "Compressées automatiquement avant l'envoi.",
-        close: 'Fermer',
+        dropPhotos: 'Déposez les photos ici',
+        selectMany: 'ou sélectionnez-en plusieurs à la fois',
+        selectedPhotos: 'Photos sélectionnées',
+        ready: 'Prêt',
+        processing: 'Traitement {progress} %',
+        waiting: 'En attente {progress} %',
+        failed: 'Impossible de préparer le fichier',
+        close: 'Terminer',
       },
       payment: {
         title: 'Encaissement',

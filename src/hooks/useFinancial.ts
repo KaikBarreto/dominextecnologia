@@ -288,7 +288,16 @@ export function buildReceiptFeeRow(args: {
  */
 const EMPTY_TRANSACTIONS: TransactionWithRelations[] = [];
 
-export function useFinancial() {
+interface UseFinancialOptions {
+  /**
+   * Carrega lista e resumo completos. Telas que precisam somente das mutations
+   * podem desligar as duas consultas paginadas para nao disputar o carregamento
+   * critico com os dados da propria tela.
+   */
+  loadData?: boolean;
+}
+
+export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -302,10 +311,16 @@ export function useFinancial() {
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     queryClient.invalidateQueries({ queryKey: ['contract-transactions'] });
     queryClient.invalidateQueries({ queryKey: ['account-balances'] });
+    // O Caixa inclui lançamentos financeiros avulsos no turno e o saldo do
+    // cofre. Qualquer mutation financeira precisa deixá-los stale também — ao
+    // voltar de outra tela, o operador não pode ver o fechamento antigo.
+    queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] });
+    queryClient.invalidateQueries({ queryKey: ['pdv-cofre-balance'] });
   };
 
   const transactionsQuery = useQuery({
     queryKey: ['financial-transactions'],
+    enabled: loadData,
     queryFn: async () => {
       const data = await fetchAllPaginated<FinancialTransaction & { customer: any; supplier: any; account: any; employee: any }>(
         () => supabase
@@ -363,6 +378,7 @@ export function useFinancial() {
 
   const summaryQuery = useQuery({
     queryKey: ['financial-summary'],
+    enabled: loadData,
     queryFn: async () => {
       const data = await fetchAllPaginated<{ transaction_type: string; amount: number; is_paid: boolean; transfer_pair_id: string | null }>(
         () => supabase
@@ -1115,7 +1131,7 @@ export function useFinancial() {
      */
     transactionsWithChildren,
     summary: summaryQuery.data ?? { totalEntradas: 0, totalSaidas: 0, saldo: 0, aPagar: 0, aReceber: 0 },
-    isLoading: transactionsQuery.isLoading || summaryQuery.isLoading,
+    isLoading: loadData && (transactionsQuery.isLoading || summaryQuery.isLoading),
     error: transactionsQuery.error || summaryQuery.error,
     createTransaction,
     /** Série de REPETIÇÃO (N lançamentos do mesmo valor) num insert só. */
