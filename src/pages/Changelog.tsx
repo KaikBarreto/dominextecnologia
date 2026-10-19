@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.11',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Edição de venda sem perder o pedido original',
+        description: 'Ao editar uma venda, o pedido original continua válido até a correção ser finalizada. A troca acontece de uma só vez e, se houver algum erro, a venda anterior permanece intacta.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Desconto por produto no PDV',
+        description: 'Agora cada produto do pedido pode receber seu próprio desconto, além do desconto geral da venda. O resumo mostra os dois valores separadamente.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.37.10',
     date: '19 de outubro de 2026',
     type: 'patch',
