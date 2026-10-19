@@ -3,6 +3,10 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  FileDown,
+  FileSpreadsheet,
+  FileText,
+  ListFilter,
   Pencil,
   ReceiptText,
   Search,
@@ -12,16 +16,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { MobilePillTabs, type PillTab } from '@/components/mobile/MobilePillTabs';
 import { useIsCompact } from '@/hooks/use-mobile';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
   filterPdvLedger,
@@ -35,6 +41,10 @@ import {
 import { normalizePaymentMethod } from '@/lib/finance-payment-methods';
 import { PdvLedgerRowDetail } from '@/components/pdv/caixa/PdvLedgerRowDetail';
 import type { pdv } from '@/lib/i18n/messages/app/pdv';
+import {
+  exportPdvCashHistoryExcel,
+  exportPdvCashHistoryPdf,
+} from '@/utils/pdvCashHistoryExport';
 
 type HistoryTexts = (typeof pdv)['pt-br']['cashPanel']['history'];
 
@@ -90,11 +100,13 @@ export function PdvCashHistoryPanel({
   onDelete,
 }: PdvCashHistoryPanelProps) {
   const isCompact = useIsCompact();
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState<PdvLedgerKind | 'all'>('all');
   const [methodGroup, setMethodGroup] = useState<PdvMethodGroup>('todas');
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [exporting, setExporting] = useState<'excel' | 'pdf' | null>(null);
 
   const kindLabels: Record<PdvLedgerKind, string> = {
     venda: texts.kindSale,
@@ -159,6 +171,48 @@ export function PdvCashHistoryPanel({
   function methodText(entry: PdvLedgerEntry): string {
     if (!entry.methods || entry.methods.length === 0) return texts.methodUnknown;
     return entry.methods.map(methodLabel).join(' + ');
+  }
+
+  async function handleExport(format: 'excel' | 'pdf') {
+    if (exporting || filtered.length === 0) return;
+    setExporting(format);
+    const exportInput = {
+      generatedAt: dateTime(new Date().toISOString()),
+      language: document.documentElement.lang || 'pt-BR',
+      rows: filtered.map((entry) => ({
+        reference: entry.reference || '',
+        type: kindLabels[entry.kind],
+        customer: entry.customerName || entry.label,
+        signedAmount: entry.signedAmount,
+        formattedAmount: money(entry.amount),
+        method: methodText(entry),
+        date: dateTime(entry.occurredAt),
+      })),
+      texts: {
+        title: texts.title,
+        columnNumber: texts.columnNumber,
+        columnType: texts.columnType,
+        columnCustomer: texts.columnCustomer,
+        columnAmount: texts.columnAmount,
+        columnMethod: texts.columnMethod,
+        columnDate: texts.columnDate,
+        exportSheetName: texts.exportSheetName,
+        exportGeneratedAt: texts.exportGeneratedAt,
+        exportGeneratingPdf: texts.exportGeneratingPdf,
+        exportBack: texts.exportBack,
+        exportDownloadPdf: texts.exportDownloadPdf,
+        exportDownloadAs: texts.exportDownloadAs,
+      },
+    };
+
+    try {
+      if (format === 'excel') await exportPdvCashHistoryExcel(exportInput);
+      else await exportPdvCashHistoryPdf(exportInput);
+    } catch {
+      toast({ variant: 'destructive', title: texts.exportError });
+    } finally {
+      setExporting(null);
+    }
   }
 
   /**
@@ -229,22 +283,69 @@ export function PdvCashHistoryPanel({
             className="pl-9"
           />
         </div>
-        <Select
-          value={kind}
-          onValueChange={resetPage((v: string) => setKind(v as PdvLedgerKind | 'all'))}
-        >
-          <SelectTrigger className="w-full sm:w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{texts.typeAll}</SelectItem>
-            <SelectItem value="venda">{texts.kindSale}</SelectItem>
-            <SelectItem value="receita">{texts.kindRevenue}</SelectItem>
-            <SelectItem value="despesa">{texts.kindExpense}</SelectItem>
-            <SelectItem value="sangria">{texts.kindBleed}</SelectItem>
-            <SelectItem value="suprimento">{texts.kindSupply}</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="grid grid-cols-2 gap-2 sm:flex">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="min-w-32 justify-between gap-2 sm:min-w-36"
+              >
+                <ListFilter className="h-4 w-4" />
+                <span className="truncate">
+                  {kind === 'all' ? texts.columnType : kindLabels[kind]}
+                </span>
+                <ChevronDown className="ml-auto h-4 w-4 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuRadioGroup
+                value={kind}
+                onValueChange={resetPage((value: string) =>
+                  setKind(value as PdvLedgerKind | 'all'),
+                )}
+              >
+                <DropdownMenuRadioItem value="all">{texts.typeAll}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="venda">{texts.kindSale}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="receita">{texts.kindRevenue}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="despesa">{texts.kindExpense}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="sangria">{texts.kindBleed}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="suprimento">{texts.kindSupply}</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="justify-between gap-2"
+                disabled={filtered.length === 0 || !!exporting}
+              >
+                <FileDown className="h-4 w-4" />
+                {exporting ? texts.exporting : texts.export}
+                <ChevronDown className="ml-auto h-4 w-4 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem
+                className="cursor-pointer gap-2"
+                onClick={() => void handleExport('excel')}
+              >
+                <FileSpreadsheet className="h-4 w-4 text-success" />
+                {texts.exportExcel}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2"
+                onClick={() => void handleExport('pdf')}
+              >
+                <FileText className="h-4 w-4 text-destructive" />
+                {texts.exportPdf}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {isLoading ? (

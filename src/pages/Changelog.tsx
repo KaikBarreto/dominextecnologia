@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.6',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Histórico do Caixa exportável',
+        description: 'O histórico de transações do Caixa agora tem um filtro de tipo mais direto e pode ser exportado em Excel ou PDF. Os arquivos seguem o idioma, a moeda e a formatação regional configurados pela empresa.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.37.5',
     date: '19 de outubro de 2026',
     type: 'patch',

@@ -18,6 +18,7 @@
  */
 
 const sanitizeFilename = (s: string): string =>
+  // eslint-disable-next-line no-control-regex -- remove caracteres de controle de nomes de arquivo.
   s.replace(/[<>:"/\\|?*\x00-\x1f]/g, '').replace(/\s+/g, ' ').trim();
 
 const escapeHtml = (s: string): string =>
@@ -40,13 +41,13 @@ function isMobileUA(): boolean {
  * Retorna a `Window` (ou `null` se o popup foi bloqueado — nesse caso
  * `openPdfInTab` cai no fallback de `<a download>`).
  */
-export function openPendingPdfTab(message?: string): Window | null {
+export function openPendingPdfTab(message?: string, language = 'pt-BR'): Window | null {
   const w = window.open('', '_blank');
   if (!w) return null;
   const label = escapeHtml(message || 'Gerando o relatório...');
   try {
     const html = `<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="${escapeHtml(language)}">
 <head>
   <meta charset="utf-8">
   <title>${label}</title>
@@ -90,10 +91,20 @@ export function openPdfInTab(
   blob: Blob,
   filenameNoExt: string,
   targetWindow?: Window | null,
+  labels?: {
+    language?: string;
+    back?: string;
+    downloadPdf?: string;
+    downloadAs?: string;
+  },
 ): void {
   const safeName = sanitizeFilename(filenameNoExt) || 'relatorio';
   const fullName = `${safeName}.pdf`;
   const blobUrl = URL.createObjectURL(blob);
+  const language = escapeHtml(labels?.language || 'pt-BR');
+  const backLabel = escapeHtml(labels?.back || 'Voltar');
+  const downloadPdfLabel = escapeHtml(labels?.downloadPdf || 'Baixar PDF');
+  const downloadAsLabel = escapeHtml(labels?.downloadAs || 'Baixar como');
 
   // Pega a janela alvo: se foi pré-aberta no clique do user (popup-blocker
   // workaround) usa essa; senão tenta abrir uma nova.
@@ -110,7 +121,7 @@ export function openPdfInTab(
   if (tab && !mobile) {
     try {
       const html = `<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="${language}">
 <head>
   <meta charset="utf-8">
   <title>${escapeHtml(fullName)}</title>
@@ -138,9 +149,9 @@ export function openPdfInTab(
 </head>
 <body>
   <iframe src="${blobUrl}" name="${escapeHtml(fullName)}" title="${escapeHtml(fullName)}"></iframe>
-  <a class="dl-btn-desktop" href="${blobUrl}" download="${escapeHtml(fullName)}" title="Baixar como ${escapeHtml(fullName)}">
+  <a class="dl-btn-desktop" href="${blobUrl}" download="${escapeHtml(fullName)}" title="${downloadAsLabel} ${escapeHtml(fullName)}">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    Baixar PDF
+    ${downloadPdfLabel}
   </a>
 </body>
 </html>`;
@@ -161,7 +172,7 @@ export function openPdfInTab(
   if (tab) {
     try {
       const html = `<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="${language}">
 <head>
   <meta charset="utf-8">
   <title>${escapeHtml(fullName)}</title>
@@ -208,15 +219,15 @@ export function openPdfInTab(
 </head>
 <body>
   <div id="top-bar">
-    <button id="close-btn" type="button" aria-label="Voltar">✕</button>
+    <button id="close-btn" type="button" aria-label="${backLabel}">✕</button>
     <h1>${escapeHtml(fullName)}</h1>
   </div>
   <div id="pdf-wrapper">
     <iframe src="${blobUrl}" name="${escapeHtml(fullName)}" title="${escapeHtml(fullName)}"></iframe>
   </div>
-  <a class="dl-btn" href="${blobUrl}" download="${escapeHtml(fullName)}" title="Baixar como ${escapeHtml(fullName)}">
+  <a class="dl-btn" href="${blobUrl}" download="${escapeHtml(fullName)}" title="${downloadAsLabel} ${escapeHtml(fullName)}">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    Baixar PDF
+    ${downloadPdfLabel}
   </a>
   <script>
     document.getElementById('close-btn').addEventListener('click', function () {

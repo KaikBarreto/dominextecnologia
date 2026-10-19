@@ -8,20 +8,22 @@ import {
   Check,
   ChevronRight,
   CreditCard,
+  DollarSign,
   Eye,
-  Landmark,
   Minus,
   Moon,
-  MoreHorizontal,
   Paperclip,
   Plus,
-  ReceiptText,
+  Scale,
   Search,
   Settings2,
   ShoppingCart,
   Store,
   Sun,
+  TrendingDown,
+  TrendingUp,
   UserRound,
+  UsersRound,
   X,
 } from "lucide-react";
 import {
@@ -2027,225 +2029,178 @@ function CurrentCash() {
 
 function ProposedCash() {
   return (
-    <div className="space-y-4 pb-6">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
+    <div className="space-y-5 pb-6">
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="mb-1 flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <Banknote className="h-6 w-6" />
             <h1 className="text-2xl font-extrabold tracking-tight">Caixa</h1>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs font-bold text-success">
-              <span className="h-2 w-2 rounded-full bg-success" /> Aberto
-            </span>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Caixa 01 · Marina Souza · aberto hoje às 08:04
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Gestão financeira e movimentações
           </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Ocultar valores"
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button type="button" variant="outline">
-            Fechar caixa
-          </Button>
-          <Button type="button" className="gap-2">
-            <ShoppingCart className="h-4 w-4" /> Iniciar venda
-          </Button>
         </div>
       </header>
 
-      <div className="grid gap-3 lg:grid-cols-[1.25fr_.75fr]">
-        <Card className="border-foreground/15 shadow-none">
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                  <Banknote className="h-4 w-4 text-success" /> Dinheiro
-                  esperado na gaveta
-                </p>
-                <p className="mt-2 text-4xl font-extrabold tabular-nums">
-                  {money(682.4)}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Abertura + vendas em dinheiro + suprimentos − sangrias
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
-                <LabelValue label="Abertura" value={money(250)} />
-                <LabelValue label="Vendas em dinheiro" value={money(782.4)} />
-                <LabelValue label="Suprimentos" value={money(50)} />
-                <LabelValue label="Sangrias" value={`− ${money(400)}`} />
-              </div>
-            </div>
-            <div className="mt-5 grid grid-cols-2 gap-2 border-t pt-4 sm:grid-cols-4">
-              <QuickAction
-                icon={ArrowUpFromLine}
-                label="Retirar dinheiro"
-                helper="Sangria"
-                tone="danger"
-              />
-              <QuickAction
-                icon={ArrowDownToLine}
-                label="Adicionar dinheiro"
-                helper="Suprimento"
-                tone="success"
-              />
-              <QuickAction
-                icon={Plus}
-                label="Registrar receita"
-                helper="Entrada financeira"
-                tone="success"
-              />
-              <QuickAction
-                icon={Minus}
-                label="Registrar despesa"
-                helper="Saída financeira"
-                tone="danger"
-              />
-            </div>
-          </CardContent>
-        </Card>
+      <nav
+        aria-label="Caixas disponíveis"
+        className="flex gap-2 overflow-x-auto border-b pb-2"
+      >
+        <button
+          type="button"
+          className="shrink-0 rounded-md bg-muted px-3 py-2 text-xs font-semibold text-muted-foreground"
+        >
+          Início
+        </button>
+        <button
+          type="button"
+          className="shrink-0 rounded-md bg-foreground px-3 py-2 text-xs font-semibold text-background"
+        >
+          #01 · Caixa 01 · Marina Souza (você)
+        </button>
+      </nav>
 
-        <Card className="border-foreground/15 shadow-none">
-          <CardContent className="flex h-full flex-col justify-between gap-4 p-4 sm:p-5">
-            <div>
-              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                <Landmark className="h-4 w-4" /> Contas da empresa
-              </p>
-              <p className="mt-2 text-2xl font-extrabold tabular-nums">
-                {money(16940.75)}
-              </p>
-            </div>
-            <div className="space-y-2 border-t pt-3 text-xs">
-              <LabelValue
-                label="Banco principal"
-                value={money(12840.55)}
-                horizontal
-              />
-              <LabelValue
-                label="Mercado Pago"
-                value={money(3420.2)}
-                horizontal
-              />
-              <LabelValue
-                label="Carteira da loja"
-                value={money(680)}
-                horizontal
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <PdvCashSummaryCards
-        texts={t.cashPanel.summary}
-        result={cashResult}
-        valuesVisible
-        money={money}
-        number={number}
-      />
-
-      <section className="rounded-lg border bg-card">
-        <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row">
+        <section className="flex flex-col justify-between lg:min-h-[220px] lg:w-[440px] lg:shrink-0">
           <div>
-            <h2 className="flex items-center gap-2 font-bold">
-              <ReceiptText className="h-4 w-4" /> Histórico de transações
+            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              <Banknote className="h-5 w-5" /> Dinheiro em caixa
             </h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Vendas, entradas, saídas e transferências em uma linha do tempo
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <div className="relative min-w-0 flex-1 sm:w-64">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Buscar transação" className="pl-9" />
+            <div className="mt-3 flex items-center gap-1">
+              <p className="text-4xl font-extrabold tracking-tight tabular-nums lg:text-5xl">
+                {money(682.4)}
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                aria-label="Ocultar valores"
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              aria-label="Filtrar"
-            >
-              <Settings2 className="h-4 w-4" />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Aberto em 19/10/2026 às 08:04
+            </p>
+            <div className="mt-3 space-y-1.5 text-xs sm:text-sm">
+              <LabelValue
+                label="Disponível no cofre"
+                value={money(2350)}
+                horizontal
+              />
+              <LabelValue
+                label="Reservado neste caixa"
+                value={money(682.4)}
+                horizontal
+              />
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3 w-full uppercase tracking-[0.12em] hover:border-destructive hover:bg-destructive hover:text-destructive-foreground"
+          >
+            Fechar caixa
+          </Button>
+        </section>
+
+        <section className="flex min-w-0 flex-1 flex-col justify-between lg:min-h-[220px] lg:border-l lg:pl-6">
+          <div>
+            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              <DollarSign className="h-5 w-5" /> Saldo em conta
+            </h2>
+            <p className="mt-3 text-3xl font-extrabold tracking-tight tabular-nums lg:text-4xl">
+              {money(16940.75)}
+            </p>
+            <div className="mt-5 flex flex-wrap gap-1.5">
+              <span className="rounded-full bg-violet-600 px-2.5 py-1 text-[10px] font-bold text-white">
+                Banco principal&nbsp; {money(12840.55)}
+              </span>
+              <span className="rounded-full bg-orange-500 px-2.5 py-1 text-[10px] font-bold text-white">
+                Mercado Pago&nbsp; {money(3420.2)}
+              </span>
+              <span className="rounded-full bg-blue-600 px-2.5 py-1 text-[10px] font-bold text-white">
+                Carteira da loja&nbsp; {money(680)}
+              </span>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <Button type="button" variant="outline" className="gap-2 uppercase tracking-[0.1em]">
+              <ArrowUpFromLine className="h-4 w-4" /> Sangria
+            </Button>
+            <Button type="button" variant="outline" className="gap-2 uppercase tracking-[0.1em]">
+              <Plus className="h-4 w-4" /> Nova movimentação
             </Button>
           </div>
-        </div>
-        <div className="flex gap-1 border-b px-4 pt-2">
-          {["Todas 4", "Vendas 2", "Dinheiro 3", "Pix 1"].map(
-            (label, index) => (
-              <button
-                key={label}
-                type="button"
-                className={cn(
-                  "border-b-2 px-3 py-2 text-xs font-semibold",
-                  index === 0
-                    ? "border-foreground text-foreground"
-                    : "border-transparent text-muted-foreground",
-                )}
-              >
-                {label}
-              </button>
-            ),
-          )}
-        </div>
-        <div className="divide-y">
-          {ledger.map((entry) => (
-            <div
-              key={entry.key}
-              className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 hover:bg-muted/40"
-            >
-              <span
-                className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-full",
-                  entry.signedAmount < 0
-                    ? "bg-destructive/10 text-destructive"
-                    : "bg-success/10 text-success",
-                )}
-              >
-                {entry.kind === "venda" ? (
-                  <ShoppingCart className="h-4 w-4" />
-                ) : entry.signedAmount < 0 ? (
-                  <ArrowUpFromLine className="h-4 w-4" />
-                ) : (
-                  <ArrowDownToLine className="h-4 w-4" />
-                )}
-              </span>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-semibold">
-                    {entry.reference || entry.label}
-                  </p>
-                  <span className="text-[10px] font-semibold uppercase text-muted-foreground">
-                    {entry.kind}
-                  </span>
-                </div>
-                <p className="truncate text-xs text-muted-foreground">
-                  {entry.customerName || entry.methods.join(" + ")} ·{" "}
-                  {dateTime(entry.occurredAt)}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "text-sm font-bold tabular-nums",
-                    entry.signedAmount < 0
-                      ? "text-destructive"
-                      : "text-foreground",
-                  )}
-                >
-                  {entry.signedAmount < 0 ? "− " : ""}
-                  {money(entry.amount)}
-                </span>
-                <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </div>
-          ))}
+        </section>
+      </div>
+
+      <section aria-label="Ações rápidas do caixa">
+        <div className="grid grid-cols-4 gap-2 sm:gap-3">
+          <EcoCashAction icon={Scale} label="Nova compra" tone="purchase" />
+          <EcoCashAction icon={DollarSign} label="Nova venda" tone="sale" />
+          <EcoCashAction icon={TrendingDown} label="Nova despesa" tone="expense" />
+          <EcoCashAction icon={TrendingUp} label="Nova receita" tone="revenue" />
         </div>
       </section>
+
+      <Button type="button" variant="outline" className="gap-2">
+        <UsersRound className="h-4 w-4" />
+        Saldo de cliente/fornecedor
+        <ChevronRight className="ml-auto h-4 w-4 rotate-90" />
+      </Button>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.14em]">
+            Resumo do caixa atual
+          </h2>
+          <button
+            type="button"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <Eye className="h-4 w-4" /> Ocultar
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-4">
+          <CashSummaryValue
+            label="Total comprado"
+            value={money(cashResult.cmv)}
+            className="text-blue-600"
+          />
+          <CashSummaryValue
+            label="Total vendido"
+            value={money(cashResult.sold)}
+            className="text-green-600"
+          />
+          <CashSummaryValue
+            label="Lucro"
+            value={money(cashResult.profit)}
+            className="text-orange-600"
+            helper={`Margem de ${number(cashResult.marginPct ?? 0, { maximumFractionDigits: 1 })}%`}
+          />
+          <CashSummaryValue
+            label="Despesas"
+            value={money(cashResult.expenses)}
+            className="text-red-500"
+          />
+        </div>
+      </section>
+
+      <PdvCashHistoryPanel
+        texts={t.cashPanel.history}
+        entries={ledger}
+        isLoading={false}
+        valuesVisible
+        money={money}
+        dateTime={dateTime}
+        number={number}
+        canManageFinance
+        canDeleteFinance
+        onEdit={() => undefined}
+        onDelete={() => undefined}
+      />
     </div>
   );
 }
@@ -2269,41 +2224,85 @@ function LabelValue({
   );
 }
 
-function QuickAction({
+function EcoCashAction({
   icon: Icon,
   label,
-  helper,
   tone,
 }: {
   icon: typeof Plus;
   label: string;
-  helper: string;
-  tone: "success" | "danger";
+  tone: "purchase" | "sale" | "expense" | "revenue";
 }) {
+  const tones = {
+    purchase: {
+      button: "sm:bg-blue-600 sm:hover:bg-blue-700 dark:sm:bg-blue-700 dark:sm:hover:bg-blue-600",
+      icon: "bg-blue-600 dark:bg-blue-700",
+    },
+    sale: {
+      button:
+        "sm:bg-emerald-600 sm:hover:bg-emerald-700 dark:sm:bg-emerald-700 dark:sm:hover:bg-emerald-600",
+      icon: "bg-emerald-600 dark:bg-emerald-700",
+    },
+    expense: {
+      button: "sm:bg-red-600 sm:hover:bg-red-700 dark:sm:bg-red-700 dark:sm:hover:bg-red-600",
+      icon: "bg-red-600 dark:bg-red-700",
+    },
+    revenue: {
+      button: "sm:bg-teal-600 sm:hover:bg-teal-700 dark:sm:bg-teal-700 dark:sm:hover:bg-teal-600",
+      icon: "bg-teal-600 dark:bg-teal-700",
+    },
+  }[tone];
+
   return (
-    <Button
+    <button
       type="button"
-      variant="outline"
-      className="h-auto min-h-14 justify-start gap-2.5 whitespace-normal px-3 py-2 text-left"
+      className={cn(
+        "flex flex-col items-center gap-1.5 py-2 transition-transform active:scale-95 focus-visible:rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-24 sm:justify-center sm:gap-2 sm:rounded-lg sm:py-0 sm:text-white sm:shadow-sm",
+        tones.button,
+      )}
     >
       <span
         className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
-          tone === "success"
-            ? "bg-success/10 text-success"
-            : "bg-destructive/10 text-destructive",
+          "flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-sm sm:h-auto sm:w-auto sm:bg-transparent sm:shadow-none",
+          tones.icon,
         )}
       >
-        <Icon className="h-4 w-4" />
+        <Icon className="h-6 w-6" />
       </span>
-      <span className="min-w-0">
-        <span className="block text-xs font-semibold leading-tight">
-          {label}
-        </span>
-        <span className="mt-0.5 block text-[10px] font-normal leading-tight text-muted-foreground">
-          {helper}
-        </span>
+      <span className="text-center text-[10px] font-medium leading-tight sm:text-[13px] sm:font-semibold sm:uppercase sm:tracking-[0.12em]">
+        {label}
       </span>
-    </Button>
+    </button>
+  );
+}
+
+function CashSummaryValue({
+  label,
+  value,
+  helper,
+  className,
+}: {
+  label: string;
+  value: string;
+  helper?: string;
+  className: string;
+}) {
+  return (
+    <div className="min-w-0 space-y-1">
+      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground sm:text-xs">
+        {label}
+      </p>
+      <p
+        className={cn(
+          "whitespace-nowrap text-lg font-extrabold tabular-nums sm:text-2xl",
+          className,
+        )}
+      >
+        {value}
+      </p>
+      {helper && (
+        <p className="text-xs font-medium text-muted-foreground">{helper}</p>
+      )}
+    </div>
   );
 }
