@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -97,6 +98,12 @@ import { MaterialPurchaseReportTab } from '@/components/inventory/MaterialPurcha
 import { formatMoney } from '@/lib/format';
 
 export default function Inventory() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const inventoryNavigation = location.state as {
+    inventoryTab?: string;
+    openNewPurchase?: boolean;
+  } | null;
   const isMobile = useIsMobile();
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory;
@@ -138,7 +145,14 @@ export default function Inventory() {
   /** Local pré-selecionado como origem quando a transferência vem de um atalho
    *  de presença bloqueada. null = comportamento padrão (usa activeStockId). */
   const [transferFromStockId, setTransferFromStockId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('estoque');
+  const [activeTab, setActiveTab] = useState(inventoryNavigation?.inventoryTab ?? 'estoque');
+
+  // Atalhos vindos do Caixa são consumidos uma única vez. Limpar o state
+  // evita reabrir a compra caso a pessoa troque de aba e volte para Compras.
+  useEffect(() => {
+    if (!inventoryNavigation?.inventoryTab && !inventoryNavigation?.openNewPurchase) return;
+    navigate(location.pathname, { replace: true, state: null });
+  }, [inventoryNavigation?.inventoryTab, inventoryNavigation?.openNewPurchase, location.pathname, navigate]);
 
   // Inline movement state
   const [inlineMovementOpen, setInlineMovementOpen] = useState(false);
@@ -1050,7 +1064,9 @@ export default function Inventory() {
         {activeTab === 'historico' && <InventoryKardexTab />}
 
         {/* ===================== ABA: COMPRAS DE MATERIAL ===================== */}
-        {activeTab === 'compras' && <MaterialPurchasesTab />}
+        {activeTab === 'compras' && (
+          <MaterialPurchasesTab openNewOnMount={inventoryNavigation?.openNewPurchase === true} />
+        )}
 
         {/* ===================== ABA: INVENTÁRIOS ===================== */}
         {activeTab === 'inventarios' && <InventoryCountsTab />}

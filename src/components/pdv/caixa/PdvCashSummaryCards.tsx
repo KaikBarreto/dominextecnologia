@@ -1,9 +1,6 @@
-import { ArrowDownCircle, ArrowUpCircle, ShoppingCart, TrendingDown, TrendingUp } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { cn } from '@/lib/utils';
 import type { SessionResult } from '@/lib/pdv/cash';
-import { kpiValueSizeClass } from '@/components/financial/kpiChipSize';
 import type { pdv } from '@/lib/i18n/messages/app/pdv';
 
 type SummaryTexts = (typeof pdv)['pt-br']['cashPanel']['summary'];
@@ -17,14 +14,15 @@ interface PdvCashSummaryCardsProps {
 }
 
 /**
- * Resumo do caixa atual: Vendido, Receitas, Despesas e LUCRO.
+ * Resumo do caixa atual na hierarquia compacta aprovada para o Caixa:
+ * vendido, comprado (CMV), lucro e despesas.
  *
  * O lucro aqui é REAL, não projeção: `pdv_order_items.unit_cost` é snapshot do
  * custo na hora da venda, então a margem bruta é medida. A EcoSistema precisa
  * chamar isso de "projeção" porque lá o custo do material não é conhecido.
  *
- * KPI em card SATURADO com texto na cor de contraste do token (régua da casa,
- * mesmo padrão dos cards de Receitas/Despesas do Financeiro).
+ * Sem cards saturados: a cor diferencia o valor e a página continua fácil de
+ * percorrer sem competir visualmente com as ações rápidas.
  */
 export function PdvCashSummaryCards({
   texts,
@@ -37,60 +35,44 @@ export function PdvCashSummaryCards({
   const show = (value: number) => (valuesVisible ? money(value) : hidden);
   const profitPositive = result.profit >= 0;
 
-  const formatted = [result.sold, result.revenues, result.expenses, result.profit].map(show);
-  const valueSize = kpiValueSizeClass(formatted);
-
   return (
     <div className="space-y-3">
-      <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+      <h2 className="text-xs font-semibold uppercase tracking-[0.14em]">
         {texts.title}
       </h2>
 
-      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-        <Kpi
+      <div className="grid grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-4">
+        <SummaryValue
           label={texts.sold}
-          value={formatted[0]}
-          valueSize={valueSize}
-          icon={<ShoppingCart className="h-4 w-4" />}
-          className="bg-info text-info-foreground"
+          value={show(result.sold)}
+          className="text-green-600 dark:text-green-500"
         />
-        <Kpi
-          label={texts.revenues}
-          value={formatted[1]}
-          valueSize={valueSize}
-          icon={<ArrowUpCircle className="h-4 w-4" />}
-          className="bg-success text-success-foreground"
+        <SummaryValue
+          label={texts.purchased}
+          value={show(result.cmv)}
+          className="text-blue-600 dark:text-blue-500"
         />
-        <Kpi
-          label={texts.expenses}
-          value={formatted[2]}
-          valueSize={valueSize}
-          icon={<ArrowDownCircle className="h-4 w-4" />}
-          className="bg-destructive text-destructive-foreground"
-        />
-        <Kpi
+        <SummaryValue
           label={texts.profit}
-          value={formatted[3]}
-          valueSize={valueSize}
-          icon={
-            profitPositive ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />
-          }
+          value={show(result.profit)}
           className={cn(
-            profitPositive ? 'bg-primary text-primary-foreground' : 'bg-destructive text-destructive-foreground',
+            profitPositive
+              ? 'text-orange-600 dark:text-orange-500'
+              : 'text-red-600 dark:text-red-500',
           )}
-          footer={
-            <>
-              <span className="block">{texts.cmv.replace('{value}', show(result.cmv))}</span>
-              {result.marginPct != null && valuesVisible && (
-                <span className="block">
-                  {texts.margin.replace(
-                    '{value}',
-                    `${number(result.marginPct, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
-                  )}
-                </span>
-              )}
-            </>
+          helper={
+            result.marginPct != null && valuesVisible
+              ? texts.margin.replace(
+                  '{value}',
+                  `${number(result.marginPct, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
+                )
+              : undefined
           }
+        />
+        <SummaryValue
+          label={texts.expenses}
+          value={show(result.expenses)}
+          className="text-red-600 dark:text-red-500"
         />
       </div>
 
@@ -105,33 +87,26 @@ export function PdvCashSummaryCards({
   );
 }
 
-function Kpi({
+function SummaryValue({
   label,
   value,
-  valueSize,
-  icon,
   className,
-  footer,
+  helper,
 }: {
   label: string;
   value: string;
-  valueSize: string;
-  icon: React.ReactNode;
   className: string;
-  footer?: React.ReactNode;
+  helper?: string;
 }) {
   return (
-    <Card className={cn('border-0', className)}>
-      <CardContent className="flex h-full flex-col gap-1 p-3 sm:p-4">
-        <div className="flex items-center gap-1.5">
-          {icon}
-          <p className="truncate text-[10px] font-semibold uppercase tracking-wider sm:text-xs">
-            {label}
-          </p>
-        </div>
-        <p className={cn('font-extrabold tabular-nums', valueSize, 'sm:text-2xl')}>{value}</p>
-        {footer && <div className="mt-auto pt-1 text-[10px] leading-tight sm:text-xs">{footer}</div>}
-      </CardContent>
-    </Card>
+    <div className="min-w-0 space-y-1">
+      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground sm:text-xs">
+        {label}
+      </p>
+      <p className={cn('truncate text-xl font-extrabold tabular-nums sm:text-2xl', className)}>
+        {value}
+      </p>
+      {helper && <p className="text-[10px] text-muted-foreground sm:text-xs">{helper}</p>}
+    </div>
   );
 }

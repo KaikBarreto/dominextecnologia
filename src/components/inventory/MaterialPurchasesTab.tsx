@@ -46,7 +46,7 @@ function formatDate(iso: string, locale: LocaleCode, timezone: string | null | u
   return formatLocalizedDate(iso, locale, safeTimeZone(timezone));
 }
 
-export function MaterialPurchasesTab() {
+export function MaterialPurchasesTab({ openNewOnMount = false }: { openNewOnMount?: boolean }) {
   const isMobile = useIsMobile();
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.purchases;
@@ -61,7 +61,7 @@ export function MaterialPurchasesTab() {
   // Filtro de status multi-seleção. Vazio = mostra todas (régua do projeto).
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [suppliersOpen, setSuppliersOpen] = useState(false);
-  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(openNewOnMount);
   const [directPurchaseOpen, setDirectPurchaseOpen] = useState(false);
   const [editing, setEditing] = useState<CompraListRow | null>(null);
   const [selectedCompraId, setSelectedCompraId] = useState<string | null>(null);

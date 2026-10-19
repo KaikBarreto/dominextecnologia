@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, MinusCircle, PlusCircle, ShoppingCart, Store } from 'lucide-react';
+import {
+  AlertTriangle,
+  Banknote,
+  DollarSign,
+  Scale,
+  Store,
+  TrendingDown,
+  TrendingUp,
+} from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -43,6 +51,7 @@ import {
 } from '@/lib/pdv/cash';
 import { pdvCashErrorMessage } from '@/lib/pdv/cash-errors';
 import { savePdvSaleEditDraft, type PdvSaleEditDraft } from '@/lib/pdv/order-edit';
+import { cn } from '@/lib/utils';
 
 /**
  * Rota da tela de VENDA (o carrinho), acionada por "Nova venda".
@@ -105,9 +114,11 @@ export default function PdvCaixa() {
   const canEditPdvSales =
     isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:edit_pdv_sales'));
   const { canUseBankAccounts, canManageBankAccounts } = useBankPermissions();
+  const [focusedSessionId, setFocusedSessionId] = useState<string | null>(null);
 
   const {
     terminals,
+    openSessions,
     session,
     lastClosed,
     operators,
@@ -123,7 +134,7 @@ export default function PdvCaixa() {
     revertMovement,
     cancelOrder,
     refetchCash,
-  } = usePdvCashRegister();
+  } = usePdvCashRegister(focusedSessionId);
   const detail = usePdvCashSessionDetail(session);
   const { accounts, balances, isLoadingBalances } = useFinancialAccounts();
   const { customers } = useCustomers();
@@ -644,7 +655,7 @@ export default function PdvCaixa() {
 
   // ── Render ───────────────────────────────────────────────────────────────
 
-  const header = <PageHeader title={t.title} subtitle={t.subtitle} icon={ShoppingCart} />;
+  const header = <PageHeader title={t.title} subtitle={t.subtitle} icon={Banknote} />;
 
   // Carregando NUNCA é vazio: Skeleton até os dados chegarem.
   if (isLoading) {
@@ -709,8 +720,39 @@ export default function PdvCaixa() {
   const financeDeniedReason = canManageFinance ? undefined : t.actions.financeDenied;
 
   return (
-    <div className="space-y-4 pb-6">
+    <div className="space-y-5 pb-6">
       {header}
+
+      {openSessions.length > 0 && (
+        <nav
+          aria-label={t.navigation.aria}
+          className="flex gap-2 overflow-x-auto border-b pb-2"
+        >
+          {openSessions.map((openSession, index) => {
+            const openTerminal = terminals.find((item) => item.id === openSession.terminal_id);
+            const operator = openSession.opened_by ? operators[openSession.opened_by] : null;
+            const isActive = openSession.id === session?.id;
+            const isCurrentUser = openSession.opened_by === user?.id;
+            return (
+              <button
+                key={openSession.id}
+                type="button"
+                onClick={() => setFocusedSessionId(openSession.id)}
+                className={cn(
+                  'shrink-0 rounded-md px-3 py-2 text-xs font-semibold transition-colors',
+                  isActive
+                    ? 'bg-foreground text-background'
+                    : 'bg-muted text-muted-foreground hover:text-foreground',
+                )}
+              >
+                #{String(index + 1).padStart(2, '0')} · {openTerminal?.name ?? t.title}
+                {operator ? ` · ${operator}` : ''}
+                {isCurrentUser ? ` (${t.navigation.you})` : ''}
+              </button>
+            );
+          })}
+        </nav>
+      )}
 
       {!session ? (
         <PdvCashClosedCard
@@ -763,47 +805,39 @@ export default function PdvCaixa() {
             />
           )}
 
-          {/* Ações do caixa. "Nova compra" NÃO existe aqui de propósito:
-              compra de material no Dominex vive em Estoque → Compras. */}
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              size="lg"
-              className="flex-1 gap-2 sm:flex-none"
+          <div className="grid grid-cols-4 gap-2 sm:gap-3" aria-label={t.actions.aria}>
+            <CashAction
+              icon={DollarSign}
+              label={t.actions.newSale}
+              tone="sale"
               onClick={() => navigate(PDV_SALE_PATH)}
-            >
-              <ShoppingCart className="h-4 w-4" />
-              {t.actions.newSale}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              className="flex-1 gap-2 sm:flex-none"
-              disabled={!canManageFinance}
-              title={financeDeniedReason}
-              onClick={() => setTxnType('entrada')}
-            >
-              <PlusCircle className="h-4 w-4" />
-              {t.actions.newRevenue}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              className="flex-1 gap-2 sm:flex-none"
+            />
+            <CashAction
+              icon={Scale}
+              label={t.actions.newPurchase}
+              tone="purchase"
+              onClick={() =>
+                navigate('/estoque', {
+                  state: { inventoryTab: 'compras', openNewPurchase: true },
+                })
+              }
+            />
+            <CashAction
+              icon={TrendingDown}
+              label={t.actions.newExpense}
+              tone="expense"
               disabled={!canManageFinance}
               title={financeDeniedReason}
               onClick={() => setTxnType('saida')}
-            >
-              <MinusCircle className="h-4 w-4" />
-              {t.actions.newExpense}
-            </Button>
-            {/* Sangria e suprimento NÃO se repetem aqui: eles já são as ações
-                do card "Saldo em conta", que no mobile fica logo acima desta
-                fileira. Botão duplicado na mesma tela é antipadrão cobrado
-                pelo CEO (medido em 390px: os dois cards e esta fileira cabem
-                na mesma dobra). */}
+            />
+            <CashAction
+              icon={TrendingUp}
+              label={t.actions.newRevenue}
+              tone="revenue"
+              disabled={!canManageFinance}
+              title={financeDeniedReason}
+              onClick={() => setTxnType('entrada')}
+            />
           </div>
 
           {detail.isLoading ? (
@@ -980,5 +1014,65 @@ export default function PdvCaixa() {
         </div>
       </ResponsiveModal>
     </div>
+  );
+}
+
+function CashAction({
+  icon: Icon,
+  label,
+  tone,
+  disabled = false,
+  onClick,
+  title,
+}: {
+  icon: typeof DollarSign;
+  label: string;
+  tone: 'sale' | 'purchase' | 'expense' | 'revenue';
+  disabled?: boolean;
+  onClick: () => void;
+  title?: string;
+}) {
+  const tones = {
+    sale: {
+      button: 'sm:bg-emerald-600 sm:hover:bg-emerald-700 dark:sm:bg-emerald-700 dark:sm:hover:bg-emerald-600',
+      icon: 'bg-emerald-600 dark:bg-emerald-700',
+    },
+    purchase: {
+      button: 'sm:bg-blue-600 sm:hover:bg-blue-700 dark:sm:bg-blue-700 dark:sm:hover:bg-blue-600',
+      icon: 'bg-blue-600 dark:bg-blue-700',
+    },
+    expense: {
+      button: 'sm:bg-red-600 sm:hover:bg-red-700 dark:sm:bg-red-700 dark:sm:hover:bg-red-600',
+      icon: 'bg-red-600 dark:bg-red-700',
+    },
+    revenue: {
+      button: 'sm:bg-teal-600 sm:hover:bg-teal-700 dark:sm:bg-teal-700 dark:sm:hover:bg-teal-600',
+      icon: 'bg-teal-600 dark:bg-teal-700',
+    },
+  }[tone];
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      title={title}
+      className={cn(
+        'flex min-w-0 flex-col items-center gap-1.5 py-2 transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-24 sm:justify-center sm:gap-2 sm:rounded-lg sm:py-0 sm:text-white sm:shadow-sm',
+        tones.button,
+      )}
+    >
+      <span
+        className={cn(
+          'flex h-14 w-14 max-w-full items-center justify-center rounded-2xl text-white shadow-sm sm:h-auto sm:w-auto sm:bg-transparent sm:shadow-none',
+          tones.icon,
+        )}
+      >
+        <Icon className="h-6 w-6" />
+      </span>
+      <span className="text-center text-[10px] font-medium leading-tight sm:text-[13px] sm:font-semibold sm:uppercase sm:tracking-[0.12em]">
+        {label}
+      </span>
+    </button>
   );
 }

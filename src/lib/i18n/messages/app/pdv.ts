@@ -220,7 +220,7 @@ export const pdv = {
     // "Nova venda".
     cashPanel: {
       title: 'Caixa',
-      subtitle: 'Dinheiro, receitas, despesas e vendas do balcão',
+      subtitle: 'Gestão financeira e movimentações',
       loadError: {
         title: 'Não foi possível carregar o caixa',
         description: 'Os dados do caixa não vieram do servidor. Verifique a conexão e tente de novo.',
@@ -262,14 +262,21 @@ export const pdv = {
         supply: 'Suprimento',
       },
       actions: {
+        aria: 'Ações rápidas do caixa',
         newSale: 'Nova venda',
+        newPurchase: 'Nova compra',
         newExpense: 'Nova despesa',
         newRevenue: 'Nova receita',
         financeDenied: 'Você não tem permissão para lançar no financeiro.',
       },
+      navigation: {
+        aria: 'Caixas abertos',
+        you: 'você',
+      },
       summary: {
         title: 'Resumo do caixa atual',
-        sold: 'Vendido',
+        sold: 'Total vendido',
+        purchased: 'Total comprado',
         revenues: 'Receitas',
         expenses: 'Despesas',
         profit: 'Lucro',
@@ -713,7 +720,7 @@ export const pdv = {
       // usuário clica em "Cash Register" e cai num header "Checkout".
       // 'Checkout' continua certo em `cashier`, que é a tela de VENDA.
       title: 'Cash Register',
-      subtitle: 'Cash, revenue, expenses and counter sales',
+      subtitle: 'Financial management and transactions',
       loadError: {
         title: 'Could not load the register',
         description: 'The register data did not come back from the server. Check the connection and try again.',
@@ -755,14 +762,21 @@ export const pdv = {
         supply: 'Cash in',
       },
       actions: {
+        aria: 'Quick register actions',
         newSale: 'New sale',
+        newPurchase: 'New purchase',
         newExpense: 'New expense',
         newRevenue: 'New revenue',
         financeDenied: 'You do not have permission to post financial entries.',
       },
+      navigation: {
+        aria: 'Open registers',
+        you: 'you',
+      },
       summary: {
         title: 'Current register summary',
-        sold: 'Sold',
+        sold: 'Total sold',
+        purchased: 'Total purchased',
         revenues: 'Revenue',
         expenses: 'Expenses',
         profit: 'Profit',
@@ -1201,7 +1215,7 @@ export const pdv = {
     },
     cashPanel: {
       title: 'Caja',
-      subtitle: 'Efectivo, ingresos, gastos y ventas del mostrador',
+      subtitle: 'Gestión financiera y movimientos',
       loadError: {
         title: 'No fue posible cargar la caja',
         description: 'Los datos de la caja no llegaron del servidor. Verifique la conexión e intente de nuevo.',
@@ -1243,14 +1257,21 @@ export const pdv = {
         supply: 'Aporte',
       },
       actions: {
+        aria: 'Acciones rápidas de caja',
         newSale: 'Nueva venta',
+        newPurchase: 'Nueva compra',
         newExpense: 'Nuevo gasto',
         newRevenue: 'Nuevo ingreso',
         financeDenied: 'No tiene permiso para registrar en finanzas.',
       },
+      navigation: {
+        aria: 'Cajas abiertas',
+        you: 'tú',
+      },
       summary: {
         title: 'Resumen de la caja actual',
-        sold: 'Vendido',
+        sold: 'Total vendido',
+        purchased: 'Total comprado',
         revenues: 'Ingresos',
         expenses: 'Gastos',
         profit: 'Ganancia',
@@ -1683,7 +1704,7 @@ export const pdv = {
     },
     cashPanel: {
       title: 'Caisse',
-      subtitle: 'Espèces, recettes, dépenses et ventes au comptoir',
+      subtitle: 'Gestion financière et mouvements',
       loadError: {
         title: 'Impossible de charger la caisse',
         description: "Les données de la caisse ne sont pas revenues du serveur. Vérifiez la connexion et réessayez.",
@@ -1725,14 +1746,21 @@ export const pdv = {
         supply: 'Apport',
       },
       actions: {
+        aria: 'Actions rapides de caisse',
         newSale: 'Nouvelle vente',
+        newPurchase: 'Nouvel achat',
         newExpense: 'Nouvelle dépense',
         newRevenue: 'Nouvelle recette',
         financeDenied: "Vous n'avez pas la permission de saisir des écritures financières.",
       },
+      navigation: {
+        aria: 'Caisses ouvertes',
+        you: 'vous',
+      },
       summary: {
         title: 'Résumé de la caisse en cours',
-        sold: 'Vendu',
+        sold: 'Total vendu',
+        purchased: 'Total acheté',
         revenues: 'Recettes',
         expenses: 'Dépenses',
         profit: 'Marge',

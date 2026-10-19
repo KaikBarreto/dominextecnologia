@@ -1972,12 +1972,20 @@ function PreviewCustomerPicker() {
 
 function CurrentCash() {
   return (
-    <div className="space-y-4 pb-6">
+    <div className="space-y-5 pb-6">
       <PageHeader
         title="Caixa"
-        subtitle="Dinheiro, receitas, despesas e vendas do balcão"
-        icon={ShoppingCart}
+        subtitle="Gestão financeira e movimentações"
+        icon={Banknote}
       />
+      <nav aria-label="Caixas abertos" className="flex gap-2 overflow-x-auto border-b pb-2">
+        <button
+          type="button"
+          className="shrink-0 rounded-md bg-foreground px-3 py-2 text-xs font-semibold text-background"
+        >
+          #01 · Caixa 01 · Marina Souza (você)
+        </button>
+      </nav>
       <PdvCashIndicators
         cashTexts={t.cashPanel.cashCard}
         accountTexts={t.cashPanel.accountCard}
@@ -2006,16 +2014,11 @@ function CurrentCash() {
         money={money}
         dateTime={dateTime}
       />
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" size="lg" className="gap-2">
-          <ShoppingCart className="h-4 w-4" /> Nova venda
-        </Button>
-        <Button type="button" variant="outline" size="lg" className="gap-2">
-          <Plus className="h-4 w-4" /> Nova receita
-        </Button>
-        <Button type="button" variant="outline" size="lg" className="gap-2">
-          <Minus className="h-4 w-4" /> Nova despesa
-        </Button>
+      <div className="grid grid-cols-4 gap-2 sm:gap-3">
+        <EcoCashAction icon={DollarSign} label="Nova venda" tone="sale" />
+        <EcoCashAction icon={Scale} label="Nova compra" tone="purchase" />
+        <EcoCashAction icon={TrendingDown} label="Nova despesa" tone="expense" />
+        <EcoCashAction icon={TrendingUp} label="Nova receita" tone="revenue" />
       </div>
       <PdvCashSummaryCards
         texts={t.cashPanel.summary}

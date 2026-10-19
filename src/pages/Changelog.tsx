@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.12',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Caixa mais claro e rápido',
+        description: 'A tela do Caixa agora abre sem esperar informações secundárias e apresenta saldos, ações e resumo financeiro com uma hierarquia mais fácil de acompanhar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Ações rápidas completas no Caixa',
+        description: 'Venda, compra, despesa e receita agora aparecem em uma sequência visual direta. O atalho de compra leva à área correta do Estoque e já abre uma nova compra.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.37.11',
     date: '19 de outubro de 2026',
     type: 'patch',

@@ -176,6 +176,7 @@ export interface PdvSessionTransaction {
 const SESSION_KEYS = {
   terminals: ['pdv-terminals'] as const,
   sessions: ['pdv-cash-sessions'] as const,
+  operators: (ids: string[]) => ['pdv-cash-session-operators', ...ids] as const,
   cofre: ['pdv-cofre-balance'] as const,
   detail: (id: string | null) => ['pdv-cash-session-detail', id] as const,
 };
@@ -192,12 +193,13 @@ async function fetchOperatorNames(userIds: string[]): Promise<Record<string, str
   return map;
 }
 
-export function usePdvCashRegister() {
+export function usePdvCashRegister(focusedSessionId: string | null = null) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
   const invalidateCash = () => {
     queryClient.invalidateQueries({ queryKey: SESSION_KEYS.sessions });
+    queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-operators'] });
     queryClient.invalidateQueries({ queryKey: SESSION_KEYS.cofre });
     queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] });
     // Sangria/suprimento/quebra de caixa criam lançamento de verdade: o
@@ -250,14 +252,32 @@ export function usePdvCashRegister() {
 
       const openSessions = (openRes.data ?? []) as PdvCashSession[];
       const lastClosed = ((closedRes.data ?? []) as PdvCashSession[])[0] ?? null;
-      const operators = await fetchOperatorNames([
-        ...openSessions.map((s) => s.opened_by),
-        lastClosed?.opened_by,
-        lastClosed?.closed_by,
-      ]);
-
-      return { openSessions, lastClosed, operators };
+      return { openSessions, lastClosed };
     },
+  });
+
+  // Nome do operador é conteúdo secundário. Antes, esta terceira chamada de
+  // rede mantinha a TELA INTEIRA em skeleton mesmo depois de terminal e sessão
+  // já terem chegado. Agora o caixa abre com os dados essenciais e o nome é
+  // preenchido assim que a consulta de perfis termina.
+  const operatorIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          [
+            ...(sessionsQuery.data?.openSessions ?? []).map((item) => item.opened_by),
+            sessionsQuery.data?.lastClosed?.opened_by,
+            sessionsQuery.data?.lastClosed?.closed_by,
+          ].filter((id): id is string => Boolean(id)),
+        ),
+      ).sort(),
+    [sessionsQuery.data?.lastClosed?.closed_by, sessionsQuery.data?.lastClosed?.opened_by, sessionsQuery.data?.openSessions],
+  );
+  const operatorsQuery = useQuery({
+    queryKey: SESSION_KEYS.operators(operatorIds),
+    enabled: operatorIds.length > 0,
+    queryFn: () => fetchOperatorNames(operatorIds),
+    staleTime: 5 * 60 * 1000,
   });
 
   const cofreQuery = useQuery({
@@ -281,8 +301,12 @@ export function usePdvCashRegister() {
    */
   const session = useMemo(() => {
     if (openSessions.length === 0) return null;
-    return openSessions.find((s) => s.opened_by === user?.id) ?? openSessions[0];
-  }, [openSessions, user?.id]);
+    return (
+      openSessions.find((s) => s.id === focusedSessionId) ??
+      openSessions.find((s) => s.opened_by === user?.id) ??
+      openSessions[0]
+    );
+  }, [focusedSessionId, openSessions, user?.id]);
 
   const openSession = useMutation({
     mutationFn: async (vars: { terminalId: string; openingAmount: number }) => {
@@ -390,7 +414,7 @@ export function usePdvCashRegister() {
     openSessions,
     session,
     lastClosed: sessionsQuery.data?.lastClosed ?? null,
-    operators: sessionsQuery.data?.operators ?? {},
+    operators: operatorsQuery.data ?? {},
     cofre: cofreQuery.data ?? null,
     /** Carregando o essencial da tela (terminal + sessão). Skeleton depende disto. */
     isLoading: terminalsQuery.isLoading || sessionsQuery.isLoading,
