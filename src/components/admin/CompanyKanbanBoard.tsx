@@ -7,6 +7,12 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import {
+  getCompanyLifecycleColumn,
+  hasPaidSubscription,
+  type CompanyLifecycleColumn,
+  type CompanyLifecycleSource,
+} from '@/utils/companyLifecycle';
 
 interface CompanyKanbanBoardProps {
   companies: any[];
@@ -20,10 +26,18 @@ interface CompanyKanbanBoardProps {
   onDelete: (company: any) => void;
 }
 
-const COLUMNS = [
+type CompanyKanbanColumn = {
+  id: CompanyLifecycleColumn;
+  title: string;
+  status: 'active' | 'testing' | 'inactive';
+  color: string;
+};
+
+const COLUMNS: CompanyKanbanColumn[] = [
   { id: 'active', title: 'ATIVOS', status: 'active', color: 'bg-emerald-500' },
   { id: 'testing', title: 'TESTANDO', status: 'testing', color: 'bg-amber-500' },
   { id: 'inactive', title: 'INATIVOS', status: 'inactive', color: 'bg-rose-500' },
+  { id: 'former_customer', title: 'EX-CLIENTES', status: 'inactive', color: 'bg-violet-500' },
 ];
 
 export function CompanyKanbanBoard({ companies, origins, masterUserMap, salespersonMap, canSeeTotals = true, onEdit, onDelete }: CompanyKanbanBoardProps) {
@@ -42,9 +56,16 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, salesper
     return () => { if (dragImageRef.current) document.body.removeChild(dragImageRef.current); };
   }, []);
 
-  const getCompaniesByStatus = (status: string) => companies.filter(c => c.subscription_status === status);
+  const getCompaniesByColumn = (columnId: CompanyLifecycleColumn) =>
+    companies.filter((company) => getCompanyLifecycleColumn(company) === columnId);
   const getTotalValue = (list: any[]) => list.reduce((acc, c) => acc + (c.subscription_value || 0), 0);
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+  const canEnterColumn = (company: CompanyLifecycleSource, column: CompanyKanbanColumn) => {
+    if (column.id === 'former_customer') return hasPaidSubscription(company);
+    if (column.id === 'inactive') return !hasPaidSubscription(company);
+    return true;
+  };
 
   const handleDragStart = (e: React.DragEvent, company: any) => {
     setDraggedCompanyId(company.id);
@@ -59,12 +80,25 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, salesper
     }
   };
 
-  const handleDrop = async (e: React.DragEvent, newStatus: string) => {
+  const handleDrop = async (e: React.DragEvent, column: CompanyKanbanColumn) => {
     e.preventDefault();
     setDragOverColumn(null);
     const companyId = e.dataTransfer.getData('text/plain');
     const company = companies.find(c => c.id === companyId);
-    if (!company || company.subscription_status === newStatus) { setDraggedCompanyId(null); return; }
+    if (!company) { setDraggedCompanyId(null); return; }
+
+    if (!canEnterColumn(company, column)) {
+      toast({
+        title: hasPaidSubscription(company)
+          ? 'Empresa com pagamento deve ir para Ex-clientes'
+          : 'Ex-clientes precisam ter ao menos um pagamento',
+      });
+      setDraggedCompanyId(null);
+      return;
+    }
+
+    const newStatus = column.status;
+    if (company.subscription_status === newStatus) { setDraggedCompanyId(null); return; }
 
     queryClient.setQueryData(['admin-companies'], (old: any[] | undefined) =>
       old?.map(c => c.id === companyId ? { ...c, subscription_status: newStatus } : c)
@@ -73,8 +107,10 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, salesper
     try {
       const { error } = await supabase.from('companies').update({ subscription_status: newStatus }).eq('id', companyId);
       if (error) throw error;
-      const labels: Record<string, string> = { active: 'Ativo', testing: 'Testando', inactive: 'Inativo' };
-      toast({ title: `${company.name} movido para ${labels[newStatus]}` });
+      const label = column.id === 'former_customer'
+        ? 'Ex-clientes'
+        : ({ active: 'Ativos', testing: 'Testando', inactive: 'Inativos' } as const)[newStatus];
+      toast({ title: `${company.name} movido para ${label}` });
     } catch {
       toast({ variant: 'destructive', title: 'Erro ao atualizar status' });
       queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
@@ -83,19 +119,25 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, salesper
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
       {COLUMNS.map((column) => {
-        const colCompanies = getCompaniesByStatus(column.status);
+        const colCompanies = getCompaniesByColumn(column.id);
         const totalValue = getTotalValue(colCompanies);
-        const isDragOver = dragOverColumn === column.status;
+        const isDragOver = dragOverColumn === column.id;
 
         return (
           <div
             key={column.id}
             className="w-full"
-            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverColumn(column.status); }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              const draggedCompany = companies.find((company) => company.id === draggedCompanyId);
+              const canDrop = !draggedCompany || canEnterColumn(draggedCompany, column);
+              e.dataTransfer.dropEffect = canDrop ? 'move' : 'none';
+              setDragOverColumn(canDrop ? column.id : null);
+            }}
             onDragLeave={() => setDragOverColumn(null)}
-            onDrop={(e) => handleDrop(e, column.status)}
+            onDrop={(e) => handleDrop(e, column)}
           >
             <div className="mb-4">
               <div className={cn('h-1 w-full rounded-full mb-3 transition-all', column.color, isDragOver && 'h-2')} />

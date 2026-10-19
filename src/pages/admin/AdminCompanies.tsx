@@ -56,6 +56,8 @@ import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { hasPaidSubscription } from '@/utils/companyLifecycle';
+import { fetchAllPaginated } from '@/utils/supabasePagination';
 
 // Tipo mínimo da company conforme usado nesta tela. Schema completo é definido
 // pelo dev-database em types/database; aqui só refinamos o suficiente pra evitar
@@ -70,6 +72,8 @@ type CompanyLite = {
   subscription_status: 'active' | 'testing' | 'inactive' | string;
   subscription_plan?: string | null;
   subscription_expires_at?: string | null;
+  ltv?: number | null;
+  has_payment_history?: boolean;
 };
 
 // Display dos planos (renomeados 2026-06; os CODES start/avancado/master ficam).
@@ -142,9 +146,21 @@ export default function AdminCompanies() {
   const { data: companies = [], isLoading, refetch } = useQuery({
     queryKey: ['admin-companies'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('companies').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
+      const [companiesResult, paymentRows] = await Promise.all([
+        supabase.from('companies').select('*').order('created_at', { ascending: false }),
+        fetchAllPaginated<{ company_id: string }>(() =>
+          supabase.from('company_payments').select('company_id').order('company_id'),
+        ),
+      ]);
+      if (companiesResult.error) throw companiesResult.error;
+
+      const companiesWithPayment = new Set(paymentRows.map((payment) => payment.company_id));
+      return (companiesResult.data ?? []).map((company) => ({
+        ...company,
+        // company_payments cobre o legado anterior ao campo LTV; o helper usa
+        // LTV como fallback para pagamentos confirmados cujo espelho falhou.
+        has_payment_history: companiesWithPayment.has(company.id),
+      }));
     },
   });
 
@@ -594,10 +610,12 @@ export default function AdminCompanies() {
           <div className="rounded-xl border bg-card overflow-hidden">
             {(filtered as CompanyLite[]).map((company) => {
               const isInactive = company.subscription_status === 'inactive';
-              const statusInfo = STATUS_BADGE[company.subscription_status] || {
-                label: company.subscription_status,
-                className: 'bg-gray-500 text-white',
-              };
+              const statusInfo = isInactive && hasPaidSubscription(company)
+                ? { label: 'Ex-cliente', className: 'bg-violet-500 hover:bg-violet-600 text-white' }
+                : STATUS_BADGE[company.subscription_status] || {
+                    label: company.subscription_status,
+                    className: 'bg-gray-500 text-white',
+                  };
               const planLabel = company.subscription_plan
                 ? (PLAN_LABELS[company.subscription_plan] || company.subscription_plan)
                 : null;

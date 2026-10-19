@@ -26,6 +26,7 @@ import { ResolvedOriginBadge } from '@/components/admin/OriginBadge';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 import { SelfServiceBadge } from '@/components/admin/company-lead/SelfServiceBadge';
 import { LeadWhatsAppButton } from '@/components/admin/company-lead/LeadWhatsAppButton';
+import { hasPaidSubscription } from '@/utils/companyLifecycle';
 
 interface CompanyTableProps {
   companies: any[];
@@ -218,6 +219,11 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="whitespace-nowrap">{company.name}</span>
                         <SelfServiceBadge company={company} />
+                        {company.subscription_status === 'inactive' && hasPaidSubscription(company) && (
+                          <Badge className="bg-violet-500 hover:bg-violet-600 text-white border-0">
+                            Ex-cliente
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     {/* Origin - inline select */}
