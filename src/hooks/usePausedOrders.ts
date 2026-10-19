@@ -29,7 +29,7 @@ export function usePausedOrders() {
             *,
             customer:customers(id, name, phone, document, address, address_number, complement, neighborhood, city, state, zip_code, company_name, customer_type),
             equipment:equipment(id, name, brand, model),
-            service_type:service_types(id, name, color, number_prefix)
+            service_type:service_types!service_orders_service_type_id_fkey(id, name, color, number_prefix)
           `)
           .eq('status', 'pausada')
           .order('paused_at', { ascending: true, nullsFirst: false })

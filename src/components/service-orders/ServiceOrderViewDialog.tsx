@@ -151,7 +151,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
     try {
       const { data: osData, error: osError } = await supabase
         .from('service_orders')
-        .select(`*, customer:customers(id, name, phone, celular, address, city, state), equipment:equipment(id, name, brand, model, serial_number), form_template:form_templates(id, name), service_type:service_types(id, name, color)`)
+        .select(`*, customer:customers(id, name, phone, celular, address, city, state), equipment:equipment(id, name, brand, model, serial_number), form_template:form_templates(id, name), service_type:service_types!service_orders_service_type_id_fkey(id, name, color)`)
         .eq('id', serviceOrderId).single();
       if (osError) throw osError;
       // Use snapshot as fallback when live joins return null (e.g. deleted customer/equipment)

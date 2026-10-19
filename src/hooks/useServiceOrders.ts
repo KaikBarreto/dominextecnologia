@@ -174,6 +174,8 @@ export function useServiceOrders() {
       let from = 0;
       const pageSize = 1000;
       while (true) {
+        // A FK explicita no embed de service_types evita ambiguidade com a
+        // relacao N:N criada por service_order_service_types.
         const { data, error } = await supabase
           .from('service_orders')
           .select(`
@@ -181,7 +183,7 @@ export function useServiceOrders() {
             customer:customers(id, name, phone, celular, email, document, address, address_number, complement, neighborhood, city, state, zip_code, company_name, customer_type),
             equipment:equipment(id, name, brand, model),
             form_template:form_templates(id, name),
-            service_type:service_types(id, name, color, number_prefix),
+            service_type:service_types!service_orders_service_type_id_fkey(id, name, color, number_prefix),
             contract:contracts(id, name, is_pmoc)
           `)
           .order('created_at', { ascending: false })
@@ -505,7 +507,7 @@ export function useServiceOrders() {
               customer:customers(id, name, phone, celular, email, document, address, address_number, complement, neighborhood, city, state, zip_code, company_name, customer_type),
               equipment:equipment(id, name, brand, model, serial_number, location, capacity),
               form_template:form_templates(id, name),
-              service_type:service_types(id, name, color, number_prefix)
+              service_type:service_types!service_orders_service_type_id_fkey(id, name, color, number_prefix)
             `)
             .eq('id', id)
             .single();

@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.2',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ordens de Serviço voltaram a aparecer',
+        description: 'Corrigimos uma falha que deixava a lista de Ordens de Serviço vazia mesmo com os registros existentes. A listagem principal, as OS pausadas, os detalhes e a área do técnico voltaram a carregar normalmente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.37.1',
     date: '19 de outubro de 2026',
     type: 'patch',

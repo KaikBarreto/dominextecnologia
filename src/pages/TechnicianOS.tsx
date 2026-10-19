@@ -1384,7 +1384,7 @@ function TechnicianOSInner() {
           customer:customers(id, name, phone, celular, address, city, state, document, photo_url, latitude, longitude),
           equipment:equipment(id, name, brand, model, serial_number, location, capacity),
           form_template:form_templates(id, name),
-          service_type:service_types(id, name, color),
+          service_type:service_types!service_orders_service_type_id_fkey(id, name, color),
           contract:contracts(id, name, start_date, frequency_type, frequency_value, horizon_months)
         `);
       query = isUuid(id)
