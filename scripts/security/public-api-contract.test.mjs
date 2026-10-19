@@ -12,6 +12,7 @@ const cloudflareGateway = await readFile(new URL('workers/public-api-gateway.js'
 const generatedOpenApi = JSON.parse(await readFile(new URL('workers/openapi.v1.json', root), 'utf8'));
 const publicHelpers = await readFile(new URL('supabase/functions/_shared/public-api.ts', root), 'utf8');
 const bookingMigration = await readFile(new URL('supabase/migrations/20261017122000_public_api_v1_booking_engine.sql', root), 'utf8');
+const multiDayBookingMigration = await readFile(new URL('supabase/migrations/20261019173000_os_multiplos_dias_na_agenda.sql', root), 'utf8');
 const contract = parse(openapiSource);
 
 test('OpenAPI servido pelo gateway e identico a fonte YAML canonica', () => {
@@ -64,6 +65,8 @@ test('nenhuma edge registra segredo, Authorization ou corpo integral', () => {
 
 test('override interno nao fica acessivel a service role nem a API publica', () => {
   assert.match(bookingMigration, /REVOKE ALL ON FUNCTION public\.schedule_create_service_order_with_override\(jsonb,\s*text,\s*jsonb,\s*uuid\[\]\) FROM PUBLIC, anon, service_role/i);
+  assert.match(multiDayBookingMigration, /REVOKE ALL ON FUNCTION public\.schedule_book_service_order_plan\(uuid,\s*text,\s*uuid,\s*timestamptz,\s*jsonb,\s*text\)\s+FROM PUBLIC, anon, service_role/i);
+  assert.match(multiDayBookingMigration, /REVOKE ALL ON FUNCTION public\.schedule_create_service_order_plan_with_override\(jsonb,\s*text,\s*jsonb,\s*uuid\[\]\)\s+FROM PUBLIC, anon, service_role/i);
   assert.doesNotMatch(publicEdge, /schedule_create_service_order_with_override|schedule_book_service_order/i);
 });
 

@@ -20,13 +20,17 @@ describe('ResetServiceOrderDialog', () => {
     document.body.innerHTML = '';
   });
 
-  const renderDialog = (onConfirm: (clearResponses: boolean) => Promise<void> | void) => {
+  const renderDialog = (
+    onConfirm: (clearResponses: boolean) => Promise<void> | void,
+    status: 'em_andamento' | 'concluida' = 'em_andamento',
+  ) => {
     act(() => {
       root.render(
         <ResetServiceOrderDialog
           open
           onOpenChange={() => {}}
           orderNumber={123}
+          status={status}
           onConfirm={onConfirm}
         />,
       );
@@ -61,5 +65,14 @@ describe('ResetServiceOrderDialog', () => {
     });
 
     expect(onConfirm).toHaveBeenCalledWith(true);
+  });
+
+  it('mostra Reabrir OS quando a ordem está concluída', () => {
+    renderDialog(vi.fn(), 'concluida');
+
+    expect(document.body.textContent).toContain('Reabrir OS #123?');
+    expect(Array.from(document.querySelectorAll('button')).some(
+      (button) => button.textContent?.trim() === 'Reabrir OS',
+    )).toBe(true);
   });
 });

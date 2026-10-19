@@ -222,7 +222,7 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
                 // o scroll-to-detail implementado em v1.9.33.
                 return (
                   <div
-                    key={order.id}
+                    key={`${order.id}-${order.scheduled_date}`}
                     className="absolute pointer-events-auto px-0.5"
                     style={{ top: topOffset, height, left: `${leftPercent}%`, width: `${widthPercent}%` }}
                     onDragOver={handleCardDragOver}
@@ -231,8 +231,8 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
                     <EventCard
                       order={order}
                       onClick={() => onOrderSelect(order)}
-                      draggable
-                      onDragStart={(e) => e.dataTransfer.setData('text/plain', order.id)}
+                      draggable={(order._scheduledSpanTotalDays ?? 1) === 1}
+                      onDragStart={(order._scheduledSpanTotalDays ?? 1) > 1 ? undefined : (e) => e.dataTransfer.setData('text/plain', order.id)}
                       fillHeight
                       colorShift={col}
                       isMoving={movingOrderId === order.id}
@@ -244,7 +244,7 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
               // Desktop: side-by-side com drag nativo HTML5.
               return (
                 <div
-                  key={order.id}
+                  key={`${order.id}-${order.scheduled_date}`}
                   className="absolute pointer-events-auto px-0.5"
                   style={{ top: topOffset, height, left: `${leftPercent}%`, width: `${widthPercent}%` }}
                   onDragOver={handleCardDragOver}
@@ -253,8 +253,8 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
                   <EventCard
                     order={order}
                     onClick={() => onOrderSelect(order)}
-                    draggable
-                    onDragStart={(e) => e.dataTransfer.setData('text/plain', order.id)}
+                    draggable={(order._scheduledSpanTotalDays ?? 1) === 1}
+                    onDragStart={(order._scheduledSpanTotalDays ?? 1) > 1 ? undefined : (e) => e.dataTransfer.setData('text/plain', order.id)}
                     fillHeight
                     colorShift={col}
                   />

@@ -47,7 +47,7 @@ import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import type { ServiceOrder, OsStatus } from '@/types/database';
+import type { ServiceOrder, ServiceOrderScheduleSlot, OsStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
@@ -79,6 +79,17 @@ import {
   mergeServiceTypeIds,
   reconcileEquipmentChecklistTemplateIds,
 } from '@/lib/serviceOrderServices';
+import { ServiceOrderSchedulePlanner } from '@/components/service-orders/ServiceOrderSchedulePlanner';
+import {
+  normalizeServiceOrderSchedulePlan,
+  shiftSchedulePlanToStart,
+} from '@/lib/serviceOrderSchedule';
+
+const scheduleSlotSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  time: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/),
+  duration_minutes: z.coerce.number().int().min(15).max(480),
+});
 
 const serviceOrderSchema = z.object({
   customer_id: z.string().optional(),
@@ -88,7 +99,8 @@ const serviceOrderSchema = z.object({
   service_type_id: z.string().optional(),
   scheduled_date: z.string().optional(),
   scheduled_time: z.string().optional(),
-  duration_minutes: z.coerce.number().min(15).default(120),
+  duration_minutes: z.coerce.number().int().min(15).max(480).default(120),
+  schedule_plan: z.array(scheduleSlotSchema).min(1).max(31),
   description: z.string().optional(),
   notes: z.string().optional(),
   form_template_id: z.string().optional(),
@@ -297,6 +309,13 @@ export function ServiceOrderFormDialog({
     return format(new Date(), 'HH:mm');
   }, [serviceOrder?.scheduled_time, defaultTime]);
 
+  const computedSchedulePlan = useMemo(() => normalizeServiceOrderSchedulePlan({
+    scheduled_date: computedDate,
+    scheduled_time: computedTime,
+    duration_minutes: serviceOrder?.duration_minutes ?? 120,
+    schedule_plan: serviceOrder?.schedule_plan,
+  }), [computedDate, computedTime, serviceOrder?.duration_minutes, serviceOrder?.schedule_plan]);
+
   const form = useForm<ServiceOrderFormData>({
     resolver: zodResolver(serviceOrderSchema),
     defaultValues: {
@@ -308,6 +327,7 @@ export function ServiceOrderFormDialog({
       scheduled_date: computedDate,
       scheduled_time: computedTime,
       duration_minutes: (serviceOrder as any)?.duration_minutes ?? 120,
+      schedule_plan: computedSchedulePlan,
       description: serviceOrder?.description ?? defaultDescription ?? '',
       notes: serviceOrder?.notes ?? '',
       form_template_id: serviceOrder?.form_template_id ?? '',
@@ -494,6 +514,7 @@ export function ServiceOrderFormDialog({
           scheduled_date: computedDate,
           scheduled_time: computedTime,
           duration_minutes: (serviceOrder as any)?.duration_minutes ?? 120,
+          schedule_plan: computedSchedulePlan,
           description: serviceOrder?.description ?? defaultDescription ?? '',
           notes: serviceOrder?.notes ?? '',
           form_template_id: serviceOrder?.form_template_id ?? '',
@@ -505,7 +526,7 @@ export function ServiceOrderFormDialog({
         loadExistingEquipmentItems(serviceOrder.id);
       }
     }
-  }, [open, serviceOrder, computedDate, computedTime]);
+  }, [open, serviceOrder, computedDate, computedTime, computedSchedulePlan]);
 
   useEffect(() => {
     if (!open || !isEditing || !budgetQuery.data) return;
@@ -657,15 +678,22 @@ export function ServiceOrderFormDialog({
       const groupId = crypto.randomUUID();
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
-      const inserts = dates.map(date => normalizeOptionalForeignKeys({
+      const inserts = dates.map(date => {
+        const occurrencePlan = shiftSchedulePlanToStart(
+          data.schedule_plan as ServiceOrderScheduleSlot[],
+          date,
+        );
+        const firstSlot = occurrencePlan[0];
+        return normalizeOptionalForeignKeys({
         customer_id: customerId,
         technician_id: techId || null,
         team_id: teamId || null,
         os_type: data.os_type,
         service_type_id: data.service_type_id === 'none' ? null : (data.service_type_id || null),
-        scheduled_date: date,
-        scheduled_time: data.scheduled_time || null,
-        duration_minutes: data.duration_minutes || 120,
+        scheduled_date: firstSlot?.date ?? date,
+        scheduled_time: firstSlot?.time ?? data.scheduled_time ?? null,
+        duration_minutes: firstSlot?.duration_minutes ?? data.duration_minutes ?? 120,
+        schedule_plan: occurrencePlan,
         description: data.description || null,
         notes: data.notes || null,
         equipment_id: effectiveEquipmentIds[0] || null,
@@ -688,7 +716,8 @@ export function ServiceOrderFormDialog({
         recurrence_group_id: groupId,
         company_id,
         ...serviceAddressPayload,
-      } as any, ['technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id']));
+        } as any, ['technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id']);
+      });
 
       const { data: created, error } = await supabase.from('service_orders').insert(inserts as any).select('id');
       if (error) {
@@ -1276,6 +1305,37 @@ export function ServiceOrderFormDialog({
       onChangeUsers={setSelectedAssigneeUserIds}
       onChangeTeams={setSelectedAssigneeTeamIds}
       label={t.labelAssignees}
+    />
+  );
+
+  const handleSchedulePlanChange = (plan: ServiceOrderScheduleSlot[]) => {
+    const firstSlot = plan[0];
+    form.setValue('schedule_plan', plan, { shouldDirty: true, shouldValidate: true });
+    if (firstSlot) {
+      form.setValue('scheduled_date', firstSlot.date, { shouldDirty: true });
+      form.setValue('scheduled_time', firstSlot.time, { shouldDirty: true });
+      form.setValue('duration_minutes', firstSlot.duration_minutes, { shouldDirty: true });
+    }
+  };
+
+  const schedulePlanningSection = (
+    <ServiceOrderSchedulePlanner
+      plan={(watchedValues.schedule_plan ?? []) as ServiceOrderScheduleSlot[]}
+      onChange={handleSchedulePlanChange}
+      locale={locale}
+      labels={{
+        period: t.schedulePeriod,
+        startDate: t.scheduleStartDate,
+        endDate: t.scheduleEndDate,
+        dailyPlan: t.dailySchedule,
+        dailyPlanHelp: t.dailyScheduleHelp,
+        applyFirstToAll: t.applyScheduleToAll,
+        scheduledDaySingular: t.scheduledDaySingular,
+        scheduledDayPlural: t.scheduledDayPlural,
+        startTime: t.scheduleStartTime,
+        endTime: t.scheduleEndTime,
+        invalidTimeRange: t.scheduleInvalidTimeRange,
+      }}
     />
   );
 
@@ -1888,36 +1948,7 @@ export function ServiceOrderFormDialog({
               <div className="space-y-4">
                 {scopeSummary}
                 {assigneeSection}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField control={form.control} name="scheduled_date" render={({ field }) => (
-                    <FormItem><FormLabel>{t.labelScheduledDate}</FormLabel><FormControl><DatePicker value={field.value ?? ''} onValueChange={field.onChange} placeholder={MESSAGES[locale].app.common.datePicker.placeholder} clearable clearLabel={MESSAGES[locale].app.common.clear} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={form.control} name="scheduled_time" render={({ field }) => (
-                    <FormItem><FormLabel>{t.labelScheduledTime}</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                </div>
-                <FormField control={form.control} name="duration_minutes" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t.labelDuration}</FormLabel>
-                    <Select onValueChange={(v) => field.onChange(Number(v))} value={String(field.value || 120)}>
-                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="15">{t.duration15}</SelectItem>
-                        <SelectItem value="30">{t.duration30}</SelectItem>
-                        <SelectItem value="45">{t.duration45}</SelectItem>
-                        <SelectItem value="60">{t.duration60}</SelectItem>
-                        <SelectItem value="90">{t.duration90}</SelectItem>
-                        <SelectItem value="120">{t.duration120}</SelectItem>
-                        <SelectItem value="180">{t.duration180}</SelectItem>
-                        <SelectItem value="240">{t.duration240}</SelectItem>
-                        <SelectItem value="300">{t.duration300}</SelectItem>
-                        <SelectItem value="360">{t.duration360}</SelectItem>
-                        <SelectItem value="480">{t.duration480}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                {schedulePlanningSection}
 
                 <FormField control={form.control} name="description" render={({ field }) => (
                   <FormItem>
@@ -2078,7 +2109,10 @@ export function ServiceOrderFormDialog({
         onResume={() => {
           if (draft.draftData) {
             const { _selectedCustomerId, _selectedServiceTypeIds, _budgetItems, ...formValues } = draft.draftData;
-            form.reset(formValues);
+            form.reset({
+              ...formValues,
+              schedule_plan: formValues.schedule_plan?.length ? formValues.schedule_plan : computedSchedulePlan,
+            });
             if (_selectedCustomerId) setSelectedCustomerId(_selectedCustomerId);
             if (_selectedServiceTypeIds) {
               setSelectedServiceTypeIds(_selectedServiceTypeIds);
@@ -2094,7 +2128,7 @@ export function ServiceOrderFormDialog({
             customer_id: '', equipment_id: '', technician_id: '',
             os_type: 'manutencao_corretiva', service_type_id: '',
             scheduled_date: computedDate, scheduled_time: computedTime,
-            duration_minutes: 120, description: '', notes: '', form_template_id: '',
+            duration_minutes: 120, schedule_plan: computedSchedulePlan, description: '', notes: '', form_template_id: '',
           });
         }}
       />
@@ -2260,36 +2294,7 @@ export function ServiceOrderFormDialog({
             <div className="space-y-4">
               {scopeSummary}
               {assigneeSection}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField control={form.control} name="scheduled_date" render={({ field }) => (
-                  <FormItem><FormLabel>{t.labelScheduledDate}</FormLabel><FormControl><DatePicker value={field.value ?? ''} onValueChange={field.onChange} placeholder={MESSAGES[locale].app.common.datePicker.placeholder} clearable clearLabel={MESSAGES[locale].app.common.clear} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="scheduled_time" render={({ field }) => (
-                  <FormItem><FormLabel>{t.labelScheduledTime}</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="duration_minutes" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t.labelDuration}</FormLabel>
-                    <Select onValueChange={(v) => field.onChange(Number(v))} value={String(field.value || 120)}>
-                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="15">{t.duration15}</SelectItem>
-                        <SelectItem value="30">{t.duration30}</SelectItem>
-                        <SelectItem value="45">{t.duration45}</SelectItem>
-                        <SelectItem value="60">{t.duration60}</SelectItem>
-                        <SelectItem value="90">{t.duration90}</SelectItem>
-                        <SelectItem value="120">{t.duration120}</SelectItem>
-                        <SelectItem value="180">{t.duration180}</SelectItem>
-                        <SelectItem value="240">{t.duration240}</SelectItem>
-                        <SelectItem value="300">{t.duration300}</SelectItem>
-                        <SelectItem value="360">{t.duration360}</SelectItem>
-                        <SelectItem value="480">{t.duration480}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </div>
+              {schedulePlanningSection}
 
               <FormField control={form.control} name="description" render={({ field }) => (
                 <FormItem><FormLabel>{t.labelDescription}</FormLabel><FormControl><Textarea placeholder={t.placeholderDescription} {...field} /></FormControl><FormMessage /></FormItem>

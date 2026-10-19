@@ -34,7 +34,7 @@ import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrder
 import { Button } from '@/components/ui/button';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { cn } from '@/lib/utils';
-import type { ServiceOrder } from '@/types/database';
+import type { ServiceOrder, ServiceOrderScheduleSlot } from '@/types/database';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
@@ -54,6 +54,11 @@ import {
   isScheduleConflictError,
   type ScheduleConflictItem,
 } from '@/lib/scheduleBooking';
+import {
+  expandServiceOrderScheduledDays,
+  normalizeServiceOrderSchedulePlan,
+  shiftSchedulePlanToStart,
+} from '@/lib/serviceOrderSchedule';
 
 type PendingScheduleConflict =
   | {
@@ -68,6 +73,7 @@ type PendingScheduleConflict =
       scheduledDate: string;
       scheduledTime: string;
       durationMinutes: number;
+      schedulePlan: ServiceOrderScheduleSlot[];
       resourceType: 'technician' | 'team';
       resourceId: string;
       requestId: string;
@@ -76,6 +82,8 @@ type PendingScheduleConflict =
 
 type SchedulableOrder = ServiceOrder & {
   duration_minutes?: number | null;
+  scheduled_days?: number | null;
+  schedule_plan?: ServiceOrderScheduleSlot[];
   _assignee_user_ids?: string[];
 };
 
@@ -343,7 +351,7 @@ export default function Schedule() {
     const financialFiltered =
       entryTypeFilter.length > 0 && !entryTypeFilter.includes('tarefa') ? [] : financialEvents;
 
-    return [...expanded, ...financialFiltered];
+    return expandServiceOrderScheduledDays([...expanded, ...financialFiltered]);
   }, [serviceOrders, technicianFilter, customerFilter, statusFilter, entryTypeFilter, isTechnician, user?.id, myTeamIds, financialEvents, getAssignees, canViewAllSchedule]);
 
   // Recorte de `filteredOrders` pro período REALMENTE visível no calendário
@@ -463,7 +471,10 @@ export default function Schedule() {
         setIsTaskFormOpen(true);
         return;
       }
-      setSelectedOrder(summaryOrder);
+      // Dias adicionais são ocorrências visuais da mesma OS. A edição sempre
+      // recebe a linha canônica para não transformar o dia 2 em nova data inicial.
+      const canonicalOrder = serviceOrders.find((order) => order.id === summaryOrder.id) ?? summaryOrder;
+      setSelectedOrder(canonicalOrder);
       setSummaryOrder(null);
       setDefaultDate(undefined);
       setDefaultTime(undefined);
@@ -669,6 +680,10 @@ export default function Schedule() {
       return;
     }
     const durationMinutes = schedulableOrder.duration_minutes || 120;
+    const currentPlan = normalizeServiceOrderSchedulePlan(schedulableOrder);
+    const schedulePlan = shiftSchedulePlanToStart(currentPlan, newDate).map((slot, index) => (
+      index === 0 ? { ...slot, time: newTime, duration_minutes: durationMinutes } : slot
+    ));
 
     const requestId = crypto.randomUUID();
     try {
@@ -677,6 +692,7 @@ export default function Schedule() {
         scheduled_date: newDate,
         scheduled_time: newTime,
         duration_minutes: durationMinutes,
+        schedule_plan: schedulePlan,
         resource_type: resourceType,
         resource_id: resourceId,
         schedule_request_id: requestId,
@@ -689,6 +705,7 @@ export default function Schedule() {
           scheduledDate: newDate,
           scheduledTime: newTime,
           durationMinutes,
+          schedulePlan,
           resourceType,
           resourceId,
           requestId,
@@ -745,6 +762,7 @@ export default function Schedule() {
         scheduled_date: pending.scheduledDate,
         scheduled_time: pending.scheduledTime,
         duration_minutes: pending.durationMinutes,
+        schedule_plan: pending.schedulePlan,
         resource_type: pending.resourceType,
         resource_id: pending.resourceId,
         schedule_override: true,
@@ -1293,6 +1311,7 @@ export default function Schedule() {
           if (!open && !resetServiceOrder.isPending) setResetOrder(null);
         }}
         orderNumber={resetOrder?.order_number}
+        status={resetOrder?.status}
         isPending={resetServiceOrder.isPending}
         onConfirm={handleResetConfirm}
       />

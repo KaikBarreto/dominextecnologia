@@ -6602,9 +6602,9 @@ A DRE é o Demonstrativo de Resultado: o relatório que responde "sobrou ou falt
 | (-) Custo dos Serviços Prestados (CSP) | Saídas cujas categorias estão no grupo DRE "CSP". |
 | (=) Lucro Bruto | Receita líquida menos o CSP. Mostra também a margem em porcentagem. |
 | (-) Despesas Operacionais (OPEX) | Todo o resto das saídas. |
-| (=) Resultado Líquido (EBITDA) | O número final, com o rótulo Superávit, Déficit ou Equilibrado. |
+| (=) Resultado Líquido | O número final, com o rótulo Superávit, Déficit ou Equilibrado. |
 
-Cada bloco abre e fecha, mostrando as categorias que compõem o total. No topo há três indicadores: Margem, Receita Líq. e EBITDA, e um gráfico Evolução Receita × Despesas mês a mês.
+Cada bloco abre e fecha, mostrando as categorias que compõem o total. No topo há três indicadores: Margem, Receita Líq. e Resultado Líq., e um gráfico Evolução Receita × Despesas mês a mês.
 
 #### O botão Caixa × Competência
 

@@ -150,7 +150,7 @@ export function FinancialDRESection({ transactions, categories, periodLabel }: P
           <CardContent className="p-4 lg:p-6">
             <div className="flex items-start justify-between">
               <div className="space-y-1 lg:space-y-2">
-                <p className="text-xs lg:text-sm font-medium text-white/80">Resultado (EBITDA)</p>
+                <p className="text-xs lg:text-sm font-medium text-white/80">Resultado Líquido</p>
                 <p className="text-lg lg:text-2xl font-bold tracking-tight truncate">{fmt(dre.ebitda)}</p>
               </div>
               <div className={cn('p-2 rounded-xl', dre.ebitda >= 0 ? 'bg-emerald-600' : 'bg-red-600')}>
@@ -217,13 +217,13 @@ export function FinancialDRESection({ transactions, categories, periodLabel }: P
             expanded={showOpex} onToggle={() => setShowOpex((v) => !v)}
             items={dre.opexByCategory} labelFor={labelFor} sign="-"
           />
-          {/* EBITDA */}
+          {/* Resultado líquido */}
           <div className={cn('px-4 py-5 flex items-center justify-between',
             dre.ebitda >= 0 ? 'bg-gradient-to-r from-green-600 to-green-500' : 'bg-gradient-to-r from-red-600 to-red-500')}>
             <div className="flex items-center gap-3">
               <ResultIcon className="h-5 w-5 text-white" />
               <div className="flex flex-col">
-                <span className="text-base font-bold text-white">(=) RESULTADO LÍQUIDO (EBITDA)</span>
+                <span className="text-base font-bold text-white">(=) RESULTADO LÍQUIDO</span>
                 <span className="text-xs text-white/80">{dre.ebitda >= 0 ? 'Lucro' : 'Prejuízo'} do Período</span>
               </div>
             </div>

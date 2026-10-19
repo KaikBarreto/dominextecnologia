@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.10',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'OS com vários dias e horários por jornada',
+        description: 'Na criação da Ordem de Serviço, agora você escolhe a data inicial e a final e define quando o trabalho começa e termina em cada dia. A agenda mostra cada jornada separadamente, sem bloquear as horas entre um dia e outro.',
+        category: 'recurso',
+      },
+      {
+        title: 'Valor do serviço preenchido no orçamento',
+        description: 'Ao selecionar um serviço no orçamento, o valor cadastrado na tabela de serviços passa a ser preenchido automaticamente, evitando digitação repetida e preços antigos no item.',
+        category: 'correcao',
+      },
+      {
+        title: 'Resultado líquido sem indicação incorreta de EBITDA',
+        description: 'O DRE agora apresenta o Resultado Líquido com o nome correto, sem a referência a EBITDA quando o cálculo já considera impostos.',
+        category: 'correcao',
+      },
+      {
+        title: 'Reabrir OS voltou a ficar claro nas ações',
+        description: 'Nas ordens concluídas, a ação voltou a aparecer com o nome Reabrir OS. A mesma opção preserva a escolha de manter ou apagar o preenchimento anterior antes de devolver a ordem para Agendada.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.37.9',
     date: '19 de outubro de 2026',
     type: 'patch',

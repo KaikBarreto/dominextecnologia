@@ -1144,6 +1144,7 @@ export type Database = {
           resource_id: string
           resource_type: string
           service_order_id: string
+          slot_index: number
           slot: unknown
           source: string
           status: string
@@ -1161,6 +1162,7 @@ export type Database = {
           resource_id: string
           resource_type: string
           service_order_id: string
+          slot_index?: number
           slot: unknown
           source?: string
           status?: string
@@ -1178,6 +1180,7 @@ export type Database = {
           resource_id?: string
           resource_type?: string
           service_order_id?: string
+          slot_index?: number
           slot?: unknown
           source?: string
           status?: string
@@ -11802,6 +11805,8 @@ export type Database = {
           require_tech_signature: boolean | null
           resumed_at: string | null
           scheduled_date: string | null
+          scheduled_days: number
+          schedule_plan: Json
           scheduled_time: string | null
           service_address: string | null
           service_address_number: string | null
@@ -11878,6 +11883,7 @@ export type Database = {
           require_tech_signature?: boolean | null
           resumed_at?: string | null
           scheduled_date?: string | null
+          schedule_plan?: Json
           scheduled_time?: string | null
           service_address?: string | null
           service_address_number?: string | null
@@ -11954,6 +11960,7 @@ export type Database = {
           require_tech_signature?: boolean | null
           resumed_at?: string | null
           scheduled_date?: string | null
+          schedule_plan?: Json
           scheduled_time?: string | null
           service_address?: string | null
           service_address_number?: string | null

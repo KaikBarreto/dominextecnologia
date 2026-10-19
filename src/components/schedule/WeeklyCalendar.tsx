@@ -198,7 +198,7 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
 
                   return (
                     <div
-                      key={order.id}
+                      key={`${order.id}-${order.scheduled_date}`}
                       className="absolute left-0.5 right-0.5 pointer-events-auto"
                       style={{ top: topOffset, height, zIndex: index + 1 }}
                       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
@@ -221,8 +221,8 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
                         // v1.9.35: tap mobile sempre rola pro detalhe (consistência com Daily).
                         // Reagendamento via drag nativo (long-press) — mesmo padrão.
                         onClick={() => onOrderSelect(order)}
-                        draggable
-                        onDragStart={(e) => e.dataTransfer.setData('text/plain', order.id)}
+                        draggable={(order._scheduledSpanTotalDays ?? 1) === 1}
+                        onDragStart={(order._scheduledSpanTotalDays ?? 1) > 1 ? undefined : (e) => e.dataTransfer.setData('text/plain', order.id)}
                         fillHeight
                         colorShift={index}
                         isMoving={movingOrderId === order.id}

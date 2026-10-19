@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { ServiceOrder, OsStatus, OsType } from '@/types/database';
+import type { ServiceOrder, ServiceOrderScheduleSlot, OsStatus, OsType } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -21,6 +21,7 @@ import {
   syncServiceOrderServiceTypes,
 } from '@/hooks/useServiceOrderBudget';
 import type { ServiceOrderBudgetItem } from '@/lib/serviceOrderBudget';
+import { normalizeServiceOrderSchedulePlan } from '@/lib/serviceOrderSchedule';
 
 export interface ServiceOrderEquipmentItem {
   equipment_id?: string;
@@ -97,6 +98,7 @@ export interface ServiceOrderInput extends ScheduleBookingOverride {
   scheduled_date?: string;
   scheduled_time?: string;
   duration_minutes?: number;
+  schedule_plan?: ServiceOrderScheduleSlot[];
   description?: string;
   notes?: string;
   form_template_id?: string;
@@ -310,7 +312,10 @@ export function useServiceOrders() {
           'form_template_id',
           'lead_id',
         ]);
-        const { data, error } = await supabase.rpc('schedule_create_service_order_with_override' as never, {
+        const createOverrideRpc = input.schedule_plan?.length
+          ? 'schedule_create_service_order_plan_with_override'
+          : 'schedule_create_service_order_with_override';
+        const { data, error } = await supabase.rpc(createOverrideRpc as never, {
           p_order: orderPayload,
           p_override_justification: input.schedule_override_reason?.trim(),
           p_equipment_items: equipment_items ?? [],
@@ -414,6 +419,7 @@ export function useServiceOrders() {
         'scheduled_date',
         'scheduled_time',
         'duration_minutes',
+        'schedule_plan',
         'technician_id',
         'team_id',
       ].some(key => Object.prototype.hasOwnProperty.call(input, key)) || assignee_user_ids !== undefined;
@@ -421,7 +427,7 @@ export function useServiceOrders() {
       if (touchesSchedule) {
         const { data: current, error: currentError } = await supabase
           .from('service_orders')
-          .select('scheduled_date, scheduled_time, duration_minutes, technician_id, team_id')
+          .select('scheduled_date, scheduled_time, duration_minutes, schedule_plan, technician_id, team_id')
           .eq('id', id)
           .single();
         if (currentError) throw currentError;
@@ -429,6 +435,21 @@ export function useServiceOrders() {
         const scheduledDate = input.scheduled_date ?? current.scheduled_date;
         const scheduledTime = input.scheduled_time ?? current.scheduled_time;
         const durationMinutes = input.duration_minutes ?? current.duration_minutes;
+        const currentPlan = normalizeServiceOrderSchedulePlan({
+          scheduled_date: current.scheduled_date ?? undefined,
+          scheduled_time: current.scheduled_time ?? undefined,
+          duration_minutes: current.duration_minutes ?? undefined,
+          schedule_plan: Array.isArray(current.schedule_plan)
+            ? current.schedule_plan as unknown as ServiceOrderScheduleSlot[]
+            : undefined,
+        });
+        const schedulePlan = input.schedule_plan?.length
+          ? input.schedule_plan
+          : currentPlan.map((slot, index) => index === 0 ? {
+              date: scheduledDate || slot.date,
+              time: scheduledTime || slot.time,
+              duration_minutes: durationMinutes || slot.duration_minutes,
+            } : slot);
         const teamWasProvided = Object.prototype.hasOwnProperty.call(input, 'team_id');
         const technicianWasProvided = Object.prototype.hasOwnProperty.call(input, 'technician_id');
         const teamId = teamWasProvided ? (input.team_id || null) : current.team_id;
@@ -448,6 +469,7 @@ export function useServiceOrders() {
             scheduled_date: scheduledDate,
             scheduled_time: scheduledTime,
             duration_minutes: durationMinutes,
+            schedule_plan: schedulePlan,
             timezone,
             schedule_override,
             schedule_override_reason,

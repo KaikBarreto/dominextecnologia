@@ -162,6 +162,11 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
   const taskTitle = (order as any).task_title;
   const isDone = order.status === 'concluida';
   const isResumedDisplay = !!(order as any)._resumedDisplay;
+  const scheduledSpanTotalDays = Number(order._scheduledSpanTotalDays ?? order.scheduled_days ?? 1);
+  const scheduledSpanDay = Number(order._scheduledSpanDayIndex ?? 0) + 1;
+  const scheduledSpanLabel = scheduledSpanTotalDays > 1
+    ? `Dia ${scheduledSpanDay}/${scheduledSpanTotalDays}`
+    : null;
   const isPmoc = (order as any).contract?.is_pmoc === true;
 
   if (compact) {
@@ -195,6 +200,11 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         )}
         {!isTask && isPmoc && (
           <span className="shrink-0 rounded bg-blue-600 px-1 text-[9px] font-bold leading-4 text-white">PMOC</span>
+        )}
+        {scheduledSpanLabel && (
+          <span className="shrink-0 rounded bg-primary/15 px-1 text-[9px] font-semibold leading-4 text-primary">
+            {scheduledSpanLabel}
+          </span>
         )}
         <span className={cn('truncate flex-1', isDone && 'line-through')}>
           {isTask ? (taskTitle || 'Tarefa') : (order.customer?.name || 'Cliente')}
@@ -245,6 +255,11 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         <div className="flex items-center gap-1.5">
           {isResumedDisplay && (
             <Play className="h-3.5 w-3.5 text-amber-500" />
+          )}
+          {scheduledSpanLabel && (
+            <Badge variant="outline" className="text-[10px] px-1.5 h-5">
+              {scheduledSpanLabel}
+            </Badge>
           )}
           {isDone && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
           {isTask && !isDone && <CheckSquare className="h-3.5 w-3.5 text-violet-500" />}

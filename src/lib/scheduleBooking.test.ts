@@ -44,6 +44,32 @@ describe('scheduleBooking', () => {
     });
   });
 
+  it('envia jornadas independentes para o RPC interno', async () => {
+    const schedulePlan = [
+      { date: '2026-10-20', time: '07:30', duration_minutes: 480 },
+      { date: '2026-10-21', time: '09:00', duration_minutes: 360 },
+    ];
+    await bookServiceOrderSchedule({
+      service_order_id: 'os-2',
+      resource_type: 'technician',
+      resource_id: 'tech-1',
+      scheduled_date: '2026-10-20',
+      scheduled_time: '07:30',
+      duration_minutes: 480,
+      schedule_plan: schedulePlan,
+      timezone: 'America/Sao_Paulo',
+    });
+
+    expect(rpcMock).toHaveBeenCalledWith('schedule_book_service_order_plan', {
+      p_service_order_id: 'os-2',
+      p_resource_type: 'technician',
+      p_resource_id: 'tech-1',
+      p_starts_at: '2026-10-20T10:30:00.000Z',
+      p_schedule_plan: schedulePlan,
+      p_override_justification: null,
+    });
+  });
+
   it('bloqueia override sem justificativa suficiente antes de chamar a RPC', async () => {
     await expect(bookServiceOrderSchedule({
       service_order_id: 'os-1',

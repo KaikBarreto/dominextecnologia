@@ -271,7 +271,7 @@ export function MonthlyCalendar({
               <div className="space-y-1 overflow-hidden">
                 {dayOrders.slice(0, dayHolidays.length > 0 ? 2 : 3).map((order) => (
                   <div
-                    key={order.id}
+                    key={`${order.id}-${order.scheduled_date}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       onOrderSelect?.(order);
@@ -281,8 +281,8 @@ export function MonthlyCalendar({
                     <EventCard
                       order={order}
                       compact
-                      draggable
-                      onDragStart={(e) => {
+                      draggable={(order._scheduledSpanTotalDays ?? 1) === 1}
+                      onDragStart={(order._scheduledSpanTotalDays ?? 1) > 1 ? undefined : (e) => {
                         e.stopPropagation();
                         e.dataTransfer.setData('orderId', order.id);
                         e.dataTransfer.setData('orderTime', order.scheduled_time || '08:00');

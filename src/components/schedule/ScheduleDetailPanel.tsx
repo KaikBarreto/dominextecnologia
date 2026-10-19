@@ -16,7 +16,7 @@ import { OsBilledBadge } from '@/components/service-orders/OsBilledBadge';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import type { ServiceOrder, OsType } from '@/types/database';
-import { getOsTypeLabel, isResettableServiceOrderStatus } from '@/types/database';
+import { getOsTypeLabel, getServiceOrderResetActionLabel, isResettableServiceOrderStatus } from '@/types/database';
 import { buildCustomerAddress } from '@/utils/geolocation';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
 import { CustomerWhatsAppLink } from '@/components/CustomerWhatsAppLink';
@@ -407,7 +407,7 @@ function OrderDetail({
                 {!isTask && onReset && isResettableServiceOrderStatus(order.status) && (
                   <DropdownMenuItem onClick={() => onReset(order.id)}>
                     <RotateCcw className="mr-2 h-4 w-4 text-amber-500" />
-                    Resetar OS
+                    {getServiceOrderResetActionLabel(order.status)}
                   </DropdownMenuItem>
                 )}
                 {!isTask && onPause && (order.status === 'em_andamento' || order.status === 'a_caminho') && (
