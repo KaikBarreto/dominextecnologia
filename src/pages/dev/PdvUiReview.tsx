@@ -370,11 +370,28 @@ export default function PdvUiReview() {
   return <ReviewLab />;
 }
 
+function usePreviewTheme(theme: ReviewTheme) {
+  useEffect(() => {
+    const root = document.documentElement;
+    const hadDarkTheme = root.classList.contains("dark");
+    const previousColorScheme = root.style.colorScheme;
+
+    root.classList.toggle("dark", theme === "dark");
+    root.style.colorScheme = theme;
+
+    return () => {
+      root.classList.toggle("dark", hadDarkTheme);
+      root.style.colorScheme = previousColorScheme;
+    };
+  }, [theme]);
+}
+
 function ReviewLab() {
   const [screen, setScreen] = useState<ReviewScreen>("sale");
   const [size, setSize] = useState<ReviewSize>("desktop");
   const [theme, setTheme] = useState<ReviewTheme>("light");
   const frame = FRAME_SIZE[size];
+  usePreviewTheme(theme);
 
   return (
     <main
@@ -553,6 +570,7 @@ function ReviewFrame() {
   const version = params.get("version") === "proposal" ? "proposal" : "current";
   const theme = params.get("theme") === "dark" ? "dark" : "light";
   const locksSaleToViewport = screen === "sale" && version === "proposal";
+  usePreviewTheme(theme);
   return (
     <div
       className={cn(
