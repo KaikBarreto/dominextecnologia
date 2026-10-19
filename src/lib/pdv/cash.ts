@@ -205,6 +205,8 @@ export interface PdvLedgerSaleItem {
   unitPrice: number;
   /** Snapshot do custo, preservado ao refazer uma venda. */
   unitCost?: number;
+  /** Desconto absoluto aplicado ao total desta linha. */
+  discountAmount?: number;
   total: number;
 }
 
@@ -232,6 +234,10 @@ export interface PdvLedgerDetail {
   orderStockId?: string | null;
   orderNotes?: string | null;
   orderDiscountAmount?: number;
+  /** Competência do lançamento original, preservada na edição. */
+  orderTransactionDate?: string | null;
+  /** Referência da venda cancelada que esta venda substituiu. */
+  replacesOrderReference?: string | null;
   /** Receita/despesa: categoria do Financeiro. */
   category?: string | null;
   /** Receita/despesa: conta que recebeu/pagou. */
@@ -317,6 +323,12 @@ export interface BuildLedgerInput {
     methods: string[];
     items?: PdvLedgerSaleItem[];
     payments?: PdvLedgerSalePayment[];
+    orderCustomerId?: string | null;
+    orderStockId?: string | null;
+    orderNotes?: string | null;
+    orderDiscountAmount?: number;
+    orderTransactionDate?: string | null;
+    replacesOrderReference?: string | null;
   }>;
   /** Lançamentos avulsos REALIZADOS do caixa (`origin = 'pdv'`, `is_paid = true`). */
   transactions: Array<{
@@ -400,6 +412,12 @@ export function buildPdvLedger(input: BuildLedgerInput): PdvLedgerEntry[] {
       detail: {
         items: o.items ?? [],
         payments: o.payments ?? [],
+        orderCustomerId: o.orderCustomerId ?? null,
+        orderStockId: o.orderStockId ?? null,
+        orderNotes: o.orderNotes ?? null,
+        orderDiscountAmount: o.orderDiscountAmount ?? 0,
+        orderTransactionDate: o.orderTransactionDate ?? null,
+        replacesOrderReference: o.replacesOrderReference ?? null,
       },
     });
   }
@@ -575,9 +593,9 @@ export type PdvReversalBlock =
    */
   | 'movement_edit_undo_and_redo'
   /**
-   * Editar venda mexe em item, estoque e pagamento ao mesmo tempo. O caminho
-   * honesto é cancelar e refazer: a RPC de cancelamento já reverte tudo numa
-   * transação só, e a venda nova nasce com o estoque e o custo certos.
+   * Legado para clientes sem o fluxo atômico: editar venda mexe em item,
+   * estoque e pagamento ao mesmo tempo e nunca pode atualizar a venda paga
+   * diretamente. Hoje a ação permitida usa `pdv_replace_order`.
    */
   | 'sale_edit_cancel_and_redo';
 
@@ -616,12 +634,13 @@ export interface PdvReversalPlan {
  */
 export function planLedgerReversal(
   entry: PdvLedgerEntry,
-  opts: { canManageFinance: boolean; canDeleteFinance: boolean },
+  opts: { canManageFinance: boolean; canDeleteFinance: boolean; canEditPdvSales?: boolean },
 ): PdvReversalPlan {
   const canManage = opts?.canManageFinance === true;
   const canDeleteFin = opts?.canDeleteFinance === true;
 
   if (entry.kind === 'venda') {
+    const canEditSale = opts?.canEditPdvSales === true;
     const effects: PdvReversalEffect[] = ['stock', 'finance_cancelled'];
     const methods = (entry.methods ?? []).map((m) => normalizePaymentMethod(m) ?? m);
     if (methods.includes('fiado')) effects.push('credit_ledger');
@@ -633,10 +652,10 @@ export function planLedgerReversal(
       // estorno numa transação só, e o `cancelled_at` é auditável.
       canDelete: true,
       deleteBlock: null,
-      // A edição não muta a venda paga. A tela confirma o estorno completo e
-      // abre um NOVO pedido já preenchido, ligado ao original.
-      canEdit: true,
-      editBlock: null,
+      // A edição não muta a venda paga. Ela abre um rascunho preenchido; só a
+      // finalização substitui original e nova venda numa transação do banco.
+      canEdit: canEditSale,
+      editBlock: canEditSale ? null : 'no_permission',
       effects,
     };
   }

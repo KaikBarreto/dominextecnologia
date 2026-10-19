@@ -11,8 +11,11 @@ interface PdvCartLineRowProps {
   noPhotoLabel: string;
   removeLabel: string;
   quantityEditLabel: string;
+  discountLabel: string;
+  discountPlaceholder: string;
   onIncrement: (inventoryId: string, delta: number) => void;
   onSetQuantity: (inventoryId: string, quantity: number) => void;
+  onSetLineDiscount: (inventoryId: string, discountAmount: number) => void;
   onRemove: (inventoryId: string) => void;
   /** Enter na edição de quantidade devolve o foco pra busca (balcão é fila). */
   onConfirmQuantityEdit?: () => void;
@@ -29,15 +32,20 @@ export function PdvCartLineRow({
   noPhotoLabel,
   removeLabel,
   quantityEditLabel,
+  discountLabel,
+  discountPlaceholder,
   onIncrement,
   onSetQuantity,
+  onSetLineDiscount,
   onRemove,
   onConfirmQuantityEdit,
 }: PdvCartLineRowProps) {
-  const lineTotal = line.quantity * line.unitPrice;
+  const lineGross = line.quantity * line.unitPrice;
+  const lineDiscount = Math.min(Math.max(line.discountAmount ?? 0, 0), lineGross);
+  const lineTotal = lineGross - lineDiscount;
 
   return (
-    <div className="flex items-center gap-2 py-2">
+    <div className="flex items-center gap-2 py-2.5">
       <SignedImg
         src={line.imageUrl}
         alt={line.name}
@@ -57,6 +65,20 @@ export function PdvCartLineRow({
           className="min-w-0 text-sm font-medium text-foreground"
         />
         <p className="text-xs text-muted-foreground">{formatCurrency(line.unitPrice)}</p>
+        <label className="mt-1 flex max-w-40 items-center gap-1.5 text-[11px] text-muted-foreground">
+          <span className="shrink-0">{discountLabel}</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            max={lineGross}
+            step="0.01"
+            value={lineDiscount || ''}
+            placeholder={discountPlaceholder}
+            onChange={(event) => onSetLineDiscount(line.inventoryId, Number(event.target.value))}
+            className="h-6 min-w-0 flex-1 border-0 border-b border-input bg-transparent px-1 text-right text-xs tabular-nums outline-none focus:border-primary focus:ring-0"
+          />
+        </label>
       </div>
       <PdvQuantityStepper
         size="sm"
@@ -71,6 +93,11 @@ export function PdvCartLineRow({
         editAriaLabel={quantityEditLabel}
       />
       <span className="w-20 shrink-0 text-right text-sm font-bold tabular-nums">
+        {lineDiscount > 0 && (
+          <span className="block text-[10px] font-normal text-muted-foreground line-through">
+            {formatCurrency(lineGross)}
+          </span>
+        )}
         {formatCurrency(lineTotal)}
       </span>
       <Button

@@ -23,7 +23,7 @@ interface PdvSaleEditDialogProps {
   onConfirm: () => void;
 }
 
-/** Confirma o estorno necessário antes de abrir a venda preenchida no PDV. */
+/** Explica a substituição atômica antes de abrir a venda preenchida no PDV. */
 export function PdvSaleEditDialog({
   open,
   onOpenChange,

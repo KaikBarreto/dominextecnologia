@@ -299,6 +299,47 @@ describe('buildPdvLedger', () => {
     expect(sale.customerName).toBe('Ana Souza');
   });
 
+  it('preserva todo o contexto necessário para uma edição segura', () => {
+    const [sale] = buildPdvLedger({
+      orders: [{
+        id: 'editável',
+        number: 143,
+        total: 85,
+        customerName: 'Cliente',
+        occurredAt: '2026-10-18T13:00:00.000Z',
+        methods: ['pix'],
+        items: [{
+          inventoryId: 'inventory-1',
+          description: 'Produto',
+          quantity: 2,
+          unitPrice: 50,
+          unitCost: 20,
+          discountAmount: 10,
+          total: 90,
+        }],
+        orderCustomerId: 'customer-1',
+        orderStockId: 'stock-1',
+        orderNotes: 'Entregar à tarde',
+        orderDiscountAmount: 5,
+        orderTransactionDate: '2026-10-17',
+        replacesOrderReference: '#99',
+      }],
+      transactions: [],
+      movements: [],
+      labels: LABELS,
+    });
+
+    expect(sale.detail).toMatchObject({
+      orderCustomerId: 'customer-1',
+      orderStockId: 'stock-1',
+      orderNotes: 'Entregar à tarde',
+      orderDiscountAmount: 5,
+      orderTransactionDate: '2026-10-17',
+      replacesOrderReference: '#99',
+      items: [{ discountAmount: 10 }],
+    });
+  });
+
   it('despesa fica com sinal negativo e receita com sinal positivo', () => {
     expect(built.find((e) => e.id === 't1').signedAmount).toBe(-38.9);
     expect(built.find((e) => e.id === 't2').signedAmount).toBe(60);
@@ -581,7 +622,7 @@ describe('buildPdvLedger: detalhe do expansível', () => {
 // ── Reversão: "revertendo todos os efeitos como se nunca tivesse existido" ───
 
 describe('planLedgerReversal', () => {
-  const FULL = { canManageFinance: true, canDeleteFinance: true };
+  const FULL = { canManageFinance: true, canDeleteFinance: true, canEditPdvSales: true };
 
   function entry(over: Partial<PdvLedgerEntry>): PdvLedgerEntry {
     return {
@@ -617,10 +658,20 @@ describe('planLedgerReversal', () => {
     expect(plan.effects).toContain('drawer');
   });
 
-  it('venda pode iniciar edição pelo fluxo seguro de cancelar e refazer', () => {
+  it('venda pode iniciar edição pelo fluxo atômico com permissão fina', () => {
     const plan = planLedgerReversal(entry({ kind: 'venda' }), FULL);
     expect(plan.canEdit).toBe(true);
     expect(plan.editBlock).toBeNull();
+  });
+
+  it('venda paga exige permissão fina para iniciar edição', () => {
+    const plan = planLedgerReversal(entry({ kind: 'venda' }), {
+      canManageFinance: true,
+      canDeleteFinance: true,
+      canEditPdvSales: false,
+    });
+    expect(plan.canEdit).toBe(false);
+    expect(plan.editBlock).toBe('no_permission');
   });
 
   it('receita/despesa vai pelo caminho de exclusão do Financeiro (saldo é derivado)', () => {

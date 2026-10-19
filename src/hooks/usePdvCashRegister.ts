@@ -109,6 +109,9 @@ export interface PdvSessionOrder {
   notes: string | null;
   paid_at: string | null;
   created_at: string;
+  /** Venda cancelada que esta linha substituiu, quando nasceu de uma edição. */
+  replaces_order_id: string | null;
+  replaces_order_number: number | null;
 }
 
 export interface PdvSessionOrderItem {
@@ -118,6 +121,7 @@ export interface PdvSessionOrderItem {
   quantity: number;
   unit_cost: number;
   unit_price: number;
+  discount_amount: number;
   total: number;
 }
 
@@ -129,6 +133,8 @@ export interface PdvSessionPayment {
   /** Conta que recebeu este pagamento. Aparece no expansível da venda. */
   financial_account_id: string | null;
   financial_transaction_id: string | null;
+  /** Competência financeira real da venda, inclusive quando retrodatada. */
+  transaction_date: string | null;
   received_at: string;
 }
 
@@ -263,7 +269,10 @@ export function usePdvCashRegister() {
     },
   });
 
-  const openSessions = sessionsQuery.data?.openSessions ?? [];
+  const openSessions = useMemo(
+    () => sessionsQuery.data?.openSessions ?? [],
+    [sessionsQuery.data?.openSessions],
+  );
 
   /**
    * Caixa em FOCO. Regra: o caixa que EU abri vem primeiro (é o meu turno);
@@ -460,25 +469,34 @@ export function usePdvCashSessionDetail(session: PdvCashSession | null) {
 
       const ordersRes = await supabase
         .from('pdv_orders')
-        .select('id, number, total, subtotal, discount_amount, status, customer_id, stock_id, notes, paid_at, created_at')
+        .select('id, number, total, subtotal, discount_amount, status, customer_id, stock_id, notes, paid_at, created_at, replaces_order_id, replaces_order:pdv_orders!pdv_orders_replaces_order_id_fkey(number)')
         .eq('cash_session_id', sessionId)
         .in('status', ['pago', 'entregue'])
         .order('created_at', { ascending: false });
       if (ordersRes.error) throw ordersRes.error;
-      const orders = (ordersRes.data ?? []) as PdvSessionOrder[];
+      const orders = (ordersRes.data ?? []).map((raw) => {
+        const row = raw as unknown as Omit<PdvSessionOrder, 'replaces_order_number'> & {
+          replaces_order?: { number: number } | null;
+        };
+        const { replaces_order: replacesOrder, ...order } = row;
+        return {
+          ...order,
+          replaces_order_number: replacesOrder?.number ?? null,
+        } as PdvSessionOrder;
+      });
       const orderIds = orders.map((o) => o.id);
 
       const [itemsRes, paymentsRes, movementsRes, txnsRes] = await Promise.all([
         orderIds.length
           ? supabase
               .from('pdv_order_items')
-              .select('order_id, inventory_id, description, quantity, unit_cost, unit_price, total')
+              .select('order_id, inventory_id, description, quantity, unit_cost, unit_price, discount_amount, total')
               .in('order_id', orderIds)
           : Promise.resolve({ data: [], error: null } as never),
         orderIds.length
           ? supabase
               .from('pdv_order_payments')
-              .select('order_id, method, amount, change_amount, financial_account_id, financial_transaction_id, received_at')
+              .select('order_id, method, amount, change_amount, financial_account_id, financial_transaction_id, received_at, financial_transaction:financial_transactions!pdv_order_payments_financial_transaction_id_fkey(transaction_date)')
               .in('order_id', orderIds)
           : Promise.resolve({ data: [], error: null } as never),
         supabase
@@ -510,7 +528,16 @@ export function usePdvCashSessionDetail(session: PdvCashSession | null) {
       if (movementsRes.error) throw movementsRes.error;
 
       const items = (itemsRes.data ?? []) as PdvSessionOrderItem[];
-      const payments = (paymentsRes.data ?? []) as PdvSessionPayment[];
+      const payments = (paymentsRes.data ?? []).map((raw) => {
+        const row = raw as unknown as Omit<PdvSessionPayment, 'transaction_date'> & {
+          financial_transaction?: { transaction_date: string } | null;
+        };
+        const { financial_transaction: transaction, ...payment } = row;
+        return {
+          ...payment,
+          transaction_date: transaction?.transaction_date ?? null,
+        } as PdvSessionPayment;
+      });
       const movements = (movementsRes.data ?? []) as PdvSessionMovement[];
 
       // Lançamento que JÁ É a perna de uma venda ou de uma sangria/suprimento

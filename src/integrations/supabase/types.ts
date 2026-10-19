@@ -16271,6 +16271,17 @@ export type Database = {
         }
       }
       pdv_order_summary: { Args: { p_order_id: string }; Returns: Json }
+      pdv_replace_order: {
+        Args: {
+          p_client_request_id: string
+          p_items: Json
+          p_order: Json
+          p_payments: Json
+          p_source_order_id: string
+          p_transaction_date?: string
+        }
+        Returns: Json
+      }
       pdv_revert_cash_movement: {
         Args: { p_movement_id: string; p_reason: string }
         Returns: Json

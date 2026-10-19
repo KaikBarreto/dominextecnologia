@@ -18,6 +18,8 @@ export interface PdvCartItemsTexts {
   columnProduct: string;
   columnQuantity: string;
   quantityEditLabel: string;
+  discountLabel: string;
+  discountPlaceholder: string;
   columnUnitPrice: string;
   columnLineTotal: string;
 }
@@ -27,6 +29,7 @@ interface PdvCartItemsTableProps {
   formatCurrency: (value: number) => string;
   onIncrement: (inventoryId: string, delta: number) => void;
   onSetQuantity: (inventoryId: string, quantity: number) => void;
+  onSetLineDiscount: (inventoryId: string, discountAmount: number) => void;
   onRemove: (inventoryId: string) => void;
   onRequestClearCart: () => void;
   /** Enter na edição de quantidade devolve o foco pra busca (balcão é fila). */
@@ -48,6 +51,7 @@ export function PdvCartItemsTable({
   formatCurrency,
   onIncrement,
   onSetQuantity,
+  onSetLineDiscount,
   onRemove,
   onRequestClearCart,
   onConfirmQuantityEdit,
@@ -128,7 +132,9 @@ export function PdvCartItemsTable({
             </thead>
             <tbody className="divide-y divide-border">
               {cart.lines.map((line) => {
-                const lineTotal = line.quantity * line.unitPrice;
+                const lineGross = line.quantity * line.unitPrice;
+                const lineDiscount = Math.min(Math.max(line.discountAmount ?? 0, 0), lineGross);
+                const lineTotal = lineGross - lineDiscount;
                 return (
                   <tr key={line.inventoryId}>
                     <td className="px-4 py-2">
@@ -170,6 +176,22 @@ export function PdvCartItemsTable({
                           className="min-w-0 font-medium text-foreground"
                         />
                       </div>
+                      <label className="mt-1 flex max-w-48 items-center gap-1.5 pl-10 text-[11px] text-muted-foreground">
+                        <span className="shrink-0">{texts.discountLabel}</span>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min={0}
+                          max={lineGross}
+                          step="0.01"
+                          value={lineDiscount || ''}
+                          placeholder={texts.discountPlaceholder}
+                          onChange={(event) =>
+                            onSetLineDiscount(line.inventoryId, Number(event.target.value))
+                          }
+                          className="h-6 min-w-0 flex-1 border-0 border-b border-input bg-transparent px-1 text-right text-xs tabular-nums outline-none focus:border-primary focus:ring-0"
+                        />
+                      </label>
                     </td>
                     <td className="px-2 py-2">
                       <div className="flex items-center justify-center">
@@ -189,7 +211,14 @@ export function PdvCartItemsTable({
                     <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
                       {formatCurrency(line.unitPrice)}
                     </td>
-                    <td className="px-2 py-2 text-right font-bold tabular-nums">{formatCurrency(lineTotal)}</td>
+                    <td className="px-2 py-2 text-right font-bold tabular-nums">
+                      {lineDiscount > 0 && (
+                        <span className="block text-[10px] font-normal text-muted-foreground line-through">
+                          {formatCurrency(lineGross)}
+                        </span>
+                      )}
+                      {formatCurrency(lineTotal)}
+                    </td>
                     <td className="px-2 py-2 text-right">
                       <Button
                         type="button"

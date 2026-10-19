@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import type { CartState } from '@/lib/pdv/cart';
-import { computeSubtotal, computeTotal } from '@/lib/pdv/cart';
+import { computeItemDiscountTotal, computeSubtotal, computeTotal } from '@/lib/pdv/cart';
 import type { Customer } from '@/types/database';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +13,7 @@ export interface PdvCartSummaryTexts {
   customerLabel: string;
   customerPlaceholder: string;
   subtotal: string;
+  itemDiscounts: string;
   discount: string;
   discountPlaceholder: string;
   total: string;
@@ -35,6 +36,7 @@ interface PdvCartSummaryProps {
   cart: CartState;
   customers: Customer[];
   formatCurrency: (value: number) => string;
+  currencySymbol: string;
   discountDisplay: string;
   onDiscountChange: (raw: string) => void;
   onDiscountPaste: (e: React.ClipboardEvent<HTMLInputElement>) => void;
@@ -70,6 +72,7 @@ export function PdvCartSummary({
   cart,
   customers,
   formatCurrency,
+  currencySymbol,
   discountDisplay,
   onDiscountChange,
   onDiscountPaste,
@@ -85,6 +88,7 @@ export function PdvCartSummary({
   className,
 }: PdvCartSummaryProps) {
   const subtotal = computeSubtotal(cart);
+  const itemDiscounts = computeItemDiscountTotal(cart);
   const total = computeTotal(cart);
   // Carrinho vazio não abre pagamento: a RPC recusa pedido sem item, então a
   // tela bloqueia o botão em vez de deixar o operador bater no erro.
@@ -120,13 +124,20 @@ export function PdvCartSummary({
         <span className="font-medium tabular-nums">{formatCurrency(subtotal)}</span>
       </div>
 
+      {itemDiscounts > 0 && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">{texts.itemDiscounts}</span>
+          <span className="font-medium tabular-nums">− {formatCurrency(itemDiscounts)}</span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-3 text-sm">
         <label htmlFor="pdv-discount" className="text-muted-foreground">
           {texts.discount}
         </label>
         <div className="relative w-28">
           <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-            R$
+            {currencySymbol}
           </span>
           <input
             id="pdv-discount"

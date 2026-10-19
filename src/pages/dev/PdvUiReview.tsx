@@ -85,6 +85,7 @@ import {
   removeItem,
   setCartCustomer,
   setDiscount,
+  setLineDiscount as setCartLineDiscount,
   setLineQuantity,
   type CartState,
 } from "@/lib/pdv/cart";
@@ -197,9 +198,9 @@ const initialCart: CartState = {
   customerId: "customer-1",
   discount: 10,
   lines: [
-    { ...products[0], unitCost: 22, quantity: 2 },
-    { ...products[1], unitCost: 49, quantity: 1 },
-    { ...products[2], unitCost: 28, quantity: 1 },
+    { ...products[0], unitCost: 22, quantity: 2, discountAmount: 0 },
+    { ...products[1], unitCost: 49, quantity: 1, discountAmount: 0 },
+    { ...products[2], unitCost: 28, quantity: 1, discountAmount: 0 },
   ],
 };
 
@@ -623,6 +624,8 @@ function usePreviewCart() {
       setCart((current) => incrementLineQuantity(current, id, delta)),
     setQuantity: (id: string, quantity: number) =>
       setCart((current) => setLineQuantity(current, id, quantity)),
+    setCartLineDiscount: (id: string, amount: number) =>
+      setCart((current) => setCartLineDiscount(current, id, amount)),
     remove: (id: string) => {
       setCart((current) => removeItem(current, id));
       setLineDiscounts((current) => {
@@ -806,6 +809,7 @@ function CurrentSale() {
     empty: t.cashier.cart.empty,
     emptyHint: t.cashier.cart.emptyHint,
     subtotal: t.cashier.cart.subtotal,
+    itemDiscounts: t.cashier.cart.itemDiscounts,
     discount: t.cashier.cart.discount,
     discountPlaceholder: t.cashier.cart.discountPlaceholder,
     total: t.cashier.cart.total,
@@ -815,6 +819,8 @@ function CurrentSale() {
     clearCart: t.cashier.cart.clearCart,
     noPhoto: t.cashier.stock.noPhoto,
     quantityEditLabel: t.cashier.cart.quantityEditLabel,
+    itemDiscount: t.cashier.cart.itemDiscount,
+    itemDiscountPlaceholder: t.cashier.cart.itemDiscountPlaceholder,
     paymentLabel: t.cashier.actions.payment,
     paymentShortcut: t.cashier.actions.paymentShortcut,
     finalizeLabel: t.cashier.actions.finalize,
@@ -830,9 +836,11 @@ function CurrentSale() {
     cart: cartState.cart,
     customers,
     formatCurrency: money,
+    currencySymbol,
     discountDisplay: cartState.discountDisplay,
     onDiscountChange: cartState.changeDiscount,
     onDiscountPaste: () => undefined,
+    onSetLineDiscount: cartState.setCartLineDiscount,
     onCustomerChange: cartState.setCustomer,
     onRequestPayment: () => undefined,
     cashClosed: false,
@@ -886,6 +894,7 @@ function CurrentSale() {
               formatCurrency={money}
               onIncrement={cartState.increment}
               onSetQuantity={cartState.setQuantity}
+              onSetLineDiscount={cartState.setCartLineDiscount}
               onRemove={cartState.remove}
               onRequestClearCart={cartState.clear}
               texts={{
@@ -901,6 +910,8 @@ function CurrentSale() {
                 quantityEditLabel: texts.quantityEditLabel,
                 columnUnitPrice: t.cashier.cart.columnUnitPrice,
                 columnLineTotal: t.cashier.cart.columnLineTotal,
+                discountLabel: texts.itemDiscount,
+                discountPlaceholder: texts.itemDiscountPlaceholder,
               }}
               className="h-[250px] shrink-0"
             />
@@ -2021,8 +2032,9 @@ function CurrentCash() {
         money={money}
         dateTime={dateTime}
         number={number}
-        canManageFinance
-        canDeleteFinance
+      canManageFinance
+      canDeleteFinance
+      canEditPdvSales
         onEdit={() => undefined}
         onDelete={() => undefined}
       />
@@ -2203,8 +2215,9 @@ function ProposedCash() {
         money={money}
         dateTime={dateTime}
         number={number}
-        canManageFinance
-        canDeleteFinance
+      canManageFinance
+      canDeleteFinance
+      canEditPdvSales
         onEdit={() => undefined}
         onDelete={() => undefined}
       />

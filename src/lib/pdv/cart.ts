@@ -36,6 +36,8 @@ export interface CartLine {
   /** Snapshot do custo (ver `CartProduct.unitCost`). */
   unitCost: number;
   quantity: number;
+  /** Desconto absoluto aplicado ao total da linha (nunca por unidade). */
+  discountAmount: number;
   /** Saldo capturado no momento da linha — usado como teto de incremento. */
   availableQuantity: number;
 }
@@ -89,7 +91,12 @@ export function addItem(cart: CartState, product: CartProduct, quantity = 1): Ca
         ...cart,
         lines: cart.lines.map((line) =>
           line.inventoryId === product.inventoryId
-            ? { ...line, quantity: nextQuantity, availableQuantity: product.availableQuantity }
+            ? {
+                ...line,
+                quantity: nextQuantity,
+                discountAmount: line.discountAmount ?? 0,
+                availableQuantity: product.availableQuantity,
+              }
             : line,
         ),
       },
@@ -103,6 +110,7 @@ export function addItem(cart: CartState, product: CartProduct, quantity = 1): Ca
     unitPrice: product.unitPrice,
     unitCost: product.unitCost ?? 0,
     quantity,
+    discountAmount: 0,
     availableQuantity: product.availableQuantity,
   };
 
@@ -126,7 +134,15 @@ export function setLineQuantity(cart: CartState, inventoryId: string, quantity: 
     ...cart,
     lines: cart.lines.map((line) =>
       line.inventoryId === inventoryId
-        ? { ...line, quantity: clamp(quantity, 1, line.availableQuantity) }
+        ? (() => {
+            const nextQuantity = clamp(quantity, 1, line.availableQuantity);
+            const lineGross = nextQuantity * line.unitPrice;
+            return {
+              ...line,
+              quantity: nextQuantity,
+              discountAmount: clamp(line.discountAmount ?? 0, 0, Math.max(0, lineGross)),
+            };
+          })()
         : line,
     ),
   };
@@ -144,6 +160,30 @@ export function setDiscount(cart: CartState, discount: number): CartState {
   return { ...cart, discount: Math.max(0, discount) };
 }
 
+/**
+ * Define o desconto absoluto total de uma linha. O valor fica entre zero e o
+ * bruto atual da linha, impedindo que desconto de item gere total negativo.
+ */
+export function setLineDiscount(
+  cart: CartState,
+  inventoryId: string,
+  discountAmount: number,
+): CartState {
+  const normalizedDiscount = Number.isFinite(discountAmount) ? discountAmount : 0;
+
+  return {
+    ...cart,
+    lines: cart.lines.map((line) => {
+      if (line.inventoryId !== inventoryId) return line;
+      const lineGross = line.quantity * line.unitPrice;
+      return {
+        ...line,
+        discountAmount: clamp(normalizedDiscount, 0, Math.max(0, lineGross)),
+      };
+    }),
+  };
+}
+
 export function setCartCustomer(cart: CartState, customerId: string | null): CartState {
   return { ...cart, customerId };
 }
@@ -156,9 +196,17 @@ export function computeSubtotal(cart: CartState): number {
   return cart.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
 }
 
+/** Soma os descontos absolutos das linhas, limitados ao bruto de cada uma. */
+export function computeItemDiscountTotal(cart: CartState): number {
+  return cart.lines.reduce((sum, line) => {
+    const lineGross = line.quantity * line.unitPrice;
+    return sum + clamp(line.discountAmount ?? 0, 0, Math.max(0, lineGross));
+  }, 0);
+}
+
 /** Total nunca fica negativo, mesmo com desconto maior que o subtotal. */
 export function computeTotal(cart: CartState): number {
-  return Math.max(0, computeSubtotal(cart) - cart.discount);
+  return Math.max(0, computeSubtotal(cart) - computeItemDiscountTotal(cart) - cart.discount);
 }
 
 export function countItems(cart: CartState): number {

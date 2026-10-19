@@ -3,6 +3,7 @@ import {
   EMPTY_CART,
   addItem,
   clearCart,
+  computeItemDiscountTotal,
   computeSubtotal,
   computeTotal,
   countItems,
@@ -10,6 +11,7 @@ import {
   removeItem,
   setCartCustomer,
   setDiscount,
+  setLineDiscount,
   setLineQuantity,
   type CartProduct,
 } from './cart';
@@ -30,7 +32,12 @@ describe('addItem', () => {
     const result = addItem(EMPTY_CART, product());
     expect(result.ok).toBe(true);
     expect(result.cart.lines).toHaveLength(1);
-    expect(result.cart.lines[0]).toMatchObject({ inventoryId: 'p1', quantity: 1, unitPrice: 25 });
+    expect(result.cart.lines[0]).toMatchObject({
+      inventoryId: 'p1',
+      quantity: 1,
+      unitPrice: 25,
+      discountAmount: 0,
+    });
   });
 
   it('soma quantidade na mesma linha em vez de duplicar', () => {
@@ -133,6 +140,43 @@ describe('subtotal e total', () => {
     const withDiscount = setDiscount(withItem, 10);
     expect(computeSubtotal(withDiscount)).toBe(50);
     expect(computeTotal(withDiscount)).toBe(40);
+  });
+
+  it('aplica desconto absoluto na linha e o soma separadamente', () => {
+    let cart = addItem(EMPTY_CART, product({ unitPrice: 25 }), 2).cart;
+    cart = setLineDiscount(cart, 'p1', 12.5);
+    expect(cart.lines[0].discountAmount).toBe(12.5);
+    expect(computeItemDiscountTotal(cart)).toBe(12.5);
+    expect(computeSubtotal(cart)).toBe(50);
+    expect(computeTotal(cart)).toBe(37.5);
+  });
+
+  it('clampa o desconto da linha ao bruto atual', () => {
+    const withItem = addItem(EMPTY_CART, product({ unitPrice: 10 }), 2).cart;
+    expect(setLineDiscount(withItem, 'p1', 999).lines[0].discountAmount).toBe(20);
+    expect(setLineDiscount(withItem, 'p1', -5).lines[0].discountAmount).toBe(0);
+  });
+
+  it('reduz o desconto da linha quando a quantidade diminui', () => {
+    let cart = addItem(EMPTY_CART, product({ unitPrice: 10 }), 5).cart;
+    cart = setLineDiscount(cart, 'p1', 40);
+    cart = setLineQuantity(cart, 'p1', 2);
+    expect(cart.lines[0]).toMatchObject({ quantity: 2, discountAmount: 20 });
+  });
+
+  it('combina desconto dos itens com desconto do pedido', () => {
+    let cart = addItem(EMPTY_CART, product({ unitPrice: 25 }), 2).cart;
+    cart = setLineDiscount(cart, 'p1', 8);
+    cart = setDiscount(cart, 7);
+    expect(computeSubtotal(cart)).toBe(50);
+    expect(computeTotal(cart)).toBe(35);
+  });
+
+  it('total nunca fica negativo ao combinar descontos de item e pedido', () => {
+    let cart = addItem(EMPTY_CART, product({ unitPrice: 10 }), 1).cart;
+    cart = setLineDiscount(cart, 'p1', 10);
+    cart = setDiscount(cart, 999);
+    expect(computeTotal(cart)).toBe(0);
   });
 
   it('total nunca fica negativo mesmo com desconto maior que o subtotal', () => {

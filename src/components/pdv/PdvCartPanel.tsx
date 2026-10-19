@@ -16,17 +16,21 @@ export interface PdvCartPanelTexts extends PdvCartSummaryTexts {
   clearCart: string;
   noPhoto: string;
   quantityEditLabel: string;
+  itemDiscount: string;
+  itemDiscountPlaceholder: string;
 }
 
 interface PdvCartPanelProps {
   cart: CartState;
   customers: Customer[];
   formatCurrency: (value: number) => string;
+  currencySymbol: string;
   discountDisplay: string;
   onDiscountChange: (raw: string) => void;
   onDiscountPaste: (e: React.ClipboardEvent<HTMLInputElement>) => void;
   onIncrement: (inventoryId: string, delta: number) => void;
   onSetQuantity: (inventoryId: string, quantity: number) => void;
+  onSetLineDiscount: (inventoryId: string, discountAmount: number) => void;
   onRemove: (inventoryId: string) => void;
   onCustomerChange: (id: string | null) => void;
   onRequestClearCart: () => void;
@@ -57,11 +61,13 @@ export function PdvCartPanel({
   cart,
   customers,
   formatCurrency,
+  currencySymbol,
   discountDisplay,
   onDiscountChange,
   onDiscountPaste,
   onIncrement,
   onSetQuantity,
+  onSetLineDiscount,
   onRemove,
   onCustomerChange,
   onRequestClearCart,
@@ -122,8 +128,11 @@ export function PdvCartPanel({
                 noPhotoLabel={texts.noPhoto}
                 removeLabel={texts.removeLine}
                 quantityEditLabel={texts.quantityEditLabel}
+                discountLabel={texts.itemDiscount}
+                discountPlaceholder={texts.itemDiscountPlaceholder}
                 onIncrement={onIncrement}
                 onSetQuantity={onSetQuantity}
+                onSetLineDiscount={onSetLineDiscount}
                 onRemove={onRemove}
                 onConfirmQuantityEdit={onConfirmQuantityEdit}
               />
@@ -136,6 +145,7 @@ export function PdvCartPanel({
         cart={cart}
         customers={customers}
         formatCurrency={formatCurrency}
+        currencySymbol={currencySymbol}
         discountDisplay={discountDisplay}
         onDiscountChange={onDiscountChange}
         onDiscountPaste={onDiscountPaste}

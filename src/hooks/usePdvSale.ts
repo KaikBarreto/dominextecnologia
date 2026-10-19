@@ -33,6 +33,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { sanitizeStorageFileName } from '@/utils/storagePath';
 import { currentCompanyId, tenantFileOptions } from '@/utils/tenantStorage';
 import type { SettlePaymentPayload } from '@/lib/pdv/payment';
+import type { Json } from '@/integrations/supabase/types';
 
 /** Uma linha do cupom. `inventoryId` nulo = serviço avulso de balcão. */
 export interface PdvSaleItemInput {
@@ -43,6 +44,8 @@ export interface PdvSaleItemInput {
   unitPrice: number;
   /** SNAPSHOT do custo. É o que faz o lucro real do caixa. */
   unitCost: number;
+  /** Desconto absoluto total da linha. */
+  discountAmount: number;
 }
 
 export interface PdvCreateOrderInput {
@@ -56,6 +59,13 @@ export interface PdvCreateOrderInput {
   notes?: string | null;
   /** Venda cancelada que originou este novo pedido pelo fluxo de edição. */
   replacesOrderId?: string | null;
+}
+
+export interface PdvReplaceOrderInput extends Omit<PdvCreateOrderInput, 'replacesOrderId'> {
+  sourceOrderId: string;
+  payments: SettlePaymentPayload[];
+  clientRequestId: string;
+  transactionDate?: string | null;
 }
 
 /** Resumo que `pdv_settle_order` devolve. */
@@ -148,10 +158,13 @@ export function usePdvSale() {
         quantity: item.quantity,
         unit_price: item.unitPrice,
         unit_cost: item.unitCost,
-        // O desconto do PDV é do PEDIDO (um campo só na tela), não da linha.
-        // Rateio por item é Onda 4 (desconto com teto por usuário).
-        discount_amount: 0,
-        total: Math.max(0, Math.round(item.quantity * item.unitPrice * 100) / 100),
+        // Snapshot do desconto da linha. O total é líquido e recalculado de
+        // novo pelo servidor na substituição atômica.
+        discount_amount: Math.max(0, item.discountAmount || 0),
+        total: Math.max(
+          0,
+          Math.round((item.quantity * item.unitPrice - Math.max(0, item.discountAmount || 0)) * 100) / 100,
+        ),
         sort_order: index,
       }));
 
@@ -216,7 +229,45 @@ export function usePdvSale() {
     onSuccess: invalidateAfterSale,
   });
 
-  return { createOrder, settleOrder, invalidateAfterSale };
+  /**
+   * Substitui uma venda paga sem janela inconsistente: preflight, estorno da
+   * original, criação da substituta, pagamentos e estoque acontecem na MESMA
+   * transação do servidor. Retry usa a chave persistida no rascunho.
+   */
+  const replaceOrder = useMutation({
+    mutationFn: async (input: PdvReplaceOrderInput): Promise<PdvSettleResult> => {
+      const orderPayload = {
+        customer_id: input.customerId,
+        terminal_id: input.terminalId,
+        stock_id: input.stockId,
+        cash_session_id: input.cashSessionId,
+        discount_amount: Math.max(0, input.discountAmount || 0),
+        notes: input.notes?.trim() || null,
+      };
+      const itemsPayload = input.items.map((item) => ({
+        inventory_id: item.inventoryId,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        unit_cost: item.unitCost,
+        discount_amount: Math.max(0, item.discountAmount || 0),
+      }));
+
+      const { data, error } = await supabase.rpc('pdv_replace_order', {
+        p_source_order_id: input.sourceOrderId,
+        p_order: orderPayload,
+        p_items: itemsPayload,
+        p_payments: input.payments as unknown as Json,
+        p_client_request_id: input.clientRequestId,
+        p_transaction_date: input.transactionDate || null,
+      });
+      if (error) throw error;
+      return data as unknown as PdvSettleResult;
+    },
+    onSuccess: invalidateAfterSale,
+  });
+
+  return { createOrder, settleOrder, replaceOrder, invalidateAfterSale };
 }
 
 /** Bucket privado reaproveitado do Financeiro — ver migration da tabela. */

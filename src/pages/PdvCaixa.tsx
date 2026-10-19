@@ -88,7 +88,7 @@ export default function PdvCaixa() {
   const { locale } = useAppLocaleContext();
   const { money, dateTime, number } = useLocaleFormatters();
   const t = MESSAGES[locale].app.pdv.cashPanel;
-  const { isAdminOrGestor, hasPermission, hasPermissionRecord } = useAuth();
+  const { user, profile, isAdminOrGestor, hasPermission, hasPermissionRecord } = useAuth();
 
   // Mesmo critério do resto do Financeiro: quem cria lançamento é admin/gestor
   // ou quem tem `fn:manage_finance` explícito. Abrir e fechar o caixa NÃO pede
@@ -102,6 +102,8 @@ export default function PdvCaixa() {
   // exclusão que o banco recusa. Mesma linha do TransactionListPanel.
   const canDeleteFinance =
     isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
+  const canEditPdvSales =
+    isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:edit_pdv_sales'));
   const { canUseBankAccounts, canManageBankAccounts } = useBankPermissions();
 
   const {
@@ -140,7 +142,6 @@ export default function PdvCaixa() {
   /** Id do lançamento avulso em EDIÇÃO (o formulário do Financeiro recebe a linha inteira). */
   const [editingTxnId, setEditingTxnId] = useState<string | null>(null);
   const [pendingSaleEdit, setPendingSaleEdit] = useState<PdvLedgerEntry | null>(null);
-  const [isPreparingSaleEdit, setIsPreparingSaleEdit] = useState(false);
   const { transaction: editingTransaction } = usePdvLedgerTransaction(editingTxnId);
 
   // Preferência de privacidade do operador (balcão é lugar público).
@@ -278,6 +279,7 @@ export default function PdvCaixa() {
       quantity: number;
       unitPrice: number;
       unitCost: number;
+      discountAmount: number;
       total: number;
     }>> = {};
     for (const i of detail.items) {
@@ -289,11 +291,13 @@ export default function PdvCaixa() {
           quantity: Number(i.quantity) || 0,
           unitPrice: Number(i.unit_price) || 0,
           unitCost: Number(i.unit_cost) || 0,
+          discountAmount: Number(i.discount_amount) || 0,
           total: Number(i.total) || 0,
         },
       ];
     }
     const paymentsByOrder: Record<string, Array<{ method: string; amount: number; changeAmount: number; accountName: string | null }>> = {};
+    const transactionDateByOrder: Record<string, string> = {};
     for (const p of detail.payments) {
       paymentsByOrder[p.order_id] = [
         ...(paymentsByOrder[p.order_id] ?? []),
@@ -306,6 +310,9 @@ export default function PdvCaixa() {
             : null,
         },
       ];
+      if (p.transaction_date && !transactionDateByOrder[p.order_id]) {
+        transactionDateByOrder[p.order_id] = p.transaction_date;
+      }
     }
     return buildPdvLedger({
       orders: detail.orders.map((o) => ({
@@ -321,6 +328,8 @@ export default function PdvCaixa() {
         orderStockId: o.stock_id,
         orderNotes: o.notes,
         orderDiscountAmount: Number(o.discount_amount) || 0,
+        orderTransactionDate: transactionDateByOrder[o.id] ?? null,
+        replacesOrderReference: o.replaces_order_number != null ? `#${o.replaces_order_number}` : null,
       })),
       transactions: detail.transactions.map((tx) => ({
         id: tx.id,
@@ -486,7 +495,7 @@ export default function PdvCaixa() {
    * exatamente muda. A página só executa — nenhum estorno é escrito aqui.
    */
   function reversalOf(entry: PdvLedgerEntry) {
-    return planLedgerReversal(entry, { canManageFinance, canDeleteFinance });
+    return planLedgerReversal(entry, { canManageFinance, canDeleteFinance, canEditPdvSales });
   }
 
   function handleLedgerEdit(entry: PdvLedgerEntry) {
@@ -498,7 +507,7 @@ export default function PdvCaixa() {
     setEditingTxnId(entry.id);
   }
 
-  async function confirmSaleEdit() {
+  function confirmSaleEdit() {
     if (!pendingSaleEdit) return;
     const entry = pendingSaleEdit;
     const saleItems = entry.detail.items ?? [];
@@ -514,42 +523,43 @@ export default function PdvCaixa() {
       return;
     }
 
+    if (!user?.id || !profile?.company_id) {
+      toast({
+        variant: 'destructive',
+        title: t.history.editError,
+        description: t.history.editSessionUnavailable,
+      });
+      return;
+    }
+
     const draft: PdvSaleEditDraft = {
+      ownerUserId: user.id,
+      companyId: profile.company_id,
+      clientRequestId: crypto.randomUUID(),
       sourceOrderId: entry.id,
       sourceReference: entry.reference,
       customerId: entry.detail.orderCustomerId ?? null,
       stockId: entry.detail.orderStockId ?? null,
       discountAmount: Number(entry.detail.orderDiscountAmount) || 0,
       notes: entry.detail.orderNotes ?? '',
+      transactionDate: entry.detail.orderTransactionDate ?? entry.occurredAt.slice(0, 10),
       items: saleItems.map((item) => ({
         inventoryId: item.inventoryId as string,
         description: item.description,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         unitCost: Number(item.unitCost) || 0,
+        discountAmount: Number(item.discountAmount) || 0,
       })),
     };
 
-    setIsPreparingSaleEdit(true);
-    try {
-      await cancelOrder.mutateAsync({
-        orderId: entry.id,
-        reason: t.history.editCancellationReason,
-      });
-      savePdvSaleEditDraft(draft);
-      setPendingSaleEdit(null);
-      navigate(`${PDV_SALE_PATH}?editar=${encodeURIComponent(entry.id)}`, {
-        state: { pdvSaleEditDraft: draft },
-      });
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: t.history.editError,
-        description: pdvCashErrorMessage(error),
-      });
-    } finally {
-      setIsPreparingSaleEdit(false);
-    }
+    // A original permanece paga e íntegra enquanto o operador edita. O
+    // estorno só acontece junto da substituição, na RPC da finalização.
+    savePdvSaleEditDraft(draft);
+    setPendingSaleEdit(null);
+    navigate(`${PDV_SALE_PATH}?editar=${encodeURIComponent(entry.id)}`, {
+      state: { pdvSaleEditDraft: draft },
+    });
   }
 
   function handleLedgerDelete(entry: PdvLedgerEntry) {
@@ -822,6 +832,7 @@ export default function PdvCaixa() {
             number={number}
             canManageFinance={canManageFinance}
             canDeleteFinance={canDeleteFinance}
+            canEditPdvSales={canEditPdvSales}
             onEdit={handleLedgerEdit}
             onDelete={handleLedgerDelete}
           />
@@ -908,7 +919,7 @@ export default function PdvCaixa() {
         }}
         texts={t.history}
         entry={pendingSaleEdit}
-        isPending={isPreparingSaleEdit}
+        isPending={false}
         onConfirm={confirmSaleEdit}
       />
 

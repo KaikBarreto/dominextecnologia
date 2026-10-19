@@ -30,9 +30,10 @@ import { MobilePillTabs, type PillTab } from '@/components/mobile/MobilePillTabs
 import { FilterButton } from '@/components/ui/FilterButton';
 import { useMediaBreakpoint } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { fuzzyIncludesAny, cn } from '@/lib/utils';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, formatNumber, getCurrencySymbol, parseMoney, toBcp47 } from '@/lib/format';
 import { todayInTz } from '@/lib/timezone';
 import { useToast } from '@/hooks/use-toast';
 import { useInventory } from '@/hooks/useInventory';
@@ -50,7 +51,6 @@ import {
   useUploadPdvOrderAttachment,
   type PdvSettleResult,
 } from '@/hooks/usePdvSale';
-import { readPastedCents } from '@/lib/money-paste-mask';
 import { processImageFile } from '@/utils/imageConvert';
 import {
   EMPTY_CART,
@@ -60,7 +60,9 @@ import {
   removeItem,
   setCartCustomer,
   setDiscount,
+  setLineDiscount,
   setLineQuantity,
+  computeTotal,
   type CartProduct,
   type CartState,
 } from '@/lib/pdv/cart';
@@ -75,6 +77,7 @@ import { PdvQuickQuantityDialog } from '@/components/pdv/PdvQuickQuantityDialog'
 import { PdvAdvancedOptionsDialog, type PdvPendingAttachment } from '@/components/pdv/PdvAdvancedOptionsDialog';
 import {
   clearPdvSaleEditDraft,
+  isPdvSaleEditDraft,
   loadPdvSaleEditDraft,
   type PdvSaleEditDraft,
 } from '@/lib/pdv/order-edit';
@@ -100,6 +103,7 @@ const NUMPAD_BREAKPOINT = 1024;
  * os idiomas (o `AppLayout` redireciona pro canônico do idioma do usuário).
  */
 const PDV_PANEL_PATH = '/pdv';
+const PDV_SALE_PATH = '/pdv/venda';
 
 /** `3 * <código>` digitado antes do código (manual) ou antes da rajada do leitor. */
 function extractMultiplierPrefix(raw: string): { multiplier: number; term: string } {
@@ -136,7 +140,13 @@ function cartSignature(
     notes,
     transactionDate,
     replacesOrderId,
-    lines: cart.lines.map((line) => [line.inventoryId, line.quantity, line.unitPrice, line.unitCost]),
+    lines: cart.lines.map((line) => [
+      line.inventoryId,
+      line.quantity,
+      line.unitPrice,
+      line.unitCost,
+      line.discountAmount,
+    ]),
   });
 }
 
@@ -184,6 +194,7 @@ export default function Pdv() {
   const navigate = useNavigate();
   const location = useLocation();
   const { locale, currency, timezone } = useAppLocaleContext();
+  const { user, profile } = useAuth();
   const t = MESSAGES[locale].app.pdv.cashier;
   const { toast } = useToast();
   const isMobileCart = useMediaBreakpoint(CART_DRAWER_BREAKPOINT);
@@ -206,7 +217,7 @@ export default function Pdv() {
     cofre,
     isLoading: cashLoading,
   } = usePdvCashRegister();
-  const { createOrder, settleOrder } = usePdvSale();
+  const { createOrder, settleOrder, replaceOrder } = usePdvSale();
   const uploadAttachment = useUploadPdvOrderAttachment();
 
   // Carregamento inicial da tela inteira (catálogo + locais + categorias +
@@ -240,12 +251,7 @@ export default function Pdv() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [cart, setCart] = useState(EMPTY_CART);
   const editSourceOrderId = new URLSearchParams(location.search).get('editar');
-  const [saleEditDraft, setSaleEditDraft] = useState<PdvSaleEditDraft | null>(() => {
-    const stateDraft = (location.state as { pdvSaleEditDraft?: PdvSaleEditDraft } | null)
-      ?.pdvSaleEditDraft;
-    if (stateDraft?.sourceOrderId === editSourceOrderId) return stateDraft;
-    return loadPdvSaleEditDraft(editSourceOrderId);
-  });
+  const [saleEditDraft, setSaleEditDraft] = useState<PdvSaleEditDraft | null>(null);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [discountCents, setDiscountCents] = useState(0);
@@ -293,7 +299,38 @@ export default function Pdv() {
   );
   const editDraftHydratedRef = useRef(false);
 
+  // Rascunho é isolado por usuário + empresa e por pedido. Em terminal
+  // compartilhado, trocar de conta nunca pode exibir dados da venda anterior.
+  useEffect(() => {
+    if (saleEditDraft || !editSourceOrderId || !user?.id || !profile?.company_id) return;
+    const stateDraft = (location.state as { pdvSaleEditDraft?: PdvSaleEditDraft } | null)
+      ?.pdvSaleEditDraft;
+    const owner = { userId: user.id, companyId: profile.company_id };
+    const draft =
+      isPdvSaleEditDraft(stateDraft, editSourceOrderId, owner)
+        ? stateDraft
+        : loadPdvSaleEditDraft(editSourceOrderId, {
+            ...owner,
+          });
+    if (draft) {
+      setSaleEditDraft(draft);
+      return;
+    }
+    toast({ variant: 'destructive', title: t.editDraft.missing });
+    navigate(PDV_SALE_PATH, { replace: true });
+  }, [editSourceOrderId, location.state, navigate, profile?.company_id, saleEditDraft, t.editDraft.missing, toast, user?.id]);
+
   const formatCurrency = (value: number) => formatMoney(value, currency, locale);
+  const currencySymbol = useMemo(() => getCurrencySymbol(currency, locale), [currency, locale]);
+  const currencyFractionDigits = useMemo(() => {
+    try {
+      return new Intl.NumberFormat(toBcp47(locale), { style: 'currency', currency })
+        .resolvedOptions().maximumFractionDigits;
+    } catch {
+      return 2;
+    }
+  }, [currency, locale]);
+  const currencyMinorScale = 10 ** currencyFractionDigits;
 
   // "Hoje" no fuso DA EMPRESA, não no do aparelho — é o teto que o servidor
   // também usa (`public.company_today`) pra recusar data futura em
@@ -370,7 +407,11 @@ export default function Pdv() {
   // RPC get_accessible_inventory_ids ANTES de qualquer soma/exibição — régua
   // do achado B do plano (agregado de tela não pode vazer material de local
   // bloqueado pro usuário).
-  const sellableProducts: PdvGridProduct[] = useMemo(() => {
+  const sellableProducts: (PdvGridProduct & {
+    groupId: string | null;
+    barcode: string | null;
+    unitCost: number;
+  })[] = useMemo(() => {
     return items
       .filter((item) => item.is_sellable !== false)
       .filter((item) => accessibleIds.has(item.id))
@@ -389,10 +430,11 @@ export default function Pdv() {
       })) as (PdvGridProduct & { groupId: string | null; barcode: string | null; unitCost: number })[];
   }, [items, accessibleIds, selectedStockId, getQuantityForStock]);
 
-  // O estorno já devolveu o estoque antes de esta tela abrir. O snapshot usa
-  // preço/custo/nome históricos, enquanto foto e saldo vêm do catálogo atual.
-  // `max(source.quantity, saldo)` evita que um cache ainda em refetch trave a
-  // quantidade original quando a venda tinha consumido as últimas unidades.
+  // A venda original CONTINUA baixando o estoque enquanto esta tela está
+  // aberta. O snapshot usa preço/custo/nome históricos, enquanto foto e saldo
+  // vêm do catálogo atual. `max(source.quantity, saldo)` deixa manter a
+  // quantidade original mesmo quando ela consumiu as últimas unidades; a RPC
+  // restaura a origem antes de baixar a substituta, na mesma transação.
   useEffect(() => {
     if (!saleEditDraft || editDraftHydratedRef.current || isLoadingPdv) return;
     const draftStockId =
@@ -413,6 +455,7 @@ export default function Pdv() {
           imageUrl: current?.image_url ?? null,
           unitPrice: source.unitPrice,
           unitCost: source.unitCost,
+          discountAmount: source.discountAmount,
           quantity: source.quantity,
           availableQuantity: Math.max(
             source.quantity,
@@ -421,8 +464,10 @@ export default function Pdv() {
         };
       }),
     });
-    setDiscountCents(Math.round(saleEditDraft.discountAmount * 100));
+    setDiscountCents(Math.round(saleEditDraft.discountAmount * currencyMinorScale));
     setOrderNotes(saleEditDraft.notes);
+    transactionDateTouchedRef.current = true;
+    setTransactionDate(saleEditDraft.transactionDate);
     editDraftHydratedRef.current = true;
   }, [
     saleEditDraft,
@@ -431,10 +476,11 @@ export default function Pdv() {
     selectedStockId,
     items,
     getQuantityForStock,
+    currencyMinorScale,
   ]);
 
-  // Quando a invalidação disparada pelo estorno terminar, substitui o teto
-  // conservador acima pelo saldo real já restaurado.
+  // Atualiza o teto quando o saldo do catálogo mudar, sem jamais baixar do que
+  // já está no carrinho. A RPC continua sendo a autoridade final de estoque.
   useEffect(() => {
     if (!saleEditDraft || !editDraftHydratedRef.current || !selectedStockId) return;
     setCart((current) => ({
@@ -451,13 +497,13 @@ export default function Pdv() {
 
   const categoryFiltered = useMemo(() => {
     if (activeCategory === 'all') return sellableProducts;
-    return sellableProducts.filter((p: any) => p.groupId === activeCategory);
+    return sellableProducts.filter((p) => p.groupId === activeCategory);
   }, [sellableProducts, activeCategory]);
 
   const searchFiltered = useMemo(() => {
     const { term } = extractMultiplierPrefix(search);
     if (!term.trim()) return categoryFiltered;
-    return categoryFiltered.filter((p: any) => fuzzyIncludesAny([p.name, p.barcode], term));
+    return categoryFiltered.filter((p) => fuzzyIncludesAny([p.name, p.barcode], term));
   }, [categoryFiltered, search]);
 
   const categoryTabs: PillTab[] = useMemo(
@@ -502,7 +548,7 @@ export default function Pdv() {
     // Bombeia a pill ativa pro fim da fileira visível, no lugar da última.
     const active = categoryTabs.find((tb) => tb.value === activeCategory);
     return active ? [...head.slice(0, MAX_VISIBLE_CATEGORY_TABS - 1), active] : head;
-  }, [categoryTabs, activeCategory]);
+  }, [categoryTabs, activeCategory, MAX_VISIBLE_CATEGORY_TABS]);
   const hiddenCategoryTabs = useMemo(
     () => categoryTabs.filter((tb) => !visibleCategoryTabs.some((v) => v.value === tb.value)),
     [categoryTabs, visibleCategoryTabs],
@@ -547,7 +593,7 @@ export default function Pdv() {
     const { multiplier } = extractMultiplierPrefix(`${prefixRaw}x`);
     setSearch('');
 
-    const found = sellableProducts.find((p: any) => p.barcode && p.barcode === code);
+    const found = sellableProducts.find((p) => p.barcode && p.barcode === code);
     if (!found) {
       toast({ variant: 'destructive', title: t.toast.barcodeNotFound });
       return;
@@ -563,7 +609,7 @@ export default function Pdv() {
     const cleanTerm = term.trim();
     if (!cleanTerm) return;
     const matches = searchFiltered.length ? searchFiltered : [];
-    const direct = sellableProducts.filter((p: any) => fuzzyIncludesAny([p.name, p.barcode], cleanTerm));
+    const direct = sellableProducts.filter((p) => fuzzyIncludesAny([p.name, p.barcode], cleanTerm));
     const pool = direct.length ? direct : matches;
     if (pool.length === 1) {
       tryAdd(pool[0], multiplier);
@@ -607,7 +653,7 @@ export default function Pdv() {
   }
 
   const itemCount = cart.lines.reduce((sum, l) => sum + l.quantity, 0);
-  const total = cart.lines.reduce((sum, l) => sum + l.quantity * l.unitPrice, 0) - cart.discount;
+  const total = computeTotal(cart);
   const canPay = cart.lines.length > 0 && total > 0;
 
   // Terminal da venda: o do caixa aberto (é o turno de quem está vendendo);
@@ -668,67 +714,93 @@ export default function Pdv() {
    * `pdvCashErrorMessage` (nunca `getErrorMessage`, que engoliria a mensagem).
    */
   async function handleFinalizeSale(payments: Parameters<typeof settleOrder.mutateAsync>[0]['payments']) {
-    const signature = cartSignature(
-      cart,
-      selectedStockId,
-      cashSessionId,
-      orderNotes,
-      transactionDate,
-      saleEditDraft?.sourceOrderId ?? null,
-    );
-    let attempt = attemptRef.current;
-    if (!attempt || attempt.signature !== signature) {
-      attempt = { signature, orderId: null, clientRequestId: crypto.randomUUID() };
-      attemptRef.current = attempt;
-    }
+    const saleItems = cart.lines.map((line) => ({
+      inventoryId: line.inventoryId,
+      description: line.name,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+      unitCost: line.unitCost,
+      discountAmount: line.discountAmount,
+    }));
 
-    if (!attempt.orderId) {
-      const orderId = await createOrder.mutateAsync({
+    let result: PdvSettleResult;
+
+    if (saleEditDraft) {
+      // ÚNICA escrita financeira do fluxo de edição. Se qualquer validação,
+      // estorno, item, pagamento ou baixa de estoque falhar, o PostgreSQL
+      // reverte tudo e a venda original continua paga.
+      result = await replaceOrder.mutateAsync({
+        sourceOrderId: saleEditDraft.sourceOrderId,
         customerId: cart.customerId,
         terminalId,
         stockId: selectedStockId,
         cashSessionId,
         discountAmount: cart.discount,
         notes: orderNotes,
-        replacesOrderId: saleEditDraft?.sourceOrderId ?? null,
-        items: cart.lines.map((line) => ({
-          inventoryId: line.inventoryId,
-          description: line.name,
-          quantity: line.quantity,
-          unitPrice: line.unitPrice,
-          unitCost: line.unitCost,
-        })),
+        items: saleItems,
+        payments,
+        clientRequestId: saleEditDraft.clientRequestId,
+        transactionDate,
       });
-      // Gravado ANTES do settle de propósito: se o pagamento falhar, o retry
-      // finaliza ESTE pedido em vez de criar outro.
-      attempt.orderId = orderId;
-    }
 
-    // Fotos pendentes ("Opções avançadas") só podem subir AGORA, porque o
-    // caminho no Storage exige `order_id` (que só existe a partir daqui).
-    // Remove cada uma do estado assim que sobe com sucesso: se uma falhar no
-    // meio da lista, o retry (mesmo attempt.orderId) só tenta de novo as que
-    // sobraram, sem duplicar as que já subiram.
-    for (const pending of pendingAttachments) {
-      try {
-        await uploadAttachment.mutateAsync({ orderId: attempt.orderId, file: pending.file });
-      } catch {
-        throw new Error(t.toast.attachFailed);
+      // Fotos novas não participam do saldo/estoque. Elas sobem depois da
+      // substituição atômica; falha de Storage gera aviso, nunca meia venda.
+      let attachmentFailed = false;
+      for (const pending of pendingAttachments) {
+        try {
+          await uploadAttachment.mutateAsync({ orderId: result.order_id, file: pending.file });
+          URL.revokeObjectURL(pending.previewUrl);
+          setPendingAttachments((prev) => prev.filter((p) => p.id !== pending.id));
+        } catch {
+          attachmentFailed = true;
+        }
       }
-      URL.revokeObjectURL(pending.previewUrl);
-      setPendingAttachments((prev) => prev.filter((p) => p.id !== pending.id));
-    }
+      if (attachmentFailed) toast({ variant: 'destructive', title: t.toast.attachFailed });
+    } else {
+      const signature = cartSignature(
+        cart,
+        selectedStockId,
+        cashSessionId,
+        orderNotes,
+        transactionDate,
+        null,
+      );
+      let attempt = attemptRef.current;
+      if (!attempt || attempt.signature !== signature) {
+        attempt = { signature, orderId: null, clientRequestId: crypto.randomUUID() };
+        attemptRef.current = attempt;
+      }
 
-    const result = await settleOrder.mutateAsync({
-      orderId: attempt.orderId,
-      payments,
-      clientRequestId: attempt.clientRequestId,
-      // Igual ao dia da empresa = `null` (caminho feliz de sempre, byte a
-      // byte); só manda data quando o operador de fato escolheu outro dia —
-      // o campo agora nasce preenchido com hoje, então "igual a hoje" é o
-      // caso comum, não a exceção.
-      transactionDate: transactionDate === maxTransactionDate ? null : transactionDate,
-    });
+      if (!attempt.orderId) {
+        attempt.orderId = await createOrder.mutateAsync({
+          customerId: cart.customerId,
+          terminalId,
+          stockId: selectedStockId,
+          cashSessionId,
+          discountAmount: cart.discount,
+          notes: orderNotes,
+          replacesOrderId: null,
+          items: saleItems,
+        });
+      }
+
+      for (const pending of pendingAttachments) {
+        try {
+          await uploadAttachment.mutateAsync({ orderId: attempt.orderId, file: pending.file });
+        } catch {
+          throw new Error(t.toast.attachFailed);
+        }
+        URL.revokeObjectURL(pending.previewUrl);
+        setPendingAttachments((prev) => prev.filter((p) => p.id !== pending.id));
+      }
+
+      result = await settleOrder.mutateAsync({
+        orderId: attempt.orderId,
+        payments,
+        clientRequestId: attempt.clientRequestId,
+        transactionDate: transactionDate === maxTransactionDate ? null : transactionDate,
+      });
+    }
 
     const change = (result.pagamentos ?? []).reduce(
       (sum, pay) => sum + (Number(pay.change_amount) || 0),
@@ -1013,7 +1085,6 @@ export default function Pdv() {
     // `cardCompact` entra pelo MESMO motivo que `cartLines`: com a trava 2
     // ativa (`allowLinesChange=false`), o closure precisa ler o valor ATUAL
     // pra congelar (`compactCandidates = [cardCompact]`).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isMobileCart,
     isLoadingPdv,
@@ -1043,16 +1114,21 @@ export default function Pdv() {
   function handleDiscountChange(raw: string) {
     const digits = raw.replace(/\D/g, '');
     setDiscountCents(parseInt(digits || '0', 10));
-    setCart((prev) => setDiscount(prev, parseInt(digits || '0', 10) / 100));
+    setCart((prev) => setDiscount(prev, parseInt(digits || '0', 10) / currencyMinorScale));
   }
   function handleDiscountPaste(e: React.ClipboardEvent<HTMLInputElement>) {
-    const cents = readPastedCents(e);
-    if (cents == null) return;
-    setDiscountCents(cents);
-    setCart((prev) => setDiscount(prev, cents / 100));
+    const value = parseMoney(e.clipboardData.getData('text'), locale);
+    if (value == null) return;
+    e.preventDefault();
+    const minor = Math.round(value * currencyMinorScale);
+    setDiscountCents(minor);
+    setCart((prev) => setDiscount(prev, minor / currencyMinorScale));
   }
   const discountDisplay = discountCents
-    ? (discountCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    ? formatNumber(discountCents / currencyMinorScale, locale, {
+        minimumFractionDigits: currencyFractionDigits,
+        maximumFractionDigits: currencyFractionDigits,
+      })
     : '';
 
   function handleConfirmClearCart() {
@@ -1072,11 +1148,14 @@ export default function Pdv() {
     cart,
     customers,
     formatCurrency,
+    currencySymbol,
     discountDisplay,
     onDiscountChange: handleDiscountChange,
     onDiscountPaste: handleDiscountPaste,
     onIncrement: (id: string, delta: number) => setCart((prev) => incrementLineQuantity(prev, id, delta)),
     onSetQuantity: (id: string, quantity: number) => setCart((prev) => setLineQuantity(prev, id, quantity)),
+    onSetLineDiscount: (id: string, discountAmount: number) =>
+      setCart((prev) => setLineDiscount(prev, id, discountAmount)),
     onRemove: (id: string) => setCart((prev) => removeItem(prev, id)),
     onCustomerChange: (id: string | null) => setCart((prev) => setCartCustomer(prev, id)),
     onRequestClearCart: () => setConfirmClearOpen(true),
@@ -1097,6 +1176,7 @@ export default function Pdv() {
       empty: t.cart.empty,
       emptyHint: t.cart.emptyHint,
       subtotal: t.cart.subtotal,
+      itemDiscounts: t.cart.itemDiscounts,
       discount: t.cart.discount,
       discountPlaceholder: t.cart.discountPlaceholder,
       total: t.cart.total,
@@ -1106,6 +1186,8 @@ export default function Pdv() {
       clearCart: t.cart.clearCart,
       noPhoto: t.stock.noPhoto,
       quantityEditLabel: t.cart.quantityEditLabel,
+      itemDiscount: t.cart.itemDiscount,
+      itemDiscountPlaceholder: t.cart.itemDiscountPlaceholder,
       paymentLabel: t.actions.payment,
       paymentShortcut: t.actions.paymentShortcut,
       finalizeLabel: t.actions.finalize,
@@ -1126,6 +1208,7 @@ export default function Pdv() {
     cart,
     customers,
     formatCurrency,
+    currencySymbol,
     discountDisplay,
     onDiscountChange: handleDiscountChange,
     onDiscountPaste: handleDiscountPaste,
@@ -1144,6 +1227,7 @@ export default function Pdv() {
     formatCurrency,
     onIncrement: cartPanelProps.onIncrement,
     onSetQuantity: cartPanelProps.onSetQuantity,
+    onSetLineDiscount: cartPanelProps.onSetLineDiscount,
     onRemove: cartPanelProps.onRemove,
     onRequestClearCart: cartPanelProps.onRequestClearCart,
     onConfirmQuantityEdit: cartPanelProps.onConfirmQuantityEdit,
@@ -1158,6 +1242,8 @@ export default function Pdv() {
       columnProduct: t.cart.columnProduct,
       columnQuantity: t.cart.columnQuantity,
       quantityEditLabel: t.cart.quantityEditLabel,
+      discountLabel: t.cart.itemDiscount,
+      discountPlaceholder: t.cart.itemDiscountPlaceholder,
       columnUnitPrice: t.cart.columnUnitPrice,
       columnLineTotal: t.cart.columnLineTotal,
     },

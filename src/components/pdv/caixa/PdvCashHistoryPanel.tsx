@@ -67,6 +67,8 @@ interface PdvCashHistoryPanelProps {
   canManageFinance: boolean;
   /** `fn:delete_finance` (ou admin/gestor): destrava EXCLUIR lançamento. */
   canDeleteFinance: boolean;
+  /** Permissão crítica e explícita `fn:edit_pdv_sales`. */
+  canEditPdvSales: boolean;
   onEdit: (entry: PdvLedgerEntry) => void;
   onDelete: (entry: PdvLedgerEntry) => void;
 }
@@ -98,6 +100,7 @@ export function PdvCashHistoryPanel({
   number,
   canManageFinance,
   canDeleteFinance,
+  canEditPdvSales,
   onEdit,
   onDelete,
 }: PdvCashHistoryPanelProps) {
@@ -249,7 +252,7 @@ export function PdvCashHistoryPanel({
    * saber que existe e por que não dá — some do menu parece bug.
    */
   function rowActions(entry: PdvLedgerEntry): RowAction[] {
-    const plan = planLedgerReversal(entry, { canManageFinance, canDeleteFinance });
+    const plan = planLedgerReversal(entry, { canManageFinance, canDeleteFinance, canEditPdvSales });
     // Sangria/suprimento NÃO é apagado: a RPC marca `cancelled_at` e a linha
     // sai do histórico. Chamar isso de "Excluir" prometia o que o sistema não
     // faz, então o rótulo é "Desfazer" — igual ao botão da confirmação.

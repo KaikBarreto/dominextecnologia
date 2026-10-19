@@ -98,6 +98,7 @@ export const SCREEN_PERMISSIONS = [
 // ATENÇÃO: ação continua valendo por conta própria mesmo com a tela desligada
 // (ex.: quem edita OS só pelo link de campo não precisa de `screen:service_orders`).
 export const FUNCTION_PERMISSIONS = [
+  { key: 'fn:edit_pdv_sales', label: 'Editar Vendas do PDV', description: 'Substituir uma venda já paga com estorno atômico de estoque e financeiro', group: 'PDV e Loja', category: 'pdv', relatedScreen: 'screen:pdv' },
   { key: 'fn:create_os', label: 'Criar OS', description: 'Criar novas ordens de serviço', group: 'Serviços', category: 'servicos', relatedScreen: 'screen:service_orders' },
   { key: 'fn:edit_os', label: 'Editar OS', description: 'Editar ordens de serviço existentes', group: 'Serviços', category: 'servicos', relatedScreen: 'screen:service_orders' },
   { key: 'fn:delete_os', label: 'Excluir OS', description: 'Excluir ordens de serviço', group: 'Serviços', category: 'servicos', relatedScreen: 'screen:service_orders' },

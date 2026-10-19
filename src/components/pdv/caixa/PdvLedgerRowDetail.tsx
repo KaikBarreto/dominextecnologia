@@ -64,6 +64,7 @@ export function PdvLedgerRowDetail({
 
   const hasContent =
     (isSale && (items.length > 0 || payments.length > 0)) ||
+    (isSale && !!detail.replacesOrderReference) ||
     facts.length > 0 ||
     attachments > 0 ||
     isTransfer;
@@ -78,6 +79,11 @@ export function PdvLedgerRowDetail({
 
   return (
     <div className="space-y-3 rounded-lg bg-muted/50 px-3 py-3">
+      {isSale && detail.replacesOrderReference && (
+        <p className="text-xs font-medium text-muted-foreground">
+          {texts.detailReplacesOrder.replace('{reference}', detail.replacesOrderReference)}
+        </p>
+      )}
       {/* ── Venda: os itens ─────────────────────────────────────────────── */}
       {isSale && items.length > 0 && (
         <div className="space-y-1.5">
