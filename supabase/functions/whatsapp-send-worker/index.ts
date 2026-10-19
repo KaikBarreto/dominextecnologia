@@ -1,11 +1,13 @@
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   checkWhatsappNumbers,
+  EVOLUTION_WEBHOOK_CONFIG_VERSION,
   EvolutionApiError,
   humanGapSeconds,
   markMessagesAsRead,
   sendPresence,
   sendText,
+  setInstanceWebhook,
   typingDelayMs,
 } from "../_shared/evolution-client.ts";
 
@@ -13,6 +15,7 @@ const WARMUP_DAILY_CAP = [20, 30, 40, 60, 80, 100, 120, 150, 180, 220, 260, 300,
 const MAX_PER_HOUR = 60;
 const MAX_PER_DAY = 400;
 const MAX_PER_RECIPIENT_24H = 5;
+const MAX_BILLING_PER_RECIPIENT_24H = 1;
 const MAX_ATTEMPTS = 5;
 /** Validade do cache de "esse telefone tem WhatsApp?" (whatsapp_number_checks). */
 const NUMBER_CHECK_TTL_DAYS = 90;
@@ -32,6 +35,12 @@ type Job = {
 type SettingsData = { automation_preferences: unknown };
 type CustomerData = { name: string };
 type CompanyData = { name: string };
+type WebhookConnection = {
+  id: string;
+  company_id: string;
+  instance_name: string | null;
+  webhook_config_version: string | null;
+};
 
 function timingSafeEqual(a: string, b: string): boolean {
   const left = new TextEncoder().encode(a);
@@ -40,6 +49,57 @@ function timingSafeEqual(a: string, b: string): boolean {
   let result = 0;
   for (let i = 0; i < left.length; i++) result |= left[i] ^ right[i];
   return result === 0;
+}
+
+/**
+ * Mantém instâncias já conectadas na versão atual do webhook mesmo quando não
+ * há jobs na fila. O cron chama o worker a cada minuto, então uma publicação
+ * de confirmação de entrega não precisa esperar a próxima mensagem para ficar
+ * ativa — nem exige disparar uma mensagem artificial para o cliente.
+ */
+async function reconcileWebhookConfigs(supabase: SupabaseClient): Promise<number> {
+  const { data, error } = await supabase
+    .from("whatsapp_connections")
+    .select("id, company_id, instance_name, webhook_config_version")
+    .eq("provider", "evolution_qr")
+    .eq("status", "connected");
+  if (error) {
+    console.error("[whatsapp-send-worker] webhook reconciliation query failed", {
+      message: error.message,
+    });
+    return 0;
+  }
+
+  const pending = ((data ?? []) as WebhookConnection[]).filter((connection) =>
+    connection.instance_name &&
+    connection.webhook_config_version !== EVOLUTION_WEBHOOK_CONFIG_VERSION
+  );
+  if (!pending.length) return 0;
+
+  const webhookUrl = `${Deno.env.get("SUPABASE_URL") ?? ""}/functions/v1/whatsapp-webhook`;
+  const webhookSecret = Deno.env.get("EVOLUTION_WEBHOOK_SECRET") ?? "";
+  const settled = await Promise.allSettled(pending.map(async (connection) => {
+    await setInstanceWebhook(connection.instance_name!, webhookUrl, webhookSecret);
+    const { error: updateError } = await supabase
+      .from("whatsapp_connections")
+      .update({ webhook_config_version: EVOLUTION_WEBHOOK_CONFIG_VERSION })
+      .eq("id", connection.id)
+      .eq("company_id", connection.company_id);
+    if (updateError) throw updateError;
+  }));
+
+  let configured = 0;
+  settled.forEach((result, index) => {
+    if (result.status === "fulfilled") {
+      configured += 1;
+      return;
+    }
+    console.error("[whatsapp-send-worker] webhook reconciliation failed", {
+      connection_id: pending[index].id,
+      message: String(result.reason),
+    });
+  });
+  return configured;
 }
 
 function normalizePhone(raw: string | null | undefined): string | null {
@@ -528,6 +588,32 @@ async function processJob(supabase: SupabaseClient, job: Job) {
   if (!connection.instance_name) {
     return skipJob(supabase, job, "invalid_connection", "A conexão QR Code não possui uma instância válida.");
   }
+
+  // Reaplica a assinatura de eventos uma vez por versão. Assim uma instância
+  // existente passa a confirmar entrega/leitura sem exigir novo QR Code.
+  if (connection.webhook_config_version !== EVOLUTION_WEBHOOK_CONFIG_VERSION) {
+    const webhookUrl = `${Deno.env.get("SUPABASE_URL") ?? ""}/functions/v1/whatsapp-webhook`;
+    const webhookSecret = Deno.env.get("EVOLUTION_WEBHOOK_SECRET") ?? "";
+    try {
+      await setInstanceWebhook(connection.instance_name, webhookUrl, webhookSecret);
+      const { error: webhookVersionError } = await supabase
+        .from("whatsapp_connections")
+        .update({ webhook_config_version: EVOLUTION_WEBHOOK_CONFIG_VERSION })
+        .eq("id", job.connection_id)
+        .eq("company_id", job.company_id);
+      if (webhookVersionError) throw webhookVersionError;
+    } catch (error) {
+      return deferJob(
+        supabase,
+        job,
+        "webhook_configuration_failed",
+        `Não foi possível configurar as confirmações de entrega: ${
+          error instanceof Error ? error.message : String(error)
+        }`.slice(0, 500),
+        new Date(Date.now() + 300 * 1000),
+      );
+    }
+  }
   if (!customer?.whatsapp_notifications_enabled || customer.whatsapp_opt_out_at) {
     return skipJob(supabase, job, "customer_opt_out", "O cliente não autorizou mensagens pelo WhatsApp.");
   }
@@ -575,6 +661,45 @@ async function processJob(supabase: SupabaseClient, job: Job) {
       supabase, job, "recipient_limit", "Limite de 5 mensagens ao destinatário em 24 horas atingido.",
       new Date(now + 86400 * 1000),
     );
+  }
+
+  // Cobrança é lembrete não solicitado naquele instante, diferente dos avisos
+  // transacionais de OS. Limita só `billing.*` a uma por destinatário em uma
+  // janela móvel de 24h; os demais jobs ficam adiados, nunca descartados. Na
+  // próxima tentativa `buildBillingMessage` relê a cobrança e ignora se paga.
+  if (job.source_type === "tenant_charge") {
+    const { data: latestBilling, error: latestBillingError } = await supabase
+      .from("whatsapp_events")
+      .select("sent_at")
+      .eq("company_id", job.company_id)
+      .eq("phone", phone)
+      .like("trigger", "billing.%")
+      .in("status", ["enviado", "entregue", "lido"])
+      .order("sent_at", { ascending: false })
+      .limit(MAX_BILLING_PER_RECIPIENT_24H)
+      .maybeSingle();
+    if (latestBillingError) {
+      return deferJob(
+        supabase,
+        job,
+        "billing_limit_unavailable",
+        "Não foi possível conferir o limite diário de cobrança.",
+        new Date(now + 300 * 1000),
+      );
+    }
+    if (latestBilling?.sent_at) {
+      const nextBillingAtMs = new Date(latestBilling.sent_at).getTime() + 86400 * 1000;
+      if (Number.isFinite(nextBillingAtMs) && nextBillingAtMs > now) {
+        const delaySeconds = Math.max(60, Math.ceil((nextBillingAtMs - now) / 1000));
+        return deferJob(
+          supabase,
+          job,
+          "billing_recipient_limit",
+          "Já foi enviada uma cobrança a este cliente nas últimas 24 horas.",
+          await volumeDeferAt(supabase, job, delaySeconds),
+        );
+      }
+    }
   }
 
   // Base do aquecimento é warmup_started_at, NÃO connected_at: connected_at é
@@ -702,6 +827,7 @@ Deno.serve(async (req) => {
   }
 
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const webhooksConfigured = await reconcileWebhookConfigs(supabase);
   const { data: jobs, error } = await supabase.rpc("whatsapp_claim_send_jobs", { p_limit: 20, p_orphan_minutes: 10 });
   if (error) {
     console.error("[whatsapp-send-worker] claim failed", { message: error.message });
@@ -711,5 +837,9 @@ Deno.serve(async (req) => {
   for (const result of settled) {
     if (result.status === "rejected") console.error("[whatsapp-send-worker] job failed", { message: String(result.reason) });
   }
-  return new Response(JSON.stringify({ ok: true, claimed: jobs?.length ?? 0 }), { status: 200, headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify({
+    ok: true,
+    claimed: jobs?.length ?? 0,
+    webhooks_configured: webhooksConfigured,
+  }), { status: 200, headers: { "Content-Type": "application/json" } });
 });

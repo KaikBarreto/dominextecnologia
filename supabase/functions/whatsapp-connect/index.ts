@@ -29,11 +29,13 @@ import {
   connectInstance,
   connectionState,
   createInstance,
+  EVOLUTION_WEBHOOK_CONFIG_VERSION,
   EvolutionApiError,
   EvolutionConfigError,
   instanceNameForCompany,
   setInstanceProxy,
   setInstanceSettings,
+  setInstanceWebhook,
 } from "../_shared/evolution-client.ts";
 import type { EvolutionProxyConfig } from "../_shared/evolution-client.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -453,12 +455,29 @@ Deno.serve(async (req) => {
       });
     }
 
+    // O webhook precisa ser reaplicado também em instâncias já existentes:
+    // `instance/create` só cobre a primeira conexão. Sem isto, adicionar um
+    // evento novo (como confirmação de entrega) exigiria apagar e ler o QR.
+    let webhookConfigured = false;
+    try {
+      await setInstanceWebhook(instanceName, webhookUrl, webhookSecret);
+      webhookConfigured = true;
+    } catch (error) {
+      console.warn("[whatsapp-connect] /webhook/set falhou (worker tentará novamente)", {
+        company_id: companyId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+
     // ---- Persiste o estado. connected_number só é conhecido no webhook de conexão.
     const connectionPatch: Record<string, unknown> = {
       status: connStatus,
       last_seen_at: new Date().toISOString(),
       last_error: null,
     };
+    if (webhookConfigured) {
+      connectionPatch.webhook_config_version = EVOLUTION_WEBHOOK_CONFIG_VERSION;
+    }
     if (connStatus === "connected") connectionPatch.connected_at = new Date().toISOString();
     // Recurso de proxy desligado neste ambiente: registra explicitamente que
     // esta conexão não tem IP dedicado. (Com IP, quem grava proxy_id é a RPC

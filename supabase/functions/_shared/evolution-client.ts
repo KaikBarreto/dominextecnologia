@@ -143,6 +143,52 @@ export interface EvolutionProxyConfig {
 }
 
 /**
+ * Versão da configuração de webhook aplicada em cada instância Evolution.
+ *
+ * Quando eventos ou formato mudarem, avance este valor. O worker reconcilia
+ * instâncias antigas antes do próximo envio sem depender de novo QR Code.
+ */
+export const EVOLUTION_WEBHOOK_CONFIG_VERSION = "2026-10-19.1";
+
+const EVOLUTION_WEBHOOK_EVENTS = [
+  "CONNECTION_UPDATE",
+  "MESSAGES_UPSERT",
+  "MESSAGES_UPDATE",
+  "SEND_MESSAGE",
+] as const;
+
+function instanceWebhookConfig(webhookUrl: string, webhookSecret: string) {
+  if (!webhookUrl.trim() || !webhookSecret.trim()) {
+    throw new EvolutionConfigError(
+      "Integração de WhatsApp não configurada: URL ou segredo do webhook ausente.",
+    );
+  }
+  return {
+    enabled: true,
+    url: webhookUrl,
+    byEvents: false,
+    // Nunca precisamos receber mídia em base64 para ACK, leitura ou opt-out.
+    base64: false,
+    headers: { "x-evolution-webhook-secret": webhookSecret },
+    events: [...EVOLUTION_WEBHOOK_EVENTS],
+  };
+}
+
+/**
+ * Reaplica o webhook por instância na rota canônica da Evolution 2.3.7.
+ * Isto também atualiza conexões criadas antes de um novo evento ser assinado.
+ */
+export async function setInstanceWebhook(
+  instanceName: string,
+  webhookUrl: string,
+  webhookSecret: string,
+): Promise<void> {
+  await evolution.post(`/webhook/set/${encodeURIComponent(instanceName)}`, {
+    webhook: instanceWebhookConfig(webhookUrl, webhookSecret),
+  });
+}
+
+/**
  * Cria a instância do tenant (idempotente do lado do chamador: se já existe,
  * a Evolution devolve erro "already in use" e o chamador cai no connect).
  * O webhook é apontado pra whatsapp-webhook com o secret na URL/headers.
@@ -163,19 +209,7 @@ export async function createInstance(
     instanceName,
     qrcode: true,
     integration: "WHATSAPP-BAILEYS",
-    webhook: {
-      url: webhookUrl,
-      byEvents: false,
-      base64: true,
-      // Secret enviado como header customizado; validado no whatsapp-webhook.
-      headers: { "x-evolution-webhook-secret": webhookSecret },
-      events: [
-        "CONNECTION_UPDATE",
-        "MESSAGES_UPSERT",
-        "MESSAGES_UPDATE",
-        "SEND_MESSAGE",
-      ],
-    },
+    webhook: instanceWebhookConfig(webhookUrl, webhookSecret),
   };
   if (proxy) {
     // port/protocol vão como STRING: é esse o DTO que o /instance/create

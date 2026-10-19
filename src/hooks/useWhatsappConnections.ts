@@ -95,6 +95,9 @@ export function useWhatsappConnections() {
   const historyQuery = useQuery({
     queryKey: ['whatsapp-send-jobs', companyId],
     enabled: Boolean(companyId),
+    // Entrega e leitura chegam de forma assíncrona pelo webhook da Evolution.
+    // Atualiza a tela sem exigir que o usuário recarregue Configurações.
+    refetchInterval: 10_000,
     queryFn: async (): Promise<WhatsappSendJob[]> => {
       if (!companyId) return [];
       const { data, error } = await supabase

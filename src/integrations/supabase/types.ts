@@ -13886,6 +13886,7 @@ export type Database = {
           status: string
           updated_at: string
           warmup_started_at: string | null
+          webhook_config_version: string | null
         }
         Insert: {
           company_id: string
@@ -13913,6 +13914,7 @@ export type Database = {
           status?: string
           updated_at?: string
           warmup_started_at?: string | null
+          webhook_config_version?: string | null
         }
         Update: {
           company_id?: string
@@ -13940,6 +13942,7 @@ export type Database = {
           status?: string
           updated_at?: string
           warmup_started_at?: string | null
+          webhook_config_version?: string | null
         }
         Relationships: [
           {

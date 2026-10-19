@@ -24,6 +24,7 @@
 // =============================================================================
 
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { parseEvolutionDeliveryAck } from "../_shared/evolution-ack.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -149,16 +150,6 @@ function normalizePhone(raw: string | null | undefined): string | null {
   return digits.startsWith("55") ? digits : `55${digits}`;
 }
 
-function normalizeAck(value: unknown): number {
-  const numeric = Number(value);
-  if (Number.isFinite(numeric)) return numeric;
-  const text = String(value ?? "").toUpperCase();
-  if (text.includes("READ") || text.includes("PLAYED")) return 4;
-  if (text.includes("DELIVER")) return 3;
-  if (text.includes("SERVER") || text.includes("SENT")) return 2;
-  return 0;
-}
-
 async function resolveCompanyByInstance(
   supabase: SupabaseClient,
   instanceName: string,
@@ -173,6 +164,54 @@ async function resolveCompanyByInstance(
   const { data: legacy } = await supabase
     .from("company_whatsapp_settings").select("company_id").eq("instance_name", instanceName).maybeSingle();
   return legacy ? { company_id: legacy.company_id, connection_id: null } : null;
+}
+
+type DeliveryEvent = { id: string; job_id: string | null; status: string };
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * O ACK pode chegar enquanto o `sendText` ainda está retornando ao worker.
+ * Espera brevemente pelo registro; se continuar ausente, o handler responde
+ * 503 e a própria Evolution repete o webhook com backoff.
+ */
+async function findDeliveryEvent(
+  supabase: SupabaseClient,
+  companyId: string,
+  providerMessageId: string | null,
+  remotePhone: string | null,
+): Promise<DeliveryEvent | null> {
+  const delays = [0, 150, 350, 750];
+  for (const delay of delays) {
+    if (delay) await sleep(delay);
+
+    if (providerMessageId) {
+      const { data } = await supabase
+        .from("whatsapp_events")
+        .select("id, job_id, status")
+        .eq("company_id", companyId)
+        .eq("provider_message_id", providerMessageId)
+        .maybeSingle();
+      if (data) return data as DeliveryEvent;
+      continue;
+    }
+
+    if (remotePhone) {
+      const { data } = await supabase
+        .from("whatsapp_events")
+        .select("id, job_id, status")
+        .eq("company_id", companyId)
+        .eq("phone", remotePhone)
+        .in("status", ["enviado", "entregue", "lido"])
+        .order("sent_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data) return data as DeliveryEvent;
+    }
+  }
+  return null;
 }
 
 Deno.serve(async (req) => {
@@ -358,43 +397,58 @@ Deno.serve(async (req) => {
     }
 
     // ----------------------------------------------------------------------
-    // Ack de ENTREGA → marca whatsapp_events como 'entregue'.
-    // MESSAGES_UPDATE traz updates de status (ack: 2=server, 3=delivered, 4=read).
+    // Ack de ENTREGA → marca whatsapp_events e whatsapp_send_jobs.
+    // Na Evolution 2.3.7 o payload é achatado: { keyId, remoteJid, status }.
+    // Builds anteriores também podem mandar { key: { id }, update: { status } }.
     // ----------------------------------------------------------------------
     if (event === "MESSAGES_UPDATE" || event === "SEND_MESSAGE") {
       const updates = Array.isArray(data) ? data : [data];
+      let unmatchedAcks = 0;
       for (const u of updates) {
-        const ack = normalizeAck(u?.update?.status ?? u?.status ?? u?.ack ?? 0);
-        // ack 3=entregue; ack 4=lido.
-        if (ack >= 3) {
-          const providerMessageId = String(u?.key?.id ?? u?.id ?? "").trim();
-          const remotePhone = jidToPhone(u?.key?.remoteJid ?? u?.remoteJid ?? null);
-          let eventQuery = supabase
-            .from("whatsapp_events")
-            .select("id, job_id")
-            .eq("company_id", companyId);
-          if (providerMessageId) eventQuery = eventQuery.eq("provider_message_id", providerMessageId);
-          else if (remotePhone) eventQuery = eventQuery.eq("phone", remotePhone).in("status", ["enviado", "entregue"]);
-          else continue;
-          const { data: ev } = await eventQuery
-            .order("sent_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (ev) {
-            const read = ack >= 4;
-            const at = new Date().toISOString();
-            await supabase
-              .from("whatsapp_events")
-              .update(read ? { status: "lido", read_at: at, delivered_at: at } : { status: "entregue", delivered_at: at })
-              .eq("id", ev.id)
-              .eq("company_id", companyId);
-            if (ev.job_id) {
-              await supabase.from("whatsapp_send_jobs")
-                .update({ status: read ? "read" : "delivered" })
-                .eq("id", ev.job_id).eq("company_id", companyId);
-            }
-          }
+        const ack = parseEvolutionDeliveryAck(u);
+        if (!ack) continue;
+
+        const remotePhone = jidToPhone(ack.remoteJid);
+        const ev = await findDeliveryEvent(
+          supabase,
+          companyId,
+          ack.providerMessageId,
+          remotePhone,
+        );
+        if (!ev) {
+          unmatchedAcks += 1;
+          continue;
         }
+
+        // Estado monotônico: uma entrega atrasada nunca rebaixa "lido" para
+        // "entregue". Reprocessar o mesmo webhook também é idempotente.
+        const read = ack.status === "read" || ev.status === "lido";
+        const at = new Date().toISOString();
+        const eventPatch = read
+          ? { status: "lido", read_at: at, delivered_at: at }
+          : { status: "entregue", delivered_at: at };
+        const { error: eventUpdateError } = await supabase
+          .from("whatsapp_events")
+          .update(eventPatch)
+          .eq("id", ev.id)
+          .eq("company_id", companyId);
+        if (eventUpdateError) {
+          unmatchedAcks += 1;
+          continue;
+        }
+        if (ev.job_id) {
+          const { error: jobUpdateError } = await supabase.from("whatsapp_send_jobs")
+            .update({ status: read ? "read" : "delivered" })
+            .eq("id", ev.job_id)
+            .eq("company_id", companyId);
+          if (jobUpdateError) unmatchedAcks += 1;
+        }
+      }
+      if (unmatchedAcks > 0) {
+        // Evolution 2.3.7 repete webhooks 5xx com backoff. Não devolvemos 200
+        // quando o worker ainda não gravou o provider_message_id, pois isso
+        // perderia a confirmação para sempre.
+        return jsonResponse({ error: "ack_pending", pending: unmatchedAcks }, 503);
       }
       return jsonResponse({ ok: true }, 200);
     }

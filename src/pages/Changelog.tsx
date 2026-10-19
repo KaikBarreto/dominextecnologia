@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.4',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cobranças pelo WhatsApp sem repetição',
+        description: 'Cada cliente recebe no máximo uma cobrança pelo WhatsApp a cada 24 horas. Os avisos seguintes aguardam o momento adequado e, antes do envio, o sistema confere novamente se a cobrança ainda está pendente.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Confirmação de entrega e leitura no WhatsApp',
+        description: 'O histórico de mensagens agora informa quando um aviso foi entregue e quando foi lido pelo cliente, com atualização automática da tela de configurações.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.3',
     date: '19 de outubro de 2026',
     type: 'patch',
