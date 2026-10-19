@@ -198,9 +198,13 @@ export type PdvMethodGroup = 'todas' | 'dinheiro' | 'pix_transferencia';
 
 /** Linha de item da venda, pro painel expansível. */
 export interface PdvLedgerSaleItem {
+  /** Produto original. Nulo só para serviço avulso ou item removido do catálogo. */
+  inventoryId?: string | null;
   description: string;
   quantity: number;
   unitPrice: number;
+  /** Snapshot do custo, preservado ao refazer uma venda. */
+  unitCost?: number;
   total: number;
 }
 
@@ -223,6 +227,11 @@ export interface PdvLedgerDetail {
   items?: PdvLedgerSaleItem[];
   /** Venda: como foi pago (uma linha por forma, pagamento misto tem várias). */
   payments?: PdvLedgerSalePayment[];
+  /** Contexto necessário para refazer uma venda sem redigitar o pedido. */
+  orderCustomerId?: string | null;
+  orderStockId?: string | null;
+  orderNotes?: string | null;
+  orderDiscountAmount?: number;
   /** Receita/despesa: categoria do Financeiro. */
   category?: string | null;
   /** Receita/despesa: conta que recebeu/pagou. */
@@ -624,8 +633,10 @@ export function planLedgerReversal(
       // estorno numa transação só, e o `cancelled_at` é auditável.
       canDelete: true,
       deleteBlock: null,
-      canEdit: false,
-      editBlock: 'sale_edit_cancel_and_redo',
+      // A edição não muta a venda paga. A tela confirma o estorno completo e
+      // abre um NOVO pedido já preenchido, ligado ao original.
+      canEdit: true,
+      editBlock: null,
       effects,
     };
   }

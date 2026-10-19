@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.8";
+export const APP_VERSION = "1.37.9";
 
 export const VERSION_NOTES =
-  "O acesso às contas bancárias agora separa operação de gestão, e o histórico do Caixa ganhou filtros mais completos por tipo, conta e faixa de valor.";
+  "Vendas do Caixa agora podem ser corrigidas com estorno seguro e um novo pedido já preenchido, preservando a rastreabilidade de estoque e financeiro.";

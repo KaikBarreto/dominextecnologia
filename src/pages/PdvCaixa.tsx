@@ -30,6 +30,7 @@ import { PdvCashIndicators } from '@/components/pdv/caixa/PdvCashIndicators';
 import { PdvCashSummaryCards } from '@/components/pdv/caixa/PdvCashSummaryCards';
 import { PdvCashHistoryPanel } from '@/components/pdv/caixa/PdvCashHistoryPanel';
 import { PdvLedgerDeleteDialog } from '@/components/pdv/caixa/PdvLedgerDeleteDialog';
+import { PdvSaleEditDialog } from '@/components/pdv/caixa/PdvSaleEditDialog';
 import { PdvOpenCashDialog } from '@/components/pdv/caixa/PdvOpenCashDialog';
 import { PdvCloseCashDialog } from '@/components/pdv/caixa/PdvCloseCashDialog';
 import { PdvCashMovementDialog } from '@/components/pdv/caixa/PdvCashMovementDialog';
@@ -41,6 +42,7 @@ import {
   type PdvLedgerEntry,
 } from '@/lib/pdv/cash';
 import { pdvCashErrorMessage } from '@/lib/pdv/cash-errors';
+import { savePdvSaleEditDraft, type PdvSaleEditDraft } from '@/lib/pdv/order-edit';
 
 /**
  * Rota da tela de VENDA (o carrinho), acionada por "Nova venda".
@@ -137,6 +139,8 @@ export default function PdvCaixa() {
   const [isDeleting, setIsDeleting] = useState(false);
   /** Id do lançamento avulso em EDIÇÃO (o formulário do Financeiro recebe a linha inteira). */
   const [editingTxnId, setEditingTxnId] = useState<string | null>(null);
+  const [pendingSaleEdit, setPendingSaleEdit] = useState<PdvLedgerEntry | null>(null);
+  const [isPreparingSaleEdit, setIsPreparingSaleEdit] = useState(false);
   const { transaction: editingTransaction } = usePdvLedgerTransaction(editingTxnId);
 
   // Preferência de privacidade do operador (balcão é lugar público).
@@ -268,14 +272,23 @@ export default function PdvCaixa() {
       methodsByOrder[p.order_id] = [...(methodsByOrder[p.order_id] ?? []), p.method];
     }
     // Itens e pagamentos por pedido: é o que o expansível da venda mostra.
-    const itemsByOrder: Record<string, Array<{ description: string; quantity: number; unitPrice: number; total: number }>> = {};
+    const itemsByOrder: Record<string, Array<{
+      inventoryId: string | null;
+      description: string;
+      quantity: number;
+      unitPrice: number;
+      unitCost: number;
+      total: number;
+    }>> = {};
     for (const i of detail.items) {
       itemsByOrder[i.order_id] = [
         ...(itemsByOrder[i.order_id] ?? []),
         {
+          inventoryId: i.inventory_id,
           description: i.description,
           quantity: Number(i.quantity) || 0,
           unitPrice: Number(i.unit_price) || 0,
+          unitCost: Number(i.unit_cost) || 0,
           total: Number(i.total) || 0,
         },
       ];
@@ -304,6 +317,10 @@ export default function PdvCaixa() {
         methods: methodsByOrder[o.id] ?? [],
         items: itemsByOrder[o.id] ?? [],
         payments: paymentsByOrder[o.id] ?? [],
+        orderCustomerId: o.customer_id,
+        orderStockId: o.stock_id,
+        orderNotes: o.notes,
+        orderDiscountAmount: Number(o.discount_amount) || 0,
       })),
       transactions: detail.transactions.map((tx) => ({
         id: tx.id,
@@ -474,7 +491,65 @@ export default function PdvCaixa() {
 
   function handleLedgerEdit(entry: PdvLedgerEntry) {
     if (!reversalOf(entry).canEdit) return;
+    if (entry.kind === 'venda') {
+      setPendingSaleEdit(entry);
+      return;
+    }
     setEditingTxnId(entry.id);
+  }
+
+  async function confirmSaleEdit() {
+    if (!pendingSaleEdit) return;
+    const entry = pendingSaleEdit;
+    const saleItems = entry.detail.items ?? [];
+
+    // Serviço avulso e produto apagado não podem voltar ao carrinho atual,
+    // que opera sobre o catálogo. O bloqueio acontece ANTES do estorno.
+    if (!saleItems.length || saleItems.some((item) => !item.inventoryId)) {
+      toast({
+        variant: 'destructive',
+        title: t.history.editUnavailableTitle,
+        description: t.history.editUnavailableDescription,
+      });
+      return;
+    }
+
+    const draft: PdvSaleEditDraft = {
+      sourceOrderId: entry.id,
+      sourceReference: entry.reference,
+      customerId: entry.detail.orderCustomerId ?? null,
+      stockId: entry.detail.orderStockId ?? null,
+      discountAmount: Number(entry.detail.orderDiscountAmount) || 0,
+      notes: entry.detail.orderNotes ?? '',
+      items: saleItems.map((item) => ({
+        inventoryId: item.inventoryId as string,
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        unitCost: Number(item.unitCost) || 0,
+      })),
+    };
+
+    setIsPreparingSaleEdit(true);
+    try {
+      await cancelOrder.mutateAsync({
+        orderId: entry.id,
+        reason: t.history.editCancellationReason,
+      });
+      savePdvSaleEditDraft(draft);
+      setPendingSaleEdit(null);
+      navigate(`${PDV_SALE_PATH}?editar=${encodeURIComponent(entry.id)}`, {
+        state: { pdvSaleEditDraft: draft },
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: t.history.editError,
+        description: pdvCashErrorMessage(error),
+      });
+    } finally {
+      setIsPreparingSaleEdit(false);
+    }
   }
 
   function handleLedgerDelete(entry: PdvLedgerEntry) {
@@ -824,6 +899,17 @@ export default function PdvCaixa() {
         money={money}
         isPending={isDeleting}
         onConfirm={confirmLedgerDelete}
+      />
+
+      <PdvSaleEditDialog
+        open={pendingSaleEdit != null}
+        onOpenChange={(open) => {
+          if (!open) setPendingSaleEdit(null);
+        }}
+        texts={t.history}
+        entry={pendingSaleEdit}
+        isPending={isPreparingSaleEdit}
+        onConfirm={confirmSaleEdit}
       />
 
       {/* Editar lançamento avulso: formulário do FINANCEIRO, sem formulário novo. */}

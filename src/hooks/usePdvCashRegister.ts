@@ -105,6 +105,8 @@ export interface PdvSessionOrder {
   discount_amount: number;
   status: string;
   customer_id: string | null;
+  stock_id: string | null;
+  notes: string | null;
   paid_at: string | null;
   created_at: string;
 }
@@ -458,7 +460,7 @@ export function usePdvCashSessionDetail(session: PdvCashSession | null) {
 
       const ordersRes = await supabase
         .from('pdv_orders')
-        .select('id, number, total, subtotal, discount_amount, status, customer_id, paid_at, created_at')
+        .select('id, number, total, subtotal, discount_amount, status, customer_id, stock_id, notes, paid_at, created_at')
         .eq('cash_session_id', sessionId)
         .in('status', ['pago', 'entregue'])
         .order('created_at', { ascending: false });

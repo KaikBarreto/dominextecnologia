@@ -54,6 +54,8 @@ export interface PdvCreateOrderInput {
   items: PdvSaleItemInput[];
   /** `pdv_orders.notes` — observação livre do pedido, pedido do CEO 2026-10-19. */
   notes?: string | null;
+  /** Venda cancelada que originou este novo pedido pelo fluxo de edição. */
+  replacesOrderId?: string | null;
 }
 
 /** Resumo que `pdv_settle_order` devolve. */
@@ -129,6 +131,7 @@ export function usePdvSale() {
           status: 'aguardando_pagamento',
           discount_amount: Math.max(0, input.discountAmount || 0),
           notes: input.notes?.trim() || null,
+          replaces_order_id: input.replacesOrderId ?? null,
           // `number` e `company_id` são preenchidos por trigger. Omitir da
           // tipagem com cast é o padrão já usado em `projects.code`.
         } as never)
@@ -154,6 +157,34 @@ export function usePdvSale() {
 
       const { error: itemsError } = await supabase.from('pdv_order_items').insert(rows as never);
       if (itemsError) throw itemsError;
+
+      // Fotos são evidência do pedido e devem acompanhar a edição. Reutilizar
+      // o mesmo objeto privado evita upload duplicado; cada pedido mantém sua
+      // própria linha de metadados e a venda original segue auditável.
+      if (input.replacesOrderId) {
+        const { data: sourceAttachments, error: sourceAttachmentsError } = await supabase
+          .from('pdv_order_attachments')
+          .select('storage_path, file_name, mime_type, size_bytes')
+          .eq('order_id', input.replacesOrderId);
+        if (sourceAttachmentsError) throw sourceAttachmentsError;
+
+        if (sourceAttachments?.length) {
+          const attachmentRows = sourceAttachments.map((attachment) => ({
+            order_id: orderId,
+            storage_path: attachment.storage_path,
+            file_name: attachment.file_name,
+            mime_type: attachment.mime_type,
+            size_bytes: attachment.size_bytes,
+          }));
+          const { error: copyAttachmentsError } = await supabase
+            .from('pdv_order_attachments')
+            .upsert(attachmentRows as never, {
+              onConflict: 'order_id,storage_path',
+              ignoreDuplicates: true,
+            });
+          if (copyAttachmentsError) throw copyAttachmentsError;
+        }
+      }
 
       return orderId;
     },

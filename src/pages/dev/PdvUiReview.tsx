@@ -2172,14 +2172,14 @@ function ProposedCash() {
         </div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-4">
           <CashSummaryValue
-            label="Total comprado"
-            value={money(cashResult.cmv)}
-            className="text-blue-600"
-          />
-          <CashSummaryValue
             label="Total vendido"
             value={money(cashResult.sold)}
             className="text-green-600"
+          />
+          <CashSummaryValue
+            label="Total comprado"
+            value={money(cashResult.cmv)}
+            className="text-blue-600"
           />
           <CashSummaryValue
             label="Lucro"

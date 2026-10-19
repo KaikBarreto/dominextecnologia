@@ -617,10 +617,10 @@ describe('planLedgerReversal', () => {
     expect(plan.effects).toContain('drawer');
   });
 
-  it('venda não se edita: o caminho honesto é cancelar e refazer', () => {
+  it('venda pode iniciar edição pelo fluxo seguro de cancelar e refazer', () => {
     const plan = planLedgerReversal(entry({ kind: 'venda' }), FULL);
-    expect(plan.canEdit).toBe(false);
-    expect(plan.editBlock).toBe('sale_edit_cancel_and_redo');
+    expect(plan.canEdit).toBe(true);
+    expect(plan.editBlock).toBeNull();
   });
 
   it('receita/despesa vai pelo caminho de exclusão do Financeiro (saldo é derivado)', () => {

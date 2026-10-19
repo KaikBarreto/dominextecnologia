@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.9',
+    date: '19 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Edição segura de vendas no Caixa',
+        description: 'Agora é possível editar uma venda pelo histórico. O sistema estorna o pedido anterior de forma auditável e abre uma nova venda já preenchida com cliente, itens, quantidades, preços, desconto, observação e fotos para fazer os ajustes e finalizar novamente.',
+        category: 'recurso',
+      },
+      {
+        title: 'Resumo do Caixa na ordem de venda',
+        description: 'No preview de revisão do Caixa, o total vendido agora aparece antes do total comprado, acompanhando a prioridade de leitura da operação.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.8',
     date: '19 de outubro de 2026',
     type: 'patch',

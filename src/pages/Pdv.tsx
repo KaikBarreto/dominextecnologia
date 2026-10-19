@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Search, ShoppingBasket, CheckCircle2, X, ArrowLeft } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -73,6 +73,11 @@ import { PdvSkeleton } from '@/components/pdv/PdvSkeleton';
 import { PdvPaymentDialog } from '@/components/pdv/PdvPaymentDialog';
 import { PdvQuickQuantityDialog } from '@/components/pdv/PdvQuickQuantityDialog';
 import { PdvAdvancedOptionsDialog, type PdvPendingAttachment } from '@/components/pdv/PdvAdvancedOptionsDialog';
+import {
+  clearPdvSaleEditDraft,
+  loadPdvSaleEditDraft,
+  type PdvSaleEditDraft,
+} from '@/lib/pdv/order-edit';
 
 /** Breakpoint onde o carrinho deixa de ser painel fixo e vira folha inferior. */
 const CART_DRAWER_BREAKPOINT = 768;
@@ -121,6 +126,7 @@ function cartSignature(
   sessionId: string | null,
   notes: string,
   transactionDate: string,
+  replacesOrderId: string | null,
 ): string {
   return JSON.stringify({
     stock: stockId,
@@ -129,6 +135,7 @@ function cartSignature(
     customer: cart.customerId,
     notes,
     transactionDate,
+    replacesOrderId,
     lines: cart.lines.map((line) => [line.inventoryId, line.quantity, line.unitPrice, line.unitCost]),
   });
 }
@@ -175,6 +182,7 @@ function extractSaleWarnings(avisos: PdvSettleResult['avisos']): SaleWarningCode
  */
 export default function Pdv() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.pdv.cashier;
   const { toast } = useToast();
@@ -231,6 +239,13 @@ export default function Pdv() {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [cart, setCart] = useState(EMPTY_CART);
+  const editSourceOrderId = new URLSearchParams(location.search).get('editar');
+  const [saleEditDraft, setSaleEditDraft] = useState<PdvSaleEditDraft | null>(() => {
+    const stateDraft = (location.state as { pdvSaleEditDraft?: PdvSaleEditDraft } | null)
+      ?.pdvSaleEditDraft;
+    if (stateDraft?.sourceOrderId === editSourceOrderId) return stateDraft;
+    return loadPdvSaleEditDraft(editSourceOrderId);
+  });
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [discountCents, setDiscountCents] = useState(0);
@@ -276,6 +291,7 @@ export default function Pdv() {
   const attemptRef = useRef<{ signature: string; orderId: string | null; clientRequestId: string } | null>(
     null,
   );
+  const editDraftHydratedRef = useRef(false);
 
   const formatCurrency = (value: number) => formatMoney(value, currency, locale);
 
@@ -342,6 +358,14 @@ export default function Pdv() {
     });
   }
 
+  function clearSaleEditContext() {
+    if (!saleEditDraft) return;
+    clearPdvSaleEditDraft(saleEditDraft.sourceOrderId);
+    setSaleEditDraft(null);
+    editDraftHydratedRef.current = false;
+    navigate(PDV_SALE_PATH, { replace: true });
+  }
+
   // Produtos vendáveis, com saldo calculado no local selecionado. Filtra pela
   // RPC get_accessible_inventory_ids ANTES de qualquer soma/exibição — régua
   // do achado B do plano (agregado de tela não pode vazer material de local
@@ -364,6 +388,66 @@ export default function Pdv() {
         barcode: item.barcode ?? null,
       })) as (PdvGridProduct & { groupId: string | null; barcode: string | null; unitCost: number })[];
   }, [items, accessibleIds, selectedStockId, getQuantityForStock]);
+
+  // O estorno já devolveu o estoque antes de esta tela abrir. O snapshot usa
+  // preço/custo/nome históricos, enquanto foto e saldo vêm do catálogo atual.
+  // `max(source.quantity, saldo)` evita que um cache ainda em refetch trave a
+  // quantidade original quando a venda tinha consumido as últimas unidades.
+  useEffect(() => {
+    if (!saleEditDraft || editDraftHydratedRef.current || isLoadingPdv) return;
+    const draftStockId =
+      saleEditDraft.stockId && pdvStocks.some((stock) => stock.id === saleEditDraft.stockId)
+        ? saleEditDraft.stockId
+        : (selectedStockId ?? pdvStocks[0]?.id ?? null);
+    if (!draftStockId) return;
+
+    setSelectedStockId(draftStockId);
+    setCart({
+      customerId: saleEditDraft.customerId,
+      discount: saleEditDraft.discountAmount,
+      lines: saleEditDraft.items.map((source) => {
+        const current = items.find((item) => item.id === source.inventoryId);
+        return {
+          inventoryId: source.inventoryId,
+          name: source.description,
+          imageUrl: current?.image_url ?? null,
+          unitPrice: source.unitPrice,
+          unitCost: source.unitCost,
+          quantity: source.quantity,
+          availableQuantity: Math.max(
+            source.quantity,
+            getQuantityForStock(source.inventoryId, draftStockId),
+          ),
+        };
+      }),
+    });
+    setDiscountCents(Math.round(saleEditDraft.discountAmount * 100));
+    setOrderNotes(saleEditDraft.notes);
+    editDraftHydratedRef.current = true;
+  }, [
+    saleEditDraft,
+    isLoadingPdv,
+    pdvStocks,
+    selectedStockId,
+    items,
+    getQuantityForStock,
+  ]);
+
+  // Quando a invalidação disparada pelo estorno terminar, substitui o teto
+  // conservador acima pelo saldo real já restaurado.
+  useEffect(() => {
+    if (!saleEditDraft || !editDraftHydratedRef.current || !selectedStockId) return;
+    setCart((current) => ({
+      ...current,
+      lines: current.lines.map((line) => ({
+        ...line,
+        availableQuantity: Math.max(
+          line.quantity,
+          getQuantityForStock(line.inventoryId, selectedStockId),
+        ),
+      })),
+    }));
+  }, [saleEditDraft, selectedStockId, items, getQuantityForStock]);
 
   const categoryFiltered = useMemo(() => {
     if (activeCategory === 'all') return sellableProducts;
@@ -584,7 +668,14 @@ export default function Pdv() {
    * `pdvCashErrorMessage` (nunca `getErrorMessage`, que engoliria a mensagem).
    */
   async function handleFinalizeSale(payments: Parameters<typeof settleOrder.mutateAsync>[0]['payments']) {
-    const signature = cartSignature(cart, selectedStockId, cashSessionId, orderNotes, transactionDate);
+    const signature = cartSignature(
+      cart,
+      selectedStockId,
+      cashSessionId,
+      orderNotes,
+      transactionDate,
+      saleEditDraft?.sourceOrderId ?? null,
+    );
     let attempt = attemptRef.current;
     if (!attempt || attempt.signature !== signature) {
       attempt = { signature, orderId: null, clientRequestId: crypto.randomUUID() };
@@ -599,6 +690,7 @@ export default function Pdv() {
         cashSessionId,
         discountAmount: cart.discount,
         notes: orderNotes,
+        replacesOrderId: saleEditDraft?.sourceOrderId ?? null,
         items: cart.lines.map((line) => ({
           inventoryId: line.inventoryId,
           description: line.name,
@@ -655,6 +747,7 @@ export default function Pdv() {
     // quem já foi embora — erro de dinheiro, não de UI.
     setCart(EMPTY_CART);
     setDiscountCents(0);
+    clearSaleEditContext();
     // Observação/data já foram consumidas por este pedido; fotos já subiram
     // no loop acima (a lista já está vazia, mas o revoke+reset é defensivo).
     resetOrderDraftExtras();
@@ -963,12 +1056,14 @@ export default function Pdv() {
     : '';
 
   function handleConfirmClearCart() {
+    attemptRef.current = null;
     setCart((prev) => clearCart(prev));
     setDiscountCents(0);
     // Observação, data retroativa e fotos pendentes são deste RASCUNHO de
     // pedido, não do cliente (que `clearCart` preserva de propósito) —
     // cancelar o carrinho abandona o rascunho inteiro.
     resetOrderDraftExtras();
+    clearSaleEditContext();
     setConfirmClearOpen(false);
     focusSearch();
   }
@@ -1158,6 +1253,15 @@ export default function Pdv() {
           {headerCompressed ? fullHeaderBlock : compactHeaderBlock}
         </div>
       </div>
+
+      {saleEditDraft && (
+        <NoticeBanner
+          variant="warning"
+          title={t.editDraft.title.replace('{reference}', saleEditDraft.sourceReference)}
+        >
+          {t.editDraft.description}
+        </NoticeBanner>
+      )}
 
       {/* Pós-venda. Fica AQUI (acima da busca, fora do carrinho) de propósito:
           no mobile o resumo vive dentro do drawer, que fecha ao finalizar, e o

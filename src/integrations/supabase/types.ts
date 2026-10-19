@@ -8851,6 +8851,7 @@ export type Database = {
           number: number
           paid_at: string | null
           points_redeemed: number
+          replaces_order_id: string | null
           salesperson_id: string | null
           status: string
           stock_committed_at: string | null
@@ -8877,6 +8878,7 @@ export type Database = {
           number: number
           paid_at?: string | null
           points_redeemed?: number
+          replaces_order_id?: string | null
           salesperson_id?: string | null
           status?: string
           stock_committed_at?: string | null
@@ -8903,6 +8905,7 @@ export type Database = {
           number?: number
           paid_at?: string | null
           points_redeemed?: number
+          replaces_order_id?: string | null
           salesperson_id?: string | null
           status?: string
           stock_committed_at?: string | null
@@ -8932,6 +8935,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdv_orders_replaces_order_id_fkey"
+            columns: ["replaces_order_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_orders"
             referencedColumns: ["id"]
           },
           {
