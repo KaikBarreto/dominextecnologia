@@ -12,6 +12,7 @@ import { useInventory } from '@/hooks/useInventory';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { useLocaleFormatters } from '@/lib/format/hooks';
 import type { QuoteItem } from '@/hooks/useQuotes';
+import type { ServiceType } from '@/hooks/useServiceTypes';
 
 // Colar valor pronto (ex. "4.550" de uma planilha) num `<input type="number">`
 // é lido pelo navegador como decimal internacional e vira 4,55 — 1000x menor
@@ -36,7 +37,7 @@ function ServiceInputRow({
   onAdd,
 }: {
   serviceOptions: { value: string; label: string; sublabel?: string; icon?: ReactNode }[];
-  serviceTypes: { id: string; name: string }[];
+  serviceTypes: Pick<ServiceType, 'id' | 'name' | 'default_price'>[];
   onAdd: (item: QuoteItem) => void;
 }) {
   const { money } = useLocaleFormatters();
@@ -52,7 +53,13 @@ function ServiceInputRow({
   const handleSelectService = (id: string) => {
     setServiceId(id);
     const st = serviceTypes.find(s => s.id === id);
-    if (st) setDescription(st.name);
+    if (st) {
+      setDescription(st.name);
+      setQuantity(current => current || '1');
+      // Trocar o serviço também troca a referência de preço. Sem valor padrão,
+      // limpamos o preço anterior para não faturar um serviço com a tabela de outro.
+      setUnitPrice(st.default_price == null ? '' : String(st.default_price));
+    }
   };
 
   const handleAdd = () => {

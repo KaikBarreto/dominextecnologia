@@ -93,7 +93,7 @@ export function generateAdminDreHtml(dre: DREData, periodLabel: string): string 
     <div class="row subtotal"><span>Total OPEX</span><span class="negative">-${fmt(dre.opex)}</span></div>
 
     <div class="row result" style="background:${resultBg}">
-      <div class="result-label"><span>(=) RESULTADO LÍQUIDO (EBITDA)</span><span style="font-size:11px;font-weight:400;opacity:.85">${dre.ebitda >= 0 ? 'Lucro' : 'Prejuízo'} do Período · Margem: ${dre.margin.toFixed(1)}%</span></div>
+      <div class="result-label"><span>(=) RESULTADO LÍQUIDO</span><span style="font-size:11px;font-weight:400;opacity:.85">${dre.ebitda >= 0 ? 'Lucro' : 'Prejuízo'} do Período · Margem: ${dre.margin.toFixed(1)}%</span></div>
       <span>${fmt(dre.ebitda)}</span>
     </div>
   </div>

@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { zonedDateTimeToUtc } from '@/lib/timezone';
+import type { ServiceOrderScheduleSlot } from '@/types/database';
 
 // Nome do RPC centralizado: componentes e hooks não dependem do contrato SQL.
 const BOOK_SERVICE_ORDER_RPC = 'schedule_book_service_order';
@@ -64,6 +65,7 @@ export interface BookServiceOrderScheduleInput extends ScheduleBookingOverride {
   scheduled_date: string;
   scheduled_time: string;
   duration_minutes: number;
+  schedule_plan?: ServiceOrderScheduleSlot[];
   timezone: string;
 }
 
@@ -73,19 +75,39 @@ export interface BookServiceOrderScheduleInput extends ScheduleBookingOverride {
  */
 export async function bookServiceOrderSchedule(input: BookServiceOrderScheduleInput): Promise<void> {
   assertOverrideReason(input);
-  const startsAt = zonedDateTimeToUtc(input.scheduled_date, input.scheduled_time, input.timezone);
-  const endsAt = new Date(new Date(startsAt).getTime() + input.duration_minutes * 60_000).toISOString();
+  const plan = input.schedule_plan?.length ? input.schedule_plan : null;
+  const firstSlot = plan?.[0];
+  const scheduledDate = firstSlot?.date ?? input.scheduled_date;
+  const scheduledTime = firstSlot?.time ?? input.scheduled_time;
+  const durationMinutes = firstSlot?.duration_minutes ?? input.duration_minutes;
+  const startsAt = zonedDateTimeToUtc(scheduledDate, scheduledTime, input.timezone);
+  const endsAt = new Date(new Date(startsAt).getTime() + durationMinutes * 60_000).toISOString();
 
-  const { error } = await supabase.rpc(BOOK_SERVICE_ORDER_RPC as never, {
-    p_service_order_id: input.service_order_id,
-    p_resource_type: input.resource_type,
-    p_resource_id: input.resource_id,
-    p_starts_at: startsAt,
-    p_ends_at: endsAt,
-    p_override_justification: input.schedule_override
-      ? input.schedule_override_reason?.trim() || null
-      : null,
-  } as never);
+  const overrideJustification = input.schedule_override
+    ? input.schedule_override_reason?.trim() || null
+    : null;
+  const rpcName = plan
+    ? 'schedule_book_service_order_plan'
+    : BOOK_SERVICE_ORDER_RPC;
+  const rpcArgs = plan
+    ? {
+        p_service_order_id: input.service_order_id,
+        p_resource_type: input.resource_type,
+        p_resource_id: input.resource_id,
+        p_starts_at: startsAt,
+        p_schedule_plan: plan,
+        p_override_justification: overrideJustification,
+      }
+    : {
+        p_service_order_id: input.service_order_id,
+        p_resource_type: input.resource_type,
+        p_resource_id: input.resource_id,
+        p_starts_at: startsAt,
+        p_ends_at: endsAt,
+        p_override_justification: overrideJustification,
+      };
+
+  const { error } = await supabase.rpc(rpcName as never, rpcArgs as never);
 
   if (error) {
     throw normalizeScheduleBookingError(error);

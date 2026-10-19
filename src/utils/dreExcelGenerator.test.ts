@@ -24,7 +24,7 @@ describe('buildDreExcelSheets', () => {
 
     expect(sheets[0].rows).toContainEqual(['Regime', 'Competência']);
     expect(sheets[0].rows).toContainEqual(['Receita Bruta', 'Serviços', 10_000]);
-    expect(sheets[0].rows).toContainEqual(['Resultado Líquido (EBITDA)', 'Total', 4_000]);
+    expect(sheets[0].rows).toContainEqual(['Resultado Líquido', 'Total', 4_000]);
     expect(sheets[0].rows).toContainEqual(['Despesas Operacionais', 'Aluguel', -3_000]);
     expect(sheets[1].rows).toContainEqual(['Operação', 10_000, -6_000, 4_000]);
   });

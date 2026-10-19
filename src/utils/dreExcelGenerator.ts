@@ -31,7 +31,7 @@ export function buildDreExcelSheets(data: DreReportData): DreExcelSheet[] {
     ['Lucro Bruto', 'Total', data.lucroBruto],
     ...data.opexCategories.map((row) => ['Despesas Operacionais', row.name, -Math.abs(row.value)]),
     ['Despesas Operacionais', 'Total', -Math.abs(data.opex)],
-    ['Resultado Líquido (EBITDA)', 'Total', data.resultadoLiquido],
+    ['Resultado Líquido', 'Total', data.resultadoLiquido],
     ['Margem Bruta', 'Percentual', data.margem / 100],
   ];
 

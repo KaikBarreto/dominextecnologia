@@ -4,11 +4,14 @@ import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescript
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import type { OsStatus } from '@/types/database';
+import { getServiceOrderResetActionLabel } from '@/types/database';
 
 interface ResetServiceOrderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   orderNumber?: number | null;
+  status?: OsStatus;
   isPending?: boolean;
   onConfirm: (clearResponses: boolean) => Promise<void> | void;
 }
@@ -17,10 +20,13 @@ export function ResetServiceOrderDialog({
   open,
   onOpenChange,
   orderNumber,
+  status = 'em_andamento',
   isPending = false,
   onConfirm,
 }: ResetServiceOrderDialogProps) {
   const [responseMode, setResponseMode] = useState<'keep' | 'clear'>('keep');
+  const actionLabel = getServiceOrderResetActionLabel(status);
+  const pendingLabel = status === 'concluida' ? 'Reabrindo...' : 'Resetando...';
 
   useEffect(() => {
     if (open) setResponseMode('keep');
@@ -41,7 +47,7 @@ export function ResetServiceOrderDialog({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <RotateCcw className="h-5 w-5 text-amber-500" />
-            Resetar OS{orderNumber ? ` #${orderNumber}` : ''}?
+            {actionLabel}{orderNumber ? ` #${orderNumber}` : ''}?
           </AlertDialogTitle>
           <AlertDialogDescription>
             A OS voltará para Agendada e poderá ser marcada como A caminho e receber um novo check-in.
@@ -92,7 +98,7 @@ export function ResetServiceOrderDialog({
             className="bg-amber-500 text-white hover:bg-amber-600"
           >
             <RotateCcw className="mr-2 h-4 w-4" />
-            {isPending ? 'Resetando...' : 'Resetar OS'}
+            {isPending ? pendingLabel : actionLabel}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

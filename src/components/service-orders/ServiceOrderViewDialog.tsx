@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsCompact } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder, OsStatus, FormQuestion } from '@/types/database';
-import { osTypeLabels, getOsTypeLabel, getOsStatusLabel, isResettableServiceOrderStatus } from '@/types/database';
+import { osTypeLabels, getOsTypeLabel, getOsStatusLabel, getServiceOrderResetActionLabel, isResettableServiceOrderStatus } from '@/types/database';
 // date-fns format/ptBR removidos — datas agora via formatDate/formatDateTime da lib/format
 import { TechnicianDistanceBadge } from './TechnicianDistanceBadge';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
@@ -694,7 +694,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
           actions.push({ key: 'finalize', icon: CheckCircle, label: tv.actionFinalize, tone: 'success', onClick: async () => { await onStatusChange('concluida'); onOpenChange(false); } });
         }
         if (onReset && isResettableServiceOrderStatus(serviceOrder.status)) {
-          actions.push({ key: 'reset', icon: RotateCcw, label: 'Resetar OS', tone: 'warning', onClick: onReset });
+          actions.push({ key: 'reset', icon: RotateCcw, label: getServiceOrderResetActionLabel(serviceOrder.status), tone: 'warning', onClick: onReset });
         }
         if (onEdit) {
           actions.push({ key: 'edit', icon: Pencil, label: tv.actionEdit, tone: 'edit', onClick: () => { onOpenChange(false); onEdit(); } });

@@ -46,7 +46,7 @@ import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrder
 import { ServiceOrderViewDialog } from '@/components/service-orders/ServiceOrderViewDialog';
 import { OsStatusManagerDialog } from '@/components/service-orders/OsStatusManagerDialog';
 import type { ServiceOrder, OsStatus } from '@/types/database';
-import { osStatusLabels, getOsTypeLabel, isResettableServiceOrderStatus } from '@/types/database';
+import { osStatusLabels, getOsTypeLabel, getServiceOrderResetActionLabel, isResettableServiceOrderStatus } from '@/types/database';
 import { useOsStatuses } from '@/hooks/useOsStatuses';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -770,7 +770,7 @@ export default function ServiceOrders() {
                             }] : []),
                             ...(canResetOS && isResettableServiceOrderStatus(os.status) ? [{
                               key: 'reset',
-                              label: 'Resetar OS',
+                              label: getServiceOrderResetActionLabel(os.status),
                               icon: <RotateCcw className="h-4 w-4" />,
                               onClick: () => handleResetClick(os),
                             }] : []),
@@ -977,7 +977,7 @@ export default function ServiceOrders() {
                                               hidden: !canEditOS,
                                             },
                                             {
-                                              label: 'Resetar OS',
+                                              label: getServiceOrderResetActionLabel(os.status),
                                               icon: RotateCcw,
                                               onClick: () => handleResetClick(os),
                                               hidden: !canResetOS || !isResettableServiceOrderStatus(os.status),
@@ -1170,7 +1170,7 @@ export default function ServiceOrders() {
                                     size="icon"
                                     className="h-6 w-6 hover:bg-amber-500 hover:text-white"
                                     onClick={(e) => { e.stopPropagation(); handleResetClick(os); }}
-                                    title="Resetar OS"
+                                    title={getServiceOrderResetActionLabel(os.status)}
                                   >
                                     <RotateCcw className="h-3 w-3" />
                                   </Button>
@@ -1335,6 +1335,7 @@ export default function ServiceOrders() {
           if (!open && !resetServiceOrder.isPending) setOsToReset(null);
         }}
         orderNumber={osToReset?.order_number}
+        status={osToReset?.status}
         isPending={resetServiceOrder.isPending}
         onConfirm={handleResetConfirm}
       />

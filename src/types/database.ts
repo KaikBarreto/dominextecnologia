@@ -4,6 +4,12 @@ export type AppRole = 'admin' | 'gestor' | 'tecnico' | 'comercial' | 'financeiro
 
 export type OsStatus = 'agendada' | 'pendente' | 'a_caminho' | 'em_andamento' | 'pausada' | 'concluida' | 'cancelada';
 
+export interface ServiceOrderScheduleSlot {
+  date: string;
+  time: string;
+  duration_minutes: number;
+}
+
 const RESETTABLE_OS_STATUSES: ReadonlySet<OsStatus> = new Set([
   'a_caminho',
   'em_andamento',
@@ -13,6 +19,10 @@ const RESETTABLE_OS_STATUSES: ReadonlySet<OsStatus> = new Set([
 
 export function isResettableServiceOrderStatus(status: OsStatus): boolean {
   return RESETTABLE_OS_STATUSES.has(status);
+}
+
+export function getServiceOrderResetActionLabel(status: OsStatus): string {
+  return status === 'concluida' ? 'Reabrir OS' : 'Resetar OS';
 }
 
 export type OsType = 'manutencao_preventiva' | 'manutencao_corretiva' | 'instalacao' | 'visita_tecnica';
@@ -120,6 +130,18 @@ export interface ServiceOrder {
   service_type_id?: string;
   scheduled_date?: string;
   scheduled_time?: string;
+  /** Duração planejada de cada dia do atendimento. */
+  duration_minutes?: number;
+  /** Quantidade de jornadas da OS; coluna derivada do plano no banco. */
+  scheduled_days?: number;
+  /** Jornadas reais da OS, com data, horário e duração independentes. */
+  schedule_plan?: ServiceOrderScheduleSlot[];
+  /** Marcadores efêmeros de ocorrências visuais; nunca são persistidos. */
+  _scheduledSpanDisplay?: boolean;
+  _scheduledSpanDayIndex?: number;
+  _scheduledSpanTotalDays?: number;
+  _originalScheduledDate?: string;
+  _resumedDisplay?: boolean;
   description?: string;
   diagnosis?: string;
   solution?: string;
