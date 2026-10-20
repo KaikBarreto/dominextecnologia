@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.20',
+    date: '20 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Carrinho estável e mais rápido de usar',
+        description: 'Clicar em um produto agora adiciona uma unidade diretamente. Ao repetir um produto, sua quantidade aumenta sem trocar a posição das linhas, e a lista acompanha o item atualizado.',
+        category: 'correcao',
+      },
+      {
+        title: 'Novas transações mais fáceis de identificar',
+        description: 'Quando uma transação chega ao histórico do Caixa, ela aparece suavemente no topo e as linhas anteriores se reposicionam sem saltos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.19',
     date: '20 de outubro de 2026',
     type: 'patch',

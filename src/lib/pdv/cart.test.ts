@@ -48,13 +48,13 @@ describe('addItem', () => {
     expect(second.cart.lines[0].quantity).toBe(3);
   });
 
-  it('leva ao fim a linha adicionada novamente para manter o último bipado visível', () => {
+  it('mantém a posição da linha adicionada novamente para não simular uma troca de itens', () => {
     const first = addItem(EMPTY_CART, product({ inventoryId: 'p1' }));
     const second = addItem(first.cart, product({ inventoryId: 'p2', name: 'Contator' }));
     const repeated = addItem(second.cart, product({ inventoryId: 'p1' }));
 
-    expect(repeated.cart.lines.map((line) => line.inventoryId)).toEqual(['p2', 'p1']);
-    expect(repeated.cart.lines[1].quantity).toBe(2);
+    expect(repeated.cart.lines.map((line) => line.inventoryId)).toEqual(['p1', 'p2']);
+    expect(repeated.cart.lines[0].quantity).toBe(2);
   });
 
   it('bloqueia item sem saldo nenhum', () => {

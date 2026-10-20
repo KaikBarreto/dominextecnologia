@@ -77,6 +77,8 @@ interface PdvScrollFadeContainerProps {
   fadeDisabled?: boolean;
   /** Evento de adição: cada chave nova leva a lista ao item mais recente no fim. */
   scrollToEndKey?: number;
+  /** Item afetado pela adição; quando já existe, rola até ele sem reordenar a lista. */
+  scrollToItemKey?: string;
 }
 
 /**
@@ -104,6 +106,7 @@ export function PdvScrollFadeContainer({
   className,
   fadeDisabled = false,
   scrollToEndKey,
+  scrollToItemKey,
 }: PdvScrollFadeContainerProps) {
   const { ref, edges, recompute } = useScrollEdges<HTMLDivElement>(recomputeDeps);
   const { atTop, atBottom, hasOverflow } = edges;
@@ -117,7 +120,12 @@ export function PdvScrollFadeContainer({
       const element = ref.current;
       if (!element) return;
       const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-      if (typeof element.scrollTo === 'function') {
+      const target = Array.from(element.querySelectorAll<HTMLElement>('[data-pdv-scroll-item]')).find(
+        (candidate) => candidate.dataset.pdvScrollItem === scrollToItemKey,
+      );
+      if (target && typeof target.scrollIntoView === 'function') {
+        target.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
+      } else if (typeof element.scrollTo === 'function') {
         element.scrollTo({ top: element.scrollHeight, behavior: reduceMotion ? 'auto' : 'smooth' });
       } else {
         element.scrollTop = element.scrollHeight;
@@ -126,7 +134,7 @@ export function PdvScrollFadeContainer({
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [recompute, ref, scrollToEndKey]);
+  }, [recompute, ref, scrollToEndKey, scrollToItemKey]);
 
   const showTopFade = !fadeDisabled && hasOverflow && !atTop;
   const showBottomFade = !fadeDisabled && hasOverflow && !atBottom;

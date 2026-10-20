@@ -48,16 +48,6 @@ export const pdv = {
         placeholder: 'Buscar produto ou escanear código de barras',
         noResults: 'Nenhum produto encontrado para esta busca',
       },
-      // Modal rápido de quantidade, só no caminho da BUSCA (escolher um item
-      // já filtrado por texto). Código de barras e grade sem busca continuam
-      // adicionando 1 direto — ver Pdv.tsx.
-      quickQuantity: {
-        title: 'Quantos?',
-        description: '{name}',
-        quantityLabel: 'Quantidade',
-        confirm: 'Adicionar',
-        cancel: 'Cancelar',
-      },
       categories: {
         all: 'Todos',
         uncategorized: 'Sem categoria',
@@ -598,13 +588,6 @@ export const pdv = {
         placeholder: 'Search product or scan barcode',
         noResults: 'No product found for this search',
       },
-      quickQuantity: {
-        title: 'How many?',
-        description: '{name}',
-        quantityLabel: 'Quantity',
-        confirm: 'Add',
-        cancel: 'Cancel',
-      },
       categories: {
         all: 'All',
         uncategorized: 'Uncategorized',
@@ -1132,13 +1115,6 @@ export const pdv = {
         placeholder: 'Buscar producto o escanear código de barras',
         noResults: 'Ningún producto encontrado para esta búsqueda',
       },
-      quickQuantity: {
-        title: '¿Cuántos?',
-        description: '{name}',
-        quantityLabel: 'Cantidad',
-        confirm: 'Agregar',
-        cancel: 'Cancelar',
-      },
       categories: {
         all: 'Todos',
         uncategorized: 'Sin categoría',
@@ -1663,13 +1639,6 @@ export const pdv = {
       search: {
         placeholder: 'Rechercher un produit ou scanner le code-barres',
         noResults: 'Aucun produit trouvé pour cette recherche',
-      },
-      quickQuantity: {
-        title: 'Combien ?',
-        description: '{name}',
-        quantityLabel: 'Quantité',
-        confirm: 'Ajouter',
-        cancel: 'Annuler',
       },
       categories: {
         all: 'Tous',

@@ -74,7 +74,6 @@ import { PdvProductCard, type PdvGridProduct } from '@/components/pdv/PdvProduct
 import { PdvCartPanel } from '@/components/pdv/PdvCartPanel';
 import { PdvSkeleton } from '@/components/pdv/PdvSkeleton';
 import { PdvPaymentDialog } from '@/components/pdv/PdvPaymentDialog';
-import { PdvQuickQuantityDialog } from '@/components/pdv/PdvQuickQuantityDialog';
 import { PdvAdvancedOptionsDialog, type PdvPendingAttachment } from '@/components/pdv/PdvAdvancedOptionsDialog';
 import { PdvOrderSwitcher } from '@/components/pdv/PdvOrderSwitcher';
 import { hasPdvSaleDraftContent, MAX_PDV_SALE_DRAFTS, type PdvSaleAttempt } from '@/lib/pdv/sale-drafts';
@@ -319,9 +318,6 @@ export default function Pdv() {
   const pendingAttachments = activeDraft ? attachmentsByDraft[activeDraft.id] ?? [] : [];
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(false);
-  // Modal rápido de "quantos?" — só no caminho da BUSCA (ver
-  // `PdvQuickQuantityDialog`). `null` = fechado.
-  const [quickQuantityProduct, setQuickQuantityProduct] = useState<PdvGridProduct | null>(null);
   const [saleSuccess, setSaleSuccess] = useState<{
     number: number;
     total: number;
@@ -703,12 +699,8 @@ export default function Pdv() {
   }
 
   function handleProductSelect(product: PdvGridProduct) {
-    const { term } = extractMultiplierPrefix(search);
-    if (term.trim()) {
-      setQuickQuantityProduct(product);
-      return;
-    }
     tryAdd(product, 1);
+    setSearch('');
     focusSearch();
   }
 
@@ -1847,20 +1839,6 @@ export default function Pdv() {
         onAttachFiles={handleAttachFiles}
         onRemoveAttachment={handleRemoveAttachment}
         attaching={attachmentBusy}
-      />
-
-      <PdvQuickQuantityDialog
-        product={quickQuantityProduct}
-        texts={t.quickQuantity}
-        onConfirm={(product, quantity) => {
-          tryAdd(product, quantity);
-          setQuickQuantityProduct(null);
-          focusSearch();
-        }}
-        onCancel={() => {
-          setQuickQuantityProduct(null);
-          focusSearch();
-        }}
       />
 
       {/* Confirmação de cancelar carrinho (Esc com busca vazia, ou botão de lixeira) */}

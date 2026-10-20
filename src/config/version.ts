@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.19";
+export const APP_VERSION = "1.37.20";
 
 export const VERSION_NOTES =
-  "Os itens do carrinho agora entram, saem e mudam de posição com movimentos suaves, deixando cada alteração mais fácil de acompanhar.";
+  "O carrinho do PDV agora mantém os produtos em posições estáveis, adiciona itens com um clique e destaca novas transações do Caixa com movimentos mais fáceis de acompanhar.";

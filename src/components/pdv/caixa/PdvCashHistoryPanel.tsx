@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import {
   ChevronDown,
   ChevronLeft,
@@ -47,6 +48,7 @@ import {
   exportPdvCashHistoryPdf,
 } from '@/utils/pdvCashHistoryExport';
 import { PdvMoneyInput } from '@/components/pdv/caixa/PdvMoneyInput';
+import { PDV_HISTORY_ROW_MOTION, PDV_MOTION_EASE } from '@/lib/pdv/motion';
 
 type HistoryTexts = (typeof pdv)['pt-br']['cashPanel']['history'];
 
@@ -105,6 +107,7 @@ export function PdvCashHistoryPanel({
   onDelete,
 }: PdvCashHistoryPanelProps) {
   const isCompact = useIsCompact();
+  const reduceMotion = useReducedMotion();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState<PdvLedgerKind | 'all'>('all');
@@ -115,6 +118,28 @@ export function PdvCashHistoryPanel({
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState<'excel' | 'pdf' | null>(null);
+  const previousEntryKeysRef = useRef<Set<string>>(new Set());
+  const hasLoadedEntriesRef = useRef(false);
+
+  // Só marca como nova uma linha que chegou DEPOIS do primeiro carregamento.
+  // Paginação e filtros não alteram `entries`, portanto não fingem que uma
+  // transação antiga acabou de acontecer.
+  const newEntryKeys = new Set<string>();
+  if (!isLoading && hasLoadedEntriesRef.current) {
+    for (const entry of entries) {
+      if (!previousEntryKeysRef.current.has(entry.key)) newEntryKeys.add(entry.key);
+    }
+  }
+
+  useEffect(() => {
+    if (isLoading) {
+      hasLoadedEntriesRef.current = false;
+      previousEntryKeysRef.current = new Set();
+      return;
+    }
+    previousEntryKeysRef.current = new Set(entries.map((entry) => entry.key));
+    hasLoadedEntriesRef.current = true;
+  }, [entries, isLoading]);
 
   const kindLabels: Record<PdvLedgerKind, string> = {
     venda: texts.kindSale,
@@ -405,8 +430,56 @@ export function PdvCashHistoryPanel({
         <ul className="divide-y">
           {pageData.items.map((entry) => {
             const isExpanded = expanded.has(entry.key);
+            const isNew = newEntryKeys.has(entry.key);
             return (
-              <li key={entry.key} className="py-3">
+              <motion.li
+                key={entry.key}
+                data-new-entry={isNew || undefined}
+                layout="position"
+                initial={
+                  reduceMotion || !isNew
+                    ? false
+                    : {
+                        opacity: 0,
+                        y: -PDV_HISTORY_ROW_MOTION.enterOffset,
+                        scale: 0.99,
+                        backgroundColor: 'hsl(var(--primary) / 0.14)',
+                      }
+                }
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  scale: 1,
+                  backgroundColor: 'hsl(var(--primary) / 0)',
+                }}
+                transition={
+                  reduceMotion
+                    ? { duration: 0 }
+                    : {
+                        layout: {
+                          duration: PDV_HISTORY_ROW_MOTION.layoutDuration,
+                          ease: PDV_MOTION_EASE,
+                        },
+                        opacity: {
+                          duration: PDV_HISTORY_ROW_MOTION.opacityDuration,
+                          ease: PDV_MOTION_EASE,
+                        },
+                        y: {
+                          duration: PDV_HISTORY_ROW_MOTION.enterDuration,
+                          ease: PDV_MOTION_EASE,
+                        },
+                        scale: {
+                          duration: PDV_HISTORY_ROW_MOTION.scaleDuration,
+                          ease: PDV_MOTION_EASE,
+                        },
+                        backgroundColor: {
+                          duration: PDV_HISTORY_ROW_MOTION.highlightDuration,
+                          ease: PDV_MOTION_EASE,
+                        },
+                      }
+                }
+                className="py-3"
+              >
                 <div className="flex items-start gap-1">
                   <button
                     type="button"
@@ -462,7 +535,7 @@ export function PdvCashHistoryPanel({
                     />
                   </div>
                 )}
-              </li>
+              </motion.li>
             );
           })}
         </ul>
@@ -485,9 +558,56 @@ export function PdvCashHistoryPanel({
             <tbody>
               {pageData.items.map((entry) => {
                 const isExpanded = expanded.has(entry.key);
+                const isNew = newEntryKeys.has(entry.key);
                 return [
-                  <tr
+                  <motion.tr
                     key={entry.key}
+                    data-new-entry={isNew || undefined}
+                    layout="position"
+                    initial={
+                      reduceMotion || !isNew
+                        ? false
+                        : {
+                            opacity: 0,
+                            y: -PDV_HISTORY_ROW_MOTION.enterOffset,
+                            scale: 0.995,
+                            backgroundColor: 'hsl(var(--primary) / 0.14)',
+                          }
+                    }
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                      scale: 1,
+                      backgroundColor: isExpanded
+                        ? 'hsl(var(--muted) / 0.5)'
+                        : 'hsl(var(--primary) / 0)',
+                    }}
+                    transition={
+                      reduceMotion
+                        ? { duration: 0 }
+                        : {
+                            layout: {
+                              duration: PDV_HISTORY_ROW_MOTION.layoutDuration,
+                              ease: PDV_MOTION_EASE,
+                            },
+                            opacity: {
+                              duration: PDV_HISTORY_ROW_MOTION.opacityDuration,
+                              ease: PDV_MOTION_EASE,
+                            },
+                            y: {
+                              duration: PDV_HISTORY_ROW_MOTION.enterDuration,
+                              ease: PDV_MOTION_EASE,
+                            },
+                            scale: {
+                              duration: PDV_HISTORY_ROW_MOTION.scaleDuration,
+                              ease: PDV_MOTION_EASE,
+                            },
+                            backgroundColor: {
+                              duration: PDV_HISTORY_ROW_MOTION.highlightDuration,
+                              ease: PDV_MOTION_EASE,
+                            },
+                          }
+                    }
                     className={cn(
                       'cursor-pointer border-b transition-colors hover:bg-muted/50',
                       isExpanded && 'bg-muted/50',
@@ -528,7 +648,7 @@ export function PdvCashHistoryPanel({
                     <td className="py-4 text-right">
                       <RowActionsMenu actions={rowActions(entry)} ariaLabel={texts.columnActions} />
                     </td>
-                  </tr>,
+                  </motion.tr>,
                   isExpanded ? (
                     <tr key={`${entry.key}-detail`} className="border-b">
                       <td colSpan={DESKTOP_COLSPAN} className="px-0 pb-3">

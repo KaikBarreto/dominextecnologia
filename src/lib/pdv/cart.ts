@@ -63,9 +63,9 @@ function clamp(value: number, min: number, max: number): number {
 
 /**
  * Adiciona `quantity` unidades do produto. Soma na linha existente quando o
- * produto já está no carrinho (nunca duplica linha pro mesmo item) e leva a
- * linha atualizada para o fim. Assim a ordem continua funcionando como um
- * cupom cronológico: o último produto bipado fica sempre por último.
+ * produto já está no carrinho (nunca duplica linha pro mesmo item) e preserva
+ * a posição original. Reordenar a linha ao incrementar fazia dois produtos
+ * parecerem trocar de lugar, um feedback perigoso numa operação rápida.
  *
  * Falha sem mutar o carrinho quando:
  * - o produto não tem saldo algum (`out_of_stock`);
@@ -87,20 +87,20 @@ export function addItem(cart: CartState, product: CartProduct, quantity = 1): Ca
   }
 
   if (existing) {
-    const updatedLine: CartLine = {
-      ...existing,
-      quantity: nextQuantity,
-      discountAmount: existing.discountAmount ?? 0,
-      availableQuantity: product.availableQuantity,
-    };
     return {
       ok: true,
       cart: {
         ...cart,
-        lines: [
-          ...cart.lines.filter((line) => line.inventoryId !== product.inventoryId),
-          updatedLine,
-        ],
+        lines: cart.lines.map((line) =>
+          line.inventoryId === product.inventoryId
+            ? {
+                ...line,
+                quantity: nextQuantity,
+                discountAmount: line.discountAmount ?? 0,
+                availableQuantity: product.availableQuantity,
+              }
+            : line,
+        ),
       },
     };
   }

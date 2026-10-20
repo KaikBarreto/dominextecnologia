@@ -5,6 +5,7 @@ import { PdvCartLineRow } from '@/components/pdv/PdvCartLineRow';
 import { PdvCartSummary, type PdvCartSummaryTexts } from '@/components/pdv/PdvCartSummary';
 import { PdvScrollFadeContainer } from '@/components/pdv/PdvScrollFadeContainer';
 import type { CartState } from '@/lib/pdv/cart';
+import { PDV_CART_ITEM_MOTION, PDV_MOTION_EASE } from '@/lib/pdv/motion';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import type { Customer } from '@/types/database';
 import { cn } from '@/lib/utils';
@@ -93,7 +94,6 @@ export function PdvCartPanel({
   const itemCount = cart.lines.reduce((sum, l) => sum + l.quantity, 0);
   const [editingLineDiscount, setEditingLineDiscount] = useState<string | null>(null);
   const reduceMotion = useReducedMotion();
-  const ease = [0.22, 1, 0.36, 1] as const;
 
   return (
     <div className={cn('flex h-full flex-col', className)}>
@@ -128,6 +128,7 @@ export function PdvCartPanel({
         recomputeDeps={[cart.lines.length, editingLineDiscount]}
         fadeDisabled={editingLineDiscount != null}
         scrollToEndKey={additionFeedback?.sequence}
+        scrollToItemKey={additionFeedback?.inventoryId}
       >
         <div className="h-full divide-y divide-border">
           <AnimatePresence initial={false} mode="popLayout">
@@ -152,8 +153,17 @@ export function PdvCartPanel({
                 return (
                   <motion.div
                     key={line.inventoryId}
+                    data-pdv-scroll-item={line.inventoryId}
                     layout="position"
-                    initial={reduceMotion ? false : { opacity: 0, y: 16, scale: 0.985 }}
+                    initial={
+                      reduceMotion
+                        ? false
+                        : {
+                            opacity: 0,
+                            y: PDV_CART_ITEM_MOTION.enterOffset,
+                            scale: 0.985,
+                          }
+                    }
                     animate={
                       reduceMotion
                         ? { opacity: 1 }
@@ -167,17 +177,43 @@ export function PdvCartPanel({
                               : 'hsl(var(--primary) / 0)',
                           }
                     }
-                    exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 28, scale: 0.975 }}
+                    exit={
+                      reduceMotion
+                        ? { opacity: 0 }
+                        : {
+                            opacity: 0,
+                            x: PDV_CART_ITEM_MOTION.exitOffset,
+                            scale: 0.975,
+                          }
+                    }
                     transition={
                       reduceMotion
                         ? { duration: 0 }
                         : {
-                            layout: { duration: 0.34, ease },
-                            opacity: { duration: 0.2, ease },
-                            x: { duration: 0.28, ease },
-                            y: { duration: 0.34, ease },
-                            scale: { duration: 0.28, ease },
-                            backgroundColor: { duration: 0.62, ease },
+                            layout: {
+                              duration: PDV_CART_ITEM_MOTION.layoutDuration,
+                              ease: PDV_MOTION_EASE,
+                            },
+                            opacity: {
+                              duration: PDV_CART_ITEM_MOTION.opacityDuration,
+                              ease: PDV_MOTION_EASE,
+                            },
+                            x: {
+                              duration: PDV_CART_ITEM_MOTION.exitDuration,
+                              ease: PDV_MOTION_EASE,
+                            },
+                            y: {
+                              duration: PDV_CART_ITEM_MOTION.enterDuration,
+                              ease: PDV_MOTION_EASE,
+                            },
+                            scale: {
+                              duration: PDV_CART_ITEM_MOTION.scaleDuration,
+                              ease: PDV_MOTION_EASE,
+                            },
+                            backgroundColor: {
+                              duration: PDV_CART_ITEM_MOTION.highlightDuration,
+                              ease: PDV_MOTION_EASE,
+                            },
                           }
                     }
                   >

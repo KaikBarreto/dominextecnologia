@@ -95,6 +95,7 @@ import { MESSAGES } from "@/lib/i18n/messages";
 import { cn } from "@/lib/utils";
 import type { Customer } from "@/types/database";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { PDV_CART_ITEM_MOTION, PDV_MOTION_EASE } from "@/lib/pdv/motion";
 
 type ReviewScreen = "sale" | "cash";
 type ReviewSize = "desktop" | "tablet" | "mobile";
@@ -1230,7 +1231,6 @@ function ProposedOrderPanel({
   } | null>(null);
   const [activePreviewOrder, setActivePreviewOrder] = useState("preview-current");
   const reduceMotion = useReducedMotion();
-  const motionEase = [0.22, 1, 0.36, 1] as const;
 
   const updateBottomFade = () => {
     const viewport = itemsViewportRef.current;
@@ -1259,10 +1259,23 @@ function ProposedOrderPanel({
       const viewport = itemsViewportRef.current;
       if (!viewport) return;
       const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-      viewport.scrollTo({
-        top: viewport.scrollHeight,
-        behavior: reduceMotion ? 'auto' : 'smooth',
-      });
+      const target = Array.from(
+        viewport.querySelectorAll<HTMLElement>('[data-pdv-scroll-item]'),
+      ).find(
+        (candidate) =>
+          candidate.dataset.pdvScrollItem === additionFeedback.inventoryId,
+      );
+      if (target && typeof target.scrollIntoView === 'function') {
+        target.scrollIntoView({
+          block: 'nearest',
+          behavior: reduceMotion ? 'auto' : 'smooth',
+        });
+      } else {
+        viewport.scrollTo({
+          top: viewport.scrollHeight,
+          behavior: reduceMotion ? 'auto' : 'smooth',
+        });
+      }
     });
     return () => window.cancelAnimationFrame(frame);
   }, [additionFeedback]);
@@ -1377,7 +1390,16 @@ function ProposedOrderPanel({
                   <motion.div
                     layout="position"
                     key={line.inventoryId}
-                    initial={reduceMotion ? false : { opacity: 0, y: 16, scale: 0.985 }}
+                    data-pdv-scroll-item={line.inventoryId}
+                    initial={
+                      reduceMotion
+                        ? false
+                        : {
+                            opacity: 0,
+                            y: PDV_CART_ITEM_MOTION.enterOffset,
+                            scale: 0.985,
+                          }
+                    }
                     animate={
                       reduceMotion
                         ? { opacity: 1 }
@@ -1392,17 +1414,43 @@ function ProposedOrderPanel({
                                 : "hsl(var(--primary) / 0)",
                           }
                     }
-                    exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 28, scale: 0.975 }}
+                    exit={
+                      reduceMotion
+                        ? { opacity: 0 }
+                        : {
+                            opacity: 0,
+                            x: PDV_CART_ITEM_MOTION.exitOffset,
+                            scale: 0.975,
+                          }
+                    }
                     transition={
                       reduceMotion
                         ? { duration: 0 }
                         : {
-                            layout: { duration: 0.34, ease: motionEase },
-                            opacity: { duration: 0.2, ease: motionEase },
-                            x: { duration: 0.28, ease: motionEase },
-                            y: { duration: 0.34, ease: motionEase },
-                            scale: { duration: 0.28, ease: motionEase },
-                            backgroundColor: { duration: 0.62, ease: motionEase },
+                            layout: {
+                              duration: PDV_CART_ITEM_MOTION.layoutDuration,
+                              ease: PDV_MOTION_EASE,
+                            },
+                            opacity: {
+                              duration: PDV_CART_ITEM_MOTION.opacityDuration,
+                              ease: PDV_MOTION_EASE,
+                            },
+                            x: {
+                              duration: PDV_CART_ITEM_MOTION.exitDuration,
+                              ease: PDV_MOTION_EASE,
+                            },
+                            y: {
+                              duration: PDV_CART_ITEM_MOTION.enterDuration,
+                              ease: PDV_MOTION_EASE,
+                            },
+                            scale: {
+                              duration: PDV_CART_ITEM_MOTION.scaleDuration,
+                              ease: PDV_MOTION_EASE,
+                            },
+                            backgroundColor: {
+                              duration: PDV_CART_ITEM_MOTION.highlightDuration,
+                              ease: PDV_MOTION_EASE,
+                            },
                           }
                     }
                     className="flex gap-3 py-3"
