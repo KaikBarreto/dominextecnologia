@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { getDreGroupKey, groupByDre, shouldGroupByDre, DRE_GROUP_ORDER } from './dre-groups';
+import type { FinancialCategory } from '@/hooks/useFinancialCategories';
+import {
+  getDreGroupKey,
+  groupByConfiguredDre,
+  groupByDre,
+  legacyDreGroupForNature,
+  resolveCategoryDreNature,
+  shouldGroupByDre,
+  DRE_GROUP_ORDER,
+} from './dre-groups';
 
 const LABELS = {
   impostos: 'Impostos',
@@ -8,7 +17,10 @@ const LABELS = {
   outros: 'Outros',
 };
 
-const cat = (name: string, dre_group: string | null) => ({ name, dre_group }) as any;
+const cat = (name: string, dre_group: string | null): Pick<FinancialCategory, 'name' | 'dre_group'> => ({
+  name,
+  dre_group,
+});
 
 describe('getDreGroupKey', () => {
   it('reconhece os três grupos conhecidos', () => {
@@ -67,5 +79,43 @@ describe('shouldGroupByDre', () => {
 
   it('lista vazia não agrupa', () => {
     expect(shouldGroupByDre(groupByDre([], LABELS))).toBe(false);
+  });
+});
+
+describe('groupByConfiguredDre', () => {
+  const configured = [
+    { id: 'g-opex-2', name: 'Despesas administrativas', nature: 'operating_expense' as const, sort_order: 20, is_active: true },
+    { id: 'g-cost', name: 'Custos diretos', nature: 'cost' as const, sort_order: 10, is_active: true },
+  ];
+
+  it('usa nome e ordem configurados pela empresa', () => {
+    const groups = groupByConfiguredDre(
+      [
+        { ...cat('Aluguel', 'opex'), dre_group_id: 'g-opex-2' },
+        { ...cat('Peças', 'cmv'), dre_group_id: 'g-cost' },
+      ],
+      configured,
+      LABELS,
+    );
+    expect(groups.map((group) => group.label)).toEqual(['Custos diretos', 'Despesas administrativas']);
+    expect(groups.map((group) => group.nature)).toEqual(['cost', 'operating_expense']);
+  });
+
+  it('mantém categoria legada visível quando ainda não tem grupo configurável', () => {
+    const groups = groupByConfiguredDre(
+      [{ ...cat('ISS legado', 'impostos'), dre_group_id: null }],
+      configured,
+      LABELS,
+    );
+    expect(groups[0]).toMatchObject({ key: 'legacy:impostos', label: 'Impostos', nature: 'deduction' });
+    expect(groups[0].items[0].name).toBe('ISS legado');
+  });
+
+  it('reconhece receita legada pelo tipo e preserva a chave opex no write', () => {
+    expect(resolveCategoryDreNature(
+      { type: 'entrada', dre_group: 'opex', dre_group_id: null },
+      configured,
+    )).toBe('revenue');
+    expect(legacyDreGroupForNature('revenue')).toBe('opex');
   });
 });

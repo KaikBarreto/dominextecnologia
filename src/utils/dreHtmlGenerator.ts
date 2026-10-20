@@ -6,6 +6,8 @@ import { pdfDownloadAssets } from '@/utils/pdfDownloadButton';
 import { formatMoney } from '@/lib/format';
 
 export interface DreExportCategory {
+  /** Índice hierárquico visível, ex.: 06.01.017. */
+  code?: string;
   name: string;
   value: number;
   color: string;
@@ -31,6 +33,41 @@ export interface DreExportCostCenter {
   result: number;
 }
 
+export type DreExportGroupNature =
+  | 'revenue'
+  | 'deduction'
+  | 'cost'
+  | 'operating_expense'
+  | 'non_operating'
+  | 'excluded';
+
+/** Grupo configurável da empresa, já agregado pelo mesmo conjunto do DRE. */
+export interface DreExportGroup {
+  id: string;
+  /** Índice do grupo dentro da estrutura, ex.: 06.01. */
+  code?: string;
+  name: string;
+  nature: DreExportGroupNature;
+  total: number;
+  categories: DreExportCategory[];
+}
+
+export interface DreExportComparisonRow {
+  code: string;
+  label: string;
+  current: number;
+  previous: number;
+  absolute: number;
+  /** Fração decimal (0,125 = 12,5%); `null` quando a base anterior é zero. */
+  percentage: number | null;
+}
+
+export interface DreExportComparison {
+  currentPeriod: string;
+  comparisonPeriod: string;
+  rows: DreExportComparisonRow[];
+}
+
 export interface DreReportData {
   company: DreExportCompany;
   period: string;
@@ -46,12 +83,24 @@ export interface DreReportData {
   opex: number;
   opexCategories: DreExportCategory[];
   resultadoLiquido: number;
+  /** Linhas abaixo do resultado operacional; opcionais para callers legados. */
+  naoOperacional?: number;
+  naoOperacionalCategories?: DreExportCategory[];
+  resultadoFinal?: number;
   margem: number;
+  /**
+   * Estrutura configurável do demonstrativo. Quando presente, exportadores
+   * usam estes nomes e esta ordem dentro de cada natureza contábil; os campos
+   * legados acima continuam sendo os totais de conferência.
+   */
+  groups?: DreExportGroup[];
   /**
    * Quebra por centro de custo do MESMO conjunto que gerou os totais acima.
    * Some do documento quando a empresa não usa centro de custo.
    */
   costCenters?: DreExportCostCenter[];
+  /** Comparativo de indicadores, usado pela aba dedicada da planilha. */
+  comparison?: DreExportComparison;
   /**
    * Regime usado pra montar os números ('caixa' = data do pagamento,
    * 'competencia' = data do fato gerador). Carimbado no cabeçalho do
@@ -88,16 +137,56 @@ export const generateDreHtml = (data: DreReportData) => {
 
   const grossProfitColor = data.lucroBruto > 0 ? '#16a34a' : data.lucroBruto < 0 ? '#dc2626' : '#374151';
   const resultColor = data.resultadoLiquido > 0 ? '#16a34a' : data.resultadoLiquido < 0 ? '#dc2626' : '#1f2937';
+  const pct = (value: number) => data.receitaBruta
+    ? `${((value / data.receitaBruta) * 100).toFixed(1)}%`
+    : '';
+  const valueWithPercent = (valueHtml: string, value: number) => `
+    <span class="value-with-percent">
+      <span>${valueHtml}</span>
+      ${pct(value) ? `<span class="percent">${escapeHtml(pct(value))}</span>` : ''}
+    </span>`;
 
-  const renderCategories = (categories: DreExportCategory[]) => categories.map(c => `
+  const renderCategories = (categories: DreExportCategory[], isRevenue = false) => categories.map(c => `
     <div class="row">
       <span class="row-label">
         <span class="color-dot" style="background: ${escapeHtml(c.color)}"></span>
+        ${c.code ? `<span class="line-code">${escapeHtml(c.code)}</span>` : ''}
         ${escapeHtml(c.name)}
       </span>
-      <span class="negative">-${formatCurrencyBR(c.value)}</span>
+      ${valueWithPercent(
+        `<span class="${isRevenue ? 'positive' : 'negative'}">${isRevenue ? '' : '-'}${formatCurrencyBR(c.value)}</span>`,
+        c.value,
+      )}
     </div>
   `).join('');
+
+  const configuredGroups = data.groups ?? [];
+  const renderConfiguredGroups = (
+    nature: DreExportGroupNature,
+    fallbackLabel: string,
+    fallbackCategories: DreExportCategory[],
+    fallbackTotal: number,
+    isRevenue = false,
+  ) => {
+    const groups = configuredGroups.filter((group) => group.nature === nature);
+    const rows = groups.length > 0
+      ? groups
+      : [{ id: `legacy-${nature}`, name: fallbackLabel, nature, total: fallbackTotal, categories: fallbackCategories }];
+    return rows.map((group) => `
+      <div class="section-header">
+        ${group.code ? `<span class="line-code">${escapeHtml(group.code)}</span>` : ''}
+        ${escapeHtml(group.name)}
+      </div>
+      ${renderCategories(group.categories, isRevenue)}
+      <div class="row subtotal">
+        <span>${escapeHtml(group.name)}</span>
+        ${valueWithPercent(
+          `<span class="${isRevenue ? 'positive' : 'negative'}">${isRevenue ? '' : '-'}${formatCurrencyBR(group.total)}</span>`,
+          group.total,
+        )}
+      </div>
+    `).join('');
+  };
 
   // Quebra por centro de custo: 3 valores por linha (receita, despesa,
   // resultado). A soma das linhas fecha com a Receita Bruta e com o total de
@@ -112,7 +201,7 @@ export const generateDreHtml = (data: DreReportData) => {
       <span class="cc-values">
         <span class="positive">${formatCurrencyBR(c.revenue)}</span>
         <span class="negative">-${formatCurrencyBR(c.expense)}</span>
-        <span class="${c.result >= 0 ? 'positive' : 'negative'}"><strong>${formatCurrencyBR(c.result)}</strong></span>
+        ${valueWithPercent(`<span class="${c.result >= 0 ? 'positive' : 'negative'}"><strong>${formatCurrencyBR(c.result)}</strong></span>`, c.result)}
       </span>
     </div>
   `).join('');
@@ -154,6 +243,10 @@ export const generateDreHtml = (data: DreReportData) => {
     .row.subtotal { padding: 10px 16px; font-weight: 600; background: #f9fafb; border-top: 1px solid #e5e5e5; }
     .row.result { padding: 16px; font-size: 16px; font-weight: 700; color: white; }
     .row-label { display: flex; align-items: center; gap: 8px; }
+    .line-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; color: #6b7280; white-space: nowrap; }
+    .value-with-percent { display: inline-flex; align-items: baseline; justify-content: flex-end; gap: 8px; white-space: nowrap; }
+    .percent { min-width: 42px; text-align: right; color: #9ca3af; font-size: 10px; font-weight: 500; }
+    .highlight .percent, .result .percent { color: rgba(255,255,255,.82); }
     .color-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .cc-values { display: flex; gap: 16px; align-items: center; }
     .cc-values > span { min-width: 90px; text-align: right; }
@@ -191,59 +284,52 @@ export const generateDreHtml = (data: DreReportData) => {
     </div>
 
     <div class="dre-container">
-      <div class="section-header">${escapeHtml(t.sectionGrossRevenue)}</div>
-      <div class="row">
-        <span class="row-label">${escapeHtml(t.rowTotalRevenue)}</span>
-        <span class="positive">${formatCurrencyBR(data.receitaBruta)}</span>
-      </div>
+      <div class="section-header"><span class="line-code">01</span> ${escapeHtml(t.sectionGrossRevenue)}</div>
+      ${renderConfiguredGroups('revenue', t.sectionGrossRevenue, data.receitaCategories ?? [], data.receitaBruta, true)}
 
-      ${data.impostosCategories.length > 0 ? `
-        <div class="section-header">${escapeHtml(t.sectionTaxes)}</div>
-        ${renderCategories(data.impostosCategories)}
-        <div class="row subtotal">
-          <span>${escapeHtml(t.rowTotalTaxes)}</span>
-          <span class="negative">-${formatCurrencyBR(data.impostos)}</span>
-        </div>
-      ` : ''}
+      <div class="section-header"><span class="line-code">02</span> ${escapeHtml(t.sectionTaxes)}</div>
+      ${renderConfiguredGroups('deduction', t.sectionTaxes, data.impostosCategories, data.impostos)}
 
       <div class="row highlight" style="background: ${data.receitaLiquida >= 0 ? '#16a34a' : '#dc2626'}">
-        <span>${escapeHtml(t.rowNetRevenue)}</span>
-        <span>${formatCurrencyBR(data.receitaLiquida)}</span>
+        <span><span class="line-code" style="color:rgba(255,255,255,.8)">03</span> ${escapeHtml(t.rowNetRevenue)}</span>
+        ${valueWithPercent(formatCurrencyBR(data.receitaLiquida), data.receitaLiquida)}
       </div>
 
-      ${data.cpvCategories.length > 0 ? `
-        <div class="section-header">${escapeHtml(t.sectionCogs)}</div>
-        ${renderCategories(data.cpvCategories)}
-        <div class="row subtotal">
-          <span>${escapeHtml(t.rowTotalCogs)}</span>
-          <span class="negative">-${formatCurrencyBR(data.cpv)}</span>
-        </div>
-      ` : ''}
+      <div class="section-header"><span class="line-code">04</span> ${escapeHtml(t.sectionCogs)}</div>
+      ${renderConfiguredGroups('cost', t.sectionCogs, data.cpvCategories, data.cpv)}
 
       <div class="row highlight" style="background: ${grossProfitColor}">
         <div class="result-label">
-          <span>${escapeHtml(t.rowGrossProfit)}</span>
-          <span class="margin-text">${escapeHtml(t.labelMargin)}: ${data.margem.toFixed(1)}%</span>
+          <span><span class="line-code" style="color:rgba(255,255,255,.8)">05</span> ${escapeHtml(t.rowGrossProfit)}</span>
         </div>
-        <span>${formatCurrencyBR(data.lucroBruto)}</span>
+        ${valueWithPercent(formatCurrencyBR(data.lucroBruto), data.lucroBruto)}
       </div>
 
-      ${data.opexCategories.length > 0 ? `
-        <div class="section-header">${escapeHtml(t.sectionOpex)}</div>
-        ${renderCategories(data.opexCategories)}
-        <div class="row subtotal">
-          <span>${escapeHtml(t.rowTotalOpex)}</span>
-          <span class="negative">-${formatCurrencyBR(data.opex)}</span>
-        </div>
-      ` : ''}
+      <div class="section-header"><span class="line-code">06</span> ${escapeHtml(t.sectionOpex)}</div>
+      ${renderConfiguredGroups('operating_expense', t.sectionOpex, data.opexCategories, data.opex)}
 
       <div class="row result" style="background: ${resultColor}">
         <div class="result-label">
-          <span>${escapeHtml(t.rowNetResult)}</span>
+          <span><span class="line-code" style="color:rgba(255,255,255,.8)">07</span> ${escapeHtml(t.rowNetResult)}</span>
           <span class="result-sublabel">${data.resultadoLiquido > 0 ? escapeHtml(t.labelSurplus) : data.resultadoLiquido < 0 ? escapeHtml(t.labelDeficit) : escapeHtml(t.labelBalanced)}</span>
         </div>
-        <span>${data.resultadoLiquido < 0 ? '-' : ''}${formatCurrencyBR(Math.abs(data.resultadoLiquido))}</span>
+        ${valueWithPercent(`${data.resultadoLiquido < 0 ? '-' : ''}${formatCurrencyBR(Math.abs(data.resultadoLiquido))}`, data.resultadoLiquido)}
       </div>
+
+      <div class="section-header"><span class="line-code">08</span> ${escapeHtml(configuredGroups.find((group) => group.nature === 'non_operating')?.name ?? 'Resultado não operacional')}</div>
+      ${renderConfiguredGroups(
+        'non_operating',
+        configuredGroups.find((group) => group.nature === 'non_operating')?.name ?? 'Resultado não operacional',
+        data.naoOperacionalCategories ?? [],
+        data.naoOperacional ?? 0,
+      )}
+
+      ${(data.naoOperacional ?? 0) !== 0 ? `
+        <div class="row result" style="background: ${(data.resultadoFinal ?? data.resultadoLiquido) >= 0 ? '#16a34a' : '#dc2626'}">
+          <span><span class="line-code" style="color:rgba(255,255,255,.8)">09</span> Resultado Final</span>
+          ${valueWithPercent(formatCurrencyBR(data.resultadoFinal ?? data.resultadoLiquido), data.resultadoFinal ?? data.resultadoLiquido)}
+        </div>
+      ` : ''}
     </div>
 
     ${costCenterLines.length > 0 ? `

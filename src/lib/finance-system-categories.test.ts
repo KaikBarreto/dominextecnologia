@@ -156,7 +156,7 @@ describe('getSystemCategoryRole', () => {
 });
 
 describe('sanitizeCategoryUpdate — is_system trava tipo e grupo do DRE', () => {
-  const patch = { name: 'Taxas bancárias', type: 'entrada', color: '#fff', icon: 'Tag', dre_group: 'opex' };
+  const patch = { name: 'Taxas bancárias', type: 'entrada', color: '#fff', icon: 'Tag', dre_group: 'opex', dre_group_id: 'grupo-customizado' };
 
   it('categoria de sistema: nome, cor e ícone passam; type e dre_group são removidos', () => {
     const out = sanitizeCategoryUpdate(patch, true);
@@ -165,12 +165,14 @@ describe('sanitizeCategoryUpdate — is_system trava tipo e grupo do DRE', () =>
     expect(out.icon).toBe('Tag');
     expect('type' in out).toBe(false);
     expect('dre_group' in out).toBe(false);
+    expect('dre_group_id' in out).toBe(false);
   });
 
   it('categoria do cliente continua podendo trocar tudo', () => {
     const out = sanitizeCategoryUpdate(patch, false);
     expect(out.type).toBe('entrada');
     expect(out.dre_group).toBe('opex');
+    expect(out.dre_group_id).toBe('grupo-customizado');
   });
 
   it('não muta o objeto de entrada', () => {

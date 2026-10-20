@@ -4792,6 +4792,50 @@ export type Database = {
           },
         ]
       }
+      dre_groups: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_system: boolean
+          name: string
+          nature: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name: string
+          nature: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name?: string
+          nature?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dre_groups_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_contracts: {
         Row: {
           amount: number
@@ -5849,6 +5893,7 @@ export type Database = {
           created_at: string
           dfc_group: string | null
           dre_group: string | null
+          dre_group_id: string | null
           icon: string | null
           id: string
           is_active: boolean
@@ -5865,6 +5910,7 @@ export type Database = {
           created_at?: string
           dfc_group?: string | null
           dre_group?: string | null
+          dre_group_id?: string | null
           icon?: string | null
           id?: string
           is_active?: boolean
@@ -5881,6 +5927,7 @@ export type Database = {
           created_at?: string
           dfc_group?: string | null
           dre_group?: string | null
+          dre_group_id?: string | null
           icon?: string | null
           id?: string
           is_active?: boolean
@@ -5897,6 +5944,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_categories_dre_group_id_fkey"
+            columns: ["dre_group_id"]
+            isOneToOne: false
+            referencedRelation: "dre_groups"
             referencedColumns: ["id"]
           },
           {

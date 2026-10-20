@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Settings as SettingsIcon, Lock, GripVertical, ChevronUp, ChevronDown, ChevronRight, Tag, CornerUpLeft, ListTree } from 'lucide-react';
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Settings as SettingsIcon, Lock, GripVertical, ChevronUp, ChevronDown, ChevronRight, Tag, CornerUpLeft, ListTree, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFinancialCategories, type FinancialCategory } from '@/hooks/useFinancialCategories';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
-import { CategoryFormDialog } from './CategoryFormDialog';
+import { CategoryFormDialog, type CategoryFormSubmitData } from './CategoryFormDialog';
 import { getCategoryIcon } from './categoryIcons';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -21,7 +21,13 @@ import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { groupByDre, shouldGroupByDre, getDreGroupKey, type DreGroup } from '@/lib/dre-groups';
+import {
+  getConfiguredDreGroup,
+  groupByConfiguredDre,
+  shouldGroupByDre,
+  type ConfiguredDreGroup,
+} from '@/lib/dre-groups';
+import { useDreGroups } from '@/hooks/useDreGroups';
 import { canRenameCategory, findCategoryNameConflict } from '@/lib/finance-system-categories';
 import { buildCategoryTree } from '@/lib/category-tree';
 
@@ -29,10 +35,11 @@ type CategoryGroup = 'receitas' | 'despesas';
 
 // A régua de grupo do DRE vive em `src/lib/dre-groups.ts` — compartilhada com o
 // select de categoria do lançamento, pra as duas telas agruparem igual.
-type DespesaGroup = DreGroup<FinancialCategory>;
+type DespesaGroup = ConfiguredDreGroup<FinancialCategory>;
 
 export function FinanceCategorias() {
   const { categories, isLoading, createCategory, updateCategory, deleteCategory, reorderCategories } = useFinancialCategories();
+  const { dreGroups } = useDreGroups();
   const isMobile = useIsMobile();
   const { locale } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
@@ -92,12 +99,17 @@ export function FinanceCategorias() {
    * diferente leva um selo com o grupo dela, e o bloco expandido explica a
    * regra em uma linha (`dreMixedHint`).
    */
-  const despesaGroups: DespesaGroup[] = groupByDre(despesaRoots, {
+  const dreFallbackLabels = {
     impostos: fin.categoryForm.dreGroups.impostos,
     cmv: fin.categoryForm.dreGroups.cmv,
     opex: fin.categoryForm.dreGroups.opex,
     outros: fin.categoryForm.dreGroups.outros,
-  });
+  };
+  const despesaGroups: DespesaGroup[] = groupByConfiguredDre(
+    despesaRoots,
+    dreGroups,
+    dreFallbackLabels,
+  );
 
   // Requisito 3: só desenha divisória quando há 2+ grupos com item. Empresa
   // que nunca classificou (quase tudo em 'opex') continua vendo lista plana.
@@ -108,7 +120,7 @@ export function FinanceCategorias() {
   const groupCount = (roots: FinancialCategory[]) =>
     roots.reduce((acc, r) => acc + 1 + tree.childrenOf(r.id).length, 0);
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: CategoryFormSubmitData) => {
     if (editing) {
       // `previous_name` é o que permite cascatear o rename pros lançamentos que
       // já guardam o nome antigo; `is_system` é o que trava tipo e grupo do DRE.
@@ -192,6 +204,7 @@ export function FinanceCategorias() {
       color: cat.color,
       icon: cat.icon ?? 'Tag',
       dre_group: cat.dre_group ?? 'opex',
+      dre_group_id: cat.dre_group_id,
       dfc_group: cat.dfc_group ?? 'operacional',
       parent_id: null,
       is_system: cat.is_system,
@@ -292,7 +305,7 @@ export function FinanceCategorias() {
     const isSystem = cat.is_system;
     const canRename = canRenameCategory(categories, cat);
     const isChild = !!cat.parent_id && tree.byId.has(cat.parent_id);
-    const actions: { label: string; icon: any; variant: 'edit' | 'delete' | 'default'; onClick: () => void }[] = [];
+    const actions: { label: string; icon: LucideIcon; variant: 'edit' | 'delete' | 'default'; onClick: () => void }[] = [];
     if (!isSystem || canRename) {
       actions.push({ label: fin.categories.actions.edit, icon: Pencil, variant: 'edit', onClick: () => handleEdit(cat) });
     }
@@ -315,17 +328,21 @@ export function FinanceCategorias() {
    */
   const childDreBadge = (child: FinancialCategory, parent: FinancialCategory) => {
     if (child.type === 'entrada' || parent.type === 'entrada') return null;
-    const childKey = getDreGroupKey(child);
-    if (childKey === getDreGroupKey(parent)) return null;
+    const childGroup = getConfiguredDreGroup(child, dreGroups, dreFallbackLabels);
+    const parentGroup = getConfiguredDreGroup(parent, dreGroups, dreFallbackLabels);
+    if (childGroup.key === parentGroup.key) return null;
     return (
       <Badge className="bg-primary text-primary-foreground hover:bg-primary border-0 text-[10px] px-1.5 py-0 font-medium shrink-0">
-        {fin.categoryForm.dreGroups[childKey]}
+        {childGroup.label}
       </Badge>
     );
   };
 
   const hasMixedDreGroups = (parent: FinancialCategory, children: readonly FinancialCategory[]) =>
-    parent.type !== 'entrada' && children.some((c) => getDreGroupKey(c) !== getDreGroupKey(parent));
+    parent.type !== 'entrada' && children.some((child) => (
+      getConfiguredDreGroup(child, dreGroups, dreFallbackLabels).key
+      !== getConfiguredDreGroup(parent, dreGroups, dreFallbackLabels).key
+    ));
 
   // ─── DESKTOP: grade de cards enxutos, com drag-drop escopado a um grupo ────
   //
@@ -768,6 +785,7 @@ export function FinanceCategorias() {
       initialType={defaultType}
       initialParentId={defaultParentId}
       categories={categories}
+      dreGroups={dreGroups}
       onSubmit={handleSubmit}
       validateName={validateCategoryName}
       isLoading={createCategory.isPending || updateCategory.isPending}

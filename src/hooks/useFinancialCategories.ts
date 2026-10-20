@@ -20,6 +20,8 @@ export interface FinancialCategory {
   icon: string | null;
   is_active: boolean;
   dre_group: string | null;
+  /** Grupo DRE configurável; `dre_group` permanece como compatibilidade legada. */
+  dre_group_id: string | null;
   /** Grupo gerencial usado pelo DFC direto. `null` usa o fallback operacional. */
   dfc_group: 'operacional' | 'investimento' | 'financiamento' | null;
   is_system: boolean;
@@ -53,6 +55,7 @@ export interface CategoryInput {
   icon?: string;
   is_active?: boolean;
   dre_group?: string;
+  dre_group_id?: string | null;
   dfc_group?: 'operacional' | 'investimento' | 'financiamento';
   /** Pai da subcategoria. Ausente/`null` cria categoria raiz (comportamento de sempre). */
   parent_id?: string | null;

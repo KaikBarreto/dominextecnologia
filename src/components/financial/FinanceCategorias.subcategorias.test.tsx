@@ -27,6 +27,17 @@ vi.mock('@/contexts/AppLocaleContext', () => ({
 // devolver os DOIS, senão a tela quebra no diálogo de exclusão.
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false, useIsCompact: () => false }));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: () => {} }) }));
+vi.mock('@/hooks/useDreGroups', () => ({
+  useDreGroups: () => ({
+    dreGroups: [],
+    isLoading: false,
+    error: null,
+    createGroup: { mutate: () => {}, isPending: false },
+    updateGroup: { mutate: () => {}, isPending: false },
+    deleteGroup: { mutate: () => {}, isPending: false },
+    reorderGroups: { mutate: () => {}, isPending: false },
+  }),
+}));
 // Formulário de categoria é testado à parte; aqui ele só polui a árvore.
 vi.mock('./CategoryFormDialog', () => ({ CategoryFormDialog: () => null }));
 

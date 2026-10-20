@@ -378,7 +378,7 @@ export function getSystemCategoryRole(
  * moveria a linha inteira de lugar no resultado. Nome, cor e ícone são rótulo
  * e podem ser editados à vontade.
  */
-export const SYSTEM_CATEGORY_LOCKED_FIELDS = ['type', 'dre_group'] as const;
+export const SYSTEM_CATEGORY_LOCKED_FIELDS = ['type', 'dre_group', 'dre_group_id'] as const;
 
 /** Tira do patch os campos travados quando a categoria é de sistema. */
 export function sanitizeCategoryUpdate<T extends Record<string, unknown>>(

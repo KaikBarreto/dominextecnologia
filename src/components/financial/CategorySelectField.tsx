@@ -2,15 +2,16 @@ import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/SearchableSelect';
-import { CategoryFormDialog } from '@/components/financial/CategoryFormDialog';
+import { CategoryFormDialog, type CategoryFormSubmitData } from '@/components/financial/CategoryFormDialog';
 import { getCategoryIcon } from '@/components/financial/categoryIcons';
 import { useFinancialCategories, type FinancialCategory } from '@/hooks/useFinancialCategories';
+import { useDreGroups } from '@/hooks/useDreGroups';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { filterCategoriesForSelect } from '@/lib/financial-category-filter';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils';
-import { groupByDre, shouldGroupByDre } from '@/lib/dre-groups';
+import { groupByConfiguredDre, shouldGroupByDre } from '@/lib/dre-groups';
 import { buildCategoryTree, resolveCategoryCascade } from '@/lib/category-tree';
 
 /** Sentinela da opção "usar a categoria principal" no segundo select. */
@@ -67,6 +68,7 @@ export function CategorySelectField({
   const fin = MESSAGES[locale].app.finance;
   const tf = fin.transactionForm;
   const { categories, createCategory } = useFinancialCategories();
+  const { dreGroups } = useDreGroups();
   const canManage = useCanManageFinanceSettings();
 
   const [formOpen, setFormOpen] = useState(false);
@@ -123,21 +125,20 @@ export function CategorySelectField({
    * debaixo do pai, e quem decide a linha dela no resultado é o `dre_group`
    * dela mesma, não a seção em que o pai foi escolhido.
    */
-  const dreGroups = type === 'saida' ? groupByDre(tree.roots, fin.categoryForm.dreGroups) : [];
-  const useGroups = type === 'saida' && shouldGroupByDre(dreGroups);
+  const categoryDreGroups = type === 'saida'
+    ? groupByConfiguredDre(tree.roots, dreGroups, fin.categoryForm.dreGroups)
+    : [];
+  const useGroups = type === 'saida' && shouldGroupByDre(categoryDreGroups);
   const groups = useGroups
     ? [
-        ...dreGroups.map((g) => ({ heading: g.label, options: g.items.map(toOption) })),
+        ...categoryDreGroups.map((g) => ({ heading: g.label, options: g.items.map(toOption) })),
         // A categoria órfã não tem grupo confiável: fica numa seção própria no
         // fim, em vez de ser enfiada num bucket do DRE que ela talvez não seja.
         ...(orphanOption ? [{ heading: tf.categoryInactiveSuffix, options: [orphanOption] }] : []),
       ]
     : undefined;
 
-  // `any` aqui espelha o mesmo contrato do `handleCreateCategoryInline` em
-  // TransactionFormDialog: recebe o shape do CategoryFormDialog e repassa
-  // direto pro `createCategory.mutateAsync` (CategoryInput).
-  const handleCreate = async (data: any) => {
+  const handleCreate = async (data: CategoryFormSubmitData) => {
     const created = await createCategory.mutateAsync(data);
     if (created?.name) onValueChange(created.name);
     setFormOpen(false);
@@ -221,6 +222,7 @@ export function CategorySelectField({
           initialName={searchQuery}
           initialType={type}
           categories={categories}
+          dreGroups={dreGroups}
           onSubmit={handleCreate}
           isLoading={createCategory.isPending}
         />

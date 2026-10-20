@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,6 +15,11 @@ import type { FinancialCategory } from '@/hooks/useFinancialCategories';
 import { buildCategoryTree } from '@/lib/category-tree';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import {
+  legacyDreGroupForNature,
+  resolveCategoryDreNature,
+  type ConfigurableDreGroupLike,
+} from '@/lib/dre-groups';
 
 /**
  * Sentinela da opção "sem pai". Um `value=''` no combobox vira `key=''` no
@@ -29,18 +34,23 @@ const baseSchema = z.object({
   color: z.string().min(1),
   icon: z.string().default('Tag'),
   dre_group: z.string().default('opex'),
+  dre_group_id: z.string().default(''),
   dfc_group: z.enum(['operacional', 'investimento', 'financiamento']).default('operacional'),
   /** `''` = categoria principal (raiz). Vira `null` no submit. */
   parent_id: z.string().default(''),
 });
 
 type FormData = z.infer<typeof baseSchema>;
+export type CategoryFormSubmitData = Omit<FormData, 'dre_group_id' | 'parent_id'> & {
+  dre_group_id: string | null;
+  parent_id: string | null;
+};
 
 interface CategoryFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   category?: FinancialCategory | null;
-  onSubmit: (data: FormData) => Promise<void>;
+  onSubmit: (data: CategoryFormSubmitData) => Promise<void>;
   isLoading?: boolean;
   /** Nome pré-preenchido ao criar (ex.: texto digitado no SearchableSelect). Só vale na criação. */
   initialName?: string;
@@ -61,9 +71,11 @@ interface CategoryFormDialogProps {
   categories?: FinancialCategory[];
   /** Pai pré-selecionado ao criar (ação "Adicionar subcategoria"). Só vale na criação. */
   initialParentId?: string | null;
+  /** Grupos configuráveis do DRE, já ordenados pelo hook da empresa. */
+  dreGroups?: ConfigurableDreGroupLike[];
 }
 
-export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isLoading, initialName, initialType, validateName, categories, initialParentId }: CategoryFormDialogProps) {
+export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isLoading, initialName, initialType, validateName, categories, initialParentId, dreGroups = [] }: CategoryFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.categoryForm;
   const tc = MESSAGES[locale].app.finance.categories;
@@ -78,6 +90,19 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
   const tree = useMemo(() => buildCategoryTree(allCategories), [allCategories]);
   const initialParent = !category && initialParentId ? tree.byId.get(initialParentId) : null;
 
+  const defaultGroupId = useCallback((
+    type: string,
+    legacyGroup: string | null | undefined,
+    currentId?: string | null,
+  ) => {
+    if (currentId && dreGroups.some((group) => group.id === currentId && group.is_active)) return currentId;
+    const nature = resolveCategoryDreNature(
+      { type, dre_group: legacyGroup ?? 'opex', dre_group_id: null },
+      dreGroups,
+    );
+    return dreGroups.find((group) => group.is_active && group.nature === nature)?.id ?? '';
+  }, [dreGroups]);
+
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -85,7 +110,12 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
       type: category?.type ?? initialParent?.type ?? initialType ?? 'ambos',
       color: category?.color ?? initialParent?.color ?? '#00C597',
       icon: category?.icon ?? initialParent?.icon ?? 'Tag',
-      dre_group: (category as any)?.dre_group ?? initialParent?.dre_group ?? 'opex',
+      dre_group: category?.dre_group ?? initialParent?.dre_group ?? 'opex',
+      dre_group_id: defaultGroupId(
+        category?.type ?? initialParent?.type ?? initialType ?? 'ambos',
+        category?.dre_group ?? initialParent?.dre_group,
+        category?.dre_group_id ?? initialParent?.dre_group_id,
+      ),
       dfc_group: category?.dfc_group ?? initialParent?.dfc_group ?? 'operacional',
       parent_id: category?.parent_id ?? initialParentId ?? '',
     },
@@ -100,7 +130,12 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
         type: category?.type ?? initialParent?.type ?? initialType ?? 'ambos',
         color: category?.color ?? initialParent?.color ?? '#00C597',
         icon: category?.icon ?? initialParent?.icon ?? 'Tag',
-        dre_group: (category as any)?.dre_group ?? initialParent?.dre_group ?? 'opex',
+        dre_group: category?.dre_group ?? initialParent?.dre_group ?? 'opex',
+        dre_group_id: defaultGroupId(
+          category?.type ?? initialParent?.type ?? initialType ?? 'ambos',
+          category?.dre_group ?? initialParent?.dre_group,
+          category?.dre_group_id ?? initialParent?.dre_group_id,
+        ),
         dfc_group: category?.dfc_group ?? initialParent?.dfc_group ?? 'operacional',
         parent_id: category?.parent_id ?? initialParentId ?? '',
       });
@@ -108,8 +143,33 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, category?.id, initialName, initialType, initialParentId, initialParent?.id]);
 
+  const isSystem = category?.is_system === true;
   const selectedColor = form.watch('color');
   const selectedParentId = form.watch('parent_id');
+  const selectedType = form.watch('type');
+  const selectableDreGroups = useMemo(
+    () => dreGroups.filter((group) => {
+      if (!group.is_active && group.id !== category?.dre_group_id) return false;
+      if (selectedType === 'entrada') return group.nature === 'revenue' || group.nature === 'excluded';
+      return group.nature !== 'revenue';
+    }),
+    [dreGroups, selectedType, category?.dre_group_id],
+  );
+
+  useEffect(() => {
+    if (!open || dreGroups.length === 0) return;
+    const currentId = form.getValues('dre_group_id');
+    if (selectableDreGroups.some((group) => group.id === currentId)) return;
+    const desiredId = defaultGroupId(
+      selectedType,
+      form.getValues('dre_group'),
+      category?.dre_group_id ?? initialParent?.dre_group_id,
+    );
+    const fallback = selectableDreGroups.find((group) => group.id === desiredId) ?? selectableDreGroups[0];
+    if (!fallback) return;
+    form.setValue('dre_group_id', fallback.id, { shouldDirty: !isSystem });
+    form.setValue('dre_group', legacyDreGroupForNature(fallback.nature), { shouldDirty: !isSystem });
+  }, [open, isSystem, dreGroups.length, selectableDreGroups, selectedType, category?.dre_group_id, initialParent?.dre_group_id, defaultGroupId, form]);
 
   /**
    * Candidatas a PAI: só categorias RAIZ da empresa, tirando a própria.
@@ -160,6 +220,11 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
     if (!parent) return;
     form.setValue('type', parent.type, { shouldDirty: true });
     form.setValue('dre_group', parent.dre_group ?? 'opex', { shouldDirty: true });
+    form.setValue(
+      'dre_group_id',
+      defaultGroupId(parent.type, parent.dre_group, parent.dre_group_id),
+      { shouldDirty: true },
+    );
     form.setValue('dfc_group', parent.dfc_group ?? 'operacional', { shouldDirty: true });
     form.setValue('color', parent.color, { shouldDirty: true });
     form.setValue('icon', parent.icon ?? 'Tag', { shouldDirty: true });
@@ -170,16 +235,22 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
   // DRE ficam travados. São eles que identificam o PAPEL da categoria (quem o
   // lançamento automático procura) e a linha dela no resultado, e trocá-los
   // arrancaria a categoria do papel sem aviso nenhum.
-  const isSystem = category?.is_system === true;
-
   const handleSubmit = async (data: FormData) => {
     const nameError = validateName?.(data.name, data.type);
     if (nameError) {
       form.setError('name', { type: 'manual', message: nameError });
       return;
     }
-    // `''` no select vira `null` no banco: é o que significa "categoria principal".
-    await onSubmit({ ...data, parent_id: data.parent_id ? data.parent_id : null } as any);
+    const selectedGroup = dreGroups.find((group) => group.id === data.dre_group_id);
+    // `dre_group` legado continua sincronizado porque lançamentos automáticos e
+    // migrations antigas ainda o usam como papel semântico. A nova FK controla
+    // nome/ordem de apresentação.
+    await onSubmit({
+      ...data,
+      dre_group: selectedGroup ? legacyDreGroupForNature(selectedGroup.nature) : data.dre_group,
+      dre_group_id: data.dre_group_id || null,
+      parent_id: data.parent_id ? data.parent_id : null,
+    });
     form.reset();
   };
 
@@ -249,22 +320,40 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
             </FormItem>
           )} />
 
-          <FormField control={form.control} name="dre_group" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t.dreGroupLabel}</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value} disabled={isSystem}>
-                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                <SelectContent>
-                  <SelectItem value="impostos">{t.dreGroups.impostos}</SelectItem>
-                  <SelectItem value="cmv">{t.dreGroups.cmv}</SelectItem>
-                  <SelectItem value="opex">{t.dreGroups.opex}</SelectItem>
-                  <SelectItem value="outros">{t.dreGroups.outros}</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormDescription>{t.dreGroupHint}</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )} />
+          {dreGroups.length > 0 ? (
+            <FormField control={form.control} name="dre_group_id" render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t.dreGroupLabel}</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value} disabled={isSystem}>
+                  <FormControl><SelectTrigger><SelectValue placeholder="Selecione o grupo do DRE" /></SelectTrigger></FormControl>
+                  <SelectContent>
+                    {selectableDreGroups.map((group) => (
+                      <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>{t.dreGroupHint}</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )} />
+          ) : (
+            <FormField control={form.control} name="dre_group" render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t.dreGroupLabel}</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value} disabled={isSystem}>
+                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                  <SelectContent>
+                    <SelectItem value="impostos">{t.dreGroups.impostos}</SelectItem>
+                    <SelectItem value="cmv">{t.dreGroups.cmv}</SelectItem>
+                    <SelectItem value="opex">{t.dreGroups.opex}</SelectItem>
+                    <SelectItem value="outros">{t.dreGroups.outros}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormDescription>{t.dreGroupHint}</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )} />
+          )}
 
           <FormField control={form.control} name="dfc_group" render={({ field }) => (
             <FormItem>
