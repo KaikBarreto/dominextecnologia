@@ -165,6 +165,30 @@ test('reconhece o molde estatico de RLS dinamico usado no repositorio', () => {
   assert.equal(findings.length, 0);
 });
 
+test('reconhece lista inline com tabela e comandos usada pelo PDV', () => {
+  const findings = audit(`
+    CREATE TABLE public.pdv_terminals (id uuid);
+    CREATE TABLE public.pdv_orders (id uuid);
+    DO $rls$
+    DECLARE
+      v_spec text;
+      v_table text;
+    BEGIN
+      FOREACH v_spec IN ARRAY ARRAY[
+        'pdv_terminals=SELECT,INSERT,UPDATE,DELETE',
+        'pdv_orders=SELECT,INSERT,UPDATE,DELETE'
+      ]
+      LOOP
+        v_table := split_part(v_spec, '=', 1);
+        EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', v_table);
+      END LOOP;
+    END
+    $rls$;
+  `);
+
+  assert.equal(findings.length, 0);
+});
+
 test('reconhece limpeza dinamica de todas as policies de uma lista estatica', () => {
   const findings = audit(`
     CREATE TABLE public.profiles (id uuid);

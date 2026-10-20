@@ -259,30 +259,55 @@ function policyKey(table, name) {
 function applyStaticDynamicRlsLoop(statement, tables) {
   if (!/^\s*do\s+\$/i.test(statement.text)) return;
 
-  const loop = statement.text.match(
+  const variableLoop = statement.text.match(
     /foreach\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+in\s+array\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+loop/i,
   );
-  if (!loop) return;
-
-  const variable = loop[1];
-  const arrayVariable = loop[2];
-  const arrayDeclaration = statement.text.match(
-    new RegExp(
-      String.raw`\b${arrayVariable}\s+text\s*\[\s*\]\s*:=\s*array\s*\[([\s\S]*?)\]\s*;`,
-      'i',
-    ),
+  const inlineLoop = statement.text.match(
+    /foreach\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+in\s+array\s+array\s*\[([\s\S]*?)\]\s+loop/i,
   );
-  if (!arrayDeclaration) return;
+  if (!variableLoop && !inlineLoop) return;
+
+  let enableVariable;
+  let rawValues;
+  let nameFromValue = (value) => value;
+
+  // Prefere a lista inline quando o mesmo bloco tem FOREACHs internos. O PDV,
+  // por exemplo, percorre primeiro as tabelas inline e depois os comandos.
+  if (!inlineLoop && variableLoop) {
+    const loopVariable = variableLoop[1];
+    const arrayVariable = variableLoop[2];
+    const arrayDeclaration = statement.text.match(
+      new RegExp(
+        String.raw`\b${arrayVariable}\s+text\s*\[\s*\]\s*:=\s*array\s*\[([\s\S]*?)\]\s*;`,
+        'i',
+      ),
+    );
+    if (!arrayDeclaration) return;
+    enableVariable = loopVariable;
+    rawValues = arrayDeclaration[1];
+  } else {
+    const specVariable = inlineLoop[1];
+    const tableAssignment = statement.text.match(
+      new RegExp(
+        String.raw`\b([a-zA-Z_][a-zA-Z0-9_]*)\s*:=\s*split_part\s*\(\s*${specVariable}\s*,\s*'='\s*,\s*1\s*\)\s*;`,
+        'i',
+      ),
+    );
+    if (!tableAssignment) return;
+    enableVariable = tableAssignment[1];
+    rawValues = inlineLoop[2];
+    nameFromValue = (value) => value.split('=', 1)[0];
+  }
 
   const enablePattern = new RegExp(
-    String.raw`execute\s+format\s*\(\s*'alter\s+table\s+public\.%i\s+enable\s+row\s+level\s+security;?'\s*,\s*${variable}\s*\)`,
+    String.raw`execute\s+format\s*\(\s*'alter\s+table\s+public\.%i\s+enable\s+row\s+level\s+security;?'\s*,\s*${enableVariable}\s*\)`,
     'i',
   );
   if (!enablePattern.test(statement.text)) return;
 
-  const names = [...arrayDeclaration[1].matchAll(/'((?:[^']|'')+)'/g)].map((match) =>
-    match[1].replace(/''/g, "'").toLowerCase(),
-  );
+  const names = [...rawValues.matchAll(/'((?:[^']|'')+)'/g)]
+    .map((match) => nameFromValue(match[1].replace(/''/g, "'")).toLowerCase())
+    .filter(Boolean);
 
   for (const name of names) {
     const table = ensurePublicTable(
