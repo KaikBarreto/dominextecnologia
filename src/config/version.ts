@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.18";
+export const APP_VERSION = "1.37.19";
 
 export const VERSION_NOTES =
-  "O carrinho do PDV agora acompanha automaticamente o último produto adicionado, com rolagem e animação visual.";
+  "Os itens do carrinho agora entram, saem e mudam de posição com movimentos suaves, deixando cada alteração mais fácil de acompanhar.";

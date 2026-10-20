@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.19',
+    date: '20 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Carrinho com movimentos mais naturais',
+        description: 'Ao remover um produto, ele desliza para fora e os demais ocupam o espaço suavemente. Adições e mudanças de posição também ficaram mais fáceis de acompanhar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.18',
     date: '20 de outubro de 2026',
     type: 'patch',

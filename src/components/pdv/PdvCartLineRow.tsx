@@ -5,7 +5,6 @@ import type { CartLine } from '@/lib/pdv/cart';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { PdvProductName } from '@/components/pdv/PdvProductName';
 import { PdvProductImagePreview } from '@/components/pdv/PdvProductImagePreview';
-import { useEffect, useRef } from 'react';
 
 interface PdvCartLineRowProps {
   line: CartLine;
@@ -27,8 +26,6 @@ interface PdvCartLineRowProps {
   onRemove: (inventoryId: string) => void;
   /** Enter na edição de quantidade devolve o foco pra busca (balcão é fila). */
   onConfirmQuantityEdit?: () => void;
-  /** Sequência da última adição desta linha; reinicia a animação sem remontar os controles. */
-  additionSequence?: number;
 }
 
 /**
@@ -55,39 +52,13 @@ export function PdvCartLineRow({
   onDiscountEditingChange,
   onRemove,
   onConfirmQuantityEdit,
-  additionSequence,
 }: PdvCartLineRowProps) {
-  const rowRef = useRef<HTMLDivElement>(null);
   const lineGross = line.quantity * line.unitPrice;
   const lineDiscount = Math.min(Math.max(line.discountAmount ?? 0, 0), lineGross);
   const lineTotal = lineGross - lineDiscount;
 
-  useEffect(() => {
-    const element = rowRef.current;
-    if (!element || additionSequence == null) return;
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-    if (typeof element.animate !== 'function') return;
-
-    const animation = element.animate(
-      [
-        {
-          opacity: 0.35,
-          transform: 'translateY(10px)',
-          backgroundColor: 'hsl(var(--primary) / 0.12)',
-        },
-        {
-          opacity: 1,
-          transform: 'translateY(0)',
-          backgroundColor: 'transparent',
-        },
-      ],
-      { duration: 360, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
-    );
-    return () => animation.cancel();
-  }, [additionSequence]);
-
   return (
-    <div ref={rowRef} className="flex gap-3 py-3">
+    <div className="flex gap-3 py-3">
       <PdvProductImagePreview
         imageUrl={line.imageUrl}
         name={line.name}

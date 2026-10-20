@@ -9,6 +9,7 @@ import type { LocaleCode } from '@/lib/i18n/locales';
 import type { Customer } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { useState, type ReactNode } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
 export interface PdvCartPanelTexts extends PdvCartSummaryTexts {
   title: string;
@@ -91,6 +92,8 @@ export function PdvCartPanel({
 }: PdvCartPanelProps) {
   const itemCount = cart.lines.reduce((sum, l) => sum + l.quantity, 0);
   const [editingLineDiscount, setEditingLineDiscount] = useState<string | null>(null);
+  const reduceMotion = useReducedMotion();
+  const ease = [0.22, 1, 0.36, 1] as const;
 
   return (
     <div className={cn('flex h-full flex-col', className)}>
@@ -126,53 +129,92 @@ export function PdvCartPanel({
         fadeDisabled={editingLineDiscount != null}
         scrollToEndKey={additionFeedback?.sequence}
       >
-        {cart.lines.length === 0 ? (
-          <EmptyState
-            icon={<ShoppingCart className="h-10 w-10" />}
-            title={texts.empty}
-            description={texts.emptyHint}
-            size="compact"
-          />
-        ) : (
-          <div className="divide-y divide-border">
-            {cart.lines.map((line) => (
-              <PdvCartLineRow
-                key={line.inventoryId}
-                line={line}
-                formatCurrency={formatCurrency}
-                noPhotoLabel={texts.noPhoto}
-                openPhotoLabel={texts.openProductPhoto}
-                photoViewerDescription={texts.productPhotoViewerDescription}
-                removeLabel={texts.removeLine}
-                quantityEditLabel={texts.quantityEditLabel}
-                discountLabel={texts.itemDiscount}
-                discountEditorTexts={texts.discountEditor}
-                currencySymbol={currencySymbol}
-                locale={locale}
-                currencyFractionDigits={currencyFractionDigits}
-                onIncrement={onIncrement}
-                onSetQuantity={onSetQuantity}
-                onSetLineDiscount={onSetLineDiscount}
-                onDiscountEditingChange={(editing) =>
-                  setEditingLineDiscount((current) =>
-                    editing
-                      ? line.inventoryId
-                      : current === line.inventoryId
-                        ? null
-                        : current,
-                  )
-                }
-                onRemove={onRemove}
-                onConfirmQuantityEdit={onConfirmQuantityEdit}
-                additionSequence={
-                  additionFeedback?.inventoryId === line.inventoryId
-                    ? additionFeedback.sequence
-                    : undefined
-                }
-              />
-            ))}
-          </div>
-        )}
+        <div className="h-full divide-y divide-border">
+          <AnimatePresence initial={false} mode="popLayout">
+            {cart.lines.length === 0 ? (
+              <motion.div
+                key="empty-cart"
+                className="h-full"
+                initial={reduceMotion ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: reduceMotion ? 0 : 0.2 }}
+              >
+                <EmptyState
+                  icon={<ShoppingCart className="h-10 w-10" />}
+                  title={texts.empty}
+                  description={texts.emptyHint}
+                  size="compact"
+                />
+              </motion.div>
+            ) : (
+              cart.lines.map((line) => {
+                const isLastAdded = additionFeedback?.inventoryId === line.inventoryId;
+                return (
+                  <motion.div
+                    key={line.inventoryId}
+                    layout="position"
+                    initial={reduceMotion ? false : { opacity: 0, y: 16, scale: 0.985 }}
+                    animate={
+                      reduceMotion
+                        ? { opacity: 1 }
+                        : {
+                            opacity: 1,
+                            y: 0,
+                            x: 0,
+                            scale: 1,
+                            backgroundColor: isLastAdded
+                              ? ['hsl(var(--primary) / 0.14)', 'hsl(var(--primary) / 0)']
+                              : 'hsl(var(--primary) / 0)',
+                          }
+                    }
+                    exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 28, scale: 0.975 }}
+                    transition={
+                      reduceMotion
+                        ? { duration: 0 }
+                        : {
+                            layout: { duration: 0.34, ease },
+                            opacity: { duration: 0.2, ease },
+                            x: { duration: 0.28, ease },
+                            y: { duration: 0.34, ease },
+                            scale: { duration: 0.28, ease },
+                            backgroundColor: { duration: 0.62, ease },
+                          }
+                    }
+                  >
+                    <PdvCartLineRow
+                      line={line}
+                      formatCurrency={formatCurrency}
+                      noPhotoLabel={texts.noPhoto}
+                      openPhotoLabel={texts.openProductPhoto}
+                      photoViewerDescription={texts.productPhotoViewerDescription}
+                      removeLabel={texts.removeLine}
+                      quantityEditLabel={texts.quantityEditLabel}
+                      discountLabel={texts.itemDiscount}
+                      discountEditorTexts={texts.discountEditor}
+                      currencySymbol={currencySymbol}
+                      locale={locale}
+                      currencyFractionDigits={currencyFractionDigits}
+                      onIncrement={onIncrement}
+                      onSetQuantity={onSetQuantity}
+                      onSetLineDiscount={onSetLineDiscount}
+                      onDiscountEditingChange={(editing) =>
+                        setEditingLineDiscount((current) =>
+                          editing
+                            ? line.inventoryId
+                            : current === line.inventoryId
+                              ? null
+                              : current,
+                        )
+                      }
+                      onRemove={onRemove}
+                      onConfirmQuantityEdit={onConfirmQuantityEdit}
+                    />
+                  </motion.div>
+                );
+              })
+            )}
+          </AnimatePresence>
+        </div>
       </PdvScrollFadeContainer>
 
       <PdvCartSummary

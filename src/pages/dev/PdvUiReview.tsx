@@ -94,6 +94,7 @@ import type { PdvLedgerEntry, SessionResult } from "@/lib/pdv/cash";
 import { MESSAGES } from "@/lib/i18n/messages";
 import { cn } from "@/lib/utils";
 import type { Customer } from "@/types/database";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 type ReviewScreen = "sale" | "cash";
 type ReviewSize = "desktop" | "tablet" | "mobile";
@@ -1228,6 +1229,8 @@ function ProposedOrderPanel({
     alt: string;
   } | null>(null);
   const [activePreviewOrder, setActivePreviewOrder] = useState("preview-current");
+  const reduceMotion = useReducedMotion();
+  const motionEase = [0.22, 1, 0.36, 1] as const;
 
   const updateBottomFade = () => {
     const viewport = itemsViewportRef.current;
@@ -1342,16 +1345,23 @@ function ProposedOrderPanel({
             onScroll={updateBottomFade}
             className="h-72 divide-y overflow-y-auto px-4 pb-8"
           >
-            {cart.lines.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-                <ShoppingCart className="mb-2 h-6 w-6 text-muted-foreground" />
-                <p className="text-sm font-semibold">Pedido vazio</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Selecione um produto no catálogo para começar.
-                </p>
-              </div>
-            ) : (
-              cart.lines.map((line) => {
+            <AnimatePresence initial={false} mode="popLayout">
+              {cart.lines.length === 0 ? (
+                <motion.div
+                  key="empty-preview-cart"
+                  className="flex h-full flex-col items-center justify-center px-6 text-center"
+                  initial={reduceMotion ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: reduceMotion ? 0 : 0.2 }}
+                >
+                  <ShoppingCart className="mb-2 h-6 w-6 text-muted-foreground" />
+                  <p className="text-sm font-semibold">Pedido vazio</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Selecione um produto no catálogo para começar.
+                  </p>
+                </motion.div>
+              ) : (
+                cart.lines.map((line) => {
                 const lineSubtotal = line.unitPrice * line.quantity;
                 const lineDiscount = lineDiscounts[line.inventoryId] ?? null;
                 const lineDiscountAmount = getDiscountAmount(
@@ -1364,17 +1374,38 @@ function ProposedOrderPanel({
                 );
 
                 return (
-                  <div
-                    key={
-                      additionFeedback?.inventoryId === line.inventoryId
-                        ? `${line.inventoryId}-${additionFeedback.sequence}`
-                        : line.inventoryId
+                  <motion.div
+                    layout="position"
+                    key={line.inventoryId}
+                    initial={reduceMotion ? false : { opacity: 0, y: 16, scale: 0.985 }}
+                    animate={
+                      reduceMotion
+                        ? { opacity: 1 }
+                        : {
+                            opacity: 1,
+                            x: 0,
+                            y: 0,
+                            scale: 1,
+                            backgroundColor:
+                              additionFeedback?.inventoryId === line.inventoryId
+                                ? ["hsl(var(--primary) / 0.14)", "hsl(var(--primary) / 0)"]
+                                : "hsl(var(--primary) / 0)",
+                          }
                     }
-                    className={cn(
-                      'flex gap-3 py-3',
-                      additionFeedback?.inventoryId === line.inventoryId &&
-                        'animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none',
-                    )}
+                    exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 28, scale: 0.975 }}
+                    transition={
+                      reduceMotion
+                        ? { duration: 0 }
+                        : {
+                            layout: { duration: 0.34, ease: motionEase },
+                            opacity: { duration: 0.2, ease: motionEase },
+                            x: { duration: 0.28, ease: motionEase },
+                            y: { duration: 0.34, ease: motionEase },
+                            scale: { duration: 0.28, ease: motionEase },
+                            backgroundColor: { duration: 0.62, ease: motionEase },
+                          }
+                    }
+                    className="flex gap-3 py-3"
                   >
                     {line.imageUrl ? (
                       <button
@@ -1466,10 +1497,11 @@ function ProposedOrderPanel({
                         </span>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 );
-              })
-            )}
+                })
+              )}
+            </AnimatePresence>
           </div>
           {showBottomFade && !editingLineDiscount && (
             <div
