@@ -153,24 +153,24 @@ export function CashFlowForecast() {
   if (!forecast) return null;
 
   const kpis = [
-    { rotulo: 'Saldo atual', valor: forecast.startingBalance, Icone: Wallet, cor: 'text-foreground' },
-    { rotulo: `A receber · ${horizonDays} dias`, valor: forecast.days.reduce((a, d) => a + d.inflow, 0), Icone: ArrowDownCircle, cor: 'text-success' },
-    { rotulo: `A pagar · ${horizonDays} dias`, valor: forecast.days.reduce((a, d) => a + d.outflow, 0), Icone: ArrowUpCircle, cor: 'text-destructive' },
-    { rotulo: 'Dívidas a receber', valor: forecast.openingDebt.receivable, Icone: AlertTriangle, cor: 'text-warning' },
-    { rotulo: 'Dívidas a pagar', valor: forecast.openingDebt.payable, Icone: AlertTriangle, cor: 'text-warning' },
+    { rotulo: 'Saldo atual', valor: forecast.startingBalance, Icone: Wallet, fundo: 'bg-primary' },
+    { rotulo: `A receber · ${horizonDays} dias`, valor: forecast.days.reduce((a, d) => a + d.inflow, 0), Icone: ArrowDownCircle, fundo: 'bg-success' },
+    { rotulo: `A pagar · ${horizonDays} dias`, valor: forecast.days.reduce((a, d) => a + d.outflow, 0), Icone: ArrowUpCircle, fundo: 'bg-destructive' },
+    { rotulo: 'Dívidas a receber', valor: forecast.openingDebt.receivable, Icone: AlertTriangle, fundo: 'bg-warning' },
+    { rotulo: 'Dívidas a pagar', valor: forecast.openingDebt.payable, Icone: AlertTriangle, fundo: 'bg-warning' },
   ];
 
   return (
     <div className="space-y-4">
       {/* Indicadores */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        {kpis.map(({ rotulo, valor, Icone, cor }) => (
-          <div key={rotulo} className="rounded-lg border bg-card p-3 sm:p-4">
+        {kpis.map(({ rotulo, valor, Icone, fundo }) => (
+          <div key={rotulo} className={cn('rounded-lg border border-transparent p-3 text-white shadow-sm sm:p-4', fundo)}>
             <div className="flex items-center gap-2 mb-1">
-              <Icone className={cn('h-4 w-4 shrink-0', cor)} />
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground truncate">{rotulo}</span>
+              <Icone className="h-4 w-4 shrink-0 text-white" />
+              <span className="text-[11px] uppercase tracking-wide text-white truncate">{rotulo}</span>
             </div>
-            <p className={cn('text-lg sm:text-xl font-bold tabular-nums', cor)}>{fmt(valor)}</p>
+            <p className="text-lg sm:text-xl font-bold tabular-nums text-white">{fmt(valor)}</p>
           </div>
         ))}
       </div>
@@ -197,7 +197,7 @@ export function CashFlowForecast() {
           <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
           <p className="text-sm text-muted-foreground">
             {fmt(forecast.unassignedTotal.outflow)} a pagar e {fmt(forecast.unassignedTotal.inflow)} a receber
-            {' '}não dizem de qual conta saem ou entram. Eles contam no total, mas o alerta por conta fica menos preciso.
+            {' '}não dizem de qual conta saem ou entram. Esses valores já alteram o saldo total no vencimento e aparecem em &quot;Sem conta definida&quot;; nenhuma conta real muda até você informar de onde sai ou onde entra o dinheiro.
           </p>
         </div>
       )}

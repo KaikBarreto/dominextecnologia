@@ -21,8 +21,9 @@
  * `name` que estiver gravado nela NAQUELE momento.
  *
  * POR QUE `is_system` + `type` + `dre_group` é determinístico
- * A semente de empresa nova (`seed_system_financial_categories`) cria SEIS
- * categorias de sistema, e o par (type, dre_group) só repete no grupo `cmv`:
+ * A semente de empresa nova (`seed_system_financial_categories`) cria varias
+ * categorias de sistema. As que nao exercem um papel mapeado sao excluidas
+ * explicitamente por nome antes da resolucao:
  *
  *   Tarifas e Taxas            saida    impostos   ← papel `receipt_fee`
  *   CSP - Materiais            saida    cmv
@@ -163,6 +164,10 @@ export const SYSTEM_CATEGORY_ROLES: Record<SystemCategoryRole, SystemCategoryRol
  *  • 'Folha de Pagamento'        — criada e procurada POR NOME dentro do banco
  *                                  (generate_payroll_for_employee). Renomear
  *                                  faria o banco criar outra na próxima folha.
+ *  • categorias de ativos e empréstimos — são catálogo do DFC, sem papel de
+ *                                  lançamento automático; duas compartilham o
+ *                                  mesmo type/dre_group/dfc_group de papéis
+ *                                  renomeáveis e precisam ficar fora da disputa.
  */
 export const FOREIGN_SYSTEM_SEED_NAMES: readonly string[] = [
   'Impostos e Taxas',
@@ -173,6 +178,10 @@ export const FOREIGN_SYSTEM_SEED_NAMES: readonly string[] = [
   'CSP - Mão de Obra Avulsa',
   'CMV - Materiais',
   'CMV - Mão de Obra Avulsa',
+  'Aquisição de ativos',
+  'Venda de ativos',
+  'Empréstimos recebidos',
+  'Amortização de empréstimos',
 ];
 
 /** Só o que a resolução precisa ler. Compatível com `FinancialCategory`. */
