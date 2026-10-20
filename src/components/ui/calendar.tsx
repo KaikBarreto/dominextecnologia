@@ -1,13 +1,90 @@
 import * as React from "react";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { DayPicker } from "react-day-picker";
+import { DayPicker, type DropdownProps } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
-function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+type CalendarDropdownOption = {
+  disabled: boolean;
+  label: React.ReactNode;
+  value: string;
+};
+
+/**
+ * O dropdown nativo do `react-day-picker` abre uma lista do navegador. Em
+ * faixas grandes (ex.: 100 anos), Chromium pode desenhar essa lista com a
+ * altura inteira da janela e fora do popover — uma faixa branca por cima do
+ * Admin. Este adaptador mantém o contrato do DayPicker, mas usa o Select do
+ * sistema, limitado e rolável dentro do viewport.
+ */
+function CalendarDropdown({
+  children,
+  name,
+  onChange,
+  value,
+  'aria-label': ariaLabel,
+}: DropdownProps) {
+  const options = React.Children.toArray(children).flatMap<CalendarDropdownOption>((child) => {
+    if (!React.isValidElement<React.OptionHTMLAttributes<HTMLOptionElement>>(child)) return [];
+    if (child.type !== 'option' || child.props.value === undefined) return [];
+    return [{
+      disabled: child.props.disabled === true,
+      label: child.props.children,
+      value: String(child.props.value),
+    }];
+  });
+  const selectedValue = value === undefined ? undefined : String(value);
+  const selectedOption = options.find((option) => option.value === selectedValue);
+
+  return (
+    <Select
+      name={name}
+      value={selectedValue}
+      onValueChange={(nextValue) => {
+        // O DayPicker só consulta `event.target.value`. Preservar este formato
+        // evita duplicar sua lógica de navegação entre mês e ano.
+        onChange?.({ target: { value: nextValue } } as React.ChangeEvent<HTMLSelectElement>);
+      }}
+    >
+      <SelectTrigger
+        aria-label={ariaLabel}
+        className="h-8 w-auto min-w-0 gap-1 border-0 bg-transparent px-2 py-1 font-medium capitalize shadow-none hover:bg-muted focus:ring-1 focus:ring-ring [&>svg]:h-3.5 [&>svg]:w-3.5"
+      >
+        <SelectValue>{selectedOption?.label}</SelectValue>
+      </SelectTrigger>
+      <SelectContent className="z-[80] max-h-64 min-w-[6rem]" position="popper">
+        {options.map((option) => (
+          <SelectItem
+            key={option.value}
+            value={option.value}
+            disabled={option.disabled}
+            className="capitalize"
+          >
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function Calendar({
+  className,
+  classNames,
+  components,
+  showOutsideDays = true,
+  ...props
+}: CalendarProps) {
   /**
    * `captionLayout="dropdown-buttons"` troca o título "Outubro 2026" por dois
    * seletores (mês e ano). Sem isso, chegar numa data de nascimento era descer
@@ -18,8 +95,8 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
    * escritas aqui à mão: a lib renderia um `<select>` REAL por cima de um rótulo
    * `caption_label` (`aria-hidden`), e é o CSS da lib que deixa o select
    * invisível. Sem ele, apareciam os dois — select cru do sistema E o rótulo.
-   * Abaixo: select transparente sobreposto (mantém o menu nativo, que no mobile
-   * vira a roleta do SO) e o rótulo estilizado no tema por cima.
+   * O `CalendarDropdown` substitui o `<select>` nativo por um menu do sistema,
+   * porque listas grandes de ano podiam escapar do popover no Chromium.
    */
   const isDropdownCaption = (props.captionLayout ?? "").startsWith("dropdown");
 
@@ -68,9 +145,11 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         ...classNames,
       }}
       components={{
+        Dropdown: CalendarDropdown,
         IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
         IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
         IconDropdown: ({ ..._props }) => <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />,
+        ...components,
       }}
       {...props}
     />

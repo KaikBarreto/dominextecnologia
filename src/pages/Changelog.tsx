@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.1',
+    date: '20 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Calendário corrigido no Admin',
+        description: 'Os seletores de mês e ano agora abrem em um menu compacto e rolável, sem formar uma faixa que cobre o restante da tela.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.38.0',
     date: '20 de outubro de 2026',
     type: 'minor',

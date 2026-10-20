@@ -1,11 +1,10 @@
 // O projeto NÃO importa o `style.css` do react-day-picker: todo o visual sai de
 // `classNames` + Tailwind. No modo `captionLayout="dropdown-buttons"` a lib
-// renderiza um `<select>` REAL por cima de um rótulo `aria-hidden`, e quem
-// esconde o select é justamente o CSS da lib. Sem as classes escritas à mão em
-// `calendar.tsx`, apareceriam OS DOIS na tela (select cru do sistema + rótulo).
+// renderiza um `<select>` nativo, cuja lista de 100+ anos pode ocupar a altura
+// inteira da janela no Chromium. O Calendar troca isso pelo Select do sistema.
 //
-// Este teste trava o contrato: os dois selects existem, estão preenchidos com
-// a faixa pedida e saem invisíveis (opacity-0), com o rótulo estilizado por cima.
+// Este teste trava o contrato: mês e ano são comboboxes do sistema, sem nenhum
+// `<select>` nativo capaz de escapar do popover.
 import { describe, it, expect, afterEach } from 'vitest';
 import * as React from 'react';
 import { act } from 'react';
@@ -13,7 +12,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { ptBR } from 'date-fns/locale';
 import { Calendar } from './calendar';
 
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
+  .IS_REACT_ACT_ENVIRONMENT = true;
 
 let container: HTMLDivElement;
 let root: Root;
@@ -33,7 +33,7 @@ afterEach(() => {
 });
 
 describe('Calendar com seletor de mês e ano', () => {
-  it('renderiza os dois selects, invisíveis, cobrindo o rótulo', () => {
+  it('renderiza mês e ano com o Select do sistema, sem select nativo', () => {
     mount(
       <Calendar
         mode="single"
@@ -45,25 +45,29 @@ describe('Calendar com seletor de mês e ano', () => {
       />,
     );
 
-    const selects = Array.from(container.querySelectorAll('select'));
-    expect(selects).toHaveLength(2);
+    expect(container.querySelectorAll('select')).toHaveLength(0);
 
-    const [monthSelect, yearSelect] = selects;
-    expect(monthSelect.options).toHaveLength(12);
-    // 2020..2030 inclusivo.
-    expect(yearSelect.options).toHaveLength(11);
-    expect(Array.from(yearSelect.options).map((o) => o.value)).toContain('2020');
-    expect(Array.from(yearSelect.options).map((o) => o.value)).toContain('2030');
+    const dropdowns = Array.from(container.querySelectorAll('[role="combobox"]'));
+    expect(dropdowns).toHaveLength(2);
+    expect(dropdowns[0]).toHaveAttribute('aria-label', 'Month: ');
+    expect(dropdowns[1]).toHaveAttribute('aria-label', 'Year: ');
+    expect(dropdowns[0].textContent).toMatch(/outubro/i);
+    expect(dropdowns[1].textContent).toContain('2026');
 
-    // Invisível e sobreposto: é o rótulo estilizado que a pessoa enxerga.
-    for (const select of selects) {
-      expect(select.className).toContain('opacity-0');
-      expect(select.className).toContain('absolute');
-    }
+    // Exercita o estado que quebrava no print: abrir a lista de anos. O menu
+    // fica no portal do Radix, por isso a consulta é no `document.body`.
+    act(() => {
+      dropdowns[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    });
+    const yearOptions = Array.from(document.body.querySelectorAll('[role="option"]'));
+    expect(yearOptions).toHaveLength(11);
+    expect(yearOptions[0].textContent).toContain('2020');
+    expect(yearOptions.at(-1)?.textContent).toContain('2030');
+    expect(document.body.querySelector('[role="listbox"]')?.className).toContain('max-h-64');
   });
 
   it('sem dropdown, o calendário continua com o título simples e nenhum select', () => {
     mount(<Calendar mode="single" locale={ptBR} defaultMonth={new Date(2026, 9, 17)} />);
-    expect(container.querySelectorAll('select')).toHaveLength(0);
+    expect(container.querySelectorAll('[role="combobox"]')).toHaveLength(0);
   });
 });
