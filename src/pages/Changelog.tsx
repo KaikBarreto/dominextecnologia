@@ -42,7 +42,7 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.38.1',
+    version: '1.37.23',
     date: '20 de outubro de 2026',
     type: 'patch',
     changes: [
@@ -54,9 +54,9 @@ export const changelog: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.38.0',
+    version: '1.37.22',
     date: '20 de outubro de 2026',
-    type: 'minor',
+    type: 'patch',
     changes: [
       {
         title: 'Notas fiscais no Portal do Cliente',
