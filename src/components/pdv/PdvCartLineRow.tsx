@@ -109,18 +109,21 @@ export function PdvCartLineRow({
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-2">
-          <PdvQuantityStepper
-            size="sm"
-            className="shrink-0"
-            quantity={line.quantity}
-            availableQuantity={line.availableQuantity}
-            onIncrement={(delta) => onIncrement(line.inventoryId, delta)}
-            onSetQuantity={(quantity) => onSetQuantity(line.inventoryId, quantity)}
-            onConfirmEdit={onConfirmQuantityEdit}
-            decrementAriaLabel="-"
-            incrementAriaLabel="+"
-            editAriaLabel={quantityEditLabel}
-          />
+          <div className="flex items-center gap-1.5">
+            <PdvQuantityStepper
+              size="sm"
+              className="shrink-0"
+              quantity={line.quantity}
+              availableQuantity={line.availableQuantity}
+              onIncrement={(delta) => onIncrement(line.inventoryId, delta)}
+              onSetQuantity={(quantity) => onSetQuantity(line.inventoryId, quantity)}
+              onConfirmEdit={onConfirmQuantityEdit}
+              decrementAriaLabel="-"
+              incrementAriaLabel="+"
+              editAriaLabel={quantityEditLabel}
+            />
+            <span className="text-xs font-medium text-muted-foreground">{line.unit?.trim() || 'un'}</span>
+          </div>
           <span className="flex flex-col items-end text-sm font-bold tabular-nums">
             {lineDiscount > 0 && (
               <span className="text-[10px] font-normal text-muted-foreground line-through">

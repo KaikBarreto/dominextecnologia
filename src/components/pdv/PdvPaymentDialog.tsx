@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Banknote,
+  Check,
   CircleDollarSign,
   CreditCard,
   Handshake,
@@ -8,13 +9,13 @@ import {
   Loader2,
   QrCode,
   Vault,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { DatePicker } from '@/components/ui/DatePicker';
-import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import {
   Select,
   SelectContent,
@@ -23,12 +24,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { PdvMoneyInput } from '@/components/pdv/caixa/PdvMoneyInput';
+import {
+  AccountOptionIcon,
+  type AccountOptionSource,
+} from '@/components/financial/accountSelectOptions';
 import { useLocaleFormatters } from '@/lib/format/hooks';
 import { pdvCashErrorMessage } from '@/lib/pdv/cash-errors';
 import { round2 } from '@/lib/pdv/cash';
 import { cn } from '@/lib/utils';
+import { Switch } from '@/components/ui/switch';
 import {
   PDV_PAYMENT_METHODS,
+  autofillPaymentRemainder,
   computeRemaining,
   computeRowChange,
   computeTotalChange,
@@ -60,7 +67,7 @@ export interface PdvPaymentDialogProps {
   /** Limite e saldo devedor do cliente, pro fiado. */
   customerCredit: PdvCustomerCredit | null;
   /** Contas que podem receber Pix, transferência e cartão (sem cartão de crédito). */
-  accounts: Array<{ id: string; name: string }>;
+  accounts: AccountOptionSource[];
   /** Pode selecionar contas em pagamentos, sem necessariamente ver seus saldos. */
   canUseBankAccounts: boolean;
   /** Há caixa ABERTO? Sem ele a RPC recusa venda em dinheiro. */
@@ -106,13 +113,13 @@ const MAX_MULTI_ROWS = 3;
  * bolinha de cor do refrigerante), não é token de AÇÃO (editar/excluir) — por
  * isso Tailwind cru aqui é a régua certa, não semantic token.
  */
-const METHOD_META: Record<PdvPaymentMethod, { icon: typeof Banknote; activeClass: string }> = {
-  dinheiro: { icon: Banknote, activeClass: 'border-emerald-600 bg-emerald-600 text-white' },
-  pix: { icon: QrCode, activeClass: 'border-cyan-600 bg-cyan-600 text-white' },
-  transferencia: { icon: Landmark, activeClass: 'border-blue-600 bg-blue-600 text-white' },
-  debito: { icon: CreditCard, activeClass: 'border-violet-600 bg-violet-600 text-white' },
-  credito: { icon: CircleDollarSign, activeClass: 'border-fuchsia-600 bg-fuchsia-600 text-white' },
-  fiado: { icon: Handshake, activeClass: 'border-amber-600 bg-amber-600 text-white' },
+const METHOD_META: Record<PdvPaymentMethod, { icon: typeof Banknote; color: string }> = {
+  dinheiro: { icon: Banknote, color: '#059669' },
+  pix: { icon: QrCode, color: '#0891b2' },
+  transferencia: { icon: Landmark, color: '#2563eb' },
+  debito: { icon: CreditCard, color: '#7c3aed' },
+  credito: { icon: CircleDollarSign, color: '#c026d3' },
+  fiado: { icon: Handshake, color: '#d97706' },
 };
 
 /**
@@ -127,8 +134,9 @@ const METHOD_META: Record<PdvPaymentMethod, { icon: typeof Banknote; activeClass
  * na forma ainda não tocada (mesma lógica de "Usar o que falta").
  *
  * Decisões que não são estilo:
- *  • o campo "Valor" é o valor LÍQUIDO aplicado ao pedido e o "Valor recebido"
- *    é só pro troco. Somar troco no valor estouraria a conferência da gaveta;
+ *  • dinheiro tem UM campo visível, "Valor recebido". A parcela líquida
+ *    aplicada ao pedido continua separada por baixo para o troco não inflar
+ *    a venda; no pagamento misto ela é o restante depois das outras formas;
  *  • dinheiro NÃO escolhe conta: vai sempre pro cofre (a RPC ignora conta no
  *    dinheiro de propósito, pra ninguém furar a conferência);
  *  • caixa fechado é dito ANTES de a pessoa digitar, com o caminho pro painel,
@@ -158,6 +166,12 @@ export function PdvPaymentDialog({
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
+  // Fila de edição usada pelo complemento automático com 2 ou 3 formas.
+  // A última forma digitada permanece estável; a mais antiga recebe o resto.
+  const amountEditOrderRef = useRef<string[]>([]);
+  // Depois que o operador informa o dinheiro entregue, não sobrescrevemos
+  // esse valor ao redistribuir as parcelas (senão o troco sumiria).
+  const tenderedEditedIdsRef = useRef<Set<string>>(new Set());
   // Trava síncrona: duplo clique não dispara duas finalizações.
   const submitGuard = useRef(false);
 
@@ -181,6 +195,8 @@ export function PdvPaymentDialog({
     setServerError(null);
     setSubmitting(false);
     setTouched(false);
+    amountEditOrderRef.current = [];
+    tenderedEditedIdsRef.current = new Set();
     submitGuard.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -229,24 +245,34 @@ export function PdvPaymentDialog({
   function patchRow(id: string, patch: Partial<PaymentRow>) {
     setTouched(true);
     setServerError(null);
+    if ('amount' in patch) {
+      amountEditOrderRef.current = [
+        ...amountEditOrderRef.current.filter((rowId) => rowId !== id),
+        id,
+      ];
+    }
+    if ('tendered' in patch) tenderedEditedIdsRef.current.add(id);
     setRows((prev) => {
-      const next = prev.map((row) => (row.id === id ? { ...row, ...patch } : row));
-      // Preenchimento automático (pedido do CEO 2026-10-18, no molde do
-      // `MultiPaymentDialog` da EcoSistema): com exatamente 2 formas, editar
-      // o VALOR de uma joga "o que falta" na outra automaticamente — o caso
-      // mais comum de pagamento misto (metade Pix, metade dinheiro), sem o
-      // operador somar na cabeça nem precisar clicar em "Usar o que falta"
-      // toda vez. Com 3 formas o cálculo de "qual delas é a 'sobrando'"
-      // fica ambíguo, então ali o botão manual segue sendo o caminho.
-      if ('amount' in patch && next.length === 2) {
-        const edited = next.find((row) => row.id === id);
-        const other = next.find((row) => row.id !== id);
-        if (edited && other) {
-          const remaining = Math.max(0, round2(total - edited.amount));
-          return next.map((row) => (row.id === other.id ? { ...row, amount: remaining } : row));
+      const next = prev.map((row) => {
+        if (row.id !== id) return row;
+        const updated = { ...row, ...patch };
+        if (
+          'amount' in patch
+          && row.method === 'dinheiro'
+          && !tenderedEditedIdsRef.current.has(id)
+        ) {
+          updated.tendered = Number(patch.amount) || 0;
         }
-      }
-      return next;
+        return updated;
+      });
+      return 'amount' in patch
+        ? autofillPaymentRemainder(
+            total,
+            next,
+            amountEditOrderRef.current,
+            tenderedEditedIdsRef.current,
+          )
+        : next;
     });
   }
 
@@ -258,7 +284,6 @@ export function PdvPaymentDialog({
    * quebrar sozinha). Nunca deixa ficar sem nenhuma linha, nunca passa de 3.
    */
   function clickMethod(method: PdvPaymentMethod) {
-    setTouched(true);
     setServerError(null);
 
     if (!multiplePayments) {
@@ -273,12 +298,23 @@ export function PdvPaymentDialog({
       const existing = prev.find((row) => row.method === method);
       if (existing) {
         if (prev.length <= 1) return prev; // nunca fica sem nenhuma forma
+        amountEditOrderRef.current = amountEditOrderRef.current.filter((id) => id !== existing.id);
+        tenderedEditedIdsRef.current.delete(existing.id);
         const rest = sortByCanonicalOrder(prev.filter((row) => row.id !== existing.id));
         // Redistribui o valor da forma removida pra primeira linha restante
         // (ordem canônica) — "preenchimento automático" vale pra sair também.
-        return rest.map((row, index) =>
-          index === 0 ? { ...row, amount: round2(row.amount + existing.amount) } : row,
-        );
+        return rest.map((row, index) => {
+          if (index !== 0) return row;
+          const amount = round2(row.amount + existing.amount);
+          return {
+            ...row,
+            amount,
+            tendered:
+              row.method === 'dinheiro' && !tenderedEditedIdsRef.current.has(row.id)
+                ? amount
+                : row.tendered,
+          };
+        });
       }
       if (prev.length >= MAX_MULTI_ROWS) return prev;
       const left = computeRemaining(total, prev);
@@ -296,6 +332,8 @@ export function PdvPaymentDialog({
     const isMultiple = mode === 'multiple';
     setMultiplePayments(isMultiple);
     if (!isMultiple) {
+      amountEditOrderRef.current = [];
+      tenderedEditedIdsRef.current = new Set();
       setRows((prev) => {
         const method = sortByCanonicalOrder(prev)[0]?.method
           ?? (canReceiveCash ? 'dinheiro' : (availableMethods[0] ?? 'fiado'));
@@ -307,10 +345,25 @@ export function PdvPaymentDialog({
   /** "Usar o que falta": joga o restante nesta linha, sem o operador somar na cabeça. */
   function fillRemaining(id: string) {
     setTouched(true);
+    amountEditOrderRef.current = [
+      ...amountEditOrderRef.current.filter((rowId) => rowId !== id),
+      id,
+    ];
     setRows((prev) => {
       const others = prev.filter((row) => row.id !== id);
       const left = computeRemaining(total, others);
-      return prev.map((row) => (row.id === id ? { ...row, amount: Math.max(0, left) } : row));
+      return prev.map((row) => {
+        if (row.id !== id) return row;
+        const amount = Math.max(0, left);
+        return {
+          ...row,
+          amount,
+          tendered:
+            row.method === 'dinheiro' && !tenderedEditedIdsRef.current.has(row.id)
+              ? amount
+              : row.tendered,
+        };
+      });
     });
   }
 
@@ -348,7 +401,6 @@ export function PdvPaymentDialog({
     return () => window.removeEventListener('keydown', onKeyDown, true);
   });
 
-  const accountName = (id: string | null) => accounts.find((a) => a.id === id)?.name ?? '';
   const sortedRows = sortByCanonicalOrder(rows);
   const atMultiCap = multiplePayments && rows.length >= MAX_MULTI_ROWS;
 
@@ -389,34 +441,62 @@ export function PdvPaymentDialog({
       }}
       title={texts.title}
       description={texts.description}
-      className="sm:max-w-[560px]"
+      className="sm:max-w-[960px]"
       footer={footer}
     >
-      <div className="space-y-4">
-        {/* Placar da venda, no molde do `MultiPaymentDialog` da EcoSistema
-            (pedido do CEO 2026-10-19: "replique aquele jeito, em vez de
-            inventar" — bloco neutro `bg-muted`, só Total em destaque, e
-            "Falta"/"Excesso" aparece SÓ quando desbalanceado. Removido
-            "Informado" e a linha "Falta receber: R$ 0,00" sempre visível —
-            informação demais quando a soma já fecha, que é o caso comum. */}
-        <div className="rounded-lg bg-muted p-3 text-center">
-          <p className="mb-1 text-xs text-muted-foreground">{texts.total}</p>
-          <p className="text-2xl font-bold tabular-nums">{money(total)}</p>
-          {remaining > 0.01 && (
-            <p className="mt-2 text-sm font-semibold text-destructive">
-              {texts.remaining}: {money(remaining)}
-            </p>
+      <div className="space-y-3">
+        {/* Pagamento dividido precisa expor a equação sem exigir soma mental:
+            total = informado + falta (ou troco). No caminho simples, total e
+            eventual troco continuam compactos. */}
+        <div
+          className={cn(
+            'grid min-h-16 overflow-hidden rounded-lg bg-muted',
+            multiplePayments ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-1',
           )}
-          {remaining < -0.01 && (
-            <p className="mt-2 text-sm font-semibold text-destructive">
-              {texts.excess}: {money(Math.abs(remaining))}
-            </p>
+        >
+          <div
+            className={cn(
+              'px-4 py-3',
+              multiplePayments && 'col-span-2 border-b border-border sm:col-span-1 sm:border-b-0',
+            )}
+          >
+            <p className="text-xs text-muted-foreground">{texts.total}</p>
+            <p className="truncate text-lg font-bold tabular-nums sm:text-2xl">{money(total)}</p>
+          </div>
+          {multiplePayments && (
+            <>
+              <div className="border-r border-border px-4 py-3 sm:border-l sm:border-r-0 sm:text-center">
+                <p className="text-xs text-muted-foreground">{texts.paid}</p>
+                <p className="truncate text-lg font-bold tabular-nums sm:text-2xl">{money(paid)}</p>
+              </div>
+              <div className="px-4 py-3 text-right">
+                <p className="text-xs text-muted-foreground">
+                  {change > 0
+                    ? texts.change
+                    : remaining < -0.01
+                      ? texts.excess
+                      : texts.remaining}
+                </p>
+                <p
+                  className={cn(
+                    'truncate text-lg font-bold tabular-nums sm:text-2xl',
+                    remaining > 0.01 || remaining < -0.01
+                      ? 'text-destructive'
+                      : 'text-success',
+                  )}
+                >
+                  {money(change > 0 ? change : Math.abs(remaining))}
+                </p>
+              </div>
+            </>
           )}
-          {change > 0 && (
-            <p className="mt-2 flex items-center justify-center gap-1.5 text-sm font-semibold text-success">
-              <Banknote className="h-4 w-4" />
-              {texts.change}: {money(change)}
-            </p>
+          {!multiplePayments && change > 0 && (
+            <div className="border-t border-border px-4 py-2 text-right">
+              <p className="flex items-center justify-end gap-1.5 text-sm font-semibold text-success">
+                <Banknote className="h-4 w-4" />
+                {texts.change}: {money(change)}
+              </p>
+            </div>
           )}
         </div>
 
@@ -462,22 +542,35 @@ export function PdvPaymentDialog({
           </NoticeBanner>
         )}
 
-        {/* Modo único (default, 95% das vendas) × múltiplas (até 3 formas). */}
-        <div className="flex items-center justify-between gap-2">
-          <Label className="text-sm">{texts.methodLabel}</Label>
-          <LabeledSwitch
-            value={multiplePayments ? 'multiple' : 'single'}
-            onChange={changeMode}
-            off={{ value: 'single', label: texts.modeSingle }}
-            on={{ value: 'multiple', label: texts.modeMultiple }}
-          />
+        {/* Uma decisão binária deve parecer binária. O status textual reforça
+            o switch sem depender só da posição ou da cor. */}
+        <div className="flex items-center justify-between gap-4 rounded-lg bg-muted/70 px-3 py-2.5">
+          <div className="min-w-0">
+            <Label htmlFor="pdv-multiple-payments" className="cursor-pointer text-sm font-semibold">
+              {texts.multiplePaymentsLabel}
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              {multiplePayments ? texts.multiplePaymentsOnHint : texts.multiplePaymentsOffHint}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="text-xs font-semibold text-muted-foreground" aria-hidden="true">
+              {multiplePayments ? texts.toggleOn : texts.toggleOff}
+            </span>
+            <Switch
+              id="pdv-multiple-payments"
+              checked={multiplePayments}
+              onCheckedChange={(checked) => changeMode(checked ? 'multiple' : 'single')}
+              aria-label={texts.multiplePaymentsLabel}
+            />
+          </div>
         </div>
 
         {/* Botões SATURADOS por forma de pagamento, em ORDEM CANÔNICA
             (Dinheiro → Pix/Transferência → Débito/Crédito → Fiado). Ativo =
             fundo saturado + texto branco; inativo = neutro de verdade
             (outline), nunca pastel — régua do CEO. */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {availableMethods.map((method) => {
             const meta = METHOD_META[method];
             const Icon = meta.icon;
@@ -489,84 +582,128 @@ export function PdvPaymentDialog({
                 type="button"
                 disabled={disabledByCap}
                 onClick={() => clickMethod(method)}
+                aria-pressed={active}
+                style={active ? { backgroundColor: meta.color, borderColor: meta.color, color: '#fff' } : undefined}
                 className={cn(
-                  'flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2.5 text-center text-xs font-semibold transition-colors',
+                  'relative flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 text-center text-xs font-semibold transition-colors lg:min-h-[52px] lg:flex-row lg:gap-2',
                   active
-                    ? meta.activeClass
+                    ? 'text-white'
                     : 'border-input bg-background text-foreground hover:bg-muted',
                   disabledByCap && 'cursor-not-allowed opacity-50',
                 )}
               >
                 <Icon className="h-5 w-5" />
                 <span className="leading-tight">{texts.methods[method]}</span>
+                {active && <Check className="h-3.5 w-3.5 lg:absolute lg:right-2 lg:top-2" />}
               </button>
             );
           })}
         </div>
 
-        <div className="space-y-3">
+        {/* Lista de recebimentos: forma, valor, destino e remoção compartilham
+            colunas. A leitura vira uma soma vertical, não três cartões soltos. */}
+        <div className="overflow-hidden rounded-lg border divide-y divide-border">
           {sortedRows.map((row) => {
             const issue = rowIssue(row.id);
             const rowChange = computeRowChange(row);
             const meta = METHOD_META[row.method];
             const Icon = meta.icon;
-            // Forma única em dinheiro: o valor da venda já está no placar e
-            // corresponde ao total. No modo múltiplo o campo continua porque
-            // define quanto da parcela será pago em dinheiro.
-            const showPaymentAmount = multiplePayments || row.method !== 'dinheiro';
+            // Dinheiro nunca mostra dois números. `amount` continua sendo a
+            // parcela líquida do pedido; o único campo editável é `tendered`,
+            // que representa o que o cliente entregou e gera troco no excedente.
+            const showPaymentAmount = row.method !== 'dinheiro';
             return (
               <div
                 key={row.id}
                 className={cn(
-                  'space-y-3 rounded-lg border p-3',
-                  touched && issue ? 'border-destructive' : 'border-border',
+                  'grid grid-cols-1 gap-3 p-3 md:grid-cols-[minmax(150px,0.8fr)_minmax(190px,1fr)_minmax(210px,1.15fr)_40px] md:items-center',
+                  touched && issue && 'bg-destructive/5 ring-1 ring-inset ring-destructive/60',
                 )}
               >
-                {/* Múltiplas formas: cabeçalho mostra QUAL forma é esta linha
-                    (o seletor virou os botões acima, não tem mais Select
-                    por linha). Modo único esconde — já está óbvio no botão
-                    marcado acima. */}
-                {multiplePayments && (
-                  <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white"
+                    style={{ backgroundColor: meta.color }}
+                  >
                     <Icon className="h-4 w-4" />
-                    {texts.methods[row.method]}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">
+                      {multiplePayments ? `#${sortedRows.indexOf(row) + 1}` : texts.methodLabel}
+                    </p>
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {texts.methods[row.method]}
+                    </p>
                   </div>
-                )}
+                </div>
 
-                <div className={cn('grid grid-cols-1 gap-3', showPaymentAmount && 'sm:grid-cols-2')}>
-                  {showPaymentAmount && (
-                    <div className="space-y-1.5">
-                      <Label htmlFor={`pdv-pay-amount-${row.id}`}>{texts.amountLabel}</Label>
-                      <PdvMoneyInput
-                        id={`pdv-pay-amount-${row.id}`}
-                        value={row.amount}
-                        autoFocus={sortedRows[0]?.id === row.id}
-                        onChange={(value) => patchRow(row.id, { amount: value })}
-                      />
+                {showPaymentAmount && (
+                  <div className="min-w-0 space-y-1 text-center">
+                    <div className="relative flex min-h-6 items-center justify-center">
+                      <Label
+                        htmlFor={`pdv-pay-amount-${row.id}`}
+                        className="text-center text-xs font-semibold text-muted-foreground"
+                      >
+                        {texts.amountLabel}
+                      </Label>
                       {rows.length > 1 && (
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-7 px-2 text-xs"
+                          className="absolute right-0 h-6 px-1.5 text-[11px]"
                           onClick={() => fillRemaining(row.id)}
                         >
                           {texts.fillRemaining}
                         </Button>
                       )}
                     </div>
-                  )}
+                    <PdvMoneyInput
+                      id={`pdv-pay-amount-${row.id}`}
+                      value={row.amount}
+                      autoFocus={sortedRows[0]?.id === row.id}
+                      selectOnFocus
+                      className="h-auto rounded-none border-0 border-b-2 border-foreground/30 bg-transparent px-2 py-1 text-center text-2xl font-bold shadow-none focus-visible:border-primary focus-visible:ring-0"
+                      onChange={(value) => patchRow(row.id, { amount: value })}
+                      onEnter={() => void handleConfirm()}
+                    />
+                  </div>
+                )}
 
+                {row.method === 'dinheiro' && (
+                  <div className="min-w-0 space-y-1 text-center">
+                    <Label
+                      htmlFor={`pdv-pay-tendered-${row.id}`}
+                      className="block text-center text-xs font-semibold text-muted-foreground"
+                    >
+                      {texts.tenderedLabel}
+                    </Label>
+                    <PdvMoneyInput
+                      id={`pdv-pay-tendered-${row.id}`}
+                      value={row.tendered}
+                      autoFocus={sortedRows[0]?.id === row.id}
+                      selectOnFocus
+                      className="h-auto rounded-none border-0 border-b-2 border-foreground/30 bg-transparent px-2 py-1 text-center text-2xl font-bold shadow-none focus-visible:border-primary focus-visible:ring-0"
+                      onChange={(value) => patchRow(row.id, { tendered: value })}
+                      onEnter={() => void handleConfirm()}
+                    />
+                  </div>
+                )}
+
+                <div className="min-w-0">
                   {row.method === 'dinheiro' && (
-                    <div className={cn('space-y-1.5', !showPaymentAmount && 'sm:max-w-sm')}>
-                      <Label htmlFor={`pdv-pay-tendered-${row.id}`}>{texts.tenderedLabel}</Label>
-                      <PdvMoneyInput
-                        id={`pdv-pay-tendered-${row.id}`}
-                        value={row.tendered}
-                        autoFocus={!showPaymentAmount && sortedRows[0]?.id === row.id}
-                        onChange={(value) => patchRow(row.id, { tendered: value })}
-                      />
-                      <p className="text-xs text-muted-foreground">
+                    <div className="rounded-md bg-muted/70 px-3 py-2 text-sm">
+                      {multiplePayments && (
+                        <p className="text-muted-foreground">
+                          {texts.appliedAmount}:{' '}
+                          <span className="font-semibold text-foreground">{money(row.amount)}</span>
+                        </p>
+                      )}
+                      <p
+                        className={cn(
+                          rowChange > 0 ? 'font-semibold text-success' : 'text-muted-foreground',
+                        )}
+                      >
                         {rowChange > 0
                           ? texts.rowChange.replace('{value}', money(rowChange))
                           : texts.tenderedHint}
@@ -575,19 +712,39 @@ export function PdvPaymentDialog({
                   )}
 
                   {requiresAccount(row.method) && (
-                    <div className="space-y-1.5">
-                      <Label htmlFor={`pdv-pay-account-${row.id}`}>{texts.accountLabel}</Label>
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor={`pdv-pay-account-${row.id}`}
+                        className="text-xs text-muted-foreground"
+                      >
+                        {texts.accountLabel}
+                      </Label>
                       <Select
                         value={row.accountId ?? undefined}
                         onValueChange={(v) => patchRow(row.id, { accountId: v })}
                       >
-                        <SelectTrigger id={`pdv-pay-account-${row.id}`}>
-                          <SelectValue placeholder={texts.accountPlaceholder} />
+                        <SelectTrigger id={`pdv-pay-account-${row.id}`} className="h-11">
+                          <SelectValue placeholder={texts.accountPlaceholder}>
+                            {row.accountId
+                              ? (() => {
+                                  const selectedAccount = accounts.find((account) => account.id === row.accountId);
+                                  return selectedAccount ? (
+                                    <span className="flex min-w-0 items-center gap-2">
+                                      <AccountOptionIcon account={selectedAccount} />
+                                      <span className="truncate">{selectedAccount.name}</span>
+                                    </span>
+                                  ) : null;
+                                })()
+                              : null}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {accounts.map((acc) => (
-                            <SelectItem key={acc.id} value={acc.id}>
-                              {acc.name}
+                            <SelectItem key={acc.id} value={acc.id} textValue={acc.name}>
+                              <span className="flex min-w-0 items-center gap-2">
+                                <AccountOptionIcon account={acc} />
+                                <span className="truncate">{acc.name}</span>
+                              </span>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -599,8 +756,13 @@ export function PdvPaymentDialog({
                   )}
 
                   {row.method === 'fiado' && (
-                    <div className="space-y-1.5">
-                      <Label htmlFor={`pdv-pay-due-${row.id}`}>{texts.dueDateLabel}</Label>
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor={`pdv-pay-due-${row.id}`}
+                        className="text-xs text-muted-foreground"
+                      >
+                        {texts.dueDateLabel}
+                      </Label>
                       <DatePicker
                         id={`pdv-pay-due-${row.id}`}
                         value={row.dueDate ?? ''}
@@ -611,17 +773,26 @@ export function PdvPaymentDialog({
                   )}
                 </div>
 
-                {row.method === 'dinheiro' && (
-                  <p className="text-xs text-muted-foreground">{texts.cashGoesToCofre}</p>
-                )}
-                {row.method !== 'dinheiro' && requiresAccount(row.method) && row.accountId && (
-                  <p className="text-xs text-muted-foreground">
-                    {texts.goesToAccount.replace('{name}', accountName(row.accountId))}
-                  </p>
-                )}
+                <div className="flex justify-end md:justify-center">
+                  {multiplePayments && rows.length > 1 ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+                      aria-label={texts.removeRow}
+                      title={texts.removeRow}
+                      onClick={() => clickMethod(row.method)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  ) : null}
+                </div>
 
                 {touched && issue && (
-                  <NoticeBanner variant="destructive">{issueText(issue)}</NoticeBanner>
+                  <div className="md:col-span-full">
+                    <NoticeBanner variant="destructive">{issueText(issue)}</NoticeBanner>
+                  </div>
                 )}
               </div>
             );

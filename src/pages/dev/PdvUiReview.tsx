@@ -121,6 +121,7 @@ const products: PdvGridProduct[] = [
     name: "Capacitor permanente 35µF 440V",
     imageUrl: "/images/capacitores/capacitor.png",
     unitPrice: 48.9,
+    unit: "un",
     availableQuantity: 18,
   },
   {
@@ -128,6 +129,7 @@ const products: PdvGridProduct[] = [
     name: "Contatora tripolar 25A 220V",
     imageUrl: "/images/contatora.png",
     unitPrice: 89.9,
+    unit: "un",
     availableQuantity: 7,
   },
   {
@@ -135,6 +137,7 @@ const products: PdvGridProduct[] = [
     name: "Controle remoto universal Gree",
     imageUrl: "/images/gree.png",
     unitPrice: 59.9,
+    unit: "un",
     availableQuantity: 12,
   },
   {
@@ -142,6 +145,7 @@ const products: PdvGridProduct[] = [
     name: "Tubo de cobre flexível 1/4 — metro",
     imageUrl: null,
     unitPrice: 36.5,
+    unit: "m",
     availableQuantity: 32,
   },
   {
@@ -149,6 +153,7 @@ const products: PdvGridProduct[] = [
     name: "Fluido refrigerante R410A — recarga",
     imageUrl: null,
     unitPrice: 145,
+    unit: "kg",
     availableQuantity: 9,
   },
   {
@@ -156,6 +161,7 @@ const products: PdvGridProduct[] = [
     name: "Sensor de temperatura 10K",
     imageUrl: null,
     unitPrice: 24.9,
+    unit: "un",
     availableQuantity: 0,
   },
 ];
@@ -227,6 +233,7 @@ const ledger: PdvLedgerEntry[] = [
     reference: "#1842",
     label: "Venda no balcão",
     customerName: "Cliente balcão",
+    actor: { name: "Marina Souza", email: "marina@dominex.com.br", avatarUrl: null },
     amount: 237.6,
     signedAmount: 237.6,
     methods: ["pix"],
@@ -236,18 +243,21 @@ const ledger: PdvLedgerEntry[] = [
         {
           description: products[0].name,
           quantity: 2,
+          unit: "un",
           unitPrice: 48.9,
           total: 97.8,
         },
         {
           description: products[1].name,
           quantity: 1,
+          unit: "un",
           unitPrice: 89.9,
           total: 89.9,
         },
         {
           description: products[2].name,
           quantity: 1,
+          unit: "un",
           unitPrice: 59.9,
           total: 59.9,
         },
@@ -258,6 +268,7 @@ const ledger: PdvLedgerEntry[] = [
           amount: 237.6,
           changeAmount: 0,
           accountName: "Banco principal",
+          accountColor: "#2563eb",
         },
       ],
     },
@@ -269,6 +280,7 @@ const ledger: PdvLedgerEntry[] = [
     reference: "#1841",
     label: "Venda no balcão",
     customerName: null,
+    actor: { name: "Marina Souza", email: "marina@dominex.com.br", avatarUrl: null },
     amount: 145,
     signedAmount: 145,
     methods: ["dinheiro"],
@@ -282,11 +294,26 @@ const ledger: PdvLedgerEntry[] = [
     reference: "",
     label: "Material de limpeza",
     customerName: null,
+    actor: { name: "João Lima", email: "joao@dominex.com.br", avatarUrl: null },
     amount: 42.5,
     signedAmount: -42.5,
     methods: ["dinheiro"],
     occurredAt: "2026-10-19T12:16:00.000Z",
     detail: { category: "Despesas da loja", accountName: "Cofre da loja" },
+  },
+  {
+    key: "purchase-1",
+    id: "purchase-1",
+    kind: "compra",
+    reference: "",
+    label: "Compra de materiais",
+    customerName: null,
+    actor: { name: "Marina Souza", email: "marina@dominex.com.br", avatarUrl: null },
+    amount: 186.8,
+    signedAmount: -186.8,
+    methods: ["pix"],
+    occurredAt: "2026-10-19T11:40:00.000Z",
+    detail: { category: "Materiais", accountName: "Banco principal" },
   },
   {
     key: "bleed-1",
@@ -302,6 +329,7 @@ const ledger: PdvLedgerEntry[] = [
     detail: {
       fromAccountName: "Gaveta do caixa",
       toAccountName: "Banco principal",
+      movedBetweenAccounts: true,
     },
   },
 ];
@@ -960,6 +988,7 @@ function CurrentSale() {
 
 function ProposedSale() {
   const cartState = usePreviewCart();
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const subtotal = computeSubtotal(cartState.cart);
@@ -1006,12 +1035,25 @@ function ProposedSale() {
       setSearch("");
       return;
     }
-    if (event.key !== "Enter" || filteredProducts.length !== 1) return;
+    if (event.key !== "Enter") return;
+    if (!search.trim() && cartState.cart.lines.length > 0 && total > 0) {
+      event.preventDefault();
+      setPaymentOpen(true);
+      return;
+    }
+    if (filteredProducts.length !== 1) return;
     const product = filteredProducts[0];
     if (product.availableQuantity <= 0) return;
     event.preventDefault();
     cartState.addProduct(product);
     setSearch("");
+    window.requestAnimationFrame(() => searchInputRef.current?.focus());
+  };
+
+  const handleCatalogProduct = (product: PdvGridProduct) => {
+    cartState.addProduct(product);
+    setSearch("");
+    window.requestAnimationFrame(() => searchInputRef.current?.focus());
   };
 
   return (
@@ -1060,6 +1102,7 @@ function ProposedSale() {
             <div className="relative">
               <Barcode className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-foreground" />
               <Input
+                ref={searchInputRef}
                 autoFocus
                 placeholder="Escaneie ou busque produto, código e categoria"
                 value={search}
@@ -1107,7 +1150,7 @@ function ProposedSale() {
             {visibleGroups.length > 0 ? (
               <ProductCatalogSections
                 groups={visibleGroups}
-                onSelect={cartState.addProduct}
+                onSelect={handleCatalogProduct}
               />
             ) : (
               <div className="flex min-h-64 flex-col items-center justify-center rounded-lg border border-dashed px-6 text-center">
@@ -1167,7 +1210,26 @@ function ProposedSale() {
         itemCount={cartState.cart.lines.length}
         customerName="Cliente balcão"
         customerCredit={{ creditLimit: 1000, debt: 120 }}
-        accounts={[{ id: "account-preview", name: "Conta principal" }]}
+        accounts={[
+          {
+            id: "account-preview",
+            name: "Conta principal",
+            type: "banco",
+            color: "#7c3aed",
+            institution_code: 260,
+            institution_name: "Nu Pagamentos S.A.",
+            bank_name: "Nubank",
+          },
+          {
+            id: "account-secondary",
+            name: "Conta de recebimentos",
+            type: "banco",
+            color: "#f97316",
+            institution_code: 341,
+            institution_name: "Itaú Unibanco S.A.",
+            bank_name: "Itaú",
+          },
+        ]}
         canUseBankAccounts
         hasOpenCashSession
         hasCofreAccount
@@ -1521,20 +1583,25 @@ function ProposedOrderPanel({
                         </button>
                       </div>
                       <div className="mt-2 flex items-center justify-between gap-2">
-                        <PdvQuantityStepper
-                          size="sm"
-                          quantity={line.quantity}
-                          availableQuantity={line.availableQuantity}
-                          onIncrement={(delta) =>
-                            onIncrement(line.inventoryId, delta)
-                          }
-                          onSetQuantity={(quantity) =>
-                            onSetQuantity(line.inventoryId, quantity)
-                          }
-                          decrementAriaLabel="Diminuir quantidade"
-                          incrementAriaLabel="Aumentar quantidade"
-                          editAriaLabel="Editar quantidade"
-                        />
+                        <div className="flex items-center gap-1.5">
+                          <PdvQuantityStepper
+                            size="sm"
+                            quantity={line.quantity}
+                            availableQuantity={line.availableQuantity}
+                            onIncrement={(delta) =>
+                              onIncrement(line.inventoryId, delta)
+                            }
+                            onSetQuantity={(quantity) =>
+                              onSetQuantity(line.inventoryId, quantity)
+                            }
+                            decrementAriaLabel="Diminuir quantidade"
+                            incrementAriaLabel="Aumentar quantidade"
+                            editAriaLabel="Editar quantidade"
+                          />
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {line.unit?.trim() || "un"}
+                          </span>
+                        </div>
                         <span className="flex flex-col items-end tabular-nums">
                           {lineDiscountAmount > 0 && (
                             <span className="text-[10px] text-muted-foreground line-through">

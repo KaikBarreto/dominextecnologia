@@ -499,6 +499,7 @@ export default function Pdv() {
         name: item.name,
         imageUrl: item.image_url ?? null,
         unitPrice: item.sale_price ?? 0,
+        unit: item.unit || 'un',
         // SNAPSHOT do custo: vai pra `pdv_order_items.unit_cost` e é o que faz
         // o lucro real do caixa. Ler o custo do catálogo depois da venda daria
         // margem retroativa fantasiosa.
@@ -536,6 +537,7 @@ export default function Pdv() {
             name: source.description,
             imageUrl: current?.image_url ?? null,
             unitPrice: source.unitPrice,
+            unit: source.unit?.trim() || current?.unit || 'un',
             unitCost: source.unitCost,
             discountAmount: source.discountAmount,
             quantity: source.quantity,
@@ -668,6 +670,7 @@ export default function Pdv() {
       name: p.name,
       imageUrl: p.imageUrl,
       unitPrice: p.unitPrice,
+      unit: p.unit || 'un',
       unitCost: (p as PdvGridProduct & { unitCost?: number }).unitCost ?? 0,
       availableQuantity: p.availableQuantity,
     };
@@ -705,7 +708,10 @@ export default function Pdv() {
   }
 
   function focusSearch() {
-    if (!isMobileCart || !cartDrawerOpen) searchInputRef.current?.focus();
+    if (isMobileCart && cartDrawerOpen) return;
+    // Depois de adicionar/editar, espera o commit visual do carrinho. Assim o
+    // botão clicado nunca recupera o foco no fim do mesmo gesto.
+    window.requestAnimationFrame(() => searchInputRef.current?.focus());
   }
 
   function handleBarcodeScan(code: string) {
@@ -803,7 +809,15 @@ export default function Pdv() {
           const bCofre = b.id === cofre?.conta_id ? 1 : 0;
           return aCofre - bCofre;
         })
-        .map((acc) => ({ id: acc.id, name: acc.name })),
+        .map((acc) => ({
+          id: acc.id,
+          name: acc.name,
+          type: acc.type,
+          color: acc.color,
+          institution_code: acc.institution_code,
+          institution_name: acc.institution_name,
+          bank_name: acc.bank_name,
+        })),
     [accounts, cofre?.conta_id],
   );
 
@@ -900,6 +914,7 @@ export default function Pdv() {
       inventoryId: line.inventoryId,
       description: line.name,
       quantity: line.quantity,
+      unit: line.unit?.trim() || 'un',
       unitPrice: line.unitPrice,
       unitCost: line.unitCost,
       discountAmount: line.discountAmount,

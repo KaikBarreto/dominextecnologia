@@ -26,6 +26,7 @@ import { useFinancialAccounts, type FinancialAccount } from '@/hooks/useFinancia
 import { useBankPermissions } from '@/hooks/useBankPermissions';
 import {
   usePdvCashRegister,
+  usePdvCashActorProfiles,
   usePdvCashCustomerNames,
   usePdvCashSessionDetail,
   usePdvLedgerTransaction,
@@ -203,10 +204,24 @@ export default function PdvCaixa() {
     [detail.orders, detail.transactions],
   );
   const customerNames = usePdvCashCustomerNames(customerIds, session?.company_id);
+  const actorIds = useMemo(
+    () => [
+      ...detail.orders.map((order) => order.salesperson_id),
+      ...detail.movements.map((movement) => movement.created_by),
+      ...detail.transactions.map((transaction) => transaction.created_by),
+    ].filter((id): id is string => Boolean(id)),
+    [detail.orders, detail.movements, detail.transactions],
+  );
+  const actorProfiles = usePdvCashActorProfiles(actorIds, session?.company_id);
 
   const accountNames = useMemo(() => {
     const map: Record<string, string> = {};
     for (const acc of accounts) map[acc.id] = acc.name;
+    return map;
+  }, [accounts]);
+  const accountColors = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const acc of accounts) map[acc.id] = acc.color;
     return map;
   }, [accounts]);
 
@@ -300,6 +315,7 @@ export default function PdvCaixa() {
       inventoryId: string | null;
       description: string;
       quantity: number;
+      unit: string;
       unitPrice: number;
       unitCost: number;
       discountAmount: number;
@@ -312,6 +328,7 @@ export default function PdvCaixa() {
           inventoryId: i.inventory_id,
           description: i.description,
           quantity: Number(i.quantity) || 0,
+          unit: i.unit || 'un',
           unitPrice: Number(i.unit_price) || 0,
           unitCost: Number(i.unit_cost) || 0,
           discountAmount: Number(i.discount_amount) || 0,
@@ -319,7 +336,7 @@ export default function PdvCaixa() {
         },
       ];
     }
-    const paymentsByOrder: Record<string, Array<{ method: string; amount: number; changeAmount: number; accountName: string | null }>> = {};
+    const paymentsByOrder: Record<string, Array<{ method: string; amount: number; changeAmount: number; accountName: string | null; accountColor: string | null }>> = {};
     const transactionDateByOrder: Record<string, string> = {};
     for (const p of detail.payments) {
       paymentsByOrder[p.order_id] = [
@@ -330,6 +347,9 @@ export default function PdvCaixa() {
           changeAmount: Number(p.change_amount) || 0,
           accountName: p.financial_account_id
             ? (accountNames[p.financial_account_id] ?? null)
+            : null,
+          accountColor: p.financial_account_id
+            ? (accountColors[p.financial_account_id] ?? null)
             : null,
         },
       ];
@@ -353,17 +373,21 @@ export default function PdvCaixa() {
         orderDiscountAmount: Number(o.discount_amount) || 0,
         orderTransactionDate: transactionDateByOrder[o.id] ?? null,
         replacesOrderReference: o.replaces_order_number != null ? `#${o.replaces_order_number}` : null,
+        actor: o.salesperson_id ? (actorProfiles[o.salesperson_id] ?? null) : null,
       })),
       transactions: detail.transactions.map((tx) => ({
         id: tx.id,
         description: tx.description,
         amount: Number(tx.amount) || 0,
         transactionType: tx.transaction_type,
+        kind: tx.transaction_type === 'saida' && tx.supplier_id ? 'compra' : null,
         paymentMethod: tx.payment_method,
         customerName: tx.customer_id ? (customerNames[tx.customer_id] ?? null) : null,
         occurredAt: tx.created_at,
         category: tx.category,
         accountName: tx.account_id ? (accountNames[tx.account_id] ?? null) : null,
+        accountColor: tx.account_id ? (accountColors[tx.account_id] ?? null) : null,
+        actor: tx.created_by ? (actorProfiles[tx.created_by] ?? null) : null,
         notes: tx.notes,
         attachmentCount: attachmentCounts?.[tx.id] ?? 0,
         // Lançado NA CONTA DO COFRE: a exclusão tem que avisar que o espelho
@@ -383,6 +407,7 @@ export default function PdvCaixa() {
         hasAccount: !!m.to_account_id,
         occurredAt: m.created_at,
         cancelledAt: m.cancelled_at,
+        actor: m.created_by ? (actorProfiles[m.created_by] ?? null) : null,
       })),
       labels: {
         sale: t.history.labelSale,
@@ -401,6 +426,8 @@ export default function PdvCaixa() {
     detail.movements,
     customerNames,
     accountNames,
+    accountColors,
+    actorProfiles,
     attachmentCounts,
     cofre?.conta_id,
     cofre?.conta_nome,
@@ -570,6 +597,7 @@ export default function PdvCaixa() {
         inventoryId: item.inventoryId as string,
         description: item.description,
         quantity: item.quantity,
+        unit: item.unit?.trim() || 'un',
         unitPrice: item.unitPrice,
         unitCost: Number(item.unitCost) || 0,
         discountAmount: Number(item.discountAmount) || 0,

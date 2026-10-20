@@ -8735,6 +8735,7 @@ export type Database = {
           quantity: number
           sort_order: number
           total: number
+          unit: string
           unit_cost: number
           unit_price: number
         }
@@ -8748,6 +8749,7 @@ export type Database = {
           quantity?: number
           sort_order?: number
           total?: number
+          unit: string
           unit_cost?: number
           unit_price?: number
         }
@@ -8761,6 +8763,7 @@ export type Database = {
           quantity?: number
           sort_order?: number
           total?: number
+          unit?: string
           unit_cost?: number
           unit_price?: number
         }

@@ -2,6 +2,15 @@ import { useMemo, useRef, useState } from 'react';
 import { ArrowLeft, PackagePlus, Plus, ShieldAlert, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Input } from '@/components/ui/input';
@@ -63,8 +72,13 @@ export default function PdvPurchase() {
   const { categories } = useFinancialCategories();
   const { registerPurchase } = useDirectMaterialPurchase();
   const submittingDraftIdRef = useRef<string | null>(null);
+  const materialTriggerRefs = useRef(new Map<string, HTMLButtonElement>());
+  const quantityInputRefs = useRef(new Map<string, HTMLInputElement>());
+  const unitPriceInputRefs = useRef(new Map<string, HTMLInputElement>());
+  const finalizeActionRef = useRef<HTMLButtonElement>(null);
   const [submittingDraftId, setSubmittingDraftId] = useState<string | null>(null);
   const [supplierCreateDraftId, setSupplierCreateDraftId] = useState<string | null>(null);
+  const [draftToFinalize, setDraftToFinalize] = useState<PdvPurchaseDraft | null>(null);
 
   const today = todayInTz(timezone);
   const eligibleAccounts = useMemo(
@@ -137,9 +151,15 @@ export default function PdvPurchase() {
     }));
   };
 
-  const submit = async (draft: PdvPurchaseDraft) => {
-    if (submittingDraftIdRef.current || registerPurchase.isPending) return;
-    const parsedItems = draft.items.map((item) => ({
+  const isBlankItem = (item: PdvPurchaseDraft['items'][number]) =>
+    !item.inventoryId && !item.quantityText.trim() && !item.unitPriceText.trim();
+
+  const purchaseItems = (draft: PdvPurchaseDraft) =>
+    draft.items.filter((item) => !isBlankItem(item));
+
+  const validationMessageFor = (draft: PdvPurchaseDraft) => {
+    const itemDrafts = purchaseItems(draft);
+    const parsedItems = itemDrafts.map((item) => ({
       inventory_id: item.inventoryId,
       quantity: parsePdvPurchaseNumber(item.quantityText),
       unit_price: parsePdvPurchaseNumber(item.unitPriceText),
@@ -149,21 +169,63 @@ export default function PdvPurchase() {
       Boolean(item.inventory_id)
       && parsedItems.findIndex((candidate) => candidate.inventory_id === item.inventory_id) !== index,
     );
-    const invalidItem = parsedItems.some((item) =>
+    const invalidItem = itemDrafts.length === 0 || parsedItems.some((item) =>
       !item.inventory_id || item.quantity <= 0 || item.unit_price < 0,
     );
 
-    let validationMessage = '';
-    if (!draft.supplierId) validationMessage = t.validation.supplier;
-    else if (!draft.stockId) validationMessage = t.validation.stock;
-    else if (!draft.purchaseDate) validationMessage = t.validation.purchaseDate;
-    else if (invalidItem || total <= 0) validationMessage = t.validation.items;
-    else if (duplicateMaterial) validationMessage = t.validation.duplicateMaterial;
-    else if (!draft.categoryId) validationMessage = t.validation.category;
-    else if (!draft.accountId) validationMessage = t.validation.account;
-    else if (draft.paymentStatus === 'paid' && !draft.paidDate) validationMessage = t.validation.paidDate;
-    else if (draft.paymentStatus === 'paid' && !draft.paymentMethod) validationMessage = t.validation.paymentMethod;
-    else if (draft.paymentStatus === 'pending' && !draft.dueDate) validationMessage = t.validation.dueDate;
+    if (!draft.supplierId) return t.validation.supplier;
+    if (!draft.stockId) return t.validation.stock;
+    if (!draft.purchaseDate) return t.validation.purchaseDate;
+    if (invalidItem || total <= 0) return t.validation.items;
+    if (duplicateMaterial) return t.validation.duplicateMaterial;
+    if (!draft.categoryId) return t.validation.category;
+    if (!draft.accountId) return t.validation.account;
+    if (draft.paymentStatus === 'paid' && !draft.paidDate) return t.validation.paidDate;
+    if (draft.paymentStatus === 'paid' && !draft.paymentMethod) return t.validation.paymentMethod;
+    if (draft.paymentStatus === 'pending' && !draft.dueDate) return t.validation.dueDate;
+    return '';
+  };
+
+  const focusMaterialSearch = (itemId?: string) => {
+    window.requestAnimationFrame(() => {
+      const trigger = itemId
+        ? materialTriggerRefs.current.get(itemId)
+        : materialTriggerRefs.current.values().next().value;
+      trigger?.focus();
+      trigger?.click();
+    });
+  };
+
+  const addMaterialRowAndFocus = (draft: PdvPurchaseDraft) => {
+    const existingBlank = draft.items.find(isBlankItem);
+    if (existingBlank) {
+      focusMaterialSearch(existingBlank.id);
+      return;
+    }
+    const item = createPdvPurchaseItem();
+    updateDraft(draft.id, (current) => ({ ...current, items: [...current.items, item] }));
+    focusMaterialSearch(item.id);
+  };
+
+  const requestFinalize = (draft: PdvPurchaseDraft) => {
+    const validationMessage = validationMessageFor(draft);
+    if (validationMessage) {
+      toast({ title: t.validation.title, description: validationMessage, variant: 'destructive' });
+      return;
+    }
+    // Congela o rascunho escolhido: trocar rapidamente de aba enquanto o
+    // alerta abre nunca pode finalizar a compra vizinha.
+    setDraftToFinalize({ ...draft, items: draft.items.map((item) => ({ ...item })) });
+  };
+
+  const submit = async (draft: PdvPurchaseDraft) => {
+    if (submittingDraftIdRef.current || registerPurchase.isPending) return;
+    const parsedItems = purchaseItems(draft).map((item) => ({
+      inventory_id: item.inventoryId,
+      quantity: parsePdvPurchaseNumber(item.quantityText),
+      unit_price: parsePdvPurchaseNumber(item.unitPriceText),
+    }));
+    const validationMessage = validationMessageFor(draft);
     if (validationMessage) {
       toast({ title: t.validation.title, description: validationMessage, variant: 'destructive' });
       return;
@@ -188,7 +250,9 @@ export default function PdvPurchase() {
         description: draft.description.trim() || null,
         notes: draft.notes.trim() || null,
       });
+      setDraftToFinalize(null);
       deleteDraft(submittedDraftId);
+      window.setTimeout(() => focusMaterialSearch(), 50);
     } catch {
       // O hook já mostra o erro; o rascunho e a chave idempotente ficam intactos para retry.
     } finally {
@@ -330,7 +394,7 @@ export default function PdvPurchase() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-3">
               <div><CardTitle className="text-base">{t.items.title}</CardTitle><p className="text-xs text-muted-foreground">{t.items.hint}</p></div>
-              <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => updateDraft(draftId, (draft) => ({ ...draft, items: [...draft.items, createPdvPurchaseItem()] }))}>
+              <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => addMaterialRowAndFocus(activeDraft)}>
                 <Plus className="h-4 w-4" /> {t.items.add}
               </Button>
             </CardHeader>
@@ -340,9 +404,74 @@ export default function PdvPurchase() {
                 const lineTotal = parsePdvPurchaseNumber(item.quantityText) * parsePdvPurchaseNumber(item.unitPriceText);
                 return (
                   <div key={item.id} className="grid gap-3 rounded-xl border bg-muted/15 p-3 md:grid-cols-[minmax(0,1fr)_120px_150px_40px] md:items-end">
-                    <div className="space-y-1.5"><Label>{t.items.material} {index + 1}</Label><InventoryMaterialSelect stockId={activeDraft.stockId || null} value={item.inventoryId} disabled={busy} onValueChange={(inventoryId) => updateItem(draftId, item.id, { inventoryId })} /></div>
-                    <div className="space-y-1.5"><Label>{t.items.quantity}</Label><NumericInput decimal maxDecimals={4} value={item.quantityText} disabled={busy} onValueChange={(quantityText) => updateItem(draftId, item.id, { quantityText })} placeholder="0" />{inventoryItem?.unit && <p className="text-[11px] text-muted-foreground">{inventoryItem.unit}</p>}</div>
-                    <div className="space-y-1.5"><Label>{t.items.unitPrice}</Label><NumericInput decimal maxDecimals={2} value={item.unitPriceText} disabled={busy} onValueChange={(unitPriceText) => updateItem(draftId, item.id, { unitPriceText })} placeholder="0,00" /><p className="text-[11px] text-muted-foreground">{t.items.subtotal}: {formatCurrency(lineTotal)}</p></div>
+                    <div className="space-y-1.5">
+                      <Label>{t.items.material} {index + 1}</Label>
+                      <InventoryMaterialSelect
+                        stockId={activeDraft.stockId || null}
+                        value={item.inventoryId}
+                        disabled={busy}
+                        triggerRef={(node) => {
+                          if (node) materialTriggerRefs.current.set(item.id, node);
+                          else materialTriggerRefs.current.delete(item.id);
+                        }}
+                        focusSearchOnOpen
+                        onEmptyEnter={isBlankItem(item) ? () => requestFinalize(activeDraft) : undefined}
+                        onValueChange={(inventoryId) => {
+                          updateItem(draftId, item.id, { inventoryId });
+                          window.requestAnimationFrame(() => quantityInputRefs.current.get(item.id)?.focus());
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>{t.items.quantity}</Label>
+                      <div className="flex items-center gap-2">
+                        <NumericInput
+                          ref={(node) => {
+                            if (node) quantityInputRefs.current.set(item.id, node);
+                            else quantityInputRefs.current.delete(item.id);
+                          }}
+                          decimal
+                          maxDecimals={4}
+                          value={item.quantityText}
+                          disabled={busy}
+                          onValueChange={(quantityText) => updateItem(draftId, item.id, { quantityText })}
+                          onKeyDown={(event) => {
+                            if (event.key !== 'Enter') return;
+                            event.preventDefault();
+                            unitPriceInputRefs.current.get(item.id)?.focus();
+                          }}
+                          placeholder="0"
+                        />
+                        <span className="min-w-7 shrink-0 text-sm font-medium text-muted-foreground">
+                          {inventoryItem?.unit?.trim() || 'un'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>{t.items.unitPrice}</Label>
+                      <NumericInput
+                        ref={(node) => {
+                          if (node) unitPriceInputRefs.current.set(item.id, node);
+                          else unitPriceInputRefs.current.delete(item.id);
+                        }}
+                        decimal
+                        maxDecimals={2}
+                        value={item.unitPriceText}
+                        disabled={busy}
+                        onValueChange={(unitPriceText) => updateItem(draftId, item.id, { unitPriceText })}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter') return;
+                          event.preventDefault();
+                          if (
+                            item.inventoryId
+                            && parsePdvPurchaseNumber(item.quantityText) > 0
+                            && parsePdvPurchaseNumber(item.unitPriceText) >= 0
+                          ) addMaterialRowAndFocus(activeDraft);
+                        }}
+                        placeholder="0,00"
+                      />
+                      <p className="text-[11px] text-muted-foreground">{t.items.subtotal}: {formatCurrency(lineTotal)}</p>
+                    </div>
                     <Button type="button" variant="destructive-ghost" size="icon" disabled={busy || activeDraft.items.length === 1} onClick={() => updateDraft(draftId, (draft) => ({ ...draft, items: draft.items.filter((candidate) => candidate.id !== item.id) }))} aria-label={t.items.remove}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 );
@@ -367,7 +496,7 @@ export default function PdvPurchase() {
                 </>
               ) : <div className="space-y-1.5"><Label>{t.fields.dueDate} *</Label><DatePicker value={activeDraft.dueDate} disabled={busy} onValueChange={(dueDate) => patchDraft(draftId, { dueDate })} /></div>}
               <div className="space-y-1.5"><Label htmlFor={`purchase-notes-${draftId}`}>{t.fields.notes}</Label><Textarea id={`purchase-notes-${draftId}`} rows={4} value={activeDraft.notes} disabled={busy} onChange={(event) => patchDraft(draftId, { notes: event.target.value })} placeholder={t.fields.notesPlaceholder} /></div>
-              <Button type="button" size="lg" className="w-full gap-2" disabled={busy || eligibleAccounts.length === 0} onClick={() => void submit(activeDraft)}>
+              <Button type="button" size="lg" className="w-full gap-2" disabled={busy || eligibleAccounts.length === 0} onClick={() => requestFinalize(activeDraft)}>
                 <PackagePlus className="h-5 w-5" /> {submittingDraftId === draftId ? tw.finalizing : tw.finalize}
               </Button>
             </CardContent>
@@ -386,6 +515,42 @@ export default function PdvPurchase() {
           setSupplierCreateDraftId(null);
         }}
       />
+
+      <AlertDialog
+        open={draftToFinalize != null}
+        onOpenChange={(open) => {
+          if (!open && !busy) setDraftToFinalize(null);
+        }}
+      >
+        <AlertDialogContent
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            window.requestAnimationFrame(() => finalizeActionRef.current?.focus());
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tw.finalizeTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {tw.finalizeDescription
+                .replace('{code}', draftToFinalize ? purchaseCode(draftToFinalize.sequence) : '')
+                .replace('{value}', draftToFinalize ? formatCurrency(pdvPurchaseDraftTotal(draftToFinalize)) : '')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>{tw.keepEditing}</AlertDialogCancel>
+            <Button
+              ref={finalizeActionRef}
+              type="button"
+              disabled={busy || !draftToFinalize}
+              onClick={() => {
+                if (draftToFinalize) void submit(draftToFinalize);
+              }}
+            >
+              {busy ? tw.finalizing : tw.finalize}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

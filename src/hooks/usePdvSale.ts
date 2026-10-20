@@ -41,6 +41,8 @@ export interface PdvSaleItemInput {
   /** SNAPSHOT do nome: o cupom não pode mudar porque alguém renomeou o produto. */
   description: string;
   quantity: number;
+  /** Snapshot da unidade comercial exibida no cupom e no historico. */
+  unit: string;
   unitPrice: number;
   /** SNAPSHOT do custo. É o que faz o lucro real do caixa. */
   unitCost: number;
@@ -156,6 +158,7 @@ export function usePdvSale() {
         inventory_id: item.inventoryId,
         description: item.description,
         quantity: item.quantity,
+        unit: item.unit.trim() || 'un',
         unit_price: item.unitPrice,
         unit_cost: item.unitCost,
         // Snapshot do desconto da linha. O total é líquido e recalculado de
@@ -248,6 +251,7 @@ export function usePdvSale() {
         inventory_id: item.inventoryId,
         description: item.description,
         quantity: item.quantity,
+        unit: item.unit.trim() || 'un',
         unit_price: item.unitPrice,
         unit_cost: item.unitCost,
         discount_amount: Math.max(0, item.discountAmount || 0),

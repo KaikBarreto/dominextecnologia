@@ -299,6 +299,27 @@ describe('buildPdvLedger', () => {
     expect(sale.customerName).toBe('Ana Souza');
   });
 
+  it('preserva compra direta como tipo próprio, sem confundir com despesa avulsa', () => {
+    const [purchase] = buildPdvLedger({
+      orders: [],
+      transactions: [{
+        id: 'purchase-1',
+        description: 'Compra de materiais',
+        amount: 90,
+        transactionType: 'saida',
+        kind: 'compra',
+        paymentMethod: 'pix',
+        customerName: null,
+        occurredAt: '2026-10-18T14:00:00.000Z',
+      }],
+      movements: [],
+      labels: LABELS,
+    });
+
+    expect(purchase.kind).toBe('compra');
+    expect(purchase.signedAmount).toBe(-90);
+  });
+
   it('preserva todo o contexto necessário para uma edição segura', () => {
     const [sale] = buildPdvLedger({
       orders: [{

@@ -8,7 +8,7 @@ export interface AccountOptionSource {
   name: string;
   type?: string | null;
   color?: string | null;
-  institution_code?: string | null;
+  institution_code?: number | string | null;
   institution_name?: string | null;
   bank_name?: string | null;
   is_active?: boolean | null;
@@ -52,9 +52,9 @@ export function buildAccountOptions(
 ): SearchableSelectOption[] {
   const { cashSuffix, includeCard = false } = opts;
   const visible = filterAccountsForReceivable(
-    (accounts ?? []) as AccountOptionSource[] as any,
+    (accounts ?? []).map((account) => ({ ...account, type: account.type ?? '' })),
     { includeCard },
-  ) as unknown as AccountOptionSource[];
+  );
   return visible.map(
     (a) => ({
       value: a.id,

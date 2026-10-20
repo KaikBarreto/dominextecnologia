@@ -17,6 +17,8 @@ export interface CartProduct {
   name: string;
   imageUrl: string | null;
   unitPrice: number;
+  /** Unidade comercial curta exibida junto da quantidade (un, kg, m...). */
+  unit?: string | null;
   /**
    * Custo unitário do catálogo (`inventory.cost_price`) no momento em que o
    * item entrou no carrinho. Vira SNAPSHOT em `pdv_order_items.unit_cost`, que
@@ -33,6 +35,7 @@ export interface CartLine {
   name: string;
   imageUrl: string | null;
   unitPrice: number;
+  unit?: string | null;
   /** Snapshot do custo (ver `CartProduct.unitCost`). */
   unitCost: number;
   quantity: number;
@@ -110,6 +113,7 @@ export function addItem(cart: CartState, product: CartProduct, quantity = 1): Ca
     name: product.name,
     imageUrl: product.imageUrl,
     unitPrice: product.unitPrice,
+    unit: product.unit?.trim() || 'un',
     unitCost: product.unitCost ?? 0,
     quantity,
     discountAmount: 0,

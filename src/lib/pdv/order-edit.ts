@@ -24,6 +24,7 @@ export interface PdvSaleEditDraft {
     inventoryId: string;
     description: string;
     quantity: number;
+    unit?: string | null;
     unitPrice: number;
     unitCost: number;
     discountAmount: number;

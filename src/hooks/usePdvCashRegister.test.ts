@@ -20,6 +20,7 @@ function order(overrides: Partial<PdvSessionOrder> = {}): Omit<PdvSessionOrder, 
     created_at: '2026-10-19T20:00:00.000Z',
     replaces_order_id: null,
     replaces_order_number: null,
+    salesperson_id: null,
     ...overrides,
   };
 

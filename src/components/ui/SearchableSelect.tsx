@@ -86,6 +86,12 @@ interface SearchableSelectProps {
    * um dialog de criação rápida aberto por um botão fora deste componente.
    */
   onSearchChange?: (query: string) => void;
+  /** Ref do botão/trigger para fluxos rápidos que devolvem o foco ao seletor. */
+  triggerRef?: React.Ref<HTMLButtonElement>;
+  /** Ao abrir, leva o foco diretamente ao campo de busca do popover. */
+  focusSearchOnOpen?: boolean;
+  /** Enter com a busca vazia. Útil para avançar do lançador rápido à finalização. */
+  onEmptyEnter?: () => void;
 }
 
 export function SearchableSelect({
@@ -105,14 +111,24 @@ export function SearchableSelect({
   createAlwaysLabel,
   id,
   onSearchChange,
+  triggerRef,
+  focusSearchOnOpen = false,
+  onEmptyEnter,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
 
   // Limpa a busca ao fechar pra a próxima abertura começar limpa.
   React.useEffect(() => {
     if (!open) setQuery('');
   }, [open]);
+
+  React.useEffect(() => {
+    if (!open || !focusSearchOnOpen) return;
+    const frame = window.requestAnimationFrame(() => searchInputRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusSearchOnOpen, open]);
 
   // Encontra o item selecionado tanto no modo flat quanto no modo grupos.
   const selected = React.useMemo(() => {
@@ -219,9 +235,11 @@ export function SearchableSelect({
     <Popover open={open} onOpenChange={setOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button
+          ref={triggerRef}
           id={id}
           variant="outline"
           role="combobox"
+          aria-label={selected?.label ?? placeholder}
           aria-expanded={open}
           disabled={disabled}
           className={cn('w-full justify-between font-normal', !selected && 'text-muted-foreground', className)}
@@ -244,9 +262,17 @@ export function SearchableSelect({
       >
         <Command filter={filterOption}>
           <CommandInput
+            ref={searchInputRef}
             placeholder={searchPlaceholder}
             value={query}
             onValueChange={(v) => { setQuery(v); onSearchChange?.(v); }}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' || query.trim() || !onEmptyEnter) return;
+              event.preventDefault();
+              event.stopPropagation();
+              setOpen(false);
+              onEmptyEnter();
+            }}
           />
           <CommandList className="max-h-[40vh] overflow-y-auto overscroll-contain touch-pan-y">
             {/* Catálogo vazio (nada cadastrado, sem busca) → CTA custom quando fornecido.

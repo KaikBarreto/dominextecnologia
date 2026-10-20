@@ -1,6 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { useLocaleFormatters } from '@/lib/format/hooks';
+import { cn } from '@/lib/utils';
 
 interface PdvMoneyInputProps {
   /** Valor na moeda da empresa (não em centavos). */
@@ -10,6 +11,11 @@ interface PdvMoneyInputProps {
   autoFocus?: boolean;
   disabled?: boolean;
   id?: string;
+  className?: string;
+  /** Seleciona o valor inteiro ao focar, para digitar substituir em vez de anexar. */
+  selectOnFocus?: boolean;
+  /** Confirma o valor pelo teclado sem acoplar o input ao modal que o usa. */
+  onEnter?: () => void;
 }
 
 /**
@@ -28,6 +34,9 @@ export function PdvMoneyInput({
   autoFocus,
   disabled,
   id,
+  className,
+  selectOnFocus = false,
+  onEnter,
 }: PdvMoneyInputProps) {
   const { number } = useLocaleFormatters();
 
@@ -43,10 +52,19 @@ export function PdvMoneyInput({
       inputMode="numeric"
       autoFocus={autoFocus}
       disabled={disabled}
-      className="text-right text-lg font-semibold tabular-nums"
+      className={cn('text-right text-lg font-semibold tabular-nums', className)}
+      onFocus={(event) => {
+        if (selectOnFocus) event.currentTarget.select();
+      }}
       onChange={(e) => {
         const digits = e.target.value.replace(/\D/g, '');
         onChange(parseInt(digits || '0', 10) / 100);
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter' || !onEnter) return;
+        event.preventDefault();
+        event.stopPropagation();
+        onEnter();
       }}
       // Colar "4.550" de uma planilha NÃO passa pela regra de centavos (daria
       // R$ 45,50, 100x menor). Ver `money-paste-mask.ts`.

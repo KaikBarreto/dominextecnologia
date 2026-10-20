@@ -11,6 +11,7 @@ import { describe, it, expect } from 'vitest';
 import {
   PAYMENT_TOLERANCE,
   PDV_PAYMENT_METHODS,
+  autofillPaymentRemainder,
   computeRemaining,
   computeRowChange,
   computeTotalChange,
@@ -185,8 +186,65 @@ describe('pdv/payment — vencimento do fiado (mês calendário)', () => {
     expect(newPaymentRow('dinheiro', 30, { accountId: 'conta-1' }).accountId).toBeNull();
   });
 
+  it('dinheiro novo mostra o valor cheio como recebido por padrão', () => {
+    expect(newPaymentRow('dinheiro', 746).tendered).toBe(746);
+  });
+
   it('linha nova nunca nasce com valor negativo', () => {
     expect(newPaymentRow('dinheiro', -10).amount).toBe(0);
+  });
+});
+
+describe('pdv/payment — complemento automático de múltiplas formas', () => {
+  it('completa a segunda forma quando a primeira é editada', () => {
+    const cash = row({ id: 'cash', method: 'dinheiro', amount: 300, tendered: 300 });
+    const pix = row({ id: 'pix', method: 'pix', amount: 0, accountId: 'a' });
+
+    expect(autofillPaymentRemainder(746, [cash, pix], ['cash'])).toMatchObject([
+      { id: 'cash', amount: 300 },
+      { id: 'pix', amount: 446 },
+    ]);
+  });
+
+  it('com três formas preserva a última editada e completa a que ainda não foi tocada', () => {
+    const cash = row({ id: 'cash', method: 'dinheiro', amount: 200, tendered: 200 });
+    const pix = row({ id: 'pix', method: 'pix', amount: 300, accountId: 'a' });
+    const credit = row({ id: 'credit', method: 'credito', amount: 0, accountId: 'a' });
+
+    expect(
+      autofillPaymentRemainder(746, [cash, pix, credit], ['cash', 'pix']),
+    ).toMatchObject([
+      { id: 'cash', amount: 200 },
+      { id: 'pix', amount: 300 },
+      { id: 'credit', amount: 246 },
+    ]);
+  });
+
+  it('quando todas foram editadas ajusta a mais antiga, sem mexer na última digitada', () => {
+    const cash = row({ id: 'cash', method: 'dinheiro', amount: 200, tendered: 200 });
+    const pix = row({ id: 'pix', method: 'pix', amount: 300, accountId: 'a' });
+    const credit = row({ id: 'credit', method: 'credito', amount: 150, accountId: 'a' });
+
+    expect(
+      autofillPaymentRemainder(746, [cash, pix, credit], ['cash', 'pix', 'credit']),
+    ).toMatchObject([
+      { id: 'cash', amount: 296, tendered: 296 },
+      { id: 'pix', amount: 300 },
+      { id: 'credit', amount: 150 },
+    ]);
+  });
+
+  it('preserva valor recebido digitado manualmente ao recalcular a parcela em dinheiro', () => {
+    const cash = row({ id: 'cash', method: 'dinheiro', amount: 200, tendered: 500 });
+    const pix = row({ id: 'pix', method: 'pix', amount: 300, accountId: 'a' });
+
+    const result = autofillPaymentRemainder(
+      746,
+      [cash, pix],
+      ['cash', 'pix'],
+      new Set(['cash']),
+    );
+    expect(result[0]).toMatchObject({ id: 'cash', amount: 446, tendered: 500 });
   });
 });
 

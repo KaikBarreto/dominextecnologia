@@ -93,10 +93,10 @@ export function PdvLedgerRowDetail({
           <table className="w-full text-xs">
             <thead>
               <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                <th className="py-1 pr-2 text-left font-semibold">{texts.detailItemProduct}</th>
-                <th className="py-1 pr-2 text-right font-semibold">{texts.detailItemQty}</th>
-                <th className="py-1 pr-2 text-right font-semibold">{texts.detailItemUnit}</th>
-                <th className="py-1 text-right font-semibold">{texts.detailItemTotal}</th>
+                <th className="py-1 pr-2 text-left font-bold">{texts.detailItemProduct}</th>
+                <th className="py-1 pr-2 text-right font-bold">{texts.detailItemQty}</th>
+                <th className="py-1 pr-2 text-right font-bold">{texts.detailItemUnit}</th>
+                <th className="py-1 text-right font-bold">{texts.detailItemTotal}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
@@ -104,7 +104,7 @@ export function PdvLedgerRowDetail({
                 <tr key={`${entry.key}-item-${i}`}>
                   <td className="py-1.5 pr-2">{item.description}</td>
                   <td className="py-1.5 pr-2 text-right tabular-nums">
-                    {number(item.quantity, { maximumFractionDigits: 3 })}
+                    {number(item.quantity, { maximumFractionDigits: 3 })} {item.unit?.trim() || 'un'}
                   </td>
                   <td className="py-1.5 pr-2 text-right tabular-nums">{show(item.unitPrice)}</td>
                   <td className="py-1.5 text-right font-semibold tabular-nums">
@@ -134,12 +134,21 @@ export function PdvLedgerRowDetail({
           <ul className="space-y-0.5 text-xs">
             {payments.map((p, i) => (
               <li key={`${entry.key}-pay-${i}`} className="flex items-baseline justify-between gap-3">
-                <span className="min-w-0 truncate">
-                  {methodLabel(p.method)}
-                  {p.accountName ? ` · ${p.accountName}` : ''}
+                <span className="flex min-w-0 items-center gap-1.5 truncate">
+                  <span>{methodLabel(p.method)}</span>
+                  {p.accountName && (p.method === 'pix' || p.method === 'transferencia') ? (
+                    <span className="flex min-w-0 items-center gap-1 font-medium text-foreground">
+                      <span
+                        aria-hidden
+                        className="h-2 w-2 shrink-0 rounded-full ring-1 ring-black/10"
+                        style={{ backgroundColor: p.accountColor || 'hsl(var(--primary))' }}
+                      />
+                      <span className="truncate">{p.accountName}</span>
+                    </span>
+                  ) : null}
                   {p.changeAmount > 0
-                    ? ` · ${texts.detailChange.replace('{value}', show(p.changeAmount))}`
-                    : ''}
+                    ? <span>· {texts.detailChange.replace('{value}', show(p.changeAmount))}</span>
+                    : null}
                 </span>
                 <span className="shrink-0 font-semibold tabular-nums">{show(p.amount)}</span>
               </li>
@@ -180,7 +189,7 @@ export function PdvLedgerRowDetail({
         <dl className="grid gap-1.5 text-xs sm:grid-cols-2">
           {facts.map((fact) => (
             <div key={fact.label} className="min-w-0">
-              <dt className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <dt className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 {fact.label}
               </dt>
               <dd className="break-words">{fact.value}</dd>
@@ -209,7 +218,7 @@ export function PdvLedgerRowDetail({
 function TransferEnd({ label, value }: { label: string; value: string }) {
   return (
     <span className="min-w-0">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
         {label}{' '}
       </span>
       <span className="font-medium">{value}</span>

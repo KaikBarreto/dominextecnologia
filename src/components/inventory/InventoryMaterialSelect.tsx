@@ -15,6 +15,9 @@ interface InventoryMaterialSelectProps {
   className?: string;
   /** ID do trigger para associação com o Label externo. */
   id?: string;
+  triggerRef?: React.Ref<HTMLButtonElement>;
+  focusSearchOnOpen?: boolean;
+  onEmptyEnter?: () => void;
 }
 
 /**
@@ -41,6 +44,9 @@ export function InventoryMaterialSelect({
   disabled,
   className,
   id,
+  triggerRef,
+  focusSearchOnOpen,
+  onEmptyEnter,
 }: InventoryMaterialSelectProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.stockConsumption;
@@ -107,6 +113,9 @@ export function InventoryMaterialSelect({
       searchPlaceholder={t.selectSearch}
       emptyMessage={t.selectEmpty}
       emptyContent={emptyContent}
+      triggerRef={triggerRef}
+      focusSearchOnOpen={focusSearchOnOpen}
+      onEmptyEnter={onEmptyEnter}
     />
   );
 }

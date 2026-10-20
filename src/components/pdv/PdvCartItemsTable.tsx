@@ -198,7 +198,7 @@ export function PdvCartItemsTable({
                       </label>
                     </td>
                     <td className="px-2 py-2">
-                      <div className="flex items-center justify-center">
+                      <div className="flex items-center justify-center gap-1.5">
                         <PdvQuantityStepper
                           size="sm"
                           quantity={line.quantity}
@@ -210,6 +210,9 @@ export function PdvCartItemsTable({
                           incrementAriaLabel="+"
                           editAriaLabel={texts.quantityEditLabel}
                         />
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {line.unit?.trim() || 'un'}
+                        </span>
                       </div>
                     </td>
                     <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">

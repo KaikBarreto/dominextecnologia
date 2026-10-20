@@ -117,10 +117,53 @@ export function newPaymentRow(
     id: `pay-${rowSeq}`,
     method,
     amount: round2(Math.max(0, amount)),
-    tendered: 0,
+    // Dinheiro nasce como "recebido exatamente": o operador enxerga o valor
+    // cheio e só altera quando precisa calcular troco.
+    tendered: method === 'dinheiro' ? round2(Math.max(0, amount)) : 0,
     accountId: requiresAccount(method) ? (options.accountId ?? null) : null,
     dueDate: method === 'fiado' ? defaultFiadoDueDate(options.today) : null,
   };
+}
+
+/**
+ * Completa automaticamente pagamentos mistos com 2 ou 3 formas.
+ *
+ * A forma editada por último permanece estável. O restante vai primeiro para
+ * uma forma ainda não editada; quando todas já foram tocadas, vai para a mais
+ * antiga da fila. É a mesma regra operacional da EcoSistema e evita que o
+ * operador tenha de fechar a soma manualmente a cada alteração.
+ */
+export function autofillPaymentRemainder(
+  total: number,
+  rows: PaymentRow[],
+  editOrder: string[],
+  tenderedEditedIds: ReadonlySet<string> = new Set(),
+): PaymentRow[] {
+  if (rows.length < 2) return rows;
+
+  const activeIds = new Set(rows.map((row) => row.id));
+  const editedActive = editOrder.filter((id) => activeIds.has(id));
+  const editedIds = new Set(editedActive);
+  const untouched = rows.filter((row) => !editedIds.has(row.id));
+  const targetId = untouched[0]?.id ?? editedActive[0] ?? null;
+  if (!targetId) return rows;
+
+  const fixedSum = rows
+    .filter((row) => row.id !== targetId)
+    .reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+  const amount = Math.max(0, round2((Number(total) || 0) - fixedSum));
+
+  return rows.map((row) => {
+    if (row.id !== targetId || row.amount === amount) return row;
+    return {
+      ...row,
+      amount,
+      tendered:
+        row.method === 'dinheiro' && !tenderedEditedIds.has(row.id)
+          ? amount
+          : row.tendered,
+    };
+  });
 }
 
 /** Soma do valor LÍQUIDO de todas as linhas (sem troco). */

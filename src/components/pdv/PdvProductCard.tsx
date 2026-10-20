@@ -30,6 +30,7 @@ export interface PdvGridProduct {
   name: string;
   imageUrl: string | null;
   unitPrice: number;
+  unit?: string | null;
   availableQuantity: number;
 }
 

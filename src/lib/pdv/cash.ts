@@ -191,7 +191,7 @@ export function computeSessionResult(args: {
 
 // ── HISTÓRICO ÚNICO DE TRANSAÇÕES ────────────────────────────────────────────
 
-export type PdvLedgerKind = 'venda' | 'receita' | 'despesa' | 'sangria' | 'suprimento';
+export type PdvLedgerKind = 'venda' | 'compra' | 'receita' | 'despesa' | 'sangria' | 'suprimento';
 
 /** Aba de forma de pagamento do histórico. */
 export type PdvMethodGroup = 'todas' | 'dinheiro' | 'pix_transferencia';
@@ -202,6 +202,8 @@ export interface PdvLedgerSaleItem {
   inventoryId?: string | null;
   description: string;
   quantity: number;
+  /** Unidade comercial exibida junto da quantidade (un, kg, m...). */
+  unit?: string | null;
   unitPrice: number;
   /** Snapshot do custo, preservado ao refazer uma venda. */
   unitCost?: number;
@@ -218,6 +220,14 @@ export interface PdvLedgerSalePayment {
   /** Troco devolvido. Só existe em dinheiro. */
   changeAmount: number;
   accountName: string | null;
+  /** Cor configurada na conta financeira. */
+  accountColor?: string | null;
+}
+
+export interface PdvLedgerActor {
+  name: string | null;
+  email: string | null;
+  avatarUrl: string | null;
 }
 
 /**
@@ -242,6 +252,7 @@ export interface PdvLedgerDetail {
   category?: string | null;
   /** Receita/despesa: conta que recebeu/pagou. */
   accountName?: string | null;
+  accountColor?: string | null;
   /** Receita/despesa: observação do lançamento. */
   notes?: string | null;
   /** Receita/despesa: quantos anexos o lançamento tem. */
@@ -275,6 +286,8 @@ export interface PdvLedgerEntry {
   /** O que aparece na coluna principal (descrição, motivo). */
   label: string;
   customerName: string | null;
+  /** Usuário que efetivamente registrou a operação. */
+  actor?: PdvLedgerActor | null;
   /** Valor absoluto. */
   amount: number;
   /** Positivo quando entra dinheiro no resultado do caixa, negativo quando sai. */
@@ -329,6 +342,7 @@ export interface BuildLedgerInput {
     orderDiscountAmount?: number;
     orderTransactionDate?: string | null;
     replacesOrderReference?: string | null;
+    actor?: PdvLedgerActor | null;
   }>;
   /** Lançamentos avulsos REALIZADOS do caixa (`origin = 'pdv'`, `is_paid = true`). */
   transactions: Array<{
@@ -337,11 +351,15 @@ export interface BuildLedgerInput {
     amount: number;
     /** 'entrada' = receita, 'saida' = despesa. */
     transactionType: string;
+    /** Compra direta do PDV já identificada pelo vínculo com fornecedor. */
+    kind?: 'compra' | null;
     paymentMethod: string | null;
     customerName: string | null;
     occurredAt: string;
     category?: string | null;
     accountName?: string | null;
+    accountColor?: string | null;
+    actor?: PdvLedgerActor | null;
     notes?: string | null;
     attachmentCount?: number;
     onCofreAccount?: boolean;
@@ -361,6 +379,7 @@ export interface BuildLedgerInput {
      * (ver o comentário de `buildPdvLedger`).
      */
     cancelledAt?: string | null;
+    actor?: PdvLedgerActor | null;
   }>;
   /**
    * Nome da conta do cofre. Vira a ponta "gaveta" das duas pontas de
@@ -405,6 +424,7 @@ export function buildPdvLedger(input: BuildLedgerInput): PdvLedgerEntry[] {
       reference: `#${o.number}`,
       label: input.labels.sale,
       customerName: o.customerName ?? null,
+      actor: o.actor ?? null,
       amount: round2(Number(o.total) || 0),
       signedAmount: round2(Number(o.total) || 0),
       methods: o.methods ?? [],
@@ -428,10 +448,11 @@ export function buildPdvLedger(input: BuildLedgerInput): PdvLedgerEntry[] {
     entries.push({
       key: `txn:${t.id}`,
       id: t.id,
-      kind: isIn ? 'receita' : 'despesa',
+      kind: t.kind === 'compra' ? 'compra' : (isIn ? 'receita' : 'despesa'),
       reference: '',
       label: t.description || '',
       customerName: t.customerName ?? null,
+      actor: t.actor ?? null,
       amount,
       signedAmount: isIn ? amount : -amount,
       methods: t.paymentMethod ? [t.paymentMethod] : [],
@@ -439,6 +460,7 @@ export function buildPdvLedger(input: BuildLedgerInput): PdvLedgerEntry[] {
       detail: {
         category: t.category ?? null,
         accountName: t.accountName ?? null,
+        accountColor: t.accountColor ?? null,
         notes: t.notes ?? null,
         attachmentCount: t.attachmentCount ?? 0,
         onCofreAccount: t.onCofreAccount === true,
@@ -461,6 +483,7 @@ export function buildPdvLedger(input: BuildLedgerInput): PdvLedgerEntry[] {
       reference: '',
       label: m.reason ? `${withAccount}: ${m.reason}` : withAccount,
       customerName: null,
+      actor: m.actor ?? null,
       amount,
       // Sangria e suprimento movem dinheiro de lugar, NÃO são resultado. O
       // sinal aqui serve só pra a seta/cor da linha do extrato.
@@ -660,7 +683,7 @@ export function planLedgerReversal(
     };
   }
 
-  if (entry.kind === 'receita' || entry.kind === 'despesa') {
+  if (entry.kind === 'compra' || entry.kind === 'receita' || entry.kind === 'despesa') {
     const effects: PdvReversalEffect[] = ['finance_deleted'];
     if (entry.detail?.onCofreAccount) effects.push('drawer_mirror_stays');
     return {

@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.20";
+export const APP_VERSION = "1.37.21";
 
 export const VERSION_NOTES =
-  "O carrinho do PDV agora mantém os produtos em posições estáveis, adiciona itens com um clique e destaca novas transações do Caixa com movimentos mais fáceis de acompanhar.";
+  "A finalização do PDV ficou mais direta, com pagamentos combinados que se completam automaticamente e um histórico do Caixa mais completo para conferência.";

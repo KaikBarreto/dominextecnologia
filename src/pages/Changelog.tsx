@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.21',
+    date: '20 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Finalização de vendas mais direta',
+        description: 'Os valores recebidos ganharam mais destaque e pagamentos combinados agora completam automaticamente o total. Contas bancárias aparecem com sua cor e identificação visual.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Operação mais rápida pelo teclado',
+        description: 'Depois de adicionar um item, o foco retorna à pesquisa. A tecla Enter também conduz a venda ou a compra até a confirmação final.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Histórico do Caixa mais completo',
+        description: 'As transações agora identificam o responsável, exibem a unidade dos itens e deixam tipos, formas de pagamento e contas mais fáceis de conferir.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.20',
     date: '20 de outubro de 2026',
     type: 'patch',

@@ -112,6 +112,7 @@ export interface PdvSessionOrder {
   /** Venda cancelada que esta linha substituiu, quando nasceu de uma edição. */
   replaces_order_id: string | null;
   replaces_order_number: number | null;
+  salesperson_id: string | null;
 }
 
 type PdvSessionOrderRow = Omit<PdvSessionOrder, 'replaces_order_number'>;
@@ -135,6 +136,7 @@ export interface PdvSessionOrderItem {
   inventory_id: string | null;
   description: string;
   quantity: number;
+  unit: string;
   unit_cost: number;
   unit_price: number;
   discount_amount: number;
@@ -162,6 +164,7 @@ export interface PdvSessionMovement {
   to_account_id: string | null;
   financial_transaction_id: string | null;
   created_at: string;
+  created_by: string | null;
   /**
    * Movimento DESFEITO (`pdv_revert_cash_movement`). A linha continua na tabela
    * — `pdv_cash_movements` é livro-razão de dinheiro, append-only no privilégio
@@ -183,10 +186,18 @@ export interface PdvSessionTransaction {
   payment_method: string | null;
   account_id: string | null;
   customer_id: string | null;
+  supplier_id: string | null;
   /** Observação do lançamento. Aparece no expansível de receita/despesa. */
   notes: string | null;
   transaction_date: string;
   created_at: string;
+  created_by: string | null;
+}
+
+export interface PdvSessionActorProfile {
+  name: string | null;
+  email: string | null;
+  avatarUrl: string | null;
 }
 
 const SESSION_KEYS = {
@@ -527,6 +538,40 @@ export function usePdvCashCustomerNames(
   return query.data ?? {};
 }
 
+/** Perfis mínimos dos responsáveis exibidos no histórico, carregados sem bloquear os valores do caixa. */
+export function usePdvCashActorProfiles(
+  userIds: string[],
+  companyId: string | null | undefined,
+) {
+  const ids = useMemo(
+    () => Array.from(new Set(userIds.filter(Boolean))).sort(),
+    [userIds],
+  );
+  const query = useQuery({
+    queryKey: ['pdv-cash-actor-profiles', companyId ?? null, ...ids],
+    enabled: !!companyId && ids.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email, avatar_url')
+        .eq('company_id', companyId as string)
+        .in('user_id', ids);
+      if (error) throw error;
+      const actors: Record<string, PdvSessionActorProfile> = {};
+      for (const profile of data ?? []) {
+        actors[profile.user_id] = {
+          name: profile.full_name ?? null,
+          email: profile.email ?? null,
+          avatarUrl: profile.avatar_url ?? null,
+        };
+      }
+      return actors;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  return query.data ?? {};
+}
+
 /**
  * Tudo o que a sessão em foco movimentou: vendas, itens (pro CMV), pagamentos,
  * sangrias/suprimentos e os lançamentos avulsos do caixa.
@@ -555,7 +600,7 @@ export function usePdvCashSessionDetail(session: PdvCashSession | null) {
 
       const ordersRes = await supabase
         .from('pdv_orders')
-        .select('id, number, total, subtotal, discount_amount, status, customer_id, stock_id, notes, paid_at, created_at, replaces_order_id')
+        .select('id, number, total, subtotal, discount_amount, status, customer_id, stock_id, notes, paid_at, created_at, replaces_order_id, salesperson_id')
         .eq('cash_session_id', sessionId)
         .eq('company_id', session.company_id)
         .in('status', ['pago', 'entregue'])
@@ -575,7 +620,7 @@ export function usePdvCashSessionDetail(session: PdvCashSession | null) {
         orderIds.length
           ? supabase
               .from('pdv_order_items')
-              .select('order_id, inventory_id, description, quantity, unit_cost, unit_price, discount_amount, total')
+              .select('order_id, inventory_id, description, quantity, unit, unit_cost, unit_price, discount_amount, total')
               .in('order_id', orderIds)
           : Promise.resolve({ data: [], error: null } as never),
         orderIds.length
@@ -591,7 +636,7 @@ export function usePdvCashSessionDetail(session: PdvCashSession | null) {
           // deixaria o id da perna cancelada fora de `linkedIds` (abaixo) e a
           // perna reapareceria no extrato como "despesa avulsa do caixa".
           .select(
-            'id, kind, amount, reason, to_account_id, financial_transaction_id, created_at, cancelled_at, cancelled_by, cancelled_reason',
+            'id, kind, amount, reason, to_account_id, financial_transaction_id, created_at, created_by, cancelled_at, cancelled_by, cancelled_reason',
           )
           .eq('session_id', sessionId)
           .order('created_at', { ascending: false }),
@@ -600,7 +645,7 @@ export function usePdvCashSessionDetail(session: PdvCashSession | null) {
             supabase
               .from('financial_transactions')
               .select(
-                'id, description, amount, transaction_type, category, payment_method, account_id, customer_id, notes, transaction_date, created_at, is_paid, cancelled_at, transfer_pair_id',
+                'id, description, amount, transaction_type, category, payment_method, account_id, customer_id, supplier_id, notes, transaction_date, created_at, created_by, is_paid, cancelled_at, transfer_pair_id',
               )
               .eq('origin', 'pdv')
               .gte('created_at', windowStart)
@@ -656,9 +701,11 @@ export function usePdvCashSessionDetail(session: PdvCashSession | null) {
             payment_method: t.payment_method,
             account_id: t.account_id,
             customer_id: t.customer_id,
+            supplier_id: t.supplier_id,
             notes: t.notes,
             transaction_date: t.transaction_date,
             created_at: t.created_at,
+            created_by: t.created_by,
           }),
         );
 

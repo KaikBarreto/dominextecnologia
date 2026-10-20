@@ -49,13 +49,15 @@ import {
 } from '@/utils/pdvCashHistoryExport';
 import { PdvMoneyInput } from '@/components/pdv/caixa/PdvMoneyInput';
 import { PDV_HISTORY_ROW_MOTION, PDV_MOTION_EASE } from '@/lib/pdv/motion';
+import { UserAvatarTooltip } from '@/components/ui/UserAvatarTooltip';
 
 type HistoryTexts = (typeof pdv)['pt-br']['cashPanel']['history'];
+type LedgerBadgeKind = PdvLedgerKind | 'transferencia';
 
 const PER_PAGE = 20;
 
 /** Quantas colunas a tabela do desktop tem (o expansível ocupa a linha inteira). */
-const DESKTOP_COLSPAN = 8;
+const DESKTOP_COLSPAN = 9;
 
 interface PdvCashHistoryPanelProps {
   texts: HistoryTexts;
@@ -143,11 +145,28 @@ export function PdvCashHistoryPanel({
 
   const kindLabels: Record<PdvLedgerKind, string> = {
     venda: texts.kindSale,
+    compra: texts.kindPurchase,
     receita: texts.kindRevenue,
     despesa: texts.kindExpense,
     sangria: texts.kindBleed,
     suprimento: texts.kindSupply,
   };
+
+  function badgeKind(entry: PdvLedgerEntry): LedgerBadgeKind {
+    if (
+      (entry.kind === 'sangria' || entry.kind === 'suprimento')
+      && entry.detail.movedBetweenAccounts
+    ) {
+      return 'transferencia';
+    }
+    return entry.kind;
+  }
+
+  function badgeLabel(entry: PdvLedgerEntry): string {
+    return badgeKind(entry) === 'transferencia'
+      ? texts.kindTransfer
+      : kindLabels[entry.kind];
+  }
 
   const methodLabels: Record<string, string> = {
     dinheiro: texts.methodDinheiro,
@@ -226,6 +245,46 @@ export function PdvCashHistoryPanel({
   function methodText(entry: PdvLedgerEntry): string {
     if (!entry.methods || entry.methods.length === 0) return texts.methodUnknown;
     return entry.methods.map(methodLabel).join(' + ');
+  }
+
+  function methodDisplay(entry: PdvLedgerEntry) {
+    const salePayments = entry.detail.payments ?? [];
+    const rows = salePayments.length > 0
+      ? salePayments.map((payment) => ({
+          method: payment.method,
+          accountName: payment.accountName,
+          accountColor: payment.accountColor,
+        }))
+      : entry.methods.map((method) => ({
+          method,
+          accountName: entry.detail.accountName ?? null,
+          accountColor: entry.detail.accountColor ?? null,
+        }));
+
+    if (rows.length === 0) return <span>{texts.methodUnknown}</span>;
+    return (
+      <span className="flex min-w-0 flex-col gap-0.5">
+        {rows.map((row, index) => {
+          const normalized = normalizePaymentMethod(row.method) ?? row.method;
+          const showAccount = (normalized === 'pix' || normalized === 'transferencia') && row.accountName;
+          return (
+            <span key={`${row.method}-${row.accountName ?? ''}-${index}`} className="flex min-w-0 items-center gap-1.5">
+              <span className="shrink-0">{methodLabel(row.method)}</span>
+              {showAccount && (
+                <span className="flex min-w-0 items-center gap-1 text-xs text-foreground">
+                  <span
+                    aria-hidden
+                    className="h-2 w-2 shrink-0 rounded-full ring-1 ring-black/10"
+                    style={{ backgroundColor: row.accountColor || 'hsl(var(--primary))' }}
+                  />
+                  <span className="truncate">{row.accountName}</span>
+                </span>
+              )}
+            </span>
+          );
+        })}
+      </span>
+    );
   }
 
   async function handleExport(format: 'excel' | 'pdf') {
@@ -353,6 +412,7 @@ export function PdvCashHistoryPanel({
                 <SelectContent>
                   <SelectItem value="all">{texts.typeAll}</SelectItem>
                   <SelectItem value="venda">{texts.kindSale}</SelectItem>
+                  <SelectItem value="compra">{texts.kindPurchase}</SelectItem>
                   <SelectItem value="receita">{texts.kindRevenue}</SelectItem>
                   <SelectItem value="despesa">{texts.kindExpense}</SelectItem>
                   <SelectItem value="sangria">{texts.kindBleed}</SelectItem>
@@ -488,21 +548,33 @@ export function PdvCashHistoryPanel({
                     onClick={() => toggleExpanded(entry.key)}
                     className="flex min-w-0 flex-1 items-start justify-between gap-2 text-left"
                   >
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex items-center gap-1.5">
-                        <KindBadge kind={entry.kind} label={kindLabels[entry.kind]} />
+                    <div className="flex min-w-0 gap-2.5">
+                      <UserAvatarTooltip
+                        name={entry.actor?.name}
+                        email={entry.actor?.email}
+                        avatarUrl={entry.actor?.avatarUrl}
+                        size={30}
+                        side="right"
+                        className="mt-0.5 shrink-0"
+                      />
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-1.5">
+                        <KindBadge kind={badgeKind(entry)} label={badgeLabel(entry)} />
                         {entry.reference && (
                           <span className="text-xs font-semibold tabular-nums text-muted-foreground">
                             {entry.reference}
                           </span>
                         )}
+                        </div>
+                        <p className="truncate text-sm font-medium">
+                          {entry.customerName || entry.label}
+                        </p>
+                        <div className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                          {methodDisplay(entry)}
+                          <span aria-hidden>·</span>
+                          <span className="shrink-0">{dateTime(entry.occurredAt)}</span>
+                        </div>
                       </div>
-                      <p className="truncate text-sm font-medium">
-                        {entry.customerName || entry.label}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {methodText(entry)} · {dateTime(entry.occurredAt)}
-                      </p>
                     </div>
                     <span className="flex shrink-0 items-center gap-1">
                       <span
@@ -546,6 +618,7 @@ export function PdvCashHistoryPanel({
             <thead>
               <tr className="border-b text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <th className="w-8 py-2" />
+                <th className="w-12 py-2 pr-3 font-semibold">{texts.columnOperator}</th>
                 <th className="py-2 pr-3 font-semibold">{texts.columnNumber}</th>
                 <th className="py-2 pr-3 font-semibold">{texts.columnType}</th>
                 <th className="py-2 pr-3 font-semibold">{texts.columnCustomer}</th>
@@ -623,12 +696,21 @@ export function PdvCashHistoryPanel({
                         )}
                       />
                     </td>
+                    <td className="py-4 pr-3">
+                      <UserAvatarTooltip
+                        name={entry.actor?.name}
+                        email={entry.actor?.email}
+                        avatarUrl={entry.actor?.avatarUrl}
+                        size={30}
+                        side="right"
+                      />
+                    </td>
                     {/* Sem travessão de placeholder (régua de copy): linha que
                         não é venda simplesmente não tem número, e a coluna
                         Tipo já diz o que ela é. */}
                     <td className="py-4 pr-3 font-semibold tabular-nums">{entry.reference}</td>
                     <td className="py-4 pr-3">
-                      <KindBadge kind={entry.kind} label={kindLabels[entry.kind]} />
+                      <KindBadge kind={badgeKind(entry)} label={badgeLabel(entry)} />
                     </td>
                     <td className="max-w-[18rem] truncate py-4 pr-3">
                       {entry.customerName || entry.label}
@@ -641,7 +723,9 @@ export function PdvCashHistoryPanel({
                     >
                       {valuesVisible ? money(entry.amount) : '•••••'}
                     </td>
-                    <td className="py-4 pr-3 text-muted-foreground">{methodText(entry)}</td>
+                    <td className="max-w-[14rem] py-4 pr-3 text-muted-foreground">
+                      {methodDisplay(entry)}
+                    </td>
                     <td className="py-4 pr-3 text-muted-foreground">
                       {dateTime(entry.occurredAt)}
                     </td>
@@ -711,13 +795,15 @@ export function PdvCashHistoryPanel({
  * Selo SATURADO com texto na cor de contraste do token. Nunca contorno.
  * `rounded-full` por pedido do CEO (18/10): selo de tipo é pill, não retângulo.
  */
-function KindBadge({ kind, label }: { kind: PdvLedgerKind; label: string }) {
-  const style: Record<PdvLedgerKind, string> = {
-    venda: 'bg-info text-info-foreground',
-    receita: 'bg-success text-success-foreground',
-    despesa: 'bg-destructive text-destructive-foreground',
-    sangria: 'bg-warning text-warning-foreground',
-    suprimento: 'bg-primary text-primary-foreground',
+function KindBadge({ kind, label }: { kind: LedgerBadgeKind; label: string }) {
+  const style: Record<LedgerBadgeKind, string> = {
+    venda: 'bg-emerald-600 text-white',
+    compra: 'bg-blue-600 text-white',
+    receita: 'bg-cyan-600 text-white',
+    despesa: 'bg-red-600 text-white',
+    transferencia: 'bg-indigo-600 text-white',
+    sangria: 'bg-orange-600 text-white',
+    suprimento: 'bg-violet-600 text-white',
   };
   return (
     <span
