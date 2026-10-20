@@ -241,15 +241,15 @@ ALTER TABLE public.customer_portals
     'ticket_requests', true
   );
 
+ALTER TABLE public.customer_portals
+  DROP CONSTRAINT IF EXISTS customer_portals_permissions_shape;
+
 UPDATE public.customer_portals
    SET permissions = COALESCE(permissions, '{}'::jsonb)
                      || jsonb_build_object(
                        'invoices', COALESCE((permissions->>'invoices')::boolean, false),
                        'documents', COALESCE((permissions->>'documents')::boolean, false)
                      );
-
-ALTER TABLE public.customer_portals
-  DROP CONSTRAINT IF EXISTS customer_portals_permissions_shape;
 
 ALTER TABLE public.customer_portals
   ADD CONSTRAINT customer_portals_permissions_shape CHECK (
