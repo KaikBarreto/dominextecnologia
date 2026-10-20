@@ -117,7 +117,7 @@ export const finance = {
         opex: '(-) Despesas Operacionais (OPEX)',
         netResult: '(=) Resultado Líquido',
         nonOperating: '(-) Despesas Não Operacionais',
-        nonOperatingHint: 'Distribuição de lucros, investimento e manutenção de imobilizado. Não mudam o resultado da operação.',
+        nonOperatingHint: 'Juros, multas, perdas eventuais e outros gastos fora da operação normal. Afetam o resultado final.',
         finalResult: '(=) Resultado Final',
         pctOfRevenue: '% da receita',
         total: 'Total',

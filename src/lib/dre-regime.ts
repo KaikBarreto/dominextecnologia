@@ -281,20 +281,19 @@ export function getDreAmount(
   return net > 0 ? net : 0;
 }
 
-/** As três "linhas de despesa" da DRE, abaixo da Receita Líquida. */
+/** Grupos de despesa da DRE, abaixo da Receita Líquida. */
 export type DreExpenseGroup = 'impostos' | 'cmv' | 'opex' | 'nao_operacional';
 
 /**
- * Grupo que fica ABAIXO do resultado líquido, no bloco "Despesas não
- * operacionais" (distribuição de lucros, investimento, manutenção de
- * imobilizado). Desenho do BPO financeiro (18/10/2026): a distribuição de
- * dividendo entra no DRE "pra ter essa visibilidade", mas depois do
- * resultado, porque não muda o operacional.
+ * Grupo que fica abaixo do resultado operacional, no bloco "Despesas não
+ * operacionais", antes do resultado líquido/final. Serve para gastos que
+ * afetam o resultado, mas não pertencem à operação normal, como juros, multas
+ * e perdas eventuais.
  *
  * ⚠️ NÃO confundir com `DRE_EXCLUDED_GROUP` ('outros'), que some do DRE
- * inteiro. São coisas diferentes e a diferença é decisão do BPO: aporte de
- * sócio é 'outros' (não entra no DRE de jeito nenhum, "aporte não é receita
- * de nada"); distribuição de lucro é 'nao_operacional' (entra, abaixo).
+ * inteiro. Aporte, distribuição de lucros, aplicação financeira, CAPEX e
+ * amortização do principal são movimentos patrimoniais: ficam em `outros` e
+ * aparecem no DFC pelo grupo apropriado.
  */
 export const DRE_NON_OPERATING_GROUP = 'nao_operacional';
 
@@ -317,10 +316,8 @@ export function classifyDreCategory(
   if (dreGroup === 'impostos') return 'impostos';
   if (dreGroup === 'cmv') return 'cmv';
   // ⚠️ Precisa vir ANTES do fallback por regex. Sem esta linha,
-  // 'nao_operacional' cairia em 'opex' no `return` final e a distribuição de
-  // lucro entraria nas despesas operacionais, MENTINDO no resultado líquido —
-  // exatamente o oposto do que o BPO pediu. É a regressão mais perigosa deste
-  // trabalho; `dre-regime.test.ts` trava isso.
+  // 'nao_operacional' cairia em 'opex' no `return` final e misturaria uma
+  // despesa extraordinária com a operação. `dre-regime.test.ts` trava isso.
   if (dreGroup === DRE_NON_OPERATING_GROUP) return DRE_NON_OPERATING_GROUP;
   const lower = (category || '').toLowerCase();
   if (/imposto|taxa|tributo|icms|iss|pis|cofins/.test(lower)) return 'impostos';

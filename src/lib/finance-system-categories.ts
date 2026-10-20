@@ -87,7 +87,7 @@ export interface SystemCategoryRoleSpec {
    * ⚠️ Virou obrigatório em 18/10/2026, com as 4 categorias do fluxo de caixa
    * previsto. Elas criam DUAS colisões no trio:
    *   (true, entrada, outros)          → Aporte de sócios  · Resgate de aplicação
-   *   (true, saida,   nao_operacional) → Aplicação finan.  · Distribuição de lucros
+   *   (true, saida,   outros)          → Aplicação finan.  · Distribuição de lucros
    *
    * Sem desempate, NENHUMA das quatro seria dona única do seu papel, e o efeito
    * prático é pior que confusão interna: `canRenameCategory` TRAVARIA o nome
@@ -115,12 +115,12 @@ export const SYSTEM_CATEGORY_ROLES: Record<SystemCategoryRole, SystemCategoryRol
     dreGroup: 'outros',
     dfcGroup: 'financiamento',
   },
-  /** Lucro que sai para os sócios. Aparece ABAIXO do resultado líquido. */
+  /** Lucro que sai para os sócios. É destinação patrimonial e fica fora da DRE. */
   profit_distribution: {
     role: 'profit_distribution',
     seedName: 'Distribuição de lucros',
     type: 'saida',
-    dreGroup: 'nao_operacional',
+    dreGroup: 'outros',
     dfcGroup: 'financiamento',
   },
   /** Dinheiro que a empresa guarda (poupança, CDB). Sai do caixa, segue no patrimônio. */
@@ -128,7 +128,7 @@ export const SYSTEM_CATEGORY_ROLES: Record<SystemCategoryRole, SystemCategoryRol
     role: 'investment_outflow',
     seedName: 'Aplicação financeira',
     type: 'saida',
-    dreGroup: 'nao_operacional',
+    dreGroup: 'outros',
     dfcGroup: 'investimento',
   },
   /** O mesmo dinheiro voltando para o caixa. Não é receita. */

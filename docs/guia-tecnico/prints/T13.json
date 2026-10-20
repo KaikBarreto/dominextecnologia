@@ -298,6 +298,56 @@
         "altura": 1050
       },
       "nota": "Requer planilha de exemplo carregada; o Tech Lead injeta o arquivo antes da captura."
+    },
+    {
+      "id": "t13-dfc-previsto",
+      "url": "/financeiro/relatorios?tab=dfc",
+      "legenda": "DFC no modo Previsto, com saldo atual, entradas e saídas futuras e projeção diária por conta para 15 ou 30 dias.",
+      "passos": [
+        { "esperar": 3000 },
+        { "esperarTexto": "Saldo atual", "tempo": 30000 },
+        { "esperar": 1500 }
+      ],
+      "recorte": "main",
+      "viewport": { "largura": 1440, "altura": 1100 }
+    },
+    {
+      "id": "t13-dfc-realizado",
+      "url": "/financeiro/relatorios?tab=dfc",
+      "legenda": "DFC no modo Realizado, com os fluxos operacionais, de investimento e de financiamento separados.",
+      "passos": [
+        { "esperar": 3000 },
+        { "clicar": "Realizado" },
+        { "esperarTexto": "DFC Gerencial", "tempo": 30000 },
+        { "esperar": 1500 }
+      ],
+      "recorte": "main",
+      "viewport": { "largura": 1440, "altura": 1100 }
+    },
+    {
+      "id": "t13-dre-atual",
+      "url": "/financeiro/relatorios?tab=dre",
+      "legenda": "DRE atual, com resultado operacional, despesas não operacionais e resultado final.",
+      "passos": [
+        { "esperar": 3000 },
+        { "esperarTexto": "Demonstrativo de Resultado", "tempo": 30000 },
+        { "esperar": 1500 }
+      ],
+      "recorte": "main",
+      "viewport": { "largura": 1440, "altura": 1100 }
+    },
+    {
+      "id": "t13-nova-categoria-atual",
+      "url": "/financeiro/configuracoes-financeiras?tab=categorias",
+      "legenda": "Formulário Nova categoria com categoria principal, Grupo DRE e Grupo DFC.",
+      "passos": [
+        { "esperar": 3000 },
+        { "clicar": "Nova categoria" },
+        { "esperarTexto": "Grupo DFC", "tempo": 20000 },
+        { "esperar": 1000 }
+      ],
+      "recorte": "dialog",
+      "viewport": { "largura": 1440, "altura": 1100 }
     }
   ]
 }

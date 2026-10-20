@@ -313,8 +313,8 @@ describe('as 4 categorias do fluxo de caixa previsto (colisão dupla no trio)', 
   const quatro = [
     { id: 'ap', name: 'Aporte de sócios', type: 'entrada', dre_group: 'outros', dfc_group: 'financiamento', is_system: true, is_active: true },
     { id: 'rg', name: 'Resgate de aplicação', type: 'entrada', dre_group: 'outros', dfc_group: 'investimento', is_system: true, is_active: true },
-    { id: 'di', name: 'Distribuição de lucros', type: 'saida', dre_group: 'nao_operacional', dfc_group: 'financiamento', is_system: true, is_active: true },
-    { id: 'al', name: 'Aplicação financeira', type: 'saida', dre_group: 'nao_operacional', dfc_group: 'investimento', is_system: true, is_active: true },
+    { id: 'di', name: 'Distribuição de lucros', type: 'saida', dre_group: 'outros', dfc_group: 'financiamento', is_system: true, is_active: true },
+    { id: 'al', name: 'Aplicação financeira', type: 'saida', dre_group: 'outros', dfc_group: 'investimento', is_system: true, is_active: true },
   ];
 
   it.each([

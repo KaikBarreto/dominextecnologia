@@ -573,12 +573,12 @@ describe('classifyDreCategory — grupo não operacional', () => {
     // o valor desconhecido cairia no `return 'opex'` final e a distribuição
     // de lucro entraria nas despesas operacionais, mentindo no resultado
     // líquido — o oposto do que o BPO pediu.
-    expect(classifyDreCategory('Distribuição de lucros', 'nao_operacional')).toBe('nao_operacional');
+    expect(classifyDreCategory('Juros de empréstimo', 'nao_operacional')).toBe('nao_operacional');
   });
 
   it('o cadastro vence o nome: categoria com cara de custo mas marcada como não operacional', () => {
     // 'Material' bateria no regex de CMV. O `dre_group` tem que vencer.
-    expect(classifyDreCategory('Material de investimento', 'nao_operacional')).toBe('nao_operacional');
+    expect(classifyDreCategory('Multa contratual', 'nao_operacional')).toBe('nao_operacional');
   });
 
   it('os três grupos de cima continuam intactos', () => {

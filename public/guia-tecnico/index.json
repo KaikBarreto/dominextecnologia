@@ -1,12 +1,12 @@
 {
  "documento": "Guia Técnico — Dominex",
  "descricao": "Manual completo da Dominex, sistema de gestão para empresas de serviço técnico em campo (refrigeração e climatização, elétrica, energia solar, CFTV, dedetização, elevadores e assistência técnica). Uma seção por área do sistema, na ordem da Trilha Domiflix. Cada chunk é auto-contido e pode ser recuperado isoladamente.",
- "gerado_em": "2026-10-18",
- "total_chunks": 713,
- "total_palavras": 163484,
+ "gerado_em": "2026-10-20",
+ "total_chunks": 715,
+ "total_palavras": 165443,
  "chunks_por_tipo": {
   "visao_geral": 18,
-  "capitulo": 207,
+  "capitulo": 209,
   "problema": 243,
   "faq": 227,
   "glossario": 18
@@ -262,7 +262,7 @@
    "titulo": "Financeiro",
    "fase": "06",
    "fase_titulo": "O dinheiro e o fiscal",
-   "chunks": 47,
+   "chunks": 49,
    "capitulos": [
     "Os endereços do menu Financeiro e o que cada um responde",
     "Movimentações: criar a primeira conta bancária/caixa",

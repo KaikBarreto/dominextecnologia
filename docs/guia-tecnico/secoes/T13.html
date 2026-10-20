@@ -4,38 +4,42 @@
   <p class="lead">O Financeiro do Dominex é onde entra o dinheiro que você recebe do cliente, sai o que você paga de fornecedor, funcionário e imposto, e onde o sistema mostra se o mês fechou no azul ou no vermelho. É o módulo que mais evita prejuízo, porque ele junta conta bancária, caixa, cartão de crédito, contas a pagar, contas a receber e resultado num lugar só.</p>
 
   <div class="meta">
-    <span><b>Onde fica:</b> Menu lateral, grupo <span class="ui">Financeiro</span>, com três telas próprias: <span class="ui">Relatório</span>, <span class="ui">Movimentações</span> e <span class="ui">Contas</span></span>
-    <span><b>Rotas:</b> <code>/financeiro/relatorio</code>, <code>/financeiro/movimentacoes</code>, <code>/financeiro/contas</code></span>
+    <span><b>Onde fica:</b> Menu lateral, grupo <span class="ui">Financeiro</span>: <span class="ui">Relatório</span>, <span class="ui">Movimentações</span>, <span class="ui">Contas</span>, <span class="ui">Cobranças</span>, <span class="ui">Relatórios</span> e <span class="ui">Configurações financeiras</span></span>
+    <span><b>Rotas:</b> <code>/financeiro/relatorio</code>, <code>/financeiro/movimentacoes</code>, <code>/financeiro/contas</code>, <code>/financeiro/cobrancas</code>, <code>/financeiro/relatorios</code>, <code>/financeiro/configuracoes-financeiras</code></span>
     <span><b>Disponibilidade:</b> o Financeiro completo vem desde o plano Essencial. Somente o plano Exceção não possui acesso ao grupo Financeiro</span>
     <span><b>Quem enxerga:</b> quem tem a permissão de tela <span class="ui">Financeiro</span>. Dentro dela, as ações <span class="ui">Gerenciar Financeiro</span>, <span class="ui">Excluir Lançamento Financeiro</span> e <span class="ui">Ver Totais Financeiros</span> são separadas</span>
   </div>
 
-  <h2>1. Os 3 endereços do menu Financeiro e o que cada um responde</h2>
+  <h2>1. Os endereços do menu Financeiro e o que cada um responde</h2>
 
-  <p>O Financeiro deixou de ser uma tela só com muitas abas e virou um grupo no menu com três telas independentes. Cada uma responde a uma pergunta diferente, e saber qual pergunta é qual economiza metade das dúvidas de suporte.</p>
+  <p>O Financeiro é um grupo no menu com telas separadas por tarefa. Cada uma responde a uma pergunta diferente.</p>
 
   <table class="dados">
     <thead><tr><th>Tela</th><th>Endereço</th><th>Pergunta que ela responde</th></tr></thead>
     <tbody>
-      <tr><td><span class="ui">Relatório</span></td><td><code>/financeiro/relatorio</code></td><td>"Como foi o meu mês?" Traz a Visão Geral com os cards de receita, despesa e saldo, a DRE, as Categorias e, com a conta de recebimento ativa, Cobranças e Assinaturas.</td></tr>
+      <tr><td><span class="ui">Relatório</span></td><td><code>/financeiro/relatorio</code></td><td>"Como foi o meu mês?" Traz a visão geral com cards, saldo por conta, gráficos e últimas movimentações.</td></tr>
       <tr><td><span class="ui">Movimentações</span></td><td><code>/financeiro/movimentacoes</code></td><td>"Quanto tem em cada conta e o que passou por ela?" Traz o carrossel de contas bancárias, caixas e cartões, com o extrato de cada uma e as faturas de cada cartão.</td></tr>
       <tr><td><span class="ui">Contas</span></td><td><code>/financeiro/contas</code></td><td>"O que eu tenho pra pagar e pra receber?" É a programação financeira, com vencimentos, atrasos e baixas.</td></tr>
+      <tr><td><span class="ui">Cobranças</span></td><td><code>/financeiro/cobrancas</code></td><td>"Como cobrar o cliente e acompanhar os recebimentos?" Reúne cobranças e assinaturas.</td></tr>
+      <tr><td><span class="ui">Relatórios</span></td><td><code>/financeiro/relatorios</code></td><td>"A operação deu resultado e como o caixa vai ficar?" Reúne Visão Geral, DRE, DFC, Contabilidade e Análise.</td></tr>
+      <tr><td><span class="ui">Configurações financeiras</span></td><td><code>/financeiro/configuracoes-financeiras</code></td><td>"Como classificar os lançamentos?" Reúne Categorias e Centros de Custo.</td></tr>
     </tbody>
   </table>
 
-  <p>O topo das três telas é o mesmo: título <span class="ui">Financeiro</span>, um seletor de período (que abre em <span class="ui">Este mês</span>) e, quando a empresa tem recebimento online ativo, o botão <span class="ui">Cobrar</span>. Trocar o período no topo muda o que as três telas mostram.</p>
+  <p>As telas operacionais usam o mesmo cabeçalho <span class="ui">Financeiro</span>. Nos relatórios, o seletor de período abre em <span class="ui">Este mês</span>; a previsão do DFC é a exceção, porque sempre começa hoje e olha 15 ou 30 dias à frente.</p>
 
   <figure>
     <img src="img/t13-financeiro-relatorio.png" alt="Tela Relatório do Financeiro com cards verdes de Receitas, vermelho de Despesas e azul de Saldo do Período, blocos A Receber e A Pagar, seção Saldo por Conta com caixa, bancos e cartões, botões Nova Receita, Nova Despesa e Exportar CSV, gráfico Fluxo de Caixa e rosca de Distribuição por Categoria">
     <figcaption>Financeiro, tela Relatório, aba Visão Geral: cards do período, saldo por conta e os dois gráficos.</figcaption>
   </figure>
 
-  <h3>As abas de dentro do Relatório</h3>
+  <h3>As abas de dentro de Relatórios</h3>
   <ul>
     <li><span class="ui">Visão Geral</span>: sempre aparece.</li>
-    <li><span class="ui">DRE - Resultado</span>: faz parte do Financeiro completo disponível desde o plano Essencial.</li>
-    <li><span class="ui">Categorias</span>: sempre aparece.</li>
-    <li><span class="ui">Cobranças</span> e <span class="ui">Assinaturas</span>: fazem parte do Financeiro completo desde o Essencial e aparecem quando a conta de recebimento está ativa.</li>
+    <li><span class="ui">DRE</span>: resultado em Caixa ou Competência.</li>
+    <li><span class="ui">DFC</span>: fluxo previsto e realizado.</li>
+    <li><span class="ui">Contabilidade</span>: pacote para o contador.</li>
+    <li><span class="ui">Análise</span>: comparação de períodos e rentabilidade de clientes.</li>
   </ul>
 
   <h3>Recebimento do cliente pelo Asaas, na sua própria conta</h3>
@@ -52,7 +56,7 @@
     <figcaption>Nova cobrança: o formulário de link de pagamento gerado pelo botão Cobrar.</figcaption>
   </figure>
 
-  <div class="regra">As rotas antigas <code>/financeiro/dre</code>, <code>/financeiro/caixas-bancos</code>, <code>/financeiro/categorias</code> e <code>/financeiro/configuracoes</code> não existem mais como telas. Elas continuam funcionando, mas apenas redirecionando: a primeira cai no Relatório na aba DRE, e as outras três caem em Movimentações. Se alguém tiver um atalho salvo, o atalho não quebra, só muda de destino.</div>
+  <div class="regra">As rotas antigas continuam funcionando por redirecionamento: <code>/financeiro/dre</code> abre <span class="ui">Relatórios</span> na DRE; <code>/financeiro/caixas-bancos</code> abre <span class="ui">Movimentações</span>; <code>/financeiro/categorias</code> abre <span class="ui">Configurações financeiras</span> em Categorias; <code>/financeiro/configuracoes</code> abre <span class="ui">Configurações financeiras</span>.</div>
 
   <h2>2. Movimentações: criar a primeira conta bancária/caixa</h2>
 
@@ -303,9 +307,9 @@
   </ul>
   <div class="regra">Transferências entre contas e pagamentos de fatura de cartão ficam fora dos cards de Receitas e Despesas. É movimento interno: sem esse corte, transferir R$ 10.000,00 de um banco pro outro apareceria como R$ 10.000,00 de receita.</div>
 
-  <h2>10. Categorias: criar, organizar em subcategorias e definir o grupo da DRE</h2>
+  <h2>10. Categorias: criar, organizar em subcategorias e definir os grupos DRE e DFC</h2>
 
-  <p>As categorias vivem na aba <span class="ui">Categorias</span> da tela <span class="ui">Relatório</span>. Elas são divididas em duas listas, <span class="ui">Categorias de Receita</span> e <span class="ui">Categorias de Despesa</span>.</p>
+  <p>As categorias vivem em <span class="ui">Financeiro</span> → <span class="ui">Configurações financeiras</span> → aba <span class="ui">Categorias</span>. Elas são divididas em duas listas, <span class="ui">Categorias de Receita</span> e <span class="ui">Categorias de Despesa</span>.</p>
 
   <h3>Campos do formulário</h3>
   <table class="dados">
@@ -313,12 +317,20 @@
     <tbody>
       <tr><td><span class="ui">Nome</span></td><td>Sim</td><td>Validação "Nome é obrigatório". Exemplo sugerido na tela: "Serviços".</td></tr>
       <tr><td><span class="ui">Tipo</span></td><td>Sim</td><td>Receita, Despesa ou Ambos. Validação "Tipo é obrigatório".</td></tr>
-      <tr><td><span class="ui">Grupo DRE</span></td><td>Não</td><td>Impostos e Deduções, CSP (Custo do Serviço Prestado) ou Despesas Operacionais (OPEX). É o que decide em qual linha do resultado a categoria entra.</td></tr>
+      <tr><td><span class="ui">Grupo DRE</span></td><td>Não</td><td>Impostos e Deduções, CSP, Despesas Operacionais, Despesas Não Operacionais ou Não compõe o DRE. Decide se e onde a categoria entra no resultado.</td></tr>
+      <tr><td><span class="ui">Grupo DFC</span></td><td>Não</td><td>Atividades Operacionais, de Investimento ou de Financiamento. Decide em qual bloco do fluxo de caixa o dinheiro aparece.</td></tr>
       <tr><td><span class="ui">Categoria principal</span></td><td>Não</td><td>Escolha uma categoria principal para transformar a nova categoria em subcategoria. A hierarquia tem no máximo dois níveis.</td></tr>
       <tr><td><span class="ui">Cor</span></td><td>Sim</td><td>Validação "Cor é obrigatória". Usada nos gráficos.</td></tr>
       <tr><td><span class="ui">Ícone</span></td><td>Não</td><td>Só visual.</td></tr>
     </tbody>
   </table>
+
+  <figure>
+    <img src="img/t13-nova-categoria-atual.jpg" alt="Formulário Nova categoria com os campos Nome, Categoria principal, Tipo, Grupo DRE, Grupo DFC, Cor e Ícone">
+    <figcaption>Uma categoria tem duas classificações independentes: o <span class="ui">Grupo DRE</span> explica o efeito no resultado; o <span class="ui">Grupo DFC</span> explica o efeito no caixa.</figcaption>
+  </figure>
+
+  <div class="regra"><b>Categoria principal e subcategoria organizam; os grupos classificam.</b> Você pode criar uma principal chamada <b>Movimentos patrimoniais</b> e, embaixo, subcategorias como CAPEX, empréstimo, amortização e distribuição. Cada filha mantém o próprio Grupo DRE e Grupo DFC. Não coloque CAPEX dentro de Despesas Não Operacionais só para enxergá-lo: compra de ativo fica em <b>Não compõe o DRE</b> e <b>Atividades de Investimento</b>.</div>
 
   <h3>Ordenar</h3>
   <p>No computador dá pra arrastar as categorias pra mudar a ordem (o cabeçalho mostra a dica "arraste para reordenar"). Existem também as ações <span class="ui">Mover para cima</span> e <span class="ui">Mover para baixo</span>. A ordem definida aqui é a ordem em que elas aparecem nos seletores de categoria dos formulários.</p>
@@ -393,7 +405,12 @@
 
   <h2>12. DRE: o botão Caixa × Competência e o que muda no número</h2>
 
-  <p>A DRE é o Demonstrativo de Resultado: o relatório que responde "sobrou ou faltou dinheiro no período". Ela fica na aba <span class="ui">DRE - Resultado</span> da tela <span class="ui">Relatório</span> e faz parte do Financeiro completo desde o plano Essencial.</p>
+  <p>A DRE é o Demonstrativo de Resultado: o relatório que responde "a operação deu lucro ou prejuízo no período?". Para saber quanto dinheiro ficou disponível, use o DFC. A DRE fica na aba <span class="ui">DRE - Resultado</span> da tela <span class="ui">Relatórios</span> e faz parte do Financeiro completo desde o plano Essencial.</p>
+
+  <figure>
+    <img src="img/t13-dre-atual.jpg" alt="Demonstrativo de Resultado com Receita Bruta, Impostos, Receita Líquida, CSP, Lucro Bruto, Despesas Operacionais, Despesas Não Operacionais e Resultado Final">
+    <figcaption>DRE: resultado da operação separado dos gastos não operacionais que realmente afetam o lucro.</figcaption>
+  </figure>
 
   <h3>Como o resultado é montado</h3>
   <table class="dados">
@@ -404,17 +421,17 @@
       <tr><td><span class="ui">(=) Receita Líquida</span></td><td>Receita bruta menos impostos.</td></tr>
       <tr><td><span class="ui">(-) Custo dos Serviços Prestados (CSP)</span></td><td>Saídas cujas categorias estão no grupo DRE "CSP".</td></tr>
       <tr><td><span class="ui">(=) Lucro Bruto</span></td><td>Receita líquida menos o CSP. Mostra também a margem em porcentagem.</td></tr>
-      <tr><td><span class="ui">(-) Despesas Operacionais (OPEX)</span></td><td>Todo o resto das saídas.</td></tr>
-      <tr><td><span class="ui">(=) Resultado Líquido (EBITDA)</span></td><td>O número final, com o rótulo <span class="ui">Superávit</span>, <span class="ui">Déficit</span> ou <span class="ui">Equilibrado</span>.</td></tr>
-      <tr><td><span class="ui">(-) Despesas Não Operacionais</span></td><td>Distribuição de lucros, investimento e manutenção de bens. Ficam <b>abaixo</b> do resultado porque não mudam o desempenho da operação, mas saem do caixa.</td></tr>
-      <tr><td><span class="ui">(=) Resultado Final</span></td><td>O que sobra depois de tudo. Só aparece quando existe alguma despesa não operacional no período.</td></tr>
+      <tr><td><span class="ui">(-) Despesas Operacionais (OPEX)</span></td><td>Aluguel, folha, software, comercial e os demais gastos da operação.</td></tr>
+      <tr><td><span class="ui">(=) Resultado Líquido (EBITDA)</span></td><td>Resultado da operação antes das despesas não operacionais, com <span class="ui">Superávit</span>, <span class="ui">Déficit</span> ou <span class="ui">Equilibrado</span>.</td></tr>
+      <tr><td><span class="ui">(-) Despesas Não Operacionais</span></td><td>Juros, multas, perdas eventuais e outros gastos que afetam o resultado, mas não pertencem à operação normal.</td></tr>
+      <tr><td><span class="ui">(=) Resultado Final</span></td><td>Resultado depois das despesas não operacionais. Só aparece quando existe valor nesse grupo.</td></tr>
     </tbody>
   </table>
   <p>Cada bloco abre e fecha, mostrando as categorias que compõem o total. No topo há três indicadores: <span class="ui">Margem</span>, <span class="ui">Receita Líq.</span> e <span class="ui">EBITDA</span>, e um gráfico <span class="ui">Evolução Receita × Despesas</span> mês a mês.</p>
 
   <p>Ao lado de cada valor aparece o <b>percentual sobre o faturamento</b>, que é como se compara um mês com o outro sem se enganar pelo tamanho. Uma despesa de R$ 10 mil num mês de R$ 100 mil é bem diferente da mesma despesa num mês de R$ 30 mil.</p>
 
-  <div class="dica"><b>Aporte de sócio não aparece na DRE</b>, e isso é proposital: dinheiro que o sócio coloca não é receita de venda nem de serviço. Ele aparece só no fluxo de caixa. Já a distribuição de lucro aparece, abaixo do resultado, para você enxergar quanto saiu.</div>
+  <div class="regra"><b>CAPEX, principal de empréstimo, aplicação financeira e distribuição de lucro ficam fora da DRE.</b> Aquisição de máquina, veículo ou imóvel transforma dinheiro em ativo. Receber empréstimo não é receita; amortizar o principal não é despesa; distribuir lucro não reduz o lucro já apurado. Somente os <b>juros</b> do empréstimo entram no resultado. Se uma parcela mistura principal e juros, faça dois lançamentos.</div>
 
   <h3>O botão Caixa × Competência</h3>
   <p>No cabeçalho escuro da tabela existe um botão de duas posições. Ele muda a régua que a DRE usa pra decidir em qual mês cada lançamento entra. Em linguagem de dono de empresa:</p>
@@ -438,6 +455,10 @@
     <li>Transferências entre contas.</li>
     <li>Pagamentos de fatura de cartão.</li>
     <li>Lançamentos da categoria <b>Ajuste de saldo</b>.</li>
+    <li>Aporte e distribuição de lucros.</li>
+    <li>Aplicação e resgate financeiro.</li>
+    <li>Aquisição e venda de ativos pelo valor bruto.</li>
+    <li>Empréstimo recebido e amortização do principal.</li>
   </ul>
   <p>Existe ainda uma data opcional de início da DRE nas configurações da empresa. Quando preenchida, o rodapé mostra "DRE contabilizado a partir de DD/MM/AAAA" e nada anterior a essa data entra no resultado. Serve pra empresa que migrou de outro sistema e não quer arrastar histórico incompleto.</p>
 
@@ -678,6 +699,11 @@
 
   <p>Fica em <span class="ui">Financeiro</span>, <span class="ui">Relatórios</span>, aba <span class="ui">DFC - Fluxo de Caixa</span>. A aba tem duas visões no topo:</p>
 
+  <figure>
+    <img src="img/t13-dfc-previsto.jpg" alt="DFC no modo Previsto com saldo atual, valores a receber e a pagar, dívidas vencidas e projeção diária por conta">
+    <figcaption>DFC <span class="ui">Previsto</span>: o que deve entrar e sair nos próximos 15 ou 30 dias.</figcaption>
+  </figure>
+
   <table class="dados">
     <thead><tr><th>Visão</th><th>Responde</th><th>Quem usa</th></tr></thead>
     <tbody>
@@ -685,6 +711,11 @@
       <tr><td><span class="ui">Realizado</span></td><td>"para onde o dinheiro foi no período?"</td><td>o contador</td></tr>
     </tbody>
   </table>
+
+  <figure>
+    <img src="img/t13-dfc-realizado.jpg" alt="DFC no modo Realizado com saldo inicial, variação líquida, saldo final e o fluxo separado por atividade e categoria">
+    <figcaption>DFC <span class="ui">Realizado</span>: o dinheiro que efetivamente se moveu, separado em atividades operacionais, de investimento e de financiamento.</figcaption>
+  </figure>
 
   <h3>Os cinco números do topo</h3>
 
@@ -722,23 +753,31 @@
 
   <p>Lançamento sem conta informada entra no total, mas num grupo chamado <span class="ui">Sem conta definida</span>, e a tela avisa quanto é. Isso existe para ser honesto: enquanto houver dinheiro ali, o alerta de conta negativa fica menos preciso, porque o sistema não sabe de qual conta aquele valor sai.</p>
 
-  <h3>Aporte, distribuição de lucro e dinheiro guardado</h3>
+  <h3>Aporte, ativos, empréstimos, distribuição e dinheiro guardado</h3>
 
-  <p>O sistema já vem com quatro categorias prontas para o dinheiro que <b>não é receita nem despesa da operação</b>:</p>
+  <p>O sistema já vem com categorias prontas para os principais movimentos que alteram o caixa sem virar receita ou despesa do período:</p>
 
   <table class="dados">
     <thead><tr><th>Categoria</th><th>O que é</th><th>Aparece na DRE?</th></tr></thead>
     <tbody>
       <tr><td><span class="ui">Aporte de sócios</span></td><td>dinheiro que o sócio coloca na empresa</td><td>Não. Não é receita de nada</td></tr>
-      <tr><td><span class="ui">Distribuição de lucros</span></td><td>lucro que sai para os sócios</td><td>Sim, abaixo do resultado</td></tr>
-      <tr><td><span class="ui">Aplicação financeira</span></td><td>dinheiro que a empresa guarda</td><td>Sim, abaixo do resultado</td></tr>
+      <tr><td><span class="ui">Distribuição de lucros</span></td><td>lucro que sai para os sócios</td><td>Não. É destinação do lucro</td></tr>
+      <tr><td><span class="ui">Aplicação financeira</span></td><td>dinheiro que a empresa guarda</td><td>Não. O dinheiro continua no patrimônio</td></tr>
       <tr><td><span class="ui">Resgate de aplicação</span></td><td>o mesmo dinheiro voltando</td><td>Não</td></tr>
+      <tr><td><span class="ui">Aquisição de ativos</span></td><td>compra de máquina, veículo ou imóvel, o CAPEX</td><td>Não. Vai ao DFC de investimento</td></tr>
+      <tr><td><span class="ui">Venda de ativos</span></td><td>valor bruto recebido pela venda do bem</td><td>Não. Vai ao DFC de investimento</td></tr>
+      <tr><td><span class="ui">Empréstimos recebidos</span></td><td>dinheiro que entrou do banco</td><td>Não. Vai ao DFC de financiamento</td></tr>
+      <tr><td><span class="ui">Amortização de empréstimos</span></td><td>devolução do principal ao banco</td><td>Não. Vai ao DFC de financiamento</td></tr>
     </tbody>
   </table>
 
-  <div class="regra"><b>Lançar aporte como receita faz a empresa pagar imposto sobre ele.</b> Para a Receita, tudo que entra é venda até que se prove o contrário. Por isso existe a categoria separada: ela entra no caixa e fica fora do resultado.</div>
+  <div class="regra"><b>Use duas linhas quando a parcela do empréstimo mistura principal e juros.</b> O principal vai em <span class="ui">Amortização de empréstimos</span>, fora da DRE e no DFC de financiamento. Os juros vão em uma categoria de despesa não operacional, porque são custo financeiro do período.</div>
 
-  <p>As quatro aparecem nas listas da conciliação bancária e no molde de importação por planilha, então dá para classificar por qualquer um dos caminhos.</p>
+  <div class="aviso"><b>Venda de ativo não calcula ganho ou perda automaticamente.</b> O valor bruto recebido vai ao DFC de investimento. Se o preço de venda for diferente do valor contábil do bem, o ganho ou a perda deve ser lançado separadamente conforme orientação da contabilidade. O sistema também não controla depreciação ou o livro do imobilizado.</div>
+
+  <div class="dica"><b>Exemplo prático.</b> A empresa apurou R$ 20.000,00 de resultado, pagou R$ 5.000,00 de principal de financiamento e distribuiu R$ 10.000,00 aos sócios. A DRE continua em R$ 20.000,00; o DFC mostra que R$ 15.000,00 saíram em financiamento e que restaram R$ 5.000,00 de caixa. Assim, o sistema explica a diferença entre lucro e dinheiro disponível sem transformar CAPEX ou distribuição em despesa.</div>
+
+  <p>Essas categorias aparecem nos seletores dos lançamentos, na conciliação bancária e no molde de importação por planilha, então dá para classificar por qualquer um dos caminhos.</p>
 
   <h2>19. Análise: comparar períodos e descobrir qual cliente realmente dá lucro</h2>
 
