@@ -140,6 +140,7 @@ export const customers = {
       tabTasks: 'Tarefas',
       tabTickets: 'Chamados',
       tabContracts: 'Contratos',
+      tabDocuments: 'Documentos',
       tabFinancial: 'Financeiro',
       tabStock: 'Estoque',
 
@@ -665,6 +666,7 @@ export const customers = {
       tabTasks: 'Tasks',
       tabTickets: 'Tickets',
       tabContracts: 'Contracts',
+      tabDocuments: 'Documents',
       tabFinancial: 'Financial',
 
       actions: 'Actions',
@@ -1150,6 +1152,7 @@ export const customers = {
       tabTasks: 'Tareas',
       tabTickets: 'Solicitudes',
       tabContracts: 'Contratos',
+      tabDocuments: 'Documentos',
       tabFinancial: 'Financiero',
 
       actions: 'Acciones',
@@ -1635,6 +1638,7 @@ export const customers = {
       tabTasks: 'Tâches',
       tabTickets: 'Tickets',
       tabContracts: 'Contrats',
+      tabDocuments: 'Documents',
       tabFinancial: 'Financier',
 
       actions: 'Actions',

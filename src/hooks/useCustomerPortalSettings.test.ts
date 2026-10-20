@@ -5,7 +5,7 @@ import {
 } from './useCustomerPortalSettings';
 
 describe('parsePortalSettings', () => {
-  it('mantém todas as permissões habilitadas para portais legados', () => {
+  it('mantém legado habilitado, mas nasce fechado para fiscal e documentos', () => {
     expect(parsePortalSettings({
       token: 'portal-token',
       is_active: true,
@@ -31,6 +31,8 @@ describe('parsePortalSettings', () => {
         equipment: false,
         contracts: true,
         charges: false,
+        invoices: true,
+        documents: false,
         ticket_requests: false,
       },
     });
@@ -41,6 +43,8 @@ describe('parsePortalSettings', () => {
       equipment: false,
       contracts: true,
       charges: false,
+      invoices: true,
+      documents: false,
       ticket_requests: false,
     });
   });

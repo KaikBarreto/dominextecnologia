@@ -26,6 +26,8 @@ const DEFAULT_SETTINGS: CustomerPortalSettings = {
     equipment: true,
     contracts: true,
     charges: true,
+    invoices: false,
+    documents: false,
     ticket_requests: true,
   },
 };

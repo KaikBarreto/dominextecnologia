@@ -63,6 +63,12 @@ verify_jwt = false
 [functions.pmoc-portal-share]
 verify_jwt = false
 
+# customer-portal-document-download: download anon por capability token do
+# Portal do Cliente. A funcao revalida portal ativo, sessao/senha, permissao,
+# empresa, cliente e documento antes de emitir URL assinada curta.
+[functions.customer-portal-document-download]
+verify_jwt = false
+
 # asaas-webhook: endpoint PÚBLICO chamado pela Asaas (sem JWT).
 # FAIL-CLOSED: valida o header asaas-access-token contra ASAAS_WEBHOOK_TOKEN
 # (timing-safe) dentro da função. Sem o secret setado → 401 sempre.

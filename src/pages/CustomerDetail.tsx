@@ -81,12 +81,13 @@ import { CustomerExpenseDialog } from '@/components/customers/CustomerExpenseDia
 import { CustomerDeleteDebtNotice } from '@/components/customers/CustomerDeleteDebtNotice';
 import { useCustomerPaidExpenses, type CustomerPaidExpense } from '@/hooks/useCustomerPaidExpenses';
 import { buildPortalCallsPath } from '@/lib/portalCalls';
+import { CustomerDocumentsTab } from '@/components/customers/CustomerDocumentsTab';
 
-type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos' | 'cobrancas' | 'estoque';
+type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos' | 'documentos' | 'cobrancas' | 'estoque';
 
 type FinanceSubTab = 'tudo' | 'a_vencer' | 'pagas';
 
-const CUSTOMER_DETAIL_TABS: TabKey[] = ['geral', 'equipamentos', 'historico', 'tarefas', 'financeiro', 'chamados', 'contratos', 'cobrancas', 'estoque'];
+const CUSTOMER_DETAIL_TABS: TabKey[] = ['geral', 'equipamentos', 'historico', 'tarefas', 'financeiro', 'chamados', 'contratos', 'documentos', 'cobrancas', 'estoque'];
 
 /**
  * Datas financeiras vêm como 'YYYY-MM-DD'. Ancoramos ao meio-dia para comparar
@@ -133,6 +134,7 @@ export default function CustomerDetail() {
   // trava própria — quem já vê a aba pode editar, igual à tela geral.
   const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
   const canManageFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:manage_finance'));
+  const canManageCustomerDocuments = isAdminOrGestor() || hasPermission('fn:edit_customer');
   const hasPortal = hasModule('customer_portal');
   const hasCobrancas = hasModule('cobrancas');
   const canCreateOpportunity = hasModule('crm');
@@ -605,6 +607,7 @@ export default function CustomerDetail() {
       allTabs.push({ key: 'chamados', label: t.tabTickets });
     }
     allTabs.push({ key: 'contratos', label: t.tabContracts });
+    allTabs.push({ key: 'documentos', label: t.tabDocuments });
     if (canViewCustomerFinancial) {
       allTabs.push({ key: 'financeiro', label: t.tabFinancial });
     }
@@ -1481,6 +1484,10 @@ export default function CustomerDetail() {
             />
           )}
         </div>
+      )}
+
+      {activeTab === 'documentos' && id && (
+        <CustomerDocumentsTab customerId={id} canManage={canManageCustomerDocuments} />
       )}
 
       {activeTab === 'financeiro' && (

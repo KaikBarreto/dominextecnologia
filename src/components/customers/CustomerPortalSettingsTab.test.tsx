@@ -13,6 +13,8 @@ const settings: CustomerPortalSettings = {
     equipment: true,
     contracts: true,
     charges: true,
+    invoices: false,
+    documents: false,
     ticket_requests: true,
   },
 };
@@ -45,6 +47,8 @@ describe('CustomerPortalSettingsTab', () => {
     expect(screen.getByRole('switch', { name: 'Equipamentos' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Contratos' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Cobranças' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Notas fiscais' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Documentos' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Abrir chamados' })).toBeInTheDocument();
   });
 

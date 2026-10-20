@@ -18,6 +18,8 @@ import {
   User,
   Users,
   CreditCard,
+  Files,
+  ReceiptText,
   LockKeyhole,
   LogOut,
 } from 'lucide-react';
@@ -57,6 +59,7 @@ import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { PortalChargesSection } from '@/components/portal/PortalChargesSection';
 import { formatOSNumber } from '@/lib/osNumber';
+import { PortalDocumentsSection, type PortalDocumentItem } from '@/components/portal/PortalDocumentsSection';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Interfaces e constantes
@@ -165,6 +168,8 @@ interface PortalPayload {
   equipment_field_config?: FieldConfig[];
   contracts?: PortalContractSummary[];
   charges?: PortalCharge[];
+  invoices?: PortalDocumentItem[];
+  documents?: PortalDocumentItem[];
   permissions?: PortalPermissions;
 }
 
@@ -173,6 +178,8 @@ interface PortalPermissions {
   equipment: boolean;
   contracts: boolean;
   charges: boolean;
+  invoices: boolean;
+  documents: boolean;
   ticket_requests: boolean;
 }
 
@@ -181,6 +188,8 @@ const DEFAULT_PORTAL_PERMISSIONS: PortalPermissions = {
   equipment: true,
   contracts: true,
   charges: true,
+  invoices: false,
+  documents: false,
   ticket_requests: true,
 };
 
@@ -253,6 +262,8 @@ export default function CustomerPortal() {
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
   const [contracts, setContracts] = useState<PortalContractSummary[]>([]);
   const [charges, setCharges] = useState<PortalCharge[]>([]);
+  const [invoices, setInvoices] = useState<PortalDocumentItem[]>([]);
+  const [documents, setDocuments] = useState<PortalDocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
@@ -333,6 +344,8 @@ export default function CustomerPortal() {
       setServiceOrders(filterOutInternalTasks(payload.service_orders));
       setContracts(payload.contracts ?? []);
       setCharges(payload.charges ?? []);
+      setInvoices(payload.invoices ?? []);
+      setDocuments(payload.documents ?? []);
     } catch {
       setError('portal_load_error');
     } finally {
@@ -525,6 +538,8 @@ export default function CustomerPortal() {
         serviceOrders={serviceOrders}
         contracts={contracts}
         charges={charges}
+        invoices={invoices}
+        documents={documents}
         permissions={permissions}
         sessionToken={sessionToken}
         viewerCanFill={viewerCanFill}
@@ -548,6 +563,8 @@ interface ContentProps {
   serviceOrders: ServiceOrder[];
   contracts: PortalContractSummary[];
   charges: PortalCharge[];
+  invoices: PortalDocumentItem[];
+  documents: PortalDocumentItem[];
   permissions: PortalPermissions;
   sessionToken: string;
   viewerCanFill: boolean;
@@ -569,6 +586,8 @@ function CustomerPortalContent({
   serviceOrders,
   contracts,
   charges,
+  invoices,
+  documents,
   permissions,
   sessionToken,
   viewerCanFill,
@@ -1357,6 +1376,12 @@ function CustomerPortalContent({
     ...(permissions.charges && charges.length > 0
       ? [{ value: 'cobrancas', label: t.sectionCharges, icon: <CreditCard className="h-4 w-4 shrink-0" /> }]
       : []),
+    ...(permissions.invoices
+      ? [{ value: 'notas-fiscais', label: 'Notas fiscais', icon: <ReceiptText className="h-4 w-4 shrink-0" /> }]
+      : []),
+    ...(permissions.documents
+      ? [{ value: 'documentos', label: 'Documentos', icon: <Files className="h-4 w-4 shrink-0" /> }]
+      : []),
   ], [charges.length, contracts.length, permissions, t]);
 
   useEffect(() => {
@@ -1431,6 +1456,28 @@ function CustomerPortalContent({
             chargeDueLabel: t.chargeDueLabel,
             chargePayBtn: t.chargePayBtn,
           }}
+          locale={locale}
+          currency={currency ?? 'BRL'}
+          timezone={timezone}
+        />
+      )}
+      {permissions.invoices && activeTab === 'notas-fiscais' && (
+        <PortalDocumentsSection
+          kind="invoice"
+          items={invoices}
+          portalToken={token}
+          sessionToken={sessionToken}
+          locale={locale}
+          currency={currency ?? 'BRL'}
+          timezone={timezone}
+        />
+      )}
+      {permissions.documents && activeTab === 'documentos' && (
+        <PortalDocumentsSection
+          kind="document"
+          items={documents}
+          portalToken={token}
+          sessionToken={sessionToken}
           locale={locale}
           currency={currency ?? 'BRL'}
           timezone={timezone}

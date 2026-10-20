@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.21";
+export const APP_VERSION = "1.38.0";
 
 export const VERSION_NOTES =
-  "A finalização do PDV ficou mais direta, com pagamentos combinados que se completam automaticamente e um histórico do Caixa mais completo para conferência.";
+  "O Portal do Cliente agora reúne notas fiscais e documentos liberados pela empresa, inclusive arquivos emitidos em outros sistemas.";

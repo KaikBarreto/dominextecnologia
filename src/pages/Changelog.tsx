@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.0',
+    date: '20 de outubro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Notas fiscais no Portal do Cliente',
+        description: 'O cliente pode consultar as NFS-e emitidas pelo Dominex e as notas externas que a empresa liberar, incluindo NF-e de produto emitida em outro sistema.',
+        category: 'recurso',
+      },
+      {
+        title: 'Documentos disponíveis em um só lugar',
+        description: 'Contratos, anexos, laudos, termos e outros arquivos podem ser publicados individualmente para consulta e download no portal.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.37.21',
     date: '20 de outubro de 2026',
     type: 'patch',

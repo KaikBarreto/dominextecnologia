@@ -46,6 +46,16 @@ const PERMISSION_OPTIONS: Array<{
     description: 'Valores, vencimentos, status e link para pagamento.',
   },
   {
+    key: 'invoices',
+    title: 'Notas fiscais',
+    description: 'NFS-e emitidas no Dominex e notas externas liberadas para o cliente.',
+  },
+  {
+    key: 'documents',
+    title: 'Documentos',
+    description: 'Contratos, anexos e documentos avulsos publicados para o cliente.',
+  },
+  {
     key: 'ticket_requests',
     title: 'Abrir chamados',
     description: 'Permite solicitar uma nova manutenção pelo portal.',

@@ -3554,6 +3554,84 @@ export type Database = {
           },
         ]
       }
+      customer_documents: {
+        Row: {
+          amount: number | null
+          company_id: string
+          created_at: string
+          customer_id: string
+          description: string | null
+          document_kind: string
+          document_number: string | null
+          document_type: string
+          file_name: string
+          id: string
+          is_visible_in_portal: boolean
+          issue_date: string | null
+          mime_type: string | null
+          size_bytes: number | null
+          storage_path: string
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          amount?: number | null
+          company_id: string
+          created_at?: string
+          customer_id: string
+          description?: string | null
+          document_kind: string
+          document_number?: string | null
+          document_type?: string
+          file_name: string
+          id?: string
+          is_visible_in_portal?: boolean
+          issue_date?: string | null
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path: string
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          amount?: number | null
+          company_id?: string
+          created_at?: string
+          customer_id?: string
+          description?: string | null
+          document_kind?: string
+          document_number?: string | null
+          document_type?: string
+          file_name?: string
+          id?: string
+          is_visible_in_portal?: boolean
+          issue_date?: string | null
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_documents_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_credit_ledger: {
         Row: {
           amount: number

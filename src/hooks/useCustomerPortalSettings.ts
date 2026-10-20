@@ -7,6 +7,8 @@ export interface CustomerPortalPermissions {
   equipment: boolean;
   contracts: boolean;
   charges: boolean;
+  invoices: boolean;
+  documents: boolean;
   ticket_requests: boolean;
 }
 
@@ -23,6 +25,8 @@ export const DEFAULT_CUSTOMER_PORTAL_PERMISSIONS: CustomerPortalPermissions = {
   equipment: true,
   contracts: true,
   charges: true,
+  invoices: false,
+  documents: false,
   ticket_requests: true,
 };
 
@@ -51,6 +55,9 @@ export function parsePortalSettings(value: unknown): CustomerPortalSettings | nu
       equipment: permissions.equipment !== false,
       contracts: permissions.contracts !== false,
       charges: permissions.charges !== false,
+      // Conteudo sensivel: ausencia da chave em portal antigo falha fechado.
+      invoices: permissions.invoices === true,
+      documents: permissions.documents === true,
       ticket_requests: permissions.ticket_requests !== false,
     },
   };
