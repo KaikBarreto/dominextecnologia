@@ -957,14 +957,14 @@ export function FinanceDRE({
   const PatrimonyResultIcon = patrimony.result > 0 ? TrendingUp : patrimony.result < 0 ? TrendingDown : Minus;
 
   const getResultBg = () => {
+    // Quando existe não operacional, o resultado líquido vira uma subtotalização.
+    // A única cor semântica fica reservada ao resultado final da DRE.
+    if (dre.naoOperacional !== 0) return 'bg-neutral-900';
     if (dre.resultadoLiquido === 0) return 'bg-muted-foreground';
     return dre.resultadoLiquido > 0 ? 'bg-success' : 'bg-destructive';
   };
 
-  const getGrossProfitBg = () => {
-    if (dre.lucroBruto === 0) return 'bg-muted-foreground';
-    return dre.lucroBruto > 0 ? 'bg-success' : 'bg-destructive';
-  };
+  const getGrossProfitBg = () => 'bg-neutral-900';
 
   const getPatrimonyResultBg = () => {
     if (patrimony.result === 0) return 'bg-muted-foreground';
@@ -1018,7 +1018,7 @@ export function FinanceDRE({
     const canExpand = breakdown.rows.length > 1 || hasNamedCostCenter;
     const isOpen = expandedCategoryKeys.has(c.key);
     const Icon = c.icon;
-    const valueColorClass = isRevenue ? 'text-success' : 'text-destructive';
+    const valueColorClass = 'text-foreground';
     const valueLabel = isRevenue ? fmt(c.value) : `-${fmt(c.value)}`;
 
     return (
@@ -1115,7 +1115,7 @@ export function FinanceDRE({
     const isOpen = expandedCategoryKeys.has(childrenKey);
     const meta = categoryMeta(node.name);
     const Icon = meta.icon;
-    const valueColorClass = isRevenue ? 'text-success' : 'text-destructive';
+    const valueColorClass = 'text-foreground';
     const valueLabel = isRevenue ? fmt(node.total) : `-${fmt(node.total)}`;
     const countLabel = node.children.length === 1
       ? fin.categories.subcategories.countOne
@@ -1265,7 +1265,7 @@ export function FinanceDRE({
       <div className="px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between border-t border-border/30">
         <span className="text-sm text-foreground/80 pl-2 sm:pl-4 font-medium">{fin.dre.table.total}</span>
         <div className="flex items-baseline gap-2">
-          <span className={cn('text-sm font-medium', isNegative ? 'text-destructive' : 'text-success')}>
+          <span className="text-sm font-medium text-foreground">
             {isNegative ? `-${fmt(total)}` : fmt(total)}
           </span>
           {pctOfRevenue(total) && (
@@ -1504,7 +1504,7 @@ export function FinanceDRE({
                     <span className="text-right tabular-nums text-muted-foreground">{fmt(row.previous)}</span>
                     <span className={cn(
                       'text-right tabular-nums',
-                      row.absolute > 0 ? 'text-success' : row.absolute < 0 ? 'text-destructive' : 'text-muted-foreground',
+                      row.absolute === 0 ? 'text-muted-foreground' : 'text-foreground',
                     )}>
                       {row.percentage === null
                         ? fin.dre.comparison.zeroBase
@@ -1525,7 +1525,7 @@ export function FinanceDRE({
           {renderConfiguredNature('deduction', '02', fin.dre.table.taxes)}
 
           {/* Receita Líquida */}
-          <div className={cn('px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between', dre.receitaLiquida >= 0 ? 'bg-success' : 'bg-destructive')}>
+          <div className="flex items-center justify-between bg-neutral-900 px-3 py-3 sm:px-4 sm:py-4">
             <span className="flex items-baseline gap-2 text-sm font-semibold text-white">
               <span className="font-mono text-[10px] text-white/80">03</span>
               {fin.dre.table.netRevenue}
@@ -1743,7 +1743,7 @@ export function FinanceDRE({
                         <span className="flex items-center gap-1.5 shrink-0">
                           <span className={cn(
                             'text-sm font-semibold tabular-nums',
-                            r.result >= 0 ? 'text-success' : 'text-destructive',
+                            'text-foreground',
                           )}>
                             {fmt(r.result)}
                           </span>
@@ -1758,10 +1758,10 @@ export function FinanceDRE({
                         </span>
                       </div>
                       <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 pl-4 mt-0.5 text-[11px] tabular-nums">
-                        <span className="text-success">
+                        <span className="text-foreground">
                           {fin.dre.chart.revenue}: {fmt(r.revenue)}{pctOfRevenue(r.revenue) ? ` · ${pctOfRevenue(r.revenue)}` : ''}
                         </span>
-                        <span className="text-destructive">
+                        <span className="text-foreground">
                           {fin.dre.chart.expenses}: {fmt(r.expense)}{pctOfRevenue(r.expense) ? ` · ${pctOfRevenue(r.expense)}` : ''}
                         </span>
                       </span>
@@ -1811,7 +1811,7 @@ export function FinanceDRE({
                                 <span className="flex items-center gap-1.5 shrink-0">
                                   <span className={cn(
                                     'text-xs font-medium tabular-nums',
-                                    category.result >= 0 ? 'text-success' : 'text-destructive',
+                                    'text-foreground',
                                   )}>
                                     {fmt(category.result)}
                                   </span>
@@ -1845,7 +1845,7 @@ export function FinanceDRE({
                                       <span className="flex shrink-0 items-baseline gap-1.5">
                                         <span className={cn(
                                           'text-[11px] font-medium tabular-nums',
-                                          category.own.result >= 0 ? 'text-success' : 'text-destructive',
+                                          'text-foreground',
                                         )}>
                                           {fmt(category.own.result)}
                                         </span>
@@ -1879,7 +1879,7 @@ export function FinanceDRE({
                                         <span className="flex shrink-0 items-baseline gap-1.5">
                                           <span className={cn(
                                             'text-[11px] font-medium tabular-nums',
-                                            child.result >= 0 ? 'text-success' : 'text-destructive',
+                                            'text-foreground',
                                           )}>
                                             {fmt(child.result)}
                                           </span>
@@ -1911,11 +1911,11 @@ export function FinanceDRE({
             {/* `flex-wrap` + `justify-end`: em 390px os três valores quebram pra
                 segunda linha em vez de estourar a largura do card. */}
             <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-0.5 text-xs tabular-nums">
-              <span className="text-success">{fmt(costCenterBreakdown.totals.revenue)}</span>
-              <span className="text-destructive">-{fmt(costCenterBreakdown.totals.expense)}</span>
+              <span className="text-foreground">{fmt(costCenterBreakdown.totals.revenue)}</span>
+              <span className="text-foreground">-{fmt(costCenterBreakdown.totals.expense)}</span>
               <span className={cn(
                 'text-sm font-semibold',
-                costCenterBreakdown.totals.result >= 0 ? 'text-success' : 'text-destructive',
+                'text-foreground',
               )}>
                 {fmt(costCenterBreakdown.totals.result)}
               </span>

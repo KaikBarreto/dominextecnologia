@@ -139,6 +139,13 @@ describe('createDreExcelWorkbook', () => {
     expect(costCenters!.getColumn(1).width).toBe(38);
     expect(costCenters!.views[0]).toMatchObject({ state: 'frozen', xSplit: 1, ySplit: 6 });
 
+    const taxRow = dre!.getColumn(1).values.findIndex((value) => value === '02.01.001');
+    const operatingResultRow = dre!.getColumn(1).values.findIndex((value) => value === '07');
+    const finalResultRow = dre!.getColumn(1).values.findIndex((value) => value === '09');
+    expect(dre!.getCell(taxRow, 4).font.color).toMatchObject({ argb: 'FF334155' });
+    expect(dre!.getCell(operatingResultRow, 1).fill).toMatchObject({ fgColor: { argb: 'FF172033' } });
+    expect(dre!.getCell(finalResultRow, 1).fill).toMatchObject({ fgColor: { argb: 'FF15803D' } });
+
     const serialized = await workbook.xlsx.writeBuffer();
     const ExcelJS = await import('exceljs');
     const reopened = new ExcelJS.Workbook();

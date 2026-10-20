@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.24',
+    date: '20 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'DRE completo e mais fácil de conferir',
+        description: 'O relatório agora abre por competência, mostra códigos e percentuais na mesma linha, compara períodos e permite abrir cada categoria até o centro de custo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Grupos do DRE configuráveis',
+        description: 'Administradores podem criar, renomear e ordenar os grupos usados pelas categorias, com proteções para não apagar estruturas em uso.',
+        category: 'recurso',
+      },
+      {
+        title: 'Excel organizado para análise',
+        description: 'A exportação ganhou hierarquia, fórmulas, percentuais, comparativo e uma aba de centros de custo, com leitura neutra e cor reservada ao resultado final.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.23',
     date: '20 de outubro de 2026',
     type: 'patch',

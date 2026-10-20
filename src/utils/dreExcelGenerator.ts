@@ -36,8 +36,8 @@ const COLORS = {
   muted: 'FF64748B',
   border: 'FFE2E8F0',
   zebra: 'FFF8FAFC',
-  subtotal: 'FFEFF6F4',
-  calculated: 'FFDDF8EF',
+  subtotal: 'FFF1F5F9',
+  calculated: 'FFE2E8F0',
   positive: 'FF15803D',
   negative: 'FFB91C1C',
   white: 'FFFFFFFF',
@@ -424,7 +424,7 @@ export function buildDreExcelSheets(data: DreReportData): DreExcelSheet[] {
 
 function currencyNumberFormat(currency: string, fractionDigits: number): string {
   const decimals = fractionDigits ? `.${'0'.repeat(fractionDigits)}` : '';
-  return `"${currency}" #,##0${decimals};[Red]-"${currency}" #,##0${decimals};-`;
+  return `"${currency}" #,##0${decimals};-"${currency}" #,##0${decimals};-`;
 }
 
 function styleRow(worksheet: ExcelWorksheet, rowNumber: number, kind: DreExcelRowKind, columnCount: number): void {
@@ -480,7 +480,7 @@ function styleRow(worksheet: ExcelWorksheet, rowNumber: number, kind: DreExcelRo
     } else if (kind === 'calculated') {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.calculated } };
       cell.font = { name: 'Aptos', size: 10, bold: true, color: { argb: COLORS.navy } };
-      cell.border = { top: { style: 'thin', color: { argb: COLORS.brand } }, bottom: { style: 'thin', color: { argb: COLORS.brand } } };
+      cell.border = { top: { style: 'thin', color: { argb: COLORS.slate } }, bottom: { style: 'thin', color: { argb: COLORS.slate } } };
     } else if (kind === 'result') {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.navy } };
       cell.font = { name: 'Aptos', size: 11, bold: true, color: { argb: COLORS.white } };
@@ -532,18 +532,18 @@ function applySheetLayout(
       if (typeof cell.value === 'number') {
         cell.font = {
           ...cell.font,
-          color: { argb: cell.value < 0 ? COLORS.negative : cell.value > 0 ? COLORS.positive : COLORS.muted },
+          color: { argb: cell.value === 0 ? COLORS.muted : COLORS.slate },
         };
       }
       cell.alignment = { ...cell.alignment, horizontal: 'right' };
     }
     for (const columnNumber of sheet.percentageColumns) {
       const cell = worksheet.getCell(rowNumber, columnNumber);
-      cell.numFmt = '0.0%;[Red]-0.0%;-';
+      cell.numFmt = '0.0%;-0.0%;-';
       if (typeof cell.value === 'number') {
         cell.font = {
           ...cell.font,
-          color: { argb: cell.value < 0 ? COLORS.negative : cell.value > 0 ? COLORS.positive : COLORS.muted },
+          color: { argb: cell.value === 0 ? COLORS.muted : COLORS.slate },
         };
       }
       cell.alignment = { ...cell.alignment, horizontal: 'right' };
@@ -557,6 +557,21 @@ function applySheetLayout(
       cell.font = { ...cell.font, color: { argb: COLORS.white } };
     });
   });
+
+  // Verde/vermelho só no último resultado da DRE. Subtotais, categorias,
+  // variações e centros de custo permanecem neutros para facilitar a leitura.
+  if (worksheet.name === 'DRE' || worksheet.name === 'Comparativo') {
+    const finalCode = sheet.rows.some((row) => row[0] === '09') ? '09' : '07';
+    const finalRowIndex = sheet.rows.findIndex((row) => row[0] === finalCode);
+    if (finalRowIndex >= 0) {
+      const resultValue = Number(sheet.rows[finalRowIndex][worksheet.name === 'DRE' ? 3 : 2]);
+      const fill = resultValue > 0 ? COLORS.positive : resultValue < 0 ? COLORS.negative : COLORS.navy;
+      worksheet.getRow(finalRowIndex + 1).eachCell({ includeEmpty: true }, (cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
+        cell.font = { ...cell.font, color: { argb: COLORS.white } };
+      });
+    }
+  }
 }
 
 /** Monta o workbook completo sem tocar no DOM, para uso e teste em Node. */
