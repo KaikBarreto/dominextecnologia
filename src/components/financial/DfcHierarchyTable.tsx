@@ -46,12 +46,18 @@ function MoneyCell({ value, formatMoney, absolute = false }: {
   );
 }
 
-function Values({ value, formatMoney }: { value: DfcHierarchyValue; formatMoney: (value: number) => string }) {
+function Values({ value, formatMoney, showNet = true }: {
+  value: DfcHierarchyValue;
+  formatMoney: (value: number) => string;
+  showNet?: boolean;
+}) {
   return (
     <>
       <MoneyCell value={value.inflow} formatMoney={formatMoney} />
       <MoneyCell value={value.outflow} formatMoney={formatMoney} absolute />
-      <MoneyCell value={value.net} formatMoney={formatMoney} />
+      {showNet
+        ? <MoneyCell value={value.net} formatMoney={formatMoney} />
+        : <span className="text-right text-muted-foreground">—</span>}
     </>
   );
 }
@@ -123,7 +129,7 @@ export function DfcHierarchyTable({ sections, formatMoney, finalValue }: DfcHier
                         )}
                         <span className="truncate">{row.label}</span>
                       </span>
-                      <Values value={row} formatMoney={formatMoney} />
+                      <Values value={row} formatMoney={formatMoney} showNet={row.inflow !== 0 && row.outflow !== 0} />
                     </button>
 
                     {rowOpen && row.children?.map((child) => {
@@ -139,7 +145,7 @@ export function DfcHierarchyTable({ sections, formatMoney, finalValue }: DfcHier
                             )}
                             <span className="truncate">{child.label}</span>
                           </span>
-                          <Values value={child} formatMoney={formatMoney} />
+                          <Values value={child} formatMoney={formatMoney} showNet={child.inflow !== 0 && child.outflow !== 0} />
                         </div>
                       );
                     })}

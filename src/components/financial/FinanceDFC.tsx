@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CashFlowForecast } from './CashFlowForecast';
+import { DfcDailyTable, type DfcDailyRow } from './DfcDailyTable';
 import { DfcHierarchyTable, type DfcHierarchyRow, type DfcHierarchySection } from './DfcHierarchyTable';
 import { FilterCheckboxDropdown } from './FilterCheckboxDropdown';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -251,6 +252,25 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
       };
     });
   }, [categoryMetaMap, groupNodes, report.groups]);
+  const dailyRows = useMemo<DfcDailyRow[]>(() => {
+    const days = new Map<string, { inflow: number; outflow: number }>();
+    report.groups.forEach((group) => group.categories.forEach((category) => {
+      category.transactions.forEach((transaction) => {
+        if (!transaction.paid_date) return;
+        const current = days.get(transaction.paid_date) ?? { inflow: 0, outflow: 0 };
+        const amount = Math.abs(Number(transaction.amount) || 0);
+        if (transaction.transaction_type === 'entrada') current.inflow += amount;
+        else current.outflow += amount;
+        days.set(transaction.paid_date, current);
+      });
+    }));
+    let balance = report.openingBalance;
+    return [...days.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([day, values]) => {
+      const net = values.inflow - values.outflow;
+      balance += net;
+      return { date: day, ...values, net, closingBalance: balance };
+    });
+  }, [report.groups, report.openingBalance]);
   const periodLabel = useMemo(() => {
     if (range?.from && range?.to) return `${date(range.from)} a ${date(range.to)}`;
     if (range?.from) return `A partir de ${date(range.from)}`;
@@ -479,6 +499,10 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
           )}
         </CardContent>
       </Card>
+
+      {dailyRows.length > 0 && (
+        <DfcDailyTable rows={dailyRows} formatMoney={money} formatDate={date} />
+      )}
 
       <p className="text-center text-xs text-muted-foreground">
         Método direto · somente valores realizados pela data da baixa.

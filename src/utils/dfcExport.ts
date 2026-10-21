@@ -84,7 +84,13 @@ function buildDfcSheetRows(data: DfcExportData): Array<Array<string | number>> {
     ['', '', '', 'Saldo final', data.closingBalance],
     [],
     ['Código', 'Estrutura do DFC', 'Entradas', 'Saídas', 'Líquido'],
-    ...(data.rows ?? []).map((row) => [row.code, row.label, row.inflow, Math.abs(row.outflow), row.net]),
+    ...(data.rows ?? []).map((row) => [
+      row.code,
+      row.label,
+      row.inflow,
+      Math.abs(row.outflow),
+      row.level === 'section' || row.level === 'result' || (row.inflow !== 0 && row.outflow !== 0) ? row.net : '',
+    ]),
   ];
 }
 
@@ -235,10 +241,15 @@ export async function exportDfcPdf(data: DfcExportData, filename: string): Promi
     autoTable(doc, {
       startY: 39, margin: { left: 10, right: 10, bottom: 12 }, showHead: 'everyPage', rowPageBreak: 'avoid',
       head: [['ESTRUTURA DO DFC', 'ENTRADAS', 'SAÍDAS', 'LÍQUIDO']],
-      body: (data.rows ?? []).map((row) => [
-        `${row.level === 'subcategory' ? '      ' : row.level === 'category' ? '   ' : ''}${row.code}  ${row.icon ? '       ' : ''}${row.label}`,
-        row.inflow ? money.format(row.inflow) : '—', row.outflow ? money.format(Math.abs(row.outflow)) : '—', money.format(row.net),
-      ]),
+      body: (data.rows ?? []).map((row) => {
+        const showNet = row.level === 'section' || row.level === 'result' || (row.inflow !== 0 && row.outflow !== 0);
+        return [
+          `${row.level === 'subcategory' ? '      ' : row.level === 'category' ? '   ' : ''}${row.code}  ${row.icon ? '       ' : ''}${row.label}`,
+          row.inflow ? money.format(row.inflow) : '—',
+          row.outflow ? money.format(Math.abs(row.outflow)) : '—',
+          showNet ? money.format(row.net) : '—',
+        ];
+      }),
       theme: 'plain', styles: { font: 'helvetica', fontSize: 8, cellPadding: 2.3, valign: 'middle', lineColor: [226, 232, 240], lineWidth: { bottom: 0.12 } },
       headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', halign: 'right' },
       columnStyles: { 0: { cellWidth: 130, halign: 'left' }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },

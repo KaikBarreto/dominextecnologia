@@ -192,6 +192,8 @@ describe('FinanceDFC', () => {
     expect(container.textContent).toContain('Máquinas');
     expect(container.textContent).not.toContain('Compressor novo');
     expect(container.textContent).toContain('Filtros');
+    expect(container.textContent).toContain('Realizado dia a dia');
+    expect(container.textContent).toContain('Saldo realizado');
   });
 
   it('distingue carregamento de período sem movimentações realizadas', () => {
