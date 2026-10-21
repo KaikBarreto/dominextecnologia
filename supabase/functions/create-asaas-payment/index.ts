@@ -412,9 +412,10 @@ Deno.serve(async (req) => {
     } else {
       // Valor efetivo mensal da empresa = fonte da verdade.
       const cp = Number(company.custom_price) || 0;
+      const cpPermanent = company.custom_price_permanent === true;
       const cpMonths = Number(company.custom_price_months) || 0;
       const cpMade = Number(company.custom_price_payments_made) || 0;
-      const hasActiveCustomPrice = cp > 0 && cpMonths > 0 && cpMade < cpMonths;
+      const hasActiveCustomPrice = cp > 0 && (cpPermanent || (cpMonths > 0 && cpMade < cpMonths));
       const pendingRenewalValue = purpose === "renewal"
         ? Number(company.pending_subscription_value) || 0
         : 0;

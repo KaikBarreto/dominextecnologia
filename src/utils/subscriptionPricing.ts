@@ -18,20 +18,22 @@ export type BillingCycle = "monthly" | "yearly";
 export interface CompanyPricingFields {
   subscription_value?: number | null;
   custom_price?: number | null;
+  custom_price_permanent?: boolean | null;
   custom_price_months?: number | null;
   custom_price_payments_made?: number | null;
   pending_subscription_value?: number | null;
 }
 
 /**
- * True se a empresa tem uma promoção temporária (`custom_price`) ainda ativa,
- * ou seja, ainda não pagou todas as mensalidades do período promocional.
+ * True se a empresa tem um preço personalizado (`custom_price`) ativo:
+ * permanente ou ainda dentro da quantidade contratada de mensalidades.
  */
 export function hasActiveCustomPrice(company: CompanyPricingFields): boolean {
   const cp = Number(company.custom_price) || 0;
+  const permanent = company.custom_price_permanent === true;
   const months = Number(company.custom_price_months) || 0;
   const made = Number(company.custom_price_payments_made) || 0;
-  return cp > 0 && months > 0 && made < months;
+  return cp > 0 && (permanent || (months > 0 && made < months));
 }
 
 /**

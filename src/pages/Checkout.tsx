@@ -346,6 +346,9 @@ export default function Checkout() {
 
   const currentPlan = plans.find((p) => p.code === selectedPlan);
   const planPrice = currentPlan?.price || 0;
+  const hasPermanentCustomPrice = companyData?.custom_price_permanent === true
+    && Number(companyData.custom_price) > 0;
+  const currentPlanDisplayName = hasPermanentCustomPrice ? "Personalizado" : currentPlan?.name;
 
   // Renovação ou primeira ativação com plano definido cobram o valor EFETIVO da
   // empresa (custom_price se houver promoção ativa, senão subscription_value) —
@@ -403,13 +406,13 @@ export default function Checkout() {
     : addMonths(baseDate, billingCycle === "yearly" ? 12 : 1).toISOString();
 
   // Promoção temporária (custom_price)
-  const hasCustomPrice = companyData
-    ? hasActiveCustomPrice(companyData) && pendingRenewalPrice <= 0
+  const hasTemporaryCustomPrice = companyData
+    ? hasActiveCustomPrice(companyData) && companyData.custom_price_permanent !== true && pendingRenewalPrice <= 0
     : false;
-  const remainingPromoMonths = hasCustomPrice
+  const remainingPromoMonths = hasTemporaryCustomPrice
     ? (companyData!.custom_price_months! - (companyData!.custom_price_payments_made || 0))
     : 0;
-  const customPriceEndDate = hasCustomPrice
+  const customPriceEndDate = hasTemporaryCustomPrice
     ? addMonths(new Date(), remainingPromoMonths).toISOString()
     : null;
 
@@ -669,7 +672,11 @@ export default function Checkout() {
       >
         <CheckoutLayout
           checkoutMode={isUpgrade ? "upgrade" : isRenewal ? "renewal" : "sale"}
-          planName={isUpgrade ? (upgradeQuote?.target_label || `Upgrade para ${currentPlan.name}`) : isRenewal ? `${currentPlan.name} (Renovação)` : currentPlan.name}
+          planName={isUpgrade
+            ? (upgradeQuote?.target_label || `Upgrade para ${currentPlan.name}`)
+            : isRenewal
+            ? `${currentPlanDisplayName} (Renovação)`
+            : currentPlanDisplayName!}
           planPrice={basePrice}
           finalPrice={finalPrice}
           billingCycle={billingCycle}
@@ -699,10 +706,10 @@ export default function Checkout() {
           savedCardBrand={savedCardAvailable ? companyData?.subscription_card_brand : null}
           savedCardErrorMessage={savedCardErrorMessage}
           onPayWithSavedCard={savedCardAvailable ? handleSavedCardPayment : undefined}
-          hasCustomPrice={!isUpgrade && hasCustomPrice}
-          originalPrice={hasCustomPrice ? (companyData?.subscription_value || planPrice) : undefined}
+          hasCustomPrice={!isUpgrade && hasTemporaryCustomPrice}
+          originalPrice={hasTemporaryCustomPrice ? (companyData?.subscription_value || planPrice) : undefined}
           customPriceEndDate={customPriceEndDate}
-          customPriceOriginal={hasCustomPrice ? (companyData?.subscription_value || planPrice) : null}
+          customPriceOriginal={hasTemporaryCustomPrice ? (companyData?.subscription_value || planPrice) : null}
           pendingSubscriptionValue={isUpgrade ? null : companyData?.pending_subscription_value}
           currentSubscriptionValue={isUpgrade ? null : companyData?.subscription_value}
           currentPlanName={sourcePlanName}

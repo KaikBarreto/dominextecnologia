@@ -41,7 +41,7 @@ export function SubscriptionExpired({ expirationDate }: SubscriptionExpiredProps
       if (!profile?.company_id) return null;
       const { data: company } = await supabase
         .from("companies")
-        .select("id, subscription_value, pending_subscription_value, custom_price, custom_price_months, custom_price_payments_made, name, subscription_plan")
+        .select("id, subscription_value, pending_subscription_value, custom_price, custom_price_permanent, custom_price_months, custom_price_payments_made, name, subscription_plan")
         .eq("id", profile.company_id)
         .single();
 

@@ -37,7 +37,13 @@ export default function Billing() {
   const { user } = useAuth();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.settings.billing;
-  const { modules, allPlans, effectiveValue: modulesEffectiveValue, plan: currentPlanCode } = useCompanyModules();
+  const {
+    modules,
+    allPlans,
+    effectiveValue: modulesEffectiveValue,
+    plan: currentPlanCode,
+    isLoading: companyModulesLoading,
+  } = useCompanyModules();
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
 
   // Deep-link vindo do ModuleGateModal / UserLimitModal:
@@ -93,7 +99,7 @@ export default function Billing() {
     }
   }, [company?.subscription_expires_at]);
 
-  if (isLoading) {
+  if (isLoading || companyModulesLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -155,14 +161,25 @@ export default function Billing() {
   // Nome de exibição do plano
   // Mesma lógica do card "Sua Assinatura" (ModulesManagementCard): nome do plano
   // pelo catálogo, com "Personalizado" quando é plano customizado.
-  const planDisplayName = allPlans.find((p) => p.code === currentPlanCode)?.name
-    || (currentPlanCode === 'personalizado' ? 'Personalizado' : currentPlanCode);
+  const hasPermanentCustomPrice = company.custom_price_permanent === true
+    && Number(company.custom_price) > 0;
+  const planDisplayName = hasPermanentCustomPrice
+    ? 'Personalizado'
+    : allPlans.find((p) => p.code === currentPlanCode)?.name
+      || (currentPlanCode === 'personalizado' ? 'Personalizado' : currentPlanCode);
 
   const fmtBRL = (v: number) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  // Promoção / preço custom ativo
-  const hasActiveCustomPrice = hasActiveCustomPriceUtil(company);
+  const hasDefinedPlanForActivation = isTesting
+    && !!company.subscription_plan
+    && effectiveValue > 0
+    && allPlans.some((plan) => plan.code === company.subscription_plan);
+
+  // Só preço temporário exibe o aviso de promoção. Preço permanente é o valor
+  // contratado da empresa e não deve prometer retorno ao preço de catálogo.
+  const hasActiveTemporaryCustomPrice = hasActiveCustomPriceUtil(company)
+    && company.custom_price_permanent !== true;
 
   // Renovação automática ativa: assinatura Asaas + último pagamento de cartão confirmado
   const hasValidCardPayment = paymentHistory.some(
@@ -181,6 +198,9 @@ export default function Billing() {
   const displayAmountDue = company.billing_cycle === 'yearly'
     ? effectiveValue * 12 * 0.8
     : effectiveValue;
+  const activationPriceLabel = company.billing_cycle === 'yearly'
+    ? `${fmtBRL(displayAmountDue)}/ano`
+    : `${fmtBRL(effectiveValue)}/mês`;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto p-4 sm:p-6">
@@ -200,8 +220,16 @@ export default function Billing() {
           <div className="absolute bottom-0 left-0 w-24 md:w-48 h-24 md:h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl" />
           <div className="relative z-10 space-y-4 max-w-lg mx-auto">
             <Sparkles className="h-10 w-10 mx-auto" />
-            <h1 className="text-2xl md:text-3xl font-bold">{t.heroTrialTitle}</h1>
-            <p className="text-primary-foreground/80 text-sm md:text-base">{t.heroTrialDesc}</p>
+            <h1 className="text-2xl md:text-3xl font-bold">
+              {hasDefinedPlanForActivation ? t.heroDefinedPlanTitle : t.heroTrialTitle}
+            </h1>
+            <p className="text-primary-foreground/80 text-sm md:text-base">
+              {hasDefinedPlanForActivation
+                ? t.heroDefinedPlanDesc
+                    .replace('{name}', planDisplayName)
+                    .replace('{value}', activationPriceLabel)
+                : t.heroTrialDesc}
+            </p>
             {daysRemaining !== null && daysRemaining > 0 && (
               <p className="text-primary-foreground/60 text-xs">
                 <Clock className="h-3.5 w-3.5 inline mr-1" />
@@ -212,9 +240,11 @@ export default function Billing() {
               size="lg"
               variant="secondary"
               className="mt-4 font-semibold text-base px-8"
-              onClick={() => navigate('/checkout')}
+              onClick={() => navigate(hasDefinedPlanForActivation ? '/checkout?bloqueado=1' : '/checkout')}
             >
-              {t.btnChoosePlan}
+              {hasDefinedPlanForActivation
+                ? t.btnActivateDefinedPlan.replace('{value}', activationPriceLabel)
+                : t.btnChoosePlan}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
@@ -371,7 +401,7 @@ export default function Billing() {
       {!isTesting && (
         <>
           {/* Preço promocional ativo */}
-          {hasActiveCustomPrice && (
+          {hasActiveTemporaryCustomPrice && (
             <div className="bg-blue-600 rounded-xl p-4 flex items-start gap-3">
               <div className="p-1.5 bg-white/20 rounded-lg shrink-0 mt-0.5">
                 <Sparkles className="h-4 w-4 text-white" />

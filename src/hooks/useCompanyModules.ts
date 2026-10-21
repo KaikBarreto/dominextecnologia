@@ -155,7 +155,7 @@ export function useCompanyModules() {
 
   // Lista de planos ativos (start/avancado/master/personalizado).
   // Raramente muda — staleTime alto.
-  const { data: allPlans = [] } = useQuery({
+  const { data: allPlans = [], isLoading: plansLoading } = useQuery({
     queryKey: ['subscription-plans', 'active'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -263,6 +263,7 @@ export function useCompanyModules() {
   const pricingFields = {
     subscription_value: company?.subscription_value,
     custom_price: company?.custom_price,
+    custom_price_permanent: company?.custom_price_permanent,
     custom_price_months: company?.custom_price_months,
     custom_price_payments_made: company?.custom_price_payments_made,
     pending_subscription_value: company?.pending_subscription_value,
@@ -279,7 +280,7 @@ export function useCompanyModules() {
     modules,
     moduleCodes,
     hasModule,
-    isLoading: modulesLoading || companyLoading,
+    isLoading: modulesLoading || companyLoading || plansLoading,
 
     // --- Plano / módulos ---
     plan,
