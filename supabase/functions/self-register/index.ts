@@ -4,6 +4,7 @@ import { provisionAsaasCustomer } from '../_shared/asaas-customer.ts';
 import { isValidBrazilianPhone } from '../_shared/phone-validation.ts';
 import { canonicalizeCompanyOrigin } from '../_shared/company-origin.ts';
 import { resolveAffiliateId, resolveAffiliateOriginName } from '../_shared/affiliate-resolver.ts';
+import { resolveFirstPaidWhatsappTier } from '../_shared/whatsapp-pricing.ts';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const trim = (v: unknown, max = 255) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -525,6 +526,7 @@ Deno.serve(async (req) => {
     // Não confiamos no payload para preço nem para conceder módulo inexistente.
     let personalizadoModules: { code: string; price: number | null }[] = [];
     let personalizadoExtraUserPrice = 0;
+    let personalizadoWhatsappTier = 1;
     if (isPersonalizado) {
       const requested = Array.from(new Set([
         ...REQUIRED_PERSONALIZED_MODULE_CODES,
@@ -544,7 +546,23 @@ Deno.serve(async (req) => {
         );
       }
 
-      const activeCatalog = catalog || [];
+      let activeCatalog = catalog || [];
+      if (requested.includes('whatsapp')) {
+        try {
+          const whatsappOffer = await resolveFirstPaidWhatsappTier(supabaseAdmin);
+          if (!whatsappOffer) throw new Error('nível pago ausente');
+          personalizadoWhatsappTier = whatsappOffer.tier;
+          activeCatalog = activeCatalog.map((module) => module.code === 'whatsapp'
+            ? { ...module, price: whatsappOffer.price }
+            : module);
+        } catch (whatsappError) {
+          console.error('[self-register] Falha ao resolver preço do WhatsApp:', whatsappError);
+          return new Response(
+            JSON.stringify({ error: t.internalError }),
+            { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
       personalizadoModules = activeCatalog.filter((module) => module.code !== EXTRA_USER_MODULE_CODE);
       const catalogCodes = new Set(personalizadoModules.map((module) => module.code));
       const missingRequired = REQUIRED_PERSONALIZED_MODULE_CODES.filter((code) => !catalogCodes.has(code));
@@ -734,6 +752,7 @@ Deno.serve(async (req) => {
         custom_price: lockedPrice && lockedPrice !== planPrice ? lockedPrice : null,
         custom_price_permanent: lockedPrice ? !promoMonths : true,
         custom_price_months: promoMonths || null,
+        whatsapp_tier: personalizadoWhatsappTier,
         notes: promoNote,
       })
       .select()

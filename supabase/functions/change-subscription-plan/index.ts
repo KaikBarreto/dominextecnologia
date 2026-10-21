@@ -51,6 +51,7 @@ import {
   roundSubscriptionMoney,
   subscriptionPeriodValue,
 } from "../_shared/subscription-proration.ts";
+import { resolveFirstPaidWhatsappTier } from "../_shared/whatsapp-pricing.ts";
 
 class ValidationError extends Error {}
 
@@ -143,7 +144,7 @@ Deno.serve(async (req) => {
     const { data: company, error: companyError } = await supabase
       .from("companies")
       .select(
-        "id, name, subscription_plan, subscription_value, pending_subscription_value, max_users, extra_users, billing_cycle, asaas_subscription_id, custom_price, custom_price_months, custom_price_payments_made, subscription_status, subscription_expires_at, nfse_tier, whatsapp_tier",
+        "id, name, subscription_plan, subscription_value, pending_subscription_value, max_users, extra_users, billing_cycle, asaas_subscription_id, custom_price, custom_price_permanent, custom_price_months, custom_price_payments_made, subscription_status, subscription_expires_at, nfse_tier, whatsapp_tier",
       )
       .eq("id", company_id)
       .single();
@@ -266,9 +267,23 @@ Deno.serve(async (req) => {
     const targetNfseTier = targetModules.includes("nfe")
       ? (Number.isFinite(requestedNfseTier) ? requestedNfseTier : currentlyHasNfse ? currentNfseTier : 1)
       : 1;
-    const targetWhatsappTier = targetModules.includes("whatsapp") && currentlyHasWhatsapp
-      ? currentWhatsappTier
-      : 1;
+    let targetWhatsappTier = 1;
+    if (targetModules.includes("whatsapp")) {
+      if (currentlyHasWhatsapp && currentWhatsappTier > 1) {
+        targetWhatsappTier = currentWhatsappTier;
+      } else {
+        let whatsappOffer;
+        try {
+          whatsappOffer = await resolveFirstPaidWhatsappTier(supabase);
+        } catch {
+          throw new ValidationError("Não foi possível consultar o preço do WhatsApp. Tente novamente.");
+        }
+        if (!whatsappOffer) {
+          throw new ValidationError("O preço do WhatsApp não está configurado corretamente.");
+        }
+        targetWhatsappTier = whatsappOffer.tier;
+      }
+    }
 
     if (targetNfseTier > 1) {
       const { data: nfsePrices, error: nfsePriceError } = await supabase
@@ -296,9 +311,10 @@ Deno.serve(async (req) => {
 
     // --- Valor EFETIVO atual (custom_price se promoção ativa, senão subscription_value) ---
     const cp = Number(company.custom_price) || 0;
+    const cpPermanent = company.custom_price_permanent === true;
     const cpMonths = Number(company.custom_price_months) || 0;
     const cpMade = Number(company.custom_price_payments_made) || 0;
-    const hasActiveCustomPrice = cp > 0 && cpMonths > 0 && cpMade < cpMonths;
+    const hasActiveCustomPrice = cp > 0 && (cpPermanent || (cpMonths > 0 && cpMade < cpMonths));
     const currentEffectiveValue = hasActiveCustomPrice
       ? cp
       : Number(company.subscription_value) || 0;

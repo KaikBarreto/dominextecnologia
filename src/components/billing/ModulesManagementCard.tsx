@@ -29,6 +29,7 @@ import { CancelSubscriptionModal } from '@/components/billing/CancelSubscription
 import { calculateYearlyPrice, calculateMonthlyEquivalent } from '@/utils/subscriptionPricing';
 import { useNfseTiers, formatTierLimit } from '@/hooks/useNfseTiers';
 import { useNfseQuota } from '@/hooks/useNfseQuota';
+import { usePublicSubscriptionCatalog } from '@/hooks/usePublicSubscriptionPlans';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import {
@@ -121,31 +122,22 @@ export function ModulesManagementCard({
   // Cancel subscription modal state
   const [cancelOpen, setCancelOpen] = useState(false);
 
-  // Catálogo de módulos (preço + descrição). Read de catálogo — fronteira via hook
-  // não é necessária; é leitura pública de billing.
+  // Mesma fonte comercial de `/proposta`, inclusive o nível pago de WhatsApp.
   const {
-    data: catalogModules = [],
+    data: subscriptionCatalog,
     isLoading: isCatalogLoading,
     isError: isCatalogError,
-  } = useQuery({
-    queryKey: ['subscription-modules'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('subscription_modules')
-        .select('code, name, description, price, type')
-        .eq('is_active', true)
-        .order('sort_order');
-      if (error) throw error;
-      return (data ?? []).map((m) => ({
-        code: m.code,
-        name: m.name,
-        description: m.description ?? null,
-        price: m.price === null ? Number.NaN : Number(m.price),
-        type: m.type,
-      })) as CatalogModule[];
-    },
-    staleTime: 30 * 60 * 1000,
-  });
+  } = usePublicSubscriptionCatalog();
+  const catalogModules = useMemo<CatalogModule[]>(
+    () => (subscriptionCatalog?.allModules ?? []).map((module) => ({
+      code: module.code,
+      name: module.name,
+      description: module.description,
+      price: module.price,
+      type: module.type,
+    })),
+    [subscriptionCatalog?.allModules],
+  );
 
   // Ciclo de cobrança atual da empresa.
   const { data: company } = useQuery({

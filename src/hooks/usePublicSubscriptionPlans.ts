@@ -26,12 +26,15 @@ export interface PublicSubscriptionModule {
   description: string | null;
   price: number;
   type: string;
+  sortOrder: number;
 }
 
 export interface PublicSubscriptionCatalog {
   plans: PublicSubscriptionPlan[];
   modules: PublicSubscriptionModule[];
+  allModules: PublicSubscriptionModule[];
   extraUserPrice: number;
+  whatsappPaidTier: number;
 }
 
 export function usePublicSubscriptionCatalog() {
@@ -47,7 +50,7 @@ export function usePublicSubscriptionCatalog() {
           .order('price'),
         supabase
           .from('subscription_modules')
-          .select('id, code, name, description, price, type')
+          .select('id, code, name, description, price, type, sort_order')
           .eq('is_active', true)
           .order('sort_order'),
         supabase
@@ -86,6 +89,7 @@ export function usePublicSubscriptionCatalog() {
             ? (proposalWhatsappTier?.price ?? Number.NaN)
             : catalogPrice,
           type: module.type ?? 'module',
+          sortOrder: Number(module.sort_order) || 0,
         };
       }) as PublicSubscriptionModule[];
       const pricesAreValid = allModules.every(
@@ -105,6 +109,7 @@ export function usePublicSubscriptionCatalog() {
         || basePrice <= 0
         || !freeBaseModulesAreValid
         || extraUserPrice === null
+        || proposalWhatsappTier === null
       ) {
         throw new Error('O catálogo comercial não está configurado corretamente.');
       }
@@ -112,7 +117,9 @@ export function usePublicSubscriptionCatalog() {
       return {
         plans,
         modules: allModules.filter((module) => module.code !== 'extra_user'),
+        allModules,
         extraUserPrice,
+        whatsappPaidTier: proposalWhatsappTier!.tier,
       } satisfies PublicSubscriptionCatalog;
     },
     staleTime: 30 * 60 * 1000,

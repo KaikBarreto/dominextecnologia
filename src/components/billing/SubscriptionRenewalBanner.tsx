@@ -37,7 +37,9 @@ export function SubscriptionRenewalBanner() {
     staleTime: 30 * 1000,
   });
 
-  if (company?.subscription_status !== "active" || !company.subscription_expires_at) {
+  const isTrial = company?.subscription_status === "testing";
+  const isPaidSubscription = company?.subscription_status === "active";
+  if ((!isTrial && !isPaidSubscription) || !company.subscription_expires_at) {
     return null;
   }
 
@@ -46,7 +48,17 @@ export function SubscriptionRenewalBanner() {
   if (today === null || expirationDay === null) return null;
 
   const daysOverdue = Math.floor((today - expirationDay) / 86_400_000);
-  if (daysOverdue <= 0 || daysOverdue > SUBSCRIPTION_GRACE_DAYS) return null;
+  const shouldShow = isTrial
+    ? daysOverdue === 0
+    : daysOverdue > 0 && daysOverdue <= SUBSCRIPTION_GRACE_DAYS;
+  if (!shouldShow) return null;
+
+  const title = isTrial ? "Seu teste termina hoje." : "Assinatura vencida.";
+  const description = isTrial
+    ? "Ative seu plano agora para continuar usando o sistema sem interrupção."
+    : "Renove agora para evitar o bloqueio do sistema.";
+  const actionLabel = isTrial ? "Ativar agora" : "Renovar agora";
+  const actionPath = isTrial ? "/assinatura" : "/checkout?mode=renewal";
 
   return (
     <div
@@ -56,16 +68,16 @@ export function SubscriptionRenewalBanner() {
       <div className="flex min-w-0 items-center gap-2.5">
         <AlertTriangle className="h-5 w-5 shrink-0" aria-hidden />
         <p className="truncate text-sm">
-          <span className="font-bold">Assinatura vencida.</span>{" "}
-          Renove agora para evitar o bloqueio do sistema.
+          <span className="font-bold">{title}</span>{" "}
+          {description}
         </p>
       </div>
       <Button
         size="sm"
-        onClick={() => navigate("/checkout?mode=renewal")}
+        onClick={() => navigate(actionPath)}
         className="h-8 shrink-0 bg-white px-3 text-xs font-bold text-red-700 hover:bg-red-50 hover:text-red-800"
       >
-        Renovar agora
+        {actionLabel}
         <ArrowRight className="ml-1.5 h-3.5 w-3.5" aria-hidden />
       </Button>
     </div>

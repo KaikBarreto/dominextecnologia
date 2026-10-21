@@ -148,7 +148,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   });
 
   // Catálogo de módulos (plano Personalizado).
-  const { data: allModules = [] } = useSubscriptionModules();
+  const { data: allModules = [], whatsappPaidTier } = useSubscriptionModules();
 
   // Níveis de NFS-e (preço/limite do módulo de Notas, code `nfe`).
   const { tiers: nfseTiers } = useNfseTiers();
@@ -475,6 +475,10 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       const modulesPayload = formData.subscription_plan === 'personalizado'
         ? withBaseModules(selectedModules)
         : null;
+      const hasWhatsappAddon = modulesPayload?.includes('whatsapp') ?? false;
+      if (hasWhatsappAddon && !whatsappPaidTier) {
+        throw new Error('O preço do módulo de WhatsApp não está configurado corretamente.');
+      }
       // Guarda de consistência: só grava affiliate_id quando a origem atual é
       // de fato a de afiliado (cobre o caso de dado antigo/inconsistente em
       // edição — o select só aparece quando isAffiliateOriginSelected, mas o
@@ -530,6 +534,9 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
           custom_price_months: customPriceMonthsVal,
           nfse_tier: parseInt(formData.nfse_tier) || 1,
+          ...(formData.subscription_plan === 'personalizado'
+            ? { whatsapp_tier: hasWhatsappAddon ? whatsappPaidTier : 1 }
+            : {}),
         }).eq('id', company.id);
         if (error) throw error;
 

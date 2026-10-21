@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { provisionAsaasCustomer } from '../_shared/asaas-customer.ts'
 import { isValidBrazilianPhone } from '../_shared/phone-validation.ts'
 import { canonicalizeCompanyOrigin } from '../_shared/company-origin.ts'
+import { resolveFirstPaidWhatsappTier } from '../_shared/whatsapp-pricing.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -167,6 +168,7 @@ Deno.serve(async (req) => {
       ? [...new Set([...REQUIRED_PERSONALIZED_MODULE_CODES, ...requestedModuleCodes])]
       : requestedModuleCodes
     let validModuleCodes: string[] = []
+    let resolvedWhatsappTier = 1
 
     if (moduleCodesToValidate.length > 0) {
       const { data: catalog, error: catalogError } = await supabaseAdmin
@@ -196,6 +198,20 @@ Deno.serve(async (req) => {
             status: 503,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           })
+        }
+
+        if (validModuleCodes.includes('whatsapp')) {
+          try {
+            const whatsappOffer = await resolveFirstPaidWhatsappTier(supabaseAdmin)
+            if (!whatsappOffer) throw new Error('nível pago ausente')
+            resolvedWhatsappTier = whatsappOffer.tier
+          } catch (whatsappError) {
+            console.error('[create-company] Falha ao resolver preço do WhatsApp:', whatsappError)
+            return new Response(JSON.stringify({ error: 'O preço do módulo de WhatsApp não está configurado corretamente.' }), {
+              status: 503,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+          }
         }
       }
     }
@@ -266,6 +282,7 @@ Deno.serve(async (req) => {
         custom_price_permanent: custom_price_permanent ?? true,
         custom_price_months: custom_price_months ?? null,
         nfse_tier: nfse_tier ?? 1,
+        whatsapp_tier: resolvedWhatsappTier,
       })
       .select('id')
       .single()

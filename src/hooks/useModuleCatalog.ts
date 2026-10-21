@@ -1,5 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { usePublicSubscriptionCatalog } from '@/hooks/usePublicSubscriptionPlans';
 
 export interface SubscriptionModuleRow {
   code: string;
@@ -11,30 +10,26 @@ export interface SubscriptionModuleRow {
 }
 
 /**
- * Catálogo de módulos da assinatura (subscription_modules).
+ * Catálogo de módulos da assinatura, compartilhado com `/proposta`.
  *
  * Fonte da verdade pra NOME e PREÇO de cada módulo — mudança de preço no banco
  * reflete no produto sem editar código. Descrições ricas em PT-BR continuam
  * locais (MODULE_INFO em ModuleGateModal.tsx), usadas como fallback/complemento
  * sem copiar preços para o bundle.
  *
- * queryKey compartilhada com Billing.tsx (['subscription-modules']) — mesma
- * shape de dados, cache único.
+ * O preço do WhatsApp vem de `whatsapp_tiers`, igual ao simulador comercial;
+ * os demais continuam vindo de `subscription_modules`.
  */
 export function useModuleCatalog() {
-  const { data: catalog = [], isLoading } = useQuery({
-    queryKey: ['subscription-modules'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('subscription_modules')
-        .select('*')
-        .eq('is_active', true)
-        .order('sort_order');
-      if (error) throw error;
-      return (data || []) as SubscriptionModuleRow[];
-    },
-    staleTime: 30 * 60 * 1000,
-  });
+  const { data, isLoading } = usePublicSubscriptionCatalog();
+  const catalog: SubscriptionModuleRow[] = (data?.allModules ?? []).map((module) => ({
+    code: module.code,
+    name: module.name,
+    price: module.price,
+    description: module.description,
+    sort_order: module.sortOrder,
+    is_active: true,
+  }));
 
   const getModule = (code?: string | null): SubscriptionModuleRow | null =>
     code ? catalog.find((m) => m.code === code) ?? null : null;

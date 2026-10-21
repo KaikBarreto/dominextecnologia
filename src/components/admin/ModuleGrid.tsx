@@ -1,9 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Check, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NfseTier } from '@/hooks/useNfseTiers';
+import { usePublicSubscriptionCatalog } from '@/hooks/usePublicSubscriptionPlans';
 import {
   CUSTOM_PLAN_INCLUDED_USERS,
   EXTRA_USER_MODULE_CODE,
@@ -18,7 +17,9 @@ import {
  * Reutilizada pelo CompanyFormModal (criar/editar empresa) e pelo
  * GenerateLinkModal (link de afiliado com plano personalizado).
  *
- * Catálogo SEMPRE vem de subscription_modules (nunca hardcode de preço/nome).
+ * Catálogo SEMPRE vem da mesma fonte comercial de `/proposta`: módulos ativos
+ * de `subscription_modules`, com o preço do WhatsApp resolvido por
+ * `whatsapp_tiers` (nunca hardcode de preço/nome).
  */
 
 // Módulos obrigatórios do Personalizado. O básico é a raiz paga; Portal do
@@ -40,18 +41,17 @@ export interface SubscriptionModule {
 }
 
 export function useSubscriptionModules() {
-  return useQuery({
-    queryKey: ['subscription-modules-active'],
-    queryFn: async (): Promise<SubscriptionModule[]> => {
-      const { data, error } = await supabase
-        .from('subscription_modules')
-        .select('code, name, price, description, type, sort_order')
-        .eq('is_active', true)
-        .order('sort_order');
-      if (error) throw error;
-      return data || [];
-    },
-  });
+  const { data: catalog, ...query } = usePublicSubscriptionCatalog();
+  const data: SubscriptionModule[] = (catalog?.allModules ?? []).map((module) => ({
+    code: module.code,
+    name: module.name,
+    price: module.price,
+    description: module.description,
+    type: module.type,
+    sort_order: module.sortOrder,
+  }));
+
+  return { ...query, data, whatsappPaidTier: catalog?.whatsappPaidTier ?? null };
 }
 
 /** Garante que os módulos base estão sempre presentes na seleção. */
