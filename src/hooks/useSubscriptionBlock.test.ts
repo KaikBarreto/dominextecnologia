@@ -54,6 +54,7 @@ function company(
     subscription_value: 199,
     subscription_plan: "pro",
     payment_lock_bypass: false,
+    ltv: 199,
     ...overrides,
   };
 }
@@ -105,6 +106,20 @@ describe("decideSubscriptionAccess", () => {
         now,
       ).status,
     ).toBe("allowed");
+  });
+
+  it("trata inactive com plano definido mas sem pagamento como primeira ativação", () => {
+    expect(
+      decideSubscriptionAccess(
+        company({
+          subscription_status: "inactive",
+          subscription_value: 547,
+          subscription_plan: "avancado",
+          ltv: 0,
+        }),
+        now,
+      ).status,
+    ).toBe("trial_expired");
   });
 
   it("falha fechado para status ou vencimento inválido", () => {

@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.34',
+    date: '21 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Plano já combinado segue direto para o pagamento',
+        description: 'Quando a empresa já recebeu um plano e um valor definidos pela equipe Dominex, o fim do teste agora abre diretamente o pagamento pelo preço contratado. A tela de escolha continua aparecendo apenas para testes sem plano definido.',
+        category: 'correcao',
+      },
+      {
+        title: 'Renovação ficou visível no topo do sistema',
+        description: 'Quando uma assinatura vence, aparece uma faixa vermelha logo abaixo do menu superior ou do cabeçalho do menu lateral, com um botão para renovar sem precisar procurar a tela de assinatura.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.33',
     date: '21 de outubro de 2026',
     type: 'patch',

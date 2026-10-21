@@ -23,6 +23,7 @@ export interface SubscriptionCompanyStatus {
   subscription_value: number | null;
   subscription_plan: string | null;
   payment_lock_bypass: boolean;
+  ltv: number | null;
 }
 
 export interface SubscriptionAccessDecision {
@@ -62,7 +63,7 @@ export function decideSubscriptionAccess(
   const expirationDate = company.subscription_expires_at ?? undefined;
 
   if (status === "inactive") {
-    const neverPurchased = !company.subscription_value && !company.subscription_plan;
+    const neverPurchased = (Number(company.ltv) || 0) <= 0;
     return {
       status: neverPurchased ? "trial_expired" : "subscription_expired",
       expirationDate,
@@ -122,7 +123,7 @@ export function useSubscriptionBlock(): SubscriptionBlockResult {
       const { data, error: queryError } = await supabase
         .from("companies")
         .select(
-          "subscription_expires_at, subscription_status, subscription_value, subscription_plan, payment_lock_bypass",
+          "subscription_expires_at, subscription_status, subscription_value, subscription_plan, payment_lock_bypass, ltv",
         )
         .eq("id", companyId)
         .single();

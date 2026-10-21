@@ -185,6 +185,24 @@ export default function Checkout() {
   // oferecido. Quem JÁ está nele continua enxergando o próprio plano, senão
   // não conseguiria renovar sozinho.
   const isExceptionPlanCompany = companyData?.subscription_plan === EXCEPTION_PLAN_CODE;
+  const effectiveCompanyValue = companyData ? getEffectiveSubscriptionValue(companyData) : 0;
+  // ltv só cresce depois de pagamento confirmado. Assim, plano + valor
+  // definidos pelo vendedor continuam sendo primeira ativação mesmo depois que
+  // o teste vence ou quando o cliente volta ao checkout sem o parâmetro do link.
+  const neverPurchased = (Number(companyData?.ltv) || 0) <= 0;
+  const hasCommerciallyDefinedPlan =
+    !!companyData?.subscription_plan &&
+    effectiveCompanyValue > 0 &&
+    plans.some((plan) => plan.code === companyData.subscription_plan);
+  const isActivationWithDefinedPlan =
+    !isRenewal &&
+    !isUpgrade &&
+    neverPurchased &&
+    hasCommerciallyDefinedPlan;
+  const shouldSkipPlanSelection =
+    !isRenewal &&
+    !isUpgrade &&
+    (isCustomPlanCompany || isPlanLocked || isActivationWithDefinedPlan);
 
   // Nomes dos módulos contratados (só pra empresa personalizado — alimenta a
   // lista de recursos do resumo de pagamento).
@@ -249,26 +267,11 @@ export default function Checkout() {
     }
   }, [isRenewal, companyData, plans, showCheckout]);
 
-  // Plano personalizado (1ª venda via link, pending_payment ou trial expirado):
-  // não há card no catálogo pra escolher — pula a etapa de seleção e vai direto
-  // pro pagamento com o plano/ciclo da própria empresa (mesma mecânica da renovação).
+  // Primeira ativação com plano comercial já definido: pula a grade e cobra o
+  // plano/ciclo persistidos na empresa. Cobre personalizado, link bloqueado e
+  // plano padrão editado pelo vendedor depois que o teste venceu.
   useEffect(() => {
-    if (!isRenewal && !isUpgrade && isCustomPlanCompany && plans.length > 0 && !showCheckout) {
-      const matched = plans.find((p) => p.code === "personalizado");
-      if (matched) {
-        setSelectedPlan("personalizado");
-        setBillingCycle((companyData?.billing_cycle as BillingCycle) || "monthly");
-        setShowCheckout(true);
-      }
-    }
-  }, [isRenewal, isUpgrade, isCustomPlanCompany, companyData, plans, showCheckout]);
-
-  // Plano TRAVADO pelo link (?bloqueado=1): auto-seleciona o plano da PRÓPRIA
-  // empresa (que o self-register já gravou a partir do link) e pula a etapa de
-  // seleção, indo direto ao pagamento. Não há como o cliente trocar por um plano
-  // mais barato. Vale pra qualquer plano (start/avancado/master/personalizado).
-  useEffect(() => {
-    if (isPlanLocked && !isRenewal && !isUpgrade && companyData && plans.length > 0 && !showCheckout) {
+    if (shouldSkipPlanSelection && companyData && plans.length > 0 && !showCheckout) {
       const currentPlanCode = companyData.subscription_plan;
       const matched = plans.find((p) => p.code === currentPlanCode);
       if (matched) {
@@ -277,7 +280,7 @@ export default function Checkout() {
         setShowCheckout(true);
       }
     }
-  }, [isPlanLocked, isRenewal, isUpgrade, companyData, plans, showCheckout]);
+  }, [shouldSkipPlanSelection, companyData, plans, showCheckout]);
 
   useEffect(() => () => stopPolling(), [stopPolling]);
 
@@ -292,8 +295,8 @@ export default function Checkout() {
 
   const waitsForAutomaticCheckout = isRenewal ||
     (isUpgrade && !upgradeQuoteError && !!upgradeQuote) ||
-    (!isUpgrade && (isCustomPlanCompany || isPlanLocked));
-  if (companyLoading || upgradeQuoteLoading || (waitsForAutomaticCheckout && (!showCheckout || !selectedPlan))) {
+    shouldSkipPlanSelection;
+  if (companyLoading || plansLoading || upgradeQuoteLoading || (waitsForAutomaticCheckout && (!showCheckout || !selectedPlan))) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-4xl space-y-8">
@@ -342,18 +345,15 @@ export default function Checkout() {
   }
 
   const currentPlan = plans.find((p) => p.code === selectedPlan);
-  const effectiveCompanyValue = companyData ? getEffectiveSubscriptionValue(companyData) : 0;
   const planPrice = currentPlan?.price || 0;
 
-  // Renovação, plano personalizado E plano TRAVADO cobram o valor EFETIVO da
+  // Renovação ou primeira ativação com plano definido cobram o valor EFETIVO da
   // empresa (custom_price se houver promoção ativa, senão subscription_value) —
-  // NUNCA o preço de catálogo (personalizado tem price R$ 0 no catálogo). No
-  // plano travado, o valor foi definido pelo link e gravado na empresa, então é
-  // ele que vale (impede pagar o preço de outro plano mais barato).
+  // NUNCA o preço de catálogo (personalizado tem price R$ 0 no catálogo).
   const pendingRenewalPrice = isRenewal
     ? Number(companyData?.pending_subscription_value) || 0
     : 0;
-  const renewalPrice = (!isUpgrade && (isRenewal || isCustomPlanCompany || isPlanLocked))
+  const renewalPrice = (!isUpgrade && (isRenewal || shouldSkipPlanSelection))
     ? (pendingRenewalPrice || effectiveCompanyValue || planPrice)
     : null;
   const basePrice = renewalPrice ?? planPrice;
