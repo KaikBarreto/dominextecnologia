@@ -10,7 +10,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, Wallet, Info } from 'lucide-react';
+import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, Wallet, Info, type LucideIcon } from 'lucide-react';
 import {
   AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
@@ -18,10 +18,12 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLocaleFormatters } from '@/lib/format/hooks';
 import { useCashFlowForecast } from '@/hooks/useCashFlowForecast';
+import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { UNASSIGNED_ACCOUNT_ID } from '@/lib/cash-flow-forecast';
+import { getCategoryIcon } from './categoryIcons';
 
 const HORIZONTES = [15, 30] as const;
 
@@ -39,6 +41,8 @@ interface LinhaRubrica {
   /** Valor da coluna Dívida. `null` = rubrica sem dívida. */
   divida: number | null;
   tipo: 'saldo' | 'entrada' | 'saidaTotal' | 'categoria';
+  cor?: string | null;
+  Icone?: LucideIcon;
 }
 
 export function CashFlowForecast() {
@@ -55,6 +59,12 @@ export function CashFlowForecast() {
   const [celula, setCelula] = useState<{ data: string; categoria: string | null } | null>(null);
 
   const { forecast, isLoading } = useCashFlowForecast({ horizonDays });
+  const { categories } = useFinancialCategories();
+
+  const categoriaPorNome = useMemo(
+    () => new Map(categories.map((categoria) => [categoria.name, categoria])),
+    [categories],
+  );
 
   const fmt = (v: number) => money(v);
 
@@ -113,6 +123,8 @@ export function CashFlowForecast() {
         porDia: serie,
         divida: null,
         tipo: 'categoria' as const,
+        cor: categoriaPorNome.get(nome)?.color ?? '#64748b',
+        Icone: getCategoryIcon(categoriaPorNome.get(nome)?.icon),
       }));
 
     const saldoFinal: LinhaRubrica = {
@@ -124,7 +136,7 @@ export function CashFlowForecast() {
     };
 
     return [saldoInicial, recebimentos, totalSaidas, ...categorias, saldoFinal];
-  }, [forecast]);
+  }, [categoriaPorNome, forecast]);
 
   /** Lançamentos por trás da célula aberta. */
   const detalhe = useMemo(() => {
@@ -170,7 +182,7 @@ export function CashFlowForecast() {
               <Icone className="h-4 w-4 shrink-0 text-white" />
               <span className="text-[11px] uppercase tracking-wide text-white truncate">{rotulo}</span>
             </div>
-            <p className="text-lg sm:text-xl font-bold tabular-nums text-white">{fmt(valor)}</p>
+            <p className="whitespace-nowrap text-lg sm:text-xl font-bold tabular-nums text-white">{fmt(valor)}</p>
           </div>
         ))}
       </div>
@@ -248,6 +260,7 @@ export function CashFlowForecast() {
                   className={cn(
                     'border-t',
                     linha.tipo === 'saldo' && 'bg-muted/20 font-semibold',
+                    (linha.tipo === 'entrada' || linha.tipo === 'saidaTotal') && 'font-semibold',
                     linha.tipo === 'categoria' && 'text-muted-foreground',
                   )}
                 >
@@ -263,9 +276,19 @@ export function CashFlowForecast() {
                       linha.tipo === 'categoria' && 'pl-6 text-xs',
                     )}
                   >
-                    {linha.rotulo}
+                    <span className="flex items-center gap-2">
+                      {linha.tipo === 'categoria' && linha.Icone && (
+                        <span
+                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+                          style={{ backgroundColor: linha.cor || '#64748b' }}
+                        >
+                          <linha.Icone className="h-3 w-3 text-white" />
+                        </span>
+                      )}
+                      <span>{linha.rotulo}</span>
+                    </span>
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums border-l">
+                  <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums border-l">
                     {linha.divida
                       ? <span className={linha.tipo === 'entrada' ? 'text-warning' : 'text-destructive'}>{fmt(linha.divida)}</span>
                       : <span className="text-muted-foreground/40">—</span>}
@@ -278,7 +301,7 @@ export function CashFlowForecast() {
                       <td
                         key={dia.date}
                         className={cn(
-                          'px-3 py-2 text-right tabular-nums',
+                          'whitespace-nowrap px-3 py-2 text-right tabular-nums',
                           linha.tipo === 'entrada' && valor > 0 && 'text-success',
                           linha.tipo === 'saidaTotal' && valor > 0 && 'text-destructive',
                           linha.tipo === 'saldo' && valor < 0 && 'text-destructive',
@@ -348,7 +371,7 @@ export function CashFlowForecast() {
                       <td
                         key={dia.date}
                         className={cn(
-                          'px-3 py-2 text-right tabular-nums',
+                          'whitespace-nowrap px-3 py-2 text-right tabular-nums',
                           valor < 0 && conta.accountId !== UNASSIGNED_ACCOUNT_ID && 'text-destructive font-semibold',
                         )}
                       >
