@@ -14,11 +14,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
 import type {
   CustomerPortalPermissions,
   CustomerPortalSettings,
 } from '@/hooks/useCustomerPortalSettings';
-import { buildCustomerPortalUrl } from '@/hooks/useCustomerPortalSettings';
+import {
+  buildCustomerPortalUrl,
+  DEFAULT_CUSTOMER_PORTAL_PUBLIC_SECTIONS,
+} from '@/hooks/useCustomerPortalSettings';
 
 const PERMISSION_OPTIONS: Array<{
   key: keyof CustomerPortalPermissions;
@@ -62,6 +66,24 @@ const PERMISSION_OPTIONS: Array<{
   },
 ];
 
+/**
+ * Os 3 estados de uma seção do portal. Só aparecem quando a proteção por senha
+ * está LIGADA — com senha desligada a tela continua sendo o switch de sempre
+ * (a esmagadora maioria dos tenants não usa senha e não pode sentir diferença).
+ */
+type SectionAccess = 'hidden' | 'public' | 'password';
+
+const ACCESS_CHOICES: Array<{
+  value: SectionAccess;
+  label: string;
+  /** Pílula ativa: fill saturado + texto branco (régua de UI). */
+  activeClass: string;
+}> = [
+  { value: 'hidden', label: 'Oculto', activeClass: 'bg-muted-foreground text-white' },
+  { value: 'public', label: 'Sem senha', activeClass: 'bg-warning text-white' },
+  { value: 'password', label: 'Com senha', activeClass: 'bg-primary text-white' },
+];
+
 interface CustomerPortalSettingsTabProps {
   settings: CustomerPortalSettings;
   onSettingsChange: (settings: CustomerPortalSettings) => void;
@@ -94,8 +116,22 @@ export function CustomerPortalSettingsTab({
     onSettingsChange({ ...settings, ...patch });
   };
 
+  const publicSections = settings.publicSections ?? DEFAULT_CUSTOMER_PORTAL_PUBLIC_SECTIONS;
+
   const updatePermission = (key: keyof CustomerPortalPermissions, checked: boolean) => {
     update({ permissions: { ...settings.permissions, [key]: checked } });
+  };
+
+  const resolveAccess = (key: keyof CustomerPortalPermissions): SectionAccess => {
+    if (!settings.permissions[key]) return 'hidden';
+    return publicSections[key] ? 'public' : 'password';
+  };
+
+  const updateAccess = (key: keyof CustomerPortalPermissions, access: SectionAccess) => {
+    update({
+      permissions: { ...settings.permissions, [key]: access !== 'hidden' },
+      publicSections: { ...publicSections, [key]: access === 'public' },
+    });
   };
 
   const copyLink = async () => {
@@ -251,23 +287,76 @@ export function CustomerPortalSettingsTab({
           <CardDescription>
             As restrições são aplicadas no servidor; conteúdo desligado não é enviado ao navegador do cliente.
           </CardDescription>
+          {/* Linha de ajuda SO com senha ligada: com senha desligada este card
+              continua sendo, pixel a pixel, o de sempre. */}
+          {settings.passwordEnabled && (
+            <p className="mt-2 rounded-lg border border-dashed bg-muted/20 p-3 text-xs leading-relaxed text-muted-foreground">
+              Com a senha ligada, escolha o que aparece sem pedir login. Assim o mesmo link serve
+              para a portaria e para o síndico.
+            </p>
+          )}
         </CardHeader>
         <CardContent className="divide-y rounded-lg border px-3">
-          {PERMISSION_OPTIONS.map((option) => (
-            <div key={option.key} className="flex items-start justify-between gap-4 py-3">
-              <div className="space-y-0.5">
-                <Label htmlFor={`customer-portal-${option.key}`}>{option.title}</Label>
-                <p className="text-xs leading-relaxed text-muted-foreground">{option.description}</p>
+          {PERMISSION_OPTIONS.map((option) => {
+            const access = resolveAccess(option.key);
+            return (
+              <div
+                key={option.key}
+                  className={cn(
+                    'flex py-3',
+                    // Senha DESLIGADA = linha de sempre (switch na direita, inclusive
+                    // no mobile). So o seletor de 3 estados empilha no celular, porque
+                    // nao cabe ao lado do titulo em 390px.
+                    settings.passwordEnabled
+                      ? 'flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4'
+                      : 'items-start justify-between gap-4',
+                  )}
+                >
+                  <div className={cn('space-y-0.5', settings.passwordEnabled && 'min-w-0')}>
+                    <Label htmlFor={`customer-portal-${option.key}`}>{option.title}</Label>
+                    <p className="text-xs leading-relaxed text-muted-foreground">{option.description}</p>
+                  </div>
+
+                  {settings.passwordEnabled ? (
+                    <div
+                      role="group"
+                      aria-label={option.title}
+                      className="grid w-full min-w-0 shrink-0 grid-cols-3 gap-1 rounded-lg border bg-muted/30 p-1 sm:w-auto"
+                    >
+                      {ACCESS_CHOICES.map((choice) => {
+                        const isActive = access === choice.value;
+                        return (
+                          <button
+                            key={choice.value}
+                            type="button"
+                            aria-pressed={isActive}
+                            disabled={!settings.isActive}
+                            onClick={() => updateAccess(option.key, choice.value)}
+                            className={cn(
+                              'min-w-0 truncate rounded-md px-2 py-1.5 text-xs font-semibold transition-colors',
+                              'disabled:cursor-not-allowed disabled:opacity-60',
+                              isActive
+                                ? choice.activeClass
+                                : 'border border-border bg-card text-muted-foreground hover:text-foreground',
+                            )}
+                          >
+                            {choice.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <Switch
+                      id={`customer-portal-${option.key}`}
+                      checked={settings.permissions[option.key]}
+                      onCheckedChange={(checked) => updatePermission(option.key, checked)}
+                      disabled={!settings.isActive}
+                      aria-label={option.title}
+                    />
+                  )}
               </div>
-              <Switch
-                id={`customer-portal-${option.key}`}
-                checked={settings.permissions[option.key]}
-                onCheckedChange={(checked) => updatePermission(option.key, checked)}
-                disabled={!settings.isActive}
-                aria-label={option.title}
-              />
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
     </div>

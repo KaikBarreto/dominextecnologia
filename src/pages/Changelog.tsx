@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.31',
+    date: '21 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Senha só para a parte sensível do portal do cliente',
+        description: 'Com a proteção por senha ligada, agora dá para escolher seção por seção o que aparece sem login. O histórico de atendimentos e a abertura de chamados podem ficar abertos enquanto cobranças, notas fiscais e documentos pedem a senha, então o mesmo link serve para a portaria e para quem cuida do financeiro. Cada seção tem três opções: oculta, aberta ou com senha, e tudo começa protegido. Quem não usa senha não vê nenhuma diferença.',
+        category: 'recurso',
+      },
+      {
+        title: 'O portal do contrato também pode pedir senha',
+        description: 'O link da unidade ganhou o mesmo controle por seção, usando a mesma senha cadastrada para o cliente. Cronograma e histórico podem ficar livres enquanto cobranças e documentos ficam protegidos. Os links e QR Codes já compartilhados continuam abrindo exatamente como antes, porque nada fica protegido sem você escolher.',
+        category: 'recurso',
+      },
+      {
+        title: 'Conteúdo protegido não sai mais do servidor',
+        description: 'Quando uma seção está com senha, as informações dela nem chegam ao navegador de quem abriu o link, e os arquivos ficam indisponíveis para download até alguém entrar com a senha.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.37.30',
     date: '21 de outubro de 2026',
     type: 'patch',

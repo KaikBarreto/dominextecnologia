@@ -93,7 +93,12 @@ export interface PortalContract {
   /** "Conforme Lei Federal 13.589/2018" (texto literal ou customizado). */
   compliance_text: string;
   status_label: string;
-  health_status: PortalHealthStatus;
+  /**
+   * `null` quando a seção `visao-geral` está protegida por senha (ou oculta): a
+   * edge NÃO inventa "Em dia" pra quem não viu o dado — o front simplesmente
+   * não desenha o selo de saúde. Nunca é null em portal sem configuração.
+   */
+  health_status: PortalHealthStatus | null;
   overdue_count: number;
 }
 
@@ -325,7 +330,7 @@ export interface PortalPayload {
    *    `PortalPrivateError` no client; o payload de sucesso é sempre 'granted').
    * Ausente em payloads antigos → trata como 'granted' (compat).
    */
-  access?: 'granted' | 'denied';
+  access?: 'granted' | 'denied' | 'password_required';
   /**
    * `true` quando quem abre é um usuário LOGADO da empresa dona → pode
    * "Preencher OS". Anônimo / outra empresa → `false` (read-only).
@@ -339,7 +344,8 @@ export interface PortalPayload {
   is_pmoc?: boolean;
   unit: PortalUnit;
   contract: PortalContract;
-  health: PortalHealth;
+  /** Ausente quando a seção `visao-geral` não é servível (protegida/oculta). */
+  health?: PortalHealth;
   responsible_technician: PortalResponsibleTechnician | null;
   tenant: PortalTenant;
   /** Redesign 2026-05-24 — OSs futuras + em andamento (limit 50). */
@@ -401,6 +407,21 @@ export interface PortalPayload {
    * usar `classifyTenantChargeStatus` para converter em classificação semântica.
    */
   charges?: PortalCharge[];
+  /**
+   * Seções do Portal do Contrato (2026-10-21) — `contracts.portal_sections`.
+   *
+   * `partial` = há seção VISÍVEL atrás da senha que este visitante não recebeu.
+   * `locked_sections` = chaves de ABA (com hífen: `visao-geral`,
+   * `historico-pmoc`) que aparecem com cadeado. `hidden_sections` = abas que
+   * nem existem pra este visitante.
+   *
+   * As três chaves só vêm quando o tenant configurou ALGO. Contrato em `{}` (o
+   * default) não traz nenhuma delas e o portal se comporta exatamente como
+   * antes desta entrega — é a lei da retrocompatibilidade do QR code impresso.
+   */
+  partial?: boolean;
+  locked_sections?: string[];
+  hidden_sections?: string[];
 }
 
 /**

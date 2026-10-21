@@ -1144,8 +1144,8 @@ export type Database = {
           resource_id: string
           resource_type: string
           service_order_id: string
-          slot_index: number
           slot: unknown
+          slot_index: number
           source: string
           status: string
           updated_at: string
@@ -1162,8 +1162,8 @@ export type Database = {
           resource_id: string
           resource_type: string
           service_order_id: string
-          slot_index?: number
           slot: unknown
+          slot_index?: number
           source?: string
           status?: string
           updated_at?: string
@@ -1180,8 +1180,8 @@ export type Database = {
           resource_id?: string
           resource_type?: string
           service_order_id?: string
-          slot_index?: number
           slot?: unknown
+          slot_index?: number
           source?: string
           status?: string
           updated_at?: string
@@ -2843,6 +2843,7 @@ export type Database = {
           pmoc_tipo_atividade: string | null
           portal_documents_released: boolean
           portal_is_public: boolean
+          portal_sections: Json
           public_pmoc_token: string | null
           public_short_code: string | null
           responsible_technician_id: string | null
@@ -2900,6 +2901,7 @@ export type Database = {
           pmoc_tipo_atividade?: string | null
           portal_documents_released?: boolean
           portal_is_public?: boolean
+          portal_sections?: Json
           public_pmoc_token?: string | null
           public_short_code?: string | null
           responsible_technician_id?: string | null
@@ -2957,6 +2959,7 @@ export type Database = {
           pmoc_tipo_atividade?: string | null
           portal_documents_released?: boolean
           portal_is_public?: boolean
+          portal_sections?: Json
           public_pmoc_token?: string | null
           public_short_code?: string | null
           responsible_technician_id?: string | null
@@ -3554,6 +3557,74 @@ export type Database = {
           },
         ]
       }
+      customer_credit_ledger: {
+        Row: {
+          amount: number
+          company_id: string
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          financial_transaction_id: string | null
+          id: string
+          kind: string
+          notes: string | null
+          order_id: string | null
+        }
+        Insert: {
+          amount: number
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          financial_transaction_id?: string | null
+          id?: string
+          kind: string
+          notes?: string | null
+          order_id?: string | null
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          financial_transaction_id?: string | null
+          id?: string
+          kind?: string
+          notes?: string | null
+          order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_credit_ledger_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_credit_ledger_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_credit_ledger_financial_transaction_id_fkey"
+            columns: ["financial_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_credit_ledger_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_documents: {
         Row: {
           amount: number | null
@@ -3628,74 +3699,6 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      customer_credit_ledger: {
-        Row: {
-          amount: number
-          company_id: string
-          created_at: string
-          created_by: string | null
-          customer_id: string
-          financial_transaction_id: string | null
-          id: string
-          kind: string
-          notes: string | null
-          order_id: string | null
-        }
-        Insert: {
-          amount: number
-          company_id: string
-          created_at?: string
-          created_by?: string | null
-          customer_id: string
-          financial_transaction_id?: string | null
-          id?: string
-          kind: string
-          notes?: string | null
-          order_id?: string | null
-        }
-        Update: {
-          amount?: number
-          company_id?: string
-          created_at?: string
-          created_by?: string | null
-          customer_id?: string
-          financial_transaction_id?: string | null
-          id?: string
-          kind?: string
-          notes?: string | null
-          order_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "customer_credit_ledger_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "customer_credit_ledger_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "customer_credit_ledger_financial_transaction_id_fkey"
-            columns: ["financial_transaction_id"]
-            isOneToOne: false
-            referencedRelation: "financial_transactions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "customer_credit_ledger_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pdv_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -3874,6 +3877,7 @@ export type Database = {
           is_public: boolean
           password_enabled: boolean
           permissions: Json
+          public_sections: Json
           token: string
         }
         Insert: {
@@ -3884,6 +3888,7 @@ export type Database = {
           is_public?: boolean
           password_enabled?: boolean
           permissions?: Json
+          public_sections?: Json
           token?: string
         }
         Update: {
@@ -3894,6 +3899,7 @@ export type Database = {
           is_public?: boolean
           password_enabled?: boolean
           permissions?: Json
+          public_sections?: Json
           token?: string
         }
         Relationships: [
@@ -6197,7 +6203,7 @@ export type Database = {
           service_order_id?: string | null
           supplier_id?: string | null
           tenant_charge_id?: string | null
-          transaction_date?: string
+          transaction_date: string
           transaction_type: Database["public"]["Enums"]["transaction_type"]
           transfer_pair_id?: string | null
           updated_at?: string
@@ -8752,6 +8758,57 @@ export type Database = {
           },
         ]
       }
+      pdv_order_attachments: {
+        Row: {
+          company_id: string
+          file_name: string
+          id: string
+          mime_type: string | null
+          order_id: string
+          size_bytes: number | null
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          company_id: string
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          order_id: string
+          size_bytes?: number | null
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          order_id?: string
+          size_bytes?: number | null
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdv_order_attachments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdv_order_attachments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pdv_order_drafts: {
         Row: {
           company_id: string
@@ -8801,57 +8858,6 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pdv_order_attachments: {
-        Row: {
-          company_id: string
-          file_name: string
-          id: string
-          mime_type: string | null
-          order_id: string
-          size_bytes: number | null
-          storage_path: string
-          uploaded_at: string
-          uploaded_by: string | null
-        }
-        Insert: {
-          company_id: string
-          file_name: string
-          id?: string
-          mime_type?: string | null
-          order_id: string
-          size_bytes?: number | null
-          storage_path: string
-          uploaded_at?: string
-          uploaded_by?: string | null
-        }
-        Update: {
-          company_id?: string
-          file_name?: string
-          id?: string
-          mime_type?: string | null
-          order_id?: string
-          size_bytes?: number | null
-          storage_path?: string
-          uploaded_at?: string
-          uploaded_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pdv_order_attachments_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pdv_order_attachments_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pdv_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -11623,6 +11629,103 @@ export type Database = {
           },
         ]
       }
+      service_order_budget_items: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string
+          details: string | null
+          id: string
+          inventory_id: string | null
+          item_type: string
+          position: number
+          quantity: number
+          service_order_id: string
+          service_type_id: string | null
+          source_quote_item_id: string | null
+          total_price: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description: string
+          details?: string | null
+          id?: string
+          inventory_id?: string | null
+          item_type?: string
+          position?: number
+          quantity?: number
+          service_order_id: string
+          service_type_id?: string | null
+          source_quote_item_id?: string | null
+          total_price?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string
+          details?: string | null
+          id?: string
+          inventory_id?: string | null
+          item_type?: string
+          position?: number
+          quantity?: number
+          service_order_id?: string
+          service_type_id?: string | null
+          source_quote_item_id?: string | null
+          total_price?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_order_budget_items_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_budget_items_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_budget_items_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
+          },
+          {
+            foreignKeyName: "service_order_budget_items_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_budget_items_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_budget_items_source_quote_item_id_fkey"
+            columns: ["source_quote_item_id"]
+            isOneToOne: false
+            referencedRelation: "quote_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_order_equipment: {
         Row: {
           created_at: string
@@ -11806,96 +11909,6 @@ export type Database = {
           },
         ]
       }
-      service_order_budget_items: {
-        Row: {
-          company_id: string
-          created_at: string
-          description: string
-          details: string | null
-          id: string
-          inventory_id: string | null
-          item_type: string
-          position: number
-          quantity: number
-          service_order_id: string
-          service_type_id: string | null
-          source_quote_item_id: string | null
-          total_price: number
-          unit_price: number
-          updated_at: string
-        }
-        Insert: {
-          company_id: string
-          created_at?: string
-          description: string
-          details?: string | null
-          id?: string
-          inventory_id?: string | null
-          item_type?: string
-          position?: number
-          quantity?: number
-          service_order_id: string
-          service_type_id?: string | null
-          source_quote_item_id?: string | null
-          total_price?: number
-          unit_price?: number
-          updated_at?: string
-        }
-        Update: {
-          company_id?: string
-          created_at?: string
-          description?: string
-          details?: string | null
-          id?: string
-          inventory_id?: string | null
-          item_type?: string
-          position?: number
-          quantity?: number
-          service_order_id?: string
-          service_type_id?: string | null
-          source_quote_item_id?: string | null
-          total_price?: number
-          unit_price?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "service_order_budget_items_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "service_order_budget_items_inventory_id_fkey"
-            columns: ["inventory_id"]
-            isOneToOne: false
-            referencedRelation: "inventory"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "service_order_budget_items_service_order_id_fkey"
-            columns: ["service_order_id"]
-            isOneToOne: false
-            referencedRelation: "service_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "service_order_budget_items_service_type_id_fkey"
-            columns: ["service_type_id"]
-            isOneToOne: false
-            referencedRelation: "service_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "service_order_budget_items_source_quote_item_id_fkey"
-            columns: ["source_quote_item_id"]
-            isOneToOne: false
-            referencedRelation: "quote_items"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       service_order_service_types: {
         Row: {
           company_id: string
@@ -11925,6 +11938,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_service_types_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
           },
           {
             foreignKeyName: "service_order_service_types_service_order_id_fkey"
@@ -11992,9 +12012,9 @@ export type Database = {
           require_client_signature: boolean | null
           require_tech_signature: boolean | null
           resumed_at: string | null
-          scheduled_date: string | null
-          scheduled_days: number
           schedule_plan: Json
+          scheduled_date: string | null
+          scheduled_days: number | null
           scheduled_time: string | null
           service_address: string | null
           service_address_number: string | null
@@ -12070,8 +12090,9 @@ export type Database = {
           require_client_signature?: boolean | null
           require_tech_signature?: boolean | null
           resumed_at?: string | null
-          scheduled_date?: string | null
           schedule_plan?: Json
+          scheduled_date?: string | null
+          scheduled_days?: number | null
           scheduled_time?: string | null
           service_address?: string | null
           service_address_number?: string | null
@@ -12147,8 +12168,9 @@ export type Database = {
           require_client_signature?: boolean | null
           require_tech_signature?: boolean | null
           resumed_at?: string | null
-          scheduled_date?: string | null
           schedule_plan?: Json
+          scheduled_date?: string | null
+          scheduled_days?: number | null
           scheduled_time?: string | null
           service_address?: string | null
           service_address_number?: string | null
@@ -14912,6 +14934,10 @@ export type Database = {
         }
       }
       _financial_import_uuid: { Args: { p_text: string }; Returns: string }
+      _public_os_last_technician_location: {
+        Args: { p_os_id: string }
+        Returns: Json
+      }
       _recalculate_employee_movement_balances: {
         Args: { p_employee_id: string }
         Returns: undefined
@@ -15369,6 +15395,7 @@ export type Database = {
       can_delete_finance: { Args: { _user_id: string }; Returns: boolean }
       can_edit_os: { Args: { _user_id: string }; Returns: boolean }
       can_manage_affiliates: { Args: never; Returns: boolean }
+      can_manage_bank_accounts: { Args: { _user_id: string }; Returns: boolean }
       can_manage_billing_reminder: {
         Args: { p_transaction_id: string; p_user_id: string }
         Returns: boolean
@@ -15380,9 +15407,13 @@ export type Database = {
       }
       can_manage_system: { Args: { _user_id: string }; Returns: boolean }
       can_manage_users: { Args: { _user_id: string }; Returns: boolean }
+      can_use_bank_accounts: { Args: { _user_id: string }; Returns: boolean }
       cash_flow_opening_balances: {
         Args: { p_today: string }
-        Returns: { account_id: string; balance: number }[]
+        Returns: {
+          account_id: string
+          balance: number
+        }[]
       }
       check_email_available: { Args: { _email: string }; Returns: boolean }
       close_due_credit_card_bills: { Args: never; Returns: number }
@@ -15432,6 +15463,14 @@ export type Database = {
         }
         Returns: Json
       }
+      contract_portal_login: {
+        Args: { p_password: string; p_token: string }
+        Returns: Json
+      }
+      contract_portal_session_is_valid: {
+        Args: { p_session_token: string; p_token: string }
+        Returns: boolean
+      }
       create_bank_statement_import: {
         Args: {
           p_account_id: string
@@ -15448,14 +15487,18 @@ export type Database = {
         Returns: Json
       }
       create_contract_portal_ticket: {
-        Args: { p_description: string; p_token: string }
+        Args: {
+          p_description: string
+          p_session_token?: string
+          p_token: string
+        }
         Returns: Json
       }
       create_customer_portal_ticket: {
         Args: {
           p_description: string
-          p_equipment_id?: string | null
-          p_session_token: string | null
+          p_equipment_id?: string
+          p_session_token: string
           p_token: string
         }
         Returns: Json
@@ -15730,16 +15773,6 @@ export type Database = {
       generate_pmoc_token: { Args: never; Returns: string }
       generate_ponto_slug: { Args: { p_employee_id: string }; Returns: string }
       generate_public_short_code: { Args: { p_len?: number }; Returns: string }
-      generate_service_order_from_quote: {
-        Args: { p_equipment_services?: Json; p_quote_id: string }
-        Returns: Database["public"]["Tables"]["service_orders"]["Row"]
-        SetofOptions: {
-          from: "*"
-          to: "service_orders"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       generate_recurrence_dates: {
         Args: {
           p_end_date: string
@@ -15750,6 +15783,93 @@ export type Database = {
           p_weekdays?: number[]
         }
         Returns: string[]
+      }
+      generate_service_order_from_quote: {
+        Args: { p_equipment_services?: Json; p_quote_id: string }
+        Returns: {
+          check_in_by: string | null
+          check_in_location: Json | null
+          check_in_time: string | null
+          check_out_by: string | null
+          check_out_location: Json | null
+          check_out_time: string | null
+          client_signature: string | null
+          client_signature_at: string | null
+          client_signed_by: string | null
+          client_signed_location: Json | null
+          company_id: string
+          completed_at: string | null
+          contract_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          description: string | null
+          diagnosis: string | null
+          duration_minutes: number
+          entry_type: string
+          equipment_id: string | null
+          form_template_id: string | null
+          generate_nps_survey: boolean | null
+          id: string
+          labor_hours: number | null
+          labor_value: number | null
+          lead_id: string | null
+          notes: string | null
+          order_number: number
+          origin: string
+          os_type: Database["public"]["Enums"]["os_type"]
+          partial_finish: boolean
+          parts_used: Json | null
+          parts_value: number | null
+          paused_at: string | null
+          pmoc_conformity_notes: string | null
+          pmoc_conformity_status: string | null
+          public_short_code: string | null
+          quote_id: string | null
+          recurrence_end_date: string | null
+          recurrence_group_id: string | null
+          recurrence_indeterminate: boolean
+          recurrence_interval: number | null
+          recurrence_type: string | null
+          recurrence_weekdays: number[] | null
+          require_client_signature: boolean | null
+          require_tech_signature: boolean | null
+          resumed_at: string | null
+          schedule_plan: Json
+          scheduled_date: string | null
+          scheduled_days: number | null
+          scheduled_time: string | null
+          service_address: string | null
+          service_address_number: string | null
+          service_city: string | null
+          service_latitude: number | null
+          service_longitude: number | null
+          service_neighborhood: string | null
+          service_state: string | null
+          service_type_id: string | null
+          service_zip_code: string | null
+          show_in_schedule: boolean
+          snapshot_data: Json | null
+          solution: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["os_status"]
+          task_title: string | null
+          task_type_id: string | null
+          team_id: string | null
+          tech_signature: string | null
+          tech_signature_at: string | null
+          tech_signed_by: string | null
+          tech_signed_location: Json | null
+          technician_id: string | null
+          total_value: number | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "service_orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       get_accessible_inventory_ids: { Args: never; Returns: string[] }
       get_admin_cobrancas_overview: { Args: never; Returns: Json }
@@ -15952,6 +16072,10 @@ export type Database = {
       get_portal_data:
         | { Args: { p_token: string }; Returns: Json }
         | { Args: { p_session_token: string; p_token: string }; Returns: Json }
+      get_portal_data_before_customer_documents: {
+        Args: { p_session_token: string; p_token: string }
+        Returns: Json
+      }
       get_profile_company_id: { Args: { _user_id: string }; Returns: string }
       get_public_os: { Args: { p_os_id: string }; Returns: Json }
       get_public_os_by_code: { Args: { p_code: string }; Returns: Json }
@@ -15959,7 +16083,10 @@ export type Database = {
         Args: { p_reference: string }
         Returns: Json
       }
-      get_public_os_technician_location: { Args: { p_os_id: string }; Returns: Json }
+      get_public_os_technician_location: {
+        Args: { p_os_id: string }
+        Returns: Json
+      }
       get_public_registration_modules: {
         Args: { p_codes: string[] }
         Returns: {
@@ -16167,6 +16294,7 @@ export type Database = {
       }
       lead_valida_cnpj: { Args: { p_doc: string }; Returns: boolean }
       lead_valida_cpf: { Args: { p_doc: string }; Returns: boolean }
+      list_usable_financial_accounts: { Args: never; Returns: Json }
       mark_lead_worked_and_release: {
         Args: { p_company_id: string }
         Returns: Json
@@ -16287,6 +16415,10 @@ export type Database = {
       nfse_month_usage: { Args: { p_company_id: string }; Returns: number }
       normalize_customer_portal_permissions: {
         Args: { p_permissions: Json }
+        Returns: Json
+      }
+      normalize_customer_portal_public_sections: {
+        Args: { p_public_sections: Json }
         Returns: Json
       }
       notify_terms_update: {
@@ -16424,7 +16556,6 @@ export type Database = {
         Returns: Json
       }
       pdv_cofre_balance: { Args: never; Returns: Json }
-      list_usable_financial_accounts: { Args: never; Returns: Json }
       pdv_cofre_snapshot: {
         Args: { p_company_id: string }
         Returns: {
@@ -16445,7 +16576,20 @@ export type Database = {
           p_draft_id: string
           p_expected_revision: number
         }
-        Returns: Database["public"]["Tables"]["pdv_order_drafts"]["Row"]
+        Returns: {
+          company_id: string
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          deleted_by: string | null
+          draft_type: string
+          id: string
+          last_client_request_id: string
+          last_request_kind: string
+          payload: Json
+          revision: number
+          updated_at: string
+        }
         SetofOptions: {
           from: "*"
           to: "pdv_order_drafts"
@@ -16456,7 +16600,20 @@ export type Database = {
       pdv_fmt_brl: { Args: { p_value: number }; Returns: string }
       pdv_list_order_drafts: {
         Args: { p_draft_type?: string; p_include_deleted?: boolean }
-        Returns: Database["public"]["Tables"]["pdv_order_drafts"]["Row"][]
+        Returns: {
+          company_id: string
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          deleted_by: string | null
+          draft_type: string
+          id: string
+          last_client_request_id: string
+          last_request_kind: string
+          payload: Json
+          revision: number
+          updated_at: string
+        }[]
         SetofOptions: {
           from: "*"
           to: "pdv_order_drafts"
@@ -16502,23 +16659,36 @@ export type Database = {
         }
         Returns: Json
       }
-      pdv_revert_cash_movement: {
-        Args: { p_movement_id: string; p_reason: string }
-        Returns: Json
-      }
       pdv_restore_order_draft: {
         Args: {
           p_client_request_id: string
           p_draft_id: string
           p_expected_revision: number
         }
-        Returns: Database["public"]["Tables"]["pdv_order_drafts"]["Row"]
+        Returns: {
+          company_id: string
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          deleted_by: string | null
+          draft_type: string
+          id: string
+          last_client_request_id: string
+          last_request_kind: string
+          payload: Json
+          revision: number
+          updated_at: string
+        }
         SetofOptions: {
           from: "*"
           to: "pdv_order_drafts"
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      pdv_revert_cash_movement: {
+        Args: { p_movement_id: string; p_reason: string }
+        Returns: Json
       }
       pdv_save_order_draft: {
         Args: {
@@ -16528,7 +16698,20 @@ export type Database = {
           p_expected_revision: number
           p_payload: Json
         }
-        Returns: Database["public"]["Tables"]["pdv_order_drafts"]["Row"]
+        Returns: {
+          company_id: string
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          deleted_by: string | null
+          draft_type: string
+          id: string
+          last_client_request_id: string
+          last_request_kind: string
+          payload: Json
+          revision: number
+          updated_at: string
+        }
         SetofOptions: {
           from: "*"
           to: "pdv_order_drafts"
@@ -16551,6 +16734,10 @@ export type Database = {
       }
       preview_financial_import: {
         Args: { p_file_hash: string; p_rows: Json }
+        Returns: Json
+      }
+      preview_service_order_scope_removal: {
+        Args: { _items: Json; _service_order_id: string }
         Returns: Json
       }
       project_progress_summary: {
@@ -17014,9 +17201,10 @@ export type Database = {
         Args: {
           p_customer_id: string
           p_is_active: boolean
-          p_password: string | null
+          p_password: string
           p_password_enabled: boolean
           p_permissions: Json
+          p_public_sections?: Json
         }
         Returns: Json
       }
@@ -17031,6 +17219,26 @@ export type Database = {
         }
         Returns: Json
       }
+      schedule_book_service_order_plan: {
+        Args: {
+          p_override_justification?: string
+          p_resource_id: string
+          p_resource_type: string
+          p_schedule_plan: Json
+          p_service_order_id: string
+          p_starts_at: string
+        }
+        Returns: Json
+      }
+      schedule_create_service_order_plan_with_override: {
+        Args: {
+          p_assignee_user_ids?: string[]
+          p_equipment_items?: Json
+          p_order: Json
+          p_override_justification: string
+        }
+        Returns: Json
+      }
       schedule_create_service_order_with_override: {
         Args: {
           p_assignee_user_ids?: string[]
@@ -17040,6 +17248,7 @@ export type Database = {
         }
         Returns: Json
       }
+      schedule_plan_is_valid: { Args: { p_plan: Json }; Returns: boolean }
       schedule_weekly_hours_is_valid: {
         Args: { p_value: Json }
         Returns: boolean
@@ -17135,6 +17344,10 @@ export type Database = {
         }
         Returns: Json
       }
+      sync_service_order_budget: {
+        Args: { p_items: Json; p_service_order_id: string }
+        Returns: Json
+      }
       sync_service_order_scope: {
         Args: { _items: Json; _service_order_id: string }
         Returns: Json
@@ -17145,14 +17358,6 @@ export type Database = {
           _items: Json
           _service_order_id: string
         }
-        Returns: Json
-      }
-      preview_service_order_scope_removal: {
-        Args: { _items: Json; _service_order_id: string }
-        Returns: Json
-      }
-      sync_service_order_budget: {
-        Args: { p_items: Json; p_service_order_id: string }
         Returns: Json
       }
       sync_service_order_service_types: {

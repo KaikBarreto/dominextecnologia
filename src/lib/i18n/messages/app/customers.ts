@@ -483,6 +483,21 @@ export const customers = {
       chargeStatusOther: 'Outro',
       chargeDueLabel: 'Vencimento',
       chargePayBtn: 'Pagar',
+      // ── Desbloqueio por senha (seção protegida / portal protegido) ──
+      unlockTitle: 'Portal protegido',
+      unlockDesc: 'Digite a senha fornecida pela empresa para acessar seus dados.',
+      unlockPasswordLabel: 'Senha',
+      unlockSubmit: 'Entrar no portal',
+      unlockErrorGeneric: 'Não foi possível entrar. Tente novamente.',
+      unlockErrorInvalid: 'Senha inválida. Confira e tente novamente.',
+      unlockErrorLocked: 'Muitas tentativas incorretas. Aguarde 15 minutos e tente novamente.',
+      lockedSectionTitle: 'Conteúdo protegido',
+      lockedSectionDesc: 'Esta parte do portal pede a senha fornecida pela empresa.',
+      lockedTicketDesc: 'Para abrir um chamado, digite a senha fornecida pela empresa.',
+      // Rótulos de seção do menu
+      sectionInvoices: 'Notas fiscais',
+      sectionDocuments: 'Documentos',
+      emptySections: 'A empresa ainda não liberou conteúdos para este portal.',
     },
 
     // ── Aba Fornecedores (SuppliersTab.tsx) ──
@@ -973,6 +988,21 @@ export const customers = {
       chargeStatusOther: 'Other',
       chargeDueLabel: 'Due date',
       chargePayBtn: 'Pay',
+      // ── Password unlock (protected section / protected portal) ──
+      unlockTitle: 'Protected portal',
+      unlockDesc: 'Enter the password provided by the company to access your data.',
+      unlockPasswordLabel: 'Password',
+      unlockSubmit: 'Enter the portal',
+      unlockErrorGeneric: 'Could not sign in. Please try again.',
+      unlockErrorInvalid: 'Invalid password. Please check and try again.',
+      unlockErrorLocked: 'Too many incorrect attempts. Wait 15 minutes and try again.',
+      lockedSectionTitle: 'Protected content',
+      lockedSectionDesc: 'This part of the portal requires the password provided by the company.',
+      lockedTicketDesc: 'To open a ticket, enter the password provided by the company.',
+      // Menu section labels
+      sectionInvoices: 'Invoices',
+      sectionDocuments: 'Documents',
+      emptySections: 'The company has not released any content for this portal yet.',
     },
 
     // ── Suppliers tab (SuppliersTab.tsx) ──
@@ -1459,6 +1489,21 @@ export const customers = {
       chargeStatusOther: 'Otro',
       chargeDueLabel: 'Vencimiento',
       chargePayBtn: 'Pagar',
+      // ── Desbloqueo por contraseña (sección protegida / portal protegido) ──
+      unlockTitle: 'Portal protegido',
+      unlockDesc: 'Ingresa la contraseña proporcionada por la empresa para acceder a tus datos.',
+      unlockPasswordLabel: 'Contraseña',
+      unlockSubmit: 'Entrar al portal',
+      unlockErrorGeneric: 'No fue posible entrar. Inténtalo de nuevo.',
+      unlockErrorInvalid: 'Contraseña inválida. Revísala e inténtalo de nuevo.',
+      unlockErrorLocked: 'Demasiados intentos incorrectos. Espera 15 minutos e inténtalo de nuevo.',
+      lockedSectionTitle: 'Contenido protegido',
+      lockedSectionDesc: 'Esta parte del portal pide la contraseña proporcionada por la empresa.',
+      lockedTicketDesc: 'Para abrir un ticket, ingresa la contraseña proporcionada por la empresa.',
+      // Etiquetas de sección del menú
+      sectionInvoices: 'Facturas',
+      sectionDocuments: 'Documentos',
+      emptySections: 'La empresa aún no ha liberado contenidos para este portal.',
     },
 
     // ── Pestaña Proveedores (SuppliersTab.tsx) ──
@@ -1945,6 +1990,21 @@ export const customers = {
       chargeStatusOther: 'Autre',
       chargeDueLabel: `Echeance`,
       chargePayBtn: 'Payer',
+      // ── Deverrouillage par mot de passe (section protegee / portail protege) ──
+      unlockTitle: `Portail protege`,
+      unlockDesc: `Saisissez le mot de passe fourni par l'entreprise pour acceder a vos donnees.`,
+      unlockPasswordLabel: 'Mot de passe',
+      unlockSubmit: 'Entrer dans le portail',
+      unlockErrorGeneric: `Connexion impossible. Veuillez reessayer.`,
+      unlockErrorInvalid: `Mot de passe invalide. Verifiez et reessayez.`,
+      unlockErrorLocked: `Trop de tentatives incorrectes. Attendez 15 minutes et reessayez.`,
+      lockedSectionTitle: `Contenu protege`,
+      lockedSectionDesc: `Cette partie du portail demande le mot de passe fourni par l'entreprise.`,
+      lockedTicketDesc: `Pour ouvrir une demande, saisissez le mot de passe fourni par l'entreprise.`,
+      // Libelles des sections du menu
+      sectionInvoices: 'Factures fiscales',
+      sectionDocuments: 'Documents',
+      emptySections: `L'entreprise n'a pas encore publie de contenus pour ce portail.`,
     },
 
     // ── Onglet Fournisseurs (SuppliersTab.tsx) ──

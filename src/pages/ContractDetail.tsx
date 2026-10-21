@@ -6,6 +6,15 @@ import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, Sk
 import { useAuth } from '@/contexts/AuthContext';
 import { useContractPublicToken, useRegeneratePmocToken, useResolveContractId } from '@/hooks/usePmocPortal';
 import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
+import { ContractPortalSectionsCard } from '@/components/contracts/ContractPortalSectionsCard';
+import type { Json } from '@/integrations/supabase/types';
+import {
+  parseContractPortalSections,
+  type ContractPortalSectionKey,
+  type ContractPortalSections,
+  type ContractPortalSectionState,
+} from '@/lib/contractPortalSections';
+import { useCustomerPortalSettings } from '@/hooks/useCustomerPortalSettings';
 import { isUuid, buildSlugSegment } from '@/utils/prettyLinks';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -406,6 +415,54 @@ export default function ContractDetail() {
     }
     queryClient.invalidateQueries({ queryKey: ['contract-detail', id] });
     toast({ title: next ? td.overview.portalActivated : td.overview.portalRequiresLogin });
+  };
+
+  // ── Seções do portal (3 estados por seção) ────────────────────────────────
+  // Grava direto em `contracts.portal_sections` por UPDATE, exatamente como o
+  // `portal_is_public` acima: a RLS de `contracts` é tenant-scoped e cobre.
+  // Sem RPC nova. Auto-save por clique (otimista + rollback), sem botão salvar.
+  const [portalSections, setPortalSections] = useState<ContractPortalSections>({});
+  const [savingPortalSections, setSavingPortalSections] = useState(false);
+  useEffect(() => {
+    if (contract) {
+      setPortalSections(
+        parseContractPortalSections((contract as { portal_sections?: unknown }).portal_sections),
+      );
+    }
+  }, [contract]);
+
+  // A senha deste portal é a do Portal do Cliente DONO do contrato. Sem senha
+  // configurada lá, "Com senha" fica desabilitado (senão o tenant tranca a
+  // seção e ninguém consegue abrir).
+  const { settings: ownerPortalSettings, isLoading: ownerPortalLoading } =
+    useCustomerPortalSettings(contract?.customer_id ?? null, !!contract?.customer_id);
+
+  const handleChangePortalSection = async (
+    key: ContractPortalSectionKey,
+    state: ContractPortalSectionState,
+  ) => {
+    if (!id) return;
+    const prev = portalSections;
+    // Chave AUSENTE = 'free': guardamos o jsonb enxuto, sem lixo, e um contrato
+    // "todo livre" volta a ser literalmente `{}` (o default da coluna).
+    const next: ContractPortalSections = { ...prev };
+    if (state === 'free') delete next[key];
+    else next[key] = state;
+    setPortalSections(next); // otimista
+    setSavingPortalSections(true);
+    const { error } = await supabase
+      .from('contracts')
+      // `portal_sections` já está no types.ts (migration 20261021160000), então
+      // aqui não precisa do `as any` que o `portal_is_public` acima ainda usa.
+      .update({ portal_sections: next as unknown as Json })
+      .eq('id', id);
+    setSavingPortalSections(false);
+    if (error) {
+      setPortalSections(prev); // rollback
+      toast({ variant: 'destructive', title: td.toasts.error, description: getErrorMessage(error) });
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ['contract-detail', id] });
   };
 
   const handleCopyPortalLink = async () => {
@@ -1684,6 +1741,22 @@ export default function ContractDetail() {
                       className="shrink-0"
                     />
                   </div>
+
+                  {/* Quem vê o quê: 8 seções em Oculto / Sem senha / Com senha.
+                      Nada configurado = tudo "Sem senha" = o portal de sempre. */}
+                  <ContractPortalSectionsCard
+                    locale={locale}
+                    sections={portalSections}
+                    onChange={handleChangePortalSection}
+                    passwordConfigured={ownerPortalSettings?.passwordConfigured === true}
+                    passwordStatusLoading={ownerPortalLoading}
+                    saving={savingPortalSections}
+                    onOpenCustomer={
+                      contract.customer_id
+                        ? () => navigate(`/clientes/${contract.customer_id}`)
+                        : undefined
+                    }
+                  />
 
                   {portalUrl ? (
                     <a

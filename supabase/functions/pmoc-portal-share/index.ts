@@ -21,6 +21,13 @@
 //   5. Estados terminais (token inválido / cancelado) continuam virando 404.
 //      Portal privado vira HTTP 200 { access:'denied' } (não 4xx) pra UI
 //      distinguir de token inválido — espelha get_portal_data.
+//   6. (2026-10-21) 3 ESTADOS POR SEÇÃO (`contracts.portal_sections`): cada
+//      bloco do payload pertence a uma seção que pode estar livre, atrás da
+//      senha do Portal do Cliente dono, ou oculta. O corte é AQUI (bloco sai
+//      vazio/ausente), nunca "escondido no front". Sessão chega no header
+//      `X-Portal-Session` e é validada por `contract_portal_session_is_valid`.
+//      Nada configurado (`{}`) = portal inteiro livre = payload de sempre.
+//      Sem nenhuma seção servível => HTTP 200 { access:'password_required' }.
 // =============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -28,7 +35,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, apikey, authorization, x-client-info",
+  "Access-Control-Allow-Headers":
+    "Content-Type, apikey, authorization, x-client-info, x-portal-session",
 };
 
 const TOKEN_REGEX = /^[0-9a-f]{32}$/;
@@ -36,6 +44,49 @@ const TOKEN_REGEX = /^[0-9a-f]{32}$/;
 // O código curto é base32 sem ambíguos, 12 chars, sempre o último segmento.
 // Como é Deno, replicamos a deteção inline (não dá pra importar @/utils/prettyLinks).
 const SHORT_CODE_REGEX = /^[a-hj-np-z2-9]{12}$/;
+
+// -----------------------------------------------------------------------------
+// SEÇÕES DO PORTAL (2026-10-21) — 3 estados por seção, lidos de
+// `contracts.portal_sections` (jsonb).
+//
+// LEI DESTA ENTREGA: chave AUSENTE = 'free' = LIVRE. Os links deste portal estão
+// em QR CODE IMPRESSO e em conversa de WhatsApp — contrato nunca configurado
+// (`portal_sections = '{}'`, que é o DEFAULT da coluna) tem que devolver o
+// payload IDÊNTICO ao de antes desta mudança. O default é o INVERSO do Portal do
+// Cliente (que nasce fail-closed) justamente porque aqui o estado anterior era
+// "portal inteiro aberto".
+//
+// Caso de uso real (KGIE, administradora de condomínios): o MESMO link vai pra
+// portaria (cronograma, histórico, abrir ocorrência) e pro síndico, que digita a
+// senha do Portal do Cliente e vê cobranças e documentos.
+// -----------------------------------------------------------------------------
+const SECTION_KEYS = [
+  "visao_geral",
+  "equipamentos",
+  "cronograma",
+  "ocorrencias",
+  "documentos",
+  "historico",
+  "historico_pmoc",
+  "cobrancas",
+] as const;
+type SectionKey = typeof SECTION_KEYS[number];
+type SectionState = "free" | "password" | "hidden";
+
+// O NAV do front usa HÍFEN (`visao-geral`, `historico-pmoc`); o banco usa
+// UNDERSCORE. A tradução vive aqui pra o front receber exatamente a chave de aba
+// que ele já usa — nada de o cliente ter que adivinhar o mapeamento.
+const SECTION_NAV_KEY: Record<SectionKey, string> = {
+  visao_geral: "visao-geral",
+  equipamentos: "equipamentos",
+  cronograma: "cronograma",
+  ocorrencias: "ocorrencias",
+  documentos: "documentos",
+  historico: "historico",
+  historico_pmoc: "historico-pmoc",
+  cobrancas: "cobrancas",
+};
+
 const HISTORY_LIMIT = 20;
 const SCHEDULE_LIMIT = 50;
 const DESCRIPTION_MAX = 200;
@@ -237,6 +288,7 @@ Deno.serve(async (req) => {
           "status",
           "portal_documents_released",
           "portal_is_public",
+          "portal_sections",
         ].join(","),
       )
       .eq(lookupColumn, lookupValue)
@@ -387,6 +439,104 @@ Deno.serve(async (req) => {
     }
 
     // -------------------------------------------------------------------------
+    // 1.4) SEÇÕES + SESSÃO DO CLIENTE (2026-10-21)
+    //
+    //      Estado por seção (`contracts.portal_sections`): free | password |
+    //      hidden. Chave ausente => 'free' (ver bloco SEÇÕES DO PORTAL no topo).
+    //
+    //      A SESSÃO chega no header `X-Portal-Session` (NUNCA por query string:
+    //      querystring cai em log de CDN/proxy e vaza no `Referer`). É a mesma
+    //      sessão do Portal do Cliente DONO do contrato — uma senha por cliente,
+    //      válida nos dois portais. A validação é server-side pela RPC
+    //      `contract_portal_session_is_valid`, que só service_role pode executar.
+    //
+    //      O corte do dado é AQUI, no servidor: bloco protegido sai VAZIO ou
+    //      AUSENTE do payload. O front só desenha o cadeado.
+    // -------------------------------------------------------------------------
+    const rawSections = ((contract as { portal_sections?: Record<string, unknown> | null })
+      .portal_sections ?? {}) as Record<string, unknown>;
+
+    const sectionState = (key: SectionKey): SectionState => {
+      const raw = rawSections[key];
+      const value = typeof raw === "string" ? raw.trim() : "";
+      // Qualquer coisa fora do enum (inclusive string vazia) cai em 'free':
+      // retrocompatibilidade do link já compartilhado vem antes de tudo.
+      return value === "password" || value === "hidden" ? value : "free";
+    };
+
+    const configuredSections = SECTION_KEYS.filter((k) => sectionState(k) !== "free");
+    const hasAnyPasswordSection = SECTION_KEYS.some((k) => sectionState(k) === "password");
+
+    const portalSession = (req.headers.get("x-portal-session") ?? "").trim();
+    let hasSession = false;
+    if (portalSession && hasAnyPasswordSection) {
+      // `param` (e não `lookupValue`): a RPC refaz a MESMA detecção de token da
+      // edge (32 hex OU código curto no último segmento depois do '-').
+      const { data: sessionValid, error: sessionErr } = await supabase.rpc(
+        "contract_portal_session_is_valid",
+        { p_token: param, p_session_token: portalSession },
+      );
+      if (sessionErr) {
+        // Falha de validação NUNCA abre a porta: segue como visitante sem sessão.
+        console.error("[pmoc-portal-share] session validate error", {
+          token: maskToken(token),
+          message: sessionErr.message,
+        });
+      }
+      hasSession = sessionValid === true;
+    }
+
+    // Membro logado da empresa DONA enxerga o portal inteiro (mesma régua da RPC
+    // `create_contract_portal_ticket`): é a pré-visualização interna do gestor.
+    const canServe = (key: SectionKey): boolean => {
+      if (isCompanyMember) return true;
+      const state = sectionState(key);
+      if (state === "hidden") return false; // oculto é oculto: nem com senha
+      return state === "free" || hasSession;
+    };
+
+    const hiddenNavKeys = SECTION_KEYS
+      .filter((k) => !isCompanyMember && sectionState(k) === "hidden")
+      .map((k) => SECTION_NAV_KEY[k]);
+    // Seções VISÍVEIS mas protegidas: o front mostra a aba com cadeado (e o card
+    // de desbloqueio no corpo). Com sessão válida, a lista é vazia.
+    const lockedNavKeys = SECTION_KEYS
+      .filter((k) => sectionState(k) === "password" && !canServe(k))
+      .map((k) => SECTION_NAV_KEY[k]);
+    const isPartial = lockedNavKeys.length > 0;
+
+    // Nenhuma seção servível + existe seção com senha => não há portal pra
+    // entregar: pede a senha em HTTP 200 (igual o Portal do Cliente faz) e o
+    // corpo NÃO leva nenhum dado de negócio. Só o nome da empresa, que a tela de
+    // "portal privado" já expõe hoje.
+    const anyServable = SECTION_KEYS.some((k) => canServe(k));
+    if (!anyServable && hasAnyPasswordSection) {
+      let lockedCompanyName: string | null = null;
+      const { data: lockedSettings } = await supabase
+        .from("company_settings")
+        .select("name")
+        .eq("company_id", contract.company_id)
+        .maybeSingle();
+      lockedCompanyName = (lockedSettings?.name ?? "").trim() || null;
+      if (!lockedCompanyName) {
+        const { data: lockedCompany } = await supabase
+          .from("companies")
+          .select("name")
+          .eq("id", contract.company_id)
+          .maybeSingle();
+        lockedCompanyName = (lockedCompany?.name ?? "").trim() || null;
+      }
+      return jsonResponse(
+        { access: "password_required", company_name: lockedCompanyName },
+        200,
+        {
+          "Cache-Control": "private, no-store",
+          Vary: "Authorization, X-Portal-Session",
+        },
+      );
+    }
+
+    // -------------------------------------------------------------------------
     // 2) Joins explícitos (projeção campo-a-campo). NÃO usar select * em
     //    nenhuma tabela. Cada campo retornado está autorizado em §3.2 da
     //    portal-rls-rules.
@@ -402,7 +552,9 @@ Deno.serve(async (req) => {
         .select("name, address, city, state")
         .eq("id", contract.customer_id)
         .maybeSingle(),
-      contract.responsible_technician_id
+      // RT e saúde do contrato pertencem à VISÃO GERAL: seção protegida/oculta
+      // não chega nem a consultar o banco.
+      contract.responsible_technician_id && canServe("visao_geral")
         ? supabase
             .from("responsible_technicians")
             .select("full_name, cft_crea, modality, registry_number")
@@ -440,11 +592,13 @@ Deno.serve(async (req) => {
         )
         .eq("company_id", contract.company_id)
         .maybeSingle(),
-      supabase
-        .from("contract_health_status")
-        .select("health_status, overdue_count")
-        .eq("contract_id", contract.id)
-        .maybeSingle(),
+      canServe("visao_geral")
+        ? supabase
+            .from("contract_health_status")
+            .select("health_status, overdue_count")
+            .eq("contract_id", contract.id)
+            .maybeSingle()
+        : Promise.resolve({ data: null } as { data: null }),
     ]);
 
     // Tenant name fallback (company_settings.name pode ser '' por default).
@@ -496,34 +650,42 @@ Deno.serve(async (req) => {
       { data: scheduleOrders },
       { data: occurrenceOrders },
     ] = await Promise.all([
-      supabase
-        .from("service_orders")
-        .select(osSelectCols)
-        .eq("contract_id", contract.id)
-        .in("status", HISTORY_OS_STATUS)
-        .order("completed_at", { ascending: false, nullsFirst: false })
-        .limit(HISTORY_LIMIT),
-      supabase
-        .from("service_orders")
-        .select(osSelectCols)
-        .eq("contract_id", contract.id)
-        .in("status", SCHEDULE_OS_STATUS)
-        .gte("scheduled_date", scheduleFloorDate)
-        .order("scheduled_date", { ascending: true, nullsFirst: false })
-        .limit(SCHEDULE_LIMIT),
+      // Cada lista tem a SUA seção (historico / cronograma / ocorrencias):
+      // protegida ou oculta => nem consulta o banco, e o bloco sai [] no payload.
+      canServe("historico")
+        ? supabase
+            .from("service_orders")
+            .select(osSelectCols)
+            .eq("contract_id", contract.id)
+            .in("status", HISTORY_OS_STATUS)
+            .order("completed_at", { ascending: false, nullsFirst: false })
+            .limit(HISTORY_LIMIT)
+        : Promise.resolve({ data: [] as unknown[] }),
+      canServe("cronograma")
+        ? supabase
+            .from("service_orders")
+            .select(osSelectCols)
+            .eq("contract_id", contract.id)
+            .in("status", SCHEDULE_OS_STATUS)
+            .gte("scheduled_date", scheduleFloorDate)
+            .order("scheduled_date", { ascending: true, nullsFirst: false })
+            .limit(SCHEDULE_LIMIT)
+        : Promise.resolve({ data: [] as unknown[] }),
       // OCORRÊNCIAS: espelha a aba "Ocorrências" do ContractDetail
       // (contract.service_orders ordenado por scheduled_date asc). É a linha do
       // tempo completa do contrato — TODAS as visitas, sem floor de 7 dias e
       // sem filtro de status (mas sem 'cancelada', que não vai pro público).
       // Read-only. Inclui o `id` da OS pra montar o link "Preencher OS" quando
       // viewer_can_fill=true.
-      supabase
-        .from("service_orders")
-        .select(osSelectCols)
-        .eq("contract_id", contract.id)
-        .neq("status", "cancelada")
-        .order("scheduled_date", { ascending: true, nullsFirst: false })
-        .limit(SCHEDULE_LIMIT + HISTORY_LIMIT),
+      canServe("ocorrencias")
+        ? supabase
+            .from("service_orders")
+            .select(osSelectCols)
+            .eq("contract_id", contract.id)
+            .neq("status", "cancelada")
+            .order("scheduled_date", { ascending: true, nullsFirst: false })
+            .limit(SCHEDULE_LIMIT + HISTORY_LIMIT)
+        : Promise.resolve({ data: [] as unknown[] }),
     ]);
 
     type OsRow = {
@@ -718,7 +880,13 @@ Deno.serve(async (req) => {
     // -------------------------------------------------------------------------
     // Documentos SÓ existem em contrato PMOC. Para contrato não-PMOC, nem
     // tocamos no banco de documentos — o payload não traz `documents`/`released`.
-    const documentsReleased = isPmoc && contract.portal_documents_released === true;
+    // `documentsReleasedRaw` = a trava do GESTOR (contracts.portal_documents_released).
+    // `documentsReleased` = a trava do gestor E a seção `documentos` servível.
+    // Separados de propósito: o Histórico PMOC herda a trava do gestor, mas tem
+    // seção PRÓPRIA (`historico_pmoc`) — não pode sumir porque `documentos` está
+    // atrás da senha.
+    const documentsReleasedRaw = isPmoc && contract.portal_documents_released === true;
+    const documentsReleased = documentsReleasedRaw && canServe("documentos");
 
     const DOC_TYPES = ["dossie_pmoc", "cronograma_anual", "termo_rt", "certificado"] as const;
     const DOC_LABELS: Record<typeof DOC_TYPES[number], string> = {
@@ -846,7 +1014,8 @@ Deno.serve(async (req) => {
     //     { id, label (display_name), available, pdf_url (signed URL TTL 24h),
     //       generated_at (created_at), mime_type, size_bytes }
     // -------------------------------------------------------------------------
-    const attachmentsReleased = contract.portal_documents_released === true;
+    const attachmentsReleased =
+      contract.portal_documents_released === true && canServe("documentos");
 
     type PortalAttachment = {
       id: string;
@@ -922,7 +1091,7 @@ Deno.serve(async (req) => {
     };
     let executionHistory: PortalExecutionRow[] = [];
 
-    if (documentsReleased) {
+    if (documentsReleasedRaw && canServe("historico_pmoc")) {
       // 3.6.1) OSs do contrato (id, número, data, conformidade da visita).
       //        Escopo por contract.id — base do filtro de execução.
       const { data: execOrders } = await supabase
@@ -1112,7 +1281,9 @@ Deno.serve(async (req) => {
 
     let equipmentList: Array<Record<string, unknown>> = [];
     let equipmentFieldConfig: Array<Record<string, unknown>> = [];
-    if (contract.customer_id && contract.company_id) {
+    // Seção `equipamentos`: protegida/oculta => nem consulta o banco (serial,
+    // custom_fields e foto do equipamento não saem do servidor).
+    if (contract.customer_id && contract.company_id && canServe("equipamentos")) {
       const [{ data: eqRows }, { data: efcRows }] = await Promise.all([
         supabase
           .from("equipment")
@@ -1189,7 +1360,9 @@ Deno.serve(async (req) => {
       public_short_code: string | null;
     };
     let charges: Array<Record<string, unknown>> = [];
-    if (contract.company_id && contract.customer_id) {
+    // Seção `cobrancas`: é o bloco do SÍNDICO no caso KGIE. Protegida => nenhuma
+    // linha de cobrança (valor, vencimento, link de pagamento) sai do servidor.
+    if (contract.company_id && contract.customer_id && canServe("cobrancas")) {
       const { data: chargeRows } = await supabase
         .from("tenant_charges")
         .select("value, status, due_date, description, billing_type, public_short_code, created_at")
@@ -1215,48 +1388,91 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ─── CORTE DE PII DO MODO PARCIAL ────────────────────────────────────────
+    // Modo parcial = existe seção atrás da senha e quem abriu NÃO tem sessão
+    // (é "a portaria" do caso KGIE). Esse visitante recebe o cabeçalho e as
+    // seções livres — NUNCA o cadastro da unidade nem o registro do RT. A régua:
+    // sem sessão não sai documento/CNPJ, e-mail, telefone, valor nem endereço
+    // completo de NINGUÉM que não seja a própria empresa prestadora (o bloco
+    // `tenant` É a marca/contato do portal, exposto por decisão de 2026-05-24, e
+    // o botão de contato do cabeçalho depende dele).
+    const reducePii = isPartial && !isCompanyMember && !hasSession;
+
+    const overviewServed = canServe("visao_geral");
+
     const payload: Record<string, unknown> = {
       generated_at: new Date().toISOString(),
-      payload_version: "1.12.0", // 1.12.0 — contract.id para vincular chamados do portal
+      // 1.13.0 — 3 estados por seção (free/password/hidden) + sessão do cliente.
+      payload_version: "1.13.0",
       // Espelha get_portal_data: acesso liberado (já passamos pelo gate de
       // privacidade) + se o viewer logado pode preencher OS + se é PMOC.
       access: "granted",
-      viewer_can_fill: isCompanyMember,
+      // Preencher OS é ação da linha do tempo de OCORRÊNCIAS: sem a seção, sem
+      // botão. Só membro logado da empresa dona chega a `true` de qualquer forma.
+      viewer_can_fill: isCompanyMember && canServe("ocorrencias"),
       is_pmoc: isPmoc,
       unit: {
+        // O NOME da unidade é o cabeçalho do portal e fica sempre. O ENDEREÇO é
+        // cadastro do cliente: cortado no modo parcial.
         name: customer?.name ?? null,
-        address: customer?.address ?? null,
-        city: customer?.city ?? null,
-        state: customer?.state ?? null,
+        address: reducePii ? null : customer?.address ?? null,
+        city: reducePii ? null : customer?.city ?? null,
+        state: reducePii ? null : customer?.state ?? null,
       },
-      contract: {
-        id: contract.id ?? null,
-        customer_id: contract.customer_id ?? null,
-        company_id: contract.company_id ?? null,
-        name: contract.name ?? null,
-        start_date: contract.start_date ?? null,
-        frequency_label: frequencyLabel(
-          (contract.frequency_value ?? null) as number | null,
-          (contract.frequency_type ?? null) as string | null,
-        ),
-        next_pmoc_generation_date: contract.next_pmoc_generation_date ?? null,
-        next_maintenance_date: contract.next_pmoc_generation_date ?? null,
-        compliance_text:
-          contract.pmoc_legal_compliance_text ?? "Conforme Lei Federal 13.589/2018",
-        status_label: STATUS_CONTRACT_LABEL[contract.status] ?? "—",
-        health_status: health?.health_status ?? "em_dia",
-        overdue_count: health?.overdue_count ?? 0,
-      },
-      health: {
-        status: health?.health_status ?? "em_dia",
-        overdue_count: health?.overdue_count ?? 0,
-      },
+      contract: overviewServed
+        ? {
+            // IDs internos só com acesso pleno: no modo parcial não há tela que
+            // os use e UUID de tenant/cliente não precisa circular.
+            id: reducePii ? null : contract.id ?? null,
+            customer_id: reducePii ? null : contract.customer_id ?? null,
+            company_id: reducePii ? null : contract.company_id ?? null,
+            name: contract.name ?? null,
+            start_date: contract.start_date ?? null,
+            frequency_label: frequencyLabel(
+              (contract.frequency_value ?? null) as number | null,
+              (contract.frequency_type ?? null) as string | null,
+            ),
+            next_pmoc_generation_date: contract.next_pmoc_generation_date ?? null,
+            next_maintenance_date: contract.next_pmoc_generation_date ?? null,
+            compliance_text:
+              contract.pmoc_legal_compliance_text ?? "Conforme Lei Federal 13.589/2018",
+            status_label: STATUS_CONTRACT_LABEL[contract.status] ?? "—",
+            health_status: health?.health_status ?? "em_dia",
+            overdue_count: health?.overdue_count ?? 0,
+          }
+        : {
+            // VISÃO GERAL protegida/oculta: sobra só o nome do contrato (título
+            // da aba/cabeçalho). `health_status: null` é o sinal pro front NÃO
+            // desenhar o selo de saúde (não inventamos "Em dia").
+            id: null,
+            customer_id: null,
+            company_id: null,
+            name: contract.name ?? null,
+            start_date: null,
+            frequency_label: "—",
+            next_pmoc_generation_date: null,
+            next_maintenance_date: null,
+            compliance_text: "",
+            status_label: "",
+            health_status: null,
+            overdue_count: 0,
+          },
+      ...(overviewServed
+        ? {
+            health: {
+              status: health?.health_status ?? "em_dia",
+              overdue_count: health?.overdue_count ?? 0,
+            },
+          }
+        : {}),
       responsible_technician: rt
         ? {
             full_name: rt.full_name ?? null,
-            cft_crea: rt.cft_crea ?? null,
+            // Registro profissional (CREA/CFT) é identificador de documento:
+            // fora do modo parcial.
+            cft_crea: reducePii ? null : rt.cft_crea ?? null,
             modality: rt.modality ?? null,
-            registry_number: rt.registry_number ?? null,
+            registry_number: reducePii ? null : rt.registry_number ?? null,
           }
         : null,
       tenant: {
@@ -1299,6 +1515,18 @@ Deno.serve(async (req) => {
       charges,
     };
 
+    // Marcadores de seção: só existem quando o tenant configurou ALGO. Contrato
+    // em `{}` (o default da coluna) devolve o payload de sempre, sem chave nova
+    // nenhuma — a única diferença em relação a antes desta entrega é o
+    // `payload_version`. É a LEI da retrocompatibilidade do link já compartilhado.
+    if (configuredSections.length > 0) {
+      // `partial` = há seção visível atrás da senha que este visitante não viu.
+      payload.partial = isPartial;
+      // Chaves do NAV (com HÍFEN) pro front desenhar cadeado / esconder aba.
+      payload.locked_sections = lockedNavKeys;
+      payload.hidden_sections = hiddenNavKeys;
+    }
+
     // Documentos SÓ pra contrato PMOC. Para não-PMOC, NÃO incluímos
     // `documents` nem `documents_released` no payload (não há documentos).
     if (isPmoc) {
@@ -1321,8 +1549,18 @@ Deno.serve(async (req) => {
 
     // Quando a request veio autenticada, a resposta VARIA por usuário
     // (viewer_can_fill / portal privado). Nunca cachear publicamente nesse caso.
-    const successHeaders = authHeader
-      ? { "Cache-Control": "private, no-store", Vary: "Authorization" }
+    //
+    // A sessão do portal entra na MESMA régua: com seção atrás de senha (ou com
+    // header de sessão na request), a resposta é `private, no-store` e varia por
+    // `X-Portal-Session`. Sem isso um CDN poderia servir o payload DESBLOQUEADO
+    // do síndico pro próximo visitante do mesmo link. Contrato sem configuração
+    // e sem sessão continua com o cache público de sempre.
+    const sessionSensitive = hasAnyPasswordSection || portalSession.length > 0;
+    const successHeaders = authHeader || sessionSensitive
+      ? {
+          "Cache-Control": "private, no-store",
+          Vary: "Authorization, X-Portal-Session",
+        }
       : { Vary: "Authorization" };
     return jsonResponse(payload, 200, successHeaders);
   } catch (err) {

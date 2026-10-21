@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -51,9 +51,12 @@ import {
   fetchPmocPortal,
   createPmocPortalTicket,
   buildPmocPortalUrl,
+  contractPortalSessionKey,
   PortalModuleUnavailableError,
   PortalPrivateError,
+  PortalPasswordRequiredError,
 } from '@/utils/pmocPortalApi';
+import { PortalUnlockCard } from '@/components/portal/PortalUnlockCard';
 import PortalUnavailable from '@/components/portal/PortalUnavailable';
 import { PublicPortalShell, type PortalNavSection } from '@/components/portal/PublicPortalShell';
 import { PortalChargesSection } from '@/components/portal/PortalChargesSection';
@@ -125,38 +128,59 @@ type PublicPortalMessages = typeof MESSAGES['pt-br']['app']['pmoc']['publicPorta
 
 // ── Abas ──────────────────────────────────────────────────────────────────────
 
-function buildNavSections(
-  isPmoc: boolean,
-  hasExecutionHistory: boolean,
-  hasAttachments: boolean,
-  hasEquipment: boolean,
-  hasCharges: boolean,
-  t: PublicPortalMessages,
-): PortalNavSection[] {
-  const sections: PortalNavSection[] = [
-    { value: 'visao-geral', label: t.tabOverview, icon: <House className="h-4 w-4 shrink-0" /> },
-  ];
+interface NavSectionArgs {
+  isPmoc: boolean;
+  hasExecutionHistory: boolean;
+  hasAttachments: boolean;
+  hasEquipment: boolean;
+  hasCharges: boolean;
+  /** Abas visíveis MAS protegidas por senha (`locked_sections` do payload). */
+  locked: Set<string>;
+  /** Abas que o tenant marcou como ocultas (`hidden_sections`). */
+  hidden: Set<string>;
+}
+
+function buildNavSections(args: NavSectionArgs, t: PublicPortalMessages): PortalNavSection[] {
+  const { isPmoc, hasExecutionHistory, hasAttachments, hasEquipment, hasCharges, locked, hidden } =
+    args;
+  const sections: PortalNavSection[] = [];
+
+  /**
+   * Monta uma aba respeitando os 3 estados.
+   *
+   * ⚠️ ARMADILHA que já nos pegou no Portal do Cliente: as abas condicionais
+   * apareciam só com `length > 0`, e no modo protegido o servidor manda a lista
+   * VAZIA — a aba sumia e o cadeado nunca aparecia. Por isso `locked.has(key)`
+   * mantém a aba viva mesmo sem dado nenhum.
+   */
+  const push = (key: string, label: string, icon: ReactNode, hasData = true) => {
+    if (hidden.has(key)) return;
+    const isLocked = locked.has(key);
+    if (!hasData && !isLocked) return;
+    sections.push({
+      value: key,
+      label,
+      icon: isLocked ? <Lock className="h-4 w-4 shrink-0" /> : icon,
+    });
+  };
+
+  push('visao-geral', t.tabOverview, <House className="h-4 w-4 shrink-0" />);
   // Aba Equipamentos: logo após visão geral quando há equipamentos na unidade.
-  if (hasEquipment) {
-    sections.push({ value: 'equipamentos', label: t.tabEquipment, icon: <Package className="h-4 w-4 shrink-0" /> });
-  }
-  sections.push(
-    { value: 'cronograma', label: t.tabSchedule, icon: <CalendarClock className="h-4 w-4 shrink-0" /> },
-    { value: 'ocorrencias', label: t.tabOccurrences, icon: <Repeat className="h-4 w-4 shrink-0" /> },
-  );
+  push('equipamentos', t.tabEquipment, <Package className="h-4 w-4 shrink-0" />, hasEquipment);
+  push('cronograma', t.tabSchedule, <CalendarClock className="h-4 w-4 shrink-0" />);
+  push('ocorrencias', t.tabOccurrences, <Repeat className="h-4 w-4 shrink-0" />);
   // Aba Documentos: aparece pra PMOC (PDFs gerados) OU quando há anexos externos
   // liberados (vale pra contrato comum também — decisão CEO 2026-08).
-  if (isPmoc || hasAttachments) {
-    sections.push({ value: 'documentos', label: t.tabDocuments, icon: <FileText className="h-4 w-4 shrink-0" /> });
-  }
-  sections.push({ value: 'historico', label: t.tabHistory, icon: <Wrench className="h-4 w-4 shrink-0" /> });
-  if (isPmoc && hasExecutionHistory) {
-    sections.push({ value: 'historico-pmoc', label: t.tabHistoryPmoc, icon: <ClipboardCheck className="h-4 w-4 shrink-0" /> });
-  }
+  push('documentos', t.tabDocuments, <FileText className="h-4 w-4 shrink-0" />, isPmoc || hasAttachments);
+  push('historico', t.tabHistory, <Wrench className="h-4 w-4 shrink-0" />);
+  push(
+    'historico-pmoc',
+    t.tabHistoryPmoc,
+    <ClipboardCheck className="h-4 w-4 shrink-0" />,
+    isPmoc && hasExecutionHistory,
+  );
   // Aba Cobranças: aparece quando o cliente tem ao menos 1 cobrança no payload.
-  if (hasCharges) {
-    sections.push({ value: 'cobrancas', label: t.tabCharges, icon: <CreditCard className="h-4 w-4 shrink-0" /> });
-  }
+  push('cobrancas', t.tabCharges, <CreditCard className="h-4 w-4 shrink-0" />, hasCharges);
   return sections;
 }
 
@@ -292,17 +316,58 @@ function usePortalSeo(
 export default function PmocPublicPortal() {
   const { token } = useParams<{ token: string }>();
 
+  // ── Sessão do portal (senha do Portal do Cliente dono do contrato) ────────
+  // Guardada no `sessionStorage` por token, igual o Portal do Cliente faz, e
+  // reenviada pra edge no header `X-Portal-Session`. Entra na queryKey de
+  // propósito: desbloquear = trocar a chave = refetch, sem orquestração à mão.
+  const sessionKey = token ? contractPortalSessionKey(token) : '';
+  const [sessionToken, setSessionToken] = useState(() => {
+    if (typeof window === 'undefined' || !token) return '';
+    return window.sessionStorage.getItem(contractPortalSessionKey(token)) ?? '';
+  });
+
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: ['pmoc-portal', token],
+    queryKey: ['pmoc-portal', token, sessionToken],
     enabled: !!token,
     retry: (failureCount, err) => {
       if (err instanceof PortalModuleUnavailableError) return false;
       if (err instanceof PortalPrivateError) return false;
+      if (err instanceof PortalPasswordRequiredError) return false;
       if (err instanceof Error && err.message === 'portal_not_found') return false;
       return failureCount < 2;
     },
-    queryFn: () => fetchPmocPortal(token!),
+    queryFn: () => fetchPmocPortal(token!, sessionToken),
+    // Desbloquear troca a queryKey (a sessão entra nela). Sem isto a página
+    // cairia no PortalSkeleton, DESMONTARIA o portal inteiro e o visitante
+    // voltaria pra "Visão Geral" depois de digitar a senha em Cobranças.
+    // Mantemos o payload anterior em tela SÓ quando o token é o MESMO (só a
+    // sessão mudou): nunca mostramos dado de um contrato na casca de outro
+    // (regra-lei de não vazar portal entre tenants).
+    placeholderData: (previous, previousQuery) => {
+      const previousToken = previousQuery?.queryKey?.[1];
+      return previousToken === token ? previous : undefined;
+    },
   });
+
+  const handleUnlocked = useCallback(
+    (nextSession: string) => {
+      if (typeof window !== 'undefined' && sessionKey) {
+        window.sessionStorage.setItem(sessionKey, nextSession);
+      }
+      setSessionToken(nextSession);
+    },
+    [sessionKey],
+  );
+
+  // Sessão expirada/revogada: o servidor volta a pedir senha. Limpamos o resto
+  // pra não ficar reenviando um token morto (o próximo render já vai sem ele).
+  useEffect(() => {
+    if (!(error instanceof PortalPasswordRequiredError) || !sessionToken) return;
+    if (typeof window !== 'undefined' && sessionKey) {
+      window.sessionStorage.removeItem(sessionKey);
+    }
+    setSessionToken('');
+  }, [error, sessionKey, sessionToken]);
 
   if (isLoading) return <PortalSkeleton />;
 
@@ -312,6 +377,27 @@ export default function PmocPublicPortal() {
     }
     if (error instanceof PortalPrivateError) {
       return <PortalPrivate token={token!} companyName={error.companyName} />;
+    }
+    // Portal INTEIRO atrás da senha: login em tela cheia. Sem payload ainda, o
+    // idioma vem do navegador (não temos o locale do tenant) — igual o Portal
+    // do Cliente faz na mesma situação.
+    if (error instanceof PortalPasswordRequiredError) {
+      const machineLocale = detectMachineLocale() ?? 'pt-br';
+      return (
+        <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+          <div className="absolute inset-0 z-0">
+            <DarkVeil hueShift={53} speed={0.5} />
+          </div>
+          <PortalUnlockCard
+            variant="page"
+            loginRpc="contract_portal_login"
+            token={token!}
+            locale={machineLocale}
+            onUnlocked={handleUnlocked}
+            autoFocus
+          />
+        </div>
+      );
     }
     const isNotFound = error instanceof Error && error.message === 'portal_not_found';
     return isNotFound ? <PortalNotFound /> : <PortalNetworkError onRetry={() => refetch()} retrying={isFetching} />;
@@ -325,14 +411,29 @@ export default function PmocPublicPortal() {
       currency={data.tenant.currency}
       timezone={data.tenant.timezone}
     >
-      <PortalContent payload={data} token={token!} />
+      <PortalContent
+        payload={data}
+        token={token!}
+        sessionToken={sessionToken}
+        onUnlocked={handleUnlocked}
+      />
     </PublicAppLocaleProvider>
   );
 }
 
 // ── Conteúdo ──────────────────────────────────────────────────────────────────
 
-function PortalContent({ payload, token }: { payload: PortalPayload; token: string }) {
+function PortalContent({
+  payload,
+  token,
+  sessionToken,
+  onUnlocked,
+}: {
+  payload: PortalPayload;
+  token: string;
+  sessionToken: string;
+  onUnlocked: (sessionToken: string) => void;
+}) {
   const {
     unit,
     contract,
@@ -351,11 +452,30 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
     is_pmoc,
     viewer_can_fill,
     charges = [],
+    locked_sections = [],
+    hidden_sections = [],
   } = payload;
 
   const { locale, timezone, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.pmoc.publicPortal;
+  // Copy de desbloqueio: reusamos as chaves do Portal do Cliente, que já nascem
+  // nos 4 idiomas (unlockTitle/lockedSectionTitle/...). Uma senha, uma copy.
+  const tUnlock = MESSAGES[locale].app.customers.portal;
   const { toast } = useToast();
+
+  // ── Seções protegidas / ocultas (o corte do dado é no servidor) ───────────
+  const lockedSet = useMemo(
+    () => new Set(locked_sections.filter((key): key is string => typeof key === 'string')),
+    [locked_sections],
+  );
+  const hiddenSet = useMemo(
+    () => new Set(hidden_sections.filter((key): key is string => typeof key === 'string')),
+    [hidden_sections],
+  );
+  // Abrir ocorrência segue a seção `ocorrencias` (é o que a RPC
+  // `create_contract_portal_ticket` valida no servidor).
+  const ticketLocked = lockedSet.has('ocorrencias');
+  const ticketHidden = hiddenSet.has('ocorrencias');
 
   const isPmoc = is_pmoc !== false;
   const canFill = viewer_can_fill === true;
@@ -387,10 +507,34 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
   const hasCharges = charges.length > 0;
 
   const navSections = useMemo(
-    () => buildNavSections(isPmoc, hasExecutionHistory, hasAttachments, hasEquipment, hasCharges, t),
-    [isPmoc, hasExecutionHistory, hasAttachments, hasEquipment, hasCharges, t],
+    () =>
+      buildNavSections(
+        {
+          isPmoc,
+          hasExecutionHistory,
+          hasAttachments,
+          hasEquipment,
+          hasCharges,
+          locked: lockedSet,
+          hidden: hiddenSet,
+        },
+        t,
+      ),
+    [isPmoc, hasExecutionHistory, hasAttachments, hasEquipment, hasCharges, lockedSet, hiddenSet, t],
   );
   const [activeTab, setActiveTab] = useState('visao-geral');
+
+  // A aba inicial é sempre 'visao-geral'; se o tenant ocultou justamente ela, o
+  // corpo ficaria em branco. Cai pra primeira aba viva (espelha o CustomerPortal).
+  useEffect(() => {
+    if (navSections.length > 0 && !navSections.some((section) => section.value === activeTab)) {
+      setActiveTab(navSections[0].value);
+    }
+  }, [activeTab, navSections]);
+
+  // Aba aberta está protegida? Então o corpo dela é o card de desbloqueio — o
+  // dado nem veio do servidor.
+  const activeIsLocked = lockedSet.has(activeTab);
   const [selectedOS, setSelectedOS] = useState<PortalOsEntry | null>(null);
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
 
@@ -432,6 +576,9 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
 
   // ── Modal de chamado ──────────────────────────────────────────────────────
   const [showTicketModal, setShowTicketModal] = useState(false);
+  // Desbloqueio do CTA "Abrir chamado nesta unidade" quando a seção de
+  // ocorrências pede senha: MESMO card da seção protegida, numa fonte só.
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [ticketDesc, setTicketDesc] = useState('');
   const [ticketSubmitting, setTicketSubmitting] = useState(false);
 
@@ -446,7 +593,9 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
       // cliente final. Agora a criação passa pela RPC SECURITY DEFINER
       // (ver createPmocPortalTicket), que revalida portal/assinatura/módulo e
       // resolve customer/company/contract pelo token, sem confiar no client.
-      await createPmocPortalTicket(token, ticketDesc);
+      // `sessionToken` é a sessão que a RPC exige quando a seção `ocorrencias`
+      // está em 'password'. Vazia em link livre — a RPC ignora.
+      await createPmocPortalTicket(token, ticketDesc, sessionToken);
       toast({ title: t.ticketSuccess });
       setShowTicketModal(false);
       setTicketDesc('');
@@ -497,12 +646,16 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
   // ── Subtítulo e badge de saúde ───────────────────────────────────────────
   const subtitle = isPmoc ? t.subtitlePmoc : t.subtitleContract;
 
-  const healthBadge = (
-    <HealthBadge
-      status={contract.health_status}
-      overdueCount={contract.overdue_count}
-    />
-  );
+  // `health_status: null` = visão geral protegida/oculta: NÃO desenhamos o selo
+  // (não inventamos "Em dia" pra quem não recebeu o dado).
+  const healthBadge = contract.health_status
+    ? (
+        <HealthBadge
+          status={contract.health_status}
+          overdueCount={contract.overdue_count}
+        />
+      )
+    : undefined;
 
   // ── Footer status ─────────────────────────────────────────────────────────
   const nextMaintDate = contract.next_pmoc_generation_date
@@ -530,8 +683,14 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
       activeSection={activeTab}
       onSectionChange={setActiveTab}
       footerStatus={footerStatus ?? undefined}
-      footerCtaLabel={t.openTicketHere}
-      onFooterCta={() => setShowTicketModal(true)}
+      // Ocorrências OCULTA => nem CTA. PROTEGIDA => o CTA abre o desbloqueio
+      // (drawer no mobile), não o formulário: a RPC recusaria sem sessão.
+      footerCtaLabel={ticketHidden ? undefined : t.openTicketHere}
+      onFooterCta={
+        ticketHidden
+          ? undefined
+          : () => (ticketLocked ? setShowUnlockModal(true) : setShowTicketModal(true))
+      }
       navLabel={t.sidebarNavLabel}
     >
       {/* Endereço da unidade (sob as pills no mobile, visível no topo do main) */}
@@ -544,7 +703,35 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
         </p>
       )}
 
-      {/* Conteúdo das abas */}
+      {/* Nenhuma aba viva (tenant ocultou tudo): estado vazio neutro. */}
+      {navSections.length === 0 && (
+        <EmptyState
+          icon={<Lock className="h-8 w-8" />}
+          title={t.emptySections}
+          size="compact"
+        />
+      )}
+
+      {/* Seção protegida: card de desbloqueio em vez do conteúdo. O dado já não
+          veio do servidor — isto aqui é só a porta pra quem tem a senha. */}
+      {activeIsLocked && (
+        <PortalUnlockCard
+          variant="inline"
+          loginRpc="contract_portal_login"
+          token={token}
+          locale={locale}
+          brandColor={brandColor}
+          onUnlocked={onUnlocked}
+          title={tUnlock.lockedSectionTitle}
+          description={tUnlock.lockedSectionDesc}
+          inputId={`contract-portal-unlock-${activeTab}`}
+        />
+      )}
+
+      {/* Conteúdo das abas — NÃO montado quando a seção está protegida: o corpo
+          ali é o card de desbloqueio, e sem o dado do servidor as abas
+          mostrariam "nenhum registro" (parece bug, não parece cadeado). */}
+      {!activeIsLocked && (
       <div key={activeTab} className="animate-in fade-in duration-150">
         {activeTab === 'visao-geral' && (
           <TabOverview
@@ -618,6 +805,7 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
           />
         )}
       </div>
+      )}
 
       {/* Rodapé legal (Dominex, URL, PMOC compliance) dentro do corpo rolável */}
       <PortalFooter
@@ -638,6 +826,30 @@ function PortalContent({ payload, token }: { payload: PortalPayload; token: stri
           if (!open) setSelectedOS(null);
         }}
       />
+
+      {/* Desbloqueio do "Abrir chamado" quando a seção de ocorrências pede
+          senha. Mesmo card da seção protegida: uma fonte só pra erro/lockout. */}
+      {ticketLocked && (
+        <ResponsiveModal
+          open={showUnlockModal}
+          onOpenChange={setShowUnlockModal}
+          title={tUnlock.lockedSectionTitle}
+        >
+          <PortalUnlockCard
+            variant="plain"
+            loginRpc="contract_portal_login"
+            token={token}
+            locale={locale}
+            brandColor={brandColor}
+            onUnlocked={(nextSession) => {
+              setShowUnlockModal(false);
+              onUnlocked(nextSession);
+            }}
+            description={tUnlock.lockedTicketDesc}
+            inputId="contract-portal-unlock-ticket"
+          />
+        </ResponsiveModal>
+      )}
 
       {/* Modal de chamado — não fecha ao clicar fora (regra-lei UI) */}
       <ResponsiveModal

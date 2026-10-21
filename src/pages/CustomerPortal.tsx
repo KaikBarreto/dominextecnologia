@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, type FormEvent, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import {
   Package,
@@ -20,7 +20,7 @@ import {
   CreditCard,
   Files,
   ReceiptText,
-  LockKeyhole,
+  Lock,
   LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -60,6 +60,7 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { PortalChargesSection } from '@/components/portal/PortalChargesSection';
 import { formatOSNumber } from '@/lib/osNumber';
 import { PortalDocumentsSection, type PortalDocumentItem } from '@/components/portal/PortalDocumentsSection';
+import { PortalUnlockCard } from '@/components/portal/PortalUnlockCard';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Interfaces e constantes
@@ -171,6 +172,14 @@ interface PortalPayload {
   invoices?: PortalDocumentItem[];
   documents?: PortalDocumentItem[];
   permissions?: PortalPermissions;
+  /**
+   * `true` quando o visitante NAO tem sessao e ha pelo menos uma secao atras da
+   * senha. Nesse caso o servidor devolve `access: 'granted'` com os blocos
+   * protegidos vazios e o bloco `customer` reduzido a `{ id, name }`.
+   */
+  partial?: boolean;
+  /** Chaves de secao visiveis MAS protegidas por senha (so UX; o corte e no servidor). */
+  locked_sections?: string[];
 }
 
 interface PortalPermissions {
@@ -272,9 +281,9 @@ export default function CustomerPortal() {
   const [viewerCanFill, setViewerCanFill] = useState(false);
   const [permissions, setPermissions] = useState<PortalPermissions>(DEFAULT_PORTAL_PERMISSIONS);
   const [passwordRequired, setPasswordRequired] = useState(false);
-  const [password, setPassword] = useState('');
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [loggingIn, setLoggingIn] = useState(false);
+  // Secoes visiveis que ainda pedem senha. Payload sem a chave (banco antigo /
+  // SQL nao aplicado) => lista vazia => portal se comporta exatamente como hoje.
+  const [lockedSections, setLockedSections] = useState<string[]>([]);
   const [sessionToken, setSessionToken] = useState(() => {
     if (typeof window === 'undefined' || !token) return '';
     return window.sessionStorage.getItem(`dominex_customer_portal_session_${token}`) ?? '';
@@ -288,6 +297,7 @@ export default function CustomerPortal() {
     setAccessDenied(false);
     setModuleUnavailable(false);
     setPasswordRequired(false);
+    setLockedSections([]);
     try {
       const { data, error: rpcError } = await supabase
         .rpc('get_portal_data', {
@@ -331,6 +341,13 @@ export default function CustomerPortal() {
 
       setViewerCanFill(payload.viewer_can_fill === true);
       setPermissions(payload.permissions ?? DEFAULT_PORTAL_PERMISSIONS);
+      // Acesso parcial: o servidor entregou o portal sem as secoes protegidas.
+      // `locked_sections` serve so pra marcar o cadeado e oferecer o desbloqueio.
+      setLockedSections(
+        Array.isArray(payload.locked_sections)
+          ? payload.locked_sections.filter((key): key is string => typeof key === 'string')
+          : [],
+      );
       setCustomer(payload.customer);
       setCompanySettings(payload.company_settings ?? null);
       setEquipment(payload.equipment ?? []);
@@ -361,46 +378,22 @@ export default function CustomerPortal() {
     void loadPortalData(storedSession);
   }, [loadPortalData, sessionKey]);
 
-  const handlePortalLogin = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!token || loggingIn || !password) return;
-    setLoggingIn(true);
-    setLoginError(null);
-    try {
-      const { data, error: loginRpcError } = await supabaseAnon.rpc('customer_portal_login', {
-        p_token: token,
-        p_password: password,
-      });
-      if (loginRpcError || !data || typeof data !== 'object') {
-        setLoginError('Não foi possível entrar. Tente novamente.');
-        return;
-      }
-      const result = data as Record<string, unknown>;
-      if (result.ok !== true || typeof result.session_token !== 'string') {
-        setLoginError(result.error === 'locked'
-          ? 'Muitas tentativas incorretas. Aguarde 15 minutos e tente novamente.'
-          : 'Senha inválida. Confira e tente novamente.');
-        return;
-      }
-      const nextSession = result.session_token;
+  // O formulario de senha vive no PortalUnlockCard (fonte unica de mensagem de
+  // erro, lockout e estado de carregando). Aqui so persistimos a sessao e
+  // recarregamos o portal — mesmo fluxo do login de tela cheia de sempre.
+  const handleUnlocked = useCallback(async (nextSession: string) => {
+    if (typeof window !== 'undefined') {
       window.sessionStorage.setItem(sessionKey, nextSession);
-      setSessionToken(nextSession);
-      setPassword('');
-      await loadPortalData(nextSession);
-    } catch {
-      setLoginError('Não foi possível entrar. Tente novamente.');
-    } finally {
-      setLoggingIn(false);
     }
-  };
+    setSessionToken(nextSession);
+    await loadPortalData(nextSession);
+  }, [loadPortalData, sessionKey]);
 
   const handlePortalLogout = () => {
     if (typeof window !== 'undefined') {
       window.sessionStorage.removeItem(sessionKey);
     }
     setSessionToken('');
-    setPassword('');
-    setLoginError(null);
     void loadPortalData('');
   };
 
@@ -432,44 +425,21 @@ export default function CustomerPortal() {
   }
 
   if (passwordRequired) {
+    // Portal TODO protegido: tela cheia de login, igual a sempre. Sem payload
+    // ainda, o idioma vem do navegador (nao temos company_settings aqui).
+    const machineLocale = detectMachineLocale() ?? 'pt-br';
     return (
       <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
         <div className="absolute inset-0 z-0">
           <DarkVeil hueShift={53} speed={0.5} />
         </div>
-        <Card className="relative z-10 w-full max-w-sm border-white/15 bg-background/95 shadow-2xl backdrop-blur">
-          <CardContent className="space-y-6 p-6">
-            <div className="space-y-2 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <LockKeyhole className="h-6 w-6" />
-              </div>
-              <h1 className="text-2xl font-bold">Portal protegido</h1>
-              <p className="text-sm text-muted-foreground">
-                Digite a senha fornecida pela empresa para acessar seus dados.
-              </p>
-            </div>
-            <form onSubmit={handlePortalLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="customer-portal-login-password">Senha</Label>
-                <Input
-                  id="customer-portal-login-password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  autoFocus
-                />
-              </div>
-              {loginError && (
-                <p role="alert" className="text-sm text-destructive">{loginError}</p>
-              )}
-              <Button type="submit" className="w-full" disabled={loggingIn || !password}>
-                {loggingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Entrar no portal
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+        <PortalUnlockCard
+          variant="page"
+          token={token!}
+          locale={machineLocale}
+          onUnlocked={handleUnlocked}
+          autoFocus
+        />
       </div>
     );
   }
@@ -541,9 +511,11 @@ export default function CustomerPortal() {
         invoices={invoices}
         documents={documents}
         permissions={permissions}
+        lockedSections={lockedSections}
         sessionToken={sessionToken}
         viewerCanFill={viewerCanFill}
         onReload={() => loadPortalData(sessionToken)}
+        onUnlocked={handleUnlocked}
         onLogout={sessionToken ? handlePortalLogout : undefined}
       />
     </PublicAppLocaleProvider>
@@ -566,11 +538,28 @@ interface ContentProps {
   invoices: PortalDocumentItem[];
   documents: PortalDocumentItem[];
   permissions: PortalPermissions;
+  /** Secoes visiveis porem protegidas por senha (cadeado + card de desbloqueio). */
+  lockedSections: string[];
   sessionToken: string;
   viewerCanFill: boolean;
   onReload: () => Promise<void>;
+  onUnlocked: (sessionToken: string) => Promise<void> | void;
   onLogout?: () => void;
 }
+
+/**
+ * De cada aba de navegacao para a chave de permissao/`locked_sections` que a
+ * governa. Usado so pra decidir cadeado e card de desbloqueio (UX): o corte do
+ * dado acontece no servidor.
+ */
+const TAB_PERMISSION_KEY: Record<string, keyof PortalPermissions> = {
+  os: 'service_orders',
+  equipamentos: 'equipment',
+  contratos: 'contracts',
+  cobrancas: 'charges',
+  'notas-fiscais': 'invoices',
+  documentos: 'documents',
+};
 
 // Teal padrao Dominex (token --primary ~#00C684). Valor hex pra poder ir inline e
 // compativel com idealForeground (que so parseia hex). Mesma constante do PontoPublico
@@ -589,9 +578,11 @@ function CustomerPortalContent({
   invoices,
   documents,
   permissions,
+  lockedSections,
   sessionToken,
   viewerCanFill,
   onReload,
+  onUnlocked,
   onLogout,
 }: ContentProps) {
   const [searchParams] = useSearchParams();
@@ -609,7 +600,18 @@ function CustomerPortalContent({
     cancelada: t.statusCancelada,
   }), [t]);
 
+  // ── Secoes protegidas (acesso parcial) ──
+  const lockedSet = useMemo(() => new Set(lockedSections), [lockedSections]);
+  const ticketLocked = lockedSet.has('ticket_requests');
+  // Cadeado na pilula/sidebar: troca o icone da secao pelo Lock.
+  const sectionIcon = useCallback(
+    (key: keyof PortalPermissions, icon: ReactNode): ReactNode =>
+      (lockedSet.has(key) ? <Lock className="h-4 w-4 shrink-0" /> : icon),
+    [lockedSet],
+  );
+
   // ── Estado do modal de chamado ──
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [ticketDesc, setTicketDesc] = useState('');
   const [ticketEquipmentId, setTicketEquipmentId] = useState('');
@@ -1363,32 +1365,38 @@ function CustomerPortalContent({
   // ── Secoes de navegacao (mobile: pilulas; desktop: sidebar) ──
   const navSections = useMemo(() => [
     ...(permissions.service_orders
-      ? [{ value: 'os', label: t.tabOs, icon: <ClipboardList className="h-4 w-4 shrink-0" /> }]
+      ? [{ value: 'os', label: t.tabOs, icon: sectionIcon('service_orders', <ClipboardList className="h-4 w-4 shrink-0" />) }]
       : []),
     ...(permissions.equipment
-      ? [{ value: 'equipamentos', label: t.tabEquipment, icon: <Package className="h-4 w-4 shrink-0" /> }]
+      ? [{ value: 'equipamentos', label: t.tabEquipment, icon: sectionIcon('equipment', <Package className="h-4 w-4 shrink-0" />) }]
       : []),
-    // Aba Contratos: so aparece quando o cliente tem ao menos 1 contrato
-    ...(permissions.contracts && contracts.length > 0
-      ? [{ value: 'contratos', label: t.sectionContracts, icon: <FileText className="h-4 w-4 shrink-0" /> }]
+    // Aba Contratos: so aparece quando o cliente tem ao menos 1 contrato.
+    // Protegida sem sessao vem com lista vazia do servidor — por isso o
+    // `lockedSet` tambem mantem a aba, senao o cadeado nunca apareceria.
+    ...(permissions.contracts && (contracts.length > 0 || lockedSet.has('contracts'))
+      ? [{ value: 'contratos', label: t.sectionContracts, icon: sectionIcon('contracts', <FileText className="h-4 w-4 shrink-0" />) }]
       : []),
-    // Aba Cobranças: so aparece quando o cliente tem ao menos 1 cobranca
-    ...(permissions.charges && charges.length > 0
-      ? [{ value: 'cobrancas', label: t.sectionCharges, icon: <CreditCard className="h-4 w-4 shrink-0" /> }]
+    // Aba Cobranças: mesma regra (so com cobranca, ou protegida)
+    ...(permissions.charges && (charges.length > 0 || lockedSet.has('charges'))
+      ? [{ value: 'cobrancas', label: t.sectionCharges, icon: sectionIcon('charges', <CreditCard className="h-4 w-4 shrink-0" />) }]
       : []),
     ...(permissions.invoices
-      ? [{ value: 'notas-fiscais', label: 'Notas fiscais', icon: <ReceiptText className="h-4 w-4 shrink-0" /> }]
+      ? [{ value: 'notas-fiscais', label: t.sectionInvoices, icon: sectionIcon('invoices', <ReceiptText className="h-4 w-4 shrink-0" />) }]
       : []),
     ...(permissions.documents
-      ? [{ value: 'documentos', label: 'Documentos', icon: <Files className="h-4 w-4 shrink-0" /> }]
+      ? [{ value: 'documentos', label: t.sectionDocuments, icon: sectionIcon('documents', <Files className="h-4 w-4 shrink-0" />) }]
       : []),
-  ], [charges.length, contracts.length, permissions, t]);
+  ], [charges.length, contracts.length, lockedSet, permissions, sectionIcon, t]);
 
   useEffect(() => {
     if (navSections.length > 0 && !navSections.some((section) => section.value === activeTab)) {
       setActiveTab(navSections[0].value);
     }
   }, [activeTab, navSections]);
+
+  // Aba aberta esta protegida? Entao o corpo dela e o card de desbloqueio.
+  const activeTabKey = TAB_PERMISSION_KEY[activeTab];
+  const activeIsLocked = !!activeTabKey && lockedSet.has(activeTabKey);
 
   // ── Render principal com PublicPortalShell ──
   return (
@@ -1422,11 +1430,14 @@ function CustomerPortalContent({
       activeSection={activeTab}
       onSectionChange={setActiveTab}
       footerCtaLabel={permissions.ticket_requests ? t.openTicket : undefined}
-      onFooterCta={permissions.ticket_requests ? () => setShowTicketForm(true) : undefined}
+      onFooterCta={permissions.ticket_requests
+        // Chamado protegido: o CTA abre o desbloqueio, nao o formulario.
+        ? () => (ticketLocked ? setShowUnlockModal(true) : setShowTicketForm(true))
+        : undefined}
       navLabel={t.sidebarNavLabel}
     >
       {/* Campo de busca de OS — no topo da aba */}
-      {permissions.service_orders && activeTab === 'os' && (
+      {permissions.service_orders && activeTab === 'os' && !activeIsLocked && (
         <div className="mb-4">
           {osSearchBar}
         </div>
@@ -1436,14 +1447,28 @@ function CustomerPortalContent({
       {navSections.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            A empresa ainda não liberou conteúdos para este portal.
+            {t.emptySections}
           </CardContent>
         </Card>
       )}
-      {permissions.service_orders && activeTab === 'os' && osTabContent}
-      {permissions.equipment && activeTab === 'equipamentos' && eqTabContent}
-      {permissions.contracts && activeTab === 'contratos' && contractsTabContent}
-      {permissions.charges && activeTab === 'cobrancas' && (
+      {/* Secao protegida: card de desbloqueio em vez do conteudo. O dado ja nao
+          veio do servidor — isto aqui e so a porta pra quem tem a senha. */}
+      {activeIsLocked && (
+        <PortalUnlockCard
+          variant="inline"
+          token={token}
+          locale={locale}
+          brandColor={brandColor}
+          onUnlocked={onUnlocked}
+          title={t.lockedSectionTitle}
+          description={t.lockedSectionDesc}
+          inputId={`portal-unlock-${activeTab}`}
+        />
+      )}
+      {!activeIsLocked && permissions.service_orders && activeTab === 'os' && osTabContent}
+      {!activeIsLocked && permissions.equipment && activeTab === 'equipamentos' && eqTabContent}
+      {!activeIsLocked && permissions.contracts && activeTab === 'contratos' && contractsTabContent}
+      {!activeIsLocked && permissions.charges && activeTab === 'cobrancas' && (
         <PortalChargesSection
           charges={charges}
           t={{
@@ -1461,7 +1486,7 @@ function CustomerPortalContent({
           timezone={timezone}
         />
       )}
-      {permissions.invoices && activeTab === 'notas-fiscais' && (
+      {!activeIsLocked && permissions.invoices && activeTab === 'notas-fiscais' && (
         <PortalDocumentsSection
           kind="invoice"
           items={invoices}
@@ -1472,7 +1497,7 @@ function CustomerPortalContent({
           timezone={timezone}
         />
       )}
-      {permissions.documents && activeTab === 'documentos' && (
+      {!activeIsLocked && permissions.documents && activeTab === 'documentos' && (
         <PortalDocumentsSection
           kind="document"
           items={documents}
@@ -1484,8 +1509,31 @@ function CustomerPortalContent({
         />
       )}
 
+      {/* Desbloqueio do "Abrir chamado" quando a secao de chamados pede senha.
+          Mesmo card da secao protegida: uma fonte so pra erro/lockout. */}
+      {permissions.ticket_requests && ticketLocked && (
+        <ResponsiveModal
+          open={showUnlockModal}
+          onOpenChange={setShowUnlockModal}
+          title={t.lockedSectionTitle}
+        >
+          <PortalUnlockCard
+            variant="plain"
+            token={token}
+            locale={locale}
+            brandColor={brandColor}
+            onUnlocked={async (nextSession) => {
+              setShowUnlockModal(false);
+              await onUnlocked(nextSession);
+            }}
+            description={t.lockedTicketDesc}
+            inputId="portal-unlock-ticket"
+          />
+        </ResponsiveModal>
+      )}
+
       {/* Modal de chamado (preservado integralmente) */}
-      {permissions.ticket_requests && <ResponsiveModal
+      {permissions.ticket_requests && !ticketLocked && <ResponsiveModal
         open={showTicketForm}
         onOpenChange={(v) => {
           // Modal de criar/editar nao fecha ao clicar fora (regra-lei UI).

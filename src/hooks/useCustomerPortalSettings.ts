@@ -18,6 +18,17 @@ export interface CustomerPortalSettings {
   passwordEnabled: boolean;
   passwordConfigured: boolean;
   permissions: CustomerPortalPermissions;
+  /**
+   * Seções LIVRES (abrem sem pedir a senha) quando a proteção por senha está
+   * ligada. `false`/ausente = a seção visível continua atrás da senha.
+   * Mapa dos 3 estados por seção:
+   *   Oculto     → permissions[k] = false
+   *   Sem senha  → permissions[k] = true  E publicSections[k] = true
+   *   Com senha  → permissions[k] = true  E publicSections[k] = false
+   * Default tudo `false` = nada livre: quem já usa senha hoje não sente
+   * diferença nenhuma.
+   */
+  publicSections: CustomerPortalPermissions;
 }
 
 export const DEFAULT_CUSTOMER_PORTAL_PERMISSIONS: CustomerPortalPermissions = {
@@ -30,12 +41,24 @@ export const DEFAULT_CUSTOMER_PORTAL_PERMISSIONS: CustomerPortalPermissions = {
   ticket_requests: true,
 };
 
+/** Nenhuma seção livre: com senha ligada, tudo continua protegido. */
+export const DEFAULT_CUSTOMER_PORTAL_PUBLIC_SECTIONS: CustomerPortalPermissions = {
+  service_orders: false,
+  equipment: false,
+  contracts: false,
+  charges: false,
+  invoices: false,
+  documents: false,
+  ticket_requests: false,
+};
+
 export const DEFAULT_CUSTOMER_PORTAL_SETTINGS: CustomerPortalSettings = {
   token: null,
   isActive: true,
   passwordEnabled: false,
   passwordConfigured: false,
   permissions: DEFAULT_CUSTOMER_PORTAL_PERMISSIONS,
+  publicSections: DEFAULT_CUSTOMER_PORTAL_PUBLIC_SECTIONS,
 };
 
 export function parsePortalSettings(value: unknown): CustomerPortalSettings | null {
@@ -43,6 +66,11 @@ export function parsePortalSettings(value: unknown): CustomerPortalSettings | nu
   const raw = value as Record<string, unknown>;
   const permissions = raw.permissions && typeof raw.permissions === 'object'
     ? raw.permissions as Record<string, unknown>
+    : {};
+  // `public_sections` é "quem abre SEM senha". Portal antigo não tem a chave,
+  // então TODA leitura aqui é fail-closed (`=== true`): ausência = protegido.
+  const publicSections = raw.public_sections && typeof raw.public_sections === 'object'
+    ? raw.public_sections as Record<string, unknown>
     : {};
 
   return {
@@ -59,6 +87,15 @@ export function parsePortalSettings(value: unknown): CustomerPortalSettings | nu
       invoices: permissions.invoices === true,
       documents: permissions.documents === true,
       ticket_requests: permissions.ticket_requests !== false,
+    },
+    publicSections: {
+      service_orders: publicSections.service_orders === true,
+      equipment: publicSections.equipment === true,
+      contracts: publicSections.contracts === true,
+      charges: publicSections.charges === true,
+      invoices: publicSections.invoices === true,
+      documents: publicSections.documents === true,
+      ticket_requests: publicSections.ticket_requests === true,
     },
   };
 }
@@ -88,13 +125,19 @@ export function useCustomerPortalSettings(customerId: string | null, enabled: bo
       settings: CustomerPortalSettings;
       password: string | null;
     }) => {
-      const { data, error } = await supabase.rpc('save_customer_portal_settings', {
+      // Args em variável (não literal inline) de propósito: `p_public_sections`
+      // só entra no types.ts gerado depois que a migration do portal com 3
+      // estados for aplicada, e literal inline dispara excess property check.
+      const rpcArgs = {
         p_customer_id: targetCustomerId,
         p_is_active: settings.isActive,
         p_password_enabled: settings.passwordEnabled,
         p_password: password,
         p_permissions: settings.permissions as unknown as Json,
-      });
+        p_public_sections: (settings.publicSections
+          ?? DEFAULT_CUSTOMER_PORTAL_PUBLIC_SECTIONS) as unknown as Json,
+      };
+      const { data, error } = await supabase.rpc('save_customer_portal_settings', rpcArgs);
       if (error) throw error;
       const parsed = parsePortalSettings(data);
       if (!parsed) throw new Error('Resposta inválida ao salvar o portal');

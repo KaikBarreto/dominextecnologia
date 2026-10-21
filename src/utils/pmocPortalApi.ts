@@ -66,6 +66,36 @@ export class PortalPrivateError extends Error {
 }
 
 /**
+ * Erro específico: TODO o Portal do Contrato está atrás da senha — nenhuma seção
+ * é livre e o visitante não tem sessão. A edge devolve HTTP 200 com
+ * `{ access: 'password_required', company_name }` e NENHUM dado de negócio no
+ * corpo. A tela mostra o `PortalUnlockCard` em tela cheia.
+ *
+ * Distinto de `PortalPrivateError` (portal privado, só membro da empresa entra)
+ * e de `PortalModuleUnavailableError` (módulo fora da assinatura).
+ */
+export class PortalPasswordRequiredError extends Error {
+  readonly companyName: string | null;
+  constructor(companyName: string | null) {
+    super('password_required');
+    this.name = 'PortalPasswordRequiredError';
+    this.companyName = companyName;
+  }
+}
+
+/**
+ * Nome da chave de sessão no `sessionStorage`, por token de portal.
+ *
+ * Uma chave POR TOKEN (e não uma global) porque o mesmo navegador pode abrir
+ * portais de contratos — e de tenants — diferentes. Espelha o Portal do Cliente
+ * (`dominex_customer_portal_session_<token>`). `sessionStorage` e não
+ * `localStorage`: a sessão do síndico morre quando ele fecha a aba.
+ */
+export function contractPortalSessionKey(token: string): string {
+  return `dominex_contract_portal_session_${token}`;
+}
+
+/**
  * Busca o payload do Portal do Contrato (PMOC e não-PMOC).
  *
  * Quando há sessão logada, envia o header `Authorization` pra a edge detectar
@@ -75,10 +105,19 @@ export class PortalPrivateError extends Error {
  * Erros:
  *  - `PortalModuleUnavailableError` — módulo "Portal do Cliente" fora da assinatura.
  *  - `PortalPrivateError` — portal privado + visitante sem permissão.
+ *  - `PortalPasswordRequiredError` — portal inteiro atrás da senha, sem sessão.
  *  - `portal_not_found` — token inválido / contrato cancelado.
  *  - `portal_network_error` — falha de rede / edge function indisponível.
+ *
+ * `sessionToken` é a sessão do Portal do Cliente DONO do contrato (criada por
+ * `contract_portal_login`). Vai no header `X-Portal-Session` — NUNCA na query
+ * string, que cai em log de CDN/proxy e vaza no `Referer`. Sem sessão, a edge
+ * entrega só as seções livres (e corta o cadastro da unidade do payload).
  */
-export async function fetchPmocPortal(token: string): Promise<PortalPayload> {
+export async function fetchPmocPortal(
+  token: string,
+  sessionToken?: string | null,
+): Promise<PortalPayload> {
   if (shouldUseMock(token)) {
     return buildMockPayload(token);
   }
@@ -101,6 +140,11 @@ export async function fetchPmocPortal(token: string): Promise<PortalPayload> {
     if (accessToken) {
       headers.Authorization = `Bearer ${accessToken}`;
     }
+    // Sessão do portal (senha do cliente). A edge valida server-side pela RPC
+    // `contract_portal_session_is_valid` antes de servir seção protegida.
+    if (sessionToken) {
+      headers['X-Portal-Session'] = sessionToken;
+    }
 
     const res = await fetch(
       `${SUPABASE_URL}/functions/v1/pmoc-portal-share?token=${encodeURIComponent(
@@ -119,7 +163,8 @@ export async function fetchPmocPortal(token: string): Promise<PortalPayload> {
     const data = (await res.json()) as
       | PortalPayload
       | { error: 'module_unavailable'; company_name?: string | null }
-      | { access: 'denied'; company_name?: string | null };
+      | { access: 'denied'; company_name?: string | null }
+      | { access: 'password_required'; company_name?: string | null };
 
     // Módulo fora da assinatura: HTTP 200, mas o corpo sinaliza indisponível.
     // Lança erro tipado próprio — NÃO é "token inválido" nem erro de rede.
@@ -137,10 +182,23 @@ export async function fetchPmocPortal(token: string): Promise<PortalPayload> {
       );
     }
 
+    // Portal INTEIRO atrás da senha (nenhuma seção livre, sem sessão):
+    // HTTP 200 { access:'password_required' }, sem dado de negócio no corpo.
+    if (
+      data
+      && typeof data === 'object'
+      && (data as { access?: string }).access === 'password_required'
+    ) {
+      throw new PortalPasswordRequiredError(
+        (data as { company_name?: string | null }).company_name ?? null,
+      );
+    }
+
     return data as PortalPayload;
   } catch (err) {
     if (err instanceof PortalModuleUnavailableError) throw err;
     if (err instanceof PortalPrivateError) throw err;
+    if (err instanceof PortalPasswordRequiredError) throw err;
     if (err instanceof Error && err.message === 'portal_not_found') throw err;
     throw new Error('portal_network_error');
   }
@@ -166,14 +224,24 @@ export async function fetchPmocPortal(token: string): Promise<PortalPayload> {
  * portal e nao no texto do banco):
  *  - `42501` — portal indisponivel, privado, assinatura vencida ou modulo fora.
  *  - `22023` — descricao fora da faixa de 10 a 2000 caracteres.
+ *
+ * `sessionToken` (2026-10-21): a RPC exige sessao valida quando
+ * `portal_sections->>'ocorrencias' = 'password'` e RECUSA quando 'hidden'. Com
+ * 'free' (ou chave ausente, que e o caso de todo link ja compartilhado) a sessao
+ * e ignorada — a chamada sem sessao continua valendo exatamente como antes.
  */
 export async function createPmocPortalTicket(
   token: string,
   description: string,
+  sessionToken?: string | null,
 ): Promise<void> {
   const { error } = await supabaseAnon.rpc('create_contract_portal_ticket', {
     p_token: token,
     p_description: description.trim(),
+    // `p_session_token?: string` no types.ts (DEFAULT NULL no banco): sem sessao
+    // mandamos `undefined`, que o JSON.stringify do supabase-js simplesmente
+    // omite — e a RPC cai no DEFAULT NULL, igual a chamada de 2 argumentos.
+    p_session_token: sessionToken || undefined,
   });
   if (error) throw error;
 }

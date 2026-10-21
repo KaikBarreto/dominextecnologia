@@ -30,6 +30,15 @@ const DEFAULT_SETTINGS: CustomerPortalSettings = {
     documents: false,
     ticket_requests: true,
   },
+  publicSections: {
+    service_orders: false,
+    equipment: false,
+    contracts: false,
+    charges: false,
+    invoices: false,
+    documents: false,
+    ticket_requests: false,
+  },
 };
 
 vi.mock('@/hooks/useCustomerPortalSettings', async (importOriginal) => {

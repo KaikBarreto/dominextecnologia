@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.30";
+export const APP_VERSION = "1.37.31";
 
 export const VERSION_NOTES =
-  "A coluna Chamados do Portal agora aparece apenas quando há pedido de cliente esperando triagem, deixando o quadro de status mais limpo no resto do tempo.";
+  "A senha do portal agora pode valer só para as partes sensíveis, deixando o histórico e a abertura de chamados abertos no mesmo link.";
