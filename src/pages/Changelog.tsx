@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.26',
+    date: '21 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'DFC previsto mais compacto',
+        description: 'As categorias de saída agora começam recolhidas e podem ser abertas pela seta ao lado de Total de saídas, facilitando a leitura diária do caixa.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.25',
     date: '21 de outubro de 2026',
     type: 'patch',

@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.25";
+export const APP_VERSION = "1.37.26";
 
 export const VERSION_NOTES =
-  "DRE e DFC agora compartilham uma hierarquia mais legível, filtros gerenciais e exportações profissionais em Excel e PDF.";
+  "O DFC previsto abre mais compacto e permite expandir as categorias de saída quando necessário.";

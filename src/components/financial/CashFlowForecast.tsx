@@ -10,7 +10,16 @@
  */
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, Wallet, Info, type LucideIcon } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  ChevronDown,
+  ChevronRight,
+  Wallet,
+  Info,
+  type LucideIcon,
+} from 'lucide-react';
 import {
   AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
@@ -49,6 +58,7 @@ export function CashFlowForecast() {
   const { money } = useLocaleFormatters();
   const isMobile = useIsMobile();
   const [horizonDays, setHorizonDays] = useState<number>(15);
+  const [saidasExpandidas, setSaidasExpandidas] = useState(false);
   /**
    * Célula aberta no painel de detalhe. É o quadro "Descrição | Valor" do
    * painel do BPO: ele perguntou "existe um mundo no qual eu clico na despesa
@@ -254,16 +264,20 @@ export function CashFlowForecast() {
               </tr>
             </thead>
             <tbody>
-              {linhas.map((linha) => (
-                <tr
-                  key={linha.chave}
-                  className={cn(
-                    'border-t',
-                    linha.tipo === 'saldo' && 'bg-muted/20 font-semibold',
-                    (linha.tipo === 'entrada' || linha.tipo === 'saidaTotal') && 'font-semibold',
-                    linha.tipo === 'categoria' && 'text-muted-foreground',
-                  )}
-                >
+              {linhas.map((linha) => {
+                if (linha.tipo === 'categoria' && !saidasExpandidas) return null;
+                const ehGrupoSaidas = linha.tipo === 'saidaTotal';
+
+                return (
+                  <tr
+                    key={linha.chave}
+                    className={cn(
+                      'border-t',
+                      linha.tipo === 'saldo' && 'bg-muted/20 font-semibold',
+                      (linha.tipo === 'entrada' || linha.tipo === 'saidaTotal') && 'font-semibold',
+                      linha.tipo === 'categoria' && 'text-muted-foreground',
+                    )}
+                  >
                   <td
                     className={cn(
                       // ⚠️ Fundo OPACO obrigatório numa coluna fixa. Com
@@ -276,17 +290,32 @@ export function CashFlowForecast() {
                       linha.tipo === 'categoria' && 'pl-6 text-xs',
                     )}
                   >
-                    <span className="flex items-center gap-2">
-                      {linha.tipo === 'categoria' && linha.Icone && (
-                        <span
-                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
-                          style={{ backgroundColor: linha.cor || '#64748b' }}
-                        >
-                          <linha.Icone className="h-3 w-3 text-white" />
-                        </span>
-                      )}
-                      <span>{linha.rotulo}</span>
-                    </span>
+                    {ehGrupoSaidas ? (
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 text-left"
+                        onClick={() => setSaidasExpandidas((atual) => !atual)}
+                        aria-expanded={saidasExpandidas}
+                        aria-label={`${saidasExpandidas ? 'Recolher' : 'Expandir'} categorias de saída`}
+                      >
+                        {saidasExpandidas
+                          ? <ChevronDown className="h-4 w-4 shrink-0" />
+                          : <ChevronRight className="h-4 w-4 shrink-0" />}
+                        <span>{linha.rotulo}</span>
+                      </button>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        {linha.tipo === 'categoria' && linha.Icone && (
+                          <span
+                            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+                            style={{ backgroundColor: linha.cor || '#64748b' }}
+                          >
+                            <linha.Icone className="h-3 w-3 text-white" />
+                          </span>
+                        )}
+                        <span>{linha.rotulo}</span>
+                      </span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums border-l">
                     {linha.divida
@@ -331,8 +360,9 @@ export function CashFlowForecast() {
                       </td>
                     );
                   })}
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
