@@ -68,9 +68,21 @@ export const os = {
       overdue: 'Atrasadas',
       next7: 'Próximos 7 dias',
     },
+    createdToast: {
+      title: 'OS #{n} criada',
+      scheduledFor: 'Agendada para {date} às {time}',
+      noDate: 'Sem data marcada',
+      warnTitle: 'OS criada pela metade',
+      warnAssignees: 'A OS foi criada, mas os responsáveis não foram salvos. Abra a OS e defina de novo.',
+      warnEquipment: 'A OS foi criada, mas os equipamentos não foram salvos. Abra a OS e defina de novo.',
+      missingCustomer: 'Escolha um cliente para criar a OS.',
+    },
     sections: {
       listTitle: 'Lista de OS',
       byStatus: 'OS por Status',
+      portalColumn: 'Chamados do Portal',
+      portalColumnHint: 'Abertos pelo cliente e ainda sem data marcada',
+      showingOf: 'Mostrando {n} de {total} OS',
     },
     table: {
       os: 'OS',
@@ -90,6 +102,7 @@ export const os = {
       noneDescriptionMobile: 'Toque em "Nova OS" para começar',
       noneDescriptionDesktop: 'Clique em "Nova OS" para começar',
       columnEmpty: 'Nenhuma OS',
+      portalColumnEmpty: 'Nenhum chamado novo',
     },
     rowActions: {
       view: 'Visualizar',
@@ -1807,9 +1820,21 @@ export const os = {
       overdue: 'Overdue',
       next7: 'Next 7 days',
     },
+    createdToast: {
+      title: 'Work order #{n} created',
+      scheduledFor: 'Scheduled for {date} at {time}',
+      noDate: 'No date set',
+      warnTitle: 'Work order created incomplete',
+      warnAssignees: 'The work order was created, but the assignees were not saved. Open it and set them again.',
+      warnEquipment: 'The work order was created, but the equipment was not saved. Open it and set it again.',
+      missingCustomer: 'Pick a customer to create the work order.',
+    },
     sections: {
       listTitle: 'Work order list',
       byStatus: 'Work orders by status',
+      portalColumn: 'Portal requests',
+      portalColumnHint: 'Opened by the customer and still without a scheduled date',
+      showingOf: 'Showing {n} of {total} work orders',
     },
     table: {
       os: 'WO',
@@ -1829,6 +1854,7 @@ export const os = {
       noneDescriptionMobile: 'Tap "New work order" to get started',
       noneDescriptionDesktop: 'Click "New work order" to get started',
       columnEmpty: 'No work orders',
+      portalColumnEmpty: 'No new requests',
     },
     rowActions: {
       view: 'View',
@@ -3424,9 +3450,21 @@ export const os = {
       overdue: 'Atrasadas',
       next7: 'Próximos 7 días',
     },
+    createdToast: {
+      title: 'Orden #{n} creada',
+      scheduledFor: 'Programada para el {date} a las {time}',
+      noDate: 'Sin fecha programada',
+      warnTitle: 'Orden creada incompleta',
+      warnAssignees: 'La orden fue creada, pero los responsables no se guardaron. Ábrela y defínelos de nuevo.',
+      warnEquipment: 'La orden fue creada, pero los equipos no se guardaron. Ábrela y defínelos de nuevo.',
+      missingCustomer: 'Elige un cliente para crear la orden.',
+    },
     sections: {
       listTitle: 'Lista de órdenes',
       byStatus: 'Órdenes por estado',
+      portalColumn: 'Solicitudes del portal',
+      portalColumnHint: 'Abiertas por el cliente y aún sin fecha programada',
+      showingOf: 'Mostrando {n} de {total} órdenes',
     },
     table: {
       os: 'OT',
@@ -3446,6 +3484,7 @@ export const os = {
       noneDescriptionMobile: 'Toca "Nueva orden" para empezar',
       noneDescriptionDesktop: 'Haz clic en "Nueva orden" para empezar',
       columnEmpty: 'Sin órdenes',
+      portalColumnEmpty: 'Sin solicitudes nuevas',
     },
     rowActions: {
       view: 'Ver',
@@ -5041,9 +5080,21 @@ export const os = {
       overdue: 'En retard',
       next7: '7 prochains jours',
     },
+    createdToast: {
+      title: 'Bon n° {n} créé',
+      scheduledFor: 'Planifié le {date} à {time}',
+      noDate: 'Aucune date définie',
+      warnTitle: 'Bon créé incomplet',
+      warnAssignees: "Le bon a été créé, mais les responsables n'ont pas été enregistrés. Ouvrez-le et redéfinissez-les.",
+      warnEquipment: "Le bon a été créé, mais les équipements n'ont pas été enregistrés. Ouvrez-le et redéfinissez-les.",
+      missingCustomer: 'Choisissez un client pour créer le bon.',
+    },
     sections: {
       listTitle: 'Liste des bons',
       byStatus: 'Bons par statut',
+      portalColumn: 'Demandes du portail',
+      portalColumnHint: 'Ouvertes par le client et encore sans date planifiée',
+      showingOf: 'Affichage de {n} sur {total} bons',
     },
     table: {
       os: 'BT',
@@ -5063,6 +5114,7 @@ export const os = {
       noneDescriptionMobile: 'Touchez « Nouveau bon » pour commencer',
       noneDescriptionDesktop: 'Cliquez sur « Nouveau bon » pour commencer',
       columnEmpty: 'Aucun bon',
+      portalColumnEmpty: 'Aucune nouvelle demande',
     },
     rowActions: {
       view: 'Voir',

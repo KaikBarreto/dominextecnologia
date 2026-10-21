@@ -42,6 +42,38 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.28',
+    date: '21 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'A agenda vai até a OS que você acabou de criar',
+        description: 'Ao salvar uma OS ou tarefa agendada para outro dia, o calendário navega sozinho até aquela data e mostra o agendamento. O aviso de confirmação também passou a dizer o número e a data: "OS #1234 criada - Agendada para 30/10 as 15:36".',
+        category: 'melhoria',
+      },
+      {
+        title: 'Coluna fixa para os chamados do portal',
+        description: 'O quadro de Ordens de Serviço ganhou a coluna Chamados do Portal como primeira coluna, reunindo os pedidos abertos pelo cliente que ainda nao tem data marcada. A OS sai da coluna sozinha assim que a data e definida.',
+        category: 'recurso',
+      },
+      {
+        title: 'Ordens de Serviço abrem em Todos os tempos',
+        description: 'A tela abria filtrada no mes atual e escondia tudo que estava agendado para os meses seguintes, inclusive OS de contrato e PMOC. Agora abre mostrando todo o periodo, e quando um filtro estiver ativo a contagem informa quantas OS estao sendo exibidas do total.',
+        category: 'correcao',
+      },
+      {
+        title: 'OS sem data e fora do horario comercial nao somem mais',
+        description: 'OS sem data marcada deixou de ser descartada pelo filtro de periodo, e o calendario passou a esticar a faixa de horarios para caber agendamentos antes das 7h ou depois das 20h.',
+        category: 'correcao',
+      },
+      {
+        title: 'Avisos no cadastro de OS',
+        description: 'Se os responsaveis nao forem salvos junto com a OS, agora aparece um aviso em vez de falhar em silencio. O botao Criar OS trava no primeiro clique, evitando OS duplicada, e o formulario informa quando falta escolher o cliente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.37.27',
     date: '21 de outubro de 2026',
     type: 'patch',

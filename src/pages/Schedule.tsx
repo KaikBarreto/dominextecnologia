@@ -630,11 +630,26 @@ export default function Schedule() {
     setIsTaskFormOpen(true);
   };
 
+  // Leva o calendário até a data de uma OS/tarefa recém-salva.
+  //
+  // Existe porque criar sem navegar é indistinguível de NÃO ter salvado: o
+  // calendário fica no dia/semana/mês que já estava (e no celular a visão
+  // padrão é UM DIA), então quem agenda pra outra data vê a tela intacta e o
+  // aviso de sucesso — e conclui que o sistema perdeu. Foi a reclamação da
+  // Glacial Cold em 21/10/2026, com as OS todas íntegras no banco. Mesmo
+  // tratamento que `handleSearchResultSelect` já faz pro resultado de busca.
+  const goToScheduledDate = useCallback((scheduledDate?: string | null) => {
+    if (!scheduledDate) return;
+    const parsed = new Date(scheduledDate + 'T12:00:00');
+    if (!isNaN(parsed.getTime())) setCurrentDate(parsed);
+  }, []);
+
   // Submit de tarefa (criação + edição "esta e as futuras") vive no hook
   // compartilhado useTaskSubmit, reaproveitado pela aba Tarefas do cliente.
   const handleTaskSubmit = async (data: TaskFormData) => {
     await submitTask(data, editingTask);
     setEditingTask(null);
+    goToScheduledDate((data as any)?.scheduled_date);
   };
 
   const handleSlotClick = (date: string, time: string) => {
@@ -739,6 +754,10 @@ export default function Schedule() {
       } else {
         await createServiceOrder.mutateAsync(payload);
       }
+      // Só navega no caminho de SUCESSO (dentro do try, depois do await). Se a
+      // gravação falhar ou cair em conflito de agenda, o calendário não se
+      // mexe — mover a tela depois de um erro mentiria duas vezes.
+      goToScheduledDate(payload.scheduled_date);
     } catch (error) {
       if (isScheduleConflictError(error)) {
         setPendingScheduleConflict({
@@ -785,6 +804,7 @@ export default function Schedule() {
       });
       handleCloseForm(false);
     }
+    goToScheduledDate(pending.kind === 'reschedule' ? pending.scheduledDate : pending.data?.scheduled_date);
 
     setPendingScheduleConflict(null);
   };

@@ -597,8 +597,33 @@ export function ServiceOrderFormDialog({
     };
   };
 
+  // Trava de submissão em curso.
+  //
+  // `isLoading` (vem do `isPending` da mutation) NÃO cobre o começo do clique:
+  // antes de chamar a mutation, o submit ainda faz `buildServiceAddressPayload()`,
+  // que vai na rede buscar as coordenadas do endereço. Nessa janela o botão
+  // continuava habilitado e sem spinner — dois cliques ali criavam duas OS.
+  // O ref é quem barra de fato (não depende de re-render); o state só desenha
+  // o botão travado.
+  const submittingRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const withSubmitLock = async (run: () => Promise<void>) => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setIsSubmitting(true);
+    try {
+      await run();
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateSubmit = () => withSubmitLock(runCreateSubmit);
+  const handleEditSubmit = (data: ServiceOrderFormData) => withSubmitLock(() => runEditSubmit(data));
+
   // Single OS with first equipment_id (all equipment tracked via form_template per equipment in the technician link)
-  const handleCreateSubmit = async () => {
+  const runCreateSubmit = async () => {
     const data = form.getValues();
     const serviceAddressPayload = await buildServiceAddressPayload();
 
@@ -619,7 +644,15 @@ export function ServiceOrderFormDialog({
       customerId = (result as any).id;
     }
 
-    if (!customerId) return;
+    if (!customerId) {
+      // Antes isto era um `return` mudo: o usuário clicava em "Criar OS" e
+      // literalmente nada acontecia, sem nenhuma pista do que faltava.
+      editToast({
+        variant: 'destructive',
+        title: MESSAGES[locale].app.os.createdToast.missingCustomer,
+      });
+      return;
+    }
     const techId = selectedAssigneeUserIds[0] || undefined;
     const teamId = selectedAssigneeTeamIds[0] || undefined;
 
@@ -731,7 +764,17 @@ export function ServiceOrderFormDialog({
           const assigneeRows = created.flatMap((row: any) =>
             selectedAssigneeUserIds.map(uid => ({ service_order_id: row.id, user_id: uid }))
           );
-          await supabase.from('service_order_assignees').insert(assigneeRows);
+          // O erro era descartado por completo aqui (nem console havia): a série
+          // inteira nascia sem responsável e o aviso anunciava sucesso.
+          const { error: aErr } = await supabase.from('service_order_assignees').insert(assigneeRows);
+          if (aErr) {
+            console.error('Error inserting assignees (recurrence):', aErr);
+            editToast({
+              variant: 'destructive',
+              title: MESSAGES[locale].app.os.createdToast.warnTitle,
+              description: MESSAGES[locale].app.os.createdToast.warnAssignees,
+            });
+          }
         }
         await Promise.all(created.map(async (row: any) => {
           await syncServiceOrderServiceTypes(row.id, selectedServiceTypeIds);
@@ -879,7 +922,7 @@ export function ServiceOrderFormDialog({
     onOpenChange(false);
   };
 
-  const handleEditSubmit = async (data: ServiceOrderFormData) => {
+  const runEditSubmit = async (data: ServiceOrderFormData) => {
     if (!serviceOrder) return;
     const payload = await buildEditPayload(data);
     if (payload.equipment_items !== undefined) {
@@ -1845,8 +1888,8 @@ export function ServiceOrderFormDialog({
             {t.btnCancel}
           </Button>
           {isLastStep ? (
-            <Button type="submit" form="os-edit-form" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" form="os-edit-form" disabled={isLoading || isSubmitting} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              {(isLoading || isSubmitting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t.btnSave}
             </Button>
           ) : (
@@ -2088,8 +2131,8 @@ export function ServiceOrderFormDialog({
           {t.btnCancel}
         </Button>
         {isLastStep ? (
-          <Button type="submit" form="os-create-form" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" form="os-create-form" disabled={isLoading || isSubmitting} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            {(isLoading || isSubmitting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {recurrenceEnabled ? t.btnCreateRecurring : t.btnCreate}
           </Button>
         ) : (

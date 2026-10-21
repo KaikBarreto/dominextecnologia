@@ -158,7 +158,12 @@ export default function ServiceOrders() {
     localStorage.setItem('os-view-mode', viewMode);
   }, [viewMode]);
 
-  const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
+  // Padrão "Todo o período" (decisão do CEO, 21/10/2026). Era `this_month`, e isso
+  // escondia TODA OS agendada pra fora do mês corrente — 67% da base da Glacial Cold,
+  // porque contrato/PMOC gera OS anos à frente. Pior: escondia também a OS SEM data,
+  // que é como o chamado do portal nasce (ver a coluna fixa do portal no kanban).
+  // O usuário salvava, via "criada com sucesso" e não achava mais.
+  const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('all');
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder, resetServiceOrder } = useServiceOrders();
   const { statuses } = useOsStatuses();
   // Receita ao finalizar a OS. `maybeOpen` decide sozinho se abre (toggle da
@@ -242,7 +247,9 @@ export default function ServiceOrders() {
     // Sem busca: comportamento padrão. Filtro de data aplica em TUDO (kanban,
     // lista, KPIs) — DateRangeFilter no topo é a fonte da verdade do recorte
     // temporal da tela — combinado com o filtro de status.
-    const baseOrders = filterByDate(serviceOrders, 'scheduled_date');
+    // `keepUndated`: OS sem data marcada NUNCA some da tela de trabalho — é assim
+    // que o chamado do portal nasce, e ele mora na coluna fixa do portal no kanban.
+    const baseOrders = filterByDate(serviceOrders, 'scheduled_date', undefined, { keepUndated: true });
     return baseOrders.filter((os) => {
       return statusFilter.length === 0 || statusFilter.includes(os.status);
     });
@@ -380,13 +387,34 @@ export default function ServiceOrders() {
     });
   };
 
-  const kanbanColumns = statusOptions;
+  // Coluna fixa "Chamados do Portal" — caixa de entrada do cliente final.
+  // O chamado aberto pelo portal nasce SEM data agendada, e antes disso ele não
+  // tinha onde aparecer: sumia da lista (o filtro de data descartava item sem data)
+  // e não tem lugar no calendário. Medido em 21/10/2026: 17 OS sem data em 5
+  // empresas, duas da ENGETEC paradas desde julho/agosto sem ninguém ver.
+  // A coluna é a primeira do kanban e esvazia sozinha: no instante em que alguém
+  // marca a data, a OS sai daqui e entra no fluxo normal de status.
+  const PORTAL_COLUMN_KEY = '__portal__';
+  const isPortalIntake = (os: { origin?: string | null; scheduled_date?: string | null }) =>
+    os.origin === 'portal' && !os.scheduled_date;
+
+  const kanbanColumns: Array<{ key: string; label: string; color: string; isPortal?: boolean }> = [
+    { key: PORTAL_COLUMN_KEY, label: t.sections.portalColumn, color: 'hsl(var(--info))', isPortal: true },
+    ...statusOptions,
+  ];
+
+  const ordersForColumn = (col: { key: string; isPortal?: boolean }) =>
+    col.isPortal
+      ? filteredOrders.filter((os) => isPortalIntake(os as any))
+      // OS de triagem sai das colunas de status pra não aparecer em duas colunas.
+      : filteredOrders.filter((os) => os.status === col.key && !isPortalIntake(os as any));
 
   // "+" no header da coluna só faz sentido em status NÃO-terminais.
   // Criar OS já "concluida" ou "cancelada" pelo atalho seria pegadinha pro gestor.
+  // Na coluna do portal nunca: chamado do portal quem abre é o cliente.
   const CREATE_NEW_BLOCKED_STATUSES: OsStatus[] = ['concluida', 'cancelada'];
-  const canCreateNewInColumn = (status: OsStatus) =>
-    canCreateOS && !CREATE_NEW_BLOCKED_STATUSES.includes(status);
+  const canCreateNewInColumn = (status: string) =>
+    canCreateOS && status !== PORTAL_COLUMN_KEY && !CREATE_NEW_BLOCKED_STATUSES.includes(status as OsStatus);
 
   // Abre o modal de Nova OS com status pré-preenchido pela coluna do kanban.
   const handleNewOsWithStatus = (status: OsStatus) => {
@@ -1027,9 +1055,21 @@ export default function ServiceOrders() {
               <>
                 {!isMobile && (
                   <div className="flex items-center justify-between">
-                    <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70">
-                      {t.sections.byStatus}
-                    </h2>
+                    <div className="flex items-baseline gap-2 min-w-0">
+                      <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70">
+                        {t.sections.byStatus}
+                      </h2>
+                      {/* Contador honesto: a tela mostra um RECORTE, e antes só
+                          exibia o número do recorte — dava pra jurar que tinha
+                          visto tudo. Só aparece quando há recorte de fato. */}
+                      {filteredOrders.length !== serviceOrders.length && (
+                        <span className="text-xs text-muted-foreground tabular-nums truncate">
+                          {t.sections.showingOf
+                            .replace('{n}', String(filteredOrders.length))
+                            .replace('{total}', String(serviceOrders.length))}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex rounded-lg border overflow-hidden">
                       <button
                         className={cn('px-3 py-2 text-sm', 'hover:bg-muted')}
@@ -1091,7 +1131,7 @@ export default function ServiceOrders() {
                   isMobile && 'snap-x snap-mandatory'
                 )}>
                   {kanbanColumns.map((col) => {
-                    const columnOrders = filteredOrders.filter((os) => os.status === col.key);
+                    const columnOrders = ordersForColumn(col);
                     return (
                       <div
                         key={col.key}
@@ -1099,11 +1139,15 @@ export default function ServiceOrders() {
                           'min-w-[280px] flex-1 flex flex-col rounded-2xl border bg-muted/30',
                           isMobile && 'snap-start'
                         )}
-                        onDragOver={(e) => e.preventDefault()}
+                        // A coluna do portal não é alvo de drop: ela não é um status,
+                        // é "falta marcar a data". Soltar uma OS aqui não teria o que
+                        // gravar, então nem aceita o arrasto.
+                        onDragOver={(e) => { if (!col.isPortal) e.preventDefault(); }}
                         onDrop={(e) => {
+                          if (col.isPortal) return;
                           e.preventDefault();
                           const osId = e.dataTransfer.getData('text/plain');
-                          if (osId) handleStatusChange({ id: osId } as ServiceOrder, col.key);
+                          if (osId) handleStatusChange({ id: osId } as ServiceOrder, col.key as OsStatus);
                         }}
                       >
                         {/* Header coluna — padrão EcoSistema (barra colorida em cima + título uppercase + "+") */}
@@ -1129,7 +1173,7 @@ export default function ServiceOrders() {
                                     // Hit area 44pt no mobile (iOS guideline); compacto no desktop.
                                     isMobile ? 'h-11 w-11' : 'h-7 w-7'
                                   )}
-                                  onClick={() => handleNewOsWithStatus(col.key)}
+                                  onClick={() => handleNewOsWithStatus(col.key as OsStatus)}
                                   title={t.kanban.createInColumn.replace('{status}', col.label)}
                                   aria-label={t.kanban.createInColumn.replace('{status}', col.label)}
                                 >
@@ -1145,8 +1189,8 @@ export default function ServiceOrders() {
                             return (
                             <Card
                               key={os.id}
-                              draggable
-                              onDragStart={(e) => e.dataTransfer.setData('text/plain', os.id)}
+                              draggable={!col.isPortal}
+                              onDragStart={(e) => { if (!col.isPortal) e.dataTransfer.setData('text/plain', os.id); }}
                               onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}
                               className="group relative cursor-pointer active:cursor-grabbing rounded-2xl shadow-sm hover:shadow-md active:scale-[0.98] transition-all"
                             >
@@ -1225,7 +1269,7 @@ export default function ServiceOrders() {
                             <EmptyState
                               size="compact"
                               icon={<ClipboardList className="h-10 w-10" />}
-                              title={t.empty.columnEmpty}
+                              title={col.isPortal ? t.empty.portalColumnEmpty : t.empty.columnEmpty}
                             />
                           )}
                         </div>

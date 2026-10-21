@@ -9,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { EventCard } from './EventCard';
 import type { ServiceOrder } from '@/types/database';
 import type { Holiday } from '@/utils/holidays';
+import { buildHourRange } from '@/lib/scheduleHours';
 
 interface WeeklyCalendarProps {
   currentDate: Date;
@@ -21,7 +22,6 @@ interface WeeklyCalendarProps {
   holidayMap?: Record<string, Holiday[]>;
 }
 
-const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
 const SLOT_HEIGHT = 56; // px per hour
 const CASCADE_OFFSET = 28; // px offset for each overlapping card
 
@@ -64,7 +64,7 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
   const isMobile = useIsMobile();
   const { locale } = useAppLocaleContext();
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
   const ordersByDate = useMemo(() => {
     const map: Record<string, (ServiceOrder & { customer: any; equipment: any })[]> = {};
@@ -76,6 +76,16 @@ export function WeeklyCalendar({ currentDate, orders, onOrderSelect, onSlotClick
     });
     return map;
   }, [orders]);
+
+  // Grade elástica: 07:00–20:00 por padrão, esticada pelo que a SEMANA VISÍVEL
+  // realmente tem. Fixa, ela engolia a OS das 06h (offset negativo, acima da
+  // grade) e a das 22h (abaixo do último slot) — a OS existia e não tinha pixel
+  // onde aparecer. Mede só a semana à vista, e não a base inteira, pra um
+  // plantão isolado de 23h não esticar a grade de todas as outras semanas.
+  const HOURS = useMemo(
+    () => buildHourRange(weekDays.flatMap((day) => ordersByDate[format(day, 'yyyy-MM-dd')] || [])),
+    [weekDays, ordersByDate],
+  );
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();

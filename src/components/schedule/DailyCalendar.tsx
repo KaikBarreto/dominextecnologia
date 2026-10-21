@@ -9,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { EventCard } from './EventCard';
 import type { ServiceOrder } from '@/types/database';
 import type { Holiday } from '@/utils/holidays';
+import { buildHourRange } from '@/lib/scheduleHours';
 
 interface DailyCalendarProps {
   currentDate: Date;
@@ -23,7 +24,6 @@ interface DailyCalendarProps {
   holidayMap?: Record<string, Holiday[]>;
 }
 
-const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 - 20:00
 const SLOT_HEIGHT = 56; // px por hora
 
 type PositionedOrder = {
@@ -105,6 +105,11 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
 
   // Mobile e desktop usam o mesmo layout side-by-side (colunas estreitas).
   // Cascade vertical foi removido — causava overlap visual e horários ilegíveis quando 3+ eventos no mesmo slot.
+  // Grade elástica: 07:00–20:00 por padrão, esticada pelo que ESTE DIA tem.
+  // Fixa, ela engolia a OS das 06h (offset negativo) e a das 22h (abaixo do
+  // último slot) — a OS existia e não tinha pixel onde aparecer.
+  const HOURS = useMemo(() => buildHourRange(dayOrders), [dayOrders]);
+
   const positionedOrders = useMemo(() => layoutOverlapping(dayOrders, false), [dayOrders]);
 
   const handleDragOver = (e: React.DragEvent) => {
