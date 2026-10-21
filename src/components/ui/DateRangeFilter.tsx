@@ -94,11 +94,27 @@ export function useDateRangeFilter(defaultPreset: DatePreset = 'this_month') {
     }
   };
 
-  const filterByDate = <T extends Record<string, any>>(items: T[], dateField: string, fallbackField?: string): T[] => {
+  /**
+   * `keepUndated`: item SEM data passa pelo recorte em vez de ser descartado.
+   *
+   * O default continua descartando, porque num relatório de período ("OS de
+   * outubro") incluir o que não tem data seria errado. Mas numa tela de trabalho
+   * o descarte silencioso some com registro de verdade: o chamado aberto pelo
+   * cliente no portal nasce sem data e, por causa desta linha, não aparecia em
+   * NENHUM preset com recorte — 17 OS assim em 5 empresas, duas da ENGETEC
+   * paradas desde julho/agosto de 2026 sem ninguém ver. Quem lista pra
+   * trabalhar liga a flag; quem gera relatório de período não.
+   */
+  const filterByDate = <T extends Record<string, any>>(
+    items: T[],
+    dateField: string,
+    fallbackField?: string,
+    opts?: { keepUndated?: boolean },
+  ): T[] => {
     if (!range.from && !range.to) return items;
     return items.filter((item) => {
       const raw = item[dateField] ?? (fallbackField ? item[fallbackField] : null);
-      if (!raw) return false;
+      if (!raw) return opts?.keepUndated === true;
       const dateStr = String(raw);
       // Parse date-only strings (YYYY-MM-DD) as local noon to avoid UTC shift
       const d = dateStr.length === 10 ? new Date(dateStr + 'T12:00:00') : new Date(dateStr);

@@ -13,6 +13,8 @@ import {
   type ScheduleBookingOverride,
 } from '@/lib/scheduleBooking';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { formatDate } from '@/lib/format';
 import {
   SERVICE_ORDER_BUDGET_KEY,
   SERVICE_ORDER_EQUIPMENT_SERVICES_KEY,
@@ -166,7 +168,7 @@ export function useServiceOrders() {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { timezone } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
 
   const serviceOrdersQuery = useQuery({
     queryKey: ['service-orders'],
@@ -357,7 +359,17 @@ export function useServiceOrders() {
         const { error: aErr } = await supabase
           .from('service_order_assignees')
           .insert(rows);
-        if (aErr) console.error('Error inserting assignees:', aErr);
+        // Falha aqui NÃO pode morrer no console: a OS já existe, o aviso de
+        // sucesso aparece de qualquer jeito, e o gestor só descobre que a OS
+        // ficou sem responsável quando ninguém aparece pra executar.
+        if (aErr) {
+          console.error('Error inserting assignees:', aErr);
+          toast({
+            variant: 'destructive',
+            title: MESSAGES[locale].app.os.createdToast.warnTitle,
+            description: MESSAGES[locale].app.os.createdToast.warnAssignees,
+          });
+        }
       }
 
       if (service_type_ids !== undefined) {
@@ -377,13 +389,26 @@ export function useServiceOrders() {
 
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (created: any) => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_BUDGET_KEY] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_SERVICE_TYPES_KEY] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_EQUIPMENT_SERVICES_KEY] });
-      toast({ title: 'Ordem de serviço criada com sucesso!' });
+      // O aviso diz NÚMERO e DATA de propósito. O genérico "criada com sucesso"
+      // era verdade e ainda assim virava reclamação de OS sumida: quem agendava
+      // pra fora do período visível não via nada mudar na tela e concluía que
+      // não tinha salvado. Dizendo a data, a pessoa sabe onde procurar.
+      const tc = MESSAGES[locale].app.os.createdToast;
+      const time = String((created as any)?.scheduled_time ?? '').slice(0, 5);
+      toast({
+        title: tc.title.replace('{n}', String((created as any)?.order_number ?? '')),
+        description: (created as any)?.scheduled_date
+          ? tc.scheduledFor
+              .replace('{date}', formatDate((created as any).scheduled_date, locale, timezone))
+              .replace('{time}', time)
+          : tc.noDate,
+      });
     },
     onError: (error: Error) => {
       if (isScheduleConflictError(error)) {
