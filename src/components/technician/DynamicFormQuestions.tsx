@@ -136,6 +136,9 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
+  // Pergunta que está sendo preenchida AGORA pela primeira vez (campo focado e
+  // ainda sem resposta quando o técnico tocou nele). Ver `openFieldEdit`.
+  const [fillingQuestion, setFillingQuestion] = useState<string | null>(null);
 
   // Refs dos campos de TEXTO/NÚMERO por pergunta. Ao entrar em edição (lápis), o
   // técnico já quer digitar — damos foco automático no campo correspondente sem
@@ -151,11 +154,13 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   // Foca o campo quando ELE entra em edição. Roda quando `editingQuestion` muda;
   // o rAF garante que o input já foi montado (troca read-only → editável) antes
   // do .focus(). Só age no campo que acabou de abrir — não rouba foco de outros.
+  // Se o campo JÁ está focado (o próprio onFocus dele é que abriu a edição), não
+  // mexe: refocar jogaria o cursor pro fim do texto quando o técnico tocou no meio.
   useEffect(() => {
     if (!editingQuestion) return;
     const raf = requestAnimationFrame(() => {
       const el = textInputRefs.current[editingQuestion];
-      if (el) {
+      if (el && el !== document.activeElement) {
         el.focus();
         // Cursor no fim do texto já existente (em vez de selecionar tudo).
         const len = el.value?.length ?? 0;
@@ -439,6 +444,32 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     }
   };
 
+  // ── Campo focado = campo em edição ────────────────────────────────────────
+  // O save do texto/número é OTIMISTA: o `onChange` já grava em `responses`. Sem
+  // isto, a PRIMEIRA letra fazia `hasAnswer` virar true e, como a pergunta tinha
+  // sido renderizada fora do modo de edição, `showReadOnly` trocava o input por
+  // texto read-only NO MEIO da digitação — no iOS isso fecha o teclado, a tela
+  // "desce" e o técnico precisa tocar no lápis pra continuar (bug KGIE, 21/10).
+  // Marcar a pergunta como "em edição" no foco mantém o input montado enquanto
+  // o dedo está nele; ao sair, salva e volta pro modo respondido (badge+lápis).
+  const openFieldEdit = (questionId: string) => {
+    const r = responses[questionId];
+    const hadAnswer = !!(r?.response_value?.trim() || r?.response_photo_url || r?.response_video_url);
+    // Pergunta ainda VAZIA quando o dedo encostou = preenchimento novo. Só nesse
+    // caso a pergunta multi-tipo segura os outros blocos (Foto/vídeo) no lugar
+    // enquanto ele digita. Edição pelo lápis (já tinha resposta) segue igual.
+    if (!hadAnswer) setFillingQuestion(questionId);
+    setEditingQuestion((cur) => (cur === questionId ? cur : questionId));
+  };
+
+  const closeFieldEdit = (questionId: string) => {
+    void saveResponse(questionId, responses[questionId]?.response_value || null);
+    // Só fecha se ainda for ESTA pergunta: o blur pode chegar depois de o técnico
+    // já ter aberto outra (toque no lápis vizinho) — não derrubar a edição dela.
+    setEditingQuestion((cur) => (cur === questionId ? null : cur));
+    setFillingQuestion((cur) => (cur === questionId ? null : cur));
+  };
+
   // Mantém o snapshot fresco a cada render (perguntas VISÍVEIS, respostas atuais
   // e o saveResponse mais novo). A função registrada no pai lê daqui no clique.
   autoFillDataRef.current = { questions: visibleQuestions, responses, saveFn: saveResponse };
@@ -613,7 +644,8 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
               ...prev,
               [question.id]: { ...prev[question.id], question_id: question.id, response_value: e.target.value, response_photo_url: prev[question.id]?.response_photo_url || null, response_video_url: prev[question.id]?.response_video_url || null },
             }))}
-            onBlur={() => saveResponse(question.id, responses[question.id]?.response_value || null)}
+            onFocus={() => openFieldEdit(question.id)}
+            onBlur={() => closeFieldEdit(question.id)}
             rows={2}
             disabled={readOnly}
           />
@@ -630,7 +662,8 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
               ...prev,
               [question.id]: { ...prev[question.id], question_id: question.id, response_value: v, response_photo_url: prev[question.id]?.response_photo_url || null, response_video_url: prev[question.id]?.response_video_url || null },
             }))}
-            onBlur={() => saveResponse(question.id, responses[question.id]?.response_value || null)}
+            onFocus={() => openFieldEdit(question.id)}
+            onBlur={() => closeFieldEdit(question.id)}
             disabled={readOnly}
           />
         );
@@ -670,7 +703,8 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                     },
                   }))
                 }
-                onBlur={() => saveResponse(question.id, responses[question.id]?.response_value || null)}
+                onFocus={() => openFieldEdit(question.id)}
+                onBlur={() => closeFieldEdit(question.id)}
                 disabled={isSaving}
                 className={cn(
                   unit ? 'pr-16' : '',
@@ -865,17 +899,25 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       }
     }
 
+    // Enquanto a pergunta está sendo preenchida pela primeira vez (campo focado,
+    // ainda sem resposta no toque), NÃO colapsa os outros tipos: a primeira letra
+    // digitada no sub-campo "Texto" faria os blocos Foto e vídeo sumirem embaixo
+    // do dedo do técnico, com o layout saltando no meio da digitação. O colapso
+    // volta a valer assim que ele sai do campo — e a edição pelo lápis (pergunta
+    // que já tinha resposta) continua colapsando na hora, como sempre foi.
+    const collapseOthers = !!answeredType && fillingQuestion !== question.id;
+
     return (
       <div className="space-y-3">
         {effectiveTypes.map((type) => {
-          if (answeredType && answeredType !== type) return null;
+          if (collapseOthers && answeredType !== type) return null;
           return (
             <div key={type} className="space-y-1">
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
                   {typeLabel(type)}
                 </Badge>
-                {answeredType === type && (
+                {collapseOthers && answeredType === type && (
                   <Badge variant="default" className="text-xs gap-1">
                     <Check className="h-3 w-3" /> {t.badgeAnswered}
                   </Badge>
@@ -885,7 +927,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             </div>
           );
         })}
-        {answeredType && !readOnly && (
+        {collapseOthers && !readOnly && (
           <Button
             variant="ghost"
             size="sm"

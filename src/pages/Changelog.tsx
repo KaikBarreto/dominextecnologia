@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.28',
+    date: '21 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Campo de texto da OS não fecha mais ao digitar',
+        description: 'No celular, ao responder uma pergunta de texto do checklist, o campo continua aberto e com o teclado na tela desde a primeira letra. A tela também para de pular para outro ponto, e as opções de foto e vídeo da mesma pergunta só se ajustam depois que o técnico termina de escrever.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.37.27',
     date: '21 de outubro de 2026',
     type: 'patch',
