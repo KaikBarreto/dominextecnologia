@@ -42,9 +42,9 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.38.0',
+    version: '1.37.25',
     date: '21 de outubro de 2026',
-    type: 'minor',
+    type: 'patch',
     changes: [
       {
         title: 'DRE mais legível e consistente',
