@@ -46,6 +46,7 @@ const BORDER = 'FFE2E8F0';
 const MUTED = 'FF64748B';
 const LIGHT = 'FFF1F5F9';
 const WHITE = 'FFFFFFFF';
+const CURRENCY_FORMAT = 'R$ #,##0.00;-R$ #,##0.00';
 
 export const csvCell = (value: string | number): string => {
   const raw = typeof value === 'number' ? value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : value;
@@ -74,10 +75,13 @@ export function buildDfcExportRows(data: DfcExportData): Array<Array<string | nu
 }
 
 function buildDfcSheetRows(data: DfcExportData): Array<Array<string | number>> {
+  const contact = [data.company?.phone, data.company?.email].filter(Boolean).join(' · ');
   return [
     ['DEMONSTRAÇÃO DOS FLUXOS DE CAIXA'],
     ['Empresa', data.company?.name ?? 'Não informada', '', 'Período', data.periodLabel],
-    ['Saldo inicial', data.openingBalance, '', 'Saldo final', data.closingBalance],
+    ['CNPJ/CPF', data.company?.document ?? 'Não informado', '', 'Contato', contact || 'Não informado'],
+    ['Endereço', data.company?.address ?? 'Não informado', '', 'Saldo inicial', data.openingBalance],
+    ['', '', '', 'Saldo final', data.closingBalance],
     [],
     ['Código', 'Estrutura do DFC', 'Entradas', 'Saídas', 'Líquido'],
     ...(data.rows ?? []).map((row) => [row.code, row.label, row.inflow, Math.abs(row.outflow), row.net]),
@@ -116,26 +120,38 @@ export async function createDfcExcelWorkbook(data: DfcExportData) {
   workbook.title = `DFC — ${data.company?.name ?? ''}`;
   workbook.subject = `Fluxo de caixa realizado — ${data.periodLabel}`;
   const sheet = workbook.addWorksheet('DFC', {
-    views: [{ state: 'frozen', xSplit: 2, ySplit: 5, topLeftCell: 'C6' }],
+    views: [{ state: 'frozen', xSplit: 2, ySplit: 7, topLeftCell: 'C8' }],
     pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 },
   });
-  sheet.pageSetup.printTitlesRow = '5:5';
-  sheet.columns = [{ width: 14 }, { width: 48 }, { width: 20 }, { width: 20 }, { width: 20 }];
+  sheet.pageSetup.printTitlesRow = '7:7';
+  sheet.columns = [{ width: 14 }, { width: 48 }, { width: 20 }, { width: 16 }, { width: 28 }];
   buildDfcSheetRows(data).forEach((values) => sheet.addRow(values));
+  sheet.eachRow((row) => row.eachCell({ includeEmpty: true }, (cell) => {
+    cell.font = { name: 'Arial', size: 10, color: { argb: NAVY } };
+    cell.alignment = { vertical: 'middle' };
+  }));
   sheet.mergeCells('A1:E1');
+  sheet.mergeCells('B2:C2');
+  sheet.mergeCells('B3:C3');
+  sheet.mergeCells('B4:C4');
   sheet.getRow(1).height = 28;
   sheet.getCell('A1').font = { name: 'Arial', size: 16, bold: true, color: { argb: WHITE } };
   sheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
   sheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left' };
+  ['A2', 'D2', 'A3', 'D3', 'A4', 'D4', 'D5'].forEach((address) => {
+    sheet.getCell(address).font = { name: 'Arial', size: 9, bold: true, color: { argb: MUTED } };
+  });
+  sheet.getCell('E4').numFmt = CURRENCY_FORMAT;
+  sheet.getCell('E5').numFmt = CURRENCY_FORMAT;
   for (let column = 1; column <= 5; column += 1) {
-    const cell = sheet.getRow(5).getCell(column);
+    const cell = sheet.getRow(7).getCell(column);
     cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: NAVY } };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LIGHT } };
     cell.alignment = { vertical: 'middle', horizontal: column <= 2 ? 'left' : 'right' };
     cell.border = { bottom: { style: 'thin', color: { argb: BORDER } } };
   }
   (data.rows ?? []).forEach((item, index) => {
-    const row = sheet.getRow(6 + index);
+    const row = sheet.getRow(8 + index);
     row.height = item.level === 'section' ? 22 : 20;
     row.outlineLevel = item.level === 'subcategory' ? 2 : item.level === 'category' ? 1 : 0;
     row.eachCell((cell, column) => {
@@ -143,10 +159,10 @@ export async function createDfcExcelWorkbook(data: DfcExportData) {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: item.level === 'section' || item.level === 'result' ? NAVY : item.level === 'category' ? LIGHT : WHITE } };
       cell.alignment = { vertical: 'middle', horizontal: column <= 2 ? 'left' : 'right', indent: column === 2 ? (item.level === 'subcategory' ? 2 : item.level === 'category' ? 1 : 0) : 0 };
       cell.border = { bottom: { style: 'hair', color: { argb: BORDER } } };
-      if (column >= 3) cell.numFmt = 'R$ #,##0.00;[Red]-R$ #,##0.00';
+      if (column >= 3) cell.numFmt = CURRENCY_FORMAT;
     });
   });
-  sheet.autoFilter = { from: 'A5', to: `E${Math.max(5, 5 + (data.rows?.length ?? 0))}` };
+  sheet.autoFilter = { from: 'A7', to: `E${Math.max(7, 7 + (data.rows?.length ?? 0))}` };
 
   const logo = await imageData(data.brandLogoUrl);
   if (logo) {
@@ -163,9 +179,13 @@ export async function createDfcExcelWorkbook(data: DfcExportData) {
     movement.description, movement.type, movement.amount,
   ]));
   detail.columns = [{ width: 28 }, { width: 28 }, { width: 24 }, { width: 15 }, { width: 42 }, { width: 12 }, { width: 20 }];
+  detail.eachRow((row) => row.eachCell({ includeEmpty: true }, (cell) => {
+    cell.font = { name: 'Arial', size: 10, color: { argb: NAVY } };
+    cell.alignment = { vertical: 'middle' };
+  }));
   detail.getRow(1).eachCell((cell) => { cell.font = { name: 'Arial', bold: true, color: { argb: WHITE } }; cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }; });
   detail.autoFilter = { from: 'A1', to: `G${Math.max(1, data.movements.length + 1)}` };
-  detail.getColumn(7).numFmt = 'R$ #,##0.00;[Red]-R$ #,##0.00';
+  detail.getColumn(7).numFmt = CURRENCY_FORMAT;
   return workbook;
 }
 
@@ -223,6 +243,10 @@ export async function exportDfcPdf(data: DfcExportData, filename: string): Promi
       headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', halign: 'right' },
       columnStyles: { 0: { cellWidth: 130, halign: 'left' }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
       didParseCell: (hook) => {
+        if (hook.section === 'head') {
+          hook.cell.styles.halign = hook.column.index === 0 ? 'left' : 'right';
+          return;
+        }
         if (hook.section !== 'body') return; const row = (data.rows ?? [])[hook.row.index]; if (!row) return;
         if (row.level === 'section' || row.level === 'result') { hook.cell.styles.fillColor = [23, 32, 51]; hook.cell.styles.textColor = [255, 255, 255]; hook.cell.styles.fontStyle = 'bold'; }
         else if (row.level === 'category') { hook.cell.styles.fillColor = [241, 245, 249]; hook.cell.styles.fontStyle = 'bold'; }

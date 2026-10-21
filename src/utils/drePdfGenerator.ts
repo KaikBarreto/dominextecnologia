@@ -239,6 +239,10 @@ export async function buildDrePdf(data: DrePdfData): Promise<jsPDF> {
     },
     columnStyles,
     didParseCell: (hook) => {
+      if (hook.section === 'head') {
+        hook.cell.styles.halign = hook.column.index === 0 ? 'left' : 'right';
+        return;
+      }
       if (hook.section !== 'body') return;
       const row = data.rows[hook.row.index];
       if (!row) return;
