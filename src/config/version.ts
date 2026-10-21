@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.29";
+export const APP_VERSION = "1.37.30";
 
 export const VERSION_NOTES =
-  "No celular, o campo de texto do checklist da OS não fecha mais na primeira letra digitada.";
+  "A coluna Chamados do Portal agora aparece apenas quando há pedido de cliente esperando triagem, deixando o quadro de status mais limpo no resto do tempo.";

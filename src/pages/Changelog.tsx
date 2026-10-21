@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.30',
+    date: '21 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Coluna de chamados do portal aparece só quando há pedido novo',
+        description: 'No quadro de Ordens de Serviço, a coluna Chamados do Portal passa a surgir apenas quando existe pedido de cliente esperando data. Sem pedido novo, o quadro mostra direto as colunas de status. A aba Chamados continua reunindo todos eles.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.29',
     date: '21 de outubro de 2026',
     type: 'patch',

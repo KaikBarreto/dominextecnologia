@@ -398,8 +398,18 @@ export default function ServiceOrders() {
   const isPortalIntake = (os: { origin?: string | null; scheduled_date?: string | null }) =>
     os.origin === 'portal' && !os.scheduled_date;
 
+  // A coluna só entra no quadro QUANDO HÁ chamado esperando triagem. Vazia ela
+  // é redundante: a aba "Chamados" (ao lado, no menu da tela) já lista os
+  // pedidos do portal com descrição e ações, e é lá que se faz a triagem de
+  // verdade. Aqui o papel é outro: avisar, no meio do fluxo de trabalho, que
+  // chegou pedido novo de cliente. Sem pedido novo, não há o que avisar, e uma
+  // coluna permanentemente vazia só empurra as colunas de status pra direita.
+  const portalIntakeCount = filteredOrders.filter((os) => isPortalIntake(os as any)).length;
+
   const kanbanColumns: Array<{ key: string; label: string; color: string; isPortal?: boolean }> = [
-    { key: PORTAL_COLUMN_KEY, label: t.sections.portalColumn, color: 'hsl(var(--info))', isPortal: true },
+    ...(portalIntakeCount > 0
+      ? [{ key: PORTAL_COLUMN_KEY, label: t.sections.portalColumn, color: 'hsl(var(--info))', isPortal: true }]
+      : []),
     ...statusOptions,
   ];
 
