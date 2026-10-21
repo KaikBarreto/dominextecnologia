@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.31";
+export const APP_VERSION = "1.37.32";
 
 export const VERSION_NOTES =
-  "A senha do portal agora pode valer só para as partes sensíveis, deixando o histórico e a abertura de chamados abertos no mesmo link.";
+  "Boleto excluído direto no Asaas não deixa mais conta solta no financeiro, e pagamento estornado volta a aparecer como em aberto.";

@@ -13,11 +13,27 @@
 //   5. grava tenant_charges (idempotência por asaas_payment_id UNIQUE) + public_short_code.
 //
 // Origem da cobrança (source_type): 'avulso' (default histórico), 'quote'
-// (orçamento), 'contract_installment' (parcela de contrato) e 'service_order'
-// (ordem de serviço). A parcela de contrato NÃO cria recebível espelho — ela JÁ
+// (orçamento), 'contract_installment' (parcela de contrato), 'service_order'
+// (ordem de serviço) e 'receivable' (conta a receber que JÁ EXISTE no
+// Financeiro). A parcela de contrato NÃO cria recebível espelho — ela JÁ
 // É o recebível, então a cobrança se liga à parcela existente
 // (financial_transactions.tenant_charge_id). Criar um lançamento novo ali
 // dobraria a receita no DRE.
+//
+// 'receivable' (2026-10-21, chamado KGIE) é o "COBRAR O SALDO": o boleto se
+// liga a uma conta a receber que já existe e vale EXATAMENTE o saldo em aberto
+// dela (amount - amount_received). Também não cria lançamento nenhum. O
+// invariante do valor é o que deixa a baixa parcial ser confiável: quando o
+// pagamento confirma, apply_tenant_charge_payment lança uma FILHA de
+// "Recebimento parcial" e o gatilho recalc_amount_received fecha a conta
+// sozinho. Toda a régua (posse, estado, valor == saldo, nenhuma cobrança viva)
+// mora na RPC validate_receivable_charge_target — uma régua, um dono, provável
+// contra o banco.
+//
+// A edge NUNCA cancela a cobrança anterior por conta própria: se já existe
+// cobrança viva na conta, devolve erro de negócio `live_charge_exists` (HTTP
+// 200) com os dados do boleto atual e a TELA decide — matar uma cobrança no
+// gateway é ação explícita do gestor, não efeito colateral de outra.
 //
 // A ORDEM DE SERVIÇO, ao contrário, cria recebível (ela não é um lançamento
 // financeiro), e esse recebível nasce com `service_order_id` preenchido — é o
@@ -114,12 +130,18 @@ function validateDueDate(due: string): { ok: true } | { ok: false; error: string
 }
 
 /** Origem da cobrança (allowlist estrita). 'avulso' é o default histórico. */
-type ChargeSourceType = "avulso" | "quote" | "contract_installment" | "service_order";
+type ChargeSourceType =
+  | "avulso"
+  | "quote"
+  | "contract_installment"
+  | "service_order"
+  | "receivable";
 const ALLOWED_SOURCE_TYPES: readonly ChargeSourceType[] = [
   "avulso",
   "quote",
   "contract_installment",
   "service_order",
+  "receivable",
 ];
 
 /** Origens que EXIGEM source_id (o vínculo é a razão de existir da origem). */
@@ -129,6 +151,9 @@ const SOURCE_TYPES_REQUIRING_ID: readonly ChargeSourceType[] = [
   // Cobrança de OS sem OS não existe: sem o id, o recebível nasceria sem
   // `service_order_id` e a OS nunca saberia que já foi faturada.
   "service_order",
+  // Cobrar o saldo DE QUAL conta? Sem o id não existe pergunta, muito menos
+  // resposta.
+  "receivable",
 ];
 
 /** Status que NÃO contam como cobrança válida no dedupe por orçamento (cobra de novo). */
@@ -138,6 +163,28 @@ const DEDUPE_DEAD_STATUSES: readonly string[] = [
   "REFUNDED",
   "CHARGEBACK",
 ];
+
+/**
+ * Erro de NEGÓCIO desta edge: HTTP 200 + ok:false + error_code.
+ *
+ * Mesmo contrato de tenant-asaas-delete-charge, e por isso o `error` é
+ * repetido: com 4xx o supabase-js devolve data=null e a UI perde a mensagem
+ * boa em PT-BR; com 200 + `error`, o hook ANTIGO (useTenantCharges) já lança
+ * a mensagem certa, e o hook NOVO (Etapa 2) consegue ler o `error_code` pra
+ * decidir o que oferecer na tela.
+ */
+function businessFail(
+  req: Request,
+  code: string,
+  message: string,
+  extra: Record<string, unknown> = {},
+): Response {
+  return jsonResponse(
+    req,
+    { ok: false, error_code: code, message, error: message, ...extra },
+    200,
+  );
+}
 
 interface CreateChargeInput {
   customer_id?: string;
@@ -155,6 +202,9 @@ interface CreateChargeInput {
   //   'service_order'        → source_id = service_orders.id (posse validada no
   //                            servidor; o recebível gerado leva esse id em
   //                            financial_transactions.service_order_id).
+  //   'receivable'           → source_id = financial_transactions.id da CONTA
+  //                            A RECEBER (linha-mãe) que já existe. O valor
+  //                            tem que ser exatamente o saldo em aberto dela.
   source_type?: ChargeSourceType;
   source_id?: string | null;
   // Overrides opcionais por cobrança (caem no default da conta quando ausentes).
@@ -377,7 +427,9 @@ async function handleRequest(req: Request): Promise<Response> {
         ? "Informe o orçamento de origem da cobrança."
         : sourceType === "service_order"
           ? "Informe a ordem de serviço que será cobrada."
-          : "Informe a parcela do contrato que será cobrada.",
+          : sourceType === "receivable"
+            ? "Informe a conta a receber que será cobrada."
+            : "Informe a parcela do contrato que será cobrada.",
     }, 400);
   }
 
@@ -386,9 +438,15 @@ async function handleRequest(req: Request): Promise<Response> {
     //    contrato). Se ESTA origem já tem uma cobrança viva (não cancelada/
     //    estornada), NÃO cria outra na Asaas — devolve a existente no mesmo shape
     //    de sucesso. Evita cobrança duplicada em duplo clique.
-    //    Vale pra 'quote' e 'contract_installment'; 'avulso' nunca tem source_id
-    //    e passa direto (comportamento histórico, sem regressão).
-    if (sourceId && sourceType !== "avulso") {
+    //    Vale pra 'quote', 'contract_installment' e 'service_order'; 'avulso'
+    //    nunca tem source_id e passa direto (comportamento histórico).
+    //
+    //    'receivable' NÃO participa deste dedupe de propósito: devolver a
+    //    cobrança existente como se fosse sucesso esconderia do gestor que
+    //    existe um boleto vivo de OUTRO VALOR na conta. O caso dele é erro de
+    //    negócio explícito (`live_charge_exists`, bloco 0.3), pra tela poder
+    //    oferecer "cancelar o atual e emitir o novo".
+    if (sourceId && sourceType !== "avulso" && sourceType !== "receivable") {
       const { data: existingCharge } = await supabase
         .from("tenant_charges")
         .select(
@@ -582,6 +640,70 @@ async function handleRequest(req: Request): Promise<Response> {
       }
     }
 
+    // 0.3) CONTA A RECEBER QUE JÁ EXISTE ('receivable') — "cobrar o saldo".
+    //
+    //   Mesma razão dos blocos 0.1/0.2 pra rodar AQUI: recusar depois de criar
+    //   a cobrança deixaria cobrança órfã viva no gateway. Este bloco roda
+    //   antes do Vault, antes do cliente Asaas e antes do POST /payments.
+    //
+    //   A régua inteira mora na RPC validate_receivable_charge_target
+    //   (SECURITY DEFINER, posse reaplicada com o company_id do PROFILE):
+    //     · a linha tem que ser do tenant, ser a MÃE ('entrada' sem parent),
+    //       não estar cancelada e não estar quitada;
+    //     · não pode haver cobrança VIVA ligada à conta;
+    //     · o cliente da cobrança tem que ser o da conta;
+    //     · o valor TEM que ser o saldo em aberto (amount - amount_received),
+    //       com tolerância de 1 centavo. É ESTE invariante que deixa a baixa
+    //       parcial ser confiável — sem ele, a baixa volta a poder mentir.
+    //
+    //   Está em SQL (e não aqui) porque régua que só existe no TypeScript não
+    //   é testável contra o banco de produção e o próximo chamador não vê.
+    let receivableCurrentChargeId: string | null = null;
+    if (sourceType === "receivable" && sourceId) {
+      const { data: verdictRaw, error: verdictErr } = await supabase.rpc(
+        "validate_receivable_charge_target",
+        {
+          p_company_id: companyId,
+          p_receivable_id: sourceId,
+          // chargeValue é o valor PEDIDO (antes de qualquer gross-up de taxa
+          // de cartão): é ele que precisa bater com o saldo. O repasse da
+          // taxa é somado DEPOIS, por cima, e é pago pelo cliente final.
+          p_value: chargeValue,
+          p_customer_id: input.customer_id,
+        },
+      );
+      // supabase-js NÃO lança: sem este if o erro viraria silêncio e a
+      // cobrança seria criada na Asaas sem validação nenhuma.
+      if (verdictErr) {
+        console.error(
+          "[create-charge] validate_receivable_charge_target falhou:",
+          verdictErr.message,
+        );
+        return jsonResponse(req, {
+          error: "Não foi possível verificar a conta a receber. Tente novamente.",
+        }, 500);
+      }
+      const verdict = (verdictRaw ?? {}) as Record<string, unknown>;
+      if (verdict.ok !== true) {
+        const code = typeof verdict.error_code === "string" && verdict.error_code
+          ? verdict.error_code
+          : "invalid_input";
+        const message = typeof verdict.message === "string" && verdict.message
+          ? verdict.message
+          : "Não foi possível cobrar o saldo desta conta a receber.";
+        return businessFail(req, code, message, {
+          ...(verdict.live_charge ? { live_charge: verdict.live_charge } : {}),
+          ...(verdict.balance != null ? { balance: Number(verdict.balance) } : {}),
+        });
+      }
+      // Guardado pro compare-and-swap do vínculo (bloco 6-C): normalmente null
+      // ou o id de uma cobrança já MORTA. Se outra requisição ligar a conta
+      // nesse meio-tempo, o UPDATE não pega linha e o usuário é avisado, em
+      // vez de uma das duas cobranças roubar o vínculo em silêncio.
+      receivableCurrentChargeId =
+        typeof verdict.current_charge_id === "string" ? verdict.current_charge_id : null;
+    }
+
     // 1) Conta ativa + chave do Vault + configuração de lançamento financeiro +
     //    defaults de multa/juros/desconto/vencimento/descrição/parcelamento +
     //    destino financeiro (conta + categoria de receita) do recebível.
@@ -762,7 +884,16 @@ async function handleRequest(req: Request): Promise<Response> {
     // a parcela viraria receita duas vezes e a DRE mentiria pra sempre.
     // Trade-off aceito e deliberado: se o vínculo falhar, a parcela fica em
     // aberto (visível, corrigível à mão) em vez de duplicar receita em silêncio.
-    const chargeCreatesReceivable = sourceType !== "contract_installment" && postToFinance;
+    // 'receivable' entra na mesma exceção da parcela de contrato, e pela mesma
+    // razão: o lançamento JÁ EXISTE (é a conta que o gestor escolheu cobrar).
+    // post_to_finance = false na cobrança é o que impede a auto-cura
+    // (rebuild_tenant_charge_receivable) de fabricar uma SEGUNDA receita pelo
+    // mesmo serviço se o vínculo se perder. Cinto; a suspensória é a guarda
+    // dentro da própria RPC de cura (migration 20261021210000).
+    const chargeCreatesReceivable =
+      sourceType !== "contract_installment" &&
+      sourceType !== "receivable" &&
+      postToFinance;
 
     // 5) Grava tenant_charges (idempotência por asaas_payment_id UNIQUE).
     const shortCode = generateShortCode();
@@ -887,6 +1018,56 @@ async function handleRequest(req: Request): Promise<Response> {
         );
         financeWarning =
           "A cobrança foi criada, mas não conseguimos ligá-la à parcela do contrato. Quando o cliente pagar, dê baixa na parcela manualmente.";
+      }
+    }
+
+    // 6-C) CONTA A RECEBER QUE JÁ EXISTE: LIGA a conta, NUNCA cria linha.
+    //      O "espelho" desta cobrança é a própria conta que o gestor escolheu,
+    //      e o elo é o tenant_charge_id dela. Com o elo posto, tudo o que já
+    //      existe passa a funcionar sozinho:
+    //        · apply_tenant_charge_payment lança a FILHA de recebimento
+    //          parcial quando pagar (e o gatilho fecha a conta);
+    //        · delete_tenant_charge_local / cleanup_tenant_charge_mirror_on_
+    //          delete PRESERVAM a conta ao cancelar (guarda r_receivable);
+    //        · update_tenant_charge_local não reescreve o valor da conta;
+    //        · a auto-cura não fabrica linha nenhuma.
+    //
+    //      NÃO-FATAL: a cobrança já existe na Asaas e não pode ser desfeita
+    //      aqui. Trade-off igual ao da parcela de contrato: se o vínculo
+    //      falhar, a conta fica em aberto (visível, corrigível à mão) em vez
+    //      de duplicar receita em silêncio.
+    if (sourceType === "receivable" && sourceId && saved?.id) {
+      try {
+        const { data: linkRaw, error: linkErr } = await supabase.rpc(
+          "link_receivable_to_tenant_charge",
+          {
+            p_company_id: companyId,
+            p_receivable_id: sourceId,
+            p_charge_id: saved.id,
+            p_expected_charge_id: receivableCurrentChargeId,
+          },
+        );
+        const linked = (linkRaw ?? {}) as Record<string, unknown>;
+        if (linkErr || linked.linked !== true) {
+          console.warn(
+            "[create-charge] vínculo cobrança ↔ conta a receber não aplicado:",
+            JSON.stringify({
+              charge_id: saved.id,
+              receivable_id: sourceId,
+              company_id: companyId,
+              error: linkErr?.message ?? linked.reason ?? "nenhuma linha afetada",
+            }),
+          );
+          financeWarning =
+            "A cobrança foi criada, mas não conseguimos ligá-la à conta a receber. Quando o cliente pagar, dê baixa na conta manualmente.";
+        }
+      } catch (linkException) {
+        console.warn(
+          "[create-charge] exceção ao ligar a conta a receber (não-fatal):",
+          (linkException as Error)?.message ?? String(linkException),
+        );
+        financeWarning =
+          "A cobrança foi criada, mas não conseguimos ligá-la à conta a receber. Quando o cliente pagar, dê baixa na conta manualmente.";
       }
     }
 

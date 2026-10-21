@@ -24,9 +24,14 @@
 //                       baixa POR PARCELA: cria filha "Recebimento parcial", só fecha
 //                       CONFIRMED quando a soma das filhas cobre o valor total).
 //   PAYMENT (estorno):  PAYMENT_REFUNDED / PAYMENT_REFUND_IN_PROGRESS / PAYMENT_CHARGEBACK_* /
-//                       PAYMENT_AWAITING_CHARGEBACK_REVERSAL → reverte/marca a tenant_charge.
+//                       PAYMENT_AWAITING_CHARGEBACK_REVERSAL → revert_tenant_charge_payment:
+//                       marca o status, APAGA as filhas de "Recebimento parcial" desta
+//                       cobrança e deixa o gatilho recalc_amount_received reabrir a mãe
+//                       pela soma do que sobrou. Não toca na despesa de tarifa.
 //   PAYMENT (vencido):  PAYMENT_OVERDUE → status OVERDUE (+ assinatura 'overdue' se for de ciclo).
-//   PAYMENT (removido): PAYMENT_DELETED → status DELETED; PAYMENT_RESTORED → volta ao status Asaas.
+//   PAYMENT (removido): PAYMENT_DELETED → status DELETED + limpeza do espelho financeiro
+//                       (cleanup_tenant_charge_mirror_on_delete: mesma régua do delete pelo
+//                       sistema); PAYMENT_RESTORED → volta ao status Asaas.
 //   PAYMENT (espelho):  PAYMENT_CREATED / PAYMENT_UPDATED → best-effort espelha status/valor
 //                       na tenant_charges se já existir (ou ignora se não).
 //   PAYMENT (info):     PAYMENT_BANK_SLIP_VIEWED / PAYMENT_CHECKOUT_VIEWED → só loga, 200.
@@ -1084,43 +1089,61 @@ async function processEvent(
         : event === "PAYMENT_REFUND_IN_PROGRESS"
         ? "REFUND_IN_PROGRESS"
         : "CHARGEBACK";
-      await applyWrite(
-        "reversao de baixa na cobranca",
-        supabase
-          .from("tenant_charges")
-          .update({
-            status: newStatus,
-            payment_date: null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("asaas_payment_id", payment.id)
-          .eq("company_id", companyId),
+
+      // 2026-10-21 — UMA RPC TRANSACIONAL, não dois UPDATEs soltos.
+      //
+      // O caminho antigo fazia `UPDATE financial_transactions SET is_paid=false,
+      // paid_date=null, amount_received=0 WHERE tenant_charge_id=...` e estava
+      // errado de duas maneiras, as duas custando dinheiro de verdade:
+      //
+      //   1. NÃO REMOVIA A FILHA de "Recebimento parcial". `amount_received` é
+      //      DERIVADO (o gatilho recalc_amount_received soma as filhas), então
+      //      zerá-lo era cosmético: a próxima recalculação daquela mãe
+      //      recolocava o dinheiro estornado e podia fechar a conta de novo. O
+      //      dinheiro voltou pro cliente e continuava contado como recebido.
+      //   2. ZERAVA RECEBIMENTO PARCIAL LEGÍTIMO que não veio desta cobrança
+      //      (um parcial lançado à mão antes, por exemplo).
+      //
+      // A RPC apaga as filhas DESTA cobrança e deixa o gatilho — dono único de
+      // amount_received — reabrir a mãe pela soma do que sobrou. Idempotente:
+      // reentrega não acha mais filha e não duplica o carimbo.
+      const { data: reverted, error: revertErr } = await supabase.rpc(
+        "revert_tenant_charge_payment",
+        {
+          p_company_id: companyId,
+          p_asaas_payment_id: payment.id,
+          p_status: newStatus,
+        },
       );
-      // Reabre o recebível vinculado (mesma company).
-      const { data: charge } = await supabase
-        .from("tenant_charges")
-        .select("id")
-        .eq("asaas_payment_id", payment.id)
-        .eq("company_id", companyId)
-        .maybeSingle();
-      if (charge?.id) {
-        await applyWrite(
-          "reabertura do recebivel",
-          supabase
-            .from("financial_transactions")
-            .update({
-              is_paid: false,
-              paid_date: null,
-              amount_received: 0,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("tenant_charge_id", charge.id)
-            .eq("company_id", companyId)
-            .eq("transaction_type", "entrada"),
+      // supabase-js NÃO lança: sem este if o erro virava silêncio, o evento era
+      // marcado 'processed' e o estorno nunca chegava ao Financeiro.
+      if (revertErr) {
+        throw new Error(
+          `reversao de baixa na cobranca falhou: ${revertErr.message}`,
+        );
+      }
+      const revertRow = (reverted ?? {}) as Record<string, unknown>;
+      if (revertRow.found !== true) {
+        // Estorno de cobrança que não existe aqui: nada a reverter. Não é erro
+        // (não re-enfileira) — mas tem que aparecer no log.
+        console.warn(
+          `[tenant-webhook] estorno ${payment.id} sem cobrança local (${
+            String(revertRow.reason ?? "motivo desconhecido")
+          })`,
+        );
+      }
+      if (revertRow.blocked_reason) {
+        // O DELETE da filha foi recusado (conciliação bancária em cima). O
+        // estorno ficou PELA METADE e isso precisa de gente, não de retry.
+        console.warn(
+          `[tenant-webhook] estorno ${payment.id}: recebimento parcial NÃO pôde ser removido ` +
+            `(${String(revertRow.blocked_reason)}). O Financeiro continua contando ` +
+            `dinheiro que voltou — ajuste manual necessário.`,
         );
       }
       console.log(
-        `[tenant-webhook] baixa revertida (${newStatus}) ${payment.id}`,
+        `[tenant-webhook] baixa revertida (${newStatus}) ${payment.id}:`,
+        JSON.stringify(reverted),
       );
     } else if (event === "PAYMENT_OVERDUE") {
       // VENCIDO. Marca a própria cobrança OVERDUE (posse por company_id). Se for ciclo
@@ -1173,7 +1196,32 @@ async function processEvent(
           .eq("asaas_payment_id", payment.id)
           .eq("company_id", companyId),
       );
-      console.log(`[tenant-webhook] cobrança ${payment.id} marcada DELETED`);
+      // Espelho ÓRFÃO (bug confirmado em produção): excluir a cobrança no PAINEL DO
+      // ASAAS tem que valer a MESMA régua da exclusão PELO SISTEMA. Antes, este ramo
+      // só marcava DELETED e o recebível-espelho ficava em aberto em Contas a Receber
+      // apontando pra uma cobrança que não existe mais no gateway. A RPC aplica a régua
+      // compartilhada (tenant_charge_mirror_classification): espelho com baixa, NFS-e,
+      // orçamento ou parcela de contrato é PRESERVADO e carimbado; o resto é apagado.
+      // Não toca em despesa de tarifa (saída) e não apaga a tenant_charges (fica como
+      // histórico DELETED). Idempotente: Asaas reentrega PAYMENT_DELETED.
+      const { data: mirrorCleanup, error: mirrorCleanupError } = await supabase
+        .rpc("cleanup_tenant_charge_mirror_on_delete", {
+          p_company_id: companyId,
+          p_asaas_payment_id: payment.id,
+        });
+      // supabase-js NÃO lança: sem este if o erro virava silêncio, o evento era
+      // marcado 'processed' e o espelho órfão continuava vivo sem ninguém saber.
+      // Lançar = evento marcado 'error' = RE-ENTREGA (a RPC é idempotente).
+      if (mirrorCleanupError) {
+        throw new Error(
+          `limpeza do espelho (PAYMENT_DELETED) falhou: ${mirrorCleanupError.message}`,
+        );
+      }
+      console.log(
+        `[tenant-webhook] cobrança ${payment.id} marcada DELETED; espelho: ${
+          JSON.stringify(mirrorCleanup)
+        }`,
+      );
     } else if (event === "PAYMENT_RESTORED") {
       // Cobrança RESTAURADA (undo do delete) → volta ao status atual do Asaas.
       const restored = status || "PENDING";

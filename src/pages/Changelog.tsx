@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.32',
+    date: '21 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Boleto excluído no Asaas não deixa mais conta solta no financeiro',
+        description: 'Quando uma cobrança é excluída direto no painel do Asaas, a conta a receber correspondente agora é encerrada aqui também, seguindo a mesma regra de quando a exclusão é feita pelo sistema. Se a conta já tiver recebimento lançado, nota fiscal ou parcela de contrato em cima, ela é mantida e passa a mostrar um aviso de que o boleto foi removido, para você conferir se precisa de ajuste.',
+        category: 'correcao',
+      },
+      {
+        title: 'Pagamento estornado volta a aparecer como em aberto',
+        description: 'Quando um pagamento é devolvido ou contestado, o recebimento agora sai da conta e o valor volta a constar como em aberto. Antes, em contas que tinham recebimento parcial, o dinheiro devolvido podia continuar contado como recebido no financeiro.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.37.31',
     date: '21 de outubro de 2026',
     type: 'patch',

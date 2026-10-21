@@ -23,6 +23,8 @@
 // novo valor/vencimento/descrição — MENOS em dois casos, em que a linha fica
 // intacta e o usuário é avisado por finance_warning:
 //   · já tem baixa (is_paid ou recebimento parcial) -> mirror_locked;
+//   · é a CONTA A RECEBER ligada pelo "cobrar o saldo" -> mirror_locked_receivable
+//     (ela existia antes da cobrança; editar o boleto não reescreve a conta);
 //   · é PARCELA DE CONTRATO -> mirror_locked_contract (a parcela em aberto não
 //     é reescrita por uma cobrança: quem manda nela é o contrato).
 // Dinheiro baixado e parcela de contrato não são sobrescritos em silêncio.
@@ -465,6 +467,15 @@ async function applyLocally(
     // dela é o contrato, não a cobrança.
     warnings.push(
       "A cobrança foi alterada. A parcela do contrato continua com o valor e o vencimento originais.",
+    );
+  }
+  if (Number(result.mirror_locked_receivable ?? 0) > 0) {
+    // Travado por ser a CONTA A RECEBER que a cobrança apenas ligou ("cobrar o
+    // saldo"). Ela existia ANTES da cobrança: quem manda no valor e no
+    // vencimento dela é o Financeiro, não o boleto. Frase própria porque dizer
+    // "já estava baixado" seria mentira (a conta está em aberto).
+    warnings.push(
+      "A cobrança foi alterada. A conta a receber continua com o valor e o vencimento originais.",
     );
   }
   if (Number(result.mirror_nfse ?? 0) > 0) {
