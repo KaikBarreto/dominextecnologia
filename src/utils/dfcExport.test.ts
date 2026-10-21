@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDfcExportRows } from './dfcExport';
-import { csvCell } from './movimentacoesCsvGenerator';
+import { buildDfcExportRows, csvCell } from './dfcExport';
 
 describe('exportações financeiras', () => {
   it('mantém o mesmo conteúdo do DFC nos três formatos', () => {

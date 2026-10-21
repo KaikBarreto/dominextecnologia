@@ -177,14 +177,14 @@ export function CashFlowForecast() {
 
       {/* Alerta de conta negativa — o motivo de a feature existir */}
       {forecast.firstNegativeDay && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2 rounded-lg border border-destructive bg-destructive p-3 text-destructive-foreground shadow-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-white" />
           <div className="text-sm">
-            <p className="font-semibold text-foreground">
+            <p className="font-semibold text-white">
               A conta {forecast.days[0].byAccount.find((c) => c.accountId === forecast.firstNegativeDay!.accountId)?.name}
               {' '}fica negativa em {diaCurto(forecast.firstNegativeDay.date)}.
             </p>
-            <p className="text-muted-foreground">
+            <p className="text-white/85">
               O saldo somado pode parecer saudável, mas o dinheiro não está na conta que vai ser debitada.
             </p>
           </div>
@@ -219,9 +219,9 @@ export function CashFlowForecast() {
 
       {/* Matriz rubricas × dias */}
       <div className="rounded-lg border overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="max-h-[70vh] overflow-auto">
           <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-0 z-30 bg-card shadow-[0_1px_0_hsl(var(--border))]">
               <tr className="bg-muted/40">
                 <th className="text-left font-medium px-3 py-2 sticky left-0 z-20 min-w-[180px] bg-card border-r">
                   Fluxo de caixa
@@ -320,9 +320,9 @@ export function CashFlowForecast() {
         <div className="px-3 py-2 bg-muted/40 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Saldo por conta
         </div>
-        <div className="overflow-x-auto">
+        <div className="max-h-[70vh] overflow-auto">
           <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-0 z-30 bg-card shadow-[0_1px_0_hsl(var(--border))]">
               <tr className="bg-muted/20">
                 <th className="text-left font-medium px-3 py-2 sticky left-0 z-20 min-w-[180px] bg-card border-r">Conta</th>
                 {forecast.days.map((d) => (

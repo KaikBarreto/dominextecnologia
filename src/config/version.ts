@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.24";
+export const APP_VERSION = "1.38.0";
 
 export const VERSION_NOTES =
-  "O DRE agora abre por competência, compara períodos, detalha categorias e centros de custo, permite organizar grupos e exporta um Excel pronto para análise.";
+  "DRE e DFC agora compartilham uma hierarquia mais legível, filtros gerenciais e exportações profissionais em Excel e PDF.";

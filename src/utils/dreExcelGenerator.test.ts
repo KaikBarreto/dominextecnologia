@@ -8,7 +8,13 @@ const report: DreReportData = {
   regime: 'competencia',
   currency: 'BRL',
   receitaBruta: 10_000,
-  receitaCategories: [{ name: 'Serviços', value: 10_000, color: '#000' }],
+  receitaCategories: [{
+    name: 'Serviços',
+    value: 10_000,
+    color: '#000',
+    children: [{ name: 'Contratos PMOC', value: 10_000, color: '#000', code: '01.01.001.001' }],
+    costCenters: [{ name: 'Operação', value: 10_000 }],
+  }],
   impostos: 1_000,
   impostosCategories: [{ name: 'ISS', value: 1_000, color: '#000' }],
   receitaLiquida: 9_000,
@@ -29,33 +35,36 @@ const report: DreReportData = {
 };
 
 describe('buildDreExcelSheets', () => {
-  it('mantém os totais oficiais, sinais, percentuais e linhas não operacionais', () => {
+  it('mantém totais oficiais e exibe linhas subtrativas sem sinal duplicado', () => {
     const sheets = buildDreExcelSheets(report);
     const dre = sheets[0];
 
     expect(dre.rows).toContainEqual(['Empresa', 'Dominex DEMO', '', 'Período', '01/09/2026 a 30/09/2026']);
     expect(dre.rows).toContainEqual(['CNPJ/CPF', '00.000.000/0001-00', '', 'Regime', 'Competência']);
-    expect(dre.rows).toContainEqual(['01.01.001', 'Receita Bruta', 'Serviços', 10_000, 1]);
-    expect(dre.rows).toContainEqual(['02.01.001', 'Impostos e Deduções', 'ISS', -1_000, 0.1]);
-    expect(dre.rows).toContainEqual(['07', 'Resultado Operacional (EBITDA)', 'Total calculado', 4_000, 0.4]);
-    expect(dre.rows).toContainEqual(['08.01.001', 'Despesas não operacionais', 'Juros', -500, 0.05]);
-    expect(dre.rows).toContainEqual(['09', 'Resultado Final', 'Total calculado', 3_500, 0.35]);
+    expect(dre.rows).toContainEqual(['01.01.001 - Serviços', 10_000, 1, 0, '', 10_000, '']);
+    expect(dre.rows).toContainEqual(['01.01.001.001 - Contratos PMOC', 10_000, 1, 0, '', 10_000, '']);
+    expect(dre.rows.some((row) => String(row[0]).includes('Centro de custo'))).toBe(false);
+    expect(dre.rows).toContainEqual(['02.01.001 - ISS', 1_000, 0.1, 0, '', -1_000, '']);
+    expect(dre.rows).toContainEqual(['07 - RESULTADO OPERACIONAL', 4_000, 0.4, 0, '', 4_000, '']);
+    expect(dre.rows).toContainEqual(['08.01.001 - Juros', 500, 0.05, 0, '', -500, '']);
+    expect(dre.rows).toContainEqual(['09 - RESULTADO FINAL', 3_500, 0.35, 0, '', 3_500, '']);
 
     expect(dre.rowKinds).toHaveLength(dre.rows.length);
     expect(dre.outlineLevels).toHaveLength(dre.rows.length);
-    expect(dre.autoFilter).toEqual({ from: 'A6', to: `E${dre.rows.length}` });
-    expect(dre.freezePane).toEqual({ xSplit: 0, ySplit: 6, topLeftCell: 'A7' });
-    expect(dre.currencyColumns).toEqual([4]);
-    expect(dre.percentageColumns).toEqual([5]);
+    expect(dre.outlineLevels).toContain(2);
+    expect(dre.autoFilter).toEqual({ from: 'A7', to: `G${dre.rows.length}` });
+    expect(dre.freezePane).toEqual({ xSplit: 1, ySplit: 7, topLeftCell: 'B8' });
+    expect(dre.currencyColumns).toEqual([2, 4, 6]);
+    expect(dre.percentageColumns).toEqual([3, 5, 7]);
   });
 
   it('gera aba de centros de custo com total e percentual sobre a receita bruta', () => {
     const costCenters = buildDreExcelSheets(report)[1];
 
     expect(costCenters.name).toBe('Centros de custo');
-    expect(costCenters.rows).toContainEqual(['Operação', 10_000, -6_000, 4_000, 0.4]);
-    expect(costCenters.rows).toContainEqual(['Administrativo', 0, -500, -500, -0.05]);
-    expect(costCenters.rows.at(-1)).toEqual(['TOTAL GERAL', 10_000, -6_500, 3_500, 0.35]);
+    expect(costCenters.rows).toContainEqual(['Operação', 10_000, 6_000, 4_000, 0.4]);
+    expect(costCenters.rows).toContainEqual(['Administrativo', 0, 500, -500, -0.05]);
+    expect(costCenters.rows.at(-1)).toEqual(['TOTAL GERAL', 10_000, 6_500, 3_500, 0.35]);
     expect(costCenters.mergedRanges).toContain('A1:E1');
     expect(costCenters.freezePane).toEqual({ xSplit: 1, ySplit: 6, topLeftCell: 'B7' });
   });
@@ -94,15 +103,15 @@ describe('buildDreExcelSheets', () => {
       ],
     })[0];
 
-    const recurringIndex = sheets.rows.findIndex((row) => row[1] === 'Receitas recorrentes');
-    const oneOffIndex = sheets.rows.findIndex((row) => row[1] === 'Receitas avulsas');
+    const recurringIndex = sheets.rows.findIndex((row) => row[0] === '01.03 - RECEITAS RECORRENTES');
+    const oneOffIndex = sheets.rows.findIndex((row) => row[0] === '01.02 - RECEITAS AVULSAS');
     expect(recurringIndex).toBeGreaterThan(0);
     expect(oneOffIndex).toBeGreaterThan(recurringIndex);
-    expect(sheets.rows).toContainEqual(['01.03.017', 'Receitas recorrentes', 'PMOC', 6_000, 0.6]);
-    expect(sheets.rows).toContainEqual(['02.01.001', 'Tributos', 'ISS', -1_000, 0.1]);
-    expect(sheets.rows).toContainEqual(['08.01.001', 'Despesas financeiras', 'Juros', -500, 0.05]);
-    expect(sheets.rows.some((row) => row[1] === 'Transferências')).toBe(false);
-    expect(sheets.rows.filter((row) => row[1] === 'Receita Bruta')).toHaveLength(1);
+    expect(sheets.rows).toContainEqual(['01.03.017 - PMOC', 6_000, 0.6, 0, '', 6_000, '']);
+    expect(sheets.rows).toContainEqual(['02.01.001 - ISS', 1_000, 0.1, 0, '', -1_000, '']);
+    expect(sheets.rows).toContainEqual(['08.01.001 - Juros', 500, 0.05, 0, '', -500, '']);
+    expect(sheets.rows.some((row) => String(row[0]).includes('TRANSFERÊNCIAS'))).toBe(false);
+    expect(sheets.rows.filter((row) => row[0] === '01 - RECEITA BRUTA')).toHaveLength(1);
   });
 
   it('arredonda valores positivos e negativos na precisão da moeda e rejeita não finitos', () => {
@@ -114,8 +123,8 @@ describe('buildDreExcelSheets', () => {
       impostosCategories: [{ name: 'ISS', value: 10.005, color: '#000' }],
     })[0];
 
-    expect(rounded.rows.find((row) => row[2] === 'Serviços')?.[3]).toBe(1_000.01);
-    expect(rounded.rows.find((row) => row[2] === 'ISS')?.[3]).toBe(-10.01);
+    expect(rounded.rows.find((row) => row[0] === '01.01.001 - Serviços')?.[1]).toBe(1_000.01);
+    expect(rounded.rows.find((row) => row[0] === '02.01.001 - ISS')?.[1]).toBe(10.01);
     expect(() => buildDreExcelSheets({ ...report, receitaBruta: Number.NaN })).toThrow('valor monetário inválido');
   });
 });
@@ -130,19 +139,20 @@ describe('createDreExcelWorkbook', () => {
     expect(costCenters).toBeDefined();
     expect(dre!.getCell('A1').font.bold).toBe(true);
     expect(dre!.getCell('A1').fill).toMatchObject({ pattern: 'solid', fgColor: { argb: 'FF172033' } });
-    expect(dre!.getCell('A7').value).toBe('01.01.001');
-    expect(dre!.getCell('D7').numFmt).toContain('BRL');
-    expect(dre!.getCell('E7').numFmt).toContain('0.0%');
-    expect(dre!.autoFilter).toBe(`A6:E${dre!.rowCount}`);
-    expect(dre!.views[0]).toMatchObject({ state: 'frozen', ySplit: 6, topLeftCell: 'A7' });
-    expect(dre!.getColumn(2).width).toBe(30);
+    const revenueCategoryRow = dre!.getColumn(1).values.findIndex((value) => value === '01.01.001 - Serviços');
+    expect(revenueCategoryRow).toBeGreaterThan(7);
+    expect(dre!.getCell(revenueCategoryRow, 2).numFmt).toContain('R$');
+    expect(dre!.getCell(revenueCategoryRow, 3).numFmt).toContain('0.0%');
+    expect(dre!.autoFilter).toBe(`A7:G${dre!.rowCount}`);
+    expect(dre!.views[0]).toMatchObject({ state: 'frozen', xSplit: 1, ySplit: 7, topLeftCell: 'B8' });
+    expect(dre!.getColumn(1).width).toBe(54);
     expect(costCenters!.getColumn(1).width).toBe(38);
     expect(costCenters!.views[0]).toMatchObject({ state: 'frozen', xSplit: 1, ySplit: 6 });
 
-    const taxRow = dre!.getColumn(1).values.findIndex((value) => value === '02.01.001');
-    const operatingResultRow = dre!.getColumn(1).values.findIndex((value) => value === '07');
-    const finalResultRow = dre!.getColumn(1).values.findIndex((value) => value === '09');
-    expect(dre!.getCell(taxRow, 4).font.color).toMatchObject({ argb: 'FF334155' });
+    const taxRow = dre!.getColumn(1).values.findIndex((value) => value === '02.01.001 - ISS');
+    const operatingResultRow = dre!.getColumn(1).values.findIndex((value) => value === '07 - RESULTADO OPERACIONAL');
+    const finalResultRow = dre!.getColumn(1).values.findIndex((value) => value === '09 - RESULTADO FINAL');
+    expect(dre!.getCell(taxRow, 2).font.color).toMatchObject({ argb: 'FF334155' });
     expect(dre!.getCell(operatingResultRow, 1).fill).toMatchObject({ fgColor: { argb: 'FF172033' } });
     expect(dre!.getCell(finalResultRow, 1).fill).toMatchObject({ fgColor: { argb: 'FF15803D' } });
 
@@ -150,7 +160,7 @@ describe('createDreExcelWorkbook', () => {
     const ExcelJS = await import('exceljs');
     const reopened = new ExcelJS.Workbook();
     await reopened.xlsx.load(serialized);
-    expect(reopened.getWorksheet('DRE')!.getCell('A7').value).toBe('01.01.001');
-    expect(reopened.getWorksheet('DRE')!.getCell('D7').numFmt).toContain('BRL');
+    expect(reopened.getWorksheet('DRE')!.getCell(revenueCategoryRow, 1).value).toBe('01.01.001 - Serviços');
+    expect(reopened.getWorksheet('DRE')!.getCell(revenueCategoryRow, 2).numFmt).toContain('R$');
   });
 });

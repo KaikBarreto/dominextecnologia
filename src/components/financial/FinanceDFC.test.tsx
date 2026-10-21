@@ -45,6 +45,10 @@ vi.mock('@/hooks/useCostCenters', () => ({
   useCostCenters: () => costCentersState,
 }));
 
+vi.mock('@/hooks/useCompanySettings', () => ({
+  useCompanySettings: () => ({ settings: { name: 'Empresa teste' }, isLoading: false }),
+}));
+
 vi.mock('@/lib/format/hooks', () => ({
   useLocaleFormatters: () => ({
     money: (value: number) => `BRL ${value.toFixed(2)}`,
@@ -52,6 +56,10 @@ vi.mock('@/lib/format/hooks', () => ({
       ? value.slice(0, 10)
       : `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`,
   }),
+}));
+
+vi.mock('@/contexts/AppLocaleContext', () => ({
+  useAppLocaleContext: () => ({ locale: 'pt-BR', currency: 'BRL' }),
 }));
 
 import { FinanceDFC } from './FinanceDFC';
@@ -111,7 +119,7 @@ describe('FinanceDFC', () => {
   };
 
 
-  it('reconcilia saldos e detalha subcategoria, centro de custo e lançamento', () => {
+  it('reconcilia saldos e detalha somente categoria e subcategoria', () => {
     categoriesState.categories = [
       { id: 'cat-parent', name: 'Ativos', parent_id: null, color: '#7c3aed', icon: 'Landmark', dfc_group: 'investimento' },
       { id: 'cat-child', name: 'Máquinas', parent_id: 'cat-parent', color: '#2563eb', icon: 'Wrench', dfc_group: 'investimento' },
@@ -172,29 +180,18 @@ describe('FinanceDFC', () => {
       (button) => button.textContent?.includes('Atividades de investimento'),
     );
     expect(investmentButton).toBeTruthy();
-    act(() => investmentButton!.click());
     expect(container.textContent).toContain('Ativos');
 
     const parentButton = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent?.includes('Ativos') && button.textContent?.includes('1 subcategoria'),
+      (button) => button.textContent?.includes('Ativos'),
     );
     expect(parentButton).toBeTruthy();
     act(() => parentButton!.click());
     expect(container.textContent).toContain('Máquinas');
 
-    const categoryButton = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent?.includes('Máquinas'),
-    );
-    expect(categoryButton).toBeTruthy();
-    act(() => categoryButton!.click());
-    expect(container.textContent).toContain('Fábrica');
-
-    const costCenterButton = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent?.includes('Fábrica'),
-    );
-    expect(costCenterButton).toBeTruthy();
-    act(() => costCenterButton!.click());
-    expect(container.textContent).toContain('Compressor novo');
+    expect(container.textContent).toContain('Máquinas');
+    expect(container.textContent).not.toContain('Compressor novo');
+    expect(container.textContent).toContain('Filtros');
   });
 
   it('distingue carregamento de período sem movimentações realizadas', () => {

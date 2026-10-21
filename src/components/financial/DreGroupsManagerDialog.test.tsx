@@ -41,10 +41,18 @@ const baseGroups = [
     is_active: true,
   },
   {
+    id: 'cost-secondary',
+    name: 'Custos indiretos',
+    nature: 'cost',
+    sort_order: 3,
+    is_system: false,
+    is_active: true,
+  },
+  {
     id: 'other',
     name: 'Outras despesas',
     nature: 'non_operating',
-    sort_order: 3,
+    sort_order: 4,
     is_system: false,
     is_active: false,
   },
@@ -67,10 +75,10 @@ describe('DreGroupsManagerDialog', () => {
   it('ordena os grupos e envia todos os ids na nova ordem', () => {
     render(<DreGroupsManagerDialog open onOpenChange={() => {}} categories={[]} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Mover Custos diretos para cima' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mover Custos indiretos para cima' }));
 
     expect(reorderGroups.mutate).toHaveBeenCalledWith(
-      ['cost', 'revenue', 'other'],
+      ['revenue', 'cost-secondary', 'cost', 'other'],
       expect.objectContaining({ onError: expect.any(Function) }),
     );
   });

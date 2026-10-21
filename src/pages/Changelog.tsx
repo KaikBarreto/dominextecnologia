@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.0',
+    date: '21 de outubro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'DRE mais legível e consistente',
+        description: 'A hierarquia ganhou pesos visuais mais claros, comparação por períodos, cabeçalho fixo, categorias e subcategorias com cores e ícones e o mesmo padrão na tela, no Excel e no PDF.',
+        category: 'melhoria',
+      },
+      {
+        title: 'DFC gerencial completo',
+        description: 'O fluxo realizado agora organiza atividades, categorias e subcategorias, filtra por centro de custo e exporta relatórios profissionais em Excel, PDF e CSV.',
+        category: 'recurso',
+      },
+      {
+        title: 'Configuração segura do DRE',
+        description: 'Os grupos do DRE podem ser organizados na própria tela e nas configurações financeiras, com proteção para grupos essenciais e estruturas em uso.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.37.24',
     date: '20 de outubro de 2026',
     type: 'patch',

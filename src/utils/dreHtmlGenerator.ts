@@ -10,7 +10,12 @@ export interface DreExportCategory {
   code?: string;
   name: string;
   value: number;
+  /** Valor assinado do período comparativo, quando selecionado. */
+  previous?: number;
   color: string;
+  /** Subcategorias exibidas abaixo da categoria-pai no DRE. */
+  children?: DreExportCategory[];
+  costCenters?: Array<{ name: string; value: number; previous?: number }>;
 }
 
 export interface DreExportCompany {
@@ -49,6 +54,8 @@ export interface DreExportGroup {
   name: string;
   nature: DreExportGroupNature;
   total: number;
+  /** Total assinado do período comparativo, quando selecionado. */
+  previous?: number;
   categories: DreExportCategory[];
 }
 
@@ -173,18 +180,17 @@ export const generateDreHtml = (data: DreReportData) => {
       ? groups
       : [{ id: `legacy-${nature}`, name: fallbackLabel, nature, total: fallbackTotal, categories: fallbackCategories }];
     return rows.map((group) => `
-      <div class="section-header">
-        ${group.code ? `<span class="line-code">${escapeHtml(group.code)}</span>` : ''}
-        ${escapeHtml(group.name)}
-      </div>
-      ${renderCategories(group.categories, isRevenue)}
-      <div class="row subtotal">
-        <span>${escapeHtml(group.name)}</span>
+      <div class="section-header group-header">
+        <span class="group-title">
+          ${group.code ? `<span class="line-code">${escapeHtml(group.code)}</span>` : ''}
+          ${escapeHtml(group.name)}
+        </span>
         ${valueWithPercent(
-          `<span class="${isRevenue ? 'positive' : 'negative'}">${isRevenue ? '' : '-'}${formatCurrencyBR(group.total)}</span>`,
+          `<span>${isRevenue ? '' : '-'}${formatCurrencyBR(group.total)}</span>`,
           group.total,
         )}
       </div>
+      ${renderCategories(group.categories.filter((category) => category.name.trim().toLocaleLowerCase('pt-BR') !== 'total'), isRevenue)}
     `).join('');
   };
 
@@ -237,6 +243,9 @@ export const generateDreHtml = (data: DreReportData) => {
     .subtitle { font-size: 12px; color: #888; }
     .dre-container { border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden; margin-bottom: 16px; }
     .section-header { background: #f9fafb; padding: 10px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; border-bottom: 1px solid #e5e5e5; }
+    .group-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .group-title { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+    .group-header .value-with-percent { color: #374151; font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; }
     .row { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px 10px 32px; border-bottom: 1px solid #f3f4f6; font-size: 13px; }
     .row:last-child { border-bottom: none; }
     .row.highlight { padding: 12px 16px; font-weight: 600; color: white; border-bottom: none; }

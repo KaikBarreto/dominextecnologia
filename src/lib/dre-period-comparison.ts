@@ -2,7 +2,6 @@ import {
   differenceInCalendarDays,
   differenceInCalendarMonths,
   endOfMonth,
-  format,
   isSameDay,
   startOfMonth,
   subDays,
@@ -10,6 +9,7 @@ import {
   subYears,
 } from 'date-fns';
 import type { DateRange } from '@/components/ui/DateRangeFilter';
+import { formatDrePeriodLabel } from '@/lib/dre-period-label';
 
 export type DreComparisonMode = 'none' | 'previous_period' | 'previous_year';
 
@@ -50,7 +50,7 @@ export function getDreComparisonRange(
 
 export function formatDreComparisonPeriod(range: DateRange | undefined): string {
   if (!range?.from || !range.to) return '';
-  return `${format(range.from, 'dd/MM/yyyy')} a ${format(range.to, 'dd/MM/yyyy')}`;
+  return formatDrePeriodLabel(range);
 }
 
 export function calculateDreVariation(current: number, previous: number): DreComparisonValue {

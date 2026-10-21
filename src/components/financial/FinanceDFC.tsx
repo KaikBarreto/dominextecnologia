@@ -1,4 +1,4 @@
-import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ArrowDownCircle,
   ArrowDownToLine,
@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CashFlowForecast } from './CashFlowForecast';
+import { DfcHierarchyTable, type DfcHierarchyRow, type DfcHierarchySection } from './DfcHierarchyTable';
+import { FilterCheckboxDropdown } from './FilterCheckboxDropdown';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   DropdownMenu,
@@ -24,9 +26,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { DateRange } from '@/components/ui/DateRangeFilter';
-import { useFinancialCategories, type FinancialCategory } from '@/hooks/useFinancialCategories';
+import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useCostCenters } from '@/hooks/useCostCenters';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import type { FinancialTransaction } from '@/types/database';
 import {
   calculateDfc,
@@ -35,7 +38,7 @@ import {
   type DfcCategoryLine,
   type DfcGroupKey,
 } from '@/lib/dfc';
-import { buildCategoryTree, groupDreRowsByParent, type DreRowNode } from '@/lib/category-tree';
+import { buildCategoryTree, groupDreRowsByParent } from '@/lib/category-tree';
 import { useLocaleFormatters } from '@/lib/format/hooks';
 import { toBcp47 } from '@/lib/format';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -50,6 +53,7 @@ import {
   type DfcExportData,
 } from '@/utils/dfcExport';
 import { getCategoryIcon } from './categoryIcons';
+import dominexLogoUrl from '@/assets/logo-white-horizontal.png';
 
 type DfcTransaction = FinancialTransaction & {
   dfc_group?: DfcGroupKey | null;
@@ -59,15 +63,6 @@ type DfcUiCategory = DfcCategoryLine<DfcTransaction> & {
   key: string;
   value: number;
 };
-
-interface CostCenterRow {
-  key: string;
-  id: string | null;
-  name: string;
-  color: string;
-  total: number;
-  transactions: DfcTransaction[];
-}
 
 interface FinanceDFCProps {
   /**
@@ -82,13 +77,6 @@ interface FinanceDFCProps {
 }
 
 const FALLBACK_CATEGORY_COLOR = '#6b7280';
-const FALLBACK_COST_CENTER_COLOR = '#94a3b8';
-const NO_COST_CENTER_KEY = '__none__';
-const DFC_GROUP_META: Record<DfcGroupKey, { icon: LucideIcon; color: string }> = {
-  operacional: { icon: Banknote, color: '#2563eb' },
-  investimento: { icon: Landmark, color: '#7c3aed' },
-  financiamento: { icon: PiggyBank, color: '#d97706' },
-};
 
 function toDateOnly(value?: Date): string | undefined {
   if (!value || Number.isNaN(value.getTime())) return undefined;
@@ -103,19 +91,10 @@ function signedTransactionAmount(transaction: FinancialTransaction): number {
   return transaction.transaction_type === 'entrada' ? amount : -amount;
 }
 
-function signedTransactionCents(transaction: FinancialTransaction): number {
-  const cents = Math.round((Math.abs(Number(transaction.amount) || 0) + Number.EPSILON) * 100);
-  return transaction.transaction_type === 'entrada' ? cents : -cents;
-}
-
 function resolveDfcGroup(value: string | null | undefined): DfcGroupKey {
   return (DFC_GROUP_KEYS as readonly string[]).includes(value ?? '')
     ? value as DfcGroupKey
     : DFC_UNCLASSIFIED_FALLBACK;
-}
-
-function transactionCountLabel(count: number): string {
-  return `${count} ${count === 1 ? 'lançamento' : 'lançamentos'}`;
 }
 
 export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDFCProps) {
@@ -134,13 +113,12 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
   const { categories, isLoading: isLoadingCategories } = useFinancialCategories();
   const { accounts, isLoading: isLoadingAccounts } = useFinancialAccounts();
   const { costCenters, isLoading: isLoadingCostCenters } = useCostCenters();
+  const { settings, isLoading: isLoadingCompany } = useCompanySettings();
   const { money, date } = useLocaleFormatters();
   const { locale, currency } = useAppLocaleContext();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set(['operacional']));
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [expandedCostCenters, setExpandedCostCenters] = useState<Set<string>>(new Set());
+  const [selectedCostCenters, setSelectedCostCenters] = useState<string[]>([]);
 
   const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
   const categoryParentNameMap = useMemo(() => {
@@ -155,10 +133,7 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
     () => new Map(categories.map((category) => [category.name, category])),
     [categories],
   );
-  const costCenterMetaMap = useMemo(
-    () => new Map(costCenters.map((center) => [center.id, center])),
-    [costCenters],
-  );
+  const costCenterMetaMap = useMemo(() => new Map(costCenters.map((center) => [center.id, center])), [costCenters]);
 
   // `financial_transactions.category` persiste o nome da folha. O grupo vem
   // da categoria do mesmo tenant já carregada pelo hook; o motor segue puro.
@@ -169,8 +144,9 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
     return transactions.map((transaction) => ({
       ...transaction,
       dfc_group: groupByCategoryName.get(transaction.category ?? '') ?? null,
-    }));
-  }, [categories, transactions]);
+    })).filter((transaction) => selectedCostCenters.length === 0
+      || selectedCostCenters.includes(transaction.cost_center_id ?? '__none__'));
+  }, [categories, selectedCostCenters, transactions]);
 
   const normalizedRange = useMemo(
     () => ({ from: toDateOnly(range?.from), to: toDateOnly(range?.to) }),
@@ -215,47 +191,72 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
     ),
     [report.groups],
   );
+
+  const hierarchySections = useMemo<DfcHierarchySection[]>(() => {
+    const valueOf = (items: DfcTransaction[]) => {
+      let inflow = 0;
+      let outflow = 0;
+      items.forEach((transaction) => {
+        const amount = Math.abs(Number(transaction.amount) || 0);
+        if (transaction.transaction_type === 'entrada') inflow += amount;
+        else outflow += amount;
+      });
+      return { inflow, outflow, net: inflow - outflow };
+    };
+    const rowOf = (row: DfcUiCategory, code: string): DfcHierarchyRow => {
+      const meta = categoryMetaMap.get(row.name);
+      return {
+        id: row.key,
+        code,
+        label: row.name,
+        ...valueOf(row.transactions),
+        color: meta?.color || FALLBACK_CATEGORY_COLOR,
+        icon: getCategoryIcon(meta?.icon),
+      };
+    };
+
+    return report.groups.map((group, groupIndex) => {
+      const nodes = groupNodes.get(group.key) ?? [];
+      const rows = nodes.map((node, rowIndex): DfcHierarchyRow => {
+        const rowCode = `${String(groupIndex + 1).padStart(2, '0')}.${String(rowIndex + 1).padStart(2, '0')}`;
+        if (node.kind === 'leaf') return rowOf(node.row, rowCode);
+        const allTransactions = [
+          ...(node.own?.transactions ?? []),
+          ...node.children.flatMap((child) => child.transactions),
+        ];
+        const meta = categoryMetaMap.get(node.name);
+        return {
+          id: node.key,
+          code: rowCode,
+          label: node.name,
+          ...valueOf(allTransactions),
+          color: meta?.color || FALLBACK_CATEGORY_COLOR,
+          icon: getCategoryIcon(meta?.icon),
+          children: [
+            ...(node.own ? [rowOf(node.own, `${rowCode}.001`)] : []),
+            ...node.children.map((child, childIndex) => rowOf(
+              child,
+              `${rowCode}.${String(childIndex + (node.own ? 2 : 1)).padStart(3, '0')}`,
+            )),
+          ],
+        };
+      });
+      const allTransactions = group.categories.flatMap((category) => category.transactions);
+      return {
+        id: group.key,
+        code: String(groupIndex + 1).padStart(2, '0'),
+        label: group.label,
+        ...valueOf(allTransactions),
+        rows,
+      };
+    });
+  }, [categoryMetaMap, groupNodes, report.groups]);
   const periodLabel = useMemo(() => {
     if (range?.from && range?.to) return `${date(range.from)} a ${date(range.to)}`;
     if (range?.from) return `A partir de ${date(range.from)}`;
     if (range?.to) return `Até ${date(range.to)}`;
     return 'Todo o histórico';
   }, [date, range?.from, range?.to]);
-
-  const toggleSetItem = (setter: Dispatch<SetStateAction<Set<string>>>, key: string) => {
-    setter((current) => {
-      const next = new Set(current);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
-
-  const categoryMeta = (name: string): Pick<FinancialCategory, 'color' | 'icon'> =>
-    categoryMetaMap.get(name) ?? { color: FALLBACK_CATEGORY_COLOR, icon: null };
-
-  const buildCostCenterRows = (category: DfcUiCategory): CostCenterRow[] => {
-    const rows = new Map<string, { id: string | null; totalCents: number; transactions: DfcTransaction[] }>();
-    category.transactions.forEach((transaction) => {
-      const id = transaction.cost_center_id?.trim() || null;
-      const key = id ?? NO_COST_CENTER_KEY;
-      const row = rows.get(key) ?? { id, totalCents: 0, transactions: [] };
-      row.totalCents += signedTransactionCents(transaction);
-      row.transactions.push(transaction);
-      rows.set(key, row);
-    });
-    return Array.from(rows, ([key, row]) => {
-      const meta = row.id ? costCenterMetaMap.get(row.id) : undefined;
-      return {
-        key,
-        id: row.id,
-        name: meta?.name ?? (row.id ? 'Centro de custo não encontrado' : 'Sem centro de custo'),
-        color: meta?.color ?? FALLBACK_COST_CENTER_COLOR,
-        total: row.totalCents / 100,
-        transactions: row.transactions,
-      };
-    }).sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
-  };
 
   const buildExportData = (): DfcExportData => {
     const movements: DfcExportData['movements'] = [];
@@ -281,11 +282,30 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
       periodLabel,
       locale,
       currency,
+      company: {
+        name: settings?.name || 'Dominex',
+        document: settings?.document,
+        phone: settings?.phone,
+        email: settings?.email,
+        address: [settings?.address, settings?.address_number, settings?.city, settings?.state].filter(Boolean).join(', '),
+      },
+      brandName: 'Dominex',
+      brandLogoUrl: dominexLogoUrl,
       openingBalance: report.openingBalance,
       totalInflow: report.totalInflow,
       totalOutflow: report.totalOutflow,
       netChange: report.netChange,
       closingBalance: report.closingBalance,
+      rows: [
+        ...hierarchySections.flatMap((section) => [
+          { code: section.code, label: section.label, level: 'section' as const, inflow: section.inflow, outflow: section.outflow, net: section.net },
+          ...section.rows.flatMap((row) => [
+            { code: row.code, label: row.label, level: 'category' as const, inflow: row.inflow, outflow: row.outflow, net: row.net, color: row.color, icon: row.icon as LucideIcon | undefined },
+            ...(row.children ?? []).map((child) => ({ code: child.code, label: child.label, level: 'subcategory' as const, inflow: child.inflow, outflow: child.outflow, net: child.net, color: child.color, icon: child.icon as LucideIcon | undefined })),
+          ]),
+        ]),
+        { code: '04', label: 'Variação líquida de caixa', level: 'result' as const, inflow: report.totalInflow, outflow: Math.abs(report.totalOutflow), net: report.netChange },
+      ],
       movements,
     };
   };
@@ -311,176 +331,9 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
     }
   };
 
-  if (isLoading || isLoadingCategories || isLoadingAccounts || isLoadingCostCenters) {
+  if (isLoading || isLoadingCategories || isLoadingAccounts || isLoadingCostCenters || isLoadingCompany) {
     return <FinanceDFCLoading />;
   }
-
-  const renderCostCenters = (category: DfcUiCategory) => {
-    const rows = buildCostCenterRows(category);
-    return (
-      <div className="bg-muted/20 py-1.5">
-        <p className="px-8 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-10">
-          Centros de custo
-        </p>
-        <div className="divide-y divide-border/20">
-          {rows.map((row) => {
-            const centerKey = `${category.key}:center:${row.key}`;
-            const isOpen = expandedCostCenters.has(centerKey);
-            return (
-              <div key={centerKey}>
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-2 px-8 py-2 text-left transition-colors hover:bg-muted/30 sm:px-10"
-                  aria-expanded={isOpen}
-                  onClick={() => toggleSetItem(setExpandedCostCenters, centerKey)}
-                >
-                  <span className="flex min-w-0 items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
-                    <span className="min-w-0">
-                      <span className="block truncate text-[11px] text-muted-foreground">{row.name}</span>
-                      <span className="block text-[10px] text-muted-foreground/80">{transactionCountLabel(row.transactions.length)}</span>
-                    </span>
-                  </span>
-                  <span className="flex shrink-0 items-center gap-1.5">
-                    <span className={cn(
-                      'text-[11px] font-medium tabular-nums',
-                      row.total > 0 ? 'text-success' : row.total < 0 ? 'text-destructive' : 'text-muted-foreground',
-                    )}>
-                      {money(row.total)}
-                    </span>
-                    <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform', isOpen && 'rotate-180')} />
-                  </span>
-                </button>
-                {isOpen && (
-                  <div className="divide-y divide-border/20 border-t border-border/20 bg-background/80">
-                    {row.transactions.map((transaction) => {
-                      const signedAmount = signedTransactionAmount(transaction);
-                      return (
-                        <div
-                          key={transaction.id}
-                          className="grid gap-0.5 py-2 pl-11 pr-3 text-xs sm:grid-cols-[6.5rem_minmax(0,1fr)_8rem] sm:items-center sm:gap-3 sm:pl-14 sm:pr-4"
-                        >
-                          <span className="text-[10px] text-muted-foreground">
-                            {transaction.paid_date ? date(transaction.paid_date) : 'Data não informada'}
-                          </span>
-                          <span className="min-w-0 break-words text-foreground/80">
-                            {transaction.description || 'Sem descrição'}
-                          </span>
-                          <span className={cn(
-                            'font-medium tabular-nums sm:text-right',
-                            signedAmount >= 0 ? 'text-success' : 'text-destructive',
-                          )}>
-                            {money(signedAmount)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  const renderCategoryRow = (
-    category: DfcUiCategory,
-    options: { label?: string; caption?: string; nested?: boolean } = {},
-  ) => {
-    const isOpen = expandedCategories.has(category.key);
-    const meta = categoryMeta(category.name);
-    const Icon = getCategoryIcon(meta.icon);
-    return (
-      <div key={category.key}>
-        <button
-          type="button"
-          className="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-muted/40 sm:px-4"
-          aria-expanded={isOpen}
-          onClick={() => toggleSetItem(setExpandedCategories, category.key)}
-        >
-          <span className={cn('flex min-w-0 flex-1 items-center gap-2', options.nested ? 'pl-4 sm:pl-6' : 'pl-2 sm:pl-4')}>
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: meta.color }}>
-              <Icon className="h-3 w-3 text-white" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs text-foreground/80">{options.label ?? category.name}</span>
-              <span className="block truncate text-[10px] text-muted-foreground">
-                {options.caption ? `${options.caption} · ` : ''}{transactionCountLabel(category.transactions.length)}
-              </span>
-            </span>
-          </span>
-          <span className="ml-2 flex shrink-0 items-center gap-1.5">
-            <span className={cn(
-              'text-xs font-medium tabular-nums',
-              category.total > 0 ? 'text-success' : category.total < 0 ? 'text-destructive' : 'text-muted-foreground',
-            )}>
-              {money(category.total)}
-            </span>
-            <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform', isOpen && 'rotate-180')} />
-          </span>
-        </button>
-        {isOpen && renderCostCenters(category)}
-      </div>
-    );
-  };
-
-  const renderParentCategory = (
-    node: Extract<DreRowNode<DfcUiCategory>, { kind: 'parent' }>,
-  ) => {
-    const childrenKey = `${node.key}:children`;
-    const isOpen = expandedCategories.has(childrenKey);
-    const meta = categoryMeta(node.name);
-    const Icon = getCategoryIcon(meta.icon);
-    const transactionCount = (node.own?.transactions.length ?? 0)
-      + node.children.reduce((count, child) => count + child.transactions.length, 0);
-    return (
-      <div key={node.key}>
-        <button
-          type="button"
-          className="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-muted/40 sm:px-4"
-          aria-expanded={isOpen}
-          onClick={() => toggleSetItem(setExpandedCategories, childrenKey)}
-        >
-          <span className="flex min-w-0 flex-1 items-center gap-2 pl-2 sm:pl-4">
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: meta.color }}>
-              <Icon className="h-3 w-3 text-white" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-medium text-foreground/80">{node.name}</span>
-              <span className="block truncate text-[10px] text-muted-foreground">
-                {node.children.length} {node.children.length === 1 ? 'subcategoria' : 'subcategorias'} · {transactionCountLabel(transactionCount)}
-              </span>
-            </span>
-          </span>
-          <span className="ml-2 flex shrink-0 items-center gap-1.5">
-            <span className={cn(
-              'text-xs font-semibold tabular-nums',
-              node.total > 0 ? 'text-success' : node.total < 0 ? 'text-destructive' : 'text-muted-foreground',
-            )}>
-              {money(node.total)}
-            </span>
-            <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform', isOpen && 'rotate-180')} />
-          </span>
-        </button>
-        {isOpen && (
-          <div className="bg-muted/20">
-            <p className="px-3 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-4">
-              Subcategorias
-            </p>
-            <div className="divide-y divide-border/30">
-              {node.own && renderCategoryRow(node.own, {
-                nested: true,
-                label: `Lançado diretamente em ${node.name}`,
-              })}
-              {node.children.map((child) => renderCategoryRow(child, { nested: true }))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
 
   const changeIsPositive = report.netChange > 0;
   const changeIsZero = report.netChange === 0;
@@ -548,6 +401,22 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
         />
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterCheckboxDropdown
+          label="Filtros"
+          contentLabel="Centros de custo"
+          selected={selectedCostCenters}
+          onChange={setSelectedCostCenters}
+          options={[
+            ...costCenters.map((center) => ({ value: center.id, label: center.name })),
+            { value: '__none__', label: 'Sem centro de custo' },
+          ]}
+        />
+        {selectedCostCenters.length > 0 && (
+          <span className="text-xs text-muted-foreground">Filtro aplicado ao realizado e às exportações.</span>
+        )}
+      </div>
+
       <Card className="overflow-hidden border-0 bg-muted/15 shadow-none">
         <CardHeader className="bg-foreground pb-4">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
@@ -601,74 +470,13 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
             </div>
           )}
 
-          {report.groups.map((group) => {
-            const groupIsOpen = expandedGroups.has(group.key);
-            const nodes = groupNodes.get(group.key) ?? [];
-            const groupMeta = DFC_GROUP_META[group.key];
-            const GroupIcon = groupMeta.icon;
-            return (
-              <div key={group.key} className="border-b border-border/30 last:border-b-0">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between bg-muted/30 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 sm:px-4 sm:py-3"
-                  aria-expanded={groupIsOpen}
-                  onClick={() => toggleSetItem(setExpandedGroups, group.key)}
-                >
-                  <span className="flex min-w-0 items-center gap-2.5">
-                    <span
-                      data-dfc-group-icon={group.key}
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full shadow-sm"
-                      style={{ backgroundColor: groupMeta.color }}
-                      aria-hidden="true"
-                    >
-                      <GroupIcon className="h-3.5 w-3.5 text-white" />
-                    </span>
-                    <span className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">{group.label}</span>
-                  </span>
-                  <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', groupIsOpen && 'rotate-180')} />
-                </button>
-
-                {groupIsOpen && (
-                  nodes.length === 0 ? (
-                    <p className="px-6 py-3 text-xs text-muted-foreground">Sem movimentações nesta atividade.</p>
-                  ) : (
-                    <div className="divide-y divide-border/30">
-                      {nodes.map((node) => {
-                        if (node.kind === 'parent') return renderParentCategory(node);
-                        const parentName = categoryParentNameMap.get(node.row.name);
-                        return renderCategoryRow(node.row, {
-                          caption: parentName ? `Subcategoria de ${parentName}` : undefined,
-                        });
-                      })}
-                    </div>
-                  )
-                )}
-
-                <div className="flex items-center justify-between border-t border-border/30 px-3 py-2.5 sm:px-4 sm:py-3">
-                  <span className="pl-2 text-sm font-medium text-foreground/80 sm:pl-4">Total</span>
-                  <span className={cn(
-                    'text-sm font-semibold tabular-nums',
-                    group.total > 0 ? 'text-success' : group.total < 0 ? 'text-destructive' : 'text-muted-foreground',
-                  )}>
-                    {money(group.total)}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-
-          <div className={cn(
-            'flex items-center justify-between px-3 py-4 text-white sm:px-4',
-            report.netChange > 0 ? 'bg-success' : report.netChange < 0 ? 'bg-destructive' : 'bg-muted-foreground',
-          )}>
-            <div className="flex min-w-0 items-center gap-2 pl-2 sm:pl-4">
-              <ChangeIcon className="h-4 w-4 shrink-0" />
-              <span className="truncate text-sm font-bold sm:text-base">Variação líquida de caixa</span>
-            </div>
-            <span className="ml-2 max-w-[50%] shrink-0 break-words text-right text-base font-bold leading-tight tabular-nums [overflow-wrap:anywhere] sm:text-lg">
-              {money(report.netChange)}
-            </span>
-          </div>
+          {movementCount > 0 && (
+            <DfcHierarchyTable
+              sections={hierarchySections}
+              formatMoney={money}
+              finalValue={{ inflow: report.totalInflow, outflow: Math.abs(report.totalOutflow), net: report.netChange }}
+            />
+          )}
         </CardContent>
       </Card>
 

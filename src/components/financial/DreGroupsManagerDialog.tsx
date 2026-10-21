@@ -38,7 +38,7 @@ interface DreGroupsManagerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Categorias do tenant atual, usadas apenas para impedir ações destrutivas em grupos vinculados. */
-  categories: readonly Pick<FinancialCategory, 'dre_group_id'>[];
+  categories: readonly Pick<FinancialCategory, 'id' | 'name' | 'dre_group_id'>[];
 }
 
 const NATURES: Array<{
@@ -79,6 +79,7 @@ const NATURES: Array<{
 ];
 
 const natureByValue = new Map(NATURES.map((nature) => [nature.value, nature]));
+const natureOrder = new Map(NATURES.map((nature, index) => [nature.value, index]));
 
 type ConfirmAction = {
   kind: 'deactivate' | 'delete';
@@ -101,7 +102,11 @@ export function DreGroupsManagerDialog({
   } = useDreGroups();
 
   const groups = useMemo(
-    () => [...(dreGroups ?? [])].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, 'pt-BR')),
+    () => [...(dreGroups ?? [])].sort((a, b) =>
+      (natureOrder.get(a.nature) ?? 999) - (natureOrder.get(b.nature) ?? 999)
+      || a.sort_order - b.sort_order
+      || a.name.localeCompare(b.name, 'pt-BR'),
+    ),
     [dreGroups],
   );
   const usageByGroup = useMemo(() => {
@@ -111,10 +116,20 @@ export function DreGroupsManagerDialog({
       return counts;
     }, new Map());
   }, [categories]);
+  const categoriesByGroup = useMemo(() => {
+    const grouped = new Map<string, Array<Pick<FinancialCategory, 'id' | 'name'>>>();
+    categories.forEach((category) => {
+      if (!category.dre_group_id) return;
+      const current = grouped.get(category.dre_group_id) ?? [];
+      current.push(category);
+      grouped.set(category.dre_group_id, current);
+    });
+    grouped.forEach((items) => items.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')));
+    return grouped;
+  }, [categories]);
 
-  const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newNature, setNewNature] = useState<DreGroupNature | ''>('');
+  const [newNature, setNewNature] = useState<DreGroupNature | ''>('operating_expense');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editNature, setEditNature] = useState<DreGroupNature>('operating_expense');
@@ -155,8 +170,7 @@ export function DreGroupsManagerDialog({
       {
         onSuccess: () => {
           setNewName('');
-          setNewNature('');
-          setShowCreate(false);
+          setNewNature('operating_expense');
         },
         onError: () => setOperationError('Não foi possível criar o grupo. Tente novamente.'),
       },
@@ -200,12 +214,15 @@ export function DreGroupsManagerDialog({
 
   const moveGroup = (groupId: string, offset: -1 | 1) => {
     const currentIndex = groups.findIndex((group) => group.id === groupId);
-    const targetIndex = currentIndex + offset;
-    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= groups.length) return;
+    if (currentIndex < 0) return;
+    const siblings = groups.filter((group) => group.nature === groups[currentIndex].nature);
+    const siblingIndex = siblings.findIndex((group) => group.id === groupId);
+    const targetSibling = siblings[siblingIndex + offset];
+    if (!targetSibling) return;
+    const targetIndex = groups.findIndex((group) => group.id === targetSibling.id);
 
     const nextGroups = [...groups];
-    const [moved] = nextGroups.splice(currentIndex, 1);
-    nextGroups.splice(targetIndex, 0, moved);
+    [nextGroups[currentIndex], nextGroups[targetIndex]] = [nextGroups[targetIndex], nextGroups[currentIndex]];
     setOperationError(null);
     reorderGroups.mutate(nextGroups.map((group) => group.id), {
       onError: () => setOperationError('Não foi possível salvar a nova ordem. Tente novamente.'),
@@ -247,16 +264,15 @@ export function DreGroupsManagerDialog({
     });
   };
 
-  const closeCreate = () => {
-    setShowCreate(false);
+  const resetCreate = () => {
     setNewName('');
-    setNewNature('');
+    setNewNature('operating_expense');
     setFormError(null);
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
-      closeCreate();
+      resetCreate();
       cancelEditing();
       setConfirmAction(null);
       setOperationError(null);
@@ -269,9 +285,9 @@ export function DreGroupsManagerDialog({
       <ResponsiveModal
         open={open}
         onOpenChange={handleOpenChange}
-        title="Grupos da DRE"
-        description="Defina a ordem e como cada grupo impacta o demonstrativo de resultado."
-        className="sm:max-w-[720px]"
+        title="Configurar DRE"
+        description="Edite a estrutura vendo a mesma hierarquia de grupos e categorias que aparece no demonstrativo."
+        className="sm:max-w-5xl"
       >
         <div className="space-y-4 pb-1">
           {operationError ? (
@@ -280,6 +296,28 @@ export function DreGroupsManagerDialog({
               <AlertTitle>Não foi possível concluir a ação</AlertTitle>
               <AlertDescription>{operationError}</AlertDescription>
             </Alert>
+          ) : null}
+
+          {!isLoading && !error ? (
+            <div className="grid gap-3 rounded-lg border bg-muted/20 p-4 sm:grid-cols-[220px_1fr_auto] sm:items-end">
+              <NatureField value={newNature} onChange={setNewNature} id="new-dre-group-nature" compact />
+              <div className="space-y-1.5">
+                <Label htmlFor="new-dre-group-name">Novo subgrupo</Label>
+                <Input
+                  id="new-dre-group-name"
+                  value={newName}
+                  onChange={(event) => setNewName(event.target.value)}
+                  placeholder="Ex.: Despesas com pessoal"
+                  maxLength={80}
+                  onKeyDown={(event) => { if (event.key === 'Enter') handleCreate(); }}
+                />
+              </div>
+              <Button type="button" onClick={handleCreate} disabled={isMutating} className="gap-2">
+                {createGroup.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                Adicionar
+              </Button>
+              {formError ? <p className="text-sm text-destructive sm:col-span-3" role="alert">{formError}</p> : null}
+            </div>
           ) : null}
 
           {isLoading ? (
@@ -302,9 +340,21 @@ export function DreGroupsManagerDialog({
               </p>
             </div>
           ) : (
-            <div className="space-y-2" aria-label="Grupos da DRE ordenados">
+            <div className="overflow-hidden rounded-lg border" aria-label="Prévia da estrutura da DRE">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center border-b bg-muted/40 px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <span>Prévia da estrutura</span>
+                <span>Ações</span>
+              </div>
               {groups.map((group, index) => {
                 const usageCount = getUsageCount(group);
+                const assignedCategories = categoriesByGroup.get(group.id) ?? [];
+                const nature = natureByValue.get(group.nature);
+                const natureIndex = NATURES.findIndex((item) => item.value === group.nature);
+                const natureCode = String(natureIndex + 1).padStart(2, '0');
+                const siblings = groups.filter((item) => item.nature === group.nature);
+                const groupIndex = siblings.findIndex((item) => item.id === group.id);
+                const groupCode = `${natureCode}.${String(groupIndex + 1).padStart(2, '0')}`;
+                const showNatureHeader = index === 0 || groups[index - 1]?.nature !== group.nature;
                 const protectedGroup = group.is_system || usageCount > 0;
                 const protectionReason = group.is_system
                   ? 'Grupo essencial: não pode ser desativado nem excluído.'
@@ -313,11 +363,14 @@ export function DreGroupsManagerDialog({
                     : undefined;
 
                 return (
-                  <div
-                    key={group.id}
-                    className="rounded-xl border bg-card p-3 shadow-sm"
-                    data-testid={`dre-group-${group.id}`}
-                  >
+                  <div key={group.id} data-testid={`dre-group-${group.id}`}>
+                    {showNatureHeader && (
+                      <div className="flex items-center gap-3 bg-slate-900 px-4 py-3 text-white">
+                        <span className="text-xs font-semibold tracking-wide text-white/60">{natureCode}</span>
+                        <span className="text-[15px] font-bold">{nature?.label ?? group.nature}</span>
+                      </div>
+                    )}
+                    <div className="border-b bg-muted/20 px-3 py-3 sm:px-4">
                     {editingId === group.id ? (
                       <div className="space-y-3">
                         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.9fr)]">
@@ -361,7 +414,7 @@ export function DreGroupsManagerDialog({
                               className="h-7 w-7"
                               aria-label={`Mover ${group.name} para cima`}
                               onClick={() => moveGroup(group.id, -1)}
-                              disabled={index === 0 || isMutating}
+                              disabled={groupIndex === 0 || isMutating}
                             >
                               <ArrowUp className="h-4 w-4" />
                             </Button>
@@ -372,15 +425,16 @@ export function DreGroupsManagerDialog({
                               className="h-7 w-7"
                               aria-label={`Mover ${group.name} para baixo`}
                               onClick={() => moveGroup(group.id, 1)}
-                              disabled={index === groups.length - 1 || isMutating}
+                              disabled={groupIndex === siblings.length - 1 || isMutating}
                             >
                               <ArrowDown className="h-4 w-4" />
                             </Button>
                           </div>
 
-                          <div className="min-w-0 space-y-1">
+                          <div className="min-w-0 flex-1 space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="truncate font-medium">{group.name}</p>
+                              <span className="text-xs font-medium tracking-wide text-muted-foreground">{groupCode}</span>
+                              <p className="truncate text-sm font-semibold">{group.name}</p>
                               {!group.is_active ? <Badge variant="secondary">Inativo</Badge> : null}
                               {group.is_system ? (
                                 <Badge variant="outline" className="gap-1">
@@ -394,12 +448,6 @@ export function DreGroupsManagerDialog({
                                 </Badge>
                               ) : null}
                             </div>
-                            <p className="text-sm font-medium text-muted-foreground">
-                              {natureByValue.get(group.nature)?.label ?? group.nature}
-                            </p>
-                            <p className="text-xs leading-relaxed text-muted-foreground">
-                              {natureByValue.get(group.nature)?.description ?? 'Natureza sem descrição disponível.'}
-                            </p>
                             {protectionReason ? (
                               <p className="text-xs text-muted-foreground">{protectionReason}</p>
                             ) : null}
@@ -456,57 +504,25 @@ export function DreGroupsManagerDialog({
                         </div>
                       </div>
                     )}
+                    {assignedCategories.length > 0 && editingId !== group.id && (
+                      <div className="mt-3 divide-y divide-border/40 border-t border-border/50 pt-1">
+                        {assignedCategories.map((category, categoryIndex) => (
+                          <div key={category.id || `${group.id}-${categoryIndex}`} className="flex items-center gap-3 py-2 pl-10 text-xs text-muted-foreground">
+                            <span className="shrink-0 text-[10px] tracking-wide">
+                              {groupCode}.{String(categoryIndex + 1).padStart(3, '0')}
+                            </span>
+                            <span className="truncate text-foreground/80">{category.name || 'Categoria vinculada'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    </div>
                   </div>
                 );
               })}
             </div>
           )}
 
-          {!isLoading && !error ? (
-            <div className="border-t pt-4">
-              {showCreate ? (
-                <div className="space-y-3 rounded-xl border bg-muted/20 p-3">
-                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.9fr)]">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="new-dre-group-name">Nome</Label>
-                      <Input
-                        id="new-dre-group-name"
-                        value={newName}
-                        onChange={(event) => setNewName(event.target.value)}
-                        placeholder="Ex.: Despesas administrativas"
-                        maxLength={80}
-                        autoFocus
-                      />
-                    </div>
-                    <NatureField value={newNature} onChange={setNewNature} id="new-dre-group-nature" />
-                  </div>
-                  {formError ? <p className="text-sm text-destructive" role="alert">{formError}</p> : null}
-                  <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                    <Button type="button" variant="ghost" onClick={closeCreate} disabled={isMutating}>
-                      Cancelar
-                    </Button>
-                    <Button type="button" onClick={handleCreate} disabled={isMutating}>
-                      {createGroup.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                      Criar grupo
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  onClick={() => {
-                    setFormError(null);
-                    setShowCreate(true);
-                  }}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Novo grupo
-                </Button>
-              )}
-            </div>
-          ) : null}
         </div>
       </ResponsiveModal>
 
@@ -547,14 +563,15 @@ interface NatureFieldProps {
   value: DreGroupNature | '';
   onChange: (nature: DreGroupNature) => void;
   disabled?: boolean;
+  compact?: boolean;
 }
 
-function NatureField({ id, value, onChange, disabled = false }: NatureFieldProps) {
+function NatureField({ id, value, onChange, disabled = false, compact = false }: NatureFieldProps) {
   const selectedNature = value ? natureByValue.get(value) : null;
 
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id}>Natureza na DRE</Label>
+      <Label htmlFor={id}>{compact ? 'Natureza' : 'Natureza na DRE'}</Label>
       <Select
         value={value || undefined}
         onValueChange={(nextValue) => onChange(nextValue as DreGroupNature)}
@@ -571,11 +588,13 @@ function NatureField({ id, value, onChange, disabled = false }: NatureFieldProps
           ))}
         </SelectContent>
       </Select>
-      <p className="min-h-8 text-xs leading-relaxed text-muted-foreground">
-        {disabled
-          ? 'A natureza de um grupo essencial é protegida para preservar os cálculos da DRE.'
-          : selectedNature?.description ?? 'A natureza define onde o grupo entra e como afeta os totais.'}
-      </p>
+      {!compact ? (
+        <p className="min-h-8 text-xs leading-relaxed text-muted-foreground">
+          {disabled
+            ? 'A natureza de um grupo essencial é protegida para preservar os cálculos da DRE.'
+            : selectedNature?.description ?? 'A natureza define onde o grupo entra e como afeta os totais.'}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -30,8 +30,10 @@ import type { FinancialTransaction } from '@/types/database';
 import type { DateRange } from '@/components/ui/DateRangeFilter';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { generateDreHtml, type DreReportData } from '@/utils/dreHtmlGenerator';
+import type { DreReportData } from '@/utils/dreHtmlGenerator';
 import { generateDreExcel } from '@/utils/dreExcelGenerator';
+import { generateDrePdf, type DrePdfData, type DrePdfRow } from '@/utils/drePdfGenerator';
+import dominexLogoUrl from '@/assets/logo-white-horizontal.png';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { useCostCenters } from '@/hooks/useCostCenters';
@@ -56,6 +58,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { formatDrePeriodLabel } from '@/lib/dre-period-label';
 import { useDreSubscriptionProjections } from '@/hooks/useDreSubscriptionProjections';
 import {
   buildDreSubscriptionProjections,
@@ -74,7 +77,12 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { useDreGroups } from '@/hooks/useDreGroups';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { DreGroupsManagerDialog } from './DreGroupsManagerDialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DreComparisonDialog } from './DreComparisonDialog';
+import {
+  DreHierarchyTable,
+  type DreHierarchyLine,
+  type DreHierarchySection,
+} from './DreHierarchyTable';
 import {
   resolveCategoryDreNature,
   type ConfigurableDreNature,
@@ -83,7 +91,6 @@ import {
   calculateDreVariation,
   formatDreComparisonPeriod,
   getDreComparisonRange,
-  type DreComparisonMode,
 } from '@/lib/dre-period-comparison';
 
 interface FinanceDREProps {
@@ -163,7 +170,8 @@ export function FinanceDRE({
   // contas ainda não liquidadas. Caixa continua disponível como lente de
   // leitura no seletor e a escolha não vira configuração permanente.
   const [regime, setRegime] = useState<DreRegime>('competencia');
-  const [comparisonMode, setComparisonMode] = useState<DreComparisonMode>('previous_period');
+  const [comparisonDialogOpen, setComparisonDialogOpen] = useState(false);
+  const [comparisonSelections, setComparisonSelections] = useState<DateRange[]>([]);
   const [isDreSettingsOpen, setIsDreSettingsOpen] = useState(false);
   const [includeProjections, setIncludeProjections] = useState(false);
   const [showPatrimony, setShowPatrimony] = useState(false);
@@ -367,14 +375,16 @@ export function FinanceDRE({
     [range, selectTransactionsForRange],
   );
 
-  const comparisonRange = useMemo(
-    () => getDreComparisonRange(range, comparisonMode),
-    [range, comparisonMode],
+  const automaticComparisonRange = useMemo(
+    () => getDreComparisonRange(range, 'previous_period'),
+    [range],
   );
+  const comparisonRanges = comparisonSelections.slice(0, 3);
+  const comparisonRange = comparisonRanges[0];
 
-  const comparisonTransactionsInPeriod = useMemo(
-    () => comparisonRange ? selectTransactionsForRange(comparisonRange) : [],
-    [comparisonRange, selectTransactionsForRange],
+  const comparisonTransactionsByPeriod = useMemo(
+    () => comparisonRanges.map((comparisonPeriod) => selectTransactionsForRange(comparisonPeriod)),
+    [comparisonRanges, selectTransactionsForRange],
   );
 
   const transactionsWithProjectionsInPeriod = useMemo(
@@ -399,9 +409,9 @@ export function FinanceDRE({
     () => filterByCostCenters(transactionsWithProjectionsInPeriod, costCenterFilter),
     [transactionsWithProjectionsInPeriod, costCenterFilter]
   );
-  const comparisonTransactions = useMemo(
-    () => filterByCostCenters(comparisonTransactionsInPeriod, costCenterFilter),
-    [comparisonTransactionsInPeriod, costCenterFilter],
+  const comparisonTransactionsBySelection = useMemo(
+    () => comparisonTransactionsByPeriod.map((periodTransactions) => filterByCostCenters(periodTransactions, costCenterFilter)),
+    [comparisonTransactionsByPeriod, costCenterFilter],
   );
   // O resumo do previsto respeita o mesmo filtro de centro de custo da DRE;
   // assim o valor explicativo nunca diverge do que foi efetivamente somado.
@@ -574,7 +584,7 @@ export function FinanceDRE({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transactions, categoryDreGroupMap, categoryDreConfigMap, categoryMetaMap, fin.dre.fallbackCategory]);
 
-  const comparisonDre = useMemo(() => {
+  const comparisonDres = useMemo(() => comparisonTransactionsBySelection.map((comparisonTransactions) => {
     let receitaBruta = 0;
     let impostos = 0;
     let cmv = 0;
@@ -623,7 +633,56 @@ export function FinanceDRE({
       naoOperacional,
       resultadoFinal: resultadoLiquido - naoOperacional,
     };
-  }, [comparisonTransactions, categoryDreConfigMap, categoryDreGroupMap]);
+  }), [comparisonTransactionsBySelection, categoryDreConfigMap, categoryDreGroupMap]);
+
+  const emptyComparisonDre = {
+    receitaBruta: 0,
+    impostos: 0,
+    receitaLiquida: 0,
+    cmv: 0,
+    lucroBruto: 0,
+    opex: 0,
+    resultadoLiquido: 0,
+    naoOperacional: 0,
+    resultadoFinal: 0,
+  };
+  const comparisonDre = comparisonDres[0] ?? emptyComparisonDre;
+
+  const comparisonCategoryValueMaps = useMemo(() => comparisonTransactionsBySelection.map((comparisonTransactions) => {
+    const values = new Map<string, number>();
+    comparisonTransactions.forEach((transaction) => {
+      const name = transaction.category || fin.dre.fallbackCategory;
+      const amount = Number(transaction.amount);
+      let nature: Exclude<ConfigurableDreNature, 'excluded'>;
+      if (transaction.transaction_type === 'entrada') {
+        nature = 'revenue';
+      } else {
+        const configured = categoryDreConfigMap.get(transaction.category || '')?.nature;
+        const legacy = classifyDreCategory(
+          transaction.category,
+          categoryDreGroupMap.get(transaction.category || ''),
+        );
+        if (configured === 'excluded' || legacy === 'outros') return;
+        nature = configured && configured !== 'excluded'
+          ? configured
+          : legacy === 'impostos'
+            ? 'deduction'
+            : legacy === 'cmv'
+              ? 'cost'
+              : legacy === 'nao_operacional'
+                ? 'non_operating'
+                : 'operating_expense';
+      }
+      const key = `${nature}:${name}`;
+      const signedAmount = nature === 'revenue' ? amount : -amount;
+      values.set(key, (values.get(key) ?? 0) + signedAmount);
+    });
+    return values;
+  }), [comparisonTransactionsBySelection, categoryDreConfigMap, categoryDreGroupMap, fin.dre.fallbackCategory]);
+  const comparisonCategoryValues = useMemo(
+    () => comparisonCategoryValueMaps[0] ?? new Map<string, number>(),
+    [comparisonCategoryValueMaps],
+  );
 
   type DisplayDreGroup = {
     id: string;
@@ -643,7 +702,7 @@ export function FinanceDRE({
       non_operating: naoOperacionalCategories,
     };
     const fallbackName: Record<DisplayDreGroup['nature'], string> = {
-      revenue: fin.dre.table.grossRevenue,
+      revenue: 'Outras receitas não classificadas',
       deduction: fin.dre.table.taxes,
       cost: fin.dre.table.cogs,
       operating_expense: fin.dre.table.opex,
@@ -693,7 +752,13 @@ export function FinanceDRE({
         return {
           id: group.id,
           code: groupCode,
-          name: group.name,
+          name: ({
+            'revenue:receita bruta': 'Receitas de serviços',
+            'deduction:deduções da receita': 'Impostos sobre vendas',
+            'cost:custos': 'Custos diretos',
+            'operating_expense:despesas operacionais': 'Despesas com pessoal',
+            'non_operating:resultado não operacional': 'Despesas não operacionais',
+          } as Record<string, string>)[`${nature}:${group.name.trim().toLocaleLowerCase('pt-BR')}`] ?? group.name,
           nature,
           total: categories.reduce((sum, category) => sum + category.value, 0),
           categories,
@@ -738,15 +803,16 @@ export function FinanceDRE({
     dreGroups,
     categoryDreConfigMap,
     financialCategories,
-    fin.dre.table.grossRevenue,
     fin.dre.table.taxes,
     fin.dre.table.cogs,
     fin.dre.table.opex,
     fin.dre.table.nonOperating,
   ]);
 
-  const groupsForNature = (nature: DisplayDreGroup['nature']) =>
-    displayDreGroups.filter((group) => group.nature === nature);
+  const groupsForNature = useCallback(
+    (nature: DisplayDreGroup['nature']) => displayDreGroups.filter((group) => group.nature === nature),
+    [displayDreGroups],
+  );
   const categoryDreCodeMap = new Map(
     displayDreGroups.flatMap((group) => (
       group.categories.map((category) => [category.name, category.code ?? ''] as const)
@@ -816,8 +882,12 @@ export function FinanceDRE({
   };
 
   /** Rótulo de uma linha da quebra (`null` = balde sem centro). */
-  const costCenterLabel = (id: string | null) =>
-    id === null ? fin.costCenters.dreNoCenter : costCenterMeta.get(id)?.name ?? fin.costCenters.dreNoCenter;
+  const costCenterLabel = useCallback(
+    (id: string | null) => id === null
+      ? fin.costCenters.dreNoCenter
+      : costCenterMeta.get(id)?.name ?? fin.costCenters.dreNoCenter,
+    [costCenterMeta, fin.costCenters.dreNoCenter],
+  );
   // Cinza literal (não token CSS): a mesma cor vai pro HTML do export, onde
   // `hsl(var(--muted-foreground))` não resolveria.
   const costCenterColor = (id: string | null) =>
@@ -838,13 +908,11 @@ export function FinanceDRE({
   }, [costCenters, transactionsWithProjectionsInPeriod, costCenterMeta]);
 
   const periodLabel = useMemo(() => {
-    if (range?.from && range?.to) return `${format(range.from, 'dd/MM/yyyy')} a ${format(range.to, 'dd/MM/yyyy')}`;
-    if (range?.from) return `A partir de ${format(range.from, 'dd/MM/yyyy')}`;
-    if (range?.to) return `Até ${format(range.to, 'dd/MM/yyyy')}`;
-    return 'Todo o histórico';
-  }, [range?.from, range?.to]);
+    return formatDrePeriodLabel(range);
+  }, [range]);
 
-  const comparisonPeriodLabel = formatDreComparisonPeriod(comparisonRange);
+  const comparisonPeriodLabels = comparisonRanges.map(formatDreComparisonPeriod);
+  const comparisonPeriodLabel = comparisonPeriodLabels[0] ?? '';
   const comparisonRows = useMemo(() => [
     { code: '01', label: fin.dre.table.grossRevenue, current: dre.receitaBruta, previous: comparisonDre.receitaBruta },
     { code: '02', label: fin.dre.table.taxes, current: -dre.impostos, previous: -comparisonDre.impostos },
@@ -858,6 +926,205 @@ export function FinanceDRE({
   ].map((row) => ({ ...row, ...calculateDreVariation(row.current, row.previous) })), [
     comparisonDre,
     dre,
+    fin.dre.table.cogs,
+    fin.dre.table.finalResult,
+    fin.dre.table.grossProfit,
+    fin.dre.table.grossRevenue,
+    fin.dre.table.netResult,
+    fin.dre.table.netRevenue,
+    fin.dre.table.nonOperating,
+    fin.dre.table.opex,
+    fin.dre.table.taxes,
+  ]);
+
+  const tableSections = useMemo<DreHierarchySection[]>(() => {
+    const revenueBase = Math.abs(dre.receitaBruta);
+    const comparisonRevenueBases = comparisonDres.map((item) => Math.abs(item.receitaBruta));
+    const impact = (value: number, signed = false) => revenueBase === 0
+      ? 0
+      : ((signed ? value : Math.abs(value)) / revenueBase) * 100;
+    const comparisonValues = (values: number[], signed = false) => values.map((value, index) => ({
+      value,
+      impactPercent: comparisonRevenueBases[index] === 0
+        ? 0
+        : ((signed ? value : Math.abs(value)) / comparisonRevenueBases[index]) * 100,
+    }));
+    const variation = (current: number, previous: number) => {
+      const result = calculateDreVariation(current, previous).percentage;
+      return result == null ? null : result * 100;
+    };
+    const resultLine = (
+      id: string,
+      code: string,
+      label: string,
+      current: number,
+      previous: number,
+      comparisons: number[],
+      isFinalResult = false,
+    ): DreHierarchyLine => ({
+      id,
+      code,
+      label,
+      current,
+      previous,
+      impactPercent: impact(current, true),
+      variationPercent: variation(current, previous),
+      comparisonValues: comparisonValues(comparisons, true),
+      isFinalResult,
+    });
+
+    const definitions: Array<{
+      nature: DisplayDreGroup['nature'];
+      code: string;
+      label: string;
+      current: number;
+      previous: number;
+      comparisons: number[];
+    }> = [
+      { nature: 'revenue', code: '01', label: fin.dre.table.grossRevenue, current: dre.receitaBruta, previous: comparisonDre.receitaBruta, comparisons: comparisonDres.map((item) => item.receitaBruta) },
+      { nature: 'deduction', code: '02', label: fin.dre.table.taxes, current: -dre.impostos, previous: -comparisonDre.impostos, comparisons: comparisonDres.map((item) => -item.impostos) },
+      { nature: 'cost', code: '04', label: fin.dre.table.cogs, current: -dre.cmv, previous: -comparisonDre.cmv, comparisons: comparisonDres.map((item) => -item.cmv) },
+      { nature: 'operating_expense', code: '06', label: fin.dre.table.opex, current: -dre.opex, previous: -comparisonDre.opex, comparisons: comparisonDres.map((item) => -item.opex) },
+      { nature: 'non_operating', code: '08', label: fin.dre.table.nonOperating, current: -dre.naoOperacional, previous: -comparisonDre.naoOperacional, comparisons: comparisonDres.map((item) => -item.naoOperacional) },
+    ];
+
+    return definitions.map((definition) => {
+      const groups = groupsForNature(definition.nature).map((group) => {
+        const buckets = new Map<string, { own?: CategoryBreakdown; children: CategoryBreakdown[] }>();
+        group.categories.forEach((category) => {
+          const parentName = categoryParentNameMap.get(category.name);
+          const parentBelongsToGroup = parentName
+            ? categoryDreConfigMap.get(parentName)?.groupId === group.id
+            : false;
+          const rootName = parentBelongsToGroup && parentName ? parentName : category.name;
+          const bucket = buckets.get(rootName) ?? { children: [] };
+          if (category.name === rootName) bucket.own = category;
+          else bucket.children.push(category);
+          buckets.set(rootName, bucket);
+        });
+
+        const makeCategoryLine = (
+          category: CategoryBreakdown,
+          code: string,
+          label = category.name,
+        ): DreHierarchyLine => {
+          const current = definition.nature === 'revenue' ? category.value : -category.value;
+          const previous = comparisonCategoryValues.get(`${definition.nature}:${category.name}`) ?? 0;
+          const comparisons = comparisonCategoryValueMaps.map((values) => values.get(`${definition.nature}:${category.name}`) ?? 0);
+          const breakdown = buildCostCenterBreakdown(categoryTxnsMap.get(category.key) ?? [], costCenterOrderIds);
+          const costCenters = breakdown.rows.map((center) => ({
+            id: `${category.key}:${center.id ?? NO_COST_CENTER}`,
+            name: costCenterLabel(center.id),
+            current: definition.nature === 'revenue' ? center.revenue : -center.expense,
+          }));
+          return {
+            id: category.key,
+            code,
+            label,
+            current,
+            previous,
+            impactPercent: impact(current),
+            variationPercent: variation(current, previous),
+            comparisonValues: comparisonValues(comparisons),
+            color: category.color,
+            icon: category.icon,
+            costCenters,
+          };
+        };
+
+        const lines = [...buckets.entries()].map(([rootName, bucket], rootIndex): DreHierarchyLine => {
+          const rootCode = `${group.code}.${String(rootIndex + 1).padStart(3, '0')}`;
+          if (bucket.children.length === 0 && bucket.own) return makeCategoryLine(bucket.own, rootCode);
+
+          const children = bucket.children.map((category, childIndex) => (
+            makeCategoryLine(category, `${rootCode}.${String(childIndex + 1).padStart(3, '0')}`)
+          ));
+          const ownLine = bucket.own && Math.abs(bucket.own.value) > 0
+            ? makeCategoryLine(
+              bucket.own,
+              `${rootCode}.000`,
+              `Lançado diretamente em ${rootName}`,
+            )
+            : undefined;
+          const detailLines = ownLine ? [ownLine, ...children] : children;
+          const current = detailLines.reduce((total, line) => total + line.current, 0);
+          const previous = detailLines.reduce((total, line) => total + line.previous, 0);
+          const comparisons = comparisonDres.map((_, index) => detailLines.reduce(
+            (total, line) => total + (line.comparisonValues?.[index]?.value ?? 0),
+            0,
+          ));
+          const meta = categoryMetaMap.get(rootName)
+            ?? { color: FALLBACK_CATEGORY_COLOR, icon: getCategoryIcon(undefined) };
+          return {
+            id: `category-parent:${group.id}:${rootName}`,
+            code: rootCode,
+            label: rootName,
+            current,
+            previous,
+            impactPercent: impact(current),
+            variationPercent: variation(current, previous),
+            comparisonValues: comparisonValues(comparisons),
+            color: meta.color,
+            icon: meta.icon,
+            children: detailLines,
+          };
+        });
+        const current = lines.reduce((total, line) => total + line.current, 0);
+        const previous = lines.reduce((total, line) => total + line.previous, 0);
+        const comparisons = comparisonDres.map((_, index) => lines.reduce(
+          (total, line) => total + (line.comparisonValues?.[index]?.value ?? 0),
+          0,
+        ));
+        return {
+          id: group.id,
+          code: group.code,
+          label: group.name,
+          current,
+          previous,
+          impactPercent: impact(current),
+          variationPercent: variation(current, previous),
+          comparisonValues: comparisonValues(comparisons),
+          lines,
+        };
+      });
+
+      const resultsAfter = definition.code === '02'
+        ? [resultLine('result:net-revenue', '03', fin.dre.table.netRevenue, dre.receitaLiquida, comparisonDre.receitaLiquida, comparisonDres.map((item) => item.receitaLiquida))]
+        : definition.code === '04'
+          ? [resultLine('result:gross-profit', '05', fin.dre.table.grossProfit, dre.lucroBruto, comparisonDre.lucroBruto, comparisonDres.map((item) => item.lucroBruto))]
+          : definition.code === '06'
+            ? [resultLine('result:net-result', '07', fin.dre.table.netResult, dre.resultadoLiquido, comparisonDre.resultadoLiquido, comparisonDres.map((item) => item.resultadoLiquido), dre.naoOperacional === 0)]
+            : definition.code === '08' && dre.naoOperacional !== 0
+              ? [resultLine('result:final-result', '09', fin.dre.table.finalResult, dre.resultadoFinal, comparisonDre.resultadoFinal, comparisonDres.map((item) => item.resultadoFinal), true)]
+              : undefined;
+
+      return {
+        id: definition.nature,
+        code: definition.code,
+        label: definition.label,
+        operation: definition.nature === 'revenue' ? '+' : '-',
+        current: definition.current,
+        previous: definition.previous,
+        impactPercent: impact(definition.current),
+        variationPercent: variation(definition.current, definition.previous),
+        comparisonValues: comparisonValues(definition.comparisons),
+        groups,
+        resultsAfter,
+      };
+    });
+  }, [
+    dre,
+    comparisonDre,
+    comparisonDres,
+    comparisonCategoryValues,
+    comparisonCategoryValueMaps,
+    groupsForNature,
+    categoryParentNameMap,
+    categoryDreConfigMap,
+    categoryMetaMap,
+    categoryTxnsMap,
+    costCenterOrderIds,
+    costCenterLabel,
     fin.dre.table.cogs,
     fin.dre.table.finalResult,
     fin.dre.table.grossProfit,
@@ -897,14 +1164,33 @@ export function FinanceDRE({
     naoOperacionalCategories,
     resultadoFinal: dre.resultadoFinal,
     margem: dre.margem,
-    groups: displayDreGroups.map((group) => ({
+    groups: tableSections.flatMap((section) => section.groups.map((group) => ({
       id: group.id,
       code: group.code,
-      name: group.name,
-      nature: group.nature,
-      total: group.total,
-      categories: group.categories.map(({ code, name, value, color }) => ({ code, name, value, color })),
-    })),
+      name: group.label,
+      nature: section.id as Exclude<ConfigurableDreNature, 'excluded'>,
+      total: Math.abs(group.current),
+      previous: group.previous,
+      categories: group.lines.map((line) => ({
+        code: line.code,
+        name: line.label,
+        value: Math.abs(line.current),
+        previous: line.previous,
+        color: line.color ?? '#6b7280',
+        children: line.children?.map((child) => ({
+          code: child.code,
+          name: child.label,
+          value: Math.abs(child.current),
+          previous: child.previous,
+          color: child.color ?? line.color ?? '#6b7280',
+        })),
+        costCenters: line.costCenters?.map((center) => ({
+          name: center.name,
+          value: center.current,
+          previous: center.previous,
+        })),
+      })),
+    }))),
     costCenters: costCenterBreakdown.rows.map((row) => ({
       name: costCenterLabel(row.id),
       color: costCenterColor(row.id),
@@ -928,7 +1214,46 @@ export function FinanceDRE({
     try {
       const data = buildExportData();
       if (exportFormat === 'excel') await generateDreExcel(data);
-      else generateDreHtml(data);
+      else {
+        const values = (line: DreHierarchyLine) => [
+          { value: line.current, impactPercent: line.impactPercent },
+          ...(line.comparisonValues ?? []),
+        ];
+        const rows: DrePdfRow[] = tableSections.flatMap((section) => [
+          { code: section.code, label: section.label, level: 'section' as const, values: values(section) },
+          ...section.groups.flatMap((group) => [
+            { code: group.code, label: group.label, level: 'group' as const, values: values(group) },
+            ...group.lines.flatMap((line) => [
+              { code: line.code, label: line.label, level: 'category' as const, values: values(line), color: line.color, icon: line.icon },
+              ...(line.children ?? []).map((child) => ({
+                code: child.code,
+                label: child.label,
+                level: 'subcategory' as const,
+                values: values(child),
+                color: child.color,
+                icon: child.icon,
+              })),
+            ]),
+          ]),
+          ...(section.resultsAfter ?? []).map((result) => ({
+            code: result.code,
+            label: result.label,
+            level: 'result' as const,
+            values: values(result),
+            isFinalResult: result.isFinalResult,
+          })),
+        ]);
+        const pdfData: DrePdfData = {
+          company: data.company,
+          brandName: 'Dominex',
+          brandLogoUrl: dominexLogoUrl,
+          periodLabels: [periodLabel, ...comparisonPeriodLabels],
+          regime,
+          currency,
+          rows,
+        };
+        await generateDrePdf(pdfData);
+      }
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -1042,7 +1367,7 @@ export function FinanceDRE({
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex min-w-0 items-baseline gap-1.5">
-                {c.code && <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{c.code}</span>}
+                {c.code && <span className="shrink-0 text-[10px] text-muted-foreground">{c.code}</span>}
                 <span className="truncate text-xs text-foreground/70">{label ?? c.name}</span>
               </span>
               {caption && (
@@ -1140,7 +1465,7 @@ export function FinanceDRE({
             <span className="min-w-0 flex-1">
               <span className="flex min-w-0 items-baseline gap-1.5">
                 {categoryDreCodeMap.get(node.name) && (
-                  <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{categoryDreCodeMap.get(node.name)}</span>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">{categoryDreCodeMap.get(node.name)}</span>
                 )}
                 <span className="truncate text-xs font-medium text-foreground/80">{node.name}</span>
               </span>
@@ -1286,7 +1611,7 @@ export function FinanceDRE({
   ) => (
     <div>
       <div className="flex items-center gap-2 border-t border-border/30 bg-muted/40 px-3 py-2 sm:px-4">
-        <span className="font-mono text-[10px] font-semibold text-muted-foreground">{code}</span>
+        <span className="text-[10px] font-semibold text-muted-foreground">{code}</span>
         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
       </div>
       {groupsForNature(nature).map((group) => (
@@ -1313,7 +1638,8 @@ export function FinanceDRE({
       {costCenterFilterOptions.length > 0 && (
         <div className="flex flex-wrap gap-2">
           <FilterCheckboxDropdown
-            label={fin.costCenters.filterLabel}
+            label="Filtros"
+            contentLabel={fin.costCenters.filterLabel}
             selected={costCenterFilter}
             onChange={setCostCenterFilter}
             emptyLabel={fin.costCenters.filterEmptyLabel}
@@ -1326,7 +1652,7 @@ export function FinanceDRE({
       )}
 
       {/* DRE Table */}
-      <Card className="border-0 shadow-none overflow-hidden bg-muted/15">
+      <Card className="border-0 shadow-none overflow-visible bg-muted/15">
         <CardHeader className="bg-foreground pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2 text-background">
@@ -1396,23 +1722,6 @@ export function FinanceDRE({
                   </Tooltip>
                 </div>
               </TooltipProvider>
-              <Select
-                value={comparisonMode}
-                onValueChange={(value) => setComparisonMode(value as DreComparisonMode)}
-                disabled={!range?.from || !range.to}
-              >
-                <SelectTrigger
-                  aria-label={fin.dre.comparison.ariaLabel}
-                  className="h-8 w-full border-background/20 bg-background text-xs text-foreground sm:w-[184px]"
-                >
-                  <SelectValue placeholder={fin.dre.comparison.placeholder} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="previous_period">{fin.dre.comparison.previousPeriod}</SelectItem>
-                  <SelectItem value="previous_year">{fin.dre.comparison.previousYear}</SelectItem>
-                  <SelectItem value="none">{fin.dre.comparison.none}</SelectItem>
-                </SelectContent>
-              </Select>
               {canIncludeSubscriptionProjections && regime === 'competencia' && (
                 <div className="flex items-center justify-center gap-2 rounded-lg bg-background/10 px-2.5 py-1.5">
                   <Switch
@@ -1469,148 +1778,24 @@ export function FinanceDRE({
             </p>
           )}
         </CardHeader>
-        {comparisonRange && comparisonMode !== 'none' && (
-          <div className="border-b border-border bg-background px-3 py-3 sm:px-4">
-            <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
-              <div>
-                <p className="text-xs font-semibold text-foreground">{fin.dre.comparison.title}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  {periodLabel} x {comparisonPeriodLabel}
-                </p>
-              </div>
-              <p className="text-[10px] text-muted-foreground">{fin.dre.comparison.variationHint}</p>
-            </div>
-            <div className="overflow-x-auto rounded-md border border-border/70">
-              <div className="min-w-[660px]">
-                <div className="grid grid-cols-[minmax(220px,1fr)_140px_140px_120px] bg-muted/60 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  <span>{fin.dre.comparison.indicator}</span>
-                  <span className="text-right">{fin.dre.comparison.current}</span>
-                  <span className="text-right">{fin.dre.comparison.reference}</span>
-                  <span className="text-right">{fin.dre.comparison.variation}</span>
-                </div>
-                {comparisonRows.map((row) => (
-                  <div
-                    key={row.code}
-                    className={cn(
-                      'grid grid-cols-[minmax(220px,1fr)_140px_140px_120px] items-center border-t border-border/50 px-3 py-2 text-xs',
-                      ['03', '05', '07', '09'].includes(row.code) && 'bg-muted/25 font-semibold',
-                    )}
-                  >
-                    <span className="flex items-baseline gap-2">
-                      <span className="font-mono text-[10px] text-muted-foreground">{row.code}</span>
-                      {row.label}
-                    </span>
-                    <span className="text-right tabular-nums">{fmt(row.current)}</span>
-                    <span className="text-right tabular-nums text-muted-foreground">{fmt(row.previous)}</span>
-                    <span className={cn(
-                      'text-right tabular-nums',
-                      row.absolute === 0 ? 'text-muted-foreground' : 'text-foreground',
-                    )}>
-                      {row.percentage === null
-                        ? fin.dre.comparison.zeroBase
-                        : `${row.percentage > 0 ? '+' : ''}${(row.percentage * 100).toFixed(1)}%`}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
         <CardContent className="p-0">
-          {renderConfiguredNature('revenue', '01', fin.dre.table.grossRevenue, true)}
-
-          {/* Impostos e Deduções — renderizada SEMPRE, mesmo zerada: sumir a
-              seção fazia o usuário achar que a DRE do sistema não tem essa
-              linha. Pedido do CEO. */}
-          {renderConfiguredNature('deduction', '02', fin.dre.table.taxes)}
-
-          {/* Receita Líquida */}
-          <div className="flex items-center justify-between bg-neutral-900 px-3 py-3 sm:px-4 sm:py-4">
-            <span className="flex items-baseline gap-2 text-sm font-semibold text-white">
-              <span className="font-mono text-[10px] text-white/80">03</span>
-              {fin.dre.table.netRevenue}
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className="text-base font-bold text-white">{fmt(dre.receitaLiquida)}</span>
-              {pctOfRevenue(dre.receitaLiquida) && (
-                <span className="w-12 text-right text-xs text-white/80 tabular-nums">{pctOfRevenue(dre.receitaLiquida)}</span>
-              )}
-            </div>
-          </div>
-
-          {/* CSP - Custo do Serviço Prestado — idem: sempre na tela. */}
-          {renderConfiguredNature('cost', '04', fin.dre.table.cogs)}
-
-          {/* Lucro Bruto */}
-          <div className={cn('px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between', getGrossProfitBg())}>
-            <div className="flex flex-col">
-              <span className="flex items-baseline gap-2 text-sm font-semibold text-white">
-                <span className="font-mono text-[10px] text-white/80">05</span>
-                {fin.dre.table.grossProfit}
-              </span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-base font-bold text-white">{fmt(dre.lucroBruto)}</span>
-              {pctOfRevenue(dre.lucroBruto) && (
-                <span className="w-12 text-right text-xs text-white/80 tabular-nums">{pctOfRevenue(dre.lucroBruto)}</span>
-              )}
-            </div>
-          </div>
-
-          {/* OPEX */}
-          {renderConfiguredNature('operating_expense', '06', fin.dre.table.opex)}
-
-          {/* Resultado */}
-          <div className={cn('px-3 sm:px-4 py-4 sm:py-5 flex items-center justify-between', getResultBg())}>
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <ResultIcon className="h-4 w-4 sm:h-5 sm:w-5 text-white flex-shrink-0" />
-              <div className="flex flex-col min-w-0">
-                <span className="flex items-baseline gap-2 text-sm sm:text-base font-bold text-white truncate">
-                  <span className="font-mono text-[10px] text-white/80">07</span>
-                  {fin.dre.table.netResult}
-                </span>
-                <span className="text-xs text-white/80">
-                  {dre.resultadoLiquido > 0 ? fin.dre.table.surplus : dre.resultadoLiquido < 0 ? fin.dre.table.deficit : fin.dre.table.balanced}
-                </span>
-              </div>
-            </div>
-            <div className="flex flex-shrink-0 items-baseline gap-2 ml-2">
-              <span className="text-lg sm:text-xl font-bold text-white">{fmt(dre.resultadoLiquido)}</span>
-              {pctOfRevenue(dre.resultadoLiquido) && (
-                <span className="w-12 text-right text-xs text-white/80 tabular-nums">{pctOfRevenue(dre.resultadoLiquido)}</span>
-              )}
-            </div>
-          </div>
-
-          {/* Despesas não operacionais — ABAIXO do resultado líquido, de
-              propósito. Distribuição de lucro e investimento não mudam o
-              resultado da OPERAÇÃO, mas o dono precisa ver (desenho do BPO
-              financeiro, 18/10/2026). Aporte de sócio NÃO aparece aqui: ele é
-              `dre_group = 'outros'` e fica fora do DRE inteiro. */}
-          {renderConfiguredNature('non_operating', '08', fin.dre.table.nonOperating)}
-
-          {/* Resultado final só aparece quando há não operacional. Sem isso
-              ele seria idêntico ao resultado líquido e viraria ruído. */}
-          {dre.naoOperacional !== 0 && (
-            <div className={cn(
-              'px-3 sm:px-4 py-4 sm:py-5 flex items-center justify-between',
-              dre.resultadoFinal > 0 ? 'bg-success' : dre.resultadoFinal < 0 ? 'bg-destructive' : 'bg-muted-foreground',
-            )}>
-              <div className="flex flex-col min-w-0">
-                <span className="flex items-baseline gap-2 text-sm sm:text-base font-bold text-white truncate">
-                  <span className="font-mono text-[10px] text-white/80">09</span>
-                  {fin.dre.table.finalResult}
-                </span>
-                <span className="text-xs text-white/80">{fin.dre.table.nonOperatingHint}</span>
-              </div>
-              <div className="flex flex-shrink-0 items-baseline gap-2 ml-2">
-                <span className="text-lg sm:text-xl font-bold text-white">{fmt(dre.resultadoFinal)}</span>
-                {pctOfRevenue(dre.resultadoFinal) && (
-                  <span className="w-12 text-right text-xs text-white/80 tabular-nums">{pctOfRevenue(dre.resultadoFinal)}</span>
-                )}
-              </div>
-            </div>
-          )}
+          <DreHierarchyTable
+            sections={tableSections}
+            currentPeriodLabel={periodLabel}
+            comparisonPeriodLabels={comparisonPeriodLabels}
+            renderValue={fmt}
+            hasComparison={comparisonRanges.length > 0}
+            onComparePeriods={() => setComparisonDialogOpen(true)}
+            comparisonDisabled={!range?.from || !range.to}
+          />
+          <DreComparisonDialog
+            open={comparisonDialogOpen}
+            onOpenChange={setComparisonDialogOpen}
+            currentPeriodLabel={periodLabel}
+            value={comparisonRanges}
+            suggestedValue={automaticComparisonRange}
+            onApply={(next) => setComparisonSelections(next ?? [])}
+          />
 
           {/* Foto OPERACIONAL atual, separada da cadeia de contas do DRE. Ela
               não muda com período/regime: soma os saldos de hoje, recebíveis,
@@ -1795,7 +1980,7 @@ export function FinanceDRE({
                                   <span className="min-w-0">
                                     <span className="flex min-w-0 items-baseline gap-1.5">
                                       {categoryDreCodeMap.get(category.name) && (
-                                        <span className="shrink-0 font-mono text-[9px] text-muted-foreground">
+                                        <span className="shrink-0 text-[9px] text-muted-foreground">
                                           {categoryDreCodeMap.get(category.name)}
                                         </span>
                                       )}
@@ -1834,7 +2019,7 @@ export function FinanceDRE({
                                     <div className="flex items-center justify-between gap-2 py-1.5 pl-12 sm:pl-14 pr-3 sm:pr-4">
                                       <span className="flex min-w-0 items-baseline gap-1.5 text-[11px] text-muted-foreground">
                                         {categoryDreCodeMap.get(category.name) && (
-                                          <span className="shrink-0 font-mono text-[9px]">
+                                          <span className="shrink-0 text-[9px]">
                                             {categoryDreCodeMap.get(category.name)}
                                           </span>
                                         )}
@@ -1870,7 +2055,7 @@ export function FinanceDRE({
                                             <ChildIcon className="h-2.5 w-2.5 text-white" />
                                           </span>
                                           {categoryDreCodeMap.get(child.name) && (
-                                            <span className="shrink-0 font-mono text-[9px] text-muted-foreground">
+                                            <span className="shrink-0 text-[9px] text-muted-foreground">
                                               {categoryDreCodeMap.get(child.name)}
                                             </span>
                                           )}

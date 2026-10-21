@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, BriefcaseBusiness, FileBarChart, LayoutDashboard, Layers, LineChart, RefreshCw, Tags, Wallet } from 'lucide-react';
+import { BarChart3, BriefcaseBusiness, FileBarChart, LayoutDashboard, Layers, LineChart, RefreshCw, Settings2, Tags, Wallet } from 'lucide-react';
 import { FinanceOverview } from './FinanceOverview';
 import { FinanceReportsOverview } from './FinanceReportsOverview';
 import { FinanceDRE } from './FinanceDRE';
@@ -9,6 +9,7 @@ import { FinanceAnalysis } from './FinanceAnalysis';
 import { FinanceAccountingPackage } from './FinanceAccountingPackage';
 import { FinanceCategorias } from './FinanceCategorias';
 import { FinanceCostCenters } from './FinanceCostCenters';
+import { DreGroupsManagerDialog } from './DreGroupsManagerDialog';
 import { FinanceAssinaturas } from './FinanceAssinaturas';
 import { FinanceCobrancas } from './FinanceCobrancas';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
@@ -20,13 +21,14 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
+import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 
 type FinanceSection = 'relatorio' | 'cobrancas' | 'relatorios' | 'configuracoes';
 
 interface FinanceRelatorioProps {
   section: FinanceSection;
-  transactions: (FinancialTransaction & { customer?: any })[];
-  allTransactions: (FinancialTransaction & { customer?: any })[];
+  transactions: (FinancialTransaction & { customer?: unknown })[];
+  allTransactions: (FinancialTransaction & { customer?: unknown })[];
   isLoading?: boolean;
   dateRange: DateRange;
   summary: {
@@ -73,6 +75,8 @@ export function FinanceRelatorio({
   const { hasModule } = useCompanyModules();
   const hasChargeModule = hasModule('cobrancas');
   const { isActive: isPaymentAccountActive } = useTenantPaymentAccount();
+  const { categories } = useFinancialCategories();
+  const [dreGroupsOpen, setDreGroupsOpen] = useState(false);
 
   const tabs = useMemo<SectionTab[]>(() => {
     if (section === 'relatorios') {
@@ -94,6 +98,7 @@ export function FinanceRelatorio({
       return [
         { value: 'categorias', label: fin.report.tabs.categories, icon: Tags },
         { value: 'centro-de-custo', label: fin.report.tabs.costCenters, icon: Layers },
+        { value: 'grupos-dre', label: 'Grupos do DRE', icon: FileBarChart },
       ];
     }
     return [];
@@ -163,6 +168,26 @@ export function FinanceRelatorio({
         <FinanceCategorias />
       ) : safeTab === 'centro-de-custo' ? (
         <FinanceCostCenters />
+      ) : safeTab === 'grupos-dre' ? (
+        <div className="rounded-xl border bg-card p-5 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="max-w-2xl">
+              <h2 className="text-base font-semibold">Estrutura do DRE</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Organize os grupos, confira a prévia hierárquica e veja em qual grupo cada categoria será exibida.
+              </p>
+            </div>
+            <Button onClick={() => setDreGroupsOpen(true)} className="gap-2 sm:self-start">
+              <Settings2 className="h-4 w-4" />
+              Configurar grupos
+            </Button>
+          </div>
+          <DreGroupsManagerDialog
+            open={dreGroupsOpen}
+            onOpenChange={setDreGroupsOpen}
+            categories={categories}
+          />
+        </div>
       ) : safeTab === 'assinaturas' ? (
         <FinanceAssinaturas />
       ) : (

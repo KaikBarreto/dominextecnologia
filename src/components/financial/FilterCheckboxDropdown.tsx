@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils';
 
 interface FilterCheckboxDropdownProps {
   label: string;
+  /** Rótulo da seção dentro do popover quando o gatilho usa um nome geral. */
+  contentLabel?: string;
   options: FilterCheckboxOption[];
   selected: string[];
   onChange: (next: string[]) => void;
@@ -30,6 +32,7 @@ interface FilterCheckboxDropdownProps {
  */
 export function FilterCheckboxDropdown({
   label,
+  contentLabel,
   options,
   selected,
   onChange,
@@ -56,7 +59,7 @@ export function FilterCheckboxDropdown({
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 p-3">
         <FilterCheckboxGroup
-          label={label}
+          label={contentLabel ?? label}
           options={options}
           selected={selected}
           onChange={onChange}

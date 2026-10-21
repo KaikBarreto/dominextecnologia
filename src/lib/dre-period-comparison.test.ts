@@ -12,7 +12,7 @@ describe('getDreComparisonRange', () => {
       'previous_period',
     );
 
-    expect(formatDreComparisonPeriod(result)).toBe('01/09/2026 a 30/09/2026');
+    expect(formatDreComparisonPeriod(result)).toBe('Setembro de 2026');
   });
 
   it('preserva a quantidade inclusiva de dias em intervalos que não são meses fechados', () => {
@@ -30,7 +30,7 @@ describe('getDreComparisonRange', () => {
       'previous_year',
     );
 
-    expect(formatDreComparisonPeriod(result)).toBe('01/02/2025 a 28/02/2025');
+    expect(formatDreComparisonPeriod(result)).toBe('Fevereiro de 2025');
   });
 
   it('não cria comparação sem intervalo fechado', () => {

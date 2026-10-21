@@ -1,4 +1,5 @@
 import type { DreExportCategory, DreExportGroup, DreReportData } from '@/utils/dreHtmlGenerator';
+import dominexLogoUrl from '@/assets/logo-white-horizontal.png';
 
 type DreExcelCell = string | number;
 
@@ -7,6 +8,7 @@ export type DreExcelRowKind =
   | 'metadata'
   | 'spacer'
   | 'header'
+  | 'section'
   | 'detail'
   | 'subtotal'
   | 'calculated'
@@ -30,6 +32,29 @@ export interface DreExcelSheet {
 type ExcelWorkbook = import('exceljs').Workbook;
 type ExcelWorksheet = import('exceljs').Worksheet;
 
+type LoadedImage = { dataUrl: string; width?: number; height?: number };
+
+async function loadImageAsDataUrl(url: string): Promise<LoadedImage | undefined> {
+  if (url.startsWith('data:')) return { dataUrl: url };
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return undefined;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    const width = bytes.length >= 24
+      ? ((bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19]) >>> 0
+      : undefined;
+    const height = bytes.length >= 24
+      ? ((bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23]) >>> 0
+      : undefined;
+    return { dataUrl: `data:image/png;base64,${window.btoa(binary)}`, width, height };
+  } catch {
+    return undefined;
+  }
+}
+
 const COLORS = {
   navy: 'FF172033',
   slate: 'FF334155',
@@ -43,6 +68,7 @@ const COLORS = {
   white: 'FFFFFFFF',
   brand: 'FF00A77E',
   brandLight: 'FFD7F5EC',
+  blueLight: 'FFD9E5F7',
 } as const;
 
 const NATURE_CODES: Record<Exclude<DreExportGroup['nature'], 'excluded'>, string> = {
@@ -115,63 +141,103 @@ function createRowsBuilder(initialRows: DreExcelCell[][], initialKinds: DreExcel
   };
 }
 
+function comparisonMetrics(current: number, previous: number, fractionDigits: number) {
+  return [
+    roundMoney(current - previous, fractionDigits),
+    previous === 0 ? '' : (current - previous) / Math.abs(previous),
+  ] as const;
+}
+
 function addCategoryGroup(
   builder: SheetRowsBuilder,
-  groupName: string,
-  categories: DreExportCategory[],
-  total: number,
-  nature: DreExportGroup['nature'],
+  group: DreExportGroup,
   grossRevenue: number,
+  comparisonRevenue: number,
   fractionDigits: number,
-  configuredGroupCode?: string,
-  groupIndex = 0,
+  groupIndex: number,
 ): void {
-  const natureCode = NATURE_CODES[nature as Exclude<DreExportGroup['nature'], 'excluded'>];
-  const groupCode = childCode(natureCode, configuredGroupCode, String(groupIndex + 1).padStart(2, '0'));
+  const natureCode = NATURE_CODES[group.nature as Exclude<DreExportGroup['nature'], 'excluded'>];
+  const groupCode = childCode(natureCode, group.code, String(groupIndex + 1).padStart(2, '0'));
+  const current = roundMoney(signedGroupValue(group.total, group.nature), fractionDigits);
+  const previous = roundMoney(signedGroupValue(
+    group.previous ?? group.categories.reduce((sum, category) => sum + (category.previous ?? 0), 0),
+    group.nature,
+  ), fractionDigits);
+  builder.add([
+    `${groupCode} - ${group.name.toLocaleUpperCase('pt-BR')}`,
+    Math.abs(current),
+    percentOfRevenue(Math.abs(current), grossRevenue),
+    Math.abs(previous),
+    percentOfRevenue(Math.abs(previous), comparisonRevenue),
+    ...comparisonMetrics(current, previous, fractionDigits),
+  ], 'subtotal');
 
-  categories.forEach((category, categoryIndex) => {
-    const value = roundMoney(signedGroupValue(category.value, nature), fractionDigits);
+  const addCategory = (category: DreExportCategory, categoryIndex: number, outlineLevel = 1) => {
+    const value = roundMoney(signedGroupValue(category.value, group.nature), fractionDigits);
+    const previousValue = roundMoney(signedGroupValue(category.previous ?? 0, group.nature), fractionDigits);
     const categoryCode = childCode(groupCode, category.code, String(categoryIndex + 1).padStart(3, '0'));
-    builder.add([categoryCode, groupName, category.name, value, percentOfRevenue(Math.abs(value), grossRevenue)], 'detail', 1);
-  });
+    builder.add([
+      `${categoryCode} - ${category.name}`,
+      Math.abs(value),
+      percentOfRevenue(Math.abs(value), grossRevenue),
+      Math.abs(previousValue),
+      percentOfRevenue(Math.abs(previousValue), comparisonRevenue),
+      ...comparisonMetrics(value, previousValue, fractionDigits),
+    ], 'detail', outlineLevel);
 
-  const signedTotal = roundMoney(signedGroupValue(total, nature), fractionDigits);
-  builder.add([groupCode, groupName, 'Total do grupo', signedTotal, percentOfRevenue(Math.abs(signedTotal), grossRevenue)], 'subtotal');
+    category.children?.forEach((child, childIndex) => addCategory(child, childIndex, outlineLevel + 1));
+  };
+
+  group.categories.forEach((category, categoryIndex) => addCategory(category, categoryIndex));
 }
 
 function addCalculatedRow(
   builder: SheetRowsBuilder,
+  code: string,
   label: string,
-  value: number,
+  current: number,
+  previous: number,
   grossRevenue: number,
+  comparisonRevenue: number,
   fractionDigits: number,
-  kind: 'calculated' | 'result' = 'calculated',
-  code = '',
+  kind: 'calculated' | 'result',
 ): void {
-  const rounded = roundMoney(value, fractionDigits);
-  builder.add([code, label, 'Total calculado', rounded, percentOfRevenue(rounded, grossRevenue)], kind);
+  const rounded = roundMoney(current, fractionDigits);
+  const previousRounded = roundMoney(previous, fractionDigits);
+  builder.add([
+    `${code} - ${label.toLocaleUpperCase('pt-BR')}`,
+    rounded,
+    percentOfRevenue(rounded, grossRevenue),
+    previousRounded,
+    percentOfRevenue(previousRounded, comparisonRevenue),
+    ...comparisonMetrics(rounded, previousRounded, fractionDigits),
+  ], kind);
 }
 
-function addGroupsByNature(
+function addNature(
   builder: SheetRowsBuilder,
   groups: DreExportGroup[],
   nature: DreExportGroup['nature'],
+  label: string,
   grossRevenue: number,
+  comparisonRevenue: number,
   fractionDigits: number,
 ): void {
-  groups
-    .filter((group) => group.nature === nature)
-    .forEach((group, groupIndex) => addCategoryGroup(
-      builder,
-      group.name,
-      group.categories ?? [],
-      group.total,
-      group.nature,
-      grossRevenue,
-      fractionDigits,
-      group.code,
-      groupIndex,
-    ));
+  const filtered = groups.filter((group) => group.nature === nature);
+  const current = roundMoney(filtered.reduce((sum, group) => sum + signedGroupValue(group.total, nature), 0), fractionDigits);
+  const previous = roundMoney(filtered.reduce(
+    (sum, group) => sum + signedGroupValue(group.previous ?? 0, nature),
+    0,
+  ), fractionDigits);
+  builder.add([
+    `${NATURE_CODES[nature as Exclude<DreExportGroup['nature'], 'excluded'>]} - ${label.toLocaleUpperCase('pt-BR')}`,
+    Math.abs(current),
+    percentOfRevenue(Math.abs(current), grossRevenue),
+    Math.abs(previous),
+    percentOfRevenue(Math.abs(previous), comparisonRevenue),
+    ...comparisonMetrics(current, previous, fractionDigits),
+  ], 'section');
+  filtered.forEach((group, index) => addCategoryGroup(builder, group, grossRevenue, comparisonRevenue, fractionDigits, index));
 }
 
 function buildDreRows(data: DreReportData, fractionDigits: number): SheetRowsBuilder {
@@ -184,97 +250,34 @@ function buildDreRows(data: DreReportData, fractionDigits: number): SheetRowsBui
       ['CNPJ/CPF', data.company.document ?? 'Não informado', '', 'Regime', regime],
       ['Moeda', currency, '', 'Base percentual', 'Receita bruta'],
       [],
-      ['Código', 'Grupo', 'Categoria / indicador', 'Valor', '% da receita bruta'],
+      ['Demonstrativo', data.comparison?.currentPeriod ?? data.period, '', data.comparison?.comparisonPeriod ?? 'Comparação', '', 'Variação', ''],
+      ['', 'Valor', '% receita', 'Valor', '% receita', 'Valor', '%'],
     ],
-    ['title', 'metadata', 'metadata', 'metadata', 'spacer', 'header'],
+    ['title', 'metadata', 'metadata', 'metadata', 'spacer', 'header', 'header'],
   );
   const grossRevenue = roundMoney(data.receitaBruta, fractionDigits);
-  const groups = (data.groups ?? []).filter((group) => group.nature !== 'excluded');
+  const comparisonByCode = new Map((data.comparison?.rows ?? []).map((row) => [row.code, row.previous]));
+  const comparisonRevenue = roundMoney(comparisonByCode.get('01') ?? 0, fractionDigits);
+  const configuredGroups = (data.groups ?? []).filter((group) => group.nature !== 'excluded');
+  const groups: DreExportGroup[] = configuredGroups.length > 0 ? configuredGroups : [
+    { id: 'legacy-revenue', name: 'Receita Bruta', nature: 'revenue', total: data.receitaBruta, categories: data.receitaCategories ?? [] },
+    { id: 'legacy-deduction', name: 'Impostos e Deduções', nature: 'deduction', total: data.impostos, categories: data.impostosCategories },
+    { id: 'legacy-cost', name: 'Custos Operacionais', nature: 'cost', total: data.cpv, categories: data.cpvCategories },
+    { id: 'legacy-opex', name: 'Despesas Operacionais', nature: 'operating_expense', total: data.opex, categories: data.opexCategories },
+    { id: 'legacy-non-operating', name: 'Resultado Não Operacional', nature: 'non_operating', total: data.naoOperacional ?? 0, categories: data.naoOperacionalCategories ?? [] },
+  ];
 
-  if (groups.length) {
-    addGroupsByNature(builder, groups, 'revenue', grossRevenue, fractionDigits);
-    addCalculatedRow(builder, 'Receita Bruta', data.receitaBruta, grossRevenue, fractionDigits, 'calculated', '01');
+  addNature(builder, groups, 'revenue', 'Receita Bruta', grossRevenue, comparisonRevenue, fractionDigits);
+  addNature(builder, groups, 'deduction', 'Impostos e Deduções', grossRevenue, comparisonRevenue, fractionDigits);
+  addCalculatedRow(builder, '03', 'Receita Líquida', data.receitaLiquida, comparisonByCode.get('03') ?? 0, grossRevenue, comparisonRevenue, fractionDigits, 'calculated');
+  addNature(builder, groups, 'cost', 'Custos Operacionais', grossRevenue, comparisonRevenue, fractionDigits);
+  addCalculatedRow(builder, '05', 'Lucro Bruto', data.lucroBruto, comparisonByCode.get('05') ?? 0, grossRevenue, comparisonRevenue, fractionDigits, 'calculated');
+  addNature(builder, groups, 'operating_expense', 'Despesas Operacionais', grossRevenue, comparisonRevenue, fractionDigits);
+  addCalculatedRow(builder, '07', 'Resultado Operacional', data.resultadoLiquido, comparisonByCode.get('07') ?? 0, grossRevenue, comparisonRevenue, fractionDigits, data.naoOperacional ? 'calculated' : 'result');
+  addNature(builder, groups, 'non_operating', 'Resultado Não Operacional', grossRevenue, comparisonRevenue, fractionDigits);
 
-    addGroupsByNature(builder, groups, 'deduction', grossRevenue, fractionDigits);
-    addCalculatedRow(builder, 'Receita Líquida', data.receitaLiquida, grossRevenue, fractionDigits, 'calculated', '03');
-
-    addGroupsByNature(builder, groups, 'cost', grossRevenue, fractionDigits);
-    addCalculatedRow(builder, 'Lucro Bruto', data.lucroBruto, grossRevenue, fractionDigits, 'calculated', '05');
-
-    addGroupsByNature(builder, groups, 'operating_expense', grossRevenue, fractionDigits);
-    addCalculatedRow(builder, 'Resultado Operacional (EBITDA)', data.resultadoLiquido, grossRevenue, fractionDigits, 'result', '07');
-
-    addGroupsByNature(builder, groups, 'non_operating', grossRevenue, fractionDigits);
-  } else {
-    addCategoryGroup(
-      builder,
-      'Receita Bruta',
-      data.receitaCategories ?? [],
-      data.receitaBruta,
-      'revenue',
-      grossRevenue,
-      fractionDigits,
-      undefined,
-      0,
-    );
-    addCategoryGroup(
-      builder,
-      'Impostos e Deduções',
-      data.impostosCategories ?? [],
-      data.impostos,
-      'deduction',
-      grossRevenue,
-      fractionDigits,
-      undefined,
-      0,
-    );
-    addCalculatedRow(builder, 'Receita Líquida', data.receitaLiquida, grossRevenue, fractionDigits, 'calculated', '03');
-
-    addCategoryGroup(
-      builder,
-      'Custos dos Serviços Prestados',
-      data.cpvCategories ?? [],
-      data.cpv,
-      'cost',
-      grossRevenue,
-      fractionDigits,
-      undefined,
-      0,
-    );
-    addCalculatedRow(builder, 'Lucro Bruto', data.lucroBruto, grossRevenue, fractionDigits, 'calculated', '05');
-
-    addCategoryGroup(
-      builder,
-      'Despesas Operacionais',
-      data.opexCategories ?? [],
-      data.opex,
-      'operating_expense',
-      grossRevenue,
-      fractionDigits,
-      undefined,
-      0,
-    );
-    addCalculatedRow(builder, 'Resultado Operacional (EBITDA)', data.resultadoLiquido, grossRevenue, fractionDigits, 'result', '07');
-
-    if (data.naoOperacional !== undefined || data.naoOperacionalCategories?.length) {
-      const total = data.naoOperacional
-        ?? (data.naoOperacionalCategories ?? []).reduce((sum, category) => sum + Math.abs(category.value), 0);
-      addCategoryGroup(
-        builder,
-        'Despesas não operacionais',
-        data.naoOperacionalCategories ?? [],
-        total,
-        'non_operating',
-        grossRevenue,
-        fractionDigits,
-        undefined,
-        0,
-      );
-    }
-  }
-
-  if (data.resultadoFinal !== undefined) {
-    addCalculatedRow(builder, 'Resultado Final', data.resultadoFinal, grossRevenue, fractionDigits, 'result', '09');
+  if (data.resultadoFinal !== undefined && data.naoOperacional) {
+    addCalculatedRow(builder, '09', 'Resultado Final', data.resultadoFinal, comparisonByCode.get('09') ?? 0, grossRevenue, comparisonRevenue, fractionDigits, 'result');
   }
 
   return builder;
@@ -303,7 +306,7 @@ function buildCostCenterRows(data: DreReportData, fractionDigits: number): Sheet
 
   for (const center of data.costCenters ?? []) {
     const revenue = roundMoney(center.revenue, fractionDigits);
-    const expense = roundMoney(-Math.abs(center.expense), fractionDigits);
+    const expense = roundMoney(Math.abs(center.expense), fractionDigits);
     const result = roundMoney(center.result, fractionDigits);
     totalRevenue += revenue;
     totalExpense += expense;
@@ -345,11 +348,12 @@ function buildComparisonRows(data: DreReportData, fractionDigits: number): Sheet
       : ['03', '05'].includes(row.code)
         ? 'calculated'
         : 'detail';
+    const subtractive = ['02', '04', '06', '08'].includes(row.code);
     builder.add([
       row.code,
       row.label,
-      roundMoney(row.current, fractionDigits),
-      roundMoney(row.previous, fractionDigits),
+      roundMoney(subtractive ? Math.abs(row.current) : row.current, fractionDigits),
+      roundMoney(subtractive ? Math.abs(row.previous) : row.previous, fractionDigits),
       roundMoney(row.absolute, fractionDigits),
       row.percentage ?? '',
     ], kind);
@@ -371,15 +375,15 @@ export function buildDreExcelSheets(data: DreReportData): DreExcelSheet[] {
   const sheets: DreExcelSheet[] = [{
     name: 'DRE',
     rows: dre.rows,
-    widths: [15, 30, 38, 20, 22],
+    widths: [54, 19, 12, 19, 12, 19, 14],
     rowKinds: dre.kinds,
     outlineLevels: dre.outlineLevels,
-    mergedRanges: ['A1:E1', 'B2:C2', 'B3:C3', 'B4:C4'],
-    headerRow: 6,
-    autoFilter: { from: 'A6', to: `E${dreLastRow}` },
-    freezePane: { xSplit: 0, ySplit: 6, topLeftCell: 'A7' },
-    currencyColumns: [4],
-    percentageColumns: [5],
+    mergedRanges: ['A1:G1', 'B2:C2', 'E2:G2', 'B3:C3', 'E3:G3', 'B4:C4', 'E4:G4', 'A6:A7', 'B6:C6', 'D6:E6', 'F6:G6'],
+    headerRow: 7,
+    autoFilter: { from: 'A7', to: `G${dreLastRow}` },
+    freezePane: { xSplit: 1, ySplit: 7, topLeftCell: 'B8' },
+    currencyColumns: [2, 4, 6],
+    percentageColumns: [3, 5, 7],
     tabColor: COLORS.brand,
   }];
 
@@ -424,16 +428,18 @@ export function buildDreExcelSheets(data: DreReportData): DreExcelSheet[] {
 
 function currencyNumberFormat(currency: string, fractionDigits: number): string {
   const decimals = fractionDigits ? `.${'0'.repeat(fractionDigits)}` : '';
-  return `"${currency}" #,##0${decimals};-"${currency}" #,##0${decimals};-`;
+  const symbol = currency === 'BRL' ? 'R$' : currency === 'USD' ? 'US$' : currency === 'EUR' ? '€' : currency;
+  return `"${symbol}" #,##0${decimals};-"${symbol}" #,##0${decimals};-`;
 }
 
 function styleRow(worksheet: ExcelWorksheet, rowNumber: number, kind: DreExcelRowKind, columnCount: number): void {
   const row = worksheet.getRow(rowNumber);
-  row.height = kind === 'title' ? 34 : kind === 'header' ? 25 : kind === 'spacer' ? 9 : 21;
+  row.height = kind === 'title' ? 34 : kind === 'header' || kind === 'section' ? 25 : kind === 'spacer' ? 9 : 21;
 
   row.eachCell({ includeEmpty: true }, (cell, columnNumber) => {
-    cell.font = { name: 'Aptos', size: 10, color: { argb: COLORS.slate } };
-    cell.alignment = { vertical: 'middle', horizontal: columnNumber >= columnCount - 1 ? 'right' : 'left' };
+    cell.font = { name: 'Arial', size: 10, color: { argb: COLORS.slate } };
+    const numericColumn = worksheet.name === 'DRE' ? columnNumber >= 2 : columnNumber >= columnCount - 1;
+    cell.alignment = { vertical: 'middle', horizontal: numericColumn ? 'right' : 'left' };
 
     if (kind !== 'spacer' && kind !== 'title') {
       cell.border = { bottom: { style: 'hair', color: { argb: COLORS.border } } };
@@ -441,7 +447,7 @@ function styleRow(worksheet: ExcelWorksheet, rowNumber: number, kind: DreExcelRo
 
     if (kind === 'title') {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.navy } };
-      cell.font = { name: 'Aptos Display', size: 16, bold: true, color: { argb: COLORS.white } };
+      cell.font = { name: 'Arial', size: 16, bold: true, color: { argb: COLORS.white } };
       cell.alignment = { vertical: 'middle', horizontal: 'left' };
     } else if (kind === 'metadata') {
       const metadataLabels = [
@@ -457,33 +463,35 @@ function styleRow(worksheet: ExcelWorksheet, rowNumber: number, kind: DreExcelRo
         'Indicador',
       ];
       if (typeof cell.value === 'string' && metadataLabels.includes(cell.value)) {
-        cell.font = { name: 'Aptos', size: 9, bold: true, color: { argb: COLORS.muted } };
+        cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: COLORS.muted } };
       } else {
-        cell.font = { name: 'Aptos', size: 10, bold: true, color: { argb: COLORS.slate } };
+        cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: COLORS.slate } };
       }
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.zebra } };
+      cell.alignment = { vertical: 'middle', horizontal: 'left' };
     } else if (kind === 'header') {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.slate } };
-      cell.font = { name: 'Aptos', size: 10, bold: true, color: { argb: COLORS.white } };
-      cell.alignment = { vertical: 'middle', horizontal: columnNumber >= columnCount - 1 ? 'right' : 'left' };
+      cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: COLORS.white } };
+      cell.alignment = { vertical: 'middle', horizontal: numericColumn ? 'right' : 'left' };
+    } else if (kind === 'section') {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.navy } };
+      cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: COLORS.white } };
+      cell.border = { top: { style: 'thin', color: { argb: COLORS.navy } }, bottom: { style: 'thin', color: { argb: COLORS.navy } } };
     } else if (kind === 'detail') {
       if (rowNumber % 2 === 0) {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.zebra } };
       }
-      if (columnNumber === (columnCount === 5 && worksheet.name === 'DRE' ? 3 : 1)) {
-        cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-      }
     } else if (kind === 'subtotal') {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.subtotal } };
-      cell.font = { name: 'Aptos', size: 10, bold: true, color: { argb: COLORS.slate } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.blueLight } };
+      cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: COLORS.slate } };
       cell.border = { top: { style: 'thin', color: { argb: COLORS.border } }, bottom: { style: 'thin', color: { argb: COLORS.border } } };
     } else if (kind === 'calculated') {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.calculated } };
-      cell.font = { name: 'Aptos', size: 10, bold: true, color: { argb: COLORS.navy } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.navy } };
+      cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: COLORS.white } };
       cell.border = { top: { style: 'thin', color: { argb: COLORS.slate } }, bottom: { style: 'thin', color: { argb: COLORS.slate } } };
     } else if (kind === 'result') {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.navy } };
-      cell.font = { name: 'Aptos', size: 11, bold: true, color: { argb: COLORS.white } };
+      cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: COLORS.white } };
       cell.border = {};
     }
   });
@@ -521,7 +529,12 @@ function applySheetLayout(
 
   sheet.rowKinds.forEach((kind, index) => {
     styleRow(worksheet, index + 1, kind, sheet.widths.length);
-    worksheet.getRow(index + 1).outlineLevel = sheet.outlineLevels[index] ?? 0;
+    const row = worksheet.getRow(index + 1);
+    const outlineLevel = sheet.outlineLevels[index] ?? 0;
+    row.outlineLevel = outlineLevel;
+    if (worksheet.name === 'DRE' && outlineLevel > 0) {
+      row.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: outlineLevel };
+    }
   });
 
   const moneyFormat = currencyNumberFormat(currency, fractionDigits);
@@ -550,9 +563,9 @@ function applySheetLayout(
     }
   }
 
-  // Linhas de resultado mantêm contraste branco sobre o fundo escuro.
+  // Faixas externas e resultados mantêm contraste branco sobre o fundo escuro.
   sheet.rowKinds.forEach((kind, index) => {
-    if (kind !== 'result') return;
+    if (!['section', 'calculated', 'result'].includes(kind)) return;
     worksheet.getRow(index + 1).eachCell({ includeEmpty: true }, (cell) => {
       cell.font = { ...cell.font, color: { argb: COLORS.white } };
     });
@@ -561,10 +574,11 @@ function applySheetLayout(
   // Verde/vermelho só no último resultado da DRE. Subtotais, categorias,
   // variações e centros de custo permanecem neutros para facilitar a leitura.
   if (worksheet.name === 'DRE' || worksheet.name === 'Comparativo') {
-    const finalCode = sheet.rows.some((row) => row[0] === '09') ? '09' : '07';
-    const finalRowIndex = sheet.rows.findIndex((row) => row[0] === finalCode);
+    const hasFinalResult = sheet.rows.some((row) => String(row[0]).startsWith('09'));
+    const finalCode = hasFinalResult ? '09' : '07';
+    const finalRowIndex = sheet.rows.findIndex((row) => String(row[0]).startsWith(finalCode));
     if (finalRowIndex >= 0) {
-      const resultValue = Number(sheet.rows[finalRowIndex][worksheet.name === 'DRE' ? 3 : 2]);
+      const resultValue = Number(sheet.rows[finalRowIndex][worksheet.name === 'DRE' ? 1 : 2]);
       const fill = resultValue > 0 ? COLORS.positive : resultValue < 0 ? COLORS.negative : COLORS.navy;
       worksheet.getRow(finalRowIndex + 1).eachCell({ includeEmpty: true }, (cell) => {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
@@ -589,6 +603,8 @@ export async function createDreExcelWorkbook(data: DreReportData): Promise<Excel
   workbook.title = 'Demonstrativo de Resultado do Exercício';
   workbook.company = data.company.name;
   workbook.calcProperties.fullCalcOnLoad = true;
+  const brandImage = await loadImageAsDataUrl(dominexLogoUrl);
+  const brandImageId = brandImage ? workbook.addImage({ base64: brandImage.dataUrl, extension: 'png' }) : undefined;
 
   for (const sheet of buildDreExcelSheets(data)) {
     const worksheet = workbook.addWorksheet(sheet.name, {
@@ -596,6 +612,18 @@ export async function createDreExcelWorkbook(data: DreReportData): Promise<Excel
       views: [{ state: 'frozen', ...sheet.freezePane }],
     });
     applySheetLayout(worksheet, sheet, currency, fractionDigits);
+    if (sheet.name === 'DRE' && brandImageId !== undefined) {
+      const maxWidth = 148;
+      const maxHeight = 30.06;
+      const ratio = brandImage?.width && brandImage.height ? brandImage.width / brandImage.height : maxWidth / maxHeight;
+      const width = Math.min(maxWidth, maxHeight * ratio);
+      const height = Math.min(maxHeight, maxWidth / ratio);
+      worksheet.addImage(brandImageId, {
+        tl: { col: 5.05, row: 0.08 },
+        ext: { width, height },
+        editAs: 'oneCell',
+      });
+    }
   }
 
   workbook.views = [{ x: 0, y: 0, width: 12000, height: 22000, firstSheet: 0, activeTab: 0, visibility: 'visible' }];
