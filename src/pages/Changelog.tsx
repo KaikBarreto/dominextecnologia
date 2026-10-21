@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.27',
+    date: '21 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'DRE mais fácil de resumir e organizar',
+        description: 'Os grandes grupos podem ser recolhidos para mostrar apenas a visão principal. Na configuração, grupos e categorias podem ser organizados por arraste, com cores, ícones e subcategorias visíveis.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.26',
     date: '21 de outubro de 2026',
     type: 'patch',

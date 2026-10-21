@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.26";
+export const APP_VERSION = "1.37.27";
 
 export const VERSION_NOTES =
-  "O DFC previsto abre mais compacto e permite expandir as categorias de saída quando necessário.";
+  "O DRE ganhou expansão dos grandes grupos e uma configuração visual com organização por arraste.";

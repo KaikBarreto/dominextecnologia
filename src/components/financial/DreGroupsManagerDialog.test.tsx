@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 const reorderGroups = { mutate: vi.fn(), isPending: false };
 const updateGroup = { mutate: vi.fn(), isPending: false };
+const assignCategoriesToGroup = { mutate: vi.fn(), isPending: false };
 
 let hookResult: Record<string, unknown>;
 
@@ -22,6 +23,7 @@ vi.mock('@/components/ui/ResponsiveModal', () => ({
 }));
 
 import { DreGroupsManagerDialog } from './DreGroupsManagerDialog';
+import { canMoveCategoryToDreNature, categoryIdsForDreMove } from './dre-config-dnd';
 
 const baseGroups = [
   {
@@ -69,18 +71,33 @@ describe('DreGroupsManagerDialog', () => {
       updateGroup,
       deleteGroup: { mutate: vi.fn(), isPending: false },
       reorderGroups,
+      assignCategoriesToGroup,
     };
   });
 
-  it('ordena os grupos e envia todos os ids na nova ordem', () => {
-    render(<DreGroupsManagerDialog open onOpenChange={() => {}} categories={[]} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Mover Custos indiretos para cima' }));
-
-    expect(reorderGroups.mutate).toHaveBeenCalledWith(
-      ['revenue', 'cost-secondary', 'cost', 'other'],
-      expect.objectContaining({ onError: expect.any(Function) }),
+  it('abre por padrão e permite recolher cada grupo pela seta à esquerda', () => {
+    render(
+      <DreGroupsManagerDialog
+        open
+        onOpenChange={() => {}}
+        categories={[{
+          id: 'category-1',
+          name: 'Peças e materiais',
+          dre_group_id: 'cost',
+          color: '#0ea5e9',
+          icon: 'Package',
+          parent_id: null,
+          type: 'saida',
+        }]}
+      />,
     );
+
+    expect(screen.getByText('Peças e materiais')).toBeTruthy();
+    const toggle = screen.getByRole('button', { name: 'Recolher Custos diretos' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(toggle);
+    expect(screen.queryByText('Peças e materiais')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Expandir Custos diretos' })).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('protege grupos essenciais e grupos com categorias vinculadas', () => {
@@ -88,7 +105,7 @@ describe('DreGroupsManagerDialog', () => {
       <DreGroupsManagerDialog
         open
         onOpenChange={() => {}}
-        categories={[{ dre_group_id: 'cost' }]}
+        categories={[{ id: 'category-1', name: 'Materiais', dre_group_id: 'cost' }]}
       />,
     );
 
@@ -97,6 +114,21 @@ describe('DreGroupsManagerDialog', () => {
     expect(screen.getByRole('button', { name: 'Excluir Outras despesas' })).not.toBeDisabled();
     expect(screen.getByText('Grupo essencial: não pode ser desativado nem excluído.')).toBeTruthy();
     expect(screen.getByText(/1 categoria vinculada: remova os vínculos/)).toBeTruthy();
+  });
+
+  it('move categoria-pai junto com suas subcategorias e valida a natureza de destino', () => {
+    const categories = [
+      { id: 'parent', name: 'Pessoal', dre_group_id: 'cost', parent_id: null, type: 'saida' },
+      { id: 'child', name: 'Salários', dre_group_id: 'cost', parent_id: 'parent', type: 'saida' },
+      { id: 'income', name: 'Serviços', dre_group_id: 'revenue', parent_id: null, type: 'entrada' },
+    ];
+
+    expect(categoryIdsForDreMove('parent', categories)).toEqual(['parent', 'child']);
+    expect(categoryIdsForDreMove('child', categories)).toEqual(['child']);
+    expect(canMoveCategoryToDreNature(categories[2], 'revenue')).toBe(true);
+    expect(canMoveCategoryToDreNature(categories[2], 'cost')).toBe(false);
+    expect(canMoveCategoryToDreNature(categories[0], 'operating_expense')).toBe(true);
+    expect(canMoveCategoryToDreNature(categories[0], 'revenue')).toBe(false);
   });
 
   it('permite renomear grupo essencial sem enviar alteração de natureza', () => {

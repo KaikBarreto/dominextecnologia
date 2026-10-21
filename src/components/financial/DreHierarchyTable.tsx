@@ -75,6 +75,7 @@ export function DreHierarchyTable({
     gridTemplateColumns: `minmax(330px, 1fr) repeat(${columnCount}, minmax(142px, 164px))`,
   };
   const minWidth = 410 + columnCount * 154;
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const tableRef = useRef<HTMLDivElement>(null);
@@ -162,7 +163,8 @@ export function DreHierarchyTable({
         )}
         style={{ ...gridStyle, minWidth }}
       >
-        <span className="flex items-baseline gap-3">
+        <span className="flex items-center gap-3">
+          <span className="invisible h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="text-xs font-semibold tracking-wide text-white/70">{line.code}</span>
           <span>= {cleanOperationPrefix(line.label)}</span>
         </span>
@@ -217,17 +219,45 @@ export function DreHierarchyTable({
         document.body,
       )}
 
-      {sections.map((section) => (
-        <div key={section.id}>
-          <div className="grid items-center gap-3 bg-[#172033] px-4 py-3.5 text-[15px] font-bold text-white" style={{ ...gridStyle, minWidth }}>
-            <span className="flex items-baseline gap-3">
-              <span className="text-xs font-semibold tracking-wide text-white/60">{section.code}</span>
-              ({section.operation}) {cleanOperationPrefix(section.label)}
+      {sections.map((section) => {
+        const hasChildren = section.groups.length > 0;
+        const expanded = !collapsedSections.has(section.id);
+        const sectionLabel = `${section.code} ${cleanOperationPrefix(section.label)}`;
+        const sectionContent = (
+          <>
+            <span className="flex min-w-0 items-center gap-3">
+              {hasChildren
+                ? (expanded
+                  ? <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  : <ChevronRight className="h-4 w-4 shrink-0" aria-hidden="true" />)
+                : <span className="invisible h-4 w-4 shrink-0" aria-hidden="true" />}
+              <span className="shrink-0 text-xs font-semibold tracking-wide text-white/60">{section.code}</span>
+              <span className="truncate">({section.operation}) {cleanOperationPrefix(section.label)}</span>
             </span>
             {valueColumns(section, true, true)}
-          </div>
+          </>
+        );
 
-          {section.groups.map((group) => {
+        return (
+          <div key={section.id}>
+            {hasChildren ? (
+              <button
+                type="button"
+                aria-expanded={expanded}
+                aria-label={`${expanded ? 'Recolher' : 'Expandir'} ${sectionLabel}`}
+                onClick={() => toggle(collapsedSections, section.id, setCollapsedSections)}
+                className="grid w-full items-center gap-3 bg-[#172033] px-4 py-3.5 text-left text-[15px] font-bold text-white transition-colors hover:bg-[#1f2b43]"
+                style={{ ...gridStyle, minWidth }}
+              >
+                {sectionContent}
+              </button>
+            ) : (
+              <div className="grid items-center gap-3 bg-[#172033] px-4 py-3.5 text-[15px] font-bold text-white" style={{ ...gridStyle, minWidth }}>
+                {sectionContent}
+              </div>
+            )}
+
+          {expanded && section.groups.map((group) => {
             const expanded = expandedGroups.has(group.id);
             return (
               <div key={group.id}>
@@ -307,9 +337,10 @@ export function DreHierarchyTable({
             );
           })}
 
-          {section.resultsAfter?.map(resultRow)}
-        </div>
-      ))}
+            {section.resultsAfter?.map(resultRow)}
+          </div>
+        );
+      })}
     </div>
   );
 }

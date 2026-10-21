@@ -216,6 +216,46 @@ export function useDreGroups() {
     },
   });
 
+  const assignCategoriesToGroup = useMutation({
+    mutationFn: async ({ categoryIds, groupId }: { categoryIds: string[]; groupId: string }) => {
+      if (!companyId) throw new Error('Empresa do usuário não identificada.');
+      const uniqueCategoryIds = [...new Set(categoryIds)];
+      if (uniqueCategoryIds.length === 0) return;
+
+      const targetGroup = (groupsQuery.data ?? []).find((group) => group.id === groupId);
+      if (!targetGroup || targetGroup.company_id !== companyId) {
+        throw new Error('Grupo DRE de destino inválido.');
+      }
+
+      const { data, error } = await supabase
+        .from('financial_categories')
+        .update({ dre_group_id: groupId })
+        .eq('company_id', companyId)
+        .in('id', uniqueCategoryIds)
+        .select('id');
+
+      if (error) throw error;
+      if ((data ?? []).length !== uniqueCategoryIds.length) {
+        throw new Error('Uma ou mais categorias não pertencem à empresa atual.');
+      }
+    },
+    onSuccess: (_data, variables) => {
+      invalidate();
+      toast({
+        title: variables.categoryIds.length > 1
+          ? 'Categoria e subcategorias movidas!'
+          : 'Categoria movida!',
+      });
+    },
+    onError: (error: unknown) => {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao mover categoria',
+        description: getErrorMessage(error),
+      });
+    },
+  });
+
   return {
     dreGroups: groupsQuery.data ?? [],
     isLoading: groupsQuery.isLoading,
@@ -224,5 +264,6 @@ export function useDreGroups() {
     updateGroup,
     deleteGroup,
     reorderGroups,
+    assignCategoriesToGroup,
   };
 }
