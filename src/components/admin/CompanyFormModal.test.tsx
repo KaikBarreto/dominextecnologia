@@ -120,6 +120,20 @@ afterEach(() => {
 });
 
 describe('CompanyFormModal — campo "Valor (R$)" com preço personalizado ligado (prova real de DOM)', () => {
+  it('carrega o preço negociado da empresa, não o preço-base do catálogo', () => {
+    mount({
+      company: {
+        subscription_plan: 'personalizado',
+        subscription_value: 197,
+        custom_price: 397,
+        custom_price_permanent: true,
+      },
+    });
+    clickTab('Comercial');
+    const input = q('#company-subscription-value-custom') as HTMLInputElement;
+    expect(input.value).toBe('397,00');
+  });
+
   it('não usa mais <input type="number"> (o bug do sócio nasceu daí)', () => {
     mount();
     clickTab('Comercial');

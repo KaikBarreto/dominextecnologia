@@ -12,6 +12,7 @@ export interface ChangePlanInput {
   extraUsers?: number;
   /** Nível de NFS-e escolhido quando o plano personalizado inclui o módulo. */
   nfseTier?: number;
+  confirm?: boolean;
 }
 
 export interface ChangePlanResult {
@@ -32,6 +33,12 @@ export interface ChangePlanResult {
   credit_amount?: number;
   remaining_ratio?: number;
   next_renewal_at?: string;
+  dry_run?: boolean;
+  target_monthly_value?: number;
+  target_plan_code?: string;
+  target_billing_cycle?: 'monthly' | 'yearly';
+  target_max_users?: number;
+  target_modules?: string[];
   /**
    * Pendências de gravação NÃO-fatais na edge (ex.: o histórico da assinatura não
    * gravou). O valor/plano já foi aplicado; isto existe pra que "sucesso com
@@ -55,7 +62,7 @@ export function usePlanChange() {
   const queryClient = useQueryClient();
 
   return useMutation<ChangePlanResult, Error, ChangePlanInput>({
-    mutationFn: async ({ companyId, planCode, billingCycle, customModules, extraUsers, nfseTier }) => {
+    mutationFn: async ({ companyId, planCode, billingCycle, customModules, extraUsers, nfseTier, confirm }) => {
       const { data, error } = await supabase.functions.invoke('change-subscription-plan', {
         body: {
           company_id: companyId,
@@ -64,6 +71,7 @@ export function usePlanChange() {
           custom_modules: customModules ?? undefined,
           extra_users: extraUsers ?? undefined,
           nfse_tier: nfseTier ?? undefined,
+          confirm: confirm === true,
         },
       });
       if (error) {

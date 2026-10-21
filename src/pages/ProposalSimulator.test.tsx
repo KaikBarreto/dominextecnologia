@@ -110,8 +110,8 @@ describe('ProposalSimulator', () => {
       expect(screen.getByText('7 usuários', { exact: true })).toBeInTheDocument();
     });
     const configuration = screen.getByRole('region', { name: 'Configuração da proposta' });
-    expect(within(configuration).getByText('Módulo Básico')).toBeInTheDocument();
-    expect(within(configuration).getByText(/Também inclui Área do Técnico™/)).toBeInTheDocument();
+    expect(within(configuration).getByText('Kit Básico Dominex')).toBeInTheDocument();
+    expect(within(configuration).getByText(/Área do Técnico™/)).toBeInTheDocument();
     expect(within(configuration).queryByText('Portal do Cliente', { exact: true })).not.toBeInTheDocument();
     expect(screen.getByText('Área do Técnico™')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Remover Portal do Cliente' })).not.toBeInTheDocument();
@@ -181,7 +181,7 @@ describe('ProposalSimulator', () => {
     });
   }, 30_000);
 
-  it('exibe Essencial, add-ons e usuário adicional na tabela de preços', () => {
+  it('agrupa o Kit Básico e exibe somente add-ons reais e usuário adicional', () => {
     render(
       <MemoryRouter initialEntries={['/proposta']}>
         <ProposalSimulator />
@@ -192,7 +192,7 @@ describe('ProposalSimulator', () => {
     fireEvent.mouseDown(pricingTab, { button: 0, ctrlKey: false });
 
     const priceTable = screen.getByRole('region', { name: 'Tabela de preços' });
-    expect(within(priceTable).getByRole('row', { name: /^Essencial\b/ })).toHaveTextContent('R$ 197,00/mês');
+    expect(within(priceTable).getByRole('row', { name: /^Kit Básico Dominex\b/ })).toHaveTextContent('R$ 197,00/mês');
     expect(within(priceTable).getByRole('row', { name: /Cobranças/ })).toHaveTextContent('R$ 150,00/mês');
     expect(within(priceTable).getByRole('row', { name: /Emissão de notas fiscais/i })).toHaveTextContent('R$ 150,00/mês');
     expect(within(priceTable).getByRole('row', { name: /White Label/ })).toHaveTextContent('R$ 50,00/mês');

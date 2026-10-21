@@ -29,6 +29,22 @@ export const FREE_BASE_MODULE_CODES = [
   'video_questions',
 ] as const;
 
+/**
+ * Apresentação comercial única do pacote que sustenta todos os planos.
+ * Os códigos em `FREE_BASE_MODULE_CODES` continuam separados no banco para os
+ * gates de acesso, mas nunca devem parecer add-ons cobrados na interface.
+ */
+export const BASIC_BUNDLE_LABEL = 'Kit Básico Dominex';
+export const BASIC_BUNDLE_FEATURES = [
+  'Kit Básico Dominex: OS, agenda, clientes, equipamentos, serviços e estoque',
+  'Orçamentos, precificação e financeiro completo',
+  'Portal do Cliente',
+  'Área do Técnico™',
+  'Perguntas em vídeo nos checklists',
+] as const;
+export const BASIC_BUNDLE_DESCRIPTION =
+  'OS, agenda, clientes, equipamentos, serviços, estoque, orçamentos, precificação, financeiro completo, Portal do Cliente, Área do Técnico™ e perguntas em vídeo.';
+
 export const REQUIRED_CUSTOM_MODULE_CODES = [
   BASE_SUBSCRIPTION_MODULE_CODE,
   ...FREE_BASE_MODULE_CODES,
@@ -36,6 +52,24 @@ export const REQUIRED_CUSTOM_MODULE_CODES = [
 
 export function isRequiredCustomModule(code: string): boolean {
   return REQUIRED_CUSTOM_MODULE_CODES.some((requiredCode) => requiredCode === code);
+}
+
+export function buildCommercialModuleFeatures(
+  moduleCodes: string[],
+  catalogModules: Array<{ code: string; name: string }> = [],
+): string[] {
+  const catalogNames = new Map(catalogModules.map((module) => [module.code, module.name]));
+  const hasBasicBundle = moduleCodes.some((code) => isRequiredCustomModule(code));
+  const addOns = moduleCodes.flatMap((code) => {
+    if (isRequiredCustomModule(code) || code === EXTRA_USER_MODULE_CODE) return [];
+    const name = catalogNames.get(code);
+    return name ? [name] : [];
+  });
+
+  return Array.from(new Set([
+    ...(hasBasicBundle ? BASIC_BUNDLE_FEATURES : []),
+    ...addOns,
+  ]));
 }
 
 export function isRetiredProposalModule(code: string): boolean {

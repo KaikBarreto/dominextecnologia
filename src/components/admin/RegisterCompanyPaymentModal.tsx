@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { cpfCnpjMask } from '@/utils/masks';
 import { useAdminCompanyPayments, mapPaymentRpcError } from '@/hooks/useAdminCompanyPayments';
+import { getEffectiveSubscriptionValue } from '@/utils/subscriptionPricing';
 
 const PAYMENT_METHODS = ['Pix', 'Boleto', 'Cartão', 'Dinheiro', 'Transferência'];
 
@@ -40,6 +41,7 @@ export function RegisterCompanyPaymentModal({ company, open, onOpenChange }: Reg
 
   // Empresa em teste sem documento → CPF/CNPJ obrigatório na venda (vai pro cadastro).
   const requiresDocument = company?.subscription_status === 'testing' && !company?.cnpj;
+  const effectiveValue = getEffectiveSubscriptionValue(company || {});
 
   const schema = useMemo(
     () =>
@@ -76,13 +78,13 @@ export function RegisterCompanyPaymentModal({ company, open, onOpenChange }: Reg
     () => ({
       type: 'venda' as const,
       payment_date: new Date(),
-      payment_value: (company?.subscription_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+      payment_value: effectiveValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
       payment_method: 'Pix',
       observations: '',
       cpf_cnpj: '',
       closer_id: NONE_VALUE,
     }),
-    [company?.subscription_value],
+    [effectiveValue],
   );
 
   const form = useForm<FormData>({ resolver: zodResolver(schema), defaultValues });
@@ -166,7 +168,7 @@ export function RegisterCompanyPaymentModal({ company, open, onOpenChange }: Reg
           <div className="flex justify-between gap-2">
             <span className="text-muted-foreground">Valor do plano:</span>
             <span className="font-semibold">
-              {(company?.subscription_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              {effectiveValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               {company?.billing_cycle === 'yearly' ? ' /ano' : ' /mês'}
             </span>
           </div>

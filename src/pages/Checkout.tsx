@@ -31,7 +31,11 @@ import { useWhiteLabel } from "@/hooks/useWhiteLabel";
 import { PriceAmount } from "@/components/ui/PriceAmount";
 import { hasSubscriptionActivationAdvanced } from "@/lib/subscriptionActivation";
 import { useSubscriptionUpgradeCheckout } from "@/hooks/useSubscriptionUpgradeCheckout";
-import { EXCEPTION_PLAN_CODE } from '@/lib/subscriptionCatalog';
+import {
+  BASIC_BUNDLE_FEATURES,
+  EXCEPTION_PLAN_CODE,
+  buildCommercialModuleFeatures,
+} from '@/lib/subscriptionCatalog';
 
 type PaymentMethod = "pix" | "boleto" | "card" | null;
 
@@ -56,31 +60,20 @@ const PLAN_FEATURES: Record<string, string[]> = {
     "Sem Orçamentos, Portal do Cliente e Financeiro",
   ],
   start: [
-    "Ordens de Serviço",
-    "Agenda",
-    "Dashboard",
-    "Orçamentos",
-    "Serviços",
-    "Mapa ao Vivo",
-    "Clientes",
-    "Equipamentos",
-    "Estoque",
-    "Portal do Cliente",
-    "Financeiro completo: contas, DRE, DFC e cobranças online",
+    ...BASIC_BUNDLE_FEATURES,
   ],
   avancado: [
-    "Tudo do Start",
+    ...BASIC_BUNDLE_FEATURES,
     "Gestão de Contratos e PMOC",
     "Funcionários / RH",
     "Ponto Eletrônico",
   ],
   master: [
-    "Tudo do Avançado",
+    ...BASIC_BUNDLE_FEATURES,
     "Gestão de Contratos e PMOC",
+    "Funcionários / RH e Ponto Eletrônico",
     "CRM Completo",
     "Emissão de Notas Fiscais",
-    "Precificação Avançada (BDI)",
-    "Portal do Cliente",
     "White Label",
   ],
 };
@@ -111,7 +104,7 @@ export default function Checkout() {
   // Plano TRAVADO pelo link de venda (?bloqueado=1 vindo do cadastro): o cliente
   // não escolhe nem troca de plano — cobra exatamente o plano/valor que o link
   // já gravou na empresa. Fecha a brecha de pagar o preço de um plano mais barato.
-  const isPlanLocked = searchParams.get("bloqueado") === "1";
+  const isPlanLockedFromLink = searchParams.get("bloqueado") === "1";
   const isDark = useIsDark();
   const { profile } = useAuth();
   // Mesma regra do painel de pagamento: white-label da empresa do checkout
@@ -190,6 +183,7 @@ export default function Checkout() {
   // definidos pelo vendedor continuam sendo primeira ativação mesmo depois que
   // o teste vence ou quando o cliente volta ao checkout sem o parâmetro do link.
   const neverPurchased = (Number(companyData?.ltv) || 0) <= 0;
+  const isPlanLocked = companyData?.plan_locked === true || isPlanLockedFromLink;
   const hasCommerciallyDefinedPlan =
     !!companyData?.subscription_plan &&
     effectiveCompanyValue > 0 &&
@@ -230,7 +224,7 @@ export default function Checkout() {
         .select("code, name")
         .in("code", codes);
       if (modsError) throw modsError;
-      return (mods ?? []).map((m) => m.name as string);
+      return buildCommercialModuleFeatures(codes, mods ?? []);
     },
   });
 

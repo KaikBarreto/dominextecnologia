@@ -22,9 +22,7 @@ import { formatBRL } from '@/utils/currency';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
-import { usePlanChange } from '@/hooks/usePlanChange';
-import { useUsers } from '@/hooks/useUsers';
-import { UserExcessModal } from '@/components/billing/UserExcessModal';
+import { usePlanChange, type ChangePlanInput, type ChangePlanResult } from '@/hooks/usePlanChange';
 import { CancelSubscriptionModal } from '@/components/billing/CancelSubscriptionModal';
 import { calculateYearlyPrice, calculateMonthlyEquivalent } from '@/utils/subscriptionPricing';
 import { useNfseTiers, formatTierLimit } from '@/hooks/useNfseTiers';
@@ -33,6 +31,8 @@ import { usePublicSubscriptionCatalog } from '@/hooks/usePublicSubscriptionPlans
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import {
+  BASIC_BUNDLE_DESCRIPTION,
+  BASIC_BUNDLE_LABEL,
   BASE_SUBSCRIPTION_MODULE_CODE,
   CUSTOM_PLAN_INCLUDED_USERS,
   EXCEPTION_PLAN_CODE,
@@ -93,7 +93,7 @@ export function ModulesManagementCard({
   onAutoOpenConsumed,
 }: ModulesManagementCardProps = {}) {
   const navigate = useNavigate();
-  const { profile, user, isAdminOrGestor } = useAuth();
+  const { profile, isAdminOrGestor } = useAuth();
   const companyId = profile?.company_id ?? null;
   const { locale } = useAppLocaleContext();
   const tBilling = MESSAGES[locale].app.settings.billing;
@@ -112,7 +112,6 @@ export function ModulesManagementCard({
   } = useCompanyModules();
 
   const planChange = usePlanChange();
-  const { users } = useUsers();
 
   // NFS-e tier hooks
   const { tiers: nfseTiers, isLoading: nfseTiersLoading } = useNfseTiers();
@@ -160,12 +159,10 @@ export function ModulesManagementCard({
   const [customModules, setCustomModules] = useState<string[]>([]);
   const [customExtraUsers, setCustomExtraUsers] = useState(0);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
-  // Excesso de usuários no downgrade: guarda a mudança pendente até o cliente
-  // reduzir os usuários; só então aplica o plano.
-  const [excessOpen, setExcessOpen] = useState(false);
-  const [pendingChange, setPendingChange] = useState<
-    { planCode: string; monthlyValue: number; targetMaxUsers: number } | null
-  >(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState<{
+    input: ChangePlanInput;
+    quote: ChangePlanResult;
+  } | null>(null);
   const usersSectionRef = useRef<HTMLDivElement | null>(null);
   const autoOpenConsumed = useRef(false);
 
@@ -298,25 +295,52 @@ export function ModulesManagementCard({
   // True quando o plano personalizado inclui o módulo de NF-e.
   const hasNfeInCustom = customModules.includes('nfe');
 
-  // Aplica a mudança via uma única edge. Plano, módulos, usuários e tier de NFS-e
-  // entram na mesma cotação para não liberar nenhum complemento fora do pagamento.
-  const applyChange = (planCode: string, monthlyValue: number) => {
+  // Passo 1: pede uma cotação ao servidor sem escrever assinatura nem gateway.
+  const applyChange = (planCode: string, _monthlyValue: number) => {
     if (!companyId) {
       toast.error('Empresa não encontrada.');
       return;
     }
     const isCustom = planCode === 'personalizado';
-    planChange.mutate(
-      {
+    const input: ChangePlanInput = {
         companyId,
         planCode,
         billingCycle,
         customModules: isCustom ? customModules : undefined,
         extraUsers: isCustom ? customExtraUsers : undefined,
         nfseTier: isCustom && hasNfeInCustom ? selectedNfseLevel : undefined,
-      },
+        confirm: false,
+      };
+    planChange.mutate(
+      input,
       {
-        onSuccess: async (result) => {
+        onSuccess: (result) => {
+          setPendingConfirmation({ input, quote: result });
+        },
+        onError: (err) => {
+          toast.error(err.message || 'Não foi possível atualizar o plano.');
+        },
+      },
+    );
+  };
+
+  // Abre a cotação; usuários nunca são desativados antes da confirmação.
+  const handleConfirm = (planCode: string, monthlyValue: number, _targetMaxUsers: number) => {
+    if (!companyId) {
+      toast.error('Empresa não encontrada.');
+      return;
+    }
+    applyChange(planCode, monthlyValue);
+  };
+
+  // Passo 2: aplica exatamente a mesma intenção, agora com confirmação explícita.
+  const confirmQuotedChange = () => {
+    if (!pendingConfirmation) return;
+    planChange.mutate(
+      { ...pendingConfirmation.input, confirm: true },
+      {
+        onSuccess: (result) => {
+          setPendingConfirmation(null);
           toast.success(result.message);
           if (result.requires_payment && result.checkout_url) {
             setOpen(false);
@@ -326,35 +350,9 @@ export function ModulesManagementCard({
           if (result.asaas_warning) toast.warning(result.asaas_warning);
           setOpen(false);
         },
-        onError: (err) => {
-          toast.error(err.message || 'Não foi possível atualizar o plano.');
-        },
+        onError: (err) => toast.error(err.message || 'Não foi possível atualizar o plano.'),
       },
     );
-  };
-
-  // Confirma a escolha do cliente. Se o plano alvo comporta MENOS usuários do que
-  // a empresa tem hoje, abre o UserExcessModal pra reduzir ANTES de aplicar.
-  const handleConfirm = (planCode: string, monthlyValue: number, targetMaxUsers: number) => {
-    if (!companyId) {
-      toast.error('Empresa não encontrada.');
-      return;
-    }
-    if (targetMaxUsers < currentUserCount) {
-      setPendingChange({ planCode, monthlyValue, targetMaxUsers });
-      setExcessOpen(true);
-      return;
-    }
-    applyChange(planCode, monthlyValue);
-  };
-
-  // Depois que os usuários excedentes foram removidos, segue com o downgrade.
-  const handleUsersReduced = () => {
-    setExcessOpen(false);
-    if (pendingChange) {
-      applyChange(pendingChange.planCode, pendingChange.monthlyValue);
-      setPendingChange(null);
-    }
   };
 
   // Aviso de upgrade/downgrade reutilizável.
@@ -426,7 +424,7 @@ export function ModulesManagementCard({
       ? [...FREE_BASE_MODULE_CODES, ...customModules]
       : (presetPlans.find((p) => p.code === selectedPlan)?.included_modules ?? []);
     const summaryModules = catalogModules.filter(
-      (m) => summaryModuleCodes.includes(m.code) && m.code !== BASE_MODULE,
+      (m) => summaryModuleCodes.includes(m.code) && !isRequiredCustomModule(m.code),
     );
 
     // Usuários
@@ -477,7 +475,7 @@ export function ModulesManagementCard({
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                <span className="text-sm font-medium truncate">{baseModule.name}</span>
+                <span className="text-sm font-medium truncate">{BASIC_BUNDLE_LABEL}</span>
               </div>
               <span className="text-xs text-muted-foreground shrink-0">{tBilling.planSummaryIncluded}</span>
             </div>
@@ -716,7 +714,8 @@ export function ModulesManagementCard({
                     const isCurrent = plan === p.code;
                     const isSelected = selectedPlan === p.code;
                     const planModules = catalogModules.filter(
-                      (module) => p.included_modules.some((code) => code === module.code),
+                      (module) => p.included_modules.some((code) => code === module.code)
+                        && !isRequiredCustomModule(module.code),
                     );
                     const yearly = calculateYearlyPrice(p.price);
                     return (
@@ -749,6 +748,9 @@ export function ModulesManagementCard({
                               <Badge className="text-[10px] px-1.5 py-0 bg-blue-600 text-white hover:bg-blue-600">
                                 <Users className="h-2.5 w-2.5 mr-0.5" />
                                 {p.max_users} usuários
+                              </Badge>
+                              <Badge className="text-[10px] px-1.5 py-0 bg-emerald-600 text-white hover:bg-emerald-600">
+                                {BASIC_BUNDLE_LABEL}
                               </Badge>
                               {planModules.map((m) => (
                                 <Badge key={m.code} className="text-[10px] px-1.5 py-0 bg-emerald-600 text-white hover:bg-emerald-600">
@@ -793,23 +795,12 @@ export function ModulesManagementCard({
                   <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-emerald-600 text-white">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{baseModule.name}</p>
-                      <p className="text-[11px] text-white/80">Sempre incluso</p>
+                      <p className="text-sm font-medium">{BASIC_BUNDLE_LABEL}</p>
+                      <p className="text-[11px] text-white/80 line-clamp-2">{BASIC_BUNDLE_DESCRIPTION}</p>
                     </div>
                     <span className="text-sm font-semibold">R$ {formatBRL(baseModule.price)}</span>
                   </div>
                 )}
-
-                {freeBaseModules.map((module) => (
-                  <div key={module.code} className="flex items-center gap-2.5 p-2.5 rounded-lg bg-emerald-600 text-white">
-                    <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{module.name}</p>
-                      <p className="text-[11px] text-white/80">Grátis e incluso em todos os planos</p>
-                    </div>
-                    <span className="text-sm font-semibold">R$ {formatBRL(module.price)}</span>
-                  </div>
-                ))}
 
                 {!isCatalogLoading && !customPricingReady && (
                   <NoticeBanner variant="destructive">
@@ -958,14 +949,47 @@ export function ModulesManagementCard({
         </div>
       </ResponsiveModal>
 
-      <UserExcessModal
-        open={excessOpen}
-        onOpenChange={setExcessOpen}
-        users={users}
-        currentUserId={user?.id}
-        targetMaxUsers={pendingChange?.targetMaxUsers ?? maxUsers}
-        onReduced={handleUsersReduced}
-      />
+      <ResponsiveModal
+        open={!!pendingConfirmation}
+        onOpenChange={(next) => { if (!next && !planChange.isPending) setPendingConfirmation(null); }}
+        title="Confirmar mudança de plano"
+        className="sm:max-w-lg"
+        footer={
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" disabled={planChange.isPending} onClick={() => setPendingConfirmation(null)}>
+              Voltar
+            </Button>
+            <Button className="flex-1" disabled={planChange.isPending} onClick={confirmQuotedChange}>
+              {planChange.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Confirmar
+            </Button>
+          </div>
+        }
+      >
+        {pendingConfirmation && (
+          <div className="space-y-4">
+            <NoticeBanner
+              variant={pendingConfirmation.quote.change_kind === 'upgrade' ? 'success' : 'warning'}
+              icon={pendingConfirmation.quote.change_kind === 'upgrade' ? TrendingUp : TrendingDown}
+              title={pendingConfirmation.quote.change_kind === 'upgrade' ? 'Upgrade' : pendingConfirmation.quote.change_kind === 'downgrade' ? 'Mudança agendada' : 'Reorganização do plano'}
+            >
+              {pendingConfirmation.quote.message}
+            </NoticeBanner>
+            <div className="rounded-xl border bg-muted/30 p-4 space-y-2 text-sm">
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Valor atual</span><strong>R$ {formatBRL(pendingConfirmation.quote.current_value ?? effectiveValue)}/mês</strong></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Novo valor</span><strong>R$ {formatBRL(pendingConfirmation.quote.target_monthly_value ?? 0)}/mês</strong></div>
+              {(pendingConfirmation.quote.amount_due ?? 0) > 0 && (
+                <div className="flex justify-between gap-4 border-t pt-2"><span className="text-muted-foreground">Pagar agora</span><strong>R$ {formatBRL(pendingConfirmation.quote.amount_due ?? 0)}</strong></div>
+              )}
+            </div>
+            {(pendingConfirmation.quote.target_max_users ?? maxUsers) < currentUserCount && (
+              <NoticeBanner variant="warning" icon={Users}>
+                O novo limite é de {pendingConfirmation.quote.target_max_users} usuários. Nenhum usuário será desativado agora; organize os acessos antes da próxima renovação.
+              </NoticeBanner>
+            )}
+          </div>
+        )}
+      </ResponsiveModal>
     </>
   );
 }

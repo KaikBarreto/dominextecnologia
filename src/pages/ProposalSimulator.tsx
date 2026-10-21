@@ -39,6 +39,9 @@ import {
 } from '@/hooks/usePublicSubscriptionPlans';
 import { cn } from '@/lib/utils';
 import {
+  BASIC_BUNDLE_DESCRIPTION,
+  BASIC_BUNDLE_FEATURES,
+  BASIC_BUNDLE_LABEL,
   EXTRA_USER_MODULE_CODE,
   REQUIRED_CUSTOM_MODULE_CODES,
   isRequiredCustomModule,
@@ -85,17 +88,6 @@ const MODULE_LABELS: Record<string, string> = {
   cobrancas: 'Cobranças',
 };
 
-const BASE_MODULE_BENEFITS = [
-  MODULE_LABELS.basic,
-  'Área do Técnico™',
-];
-
-const BASE_MODULE_DESCRIPTION = [
-  'OS, agenda, clientes, equipamentos, estoque e financeiro completo, com contas, DRE e DFC.',
-  'Também inclui Área do Técnico™, Portal do Cliente, Orçamentos e Precificação',
-  'e perguntas em vídeo nos checklists.',
-].join(' ');
-
 const PLAN_ACCENTS: Record<string, { icon: typeof Zap; className: string }> = {
   excecao: { icon: Zap, className: 'bg-slate-700 text-white' },
   start: { icon: Zap, className: 'bg-emerald-600 text-white' },
@@ -122,12 +114,13 @@ function moduleBenefits(
   catalogModules: Array<{ code: string; name: string }> = [],
 ): string[] {
   const catalogNames = new Map(catalogModules.map((module) => [module.code, module.name]));
-  return moduleCodes.flatMap((code) => {
+  return Array.from(new Set(moduleCodes.flatMap((code) => {
     if (isRetiredProposalModule(code)) return [];
-    if (code === BASE_MODULE_CODE) return BASE_MODULE_BENEFITS;
+    if (code === BASE_MODULE_CODE) return [...BASIC_BUNDLE_FEATURES];
+    if (isRequiredCustomModule(code)) return [];
     const label = MODULE_LABELS[code] ?? catalogNames.get(code);
     return label ? [label] : [];
-  });
+  })));
 }
 
 function moduleDisplayName(module: { code: string; name: string }): string {
@@ -179,7 +172,7 @@ function planModules(plan: PublicSubscriptionPlan): string[] {
       'Clientes',
     ];
   }
-  return moduleBenefits(plan.includedModules);
+  return moduleBenefits([BASE_MODULE_CODE, ...plan.includedModules]);
 }
 
 function discountLabel(discount: ProposalDiscount, appliedAmount: number): string {
@@ -752,9 +745,9 @@ export default function ProposalSimulator() {
                               <div className="flex items-start gap-3 rounded-lg bg-emerald-600 p-3 text-white">
                                 <Check className="mt-0.5 h-4 w-4 shrink-0" />
                                 <div className="min-w-0">
-                                  <p className="text-sm font-semibold">Módulo Básico</p>
+                                  <p className="text-sm font-semibold">{BASIC_BUNDLE_LABEL}</p>
                                   <p className="mt-0.5 text-xs leading-relaxed text-white/80">
-                                    {BASE_MODULE_DESCRIPTION}
+                                    {BASIC_BUNDLE_DESCRIPTION}
                                   </p>
                                 </div>
                               </div>
@@ -1061,8 +1054,8 @@ export default function ProposalSimulator() {
                       </TableCell>
                     </TableRow>
                     <PricingTableRow
-                      name="Essencial"
-                      description={BASE_MODULE_DESCRIPTION}
+                      name={BASIC_BUNDLE_LABEL}
+                      description={BASIC_BUNDLE_DESCRIPTION}
                       price={baseModule?.price ?? plans.find((plan) => plan.code === 'start')?.price ?? 0}
                       hidden={pricesHidden}
                     />

@@ -38,6 +38,7 @@ import { CUSTOM_PLAN_INCLUDED_USERS } from '@/lib/subscriptionCatalog';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { isValidBrazilianPhone } from '@/lib/phone-validation';
+import { getInvokeErrorMessage } from '@/utils/errorMessages';
 import {
   DEFAULT_COUNTRY_CODE,
   getCountryDef,
@@ -235,7 +236,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         country_code: DEFAULT_COUNTRY_CODE,
         subscription_status: company.subscription_status || 'testing',
         subscription_plan: company.subscription_plan || 'start',
-        subscription_value: String(company.subscription_value || 0),
+        subscription_value: String(
+          Number(company.custom_price) > 0
+            ? company.custom_price
+            : company.subscription_value || 0,
+        ),
         subscription_expires_at: company.subscription_expires_at
           ? company.subscription_expires_at.split('T')[0]
           : '',
@@ -511,7 +516,8 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           ? appendNote(formData.notes, customPriceNote)
           : (formData.notes || null);
 
-        const { error } = await supabase.from('companies').update({
+        const { data: updateResult, error: updateError } = await supabase.functions.invoke('update-company', { body: {
+          company_id: company.id,
           name: formData.name,
           cnpj: cleanCnpj || null,
           email: formData.email || null,
@@ -533,41 +539,14 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           custom_price: customPriceVal,
           custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
           custom_price_months: customPriceMonthsVal,
+          plan_locked: formData.subscription_status === 'testing'
+            && (parseFloat(formData.subscription_value) || 0) > 0,
           nfse_tier: parseInt(formData.nfse_tier) || 1,
-          ...(formData.subscription_plan === 'personalizado'
-            ? { whatsapp_tier: hasWhatsappAddon ? whatsappPaidTier : 1 }
-            : {}),
-        }).eq('id', company.id);
-        if (error) throw error;
-
-        // Sincroniza company_modules (RLS: super_admin tem ALL na tabela).
-        if (formData.subscription_plan === 'personalizado') {
-          const desired = withBaseModules(selectedModules);
-          const current = existingModules || [];
-          const toAdd = desired.filter(c => !current.includes(c));
-          const toRemove = current.filter(c => !desired.includes(c));
-          if (toRemove.length > 0) {
-            const { error: delError } = await supabase
-              .from('company_modules')
-              .delete()
-              .eq('company_id', company.id)
-              .in('module_code', toRemove);
-            if (delError) throw delError;
-          }
-          if (toAdd.length > 0) {
-            const { error: insError } = await supabase
-              .from('company_modules')
-              .insert(toAdd.map(code => ({ company_id: company.id, module_code: code })));
-            if (insError) throw insError;
-          }
-        } else if (company.subscription_plan === 'personalizado' && (existingModules?.length || 0) > 0) {
-          // Saiu do Personalizado pra plano padrão: módulos passam a vir do
-          // plano (included_modules) — limpa os avulsos pra não vazar módulo.
-          const { error: delAllError } = await supabase
-            .from('company_modules')
-            .delete()
-            .eq('company_id', company.id);
-          if (delAllError) throw delAllError;
+          modules: modulesPayload,
+        } });
+        if (updateError || updateResult?.error) {
+          const edgeMessage = await getInvokeErrorMessage(updateError);
+          throw new Error(edgeMessage || updateResult?.error || 'Não foi possível salvar a empresa.');
         }
       } else {
         const { data: session } = await supabase.auth.getSession();
@@ -600,6 +579,8 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
             custom_price: customPriceVal,
             custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
             custom_price_months: customPriceMonthsVal,
+            plan_locked: formData.subscription_status === 'testing'
+              && (parseFloat(formData.subscription_value) || 0) > 0,
             original_plan_price: originalPlanPrice,
             modules: modulesPayload,
             custom_price_note: customPriceNote,
@@ -1253,14 +1234,14 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="max-w-2xl max-h-[90vh] flex flex-col"
+          className="max-w-2xl w-[95vw] h-[95dvh] max-h-[95dvh] flex flex-col min-h-0 overflow-hidden"
           onPointerDownOutside={(e) => { if (!isEditing) e.preventDefault(); }}
           onEscapeKeyDown={(e) => { if (!isEditing) e.preventDefault(); }}
         >
           {/* pr-28 (não pr-8) reserva espaço pro botão "FECHAR" absoluto
               (right-4/top-4 em dialog.tsx) — com HeaderActions ("Gerar Link")
               presente, pr-8 deixava os dois botões se sobrepondo. */}
-          <DialogHeader className="flex flex-row items-center justify-between gap-4 pr-28">
+          <DialogHeader className="shrink-0 flex flex-row items-center justify-between gap-4 pr-28">
             <DialogTitle className="min-w-0 truncate">{title}</DialogTitle>
             {HeaderActions}
           </DialogHeader>

@@ -14,9 +14,17 @@ import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 import { SelfServiceBadge } from '@/components/admin/company-lead/SelfServiceBadge';
 import { LeadWhatsAppButton } from '@/components/admin/company-lead/LeadWhatsAppButton';
+import { getEffectiveSubscriptionValue } from '@/utils/subscriptionPricing';
 
 const PLAN_LABELS: Record<string, string> = {
-  excecao: 'EXCEÇÃO', starter: 'Starter', pro: 'Pro', enterprise: 'Enterprise',
+  excecao: 'EXCEÇÃO',
+  start: 'Essencial',
+  starter: 'Essencial',
+  avancado: 'Pro',
+  pro: 'Pro',
+  master: 'Business',
+  enterprise: 'Business',
+  personalizado: 'Personalizado',
 };
 
 interface CompanyKanbanCardProps {
@@ -79,20 +87,20 @@ export function CompanyKanbanCard({ company, origins, salespersonMap, canSeeTota
   const specialPricing = promoInfo
     ? {
         icon: Gift,
-        tooltip: `Período promocional: ${promoInfo.remaining}/${promoInfo.total} meses restantes\nValor: ${formatCurrency(company.subscription_value)}`,
+        tooltip: `Período promocional: ${promoInfo.remaining}/${promoInfo.total} meses restantes\nValor: ${formatCurrency(company.custom_price)}`,
         isExpiring: promoInfo.isExpiringSoon,
       }
     : hasCustomPrice
       ? {
           icon: Tag,
-          tooltip: `Valor personalizado: ${formatCurrency(company.subscription_value)}`,
+          tooltip: `Valor personalizado: ${formatCurrency(company.custom_price)}`,
           isExpiring: false,
         }
       : null;
 
   return (
     <div
-      className={cn('bg-card rounded-lg border shadow-sm hover:shadow-md transition-all duration-300 cursor-grab active:cursor-grabbing group w-full relative', isDragging && 'shadow-xl ring-2 ring-primary rotate-2 scale-105')}
+      className={cn('bg-card min-w-0 w-full rounded-lg border shadow-sm hover:shadow-md transition-all duration-300 cursor-grab active:cursor-grabbing group relative', isDragging && 'shadow-xl ring-2 ring-primary rotate-2 scale-105')}
       onClick={() => navigate(`/admin/empresas/${company.id}`)}
     >
       {/* Badge de valor personalizado — canto superior direito */}
@@ -120,7 +128,7 @@ export function CompanyKanbanCard({ company, origins, salespersonMap, canSeeTota
       )}
 
       <div className="p-2.5 sm:p-3 pb-1.5 sm:pb-2">
-        <div className="flex items-start gap-2.5 sm:gap-3">
+        <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
           <Avatar className={cn('h-9 w-9 sm:h-10 sm:w-10 shrink-0', avatarColor)}>
             <AvatarFallback className="text-white text-[11px] sm:text-xs font-medium bg-transparent">{getInitials(company.name)}</AvatarFallback>
           </Avatar>
@@ -137,13 +145,13 @@ export function CompanyKanbanCard({ company, origins, salespersonMap, canSeeTota
       <div className="px-2.5 sm:px-3 pb-2 space-y-1.5">
         {/* Gate de totais R$: oculto para vendedor restrito (canSeeTotals=false). */}
         {canSeeTotals && (
-          <div className="flex items-center justify-between">
+          <div className="flex min-w-0 items-center justify-between gap-2">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Valor Mensal:</span>
-            <span className="text-sm font-semibold text-foreground">{formatCurrency(company.subscription_value)}</span>
+            <span className="text-sm font-semibold text-foreground">{formatCurrency(getEffectiveSubscriptionValue(company))}</span>
           </div>
         )}
         {originData && (
-          <div className="flex items-center justify-between">
+          <div className="flex min-w-0 items-center justify-between gap-2">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Origem:</span>
             <ResolvedOriginBadge
               origin={originData}
@@ -153,7 +161,7 @@ export function CompanyKanbanCard({ company, origins, salespersonMap, canSeeTota
           </div>
         )}
         {segmentData && (
-          <div className="flex items-center justify-between">
+          <div className="flex min-w-0 items-center justify-between gap-2">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Segmento:</span>
             <Badge className="text-xs px-2 py-0.5 h-5 font-normal text-white border-0 max-w-[60%] gap-1" style={{ backgroundColor: segmentData.color }}>
               <segmentData.icon className="h-3 w-3 shrink-0" />
@@ -163,7 +171,7 @@ export function CompanyKanbanCard({ company, origins, salespersonMap, canSeeTota
         )}
         {/* Vendedor — espelha o EcoSistema: avatar + nome (truncate). Mobile + desktop. */}
         {salesperson && (
-          <div className="flex items-center justify-between">
+          <div className="flex min-w-0 items-center justify-between gap-2">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Vendedor:</span>
             <div className="flex items-center gap-1.5 max-w-[60%] min-w-0">
               {salesperson.photo_url ? (

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, Medal, Award } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { getEffectiveSubscriptionValue } from '@/utils/subscriptionPricing';
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -31,7 +32,7 @@ export function AdminTopClientsLTV({ companies }: Props) {
     id: c.id,
     name: c.name,
     ltv: paymentsByCompany[c.id] || 0,
-    ticket: Number(c.subscription_value || 0),
+    ticket: getEffectiveSubscriptionValue(c),
   }));
   const topClients = [...enriched].filter((c) => c.ltv > 0).sort((a, b) => b.ltv - a.ltv).slice(0, 3);
 

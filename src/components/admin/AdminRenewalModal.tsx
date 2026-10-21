@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminCompanyPayments, mapPaymentRpcError } from '@/hooks/useAdminCompanyPayments';
+import { getEffectiveSubscriptionValue } from '@/utils/subscriptionPricing';
 
 const schema = z.object({
   payment_value: z.string().min(1, 'Valor obrigatório'),
@@ -35,11 +36,12 @@ export function AdminRenewalModal({ company, open, onOpenChange, onSuccess }: Ad
   const cycleMonths = company?.billing_cycle === 'yearly' ? 12 : 1;
   const currentExpiry = company?.subscription_expires_at ? parseISO(company.subscription_expires_at) : new Date();
   const newExpiry = addMonths(maxDate([currentExpiry, new Date()]), cycleMonths);
+  const effectiveValue = getEffectiveSubscriptionValue(company || {});
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      payment_value: (company?.subscription_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+      payment_value: effectiveValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
       observations: '',
     },
   });
@@ -88,7 +90,7 @@ export function AdminRenewalModal({ company, open, onOpenChange, onSuccess }: Ad
       <div className="space-y-4">
         <div className="rounded-lg bg-muted p-3 space-y-2 text-sm">
           <div className="flex justify-between"><span className="text-muted-foreground">Empresa:</span><span className="font-semibold">{company?.name}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Valor Mensal:</span><span className="font-semibold">{(company?.subscription_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Valor Mensal:</span><span className="font-semibold">{effectiveValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Vencimento Atual:</span><span className="font-semibold">{company?.subscription_expires_at ? format(parseISO(company.subscription_expires_at), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}</span></div>
         </div>
 

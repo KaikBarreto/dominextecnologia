@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { LayoutGrid, DollarSign } from 'lucide-react';
+import { getEffectiveSubscriptionValue } from '@/utils/subscriptionPricing';
 
 const PLAN_COLORS = ['#6366F1', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -22,7 +23,7 @@ export function AdminClientsByPlanChart({ companies }: Props) {
     const raw = c.subscription_plan || 'Não informado';
     const label = PLAN_LABELS[raw] || raw;
     planCount[label] = (planCount[label] || 0) + 1;
-    planRev[label] = (planRev[label] || 0) + Number(c.subscription_value || 0);
+    planRev[label] = (planRev[label] || 0) + getEffectiveSubscriptionValue(c);
   });
 
   const clientData = Object.entries(planCount).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);

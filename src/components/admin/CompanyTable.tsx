@@ -27,6 +27,7 @@ import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAva
 import { SelfServiceBadge } from '@/components/admin/company-lead/SelfServiceBadge';
 import { LeadWhatsAppButton } from '@/components/admin/company-lead/LeadWhatsAppButton';
 import { hasPaidSubscription } from '@/utils/companyLifecycle';
+import { getEffectiveSubscriptionValue } from '@/utils/subscriptionPricing';
 
 interface CompanyTableProps {
   companies: any[];
@@ -45,12 +46,13 @@ interface CompanyTableProps {
 
 const PLAN_LABELS: Record<string, string> = {
   excecao: 'EXCEÇÃO',
-  start: 'Start',
-  starter: 'Start',
-  avancado: 'Avançado',
-  pro: 'Avançado',
-  master: 'Master',
-  enterprise: 'Master',
+  start: 'Essencial',
+  starter: 'Essencial',
+  avancado: 'Pro',
+  pro: 'Pro',
+  master: 'Business',
+  enterprise: 'Business',
+  personalizado: 'Personalizado',
 };
 
 const PLAN_COLORS: Record<string, string> = {
@@ -112,6 +114,7 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
     return companies.map((c) => ({
       ...c,
       _expiresAtTs: c.subscription_expires_at ? new Date(c.subscription_expires_at).getTime() : null,
+      _effectiveSubscriptionValue: getEffectiveSubscriptionValue(c),
     }));
   }, [companies]);
 
@@ -166,7 +169,7 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
               <SortableTableHead sortKey="_expiresAtTs" sortConfig={sortConfig} onSort={handleSort}>Vencimento</SortableTableHead>
               {/* Gate de totais R$: coluna oculta para vendedor restrito. */}
               {canSeeTotals && (
-                <SortableTableHead sortKey="subscription_value" sortConfig={sortConfig} onSort={handleSort} className="w-[140px]">Valor Mensal</SortableTableHead>
+                <SortableTableHead sortKey="_effectiveSubscriptionValue" sortConfig={sortConfig} onSort={handleSort} className="w-[140px]">Valor Mensal</SortableTableHead>
               )}
               <TableHead className="text-right text-xs uppercase tracking-wider">Ações</TableHead>
             </TableRow>
@@ -347,7 +350,7 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
                     </TableCell>
                     {/* Gate de totais R$: célula oculta para vendedor restrito. */}
                     {canSeeTotals && (
-                      <TableCell>{(company.subscription_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                      <TableCell>{getEffectiveSubscriptionValue(company).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
                     )}
                     <TableCell className="text-right">
                       <div className="flex justify-end items-center gap-1" onClick={(e) => e.stopPropagation()}>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +25,7 @@ import { NumericInput } from '@/components/ui/numeric-input';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { useAffiliates } from '@/hooks/useAffiliateData';
 import { resolveAffiliateOriginName, type CatalogOrigin } from '@/utils/companyOriginCatalog';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 
 interface Props {
   open: boolean;
@@ -42,6 +43,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   const [selectedAffiliate, setSelectedAffiliate] = useState(''); // Afiliado (opcional)
   const [linkType, setLinkType] = useState<'teste' | 'venda'>('teste');
   const [trialDays, setTrialDays] = useState(7);
+  const [isCustomTrialDays, setIsCustomTrialDays] = useState(false);
   const [generatedLink, setGeneratedLink] = useState('');
   const [copied, setCopied] = useState(false);
 
@@ -79,6 +81,8 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   // Plano Personalizado: módulos à la carte + máx. usuários do link.
   const [customModules, setCustomModules] = useState<string[]>([...BASE_MODULE_CODES]);
   const [customMaxUsers, setCustomMaxUsers] = useState('5');
+  const { linkedSalespersonId } = useAdminPermissions();
+  const hydratedSellerForOpen = useRef(false);
 
   const { data: origins = [] } = useQuery({
     queryKey: ['company-origins-link'],
@@ -114,6 +118,22 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
       return data || [];
     },
   });
+
+  // Mesmo contrato da EcoSistema: o vendedor logado nasce selecionado, mas um
+  // refetch nunca sobrescreve a escolha manual feita com o modal aberto.
+  useEffect(() => {
+    if (!open) {
+      hydratedSellerForOpen.current = false;
+      return;
+    }
+    if (hydratedSellerForOpen.current) return;
+    if (linkedSalespersonId && salespeople.some((seller: any) => seller.id === linkedSalespersonId)) {
+      setSelectedSalesperson(linkedSalespersonId);
+      hydratedSellerForOpen.current = true;
+      return;
+    }
+    if (!linkedSalespersonId) hydratedSellerForOpen.current = true;
+  }, [open, linkedSalespersonId, salespeople]);
 
   const { data: plans = [] } = useQuery({
     queryKey: ['subscription-plans-link'],
@@ -230,6 +250,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
     setSelectedAffiliate('');
     setLinkType('teste');
     setTrialDays(7);
+    setIsCustomTrialDays(false);
     setGeneratedLink('');
     setCopied(false);
     setPlanMode('livre');
@@ -300,15 +321,40 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
           {linkType === 'teste' && (
             <div className="space-y-2">
               <Label>Dias de Teste</Label>
-              <Select value={String(trialDays)} onValueChange={(v) => setTrialDays(parseInt(v))}>
+              <Select
+                value={isCustomTrialDays ? 'custom' : String(trialDays)}
+                onValueChange={(v) => {
+                  if (v === 'custom') {
+                    setIsCustomTrialDays(true);
+                    return;
+                  }
+                  setIsCustomTrialDays(false);
+                  setTrialDays(parseInt(v));
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="3">3 dias</SelectItem>
                   <SelectItem value="7">7 dias (padrão)</SelectItem>
                   <SelectItem value="14">14 dias</SelectItem>
                   <SelectItem value="30">30 dias</SelectItem>
+                  <SelectItem value="custom">Outro período…</SelectItem>
                 </SelectContent>
               </Select>
+              {isCustomTrialDays && (
+                <div className="space-y-1">
+                  <NumericInput
+                    value={String(trialDays)}
+                    onValueChange={(value) => {
+                      const days = parseInt(value || '1', 10);
+                      setTrialDays(Math.max(1, Math.min(365, Number.isFinite(days) ? days : 1)));
+                    }}
+                    min={1}
+                    max={365}
+                  />
+                  <p className="text-xs text-muted-foreground">{trialDays === 1 ? 'dia' : 'dias'} (1 a 365)</p>
+                </div>
+              )}
             </div>
           )}
 

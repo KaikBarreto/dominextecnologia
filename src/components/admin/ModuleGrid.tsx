@@ -4,8 +4,11 @@ import { cn } from '@/lib/utils';
 import type { NfseTier } from '@/hooks/useNfseTiers';
 import { usePublicSubscriptionCatalog } from '@/hooks/usePublicSubscriptionPlans';
 import {
+  BASIC_BUNDLE_DESCRIPTION,
+  BASIC_BUNDLE_LABEL,
   CUSTOM_PLAN_INCLUDED_USERS,
   EXTRA_USER_MODULE_CODE,
+  FREE_BASE_MODULE_CODES,
   REQUIRED_CUSTOM_MODULE_CODES,
   isRequiredCustomModule,
   resolveExtraUserPrice,
@@ -29,7 +32,7 @@ export const BASE_MODULE_CODES = [...REQUIRED_CUSTOM_MODULE_CODES];
 
 // 'extra_user' é um adicional calculado pelo contador de usuários, não um
 // recurso marcável. O preço vem do catálogo no fluxo de cobrança/server-side.
-const HIDDEN_MODULE_CODES = ['extra_user', 'finance_advanced'];
+const HIDDEN_MODULE_CODES = [EXTRA_USER_MODULE_CODE, ...FREE_BASE_MODULE_CODES];
 
 export interface SubscriptionModule {
   code: string;
@@ -139,11 +142,13 @@ export function ModuleGrid({ modules, selected, onToggle, disabled = false }: Mo
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-medium leading-tight flex items-center gap-1.5">
-                  {mod.name}
+                  {mod.code === 'basic' ? BASIC_BUNDLE_LABEL : mod.name}
                   {isBase && <Lock className="h-3 w-3 text-muted-foreground shrink-0" />}
                 </p>
-                {mod.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{mod.description}</p>
+                {(mod.description || mod.code === 'basic') && (
+                  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                    {mod.code === 'basic' ? BASIC_BUNDLE_DESCRIPTION : mod.description}
+                  </p>
                 )}
               </div>
             </div>

@@ -1270,6 +1270,7 @@ export type Database = {
           origin: string | null
           payment_lock_bypass: boolean
           payment_method: string | null
+          plan_locked: boolean
           pending_billing_cycle: string | null
           pending_max_users: number | null
           pending_modules: Json | null
@@ -1334,6 +1335,7 @@ export type Database = {
           origin?: string | null
           payment_lock_bypass?: boolean
           payment_method?: string | null
+          plan_locked?: boolean
           pending_billing_cycle?: string | null
           pending_max_users?: number | null
           pending_modules?: Json | null
@@ -1398,6 +1400,7 @@ export type Database = {
           origin?: string | null
           payment_lock_bypass?: boolean
           payment_method?: string | null
+          plan_locked?: boolean
           pending_billing_cycle?: string | null
           pending_max_users?: number | null
           pending_modules?: Json | null

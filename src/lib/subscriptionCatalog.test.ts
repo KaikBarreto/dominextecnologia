@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   EXCEPTION_PLAN_CODE,
+  BASIC_BUNDLE_FEATURES,
   REQUIRED_CUSTOM_MODULE_CODES,
+  buildCommercialModuleFeatures,
   isRetiredProposalModule,
   planAllowsScreen,
   resolveExtraUserPrice,
@@ -28,6 +30,13 @@ describe('subscriptionCatalog', () => {
 
   it('mantém Cobranças fora da base obrigatória para ser um add-on pago', () => {
     expect(REQUIRED_CUSTOM_MODULE_CODES).not.toContain('cobrancas');
+  });
+
+  it('agrupa entitlements internos da base e lista somente add-ons comerciais', () => {
+    expect(buildCommercialModuleFeatures(
+      ['basic', 'customer_portal', 'finance_advanced', 'pricing_advanced', 'video_questions', 'crm'],
+      [{ code: 'crm', name: 'CRM Completo' }],
+    )).toEqual([...BASIC_BUNDLE_FEATURES, 'CRM Completo']);
   });
 
   it('usa o preço de extra_user do catálogo', () => {

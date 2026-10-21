@@ -740,6 +740,9 @@ Deno.serve(async (req) => {
         subscription_status,
         subscription_plan: planCode,
         subscription_value: finalPrice,
+        // A query string só transporta a intenção. Depois do cadastro, esta
+        // coluna é a fonte de verdade para impedir troca de plano no checkout.
+        plan_locked: isLocked && !!lockedPlan,
         subscription_expires_at: expirationDate.toISOString(),
         billing_cycle: billingCycle,
         max_users: finalMaxUsers,

@@ -75,6 +75,8 @@ interface ChangePlanRequest {
   custom_modules?: string[];
   extra_users?: number;
   nfse_tier?: number;
+  /** false = cotação sem escrita; true = aplica/agendada após confirmação. */
+  confirm?: boolean;
 }
 
 const MIN_UPGRADE_CHARGE = 5;
@@ -335,6 +337,48 @@ Deno.serve(async (req) => {
       isUpgrade = true;
     }
     const changeKind = isUpgrade ? "upgrade" : isDowngrade ? "downgrade" : "igual";
+
+    // Passo 1: cotação pura. Nenhuma tabela nem gateway é alterado antes da
+    // confirmação explícita do cliente. O cálculo é repetido no passo 2 para
+    // evitar aplicar uma cotação velha caso preço/vencimento tenham mudado.
+    if (body.confirm !== true) {
+      const periodEnd = company.subscription_expires_at ? new Date(company.subscription_expires_at) : null;
+      const now = new Date();
+      const canProrate = isUpgrade
+        && company.subscription_status === "active"
+        && periodEnd !== null
+        && Number.isFinite(periodEnd.getTime())
+        && periodEnd.getTime() > now.getTime();
+      const preview = canProrate
+        ? calculateUpgradeProration({
+            now,
+            periodEnd: periodEnd!,
+            currentCycle,
+            targetCycle: cycleForDb,
+            currentMonthlyValue: currentEffectiveValue,
+            targetMonthlyValue,
+          })
+        : null;
+      return new Response(JSON.stringify({
+        success: true,
+        dry_run: true,
+        change_kind: changeKind,
+        current_value: currentEffectiveValue,
+        target_monthly_value: targetMonthlyValue,
+        target_plan_code: plan_code,
+        target_billing_cycle: cycleForDb,
+        target_max_users: targetMaxUsers,
+        target_modules: targetModules,
+        amount_due: preview?.amountDue ?? 0,
+        credit_amount: preview?.creditAmount ?? 0,
+        next_renewal_at: preview?.nextRenewalAt?.toISOString() ?? company.subscription_expires_at,
+        message: changeKind === "upgrade"
+          ? "Confira o valor proporcional antes de continuar."
+          : changeKind === "downgrade"
+          ? "O novo valor será cobrado na próxima renovação; o acesso atual continua até lá."
+          : "Confira a nova composição antes de confirmar.",
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     // ===================================================================
     // DOWNGRADE (B2): agenda o valor menor pro próximo ciclo, preserva acesso.

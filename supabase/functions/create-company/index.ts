@@ -16,6 +16,8 @@ const REQUIRED_PERSONALIZED_MODULE_CODES = [
   'pricing_advanced',
   'video_questions',
 ] as const
+const EXTRA_USER_MODULE_CODE = 'extra_user'
+const CUSTOM_PLAN_INCLUDED_USERS = 5
 
 const COUNTRY_REGIONAL_DEFAULTS: Record<string, { language: string; currency: string; timezone: string }> = {
   BR: { language: 'pt-br', currency: 'BRL', timezone: 'America/Sao_Paulo' },
@@ -128,6 +130,7 @@ Deno.serve(async (req) => {
       modules,
       custom_price_note,
       nfse_tier,
+      plan_locked,
     } = body
 
     const countryCode = resolveCountryCode(country_code)
@@ -169,13 +172,15 @@ Deno.serve(async (req) => {
       : requestedModuleCodes
     let validModuleCodes: string[] = []
     let resolvedWhatsappTier = 1
+    let resolvedWhatsappPrice = 0
+    let moduleCatalog: Array<{ code: string; price: number | null }> = []
 
     if (moduleCodesToValidate.length > 0) {
       const { data: catalog, error: catalogError } = await supabaseAdmin
         .from('subscription_modules')
-        .select('code')
+        .select('code, price')
         .eq('is_active', true)
-        .in('code', moduleCodesToValidate)
+        .in('code', [...new Set([...moduleCodesToValidate, EXTRA_USER_MODULE_CODE])])
 
       if (catalogError) {
         console.error('[create-company] Falha ao validar módulos:', catalogError.message)
@@ -186,7 +191,10 @@ Deno.serve(async (req) => {
           })
         }
       } else {
-        validModuleCodes = (catalog || []).map((item: { code: string }) => item.code)
+        moduleCatalog = (catalog || []) as Array<{ code: string; price: number | null }>
+        validModuleCodes = moduleCatalog
+          .filter((item) => item.code !== EXTRA_USER_MODULE_CODE)
+          .map((item) => item.code)
       }
 
       if (isPersonalizado) {
@@ -205,6 +213,7 @@ Deno.serve(async (req) => {
             const whatsappOffer = await resolveFirstPaidWhatsappTier(supabaseAdmin)
             if (!whatsappOffer) throw new Error('nível pago ausente')
             resolvedWhatsappTier = whatsappOffer.tier
+            resolvedWhatsappPrice = whatsappOffer.price
           } catch (whatsappError) {
             console.error('[create-company] Falha ao resolver preço do WhatsApp:', whatsappError)
             return new Response(JSON.stringify({ error: 'O preço do módulo de WhatsApp não está configurado corretamente.' }), {
@@ -214,6 +223,62 @@ Deno.serve(async (req) => {
           }
         }
       }
+    }
+
+    // Preço-base sempre nasce do catálogo no servidor. O client só pode
+    // sobrescrever o que será cobrado quando manda `custom_price` explícito.
+    let catalogSubscriptionValue = 0
+    let catalogMaxUsers = Number(max_users) || CUSTOM_PLAN_INCLUDED_USERS
+    if (isPersonalizado) {
+      const requestedSet = new Set(validModuleCodes)
+      catalogSubscriptionValue = moduleCatalog
+        .filter((item) => item.code !== EXTRA_USER_MODULE_CODE && requestedSet.has(item.code))
+        .reduce((sum, item) => {
+          if (item.code === 'whatsapp') return sum + resolvedWhatsappPrice
+          return sum + (Number(item.price) || 0)
+        }, 0)
+
+      if (validModuleCodes.includes('nfe')) {
+        const requestedTier = Math.max(1, Number(nfse_tier) || 1)
+        const { data: tierRow, error: tierError } = await supabaseAdmin
+          .from('nfse_tiers')
+          .select('price')
+          .eq('tier', requestedTier)
+          .maybeSingle()
+        if (tierError || !tierRow) {
+          return new Response(JSON.stringify({ error: 'O nível de Notas Fiscais não está configurado corretamente.' }), {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+        const baseNfsePrice = Number(moduleCatalog.find((item) => item.code === 'nfe')?.price) || 0
+        catalogSubscriptionValue += (Number(tierRow.price) || 0) - baseNfsePrice
+      }
+
+      catalogMaxUsers = Math.max(CUSTOM_PLAN_INCLUDED_USERS, Number(max_users) || CUSTOM_PLAN_INCLUDED_USERS)
+      const extraUserPrice = Number(moduleCatalog.find((item) => item.code === EXTRA_USER_MODULE_CODE)?.price) || 0
+      if (!(extraUserPrice > 0)) {
+        return new Response(JSON.stringify({ error: 'O preço de usuário adicional não está configurado corretamente.' }), {
+          status: 503,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      catalogSubscriptionValue += Math.max(0, catalogMaxUsers - CUSTOM_PLAN_INCLUDED_USERS) * extraUserPrice
+    } else {
+      const { data: planRow, error: planError } = await supabaseAdmin
+        .from('subscription_plans')
+        .select('price, max_users')
+        .eq('code', subscription_plan || 'start')
+        .eq('is_active', true)
+        .maybeSingle()
+      if (planError || !planRow || !(Number(planRow.price) > 0)) {
+        return new Response(JSON.stringify({ error: 'O plano selecionado não está disponível no catálogo.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      catalogSubscriptionValue = Number(planRow.price)
+      catalogMaxUsers = Number(planRow.max_users) || CUSTOM_PLAN_INCLUDED_USERS
     }
 
     // Observação automática de valor personalizado: o frontend manda a nota
@@ -257,6 +322,10 @@ Deno.serve(async (req) => {
     }
 
     // 1. Create the company
+    const isPureTrial = (subscription_status || 'testing') === 'testing'
+      && plan_locked !== true
+      && !(Number(custom_price) > 0)
+      && !(Number(subscription_value) > 0)
     const { data: company, error: companyError } = await supabaseAdmin
       .from('companies')
       .insert({
@@ -268,11 +337,11 @@ Deno.serve(async (req) => {
         contact_name: contact_name || null,
         notes: finalNotes,
         subscription_status: subscription_status || 'testing',
-        subscription_plan: subscription_plan || 'starter',
-        subscription_value: subscription_value || 0,
+        subscription_plan: subscription_plan || 'start',
+        subscription_value: isPureTrial ? 0 : catalogSubscriptionValue,
         subscription_expires_at: subscription_expires_at || null,
         billing_cycle: billing_cycle || 'monthly',
-        max_users: max_users || 5,
+        max_users: catalogMaxUsers,
         origin: canonicalOrigin,
         salesperson_id: salesperson_id || null,
         sdr_id: sdr_id || null,
@@ -283,6 +352,7 @@ Deno.serve(async (req) => {
         custom_price_months: custom_price_months ?? null,
         nfse_tier: nfse_tier ?? 1,
         whatsapp_tier: resolvedWhatsappTier,
+        plan_locked: !isPureTrial && (plan_locked === true || (subscription_status === 'testing' && Number(subscription_value) > 0)),
       })
       .select('id')
       .single()

@@ -34,6 +34,7 @@ import { useSubscriptionModules } from '@/components/admin/ModuleGrid';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { OriginBadge } from '@/components/admin/OriginBadge';
 import { useAffiliate } from '@/hooks/useAffiliateData';
+import { getEffectiveSubscriptionValue } from '@/utils/subscriptionPricing';
 
 export default function AdminCompanyDetail() {
   const { id } = useParams();
@@ -430,7 +431,7 @@ export default function AdminCompanyDetail() {
               <div>
                 <span className="text-xs text-muted-foreground uppercase tracking-wider">Valor Mensal</span>
                 <p className="font-semibold text-lg text-primary">
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(company.subscription_value || 0)}
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(getEffectiveSubscriptionValue(company))}
                 </p>
               </div>
               <div>

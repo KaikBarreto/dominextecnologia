@@ -37,6 +37,9 @@ vi.mock('@/hooks/use-mobile', () => ({
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
+vi.mock('@/hooks/useAdminPermissions', () => ({
+  useAdminPermissions: () => ({ linkedSalespersonId: null }),
+}));
 vi.mock('./ModuleGrid', () => ({
   useSubscriptionModules: () => QUERY_RESULT,
   withBaseModules: (s: string[]) => s,

@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { CompanyKanbanCard } from './CompanyKanbanCard';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -13,6 +12,7 @@ import {
   type CompanyLifecycleColumn,
   type CompanyLifecycleSource,
 } from '@/utils/companyLifecycle';
+import { getEffectiveSubscriptionValue } from '@/utils/subscriptionPricing';
 
 interface CompanyKanbanBoardProps {
   companies: any[];
@@ -58,7 +58,7 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, salesper
 
   const getCompaniesByColumn = (columnId: CompanyLifecycleColumn) =>
     companies.filter((company) => getCompanyLifecycleColumn(company) === columnId);
-  const getTotalValue = (list: any[]) => list.reduce((acc, c) => acc + (c.subscription_value || 0), 0);
+  const getTotalValue = (list: any[]) => list.reduce((acc, c) => acc + getEffectiveSubscriptionValue(c), 0);
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
   const canEnterColumn = (company: CompanyLifecycleSource, column: CompanyKanbanColumn) => {
@@ -119,7 +119,7 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, salesper
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+    <div className="grid min-w-0 grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4 xl:gap-4 2xl:gap-6">
       {COLUMNS.map((column) => {
         const colCompanies = getCompaniesByColumn(column.id);
         const totalValue = getTotalValue(colCompanies);
@@ -128,7 +128,7 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, salesper
         return (
           <div
             key={column.id}
-            className="w-full"
+            className="min-w-0 w-full"
             onDragOver={(e) => {
               e.preventDefault();
               const draggedCompany = companies.find((company) => company.id === draggedCompanyId);
@@ -154,8 +154,8 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, salesper
             </div>
 
             <div className={cn('min-h-[200px] rounded-lg transition-all duration-300', isDragOver && 'bg-primary/10 ring-2 ring-primary ring-dashed scale-[1.02]')}>
-              <ScrollArea className="h-[calc(100vh-320px)]">
-                <div className="space-y-2 sm:space-y-3 pr-2 p-1">
+              <div className="h-[calc(100vh-320px)] min-w-0 overflow-x-hidden overflow-y-auto pr-2">
+                <div className="min-w-0 space-y-2 p-1 sm:space-y-3">
                   {colCompanies.length === 0 ? (
                     <div className={cn('border-2 border-dashed rounded-lg transition-all', isDragOver && 'border-primary bg-primary/5')}>
                       {isDragOver ? (
@@ -190,7 +190,7 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, salesper
                     ))
                   )}
                 </div>
-              </ScrollArea>
+              </div>
             </div>
           </div>
         );
