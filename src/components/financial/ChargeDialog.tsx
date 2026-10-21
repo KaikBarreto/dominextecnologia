@@ -38,6 +38,7 @@ import { useCustomers, type CustomerInput } from '@/hooks/useCustomers';
 import {
   useTenantCharges,
   buildCheckoutUrl,
+  CreateChargeApiError,
   type TenantChargeBillingType,
   type CreateChargeResult,
 } from '@/hooks/useTenantCharges';
@@ -82,8 +83,17 @@ interface ChargeDialogProps {
    *    · o VALOR é o da parcela e não pode ser editado (a edge recusa valor
    *      diferente; e cobrar menos daria baixa na parcela inteira);
    *    · não existe a opção "lançar no financeiro": o lançamento é a própria
-   *      parcela do contrato, que a cobrança só passa a acompanhar. */
-  source?: { type: 'quote' | 'contract_installment' | 'service_order'; id: string };
+   *      parcela do contrato, que a cobrança só passa a acompanhar.
+   *
+   *  'receivable' é o "COBRAR O SALDO" de uma conta a receber que JÁ EXISTE
+   *  (chamado de 21/10/2026): muda a tela nos MESMOS dois pontos da parcela de
+   *  contrato, e pela mesma razão — o servidor impõe o resto:
+   *    · o VALOR é o SALDO em aberto da conta e não pode ser editado (a edge
+   *      recusa qualquer outro valor, com tolerância de 1 centavo; é esse
+   *      invariante que deixa a baixa parcial ser confiável);
+   *    · não existe a opção "lançar no financeiro": o lançamento é a própria
+   *      conta, que a cobrança só passa a acompanhar. */
+  source?: { type: 'quote' | 'contract_installment' | 'service_order' | 'receivable'; id: string };
   /** Chamado depois de criar a cobrança com sucesso (normal OU órfã — os dois
    *  já existem no Asaas). Quem chama usa isto pra invalidar os PRÓPRIOS
    *  caches que não têm nada a ver com `useTenantCharges` (ex.: o estado de
@@ -91,6 +101,18 @@ interface ChargeDialogProps {
    *  Financeiro já saem de `useTenantCharges().create` — isto aqui é só o
    *  complemento específico de quem chama. */
   onCreated?: (result: CreateChargeResult) => void;
+  /**
+   * Chamado quando a edge recusa a criação porque JÁ EXISTE cobrança viva
+   * ligada à origem (`error_code = 'live_charge_exists'`, só acontece com
+   * `source.type = 'receivable'`).
+   *
+   * Por que devolver pro chamador em vez de resolver aqui: quem decide
+   * cancelar a cobrança atual é o gestor, com os dois valores na frente, e a
+   * substituição é de DOIS PASSOS (delete e só depois create). A edge de
+   * criação nunca mata cobrança por conta própria. Sem este callback, o erro
+   * vira só um toast e o usuário fica sem saída na tela.
+   */
+  onLiveChargeConflict?: (error: CreateChargeApiError) => void;
 }
 
 // Meios de pagamento efetivos (respeitam as flags allow_* da conta).
@@ -129,7 +151,7 @@ const METHOD_TO_SIMULATOR: Record<Exclude<BillingMethod, 'UNDEFINED'>, Simulator
   CREDIT_CARD: 'card',
 };
 
-export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustomer, presetAmount, presetDescription, presetDueDate, source, onCreated }: ChargeDialogProps) {
+export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustomer, presetAmount, presetDescription, presetDueDate, source, onCreated, onLiveChargeConflict }: ChargeDialogProps) {
   // Vínculo com a OS escolhido NA TELA. Só entra em cena quando o chamador não
   // passou `source`: cobrança aberta pelo Financeiro não tem origem nenhuma e,
   // sem isto, nascia solta — a OS ficava sem selo de "Faturada" e a trava de
@@ -144,6 +166,18 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   // Cobrança de PARCELA DE CONTRATO: valor travado no valor da parcela e sem
   // aba Financeiro (a parcela JÁ é o lançamento; a cobrança só se liga a ela).
   const isContractInstallment = source?.type === 'contract_installment';
+  // Cobrança do SALDO de uma CONTA A RECEBER que já existe: a conta já é o
+  // lançamento, e o valor é o saldo em aberto (travado, a edge recusa outro).
+  const isReceivableBalance = source?.type === 'receivable';
+  /**
+   * As duas origens que se LIGAM a um lançamento que já existe, em vez de
+   * criar um. As duas travam o valor e as duas não têm aba Financeiro. A copy
+   * difere (parcela x conta), por isso os dois booleanos continuam separados.
+   */
+  const isLinkedToExistingEntry = isContractInstallment || isReceivableBalance;
+  // Textos da origem ligada — nunca lidos quando `isLinkedToExistingEntry` é
+  // false (os blocos que usam isto só renderizam nesse caso).
+  const tLinked = isReceivableBalance ? t.receivableBalance : t.contractInstallment;
 
   const { customers, updateCustomer } = useCustomers();
   const { create } = useTenantCharges();
@@ -620,8 +654,8 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
         // Categoria/centro de custo só existem pro recebível que a cobrança
         // cria. Parcela de contrato não cria recebível nenhum (o lançamento é
         // a própria parcela), então mandar isso seria ruído ignorado.
-        category: isContractInstallment ? undefined : category.trim() || undefined,
-        cost_center_id: isContractInstallment ? null : costCenterId,
+        category: isLinkedToExistingEntry ? undefined : category.trim() || undefined,
+        cost_center_id: isLinkedToExistingEntry ? null : costCenterId,
         // Multa: manda SÓ o campo do modo escolhido, nunca os dois.
         //
         // Em % o payload é byte-a-byte o de antes (sem `fine_type`), então
@@ -647,7 +681,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
         // Opção por cobrança (padrão vem da conta): lançar ou não no Financeiro.
         // Parcela de contrato não tem essa escolha — o lançamento é a própria
         // parcela, e a edge ignora o campo. Nem enviamos, pra não fingir opção.
-        post_to_finance: isContractInstallment ? undefined : postToFinance,
+        post_to_finance: isLinkedToExistingEntry ? undefined : postToFinance,
       });
       setResult(chargeResult);
       onCreated?.(chargeResult);
@@ -661,11 +695,24 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
           // Na parcela de contrato o aviso não é "não lançou no financeiro" (o
           // lançamento é a parcela): é "não conseguimos ligar a cobrança à
           // parcela". O texto vem pronto do servidor, só o título muda.
-          title: isContractInstallment ? t.contractInstallment.warningTitle : t.financeWarning.title,
+          title: isLinkedToExistingEntry ? tLinked.warningTitle : t.financeWarning.title,
           description: chargeResult.charge.financeWarning || t.financeWarning.description,
         });
       }
     } catch (err) {
+      // JÁ EXISTE cobrança viva ligada à origem ("cobrar o saldo"): apareceu
+      // outra entre abrir esta tela e clicar em gerar. Um toast aqui seria
+      // beco sem saída — devolvemos ao chamador, que é quem sabe oferecer a
+      // SUBSTITUIÇÃO explícita (cancelar a atual, depois emitir a nova).
+      if (
+        err instanceof CreateChargeApiError
+        && err.code === 'live_charge_exists'
+        && onLiveChargeConflict
+      ) {
+        onLiveChargeConflict(err);
+        onOpenChange(false);
+        return;
+      }
       toast({
         variant: 'destructive',
         title: t.dialogTitle,
@@ -716,7 +763,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     TAB_COBRANCA,
     TAB_PAGAMENTO,
     TAB_ENCARGOS,
-    ...(isContractInstallment ? [] : [TAB_FINANCEIRO as ChargeTabKey]),
+    ...(isLinkedToExistingEntry ? [] : [TAB_FINANCEIRO as ChargeTabKey]),
   ];
   const activeTabIndex = visibleTabKeys.indexOf(activeTab);
   const isLastTab = activeTabIndex === visibleTabKeys.length - 1;
@@ -1114,7 +1161,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                 // Parcela de contrato não tem aba Financeiro: não existe escolha
                 // de lançamento (a parcela já é o lançamento), e uma aba que só
                 // mostra opção ignorada seria mentira na tela.
-                ...(isContractInstallment ? [] : [{ value: TAB_FINANCEIRO, label: t.tabs.finance }]),
+                ...(isLinkedToExistingEntry ? [] : [{ value: TAB_FINANCEIRO, label: t.tabs.finance }]),
               ]}
               activeTab={activeTab}
               onTabChange={(v) => setActiveTab(v as ChargeTabKey)}
@@ -1122,13 +1169,15 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
 
             {/* ── Aba: Cobrança (cliente, valor, vencimento, descrição) ────── */}
             <TabsContent value={TAB_COBRANCA} className="space-y-4">
-              {/* Parcela de contrato: diz o que vai acontecer quando o cliente
-                  pagar (a parcela é baixada sozinha) e por que não há opção de
-                  lançar no financeiro. Sem isso, o sumiço da aba parece bug. */}
-              {isContractInstallment && (
+              {/* Origem ligada a um lançamento que já existe (parcela de
+                  contrato ou saldo de conta a receber): diz o que vai acontecer
+                  quando o cliente pagar (a baixa vem sozinha) e por que não há
+                  opção de lançar no financeiro. Sem isso, o sumiço da aba
+                  parece bug. */}
+              {isLinkedToExistingEntry && (
                 <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
                   <p className="text-xs leading-snug text-muted-foreground">
-                    {t.contractInstallment.notice}
+                    {tLinked.notice}
                   </p>
                 </div>
               )}
@@ -1231,10 +1280,11 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                 >
                   {t.fields.value}
                 </Label>
-                {isContractInstallment ? (
-                  // Valor TRAVADO: a edge exige que a cobrança tenha o mesmo
-                  // valor da parcela (tolerância de 1 centavo). Se desse pra
-                  // digitar, o usuário só descobriria o erro depois de clicar.
+                {isLinkedToExistingEntry ? (
+                  // Valor TRAVADO: a edge exige que a cobrança valha
+                  // exatamente o da parcela (ou o SALDO da conta, no "cobrar o
+                  // saldo"), com tolerância de 1 centavo. Se desse pra digitar,
+                  // o usuário só descobriria o erro depois de clicar.
                   <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 text-sm font-medium text-foreground">
                     R$ {amountDisplay || '0,00'}
                   </div>
@@ -1254,8 +1304,8 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                     />
                   </div>
                 )}
-                {isContractInstallment && (
-                  <p className="text-xs text-muted-foreground">{t.contractInstallment.amountLockedHint}</p>
+                {isLinkedToExistingEntry && (
+                  <p className="text-xs text-muted-foreground">{tLinked.amountLockedHint}</p>
                 )}
               </div>
 
@@ -1477,7 +1527,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
             </TabsContent>
 
             {/* ── Aba: Financeiro (lançar no financeiro, categoria) ─────────── */}
-            {!isContractInstallment && (
+            {!isLinkedToExistingEntry && (
             <TabsContent value={TAB_FINANCEIRO} className="space-y-4">
               {/* Lançar (ou não) esta cobrança no Financeiro — opção POR COBRANÇA
                   (pedido do CEO: nem toda cobrança precisa virar conta a
@@ -1559,7 +1609,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
             {financeWarning && (
               <NoticeBanner
                 variant="warning"
-                title={isContractInstallment ? t.contractInstallment.warningTitle : t.financeWarning.title}
+                title={isLinkedToExistingEntry ? tLinked.warningTitle : t.financeWarning.title}
               >
                 {financeWarning}
               </NoticeBanner>

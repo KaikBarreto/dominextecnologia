@@ -14,7 +14,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, AlertTriangle, Clock, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Search, Info, Layers, List, CalendarDays, FileDown, FileText, FileSpreadsheet, SlidersHorizontal, ChevronDown, ChevronRight } from 'lucide-react';
+import { Check, AlertTriangle, Clock, CreditCard, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Search, Info, Layers, List, CalendarDays, FileDown, FileText, FileSpreadsheet, SlidersHorizontal, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile, useMediaBreakpoint } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -95,6 +95,12 @@ import {
 } from '@/lib/finance-account-priority';
 import { FinancialCategoryPill } from './FinancialCategoryPill';
 import { FinancialTransactionDetailsPanel } from './FinancialTransactionDetailsPanel';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
+import {
+  useReceivableBalanceCharge,
+  type ReceivableChargeRow,
+} from './useReceivableBalanceCharge';
+import { ReceivableBalanceChargeDialogs } from './ReceivableBalanceChargeDialogs';
 import { getCategoryIcon, getCostCenterIcon } from './categoryIcons';
 import type { LucideIcon } from 'lucide-react';
 
@@ -626,6 +632,31 @@ export function FinanceContas({
   const { sortedItems, sortConfig, handleSort } = useTableSort(filteredForSort, '_status_order', 'asc');
 
   const pagination = useDataPagination(sortedItems);
+
+  // ── Cobrança online do SALDO da conta a receber ───────────────────────────
+  // Chamado de 21/10/2026: o cliente recebeu parte de uma conta e não tinha
+  // como emitir o boleto do que faltava LIGADO àquela conta. Virou cobrança
+  // solta e o mesmo pagamento foi contado duas vezes.
+  //
+  // Só as contas a receber VISÍVEIS (página atual) entram na consulta: buscar
+  // a cobrança de todas as contas da empresa só pra pintar um selo seria
+  // varredura à toa. `receivingTxn` entra junto porque o modal de recebimento
+  // precisa saber da cobrança viva mesmo se a lista mudar embaixo dele.
+  const chargeableReceivables = useMemo<ReceivableChargeRow[]>(() => {
+    const rows = new Map<string, ReceivableChargeRow>();
+    const push = (txn: PayrollTxn | null | undefined) => {
+      if (!txn || txn.transaction_type !== 'entrada') return;
+      rows.set(txn.id, txn as unknown as ReceivableChargeRow);
+    };
+    for (const txn of pagination.paginatedItems) push(txn as PayrollTxn);
+    push(receivingTxn);
+    return [...rows.values()];
+  }, [pagination.paginatedItems, receivingTxn]);
+  const receivableCharge = useReceivableBalanceCharge(chargeableReceivables);
+  /** Cobrança viva da conta que está no modal de recebimento (ou null). */
+  const receivingLiveCharge = receivingTxn
+    ? receivableCharge.liveChargeByReceivable.get(receivingTxn.id) ?? null
+    : null;
 
   // ══════════════════════════════════════════════════════════════════════════
   // QUITAÇÃO EM LOTE (as duas sub-abas: "A Pagar" e "A Receber")
@@ -1242,12 +1273,28 @@ export function FinanceContas({
               const receiptBreakdown = t.transaction_type === 'entrada' && status === 'paga'
                 ? receiptBreakdowns.get(t.id)
                 : undefined;
+              // Cobrança online do saldo: rótulo da ação ("Cobrar o saldo" ou
+              // "Substituir a cobrança"), motivo quando a régua bloqueia e selo
+              // de status da cobrança ligada. Régua em
+              // `@/lib/receivable-balance-charge`, espelho do servidor.
+              const chargeRow = t as unknown as ReceivableChargeRow;
+              const chargeAction = receivableCharge.actionFor(chargeRow);
+              const chargeBadge = receivableCharge.onlineChargeBadgeFor(chargeRow);
               const itemActions: ItemAction[] = [
                 ...(!t.is_paid ? [{
                   key: 'mark-paid',
                   label: t.transaction_type === 'entrada' ? fin.accounts.actions.markReceived : fin.accounts.actions.markPaid,
                   icon: <Check className="h-4 w-4" />,
                   onClick: () => handleMarkAsPaidClick(t),
+                }] : []),
+                ...(chargeAction ? [{
+                  key: 'charge-balance',
+                  // Bloqueada: o item vem desabilitado e o rótulo JÁ É o motivo
+                  // (no toque não existe tooltip de `title`).
+                  label: chargeAction.label,
+                  icon: <CreditCard className="h-4 w-4" />,
+                  disabled: chargeAction.disabled,
+                  onClick: () => receivableCharge.start(chargeRow),
                 }] : []),
                 ...(partial ? [{
                   key: 'view-details',
@@ -1380,12 +1427,20 @@ export function FinanceContas({
                     }
                   />
                   {isExpanded && (
-                    <FinancialTransactionDetailsPanel
-                      transaction={t}
-                      category={t.category ? categoriesByName.get(t.category) : null}
-                      costCenter={t.cost_center_id ? costCentersById.get(t.cost_center_id) : null}
-                      onViewPartialHistory={partial ? () => setViewingTxn(t) : undefined}
-                    />
+                    <>
+                      <FinancialTransactionDetailsPanel
+                        transaction={t}
+                        category={t.category ? categoriesByName.get(t.category) : null}
+                        costCenter={t.cost_center_id ? costCentersById.get(t.cost_center_id) : null}
+                        onViewPartialHistory={partial ? () => setViewingTxn(t) : undefined}
+                        onlineCharge={chargeBadge}
+                      />
+                      {chargeAction?.reason && (
+                        <div className="bg-muted/35 px-3 pb-4 sm:px-5">
+                          <NoticeBanner variant="warning">{chargeAction.reason}</NoticeBanner>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               );
@@ -1431,6 +1486,10 @@ export function FinanceContas({
                     // desabilitado e o `title` explica no hover.
                     const batchReason = batchEnabled ? batchReasonFor(t) : null;
                     const isExpanded = expandedTransactionIds.has(t.id);
+                    // Cobrança online do saldo — mesma régua da lista mobile.
+                    const chargeRow = t as unknown as ReceivableChargeRow;
+                    const chargeAction = receivableCharge.actionFor(chargeRow);
+                    const chargeBadge = receivableCharge.onlineChargeBadgeFor(chargeRow);
                     return (
                     <Fragment key={t.id}>
                     <TableRow
@@ -1539,6 +1598,15 @@ export function FinanceContas({
                               hidden: !partial,
                             },
                             {
+                              // Bloqueada: desabilitada e com o motivo no lugar
+                              // do rótulo (mesma régua da lista mobile).
+                              label: chargeAction?.label ?? fin.accounts.onlineCharge.chargeBalanceAction,
+                              icon: CreditCard,
+                              onClick: () => receivableCharge.start(chargeRow),
+                              disabled: chargeAction?.disabled ?? false,
+                              hidden: !chargeAction,
+                            },
+                            {
                               label: fin.accounts.actions.edit,
                               icon: Pencil,
                               variant: 'edit',
@@ -1563,7 +1631,13 @@ export function FinanceContas({
                             category={t.category ? categoriesByName.get(t.category) : null}
                             costCenter={t.cost_center_id ? costCentersById.get(t.cost_center_id) : null}
                             onViewPartialHistory={partial ? () => setViewingTxn(t) : undefined}
+                            onlineCharge={chargeBadge}
                           />
+                          {chargeAction?.reason && (
+                            <div className="bg-muted/35 px-3 pb-4 sm:px-5">
+                              <NoticeBanner variant="warning">{chargeAction.reason}</NoticeBanner>
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     )}
@@ -1687,8 +1761,19 @@ export function FinanceContas({
         currentDueDate={receivingTxn?.due_date}
         title={fin.accounts.payroll.receiveTitle}
         description={receivingTxn?.description}
+        // Cobrança online viva nesta conta: esta tela não sabia nada de
+        // cobrança, e foi aqui que o cliente se perdeu (lançou o parcial, o
+        // boleto antigo seguiu vivo, o mesmo dinheiro entrou duas vezes).
+        liveCharge={receivingLiveCharge ? { value: receivingLiveCharge.value } : null}
         onConfirm={async (payment) => {
           if (!receivingTxn) return;
+          const receivable = receivingTxn as unknown as ReceivableChargeRow;
+          const amount = Number(receivable.amount ?? 0);
+          const amountReceivedBefore = Number(receivable.amount_received ?? 0);
+          // `amount_received` só vem preenchido quando é PARCIAL; ausente quer
+          // dizer "recebi todo o saldo restante".
+          const receivedNow = payment.amount_received ?? Math.max(0, Number((amount - amountReceivedBefore).toFixed(2)));
+          const hadLiveCharge = !!receivingLiveCharge;
           await onMarkAsPaid({
             id: receivingTxn.id,
             account_id: payment.account_id,
@@ -1701,8 +1786,26 @@ export function FinanceContas({
             newDueDate: payment.new_due_date,
           });
           setReceivingTxn(null);
+          // Com cobrança viva, pergunta o que fazer com ela: cobrar só o que
+          // falta ou encerrar (recebi tudo por fora). O saldo é calculado com
+          // os números deste recebimento, não lido da lista — ela ainda pode
+          // estar com o valor velho no instante seguinte à mutação.
+          if (hadLiveCharge) {
+            receivableCharge.askAfterReceipt({
+              receivable,
+              receivedNow,
+              amountReceivedBefore,
+              // Vencimento do saldo escolhido agora: é o padrão certo pra
+              // cobrança do que falta (o antigo é o da parcela já paga).
+              newDueDate: payment.new_due_date,
+            });
+          }
         }}
       />
+
+      {/* Cobrar o saldo: substituir a cobrança, decidir depois do recebimento
+          e o próprio dialog de emissão (valor travado no saldo). */}
+      <ReceivableBalanceChargeDialogs charge={receivableCharge} />
 
       {/* Modal: confirmar pagamento de despesa */}
       <ResponsiveModal

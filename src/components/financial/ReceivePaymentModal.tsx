@@ -12,6 +12,7 @@ import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { Wallet, Landmark, CreditCard, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -53,6 +54,18 @@ interface ReceivePaymentModalProps {
   installmentTotal?: number;
   /** Vencimento atual da conta — usado pra calcular default do "novo vencimento" (atual + 30 dias). */
   currentDueDate?: string;
+  /**
+   * Cobrança online (Asaas) AINDA EM ABERTO nesta conta. Quando presente, o
+   * modal avisa que o cliente pode pagar por ela de novo.
+   *
+   * Por que isto existe: esta tela não sabia nada de cobrança, e foi
+   * exatamente aqui que o cliente se perdeu (chamado de 21/10/2026) — lançou o
+   * recebimento parcial, o boleto antigo seguiu vivo e o mesmo dinheiro entrou
+   * duas vezes. As duas saídas (cobrar só o que falta / encerrar a cobrança)
+   * são oferecidas por quem abriu o modal, DEPOIS da confirmação, quando o
+   * saldo que falta já é um número real.
+   */
+  liveCharge?: { value: number } | null;
   title?: string;
   description?: string;
   defaultMethod?: string;
@@ -99,6 +112,7 @@ export function ReceivePaymentModal({
   allowPartial = false,
   installmentTotal = 1,
   currentDueDate,
+  liveCharge,
   title,
   description, defaultMethod = 'pix', onConfirm, isSubmitting,
 }: ReceivePaymentModalProps) {
@@ -244,6 +258,14 @@ export function ReceivePaymentModal({
       footer={footer}
     >
       <div className="space-y-4">
+        {/* Cobrança online em aberto nesta conta: o aviso vem ANTES de qualquer
+            campo, porque muda o que o operador vai fazer em seguida. */}
+        {liveCharge && (
+          <NoticeBanner variant="warning" title={t.liveChargeWarning.title}>
+            {t.liveChargeWarning.body.replace('{amount}', fmt(liveCharge.value))}
+          </NoticeBanner>
+        )}
+
         {/* Valor recebido — primeiro campo lógico, só renderiza quando parcial habilitado */}
         {partialEnabled && (
           <div>

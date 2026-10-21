@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.32";
+export const APP_VERSION = "1.37.33";
 
 export const VERSION_NOTES =
-  "Boleto excluído direto no Asaas não deixa mais conta solta no financeiro, e pagamento estornado volta a aparecer como em aberto.";
+  "Agora dá para cobrar o saldo que falta direto da conta a receber, com o valor já preenchido e sem criar outra conta ao lado.";

@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.33',
+    date: '21 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cobre o saldo que falta direto da conta a receber',
+        description: 'Recebeu só uma parte? Agora dá para gerar a cobrança do valor restante direto da conta, com o valor já preenchido e sem criar outra conta ao lado. Quando o cliente pagar, o valor entra como recebimento e a conta se fecha sozinha. Se já existir uma cobrança em aberto, o sistema avisa antes e pergunta se você prefere cobrar só o que falta ou encerrar a cobrança, e a conta a receber nunca é apagada nesse caminho.',
+        category: 'recurso',
+      },
+      {
+        title: 'A conta a receber mostra o status da cobrança',
+        description: 'Na linha da conta agora aparece se a cobrança online está em aberto, vencida, paga ou encerrada. Antes só aparecia que existia uma cobrança, então uma cobrança já excluída podia passar por ativa.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.32',
     date: '21 de outubro de 2026',
     type: 'patch',

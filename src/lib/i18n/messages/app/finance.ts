@@ -260,6 +260,53 @@ export const finance = {
         confirm: 'Confirmar',
         cancel: 'Cancelar',
       },
+      // ── Cobrança online do SALDO de uma conta a receber ───────────────────
+      // Origem: chamado de 21/10/2026. O cliente recebeu parte de uma conta e
+      // não tinha como emitir o boleto do que faltava LIGADO àquela conta;
+      // criou cobranças soltas e o mesmo pagamento foi contado duas vezes.
+      // A cobrança do saldo se liga à conta que já existe: quando paga, entra
+      // como recebimento parcial e a conta fecha sozinha.
+      onlineCharge: {
+        chargeBalanceAction: 'Cobrar o saldo',
+        replaceAction: 'Substituir a cobrança',
+        viewAction: 'Ver cobrança',
+        status: {
+          open: 'Cobrança em aberto',
+          overdue: 'Cobrança vencida',
+          paid: 'Cobrança paga',
+          dead: 'Cobrança encerrada',
+        },
+        blocked: {
+          notReceivable: 'Só a conta a receber principal pode ser cobrada.',
+          cancelled: 'Esta conta está cancelada. Reative antes de cobrar.',
+          paid: 'Esta conta já foi recebida, não há saldo para cobrar.',
+          noBalance: 'Esta conta não tem saldo em aberto para cobrar.',
+          noCustomer: 'Informe o cliente desta conta para poder cobrar.',
+          // Cancelar a cobrança apagaria a conta junto (ela é o espelho dela e
+          // não recebeu nada). E substituir não resolveria: o saldo é o valor
+          // inteiro, que a cobrança em aberto já cobra.
+          chargeOwnsReceivable: 'Esta conta nasceu desta cobrança e ainda não recebeu nada. Para mudar o valor, edite ou exclua a cobrança na aba Cobranças.',
+        },
+        replaceDialog: {
+          title: 'Substituir a cobrança desta conta?',
+          body: 'Isso cancela a cobrança atual de {current} e emite uma nova de {next}, o saldo que falta nesta conta.',
+          note: 'O link de pagamento atual para de funcionar na hora. A conta a receber continua aqui, nada é apagado.',
+          confirm: 'Cancelar e emitir a nova',
+          cancel: 'Deixar como está',
+          working: 'Cancelando a atual...',
+          errorTitle: 'Não foi possível cancelar a cobrança atual',
+        },
+        afterReceipt: {
+          title: 'E a cobrança online?',
+          bodyWithBalance: 'Você lançou {received} nesta conta e ainda faltam {balance}. A cobrança online de {charge} continua em aberto, então o cliente pode pagar por ela de novo.',
+          bodyNoBalance: 'Esta conta foi quitada, mas a cobrança online de {charge} continua em aberto, então o cliente pode pagar por ela de novo.',
+          chargeRemaining: 'Cobrar só o que falta ({balance})',
+          closeCharge: 'Encerrar a cobrança',
+          keep: 'Deixar como está',
+          closeSuccess: 'Cobrança encerrada.',
+          closeErrorTitle: 'Não foi possível encerrar a cobrança',
+        },
+      },
       empty: {
         notFoundTitle: 'Nenhuma conta encontrada',
         nothingInSearch: 'Nada encontrado para',
@@ -1423,6 +1470,14 @@ export const finance = {
         transferencia: 'Transferência',
         cheque: 'Cheque',
       },
+      // Aviso de que a conta TEM cobrança online em aberto. Esta tela não sabia
+      // nada de cobrança, e foi exatamente aqui que o cliente se perdeu: lançou
+      // o recebimento parcial, o boleto antigo seguiu vivo e o mesmo dinheiro
+      // entrou duas vezes.
+      liveChargeWarning: {
+        title: 'Esta conta tem cobrança online em aberto',
+        body: 'Há uma cobrança de {amount} que o cliente ainda pode pagar. Depois de confirmar este recebimento, você escolhe se cobra só o que falta ou encerra a cobrança.',
+      },
       validations: {
         amountZero: 'Informe um valor maior que zero.',
         amountExceedsRemaining: 'Valor não pode ser maior que o restante ({amount}).',
@@ -2201,6 +2256,50 @@ export const finance = {
         newAccount: 'New bill',
         confirm: 'Confirm',
         cancel: 'Cancel',
+      },
+      // ── Cobrança online do SALDO de uma conta a receber ───────────────────
+      // Origem: chamado de 21/10/2026. O cliente recebeu parte de uma conta e
+      // não tinha como emitir o boleto do que faltava LIGADO àquela conta;
+      // criou cobranças soltas e o mesmo pagamento foi contado duas vezes.
+      // A cobrança do saldo se liga à conta que já existe: quando paga, entra
+      // como recebimento parcial e a conta fecha sozinha.
+      onlineCharge: {
+        chargeBalanceAction: 'Charge the balance',
+        replaceAction: 'Replace the payment request',
+        viewAction: 'View payment request',
+        status: {
+          open: 'Request open',
+          overdue: 'Request overdue',
+          paid: 'Request paid',
+          dead: 'Request closed',
+        },
+        blocked: {
+          notReceivable: 'Only the main receivable can be charged.',
+          cancelled: 'This bill is cancelled. Reactivate it before charging.',
+          paid: 'This bill was already received, there is no balance to charge.',
+          noBalance: 'This bill has no open balance to charge.',
+          noCustomer: 'Set the customer of this bill before charging it.',
+          chargeOwnsReceivable: 'This bill came from this payment request and has received nothing yet. To change the amount, edit or delete the request on the Payments tab.',
+        },
+        replaceDialog: {
+          title: 'Replace the payment request for this bill?',
+          body: 'This cancels the current request of {current} and issues a new one of {next}, the balance still missing on this bill.',
+          note: 'The current payment link stops working right away. The receivable stays here, nothing is deleted.',
+          confirm: 'Cancel and issue the new one',
+          cancel: 'Leave as is',
+          working: 'Cancelling the current one...',
+          errorTitle: 'Could not cancel the current payment request',
+        },
+        afterReceipt: {
+          title: 'What about the online payment request?',
+          bodyWithBalance: 'You recorded {received} on this bill and {balance} is still missing. The online request of {charge} is still open, so the customer can pay through it again.',
+          bodyNoBalance: 'This bill is settled, but the online request of {charge} is still open, so the customer can pay through it again.',
+          chargeRemaining: 'Charge only what is missing ({balance})',
+          closeCharge: 'Close the payment request',
+          keep: 'Leave as is',
+          closeSuccess: 'Payment request closed.',
+          closeErrorTitle: 'Could not close the payment request',
+        },
       },
       empty: {
         notFoundTitle: 'No bills found',
@@ -3284,6 +3383,14 @@ export const finance = {
         transferencia: 'Wire Transfer',
         cheque: 'Check',
       },
+      // Aviso de que a conta TEM cobrança online em aberto. Esta tela não sabia
+      // nada de cobrança, e foi exatamente aqui que o cliente se perdeu: lançou
+      // o recebimento parcial, o boleto antigo seguiu vivo e o mesmo dinheiro
+      // entrou duas vezes.
+      liveChargeWarning: {
+        title: 'This bill has an open online payment request',
+        body: 'There is a request of {amount} the customer can still pay. After you confirm this receipt, you choose whether to charge only what is missing or close the request.',
+      },
       validations: {
         amountZero: 'Enter an amount greater than zero.',
         amountExceedsRemaining: 'Amount cannot exceed the remaining balance ({amount}).',
@@ -4051,6 +4158,50 @@ export const finance = {
         newAccount: 'Nueva cuenta',
         confirm: 'Confirmar',
         cancel: 'Cancelar',
+      },
+      // ── Cobrança online do SALDO de uma conta a receber ───────────────────
+      // Origem: chamado de 21/10/2026. O cliente recebeu parte de uma conta e
+      // não tinha como emitir o boleto do que faltava LIGADO àquela conta;
+      // criou cobranças soltas e o mesmo pagamento foi contado duas vezes.
+      // A cobrança do saldo se liga à conta que já existe: quando paga, entra
+      // como recebimento parcial e a conta fecha sozinha.
+      onlineCharge: {
+        chargeBalanceAction: 'Cobrar el saldo',
+        replaceAction: 'Reemplazar el cobro',
+        viewAction: 'Ver cobro',
+        status: {
+          open: 'Cobro pendiente',
+          overdue: 'Cobro vencido',
+          paid: 'Cobro pagado',
+          dead: 'Cobro cerrado',
+        },
+        blocked: {
+          notReceivable: 'Solo se puede cobrar la cuenta por cobrar principal.',
+          cancelled: 'Esta cuenta está cancelada. Reactívala antes de cobrar.',
+          paid: 'Esta cuenta ya fue cobrada, no hay saldo para cobrar.',
+          noBalance: 'Esta cuenta no tiene saldo pendiente para cobrar.',
+          noCustomer: 'Indica el cliente de esta cuenta para poder cobrar.',
+          chargeOwnsReceivable: 'Esta cuenta nació de este cobro y todavía no recibió nada. Para cambiar el importe, edita o elimina el cobro en la pestaña Cobros.',
+        },
+        replaceDialog: {
+          title: '¿Reemplazar el cobro de esta cuenta?',
+          body: 'Esto cancela el cobro actual de {current} y emite uno nuevo de {next}, el saldo que falta en esta cuenta.',
+          note: 'El enlace de pago actual deja de funcionar al instante. La cuenta por cobrar sigue aquí, no se borra nada.',
+          confirm: 'Cancelar y emitir el nuevo',
+          cancel: 'Dejar como está',
+          working: 'Cancelando el actual...',
+          errorTitle: 'No se pudo cancelar el cobro actual',
+        },
+        afterReceipt: {
+          title: '¿Y el cobro en línea?',
+          bodyWithBalance: 'Registraste {received} en esta cuenta y todavía faltan {balance}. El cobro en línea de {charge} sigue pendiente, así que el cliente puede pagarlo de nuevo.',
+          bodyNoBalance: 'Esta cuenta quedó saldada, pero el cobro en línea de {charge} sigue pendiente, así que el cliente puede pagarlo de nuevo.',
+          chargeRemaining: 'Cobrar solo lo que falta ({balance})',
+          closeCharge: 'Cerrar el cobro',
+          keep: 'Dejar como está',
+          closeSuccess: 'Cobro cerrado.',
+          closeErrorTitle: 'No se pudo cerrar el cobro',
+        },
       },
       empty: {
         notFoundTitle: 'Ninguna cuenta encontrada',
@@ -5135,6 +5286,14 @@ export const finance = {
         transferencia: 'Transferencia',
         cheque: 'Cheque',
       },
+      // Aviso de que a conta TEM cobrança online em aberto. Esta tela não sabia
+      // nada de cobrança, e foi exatamente aqui que o cliente se perdeu: lançou
+      // o recebimento parcial, o boleto antigo seguiu vivo e o mesmo dinheiro
+      // entrou duas vezes.
+      liveChargeWarning: {
+        title: 'Esta cuenta tiene un cobro en línea pendiente',
+        body: 'Hay un cobro de {amount} que el cliente todavía puede pagar. Después de confirmar este cobro, eliges si cobras solo lo que falta o cierras el cobro.',
+      },
       validations: {
         amountZero: 'Ingrese un valor mayor a cero.',
         amountExceedsRemaining: 'El valor no puede superar el saldo restante ({amount}).',
@@ -5902,6 +6061,50 @@ export const finance = {
         newAccount: 'Nouveau compte',
         confirm: 'Confirmer',
         cancel: 'Annuler',
+      },
+      // ── Cobrança online do SALDO de uma conta a receber ───────────────────
+      // Origem: chamado de 21/10/2026. O cliente recebeu parte de uma conta e
+      // não tinha como emitir o boleto do que faltava LIGADO àquela conta;
+      // criou cobranças soltas e o mesmo pagamento foi contado duas vezes.
+      // A cobrança do saldo se liga à conta que já existe: quando paga, entra
+      // como recebimento parcial e a conta fecha sozinha.
+      onlineCharge: {
+        chargeBalanceAction: 'Encaisser le solde',
+        replaceAction: 'Remplacer la demande',
+        viewAction: 'Voir la demande',
+        status: {
+          open: 'Demande ouverte',
+          overdue: 'Demande en retard',
+          paid: 'Demande payée',
+          dead: 'Demande clôturée',
+        },
+        blocked: {
+          notReceivable: 'Seul le compte client principal peut être encaissé.',
+          cancelled: 'Ce compte est annulé. Réactivez-le avant d\'encaisser.',
+          paid: 'Ce compte a déjà été encaissé, il n\'y a pas de solde à encaisser.',
+          noBalance: 'Ce compte n\'a pas de solde ouvert à encaisser.',
+          noCustomer: 'Indiquez le client de ce compte pour pouvoir encaisser.',
+          chargeOwnsReceivable: `Ce compte est né de cette demande de paiement et n'a encore rien encaissé. Pour changer le montant, modifiez ou supprimez la demande dans l'onglet Paiements.`,
+        },
+        replaceDialog: {
+          title: 'Remplacer la demande de paiement de ce compte ?',
+          body: 'Cela annule la demande actuelle de {current} et en émet une nouvelle de {next}, le solde qui manque sur ce compte.',
+          note: 'Le lien de paiement actuel cesse de fonctionner immédiatement. Le compte client reste ici, rien n\'est supprimé.',
+          confirm: 'Annuler et émettre la nouvelle',
+          cancel: 'Laisser tel quel',
+          working: 'Annulation en cours...',
+          errorTitle: 'Impossible d\'annuler la demande actuelle',
+        },
+        afterReceipt: {
+          title: 'Et la demande de paiement en ligne ?',
+          bodyWithBalance: 'Vous avez enregistré {received} sur ce compte et il manque encore {balance}. La demande en ligne de {charge} reste ouverte, le client peut donc payer de nouveau par ce lien.',
+          bodyNoBalance: 'Ce compte est soldé, mais la demande en ligne de {charge} reste ouverte, le client peut donc payer de nouveau par ce lien.',
+          chargeRemaining: 'Encaisser seulement ce qui manque ({balance})',
+          closeCharge: 'Clôturer la demande',
+          keep: 'Laisser tel quel',
+          closeSuccess: 'Demande clôturée.',
+          closeErrorTitle: 'Impossible de clôturer la demande',
+        },
       },
       empty: {
         notFoundTitle: 'Aucun compte trouvé',
@@ -6985,6 +7188,14 @@ export const finance = {
         boleto: 'Bon de paiement',
         transferencia: 'Virement',
         cheque: 'Chèque',
+      },
+      // Aviso de que a conta TEM cobrança online em aberto. Esta tela não sabia
+      // nada de cobrança, e foi exatamente aqui que o cliente se perdeu: lançou
+      // o recebimento parcial, o boleto antigo seguiu vivo e o mesmo dinheiro
+      // entrou duas vezes.
+      liveChargeWarning: {
+        title: 'Ce compte a une demande de paiement en ligne ouverte',
+        body: 'Une demande de {amount} peut encore être payée par le client. Après avoir confirmé cet encaissement, vous choisissez si vous encaissez seulement ce qui manque ou si vous clôturez la demande.',
       },
       validations: {
         amountZero: 'Saisissez un montant supérieur à zéro.',

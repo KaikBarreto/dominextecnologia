@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   CalendarDays,
   CheckCircle2,
+  CreditCard,
   Download,
   FileText,
   Landmark,
@@ -14,6 +15,7 @@ import {
   UserRound,
   WalletCards,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SignedLink } from '@/components/ui/SignedLink';
 import type { FinancialCategory } from '@/hooks/useFinancialCategories';
@@ -57,13 +59,38 @@ type DetailTransaction = FinancialTransaction & {
   creator?: { full_name?: string | null; email?: string | null } | null;
 };
 
+/**
+ * Selo da cobrança online ligada a este lançamento, pronto pra pintar.
+ *
+ * Existe porque o vínculo "Cobrança online" era TEXTO MORTO: um boleto já
+ * excluído aparecia igualzinho a um boleto vivo, e o gestor emitia outro em
+ * cima (chamado de 21/10/2026). Quem monta isto é a tela que tem a cobrança em
+ * mão; o painel só exibe.
+ */
+export interface DetailOnlineCharge {
+  /** "Cobrança em aberto", "Cobrança paga"... já traduzido. */
+  statusLabel: string;
+  /** Cor do selo. `dead` = cancelada/estornada/apagada no gateway. */
+  tone: 'open' | 'overdue' | 'paid' | 'dead';
+}
+
 interface FinancialTransactionDetailsPanelProps {
   transaction: DetailTransaction;
   category?: FinancialCategory | null;
   costCenter?: CostCenter | null;
   onViewPartialHistory?: () => void;
+  /** Quando informado, o vínculo "Cobrança online" vira selo com o STATUS. */
+  onlineCharge?: DetailOnlineCharge | null;
   className?: string;
 }
+
+/** Selo saturado, texto branco. Cancelada usa cinza (`muted`), não outline. */
+const ONLINE_CHARGE_BADGE_VARIANT: Record<DetailOnlineCharge['tone'], 'success' | 'destructive' | 'info' | 'muted'> = {
+  paid: 'success',
+  overdue: 'destructive',
+  open: 'info',
+  dead: 'muted',
+};
 
 const PAYMENT_METHODS: Record<string, string> = {
   pix: 'PIX',
@@ -99,6 +126,7 @@ export function FinancialTransactionDetailsPanel({
   category,
   costCenter,
   onViewPartialHistory,
+  onlineCharge,
   className,
 }: FinancialTransactionDetailsPanelProps) {
   const { data: attachments = [], isLoading: loadingAttachments } = useTransactionAttachments(transaction.id);
@@ -178,7 +206,21 @@ export function FinancialTransactionDetailsPanel({
           }
           if (transaction.transfer_pair_id) vinculos.push('Transferência');
           if (transaction.payment_group_id) vinculos.push('Quitação em lote');
-          if (transaction.tenant_charge_id) vinculos.push('Cobrança online');
+          // Cobrança online: com o selo de status (em aberto / vencida / paga /
+          // encerrada) sempre que a tela souber dizer. Sem ele, o rótulo seco
+          // fazia boleto cancelado passar por boleto vivo.
+          if (transaction.tenant_charge_id || onlineCharge) {
+            vinculos.push(
+              onlineCharge ? (
+                <Badge key="charge" variant={ONLINE_CHARGE_BADGE_VARIANT[onlineCharge.tone]} className="gap-1">
+                  <CreditCard className="h-3 w-3" />
+                  {onlineCharge.statusLabel}
+                </Badge>
+              ) : (
+                'Cobrança online'
+              ),
+            );
+          }
           if (vinculos.length === 0) return 'Nenhum';
           return vinculos.map((v, i) => (
             <span key={i}>

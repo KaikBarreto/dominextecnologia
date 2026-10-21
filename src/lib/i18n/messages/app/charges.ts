@@ -197,6 +197,14 @@ export const charges = {
         amountLockedHint: 'O valor é o da parcela e não pode ser alterado.',
         warningTitle: 'Cobrança criada, confira a parcela',
       },
+      // Cobrança do SALDO de uma conta a receber que JÁ EXISTE ('receivable').
+      // A cobrança se liga à conta: quando paga, entra como recebimento
+      // parcial e a conta fecha sozinha, sem lançamento novo.
+      receivableBalance: {
+        notice: 'Esta cobrança é do saldo que ainda falta nesta conta a receber. Quando o cliente pagar, o valor entra como recebimento na conta e ela se fecha sozinha, sem lançamento novo.',
+        amountLockedHint: 'O valor é o saldo em aberto da conta e não pode ser alterado.',
+        warningTitle: 'Cobrança criada, confira a conta',
+      },
       methods: {
         pix: 'Pix',
         boleto: 'Boleto',
@@ -884,6 +892,14 @@ export const charges = {
         amountLockedHint: 'The amount comes from the instalment and cannot be changed.',
         warningTitle: 'Charge created, check the instalment',
       },
+      // Cobrança do SALDO de uma conta a receber que JÁ EXISTE ('receivable').
+      // A cobrança se liga à conta: quando paga, entra como recebimento
+      // parcial e a conta fecha sozinha, sem lançamento novo.
+      receivableBalance: {
+        notice: 'This charge covers the balance still missing on this receivable. When your customer pays, the amount lands on the bill as a receipt and the bill settles itself, with no extra entry.',
+        amountLockedHint: 'The amount is the open balance of the bill and cannot be changed.',
+        warningTitle: 'Charge created, check the bill',
+      },
       methods: {
         pix: 'Pix',
         boleto: 'Bank slip',
@@ -1537,6 +1553,14 @@ export const charges = {
         amountLockedHint: 'El importe es el de la cuota y no se puede cambiar.',
         warningTitle: 'Cobro creado, revisa la cuota',
       },
+      // Cobrança do SALDO de uma conta a receber que JÁ EXISTE ('receivable').
+      // A cobrança se liga à conta: quando paga, entra como recebimento
+      // parcial e a conta fecha sozinha, sem lançamento novo.
+      receivableBalance: {
+        notice: 'Este cobro es del saldo que todavía falta en esta cuenta por cobrar. Cuando el cliente pague, el importe entra como cobro en la cuenta y ella se salda sola, sin un registro nuevo.',
+        amountLockedHint: 'El importe es el saldo pendiente de la cuenta y no se puede cambiar.',
+        warningTitle: 'Cobro creado, revisa la cuenta',
+      },
       methods: {
         pix: 'Pix',
         boleto: 'Boleto',
@@ -2189,6 +2213,14 @@ export const charges = {
         notice: `Cette facture correspond à l'échéance du contrat. Quand le client paiera, l'échéance sera soldée automatiquement dans vos finances, sans nouvelle écriture.`,
         amountLockedHint: `Le montant est celui de l'échéance et ne peut pas être modifié.`,
         warningTitle: `Facture créée, vérifiez l'échéance`,
+      },
+      // Cobrança do SALDO de uma conta a receber que JÁ EXISTE ('receivable').
+      // A cobrança se liga à conta: quando paga, entra como recebimento
+      // parcial e a conta fecha sozinha, sem lançamento novo.
+      receivableBalance: {
+        notice: `Cette facture correspond au solde qui manque encore sur ce compte client. Quand le client paiera, le montant sera enregistré comme encaissement et le compte se soldera tout seul, sans nouvelle écriture.`,
+        amountLockedHint: `Le montant est le solde ouvert du compte et ne peut pas être modifié.`,
+        warningTitle: `Facture créée, vérifiez le compte`,
       },
       methods: {
         pix: 'Pix',

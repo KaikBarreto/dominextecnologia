@@ -59,10 +59,12 @@ export interface CreateChargeInput {
    *  'service_order', usar source_id com o UUID da origem. A edge faz dedupe:
    *  chamar duas vezes pro mesmo source_id devolve a mesma cobrança, em vez de
    *  criar outra. */
-  source_type?: 'avulso' | 'quote' | 'contract_installment' | 'service_order';
+  source_type?: 'avulso' | 'quote' | 'contract_installment' | 'service_order' | 'receivable';
   /** UUID da origem: orçamento ('quote'), parcela do contrato
-   *  ('contract_installment' — id em financial_transactions, não do contrato)
-   *  ou Ordem de Serviço ('service_order'). */
+   *  ('contract_installment' — id em financial_transactions, não do contrato),
+   *  Ordem de Serviço ('service_order') ou conta a receber que JÁ EXISTE
+   *  ('receivable' — id da linha-mãe em financial_transactions; é o "cobrar o
+   *  saldo", e o `value` TEM que ser o saldo em aberto da conta). */
   source_id?: string | null;
   /** Categoria (nome) do recebível gerado no Financeiro. Ausente/vazio → a edge
    *  usa a categoria padrão da conta de pagamento (default_income_category). */
@@ -105,6 +107,107 @@ export interface CreatedCharge {
 export type CreateChargeResult =
   | { orphan: false; charge: CreatedCharge }
   | { orphan: true; invoiceUrl: string; asaasPaymentId: string; warning: string };
+
+/**
+ * Erro de NEGÓCIO de `tenant-asaas-create-charge`.
+ *
+ * A edge responde HTTP 200 com `{ ok: false, error_code, message, error }`
+ * (mesmo contrato das edges de editar/excluir cobrança): com 4xx o supabase-js
+ * devolve `data = null` e a mensagem boa em PT-BR se perderia. O `message` já
+ * vem pronto pra mostrar ao usuário.
+ *
+ * Os códigos de `receivable_*` são do "cobrar o saldo" (source_type
+ * 'receivable'). `live_charge_exists` vem com `liveCharge` preenchido: é o
+ * caso em que a tela oferece a SUBSTITUIÇÃO explícita (cancelar a atual e
+ * emitir a do saldo) — a edge nunca mata cobrança por conta própria.
+ */
+export type CreateChargeErrorCode =
+  | 'invalid_input'
+  | 'receivable_not_found'
+  | 'receivable_not_chargeable'
+  | 'receivable_cancelled'
+  | 'receivable_already_paid'
+  | 'receivable_no_balance'
+  | 'live_charge_exists'
+  | 'customer_mismatch'
+  | 'value_mismatch';
+
+const KNOWN_CREATE_ERROR_CODES: CreateChargeErrorCode[] = [
+  'invalid_input',
+  'receivable_not_found',
+  'receivable_not_chargeable',
+  'receivable_cancelled',
+  'receivable_already_paid',
+  'receivable_no_balance',
+  'live_charge_exists',
+  'customer_mismatch',
+  'value_mismatch',
+];
+
+/** Cobrança viva que está travando a emissão (vem em `live_charge_exists`). */
+export interface CreateChargeLiveCharge {
+  id: string;
+  value: number;
+  due_date: string | null;
+  status: string;
+  billing_type: string | null;
+  public_short_code: string | null;
+  invoice_url: string | null;
+}
+
+export class CreateChargeApiError extends Error {
+  code: CreateChargeErrorCode | 'unknown';
+  /** Preenchido só em `live_charge_exists`. */
+  liveCharge: CreateChargeLiveCharge | null;
+  /** Saldo em aberto da conta, quando o servidor informa. */
+  balance: number | null;
+  constructor(
+    message: string,
+    code: CreateChargeErrorCode | 'unknown',
+    extra: { liveCharge?: CreateChargeLiveCharge | null; balance?: number | null } = {},
+  ) {
+    super(message);
+    this.name = 'CreateChargeApiError';
+    this.code = code;
+    this.liveCharge = extra.liveCharge ?? null;
+    this.balance = extra.balance ?? null;
+  }
+}
+
+function parseLiveCharge(raw: unknown): CreateChargeLiveCharge | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Record<string, unknown>;
+  if (typeof row.id !== 'string') return null;
+  return {
+    id: row.id,
+    value: Number(row.value ?? 0),
+    due_date: typeof row.due_date === 'string' ? row.due_date : null,
+    status: typeof row.status === 'string' ? row.status : '',
+    billing_type: typeof row.billing_type === 'string' ? row.billing_type : null,
+    public_short_code: typeof row.public_short_code === 'string' ? row.public_short_code : null,
+    invoice_url: typeof row.invoice_url === 'string' ? row.invoice_url : null,
+  };
+}
+
+/**
+ * Monta o erro de criação a partir do corpo da edge. Mantém a MENSAGEM como
+ * ela chegava antes (quem só lê `err.message` não muda de comportamento) e
+ * acrescenta o `error_code` + a cobrança viva, que é o que a tela de "cobrar o
+ * saldo" precisa pra oferecer a substituição.
+ */
+function createChargeError(body: Record<string, unknown> | null, fallback: string): CreateChargeApiError {
+  const rawCode = typeof body?.error_code === 'string' ? body.error_code : '';
+  const code: CreateChargeErrorCode | 'unknown' =
+    (KNOWN_CREATE_ERROR_CODES as string[]).includes(rawCode) ? (rawCode as CreateChargeErrorCode) : 'unknown';
+  const message =
+    (typeof body?.message === 'string' && body.message.trim())
+    || (typeof body?.error === 'string' && body.error.trim())
+    || fallback;
+  return new CreateChargeApiError(message, code, {
+    liveCharge: parseLiveCharge(body?.live_charge),
+    balance: body?.balance == null ? null : Number(body.balance),
+  });
+}
 
 async function extractEdgeError(error: unknown, data: unknown, fallback: string): Promise<string> {
   if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error) {
@@ -369,9 +472,18 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
       // a edge usa o default da conta (compatibilidade com frontend antigo).
       if (input.post_to_finance !== undefined) body.post_to_finance = input.post_to_finance;
       const { data, error } = await supabase.functions.invoke('tenant-asaas-create-charge', { body });
-      if (error) throw new Error(await extractEdgeError(error, data, 'Não foi possível gerar a cobrança.'));
+      if (error) {
+        throw new CreateChargeApiError(
+          await extractEdgeError(error, data, 'Não foi possível gerar a cobrança.'),
+          'unknown',
+        );
+      }
+      // Erro de NEGÓCIO: HTTP 200 com `ok: false` + `error_code` (+ `error`,
+      // repetido pela edge justamente pra não quebrar quem só lia `error`).
+      // A mensagem é a mesma de sempre; o `error_code`/`live_charge` é o que o
+      // "cobrar o saldo" usa pra oferecer a substituição da cobrança viva.
       if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error) {
-        throw new Error((data as { error: string }).error);
+        throw createChargeError(data as Record<string, unknown>, 'Não foi possível gerar a cobrança.');
       }
 
       const responseBody = data as Record<string, unknown> | null;
