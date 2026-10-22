@@ -121,10 +121,15 @@ interface SheetRowsBuilder {
   rows: DreExcelCell[][];
   kinds: DreExcelRowKind[];
   outlineLevels: number[];
+  hasComparison: boolean;
   add: (row: DreExcelCell[], kind: DreExcelRowKind, outlineLevel?: number) => void;
 }
 
-function createRowsBuilder(initialRows: DreExcelCell[][], initialKinds: DreExcelRowKind[]): SheetRowsBuilder {
+function createRowsBuilder(
+  initialRows: DreExcelCell[][],
+  initialKinds: DreExcelRowKind[],
+  hasComparison = false,
+): SheetRowsBuilder {
   const rows = [...initialRows];
   const kinds = [...initialKinds];
   const outlineLevels = initialRows.map(() => 0);
@@ -133,6 +138,7 @@ function createRowsBuilder(initialRows: DreExcelCell[][], initialKinds: DreExcel
     rows,
     kinds,
     outlineLevels,
+    hasComparison,
     add(row, kind, outlineLevel = 0) {
       rows.push(row);
       kinds.push(kind);
@@ -146,6 +152,31 @@ function comparisonMetrics(current: number, previous: number, fractionDigits: nu
     roundMoney(current - previous, fractionDigits),
     previous === 0 ? '' : (current - previous) / Math.abs(previous),
   ] as const;
+}
+
+function dreValueCells(
+  current: number,
+  previous: number,
+  grossRevenue: number,
+  comparisonRevenue: number,
+  fractionDigits: number,
+  absolute: boolean,
+  hasComparison: boolean,
+): DreExcelCell[] {
+  const displayedCurrent = absolute ? Math.abs(current) : current;
+  const displayedPrevious = absolute ? Math.abs(previous) : previous;
+  const cells: DreExcelCell[] = [
+    displayedCurrent,
+    percentOfRevenue(displayedCurrent, grossRevenue),
+  ];
+  if (hasComparison) {
+    cells.push(
+      displayedPrevious,
+      percentOfRevenue(displayedPrevious, comparisonRevenue),
+      ...comparisonMetrics(current, previous, fractionDigits),
+    );
+  }
+  return cells;
 }
 
 function addCategoryGroup(
@@ -165,11 +196,7 @@ function addCategoryGroup(
   ), fractionDigits);
   builder.add([
     `${groupCode} - ${group.name.toLocaleUpperCase('pt-BR')}`,
-    Math.abs(current),
-    percentOfRevenue(Math.abs(current), grossRevenue),
-    Math.abs(previous),
-    percentOfRevenue(Math.abs(previous), comparisonRevenue),
-    ...comparisonMetrics(current, previous, fractionDigits),
+    ...dreValueCells(current, previous, grossRevenue, comparisonRevenue, fractionDigits, true, builder.hasComparison),
   ], 'subtotal');
 
   const addCategory = (category: DreExportCategory, categoryIndex: number, outlineLevel = 1) => {
@@ -178,11 +205,7 @@ function addCategoryGroup(
     const categoryCode = childCode(groupCode, category.code, String(categoryIndex + 1).padStart(3, '0'));
     builder.add([
       `${categoryCode} - ${category.name}`,
-      Math.abs(value),
-      percentOfRevenue(Math.abs(value), grossRevenue),
-      Math.abs(previousValue),
-      percentOfRevenue(Math.abs(previousValue), comparisonRevenue),
-      ...comparisonMetrics(value, previousValue, fractionDigits),
+      ...dreValueCells(value, previousValue, grossRevenue, comparisonRevenue, fractionDigits, true, builder.hasComparison),
     ], 'detail', outlineLevel);
 
     category.children?.forEach((child, childIndex) => addCategory(child, childIndex, outlineLevel + 1));
@@ -206,11 +229,7 @@ function addCalculatedRow(
   const previousRounded = roundMoney(previous, fractionDigits);
   builder.add([
     `${code} - ${label.toLocaleUpperCase('pt-BR')}`,
-    rounded,
-    percentOfRevenue(rounded, grossRevenue),
-    previousRounded,
-    percentOfRevenue(previousRounded, comparisonRevenue),
-    ...comparisonMetrics(rounded, previousRounded, fractionDigits),
+    ...dreValueCells(rounded, previousRounded, grossRevenue, comparisonRevenue, fractionDigits, false, builder.hasComparison),
   ], kind);
 }
 
@@ -231,11 +250,7 @@ function addNature(
   ), fractionDigits);
   builder.add([
     `${NATURE_CODES[nature as Exclude<DreExportGroup['nature'], 'excluded'>]} - ${label.toLocaleUpperCase('pt-BR')}`,
-    Math.abs(current),
-    percentOfRevenue(Math.abs(current), grossRevenue),
-    Math.abs(previous),
-    percentOfRevenue(Math.abs(previous), comparisonRevenue),
-    ...comparisonMetrics(current, previous, fractionDigits),
+    ...dreValueCells(current, previous, grossRevenue, comparisonRevenue, fractionDigits, true, builder.hasComparison),
   ], 'section');
   filtered.forEach((group, index) => addCategoryGroup(builder, group, grossRevenue, comparisonRevenue, fractionDigits, index));
 }
@@ -243,17 +258,34 @@ function addNature(
 function buildDreRows(data: DreReportData, fractionDigits: number): SheetRowsBuilder {
   const regime = data.regime === 'competencia' ? 'Competência' : 'Caixa';
   const currency = normalizedCurrency(data.currency);
+  const hasComparison = Boolean(data.comparison?.rows.length);
   const builder = createRowsBuilder(
-    [
-      ['DEMONSTRATIVO DE RESULTADO DO EXERCÍCIO'],
-      ['Empresa', data.company.name, '', 'Período', data.period],
-      ['CNPJ/CPF', data.company.document ?? 'Não informado', '', 'Regime', regime],
-      ['Moeda', currency, '', 'Base percentual', 'Receita bruta'],
-      [],
-      ['Demonstrativo', data.comparison?.currentPeriod ?? data.period, '', data.comparison?.comparisonPeriod ?? 'Comparação', '', 'Variação', ''],
-      ['', 'Valor', '% receita', 'Valor', '% receita', 'Valor', '%'],
-    ],
-    ['title', 'metadata', 'metadata', 'metadata', 'spacer', 'header', 'header'],
+    hasComparison
+      ? [
+          ['DEMONSTRATIVO DE RESULTADO DO EXERCÍCIO'],
+          ['Empresa', data.company.name, '', 'Período', data.period],
+          ['CNPJ/CPF', data.company.document ?? 'Não informado', '', 'Regime', regime],
+          ['Moeda', currency, '', 'Base percentual', 'Receita bruta'],
+          [],
+          ['Demonstrativo', data.comparison?.currentPeriod ?? data.period, '', data.comparison?.comparisonPeriod ?? 'Comparação', '', 'Variação', ''],
+          ['', 'Valor', '% receita', 'Valor', '% receita', 'Valor', '%'],
+        ]
+      : [
+          ['DEMONSTRATIVO DE RESULTADO DO EXERCÍCIO'],
+          ['Empresa', data.company.name, ''],
+          ['CNPJ/CPF', data.company.document ?? 'Não informado', ''],
+          ['Período', data.period, ''],
+          ['Regime', regime, ''],
+          ['Moeda', currency, ''],
+          ['Base percentual', 'Receita bruta', ''],
+          [],
+          ['Demonstrativo', data.period, ''],
+          ['', 'Valor', '% receita'],
+        ],
+    hasComparison
+      ? ['title', 'metadata', 'metadata', 'metadata', 'spacer', 'header', 'header']
+      : ['title', 'metadata', 'metadata', 'metadata', 'metadata', 'metadata', 'metadata', 'spacer', 'header', 'header'],
+    hasComparison,
   );
   const grossRevenue = roundMoney(data.receitaBruta, fractionDigits);
   const comparisonByCode = new Map((data.comparison?.rows ?? []).map((row) => [row.code, row.previous]));
@@ -369,21 +401,26 @@ function buildComparisonRows(data: DreReportData, fractionDigits: number): Sheet
 export function buildDreExcelSheets(data: DreReportData): DreExcelSheet[] {
   const currency = normalizedCurrency(data.currency);
   const fractionDigits = currencyFractionDigits(currency);
+  const hasComparison = Boolean(data.comparison?.rows.length);
   const dre = buildDreRows(data, fractionDigits);
   const dreLastRow = dre.rows.length;
 
   const sheets: DreExcelSheet[] = [{
     name: 'DRE',
     rows: dre.rows,
-    widths: [54, 19, 12, 19, 12, 19, 14],
+    widths: hasComparison ? [54, 19, 12, 19, 12, 19, 14] : [72, 24, 16],
     rowKinds: dre.kinds,
     outlineLevels: dre.outlineLevels,
-    mergedRanges: ['A1:G1', 'B2:C2', 'E2:G2', 'B3:C3', 'E3:G3', 'B4:C4', 'E4:G4', 'A6:A7', 'B6:C6', 'D6:E6', 'F6:G6'],
-    headerRow: 7,
-    autoFilter: { from: 'A7', to: `G${dreLastRow}` },
-    freezePane: { xSplit: 1, ySplit: 7, topLeftCell: 'B8' },
-    currencyColumns: [2, 4, 6],
-    percentageColumns: [3, 5, 7],
+    mergedRanges: hasComparison
+      ? ['A1:G1', 'B2:C2', 'E2:G2', 'B3:C3', 'E3:G3', 'B4:C4', 'E4:G4', 'A6:A7', 'B6:C6', 'D6:E6', 'F6:G6']
+      : ['A1:C1', 'B2:C2', 'B3:C3', 'B4:C4', 'B5:C5', 'B6:C6', 'B7:C7', 'A9:A10', 'B9:C9'],
+    headerRow: hasComparison ? 7 : 10,
+    autoFilter: { from: hasComparison ? 'A7' : 'A10', to: `${hasComparison ? 'G' : 'C'}${dreLastRow}` },
+    freezePane: hasComparison
+      ? { xSplit: 1, ySplit: 7, topLeftCell: 'B8' }
+      : { xSplit: 1, ySplit: 10, topLeftCell: 'B11' },
+    currencyColumns: hasComparison ? [2, 4, 6] : [2],
+    percentageColumns: hasComparison ? [3, 5, 7] : [3],
     tabColor: COLORS.brand,
   }];
 
@@ -619,7 +656,7 @@ export async function createDreExcelWorkbook(data: DreReportData): Promise<Excel
       const width = Math.min(maxWidth, maxHeight * ratio);
       const height = Math.min(maxHeight, maxWidth / ratio);
       worksheet.addImage(brandImageId, {
-        tl: { col: 5.05, row: 0.08 },
+        tl: { col: Math.max(1.05, sheet.widths.length - 1.95), row: 0.08 },
         ext: { width, height },
         editAs: 'oneCell',
       });

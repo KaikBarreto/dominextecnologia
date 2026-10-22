@@ -39,23 +39,25 @@ describe('buildDreExcelSheets', () => {
     const sheets = buildDreExcelSheets(report);
     const dre = sheets[0];
 
-    expect(dre.rows).toContainEqual(['Empresa', 'Dominex DEMO', '', 'Período', '01/09/2026 a 30/09/2026']);
-    expect(dre.rows).toContainEqual(['CNPJ/CPF', '00.000.000/0001-00', '', 'Regime', 'Competência']);
-    expect(dre.rows).toContainEqual(['01.01.001 - Serviços', 10_000, 1, 0, '', 10_000, '']);
-    expect(dre.rows).toContainEqual(['01.01.001.001 - Contratos PMOC', 10_000, 1, 0, '', 10_000, '']);
+    expect(dre.rows).toContainEqual(['Empresa', 'Dominex DEMO', '']);
+    expect(dre.rows).toContainEqual(['CNPJ/CPF', '00.000.000/0001-00', '']);
+    expect(dre.rows).toContainEqual(['Período', '01/09/2026 a 30/09/2026', '']);
+    expect(dre.rows).toContainEqual(['Regime', 'Competência', '']);
+    expect(dre.rows).toContainEqual(['01.01.001 - Serviços', 10_000, 1]);
+    expect(dre.rows).toContainEqual(['01.01.001.001 - Contratos PMOC', 10_000, 1]);
     expect(dre.rows.some((row) => String(row[0]).includes('Centro de custo'))).toBe(false);
-    expect(dre.rows).toContainEqual(['02.01.001 - ISS', 1_000, 0.1, 0, '', -1_000, '']);
-    expect(dre.rows).toContainEqual(['07 - RESULTADO OPERACIONAL', 4_000, 0.4, 0, '', 4_000, '']);
-    expect(dre.rows).toContainEqual(['08.01.001 - Juros', 500, 0.05, 0, '', -500, '']);
-    expect(dre.rows).toContainEqual(['09 - RESULTADO FINAL', 3_500, 0.35, 0, '', 3_500, '']);
+    expect(dre.rows).toContainEqual(['02.01.001 - ISS', 1_000, 0.1]);
+    expect(dre.rows).toContainEqual(['07 - RESULTADO OPERACIONAL', 4_000, 0.4]);
+    expect(dre.rows).toContainEqual(['08.01.001 - Juros', 500, 0.05]);
+    expect(dre.rows).toContainEqual(['09 - RESULTADO FINAL', 3_500, 0.35]);
 
     expect(dre.rowKinds).toHaveLength(dre.rows.length);
     expect(dre.outlineLevels).toHaveLength(dre.rows.length);
     expect(dre.outlineLevels).toContain(2);
-    expect(dre.autoFilter).toEqual({ from: 'A7', to: `G${dre.rows.length}` });
-    expect(dre.freezePane).toEqual({ xSplit: 1, ySplit: 7, topLeftCell: 'B8' });
-    expect(dre.currencyColumns).toEqual([2, 4, 6]);
-    expect(dre.percentageColumns).toEqual([3, 5, 7]);
+    expect(dre.autoFilter).toEqual({ from: 'A10', to: `C${dre.rows.length}` });
+    expect(dre.freezePane).toEqual({ xSplit: 1, ySplit: 10, topLeftCell: 'B11' });
+    expect(dre.currencyColumns).toEqual([2]);
+    expect(dre.percentageColumns).toEqual([3]);
   });
 
   it('gera aba de centros de custo com total e percentual sobre a receita bruta', () => {
@@ -107,9 +109,9 @@ describe('buildDreExcelSheets', () => {
     const oneOffIndex = sheets.rows.findIndex((row) => row[0] === '01.02 - RECEITAS AVULSAS');
     expect(recurringIndex).toBeGreaterThan(0);
     expect(oneOffIndex).toBeGreaterThan(recurringIndex);
-    expect(sheets.rows).toContainEqual(['01.03.017 - PMOC', 6_000, 0.6, 0, '', 6_000, '']);
-    expect(sheets.rows).toContainEqual(['02.01.001 - ISS', 1_000, 0.1, 0, '', -1_000, '']);
-    expect(sheets.rows).toContainEqual(['08.01.001 - Juros', 500, 0.05, 0, '', -500, '']);
+    expect(sheets.rows).toContainEqual(['01.03.017 - PMOC', 6_000, 0.6]);
+    expect(sheets.rows).toContainEqual(['02.01.001 - ISS', 1_000, 0.1]);
+    expect(sheets.rows).toContainEqual(['08.01.001 - Juros', 500, 0.05]);
     expect(sheets.rows.some((row) => String(row[0]).includes('TRANSFERÊNCIAS'))).toBe(false);
     expect(sheets.rows.filter((row) => row[0] === '01 - RECEITA BRUTA')).toHaveLength(1);
   });
@@ -140,12 +142,12 @@ describe('createDreExcelWorkbook', () => {
     expect(dre!.getCell('A1').font.bold).toBe(true);
     expect(dre!.getCell('A1').fill).toMatchObject({ pattern: 'solid', fgColor: { argb: 'FF172033' } });
     const revenueCategoryRow = dre!.getColumn(1).values.findIndex((value) => value === '01.01.001 - Serviços');
-    expect(revenueCategoryRow).toBeGreaterThan(7);
+    expect(revenueCategoryRow).toBeGreaterThan(10);
     expect(dre!.getCell(revenueCategoryRow, 2).numFmt).toContain('R$');
     expect(dre!.getCell(revenueCategoryRow, 3).numFmt).toContain('0.0%');
-    expect(dre!.autoFilter).toBe(`A7:G${dre!.rowCount}`);
-    expect(dre!.views[0]).toMatchObject({ state: 'frozen', xSplit: 1, ySplit: 7, topLeftCell: 'B8' });
-    expect(dre!.getColumn(1).width).toBe(54);
+    expect(dre!.autoFilter).toBe(`A10:C${dre!.rowCount}`);
+    expect(dre!.views[0]).toMatchObject({ state: 'frozen', xSplit: 1, ySplit: 10, topLeftCell: 'B11' });
+    expect(dre!.getColumn(1).width).toBe(72);
     expect(costCenters!.getColumn(1).width).toBe(38);
     expect(costCenters!.views[0]).toMatchObject({ state: 'frozen', xSplit: 1, ySplit: 6 });
 

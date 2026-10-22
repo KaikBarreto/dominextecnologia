@@ -1782,7 +1782,9 @@ export function FinanceDRE({
           <DreHierarchyTable
             sections={tableSections}
             currentPeriodLabel={periodLabel}
+            currentPeriodStart={range?.from}
             comparisonPeriodLabels={comparisonPeriodLabels}
+            comparisonPeriodStarts={comparisonRanges.map((comparisonRange) => comparisonRange.from)}
             renderValue={fmt}
             hasComparison={comparisonRanges.length > 0}
             onComparePeriods={() => setComparisonDialogOpen(true)}

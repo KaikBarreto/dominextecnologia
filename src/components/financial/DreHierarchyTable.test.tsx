@@ -82,14 +82,20 @@ describe('DreHierarchyTable — recolhimento dos macrogrupos', () => {
       <DreHierarchyTable
         sections={sections}
         currentPeriodLabel="Outubro de 2026"
+        currentPeriodStart={new Date(2026, 9, 1)}
         comparisonPeriodLabels={['Setembro de 2026']}
+        comparisonPeriodStarts={[new Date(2026, 8, 1)]}
         renderValue={(value) => `R$ ${value}`}
         hasComparison
       />,
     );
 
+    expect(screen.getAllByText(/^(Setembro|Outubro) de 2026$/).map((node) => node.textContent))
+      .toEqual(['Setembro de 2026', 'Outubro de 2026']);
+
     const macro = screen.getByRole('button', { name: 'Recolher 01 Receita Bruta' });
     expect(macro).toHaveAttribute('aria-expanded', 'true');
+    expect(macro.textContent!.indexOf('R$ 90')).toBeLessThan(macro.textContent!.indexOf('R$ 100'));
     expect(screen.getByText('Grupo de serviços')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Grupo de serviços/ }));

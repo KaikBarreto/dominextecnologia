@@ -46,7 +46,9 @@ export interface DreHierarchySection extends Omit<DreHierarchyLine, 'costCenters
 interface DreHierarchyTableProps {
   sections: DreHierarchySection[];
   currentPeriodLabel: string;
+  currentPeriodStart?: Date;
   comparisonPeriodLabels?: string[];
+  comparisonPeriodStarts?: Array<Date | undefined>;
   renderValue: (value: number) => ReactNode;
   hasComparison: boolean;
   onComparePeriods?: () => void;
@@ -63,14 +65,33 @@ const cleanOperationPrefix = (label: string) => label.replace(/^\s*(?:\([+\-=]\)
 export function DreHierarchyTable({
   sections,
   currentPeriodLabel,
+  currentPeriodStart,
   comparisonPeriodLabels = [],
+  comparisonPeriodStarts = [],
   renderValue,
   hasComparison,
   onComparePeriods,
   comparisonDisabled = false,
 }: DreHierarchyTableProps) {
   const labels = hasComparison ? comparisonPeriodLabels.slice(0, 3) : [];
-  const columnCount = labels.length + 1;
+  const unsortedPeriodColumns = [
+    { label: currentPeriodLabel, start: currentPeriodStart, comparisonIndex: undefined, originalIndex: 0 },
+    ...labels.map((label, index) => ({
+      label,
+      start: comparisonPeriodStarts[index],
+      comparisonIndex: index,
+      originalIndex: index + 1,
+    })),
+  ];
+  const canSortChronologically = hasComparison && unsortedPeriodColumns.every(
+    (column) => column.start && !Number.isNaN(column.start.getTime()),
+  );
+  const periodColumns = canSortChronologically
+    ? [...unsortedPeriodColumns].sort((a, b) => (
+        a.start!.getTime() - b.start!.getTime() || a.originalIndex - b.originalIndex
+      ))
+    : unsortedPeriodColumns;
+  const columnCount = periodColumns.length;
   const gridStyle: CSSProperties = {
     gridTemplateColumns: `minmax(330px, 1fr) repeat(${columnCount}, minmax(142px, 164px))`,
   };
@@ -138,12 +159,14 @@ export function DreHierarchyTable({
 
   const valueColumns = (line: DreHierarchyLine, inverse = false, absolute = false) => (
     <>
-      {periodCell(line.current, line.impactPercent, inverse, absolute)}
-      {labels.map((label, index) => {
-        const comparison = line.comparisonValues?.[index];
+      {periodColumns.map((column) => {
+        if (column.comparisonIndex === undefined) {
+          return <span key="current">{periodCell(line.current, line.impactPercent, inverse, absolute)}</span>;
+        }
+        const comparison = line.comparisonValues?.[column.comparisonIndex];
         return comparison
-          ? <span key={label}>{periodCell(comparison.value, comparison.impactPercent, inverse, absolute)}</span>
-          : <span key={label} className={cn('text-right text-muted-foreground', inverse && 'text-white/60')}>—</span>;
+          ? <span key={`comparison:${column.comparisonIndex}`}>{periodCell(comparison.value, comparison.impactPercent, inverse, absolute)}</span>
+          : <span key={`comparison:${column.comparisonIndex}`} className={cn('text-right text-muted-foreground', inverse && 'text-white/60')}>—</span>;
       })}
     </>
   );
@@ -193,9 +216,9 @@ export function DreHierarchyTable({
               </Button>
             )}
           </div>
-          {[currentPeriodLabel, ...labels].map((label, index) => (
-            <div key={`${index}:${label}`} className="flex flex-col items-center justify-center border-l border-border/60 px-2 text-center">
-              <span className="block w-full truncate text-[12px] font-bold normal-case tracking-normal text-[#0f172a]">{label}</span>
+          {periodColumns.map((column) => (
+            <div key={`${column.comparisonIndex ?? 'current'}:${column.label}`} className="flex flex-col items-center justify-center border-l border-border/60 px-2 text-center">
+              <span className="block w-full truncate text-[12px] font-bold normal-case tracking-normal text-[#0f172a]">{column.label}</span>
               <span className="mt-1 block text-[9px] font-medium text-[#64748b]">Valor · % receita</span>
             </div>
           ))}
