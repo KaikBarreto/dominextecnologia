@@ -1297,7 +1297,7 @@ O único dado do cadastro que a busca não alcança é a Origem.
 
 No computador, a coluna da esquerda mostra quantos registros correspondem à busca e tem rolagem própria. Assim, uma ficha longa pode ser consultada sem esconder a relação de clientes.
 
-Acima da relação, o botão A-Z alterna a ordem alfabética entre crescente e decrescente. No rodapé da coluna, a paginação mostra Mostrando 1-25 de N com as setas de página: a lista carrega 25 cadastros por vez, e ao abrir uma ficha a coluna já vai para a página em que aquele cadastro está.
+Acima da relação, o botão A-Z alterna a ordem alfabética entre crescente e decrescente. A coluna tem altura fixa, sempre dentro da tela, e no rodapé dela ficam o seletor de quantos cadastros mostrar por página (10, 25, 50, 100 ou Todos), a contagem no formato 1-25 / 231 e as setas de página. A lista começa com 25 por página, e ao abrir uma ficha a coluna já vai para a página em que aquele cadastro está.
 
 Quem tem o módulo PDV ganha, logo abaixo da busca e dentro do mesmo painel, o filtro Todos / Serviço / Loja, que separa quem contrata serviço de quem compra na loja.
 

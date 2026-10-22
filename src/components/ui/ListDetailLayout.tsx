@@ -3,6 +3,13 @@ import { ArrowDownUp, ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen, 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useDataPagination, type PageSizeOption } from '@/hooks/useDataPagination';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -194,9 +201,17 @@ export function ListDetailLayout({
   useEffect(() => {
     const el = asideRef.current;
     if (!el) return;
+    // Quem rola é o <main> do shell, que termina ACIMA do rodapé do sistema
+    // (52px). Medir contra window.innerHeight fazia a coluna passar do fim do
+    // <main> e a linha de paginação era CORTADA — ela só aparecia quando a
+    // busca encurtava a lista. Ver a régua "o scroller de verdade é o <main>".
+    const scroller = el.closest('main') ?? document.documentElement;
     const update = () => {
       const top = el.getBoundingClientRect().top;
-      el.style.maxHeight = `${Math.max(320, window.innerHeight - Math.max(top, 16) - 16)}px`;
+      const limite = Math.min(window.innerHeight, scroller.getBoundingClientRect().bottom);
+      // Altura FIXA, não máxima: assim a coluna não muda de tamanho conforme o
+      // resultado da busca e a paginação fica sempre colada embaixo.
+      el.style.height = `${Math.max(320, limite - Math.max(top, 16) - 16)}px`;
     };
     update();
     document.addEventListener('scroll', update, true);
@@ -213,10 +228,9 @@ export function ListDetailLayout({
     };
   }, [collapsed]);
 
-  const showingText = tPagination.showing
-    .replace('{from}', formatNumber(pagination.from, locale))
-    .replace('{to}', formatNumber(pagination.to, locale))
-    .replace('{total}', formatNumber(pagination.totalItems, locale));
+  // Sem a palavra "Mostrando": a coluna tem ~19rem e divide a linha com o
+  // seletor de itens por página e as setas.
+  const showingText = `${formatNumber(pagination.from, locale)}-${formatNumber(pagination.to, locale)} / ${formatNumber(pagination.totalItems, locale)}`;
 
   return (
     <div
@@ -245,7 +259,7 @@ export function ListDetailLayout({
       ) : (
         <aside
           ref={asideRef}
-          className="hidden overflow-hidden rounded-xl border bg-card lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100dvh-7rem)] lg:min-h-[24rem] lg:flex-col"
+          className="hidden overflow-hidden rounded-xl border bg-card lg:sticky lg:top-4 lg:flex lg:h-[calc(100dvh-7rem)] lg:min-h-[24rem] lg:flex-col"
           aria-label={listTitle}
         >
           <div className="border-b p-3">
@@ -380,9 +394,25 @@ export function ListDetailLayout({
             )}
           </div>
 
-          <div className="flex items-center justify-between gap-2 border-t px-3 py-2">
-            <span className="min-w-0 truncate text-xs text-muted-foreground">{showingText}</span>
-            <div className="flex shrink-0 items-center gap-1">
+          <div className="flex items-center justify-between gap-1 border-t px-2 py-2">
+            <Select
+              value={String(pagination.pageSize)}
+              onValueChange={(value) =>
+                pagination.setPageSize(value === 'all' ? 'all' : (Number(value) as PageSizeOption))
+              }
+            >
+              <SelectTrigger className="h-7 w-[4.5rem] shrink-0 px-2 text-xs" aria-label={tPagination.perPage}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(['10', '25', '50', '100'] as const).map((size) => (
+                  <SelectItem key={size} value={size} className="text-xs">{size}</SelectItem>
+                ))}
+                <SelectItem value="all" className="text-xs">{tPagination.all}</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="min-w-0 truncate text-center text-xs text-muted-foreground">{showingText}</span>
+            <div className="flex shrink-0 items-center gap-0.5">
               <Button
                 type="button"
                 variant="ghost"
@@ -395,9 +425,6 @@ export function ListDetailLayout({
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="text-xs tabular-nums text-muted-foreground">
-                {formatNumber(pagination.page, locale)}/{formatNumber(pagination.totalPages, locale)}
-              </span>
               <Button
                 type="button"
                 variant="ghost"

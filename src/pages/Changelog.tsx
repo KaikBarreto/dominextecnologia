@@ -63,8 +63,13 @@ export const changelog: ChangelogEntry[] = [
       },
       {
         title: 'A lista ao lado da ficha ordena e pagina',
-        description: 'A coluna de Clientes, Fornecedores e Equipamentos mostra quantos cadastros a busca encontrou, alterna a ordem alfabética num toque e carrega 25 por página. Ao abrir uma ficha, a coluna já vai para a página daquele cadastro.',
+        description: 'A coluna de Clientes, Fornecedores e Equipamentos mostra quantos cadastros a busca encontrou, alterna a ordem alfabética num toque e tem altura fixa, com a paginação sempre à vista no rodapé: dá para escolher quantos aparecem por página (10, 25, 50, 100 ou todos). Ao abrir uma ficha, a coluna já vai para a página daquele cadastro.',
         category: 'melhoria',
+      },
+      {
+        title: 'Busca do PDV não puxa mais a senha do navegador',
+        description: 'No Mac, o campo de buscar produto do PDV fazia o navegador oferecer o preenchimento automático de senha por cima da tela de venda. Agora ele é tratado como campo de busca e o aviso não aparece mais.',
+        category: 'correcao',
       },
       {
         title: 'Abrir um cadastro não recarrega mais a tela',

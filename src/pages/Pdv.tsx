@@ -1617,14 +1617,31 @@ export default function Pdv() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="relative flex-1">
                 <Barcode className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                {/* type="search" + name que não lembra credencial: sem isso o
+                    Safari trata este campo (grande, sozinho e com autoFocus)
+                    como login e o iCloud oferece "Ativar Preenchimento
+                    Automático de Senha" em cima do PDV. Os data-* calam
+                    1Password, LastPass e Dashlane pelo mesmo motivo. O
+                    ::-webkit-search-cancel-button sai pra o visual não mudar. */}
                 <Input
                   ref={searchInputRef}
                   autoFocus
+                  type="search"
+                  name="pdv-busca-produto"
+                  inputMode="search"
+                  enterKeyHint="search"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  data-1p-ignore
+                  data-lpignore="true"
+                  data-form-type="other"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={handleSearchKeyDown}
                   placeholder={t.search.placeholder}
-                  className="h-12 pl-10 pr-14 text-base"
+                  className="h-12 pl-10 pr-14 text-base [&::-webkit-search-cancel-button]:appearance-none"
                 />
                 <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground sm:inline-flex">
                   F2
