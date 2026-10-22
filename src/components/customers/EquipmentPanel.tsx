@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Pencil, Trash2, Package, Search, Settings } from 'lucide-react';
+import { Plus, Pencil, Trash2, Package, Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -43,6 +42,8 @@ import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
 import { useViewMode } from '@/hooks/useViewMode';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 
 interface EquipmentGridCardProps {
   eq: Equipment & { customer?: any };
@@ -51,16 +52,18 @@ interface EquipmentGridCardProps {
   isMobile: boolean;
   canManage: boolean;
   onOpen: () => void;
+  onPreviewPhoto: (e: React.MouseEvent) => void;
   onEdit: (e?: React.MouseEvent) => void;
   onDelete: (e?: React.MouseEvent) => void;
 }
 
 function EquipmentGridCard({
-  eq, categoryName, categoryColor, isMobile, canManage, onOpen, onEdit, onDelete,
+  eq, categoryName, categoryColor, isMobile, canManage, onOpen, onPreviewPhoto, onEdit, onDelete,
 }: EquipmentGridCardProps) {
   const customerName = eq.customer?.name;
   const { locale } = useAppLocaleContext();
   const tEqCard = MESSAGES[locale].app.equipment;
+  const zoomPhotoLabel = MESSAGES[locale].app.common.listDetail.zoomPhoto.replace('{name}', eq.name);
   return (
     <Card
       className="cursor-pointer overflow-hidden transition-shadow hover:shadow-md active:scale-[0.99]"
@@ -69,11 +72,18 @@ function EquipmentGridCard({
       {/* Foto sangra no topo, embaixo e à esquerda, sempre quadrada; o resto do card fica à direita. */}
       <CardContent className="flex h-24 items-stretch p-0 sm:h-28">
         {(eq as any).photo_url ? (
-          <img
-            src={(eq as any).photo_url}
-            alt={eq.name}
-            className="h-full w-24 shrink-0 object-cover sm:w-28"
-          />
+          <button
+            type="button"
+            onClick={onPreviewPhoto}
+            aria-label={zoomPhotoLabel}
+            className="h-full w-24 shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:w-28"
+          >
+            <img
+              src={(eq as any).photo_url}
+              alt={eq.name}
+              className="h-full w-full object-cover transition-opacity hover:opacity-80"
+            />
+          </button>
         ) : (
           <div
             className="flex h-full w-24 shrink-0 items-center justify-center text-white sm:w-28"
@@ -128,11 +138,13 @@ export function EquipmentPanel() {
   const [equipmentToDelete, setEquipmentToDelete] = useState<Equipment | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
   const [viewMode, setViewMode] = useViewMode('equipment-view-mode');
+  const [previewImage, setPreviewImage] = useState<{ src: string; alt: string } | null>(null);
 
   const canManageEquipment = isAdminOrGestor() || hasPermission('fn:manage_equipment');
   const { locale } = useAppLocaleContext();
   const tEq = MESSAGES[locale].app.equipment;
   const tCustDetail = MESSAGES[locale].app.customers.detail;
+  const tCommon = MESSAGES[locale].app.common;
 
   const { equipment, isLoading, isError, refetch, createEquipment } = useEquipment();
   const { customers } = useCustomers();
@@ -316,24 +328,56 @@ export function EquipmentPanel() {
             <StatCarousel items={statItems} loading={isLoading} />
           )}
         </>
-      ) : (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={tEq.searchPlaceholder}
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+      ) : null}
+
+      {/* Visualização — grade (cards) ou lista. Lista: mobile nativa / desktop tabela. */}
+      {!isMobile ? (
+        <ListDetailLayout
+          items={filteredEquipment.map((eq) => ({
+            id: eq.id,
+            title: eq.name,
+            subtitle: [eq.identifier, eq.customer?.name, getCategoryName(eq.category_id)].filter(Boolean).join(' · ') || undefined,
+            searchText: [eq.brand, eq.model, eq.location, eq.customer?.name].filter(Boolean).join(' '),
+            imageUrl: eq.photo_url,
+            imageAlt: tCommon.listDetail.zoomPhoto.replace('{name}', eq.name),
+            onImageClick: eq.photo_url
+              ? () => setPreviewImage({ src: eq.photo_url!, alt: eq.name })
+              : undefined,
+            leading: (
+              // Quadrado na cor da categoria com ícone branco; sem categoria, o
+              // ícone fica solto (nada de fundo dessaturado atrás do ícone).
+              <div
+                className={cn(
+                  'flex h-10 w-10 items-center justify-center rounded-lg',
+                  getCategoryColor(eq.category_id) ? 'text-white' : 'text-muted-foreground',
+                )}
+                style={getCategoryColor(eq.category_id) ? { backgroundColor: getCategoryColor(eq.category_id)! } : undefined}
+              >
+                <Package className="h-5 w-5" />
+              </div>
+            ),
+            trailing: (
+              <span
+                className={cn('h-2 w-2 rounded-full', eq.status === 'active' ? 'bg-success' : 'bg-muted-foreground/50')}
+                title={eq.status === 'active' ? tEq.statusActive : tEq.statusInactive}
               />
-            </div>
+            ),
+          }))}
+          listTitle={tEq.listHeading}
+          storageKey="equipment-list-detail"
+          listFilters={(
             <FilterButton activeCount={activeFilterCount} onClear={clearFilters}>
               {filterContent}
             </FilterButton>
-            <ViewModeToggle value={viewMode} onChange={setViewMode} showLabels />
-          </div>
-          <div className="flex gap-2 flex-wrap">
+          )}
+          searchPlaceholder={tEq.searchPlaceholderMobile}
+          emptyLabel={tEq.emptySearch}
+          onSelect={(equipmentId) => navigate(`/equipamentos/${equipmentId}`)}
+        >
+          {/* Ações no TOPO da coluna de detalhe: na linha própria acima do
+              layout elas empurravam o painel da lista pra baixo e deixavam uma
+              faixa vazia do lado direito. */}
+          <div className="mb-4 flex flex-wrap justify-end gap-2">
             <Button
               variant="outline"
               onClick={() => setConfigOpen(true)}
@@ -350,11 +394,33 @@ export function EquipmentPanel() {
               </Button>
             )}
           </div>
-        </div>
-      )}
-
-      {/* Visualização — grade (cards) ou lista. Lista: mobile nativa / desktop tabela. */}
-      {viewMode === 'grid' ? (
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-64" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          ) : isError ? (
+            <EmptyState
+              icon={<Package className="h-12 w-12 text-destructive" />}
+              title={tEq.loadError}
+              description={tEq.loadErrorDesc}
+              action={{ label: tEq.retry, onClick: () => refetch() }}
+            />
+          ) : filteredEquipment.length === 0 ? (
+            <EmptyState
+              icon={<Package className="h-12 w-12" />}
+              title={categoryFilter.length > 0 || customerFilter.length > 0 ? tEq.emptySearch : tEq.emptyNone}
+              description={categoryFilter.length > 0 || customerFilter.length > 0 ? tEq.emptySearchDesc : tEq.emptyNoneDescAdd}
+            />
+          ) : (
+            <EmptyState
+              icon={<Package className="h-12 w-12" />}
+              title={tEq.selectPrompt}
+              description={tEq.selectPromptDesc}
+            />
+          )}
+        </ListDetailLayout>
+      ) : viewMode === 'grid' ? (
         isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}
@@ -384,6 +450,10 @@ export function EquipmentPanel() {
                   isMobile={isMobile}
                   canManage={canManageEquipment}
                   onOpen={() => navigate(`/equipamentos/${eq.id}`)}
+                  onPreviewPhoto={(event) => {
+                    event.stopPropagation();
+                    if (eq.photo_url) setPreviewImage({ src: eq.photo_url, alt: eq.name });
+                  }}
                   onEdit={(e) => handleEdit(eq, e)}
                   onDelete={(e) => handleDeleteClick(eq, e)}
                 />
@@ -458,6 +528,20 @@ export function EquipmentPanel() {
                         <img
                           src={eq.photo_url}
                           alt={eq.name}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={tCommon.listDetail.zoomPhoto.replace('{name}', eq.name)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setPreviewImage({ src: eq.photo_url!, alt: eq.name });
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setPreviewImage({ src: eq.photo_url!, alt: eq.name });
+                            }
+                          }}
                           className="h-10 w-10 rounded-lg object-cover"
                         />
                       ) : (
@@ -650,6 +734,13 @@ export function EquipmentPanel() {
       <EquipmentFieldConfigDialog
         open={configOpen}
         onOpenChange={setConfigOpen}
+      />
+
+      <ImagePreviewModal
+        src={previewImage?.src ?? ''}
+        alt={previewImage?.alt}
+        open={!!previewImage}
+        onClose={() => setPreviewImage(null)}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

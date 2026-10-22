@@ -8,11 +8,16 @@ import {
 } from 'recharts';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addWeeks } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import {
-  resolveOrigin, NO_ORIGIN_LABEL, NO_ORIGIN_COLOR, type CatalogOrigin,
+  resolveOrigin, NO_ORIGIN_LABEL, NO_ORIGIN_COLOR,
 } from '@/utils/companyOriginCatalog';
+import type {
+  AdminDashboardCompany,
+  AdminDashboardOrigin,
+  AdminDashboardPayment,
+  AdminDashboardTransaction,
+} from '@/hooks/useAdminDashboardData';
+import { filterAdminDashboardCompaniesByCreatedAt } from '@/lib/adminDashboardMetrics';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 const FUNNEL_GRADIENTS = [
@@ -27,8 +32,10 @@ const PIE_GRAD_PREFIX_ORIGIN = 'gradAdminPieOrigin';
 const PIE_GRAD_PREFIX_PAYMENT = 'gradAdminPiePayment';
 
 interface Props {
-  companies: any[];
-  transactions: any[];
+  companies: AdminDashboardCompany[];
+  transactions: AdminDashboardTransaction[];
+  companyOrigins: AdminDashboardOrigin[];
+  allCompanyPayments: AdminDashboardPayment[];
   startDate: Date;
   endDate: Date;
   /** Quais seções renderizar. Default: todas. */
@@ -37,41 +44,31 @@ interface Props {
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-export function AdminDashboardCharts({ companies, transactions, startDate, endDate, sections }: Props) {
+export function AdminDashboardCharts({
+  companies,
+  transactions,
+  companyOrigins,
+  allCompanyPayments,
+  startDate,
+  endDate,
+  sections,
+}: Props) {
   const visible = new Set(sections ?? ['pies', 'funnel', 'revenue', 'churn']);
   const [revenueView, setRevenueView] = useState<'monthly' | 'weekly'>('monthly');
 
-  const { data: companyOrigins } = useQuery({
-    queryKey: ['admin-company-origins-colors'],
-    queryFn: async () => {
-      const { data } = await supabase.from('company_origins').select('name, color');
-      return data || [];
-    },
-  });
-
-  const { data: allCompanyPayments } = useQuery({
-    queryKey: ['admin-company-payments-all'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('company_payments')
-        .select('company_id, type, payment_method, payment_date')
-        .order('payment_date', { ascending: false });
-      return data || [];
-    },
-  });
-
   // Origem dos clientes (período)
-  const filteredCompanies = companies.filter((c: any) => {
-    const d = new Date(c.created_at);
-    return d >= startDate && d <= endDate;
-  });
+  const filteredCompanies = filterAdminDashboardCompaniesByCreatedAt(
+    companies,
+    startDate,
+    endDate,
+  );
   // Resolução única (case-insensitive, com trim) em
   // src/utils/companyOriginCatalog.ts. Origem fora do catálogo deixa de ganhar
   // cor sorteada do ciclo da paleta: vai pro cinza neutro, igual ao badge das
   // outras telas. Empresa SEM origem continua sendo "Não informado" (cinza
   // claro), que é um estado diferente de origem não reconhecida.
   const originData = filteredCompanies.reduce((acc: any[], c: any) => {
-    const resolved = resolveOrigin(c.origin, companyOrigins as CatalogOrigin[]);
+    const resolved = resolveOrigin(c.origin, companyOrigins);
     const name = resolved ? resolved.name : NO_ORIGIN_LABEL;
     const color = resolved ? resolved.color : NO_ORIGIN_COLOR;
     const existing = acc.find((it) => it.name === name);
@@ -85,7 +82,7 @@ export function AdminDashboardCharts({ companies, transactions, startDate, endDa
     const active = companies.filter((c) => c.subscription_status === 'active');
     const activeIds = new Set(active.map((c) => c.id));
     const last: Record<string, string> = {};
-    (allCompanyPayments || []).forEach((p: any) => {
+    allCompanyPayments.forEach((p) => {
       if (p.company_id && activeIds.has(p.company_id) && !last[p.company_id]) {
         last[p.company_id] = p.payment_method || 'unknown';
       }
@@ -109,7 +106,11 @@ export function AdminDashboardCharts({ companies, transactions, startDate, endDa
   const retentionFunnelData = useMemo(() => {
     const active = companies.filter((c) => c.subscription_status === 'active' || c.subscription_status === 'testing');
     const counts: Record<string, number> = {};
-    (allCompanyPayments || []).forEach((p: any) => { if (p.company_id) counts[p.company_id] = (counts[p.company_id] || 0) + 1; });
+    allCompanyPayments.forEach((payment) => {
+      if (payment.company_id) {
+        counts[payment.company_id] = (counts[payment.company_id] || 0) + 1;
+      }
+    });
     const m1 = active.filter((c) => (counts[c.id] || 0) === 1).length;
     const m2 = active.filter((c) => (counts[c.id] || 0) === 2).length;
     const m3 = active.filter((c) => (counts[c.id] || 0) === 3).length;

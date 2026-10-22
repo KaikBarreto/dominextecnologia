@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { fuzzyIncludesAny, cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { Users, Plus, Search, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye, ClipboardList, Handshake, Truck, Wrench, Store } from 'lucide-react';
+import { Users, Plus, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye, ClipboardList, Handshake, Truck, Wrench, Store } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { SegmentedControl, type SegmentedControlOption } from '@/components/ui/SegmentedControl';
 import {
@@ -41,6 +40,8 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { SuppliersTab } from '@/components/customers/SuppliersTab';
+import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 
 type CustomersMainTab = 'clientes' | 'fornecedores';
 
@@ -144,12 +145,15 @@ interface CustomerGridCardProps {
   canDelete: boolean;
   pdvEnabled: boolean;
   onOpen: () => void;
+  onPreviewPhoto: (e: React.MouseEvent) => void;
   onEdit: (e?: React.MouseEvent) => void;
   onDelete: (e?: React.MouseEvent) => void;
   t: typeof MESSAGES['pt-br']['app']['customers'];
 }
 
-function CustomerGridCard({ customer, isMobile, canEdit, canDelete, pdvEnabled, onOpen, onEdit, onDelete, t }: CustomerGridCardProps) {
+function CustomerGridCard({ customer, isMobile, canEdit, canDelete, pdvEnabled, onOpen, onPreviewPhoto, onEdit, onDelete, t }: CustomerGridCardProps) {
+  const { locale } = useAppLocaleContext();
+  const zoomPhotoLabel = MESSAGES[locale].app.common.listDetail.zoomPhoto.replace('{name}', customer.name);
   const subtitleParts = [customer.phone || customer.celular, customer.city].filter(Boolean);
   const subtitle = subtitleParts.length > 0
     ? subtitleParts.join(' • ')
@@ -162,7 +166,14 @@ function CustomerGridCard({ customer, isMobile, canEdit, canDelete, pdvEnabled, 
     >
       <CardContent className="p-4 flex flex-col items-center text-center gap-3">
         {customer.photo_url ? (
-          <img src={customer.photo_url} alt={customer.name} className="h-16 w-16 rounded-full object-cover" />
+          <button
+            type="button"
+            className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            onClick={onPreviewPhoto}
+            aria-label={zoomPhotoLabel}
+          >
+            <img src={customer.photo_url} alt={customer.name} className="h-16 w-16 rounded-full object-cover transition-opacity hover:opacity-80" />
+          </button>
         ) : (
           <div
             className="h-16 w-16 rounded-full flex items-center justify-center text-white text-lg font-semibold"
@@ -177,7 +188,7 @@ function CustomerGridCard({ customer, isMobile, canEdit, canDelete, pdvEnabled, 
         </div>
         <div className="flex items-center justify-center gap-1.5">
           <Badge
-            variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}
+            variant={customer.customer_type === 'pj' ? 'default' : 'muted'}
             className="text-[10px] px-2 py-0.5"
           >
             {customer.customer_type === 'pj' ? t.typePj : t.typePf}
@@ -218,6 +229,7 @@ export default function Customers() {
   const [originConfigOpen, setOriginConfigOpen] = useState(false);
   const [leadFormsOpen, setLeadFormsOpen] = useState(false);
   const [opportunityCustomer, setOpportunityCustomer] = useState<Customer | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ src: string; alt: string } | null>(null);
   const [viewMode, setViewMode] = useViewMode('customers-view-mode');
   // Filtro "Atende como" (Serviço/Loja) — só existe pra quem tem o módulo PDV.
   const [customerKindFilter, setCustomerKindFilter] = useState<CustomerKindFilter>('all');
@@ -228,6 +240,7 @@ export default function Customers() {
   // Estoque também não gateia suppliers por módulo hoje.
   const [mainTab, setMainTab] = useState<CustomersMainTab>('clientes');
   const tSuppliers = MESSAGES[locale].app.customers.suppliers;
+  const tCommon = MESSAGES[locale].app.common;
 
   const canCreateCustomer = isAdminOrGestor() || hasPermission('fn:create_customer');
   const canEditCustomer = isAdminOrGestor() || hasPermission('fn:edit_customer');
@@ -303,6 +316,22 @@ export default function Customers() {
     }
   };
 
+  /** Filtro "Atende como": mesmo controle no celular e dentro da lista no desktop. */
+  const kindFilterControl = (
+    <SegmentedControl<CustomerKindFilter>
+      aria-label={t.kindFilterLabel}
+      size="sm"
+      className="sm:max-w-sm"
+      options={[
+        { value: 'all', label: t.kindFilterAll },
+        { value: 'servico', label: t.kindFilterService, icon: <Wrench className="h-3.5 w-3.5" /> },
+        { value: 'loja', label: t.kindFilterStore, icon: <Store className="h-3.5 w-3.5" /> },
+      ] satisfies SegmentedControlOption<CustomerKindFilter>[]}
+      value={customerKindFilter}
+      onValueChange={setCustomerKindFilter}
+    />
+  );
+
   const openNewCustomer = () => { setEditingCustomer(null); setFormOpen(true); };
 
   return (
@@ -314,11 +343,15 @@ export default function Customers() {
         actions={
           isMobile || mainTab !== 'clientes' ? undefined : (
             <>
-              <Button variant="outline" size="icon" onClick={() => setOriginConfigOpen(true)} title={t.configureOrigins}>
-                <Settings2 className="h-4 w-4" />
+              {/* No computador os botões levam rótulo: ícone sozinho vira
+                  adivinhação (o celular é que continua compacto). */}
+              <Button variant="outline" onClick={() => setOriginConfigOpen(true)} title={t.configureOrigins}>
+                <Settings2 className="mr-2 h-4 w-4" />
+                {t.configureOrigins}
               </Button>
-              <Button variant="outline" size="icon" onClick={() => setLeadFormsOpen(true)} title="Formulários de captação de cliente">
-                <ClipboardList className="h-4 w-4" />
+              <Button variant="outline" onClick={() => setLeadFormsOpen(true)} title={t.leadFormsFull}>
+                <ClipboardList className="mr-2 h-4 w-4" />
+                {t.leadFormsFull}
               </Button>
               {canCreateCustomer && (
                 <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openNewCustomer}>
@@ -335,7 +368,7 @@ export default function Customers() {
       <MobilePillTabs
         variant="underline"
         tabs={[
-          { value: 'clientes', label: t.title, icon: <Users className="h-4 w-4 shrink-0" /> },
+          { value: 'clientes', label: t.tabLabel, icon: <Users className="h-4 w-4 shrink-0" /> },
           { value: 'fornecedores', label: tSuppliers.tabLabel, icon: <Truck className="h-4 w-4 shrink-0" /> },
         ]}
         activeTab={mainTab}
@@ -343,24 +376,11 @@ export default function Customers() {
       />
 
       {/* Filtro "Atende como" (Serviço/Loja) — só existe com o módulo PDV.
-          Pills de seleção única (SegmentedControl), fora da MobileListToolbar
-          porque a 2ª linha dela já está no limite de 3 controles (Origens,
-          Formulários, Visualização); vive aqui, logo abaixo das abas
-          Clientes/Fornecedores, igual em mobile e desktop. */}
-      {mainTab === 'clientes' && pdvEnabled && (
-        <SegmentedControl<CustomerKindFilter>
-          aria-label={t.kindFilterLabel}
-          size="sm"
-          className="sm:max-w-sm"
-          options={[
-            { value: 'all', label: t.kindFilterAll },
-            { value: 'servico', label: t.kindFilterService, icon: <Wrench className="h-3.5 w-3.5" /> },
-            { value: 'loja', label: t.kindFilterStore, icon: <Store className="h-3.5 w-3.5" /> },
-          ] satisfies SegmentedControlOption<CustomerKindFilter>[]}
-          value={customerKindFilter}
-          onValueChange={setCustomerKindFilter}
-        />
-      )}
+          No CELULAR mora aqui, logo abaixo das abas Clientes/Fornecedores
+          (fora da MobileListToolbar, cuja 2ª linha já está no limite de 3
+          controles). No COMPUTADOR ele entra DENTRO do painel Lista de
+          Clientes, junto da busca que ele filtra — ver `listFilters` abaixo. */}
+      {isMobile && mainTab === 'clientes' && pdvEnabled && kindFilterControl}
 
       {mainTab === 'fornecedores' ? (
         <SuppliersTab />
@@ -397,24 +417,65 @@ export default function Customers() {
             <span className="hidden min-[375px]:inline">{t.leadForms}</span>
           </Button>
         </MobileListToolbar>
-      ) : (
-      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative min-w-0 flex-1 sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={t.searchPlaceholder}
-            className="pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <ViewModeToggle value={viewMode} onChange={setViewMode} showLabels />
-        </div>
-      </div>
-      )}
+      ) : null}
 
-      {viewMode === 'grid' ? (
+      {!isMobile ? (
+        <ListDetailLayout
+          items={filteredCustomers.map((customer) => ({
+            id: customer.id,
+            title: customer.name,
+            subtitle: [customer.document, customer.phone || customer.celular, customer.city].filter(Boolean).join(' · ') || undefined,
+            searchText: [customer.company_name, customer.nome_fantasia, customer.email, customer.address, customer.neighborhood].filter(Boolean).join(' '),
+            imageUrl: customer.photo_url,
+            imageAlt: tCommon.listDetail.zoomPhoto.replace('{name}', customer.name),
+            onImageClick: customer.photo_url
+              ? () => setPreviewImage({ src: customer.photo_url!, alt: customer.name })
+              : undefined,
+            leading: (
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                {getInitials(customer.name)}
+              </div>
+            ),
+            trailing: (
+              <Badge variant={customer.customer_type === 'pj' ? 'default' : 'muted'} className="px-1.5 py-0 text-[10px]">
+                {customer.customer_type === 'pj' ? t.typePj : t.typePf}
+              </Badge>
+            ),
+          }))}
+          listTitle={t.listHeading}
+          storageKey="customers-list-detail"
+          listFilters={pdvEnabled ? kindFilterControl : undefined}
+          searchPlaceholder={t.searchPlaceholderMobile}
+          emptyLabel={t.emptySearch}
+          onSelect={(customerId) => navigate(`/clientes/${customerId}`)}
+        >
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-64" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          ) : isError ? (
+            <EmptyState
+              icon={<Users className="h-12 w-12 text-destructive" />}
+              title={t.loadError}
+              description={t.loadErrorDesc}
+              action={{ label: t.retry, onClick: () => refetch() }}
+            />
+          ) : filteredCustomers.length === 0 ? (
+            <EmptyState
+              icon={<Users className="h-12 w-12" />}
+              title={t.emptyNone}
+              description={t.emptyNoneDescAdd}
+            />
+          ) : (
+            <EmptyState
+              icon={<Users className="h-12 w-12" />}
+              title={t.selectPrompt}
+              description={t.selectPromptDesc}
+            />
+          )}
+        </ListDetailLayout>
+      ) : viewMode === 'grid' ? (
         // -----------------------------------------------------------------
         // Grade: cards responsivos (mobile e desktop). Reusa o mesmo
         // dataset paginado/filtrado da lista.
@@ -451,6 +512,10 @@ export default function Customers() {
                     canDelete={canDeleteCustomer}
                     pdvEnabled={pdvEnabled}
                     onOpen={() => navigate(`/clientes/${customer.id}`)}
+                    onPreviewPhoto={(event) => {
+                      event.stopPropagation();
+                      if (customer.photo_url) setPreviewImage({ src: customer.photo_url, alt: customer.name });
+                    }}
                     onEdit={(e) => handleEdit(customer, e)}
                     onDelete={(e) => handleDeleteClick(customer, e)}
                     t={t}
@@ -545,6 +610,20 @@ export default function Customers() {
                           <img
                             src={customer.photo_url}
                             alt={customer.name}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={tCommon.listDetail.zoomPhoto.replace('{name}', customer.name)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setPreviewImage({ src: customer.photo_url!, alt: customer.name });
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                setPreviewImage({ src: customer.photo_url!, alt: customer.name });
+                              }
+                            }}
                             className="h-10 w-10 rounded-full object-cover"
                           />
                         ) : (
@@ -562,7 +641,7 @@ export default function Customers() {
                       trailing={
                         <div className="flex flex-col items-end gap-1">
                           <Badge
-                            variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}
+                            variant={customer.customer_type === 'pj' ? 'default' : 'muted'}
                             className="text-[10px] px-2 py-0.5"
                           >
                             {customer.customer_type === 'pj' ? t.typePj : t.typePf}
@@ -666,7 +745,7 @@ export default function Customers() {
                                 {customer.company_name || '-'}
                               </TableCell>
                               <TableCell className="hidden md:table-cell">
-                                <Badge variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}>
+                                <Badge variant={customer.customer_type === 'pj' ? 'default' : 'muted'}>
                                   {customer.customer_type === 'pj' ? t.typePj : t.typePf}
                                 </Badge>
                               </TableCell>
@@ -809,6 +888,13 @@ export default function Customers() {
         open={!!opportunityCustomer}
         onOpenChange={(open) => { if (!open) setOpportunityCustomer(null); }}
         presetCustomerId={opportunityCustomer?.id ?? null}
+      />
+
+      <ImagePreviewModal
+        src={previewImage?.src ?? ''}
+        alt={previewImage?.alt}
+        open={!!previewImage}
+        onClose={() => setPreviewImage(null)}
       />
     </div>
   );

@@ -20,7 +20,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
-import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Copy, Edit, LayoutGrid, List, Image, ChevronRight, ChevronDown, X, Megaphone } from 'lucide-react';
+import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Copy, Edit, LayoutGrid, List, Image, ChevronRight, ChevronDown, X, Megaphone, Package } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -54,6 +54,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { formatOSNumber } from '@/lib/osNumber';
 import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
 import { buildPortalCallsPath, isPortalCall } from '@/lib/portalCalls';
+import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
 
 type TabKey = 'geral' | 'anexos' | 'tarefas' | 'chamados';
 
@@ -138,7 +139,9 @@ export default function EquipmentDetail() {
   const id = equipment?.id ?? (isUuid(routeParam) ? routeParam : undefined);
 
   const { locale } = useAppLocaleContext();
-  const te = MESSAGES[locale].app.equipment.detail;
+  const tEquipment = MESSAGES[locale].app.equipment;
+  const tCommon = MESSAGES[locale].app.common;
+  const te = tEquipment.detail;
   const { attachments, isLoading: attachLoading, uploadAttachment, deleteAttachment } = useEquipmentAttachments(id);
   const { tasks, isLoading: tasksLoading, createTask, toggleTask, deleteTask } = useEquipmentTasks(id);
   const { serviceOrders, isLoading: ordersLoading } = useServiceOrders();
@@ -381,6 +384,53 @@ export default function EquipmentDetail() {
   ];
 
   return (
+    <ListDetailLayout
+      items={allEquipment.map((item) => ({
+        id: item.id,
+        title: item.name,
+        subtitle: [item.identifier, item.customer?.name].filter(Boolean).join(' · ') || undefined,
+        searchText: [item.brand, item.model, item.location, item.customer?.name].filter(Boolean).join(' '),
+        imageUrl: item.photo_url,
+        imageAlt: tCommon.listDetail.zoomPhoto.replace('{name}', item.name),
+        onImageClick: item.photo_url ? () => setPreviewImage(item.photo_url!) : undefined,
+        leading: (
+          // Mesma régua da lista em /equipamentos: quadrado na cor da categoria
+          // com o ícone branco; sem categoria, ícone solto (nunca círculo
+          // dessaturado atrás do ícone).
+          (() => {
+            const categoryColor = categories.find((c) => c.id === item.category_id)?.color;
+            return (
+              <div
+                className={cn(
+                  'flex h-10 w-10 items-center justify-center rounded-lg',
+                  categoryColor ? 'text-white' : 'text-muted-foreground',
+                )}
+                style={categoryColor ? { backgroundColor: categoryColor } : undefined}
+              >
+                <Package className="h-5 w-5" />
+              </div>
+            );
+          })()
+        ),
+        trailing: (
+          <span
+            className={cn(
+              'h-2 w-2 rounded-full',
+              item.status === 'active' ? 'bg-success' : 'bg-muted-foreground/50',
+            )}
+            title={item.status === 'active' ? te.statusActive : te.statusInactive}
+          />
+        ),
+      }))}
+      selectedId={equipment.id}
+      listTitle={tEquipment.listHeading}
+      storageKey="equipment-list-detail"
+      searchPlaceholder={te.switcherSearch}
+      emptyLabel={te.switcherEmpty}
+      onSelect={(equipmentId) => {
+        if (equipmentId !== equipment.id) navigate(`/equipamentos/${equipmentId}`);
+      }}
+    >
     <div className="space-y-6">
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Seta de voltar própria: só no desktop (Sidebar não tem voltar global; mobile/tablet usam a do shell) */}
@@ -438,16 +488,36 @@ export default function EquipmentDetail() {
             </Badge>
           </p>
         </div>
-        <div className="shrink-0 ml-auto">
-          <RowActionsMenu
-            ariaLabel={te.actions}
-            label={te.actions}
-            triggerClassName="border border-border px-3"
-            actions={[
-              { label: MESSAGES[locale].app.equipment.edit, icon: Edit, variant: 'edit', onClick: () => setEditEquipOpen(true) },
-              { label: MESSAGES[locale].app.equipment.delete, icon: Trash2, variant: 'delete', onClick: () => setDeleteEquipOpen(true) },
-            ]}
-          />
+        {/* Editar e Excluir em evidência no computador; no celular ficam no
+            menu de ações, que é onde cabe. */}
+        <div className="shrink-0 ml-auto flex items-center gap-2">
+          {isMobile ? (
+            <RowActionsMenu
+              ariaLabel={te.actions}
+              label={te.actions}
+              triggerClassName="border border-border px-3"
+              actions={[
+                { label: tEquipment.edit, icon: Edit, variant: 'edit', onClick: () => setEditEquipOpen(true) },
+                { label: tEquipment.delete, icon: Trash2, variant: 'delete', onClick: () => setDeleteEquipOpen(true) },
+              ]}
+            />
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" className="text-warning hover:text-warning" onClick={() => setEditEquipOpen(true)}>
+                <Edit className="mr-2 h-4 w-4" />
+                {tEquipment.edit}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:bg-destructive hover:text-white"
+                onClick={() => setDeleteEquipOpen(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {tEquipment.delete}
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -1192,5 +1262,6 @@ export default function EquipmentDetail() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </ListDetailLayout>
   );
 }

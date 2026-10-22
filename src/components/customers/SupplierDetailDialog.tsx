@@ -36,7 +36,7 @@ interface SupplierDetailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function SupplierDetailDialog({ supplier, open, onOpenChange }: SupplierDetailDialogProps) {
+export function SupplierDetailContent({ supplier }: { supplier: Supplier }) {
   const { locale, currency } = useAppLocaleContext();
   const formatCurrency = (value: number) => formatMoney(value, currency, locale);
   const t = MESSAGES[locale].app.customers.suppliers.detail;
@@ -61,17 +61,6 @@ export function SupplierDetailDialog({ supplier, open, onOpenChange }: SupplierD
   const pagination = useDataPagination(supplierTransactions, 10);
 
   return (
-    <ResponsiveModal
-      open={open}
-      onOpenChange={onOpenChange}
-      title={t.title}
-      className="sm:max-w-[720px]"
-      footer={
-        <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
-          {t.close}
-        </Button>
-      }
-    >
       <div className="space-y-6">
         <div className="space-y-3">
           <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/70">{t.infoHeading}</h3>
@@ -161,7 +150,7 @@ export function SupplierDetailDialog({ supplier, open, onOpenChange }: SupplierD
                           {format(parseISO(`${txn.transaction_date}T12:00:00`), 'dd/MM/yyyy', { locale: ptBR })}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={txn.is_paid ? 'default' : 'secondary'}>
+                          <Badge variant={txn.is_paid ? 'success' : 'warning'}>
                             {txn.is_paid ? t.paid : t.pending}
                           </Badge>
                         </TableCell>
@@ -184,6 +173,26 @@ export function SupplierDetailDialog({ supplier, open, onOpenChange }: SupplierD
           )}
         </div>
       </div>
+  );
+}
+
+export function SupplierDetailDialog({ supplier, open, onOpenChange }: SupplierDetailDialogProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.customers.suppliers.detail;
+
+  return (
+    <ResponsiveModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={t.title}
+      className="sm:max-w-[720px]"
+      footer={
+        <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
+          {t.close}
+        </Button>
+      }
+    >
+      <SupplierDetailContent supplier={supplier} />
     </ResponsiveModal>
   );
 }

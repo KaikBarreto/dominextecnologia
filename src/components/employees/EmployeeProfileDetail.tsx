@@ -29,8 +29,7 @@ import {
   AlertTriangle,
   Sparkles,
 } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
+import { EmployeePhotoAvatar } from '@/components/employees/EmployeePhotoAvatar';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -137,20 +136,7 @@ function EmployeeAvatar({
   employee: Employee;
   className?: string;
 }) {
-  const initials = employee.name
-    .split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-  return (
-    <Avatar className={className}>
-      <SignedAvatarImage src={employee.photo_url} alt={employee.name} />
-      <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-        {initials}
-      </AvatarFallback>
-    </Avatar>
-  );
+  return <EmployeePhotoAvatar name={employee.name} src={employee.photo_url} className={className} />;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1040,12 +1026,6 @@ export function EmployeeProfileDetail({
                           const isCurrent = emp.id === employeeId;
                           const empProfile = profilesByEmployee[emp.id]?.latestCompleted;
                           const empProfileCode = empProfile?.profile_code ?? null;
-                          const empInitials = emp.name
-                            .split(' ')
-                            .map((n) => n[0])
-                            .slice(0, 2)
-                            .join('')
-                            .toUpperCase();
                           return (
                             <CommandItem
                               key={emp.id}
@@ -1056,12 +1036,12 @@ export function EmployeeProfileDetail({
                               }}
                               className="gap-2.5 py-2"
                             >
-                              <Avatar className="h-7 w-7 shrink-0">
-                                <SignedAvatarImage src={emp.photo_url} alt={emp.name} />
-                                <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-semibold">
-                                  {empInitials}
-                                </AvatarFallback>
-                              </Avatar>
+                              <EmployeePhotoAvatar
+                                name={emp.name}
+                                src={emp.photo_url}
+                                className="h-7 w-7"
+                                fallbackClassName="text-[10px]"
+                              />
                               <div className="min-w-0 flex-1">
                                 <p className="truncate text-sm font-medium">{emp.name}</p>
                                 {empProfileCode && (

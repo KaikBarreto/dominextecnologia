@@ -471,12 +471,14 @@
 
   <h2>12. Portal do Contrato/PMOC: link e QR Code pro cliente</h2>
 
-  <p>Todo contrato tem uma página pública própria, no bloco <span class="ui">Portal do Contrato</span> da aba Visão Geral: "Página pública deste contrato para o cliente final. Aparece no QR Code colado no quadro físico." O endereço segue o formato <code>dominex.app/contrato/unidade/pmoc-&lt;nome-do-cliente&gt;-&lt;código&gt;</code>, por exemplo <code>dominex.app/contrato/unidade/pmoc-clinica-vida-saude-b5kka5f52rsa</code>: é esse link, sem login nenhum, que abre direto no celular de quem escaneia o QR Code colado no quadro da unidade.</p>
+  <p>Todo contrato tem uma página própria no cartão <span class="ui">Portal do Contrato</span> da aba Visão Geral. No topo do cartão ficam a explicação e a chave <span class="ui">Portal Público</span>; logo abaixo, a grade compacta <span class="ui">Quem vê o quê no portal</span> permite definir cada seção como <span class="ui">Oculto</span>, <span class="ui">Sem senha</span> ou <span class="ui">Com senha</span>. Se o cliente ainda não tem senha, o cartão mostra um aviso com o atalho para abrir o cadastro e mantém a opção <span class="ui">Com senha</span> indisponível.</p>
+
+  <p>O endereço segue o formato <code>dominex.app/contrato/unidade/pmoc-&lt;nome-do-cliente&gt;-&lt;código&gt;</code>. Ele aparece em uma linha compacta, com atalho para abrir, e o QR Code fica junto dos botões <span class="ui">Copiar link</span> e <span class="ui">Imprimir QR Code</span>. É esse link que abre no celular de quem escaneia o quadro da unidade, respeitando a visibilidade e a proteção configuradas para cada seção.</p>
 
   <h3>Os quatro controles</h3>
   <figure>
-    <img src="img/t11-portal-do-contrato.png" alt="Bloco Portal do Contrato na aba Visão Geral, com a explicação Página pública deste contrato para o cliente final, a chave Portal Público ligada com o texto Qualquer pessoa com o link vê o portal (somente leitura), o campo com o endereço completo do portal (https://www.dominex.app/contrato/unidade/pmoc-clinica-vida-saude-b5kka5f52rsa), o QR Code inteiro gerado logo abaixo e os botões Copiar link e Imprimir QR Code.">
-    <figcaption>Bloco Portal do Contrato: a chave Portal Público, o endereço completo no formato dominex.app/contrato/unidade/pmoc-&lt;cliente&gt;-&lt;código&gt; e o QR Code pronto para colar na unidade.</figcaption>
+    <img src="img/t11-portal-do-contrato.png" alt="Cartão Portal do Contrato na aba Visão Geral, com a chave Portal Público, a grade compacta Quem vê o quê no portal, o link resumido, o QR Code e as ações do portal.">
+    <figcaption>Portal do Contrato reorganizado em um único cartão: acesso geral no cabeçalho, visibilidade por seção em grade compacta e link, QR Code e ações agrupados no rodapé.</figcaption>
   </figure>
   <ul>
     <li><span class="ui">Portal Público</span>: a chave que decide se qualquer pessoa com o link vê o portal (somente leitura) ou se o link exige login da sua empresa. Ligada, aparece <span class="ui">Portal público ativado</span>; desligada, <span class="ui">Portal agora exige login</span>.</li>

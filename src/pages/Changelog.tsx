@@ -42,6 +42,43 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.35',
+    date: '21 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Consulte a ficha sem perder a lista de vista',
+        description: 'No computador, Clientes, Fornecedores, Equipamentos e os perfis comportamentais de Funcionários agora deixam a busca, os filtros e os cadastros numa coluna ao lado da ficha aberta. Dá para trocar de cadastro sem voltar à tela anterior e recolher a lista quando quiser mais espaço para os detalhes. No celular, a navegação continua em tela inteira.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Amplie a foto sem sair do cadastro',
+        description: 'As fotos de clientes, equipamentos e funcionários agora abrem em tela cheia ao clicar ou tocar nas miniaturas das listas, dos cards e das fichas.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Portal do Contrato ficou mais compacto e organizado',
+        description: 'A configuração de acesso do Portal do Contrato agora agrupa a chave pública, a visibilidade de cada seção, o link, o QR Code e as ações em um único cartão. Nenhuma regra de acesso foi alterada.',
+        category: 'melhoria',
+      },
+      {
+        title: 'A lista ao lado da ficha ordena e pagina',
+        description: 'A coluna de Clientes, Fornecedores e Equipamentos mostra quantos cadastros a busca encontrou, alterna a ordem alfabética num toque e carrega 25 por página. Ao abrir uma ficha, a coluna já vai para a página daquele cadastro.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Editar e excluir ficaram à mão na ficha',
+        description: 'No computador, Editar e Excluir aparecem direto no topo da ficha de cliente, fornecedor e equipamento, e o menu de ações guarda o restante. No celular tudo continua dentro do menu.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Pago ou pendente dá para ver de longe',
+        description: 'Nos lançamentos do cliente e no histórico do fornecedor, o selo de pago ficou verde e o de pendente ficou amarelo, os dois com texto branco, no lugar do selo cinza que se perdia na tabela.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.34',
     date: '21 de outubro de 2026',
     type: 'patch',

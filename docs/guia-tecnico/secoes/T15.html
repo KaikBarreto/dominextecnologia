@@ -69,7 +69,7 @@
   <table class="dados">
     <thead><tr><th>Campo</th><th>Obrigatório</th><th>Observação</th></tr></thead>
     <tbody>
-      <tr><td><b>Foto</b></td><td>Não</td><td>Toque no círculo pra <span class="ui">Adicionar foto do funcionário</span>. Limite de 5 MB, com o erro "Arquivo muito grande (máx 5MB)". Falhando o envio: "Erro ao enviar foto". A foto aparece na lista, no organograma e no painel de ponto.</td></tr>
+      <tr><td><b>Foto</b></td><td>Não</td><td>Toque no círculo pra <span class="ui">Adicionar foto do funcionário</span>. Limite de 5 MB, com o erro "Arquivo muito grande (máx 5MB)". Falhando o envio: "Erro ao enviar foto". A foto aparece nas listas, no perfil, no organograma e no painel de ponto; clicar ou tocar nela abre a imagem em tela cheia sem disparar a ação da linha.</td></tr>
       <tr><td><span class="ui">Nome Completo</span></td><td>Sim</td><td>Único campo obrigatório da aba. Validação: "Nome é obrigatório".</td></tr>
       <tr><td><span class="ui">CPF</span></td><td>Não</td><td>Sai impresso no recibo de pagamento e no holerite.</td></tr>
       <tr><td><span class="ui">Telefone</span></td><td>Não</td><td>Aparece na coluna Contato da lista.</td></tr>
@@ -444,14 +444,14 @@
   <h2>12. Abas Comportamental (DISC), Organograma e Fluxograma</h2>
 
   <h3>Perfil Comportamental (DISC)</h3>
-  <p>A aba <span class="ui">Perfil Comportamental</span> mostra o "Perfil Comportamental da Equipe, perfis DISC de todos os funcionários ativos". A explicação da própria tela: "Envie um teste rápido pro funcionário responder pelo link, sem precisar de login. O resultado mostra o estilo de trabalho dele: pontos fortes, o que evitar e como liderá-lo melhor."</p>
+  <p>A aba <span class="ui">Perfil Comportamental</span> mostra o "Perfil Comportamental da Equipe, perfis DISC de todos os funcionários ativos". A explicação da própria tela: "Envie um teste rápido pro funcionário responder pelo link, sem precisar de login. O resultado mostra o estilo de trabalho dele: pontos fortes, o que evitar e como liderá-lo melhor." No computador, ao abrir um perfil, a busca e a lista da equipe permanecem à esquerda e a ficha DISC abre à direita. O botão de painel recolhe ou reabre a lista. No celular, o perfil continua abrindo em tela cheia com o fluxo de voltar existente.</p>
   <ol>
     <li>Na linha do funcionário, use <span class="ui">Gerar link</span>. Abre o modal <span class="ui">Gerar link de avaliação</span>, com a opção <span class="ui">Funcionário vê o resultado ao final</span> ("Você pode mudar isso a cada avaliação. O padrão vem das configurações da empresa").</li>
     <li>Confirme em <span class="ui">Gerar link</span> e envie por <span class="ui">Copiar link</span> ou <span class="ui">Compartilhar</span>.</li>
     <li>Enquanto não respondem, o selo é <span class="ui">Aguardando resposta</span>: "O funcionário ainda não respondeu. Reenvie o link se precisar."</li>
     <li>Respondido, o selo vira <span class="ui">Respondido</span> e libera <span class="ui">Ver relatório completo</span>.</li>
   </ol>
-  <p>O detalhe de cada pessoa tem três sub-abas: <span class="ui">Visão geral</span>, <span class="ui">Interações</span> ("Escolha outro funcionário para ver a dinâmica entre os dois perfis", com <span class="ui">Atritos</span>, <span class="ui">Sinergias</span> e <span class="ui">Melhor comunicação</span>) e <span class="ui">Histórico</span>, com a evolução do perfil ao longo do tempo. Há ainda o botão <span class="ui">Comparar</span>, que cruza dois funcionários lado a lado. Refazendo a avaliação, "ela vira o perfil atual e a atual vai para o histórico".</p>
+  <p>O detalhe de cada pessoa tem três sub-abas: <span class="ui">Visão geral</span>, <span class="ui">Interações</span> ("Escolha outro funcionário para ver a dinâmica entre os dois perfis", com <span class="ui">Atritos</span>, <span class="ui">Sinergias</span> e <span class="ui">Melhor comunicação</span>) e <span class="ui">Histórico</span>, com a evolução do perfil ao longo do tempo. A lista lateral permite trocar de pessoa sem voltar à grade e pode ser recolhida quando a comparação precisa de mais espaço. Há ainda o botão <span class="ui">Comparar</span>, que cruza dois funcionários lado a lado. Refazendo a avaliação, "ela vira o perfil atual e a atual vai para o histórico".</p>
 
   <h3>Organograma</h3>
   <p>A aba <span class="ui">Organograma</span> é um quadro visual: "Monte a estrutura da sua empresa em um quadro visual". Você pode ter vários organogramas (por exemplo, "Estrutura 2026").</p>

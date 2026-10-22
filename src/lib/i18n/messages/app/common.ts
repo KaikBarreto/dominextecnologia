@@ -78,6 +78,18 @@ export const common = {
       previous: 'Anterior',
       next: 'Próxima',
     },
+    // Estrutura lista + ficha do desktop (ListDetailLayout)
+    listDetail: {
+      collapse: 'Recolher lista',
+      expand: 'Expandir lista',
+      // {count} e {name} são substituídos pelo componente
+      records: '{count} registro',
+      recordsPlural: '{count} registros',
+      zoomPhoto: 'Ampliar foto de {name}',
+      sortLabel: 'Ordenar',
+      sortNameAsc: 'Nome (A-Z)',
+      sortNameDesc: 'Nome (Z-A)',
+    },
     // Alternância de visualização lista/grade (ViewModeToggle)
     viewMode: {
       list: 'Lista',
@@ -260,6 +272,16 @@ export const common = {
       previous: 'Previous',
       next: 'Next',
     },
+    listDetail: {
+      collapse: 'Collapse list',
+      expand: 'Expand list',
+      records: '{count} record',
+      recordsPlural: '{count} records',
+      zoomPhoto: 'Enlarge photo of {name}',
+      sortLabel: 'Sort',
+      sortNameAsc: 'Name (A-Z)',
+      sortNameDesc: 'Name (Z-A)',
+    },
     viewMode: {
       list: 'List',
       grid: 'Grid',
@@ -427,6 +449,16 @@ export const common = {
       previous: 'Anterior',
       next: 'Siguiente',
     },
+    listDetail: {
+      collapse: 'Ocultar lista',
+      expand: 'Mostrar lista',
+      records: '{count} registro',
+      recordsPlural: '{count} registros',
+      zoomPhoto: 'Ampliar foto de {name}',
+      sortLabel: 'Ordenar',
+      sortNameAsc: 'Nombre (A-Z)',
+      sortNameDesc: 'Nombre (Z-A)',
+    },
     viewMode: {
       list: 'Lista',
       grid: 'Cuadrícula',
@@ -593,6 +625,16 @@ export const common = {
       all: 'Tous',
       previous: 'Précédent',
       next: 'Suivant',
+    },
+    listDetail: {
+      collapse: 'Masquer la liste',
+      expand: 'Afficher la liste',
+      records: '{count} enregistrement',
+      recordsPlural: '{count} enregistrements',
+      zoomPhoto: 'Agrandir la photo de {name}',
+      sortLabel: 'Trier',
+      sortNameAsc: 'Nom (A-Z)',
+      sortNameDesc: 'Nom (Z-A)',
     },
     viewMode: {
       list: 'Liste',

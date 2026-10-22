@@ -1,31 +1,27 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, Medal, Award } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { getEffectiveSubscriptionValue } from '@/utils/subscriptionPricing';
+import type { AdminDashboardCompany, AdminDashboardPayment } from '@/hooks/useAdminDashboardData';
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 interface Props {
-  companies: any[];
+  companies: AdminDashboardCompany[];
+  payments: AdminDashboardPayment[];
 }
 
-export function AdminTopClientsLTV({ companies }: Props) {
+export function AdminTopClientsLTV({ companies, payments }: Props) {
   // LTV calculado pela soma dos pagamentos por empresa
-  const { data: paymentsByCompany = {} } = useQuery({
-    queryKey: ['admin-payments-ltv'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('company_payments')
-        .select('company_id, amount');
-      const map: Record<string, number> = {};
-      (data || []).forEach((p: any) => {
-        if (p.company_id) map[p.company_id] = (map[p.company_id] || 0) + Number(p.amount || 0);
-      });
-      return map;
-    },
-  });
+  const paymentsByCompany = useMemo(() => {
+    const totals: Record<string, number> = {};
+    payments.forEach((payment) => {
+      totals[payment.company_id] =
+        (totals[payment.company_id] || 0) + Number(payment.amount || 0);
+    });
+    return totals;
+  }, [payments]);
 
   const activeCompanies = companies.filter((c) => c.subscription_status === 'active');
   const enriched = activeCompanies.map((c) => ({

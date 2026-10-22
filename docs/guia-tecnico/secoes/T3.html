@@ -10,23 +10,25 @@
     <span><b>Quem enxerga:</b> quem tem a tela <b>Clientes</b> (<code>screen:customers</code>) e a tela <b>Equipamentos</b> (<code>screen:equipment</code>) liberadas no cargo. Ambas fazem parte do módulo básico, ou seja, estão inclusas em qualquer plano pago.</span>
   </div>
 
-  <h2>1. Tela Clientes: grade × lista, busca por nome/documento/razão social</h2>
+  <h2>1. Tela Clientes: lista e ficha lado a lado no computador</h2>
 
-  <p>A tela <span class="ui">Clientes</span> abre em <code>/clientes</code> e lista todos os clientes da sua empresa. Cada linha é um cliente com foto (ou as iniciais do nome num círculo colorido), nome, documento, empresa, tipo (PF ou PJ), telefone, e-mail e cidade.</p>
+  <p>A tela <span class="ui">Clientes</span> abre em <code>/clientes</code> e lista todos os clientes da sua empresa. No computador, a busca e a lista ficam numa coluna à esquerda; ao escolher um cliente, a ficha completa abre à direita sem fazer você perder a posição na lista. Cada item mostra foto (ou as iniciais), nome e um resumo com documento, contato e cidade.</p>
 
   <figure>
-    <img src="img/t3-clientes.png" alt="Tela de Clientes da Dominex com as abas Clientes e Fornecedores no topo, a barra de busca, o alternador entre visualização em grade e em lista, e a tabela de clientes com colunas Foto, Nome, Empresa, Tipo, Contato, Endereço e Ações. No topo da lista, Cliente Demo e Cliente SoNome QA aparecem cadastrados só com o nome, com Empresa, Contato e Endereço em traço; logo abaixo, clientes completos como Clínica Vida & Saúde já trazem o documento embaixo do nome, telefone e e-mail na coluna Contato e a rua na coluna Endereço.">
-    <figcaption>Tela Clientes: a aba Clientes selecionada (ao lado da aba Fornecedores), e repare a diferença entre um cadastro completo (documento, contato e endereço preenchidos) e um cliente salvo só com o nome, com as demais colunas em traço.</figcaption>
+    <img src="img/t3-clientes.png" alt="Tela de Clientes da Dominex no computador. No topo, o título Clientes e Fornecedores com o botão Novo Cliente e as abas Clientes e Fornecedores. À esquerda, o painel Lista de Clientes com busca, o filtro Todos / Serviço / Loja e os cadastros em sequência, cada um com iniciais, nome, telefone, cidade e o selo PJ. À direita, o convite Selecione um cliente.">
+    <figcaption>Tela Clientes no computador: busca, filtro e relação à esquerda; a ficha abre à direita assim que você escolhe um nome, sem trocar de tela.</figcaption>
   </figure>
 
-  <p>Isso mostra na prática o que a busca vai encontrar: um cliente pode ficar só com o nome por um tempo, e as colunas Empresa, Contato e Endereço simplesmente ficam em traço até alguém completar o cadastro.</p>
+  <p>Um cliente pode ficar só com o nome por um tempo. Nesse caso, a lista continua mostrando o cadastro e omite do resumo as informações que ainda não foram preenchidas.</p>
 
   <p>Logo abaixo do título da tela existe um segundo nível de navegação com duas abas: <span class="ui">Clientes</span> e <span class="ui">Fornecedores</span>. Esta seção trata da aba Clientes; a aba Fornecedores guarda o cadastro de quem vende material ou serviço pra sua empresa, e tem tela e campos próprios.</p>
 
-  <p>No canto direito, acima da lista, existe um alternador de visualização com duas opções:</p>
+  <p>No computador, o botão com o ícone de painel recolhe a coluna da esquerda e deixa mais espaço para as subabas, tabelas e ações da ficha. Clique no ícone novamente para reabrir a busca e a lista. No celular, o fluxo não muda: a lista ocupa a tela e, ao selecionar um cadastro, a ficha abre em tela cheia com o botão de voltar.</p>
+
+  <p>No celular existem duas visualizações:</p>
   <ul>
-    <li><b>Grade</b>: cada cliente vira um cartão quadrado com a foto grande, o nome, o telefone e a cidade embaixo, e um selo <span class="ui">PJ</span> ou <span class="ui">PF</span>. Bom para reconhecer cliente pela cara.</li>
-    <li><b>Lista</b>: no computador é uma tabela com as colunas <span class="ui">Foto</span>, <span class="ui">Nome</span>, <span class="ui">Empresa</span>, <span class="ui">Tipo</span>, <span class="ui">Contato</span>, <span class="ui">Endereço</span> e <span class="ui">Ações</span>. No celular vira uma lista compacta com foto pequena, nome e a linha de telefone e cidade.</li>
+    <li><b>Grade</b>: cada cliente vira um cartão com foto, nome, telefone, cidade e o selo <span class="ui">PJ</span> ou <span class="ui">PF</span>.</li>
+    <li><b>Lista</b>: uma relação compacta com foto pequena, nome, telefone e cidade.</li>
   </ul>
   <p>A escolha entre grade e lista fica salva no seu navegador.</p>
 
@@ -41,16 +43,20 @@
   </ul>
   <p>O único dado do cadastro que a busca não alcança é a Origem.</p>
 
-  <p>No computador, os títulos <span class="ui">Nome</span>, <span class="ui">Empresa</span>, <span class="ui">Tipo</span> e <span class="ui">Endereço</span> são clicáveis e ordenam a tabela. A lista mostra 10 clientes por página por padrão, e o rodapé permite trocar o tamanho da página.</p>
+  <p>No computador, a coluna da esquerda mostra quantos registros correspondem à busca e tem rolagem própria. Assim, uma ficha longa pode ser consultada sem esconder a relação de clientes.</p>
 
-  <p>No fim da linha existe um menu de três pontinhos com:</p>
+  <p>Acima da relação, o botão <span class="ui">A-Z</span> alterna a ordem alfabética entre crescente e decrescente. No rodapé da coluna, a paginação mostra <span class="ui">Mostrando 1-25 de N</span> com as setas de página: a lista carrega 25 cadastros por vez, e ao abrir uma ficha a coluna já vai para a página em que aquele cadastro está.</p>
+
+  <p>Quem tem o módulo PDV ganha, logo abaixo da busca e dentro do mesmo painel, o filtro <span class="ui">Todos</span> / <span class="ui">Serviço</span> / <span class="ui">Loja</span>, que separa quem contrata serviço de quem compra na loja.</p>
+
+  <p>As ações ficam no cabeçalho da ficha e respeitam as permissões do cargo. No computador, <span class="ui">Editar</span> e <span class="ui">Excluir</span> aparecem direto, e o menu <span class="ui">Ações</span> guarda o resto; no celular tudo fica dentro do menu:</p>
   <ul>
-    <li><span class="ui">Visualizar</span>: abre a ficha completa do cliente.</li>
+    <li><span class="ui">Visualizar</span>: selecionar o nome na lista abre a ficha completa do cliente.</li>
     <li><span class="ui">Criar oportunidade no CRM</span>: só aparece para empresa com o módulo CRM contratado. Abre uma oportunidade já vinculada a esse cliente.</li>
     <li><span class="ui">Editar</span> (em laranja): abre o formulário de cadastro já preenchido.</li>
     <li><span class="ui">Excluir</span> (em vermelho): pede confirmação antes.</li>
   </ul>
-  <p>Clicar em qualquer ponto da linha, ou do cartão na grade, já abre a ficha do cliente.</p>
+  <p>Clicar no nome abre a ficha do cliente. Clicar diretamente na foto abre a imagem ampliada em tela cheia, sem trocar o cadastro selecionado.</p>
 
   <h3>Quem pode o quê</h3>
   <p>Quem enxerga a tela pode consultar. As ações dependem de permissão no cargo:</p>
@@ -236,14 +242,14 @@
 
   <h2>6. Detalhe do cliente: Geral, Equipamentos, Histórico, Tarefas, Contratos, Financeiro</h2>
 
-  <p>Clicando num cliente, abre a ficha completa. No topo ficam a foto, o nome, o seletor para trocar rapidamente de cliente, os botões de WhatsApp e o menu <span class="ui">Ações</span>. As abas variam conforme o plano e as permissões:</p>
+  <p>Clicando num cliente, abre a ficha completa à direita da lista no computador. No topo ficam a foto, o nome com o seletor para trocar rapidamente de cliente, os botões de WhatsApp e o menu <span class="ui">Ações</span>. No computador a coluna da esquerda faz o mesmo papel do seletor, com busca própria, e pode ser recolhida para ampliar a ficha. Clique na foto em qualquer lista ou na ficha para abrir a imagem em tela cheia. As abas variam conforme o plano e as permissões:</p>
 
   <table class="dados">
     <thead><tr><th>Aba</th><th>Quando aparece</th><th>O que traz</th></tr></thead>
     <tbody>
       <tr><td><span class="ui">Geral</span></td><td>Sempre</td><td>Informações, Endereço, Responsável no Local e Observações.</td></tr>
       <tr><td><span class="ui">Equipamentos</span></td><td>Sempre</td><td>Equipamentos daquele cliente, com botão <span class="ui">Novo Equipamento</span> já vinculado a ele.</td></tr>
-      <tr><td><span class="ui">Histórico de OS</span></td><td>Sempre</td><td>Todas as ordens de serviço do cliente, com número, status e data, e o botão <span class="ui">Nova OS</span>.</td></tr>
+      <tr><td><span class="ui">Histórico</span></td><td>Sempre</td><td>Todas as ordens de serviço do cliente, com número, status e data, e o botão <span class="ui">Nova OS</span>. Dentro da aba, o título é <span class="ui">Histórico de OS</span>.</td></tr>
       <tr><td><span class="ui">Tarefas</span></td><td>Sempre</td><td>Tarefas ligadas ao cliente, com data, horário e situação (Pendente, Em andamento, Concluída).</td></tr>
       <tr><td><span class="ui">Estoque</span></td><td>Sempre</td><td>Cadastro de materiais exclusivo deste cliente (entradas, saídas, saldo mínimo e histórico), separado do estoque da sua empresa. O técnico pode escolher esse estoque ao registrar o consumo numa OS daquele cliente.</td></tr>
       <tr><td><span class="ui">Chamados</span></td><td>Só com o módulo Portal do Cliente</td><td>Chamados abertos pelo próprio cliente no portal.</td></tr>
@@ -259,8 +265,8 @@
 
   <h3>Aba Geral por dentro</h3>
   <figure>
-    <img src="img/t3-cliente-detalhe-geral.png" alt="Ficha de um cliente sem contato cadastrado, aba Geral. No topo, o avatar, o nome do cliente com selo PJ, a chave Portal Público e o menu Ações. Abaixo, a navegação por abas (Geral, Equipamentos, Histórico de OS, Tarefas, Estoque, Chamados, Contratos, Financeiro, Cobranças) e o bloco Responsável no Local (falar com), com o estado vazio Nenhum contato cadastrado e o botão Adicionar contato.">
-    <figcaption>Ficha do cliente na aba Geral: topo com Portal Público e Ações, abas do cliente e o bloco Responsável no Local. Este cliente de exemplo ainda não tem CPF/CNPJ, telefone nem endereço preenchidos, por isso os blocos Informações e Endereço não aparecem.</figcaption>
+    <img src="img/t3-cliente-detalhe-geral.png" alt="Ficha de cliente na aba Geral, no computador. À esquerda, a coluna Lista de Clientes com campo de busca, a contagem de registros, o botão de ordenação A-Z e os cadastros em sequência, o atual destacado. À direita, o nome do cliente com selo PJ, os botões Editar e Excluir e o menu Ações, a navegação por abas (Geral, Equipamentos, Histórico, Tarefas, Estoque, Chamados, Contratos, Documentos), o cartão Informações com e-mail e telefone, o cartão Endereço com o mapa e os botões Abrir no Google Maps e Abrir no Waze, e o bloco Responsável no Local (falar com) com o estado vazio Nenhum contato cadastrado.">
+    <figcaption>Ficha do cliente na aba Geral: a lista continua à esquerda, com busca própria, e a ficha ocupa a direita. Os cartões Informações e Endereço só aparecem quando o cadastro tem esses dados preenchidos.</figcaption>
   </figure>
   <ul>
     <li><b>Informações</b>: Origem, CPF/CNPJ, Inscrição Estadual, Email, Telefone, Celular, Nome Fantasia e Data de Nascimento.</li>
@@ -297,15 +303,15 @@
 
   <h2>8. Tela Equipamentos: cadastro, categorias e criar o cliente na hora, só com o nome</h2>
 
-  <p>A tela <span class="ui">Equipamentos</span>, em <code>/equipamentos</code>, tem duas abas no topo, no mesmo formato no computador e no celular: <span class="ui">Equipamentos</span> e <span class="ui">Categorias</span>.</p>
+  <p>A tela <span class="ui">Equipamentos</span>, em <code>/equipamentos</code>, tem duas abas no topo: <span class="ui">Equipamentos</span> e <span class="ui">Categorias</span>. Na aba Equipamentos, o computador usa o mesmo padrão de Clientes: busca e relação à esquerda, ficha com subabas e ações à direita e um botão para recolher ou reabrir a lista. No celular, lista e ficha continuam em telas separadas.</p>
 
   <figure>
-    <img src="img/t3-equipamentos.png" alt="Tela de Equipamentos da Dominex com as abas Equipamentos e Categorias no topo, busca, filtros e a lista de equipamentos com colunas Foto, Nome, Local, Cliente, Categoria e Status">
-    <figcaption>Tela Equipamentos: abas Equipamentos e Categorias no topo, busca, filtros e a lista.</figcaption>
+    <img src="img/t3-equipamentos.png" alt="Tela de Equipamentos da Dominex no computador. No topo, as abas Equipamentos e Categorias. À esquerda, o painel Lista de Equipamentos com busca, botão Filtros e os aparelhos em sequência, cada um com nome, identificador e cliente. À direita, na mesma altura do topo da lista, os botões Configurar Campos e Novo Equipamento e, abaixo deles, o convite Selecione um equipamento.">
+    <figcaption>Tela Equipamentos no computador: busca e lista à esquerda; a ficha selecionada abre à direita e pode ganhar mais espaço recolhendo o painel lateral.</figcaption>
   </figure>
 
-  <p>A busca diz <span class="ui">Buscar por nome, identificador, marca ou cliente...</span> e procura em cinco campos: nome, identificador, marca, modelo e nome do cliente. Ao lado tem o botão <span class="ui">Filtros</span>, com dois filtros de múltipla escolha: <span class="ui">Categoria</span> e <span class="ui">Cliente</span>. Nenhum marcado significa "mostrar tudo".</p>
-  <p>As colunas são <span class="ui">Foto</span>, <span class="ui">Nome</span>, <span class="ui">Local</span>, <span class="ui">Cliente</span>, <span class="ui">Categoria</span>, <span class="ui">Status</span> e <span class="ui">Ações</span>. Status é <span class="ui">Ativo</span> ou <span class="ui">Inativo</span>. Também existe o alternador entre grade e lista, igual ao de Clientes.</p>
+  <p>A busca diz <span class="ui">Buscar por nome, identificador, marca ou cliente...</span> e procura em nome, identificador, marca, modelo, local e nome do cliente. O botão <span class="ui">Filtros</span> mantém os filtros de múltipla escolha por <span class="ui">Categoria</span> e <span class="ui">Cliente</span>; nenhum marcado significa "mostrar tudo".</p>
+  <p>Cada item da lista resume nome, identificador, cliente, categoria, foto e situação. Status é <span class="ui">Ativo</span> ou <span class="ui">Inativo</span>. No celular, o alternador entre grade e lista continua disponível. Clicar na miniatura de uma foto abre a imagem ampliada sem abrir outra ficha.</p>
   <p>Criar, editar e excluir equipamento exige a permissão <span class="ui">Gerenciar Equipamentos</span> (ou cargo de administrador ou gestor). Excluir mostra "Tem certeza que deseja excluir "NOME"? Esta ação não pode ser desfeita." e o aviso <span class="ui">Equipamento excluído!</span>.</p>
 
   <h3>Cadastrar um equipamento</h3>
@@ -403,7 +409,12 @@
 
   <h2>10. Detalhe do equipamento: QR Code, etiqueta configurável, anexos e histórico de OS</h2>
 
-  <p>Clicando num equipamento, abre a ficha dele com três abas: <span class="ui">Geral</span>, <span class="ui">Anexos</span> e <span class="ui">Histórico / Tarefas</span>.</p>
+  <p>Clicando num equipamento, abre a ficha dele com três abas: <span class="ui">Geral</span>, <span class="ui">Anexos</span> e <span class="ui">Histórico / Tarefas</span>. No computador a ficha abre à direita da relação, que continua disponível para trocar de aparelho.</p>
+
+  <figure>
+    <img src="img/t3-equipamento-detalhe.png" alt="Ficha de equipamento aberta no computador, com o painel Lista de Equipamentos à esquerda e, à direita, o nome do aparelho com o identificador e o selo Ativo, as abas Geral, Anexos, Histórico / Tarefas e Chamados, o QR Code com os botões Gerar Etiqueta, Baixar QR (PNG), Abrir link e Copiar link, e o cartão Informações com Cliente, Marca, Modelo, Nº de Série, Descrição, Local, Data de Instalação e Garantia até.">
+    <figcaption>Ficha do equipamento na aba Geral: a relação fica à esquerda e a ficha à direita, com QR Code, botões de etiqueta e o cartão Informações.</figcaption>
+  </figure>
 
   <p>Na aba <span class="ui">Geral</span>, no topo, ficam a foto do equipamento e o QR Code, com o identificador em destaque abaixo. O bloco <span class="ui">Informações</span> lista, em formato rótulo e valor: Categoria, Cliente, Marca, Modelo, Nº de Série, Local, Data de Instalação, Garantia até, Identificador, Observações e todos os campos customizados preenchidos.</p>
 
@@ -521,7 +532,7 @@
     <dd>Sim. Na ficha do cliente, o telefone e o celular ganham botão de WhatsApp, e cada contato do <span class="ui">Responsável no Local</span> também. O sistema abre a conversa sem você precisar salvar o número na agenda.</dd>
 
     <dt>Onde vejo tudo que já fiz para um cliente?</dt>
-    <dd>Na ficha dele, aba <span class="ui">Histórico de OS</span>. Para um aparelho específico, abra o equipamento e vá em <span class="ui">Histórico / Tarefas</span>.</dd>
+    <dd>Na ficha dele, aba <span class="ui">Histórico</span>. Para um aparelho específico, abra o equipamento e vá em <span class="ui">Histórico / Tarefas</span>.</dd>
   </dl>
 
   <div class="glossario">

@@ -20,8 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
+import { EmployeePhotoAvatar } from '@/components/employees/EmployeePhotoAvatar';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
 import { EmployeeCard } from '@/components/employees/EmployeeCard';
 import { EmployeesListView } from '@/components/employees/EmployeesListView';
@@ -1014,9 +1013,6 @@ export default function Employees() {
     return acc?.name || t.extract.fallbacks.bankAccount;
   };
 
-  const getInitials = (name: string) =>
-    name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
-
   const openNewEmployee = () => { setEditingEmployee(null); setFormOpen(true); };
 
   return (
@@ -1201,12 +1197,7 @@ export default function Employees() {
                         onClick={() => setExtractEmployee(emp)}
                         actions={itemActions}
                         leading={
-                          <Avatar className="h-10 w-10">
-                            <SignedAvatarImage src={emp.photo_url} alt={emp.name} />
-                            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                              {getInitials(emp.name)}
-                            </AvatarFallback>
-                          </Avatar>
+                          <EmployeePhotoAvatar name={emp.name} src={emp.photo_url} className="h-10 w-10" />
                         }
                         title={emp.name}
                         subtitle={subtitleParts.join(' • ')}
@@ -1313,12 +1304,7 @@ export default function Employees() {
                       onClick={() => setExtractEmployee(emp)}
                       actions={itemActions}
                       leading={
-                        <Avatar className="h-10 w-10">
-                          <SignedAvatarImage src={emp.photo_url} alt={emp.name} />
-                          <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                            {getInitials(emp.name)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <EmployeePhotoAvatar name={emp.name} src={emp.photo_url} className="h-10 w-10" />
                       }
                       title={emp.name}
                       subtitle={subtitleParts.join(' • ')}

@@ -1257,23 +1257,25 @@ Rotas:/clientes, /clientes/:id, /equipamentos, /equipamentos/:id, formulário p�
 Depende de: T2 (Usuários, cargos e permissões)
 Quem enxerga: quem tem a tela Clientes (screen:customers) e a tela Equipamentos (screen:equipment) liberadas no cargo. Ambas fazem parte do módulo básico, ou seja, estão inclusas em qualquer plano pago.
 
-### 1. Tela Clientes: grade × lista, busca por nome/documento/razão social
+### 1. Tela Clientes: lista e ficha lado a lado no computador
 
-A tela Clientes abre em /clientes e lista todos os clientes da sua empresa. Cada linha é um cliente com foto (ou as iniciais do nome num círculo colorido), nome, documento, empresa, tipo (PF ou PJ), telefone, e-mail e cidade.
+A tela Clientes abre em /clientes e lista todos os clientes da sua empresa. No computador, a busca e a lista ficam numa coluna à esquerda; ao escolher um cliente, a ficha completa abre à direita sem fazer você perder a posição na lista. Cada item mostra foto (ou as iniciais), nome e um resumo com documento, contato e cidade.
 
-[Print da tela: Tela de Clientes da Dominex com as abas Clientes e Fornecedores no topo, a barra de busca, o alternador entre visualização em grade e em lista, e a tabela de clientes com colunas Foto, Nome, Empresa, Tipo, Contato, Endereço e Ações. No topo da lista, Cliente Demo e Cliente SoNome QA aparecem cadastrados só com o nome, com Empresa, Contato e Endereço em traço; logo abaixo, clientes completos como Clínica Vida & Saúde já trazem o documento embaixo do nome, telefone e e-mail na coluna Contato e a rua na coluna Endereço.]
+[Print da tela: Tela de Clientes da Dominex no computador. No topo, o título Clientes e Fornecedores com o botão Novo Cliente e as abas Clientes e Fornecedores. À esquerda, o painel Lista de Clientes com busca, o filtro Todos / Serviço / Loja e os cadastros em sequência, cada um com iniciais, nome, telefone, cidade e o selo PJ. À direita, o convite Selecione um cliente.]
 
-Tela Clientes: a aba Clientes selecionada (ao lado da aba Fornecedores), e repare a diferença entre um cadastro completo (documento, contato e endereço preenchidos) e um cliente salvo só com o nome, com as demais colunas em traço.
+Tela Clientes no computador: busca, filtro e relação à esquerda; a ficha abre à direita assim que você escolhe um nome, sem trocar de tela.
 
-Isso mostra na prática o que a busca vai encontrar: um cliente pode ficar só com o nome por um tempo, e as colunas Empresa, Contato e Endereço simplesmente ficam em traço até alguém completar o cadastro.
+Um cliente pode ficar só com o nome por um tempo. Nesse caso, a lista continua mostrando o cadastro e omite do resumo as informações que ainda não foram preenchidas.
 
 Logo abaixo do título da tela existe um segundo nível de navegação com duas abas: Clientes e Fornecedores. Esta seção trata da aba Clientes; a aba Fornecedores guarda o cadastro de quem vende material ou serviço pra sua empresa, e tem tela e campos próprios.
 
-No canto direito, acima da lista, existe um alternador de visualização com duas opções:
+No computador, o botão com o ícone de painel recolhe a coluna da esquerda e deixa mais espaço para as subabas, tabelas e ações da ficha. Clique no ícone novamente para reabrir a busca e a lista. No celular, o fluxo não muda: a lista ocupa a tela e, ao selecionar um cadastro, a ficha abre em tela cheia com o botão de voltar.
 
-- Grade: cada cliente vira um cartão quadrado com a foto grande, o nome, o telefone e a cidade embaixo, e um selo PJ ou PF. Bom para reconhecer cliente pela cara.
+No celular existem duas visualizações:
 
-- Lista: no computador é uma tabela com as colunas Foto, Nome, Empresa, Tipo, Contato, Endereço e Ações. No celular vira uma lista compacta com foto pequena, nome e a linha de telefone e cidade.
+- Grade: cada cliente vira um cartão com foto, nome, telefone, cidade e o selo PJ ou PF.
+
+- Lista: uma relação compacta com foto pequena, nome, telefone e cidade.
 
 A escolha entre grade e lista fica salva no seu navegador.
 
@@ -1293,11 +1295,15 @@ O campo de busca no topo diz Buscar por nome, empresa, contato, documento ou end
 
 O único dado do cadastro que a busca não alcança é a Origem.
 
-No computador, os títulos Nome, Empresa, Tipo e Endereço são clicáveis e ordenam a tabela. A lista mostra 10 clientes por página por padrão, e o rodapé permite trocar o tamanho da página.
+No computador, a coluna da esquerda mostra quantos registros correspondem à busca e tem rolagem própria. Assim, uma ficha longa pode ser consultada sem esconder a relação de clientes.
 
-No fim da linha existe um menu de três pontinhos com:
+Acima da relação, o botão A-Z alterna a ordem alfabética entre crescente e decrescente. No rodapé da coluna, a paginação mostra Mostrando 1-25 de N com as setas de página: a lista carrega 25 cadastros por vez, e ao abrir uma ficha a coluna já vai para a página em que aquele cadastro está.
 
-- Visualizar: abre a ficha completa do cliente.
+Quem tem o módulo PDV ganha, logo abaixo da busca e dentro do mesmo painel, o filtro Todos / Serviço / Loja, que separa quem contrata serviço de quem compra na loja.
+
+As ações ficam no cabeçalho da ficha e respeitam as permissões do cargo. No computador, Editar e Excluir aparecem direto, e o menu Ações guarda o resto; no celular tudo fica dentro do menu:
+
+- Visualizar: selecionar o nome na lista abre a ficha completa do cliente.
 
 - Criar oportunidade no CRM: só aparece para empresa com o módulo CRM contratado. Abre uma oportunidade já vinculada a esse cliente.
 
@@ -1305,7 +1311,7 @@ No fim da linha existe um menu de três pontinhos com:
 
 - Excluir (em vermelho): pede confirmação antes.
 
-Clicar em qualquer ponto da linha, ou do cartão na grade, já abre a ficha do cliente.
+Clicar no nome abre a ficha do cliente. Clicar diretamente na foto abre a imagem ampliada em tela cheia, sem trocar o cadastro selecionado.
 
 #### Quem pode o quê
 
@@ -1483,12 +1489,12 @@ Mensagens que o visitante pode ver:
 
 ### 6. Detalhe do cliente: Geral, Equipamentos, Histórico, Tarefas, Contratos, Financeiro
 
-Clicando num cliente, abre a ficha completa. No topo ficam a foto, o nome, o seletor para trocar rapidamente de cliente, os botões de WhatsApp e o menu Ações. As abas variam conforme o plano e as permissões:
+Clicando num cliente, abre a ficha completa à direita da lista no computador. No topo ficam a foto, o nome com o seletor para trocar rapidamente de cliente, os botões de WhatsApp e o menu Ações. No computador a coluna da esquerda faz o mesmo papel do seletor, com busca própria, e pode ser recolhida para ampliar a ficha. Clique na foto em qualquer lista ou na ficha para abrir a imagem em tela cheia. As abas variam conforme o plano e as permissões:
 
 | Aba | Quando aparece | O que traz |
 | Geral | Sempre | Informações, Endereço, Responsável no Local e Observações. |
 | Equipamentos | Sempre | Equipamentos daquele cliente, com botão Novo Equipamento já vinculado a ele. |
-| Histórico de OS | Sempre | Todas as ordens de serviço do cliente, com número, status e data, e o botão Nova OS. |
+| Histórico | Sempre | Todas as ordens de serviço do cliente, com número, status e data, e o botão Nova OS. Dentro da aba, o título é Histórico de OS. |
 | Tarefas | Sempre | Tarefas ligadas ao cliente, com data, horário e situação (Pendente, Em andamento, Concluída). |
 | Estoque | Sempre | Cadastro de materiais exclusivo deste cliente (entradas, saídas, saldo mínimo e histórico), separado do estoque da sua empresa. O técnico pode escolher esse estoque ao registrar o consumo numa OS daquele cliente. |
 | Chamados | Só com o módulo Portal do Cliente | Chamados abertos pelo próprio cliente no portal. |
@@ -1500,9 +1506,9 @@ Clicando num cliente, abre a ficha completa. No topo ficam a foto, o nome, o sel
 
 #### Aba Geral por dentro
 
-[Print da tela: Ficha de um cliente sem contato cadastrado, aba Geral. No topo, o avatar, o nome do cliente com selo PJ, a chave Portal Público e o menu Ações. Abaixo, a navegação por abas (Geral, Equipamentos, Histórico de OS, Tarefas, Estoque, Chamados, Contratos, Financeiro, Cobranças) e o bloco Responsável no Local (falar com), com o estado vazio Nenhum contato cadastrado e o botão Adicionar contato.]
+[Print da tela: Ficha de cliente na aba Geral, no computador. À esquerda, a coluna Lista de Clientes com campo de busca, a contagem de registros, o botão de ordenação A-Z e os cadastros em sequência, o atual destacado. À direita, o nome do cliente com selo PJ, os botões Editar e Excluir e o menu Ações, a navegação por abas (Geral, Equipamentos, Histórico, Tarefas, Estoque, Chamados, Contratos, Documentos), o cartão Informações com e-mail e telefone, o cartão Endereço com o mapa e os botões Abrir no Google Maps e Abrir no Waze, e o bloco Responsável no Local (falar com) com o estado vazio Nenhum contato cadastrado.]
 
-Ficha do cliente na aba Geral: topo com Portal Público e Ações, abas do cliente e o bloco Responsável no Local. Este cliente de exemplo ainda não tem CPF/CNPJ, telefone nem endereço preenchidos, por isso os blocos Informações e Endereço não aparecem.
+Ficha do cliente na aba Geral: a lista continua à esquerda, com busca própria, e a ficha ocupa a direita. Os cartões Informações e Endereço só aparecem quando o cadastro tem esses dados preenchidos.
 
 - Informações: Origem, CPF/CNPJ, Inscrição Estadual, Email, Telefone, Celular, Nome Fantasia e Data de Nascimento.
 
@@ -1536,15 +1542,15 @@ Cada contato da lista tem o menu com WhatsApp (só aparece se houver telefone), 
 
 ### 8. Tela Equipamentos: cadastro, categorias e criar o cliente na hora, só com o nome
 
-A tela Equipamentos, em /equipamentos, tem duas abas no topo, no mesmo formato no computador e no celular: Equipamentos e Categorias.
+A tela Equipamentos, em /equipamentos, tem duas abas no topo: Equipamentos e Categorias. Na aba Equipamentos, o computador usa o mesmo padrão de Clientes: busca e relação à esquerda, ficha com subabas e ações à direita e um botão para recolher ou reabrir a lista. No celular, lista e ficha continuam em telas separadas.
 
-[Print da tela: Tela de Equipamentos da Dominex com as abas Equipamentos e Categorias no topo, busca, filtros e a lista de equipamentos com colunas Foto, Nome, Local, Cliente, Categoria e Status]
+[Print da tela: Tela de Equipamentos da Dominex no computador. No topo, as abas Equipamentos e Categorias. À esquerda, o painel Lista de Equipamentos com busca, botão Filtros e os aparelhos em sequência, cada um com nome, identificador e cliente. À direita, na mesma altura do topo da lista, os botões Configurar Campos e Novo Equipamento e, abaixo deles, o convite Selecione um equipamento.]
 
-Tela Equipamentos: abas Equipamentos e Categorias no topo, busca, filtros e a lista.
+Tela Equipamentos no computador: busca e lista à esquerda; a ficha selecionada abre à direita e pode ganhar mais espaço recolhendo o painel lateral.
 
-A busca diz Buscar por nome, identificador, marca ou cliente... e procura em cinco campos: nome, identificador, marca, modelo e nome do cliente. Ao lado tem o botão Filtros, com dois filtros de múltipla escolha: Categoria e Cliente. Nenhum marcado significa "mostrar tudo".
+A busca diz Buscar por nome, identificador, marca ou cliente... e procura em nome, identificador, marca, modelo, local e nome do cliente. O botão Filtros mantém os filtros de múltipla escolha por Categoria e Cliente; nenhum marcado significa "mostrar tudo".
 
-As colunas são Foto, Nome, Local, Cliente, Categoria, Status e Ações. Status é Ativo ou Inativo. Também existe o alternador entre grade e lista, igual ao de Clientes.
+Cada item da lista resume nome, identificador, cliente, categoria, foto e situação. Status é Ativo ou Inativo. No celular, o alternador entre grade e lista continua disponível. Clicar na miniatura de uma foto abre a imagem ampliada sem abrir outra ficha.
 
 Criar, editar e excluir equipamento exige a permissão Gerenciar Equipamentos (ou cargo de administrador ou gestor). Excluir mostra "Tem certeza que deseja excluir "NOME"? Esta ação não pode ser desfeita." e o aviso Equipamento excluído!.
 
@@ -1638,7 +1644,11 @@ A confirmação diz: Excluir campo, "Tem certeza que deseja excluir este campo? 
 
 ### 10. Detalhe do equipamento: QR Code, etiqueta configurável, anexos e histórico de OS
 
-Clicando num equipamento, abre a ficha dele com três abas: Geral, Anexos e Histórico / Tarefas.
+Clicando num equipamento, abre a ficha dele com três abas: Geral, Anexos e Histórico / Tarefas. No computador a ficha abre à direita da relação, que continua disponível para trocar de aparelho.
+
+[Print da tela: Ficha de equipamento aberta no computador, com o painel Lista de Equipamentos à esquerda e, à direita, o nome do aparelho com o identificador e o selo Ativo, as abas Geral, Anexos, Histórico / Tarefas e Chamados, o QR Code com os botões Gerar Etiqueta, Baixar QR (PNG), Abrir link e Copiar link, e o cartão Informações com Cliente, Marca, Modelo, Nº de Série, Descrição, Local, Data de Instalação e Garantia até.]
+
+Ficha do equipamento na aba Geral: a relação fica à esquerda e a ficha à direita, com QR Code, botões de etiqueta e o cartão Informações.
 
 Na aba Geral, no topo, ficam a foto do equipamento e o QR Code, com o identificador em destaque abaixo. O bloco Informações lista, em formato rótulo e valor: Categoria, Cliente, Marca, Modelo, Nº de Série, Local, Data de Instalação, Garantia até, Identificador, Observações e todos os campos customizados preenchidos.
 
@@ -1717,7 +1727,7 @@ Duas seções. Ordens de Serviço Relacionadas lista todas as OS que citaram aqu
 **R:** Sim. Na ficha do cliente, o telefone e o celular ganham botão de WhatsApp, e cada contato do Responsável no Local também. O sistema abre a conversa sem você precisar salvar o número na agenda.
 
 **P:** Onde vejo tudo que já fiz para um cliente?
-**R:** Na ficha dele, aba Histórico de OS. Para um aparelho específico, abra o equipamento e vá em Histórico / Tarefas.
+**R:** Na ficha dele, aba Histórico. Para um aparelho específico, abra o equipamento e vá em Histórico / Tarefas.
 
 Palavras que o cliente usa pra isso: ficha do cliente, cadastro de cliente, base de clientes, aparelho, máquina, equipamento, ativo, TAG, plaquinha, etiqueta, QR do aparelho, de onde veio o cliente, formulário de cadastro, link da bio, contato do local, responsável da obra, zelador
 
@@ -5577,13 +5587,15 @@ Existe a chave Agenda no bloco de contas a receber. Ligada, os vencimentos do co
 
 ### 12. Portal do Contrato/PMOC: link e QR Code pro cliente
 
-Todo contrato tem uma página pública própria, no bloco Portal do Contrato da aba Visão Geral: "Página pública deste contrato para o cliente final. Aparece no QR Code colado no quadro físico." O endereço segue o formato dominex.app/contrato/unidade/pmoc-<nome-do-cliente>-<código>, por exemplo dominex.app/contrato/unidade/pmoc-clinica-vida-saude-b5kka5f52rsa: é esse link, sem login nenhum, que abre direto no celular de quem escaneia o QR Code colado no quadro da unidade.
+Todo contrato tem uma página própria no cartão Portal do Contrato da aba Visão Geral. No topo do cartão ficam a explicação e a chave Portal Público; logo abaixo, a grade compacta Quem vê o quê no portal permite definir cada seção como Oculto, Sem senha ou Com senha. Se o cliente ainda não tem senha, o cartão mostra um aviso com o atalho para abrir o cadastro e mantém a opção Com senha indisponível.
+
+O endereço segue o formato dominex.app/contrato/unidade/pmoc-<nome-do-cliente>-<código>. Ele aparece em uma linha compacta, com atalho para abrir, e o QR Code fica junto dos botões Copiar link e Imprimir QR Code. É esse link que abre no celular de quem escaneia o quadro da unidade, respeitando a visibilidade e a proteção configuradas para cada seção.
 
 #### Os quatro controles
 
-[Print da tela: Bloco Portal do Contrato na aba Visão Geral, com a explicação Página pública deste contrato para o cliente final, a chave Portal Público ligada com o texto Qualquer pessoa com o link vê o portal (somente leitura), o campo com o endereço completo do portal (https://www.dominex.app/contrato/unidade/pmoc-clinica-vida-saude-b5kka5f52rsa), o QR Code inteiro gerado logo abaixo e os botões Copiar link e Imprimir QR Code.]
+[Print da tela: Cartão Portal do Contrato na aba Visão Geral, com a chave Portal Público, a grade compacta Quem vê o quê no portal, o link resumido, o QR Code e as ações do portal.]
 
-Bloco Portal do Contrato: a chave Portal Público, o endereço completo no formato dominex.app/contrato/unidade/pmoc-<cliente>-<código> e o QR Code pronto para colar na unidade.
+Portal do Contrato reorganizado em um único cartão: acesso geral no cabeçalho, visibilidade por seção em grade compacta e link, QR Code e ações agrupados no rodapé.
 
 - Portal Público: a chave que decide se qualquer pessoa com o link vê o portal (somente leitura) ou se o link exige login da sua empresa. Ligada, aparece Portal público ativado; desligada, Portal agora exige login.
 
@@ -7691,7 +7703,7 @@ A aba Ponto tem seção própria, separada da aba Pagamento. Quem aprendeu numa 
 #### Campos da aba Dados
 
 | Campo | Obrigatório | Observação |
-| Foto | Não | Toque no círculo pra Adicionar foto do funcionário. Limite de 5 MB, com o erro "Arquivo muito grande (máx 5MB)". Falhando o envio: "Erro ao enviar foto". A foto aparece na lista, no organograma e no painel de ponto. |
+| Foto | Não | Toque no círculo pra Adicionar foto do funcionário. Limite de 5 MB, com o erro "Arquivo muito grande (máx 5MB)". Falhando o envio: "Erro ao enviar foto". A foto aparece nas listas, no perfil, no organograma e no painel de ponto; clicar ou tocar nela abre a imagem em tela cheia sem disparar a ação da linha. |
 | Nome Completo | Sim | Único campo obrigatório da aba. Validação: "Nome é obrigatório". |
 | CPF | Não | Sai impresso no recibo de pagamento e no holerite. |
 | Telefone | Não | Aparece na coluna Contato da lista. |
@@ -8102,7 +8114,7 @@ O caminho completo é sempre o mesmo: ponto → horas → folha → conta a paga
 
 #### Perfil Comportamental (DISC)
 
-A aba Perfil Comportamental mostra o "Perfil Comportamental da Equipe, perfis DISC de todos os funcionários ativos". A explicação da própria tela: "Envie um teste rápido pro funcionário responder pelo link, sem precisar de login. O resultado mostra o estilo de trabalho dele: pontos fortes, o que evitar e como liderá-lo melhor."
+A aba Perfil Comportamental mostra o "Perfil Comportamental da Equipe, perfis DISC de todos os funcionários ativos". A explicação da própria tela: "Envie um teste rápido pro funcionário responder pelo link, sem precisar de login. O resultado mostra o estilo de trabalho dele: pontos fortes, o que evitar e como liderá-lo melhor." No computador, ao abrir um perfil, a busca e a lista da equipe permanecem à esquerda e a ficha DISC abre à direita. O botão de painel recolhe ou reabre a lista. No celular, o perfil continua abrindo em tela cheia com o fluxo de voltar existente.
 
 - Na linha do funcionário, use Gerar link. Abre o modal Gerar link de avaliação, com a opção Funcionário vê o resultado ao final ("Você pode mudar isso a cada avaliação. O padrão vem das configurações da empresa").
 
@@ -8112,7 +8124,7 @@ A aba Perfil Comportamental mostra o "Perfil Comportamental da Equipe, perfis DI
 
 - Respondido, o selo vira Respondido e libera Ver relatório completo.
 
-O detalhe de cada pessoa tem três sub-abas: Visão geral, Interações ("Escolha outro funcionário para ver a dinâmica entre os dois perfis", com Atritos, Sinergias e Melhor comunicação) e Histórico, com a evolução do perfil ao longo do tempo. Há ainda o botão Comparar, que cruza dois funcionários lado a lado. Refazendo a avaliação, "ela vira o perfil atual e a atual vai para o histórico".
+O detalhe de cada pessoa tem três sub-abas: Visão geral, Interações ("Escolha outro funcionário para ver a dinâmica entre os dois perfis", com Atritos, Sinergias e Melhor comunicação) e Histórico, com a evolução do perfil ao longo do tempo. A lista lateral permite trocar de pessoa sem voltar à grade e pode ser recolhida quando a comparação precisa de mais espaço. Há ainda o botão Comparar, que cruza dois funcionários lado a lado. Refazendo a avaliação, "ela vira o perfil atual e a atual vai para o histórico".
 
 #### Organograma
 

@@ -14,6 +14,8 @@ export const equipment = {
 
     // ── Painel de equipamentos (EquipmentPanel) ──
     listHeading: 'Lista de Equipamentos',
+    selectPrompt: 'Selecione um equipamento',
+    selectPromptDesc: 'Escolha um equipamento na lista para abrir a ficha, os anexos, as tarefas e as ações.',
     newEquipment: 'Novo Equipamento',
     newEquipmentShort: 'Equipamento',
     configureFields: 'Configurar Campos',
@@ -353,6 +355,8 @@ export const equipment = {
     tabCategories: 'Categories',
 
     listHeading: 'Equipment List',
+    selectPrompt: 'Select an equipment',
+    selectPromptDesc: 'Pick an equipment from the list to open the profile, attachments, tasks and actions.',
     newEquipment: 'New Equipment',
     newEquipmentShort: 'Equipment',
     configureFields: 'Configure Fields',
@@ -664,6 +668,8 @@ export const equipment = {
     tabCategories: 'Categorías',
 
     listHeading: 'Lista de Equipos',
+    selectPrompt: 'Selecciona un equipo',
+    selectPromptDesc: 'Elige un equipo de la lista para abrir la ficha, los adjuntos, las tareas y las acciones.',
     newEquipment: 'Nuevo Equipo',
     newEquipmentShort: 'Equipo',
     configureFields: 'Configurar Campos',
@@ -975,6 +981,8 @@ export const equipment = {
     tabCategories: 'Catégories',
 
     listHeading: 'Liste des Équipements',
+    selectPrompt: 'Sélectionnez un équipement',
+    selectPromptDesc: 'Choisissez un équipement dans la liste pour ouvrir la fiche, les pièces jointes, les tâches et les actions.',
     newEquipment: 'Nouvel Équipement',
     newEquipmentShort: 'Équipement',
     configureFields: 'Configurer les champs',

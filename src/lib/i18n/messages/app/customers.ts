@@ -8,13 +8,20 @@ export const customers = {
   'pt-br': {
     // ── Chrome da tela (Customers.tsx) ──
     title: 'Clientes e Fornecedores',
+    // Rótulo da aba Clientes (o `title` acima é o título da TELA, que fala
+    // de clientes E fornecedores; na aba ele lia 'Clientes e Fornecedores').
+    tabLabel: 'Clientes',
     subtitle: 'Gerencie seus clientes e fornecedores',
     listHeading: 'Lista de Clientes',
+    selectPrompt: 'Selecione um cliente',
+    selectPromptDesc: 'Escolha um cliente na lista para abrir a ficha, as subabas e as ações disponíveis.',
     newCustomer: 'Novo Cliente',
     newCustomerShort: 'Cliente',
     configureOrigins: 'Configurar origens',
     origins: 'Origens',
     leadForms: 'Formulários',
+    // Rótulo completo do botão no desktop (`leadForms` é a versão curta do celular).
+    leadFormsFull: 'Formulários de captação',
     searchPlaceholderMobile: 'Buscar clientes...',
     searchPlaceholder: 'Buscar por nome, empresa, contato, documento ou endereço...',
     // ── Tipos ──
@@ -136,7 +143,7 @@ export const customers = {
       // Abas
       tabGeneral: 'Geral',
       tabEquipment: 'Equipamentos',
-      tabHistory: 'Histórico de OS',
+      tabHistory: 'Histórico',
       tabTasks: 'Tarefas',
       tabTickets: 'Chamados',
       tabContracts: 'Contratos',
@@ -506,6 +513,8 @@ export const customers = {
     suppliers: {
       tabLabel: 'Fornecedores',
       listHeading: 'Lista de Fornecedores',
+      selectPrompt: 'Selecione um fornecedor',
+      selectPromptDesc: 'Escolha um fornecedor na lista para abrir a ficha e o histórico de gastos.',
       newSupplier: 'Novo Fornecedor',
       newSupplierShort: 'Fornecedor',
       searchPlaceholder: 'Buscar por nome, documento, contato ou endereço...',
@@ -560,13 +569,20 @@ export const customers = {
 
   en: {
     title: 'Customers & Suppliers',
+    // Rótulo da aba Clientes (o `title` acima é o título da TELA, que fala
+    // de clientes E fornecedores; na aba ele lia 'Clientes e Fornecedores').
+    tabLabel: 'Customers',
     subtitle: 'Manage your customers and suppliers',
     listHeading: 'Customer List',
+    selectPrompt: 'Select a customer',
+    selectPromptDesc: 'Pick a customer from the list to open the profile, its tabs and the available actions.',
     newCustomer: 'New Customer',
     newCustomerShort: 'Customer',
     configureOrigins: 'Configure origins',
     origins: 'Origins',
     leadForms: 'Forms',
+    // Rótulo completo do botão no desktop (`leadForms` é a versão curta do celular).
+    leadFormsFull: 'Lead capture forms',
     searchPlaceholderMobile: 'Search customers...',
     searchPlaceholder: 'Search by name, company, contact, document or address...',
     typePj: 'Company',
@@ -677,7 +693,7 @@ export const customers = {
     detail: {
       tabGeneral: 'General',
       tabEquipment: 'Equipment',
-      tabHistory: 'Service Order History',
+      tabHistory: 'History',
       tabTasks: 'Tasks',
       tabTickets: 'Tickets',
       tabContracts: 'Contracts',
@@ -1009,6 +1025,8 @@ export const customers = {
     suppliers: {
       tabLabel: 'Suppliers',
       listHeading: 'Supplier List',
+      selectPrompt: 'Select a supplier',
+      selectPromptDesc: 'Pick a supplier from the list to open the profile and the spending history.',
       newSupplier: 'New Supplier',
       newSupplierShort: 'Supplier',
       searchPlaceholder: 'Search by name, tax ID, contact or address...',
@@ -1061,13 +1079,20 @@ export const customers = {
 
   es: {
     title: 'Clientes y Proveedores',
+    // Rótulo da aba Clientes (o `title` acima é o título da TELA, que fala
+    // de clientes E fornecedores; na aba ele lia 'Clientes e Fornecedores').
+    tabLabel: 'Clientes',
     subtitle: 'Administra tus clientes y proveedores',
     listHeading: 'Lista de Clientes',
+    selectPrompt: 'Selecciona un cliente',
+    selectPromptDesc: 'Elige un cliente de la lista para abrir la ficha, sus pestañas y las acciones disponibles.',
     newCustomer: 'Nuevo Cliente',
     newCustomerShort: 'Cliente',
     configureOrigins: 'Configurar orígenes',
     origins: 'Orígenes',
     leadForms: 'Formularios',
+    // Rótulo completo do botão no desktop (`leadForms` é a versão curta do celular).
+    leadFormsFull: 'Formularios de captación',
     searchPlaceholderMobile: 'Buscar clientes...',
     searchPlaceholder: 'Buscar por nombre, empresa, contacto, documento o dirección...',
     typePj: 'PJ',
@@ -1178,7 +1203,7 @@ export const customers = {
     detail: {
       tabGeneral: 'General',
       tabEquipment: 'Equipos',
-      tabHistory: 'Historial de OS',
+      tabHistory: 'Historial',
       tabTasks: 'Tareas',
       tabTickets: 'Solicitudes',
       tabContracts: 'Contratos',
@@ -1510,6 +1535,8 @@ export const customers = {
     suppliers: {
       tabLabel: 'Proveedores',
       listHeading: 'Lista de Proveedores',
+      selectPrompt: 'Selecciona un proveedor',
+      selectPromptDesc: 'Elige un proveedor de la lista para abrir la ficha y el historial de gastos.',
       newSupplier: 'Nuevo Proveedor',
       newSupplierShort: 'Proveedor',
       searchPlaceholder: 'Buscar por nombre, documento, contacto o dirección...',
@@ -1562,13 +1589,20 @@ export const customers = {
 
   fr: {
     title: 'Clients et Fournisseurs',
+    // Rótulo da aba Clientes (o `title` acima é o título da TELA, que fala
+    // de clientes E fornecedores; na aba ele lia 'Clientes e Fornecedores').
+    tabLabel: 'Clients',
     subtitle: 'Gérez vos clients et fournisseurs',
     listHeading: 'Liste des Clients',
+    selectPrompt: 'Sélectionnez un client',
+    selectPromptDesc: 'Choisissez un client dans la liste pour ouvrir la fiche, ses onglets et les actions disponibles.',
     newCustomer: 'Nouveau Client',
     newCustomerShort: 'Client',
     configureOrigins: 'Configurer les origines',
     origins: 'Origines',
     leadForms: 'Formulaires',
+    // Rótulo completo do botão no desktop (`leadForms` é a versão curta do celular).
+    leadFormsFull: 'Formulaires de captation',
     searchPlaceholderMobile: 'Rechercher des clients...',
     searchPlaceholder: 'Rechercher par nom, entreprise, contact, document ou adresse...',
     typePj: 'PM',
@@ -1679,7 +1713,7 @@ export const customers = {
     detail: {
       tabGeneral: 'Général',
       tabEquipment: 'Équipements',
-      tabHistory: 'Historique OS',
+      tabHistory: 'Historique',
       tabTasks: 'Tâches',
       tabTickets: 'Tickets',
       tabContracts: 'Contrats',
@@ -2011,6 +2045,8 @@ export const customers = {
     suppliers: {
       tabLabel: 'Fournisseurs',
       listHeading: 'Liste des Fournisseurs',
+      selectPrompt: 'Sélectionnez un fournisseur',
+      selectPromptDesc: "Choisissez un fournisseur dans la liste pour ouvrir la fiche et l'historique des dépenses.",
       newSupplier: 'Nouveau Fournisseur',
       newSupplierShort: 'Fournisseur',
       searchPlaceholder: 'Rechercher par nom, document, contact ou adresse...',

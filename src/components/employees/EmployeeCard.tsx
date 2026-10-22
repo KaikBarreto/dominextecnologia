@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Phone, Calendar, Edit, Archive, FileText, Banknote, Gift, CreditCard, Link2, Minus, Award, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -6,14 +5,11 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney, formatDate } from '@/lib/format';
 import { Card } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
-import { useSignedUrl } from '@/hooks/useSignedUrl';
+import { EmployeePhotoAvatar } from '@/components/employees/EmployeePhotoAvatar';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Employee } from '@/hooks/useEmployees';
 import { BalanceSummary } from '@/utils/employeeCalculations';
-import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 
 interface EmployeeCardProps {
   employee: Employee;
@@ -33,9 +29,6 @@ export function EmployeeCard({ employee, balance, onEdit, onArchive, onArchiveWi
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees;
   const fmt = (v: number) => formatMoney(v, currency, locale);
-  const initials = employee.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-  const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
-  const previewUrl = useSignedUrl(employee.photo_url);
   const hasPontoLink = employee.ponto_enabled && !!employee.ponto_slug;
 
   const copyPontoLink = async () => {
@@ -54,15 +47,12 @@ export function EmployeeCard({ employee, balance, onEdit, onArchive, onArchiveWi
       <div className="flex flex-col gap-2.5">
         {/* Header: avatar + nome/cargo + ações */}
         <div className="flex items-start gap-2.5">
-          <div
-            className="shrink-0 cursor-pointer"
-            onClick={() => employee.photo_url && setPhotoPreviewOpen(true)}
-          >
-            <Avatar className="h-11 w-11">
-              <SignedAvatarImage src={employee.photo_url} />
-              <AvatarFallback className="bg-primary text-primary-foreground font-bold text-sm">{initials}</AvatarFallback>
-            </Avatar>
-          </div>
+          <EmployeePhotoAvatar
+            name={employee.name}
+            src={employee.photo_url}
+            className="h-11 w-11"
+            fallbackClassName="bg-primary text-sm font-bold text-primary-foreground"
+          />
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold text-sm truncate leading-tight">{employee.name}</h3>
             {employee.position && <p className="text-xs text-muted-foreground truncate">{employee.position}</p>}
@@ -197,13 +187,6 @@ export function EmployeeCard({ employee, balance, onEdit, onArchive, onArchiveWi
           <FileText className="h-3.5 w-3.5" /> {t.card.viewExtract}
         </Button>
       </div>
-
-      <ImagePreviewModal
-        src={previewUrl || ''}
-        alt={employee.name}
-        open={photoPreviewOpen}
-        onClose={() => setPhotoPreviewOpen(false)}
-      />
     </Card>
   );
 }

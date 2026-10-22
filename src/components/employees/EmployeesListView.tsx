@@ -4,8 +4,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
+import { EmployeePhotoAvatar } from '@/components/employees/EmployeePhotoAvatar';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { cn } from '@/lib/utils';
 import { Employee } from '@/hooks/useEmployees';
@@ -21,9 +20,6 @@ interface EmployeesListViewProps {
   onPayment: (employee: Employee) => void;
   onExtract: (employee: Employee) => void;
 }
-
-const getInitials = (name: string) =>
-  name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
 
 /**
  * Visão LISTA (desktop) da tela de Funcionários.
@@ -90,12 +86,7 @@ export function EmployeesListView({
                   {/* Funcionário: avatar + nome */}
                   <TableCell>
                     <div className="flex items-center gap-3 min-w-0">
-                      <Avatar className="h-9 w-9 shrink-0">
-                        <SignedAvatarImage src={emp.photo_url} alt={emp.name} />
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                          {getInitials(emp.name)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <EmployeePhotoAvatar name={emp.name} src={emp.photo_url} className="h-9 w-9" />
                       <div className="min-w-0">
                         <p className="font-medium truncate max-w-[220px]">{emp.name}</p>
                         {/* Cargo aparece aqui no breakpoint que esconde a coluna própria */}

@@ -1712,34 +1712,36 @@ export default function ContractDetail() {
               {/* Portal do Contrato — subseção dentro de Informações, separada por linha fina.
                   Aparece em TODO contrato (PMOC ou não), enquanto houver token público. */}
               {publicToken && (
-                <div className="space-y-3 pt-3 min-w-0">
-                  <div className="min-w-0">
-                    <h3 className="flex items-center gap-2 text-base font-semibold break-words">
-                      <ShieldCheck className="h-4 w-4 text-info shrink-0" />
-                      {td.overview.portalTitle}
-                    </h3>
-                    <p className="mt-1 text-xs text-muted-foreground break-words">
-                      {td.overview.portalDesc}
-                    </p>
-                  </div>
-
-                  {/* Toggle público/privado (espelha o Portal do Cliente). */}
-                  <div className="flex items-start justify-between gap-3 rounded-xl bg-muted/35 p-3">
+                <section className="min-w-0 space-y-4 rounded-xl border border-border bg-muted/15 p-4">
+                  <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium">{td.overview.portalPublicTitle}</p>
-                      <p className="text-xs text-muted-foreground break-words">
-                        {portalIsPublic
-                          ? td.overview.portalPublicOnDesc
-                          : td.overview.portalPublicOffDesc}
+                      <h3 className="flex items-center gap-2 text-base font-semibold break-words">
+                        <ShieldCheck className="h-4 w-4 text-info shrink-0" />
+                        {td.overview.portalTitle}
+                      </h3>
+                      <p className="mt-1 text-xs text-muted-foreground break-words">
+                        {td.overview.portalDesc}
                       </p>
                     </div>
-                    <Switch
-                      checked={portalIsPublic}
-                      disabled={updatingPortalVisibility}
-                      onCheckedChange={handleTogglePortalPublic}
-                      aria-label={td.overview.portalPublicTitle}
-                      className="shrink-0"
-                    />
+
+                    {/* Toggle público/privado (espelha o Portal do Cliente). */}
+                    <div className="flex min-w-0 items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2 sm:w-[19rem] sm:shrink-0">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold">{td.overview.portalPublicTitle}</p>
+                        <p className="truncate text-[11px] text-muted-foreground">
+                          {portalIsPublic
+                            ? td.overview.portalPublicOnDesc
+                            : td.overview.portalPublicOffDesc}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={portalIsPublic}
+                        disabled={updatingPortalVisibility}
+                        onCheckedChange={handleTogglePortalPublic}
+                        aria-label={td.overview.portalPublicTitle}
+                        className="shrink-0"
+                      />
+                    </div>
                   </div>
 
                   {/* Quem vê o quê: 8 seções em Oculto / Sem senha / Com senha.
@@ -1763,24 +1765,25 @@ export default function ContractDetail() {
                       href={portalUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block rounded-xl bg-muted/40 p-2.5 text-xs font-mono break-all min-w-0 hover:bg-muted/60 hover:text-info transition-colors cursor-pointer"
+                      title={portalUrl}
+                      className="flex min-w-0 items-center gap-2 rounded-lg border bg-background px-3 py-2 text-xs font-mono transition-colors hover:bg-muted hover:text-info"
                     >
-                      {portalUrl}
-                      <ExternalLink className="h-3 w-3 inline ml-1 shrink-0 opacity-60" />
+                      <span className="min-w-0 flex-1 truncate">{portalUrl}</span>
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-60" />
                     </a>
                   ) : (
-                    <div className="rounded-xl bg-muted/30 p-3 text-xs text-muted-foreground">
+                    <div className="rounded-lg border bg-background p-3 text-xs text-muted-foreground">
                       {td.overview.portalLinkPending}
                     </div>
                   )}
 
-                  {/* QR à esquerda, botões empilhados à direita (desktop). Mobile empilha tudo. */}
+                  {/* QR e ações no mesmo bloco de acesso. Mobile empilha tudo. */}
                   {portalUrl && (
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center min-w-0">
-                      <div className="inline-flex shrink-0 items-center justify-center self-center rounded-xl bg-white p-4 transition-colors sm:self-auto">
+                    <div className="flex min-w-0 flex-col gap-3 rounded-lg border bg-background p-3 sm:flex-row sm:items-center">
+                      <div className="inline-flex shrink-0 items-center justify-center self-center rounded-lg border bg-white p-2 sm:self-auto">
                         <BrandedQRCode
                           value={portalUrl}
-                          size={isMobile ? 130 : 160}
+                          size={isMobile ? 120 : 112}
                           logoUrl={qrConfig.logoUrl}
                           dotStyle={qrConfig.dotStyle}
                           cornerStyle={qrConfig.cornerStyle}
@@ -1788,13 +1791,13 @@ export default function ContractDetail() {
                         />
                       </div>
 
-                      <div className="flex w-full flex-col gap-2 sm:flex-1">
+                      <div className="grid w-full gap-2 sm:flex-1 sm:grid-cols-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={handleCopyPortalLink}
                           disabled={!portalUrl}
-                          className="w-full justify-center min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
+                          className="min-h-10 w-full justify-center rounded-lg active:scale-[0.98] transition-transform"
                         >
                           <Copy className="h-3.5 w-3.5 mr-1" />
                           {td.overview.portalCopyLink}
@@ -1806,7 +1809,7 @@ export default function ContractDetail() {
                             size="sm"
                             onClick={handlePrintQrCode}
                             disabled={!portalUrl || downloadingQr}
-                            className="w-full justify-center min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
+                            className="min-h-10 w-full justify-center rounded-lg active:scale-[0.98] transition-transform"
                           >
                             {downloadingQr ? (
                               <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
@@ -1822,7 +1825,7 @@ export default function ContractDetail() {
                             size="sm"
                             onClick={() => setShowRegenerateDialog(true)}
                             disabled={!publicToken || regenerateToken.isPending}
-                            className="w-full justify-center min-h-11 sm:min-h-[40px] active:scale-[0.98] transition-transform rounded-xl"
+                            className="min-h-10 w-full justify-center rounded-lg active:scale-[0.98] transition-transform sm:col-span-2"
                           >
                             <RefreshCw className="h-3.5 w-3.5 mr-1" />
                             {td.overview.portalRegenerateToken}
@@ -1831,7 +1834,7 @@ export default function ContractDetail() {
                       </div>
                     </div>
                   )}
-                </div>
+                </section>
               )}
             </CardContent>
           </Card>

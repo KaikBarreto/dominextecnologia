@@ -20,6 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import {
   useCustomerDocuments,
   type CustomerDocument,
@@ -28,7 +29,6 @@ import {
 } from '@/hooks/useCustomerDocuments';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
-import { cn } from '@/lib/utils';
 
 interface CustomerDocumentsTabProps {
   customerId: string;
@@ -157,28 +157,16 @@ export function CustomerDocumentsTab({ customerId, canManage }: CustomerDocument
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex w-full rounded-lg border bg-muted/30 p-1 sm:w-auto">
-          {([
-            { value: 'invoice' as const, label: 'Notas fiscais', icon: ReceiptText },
-            { value: 'document' as const, label: 'Documentos', icon: FileText },
-          ]).map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => setActiveKind(item.value)}
-                className={cn(
-                  'flex min-h-10 flex-1 items-center justify-center gap-2 rounded-md px-3 text-sm font-medium transition-colors sm:flex-none',
-                  activeKind === item.value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground',
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
+        <MobilePillTabs
+          variant="underline"
+          className="mx-0 min-w-0 sm:w-auto"
+          tabs={[
+            { value: 'invoice', label: 'Notas fiscais', icon: <ReceiptText className="h-4 w-4" /> },
+            { value: 'document', label: 'Documentos', icon: <FileText className="h-4 w-4" /> },
+          ]}
+          activeTab={activeKind}
+          onTabChange={(value) => setActiveKind(value as CustomerDocumentKind)}
+        />
         {canManage && (
           <Button onClick={openUpload}>
             <Plus className="mr-2 h-4 w-4" />

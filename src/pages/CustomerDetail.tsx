@@ -63,6 +63,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { buildCheckoutUrl, type TenantCharge } from '@/hooks/useTenantCharges';
 import { useChargeActions } from '@/components/financial/useChargeActions';
+import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
 import {
   ChargeActionDialogs,
   ChargeFinanceWarningBanner,
@@ -86,6 +87,14 @@ import { CustomerDocumentsTab } from '@/components/customers/CustomerDocumentsTa
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos' | 'documentos' | 'cobrancas' | 'estoque';
 
 type FinanceSubTab = 'tudo' | 'a_vencer' | 'pagas';
+
+// Iniciais (máx. 2) do avatar de fallback, mesma regra da lista de Clientes.
+function getCustomerInitials(name?: string) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
 
 const CUSTOMER_DETAIL_TABS: TabKey[] = ['geral', 'equipamentos', 'historico', 'tarefas', 'financeiro', 'chamados', 'contratos', 'documentos', 'cobrancas', 'estoque'];
 
@@ -120,6 +129,7 @@ export default function CustomerDetail() {
   const navigate = useNavigate();
   const { locale } = useAppLocaleContext();
   const tCustomers = MESSAGES[locale].app.customers;
+  const tCommon = MESSAGES[locale].app.common;
   const t = tCustomers.detail;
   // Toasts de exclusão de lançamento reaproveitam o texto do Financeiro geral
   // (TransactionListPanel) — mesma ação, mesma copy, sem duplicar chave de i18n.
@@ -650,6 +660,31 @@ export default function CustomerDetail() {
   }
 
   return (
+    <ListDetailLayout
+      items={customers.map((item) => ({
+        id: item.id,
+        title: item.name,
+        subtitle: [item.document, item.phone || item.celular, item.city].filter(Boolean).join(' · ') || undefined,
+        searchText: [item.company_name, item.nome_fantasia, item.email, item.address, item.neighborhood].filter(Boolean).join(' '),
+        imageUrl: item.photo_url,
+        imageAlt: tCommon.listDetail.zoomPhoto.replace('{name}', item.name),
+        onImageClick: item.photo_url ? () => setPreviewImage(item.photo_url!) : undefined,
+        leading: (
+          // Mesma régua da lista em /clientes: iniciais, não ícone genérico.
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+            {getCustomerInitials(item.name)}
+          </div>
+        ),
+      }))}
+      selectedId={customer.id}
+      listTitle={tCustomers.listHeading}
+      storageKey="customers-list-detail"
+      searchPlaceholder={t.switcherSearch}
+      emptyLabel={t.switcherEmpty}
+      onSelect={(customerId) => {
+        if (customerId !== customer.id) navigate(`/clientes/${customerId}`);
+      }}
+    >
     <div className="space-y-6">
       <div className="flex items-center gap-3 min-w-0">
         {/* Seta de voltar própria da página: só no desktop (mobile/tablet usam a global do shell). */}
@@ -667,7 +702,9 @@ export default function CustomerDetail() {
           </button>
         ) : (
           <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-muted flex items-center justify-center shrink-0">
-            <Package className="h-6 w-6 text-muted-foreground" />
+            {/* Cliente sem foto: o mesmo ícone de pessoa da lista à esquerda
+                (antes era um ícone de caixa, herdado da ficha de equipamento). */}
+            <UserCircle className="h-6 w-6 text-muted-foreground" />
           </div>
         )}
         <div className="min-w-0 flex-1">
@@ -712,7 +749,7 @@ export default function CustomerDetail() {
               </PopoverContent>
             </Popover>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            <Badge variant={customer.customer_type === 'pj' ? 'default' : 'secondary'}>
+            <Badge variant={customer.customer_type === 'pj' ? 'default' : 'muted'}>
               {customer.customer_type === 'pj' ? 'PJ' : 'PF'}
             </Badge>
             {customer.company_name && (
@@ -721,6 +758,25 @@ export default function CustomerDetail() {
           </div>
         </div>
         <div className="ml-auto shrink-0 flex items-center gap-2 sm:gap-3">
+          {/* Editar e Excluir em evidência no computador; o resto no menu de
+              mais ações. No celular tudo volta pro menu, por espaço. */}
+          {!isMobile && (
+            <>
+              <Button variant="ghost" size="sm" className="text-warning hover:text-warning" onClick={() => setEditCustomerOpen(true)}>
+                <Edit className="mr-2 h-4 w-4" />
+                {tCustomers.edit}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:bg-destructive hover:text-white"
+                onClick={() => setDeleteConfirmOpen(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {tCustomers.delete}
+              </Button>
+            </>
+          )}
           <RowActionsMenu
             label={t.actions}
             triggerClassName="border border-border px-3"
@@ -748,41 +804,31 @@ export default function CustomerDetail() {
                 icon: Edit,
                 variant: 'edit',
                 onClick: () => setEditCustomerOpen(true),
+                hidden: !isMobile,
               },
               {
                 label: tCustomers.delete,
                 icon: Trash2,
                 variant: 'delete',
                 onClick: () => setDeleteConfirmOpen(true),
+                hidden: !isMobile,
               },
             ]}
           />
         </div>
       </div>
 
-      {isMobile ? (
-        <MobilePillTabs
-          variant="underline"
-          tabs={tabs.map((t) => ({ value: t.key, label: t.label }))}
-          activeTab={activeTab}
-          onTabChange={(v) => setActiveTab(v as TabKey)}
-        />
-      ) : (
-        <div className="flex gap-1 border-b overflow-x-auto no-scrollbar">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={cn(
-                'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap shrink-0',
-                activeTab === tab.key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Mesmo componente e variante em mobile e desktop. No computador a ficha
+          divide a largura com a lista, então as 10 abas não cabem em linha: o
+          MobilePillTabs rola com fade nas bordas e revela a aba ativa sozinho,
+          coisa que a barra antiga de <button> não fazia. */}
+      <MobilePillTabs
+        variant="underline"
+        className={isMobile ? undefined : 'mx-0'}
+        tabs={tabs.map((t) => ({ value: t.key, label: t.label }))}
+        activeTab={activeTab}
+        onTabChange={(v) => setActiveTab(v as TabKey)}
+      />
 
       {activeTab === 'geral' && (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -1552,35 +1598,18 @@ export default function CustomerDetail() {
             </div>
           )}
 
-          {/* Subabas: Tudo / A vencer / Pagas — mobile usa pills scrolláveis, desktop botões */}
-          {isMobile ? (
-            <MobilePillTabs
-              tabs={[
-                { value: 'tudo', label: t.subTabAll },
-                { value: 'a_vencer', label: t.subTabDue },
-                { value: 'pagas', label: t.subTabPaid },
-              ]}
-              activeTab={financeSubTab}
-              onTabChange={(v) => setFinanceSubTab(v as FinanceSubTab)}
-            />
-          ) : (
-            <div className="flex gap-2">
-              {([
-                { value: 'tudo', label: t.subTabAll },
-                { value: 'a_vencer', label: t.subTabDue },
-                { value: 'pagas', label: t.subTabPaid },
-              ] as const).map((opt) => (
-                <Button
-                  key={opt.value}
-                  variant={financeSubTab === opt.value ? 'default' : 'outline'}
-                  onClick={() => setFinanceSubTab(opt.value)}
-                  className="min-h-10 rounded-xl"
-                >
-                  {opt.label}
-                </Button>
-              ))}
-            </div>
-          )}
+          {/* Navegação secundária segue a mesma linguagem underline da ficha. */}
+          <MobilePillTabs
+            variant="underline"
+            className="mx-0"
+            tabs={[
+              { value: 'tudo', label: t.subTabAll },
+              { value: 'a_vencer', label: t.subTabDue },
+              { value: 'pagas', label: t.subTabPaid },
+            ]}
+            activeTab={financeSubTab}
+            onTabChange={(v) => setFinanceSubTab(v as FinanceSubTab)}
+          />
 
           {financeRows.length === 0 ? (
             <EmptyState
@@ -1645,7 +1674,7 @@ export default function CustomerDetail() {
                                 {row.customerExpense?.voided_at ? 'Cancelado' : t.expensePaidByCustomerBadge}
                               </Badge>
                             ) : (
-                              <Badge variant={row.is_paid ? 'default' : 'secondary'}>
+                              <Badge variant={row.is_paid ? 'success' : 'warning'}>
                                 {row.is_paid ? t.txnPaid : t.txnPending}
                               </Badge>
                             )}
@@ -1734,7 +1763,7 @@ export default function CustomerDetail() {
                 <Card className="bg-card border-border">
                   <CardContent className="p-4 flex flex-col gap-1">
                     <span className="text-xs text-muted-foreground">{t.chargesSummaryReceived}</span>
-                    <span className="text-lg font-bold text-emerald-600">
+                    <span className="text-lg font-bold text-success">
                       R$ {formatBRL(chargesSummary.received)}
                     </span>
                   </CardContent>
@@ -2156,5 +2185,6 @@ export default function CustomerDetail() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </ListDetailLayout>
   );
 }

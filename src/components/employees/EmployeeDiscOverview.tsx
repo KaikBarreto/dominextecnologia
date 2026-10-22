@@ -13,10 +13,10 @@
 
 import { useState } from 'react';
 import { Brain, ChevronRight, Clock, Copy, GitCompareArrows, Link2, Loader2 } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { SignedAvatarImage } from '@/components/ui/SignedAvatarImage';
+import { EmployeePhotoAvatar } from '@/components/employees/EmployeePhotoAvatar';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { Button } from '@/components/ui/button';
+import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -125,13 +125,6 @@ function EmployeeDiscCard({
     toast({ title: t.linkCopied, description: url, duration: 6000 });
   };
 
-  const initials = employee.name
-    .split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-
   const hasProfile = !!latestCompleted?.profile_code && !!latestCompleted?.scores;
   const hasPending = !!latestPending;
 
@@ -154,12 +147,7 @@ function EmployeeDiscCard({
     >
       {/* Avatar + nome + cargo */}
       <div className="flex items-center gap-3">
-        <Avatar className="h-10 w-10 shrink-0">
-          <SignedAvatarImage src={employee.photo_url} alt={employee.name} />
-          <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-            {initials}
-          </AvatarFallback>
-        </Avatar>
+        <EmployeePhotoAvatar name={employee.name} src={employee.photo_url} className="h-10 w-10" />
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground truncate">{employee.name}</p>
           {employee.position && (
@@ -295,13 +283,6 @@ function DiscListRow({ employee, latestCompleted, latestPending, onSelect, isFir
   const meta = hasProfile ? resolveProfile(latestCompleted!.profile_code!) : null;
   const profileColor = meta ? FACTOR_COLOR[meta.primary] : undefined;
 
-  const initials = employee.name
-    .split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-
   return (
     <div
       role="button"
@@ -316,12 +297,7 @@ function DiscListRow({ employee, latestCompleted, latestPending, onSelect, isFir
       }}
     >
       {/* Avatar */}
-      <Avatar className="h-9 w-9 shrink-0">
-        <SignedAvatarImage src={employee.photo_url} alt={employee.name} />
-        <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-          {initials}
-        </AvatarFallback>
-      </Avatar>
+      <EmployeePhotoAvatar name={employee.name} src={employee.photo_url} className="h-9 w-9" />
 
       {/* Nome + cargo */}
       <div className="flex-1 min-w-0">
@@ -370,6 +346,7 @@ export function EmployeeDiscOverview({
   const { locale } = useAppLocaleContext();
   const { toast } = useToast();
   const t = MESSAGES[locale].app.employees.form.disc.overview;
+  const employeesT = MESSAGES[locale].app.employees;
   const tToasts = MESSAGES[locale].app.employees.toasts;
 
   const { profilesByEmployee, isLoading, generateLink } = useCompanyDiscProfiles();
@@ -451,13 +428,42 @@ export function EmployeeDiscOverview({
   // Detalhe in-place — renderiza em vez do grid, sem trocar de rota
   if (selectedEmployeeId) {
     return (
-      <EmployeeProfileDetail
-        employeeId={selectedEmployeeId}
-        onBack={() => selectEmployee(null)}
-        allEmployees={activeEmployees}
-        profilesByEmployeeExternal={profilesByEmployee}
-        onChangeEmployee={(id) => selectEmployee(id)}
-      />
+      <ListDetailLayout
+        items={activeEmployees.map((employee) => {
+          const summary = profilesByEmployee[employee.id];
+          const profileCode = summary?.latestCompleted?.profile_code;
+          return {
+            id: employee.id,
+            title: employee.name,
+            subtitle: [employee.position, profileCode || (summary?.latestPending ? t.pending : t.noProfile)]
+              .filter(Boolean)
+              .join(' • '),
+            searchText: employee.matricula ?? undefined,
+            leading: (
+              <EmployeePhotoAvatar
+                name={employee.name}
+                src={employee.photo_url}
+                className="h-10 w-10"
+              />
+            ),
+          };
+        })}
+        selectedId={selectedEmployeeId}
+        listTitle={employeesT.page.title}
+        listDescription={t.subtitle}
+        storageKey="disc-list-detail"
+        searchPlaceholder={employeesT.form.disc.profilePage.switchSearchPlaceholder}
+        emptyLabel={employeesT.form.disc.profilePage.switchNoResults}
+        onSelect={selectEmployee}
+      >
+        <EmployeeProfileDetail
+          employeeId={selectedEmployeeId}
+          onBack={() => selectEmployee(null)}
+          allEmployees={activeEmployees}
+          profilesByEmployeeExternal={profilesByEmployee}
+          onChangeEmployee={(id) => selectEmployee(id)}
+        />
+      </ListDetailLayout>
     );
   }
 
