@@ -47,6 +47,16 @@ export const changelog: ChangelogEntry[] = [
     type: 'patch',
     changes: [
       {
+        title: 'Clientes, fornecedores e equipamentos com visual mais limpo',
+        description: 'No computador, a lista ao lado da ficha ficou mais larga (os nomes longos agora cabem) e perdeu a moldura branca: lista e ficha ficam separadas por uma linha fina, e as seções da ficha também deixaram de ser caixas. Menos borda, mais respiro, mesma informação.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cadastro de cliente mais fácil de preencher',
+        description: 'A janela de cadastro ficou mais larga no computador e os campos foram agrupados em Identificação, Contato e Outros dados, em vez de uma lista corrida.',
+        category: 'melhoria',
+      },
+      {
         title: 'O mapa do cliente não pisca mais ao trocar de cadastro',
         description: 'Na ficha do cliente, o mapa do endereço ficava branco por um instante cada vez que você escolhia outro cliente na lista. Agora o mapa anterior continua na tela e o novo aparece por cima quando termina de carregar.',
         category: 'melhoria',

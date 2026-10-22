@@ -507,8 +507,8 @@ export function EquipmentDetailContent() {
       {activeTab === 'geral' && (
         <div className="space-y-6">
           {/* Photo + QR row — lado a lado (mobile e desktop), grupo centralizado no card */}
-          <Card>
-            <CardContent className="p-6">
+          <Card className="lg:rounded-none lg:border-0 lg:border-b lg:border-border/60 lg:bg-transparent lg:shadow-none">
+            <CardContent className="p-6 lg:px-0">
               <div className="flex flex-col items-center gap-6 lg:flex-row lg:items-center lg:justify-between">
                 {/* Foto */}
                 {equipment.photo_url && (
@@ -640,8 +640,8 @@ export function EquipmentDetailContent() {
 
             if (rows.length === 0) return null;
             return (
-              <Card>
-                <CardContent className="p-4 sm:p-6">
+              <Card className="lg:rounded-none lg:border-0 lg:border-b lg:border-border/60 lg:bg-transparent lg:shadow-none">
+                <CardContent className="p-4 sm:p-6 lg:px-0">
                   <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70 mb-4">{te.sectionInfo}</h2>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {rows.map((row, i) => (

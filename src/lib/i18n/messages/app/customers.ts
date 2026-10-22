@@ -74,6 +74,10 @@ export const customers = {
       create: 'Criar',
       cancel: 'Cancelar',
       tabContact: 'Contato',
+      // Títulos das seções do formulário de cliente
+      formSectionIdentification: 'Identificação',
+      formSectionContact: 'Contato',
+      formSectionOther: 'Outros dados',
       tabFiscal: 'Fiscal',
       photo: 'Foto',
       name: 'Nome *',
@@ -627,6 +631,10 @@ export const customers = {
       create: 'Create',
       cancel: 'Cancel',
       tabContact: 'Contact',
+      // Form section titles
+      formSectionIdentification: 'Identification',
+      formSectionContact: 'Contact',
+      formSectionOther: 'Other details',
       tabFiscal: 'Tax',
       photo: 'Photo',
       name: 'Name *',
@@ -1137,6 +1145,10 @@ export const customers = {
       create: 'Crear',
       cancel: 'Cancelar',
       tabContact: 'Contacto',
+      // Títulos de las secciones del formulario
+      formSectionIdentification: 'Identificación',
+      formSectionContact: 'Contacto',
+      formSectionOther: 'Otros datos',
       tabFiscal: 'Fiscal',
       photo: 'Foto',
       name: 'Nombre *',
@@ -1647,6 +1659,10 @@ export const customers = {
       create: 'Créer',
       cancel: 'Annuler',
       tabContact: 'Contact',
+      // Titres des sections du formulaire
+      formSectionIdentification: 'Identification',
+      formSectionContact: 'Contact',
+      formSectionOther: 'Autres informations',
       tabFiscal: 'Fiscal',
       photo: 'Photo',
       name: 'Nom *',

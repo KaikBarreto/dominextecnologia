@@ -107,6 +107,15 @@ interface CustomerFormDialogProps {
   defaultCustomerKind?: 'servico' | 'loja';
 }
 
+/** Título de seção do formulário: separa blocos de campos sem virar card. */
+function SecaoForm({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="sm:col-span-2 mt-2 text-xs font-bold uppercase tracking-widest text-foreground/70 first:mt-0">
+      {children}
+    </p>
+  );
+}
+
 export function CustomerFormDialog({
   open, onOpenChange, customer, onSubmit, isLoading, defaultCustomerKind = 'servico',
 }: CustomerFormDialogProps) {
@@ -343,7 +352,7 @@ export function CustomerFormDialog({
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={customer ? t.titleEdit : t.titleNew} footer={footer}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={customer ? t.titleEdit : t.titleNew} footer={footer} className="sm:max-w-3xl">
       <DraftResumeDialog
         open={draft.showResumePrompt}
         onResume={() => {
@@ -405,6 +414,7 @@ export function CustomerFormDialog({
                     </Button>
                   </label>
                 </div>
+                <SecaoForm>{t.formSectionIdentification}</SecaoForm>
                 <FormField control={form.control} name="name" render={({ field }) => (
                   <FormItem className="sm:col-span-2">
                     <FormLabel>{t.name}</FormLabel>
@@ -465,6 +475,7 @@ export function CustomerFormDialog({
                     </div>
                   </div>
                 )}
+                <SecaoForm>{t.formSectionContact}</SecaoForm>
                 <FormField control={form.control} name="phone" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t.phone}</FormLabel>
@@ -532,6 +543,7 @@ export function CustomerFormDialog({
                     <FormMessage />
                   </FormItem>
                 )} />
+                <SecaoForm>{t.formSectionOther}</SecaoForm>
                 <FormField control={form.control} name="birth_date" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t.birthDate}</FormLabel>

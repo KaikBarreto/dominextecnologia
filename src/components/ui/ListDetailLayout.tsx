@@ -235,10 +235,10 @@ export function ListDetailLayout({
   return (
     <div
       className={cn(
-        'min-w-0 lg:grid lg:items-start lg:gap-5',
+        'min-w-0 lg:grid lg:items-start lg:gap-0',
         collapsed
           ? 'lg:grid-cols-[2.5rem_minmax(0,1fr)]'
-          : 'lg:grid-cols-[minmax(16rem,19rem)_minmax(0,1fr)]',
+          : 'lg:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)]',
         className,
       )}
     >
@@ -259,10 +259,10 @@ export function ListDetailLayout({
       ) : (
         <aside
           ref={asideRef}
-          className="hidden overflow-hidden rounded-xl border bg-card lg:sticky lg:top-4 lg:flex lg:h-[calc(100dvh-7rem)] lg:min-h-[24rem] lg:flex-col"
+          className="hidden overflow-hidden border-r border-border lg:sticky lg:top-4 lg:flex lg:h-[calc(100dvh-7rem)] lg:min-h-[24rem] lg:flex-col lg:pr-5"
           aria-label={listTitle}
         >
-          <div className="border-b p-3">
+          <div className="border-b border-border/60 pb-3">
             <div className="mb-3 flex items-start gap-2">
               <div className="min-w-0 flex-1">
                 <h2 className="truncate text-sm font-semibold">{listTitle}</h2>
@@ -296,7 +296,7 @@ export function ListDetailLayout({
 
           {/* Contagem + ordenação: linha discreta, sem caixa de seletor. O botão
               alterna para o próximo critério (com dois, é um liga-desliga A-Z). */}
-          <div className="flex items-center justify-between gap-2 px-3 py-2">
+          <div className="flex items-center justify-between gap-2 px-3 py-2.5">
             <span className="min-w-0 truncate text-xs text-muted-foreground">
               {(pagination.totalItems === 1 ? t.records : t.recordsPlural).replace(
                 '{count}',
@@ -318,11 +318,11 @@ export function ListDetailLayout({
             </button>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {pagination.paginatedItems.length === 0 ? (
               <p className="px-3 py-8 text-center text-sm text-muted-foreground">{emptyLabel}</p>
             ) : (
-              <div className="space-y-1" role="list">
+              <div role="list">
                 {pagination.paginatedItems.map((item) => {
                   const selected = item.id === selectedId;
                   return (
@@ -332,10 +332,8 @@ export function ListDetailLayout({
                       aria-current={selected ? 'true' : undefined}
                       onClick={() => onSelect(item.id)}
                       className={cn(
-                        'flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left outline-none transition-colors',
-                        selected
-                          ? 'bg-primary/10 text-foreground ring-1 ring-inset ring-primary/20'
-                          : 'hover:bg-muted/70',
+                        'flex w-full cursor-pointer items-center gap-3 border-b border-border/60 px-3 py-3 text-left outline-none transition-colors last:border-b-0',
+                        selected ? 'bg-muted' : 'hover:bg-muted/50',
                       )}
                     >
                       {item.imageUrl ? (
@@ -394,7 +392,7 @@ export function ListDetailLayout({
             )}
           </div>
 
-          <div className="flex items-center justify-between gap-1 border-t px-2 py-2">
+          <div className="flex items-center justify-between gap-1 border-t border-border/60 py-2">
             <Select
               value={String(pagination.pageSize)}
               onValueChange={(value) =>
@@ -445,7 +443,7 @@ export function ListDetailLayout({
       {/* <div>, não <main>: o shell (AppLayout) já tem o único <main> do
           documento, e aninhar outro quebra o HTML e confunde quem procura
           "main" na página (leitor de tela, pipeline de print do guia). */}
-      <div className={cn('min-w-0', detailClassName)}>{children}</div>
+      <div className={cn('min-w-0 lg:pl-5', detailClassName)}>{children}</div>
     </div>
   );
 }

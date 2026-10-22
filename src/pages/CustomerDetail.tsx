@@ -954,7 +954,7 @@ export function CustomerDetailContent() {
             const embedUrl = `https://maps.google.com/maps?q=${encodedAddress}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
 
             return (
-              <Card className={cn('sm:col-span-2', isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4 space-y-3">
+              <Card className={cn('sm:col-span-2', 'lg:rounded-none lg:border-0 lg:border-b lg:border-border/60 lg:bg-transparent lg:shadow-none', isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4 space-y-3 lg:px-0">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">{t.sectionAddress}</p>
                 <p className="text-sm font-medium flex items-center gap-1">
                   <MapPin className="h-3 w-3 shrink-0" />
@@ -985,7 +985,7 @@ export function CustomerDetailContent() {
             );
           })()}
           {/* Responsável no Local */}
-          <Card className={cn('sm:col-span-2', isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4 space-y-3">
+          <Card className={cn('sm:col-span-2', 'lg:rounded-none lg:border-0 lg:border-b lg:border-border/60 lg:bg-transparent lg:shadow-none', isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4 space-y-3 lg:px-0">
             <div className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                 <UserCircle className="h-3.5 w-3.5" />
