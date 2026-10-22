@@ -24,6 +24,7 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { useContracts } from '@/hooks/useContracts';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
+import { AddressMap } from '@/components/ui/AddressMap';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { ContactFormDialog } from '@/components/customers/ContactFormDialog';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
@@ -959,18 +960,7 @@ export function CustomerDetailContent() {
                   <MapPin className="h-3 w-3 shrink-0" />
                   {fullAddress}
                 </p>
-                <div className="rounded-lg overflow-hidden border h-48 w-full">
-                  <iframe
-                    title="Mapa do cliente"
-                    src={embedUrl}
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                  />
-                </div>
+                <AddressMap src={embedUrl} title={t.sectionAddress} className="h-48 w-full" />
                 <div className="flex items-center gap-3">
                   <a
                     href={googleMapsUrl}

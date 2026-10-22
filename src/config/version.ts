@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.35";
+export const APP_VERSION = "1.37.36";
 
 export const VERSION_NOTES =
-  "Clientes, fornecedores, equipamentos e perfis comportamentais agora mantêm a lista ao lado da ficha no computador, com busca, ordenação e paginação próprias: trocar de cadastro não recarrega a tela nem perde o que você digitou. Fotos abrem ampliadas ao clicar, Editar e Excluir ficaram à mão na ficha, e a configuração do Portal do Contrato ficou compacta e organizada.";
+  "O mapa do endereço do cliente agora troca suavemente ao pular de um cadastro para outro, sem piscar.";

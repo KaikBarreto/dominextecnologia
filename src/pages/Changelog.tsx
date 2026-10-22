@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.36',
+    date: '22 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'O mapa do cliente não pisca mais ao trocar de cadastro',
+        description: 'Na ficha do cliente, o mapa do endereço ficava branco por um instante cada vez que você escolhia outro cliente na lista. Agora o mapa anterior continua na tela e o novo aparece por cima quando termina de carregar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.35',
     date: '21 de outubro de 2026',
     type: 'patch',
