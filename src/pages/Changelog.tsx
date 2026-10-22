@@ -42,7 +42,7 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.37.36',
+    version: '1.37.37',
     date: '22 de outubro de 2026',
     type: 'patch',
     changes: [
@@ -60,6 +60,18 @@ export const changelog: ChangelogEntry[] = [
         title: 'O mapa do cliente não pisca mais ao trocar de cadastro',
         description: 'Na ficha do cliente, o mapa do endereço ficava branco por um instante cada vez que você escolhia outro cliente na lista. Agora o mapa anterior continua na tela e o novo aparece por cima quando termina de carregar.',
         category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.37.36',
+    date: '22 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Check-in não trava por responsável antigo',
+        description: 'O técnico consegue iniciar a Ordem de Serviço normalmente mesmo quando um responsável vinculado ao agendamento foi arquivado depois. Ao trocar técnico, equipe, data ou horário, as validações de segurança continuam funcionando como antes.',
+        category: 'correcao',
       },
     ],
   },

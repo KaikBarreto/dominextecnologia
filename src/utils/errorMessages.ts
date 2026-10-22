@@ -49,6 +49,12 @@ const SQLSTATE_MESSAGES: Record<string, string> = {
 };
 
 const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: string }> = [
+  // ── Agenda / responsáveis da OS ──
+  {
+    test: (m) => m.includes('schedule_resource_not_in_tenant'),
+    text: 'Um dos responsáveis desta OS não está mais ativo na empresa. Atualize a atribuição e tente novamente.',
+  },
+
   // ── FK: Service Types ──
   {
     test: (m) => m.includes('violates foreign key constraint') && m.includes('quote_items_service_type_id_fkey'),
