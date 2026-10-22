@@ -347,6 +347,32 @@ export function resolveAppSlug(pathname: string, locale?: LocaleCode): string | 
 }
 
 /**
+ * Telas de LISTA + FICHA: a lista e o cadastro aberto são a MESMA tela, então
+ * precisam da mesma "chave de tela". Quem usa isso é a transição de rota do
+ * shell (AppLayout): ela remonta o conteúdo a cada `location.pathname` novo, e
+ * sem este agrupamento abrir um cliente/equipamento desmontava a tela inteira —
+ * o "pisca" que aparecia a cada troca de cadastro.
+ */
+const TELAS_LISTA_FICHA: Record<string, string> = {
+  customers: 'tela:clientes',
+  customerDetail: 'tela:clientes',
+  equipment: 'tela:equipamentos',
+  equipmentDetail: 'tela:equipamentos',
+};
+
+/**
+ * Chave de TELA de um pathname, pra animação/remontagem de rota.
+ *
+ * `/clientes` e `/clientes/abc` (em qualquer idioma) devolvem a MESMA chave.
+ * Qualquer outra rota devolve o próprio pathname, mantendo o comportamento de
+ * antes — sub-rotas diferentes continuam ganhando a transição.
+ */
+export function appScreenKey(pathname: string): string {
+  const key = resolveAppSlug(pathname);
+  return (key && TELAS_LISTA_FICHA[key]) || pathname;
+}
+
+/**
  * Traduz um PATH do app (com query/hash opcionais) pro idioma dado, reescrevendo
  * TODOS os segmentos fixos (a raiz E os sub-segmentos) e preservando params,
  * ?query e #hash. É o helper que o MENU usa pra montar links no idioma do usuário

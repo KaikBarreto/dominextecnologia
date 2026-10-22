@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
-import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
+import { appScreenKey, localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { useNavigationPreference } from '@/hooks/useNavigationPreference';
 import { useNavThemePreference } from '@/hooks/useNavThemePreference';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
@@ -164,8 +164,11 @@ function RouteTransition({ children }: { children: React.ReactNode }) {
     });
   }, [location.pathname]);
 
+  // A chave é da TELA, não do pathname: em lista + ficha, abrir um cadastro é a
+  // mesma tela. Com `location.pathname` aqui, cada clique na lista remontava a
+  // tela inteira e repetia o fade — era isso que piscava.
   return (
-    <div key={location.pathname} className="animate-in fade-in duration-200 min-w-0 max-w-full">
+    <div key={appScreenKey(location.pathname)} className="animate-in fade-in duration-200 min-w-0 max-w-full">
       {children}
     </div>
   );
