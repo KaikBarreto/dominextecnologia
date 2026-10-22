@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.36',
+    date: '22 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Check-in não trava por responsável antigo',
+        description: 'O técnico consegue iniciar a Ordem de Serviço normalmente mesmo quando um responsável vinculado ao agendamento foi arquivado depois. Ao trocar técnico, equipe, data ou horário, as validações de segurança continuam funcionando como antes.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.37.35',
     date: '21 de outubro de 2026',
     type: 'patch',
