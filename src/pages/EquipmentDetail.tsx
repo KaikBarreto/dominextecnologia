@@ -54,7 +54,6 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { formatOSNumber } from '@/lib/osNumber';
 import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
 import { buildPortalCallsPath, isPortalCall } from '@/lib/portalCalls';
-import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
 
 type TabKey = 'geral' | 'anexos' | 'tarefas' | 'chamados';
 
@@ -111,7 +110,13 @@ function saveLabelConfig(cfg: LabelConfig) {
   }
 }
 
-export default function EquipmentDetail() {
+/**
+ * Conteúdo da ficha do equipamento, SEM cabeçalho de tela e sem a coluna da
+ * lista. Mesma razão do [CustomerDetailContent]: no computador quem monta o
+ * cabeçalho e a coluna é a página Equipamentos, que fica montada enquanto se
+ * troca de aparelho.
+ */
+export function EquipmentDetailContent() {
   // O param da rota pode ser UUID antigo OU `slug-do-nome-<codigo>` (link
   // amigável). Resolvemos o equipamento pela lista (já carregada com RLS),
   // casando por id (UUID) ou por `public_short_code`. `id` é sempre o id real.
@@ -384,53 +389,6 @@ export default function EquipmentDetail() {
   ];
 
   return (
-    <ListDetailLayout
-      items={allEquipment.map((item) => ({
-        id: item.id,
-        title: item.name,
-        subtitle: [item.identifier, item.customer?.name].filter(Boolean).join(' · ') || undefined,
-        searchText: [item.brand, item.model, item.location, item.customer?.name].filter(Boolean).join(' '),
-        imageUrl: item.photo_url,
-        imageAlt: tCommon.listDetail.zoomPhoto.replace('{name}', item.name),
-        onImageClick: item.photo_url ? () => setPreviewImage(item.photo_url!) : undefined,
-        leading: (
-          // Mesma régua da lista em /equipamentos: quadrado na cor da categoria
-          // com o ícone branco; sem categoria, ícone solto (nunca círculo
-          // dessaturado atrás do ícone).
-          (() => {
-            const categoryColor = categories.find((c) => c.id === item.category_id)?.color;
-            return (
-              <div
-                className={cn(
-                  'flex h-10 w-10 items-center justify-center rounded-lg',
-                  categoryColor ? 'text-white' : 'text-muted-foreground',
-                )}
-                style={categoryColor ? { backgroundColor: categoryColor } : undefined}
-              >
-                <Package className="h-5 w-5" />
-              </div>
-            );
-          })()
-        ),
-        trailing: (
-          <span
-            className={cn(
-              'h-2 w-2 rounded-full',
-              item.status === 'active' ? 'bg-success' : 'bg-muted-foreground/50',
-            )}
-            title={item.status === 'active' ? te.statusActive : te.statusInactive}
-          />
-        ),
-      }))}
-      selectedId={equipment.id}
-      listTitle={tEquipment.listHeading}
-      storageKey="equipment-list-detail"
-      searchPlaceholder={te.switcherSearch}
-      emptyLabel={te.switcherEmpty}
-      onSelect={(equipmentId) => {
-        if (equipmentId !== equipment.id) navigate(`/equipamentos/${equipmentId}`);
-      }}
-    >
     <div className="space-y-6">
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Seta de voltar própria: só no desktop (Sidebar não tem voltar global; mobile/tablet usam a do shell) */}
@@ -1262,6 +1220,10 @@ export default function EquipmentDetail() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-    </ListDetailLayout>
   );
+}
+
+/** Rota `/equipamentos/:id` no CELULAR: a ficha ocupa a tela inteira. */
+export default function EquipmentDetail() {
+  return <EquipmentDetailContent />;
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Package, Settings } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,6 +43,8 @@ import { useViewMode } from '@/hooks/useViewMode';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
+import { EquipmentDetailContent } from '@/pages/EquipmentDetail';
+import { isUuid, extractShortCode } from '@/utils/prettyLinks';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 
 interface EquipmentGridCardProps {
@@ -149,6 +151,20 @@ export function EquipmentPanel() {
   const { equipment, isLoading, isError, refetch, createEquipment } = useEquipment();
   const { customers } = useCustomers();
   const { categories } = useEquipmentCategories();
+
+  // A MESMA tela atende /equipamentos e /equipamentos/:id no computador: a rota
+  // muda, o componente continua montado (sem piscar, sem perder a busca).
+  // O param pode ser UUID antigo OU o link amigável `slug-do-nome-<codigo>`.
+  const { id: routeParam } = useParams<{ id: string }>();
+  const selectedEquipmentId = (() => {
+    if (!routeParam) return undefined;
+    if (isUuid(routeParam)) return routeParam;
+    const shortCode = extractShortCode(routeParam);
+    const match = equipment.find((eq) =>
+      shortCode ? (eq as any).public_short_code === shortCode : eq.id === routeParam,
+    );
+    return match?.id;
+  })();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -372,28 +388,13 @@ export function EquipmentPanel() {
           )}
           searchPlaceholder={tEq.searchPlaceholderMobile}
           emptyLabel={tEq.emptySearch}
-          onSelect={(equipmentId) => navigate(`/equipamentos/${equipmentId}`)}
+          selectedId={selectedEquipmentId}
+          onSelect={(equipmentId) => {
+            if (equipmentId !== selectedEquipmentId) navigate(`/equipamentos/${equipmentId}`);
+          }}
         >
-          {/* Ações no TOPO da coluna de detalhe: na linha própria acima do
-              layout elas empurravam o painel da lista pra baixo e deixavam uma
-              faixa vazia do lado direito. */}
-          <div className="mb-4 flex flex-wrap justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setConfigOpen(true)}
-              title={tEq.configureFields}
-              size="sm"
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              {tEq.configureFields}
-            </Button>
-            {canManageEquipment && (
-              <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openNewEquipment}>
-                <Plus className="h-4 w-4 mr-2" />
-                {tEq.newEquipment}
-              </Button>
-            )}
-          </div>
+          {/* Ações da tela ficam no cabeçalho da página (EquipmentPageChrome),
+              pra a coluna da lista começar na mesma altura delas. */}
           {isLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-12 w-64" />
@@ -406,6 +407,8 @@ export function EquipmentPanel() {
               description={tEq.loadErrorDesc}
               action={{ label: tEq.retry, onClick: () => refetch() }}
             />
+          ) : routeParam ? (
+            <EquipmentDetailContent />
           ) : filteredEquipment.length === 0 ? (
             <EmptyState
               icon={<Package className="h-12 w-12" />}

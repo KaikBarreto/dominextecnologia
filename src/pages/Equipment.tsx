@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { Boxes, Package, Tag, Plus, Pencil, Trash2 } from 'lucide-react';
 import { EquipmentPanel } from '@/components/customers/EquipmentPanel';
-import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
+import { EquipmentPageChrome, type EquipmentMainTab } from '@/components/customers/EquipmentPageChrome';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -20,32 +19,11 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 export default function EquipmentPage() {
-  const [activeTab, setActiveTab] = useState('equipamentos');
-  const { locale } = useAppLocaleContext();
-  const tEq = MESSAGES[locale].app.equipment;
-
-  const tabItems = [
-    { key: 'equipamentos', label: tEq.tabEquipment, icon: Package },
-    { key: 'categorias', label: tEq.tabCategories, icon: Tag },
-  ];
+  const [activeTab, setActiveTab] = useState<EquipmentMainTab>('equipamentos');
 
   return (
     <div className="space-y-6">
-      <MobilePageHeader
-        title={tEq.title}
-        subtitle={tEq.subtitle}
-        icon={Boxes}
-      />
-
-      <MobilePillTabs
-        variant="underline"
-        tabs={tabItems.map((tab) => {
-          const Icon = tab.icon;
-          return { value: tab.key, label: tab.label, icon: <Icon className="h-4 w-4 shrink-0" /> };
-        })}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+      <EquipmentPageChrome activeTab={activeTab} onTabChange={setActiveTab} />
 
       <div className="min-w-0">
         {activeTab === 'equipamentos' && <EquipmentPanel />}

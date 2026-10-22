@@ -63,7 +63,6 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { buildCheckoutUrl, type TenantCharge } from '@/hooks/useTenantCharges';
 import { useChargeActions } from '@/components/financial/useChargeActions';
-import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
 import {
   ChargeActionDialogs,
   ChargeFinanceWarningBanner,
@@ -121,7 +120,15 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
-export default function CustomerDetail() {
+/**
+ * Conteúdo da ficha do cliente, SEM cabeçalho de tela e sem a coluna da lista.
+ *
+ * No computador quem monta o cabeçalho e a coluna é a página Clientes, e ela
+ * renderiza esta ficha dentro do layout — assim trocar de cadastro não remonta
+ * a tela inteira (nada de piscar, e a busca da coluna não se perde). No celular
+ * a rota `/clientes/:id` renderiza isto em tela cheia, pelo export default.
+ */
+export function CustomerDetailContent() {
   // O param da rota pode ser UUID antigo OU `slug-do-nome-<codigo>` (link
   // amigável). Resolvemos o cliente pela lista (já carregada com RLS), casando
   // por id (UUID) ou por `public_short_code`. `id` abaixo é sempre o id real.
@@ -660,31 +667,6 @@ export default function CustomerDetail() {
   }
 
   return (
-    <ListDetailLayout
-      items={customers.map((item) => ({
-        id: item.id,
-        title: item.name,
-        subtitle: [item.document, item.phone || item.celular, item.city].filter(Boolean).join(' · ') || undefined,
-        searchText: [item.company_name, item.nome_fantasia, item.email, item.address, item.neighborhood].filter(Boolean).join(' '),
-        imageUrl: item.photo_url,
-        imageAlt: tCommon.listDetail.zoomPhoto.replace('{name}', item.name),
-        onImageClick: item.photo_url ? () => setPreviewImage(item.photo_url!) : undefined,
-        leading: (
-          // Mesma régua da lista em /clientes: iniciais, não ícone genérico.
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-            {getCustomerInitials(item.name)}
-          </div>
-        ),
-      }))}
-      selectedId={customer.id}
-      listTitle={tCustomers.listHeading}
-      storageKey="customers-list-detail"
-      searchPlaceholder={t.switcherSearch}
-      emptyLabel={t.switcherEmpty}
-      onSelect={(customerId) => {
-        if (customerId !== customer.id) navigate(`/clientes/${customerId}`);
-      }}
-    >
     <div className="space-y-6">
       <div className="flex items-center gap-3 min-w-0">
         {/* Seta de voltar própria da página: só no desktop (mobile/tablet usam a global do shell). */}
@@ -2185,6 +2167,10 @@ export default function CustomerDetail() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-    </ListDetailLayout>
   );
+}
+
+/** Rota `/clientes/:id` no CELULAR: a ficha ocupa a tela inteira. */
+export default function CustomerDetail() {
+  return <CustomerDetailContent />;
 }

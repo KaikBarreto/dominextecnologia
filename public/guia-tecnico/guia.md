@@ -1489,7 +1489,7 @@ Mensagens que o visitante pode ver:
 
 ### 6. Detalhe do cliente: Geral, Equipamentos, Histórico, Tarefas, Contratos, Financeiro
 
-Clicando num cliente, abre a ficha completa à direita da lista no computador. No topo ficam a foto, o nome com o seletor para trocar rapidamente de cliente, os botões de WhatsApp e o menu Ações. No computador a coluna da esquerda faz o mesmo papel do seletor, com busca própria, e pode ser recolhida para ampliar a ficha. Clique na foto em qualquer lista ou na ficha para abrir a imagem em tela cheia. As abas variam conforme o plano e as permissões:
+Clicando num cliente, a ficha completa abre à direita da lista, sem trocar de tela: o cabeçalho com os botões da tela, as abas e a coluna da esquerda (com a busca e a ordenação que você já tinha escolhido) continuam no lugar. No topo ficam a foto, o nome com o seletor para trocar rapidamente de cliente, os botões de WhatsApp e o menu Ações. No computador a coluna da esquerda faz o mesmo papel do seletor, com busca própria, e pode ser recolhida para ampliar a ficha. Clique na foto em qualquer lista ou na ficha para abrir a imagem em tela cheia. As abas variam conforme o plano e as permissões:
 
 | Aba | Quando aparece | O que traz |
 | Geral | Sempre | Informações, Endereço, Responsável no Local e Observações. |
@@ -1506,7 +1506,7 @@ Clicando num cliente, abre a ficha completa à direita da lista no computador. N
 
 #### Aba Geral por dentro
 
-[Print da tela: Ficha de cliente na aba Geral, no computador. À esquerda, a coluna Lista de Clientes com campo de busca, a contagem de registros, o botão de ordenação A-Z e os cadastros em sequência, o atual destacado. À direita, o nome do cliente com selo PJ, os botões Editar e Excluir e o menu Ações, a navegação por abas (Geral, Equipamentos, Histórico, Tarefas, Estoque, Chamados, Contratos, Documentos), o cartão Informações com e-mail e telefone, o cartão Endereço com o mapa e os botões Abrir no Google Maps e Abrir no Waze, e o bloco Responsável no Local (falar com) com o estado vazio Nenhum contato cadastrado.]
+[Print da tela: Ficha de cliente na aba Geral, no computador. No topo, o título Clientes e Fornecedores com os botões Configurar origens, Formulários de captação e Novo Cliente, e as abas Clientes e Fornecedores. À esquerda, a coluna Lista de Clientes com campo de busca, a contagem de registros, o botão de ordenação A-Z e os cadastros em sequência, o atual destacado. À direita, o nome do cliente com selo PJ, os botões Editar e Excluir e o menu Ações, a navegação por abas (Geral, Equipamentos, Histórico, Tarefas, Estoque, Chamados, Contratos, Documentos), o cartão Informações com e-mail e telefone, o cartão Endereço com o mapa e os botões Abrir no Google Maps e Abrir no Waze, e o bloco Responsável no Local (falar com) com o estado vazio Nenhum contato cadastrado.]
 
 Ficha do cliente na aba Geral: a lista continua à esquerda, com busca própria, e a ficha ocupa a direita. Os cartões Informações e Endereço só aparecem quando o cadastro tem esses dados preenchidos.
 
@@ -1644,9 +1644,9 @@ A confirmação diz: Excluir campo, "Tem certeza que deseja excluir este campo? 
 
 ### 10. Detalhe do equipamento: QR Code, etiqueta configurável, anexos e histórico de OS
 
-Clicando num equipamento, abre a ficha dele com três abas: Geral, Anexos e Histórico / Tarefas. No computador a ficha abre à direita da relação, que continua disponível para trocar de aparelho.
+Clicando num equipamento, abre a ficha dele com três abas: Geral, Anexos e Histórico / Tarefas. No computador a ficha abre à direita da relação, sem trocar de tela: o cabeçalho, as abas e a coluna da esquerda, com a busca que você digitou, continuam no lugar enquanto você pula de um aparelho para outro.
 
-[Print da tela: Ficha de equipamento aberta no computador, com o painel Lista de Equipamentos à esquerda e, à direita, o nome do aparelho com o identificador e o selo Ativo, as abas Geral, Anexos, Histórico / Tarefas e Chamados, o QR Code com os botões Gerar Etiqueta, Baixar QR (PNG), Abrir link e Copiar link, e o cartão Informações com Cliente, Marca, Modelo, Nº de Série, Descrição, Local, Data de Instalação e Garantia até.]
+[Print da tela: Ficha de equipamento aberta no computador. No topo, o título Equipamentos com os botões Configurar Campos e Novo Equipamento e as abas Equipamentos e Categorias. À esquerda, o painel Lista de Equipamentos e, à direita, o nome do aparelho com o identificador e o selo Ativo, as abas Geral, Anexos, Histórico / Tarefas e Chamados, o QR Code com os botões Gerar Etiqueta, Baixar QR (PNG), Abrir link e Copiar link, e o cartão Informações com Cliente, Marca, Modelo, Nº de Série, Descrição, Local, Data de Instalação e Garantia até.]
 
 Ficha do equipamento na aba Geral: a relação fica à esquerda e a ficha à direita, com QR Code, botões de etiqueta e o cartão Informações.
 

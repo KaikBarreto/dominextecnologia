@@ -59,6 +59,25 @@ interface ListDetailLayoutProps {
   detailClassName?: string;
 }
 
+/** Lê/grava o estado da coluna (busca, ordenação) por tela, sem quebrar em SSR. */
+function readStored(storageKey: string | undefined, field: string): string | null {
+  if (!storageKey || typeof window === 'undefined') return null;
+  try {
+    return window.sessionStorage.getItem(`${storageKey}:${field}`);
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(storageKey: string | undefined, field: string, value: string) {
+  if (!storageKey || typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(`${storageKey}:${field}`, value);
+  } catch {
+    /* modo privado/quota: a coluna só perde a memória, nada quebra. */
+  }
+}
+
 /**
  * Estrutura master-detail exclusiva do desktop. Em tablet/mobile, somente o
  * detalhe é renderizado visualmente e o fluxo de navegação existente segue
@@ -95,7 +114,10 @@ export function ListDetailLayout({
   const expandText = expandLabel ?? t.expand;
   const zoomPhotoLabel = (name: string) => t.zoomPhoto.replace('{name}', name);
   const [collapsed, setCollapsed] = useState(false);
-  const [search, setSearch] = useState('');
+  // Busca e ordenação ficam em sessionStorage sob a MESMA `storageKey` da tela
+  // de lista e da ficha. Abrir um cadastro troca de rota (e remonta o painel):
+  // sem isso, o que a pessoa digitou na busca se perdia a cada clique.
+  const [search, setSearch] = useState(() => readStored(storageKey, 'search') ?? '');
 
   const resolvedSortOptions: ListDetailSortOption[] = useMemo(() => {
     if (sortOptions?.length) return sortOptions;
@@ -107,7 +129,16 @@ export function ListDetailLayout({
     ];
   }, [sortOptions, t.sortNameAsc, t.sortNameDesc, locale]);
 
-  const [sortValue, setSortValue] = useState(resolvedSortOptions[0].value);
+  const [sortValue, setSortValue] = useState(
+    () => readStored(storageKey, 'sort') ?? resolvedSortOptions[0].value,
+  );
+
+  useEffect(() => {
+    writeStored(storageKey, 'search', search);
+  }, [storageKey, search]);
+  useEffect(() => {
+    writeStored(storageKey, 'sort', sortValue);
+  }, [storageKey, sortValue]);
   const activeSort =
     resolvedSortOptions.find((option) => option.value === sortValue) ?? resolvedSortOptions[0];
 

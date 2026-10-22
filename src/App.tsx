@@ -138,10 +138,13 @@ const ServiceOrders = React.lazy(() => import("./pages/ServiceOrders"));
 const ServicesPage = React.lazy(() => import("./pages/Services"));
 const ChecklistDetail = React.lazy(() => import("./pages/ChecklistDetail"));
 const Schedule = React.lazy(() => import("./pages/Schedule"));
-const Customers = React.lazy(() => import("./pages/Customers"));
-const CustomerDetail = React.lazy(() => import("./pages/CustomerDetail"));
-const EquipmentPage = React.lazy(() => import("./pages/Equipment"));
-const EquipmentDetail = React.lazy(() => import("./pages/EquipmentDetail"));
+// /clientes e /clientes/:id compartilham o MESMO componente de rota de
+// propósito: sem isso o React desmonta a tela ao abrir um cadastro (pisca a
+// tela inteira e a busca da coluna se perde). Ver CustomersRoute.
+const CustomersRoute = React.lazy(() => import("./pages/CustomersRoute"));
+// Mesmo motivo do CustomersRoute: /equipamentos e /equipamentos/:id dividem o
+// componente de rota pra abrir um aparelho não remontar a tela.
+const EquipmentRoute = React.lazy(() => import("./pages/EquipmentRoute"));
 const CRM = React.lazy(() => import("./pages/CRM"));
 const Projects = React.lazy(() => import("./pages/Projects"));
 const ProjectDetail = React.lazy(() => import("./pages/ProjectDetail"));
@@ -783,10 +786,10 @@ const AppRoutes = () => (
       <Route path="/questionarios" element={<Navigate to="/checklists" replace />} />
       <Route path="/questionarios/:id" element={<RedirectQuestionariosToChecklists />} />
       {localizedAppRoutes('schedule', <PermissionRoute screenKey="screen:schedule"><Schedule /></PermissionRoute>)}
-      {localizedAppRoutes('customers', <PermissionRoute screenKey="screen:customers"><Customers /></PermissionRoute>)}
-      {localizedAppRoutes('customerDetail', <PermissionRoute screenKey="screen:customers"><CustomerDetail /></PermissionRoute>)}
-      {localizedAppRoutes('equipment', <PermissionRoute screenKey="screen:equipment"><EquipmentPage /></PermissionRoute>)}
-      {localizedAppRoutes('equipmentDetail', <PermissionRoute screenKey="screen:equipment"><EquipmentDetail /></PermissionRoute>)}
+      {localizedAppRoutes('customers', <PermissionRoute screenKey="screen:customers"><CustomersRoute /></PermissionRoute>)}
+      {localizedAppRoutes('customerDetail', <PermissionRoute screenKey="screen:customers"><CustomersRoute /></PermissionRoute>)}
+      {localizedAppRoutes('equipment', <PermissionRoute screenKey="screen:equipment"><EquipmentRoute /></PermissionRoute>)}
+      {localizedAppRoutes('equipmentDetail', <PermissionRoute screenKey="screen:equipment"><EquipmentRoute /></PermissionRoute>)}
       {localizedAppRoutes('crm', <PermissionRoute screenKey="screen:crm"><ModuleRoute moduleKey="crm"><CRM /></ModuleRoute></PermissionRoute>)}
       {localizedAppRoutes('projects', <PermissionRoute screenKey="screen:projects"><ModuleRoute moduleKey="crm"><Projects /></ModuleRoute></PermissionRoute>)}
       {localizedAppRoutes('projectDetail', <PermissionRoute screenKey="screen:projects"><ModuleRoute moduleKey="crm"><ProjectDetail /></ModuleRoute></PermissionRoute>)}

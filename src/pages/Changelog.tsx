@@ -67,6 +67,11 @@ export const changelog: ChangelogEntry[] = [
         category: 'melhoria',
       },
       {
+        title: 'Abrir um cadastro não recarrega mais a tela',
+        description: 'No computador, escolher um cliente ou equipamento troca só a ficha: o topo da tela com os botões continua lá, a tela não pisca e o que você digitou na busca da lista, a ordem escolhida e o filtro continuam valendo enquanto você pula de um cadastro para outro.',
+        category: 'melhoria',
+      },
+      {
         title: 'Editar e excluir ficaram à mão na ficha',
         description: 'No computador, Editar e Excluir aparecem direto no topo da ficha de cliente, fornecedor e equipamento, e o menu de ações guarda o restante. No celular tudo continua dentro do menu.',
         category: 'melhoria',

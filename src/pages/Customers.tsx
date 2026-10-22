@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { fuzzyIncludesAny, cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Users, Plus, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye, ClipboardList, Handshake, Truck, Wrench, Store } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,8 +26,6 @@ import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import type { Customer } from '@/types/database';
-import { CustomerOriginManagerDialog } from '@/components/customers/CustomerOriginManagerDialog';
-import { LeadCaptureManagerDialog } from '@/components/customers/LeadCaptureManagerDialog';
 import { LeadFormDialog } from '@/components/crm/LeadFormDialog';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FABButton } from '@/components/mobile/FABButton';
@@ -40,10 +38,13 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { SuppliersTab } from '@/components/customers/SuppliersTab';
+import { CustomersPageChrome, type CustomersMainTab } from '@/components/customers/CustomersPageChrome';
+import { CustomerDetailContent } from '@/pages/CustomerDetail';
+import { isUuid, extractShortCode } from '@/utils/prettyLinks';
+import { CustomerOriginManagerDialog } from '@/components/customers/CustomerOriginManagerDialog';
+import { LeadCaptureManagerDialog } from '@/components/customers/LeadCaptureManagerDialog';
 import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
-
-type CustomersMainTab = 'clientes' | 'fornecedores';
 
 export type CustomerKindFilter = 'all' | 'servico' | 'loja';
 
@@ -226,8 +227,6 @@ export default function Customers() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
-  const [originConfigOpen, setOriginConfigOpen] = useState(false);
-  const [leadFormsOpen, setLeadFormsOpen] = useState(false);
   const [opportunityCustomer, setOpportunityCustomer] = useState<Customer | null>(null);
   const [previewImage, setPreviewImage] = useState<{ src: string; alt: string } | null>(null);
   const [viewMode, setViewMode] = useViewMode('customers-view-mode');
@@ -239,6 +238,14 @@ export default function Customers() {
   // desta página (screen:customers) — não é um módulo pago à parte, igual
   // Estoque também não gateia suppliers por módulo hoje.
   const [mainTab, setMainTab] = useState<CustomersMainTab>('clientes');
+  // A MESMA página atende /clientes e /clientes/:id no computador. É isso que
+  // mantém o cabeçalho, a coluna e a busca de pé ao trocar de cadastro: a rota
+  // muda, o componente continua montado.
+  const { id: routeParam } = useParams<{ id: string }>();
+  // Só o celular usa estes: no desktop as ações (e os diálogos) vivem no
+  // CustomersPageChrome, que aparece também na ficha do cliente.
+  const [originConfigOpen, setOriginConfigOpen] = useState(false);
+  const [leadFormsOpen, setLeadFormsOpen] = useState(false);
   const tSuppliers = MESSAGES[locale].app.customers.suppliers;
   const tCommon = MESSAGES[locale].app.common;
 
@@ -250,6 +257,18 @@ export default function Customers() {
   const canCreateOpportunity = hasModule('crm');
 
   const { customers, isLoading, isError, refetch, createCustomer, updateCustomer, deleteCustomer } = useCustomers();
+
+  // O param pode ser UUID antigo OU o link amigável `slug-do-nome-<codigo>`;
+  // a coluna precisa do id REAL pra marcar a linha certa.
+  const selectedCustomerId = (() => {
+    if (!routeParam) return undefined;
+    if (isUuid(routeParam)) return routeParam;
+    const shortCode = extractShortCode(routeParam);
+    const match = customers.find((c) =>
+      shortCode ? (c as any).public_short_code === shortCode : c.id === routeParam,
+    );
+    return match?.id;
+  })();
 
   // Telefone é gravado em 2 formatos no banco: mascarado ("(21) 99518-5142")
   // quando cadastrado pelo admin, e só dígitos ("21995185142") quando veio do
@@ -336,44 +355,7 @@ export default function Customers() {
 
   return (
     <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
-      <MobilePageHeader
-        title={t.title}
-        subtitle={t.subtitle}
-        icon={Users}
-        actions={
-          isMobile || mainTab !== 'clientes' ? undefined : (
-            <>
-              {/* No computador os botões levam rótulo: ícone sozinho vira
-                  adivinhação (o celular é que continua compacto). */}
-              <Button variant="outline" onClick={() => setOriginConfigOpen(true)} title={t.configureOrigins}>
-                <Settings2 className="mr-2 h-4 w-4" />
-                {t.configureOrigins}
-              </Button>
-              <Button variant="outline" onClick={() => setLeadFormsOpen(true)} title={t.leadFormsFull}>
-                <ClipboardList className="mr-2 h-4 w-4" />
-                {t.leadFormsFull}
-              </Button>
-              {canCreateCustomer && (
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openNewCustomer}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t.newCustomer}
-                </Button>
-              )}
-            </>
-          )
-        }
-      />
-
-      {/* Mesmo componente e variante em mobile, tablet e desktop. */}
-      <MobilePillTabs
-        variant="underline"
-        tabs={[
-          { value: 'clientes', label: t.tabLabel, icon: <Users className="h-4 w-4 shrink-0" /> },
-          { value: 'fornecedores', label: tSuppliers.tabLabel, icon: <Truck className="h-4 w-4 shrink-0" /> },
-        ]}
-        activeTab={mainTab}
-        onTabChange={(v) => setMainTab(v as CustomersMainTab)}
-      />
+      <CustomersPageChrome activeTab={mainTab} onTabChange={setMainTab} />
 
       {/* Filtro "Atende como" (Serviço/Loja) — só existe com o módulo PDV.
           No CELULAR mora aqui, logo abaixo das abas Clientes/Fornecedores
@@ -447,7 +429,10 @@ export default function Customers() {
           listFilters={pdvEnabled ? kindFilterControl : undefined}
           searchPlaceholder={t.searchPlaceholderMobile}
           emptyLabel={t.emptySearch}
-          onSelect={(customerId) => navigate(`/clientes/${customerId}`)}
+          selectedId={selectedCustomerId}
+          onSelect={(customerId) => {
+            if (customerId !== selectedCustomerId) navigate(`/clientes/${customerId}`);
+          }}
         >
           {isLoading ? (
             <div className="space-y-4">
@@ -461,6 +446,8 @@ export default function Customers() {
               description={t.loadErrorDesc}
               action={{ label: t.retry, onClick: () => refetch() }}
             />
+          ) : routeParam ? (
+            <CustomerDetailContent />
           ) : filteredCustomers.length === 0 ? (
             <EmptyState
               icon={<Users className="h-12 w-12" />}
@@ -880,15 +867,18 @@ export default function Customers() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <CustomerOriginManagerDialog open={originConfigOpen} onOpenChange={setOriginConfigOpen} />
-
-      <LeadCaptureManagerDialog open={leadFormsOpen} onOpenChange={setLeadFormsOpen} />
-
       <LeadFormDialog
         open={!!opportunityCustomer}
         onOpenChange={(open) => { if (!open) setOpportunityCustomer(null); }}
         presetCustomerId={opportunityCustomer?.id ?? null}
       />
+
+      {isMobile && (
+        <>
+          <CustomerOriginManagerDialog open={originConfigOpen} onOpenChange={setOriginConfigOpen} />
+          <LeadCaptureManagerDialog open={leadFormsOpen} onOpenChange={setLeadFormsOpen} />
+        </>
+      )}
 
       <ImagePreviewModal
         src={previewImage?.src ?? ''}
