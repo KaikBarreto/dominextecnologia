@@ -301,11 +301,47 @@ export function FinanceCategorias() {
   }, [reorderCategories]);
 
   // ─── Ações de uma linha (mesmas no card e no item mobile) ──────────────────
-  const rowActions = (cat: FinancialCategory) => {
+  const rowActions = (
+    cat: FinancialCategory,
+    reorderContext?: {
+      fullList: FinancialCategory[];
+      groupItems: FinancialCategory[];
+      index: number;
+    },
+  ) => {
     const isSystem = cat.is_system;
     const canRename = canRenameCategory(categories, cat);
     const isChild = !!cat.parent_id && tree.byId.has(cat.parent_id);
     const actions: { label: string; icon: LucideIcon; variant: 'edit' | 'delete' | 'default'; onClick: () => void }[] = [];
+    // O drag continua sendo o atalho de ponteiro, mas não pode ser a única
+    // maneira de ordenar. As setas deixam a mesma ação disponível por teclado,
+    // menu e dispositivos touch que caem no layout desktop.
+    if (!isSystem && reorderContext && reorderContext.index > 0) {
+      actions.push({
+        label: fin.categories.actions.moveUp,
+        icon: ChevronUp,
+        variant: 'default',
+        onClick: () => moveCategory(
+          reorderContext.fullList,
+          reorderContext.groupItems,
+          reorderContext.index,
+          -1,
+        ),
+      });
+    }
+    if (!isSystem && reorderContext && reorderContext.index < reorderContext.groupItems.length - 1) {
+      actions.push({
+        label: fin.categories.actions.moveDown,
+        icon: ChevronDown,
+        variant: 'default',
+        onClick: () => moveCategory(
+          reorderContext.fullList,
+          reorderContext.groupItems,
+          reorderContext.index,
+          1,
+        ),
+      });
+    }
     if (!isSystem || canRename) {
       actions.push({ label: fin.categories.actions.edit, icon: Pencil, variant: 'edit', onClick: () => handleEdit(cat) });
     }
@@ -502,18 +538,21 @@ export function FinanceCategorias() {
                 caixa do nome num card de 229px. Absoluto, o nome recupera
                 esses 40px e é isso que faz o pior nome (215px) caber em duas
                 linhas até na coluna de 468px.
-                Fundo `bg-accent` = o mesmo fundo que o card assume no hover,
-                que é o único momento em que o menu fica visível: some a
-                costura, e o pedaço de nome que ficaria por baixo só some
-                enquanto o mouse está no card (e o `title` cobre).
+                Fundo `bg-accent` = o mesmo fundo que o card assume no hover.
+                O menu também aparece com foco dentro do card e fica sempre
+                visível em ponteiro coarse, sem depender de hover para teclado
+                ou toque. O `title` cobre o nome enquanto o menu está visível.
                 Mobile não usa este ramo: lá as ações vivem no
                 `MobileListItem`, intocado. */}
             {(!isSystem || canRename) && (
               <div
-                className="absolute right-2 top-2 rounded-lg bg-accent opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                className="absolute right-2 top-2 rounded-lg bg-accent opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100 [@media(pointer:coarse)]:opacity-100"
                 onClick={(e) => e.stopPropagation()}
               >
-                <RowActionsMenu actions={rowActions(cat)} />
+                <RowActionsMenu
+                  actions={rowActions(cat, { fullList, groupItems, index: idx })}
+                  ariaLabel={`Ações de ${cat.name}`}
+                />
               </div>
             )}
 

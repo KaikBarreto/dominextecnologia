@@ -11,7 +11,7 @@ import { FinanceContas } from '@/components/financial/FinanceContas';
 import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { getEffectiveTransactionMonthRange, isTransactionInDateRange } from '@/lib/finance-date';
 import { useTransactionEditSubmit } from '@/hooks/useTransactionEditSubmit';
-import { DollarSign, Settings2 } from 'lucide-react';
+import { AlertCircle, DollarSign, RefreshCw, Settings2 } from 'lucide-react';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
@@ -125,10 +125,23 @@ export default function Finance() {
     // recebimento parcial). Vai para DRE e DFC: a tarifa da maquininha é saída
     // real que não aparece em nenhuma outra linha — sem ela resultado e caixa
     // sairiam inflados em toda venda com tarifa.
-    transactions, transactionsWithChildren, isLoading,
+    transactions, transactionsWithChildren, isLoading, error: financialError, refetch: refetchFinancial,
     createTransaction, updateTransaction, deleteTransaction, markAsPaid,
   } = useFinancial();
-  const { accounts, transfer } = useFinancialAccounts();
+  const {
+    accounts,
+    transfer,
+    isError: isAccountsError,
+    isErrorBalances,
+    refetch: refetchAccounts,
+  } = useFinancialAccounts();
+  const screenUsesLedger = screen === 'relatorio' || screen === 'relatorios'
+    || screen === 'movimentacoes' || screen === 'contas';
+  const screenUsesAccountData = screen === 'relatorio' || screen === 'movimentacoes' || screen === 'contas';
+  const hasFinancialLoadError = Boolean(
+    (screenUsesLedger && financialError)
+    || (screenUsesAccountData && (isAccountsError || isErrorBalances)),
+  );
   const transferableAccounts = useMemo(
     () => accounts.filter((account) => account.type !== 'cartao' && account.is_active),
     [accounts],
@@ -286,7 +299,10 @@ export default function Finance() {
       : screen === 'configuracoes'
       ? fin.page.subtitles.settings
       : fin.page.subtitles.report;
-  const showDateRange = screen !== 'cobrancas' && screen !== 'configuracoes';
+  // A análise comparativa possui períodos próprios. Exibir o filtro global
+  // nessa aba sugeria que ele alterava os dados quando, de fato, não alterava.
+  const analysisUsesOwnPeriods = screen === 'relatorios' && sectionTab === 'analise';
+  const showDateRange = screen !== 'cobrancas' && screen !== 'configuracoes' && !analysisUsesOwnPeriods;
 
   return (
     // min-h-[100dvh] garante que empty states + transição de tela ocupem toda
@@ -321,10 +337,38 @@ export default function Finance() {
       />
 
       <div className="space-y-4">
-        {(screen === 'relatorio' || screen === 'cobrancas' || screen === 'relatorios' || (screen === 'configuracoes' && canManageFinanceSettings)) && (
+        {hasFinancialLoadError ? (
+          <div
+            role="alert"
+            className="flex min-h-[42vh] flex-col items-center justify-center gap-3 rounded-2xl bg-destructive/5 px-5 py-10 text-center"
+          >
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive text-destructive-foreground">
+              <AlertCircle className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div className="max-w-md">
+              <h2 className="font-semibold">Não foi possível carregar os dados financeiros</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Para evitar mostrar saldos incompletos, esta visão ficará indisponível até os dados serem recarregados.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => {
+                void refetchFinancial();
+                refetchAccounts();
+              }}
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+              Tentar novamente
+            </Button>
+          </div>
+        ) : (screen === 'relatorio' || screen === 'cobrancas' || screen === 'relatorios' || (screen === 'configuracoes' && canManageFinanceSettings)) && (
           <FinanceRelatorio
             section={screen}
             transactions={filteredTransactions}
+            overviewTransactions={summaryTransactions}
             allTransactions={transactionsWithChildren}
             isLoading={isLoading}
             dateRange={range}
@@ -333,10 +377,12 @@ export default function Finance() {
             onTabChange={setSectionTab}
             onNavigateShortcut={handleNavigateShortcut}
             onNewMovement={() => setMovementPickerOpen(true)}
+            onTransfer={() => setTransferOpen(true)}
+            canTransfer={transferableAccounts.length >= 2}
           />
         )}
 
-        {screen === 'movimentacoes' && (
+        {!hasFinancialLoadError && screen === 'movimentacoes' && (
           <FinanceMovimentacoes
             transactions={movimentacoesTransactions}
             // Saldo corrente do extrato precisa das linhas FILHAS (tarifa de
@@ -356,7 +402,7 @@ export default function Finance() {
           />
         )}
 
-        {screen === 'contas' && (
+        {!hasFinancialLoadError && screen === 'contas' && (
           <FinanceContas
             transactions={contasTransactions}
             allTransactions={transactions}

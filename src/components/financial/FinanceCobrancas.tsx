@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,15 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +28,7 @@ import {
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FABButton } from '@/components/mobile/FABButton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useDataPagination } from '@/hooks/useDataPagination';
 import { ChargeDialog } from '@/components/financial/ChargeDialog';
 import { useChargeActions } from '@/components/financial/useChargeActions';
 import {
@@ -40,6 +50,10 @@ import {
   DollarSign,
   TrendingUp,
   AlertCircle,
+  ArrowDownUp,
+  ChevronLeft,
+  ChevronRight,
+  ListFilter,
   Pencil,
   Trash2,
 } from 'lucide-react';
@@ -57,6 +71,54 @@ function fmtDate(iso: string | null, locale: string): string {
 }
 
 type StatusFilter = 'all' | 'pending' | 'paid' | 'overdue' | 'refunded';
+type ChargeSort = 'due-asc' | 'due-desc' | 'value-desc' | 'customer-asc';
+
+const LIST_COPY = {
+  'pt-br': {
+    filters: 'Filtros',
+    sort: 'Ordenar',
+    dueAsc: 'Vencimento mais próximo',
+    dueDesc: 'Vencimento mais distante',
+    valueDesc: 'Maior valor',
+    customerAsc: 'Cliente (A-Z)',
+    page: 'Página',
+    of: 'de',
+    showing: (shown: number, total: number) => `Mostrando ${shown} de ${total} itens`,
+  },
+  en: {
+    filters: 'Filters',
+    sort: 'Sort',
+    dueAsc: 'Nearest due date',
+    dueDesc: 'Farthest due date',
+    valueDesc: 'Highest amount',
+    customerAsc: 'Customer (A-Z)',
+    page: 'Page',
+    of: 'of',
+    showing: (shown: number, total: number) => `Showing ${shown} of ${total} items`,
+  },
+  es: {
+    filters: 'Filtros',
+    sort: 'Ordenar',
+    dueAsc: 'Vencimiento más próximo',
+    dueDesc: 'Vencimiento más lejano',
+    valueDesc: 'Mayor valor',
+    customerAsc: 'Cliente (A-Z)',
+    page: 'Página',
+    of: 'de',
+    showing: (shown: number, total: number) => `Mostrando ${shown} de ${total} elementos`,
+  },
+  fr: {
+    filters: 'Filtres',
+    sort: 'Trier',
+    dueAsc: 'Échéance la plus proche',
+    dueDesc: 'Échéance la plus éloignée',
+    valueDesc: 'Montant le plus élevé',
+    customerAsc: 'Client (A-Z)',
+    page: 'Page',
+    of: 'sur',
+    showing: (shown: number, total: number) => `Affichage de ${shown} éléments sur ${total}`,
+  },
+} as const;
 
 /** Badge saturado com cor por classificação de status (regra CEO). */
 function StatusBadge({ status, t }: { status: string; t: Record<string, string> }) {
@@ -100,7 +162,10 @@ export function FinanceCobrancas() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<ChargeSort>('due-asc');
   const [refundTargetId, setRefundTargetId] = useState<string | null>(null);
+  const listCopy = LIST_COPY[locale];
+  const paginationCopy = MESSAGES[locale].app.common.pagination;
 
   // ── Excluir em lote (a exclusão individual mora no useChargeActions) ────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -151,9 +216,9 @@ export function FinanceCobrancas() {
   // Dinheiro não trunca: a fonte degrada pelo maior valor do conjunto.
   const cardValueSizeClass = kpiValueSizeClass(cardTotals.map((card) => formatBRL(card.value)));
 
-  // Filtro por status + busca por nome de cliente
+  // Filtro por status + busca por nome de cliente + ordenação da listagem.
   const filtered = useMemo(() => {
-    return charges.filter((c) => {
+    const result = charges.filter((c) => {
       // Status
       if (statusFilter !== 'all') {
         const cls = classifyTenantChargeStatus(c.status);
@@ -166,7 +231,27 @@ export function FinanceCobrancas() {
       }
       return true;
     });
-  }, [charges, statusFilter, search, customerSearchMap]);
+
+    return result.sort((a, b) => {
+      if (sortBy === 'value-desc') return Number(b.value) - Number(a.value);
+      if (sortBy === 'customer-asc') {
+        const aName = a.customer_id ? (customerMap[a.customer_id] ?? '') : '';
+        const bName = b.customer_id ? (customerMap[b.customer_id] ?? '') : '';
+        return aName.localeCompare(bName, locale, { sensitivity: 'base' });
+      }
+      const aDate = a.due_date ?? (sortBy === 'due-asc' ? '9999-12-31' : '0000-01-01');
+      const bDate = b.due_date ?? (sortBy === 'due-asc' ? '9999-12-31' : '0000-01-01');
+      return sortBy === 'due-asc' ? aDate.localeCompare(bDate) : bDate.localeCompare(aDate);
+    });
+  }, [charges, statusFilter, search, customerSearchMap, customerMap, locale, sortBy]);
+
+  const pagination = useDataPagination(filtered, 25, 'finance-charges');
+  const setPage = pagination.setPage;
+  const shownOnPage = pagination.to === 0 ? 0 : pagination.to - pagination.from + 1;
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, setPage, sortBy, statusFilter]);
 
   // ── Seleção múltipla (exclusão em lote) ─────────────────────────────────────
   // Seleção é livre em qualquer linha (mesmo paga) — o filtro de quem pode
@@ -325,44 +410,75 @@ export function FinanceCobrancas() {
         </div>
       </div>
 
-      {/* ── Barra de ações + filtros ─────────────────────────────────────────── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {/* Busca */}
-        <div className="relative flex-1 sm:max-w-xs">
+      {/* ── Busca e controles de listagem ────────────────────────────────────── */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative min-w-0 flex-1 sm:max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            className="pl-9"
+            className="h-10 pl-9"
             placeholder={t.filters.searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        {/* Botão nova cobrança */}
-        {!isMobile && (
-          <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t.newButton}
-          </Button>
-        )}
-      </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-10" aria-label={listCopy.filters}>
+                <ListFilter className="mr-2 h-4 w-4" />
+                {listCopy.filters}
+                {statusFilter !== 'all' && (
+                  <span className="ml-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-xs font-semibold text-primary-foreground">
+                    1
+                  </span>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>{t.table.status}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup
+                value={statusFilter}
+                onValueChange={(value) => setStatusFilter(value as StatusFilter)}
+              >
+                {statusFilters.map((filter) => (
+                  <DropdownMenuRadioItem key={filter.key} value={filter.key}>
+                    {filter.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-      {/* Pills de filtro de status */}
-      <div className="flex flex-wrap gap-2">
-        {statusFilters.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            onClick={() => setStatusFilter(f.key)}
-            className={cn(
-              'rounded-full px-3 py-1 text-sm font-medium transition-colors',
-              statusFilter === f.key
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80',
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-10" aria-label={listCopy.sort}>
+                <ArrowDownUp className="mr-2 h-4 w-4" />
+                {listCopy.sort}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>{listCopy.sort}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup
+                value={sortBy}
+                onValueChange={(value) => setSortBy(value as ChargeSort)}
+              >
+                <DropdownMenuRadioItem value="due-asc">{listCopy.dueAsc}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="due-desc">{listCopy.dueDesc}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="value-desc">{listCopy.valueDesc}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="customer-asc">{listCopy.customerAsc}</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {!isMobile && (
+            <Button size="sm" className="h-10" onClick={() => setDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t.newButton}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ── Barra de seleção em lote — só aparece com algo selecionado ────────── */}
@@ -398,9 +514,10 @@ export function FinanceCobrancas() {
           />
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
-          {/* Tabela desktop */}
-          <table className="hidden w-full text-sm lg:table">
+        <div className="overflow-hidden rounded-xl border border-border">
+          <div className="overflow-x-auto">
+            {/* Tabela desktop */}
+            <table className="hidden w-full text-sm lg:table">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
                 <th className="w-10 px-4 py-3">
@@ -419,7 +536,7 @@ export function FinanceCobrancas() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map((charge) => {
+              {pagination.paginatedItems.map((charge) => {
                 // Estorno / editar / excluir: MESMAS travas da ficha do cliente
                 // (`@/lib/tenantChargeRules`).
                 const isPaid = canRefundCharge(charge);
@@ -506,11 +623,11 @@ export function FinanceCobrancas() {
                 );
               })}
             </tbody>
-          </table>
+            </table>
 
-          {/* Lista mobile — cards */}
-          <div className="divide-y divide-border lg:hidden">
-            {filtered.map((charge) => {
+            {/* Lista mobile — cards */}
+            <div className="divide-y divide-border lg:hidden">
+            {pagination.paginatedItems.map((charge) => {
               const isPaid = canRefundCharge(charge);
               const canManage = canManageCharge(charge.status);
               const customerName = charge.customer_id ? (customerMap[charge.customer_id] ?? '—') : '—';
@@ -590,6 +707,44 @@ export function FinanceCobrancas() {
                 </div>
               );
             })}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 border-t border-border/60 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+            <span className="whitespace-normal text-xs text-muted-foreground">
+              {listCopy.showing(shownOnPage, pagination.totalItems)}
+            </span>
+            <div className="flex items-center justify-between gap-2 sm:justify-end">
+              <span className="text-xs text-muted-foreground">
+                {listCopy.page} {pagination.page} {listCopy.of} {pagination.totalPages}
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 sm:h-8 sm:w-8"
+                  disabled={!pagination.canGoPrev}
+                  aria-label={paginationCopy.previous}
+                  title={paginationCopy.previous}
+                  onClick={() => pagination.setPage(pagination.page - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 sm:h-8 sm:w-8"
+                  disabled={!pagination.canGoNext}
+                  aria-label={paginationCopy.next}
+                  title={paginationCopy.next}
+                  onClick={() => pagination.setPage(pagination.page + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

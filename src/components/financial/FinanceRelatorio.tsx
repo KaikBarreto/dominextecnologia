@@ -20,7 +20,8 @@ import { Button } from '@/components/ui/button';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
-import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
+import type { SettingsTab } from '@/components/SettingsSidebarLayout';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 
 type FinanceSection = 'relatorio' | 'cobrancas' | 'relatorios' | 'configuracoes';
@@ -28,6 +29,7 @@ type FinanceSection = 'relatorio' | 'cobrancas' | 'relatorios' | 'configuracoes'
 interface FinanceRelatorioProps {
   section: FinanceSection;
   transactions: (FinancialTransaction & { customer?: unknown })[];
+  overviewTransactions: (FinancialTransaction & { customer?: unknown })[];
   allTransactions: (FinancialTransaction & { customer?: unknown })[];
   isLoading?: boolean;
   dateRange: DateRange;
@@ -42,6 +44,8 @@ interface FinanceRelatorioProps {
   onTabChange: (tab: string) => void;
   onNavigateShortcut: (target: 'historico' | 'contas') => void;
   onNewMovement: () => void;
+  onTransfer: () => void;
+  canTransfer: boolean;
 }
 
 type SectionTab = SettingsTab;
@@ -51,12 +55,13 @@ type SectionTab = SettingsTab;
  *
  * A navegação principal vive no menu global. Aqui existem somente alternâncias
  * irmãs dentro da mesma tarefa (DRE/DFC, Cobranças/Assinaturas e os dois
- * cadastros financeiros). No desktop elas seguem o padrão de sidebar local;
- * no celular, o mesmo componente converte a navegação em pills roláveis.
+ * cadastros financeiros). Em qualquer largura elas seguem o padrão underline
+ * horizontal, preservando toda a largura útil para tabelas e gráficos.
  */
 export function FinanceRelatorio({
   section,
   transactions,
+  overviewTransactions,
   allTransactions,
   isLoading = false,
   dateRange,
@@ -65,6 +70,8 @@ export function FinanceRelatorio({
   onTabChange,
   onNavigateShortcut,
   onNewMovement,
+  onTransfer,
+  canTransfer,
 }: FinanceRelatorioProps) {
   const navigate = useNavigate();
   const { locale } = useAppLocaleContext();
@@ -116,10 +123,14 @@ export function FinanceRelatorio({
     return (
       <FinanceOverview
         transactions={transactions}
+        projectionTransactions={overviewTransactions}
+        dateRange={dateRange}
         summary={summary}
         isLoading={isLoading}
         onNavigate={(target) => onNavigateShortcut(target as 'historico' | 'contas')}
         onNewMovement={onNewMovement}
+        onTransfer={onTransfer}
+        canTransfer={canTransfer}
       />
     );
   }
@@ -145,54 +156,74 @@ export function FinanceRelatorio({
   }
 
   return (
-    <SettingsSidebarLayout tabs={tabs} activeTab={safeTab} onTabChange={onTabChange}>
-      {safeTab === 'visao-geral' ? (
-        <FinanceReportsOverview transactions={allTransactions} range={dateRange} isLoading={isLoading} />
-      ) : safeTab === 'dfc' ? (
-        <FinanceDFC transactions={allTransactions} range={dateRange} isLoading={isLoading} />
-      ) : safeTab === 'dre' ? (
-        <FinanceDRE
-          transactions={allTransactions}
-          range={dateRange}
-          canIncludeSubscriptionProjections={hasChargeModule}
-        />
-      ) : safeTab === 'analise' ? (
-        <FinanceAnalysis transactions={allTransactions} isLoading={isLoading} />
-      ) : safeTab === 'contabilidade' ? (
-        <FinanceAccountingPackage
-          transactions={allTransactions}
-          range={dateRange}
-          isLoading={isLoading}
-        />
-      ) : safeTab === 'categorias' ? (
-        <FinanceCategorias />
-      ) : safeTab === 'centro-de-custo' ? (
-        <FinanceCostCenters />
-      ) : safeTab === 'grupos-dre' ? (
-        <div className="rounded-xl border bg-card p-5 sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="max-w-2xl">
-              <h2 className="text-base font-semibold">Estrutura do DRE</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Organize os grupos, confira a prévia hierárquica e veja em qual grupo cada categoria será exibida.
-              </p>
-            </div>
-            <Button onClick={() => setDreGroupsOpen(true)} className="gap-2 sm:self-start">
-              <Settings2 className="h-4 w-4" />
-              Configurar grupos
-            </Button>
-          </div>
-          <DreGroupsManagerDialog
-            open={dreGroupsOpen}
-            onOpenChange={setDreGroupsOpen}
-            categories={categories}
+    <Tabs value={safeTab} onValueChange={onTabChange} className="min-w-0 space-y-4">
+      <TabsList
+        variant="underline"
+        aria-label="Seções do financeiro"
+        className="w-full justify-start gap-0"
+      >
+        {tabs.map(({ value, label, icon: Icon }) => (
+          <TabsTrigger
+            key={value}
+            value={value}
+            variant="underline"
+            className="min-h-11 gap-2 px-3 sm:px-4"
+          >
+            <Icon className="h-4 w-4" aria-hidden="true" />
+            {label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+
+      <div className="min-w-0">
+        {safeTab === 'visao-geral' ? (
+          <FinanceReportsOverview transactions={allTransactions} range={dateRange} isLoading={isLoading} />
+        ) : safeTab === 'dfc' ? (
+          <FinanceDFC transactions={allTransactions} range={dateRange} isLoading={isLoading} />
+        ) : safeTab === 'dre' ? (
+          <FinanceDRE
+            transactions={allTransactions}
+            range={dateRange}
+            canIncludeSubscriptionProjections={hasChargeModule}
           />
-        </div>
-      ) : safeTab === 'assinaturas' ? (
-        <FinanceAssinaturas />
-      ) : (
-        <FinanceCobrancas />
-      )}
-    </SettingsSidebarLayout>
+        ) : safeTab === 'analise' ? (
+          <FinanceAnalysis transactions={allTransactions} isLoading={isLoading} />
+        ) : safeTab === 'contabilidade' ? (
+          <FinanceAccountingPackage
+            transactions={allTransactions}
+            range={dateRange}
+            isLoading={isLoading}
+          />
+        ) : safeTab === 'categorias' ? (
+          <FinanceCategorias />
+        ) : safeTab === 'centro-de-custo' ? (
+          <FinanceCostCenters />
+        ) : safeTab === 'grupos-dre' ? (
+          <div className="rounded-xl border bg-card p-5 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="max-w-2xl">
+                <h2 className="text-base font-semibold">Estrutura do DRE</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Organize os grupos, confira a prévia hierárquica e veja em qual grupo cada categoria será exibida.
+                </p>
+              </div>
+              <Button onClick={() => setDreGroupsOpen(true)} className="gap-2 sm:self-start">
+                <Settings2 className="h-4 w-4" />
+                Configurar grupos
+              </Button>
+            </div>
+            <DreGroupsManagerDialog
+              open={dreGroupsOpen}
+              onOpenChange={setDreGroupsOpen}
+              categories={categories}
+            />
+          </div>
+        ) : safeTab === 'assinaturas' ? (
+          <FinanceAssinaturas />
+        ) : (
+          <FinanceCobrancas />
+        )}
+      </div>
+    </Tabs>
   );
 }

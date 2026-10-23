@@ -39,6 +39,7 @@ export const finance = {
         newRevenue: 'Nova Receita',
         newExpense: 'Nova Despesa',
         newMovement: 'Nova movimentação',
+        transfer: 'Transferir entre contas',
         exportCsv: 'Exportar CSV',
       },
       charts: {
@@ -2065,6 +2066,7 @@ export const finance = {
         newRevenue: 'New Revenue',
         newExpense: 'New Expense',
         newMovement: 'New transaction',
+        transfer: 'Transfer between accounts',
         exportCsv: 'Export CSV',
       },
       charts: {
@@ -3988,6 +3990,7 @@ export const finance = {
         newRevenue: 'Nuevo Ingreso',
         newExpense: 'Nuevo Gasto',
         newMovement: 'Nuevo movimiento',
+        transfer: 'Transferir entre cuentas',
         exportCsv: 'Exportar CSV',
       },
       charts: {
@@ -5912,6 +5915,7 @@ export const finance = {
         newRevenue: 'Nouveau Produit',
         newExpense: 'Nouvelle Charge',
         newMovement: 'Nouveau mouvement',
+        transfer: 'Transférer entre comptes',
         exportCsv: 'Exporter CSV',
       },
       charts: {

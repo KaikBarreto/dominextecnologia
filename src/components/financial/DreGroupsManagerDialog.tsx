@@ -707,7 +707,7 @@ function DraggableCategoryRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'flex items-center gap-2 py-2 text-xs transition-colors hover:bg-muted/40',
+        'flex flex-wrap items-center gap-2 py-2 text-xs transition-colors hover:bg-muted/40 md:flex-nowrap',
         depth === 1 ? 'pl-12 pr-2' : 'pl-8 pr-2',
       )}
       data-testid={`dre-category-${category.id}`}
@@ -748,7 +748,7 @@ function DraggableCategoryRow({
         disabled={disabled}
       >
         <SelectTrigger
-          className="hidden h-8 w-[205px] shrink-0 text-xs md:flex"
+          className="mt-1 h-8 w-full basis-full text-xs md:mt-0 md:w-[205px] md:basis-auto md:shrink-0"
           aria-label={`Mover ${category.name} para outro grupo DRE`}
         >
           <SelectValue placeholder="Escolher grupo" />

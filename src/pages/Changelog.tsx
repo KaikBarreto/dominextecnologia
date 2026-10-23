@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.41',
+    date: '23 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Decisões financeiras mais claras',
+        description: 'A Visão Geral agora diferencia melhor fluxo realizado, projeção do caixa, agenda de vencimentos e concentração das despesas. O gráfico de despesas voltou ao formato de pizza, e saldos de muitas contas podem ser consultados sem transformar cada conta em uma caixa pesada.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cobranças e assinaturas preparadas para crescer',
+        description: 'Busca, filtros, ordenação, contagem e paginação foram organizados em uma barra única. Assim, listas maiores continuam fáceis de consultar no computador e no celular.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Navegação financeira mais consistente',
+        description: 'Relatórios, cobranças e configurações agora usam abas horizontais com destaque por linha, liberando mais largura para gráficos e tabelas. A aba de análise também deixa claro quais períodos realmente controlam a comparação.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Saldos protegidos contra carga incompleta',
+        description: 'Se os dados financeiros ou bancários não puderem ser carregados, a tela agora avisa e permite tentar novamente em vez de apresentar zeros ou relatórios incompletos como se fossem valores reais.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.37.40',
     date: '23 de outubro de 2026',
     type: 'patch',

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -20,6 +21,17 @@ import {
 } from '@/components/ui/select';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -32,6 +44,7 @@ import {
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FABButton } from '@/components/mobile/FABButton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useDataPagination } from '@/hooks/useDataPagination';
 import { SubscriptionDialog } from '@/components/financial/SubscriptionDialog';
 import { CategorySelectField } from '@/components/financial/CategorySelectField';
 import { CostCenterSelect } from '@/components/financial/CostCenterSelect';
@@ -46,8 +59,24 @@ import {
 } from '@/hooks/useTenantSubscriptions';
 import { formatBRL } from '@/utils/currency';
 import { readPastedCents } from '@/lib/money-paste-mask';
-import { Archive, ArchiveRestore, ArrowLeft, CalendarDays, Eye, EyeOff, Loader2, Pencil, Plus, RefreshCw, Trash2, XCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import {
+  Archive,
+  ArchiveRestore,
+  ArrowDownUp,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  ListFilter,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  XCircle,
+} from 'lucide-react';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { MAX_REPETITION_COUNT } from '@/lib/finance-installments';
 import type { ChargeFineType } from '@/lib/chargeCustomerAmounts';
 
@@ -110,6 +139,71 @@ const CYCLES: SubscriptionCycle[] = [
 function isManageable(sub: TenantSubscription): boolean {
   return sub.status !== 'cancelled';
 }
+
+type SubscriptionSort = 'due-asc' | 'due-desc' | 'value-desc' | 'customer-asc';
+
+const LIST_COPY = {
+  'pt-br': {
+    filters: 'Filtros',
+    sort: 'Ordenar',
+    search: 'Buscar por cliente ou descrição…',
+    dueAsc: 'Vencimento mais próximo',
+    dueDesc: 'Vencimento mais distante',
+    valueDesc: 'Maior valor',
+    customerAsc: 'Cliente (A-Z)',
+    page: 'Página',
+    of: 'de',
+    actions: 'Ações da assinatura',
+    select: (customer: string) => `Selecionar assinatura de ${customer}`,
+    selected: (count: number) => `${count} selecionada${count === 1 ? '' : 's'}`,
+    showing: (shown: number, total: number) => `Mostrando ${shown} de ${total} itens`,
+  },
+  en: {
+    filters: 'Filters',
+    sort: 'Sort',
+    search: 'Search by customer or description…',
+    dueAsc: 'Nearest due date',
+    dueDesc: 'Farthest due date',
+    valueDesc: 'Highest amount',
+    customerAsc: 'Customer (A-Z)',
+    page: 'Page',
+    of: 'of',
+    actions: 'Subscription actions',
+    select: (customer: string) => `Select ${customer}'s subscription`,
+    selected: (count: number) => `${count} selected`,
+    showing: (shown: number, total: number) => `Showing ${shown} of ${total} items`,
+  },
+  es: {
+    filters: 'Filtros',
+    sort: 'Ordenar',
+    search: 'Buscar por cliente o descripción…',
+    dueAsc: 'Vencimiento más próximo',
+    dueDesc: 'Vencimiento más lejano',
+    valueDesc: 'Mayor valor',
+    customerAsc: 'Cliente (A-Z)',
+    page: 'Página',
+    of: 'de',
+    actions: 'Acciones de la suscripción',
+    select: (customer: string) => `Seleccionar suscripción de ${customer}`,
+    selected: (count: number) => `${count} seleccionada${count === 1 ? '' : 's'}`,
+    showing: (shown: number, total: number) => `Mostrando ${shown} de ${total} elementos`,
+  },
+  fr: {
+    filters: 'Filtres',
+    sort: 'Trier',
+    search: 'Rechercher par client ou description…',
+    dueAsc: 'Échéance la plus proche',
+    dueDesc: 'Échéance la plus éloignée',
+    valueDesc: 'Montant le plus élevé',
+    customerAsc: 'Client (A-Z)',
+    page: 'Page',
+    of: 'sur',
+    actions: 'Actions de l’abonnement',
+    select: (customer: string) => `Sélectionner l’abonnement de ${customer}`,
+    selected: (count: number) => `${count} sélectionné${count === 1 ? '' : 's'}`,
+    showing: (shown: number, total: number) => `Affichage de ${shown} éléments sur ${total}`,
+  },
+} as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EditSubscriptionModal — edita valor, frequência, próximo vencimento e
@@ -177,7 +271,7 @@ function EditSubscriptionModal({
       });
     }
     return options;
-  }, [paymentAccount, subscription?.billing_type, t.billing_types]);
+  }, [paymentAccount, subscription?.billing_type, t]);
 
   useEffect(() => {
     if (subscription) {
@@ -490,6 +584,10 @@ export function FinanceAssinaturas() {
   const [cancelTarget, setCancelTarget] = useState<TenantSubscription | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TenantSubscription | null>(null);
   const [editTarget, setEditTarget] = useState<TenantSubscription | null>(null);
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<SubscriptionSort>('due-asc');
+  const listCopy = LIST_COPY[locale];
+  const paginationCopy = MESSAGES[locale].app.common.pagination;
 
   // ── Seleção múltipla (cancelamento em massa) ──────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -510,9 +608,6 @@ export function FinanceAssinaturas() {
   const needsRetryCancel = (sub: TenantSubscription) =>
     sub.status === 'cancelled' && hasLivePixConsent(sub);
 
-  const manageableSubs = useMemo(() => subscriptions.filter(isManageable), [subscriptions]);
-  const allSelected = manageableSubs.length > 0 && selectedIds.size === manageableSubs.length;
-
   const cancelledCount = useMemo(
     () => subscriptions.filter((s) => s.status === 'cancelled').length,
     [subscriptions],
@@ -520,17 +615,52 @@ export function FinanceAssinaturas() {
   const visibleSubs = useMemo(() => {
     // Aba "Arquivadas": a query já traz só arquivadas (todas canceladas por
     // definição). Esconder por status aqui deixaria a aba sempre vazia.
-    if (showArchived) return subscriptions;
-    if (showCancelled) {
-      // Canceladas por último, sem embaralhar a ordem dentro de cada grupo.
-      return [...subscriptions].sort((a, b) => {
-        const aC = a.status === 'cancelled' ? 1 : 0;
-        const bC = b.status === 'cancelled' ? 1 : 0;
-        return aC - bC;
-      });
+    let result = showArchived
+      ? [...subscriptions]
+      : subscriptions.filter((subscription) => showCancelled || subscription.status !== 'cancelled');
+
+    if (search.trim()) {
+      result = result.filter((subscription) =>
+        fuzzyIncludesAny(
+          [
+            subscription.customers?.name,
+            subscription.description,
+            subscription.billing_type,
+            subscription.cycle,
+          ].filter((value): value is string => !!value),
+          search,
+        ),
+      );
     }
-    return subscriptions.filter((s) => s.status !== 'cancelled');
-  }, [subscriptions, showCancelled, showArchived]);
+
+    return result.sort((a, b) => {
+      // Ao exibir o histórico junto, mantém canceladas depois das recorrências
+      // em uso; o critério escolhido ordena dentro de cada grupo.
+      if (showCancelled && !showArchived) {
+        const statusOrder = Number(a.status === 'cancelled') - Number(b.status === 'cancelled');
+        if (statusOrder !== 0) return statusOrder;
+      }
+      if (sortBy === 'value-desc') return Number(b.value) - Number(a.value);
+      if (sortBy === 'customer-asc') {
+        return (a.customers?.name ?? '').localeCompare(b.customers?.name ?? '', locale, {
+          sensitivity: 'base',
+        });
+      }
+      const aDate = a.next_due_date ?? (sortBy === 'due-asc' ? '9999-12-31' : '0000-01-01');
+      const bDate = b.next_due_date ?? (sortBy === 'due-asc' ? '9999-12-31' : '0000-01-01');
+      return sortBy === 'due-asc' ? aDate.localeCompare(bDate) : bDate.localeCompare(aDate);
+    });
+  }, [subscriptions, showCancelled, showArchived, search, sortBy, locale]);
+
+  const manageableSubs = useMemo(() => visibleSubs.filter(isManageable), [visibleSubs]);
+  const allSelected = manageableSubs.length > 0 && manageableSubs.every((sub) => selectedIds.has(sub.id));
+  const pagination = useDataPagination(visibleSubs, 25, 'finance-subscriptions');
+  const setPage = pagination.setPage;
+  const shownOnPage = pagination.to === 0 ? 0 : pagination.to - pagination.from + 1;
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, setPage, showArchived, showCancelled, sortBy]);
 
   const toggleSelect = (id: string) => {
     const next = new Set(selectedIds);
@@ -538,7 +668,14 @@ export function FinanceAssinaturas() {
     setSelectedIds(next);
   };
   const toggleSelectAll = () => {
-    setSelectedIds(allSelected ? new Set() : new Set(manageableSubs.map((s) => s.id)));
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      manageableSubs.forEach((subscription) => {
+        if (allSelected) next.delete(subscription.id);
+        else next.add(subscription.id);
+      });
+      return next;
+    });
   };
 
   // ── Resumo MRR ─────────────────────────────────────────────────────────────
@@ -611,72 +748,111 @@ export function FinanceAssinaturas() {
         </div>
       )}
 
-      {/* ── Barra de ações ────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          {selectedIds.size > 0 && (
-            <Button
-              variant="destructive-ghost"
-              size="sm"
-              onClick={() => setBulkCancelOpen(true)}
-              disabled={bulkCancel.isPending}
-            >
-              <XCircle className="mr-2 h-4 w-4" />
-              {t.bulkCancel} ({selectedIds.size})
-            </Button>
-          )}
-          {cancelledCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground"
-              onClick={() => setShowCancelled((v) => !v)}
-            >
-              {showCancelled ? (
-                <>
-                  <EyeOff className="mr-2 h-4 w-4" />
-                  {t.hideCancelled}
-                </>
-              ) : (
-                <>
-                  <Eye className="mr-2 h-4 w-4" />
-                  {t.showCancelled(cancelledCount)}
-                </>
-              )}
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground"
-            onClick={() => {
-              setShowArchived((v) => !v);
-              setSelectedIds(new Set());
-            }}
-          >
-            {showArchived ? (
-              <>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                {t.hideArchived}
-              </>
-            ) : (
-              <>
-                <Archive className="mr-2 h-4 w-4" />
-                {t.showArchived}
-              </>
-            )}
-          </Button>
+      {/* ── Busca, filtros e ordenação ─────────────────────────────────────── */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative min-w-0 flex-1 sm:max-w-md">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="h-10 pl-9"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={listCopy.search}
+          />
         </div>
-        {!isMobile && (
-          <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t.newButton}
-          </Button>
-        )}
+
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-10" aria-label={listCopy.filters}>
+                <ListFilter className="mr-2 h-4 w-4" />
+                {listCopy.filters}
+                {(showArchived || (showCancelled && !showArchived)) && (
+                  <span className="ml-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-xs font-semibold text-primary-foreground">
+                    1
+                  </span>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>{listCopy.filters}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {cancelledCount > 0 && (
+                <DropdownMenuCheckboxItem
+                  checked={showCancelled && !showArchived}
+                  disabled={showArchived}
+                  onCheckedChange={(checked) => setShowCancelled(checked === true)}
+                >
+                  {showCancelled ? t.hideCancelled : t.showCancelled(cancelledCount)}
+                </DropdownMenuCheckboxItem>
+              )}
+              <DropdownMenuCheckboxItem
+                checked={showArchived}
+                onCheckedChange={(checked) => {
+                  setShowArchived(checked === true);
+                  setSelectedIds(new Set());
+                }}
+              >
+                {t.showArchived}
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-10" aria-label={listCopy.sort}>
+                <ArrowDownUp className="mr-2 h-4 w-4" />
+                {listCopy.sort}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>{listCopy.sort}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup
+                value={sortBy}
+                onValueChange={(value) => setSortBy(value as SubscriptionSort)}
+              >
+                <DropdownMenuRadioItem value="due-asc">{listCopy.dueAsc}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="due-desc">{listCopy.dueDesc}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="value-desc">{listCopy.valueDesc}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="customer-asc">{listCopy.customerAsc}</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {!isMobile && (
+            <Button size="sm" className="h-10" onClick={() => setDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t.newButton}
+            </Button>
+          )}
+        </div>
       </div>
 
+      {selectedIds.size > 0 && (
+        <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+          <span className="text-sm text-muted-foreground">
+            {listCopy.selected(selectedIds.size)}
+          </span>
+          <Button
+            variant="destructive-ghost"
+            size="sm"
+            onClick={() => setBulkCancelOpen(true)}
+            disabled={bulkCancel.isPending}
+          >
+            <XCircle className="mr-2 h-4 w-4" />
+            {t.bulkCancel} ({selectedIds.size})
+          </Button>
+        </div>
+      )}
+
       {/* ── Lista ─────────────────────────────────────────────────────────── */}
-      {isLoading ? null : visibleSubs.length === 0 ? (
+      {isLoading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      ) : visibleSubs.length === 0 ? (
         <div className="rounded-xl border border-border bg-card">
           {showArchived ? (
             <EmptyState
@@ -699,9 +875,10 @@ export function FinanceAssinaturas() {
           )}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
-          {/* Tabela desktop */}
-          <table className="hidden w-full text-sm lg:table">
+        <div className="overflow-hidden rounded-xl border border-border">
+          <div className="overflow-x-auto">
+            {/* Tabela desktop */}
+            <table className="hidden w-full text-sm lg:table">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
                 <th className="w-10 px-4 py-3">
@@ -723,13 +900,14 @@ export function FinanceAssinaturas() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {visibleSubs.map((sub) => (
+              {pagination.paginatedItems.map((sub) => (
                 <tr key={sub.id} className="bg-card transition-colors hover:bg-muted/20">
                   <td className="px-4 py-3">
                     {isManageable(sub) && (
                       <Checkbox
                         checked={selectedIds.has(sub.id)}
                         onCheckedChange={() => toggleSelect(sub.id)}
+                        aria-label={listCopy.select(sub.customers?.name ?? '—')}
                       />
                     )}
                   </td>
@@ -836,11 +1014,11 @@ export function FinanceAssinaturas() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
 
-          {/* Lista mobile */}
-          <div className="divide-y divide-border lg:hidden">
-            {visibleSubs.map((sub) => (
+            {/* Lista mobile */}
+            <div className="divide-y divide-border lg:hidden">
+            {pagination.paginatedItems.map((sub) => (
               <div key={sub.id} className="bg-card px-4 py-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex min-w-0 flex-1 items-start gap-2">
@@ -849,6 +1027,7 @@ export function FinanceAssinaturas() {
                         className="mt-1 shrink-0"
                         checked={selectedIds.has(sub.id)}
                         onCheckedChange={() => toggleSelect(sub.id)}
+                        aria-label={listCopy.select(sub.customers?.name ?? '—')}
                       />
                     )}
                     <div className="min-w-0 flex-1">
@@ -873,84 +1052,125 @@ export function FinanceAssinaturas() {
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-2">
                     {statusBadge(sub.status, t.status)}
-                    <div className="flex items-center gap-1">
-                      {isManageable(sub) && (
-                        <>
-                          <Button
-                            variant="edit-ghost"
-                            size="sm"
-                            className="h-7 px-2"
-                            onClick={() => setEditTarget(sub)}
-                            disabled={manageSubscription.isPending}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="destructive-ghost"
-                            size="sm"
-                            className="h-7 px-2"
-                            onClick={() => setCancelTarget(sub)}
-                            disabled={manageSubscription.isPending}
-                          >
-                            <XCircle className="h-3.5 w-3.5" />
-                          </Button>
-                          {sub.can_delete === true && (
-                            <Button
-                              variant="destructive-ghost"
-                              size="sm"
-                              className="h-7 px-2"
-                              onClick={() => setDeleteTarget(sub)}
-                              disabled={deleteSubscription.isPending}
-                              aria-label={t.actions.delete}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-10 w-10"
+                          aria-label={listCopy.actions}
+                          title={listCopy.actions}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-52">
+                        {isManageable(sub) && (
+                          <>
+                            <DropdownMenuItem
+                              onSelect={() => setEditTarget(sub)}
+                              disabled={manageSubscription.isPending}
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </>
-                      )}
-                      {needsRetryCancel(sub) && (
-                        <Button
-                          variant="destructive-ghost"
-                          size="sm"
-                          className="h-7 px-2"
-                          onClick={() => setCancelTarget(sub)}
-                          disabled={manageSubscription.isPending}
-                        >
-                          <XCircle className="mr-1 h-3.5 w-3.5" />
-                          {t.actions.retryCancel}
-                        </Button>
-                      )}
-                      {canArchive(sub) && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-muted-foreground"
-                          onClick={() =>
-                            archiveSubscription.mutate({ subscription_id: sub.id, action: 'archive' })
-                          }
-                          disabled={archiveSubscription.isPending}
-                        >
-                          <Archive className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                      {showArchived && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-muted-foreground"
-                          onClick={() =>
-                            archiveSubscription.mutate({ subscription_id: sub.id, action: 'unarchive' })
-                          }
-                          disabled={archiveSubscription.isPending}
-                        >
-                          <ArchiveRestore className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </div>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              {t.actions.edit}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onSelect={() => setCancelTarget(sub)}
+                              disabled={manageSubscription.isPending}
+                            >
+                              <XCircle className="mr-2 h-4 w-4" />
+                              {t.actions.cancel}
+                            </DropdownMenuItem>
+                            {sub.can_delete === true && (
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onSelect={() => setDeleteTarget(sub)}
+                                disabled={deleteSubscription.isPending}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                {t.actions.delete}
+                              </DropdownMenuItem>
+                            )}
+                          </>
+                        )}
+                        {needsRetryCancel(sub) && (
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onSelect={() => setCancelTarget(sub)}
+                            disabled={manageSubscription.isPending}
+                          >
+                            <XCircle className="mr-2 h-4 w-4" />
+                            {t.actions.retryCancel}
+                          </DropdownMenuItem>
+                        )}
+                        {canArchive(sub) && (
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              archiveSubscription.mutate({ subscription_id: sub.id, action: 'archive' })
+                            }
+                            disabled={archiveSubscription.isPending}
+                          >
+                            <Archive className="mr-2 h-4 w-4" />
+                            {t.actions.archive}
+                          </DropdownMenuItem>
+                        )}
+                        {showArchived && (
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              archiveSubscription.mutate({ subscription_id: sub.id, action: 'unarchive' })
+                            }
+                            disabled={archiveSubscription.isPending}
+                          >
+                            <ArchiveRestore className="mr-2 h-4 w-4" />
+                            {t.actions.unarchive}
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </div>
             ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 border-t border-border/60 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+            <span className="whitespace-normal text-xs text-muted-foreground">
+              {listCopy.showing(shownOnPage, pagination.totalItems)}
+            </span>
+            <div className="flex items-center justify-between gap-2 sm:justify-end">
+              <span className="text-xs text-muted-foreground">
+                {listCopy.page} {pagination.page} {listCopy.of} {pagination.totalPages}
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 sm:h-8 sm:w-8"
+                  disabled={!pagination.canGoPrev}
+                  aria-label={paginationCopy.previous}
+                  title={paginationCopy.previous}
+                  onClick={() => pagination.setPage(pagination.page - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 sm:h-8 sm:w-8"
+                  disabled={!pagination.canGoNext}
+                  aria-label={paginationCopy.next}
+                  title={paginationCopy.next}
+                  onClick={() => pagination.setPage(pagination.page + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

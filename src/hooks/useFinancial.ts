@@ -1133,6 +1133,7 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
     summary: summaryQuery.data ?? { totalEntradas: 0, totalSaidas: 0, saldo: 0, aPagar: 0, aReceber: 0 },
     isLoading: loadData && (transactionsQuery.isLoading || summaryQuery.isLoading),
     error: transactionsQuery.error || summaryQuery.error,
+    refetch: () => Promise.all([transactionsQuery.refetch(), summaryQuery.refetch()]),
     createTransaction,
     /** Série de REPETIÇÃO (N lançamentos do mesmo valor) num insert só. */
     createTransactionsBatch,

@@ -145,6 +145,9 @@ export function FinanceAnalysis({ transactions, isLoading = false }: FinanceAnal
           <p className="text-sm text-muted-foreground">
             Compara períodos e mostra quem fatura mais e quem realmente sobra no fim.
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            A comparação usa os períodos escolhidos nesta análise.
+          </p>
         </div>
         <div
           role="tablist"
@@ -359,8 +362,8 @@ export function FinanceAnalysis({ transactions, isLoading = false }: FinanceAnal
               <ResponsiveContainer width="100%" height={Math.max(200, clientes.length * 42)}>
                 <BarChart data={clientes} layout="vertical" margin={{ left: isMobile ? 0 : 18, right: 12 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                  <XAxis type="number" tickFormatter={compactMoney} tick={{ fontSize: isMobile ? 9 : 11 }} />
-                  <YAxis type="category" dataKey="name" width={isMobile ? 92 : 170} tick={{ fontSize: isMobile ? 9 : 11 }} />
+                  <XAxis type="number" tickFormatter={compactMoney} tick={{ fontSize: isMobile ? 11 : 12 }} />
+                  <YAxis type="category" dataKey="name" width={isMobile ? 92 : 170} tick={{ fontSize: isMobile ? 11 : 12 }} />
                   <Tooltip formatter={(value: number) => money(value)} />
                   <Legend wrapperStyle={isMobile ? { fontSize: 11 } : undefined} />
                   <Bar dataKey="revenue" name="Faturamento" fill="hsl(var(--success))" radius={[0, 4, 4, 0]} />
