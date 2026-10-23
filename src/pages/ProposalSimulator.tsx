@@ -266,9 +266,14 @@ function DiscountField({
 
 function ProposalPrice({
   totals,
+  monthlyPlanVisible,
+  onMonthlyPlanVisibilityChange,
 }: {
   totals: ProposalTotals;
+  monthlyPlanVisible: boolean;
+  onMonthlyPlanVisibilityChange: (visible: boolean) => void;
 }) {
+  const [installmentsVisible, setInstallmentsVisible] = useState(false);
   const annualLabel = totals.annualDiscountAmount > 0
     ? `${discountLabel(totals.annualDiscount, totals.annualDiscountAmount)} adicional`
     : 'sem desconto adicional';
@@ -294,23 +299,56 @@ function ProposalPrice({
           Economia total de {money(totals.savings)} versus a tabela anual
         </p>
       )}
-      <p className="text-sm text-muted-foreground">
-        Em até {totals.installments}x de {money(totals.pixInstallment)} no Pix
-      </p>
-      <div className="mt-3 rounded-lg bg-muted/40 p-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          Plano mensal · {monthlyLabel}
-        </p>
-        <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
-          {totals.monthlyDiscountAmount > 0 && (
-            <span className="text-sm text-destructive line-through">{money(totals.monthlyFull)}</span>
+      <div className="space-y-1 pt-1">
+        <button
+          type="button"
+          onClick={() => setInstallmentsVisible((visible) => !visible)}
+          aria-expanded={installmentsVisible}
+          className="flex min-h-10 w-full items-center justify-between gap-3 rounded-md px-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <span>
+            {installmentsVisible
+              ? `Em até ${totals.installments}x de ${money(totals.pixInstallment)} no Pix`
+              : 'Ver parcelamento no Pix'}
+          </span>
+          {installmentsVisible ? (
+            <EyeOff className="h-4 w-4 shrink-0" aria-hidden />
+          ) : (
+            <Eye className="h-4 w-4 shrink-0" aria-hidden />
           )}
-          <span className="text-lg font-bold">{money(totals.monthly)}/mês</span>
-        </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onMonthlyPlanVisibilityChange(!monthlyPlanVisible)}
+          aria-expanded={monthlyPlanVisible}
+          className="flex min-h-10 w-full items-center justify-between gap-3 rounded-md px-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <span>{monthlyPlanVisible ? 'Ocultar plano mensal' : 'Ver plano mensal'}</span>
+          {monthlyPlanVisible ? (
+            <EyeOff className="h-4 w-4 shrink-0" aria-hidden />
+          ) : (
+            <Eye className="h-4 w-4 shrink-0" aria-hidden />
+          )}
+        </button>
+
+        {monthlyPlanVisible && (
+          <div className="rounded-lg bg-muted/40 p-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              Plano mensal · {monthlyLabel}
+            </p>
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
+              {totals.monthlyDiscountAmount > 0 && (
+                <span className="text-sm text-destructive line-through">{money(totals.monthlyFull)}</span>
+              )}
+              <span className="text-lg font-bold">{money(totals.monthly)}/mês</span>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              O mensal define a base negociada. O desconto anual é aplicado uma única vez sobre 12 mensalidades já negociadas.
+            </p>
+          </div>
+        )}
       </div>
-      <p className="text-xs text-muted-foreground">
-        O mensal define a base negociada. O desconto anual é aplicado uma única vez sobre 12 mensalidades já negociadas.
-      </p>
     </div>
   );
 }
@@ -347,6 +385,7 @@ export default function ProposalSimulator() {
   const [annualDiscount, setAnnualDiscount] = useState(initialState.annualDiscount);
   const [monthlyDiscount, setMonthlyDiscount] = useState(initialState.monthlyDiscount);
   const [installments, setInstallments] = useState(initialState.installments);
+  const [monthlyPlanVisible, setMonthlyPlanVisible] = useState(false);
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'proposal' | 'structure' | 'pricing'>('proposal');
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -880,7 +919,7 @@ export default function ProposalSimulator() {
                               </div>
                               <p className="text-sm text-muted-foreground">Plano {view.name}</p>
                             </div>
-                            {!pricesHidden && (
+                            {!pricesHidden && monthlyPlanVisible && (
                               <p className="shrink-0 text-sm font-semibold">{money(view.monthly)}/mês</p>
                             )}
                           </div>
@@ -891,7 +930,11 @@ export default function ProposalSimulator() {
                   )}
 
                   {!pricesHidden && !isLoading && (
-                    <ProposalPrice totals={totals} />
+                    <ProposalPrice
+                      totals={totals}
+                      monthlyPlanVisible={monthlyPlanVisible}
+                      onMonthlyPlanVisibilityChange={setMonthlyPlanVisible}
+                    />
                   )}
 
                   <div className="space-y-2 border-t border-border/40 pt-5">
@@ -1004,7 +1047,9 @@ export default function ProposalSimulator() {
                             <p key={label} className="truncate text-xs text-muted-foreground">{label}</p>
                           ))}
                         </div>
-                        {!pricesHidden && <p className="mt-4 text-sm font-semibold">{money(view.monthly)}/mês</p>}
+                        {!pricesHidden && monthlyPlanVisible && (
+                          <p className="mt-4 text-sm font-semibold">{money(view.monthly)}/mês</p>
+                        )}
                       </article>
                     );
                   })}

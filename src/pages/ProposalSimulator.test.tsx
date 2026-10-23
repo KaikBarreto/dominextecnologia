@@ -92,6 +92,14 @@ import ProposalSimulator from './ProposalSimulator';
 
 Element.prototype.scrollIntoView = vi.fn();
 
+function revealMonthlyPlan() {
+  fireEvent.click(screen.getByRole('button', { name: 'Ver plano mensal' }));
+}
+
+function revealInstallments() {
+  fireEvent.click(screen.getByRole('button', { name: 'Ver parcelamento no Pix' }));
+}
+
 describe('ProposalSimulator', () => {
   it('preserva todos os cliques rápidos ao aumentar usuários do plano personalizado', async () => {
     render(
@@ -139,6 +147,7 @@ describe('ProposalSimulator', () => {
     const whatsappOption = await screen.findByRole('button', { name: /Integração com o WhatsApp/ });
     expect(screen.queryByRole('button', { name: /Financeiro Avançado/ })).not.toBeInTheDocument();
     fireEvent.click(whatsappOption);
+    revealMonthlyPlan();
 
     await waitFor(() => {
       expect(screen.getAllByText('R$ 246,00/mês')).toHaveLength(2);
@@ -158,6 +167,7 @@ describe('ProposalSimulator', () => {
 
     expect(chargesOption).toBeInTheDocument();
     fireEvent.click(chargesOption);
+    revealMonthlyPlan();
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Remover Cobranças' })).toBeInTheDocument();
@@ -174,6 +184,7 @@ describe('ProposalSimulator', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Adicionar módulo' }));
     fireEvent.click(await screen.findByRole('button', { name: /Emissão de notas fiscais/i }));
+    revealMonthlyPlan();
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Remover Emissão de notas fiscais/i })).toBeInTheDocument();
@@ -207,6 +218,7 @@ describe('ProposalSimulator', () => {
       </MemoryRouter>,
     );
 
+    revealMonthlyPlan();
     expect(screen.getAllByText('R$ 197,00/mês')).toHaveLength(2);
     expect(screen.queryByText('Financeiro Avançado')).not.toBeInTheDocument();
   });
@@ -226,6 +238,8 @@ describe('ProposalSimulator', () => {
     fireEvent.change(screen.getByLabelText('Desconto mensal'), { target: { value: '30' } });
     fireEvent.click(screen.getByRole('combobox', { name: 'Parcelas no Pix' }));
     fireEvent.click(await screen.findByRole('option', { name: '6x' }));
+    revealInstallments();
+    revealMonthlyPlan();
 
     await waitFor(() => {
       expect(screen.getByText('Plano anual · 40% de desconto adicional')).toBeInTheDocument();
@@ -259,6 +273,7 @@ describe('ProposalSimulator', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Desconto mensal em reais' }));
     fireEvent.change(monthlyDiscount, { target: { value: '0050' } });
     expect(monthlyDiscount).toHaveValue('50');
+    revealMonthlyPlan();
 
     await waitFor(() => {
       expect(screen.getByText('Plano anual · 20% de desconto adicional')).toBeInTheDocument();
@@ -287,6 +302,7 @@ describe('ProposalSimulator', () => {
     fireEvent.click(await screen.findByRole('button', { name: /White Label/ }));
     fireEvent.click(screen.getByRole('radio', { name: 'Desconto mensal em reais' }));
     fireEvent.change(screen.getByLabelText('Desconto mensal'), { target: { value: '150' } });
+    revealMonthlyPlan();
 
     await waitFor(() => {
       expect(screen.getByText('R$ 397,00/mês')).toBeInTheDocument();
