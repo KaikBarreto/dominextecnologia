@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.38";
+export const APP_VERSION = "1.37.39";
 
 export const VERSION_NOTES =
-  "Ao cadastrar ou editar um usuário, as opções Acesso Total e Personalizado continuam visíveis e permitem trocar de configuração sem fechar a janela nem perder a seleção manual.";
+  "Ao parcelar uma receita ou conta a receber, agora é possível gerar todas as cobranças de uma vez, cada uma ligada à parcela e ao vencimento correspondente.";

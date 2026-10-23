@@ -57,6 +57,10 @@ const COST_CENTERS = [
 let costCentersEnabled = true;
 
 const noopMutation = { mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false };
+const createOnlineChargeMock = vi.fn();
+let canManagePayments = false;
+let hasChargeModule = false;
+let paymentAccountActive = false;
 
 vi.mock('@/hooks/useFinancialAccounts', () => ({
   useFinancialAccounts: () => ({
@@ -81,11 +85,16 @@ vi.mock('@/hooks/useCostCenters', () => ({
   useCostCenters: () => ({
     costCenters: costCentersEnabled ? COST_CENTERS : [],
     activeCostCenters: costCentersEnabled ? COST_CENTERS : [],
+    createCostCenter: noopMutation,
   }),
 }));
 
 vi.mock('@/hooks/useCustomers', () => ({
-  useCustomers: () => ({ customers: [] }),
+  useCustomers: () => ({
+    customers: [
+      { id: 'customer-kgie', name: 'KGIE Tecnologia', document: '52998224725', is_deleted: false },
+    ],
+  }),
 }));
 
 vi.mock('@/hooks/useSuppliers', () => ({
@@ -93,7 +102,25 @@ vi.mock('@/hooks/useSuppliers', () => ({
 }));
 
 vi.mock('@/hooks/useCanManageFinanceSettings', () => ({
-  useCanManageFinanceSettings: () => false,
+  useCanManageFinanceSettings: () => canManagePayments,
+}));
+
+vi.mock('@/hooks/useCompanyModules', () => ({
+  useCompanyModules: () => ({ hasModule: (code: string) => code === 'cobrancas' && hasChargeModule }),
+}));
+
+vi.mock('@/hooks/useTenantPaymentAccount', () => ({
+  useTenantPaymentAccount: () => ({
+    isActive: paymentAccountActive,
+    allowPix: true,
+    allowBoleto: true,
+  }),
+}));
+
+vi.mock('@/hooks/useTenantCharges', () => ({
+  useTenantCharges: () => ({
+    create: { mutateAsync: createOnlineChargeMock, isPending: false },
+  }),
 }));
 
 vi.mock('@/hooks/useTenantCardFees', () => ({
@@ -196,6 +223,7 @@ function mount(
   requireDueDateWhenUnpaid = false,
   onSubmit: (payload: any) => Promise<any> = async () => {},
   transaction?: FinancialTransaction,
+  prefill?: React.ComponentProps<typeof TransactionFormDialog>['prefill'],
 ) {
   act(() => {
     root.render(
@@ -206,6 +234,7 @@ function mount(
         onSubmit={onSubmit}
         requireDueDateWhenUnpaid={requireDueDateWhenUnpaid}
         transaction={transaction}
+        prefill={prefill}
       />,
     );
   });
@@ -253,6 +282,13 @@ beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
   costCentersEnabled = true;
+  canManagePayments = false;
+  hasChargeModule = false;
+  paymentAccountActive = false;
+  createOnlineChargeMock.mockResolvedValue({
+    orphan: false,
+    charge: { financeWarning: null },
+  });
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -593,5 +629,60 @@ describe('TransactionFormDialog — vencimento da conta futura do CRM', () => {
       is_paid: false,
       due_date: todayInTz('America/Sao_Paulo'),
     }));
+  });
+});
+
+describe('TransactionFormDialog — cobranças das parcelas', () => {
+  it('cria uma cobrança vinculada para cada conta a receber salva', async () => {
+    canManagePayments = true;
+    hasChargeModule = true;
+    paymentAccountActive = true;
+
+    const onSubmit = vi.fn().mockResolvedValue({
+      ids: ['receivable-1', 'receivable-2', 'receivable-3', 'receivable-4'],
+    });
+    mount('entrada', false, onSubmit, undefined, {
+      transaction_type: 'entrada',
+      description: 'HIT SKY CLUB',
+      amount: 1000,
+      transaction_date: '2026-10-23',
+      due_date: '2026-11-02',
+      is_paid: false,
+      payment_method: 'boleto',
+      installment_count: 4,
+      account_id: 'acc-banco',
+      customer_id: 'customer-kgie',
+    });
+
+    const generateSwitch = document.querySelector(
+      `[role="switch"][aria-label="${tf.onlineCharges.label}"]`,
+    ) as HTMLElement | null;
+    expect(generateSwitch).toBeTruthy();
+
+    act(() => generateSwitch!.click());
+
+    await act(async () => {
+      buttonByText(tf.saveLabel)!.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      amount: 1000,
+      installment_count: 4,
+      is_paid: false,
+      customer_id: 'customer-kgie',
+    }));
+    expect(createOnlineChargeMock).toHaveBeenCalledTimes(4);
+    expect(createOnlineChargeMock.mock.calls.map(([request]) => ({
+      source_id: request.source_id,
+      value: request.value,
+      due_date: request.due_date,
+      billing_type: request.billing_type,
+    }))).toEqual([
+      { source_id: 'receivable-1', value: 250, due_date: '2026-11-02', billing_type: 'BOLETO' },
+      { source_id: 'receivable-2', value: 250, due_date: '2026-12-02', billing_type: 'BOLETO' },
+      { source_id: 'receivable-3', value: 250, due_date: '2027-01-02', billing_type: 'BOLETO' },
+      { source_id: 'receivable-4', value: 250, due_date: '2027-02-02', billing_type: 'BOLETO' },
+    ]);
   });
 });

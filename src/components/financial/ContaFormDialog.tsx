@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,15 @@ import { CostCenterSelect } from './CostCenterSelect';
 import { useCostCenters } from '@/hooks/useCostCenters';
 import { ModalFormSection } from './ModalFormSection';
 import { cn } from '@/lib/utils';
+import { Switch } from '@/components/ui/switch';
+import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
+import { useTenantCharges, type TenantChargeBillingType } from '@/hooks/useTenantCharges';
+import { buildReceivableChargeRequests } from '@/lib/finance-installment-charges';
+import { getDocumentStatus } from '@/lib/documentValidation';
+import { useToast } from '@/hooks/use-toast';
+import { todayInTz } from '@/lib/timezone';
 
 interface ContaFormDialogProps {
   open: boolean;
@@ -41,7 +50,7 @@ type Recurrence = 'unica' | 'mensal' | 'semanal' | 'anual';
 
 export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', editingTransaction }: ContaFormDialogProps) {
   const { createTransaction, updateTransaction } = useFinancial();
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const t = fin.contaForm;
   // Fornecedor reusa a copy do formulário de Movimentações: é o mesmo campo,
@@ -53,6 +62,11 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   const { customers } = useCustomers();
   const { suppliers } = useSuppliers();
   const { accounts } = useFinancialAccounts();
+  const canManagePayments = useCanManageFinanceSettings();
+  const { hasModule } = useCompanyModules();
+  const paymentAccount = useTenantPaymentAccount();
+  const { create: createOnlineCharge } = useTenantCharges({ enabled: false });
+  const { toast } = useToast();
 
   const [tipo, setTipo] = useState<TransactionType>(defaultType);
   const [description, setDescription] = useState('');
@@ -70,6 +84,8 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   // Centro de custo é SEMPRE opcional: `null` = nenhum.
   const [costCenterId, setCostCenterId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [generateOnlineCharges, setGenerateOnlineCharges] = useState(false);
+  const [onlineBillingType, setOnlineBillingType] = useState<Exclude<TenantChargeBillingType, 'CREDIT_CARD'>>('BOLETO');
 
   const isEditing = !!editingTransaction;
 
@@ -88,6 +104,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setSupplierId((editingTransaction as any).supplier_id || '');
         setAccountId((editingTransaction as any).account_id || '');
         setCostCenterId(editingTransaction.cost_center_id ?? null);
+        setGenerateOnlineCharges(false);
         setRecurrence('unica');
         setOccurrences('12');
         const empMatch = editingTransaction.notes?.match(/\[funcionario:([^\]]+)\]/);
@@ -107,6 +124,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setSupplierId('');
         setAccountId(localStorage.getItem('fin_last_account_id') || '');
         setCostCenterId(null);
+        setGenerateOnlineCharges(false);
       }
     }
   }, [open, defaultType, editingTransaction]);
@@ -135,6 +153,44 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   }));
 
   const activeCustomers = (customers || []).filter((c: any) => !c.is_deleted);
+
+  const occurrenceCount = recurrence === 'unica'
+    ? 1
+    : Math.min(60, Math.max(2, parseInt(occurrences, 10) || 2));
+
+  const chargeMethodOptions = useMemo(() => {
+    const options: Array<{
+      value: Exclude<TenantChargeBillingType, 'CREDIT_CARD'>;
+      label: string;
+    }> = [];
+    const copy = fin.transactionForm.onlineCharges.methods;
+    if (paymentAccount.allowPix && paymentAccount.allowBoleto) {
+      options.push({ value: 'UNDEFINED', label: copy.customerChooses });
+    }
+    if (paymentAccount.allowBoleto) options.push({ value: 'BOLETO', label: copy.boleto });
+    if (paymentAccount.allowPix) options.push({ value: 'PIX', label: copy.pix });
+    return options;
+  }, [fin.transactionForm.onlineCharges.methods, paymentAccount.allowBoleto, paymentAccount.allowPix]);
+
+  const canOfferOnlineCharges =
+    !isEditing
+    && tipo === 'entrada'
+    && occurrenceCount > 1
+    && canManagePayments
+    && hasModule('cobrancas')
+    && paymentAccount.isActive
+    && chargeMethodOptions.length > 0;
+
+  useEffect(() => {
+    if (!canOfferOnlineCharges && generateOnlineCharges) setGenerateOnlineCharges(false);
+  }, [canOfferOnlineCharges, generateOnlineCharges]);
+
+  useEffect(() => {
+    if (chargeMethodOptions.length === 0) return;
+    if (!chargeMethodOptions.some((option) => option.value === onlineBillingType)) {
+      setOnlineBillingType(chargeMethodOptions[0].value);
+    }
+  }, [chargeMethodOptions, onlineBillingType]);
 
   // Máscara de dinheiro (centavos), igual ChargeDialog/TransactionFormDialog:
   // digita só dígitos, os 2 últimos são os centavos. NUNCA usar
@@ -168,6 +224,53 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   const handleSubmit = async () => {
     if (!description.trim() || !amount || Number(amount) <= 0) return;
     if (!accountId) return;
+
+    const baseDate = new Date(dueDate + 'T12:00:00');
+    const occurrencePlan = Array.from({ length: occurrenceCount }, (_, index) => {
+      let date: Date;
+      switch (recurrence) {
+        case 'semanal': date = addWeeks(baseDate, index); break;
+        case 'mensal': date = addMonths(baseDate, index); break;
+        case 'anual': date = addYears(baseDate, index); break;
+        default: date = baseDate;
+      }
+      return {
+        number: index + 1,
+        date: format(date, 'yyyy-MM-dd'),
+        amount: Number(amount),
+      };
+    });
+
+    const onlineChargeCopy = fin.transactionForm.onlineCharges;
+    if (generateOnlineCharges) {
+      if (!customerId) {
+        toast({ variant: 'destructive', title: onlineChargeCopy.customerRequired });
+        return;
+      }
+      const customer = activeCustomers.find((item) => item.id === customerId);
+      const documentStatus = getDocumentStatus(customer?.document);
+      if (documentStatus !== 'ok') {
+        toast({
+          variant: 'destructive',
+          title: documentStatus === 'missing'
+            ? onlineChargeCopy.documentMissing
+            : onlineChargeCopy.documentInvalid,
+        });
+        return;
+      }
+      if (dueDate < todayInTz(timezone)) {
+        toast({ variant: 'destructive', title: onlineChargeCopy.dueDatePast });
+        return;
+      }
+      if (Number(amount) < 5) {
+        toast({
+          variant: 'destructive',
+          title: onlineChargeCopy.minimumTitle,
+          description: onlineChargeCopy.minimumDescription,
+        });
+        return;
+      }
+    }
     setIsSubmitting(true);
 
     try {
@@ -195,24 +298,14 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         } as any;
         await updateTransaction.mutateAsync(input);
       } else {
-        const baseDate = new Date(dueDate + 'T12:00:00');
-        const count = recurrence === 'unica' ? 1 : Math.min(60, Math.max(2, parseInt(occurrences, 10) || 2));
-
-        for (let i = 0; i < count; i++) {
-          let date: Date;
-          switch (recurrence) {
-            case 'semanal': date = addWeeks(baseDate, i); break;
-            case 'mensal': date = addMonths(baseDate, i); break;
-            case 'anual': date = addYears(baseDate, i); break;
-            default: date = baseDate;
-          }
-
+        const transactionIds: string[] = [];
+        for (const occurrence of occurrencePlan) {
           const input: TransactionInput = {
             transaction_type: tipo,
-            description: count > 1 ? `${description} (${i + 1}/${count})` : description,
+            description: occurrenceCount > 1 ? `${description} (${occurrence.number}/${occurrenceCount})` : description,
             amount: Number(amount),
-            transaction_date: format(date, 'yyyy-MM-dd'),
-            due_date: format(date, 'yyyy-MM-dd'),
+            transaction_date: occurrence.date,
+            due_date: occurrence.date,
             is_paid: false,
             category: category || undefined,
             notes: [
@@ -228,7 +321,45 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             cost_center_id: costCenterId,
           } as any;
 
-          await createTransaction.mutateAsync(input);
+          const result = await createTransaction.mutateAsync(input);
+          if (Array.isArray(result?.ids)) transactionIds.push(...result.ids);
+        }
+
+        if (generateOnlineCharges) {
+          let createdCount = 0;
+          try {
+            const requests = buildReceivableChargeRequests({
+              transactionIds,
+              plan: occurrencePlan,
+              customerId,
+              description,
+              billingType: onlineBillingType,
+            });
+            for (const request of requests) {
+              const chargeResult = await createOnlineCharge.mutateAsync(request);
+              createdCount += 1;
+              if (chargeResult.orphan) {
+                throw new Error(chargeResult.warning || onlineChargeCopy.linkFailed);
+              } else if (chargeResult.charge.financeWarning) {
+                throw new Error(chargeResult.charge.financeWarning);
+              }
+            }
+            toast({
+              title: onlineChargeCopy.successTitle,
+              description: onlineChargeCopy.successDescription.replace('{count}', String(createdCount)),
+            });
+          } catch (error) {
+            toast({
+              variant: 'destructive',
+              title: createdCount > 0 ? onlineChargeCopy.partialTitle : onlineChargeCopy.failedTitle,
+              description: (createdCount > 0
+                ? onlineChargeCopy.partialDescription
+                    .replace('{created}', String(createdCount))
+                    .replace('{total}', String(occurrencePlan.length))
+                : onlineChargeCopy.failedDescription)
+                + (error instanceof Error && error.message ? ` ${error.message}` : ''),
+            });
+          }
         }
       }
 
@@ -249,12 +380,13 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
 
   const customerField = (
     <div className="space-y-1.5 lg:col-span-2">
-      <Label>{t.customerLabel}</Label>
+      <Label>{t.customerLabel}{generateOnlineCharges && ' *'}</Label>
       <CustomerSelectField
         customers={activeCustomers}
         value={customerId}
         onValueChange={setCustomerId}
         placeholder={t.customerPlaceholder}
+        requireDocument={generateOnlineCharges}
       />
     </div>
   );
@@ -490,6 +622,45 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
                 </div>
               )}
             </div>
+
+            {canOfferOnlineCharges && (
+              <div className="rounded-lg border border-primary/25 bg-primary/5 p-3 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="generate-online-account-charges" className="cursor-pointer">
+                      {fin.transactionForm.onlineCharges.label}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {fin.transactionForm.onlineCharges.description.replace('{count}', String(occurrenceCount))}
+                    </p>
+                  </div>
+                  <Switch
+                    id="generate-online-account-charges"
+                    checked={generateOnlineCharges}
+                    onCheckedChange={setGenerateOnlineCharges}
+                    aria-label={fin.transactionForm.onlineCharges.label}
+                  />
+                </div>
+
+                {generateOnlineCharges && (
+                  <div className="space-y-2 border-t border-primary/15 pt-3">
+                    <Label>{fin.transactionForm.onlineCharges.methodLabel}</Label>
+                    <Select
+                      value={onlineBillingType}
+                      onValueChange={(value) => setOnlineBillingType(value as Exclude<TenantChargeBillingType, 'CREDIT_CARD'>)}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {chargeMethodOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">{fin.transactionForm.onlineCharges.hint}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </ModalFormSection>
         )}
       </div>

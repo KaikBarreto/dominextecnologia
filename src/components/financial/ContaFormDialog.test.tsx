@@ -23,6 +23,16 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import type { FinancialTransaction } from '@/types/database';
 
+const mocks = vi.hoisted(() => ({
+  canManagePayments: false,
+  hasChargesModule: false,
+  paymentAccountActive: false,
+  customers: [] as Array<Record<string, unknown>>,
+  createTransaction: vi.fn(),
+  createOnlineCharge: vi.fn(),
+  toast: vi.fn(),
+}));
+
 class ResizeObserverStub {
   observe() {}
   unobserve() {}
@@ -42,14 +52,33 @@ vi.mock('@/contexts/AppLocaleContext', () => ({
 
 vi.mock('@/hooks/useFinancial', () => ({
   useFinancial: () => ({
-    createTransaction: { mutateAsync: vi.fn(), isPending: false },
+    createTransaction: { mutateAsync: mocks.createTransaction, isPending: false },
     updateTransaction: { mutateAsync: vi.fn(), isPending: false },
   }),
 }));
 vi.mock('@/hooks/useEmployees', () => ({ useEmployees: () => ({ employees: [] }) }));
 vi.mock('@/hooks/useContracts', () => ({ useContracts: () => ({ contracts: [] }) }));
-vi.mock('@/hooks/useCustomers', () => ({ useCustomers: () => ({ customers: [] }) }));
+vi.mock('@/hooks/useCustomers', () => ({ useCustomers: () => ({ customers: mocks.customers }) }));
 vi.mock('@/hooks/useSuppliers', () => ({ useSuppliers: () => ({ suppliers: [] }) }));
+vi.mock('@/hooks/useCanManageFinanceSettings', () => ({
+  useCanManageFinanceSettings: () => mocks.canManagePayments,
+}));
+vi.mock('@/hooks/useCompanyModules', () => ({
+  useCompanyModules: () => ({ hasModule: () => mocks.hasChargesModule }),
+}));
+vi.mock('@/hooks/useTenantPaymentAccount', () => ({
+  useTenantPaymentAccount: () => ({
+    isActive: mocks.paymentAccountActive,
+    allowPix: true,
+    allowBoleto: true,
+  }),
+}));
+vi.mock('@/hooks/useTenantCharges', () => ({
+  useTenantCharges: () => ({
+    create: { mutateAsync: mocks.createOnlineCharge, isPending: false },
+  }),
+}));
+vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
 vi.mock('@/hooks/useFinancialAccounts', () => ({
   useFinancialAccounts: () => ({
     accounts: [{ id: 'acc-1', name: 'Caixa', is_active: true, institution_code: null, institution_name: null, bank_name: null, color: '#000000' }],
@@ -140,6 +169,14 @@ function buttonByText(text: string): HTMLButtonElement {
 }
 
 beforeEach(() => {
+  mocks.canManagePayments = false;
+  mocks.hasChargesModule = false;
+  mocks.paymentAccountActive = false;
+  mocks.customers = [];
+  mocks.createTransaction.mockReset();
+  mocks.createOnlineCharge.mockReset();
+  mocks.toast.mockReset();
+  localStorage.clear();
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -253,5 +290,72 @@ describe('ContaFormDialog — tipo, vínculos e responsividade', () => {
     const recurrenceGrid = recurrenceSection.querySelector('.grid');
     expect(recurrenceGrid?.className).toContain('grid-cols-1');
     expect(recurrenceGrid?.className).toContain('sm:grid-cols-2');
+  });
+});
+
+describe('ContaFormDialog — contas a receber com cobrança', () => {
+  it('cria 4 contas de R$ 250 e uma cobrança vinculada para cada vencimento', async () => {
+    mocks.canManagePayments = true;
+    mocks.hasChargesModule = true;
+    mocks.paymentAccountActive = true;
+    mocks.customers = [{
+      id: 'customer-1',
+      name: 'KGIE',
+      document: '529.982.247-25',
+      is_deleted: false,
+    }];
+    mocks.createTransaction.mockImplementation(async () => ({
+      ids: [`receivable-${mocks.createTransaction.mock.calls.length}`],
+      primary: null,
+    }));
+    mocks.createOnlineCharge.mockResolvedValue({
+      orphan: false,
+      warning: null,
+      charge: { financeWarning: null },
+    });
+    localStorage.setItem('fin_last_account_id', 'acc-1');
+
+    mount('entrada');
+    typeInto(document.querySelector(`input[placeholder="${t.descriptionPlaceholder}"]`) as HTMLInputElement, 'Serviço KGIE');
+    typeInto(q('#conta-amount') as HTMLInputElement, '25000');
+    typeInto(document.querySelector('[aria-label="customer-field"]') as HTMLInputElement, 'customer-1');
+
+    const recurrenceSection = sectionByTitle(t.sections.installmentsOrRecurrence);
+    act(() => (recurrenceSection.querySelector('button[aria-expanded]') as HTMLButtonElement).click());
+    act(() => (recurrenceSection.querySelector('[role="combobox"]') as HTMLButtonElement).click());
+    const monthlyOption = Array.from(document.querySelectorAll('[role="option"]'))
+      .find((item) => item.textContent?.trim() === t.recurrences.mensal) as HTMLElement;
+    expect(monthlyOption).toBeTruthy();
+    act(() => monthlyOption.click());
+
+    const occurrenceInput = recurrenceSection.querySelector('input') as HTMLInputElement;
+    expect(occurrenceInput).toBeTruthy();
+    typeInto(occurrenceInput, '4');
+
+    const chargeSwitch = document.querySelector(
+      `[role="switch"][aria-label="${MESSAGES['pt-br'].app.finance.transactionForm.onlineCharges.label}"]`,
+    ) as HTMLButtonElement;
+    expect(chargeSwitch).toBeTruthy();
+    act(() => chargeSwitch.click());
+
+    await act(async () => {
+      buttonByText(t.createLabel).click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(mocks.createTransaction).toHaveBeenCalledTimes(4);
+    expect(mocks.createTransaction.mock.calls.map(([input]) => input.amount)).toEqual([250, 250, 250, 250]);
+    expect(mocks.createOnlineCharge).toHaveBeenCalledTimes(4);
+    expect(mocks.createOnlineCharge.mock.calls.map(([input]) => ({
+      sourceType: input.source_type,
+      sourceId: input.source_id,
+      value: input.value,
+      dueDate: input.due_date,
+    }))).toEqual(mocks.createTransaction.mock.calls.map(([input], index) => ({
+      sourceType: 'receivable',
+      sourceId: `receivable-${index + 1}`,
+      value: 250,
+      dueDate: input.due_date,
+    })));
   });
 });

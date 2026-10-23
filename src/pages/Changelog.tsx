@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.39',
+    date: '23 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Todas as cobranças do parcelamento em um só lançamento',
+        description: 'Ao parcelar uma receita ou criar contas a receber recorrentes, agora você pode gerar todas as cobranças de uma vez. Cada cobrança fica ligada à parcela correta, com seu próprio valor e vencimento, sem duplicar a receita.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.37.38',
     date: '23 de outubro de 2026',
     type: 'patch',
