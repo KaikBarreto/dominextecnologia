@@ -80,29 +80,43 @@ describe('PermissionsEditor', () => {
     mount(['screen:finance']);
     click(chipByName('Técnico'));
     expect(current).toEqual(['screen:service_orders', 'fn:create_os']);
-    expect(text()).not.toContain('Personalizado');
+    expect(chipByName('Técnico')?.getAttribute('aria-pressed')).toBe('true');
+    expect(chipByName('Personalizado')?.getAttribute('aria-pressed')).toBe('false');
   });
 
   it('desligar uma permissão do cargo faz o chip virar Personalizado sozinho', () => {
     mount(['screen:service_orders', 'fn:create_os']);
-    expect(text()).not.toContain('Personalizado');
+    expect(chipByName('Personalizado')?.getAttribute('aria-pressed')).toBe('false');
     click(byLabel('Acesso à tela Ordens de Serviço'));
-    expect(text()).toContain('Personalizado');
+    expect(chipByName('Personalizado')?.getAttribute('aria-pressed')).toBe('true');
     // religar volta o chip do cargo
     click(byLabel('Acesso à tela Ordens de Serviço'));
-    expect(text()).not.toContain('Personalizado');
+    expect(chipByName('Personalizado')?.getAttribute('aria-pressed')).toBe('false');
   });
 
   it('Acesso Total marca tudo', () => {
     mount([], true);
     click(chipByName('Acesso Total'));
     expect(current).toEqual(getAllPermissionKeys());
+    expect(chipByName('Acesso Total')?.getAttribute('aria-pressed')).toBe('true');
+    expect(chipByName('Personalizado')?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('Personalizado continua visível e restaura a última seleção manual', () => {
+    mount(['screen:finance'], true);
+    click(chipByName('Acesso Total'));
+    expect(current).toEqual(getAllPermissionKeys());
+
+    click(chipByName('Personalizado'));
+    expect(current).toEqual(['screen:finance']);
+    expect(chipByName('Personalizado')?.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('curinga "*" aparece como tudo ligado', () => {
     mount(['*'], true);
     expect((byLabel('Acesso à tela Ordens de Serviço') as HTMLElement).getAttribute('data-state')).toBe('checked');
-    expect(text()).not.toContain('Personalizado');
+    expect(chipByName('Acesso Total')?.getAttribute('aria-pressed')).toBe('true');
+    expect(chipByName('Personalizado')?.getAttribute('aria-pressed')).toBe('false');
   });
 
   it('busca por ação filtra a tela e mostra só a ação que casou', () => {

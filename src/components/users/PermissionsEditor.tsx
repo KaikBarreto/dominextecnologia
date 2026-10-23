@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, Search, X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -112,6 +112,13 @@ export function PermissionsEditor({
 
   const isCustom = !isFullAccess && !activePresetId;
   const showChips = allowFullAccess || presets.length > 0;
+  const lastCustomPermissions = useRef<string[]>(isCustom ? [...selectedKeys] : []);
+
+  // Mantém a última seleção manual para que alternar entre "Acesso Total" e
+  // "Personalizado" não apague o trabalho que o administrador já fez.
+  useEffect(() => {
+    if (isCustom) lastCustomPermissions.current = [...selectedKeys];
+  }, [isCustom, selectedKeys]);
 
   // ── Mutação ───────────────────────────────────────────────────────────────
   const toggleKey = (key: string) => {
@@ -124,6 +131,7 @@ export function PermissionsEditor({
   /** Aplicar cargo SUBSTITUI a seleção (não soma). */
   const applyPreset = (preset: PermissionPreset) => onChange([...preset.permissions]);
   const applyFullAccess = () => onChange([...allKeys]);
+  const applyCustom = () => onChange([...lastCustomPermissions.current]);
 
   // ── Busca ─────────────────────────────────────────────────────────────────
   const searching = normalizePermissionText(query).length > 0;
@@ -262,6 +270,7 @@ export function PermissionsEditor({
                 type="button"
                 onClick={applyFullAccess}
                 title={te.fullAccessHint}
+                aria-pressed={isFullAccess}
                 className={cn(
                   'inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
                   isFullAccess
@@ -281,6 +290,7 @@ export function PermissionsEditor({
                   type="button"
                   onClick={() => applyPreset(preset)}
                   title={preset.description || undefined}
+                  aria-pressed={active}
                   className={cn(
                     'inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
                     active
@@ -293,12 +303,20 @@ export function PermissionsEditor({
                 </button>
               );
             })}
-            {isCustom && (
-              // Não clicável: só informa que a seleção não bate com nenhum cargo.
-              <span className="inline-flex cursor-default items-center rounded-full bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
-                {te.custom}
-              </span>
-            )}
+            <button
+              type="button"
+              onClick={applyCustom}
+              aria-pressed={isCustom}
+              className={cn(
+                'inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                isCustom
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted/60 text-foreground hover:bg-muted',
+              )}
+            >
+              {isCustom && <Check className="h-3.5 w-3.5" />}
+              {te.custom}
+            </button>
           </div>
         </div>
       )}

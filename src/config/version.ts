@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.37";
+export const APP_VERSION = "1.37.38";
 
 export const VERSION_NOTES =
-  "Clientes, fornecedores e equipamentos ganharam visual mais limpo no computador: lista mais larga, sem molduras, e a ficha com menos caixas. O mapa do endereço troca sem piscar e o cadastro de cliente ficou agrupado por assunto.";
+  "Ao cadastrar ou editar um usuário, as opções Acesso Total e Personalizado continuam visíveis e permitem trocar de configuração sem fechar a janela nem perder a seleção manual.";

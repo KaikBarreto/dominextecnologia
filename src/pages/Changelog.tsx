@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.38',
+    date: '23 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Troca de permissões sem fechar o cadastro',
+        description: 'Ao cadastrar ou editar um usuário, as opções Acesso Total e Personalizado continuam visíveis. Agora é possível alternar entre elas sem fechar a janela e sem perder a seleção manual anterior.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.37.37',
     date: '22 de outubro de 2026',
     type: 'patch',
