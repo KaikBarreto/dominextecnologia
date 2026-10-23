@@ -88,7 +88,7 @@ import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import type { Stock } from '@/hooks/useStocks';
 import { useToast } from '@/hooks/use-toast';
-import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { InventoryKardexTab } from '@/components/inventory/InventoryKardexTab';
 import { MaterialPurchasesTab } from '@/components/inventory/MaterialPurchasesTab';
 import { NfeImportDialog } from '@/components/inventory/NfeImportDialog';
@@ -584,11 +584,9 @@ export default function Inventory() {
   // Há filtros disponíveis (inclui low-stock toggle)
   const hasAnyFilter = true;
 
-  // No mobile o MobilePillTabs (SettingsSidebarLayout) rola horizontalmente
-  // com fade nas bordas — rótulo longo ("Histórico de Materiais (Kardex)")
-  // aparece cortado no meio da palavra antes de sumir no fade. Só no mobile
-  // trocamos pelo rótulo curto (ex.: "Histórico"); desktop mantém o completo.
-  const inventoryTabs: SettingsTab[] = [
+  // Navegação principal horizontal em todas as larguras. No mobile usamos
+  // rótulos curtos para preservar leitura sem comprimir as abas.
+  const inventoryTabs = [
     { value: 'estoque', label: t.tabs.current, icon: Boxes },
     { value: 'historico', label: isMobile ? t.tabs.kardexShort : t.tabs.kardex, icon: History },
     { value: 'compras', label: isMobile ? t.tabs.purchasesShort : t.tabs.purchases, icon: ShoppingCart },
@@ -664,20 +662,22 @@ export default function Inventory() {
         compactOnMobile
       />
 
-      <SettingsSidebarLayout
-        tabs={inventoryTabs}
+      <MobilePillTabs
+        variant="underline"
+        className="mx-0"
+        tabs={inventoryTabs.map((tab) => {
+          const Icon = tab.icon;
+          return {
+            value: tab.value,
+            label: tab.label,
+            icon: <Icon className="h-4 w-4" />,
+          };
+        })}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-      >
-        {/* No mobile o pill ativo já indica a aba selecionada (MobilePillTabs do
-            SettingsSidebarLayout) — repetir o rótulo aqui em cima duplicava o
-            texto (e ficava atrás do header compacto). Só desktop mantém o
-            título de contexto ao lado do sidebar de abas. */}
-        {!isMobile && activeTab !== 'compras' && activeTab !== 'inventarios' && activeTab !== 'posicao' && (
-          <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
-            {inventoryTabs.find((tab) => tab.value === activeTab)?.label}
-          </h2>
-        )}
+      />
+
+      <div className="min-w-0">
 
         {/* ===================== ABA: ESTOQUE ATUAL ===================== */}
         {activeTab === 'estoque' && (
@@ -1076,7 +1076,7 @@ export default function Inventory() {
 
         {/* ===================== ABA: RELATÓRIO DE COMPRAS ===================== */}
         {activeTab === 'relatorio' && <MaterialPurchaseReportTab />}
-      </SettingsSidebarLayout>
+      </div>
 
       {/* FAB mobile-only (só na aba de estoque) */}
       {isMobile && activeTab === 'estoque' && (

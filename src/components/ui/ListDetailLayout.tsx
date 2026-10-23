@@ -19,6 +19,8 @@ import { formatNumber } from '@/lib/format';
 export interface ListDetailItem {
   id: string;
   title: string;
+  /** Destaque pontual para itens sintéticos/prioritários, como "Geral (Todos)". */
+  emphasized?: boolean;
   subtitle?: string;
   searchText?: string;
   imageUrl?: string | null;
@@ -40,6 +42,8 @@ export interface ListDetailSortOption {
 interface ListDetailLayoutProps {
   children: ReactNode;
   items: ListDetailItem[];
+  /** Itens fixos antes da lista paginada (ex.: "Geral (Todos)"). */
+  pinnedItems?: ListDetailItem[];
   selectedId?: string;
   listTitle: string;
   listDescription?: string;
@@ -63,6 +67,11 @@ interface ListDetailLayoutProps {
   collapseLabel?: string;
   expandLabel?: string;
   onSelect: (id: string) => void;
+  /**
+   * Opt-in para fluxos mobile lista → detalhe. `false` mostra a lista; `true`,
+   * o detalhe. Quando omitido, preserva o comportamento desktop-only legado.
+   */
+  mobileDetailOpen?: boolean;
   className?: string;
   detailClassName?: string;
 }
@@ -87,9 +96,9 @@ function writeStored(storageKey: string | undefined, field: string, value: strin
 }
 
 /**
- * Estrutura master-detail exclusiva do desktop. Em tablet/mobile, somente o
- * detalhe é renderizado visualmente e o fluxo de navegação existente segue
- * intacto, sem comprimir lista e ficha na mesma largura.
+ * Estrutura master-detail no desktop. Por padrão, tablet/mobile preservam o
+ * detalhe já existente; telas que passam `mobileDetailOpen` ganham um fluxo
+ * explícito lista → detalhe, sem comprimir os dois painéis na mesma largura.
  *
  * A coluna da esquerda é uma lista de verdade: busca, filtros do chamador,
  * ordenação e paginação. Paginar não é só estética — a lista chega INTEIRA em
@@ -100,6 +109,7 @@ function writeStored(storageKey: string | undefined, field: string, value: strin
 export function ListDetailLayout({
   children,
   items,
+  pinnedItems = [],
   selectedId,
   listTitle,
   listDescription,
@@ -112,6 +122,7 @@ export function ListDetailLayout({
   collapseLabel,
   expandLabel,
   onSelect,
+  mobileDetailOpen,
   className,
   detailClassName,
 }: ListDetailLayoutProps) {
@@ -233,6 +244,71 @@ export function ListDetailLayout({
   // seletor de itens por página e as setas.
   const showingText = `${formatNumber(pagination.from, locale)}-${formatNumber(pagination.to, locale)} / ${formatNumber(pagination.totalItems, locale)}`;
 
+  const renderListItem = (item: ListDetailItem) => {
+    const selected = item.id === selectedId;
+    return (
+      <div
+        key={item.id}
+        role="listitem"
+        aria-current={selected ? 'true' : undefined}
+        onClick={() => onSelect(item.id)}
+        className={cn(
+          'flex w-full cursor-pointer items-center gap-3 border-b border-border/60 px-3 py-3 text-left outline-none transition-colors last:border-b-0',
+          selected ? 'bg-muted' : 'hover:bg-muted/50',
+        )}
+      >
+        {item.imageUrl ? (
+          item.onImageClick ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                item.onImageClick?.();
+              }}
+              className="shrink-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+              aria-label={item.imageAlt ?? zoomPhotoLabel(item.title)}
+              title={item.imageAlt ?? zoomPhotoLabel(item.title)}
+            >
+              <img
+                src={item.imageUrl}
+                alt=""
+                className="h-10 w-10 rounded-lg border object-cover transition-opacity hover:opacity-80"
+              />
+            </button>
+          ) : (
+            <img
+              src={item.imageUrl}
+              alt=""
+              className="h-10 w-10 shrink-0 rounded-lg border object-cover"
+            />
+          )
+        ) : item.leading ? (
+          <div className="shrink-0">{item.leading}</div>
+        ) : null}
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onSelect(item.id);
+          }}
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+        >
+          <span className="min-w-0 flex-1">
+            <span className={cn('block truncate text-sm', item.emphasized ? 'font-bold' : 'font-medium')}>
+              {item.title}
+            </span>
+            {item.subtitle && (
+              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                {item.subtitle}
+              </span>
+            )}
+          </span>
+          {item.trailing && <span className="shrink-0">{item.trailing}</span>}
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div
       className={cn(
@@ -260,7 +336,11 @@ export function ListDetailLayout({
       ) : (
         <aside
           ref={asideRef}
-          className="hidden overflow-hidden border-r border-border lg:sticky lg:top-4 lg:flex lg:h-[calc(100dvh-7rem)] lg:min-h-[24rem] lg:flex-col lg:pr-5"
+          className={cn(
+            'overflow-hidden flex-col',
+            mobileDetailOpen === false ? 'flex' : 'hidden lg:flex',
+            'lg:sticky lg:top-4 lg:h-[calc(100dvh-7rem)] lg:min-h-[24rem] lg:border-r lg:border-border lg:pr-5',
+          )}
           aria-label={listTitle}
         >
           <div className="border-b border-border/60 pb-3">
@@ -275,7 +355,7 @@ export function ListDetailLayout({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 shrink-0"
+                className="hidden h-8 w-8 shrink-0 lg:inline-flex"
                 aria-label={collapseText}
                 title={collapseText}
                 onClick={() => setCollapsed(true)}
@@ -348,75 +428,12 @@ export function ListDetailLayout({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            {pagination.paginatedItems.length === 0 ? (
+            {pinnedItems.length === 0 && pagination.paginatedItems.length === 0 ? (
               <p className="px-3 py-8 text-center text-sm text-muted-foreground">{emptyLabel}</p>
             ) : (
               <div role="list">
-                {pagination.paginatedItems.map((item) => {
-                  const selected = item.id === selectedId;
-                  return (
-                    <div
-                      key={item.id}
-                      role="listitem"
-                      aria-current={selected ? 'true' : undefined}
-                      onClick={() => onSelect(item.id)}
-                      className={cn(
-                        'flex w-full cursor-pointer items-center gap-3 border-b border-border/60 px-3 py-3 text-left outline-none transition-colors last:border-b-0',
-                        selected ? 'bg-muted' : 'hover:bg-muted/50',
-                      )}
-                    >
-                      {item.imageUrl ? (
-                        item.onImageClick ? (
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              item.onImageClick?.();
-                            }}
-                            className="shrink-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                            aria-label={item.imageAlt ?? zoomPhotoLabel(item.title)}
-                            title={item.imageAlt ?? zoomPhotoLabel(item.title)}
-                          >
-                            <img
-                              src={item.imageUrl}
-                              alt=""
-                              className="h-10 w-10 rounded-lg border object-cover transition-opacity hover:opacity-80"
-                            />
-                          </button>
-                        ) : (
-                          <img
-                            src={item.imageUrl}
-                            alt=""
-                            className="h-10 w-10 shrink-0 rounded-lg border object-cover"
-                          />
-                        )
-                      ) : item.leading ? (
-                        <div className="shrink-0">{item.leading}</div>
-                      ) : null}
-                      {/* Gatilho real da troca de item: fica no <button> pra
-                          responder a teclado (Tab + Enter), e o clique no resto
-                          da linha chega aqui pelo handler do container. */}
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onSelect(item.id);
-                        }}
-                        className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                      >
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{item.title}</span>
-                        {item.subtitle && (
-                          <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                            {item.subtitle}
-                          </span>
-                        )}
-                      </span>
-                      {item.trailing && <span className="shrink-0">{item.trailing}</span>}
-                      </button>
-                    </div>
-                  );
-                })}
+                {pinnedItems.map(renderListItem)}
+                {pagination.paginatedItems.map(renderListItem)}
               </div>
             )}
           </div>
@@ -472,7 +489,15 @@ export function ListDetailLayout({
       {/* <div>, não <main>: o shell (AppLayout) já tem o único <main> do
           documento, e aninhar outro quebra o HTML e confunde quem procura
           "main" na página (leitor de tela, pipeline de print do guia). */}
-      <div className={cn('min-w-0 lg:pl-5', detailClassName)}>{children}</div>
+      <div
+        className={cn(
+          'min-w-0 lg:pl-5',
+          mobileDetailOpen === false && 'hidden lg:block',
+          detailClassName,
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }

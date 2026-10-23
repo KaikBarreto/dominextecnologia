@@ -106,7 +106,7 @@ describe('ListDetailLayout', () => {
     expect(screen.getByText('76-100 / 120')).toBeInTheDocument();
   });
 
-  it('ordena pelo critério escolhido e volta para a primeira página', () => {
+  it('ordena pelo critério escolhido no menu compacto', async () => {
     const items = [
       { id: '1', title: 'Ana' },
       { id: '2', title: 'Bruno' },
@@ -129,15 +129,52 @@ describe('ListDetailLayout', () => {
     expect(primeiraLinha().getByText('Ana')).toBeInTheDocument();
     expect(screen.getByText('3 registros')).toBeInTheDocument();
 
-    // Ordenação é um botão discreto que alterna o critério, não um seletor.
+    // Ordenação abre um menu compacto com os critérios disponíveis.
     const botao = screen.getByRole('button', { name: 'Ordenar: Nome (A-Z)' });
-    expect(botao).toHaveTextContent('A-Z');
+    expect(botao).toHaveTextContent('Ordenar');
 
     fireEvent.click(botao);
+    fireEvent.click(await screen.findByRole('button', { name: 'Nome (Z-A)' }));
     expect(primeiraLinha().getByText('Carla')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Ordenar: Nome (Z-A)' })).toHaveTextContent('Z-A');
+    expect(screen.getByRole('button', { name: 'Ordenar: Nome (Z-A)' })).toHaveTextContent('Ordenar');
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ordenar: Nome (Z-A)' }));
-    expect(primeiraLinha().getByText('Ana')).toBeInTheDocument();
+  it('mantém item geral fixo e alterna lista e detalhe no fluxo mobile', () => {
+    const { rerender } = render(
+      <ListDetailLayout
+        pinnedItems={[{ id: 'all', title: 'Geral (Todos)', emphasized: true }]}
+        items={[{ id: '1', title: 'Filtro secador' }]}
+        selectedId="all"
+        listTitle="Materiais"
+        searchPlaceholder="Buscar material..."
+        emptyLabel="Nenhum material encontrado"
+        onSelect={vi.fn()}
+        mobileDetailOpen={false}
+      >
+        <div>Histórico selecionado</div>
+      </ListDetailLayout>,
+    );
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(2);
+    expect(screen.getByText('Geral (Todos)')).toHaveClass('font-bold');
+    expect(screen.getByText('1 registro')).toBeInTheDocument();
+    expect(screen.getByText('Histórico selecionado').parentElement).toHaveClass('hidden');
+
+    rerender(
+      <ListDetailLayout
+        pinnedItems={[{ id: 'all', title: 'Geral (Todos)', emphasized: true }]}
+        items={[{ id: '1', title: 'Filtro secador' }]}
+        selectedId="1"
+        listTitle="Materiais"
+        searchPlaceholder="Buscar material..."
+        emptyLabel="Nenhum material encontrado"
+        onSelect={vi.fn()}
+        mobileDetailOpen
+      >
+        <div>Histórico selecionado</div>
+      </ListDetailLayout>,
+    );
+
+    expect(screen.getByText('Histórico selecionado').parentElement).not.toHaveClass('hidden');
   });
 });
