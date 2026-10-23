@@ -1,11 +1,10 @@
-import { useState } from 'react';
-import { Plus, Pencil, Trash2, Wrench, Tags } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, Plus, Trash2, Wrench, Tags, SlidersHorizontal } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import { fuzzyIncludesAny } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -14,11 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import {
-  Table, TableBody, TableCell, TableHeader, TableRow,
-} from '@/components/ui/table';
 import { useTableSort } from '@/hooks/useTableSort';
-import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -27,10 +22,9 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { Badge } from '@/components/ui/badge';
-import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { useServiceTypes, type ServiceType } from '@/hooks/useServiceTypes';
 import { useServiceTypeCategories } from '@/hooks/useServiceTypeCategories';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -40,6 +34,8 @@ import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { TaxCodeCombobox } from '@/components/fiscal/TaxCodeCombobox';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { ServiceTypeCategoriesDialog } from '@/components/service-orders/ServiceTypeCategoriesDialog';
+import { ListDetailLayout, type ListDetailItem } from '@/components/ui/ListDetailLayout';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 /** Converte string crua de input numérico em number (padrão do time anti-"0" preso). */
 const num = (s: string, fallback = 0): number => {
@@ -121,10 +117,10 @@ export function ServiceTypesPanel({
   const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false);
 
   // Helper: resolve category name by id
-  const getCategoryName = (categoryId: string | null): string | undefined => {
+  const getCategoryName = useCallback((categoryId: string | null): string | undefined => {
     if (!categoryId) return undefined;
     return categories.find((c) => c.id === categoryId)?.name;
-  };
+  }, [categories]);
   const getCategoryColor = (categoryId: string | null): string | undefined => {
     if (!categoryId) return undefined;
     return categories.find((c) => c.id === categoryId)?.color ?? undefined;
@@ -132,7 +128,7 @@ export function ServiceTypesPanel({
 
   // Busca universal (ignora filtros) + filtro por categoria (vazio = todos).
   const filteredTypes = serviceTypes.filter((st) => {
-    const matchesSearch = fuzzyIncludesAny([st.name, st.description], searchQuery);
+    const matchesSearch = !isMobile || fuzzyIncludesAny([st.name, st.description], searchQuery);
     const matchesCategory =
       categoryFilter.length === 0 ||
       (categoryFilter.includes('__none__') && !st.category_id) ||
@@ -140,12 +136,13 @@ export function ServiceTypesPanel({
     return matchesSearch && matchesCategory;
   });
 
-  const { sortedItems: sortedTypes, sortConfig: stSortConfig, handleSort: handleStSort } = useTableSort(filteredTypes);
+  const { sortedItems: sortedTypes } = useTableSort(filteredTypes);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ServiceTypeForm>(defaultForm);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [toDeleteId, setToDeleteId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   // Aba ativa do formulário. Sem o módulo de nota fiscal só existe "Dados".
   const [formTab, setFormTab] = useState<ServiceTypeFormTab>('dados');
   const activeFormTab: ServiceTypeFormTab = showFiscal ? formTab : 'dados';
@@ -157,7 +154,8 @@ export function ServiceTypesPanel({
     setFormOpen(true);
   };
 
-  const handleEdit = (st: any) => {
+  const handleEdit = useCallback((st: ServiceType) => {
+    setSelectedId(st.id);
     setEditingId(st.id);
     setFormTab(showFiscal ? defaultFormTab : 'dados');
     setForm({
@@ -166,17 +164,16 @@ export function ServiceTypesPanel({
       description: st.description || '',
       is_active: st.is_active,
       requires_equipment: st.requires_equipment ?? true,
-      number_prefix: (st as any).number_prefix || '',
-      category_id: (st as any).category_id || '',
-      codigo_servico: (st as any).codigo_servico || '',
+      number_prefix: st.number_prefix || '',
+      category_id: st.category_id || '',
+      codigo_servico: st.codigo_servico || '',
       codigo_tributacao_municipal: st.codigo_tributacao_municipal || '',
-      codigo_nbs: (st as any).codigo_nbs || '',
-      iss_aliquota: (st as any).iss_aliquota != null ? String((st as any).iss_aliquota) : '',
-      item_lc116: (st as any).item_lc116 || '',
-      default_price: (st as any).default_price != null ? String((st as any).default_price) : '',
+      codigo_nbs: st.codigo_nbs || '',
+      iss_aliquota: st.iss_aliquota != null ? String(st.iss_aliquota) : '',
+      item_lc116: st.item_lc116 || '',
+      default_price: st.default_price != null ? String(st.default_price) : '',
     });
-    setFormOpen(true);
-  };
+  }, [defaultFormTab, showFiscal]);
 
   // cTribMun é opcional, mas quando preenchido tem que ter os 3 dígitos.
   const cTribMunInvalid =
@@ -204,13 +201,14 @@ export function ServiceTypesPanel({
       await updateServiceType.mutateAsync({ id: editingId, ...payload });
     } else {
       await createServiceType.mutateAsync(payload);
+      setFormOpen(false);
     }
-    setFormOpen(false);
   };
 
   const handleDelete = async () => {
     if (toDeleteId) {
       await deleteServiceType.mutateAsync(toDeleteId);
+      if (selectedId === toDeleteId) setSelectedId(null);
       setToDeleteId(null);
       setDeleteDialogOpen(false);
     }
@@ -229,6 +227,38 @@ export function ServiceTypesPanel({
     })),
   ];
 
+  const selectedType = serviceTypes.find((serviceType) => serviceType.id === selectedId);
+  const listItems = useMemo<ListDetailItem[]>(
+    () => filteredTypes.map((serviceType) => ({
+      id: serviceType.id,
+      title: serviceType.name,
+      subtitle: [getCategoryName(serviceType.category_id), serviceType.number_prefix].filter(Boolean).join(' • ') || serviceType.description || undefined,
+      searchText: [serviceType.description, getCategoryName(serviceType.category_id), serviceType.number_prefix].filter(Boolean).join(' '),
+      leading: (
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: serviceType.color }}>
+          <Wrench className="h-4 w-4 text-white" />
+        </span>
+      ),
+      trailing: !serviceType.is_active ? <Badge variant="secondary" className="text-[10px]">{t.badgeInactive}</Badge> : undefined,
+    })),
+    [filteredTypes, getCategoryName, t.badgeInactive],
+  );
+
+  useEffect(() => {
+    if (isMobile) return;
+    if (selectedId && serviceTypes.some((serviceType) => serviceType.id === selectedId)) return;
+    const first = filteredTypes[0];
+    if (first) handleEdit(first);
+  }, [filteredTypes, handleEdit, isMobile, selectedId, serviceTypes]);
+
+  useEffect(() => {
+    if (selectedType && editingId !== selectedType.id) handleEdit(selectedType);
+  }, [editingId, handleEdit, selectedType]);
+
+  const restoreSelectedForm = () => {
+    if (selectedType) handleEdit(selectedType);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -239,20 +269,161 @@ export function ServiceTypesPanel({
     );
   }
 
+  const inlineEditor = (
+    <Tabs value={activeFormTab} onValueChange={(value) => setFormTab(value as ServiceTypeFormTab)} className="space-y-5">
+      {showFiscal && (
+        <MobilePillTabs
+          variant="underline"
+          tabs={[{ value: 'dados', label: t.tabDados }, { value: 'fiscal', label: t.tabFiscal }]}
+          activeTab={activeFormTab}
+          onTabChange={(value) => setFormTab(value as ServiceTypeFormTab)}
+        />
+      )}
+      <TabsContent value="dados" className="mt-0 space-y-5">
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
+          <div className="space-y-2">
+            <Label>{t.labelName}</Label>
+            <Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder={t.placeholderName} />
+          </div>
+          <div className="space-y-2">
+            <Label>{t.labelColor}</Label>
+            <div className="flex items-center gap-2">
+              <input type="color" value={form.color} onChange={(event) => setForm({ ...form, color: event.target.value })} className="h-10 w-10 cursor-pointer rounded border-0" />
+              <Input value={form.color} onChange={(event) => setForm({ ...form, color: event.target.value })} />
+            </div>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label>{tCat.labelCategory}</Label>
+          <Select value={form.category_id || '__none__'} onValueChange={(value) => setForm({ ...form, category_id: value === '__none__' ? '' : value })}>
+            <SelectTrigger><SelectValue placeholder={tCat.noCategory} /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">{tCat.noCategory}</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  <span className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: category.color ?? '#6B7280' }} />
+                    {category.name}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>{t.labelDescription}</Label>
+          <Textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder={t.placeholderDescription} />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label>{t.labelPrefix}</Label>
+            <Input value={form.number_prefix} onChange={(event) => setForm({ ...form, number_prefix: event.target.value })} placeholder={t.placeholderPrefix} />
+            <p className="font-mono text-[11px] text-muted-foreground">{`→ ${form.number_prefix || 'OS'}-2026-0001`}</p>
+          </div>
+          <div className="space-y-2">
+            <Label>{t.labelDefaultPrice}</Label>
+            <Input type="number" min={0} step="0.01" value={form.default_price} onChange={(event) => setForm({ ...form, default_price: event.target.value })} placeholder={t.placeholderDefaultPrice} />
+            <p className="text-[11px] text-muted-foreground">{t.helperDefaultPrice}</p>
+          </div>
+        </div>
+        <div className="grid gap-4 border-t pt-4 sm:grid-cols-2">
+          <div className="flex items-center gap-2">
+            <Switch checked={form.requires_equipment} onCheckedChange={(checked) => setForm({ ...form, requires_equipment: checked })} />
+            <Label>{t.labelEquipmentRequired}</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={form.is_active} onCheckedChange={(checked) => setForm({ ...form, is_active: checked })} />
+            <Label>{t.labelActive}</Label>
+          </div>
+        </div>
+      </TabsContent>
+      {showFiscal && (
+        <TabsContent value="fiscal" className="mt-0 space-y-5">
+          <div>
+            <p className="text-sm font-semibold">{t.fiscalTitle}</p>
+            <p className="text-xs text-muted-foreground">{t.fiscalSubtitle}</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t.labelCTribNac}</Label>
+            <TaxCodeCombobox
+              type="servico"
+              value={form.codigo_servico}
+              onSelect={(codigo, item) => setForm((current) => ({ ...current, codigo_servico: codigo, item_lc116: item?.itemLc116 ? String(item.itemLc116) : current.item_lc116 }))}
+              placeholder={t.placeholderTaxSearch}
+            />
+            <p className="text-[11px] text-muted-foreground">{t.helperCTribNac}</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>{t.labelCTribMun}</Label>
+                <Input
+                  value={form.codigo_tributacao_municipal}
+                  onChange={(event) => setForm({ ...form, codigo_tributacao_municipal: event.target.value.replace(/\D/g, '').slice(0, 3) })}
+                  placeholder={t.placeholderCTribMun}
+                  inputMode="numeric"
+                  maxLength={3}
+                />
+                {cTribMunInvalid && <p className="text-sm text-destructive">{t.errorCTribMun}</p>}
+                <p className="text-[11px] text-muted-foreground">{t.helperCTribMun}</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t.labelLC116}</Label>
+                <Input value={form.item_lc116} onChange={(event) => setForm({ ...form, item_lc116: event.target.value })} placeholder="14.01" />
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>{t.labelNBS}</Label>
+                <TaxCodeCombobox type="nbs" value={form.codigo_nbs} onSelect={(codigo) => setForm((current) => ({ ...current, codigo_nbs: codigo }))} placeholder={t.placeholderTaxSearch} />
+                <p className="text-[11px] text-muted-foreground">{t.helperNBS}</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t.labelISS}</Label>
+                <Input type="text" inputMode="decimal" value={form.iss_aliquota} onChange={(event) => setForm({ ...form, iss_aliquota: event.target.value })} placeholder="5" />
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+      )}
+    </Tabs>
+  );
+
+  const detail = selectedType ? (
+    <section className="min-w-0">
+      {isMobile && (
+        <Button variant="ghost" size="sm" className="mb-3 -ml-2" onClick={() => setSelectedId(null)}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar aos tipos de serviço
+        </Button>
+      )}
+      <div className="mb-5 flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ficha do tipo de serviço</p>
+          <h3 className="mt-1 truncate text-xl font-semibold">{selectedType.name}</h3>
+        </div>
+        <Button variant="outline" size="sm" className="shrink-0 text-destructive hover:text-destructive" onClick={() => { setToDeleteId(selectedType.id); setDeleteDialogOpen(true); }}>
+          <Trash2 className="mr-2 h-4 w-4" />
+          {t.actionDelete}
+        </Button>
+      </div>
+      {inlineEditor}
+      <div className="mt-6 flex justify-end border-t pt-4">
+        <Button onClick={handleSave} disabled={!form.name.trim() || cTribMunInvalid || updateServiceType.isPending}>{t.btnSave}</Button>
+      </div>
+    </section>
+  ) : (
+    <div className="flex min-h-72 items-center justify-center text-center text-sm text-muted-foreground">
+      Selecione um tipo de serviço para consultar e editar a ficha.
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       {/* Header: no mobile escondemos texto explicativo e o botão vira FAB.
           Embutido em outro modal, o título some (o modal já tem o dele). */}
       {!isMobile && (
-        <div className="flex items-center justify-between gap-3">
-          {!embedded && (
-            <div>
-              <h2 className="text-lg font-semibold">{t.title}</h2>
-              <p className="text-sm text-muted-foreground">
-                {t.subtitle}
-              </p>
-            </div>
-          )}
+        <div className="flex items-center justify-end gap-3">
           <div className="flex items-center gap-2 ml-auto">
             <Button variant="outline" size="sm" onClick={() => setCategoriesDialogOpen(true)}>
               <Tags className="mr-2 h-4 w-4" />
@@ -270,7 +441,7 @@ export function ServiceTypesPanel({
           Sem dados, só os botões soltos (nada pra buscar/filtrar ainda). Embutido
           não tem botão flutuante (ficaria atrás do drawer), então o "Novo Tipo"
           vem inline aqui. */}
-      {isMobile && (
+      {isMobile && !selectedType && (
         serviceTypes.length > 0 ? (
           <MobileListToolbar
             searchValue={searchQuery}
@@ -332,46 +503,17 @@ export function ServiceTypesPanel({
       )}
 
       {serviceTypes.length === 0 ? (
-        isMobile ? (
-          <EmptyState
-            icon={<Wrench className="h-12 w-12" />}
-            title={t.emptyTitle}
-            description={t.emptyDescriptionMobile}
-          />
-        ) : (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Wrench className="mb-4 h-12 w-12 text-muted-foreground" />
-              <h3 className="text-lg font-medium">{t.emptyTitle}</h3>
-              <p className="text-muted-foreground">{t.emptyDescriptionDesktop}</p>
-            </CardContent>
-          </Card>
-        )
-      ) : sortedTypes.length === 0 ? (
-        /* Busca ou filtro retornou vazio, mas há tipos cadastrados */
-        isMobile ? (
-          <p className="text-center text-sm text-muted-foreground py-8">{t.noResults}</p>
-        ) : (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-              <p className="text-muted-foreground text-sm">{t.noResults}</p>
-            </CardContent>
-          </Card>
-        )
+        <EmptyState
+          icon={<Wrench className="h-12 w-12" />}
+          title={t.emptyTitle}
+          description={isMobile ? t.emptyDescriptionMobile : t.emptyDescriptionDesktop}
+        />
+      ) : isMobile && selectedType ? detail : isMobile && sortedTypes.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">{t.noResults}</p>
       ) : isMobile ? (
-        /* -------------------------------------------------------------------
-         * Mobile: lista nativa com MobileListItem (swipe + menu ⋮).
-         * ------------------------------------------------------------------- */
         <div className="rounded-xl border bg-card overflow-hidden">
           {sortedTypes.map((st) => {
             const itemActions: ItemAction[] = [
-              {
-                key: 'edit',
-                label: t.actionEdit,
-                icon: <Pencil className="h-4 w-4" />,
-                variant: 'edit',
-                onClick: () => handleEdit(st),
-              },
               {
                 key: 'delete',
                 label: t.actionDelete,
@@ -435,75 +577,50 @@ export function ServiceTypesPanel({
           })}
         </div>
       ) : (
-        /* -------------------------------------------------------------------
-         * Desktop: tabela 100% intacta.
-         * ------------------------------------------------------------------- */
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <SortableTableHead sortKey="" sortConfig={stSortConfig} onSort={() => {}}>{t.colColor}</SortableTableHead>
-                  <SortableTableHead sortKey="name" sortConfig={stSortConfig} onSort={handleStSort}>{t.colName}</SortableTableHead>
-                  <SortableTableHead sortKey="" sortConfig={stSortConfig} onSort={() => {}}>{tCat.labelCategory}</SortableTableHead>
-                  <SortableTableHead sortKey="description" sortConfig={stSortConfig} onSort={handleStSort}>{t.colDescription}</SortableTableHead>
-                  <SortableTableHead sortKey="number_prefix" sortConfig={stSortConfig} onSort={handleStSort}>{t.colPrefix}</SortableTableHead>
-                  <SortableTableHead sortKey="default_price" sortConfig={stSortConfig} onSort={handleStSort}>{t.colValue}</SortableTableHead>
-                  <SortableTableHead sortKey="" sortConfig={stSortConfig} onSort={() => {}} className="w-[100px]">{t.colActions}</SortableTableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedTypes.map((st) => {
-                  const categoryName = getCategoryName(st.category_id);
-                  const categoryColor = getCategoryColor(st.category_id);
-                  return (
-                    <TableRow key={st.id} className={!st.is_active ? 'opacity-60' : ''}>
-                      <TableCell>
-                        <div
-                          className="h-6 w-6 rounded-full"
-                          style={{ backgroundColor: st.color }}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">{st.name}</TableCell>
-                      <TableCell>
-                        {categoryName ? (
-                          <span className="flex items-center gap-1.5 text-sm">
-                            <span
-                              className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
-                              style={{ backgroundColor: categoryColor ?? '#6B7280' }}
-                            />
-                            {categoryName}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                        {st.description || '-'}
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-mono text-sm">{st.number_prefix || '-'}</span>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {st.default_price != null && st.default_price > 0
-                          ? formatMoney(st.default_price, currency, locale)
-                          : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <RowActionsMenu
-                          actions={[
-                            { label: t.actionEdit, icon: Pencil, variant: 'edit', onClick: () => handleEdit(st) },
-                            { label: t.actionDelete, icon: Trash2, variant: 'delete', onClick: () => { setToDeleteId(st.id); setDeleteDialogOpen(true); } },
-                          ]}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <ListDetailLayout
+          items={listItems}
+          selectedId={selectedId ?? undefined}
+          listTitle={t.title}
+          listDescription={`${filteredTypes.length} ${filteredTypes.length === 1 ? 'tipo cadastrado' : 'tipos cadastrados'}`}
+          listFilters={categories.length > 0 ? (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 w-full justify-center gap-2">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Filtros
+                  {categoryFilter.length > 0 && (
+                    <Badge className="h-5 min-w-5 bg-primary px-1.5 text-[10px] text-primary-foreground">
+                      {categoryFilter.length}
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-80 p-4">
+                <FilterCheckboxGroup
+                  label={tCat.filterLabel}
+                  options={categoryFilterOptions}
+                  selected={categoryFilter}
+                  onChange={setCategoryFilter}
+                  emptyLabel={tCat.filterEmpty}
+                />
+                {categoryFilter.length > 0 && (
+                  <Button variant="ghost" size="sm" className="mt-3 w-full" onClick={() => setCategoryFilter([])}>
+                    Limpar filtros
+                  </Button>
+                )}
+              </PopoverContent>
+            </Popover>
+          ) : undefined}
+          searchPlaceholder={t.searchPlaceholder}
+          emptyLabel={t.noResults}
+          storageKey="service-types-list"
+          onSelect={(id) => {
+            const serviceType = serviceTypes.find((item) => item.id === id);
+            if (serviceType) handleEdit(serviceType);
+          }}
+        >
+          {detail}
+        </ListDetailLayout>
       )}
 
       {/* FAB mobile-only para criar novo tipo de serviço (só fora de modal). */}
@@ -523,8 +640,11 @@ export function ServiceTypesPanel({
 
       <ResponsiveModal
         open={formOpen}
-        onOpenChange={setFormOpen}
-        title={editingId ? t.modalTitleEdit : t.modalTitleCreate}
+        onOpenChange={(open) => {
+          setFormOpen(open);
+          if (!open) restoreSelectedForm();
+        }}
+        title={t.modalTitleCreate}
         className="sm:max-w-[860px]"
         footer={
           <div className="space-y-2">
@@ -536,7 +656,7 @@ export function ServiceTypesPanel({
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setFormOpen(false)}>{t.btnCancel}</Button>
               <Button onClick={handleSave} disabled={!form.name.trim() || cTribMunInvalid}>
-                {editingId ? t.btnSave : t.btnCreate}
+                {t.btnCreate}
               </Button>
             </div>
           </div>

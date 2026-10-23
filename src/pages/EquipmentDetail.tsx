@@ -527,17 +527,22 @@ export function EquipmentDetailContent() {
                   <button
                     type="button"
                     onClick={() => setQrExpanded(true)}
-                    className="shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                    disabled={qrConfig.isLoading}
+                    className="shrink-0 cursor-pointer transition-opacity hover:opacity-80 disabled:cursor-wait disabled:hover:opacity-100"
                     aria-label={te.ariaExpandQr}
                   >
-                    <BrandedQRCode
-                      value={qrValue}
-                      size={100}
-                      logoUrl={qrConfig.logoUrl}
-                      dotStyle={qrConfig.dotStyle}
-                      cornerStyle={qrConfig.cornerStyle}
-                      color={qrConfig.color}
-                    />
+                    {qrConfig.isLoading ? (
+                      <Skeleton className="h-[100px] w-[100px] rounded-md" />
+                    ) : (
+                      <BrandedQRCode
+                        value={qrValue}
+                        size={100}
+                        logoUrl={qrConfig.logoUrl}
+                        dotStyle={qrConfig.dotStyle}
+                        cornerStyle={qrConfig.cornerStyle}
+                        color={qrConfig.color}
+                      />
+                    )}
                   </button>
                   <div className="w-full space-y-2 text-center lg:text-left">
                     {equipment.identifier && <p className="text-lg font-mono font-medium">{equipment.identifier}</p>}
@@ -551,7 +556,7 @@ export function EquipmentDetailContent() {
                         size="sm"
                         variant="outline"
                         className="w-full sm:w-auto"
-                        disabled={!hasPortalLink}
+                        disabled={!hasPortalLink || qrConfig.isLoading}
                         onClick={handleDownloadQrPng}
                       >
                         <Download className="mr-2 h-3.5 w-3.5" />{tfc.detailDialogDownloadQrPng}
@@ -560,7 +565,7 @@ export function EquipmentDetailContent() {
                         size="sm"
                         variant="outline"
                         className="w-full sm:w-auto"
-                        disabled={!hasPortalLink}
+                        disabled={!hasPortalLink || qrConfig.isLoading}
                         onClick={() => window.open(qrValue, '_blank', 'noopener,noreferrer')}
                       >
                         <ExternalLink className="mr-2 h-3.5 w-3.5" />{te.openLink}
@@ -569,7 +574,7 @@ export function EquipmentDetailContent() {
                         size="sm"
                         variant="outline"
                         className="w-full sm:w-auto"
-                        disabled={!hasPortalLink}
+                        disabled={!hasPortalLink || qrConfig.isLoading}
                         onClick={() => { navigator.clipboard.writeText(qrValue); toast({ title: te.linkCopied }); }}
                       >
                         <Copy className="mr-2 h-3.5 w-3.5" />{te.copyLink}
@@ -1165,14 +1170,18 @@ export function EquipmentDetailContent() {
             className="flex flex-col items-center gap-4 rounded-2xl bg-white p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <BrandedQRCode
-              value={qrValue}
-              size={280}
-              logoUrl={qrConfig.logoUrl}
-              dotStyle={qrConfig.dotStyle}
-              cornerStyle={qrConfig.cornerStyle}
-              color={qrConfig.color}
-            />
+            {qrConfig.isLoading ? (
+              <Skeleton className="h-[280px] w-[280px] rounded-md" />
+            ) : (
+              <BrandedQRCode
+                value={qrValue}
+                size={280}
+                logoUrl={qrConfig.logoUrl}
+                dotStyle={qrConfig.dotStyle}
+                cornerStyle={qrConfig.cornerStyle}
+                color={qrConfig.color}
+              />
+            )}
             {equipment.identifier && <p className="text-lg font-mono font-medium text-black">{equipment.identifier}</p>}
           </div>
         </div>,

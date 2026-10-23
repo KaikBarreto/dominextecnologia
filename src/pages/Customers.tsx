@@ -45,6 +45,7 @@ import { CustomerOriginManagerDialog } from '@/components/customers/CustomerOrig
 import { LeadCaptureManagerDialog } from '@/components/customers/LeadCaptureManagerDialog';
 import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { FilterButton } from '@/components/ui/FilterButton';
 
 export type CustomerKindFilter = 'all' | 'servico' | 'loja';
 
@@ -350,6 +351,15 @@ export default function Customers() {
       onValueChange={setCustomerKindFilter}
     />
   );
+  const desktopKindFilterControl = (
+    <FilterButton
+      activeCount={customerKindFilter === 'all' ? 0 : 1}
+      onClear={() => setCustomerKindFilter('all')}
+      className="w-full"
+    >
+      {kindFilterControl}
+    </FilterButton>
+  );
 
   const openNewCustomer = () => { setEditingCustomer(null); setFormOpen(true); };
 
@@ -426,7 +436,7 @@ export default function Customers() {
           }))}
           listTitle={t.listHeading}
           storageKey="customers-list-detail"
-          listFilters={pdvEnabled ? kindFilterControl : undefined}
+          listFilters={pdvEnabled ? desktopKindFilterControl : undefined}
           searchPlaceholder={t.searchPlaceholderMobile}
           emptyLabel={t.emptySearch}
           selectedId={selectedCustomerId}

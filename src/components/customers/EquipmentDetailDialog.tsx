@@ -417,7 +417,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                 <div className="p-4 flex flex-col items-center gap-4 sm:border-l">
                   {/* Mini-preview de etiqueta */}
                   <div className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 px-6 py-4 w-full">
-                    {portalTokenPending ? (
+                    {portalTokenPending || qrConfig.isLoading ? (
                       <div className="flex h-[120px] w-[120px] items-center justify-center rounded-lg bg-muted">
                         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                       </div>
@@ -465,7 +465,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                     <Button
                       variant="outline"
                       className="h-11 w-full justify-center sm:h-9"
-                      disabled={!hasPortalLink}
+                      disabled={!hasPortalLink || qrConfig.isLoading}
                       onClick={handleDownloadQrPng}
                     >
                       <Download className="mr-2 h-4 w-4" />
@@ -474,7 +474,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                     <Button
                       variant="outline"
                       className="h-11 w-full justify-center sm:h-9"
-                      disabled={!hasPortalLink}
+                      disabled={!hasPortalLink || qrConfig.isLoading}
                       onClick={() => window.open(qrValue, '_blank', 'noopener,noreferrer')}
                     >
                       <ExternalLink className="mr-2 h-4 w-4" />
@@ -483,7 +483,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                     <Button
                       variant="outline"
                       className="h-11 w-full justify-center sm:h-9"
-                      disabled={!hasPortalLink}
+                      disabled={!hasPortalLink || qrConfig.isLoading}
                       onClick={() => { navigator.clipboard.writeText(qrValue); toast({ title: tfc.detailDialogLinkCopied }); }}
                     >
                       <Copy className="mr-2 h-4 w-4" />

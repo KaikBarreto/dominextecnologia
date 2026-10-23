@@ -23,6 +23,51 @@
   font-style: normal;
   font-display: swap;
 }
+
+/* Toasts sem tipo explícito também seguem o contrato visual de avisos:
+   faixa sólida à esquerda, conteúdo neutro e fechamento sempre disponível. */
+[data-sonner-toast]:not(:has([data-icon])) {
+  padding-left: 4.5rem !important;
+}
+
+[data-sonner-toast]:not(:has([data-icon]))::after {
+  content: "✓";
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 0;
+  display: flex;
+  width: 4.5rem;
+  align-items: center;
+  justify-content: center;
+  background: #334155;
+  color: white;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+[data-sonner-toast][data-type="success"] [data-icon] { background: #059669 !important; }
+[data-sonner-toast][data-type="error"] [data-icon] { background: #dc2626 !important; }
+[data-sonner-toast][data-type="warning"] [data-icon] { background: #d97706 !important; }
+[data-sonner-toast][data-type="info"] [data-icon] { background: #2563eb !important; }
+[data-sonner-toast][data-type="loading"] [data-icon] { background: #475569 !important; }
+
+[data-sonner-toast] [data-icon] {
+  display: flex !important;
+  width: 4.5rem !important;
+  min-width: 4.5rem !important;
+  height: auto !important;
+  margin: 0 !important;
+  align-self: stretch !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 0 !important;
+}
+
+[data-sonner-toast] [data-icon] svg {
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+  margin: 0 !important;
+}
 @font-face {
   font-family: 'Netflix Sans';
   src: url('/src/assets/fonts/NetflixSans-Regular.otf') format('opentype');

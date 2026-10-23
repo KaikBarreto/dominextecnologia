@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ServiceTypesPanel } from '@/components/service-orders/ServiceTypesPanel';
 import { TaskTypesPanel } from '@/components/service-orders/TaskTypesPanel';
 import { ChecklistsPanel } from '@/components/service-orders/ChecklistsPanel';
-import { SettingsSidebarLayout } from '@/components/SettingsSidebarLayout';
 import { Settings, FileText, CheckSquare, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
@@ -29,8 +29,24 @@ export default function ServicesPage() {
   });
   const setActiveTab = (tab: string) => {
     setActiveTabState(tab);
-    setSearchParams({ tab }, { replace: true });
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set('tab', tab);
+      return next;
+    }, { replace: true });
   };
+
+  // Mantém navegação por URL funcional quando o histórico muda sem remontar
+  // a página (voltar/avançar ou link interno com outro ?tab=).
+  useEffect(() => {
+    const rawTab = searchParams.get('tab');
+    const tabFromUrl = rawTab === 'questionnaires' ? 'checklists' : rawTab;
+    setActiveTabState(
+      tabFromUrl === 'types' || tabFromUrl === 'task-types' || tabFromUrl === 'checklists'
+        ? tabFromUrl
+        : 'types',
+    );
+  }, [searchParams]);
 
   return (
     <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
@@ -40,15 +56,22 @@ export default function ServicesPage() {
         icon={Briefcase}
       />
 
-      <SettingsSidebarLayout
-        tabs={tabs}
+      <MobilePillTabs
+        variant="underline"
+        tabs={tabs.map((tab) => ({
+          value: tab.value,
+          label: tab.label,
+          icon: <tab.icon className="h-4 w-4 shrink-0" />,
+        }))}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-      >
+      />
+
+      <div className="min-w-0">
         {activeTab === 'types' && <ServiceTypesPanel />}
         {activeTab === 'task-types' && <TaskTypesPanel />}
         {activeTab === 'checklists' && <ChecklistsPanel />}
-      </SettingsSidebarLayout>
+      </div>
     </div>
   );
 }

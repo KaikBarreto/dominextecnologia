@@ -118,6 +118,8 @@ export function useEmployees() {
   return {
     employees: employeesQuery.data || [],
     isLoading: employeesQuery.isLoading,
+    isError: employeesQuery.isError,
+    refetch: employeesQuery.refetch,
     createEmployee, updateEmployee, archiveEmployee,
   };
 }

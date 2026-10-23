@@ -925,8 +925,8 @@ export function CustomerDetailContent() {
 
             if (rows.length === 0) return null;
             return (
-              <Card className={cn('sm:col-span-2', isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}>
-                <CardContent className="p-4 sm:p-6">
+              <Card className="sm:col-span-2 lg:rounded-none lg:border-0 lg:border-b lg:border-border/60 lg:bg-transparent lg:shadow-none">
+                <CardContent className="p-4 sm:p-6 lg:px-0">
                   <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70 mb-4">{t.sectionInfo}</h2>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {rows.map((row, i) => (

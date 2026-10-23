@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Trash2, Pencil, BookOpen } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { AlertCircle, ArrowDownAZ, Plus, FileText, Trash2, Pencil, BookOpen, RotateCcw } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { Button } from '@/components/ui/button';
@@ -10,12 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  Table, TableBody, TableCell, TableHeader, TableRow,
-} from '@/components/ui/table';
-import { useTableSort } from '@/hooks/useTableSort';
-import { SortableTableHead } from '@/components/ui/SortableTableHead';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -24,20 +18,27 @@ import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useServiceTypeCategories } from '@/hooks/useServiceTypeCategories';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
+import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { ChecklistCatalogModal } from '@/components/technician/ChecklistCatalogModal';
+import { ChecklistOsPreview } from '@/components/service-orders/ChecklistOsPreview';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { FormQuestion, FormTemplate } from '@/types/database';
+import { ListDetailLayout, type ListDetailSortOption } from '@/components/ui/ListDetailLayout';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import ChecklistDetail from '@/pages/ChecklistDetail';
 
 type TemplateWithServiceIds = { service_type_ids?: string[] };
+type ChecklistTemplate = FormTemplate & { questions?: FormQuestion[] };
 
 function getServiceIds(template: unknown): string[] | undefined {
   return (template as TemplateWithServiceIds).service_type_ids;
 }
 
 export function ChecklistsPanel() {
-  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.checklists;
@@ -47,12 +48,106 @@ export function ChecklistsPanel() {
   const [allServices, setAllServices] = useState(true);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detailMode, setDetailMode] = useState<'preview' | 'edit'>('preview');
+  const [editorInitialAction, setEditorInitialAction] = useState<'create-question' | undefined>();
+  const [editorSession, setEditorSession] = useState(0);
+  const [mobileSearch, setMobileSearch] = useState('');
+  const [mobileSort, setMobileSort] = useState<'name-asc' | 'name-desc'>('name-asc');
 
-  const { templates, createTemplate, setTemplateServices, deleteTemplate } = useFormTemplates();
+  const {
+    templates, isLoading, isError, refetch,
+    createTemplate, setTemplateServices, deleteTemplate,
+  } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
   const { categories: serviceTypeCategories } = useServiceTypeCategories();
   const activeTemplates = templates.filter((template) => template.is_active);
-  const { sortedItems: sortedTemplates, sortConfig, handleSort } = useTableSort(activeTemplates);
+  const selectedTemplate = useMemo(
+    () => activeTemplates.find((template) => template.id === selectedId) as ChecklistTemplate | undefined,
+    [activeTemplates, selectedId],
+  );
+
+  const checklistSortOptions = useMemo<ListDetailSortOption[]>(() => [
+    {
+      value: 'name-asc', label: 'Nome (A-Z)', shortLabel: 'A-Z',
+      compare: (a, b) => a.title.localeCompare(b.title, locale, { sensitivity: 'base' }),
+    },
+    {
+      value: 'name-desc', label: 'Nome (Z-A)', shortLabel: 'Z-A',
+      compare: (a, b) => b.title.localeCompare(a.title, locale, { sensitivity: 'base' }),
+    },
+  ], [locale]);
+
+  const listItems = useMemo(() => activeTemplates.map((template) => {
+    const serviceIds = getServiceIds(template) ?? [];
+    const questionsCount = template.questions?.length ?? 0;
+    const scopeLabel = serviceIds.length === 0
+      ? t.scopeAll
+      : (serviceIds.length === 1 ? t.scopeServices : t.scopeServicesPlural).replace('{n}', String(serviceIds.length));
+    const questionsLabel = (questionsCount === 1 ? t.questionsCount : t.questionsCountPlural)
+      .replace('{n}', String(questionsCount));
+    return {
+      id: template.id,
+      title: template.name,
+      subtitle: `${questionsLabel} · ${scopeLabel}`,
+      searchText: [template.description, ...serviceTypes.filter((service) => serviceIds.includes(service.id)).map((service) => service.name)]
+        .filter(Boolean)
+        .join(' '),
+      leading: (
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <FileText className="h-4 w-4" />
+        </span>
+      ),
+      trailing: <Badge variant="outline" className="px-1.5 py-0 text-[10px] tabular-nums">{questionsCount}</Badge>,
+    };
+  }), [activeTemplates, serviceTypes, t]);
+
+  const mobileTemplates = useMemo(() => {
+    const query = mobileSearch.trim().toLocaleLowerCase(locale);
+    return activeTemplates
+      .filter((template) => {
+        if (!query) return true;
+        const serviceIds = getServiceIds(template) ?? [];
+        const serviceNames = serviceTypes
+          .filter((service) => serviceIds.includes(service.id))
+          .map((service) => service.name)
+          .join(' ');
+        return `${template.name} ${template.description ?? ''} ${serviceNames}`
+          .toLocaleLowerCase(locale)
+          .includes(query);
+      })
+      .slice()
+      .sort((a, b) => {
+        const result = a.name.localeCompare(b.name, locale, { sensitivity: 'base' });
+        return mobileSort === 'name-asc' ? result : -result;
+      });
+  }, [activeTemplates, locale, mobileSearch, mobileSort, serviceTypes]);
+  const mobilePagination = useDataPagination(mobileTemplates, 10, 'service-checklists-mobile');
+  const setMobilePage = mobilePagination.setPage;
+
+  useEffect(() => {
+    if (isMobile) return;
+    if (!selectedId || !activeTemplates.some((template) => template.id === selectedId)) {
+      setSelectedId(activeTemplates[0]?.id ?? null);
+      setDetailMode('preview');
+    }
+  }, [activeTemplates, isMobile, selectedId]);
+
+  useEffect(() => {
+    setMobilePage(1);
+  }, [mobileSearch, mobileSort, setMobilePage]);
+
+  const selectTemplate = (id: string) => {
+    setSelectedId(id);
+    setDetailMode('preview');
+    setEditorInitialAction(undefined);
+  };
+
+  const openEditor = (initialAction?: 'create-question') => {
+    setEditorInitialAction(initialAction);
+    setEditorSession((current) => current + 1);
+    setDetailMode('edit');
+  };
 
   const handleCreate = () => {
     if (!newName.trim()) return;
@@ -66,7 +161,8 @@ export function ChecklistsPanel() {
         setSelectedServiceIds([]);
         setCreateOpen(false);
         if (data) {
-          navigate(`/checklists/${data.id}`);
+          setSelectedId(data.id);
+          openEditor();
         }
       },
     });
@@ -81,41 +177,99 @@ export function ChecklistsPanel() {
   const handleDelete = () => {
     if (deleteId) {
       deleteTemplate.mutate(deleteId, {
-        onSuccess: () => setDeleteId(null),
+        onSuccess: () => {
+          setDeleteId(null);
+          setDetailMode('preview');
+        },
       });
     }
   };
 
   const templateToDelete = activeTemplates.find((t) => t.id === deleteId);
+  const detailContent = selectedTemplate ? (
+    detailMode === 'edit' ? (
+      <ChecklistDetail
+        key={`${selectedTemplate.id}-${editorSession}`}
+        templateId={selectedTemplate.id}
+        embedded
+        initialAction={editorInitialAction}
+        onExit={() => {
+          setDetailMode('preview');
+          setEditorInitialAction(undefined);
+        }}
+      />
+    ) : (
+      <ChecklistOsPreview
+        template={selectedTemplate}
+        serviceTypes={serviceTypes}
+        onAddQuestion={() => openEditor('create-question')}
+        onEdit={() => openEditor()}
+        onBack={() => setSelectedId(null)}
+        showBack={isMobile}
+      />
+    )
+  ) : (
+    <div className="flex min-h-64 items-center justify-center px-6 text-center text-sm text-muted-foreground">
+      Selecione um checklist para visualizar como ele ficará na OS.
+    </div>
+  );
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-12 w-full" />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Skeleton className="h-80 w-full" />
+          <Skeleton className="h-80 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex min-h-64 flex-col items-center justify-center border-y py-10 text-center">
+        <AlertCircle className="mb-3 h-9 w-9 text-destructive" />
+        <h3 className="font-semibold">Não foi possível carregar os checklists</h3>
+        <p className="mt-1 text-sm text-muted-foreground">Verifique sua conexão e tente novamente.</p>
+        <Button variant="outline" className="mt-4" onClick={() => void refetch()}>
+          <RotateCcw className="mr-2 h-4 w-4" />
+          Tentar novamente
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
       {/* Section header. A page (Services.tsx) já tem o MobilePageHeader "Serviços";
           aqui é um sub-header da aba, sem duplicar header full. No mobile o texto
           fica enxuto e as ações viram botão de catálogo + FAB de criar. */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">{t.title}</h2>
-          <p className="text-sm text-muted-foreground">
-            {t.subtitle}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setCatalogOpen(true)}>
-            <BookOpen className="mr-2 h-4 w-4" />
-            {isMobile ? t.btnCatalog : t.btnCatalogFull}
-          </Button>
-          {!isMobile && (
-            <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => setCreateOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              {t.btnNew}
+      {detailMode !== 'edit' && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">{t.title}</h2>
+            <p className="text-sm text-muted-foreground">
+              {t.subtitle}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setCatalogOpen(true)}>
+              <BookOpen className="mr-2 h-4 w-4" />
+              {isMobile ? t.btnCatalog : t.btnCatalogFull}
             </Button>
-          )}
+            {!isMobile && (
+              <Button
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => setCreateOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {t.btnNew}
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {activeTemplates.length === 0 ? (
         isMobile ? (
@@ -125,147 +279,117 @@ export function ChecklistsPanel() {
             description={t.emptyDescriptionMobile}
           />
         ) : (
-          <Card>
-            <CardContent className="p-0">
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
-                <h3 className="text-lg font-medium">{t.emptyTitle}</h3>
-                <p className="text-muted-foreground">{t.emptyDescriptionDesktop}</p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex flex-col items-center justify-center border-y py-12 text-center">
+            <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
+            <h3 className="text-lg font-medium">{t.emptyTitle}</h3>
+            <p className="text-muted-foreground">{t.emptyDescriptionDesktop}</p>
+          </div>
         )
+      ) : isMobile && selectedTemplate ? (
+        detailContent
       ) : isMobile ? (
-        /* -------------------------------------------------------------------
-         * Mobile: lista nativa com MobileListItem (swipe + menu ⋮).
-         * ------------------------------------------------------------------- */
-        <div className="rounded-xl border bg-card overflow-hidden">
-          {sortedTemplates.map((template) => {
-            const serviceIds = getServiceIds(template);
-            const appliesToAll = !serviceIds || serviceIds.length === 0;
-            const questionsCount = template.questions?.length || 0;
-            const scopeLabel = appliesToAll
-              ? t.scopeAll
-              : (serviceIds!.length === 1 ? t.scopeServices : t.scopeServicesPlural).replace('{n}', String(serviceIds!.length));
-            const questionsLabel = (questionsCount === 1 ? t.questionsCount : t.questionsCountPlural).replace('{n}', String(questionsCount));
+        <div className="space-y-3">
+          <MobileListToolbar
+            searchValue={mobileSearch}
+            onSearchChange={setMobileSearch}
+            searchPlaceholder="Buscar checklist..."
+          >
+            <Select value={mobileSort} onValueChange={(value) => setMobileSort(value as typeof mobileSort)}>
+              <SelectTrigger className="h-10 w-[150px]">
+                <ArrowDownAZ className="mr-2 h-4 w-4" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name-asc">Nome A-Z</SelectItem>
+                <SelectItem value="name-desc">Nome Z-A</SelectItem>
+              </SelectContent>
+            </Select>
+          </MobileListToolbar>
 
-            const itemActions: ItemAction[] = [
-              {
-                key: 'edit',
-                label: t.actionEditView,
-                icon: <Pencil className="h-4 w-4" />,
-                variant: 'edit',
-                onClick: () => navigate(`/checklists/${template.id}`),
-              },
-              {
-                key: 'delete',
-                label: t.actionDelete,
-                icon: <Trash2 className="h-4 w-4" />,
-                variant: 'destructive',
-                onClick: () => setDeleteId(template.id),
-              },
-            ];
+          {mobilePagination.paginatedItems.length === 0 ? (
+            <EmptyState
+              icon={<FileText className="h-12 w-12" />}
+              title="Nenhum checklist encontrado"
+              description="Ajuste a busca para encontrar outro checklist."
+            />
+          ) : (
+            <div className="overflow-hidden rounded-xl border bg-card">
+              {mobilePagination.paginatedItems.map((template) => {
+                const serviceIds = getServiceIds(template) ?? [];
+                const questionsCount = template.questions?.length ?? 0;
+                const scopeLabel = serviceIds.length === 0
+                  ? t.scopeAll
+                  : (serviceIds.length === 1 ? t.scopeServices : t.scopeServicesPlural).replace('{n}', String(serviceIds.length));
+                const questionsLabel = (questionsCount === 1 ? t.questionsCount : t.questionsCountPlural)
+                  .replace('{n}', String(questionsCount));
+                const itemActions: ItemAction[] = [
+                  {
+                    key: 'edit',
+                    label: t.actionEditView,
+                    icon: <Pencil className="h-4 w-4" />,
+                    variant: 'edit',
+                    onClick: () => {
+                      setSelectedId(template.id);
+                      openEditor();
+                    },
+                  },
+                  {
+                    key: 'delete',
+                    label: t.actionDelete,
+                    icon: <Trash2 className="h-4 w-4" />,
+                    variant: 'destructive',
+                    onClick: () => setDeleteId(template.id),
+                  },
+                ];
 
-            return (
-              <MobileListItem
-                key={template.id}
-                onClick={() => navigate(`/checklists/${template.id}`)}
-                actions={itemActions}
-                leading={
-                  <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <FileText className="h-5 w-5" />
-                  </div>
-                }
-                title={template.name}
-                subtitle={`${questionsLabel} • ${scopeLabel}`}
+                return (
+                  <MobileListItem
+                    key={template.id}
+                    onClick={() => selectTemplate(template.id)}
+                    actions={itemActions}
+                    leading={
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                    }
+                    title={template.name}
+                    subtitle={`${questionsLabel} · ${scopeLabel}`}
+                  />
+                );
+              })}
+              <DataTablePagination
+                page={mobilePagination.page}
+                totalPages={mobilePagination.totalPages}
+                totalItems={mobilePagination.totalItems}
+                from={mobilePagination.from}
+                to={mobilePagination.to}
+                pageSize={mobilePagination.pageSize}
+                onPageChange={setMobilePage}
+                onPageSizeChange={mobilePagination.setPageSize}
               />
-            );
-          })}
+            </div>
+          )}
         </div>
       ) : (
-        /* -------------------------------------------------------------------
-         * Desktop: tabela 100% intacta.
-         * ------------------------------------------------------------------- */
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>{t.colName}</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}}>{t.colQuestions}</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}}>{t.colServices}</SortableTableHead>
-                    <SortableTableHead sortKey="is_active" sortConfig={sortConfig} onSort={handleSort}>{t.colStatus}</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[100px]">{t.colActions}</SortableTableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedTemplates.map((template) => {
-                    const serviceIds = getServiceIds(template);
-                    const appliesToAll = !serviceIds || serviceIds.length === 0;
-                    const linkedServices = appliesToAll
-                      ? []
-                      : serviceTypes.filter(st => serviceIds!.includes(st.id));
-
-                    return (
-                      <TableRow
-                        key={template.id}
-                        className="cursor-pointer"
-                        onClick={() => navigate(`/checklists/${template.id}`)}
-                      >
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span className="font-medium">{template.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm">{template.questions?.length || 0}</span>
-                        </TableCell>
-                        <TableCell>
-                          {appliesToAll ? (
-                            <Badge variant="secondary" className="text-xs">{t.badgeAll}</Badge>
-                          ) : (
-                            <div className="flex flex-wrap gap-1">
-                              {linkedServices.slice(0, 3).map(st => (
-                                <Badge key={st.id} variant="outline" className="text-xs">
-                                  <span className="inline-block h-2 w-2 rounded-full mr-1" style={{ backgroundColor: st.color }} />
-                                  {st.name}
-                                </Badge>
-                              ))}
-                              {linkedServices.length > 3 && (
-                                <Badge variant="outline" className="text-xs">+{linkedServices.length - 3}</Badge>
-                              )}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={template.is_active ? 'default' : 'secondary'} className="text-xs">
-                            {template.is_active ? t.badgeActive : t.badgeInactive}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <RowActionsMenu
-                              actions={[
-                                { label: t.actionEditView, icon: Pencil, variant: 'edit', onClick: () => navigate(`/checklists/${template.id}`) },
-                                { label: t.actionDelete, icon: Trash2, variant: 'delete', onClick: () => setDeleteId(template.id) },
-                              ]}
-                            />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+        <ListDetailLayout
+          items={listItems}
+          selectedId={selectedId ?? undefined}
+          listTitle="Lista de checklists"
+          listDescription="Selecione para visualizar ou editar"
+          storageKey="service-checklists-list-detail"
+          sortOptions={checklistSortOptions}
+          pageSize={10}
+          searchPlaceholder="Buscar checklist..."
+          emptyLabel="Nenhum checklist encontrado"
+          onSelect={selectTemplate}
+          detailClassName="min-w-0"
+        >
+          {detailContent}
+        </ListDetailLayout>
       )}
 
       {/* FAB mobile-only para criar novo checklist. */}
-      {isMobile && (
+      {isMobile && !selectedTemplate && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label={t.fabLabel}
@@ -345,7 +469,10 @@ export function ChecklistsPanel() {
         open={catalogOpen}
         onOpenChange={setCatalogOpen}
         mode="create"
-        onCreated={(id) => navigate(`/checklists/${id}`)}
+        onCreated={(id) => {
+          setSelectedId(id);
+          openEditor();
+        }}
       />
 
       {/* Delete dialog */}
