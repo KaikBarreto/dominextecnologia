@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.40',
+    date: '23 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Financeiro virou um dashboard de verdade',
+        description: 'A Visão Geral ganhou uma organização em blocos: saldo e nova movimentação ficam juntos, valores a receber e a pagar viraram atalhos, e contas, fluxo de caixa, despesas por categoria, evolução do resultado e últimos lançamentos agora formam uma leitura contínua e mais hierárquica.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Serviços, tarefas e checklists lado a lado',
+        description: 'Tipos de serviço, tipos de tarefa e checklists agora mantêm a lista à esquerda e o detalhe à direita, com busca, filtros, ordenação e paginação. Perguntas podem ser criadas e editadas no próprio detalhe, com uma prévia de como o checklist aparece na Ordem de Serviço.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Funcionários mais fáceis de consultar',
+        description: 'A lista de funcionários passou a abrir o cadastro ao lado, mantendo busca e navegação sempre à vista. As movimentações ficaram mais próximas das ações principais, sem precisar percorrer a ficha inteira.',
+        category: 'melhoria',
+      },
+      {
+        title: 'QR Code de equipamento sem troca visual',
+        description: 'Ao abrir um equipamento, o QR Code já aparece com a identidade visual correta, sem piscar primeiro uma versão antiga.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.37.39',
     date: '23 de outubro de 2026',
     type: 'patch',

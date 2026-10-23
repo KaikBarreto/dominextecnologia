@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.39";
+export const APP_VERSION = "1.37.40";
 
 export const VERSION_NOTES =
-  "Ao parcelar uma receita ou conta a receber, agora é possível gerar todas as cobranças de uma vez, cada uma ligada à parcela e ao vencimento correspondente.";
+  "A gestão ficou mais rápida com listas e detalhes lado a lado, checklists editáveis com prévia de OS e um novo dashboard financeiro completo.";
