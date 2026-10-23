@@ -69,6 +69,17 @@
 - Aplicacao de migration/deploy de edge function e trabalho tecnico, nao handoff manual para o CEO sem necessidade real.
 - Mudanca interna de agentes, skills, docs, Codex, Claude ou Conductor nao muda `APP_VERSION` e nao entra no changelog de cliente.
 
+## Padrao de UI para Listagens e Gestao
+
+- Quando a tarefa principal for selecionar uma entidade e trabalhar no seu contexto, preferir lista compacta + detalhe contextual, com empty state antes da selecao e transicao lista→detalhe no mobile.
+- A coluna de lista concentra busca, um unico botao `Filtros`, um unico botao `Ordenar` e paginacao; controles e o texto `Mostrando X de Y itens` devem refluir sem truncar.
+- Em clientes/fornecedores, usar somente lista + detalhes. Em funcionarios, preservar Lista/Grade, abrir em lista + detalhes por padrao e manter o toggle junto das acoes de criacao.
+- Subnavegacoes curtas de telas de gestao usam abas horizontais underline com rolagem no mobile; evitar sidebar local e cabecalhos que repetem o titulo da aba ativa.
+- Edicoes frequentes pertencem ao detalhe e devem acontecer inline quando couber; evitar modal ou rota adicional que apenas replique os mesmos campos.
+- Acoes secundarias como relatorio/exportacao usam botao neutro; criacao continua primaria. Badges semanticos usam cor saturada e texto branco, nunca fundo pastel com texto saturado.
+- Cabecalhos list-detail alinham ajuda, navegacao e acoes na mesma faixa quando houver espaco, evitando linhas vazias. Acoes frequentes da entidade aparecem antes dos dados secundarios.
+- Telas homologas nos produtos Dominex e EcoSistema compartilham estrutura, densidade e comportamento responsivo, preservando apenas campos e acoes proprios de cada produto.
+
 ## Seguranca e Segredos
 
 - Nunca copiar, expor ou versionar `.env`, tokens, certificados, credenciais, dumps com dados de cliente ou arquivos LGPD sensiveis.
