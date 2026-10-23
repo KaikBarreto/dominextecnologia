@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -62,6 +63,7 @@ import { readPastedCents } from '@/lib/money-paste-mask';
 import {
   Archive,
   ArchiveRestore,
+  AlertCircle,
   ArrowDownUp,
   CalendarDays,
   ChevronLeft,
@@ -157,6 +159,10 @@ const LIST_COPY = {
     select: (customer: string) => `Selecionar assinatura de ${customer}`,
     selected: (count: number) => `${count} selecionada${count === 1 ? '' : 's'}`,
     showing: (shown: number, total: number) => `Mostrando ${shown} de ${total} itens`,
+    loadError: 'Não foi possível carregar as assinaturas',
+    loadErrorDescription: 'Confira sua conexão e tente novamente. Nenhuma assinatura foi alterada.',
+    retry: 'Tentar novamente',
+    retrying: 'Tentando novamente…',
   },
   en: {
     filters: 'Filters',
@@ -172,6 +178,10 @@ const LIST_COPY = {
     select: (customer: string) => `Select ${customer}'s subscription`,
     selected: (count: number) => `${count} selected`,
     showing: (shown: number, total: number) => `Showing ${shown} of ${total} items`,
+    loadError: 'Could not load subscriptions',
+    loadErrorDescription: 'Check your connection and try again. No subscription was changed.',
+    retry: 'Try again',
+    retrying: 'Trying again…',
   },
   es: {
     filters: 'Filtros',
@@ -187,6 +197,10 @@ const LIST_COPY = {
     select: (customer: string) => `Seleccionar suscripción de ${customer}`,
     selected: (count: number) => `${count} seleccionada${count === 1 ? '' : 's'}`,
     showing: (shown: number, total: number) => `Mostrando ${shown} de ${total} elementos`,
+    loadError: 'No se pudieron cargar las suscripciones',
+    loadErrorDescription: 'Comprueba tu conexión e inténtalo de nuevo. No se modificó ninguna suscripción.',
+    retry: 'Intentar de nuevo',
+    retrying: 'Intentando de nuevo…',
   },
   fr: {
     filters: 'Filtres',
@@ -202,6 +216,10 @@ const LIST_COPY = {
     select: (customer: string) => `Sélectionner l’abonnement de ${customer}`,
     selected: (count: number) => `${count} sélectionné${count === 1 ? '' : 's'}`,
     showing: (shown: number, total: number) => `Affichage de ${shown} éléments sur ${total}`,
+    loadError: 'Impossible de charger les abonnements',
+    loadErrorDescription: 'Vérifiez votre connexion et réessayez. Aucun abonnement n’a été modifié.',
+    retry: 'Réessayer',
+    retrying: 'Nouvelle tentative…',
   },
 } as const;
 
@@ -577,7 +595,17 @@ export function FinanceAssinaturas() {
   // um caminho de volta, senão arquivar vira exclusão disfarçada.
   const [showArchived, setShowArchived] = useState(false);
 
-  const { subscriptions, isLoading, manageSubscription, deleteSubscription, archiveSubscription, bulkCancel } =
+  const {
+    subscriptions,
+    isLoading,
+    isFetching,
+    isError,
+    refetch,
+    manageSubscription,
+    deleteSubscription,
+    archiveSubscription,
+    bulkCancel,
+  } =
     useTenantSubscriptions({ includeArchived: showArchived });
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -729,6 +757,104 @@ export function FinanceAssinaturas() {
     setSelectedIds(new Set());
     setBulkCancelOpen(false);
   };
+
+  const renderSubscriptionActions = (sub: TenantSubscription) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 lg:h-8 lg:w-8"
+          aria-label={listCopy.actions}
+          title={listCopy.actions}
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        {isManageable(sub) && (
+          <>
+            <DropdownMenuItem
+              onSelect={() => setEditTarget(sub)}
+              disabled={manageSubscription.isPending}
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              {t.actions.edit}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onSelect={() => setCancelTarget(sub)}
+              disabled={manageSubscription.isPending}
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              {t.actions.cancel}
+            </DropdownMenuItem>
+            {sub.can_delete === true && (
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={() => setDeleteTarget(sub)}
+                disabled={deleteSubscription.isPending}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {t.actions.delete}
+              </DropdownMenuItem>
+            )}
+          </>
+        )}
+        {needsRetryCancel(sub) && (
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onSelect={() => setCancelTarget(sub)}
+            disabled={manageSubscription.isPending}
+          >
+            <XCircle className="mr-2 h-4 w-4" />
+            {t.actions.retryCancel}
+          </DropdownMenuItem>
+        )}
+        {canArchive(sub) && (
+          <DropdownMenuItem
+            onSelect={() => archiveSubscription.mutate({ subscription_id: sub.id, action: 'archive' })}
+            disabled={archiveSubscription.isPending}
+          >
+            <Archive className="mr-2 h-4 w-4" />
+            {t.actions.archive}
+          </DropdownMenuItem>
+        )}
+        {showArchived && (
+          <DropdownMenuItem
+            onSelect={() => archiveSubscription.mutate({ subscription_id: sub.id, action: 'unarchive' })}
+            disabled={archiveSubscription.isPending}
+          >
+            <ArchiveRestore className="mr-2 h-4 w-4" />
+            {t.actions.unarchive}
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  if (isError) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>{listCopy.loadError}</AlertTitle>
+        <AlertDescription className="space-y-3">
+          <p>{listCopy.loadErrorDescription}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="min-h-11 border-destructive/40"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+          >
+            {isFetching ? listCopy.retrying : listCopy.retry}
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <div className={cn('space-y-4', isMobile && 'pb-24')}>
@@ -935,81 +1061,7 @@ export function FinanceAssinaturas() {
                     {statusBadge(sub.status, t.status)}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {isManageable(sub) && (
-                        <>
-                          <Button
-                            variant="edit-ghost"
-                            size="sm"
-                            onClick={() => setEditTarget(sub)}
-                            disabled={manageSubscription.isPending}
-                          >
-                            <Pencil className="mr-1 h-3.5 w-3.5" />
-                            {t.actions.edit}
-                          </Button>
-                          <Button
-                            variant="destructive-ghost"
-                            size="sm"
-                            onClick={() => setCancelTarget(sub)}
-                            disabled={manageSubscription.isPending}
-                          >
-                            <XCircle className="mr-1 h-3.5 w-3.5" />
-                            {t.actions.cancel}
-                          </Button>
-                          {sub.can_delete === true && (
-                            <Button
-                              variant="destructive-ghost"
-                              size="sm"
-                              onClick={() => setDeleteTarget(sub)}
-                              disabled={deleteSubscription.isPending}
-                            >
-                              <Trash2 className="mr-1 h-3.5 w-3.5" />
-                              {t.actions.delete}
-                            </Button>
-                          )}
-                        </>
-                      )}
-                      {needsRetryCancel(sub) && (
-                        <Button
-                          variant="destructive-ghost"
-                          size="sm"
-                          onClick={() => setCancelTarget(sub)}
-                          disabled={manageSubscription.isPending}
-                          title={t.pixConsentLive.tooltip}
-                        >
-                          <XCircle className="mr-1 h-3.5 w-3.5" />
-                          {t.actions.retryCancel}
-                        </Button>
-                      )}
-                      {canArchive(sub) && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-muted-foreground"
-                          onClick={() =>
-                            archiveSubscription.mutate({ subscription_id: sub.id, action: 'archive' })
-                          }
-                          disabled={archiveSubscription.isPending}
-                        >
-                          <Archive className="mr-1 h-3.5 w-3.5" />
-                          {t.actions.archive}
-                        </Button>
-                      )}
-                      {showArchived && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-muted-foreground"
-                          onClick={() =>
-                            archiveSubscription.mutate({ subscription_id: sub.id, action: 'unarchive' })
-                          }
-                          disabled={archiveSubscription.isPending}
-                        >
-                          <ArchiveRestore className="mr-1 h-3.5 w-3.5" />
-                          {t.actions.unarchive}
-                        </Button>
-                      )}
-                    </div>
+                    <div className="flex justify-end">{renderSubscriptionActions(sub)}</div>
                   </td>
                 </tr>
               ))}
@@ -1052,83 +1104,7 @@ export function FinanceAssinaturas() {
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-2">
                     {statusBadge(sub.status, t.status)}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-10 w-10"
-                          aria-label={listCopy.actions}
-                          title={listCopy.actions}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-52">
-                        {isManageable(sub) && (
-                          <>
-                            <DropdownMenuItem
-                              onSelect={() => setEditTarget(sub)}
-                              disabled={manageSubscription.isPending}
-                            >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              {t.actions.edit}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onSelect={() => setCancelTarget(sub)}
-                              disabled={manageSubscription.isPending}
-                            >
-                              <XCircle className="mr-2 h-4 w-4" />
-                              {t.actions.cancel}
-                            </DropdownMenuItem>
-                            {sub.can_delete === true && (
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onSelect={() => setDeleteTarget(sub)}
-                                disabled={deleteSubscription.isPending}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                {t.actions.delete}
-                              </DropdownMenuItem>
-                            )}
-                          </>
-                        )}
-                        {needsRetryCancel(sub) && (
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onSelect={() => setCancelTarget(sub)}
-                            disabled={manageSubscription.isPending}
-                          >
-                            <XCircle className="mr-2 h-4 w-4" />
-                            {t.actions.retryCancel}
-                          </DropdownMenuItem>
-                        )}
-                        {canArchive(sub) && (
-                          <DropdownMenuItem
-                            onSelect={() =>
-                              archiveSubscription.mutate({ subscription_id: sub.id, action: 'archive' })
-                            }
-                            disabled={archiveSubscription.isPending}
-                          >
-                            <Archive className="mr-2 h-4 w-4" />
-                            {t.actions.archive}
-                          </DropdownMenuItem>
-                        )}
-                        {showArchived && (
-                          <DropdownMenuItem
-                            onSelect={() =>
-                              archiveSubscription.mutate({ subscription_id: sub.id, action: 'unarchive' })
-                            }
-                            disabled={archiveSubscription.isPending}
-                          >
-                            <ArchiveRestore className="mr-2 h-4 w-4" />
-                            {t.actions.unarchive}
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {renderSubscriptionActions(sub)}
                   </div>
                 </div>
               </div>

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { FinancialTransaction } from '@/types/database';
 import { useAllCreditCardBills } from '@/hooks/useCreditCardBills';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
@@ -6,14 +7,26 @@ import { useInventory } from '@/hooks/useInventory';
 import { calculateOperationalPatrimony } from '@/lib/operational-patrimony';
 
 export function useOperationalPatrimony(transactions: FinancialTransaction[]) {
+  const queryClient = useQueryClient();
   const {
     accounts,
     balances,
     isLoading: isLoadingAccounts,
     isLoadingBalances,
+    isError: isErrorAccounts,
+    isErrorBalances,
+    error: accountsError,
+    balancesError,
+    refetch: refetchAccounts,
   } = useFinancialAccounts();
-  const { bills, isLoading: isLoadingBills } = useAllCreditCardBills();
-  const { stats, isLoading: isLoadingInventory } = useInventory();
+  const {
+    bills,
+    isLoading: isLoadingBills,
+    isError: isErrorBills,
+    error: billsError,
+    refetch: refetchBills,
+  } = useAllCreditCardBills();
+  const { stats, isLoading: isLoadingInventory, error: inventoryError } = useInventory();
 
   const patrimony = useMemo(
     () => calculateOperationalPatrimony({
@@ -31,5 +44,12 @@ export function useOperationalPatrimony(transactions: FinancialTransaction[]) {
   return {
     patrimony,
     isLoading: isLoadingAccounts || isLoadingBalances || isLoadingBills || isLoadingInventory,
+    isError: isErrorAccounts || isErrorBalances || isErrorBills || Boolean(inventoryError),
+    error: accountsError ?? balancesError ?? billsError ?? inventoryError ?? null,
+    refetch: () => {
+      refetchAccounts();
+      void refetchBills();
+      void queryClient.refetchQueries({ queryKey: ['inventory'] });
+    },
   };
 }

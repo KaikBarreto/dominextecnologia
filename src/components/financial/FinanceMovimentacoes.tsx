@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import { TransactionListPanel } from './TransactionListPanel';
 import { AccountFormDialog } from './AccountFormDialog';
 import { AdjustBalanceDialog } from './AdjustBalanceDialog';
@@ -14,9 +13,14 @@ import { useRecalculateBills } from '@/hooks/useRecalculateBills';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { FilterButton } from '@/components/ui/FilterButton';
+import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
+import { EmptyState } from '@/components/mobile/EmptyState';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioGroup,
+  DropdownMenuRadioItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -25,7 +29,7 @@ import {
 import {
   MoreVertical, Pencil, Trash2, ArrowLeftRight, Plus, CreditCard,
   Landmark, Wallet, LayoutDashboard, Calculator, Loader2, SlidersHorizontal, Scale,
-  Upload,
+  Upload, Search, ArrowDownUp, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { idealForeground } from '@/lib/colorContrast';
@@ -67,10 +71,15 @@ function AccountDistributionTooltip({
   const value = Number(item.value ?? 0);
   const pct = totalDonut > 0 ? (value / totalDonut) * 100 : 0;
   return (
-    <div className="rounded-lg border bg-popover px-2.5 py-1.5 text-xs shadow-md">
-      <p className="font-semibold text-popover-foreground">{item.payload?.name}</p>
-      <p className="tabular-nums text-muted-foreground">
-        {formatValue(value)} · {pct.toFixed(1)}%
+    <div className="min-w-44 rounded-xl border bg-popover px-3 py-2.5 text-xs text-popover-foreground shadow-xl">
+      <p className="max-w-64 truncate font-semibold">{item.payload?.name}</p>
+      <p className="mt-1.5 flex items-center justify-between gap-5">
+        <span className="text-muted-foreground">Saldo</span>
+        <strong className="tabular-nums">{formatValue(value)}</strong>
+      </p>
+      <p className="mt-1 flex items-center justify-between gap-5">
+        <span className="text-muted-foreground">Participação</span>
+        <strong className="tabular-nums">{pct.toFixed(1)}%</strong>
       </p>
     </div>
   );
@@ -127,6 +136,11 @@ export function FinanceMovimentacoes({
   const recalculateBills = useRecalculateBills();
 
   const [activeTab, setActiveTab] = useState<string>(ALL_TAB);
+  const [accountSearch, setAccountSearch] = useState('');
+  const [accountTypeFilter, setAccountTypeFilter] = useState<string[]>([]);
+  const [accountSort, setAccountSort] = useState<'name' | 'balance-desc' | 'balance-asc'>('name');
+  const [accountPage, setAccountPage] = useState(1);
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
   // Estado da conciliação (conta + import em aberto) controlado AQUI, não
   // dentro do ReconciliationTab: trocar para "Visão Geral" e voltar não pode
   // perder a conciliação em andamento.
@@ -159,7 +173,7 @@ export function FinanceMovimentacoes({
     if (!highlightTransactionId || includeCardPurchases) return;
     const target = transactions.find((t) => t.id === highlightTransactionId);
     if (target?.credit_card_bill_date) setIncludeCardPurchases(true);
-  }, [highlightTransactionId, transactions, includeCardPurchases]);
+  }, [highlightTransactionId, transactions, includeCardPurchases, setIncludeCardPurchases]);
 
   // Consome o deep-link `?account=ID` uma vez: seleciona a aba da conta e
   // limpa o param na URL (senão o sidebar fica "preso" naquela conta).
@@ -167,6 +181,7 @@ export function FinanceMovimentacoes({
     if (!initialAccountId) return;
     if (accounts.some(a => a.id === initialAccountId)) {
       setActiveTab(initialAccountId);
+      setMobileDetailOpen(true);
       onConsumeInitialAccount?.();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -186,26 +201,25 @@ export function FinanceMovimentacoes({
   const [adjustingAccount, setAdjustingAccount] = useState<FinancialAccount | null>(null);
   // Drawer de ações da conta no mobile (editar/excluir/ajustar/transferir).
   const [mobileActionsAccount, setMobileActionsAccount] = useState<FinancialAccount | null>(null);
+  const [activeDistributionIndex, setActiveDistributionIndex] = useState<number | null>(null);
 
   const cashBankAccounts = useMemo(() => accounts.filter(a => a.type !== 'cartao'), [accounts]);
-  const cardAccounts = useMemo(() => accounts.filter(a => a.type === 'cartao'), [accounts]);
-  // Cabeçalhos "CONTAS"/"CARTÕES" (e seus footers "+") só existem quando há
-  // pelo menos um cartão — quem não usa cartão vê a lista de contas plana,
-  // sem seção nenhuma (item 6 do handoff de UI).
-  const hasCards = cardAccounts.length > 0;
-
   // Saldo em contas = soma dos saldos de todas as contas/caixa (cartão fica de
   // fora, não tem "saldo de conta"). Alimenta o card consolidado da Visão Geral.
   const totalBalance = useMemo(
     () => cashBankAccounts.reduce((sum, a) => sum + (balances[a.id] ?? Number(a.initial_balance ?? 0)), 0),
     [cashBankAccounts, balances]
   );
-
-  // Total das faturas ABERTAS dos cartões. REGRA: nunca somar fatura de cartão
-  // dentro do saldo de caixa — é uma figura distinta no card da Visão Geral.
-  const totalCardBills = useMemo(
-    () => cardAccounts.reduce((sum, a) => sum + (cardBillTotals[a.id] ?? 0), 0),
-    [cardAccounts, cardBillTotals]
+  const cardAccounts = useMemo(() => accounts.filter((account) => account.type === 'cartao'), [accounts]);
+  const totalOpenCardBills = useMemo(
+    () => cardAccounts.reduce((sum, account) => sum + (cardBillTotals[account.id] ?? 0), 0),
+    [cardAccounts, cardBillTotals],
+  );
+  const negativeAccountCount = useMemo(
+    () => cashBankAccounts.filter((account) => (
+      balances[account.id] ?? Number(account.initial_balance ?? 0)
+    ) < 0).length,
+    [cashBankAccounts, balances],
   );
 
   // Distribuição do saldo entre as contas de caixa/banco (cartão fica de fora).
@@ -223,6 +237,24 @@ export function FinanceMovimentacoes({
         .filter(d => d.value > 0),
     [cashBankAccounts, balances]
   );
+
+  // A legenda nunca cresce indefinidamente: preserva as quatro maiores contas
+  // e consolida o restante em uma única fatia. O valor individual continua
+  // disponível na lista lateral e o agregado aparece completo no tooltip.
+  const compactPieData = useMemo(() => {
+    const sorted = [...pieData].sort((a, b) => b.value - a.value);
+    if (sorted.length <= 5) return sorted;
+    const visible = sorted.slice(0, 4);
+    const remaining = sorted.slice(4);
+    return [
+      ...visible,
+      {
+        name: `Outras (${remaining.length})`,
+        value: remaining.reduce((sum, item) => sum + item.value, 0),
+        color: '#64748b',
+      },
+    ];
+  }, [pieData]);
 
   const openNewAccount = (initialType: string) => {
     if (!canManageBankAccounts) return;
@@ -327,54 +359,57 @@ export function FinanceMovimentacoes({
     );
   };
 
-  // Monta as abas do sidebar: "Todas" + grupo Contas Bancárias + grupo Cartões.
-  const tabs: SettingsTab[] = useMemo(() => {
-    const result: SettingsTab[] = [
-      // Visão Geral: aba neutra (sem cor) — card consolidado + todas as movimentações.
-      { value: ALL_TAB, label: fin.movements.sidebar.overviewTab, icon: LayoutDashboard },
-      // Conciliação: aba neutra também (sem accentColor) — vive entre "Visão
-      // Geral" e os grupos de conta/cartão, igual ao lugar conceitual que
-      // ocupa no EcoSistema (aba dentro de Movimentações Bancárias).
-      { value: RECONCILE_TAB, label: fin.reconciliation.tabLabel, icon: Scale },
-    ];
-    for (const a of cashBankAccounts) {
-      const balance = balances[a.id] ?? a.initial_balance;
-      result.push({
-        value: a.id,
-        label: a.name,
-        icon: getTypeIcon(a.type),
-        group: hasCards ? fin.movements.sidebar.groupAccounts : undefined,
-        sublabel: canManageBankAccounts ? fmt(balance) : undefined,
-        // No mobile a pill mostra só o saldo (cabe ao lado do nome).
-        mobileSublabel: canManageBankAccounts ? fmt(balance) : undefined,
-        rightElement: renderRightMenu(a),
-        // Ativo/hover usa a cor da conta com fundo SATURADO + texto branco (estilo EcoSistema).
-        accentColor: a.color || undefined,
-        useColorBackground: !!a.color,
+  const filteredAccounts = useMemo(() => {
+    const term = accountSearch.trim().toLocaleLowerCase(locale);
+    return accounts
+      .filter((account) => accountTypeFilter.length === 0
+        || accountTypeFilter.includes(account.type === 'cartao' ? 'card' : 'account'))
+      .filter((account) => !term
+        || `${account.name} ${account.institution_name ?? ''} ${account.bank_name ?? ''}`
+          .toLocaleLowerCase(locale)
+          .includes(term))
+      .slice()
+      .sort((a, b) => {
+        if (accountSort === 'name') return a.name.localeCompare(b.name, locale, { sensitivity: 'base' });
+        const aValue = a.type === 'cartao'
+          ? cardBillTotals[a.id] ?? 0
+          : balances[a.id] ?? Number(a.initial_balance ?? 0);
+        const bValue = b.type === 'cartao'
+          ? cardBillTotals[b.id] ?? 0
+          : balances[b.id] ?? Number(b.initial_balance ?? 0);
+        return accountSort === 'balance-desc' ? bValue - aValue : aValue - bValue;
       });
-    }
-    for (const a of cardAccounts) {
-      const billTotal = cardBillTotals[a.id] ?? 0;
-      const availableLimit = a.credit_limit ? a.credit_limit - billTotal : null;
-      result.push({
-        value: a.id,
-        label: a.name,
-        icon: CreditCard,
-        group: fin.movements.sidebar.groupCards,
-        sublabel: !canManageBankAccounts ? undefined : availableLimit !== null
-          ? `${fin.movements.hero.openInvoice} ${fmt(billTotal)} · ${fin.movements.hero.available} ${fmt(availableLimit)}`
-          : `${fin.movements.hero.openInvoice} ${fmt(billTotal)}`,
-        // Pill mobile: só a fatura (o "Disp." fica longo demais pra pill).
-        mobileSublabel: canManageBankAccounts ? fmt(billTotal) : undefined,
-        rightElement: renderRightMenu(a),
-        // Cartão também assume sua cor no ativo/hover (fundo saturado + branco).
-        accentColor: a.color || undefined,
-        useColorBackground: !!a.color,
-      });
-    }
-    return result;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cashBankAccounts, cardAccounts, balances, cardBillTotals, activeTab, canManageBankAccounts]);
+  }, [accounts, accountSearch, accountTypeFilter, accountSort, locale, balances, cardBillTotals]);
+
+  const filteredCashBankAccounts = filteredAccounts.filter((account) => account.type !== 'cartao');
+  const filteredCardAccounts = filteredAccounts.filter((account) => account.type === 'cartao');
+  const hasBothAccountGroups = filteredCashBankAccounts.length > 0 && filteredCardAccounts.length > 0;
+  // Quando os dois grupos existem, reserva espaço para cartões na primeira
+  // página; eles não ficam escondidos depois de uma lista longa de contas.
+  const cashPageSize = hasBothAccountGroups ? 5 : 10;
+  const cardPageSize = hasBothAccountGroups ? 2 : 10;
+  const accountTotalPages = Math.max(
+    1,
+    Math.ceil(filteredCashBankAccounts.length / cashPageSize),
+    Math.ceil(filteredCardAccounts.length / cardPageSize),
+  );
+  const pagedCashBankAccounts = filteredCashBankAccounts.slice(
+    (accountPage - 1) * cashPageSize,
+    accountPage * cashPageSize,
+  );
+  const pagedCardAccounts = filteredCardAccounts.slice(
+    (accountPage - 1) * cardPageSize,
+    accountPage * cardPageSize,
+  );
+  const pagedAccounts = [...pagedCashBankAccounts, ...pagedCardAccounts];
+
+  useEffect(() => {
+    setAccountPage(1);
+  }, [accountSearch, accountTypeFilter, accountSort]);
+
+  useEffect(() => {
+    setAccountPage((current) => Math.min(current, accountTotalPages));
+  }, [accountTotalPages]);
 
   const selectedAccount = activeTab === ALL_TAB
     ? null
@@ -488,14 +523,10 @@ export function FinanceMovimentacoes({
     );
   };
 
-  // Botões globais do topo da tela. No mobile é sempre o "+" com menu (Nova
-  // Conta / Novo Cartão) pra não poluir o topo. No desktop, quando já existe
-  // cartão, o topo fica limpo — criar conta/cartão vive no footer de cada
-  // grupo do sidebar. SEM cartão ainda, os cabeçalhos "CONTAS"/"CARTÕES" (e
-  // seus footers "+") ficam escondidos — regra do item 6 —, então o "+" do
-  // topo vira a ÚNICA porta de entrada pra criar o primeiro cartão no desktop.
-  // Categorias foi movida para a aba própria na tela de Relatório.
-  const globalActions = canManageBankAccounts && (isMobile || !hasCards) ? (
+  // No mobile, criação fica no topo porque a coluna da lista pode sair de cena
+  // ao abrir o detalhe. No desktop ela vive apenas no rodapé da lista, evitando
+  // duas portas de entrada concorrentes.
+  const globalActions = canManageBankAccounts && isMobile ? (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button size="sm" className="gap-1.5 shrink-0" aria-label={fin.movements.header.addButton}>
@@ -514,40 +545,223 @@ export function FinanceMovimentacoes({
     </DropdownMenu>
   ) : null;
 
-  // Botão tracejado de "adicionar" no fim de cada seção do sidebar (desktop).
-  const addButton = (label: string, onClick: () => void) => (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center gap-2 px-3 py-2 text-[13px] font-medium rounded-lg border-2 border-dashed border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground transition-colors"
-    >
-      <Plus className="h-4 w-4" />
-      {label}
-    </button>
-  );
-
-  // Footer POR GRUPO: "+ Nova Conta" ao fim das Contas Bancárias e "+ Novo Cartão"
-  // ao fim dos Cartões (desktop). Só existe quando há cartão — sem cartão,
-  // não há seções (item 6) e a criação vive no "+" do topo.
-  const groupFooters = canManageBankAccounts && !isMobile && hasCards ? {
-    [fin.movements.sidebar.groupAccounts]: addButton(fin.movements.sidebar.newAccount, () => openNewAccount('banco')),
-    [fin.movements.sidebar.groupCards]: addButton(fin.movements.sidebar.newCard, () => openNewAccount('cartao')),
-  } : undefined;
-
-  // "Importar planilha" fica sempre visível, ao lado das ações globais — no
-  // mobile só o ícone (texto quebraria a faixa compacta do topo), no desktop
-  // com o rótulo. Abre `ImportSpreadsheetDialog`, que concentra upload,
-  // conferência e gravação (useFinancialImport é a única fronteira do Supabase).
+  // A importação pertence ao mesmo grupo operacional de Exportar e Nova
+  // movimentação. O painel recebe este botão como ação contextual; assim ele
+  // não fica órfão no cabeçalho geral da página.
   const importSpreadsheetButton = (
     <Button
       variant="outline"
       size="sm"
-      className="gap-1.5 shrink-0"
+      className={cn('shrink-0 gap-1.5', isMobile ? 'h-10 w-10 p-0' : 'h-9')}
       aria-label={fin.spreadsheetImport.headerButton}
       onClick={() => setImportSpreadsheetOpen(true)}
     >
       <Upload className="h-4 w-4" />
       {!isMobile && fin.spreadsheetImport.headerButton}
     </Button>
+  );
+
+  const selectNavigatorItem = (value: string) => {
+    setActiveTab(value);
+    if (isMobile) setMobileDetailOpen(true);
+  };
+
+  const renderNavigatorItem = ({
+    value,
+    label,
+    sublabel,
+    icon: Icon,
+    color,
+    iconColor,
+    account,
+  }: {
+    value: string;
+    label: string;
+    sublabel?: string;
+    icon: typeof LayoutDashboard;
+    color?: string | null;
+    iconColor?: string;
+    account?: FinancialAccount;
+  }) => {
+    const selected = activeTab === value;
+    const useColor = selected && !!color;
+    const resolvedIconColor = color && idealForeground(color) === '#ffffff'
+      ? color
+      : iconColor ?? '#2563eb';
+    return (
+      <div
+        key={value}
+        className={cn(
+          'group/tab flex min-w-0 items-center gap-2 border-b border-border/60 px-2 py-2 transition-colors last:border-b-0',
+          selected && !useColor ? 'bg-primary text-primary-foreground' : !selected && 'hover:bg-muted/60',
+        )}
+        style={useColor ? { backgroundColor: color!, color: idealForeground(color!) } : undefined}
+      >
+        <button
+          type="button"
+          onClick={() => selectNavigatorItem(value)}
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+          aria-current={selected ? 'page' : undefined}
+        >
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white shadow-sm ring-1 ring-inset ring-white/35"
+            style={{ backgroundColor: resolvedIconColor }}
+          >
+            <Icon className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium">{label}</span>
+            {sublabel && (
+              <span className={cn(
+                'mt-0.5 block truncate text-xs tabular-nums',
+                selected ? 'opacity-80' : 'text-muted-foreground',
+              )}>
+                {sublabel}
+              </span>
+            )}
+          </span>
+        </button>
+        {account && <span className="shrink-0">{renderRightMenu(account)}</span>}
+      </div>
+    );
+  };
+
+  const accountNavigator = (
+    <aside className="flex min-h-[32rem] flex-col overflow-hidden border-r border-border lg:sticky lg:top-4 lg:h-[calc(100dvh-8rem)]" aria-label="Contas e cartões">
+      <div className="space-y-2 border-b border-border/60 pb-3 pr-4">
+        <div>
+          <h3 className="text-sm font-semibold">Contas e cartões</h3>
+          <p className="text-xs text-muted-foreground">Selecione para abrir o extrato e as ações.</p>
+        </div>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={accountSearch}
+            onChange={(event) => setAccountSearch(event.target.value)}
+            placeholder="Buscar conta ou cartão"
+            className="h-9 pl-9"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <FilterButton
+            activeCount={accountTypeFilter.length > 0 ? 1 : 0}
+            onClear={() => setAccountTypeFilter([])}
+            className="w-full"
+          >
+            <FilterCheckboxGroup
+              label="Tipo"
+              selected={accountTypeFilter}
+              onChange={setAccountTypeFilter}
+              emptyLabel="Todos os tipos"
+              options={[
+                { value: 'account', label: 'Contas bancárias e caixa' },
+                { value: 'card', label: 'Cartões' },
+              ]}
+            />
+          </FilterButton>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className="h-9 w-full gap-2">
+                <ArrowDownUp className="h-4 w-4" />
+                Ordenar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuRadioGroup value={accountSort} onValueChange={(value) => setAccountSort(value as typeof accountSort)}>
+                <DropdownMenuRadioItem value="name">Nome (A–Z)</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="balance-desc">Maior valor</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="balance-asc">Menor valor</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto pr-4">
+        {renderNavigatorItem({
+          value: ALL_TAB,
+          label: 'Geral (Todos)',
+          sublabel: canManageBankAccounts ? fmt(totalBalance) : undefined,
+          icon: LayoutDashboard,
+          iconColor: '#047857',
+        })}
+        {renderNavigatorItem({
+          value: RECONCILE_TAB,
+          label: fin.reconciliation.tabLabel,
+          icon: Scale,
+          iconColor: '#2563eb',
+        })}
+        {pagedAccounts.length === 0 ? (
+          <p className="px-3 py-8 text-center text-sm text-muted-foreground">Nenhuma conta encontrada.</p>
+        ) : null}
+        {pagedCashBankAccounts.length > 0 && (
+          <div className="flex items-center justify-between border-b border-border/60 px-2 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span>Contas</span>
+            <span className="tabular-nums">{filteredCashBankAccounts.length}</span>
+          </div>
+        )}
+        {pagedCashBankAccounts.map((account) => {
+          const value = balances[account.id] ?? Number(account.initial_balance ?? 0);
+          return renderNavigatorItem({
+            value: account.id,
+            label: account.name,
+            sublabel: !canManageBankAccounts ? undefined : `Saldo ${fmt(value)}`,
+            icon: getTypeIcon(account.type),
+            color: account.color,
+            iconColor: account.type === 'caixa' ? '#b45309' : '#0369a1',
+            account,
+          });
+        })}
+        {pagedCardAccounts.length > 0 && (
+          <div className="flex items-center justify-between border-b border-border/60 px-2 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span>Cartões</span>
+            <span className="tabular-nums">{filteredCardAccounts.length}</span>
+          </div>
+        )}
+        {pagedCardAccounts.map((account) => {
+          const value = cardBillTotals[account.id] ?? 0;
+          return renderNavigatorItem({
+            value: account.id,
+            label: account.name,
+            sublabel: !canManageBankAccounts
+              ? undefined
+              : `${fin.movements.hero.openInvoice} ${fmt(value)}`,
+            icon: getTypeIcon(account.type),
+            color: account.color,
+            iconColor: '#7c3aed',
+            account,
+          });
+        })}
+      </div>
+
+      <div className="space-y-2 border-t border-border/60 py-3 pr-4">
+        {filteredAccounts.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <span className="min-w-0 whitespace-normal">
+              Mostrando {pagedAccounts.length} de {filteredAccounts.length} itens
+            </span>
+            <span className="flex shrink-0 gap-1">
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={accountPage === 1} onClick={() => setAccountPage((page) => Math.max(1, page - 1))} aria-label="Página anterior">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={accountPage === accountTotalPages} onClick={() => setAccountPage((page) => Math.min(accountTotalPages, page + 1))} aria-label="Próxima página">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </span>
+          </div>
+        )}
+        {canManageBankAccounts && (
+          <div className="grid grid-cols-2 gap-2">
+            <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => openNewAccount('banco')}>
+              <Landmark className="h-3.5 w-3.5" /> Nova conta
+            </Button>
+            <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => openNewAccount('cartao')}>
+              <CreditCard className="h-3.5 w-3.5" /> Novo cartão
+            </Button>
+          </div>
+        )}
+      </div>
+    </aside>
   );
 
   return (
@@ -558,157 +772,168 @@ export function FinanceMovimentacoes({
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-base font-bold">{fin.movements.header.titleMobile}</h2>
           <div className="flex items-center gap-2 shrink-0">
-            {importSpreadsheetButton}
             {globalActions}
           </div>
         </div>
       ) : (
-        /* Barra de ações globais (o card "Saldo Total" saiu do topo — virou o
-           card consolidado da aba Visão Geral). */
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-bold">{fin.movements.header.titleDesktop}</h2>
-          <div className="flex items-center gap-2 shrink-0">
-            {importSpreadsheetButton}
-            {globalActions}
-          </div>
-        </div>
+        <h2 className="text-lg font-bold">{fin.movements.header.titleDesktop}</h2>
       )}
 
-      <SettingsSidebarLayout
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        groupFooters={groupFooters}
-        // Sem `placeholderGroups`: os cabeçalhos "CONTAS"/"CARTÕES" (e seus
-        // footers "+") só aparecem quando o próprio grupo já tem alguma aba —
-        // ou seja, só depois que o tenant tem pelo menos um cartão (item 6).
-      >
+      {isMobile && !mobileDetailOpen ? (
+        <div className="overflow-hidden rounded-2xl border bg-card pl-4">
+          {accountNavigator}
+        </div>
+      ) : (
+        <div className="min-w-0 lg:grid lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] lg:gap-5">
+          {!isMobile && accountNavigator}
+          <section className="min-w-0 space-y-3" aria-label="Detalhes da conta selecionada">
+            {isMobile && (
+              <Button type="button" variant="ghost" size="sm" className="-ml-2 gap-2" onClick={() => setMobileDetailOpen(false)}>
+                <ChevronLeft className="h-4 w-4" /> Contas e cartões
+              </Button>
+            )}
         {activeTab === RECONCILE_TAB ? (
           <ReconciliationTab state={reconciliationState} onStateChange={setReconciliationState} />
         ) : activeTab === ALL_TAB ? (
           <div className="space-y-4">
-            {/* Topo da Visão Geral. Quando há distribuição (2+ contas positivas),
-                no desktop fica lado a lado: saldo total + faturas empilhados à
-                esquerda, donut de distribuição à direita. Sem distribuição,
-                mantém o grid clássico de saldo + faturas lado a lado. Mobile
-                sempre empilhado. */}
-            {(() => {
-              const showDist = pieData.length >= 2;
-              const hasTop = canManageBankAccounts && (cashBankAccounts.length > 0 || cardAccounts.length > 0);
-              if (!showDist && !hasTop) return null;
-
-              /* Card-herói do SALDO TOTAL. Sem cor de conta única na Visão Geral
-                 → degradê pela semântica: positivo verde, zero escuro, negativo
-                 vermelho. Texto sempre branco. */
-              const heroCard = cashBankAccounts.length > 0 && (
-                <div
-                  className={cn(
-                    'rounded-2xl p-5 sm:p-6 text-white shadow-lg flex flex-col justify-between gap-3',
-                    totalBalance > 0
-                      ? 'bg-gradient-to-r from-emerald-700 to-emerald-600'
-                      : totalBalance === 0
-                      ? 'bg-gradient-to-r from-gray-900 to-gray-700'
-                      : 'bg-gradient-to-r from-red-900 to-red-700',
-                  )}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="rounded-full bg-white/20 p-2 shrink-0">
-                      <Wallet className="h-4 w-4" />
-                    </div>
-                    <span className="text-xs font-medium uppercase tracking-wider opacity-90">
-                      {fin.movements.hero.totalBalance}
-                    </span>
-                  </div>
-                  <span className="text-3xl sm:text-4xl font-bold tabular-nums leading-tight">
-                    {fmt(totalBalance)}
-                  </span>
-                </div>
-              );
-
-              const cardBillsCard = cardAccounts.length > 0 && (
-                <div className="rounded-xl bg-muted/40 px-4 py-3 flex items-center justify-between gap-3 sm:self-stretch">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="rounded-full bg-primary/10 p-2 shrink-0">
-                      <CreditCard className="h-4 w-4 text-primary" />
-                    </div>
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      {fin.movements.hero.cardInvoices}
-                    </span>
-                  </div>
-                  <span className={cn('text-lg font-bold tabular-nums shrink-0', totalCardBills > 0 ? 'text-destructive' : 'text-muted-foreground')}>
-                    {fmt(totalCardBills)}
-                  </span>
-                </div>
-              );
-
-              /* Distribuição do saldo entre as contas de caixa/banco. Cartões
-                 ficam de fora (não têm saldo de conta). */
-              const distCard = showDist && (() => {
-                const totalDonut = pieData.reduce((s, d) => s + d.value, 0);
-                return (
-                  <div className="rounded-xl bg-muted/30 p-4 space-y-3">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      {fin.movements.hero.accountDist}
-                    </span>
-                    <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                      <div className="h-[150px] w-full lg:w-[200px] shrink-0">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={pieData}
-                              dataKey="value"
-                              nameKey="name"
-                              innerRadius={45}
-                              outerRadius={70}
-                              paddingAngle={2}
-                              strokeWidth={0}
-                            >
-                              {pieData.map((entry, i) => (
-                                <Cell key={i} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip
-                              content={<AccountDistributionTooltip totalDonut={totalDonut} formatValue={fmt} />}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="flex flex-wrap lg:flex-col gap-1.5 lg:gap-2 min-w-0">
-                        {pieData.map((entry, i) => (
-                          <span
-                            key={i}
-                            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
-                            style={{ backgroundColor: entry.color, color: idealForeground(entry.color) }}
-                          >
-                            <span className="truncate max-w-[8rem]">{entry.name}</span>
-                            <span className="tabular-nums">{fmt(entry.value)}</span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })();
-
-              if (showDist) {
-                // Desktop: saldo (+ faturas empilhadas) à esquerda, distribuição
-                // à direita. Mobile: tudo empilhado.
-                return (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
-                    <div className="space-y-3">
-                      {heroCard}
-                      {cardBillsCard}
-                    </div>
-                    {distCard}
-                  </div>
-                );
-              }
-
-              // Sem distribuição: grid clássico saldo + faturas lado a lado.
+            {/* Resumo único e limitado: a lista completa de contas já vive na
+                navegação. Aqui entram apenas total, agregados e até cinco
+                fatias/legendas, independentemente do número de contas. */}
+            {canManageBankAccounts && cashBankAccounts.length > 0 && (() => {
+              const totalDonut = compactPieData.reduce((sum, item) => sum + item.value, 0);
               return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {heroCard}
-                  {cardBillsCard}
+                <div className="rounded-xl border bg-card p-4 shadow-sm sm:p-5">
+                  <div className="grid gap-5 lg:grid-cols-[minmax(16rem,0.85fr)_minmax(0,1.35fr)] lg:items-center">
+                    <div className="min-w-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-700 text-white">
+                            <Wallet className="h-4 w-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-semibold">Resumo financeiro</h3>
+                            <p className="text-xs text-muted-foreground">Saldo consolidado das contas</p>
+                          </div>
+                        </div>
+                        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                          {cashBankAccounts.length} {cashBankAccounts.length === 1 ? 'conta' : 'contas'}
+                        </span>
+                      </div>
+
+                      <p className="mt-4 break-words text-2xl font-bold leading-tight tabular-nums sm:text-3xl">
+                        {fmt(totalBalance)}
+                      </p>
+
+                      <div className="mt-4 grid grid-cols-2 gap-4 border-t pt-3 text-xs">
+                        <div className="min-w-0">
+                          <p className="text-muted-foreground">Saldos positivos</p>
+                          <p className="mt-0.5 font-semibold tabular-nums">{pieData.length}</p>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-muted-foreground">Faturas em aberto</p>
+                          <p className={cn(
+                            'mt-0.5 truncate font-semibold tabular-nums',
+                            totalOpenCardBills > 0 && 'text-destructive',
+                          )} title={fmt(totalOpenCardBills)}>
+                            {fmt(totalOpenCardBills)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {negativeAccountCount > 0 && (
+                        <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+                          {negativeAccountCount} {negativeAccountCount === 1 ? 'conta está' : 'contas estão'} com saldo negativo.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="min-w-0 lg:border-l lg:pl-5">
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <div>
+                          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Distribuição do saldo</h4>
+                          <p className="text-xs text-muted-foreground">Somente valores positivos</p>
+                        </div>
+                      </div>
+
+                      {compactPieData.length > 0 ? (
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+                          <div className="relative h-[148px] w-full shrink-0 sm:w-[168px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={compactPieData}
+                                  dataKey="value"
+                                  nameKey="name"
+                                  innerRadius={45}
+                                  outerRadius={69}
+                                  paddingAngle={2}
+                                  strokeWidth={0}
+                                  isAnimationActive={false}
+                                  onMouseEnter={(_, index) => setActiveDistributionIndex(index)}
+                                  onMouseLeave={() => setActiveDistributionIndex(null)}
+                                >
+                                  {compactPieData.map((entry, index) => (
+                                    <Cell
+                                      key={entry.name}
+                                      fill={entry.color}
+                                      opacity={activeDistributionIndex === null || activeDistributionIndex === index ? 1 : 0.2}
+                                      stroke={activeDistributionIndex === index ? 'hsl(var(--background))' : 'transparent'}
+                                      strokeWidth={activeDistributionIndex === index ? 4 : 0}
+                                      style={{
+                                        filter: activeDistributionIndex === index ? 'drop-shadow(0 8px 12px rgb(15 23 42 / 0.22))' : 'none',
+                                        transition: 'opacity 160ms ease, filter 160ms ease',
+                                      }}
+                                    />
+                                  ))}
+                                </Pie>
+                                <Tooltip
+                                  content={<AccountDistributionTooltip totalDonut={totalDonut} formatValue={fmt} />}
+                                  allowEscapeViewBox={{ x: true, y: true }}
+                                  wrapperStyle={{ zIndex: 80, pointerEvents: 'none' }}
+                                />
+                              </PieChart>
+                            </ResponsiveContainer>
+                            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                              <span className="text-lg font-bold tabular-nums">{pieData.length}</span>
+                              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">saldos</span>
+                            </div>
+                          </div>
+                          <div className="grid min-w-0 flex-1 grid-cols-1 gap-x-5 gap-y-2 sm:grid-cols-2">
+                            {compactPieData.map((entry, index) => {
+                              const percentage = totalDonut > 0 ? Math.round((entry.value / totalDonut) * 100) : 0;
+                              return (
+                                <div
+                                  key={entry.name}
+                                  tabIndex={0}
+                                  className={cn(
+                                    'flex min-w-0 items-center gap-2 rounded-md px-1.5 py-1 text-xs transition-opacity hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                                    activeDistributionIndex !== null && activeDistributionIndex !== index && 'opacity-35',
+                                  )}
+                                  title={`${entry.name}: ${fmt(entry.value)}`}
+                                  onMouseEnter={() => setActiveDistributionIndex(index)}
+                                  onMouseLeave={() => setActiveDistributionIndex(null)}
+                                  onFocus={() => setActiveDistributionIndex(index)}
+                                  onBlur={() => setActiveDistributionIndex(null)}
+                                  aria-label={`${entry.name}: ${fmt(entry.value)}, ${percentage}%`}
+                                >
+                                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: entry.color }} />
+                                  <span className="min-w-0 flex-1 truncate text-foreground">{entry.name}</span>
+                                  <span className="shrink-0 tabular-nums text-muted-foreground">{percentage}%</span>
+                                </div>
+                              );
+                            })}
+                            {pieData.length > compactPieData.length && (
+                              <p className="col-span-full text-xs text-muted-foreground">As menores contas foram agrupadas em “Outras”.</p>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex min-h-28 items-center justify-center rounded-lg bg-muted/40 px-4 text-center text-sm text-muted-foreground">
+                          Nenhuma conta com saldo positivo para distribuir.
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })()}
@@ -719,10 +944,12 @@ export function FinanceMovimentacoes({
                 só a UI de alternar saiu daqui. */}
             <TransactionListPanel
               title={fin.movements.header.titleMobile}
+              embedded
               type="all"
               transactions={transactions}
               isLoading={isLoading}
               onNew={onNew}
+              headerAction={importSpreadsheetButton}
               onEdit={onEdit}
               onDelete={onDelete}
               // Consolidado (soma de todas as contas), não o extrato de uma
@@ -755,10 +982,12 @@ export function FinanceMovimentacoes({
               {renderAccountHeader(selectedAccount)}
               <TransactionListPanel
                 title={selectedAccount.name}
+                embedded
                 type="all"
                 transactions={transactions}
                 isLoading={isLoading}
                 onNew={onNew}
+                headerAction={importSpreadsheetButton}
                 onEdit={onEdit}
                 onDelete={onDelete}
                 initialAccountFilter={selectedAccount.id}
@@ -773,20 +1002,15 @@ export function FinanceMovimentacoes({
             </div>
           )
         ) : (
-          <TransactionListPanel
-            title={fin.movements.fallbackTitle}
-            type="all"
-            transactions={transactions}
-            isLoading={isLoading}
-            onNew={onNew}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            highlightTransactionId={highlightTransactionId}
-            collapsePaymentGroups
-            paymentGroupTotals={paymentGroupTotals}
+          <EmptyState
+            icon={<Landmark className="h-11 w-11" />}
+            title="Selecione uma conta ou cartão"
+            description="Escolha um item na lista para ver saldo, extrato, faturas e ações."
           />
         )}
-      </SettingsSidebarLayout>
+          </section>
+        </div>
+      )}
 
       {/* Form de conta/cartão (criar/editar) — fonte única em AccountFormDialog */}
       <AccountFormDialog

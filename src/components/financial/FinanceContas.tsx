@@ -14,7 +14,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, AlertTriangle, Clock, CreditCard, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Search, Info, Layers, List, CalendarDays, FileDown, FileText, FileSpreadsheet, SlidersHorizontal, ChevronDown, ChevronRight } from 'lucide-react';
+import { Check, AlertTriangle, Clock, CreditCard, DollarSign, Plus, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Receipt, Eye, Search, Info, Layers, List, CalendarDays, FileDown, FileText, FileSpreadsheet, SlidersHorizontal, ChevronDown, ChevronRight, ArrowDownUp } from 'lucide-react';
 import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile, useMediaBreakpoint } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -308,7 +308,10 @@ export function FinanceContas({
 
   const todayIso = todayInTz(timezone);
   const today = startOfDay(parseLocalDate(todayIso));
-  const next7Days = addDays(today, 7);
+  // Limites exclusivos: hoje..+7 = próximos 7 dias; +8..+30 = faixa seguinte.
+  const next7Days = addDays(today, 8);
+  const next8Days = addDays(today, 8);
+  const next30Days = addDays(today, 31);
 
   const contaDefaultType: TransactionType = subTab === 'receber' ? 'entrada' : 'saida';
 
@@ -528,6 +531,13 @@ export function FinanceContas({
       .filter((b) => b.status !== 'paid' && !isBefore(parseLocalDate(b.due_date), today) && isBefore(parseLocalDate(b.due_date), next7Days))
       .reduce((s, b) => s + Math.max(0, (b.total_amount ?? 0) - Number(b.amount_paid ?? 0)), 0);
 
+    const dias8a30Txn = txnUniverse
+      .filter((t) => !t.is_paid && t.due_date && !isBefore(parseLocalDate(t.due_date), next8Days) && isBefore(parseLocalDate(t.due_date), next30Days))
+      .reduce((s, t) => s + Number(t.amount), 0);
+    const dias8a30Bill = billUniverse
+      .filter((b) => b.status !== 'paid' && !isBefore(parseLocalDate(b.due_date), next8Days) && isBefore(parseLocalDate(b.due_date), next30Days))
+      .reduce((s, b) => s + Math.max(0, (b.total_amount ?? 0) - Number(b.amount_paid ?? 0)), 0);
+
     // Card "Pago/Recebido": padronizado na DATA DO RECEBIMENTO (decisão CEO 2026-06-13).
     // Os demais cards (pendente/vencido/7dias) seguem por VENCIMENTO via txnUniverse;
     // só este card mede realização de caixa. Por isso o pool é separado:
@@ -556,11 +566,12 @@ export function FinanceContas({
       pendente: pendenteTxn + pendenteBill,
       vencido: vencidoTxn + vencidoBill,
       prox7: prox7Txn + prox7Bill,
+      dias8a30: dias8a30Txn + dias8a30Bill,
       pago: pagoTxn + pagoBill,
       aPagar: aPagarTxn + pendenteBill,
       aReceber: aReceberTxn,
     };
-  }, [transactions, allTransactions, allBills, cardAccountMap, subTab, today, next7Days, dateRange, categoryFilter, costCenterFilter]);
+  }, [transactions, allTransactions, allBills, cardAccountMap, subTab, today, next7Days, next8Days, next30Days, dateRange, categoryFilter, costCenterFilter]);
 
   // Lista de categorias presentes nas transações atuais (baseFiltered, antes do
   // filtro de categoria) pra popular o <Select> de filtro. Ordena alfabeticamente.
@@ -858,6 +869,14 @@ export function FinanceContas({
     setContaFormOpen(true);
   };
 
+  const toggleRowDetails = (transactionId: string) => {
+    setExpandedTransactionIds((current) => {
+      const next = new Set(current);
+      if (next.has(transactionId)) next.delete(transactionId); else next.add(transactionId);
+      return next;
+    });
+  };
+
   const handleDelete = async () => {
     if (!deletingId) return;
     await deleteTransaction.mutateAsync(deletingId);
@@ -976,13 +995,9 @@ export function FinanceContas({
     ? [
         { label: 'A pagar', shortLabel: 'A pagar', value: summary.aPagar, icon: ArrowDownCircle, color: 'bg-destructive' },
         { label: 'A receber', shortLabel: 'A receber', value: summary.aReceber, icon: ArrowUpCircle, color: 'bg-success' },
-        { label: fin.accounts.summaryCards.totalOverdue, shortLabel: fin.accounts.summaryCards.overdue, value: summary.vencido, icon: AlertTriangle, color: 'bg-rose-700' },
-        { label: fin.accounts.summaryCards.next7Full, shortLabel: fin.accounts.summaryCards.next7, value: summary.prox7, icon: Clock, color: 'bg-primary' },
       ]
     : [
         { label: fin.accounts.summaryCards.totalPending, shortLabel: fin.accounts.summaryCards.pending, value: summary.pendente, icon: Clock, color: 'bg-warning' },
-        { label: fin.accounts.summaryCards.totalOverdue, shortLabel: fin.accounts.summaryCards.overdue, value: summary.vencido, icon: AlertTriangle, color: 'bg-destructive' },
-        { label: fin.accounts.summaryCards.next7Full, shortLabel: fin.accounts.summaryCards.next7, value: summary.prox7, icon: DollarSign, color: 'bg-primary' },
         { label: subTab === 'receber' ? fin.accounts.summaryCards.totalReceived : fin.accounts.summaryCards.totalPaid, shortLabel: subTab === 'receber' ? fin.accounts.summaryCards.received : fin.accounts.summaryCards.paid, value: summary.pago, icon: CheckCircle2, color: 'bg-success' },
       ];
 
@@ -1037,14 +1052,14 @@ export function FinanceContas({
           </div>
           {/* Mobile: Exportar + Filtros à esquerda, alternador lista/calendário
               encostado à direita (régua da toolbar mobile). */}
-          <div className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 pb-1 sm:flex sm:overflow-x-auto lg:pb-0 shrink-0">
-          <ToggleGroup type="single" value={view} onValueChange={(value) => value && setView(value as AccountsView)} variant="outline" size="sm" className="order-3 shrink-0 sm:order-none">
+          <div className="grid grid-cols-2 items-center gap-2 pb-1 sm:flex sm:flex-wrap lg:flex-nowrap lg:pb-0 shrink-0">
+          <ToggleGroup type="single" value={view} onValueChange={(value) => value && setView(value as AccountsView)} variant="outline" size="sm" className="col-span-2 shrink-0 sm:order-none sm:col-span-1">
             <ToggleGroupItem value="list" aria-label="Visualização em lista" className="h-10 px-3 sm:h-9"><List className="h-4 w-4" /><span className="sr-only sm:not-sr-only sm:ml-1.5">Lista</span></ToggleGroupItem>
             <ToggleGroupItem value="calendar" aria-label="Visualização em calendário" className="h-10 px-3 sm:h-9"><CalendarDays className="h-4 w-4" /><span className="sr-only sm:not-sr-only sm:ml-1.5">Calendário</span></ToggleGroupItem>
           </ToggleGroup>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="order-1 h-10 w-full shrink-0 gap-2 sm:order-none sm:h-9 sm:w-auto">
+              <Button variant="outline" size="sm" className="h-10 w-full shrink-0 gap-2 sm:h-9 sm:w-auto">
                 <FileDown className="h-4 w-4" />Exportar<ChevronDown className="ml-auto h-3.5 w-3.5 opacity-60 sm:ml-1" />
               </Button>
             </DropdownMenuTrigger>
@@ -1054,7 +1069,7 @@ export function FinanceContas({
               <DropdownMenuItem onClick={handleExportCsv}><FileDown className="mr-2 h-4 w-4" />CSV</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <FilterButton activeCount={activeFilterCount} onClear={resetFilters} className="order-2 shrink-0 sm:order-none">
+          <FilterButton activeCount={activeFilterCount} onClear={resetFilters} className="w-full shrink-0 sm:w-auto">
             <div className="space-y-2">
               <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</Label>
               <Select value={filter} onValueChange={(value) => setFilter(value as FilterStatus)}>
@@ -1090,12 +1105,27 @@ export function FinanceContas({
               />
             )}
           </FilterButton>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className="h-10 w-full shrink-0 gap-2 sm:h-9 sm:w-auto">
+                <ArrowDownUp className="h-4 w-4" />
+                Ordenar
+                {sortConfig.direction && <span className="text-[10px] font-semibold uppercase text-muted-foreground">{sortConfig.direction}</span>}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => handleSort('_status_order')}>Prioridade operacional</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSort('_due_ts')}>Vencimento</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSort('_amount_num')}>Valor</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSort('description')}>Descrição</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
             {/* No mobile "Nova Conta" virou FAB (fim do componente): ocupava uma
                 linha inteira de toolbar e saía da tela ao rolar a lista. Sem ele
                 a 2ª linha fica com os 3 controles da régua (Exportar, Filtros,
                 lista/calendário). Desktop segue com o botão inline. */}
             {!isMobile && (
-              <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} size="sm" className="order-4 col-span-3 h-10 w-full gap-2 shrink-0 bg-foreground text-background hover:bg-foreground/90 sm:order-none sm:col-span-1 sm:h-9 sm:w-auto">
+              <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} size="sm" className="col-span-2 h-10 w-full gap-2 shrink-0 bg-foreground text-background hover:bg-foreground/90 sm:col-span-1 sm:h-9 sm:w-auto">
                 <Plus className="h-4 w-4" /> {fin.accounts.header.newButton}
               </Button>
             )}
@@ -1117,7 +1147,7 @@ export function FinanceContas({
             scrollport IGNORANDO o `px-3` — a faixa nascia com scrollLeft=12 e o
             chip colava na borda da tela, desalinhado da lista logo abaixo
             (medido no browser em 390px). */}
-        <div className="flex snap-x scroll-pl-3 gap-2 overflow-x-auto px-3 pb-1 sm:grid sm:grid-cols-2 sm:scroll-pl-0 sm:px-0 lg:grid-cols-4 scrollbar-none">
+        <div className="flex snap-x scroll-pl-3 gap-2 overflow-x-auto px-3 pb-1 sm:grid sm:grid-cols-2 sm:scroll-pl-0 sm:px-0 scrollbar-none">
           {kpis.map(({ label, shortLabel, value, icon: Icon, color }) => (
             <Card key={label} className={cn('min-w-[168px] snap-start border-0 text-white shadow-none', color)}>
               <CardContent className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1 p-3 sm:gap-y-0 sm:p-4">
@@ -1132,6 +1162,27 @@ export function FinanceContas({
           ))}
         </div>
       </div>
+
+      {/* Horizonte operacional: leitura de risco compacta, sem competir com a
+          ação de criar ou quitar contas. Mantém as três faixas comparáveis e
+          evita transformar cada vencimento em mais um KPI-card colorido. */}
+      <section className="grid grid-cols-1 divide-y border-y border-border/70 sm:grid-cols-3 sm:divide-x sm:divide-y-0" aria-label="Horizonte de vencimentos">
+        {[
+          { label: 'Vencidas', value: summary.vencido, icon: AlertTriangle, tone: 'text-destructive' },
+          { label: 'Próximos 7 dias', value: summary.prox7, icon: Clock, tone: 'text-warning' },
+          { label: 'De 8 a 30 dias', value: summary.dias8a30, icon: CalendarDays, tone: 'text-info' },
+        ].map(({ label, value, icon: Icon, tone }) => (
+          <div key={label} className="flex items-center justify-between gap-3 px-3 py-3 sm:px-4">
+            <span className="flex min-w-0 items-center gap-2 text-xs font-medium text-muted-foreground">
+              <Icon className={cn('h-4 w-4 shrink-0', tone)} />
+              <span className="truncate">{label}</span>
+            </span>
+            <strong className={cn('shrink-0 text-sm font-semibold tabular-nums', value > 0 ? tone : 'text-muted-foreground')}>
+              {fmt(value)}
+            </strong>
+          </div>
+        ))}
+      </section>
 
       {(categorySummary || costCenterSummary || (filter !== 'todas' && !searchActive)) && (
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -1493,13 +1544,18 @@ export function FinanceContas({
                     return (
                     <Fragment key={t.id}>
                     <TableRow
-                      onClick={() => setExpandedTransactionIds((current) => {
-                        const next = new Set(current);
-                        if (next.has(t.id)) next.delete(t.id); else next.add(t.id);
-                        return next;
-                      })}
+                      onClick={() => toggleRowDetails(t.id)}
+                      onKeyDown={(event) => {
+                        if (event.key !== 'Enter' && event.key !== ' ') return;
+                        event.preventDefault();
+                        toggleRowDetails(t.id);
+                      }}
+                      tabIndex={0}
+                      aria-expanded={isExpanded}
+                      aria-controls={`account-details-${t.id}`}
+                      aria-label={`${t.description}. ${isExpanded ? 'Ocultar detalhes' : 'Mostrar detalhes'}`}
                       className={cn(
-                        'cursor-pointer',
+                        'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
                         status === 'vencida' && 'bg-destructive/5',
                         partial && 'bg-warning/5',
                         selectedIds.has(t.id) && 'bg-primary/5',
@@ -1624,7 +1680,7 @@ export function FinanceContas({
                       </TableCell>
                     </TableRow>
                     {isExpanded && (
-                      <TableRow key={`${t.id}-details`} className="hover:bg-transparent">
+                      <TableRow id={`account-details-${t.id}`} key={`${t.id}-details`} className="hover:bg-transparent">
                         <TableCell colSpan={batchEnabled ? 7 : 6} className="p-0">
                           <FinancialTransactionDetailsPanel
                             transaction={t}

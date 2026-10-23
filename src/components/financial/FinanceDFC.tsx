@@ -3,6 +3,7 @@ import {
   ArrowDownCircle,
   ArrowDownToLine,
   ArrowUpCircle,
+  AlertCircle,
   Banknote,
   ChevronDown,
   FileDown,
@@ -11,6 +12,7 @@ import {
   Landmark,
   Loader2,
   PiggyBank,
+  RefreshCw,
   type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,6 +21,7 @@ import { DfcDailyTable, type DfcDailyRow } from './DfcDailyTable';
 import { DfcHierarchyTable, type DfcHierarchyRow, type DfcHierarchySection } from './DfcHierarchyTable';
 import { FilterCheckboxDropdown } from './FilterCheckboxDropdown';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -111,10 +114,30 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
    * `src/lib/cash-flow-forecast.ts`).
    */
   const [lente, setLente] = useState<'previsto' | 'realizado'>('previsto');
-  const { categories, isLoading: isLoadingCategories } = useFinancialCategories();
-  const { accounts, isLoading: isLoadingAccounts } = useFinancialAccounts();
-  const { costCenters, isLoading: isLoadingCostCenters } = useCostCenters();
-  const { settings, isLoading: isLoadingCompany } = useCompanySettings();
+  const {
+    categories,
+    isLoading: isLoadingCategories,
+    isError: isErrorCategories,
+    refetch: refetchCategories,
+  } = useFinancialCategories();
+  const {
+    accounts,
+    isLoading: isLoadingAccounts,
+    isError: isErrorAccounts,
+    refetch: refetchAccounts,
+  } = useFinancialAccounts();
+  const {
+    costCenters,
+    isLoading: isLoadingCostCenters,
+    isError: isErrorCostCenters,
+    refetch: refetchCostCenters,
+  } = useCostCenters();
+  const {
+    settings,
+    isLoading: isLoadingCompany,
+    isError: isErrorCompany,
+    refetch: refetchCompany,
+  } = useCompanySettings();
   const { money, date } = useLocaleFormatters();
   const { locale, currency } = useAppLocaleContext();
   const { toast } = useToast();
@@ -336,6 +359,10 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
   };
 
   const handleExport = async (format: 'excel' | 'pdf' | 'csv') => {
+    if (
+      isLoading || isLoadingCategories || isLoadingAccounts || isLoadingCostCenters || isLoadingCompany
+      || isErrorCategories || isErrorAccounts || isErrorCostCenters || isErrorCompany
+    ) return;
     try {
       const data = buildExportData();
       const filename = exportFilename();
@@ -353,6 +380,19 @@ export function FinanceDFC({ transactions, range, isLoading = false }: FinanceDF
 
   if (isLoading || isLoadingCategories || isLoadingAccounts || isLoadingCostCenters || isLoadingCompany) {
     return <FinanceDFCLoading />;
+  }
+
+  if (isErrorCategories || isErrorAccounts || isErrorCostCenters || isErrorCompany) {
+    return (
+      <FinanceDFCError
+        onRetry={() => {
+          void refetchCategories();
+          refetchAccounts();
+          void refetchCostCenters();
+          void refetchCompany();
+        }}
+      />
+    );
   }
 
   const changeIsPositive = report.netChange > 0;
@@ -556,5 +596,21 @@ function FinanceDFCLoading() {
         {[0, 1, 2].map((item) => <Skeleton key={item} className="h-[74px]" />)}
       </div>
     </section>
+  );
+}
+
+function FinanceDFCError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <Alert variant="destructive" role="alert">
+      <AlertCircle className="h-4 w-4" />
+      <AlertTitle>Não foi possível carregar o fluxo de caixa</AlertTitle>
+      <AlertDescription className="space-y-3">
+        <p>O relatório e suas exportações foram bloqueados para não usar dados incompletos.</p>
+        <Button type="button" variant="outline" size="sm" onClick={onRetry} className="min-h-10 gap-2 border-destructive/40">
+          <RefreshCw className="h-4 w-4" aria-hidden="true" />
+          Tentar novamente
+        </Button>
+      </AlertDescription>
+    </Alert>
   );
 }

@@ -1,6 +1,6 @@
-import { Fragment, useState, useMemo, useEffect, useRef } from 'react';
+import { Fragment, useState, useMemo, useEffect, useRef, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { Search, Plus, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, CreditCard, FileText, FileSpreadsheet, ChevronDown, ChevronRight, ArrowLeftRight, Layers, Undo2 } from 'lucide-react';
+import { Search, Plus, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, CreditCard, FileText, FileSpreadsheet, ChevronDown, ChevronRight, ArrowLeftRight, ArrowDownUp, Layers, Undo2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { UserAvatarTooltip } from '@/components/ui/UserAvatarTooltip';
 import {
@@ -48,7 +48,7 @@ import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile, useMediaBreakpoint } from '@/hooks/use-mobile';
 import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -109,10 +109,14 @@ function formatDayDividerLabel(dateKey: string, locale: string) {
 
 interface TransactionListPanelProps {
   title: string;
+  /** Em lista + detalhe, evita repetir o título que o detalhe já comunica. */
+  embedded?: boolean;
   type?: TransactionType | 'all';
   transactions: (FinancialTransaction & { customer?: any; supplier?: any })[];
   isLoading: boolean;
   onNew?: () => void;
+  /** Ação contextual exibida no mesmo grupo de Exportar e Nova movimentação. */
+  headerAction?: ReactNode;
   onEdit: (t: FinancialTransaction) => void;
   onDelete: (id: string) => Promise<any>;
   buttonColor?: string;
@@ -268,7 +272,8 @@ function ToolbarShell({
 
 export function TransactionListPanel({
   title, type = 'all', transactions, isLoading,
-  onNew, onEdit, onDelete, buttonColor,
+  embedded = false,
+  onNew, headerAction, onEdit, onDelete, buttonColor,
   initialAccountFilter, onClearAccountFilter, hideAccountColumn,
   balanceAfterById, balanceAfterLabel, balanceAfterShortLabel,
   groupByDay, dayClosingBalance, highlightTransactionId,
@@ -310,6 +315,16 @@ export function TransactionListPanel({
   // Lote aguardando confirmação de "desfazer".
   const [undoTarget, setUndoTarget] = useState<PaymentGroupInfo | null>(null);
   const isMobile = useIsMobile();
+  // A tabela vive ao lado da coluna de contas; breakpoints tradicionais do
+  // viewport exibiam colunas que não cabiam na largura REAL do detalhe.
+  // Remover as células do DOM (em vez de só `display:none`) também evita que
+  // `table-layout: fixed` reserve colunas invisíveis e esmague a descrição.
+  const isBelowAccountColumnWidth = useMediaBreakpoint(1280);
+  const isBelowBalanceColumnWidth = useMediaBreakpoint(1440);
+  const isBelowUserColumnWidth = useMediaBreakpoint(2000);
+  const showDesktopAccountColumn = !hideAccountColumn && !isBelowAccountColumnWidth;
+  const showDesktopBalanceColumn = !!balanceAfterById && !isBelowBalanceColumnWidth;
+  const showDesktopUserColumn = !isBelowUserColumnWidth;
   // `timezone`: fuso da empresa. Vai pros geradores de PDF/Excel pra o carimbo
   // "gerado em" e o nome do arquivo saírem no relógio da empresa, e não no do
   // aparelho de quem exportou.
@@ -562,19 +577,14 @@ export function TransactionListPanel({
   // Nº de colunas de fato renderizadas na tabela desktop — MESMAS flags que
   // montam o <TableHeader> abaixo. Const única usada nos dois lugares pra
   // nunca dessincronizar o colSpan do divisor de dia do cabeçalho real.
-  // NOTA: usa `type === 'all'` cru (não a const `showTypeColumn`, que só é
-  // declarada mais abaixo, perto do JSX) pra não criar dependência de ordem
-  // de declaração — ambas resolvem pro mesmo valor.
   const visibleColumnCount =
     (type !== 'all' && canDeleteFinance ? 1 : 0) // checkbox
     + 1 // data
-    + 1 // usuário
-    + (type === 'all' ? 1 : 0) // tipo (== showTypeColumn)
     + 1 // descrição
-    + 1 // categoria (hidden md:table-cell — some visualmente, mas a coluna existe)
-    + (!hideAccountColumn ? 1 : 0) // conta (hidden lg:table-cell)
+    + (showDesktopAccountColumn ? 1 : 0) // conta
     + 1 // valor
-    + (balanceAfterById ? 1 : 0) // saldo após
+    + (showDesktopBalanceColumn ? 1 : 0) // saldo após
+    + (showDesktopUserColumn ? 1 : 0) // usuário
     + 1; // ações
 
   // ── Deep-link `?txn=ID`: leva o usuário até a linha ───────────────────────
@@ -661,6 +671,14 @@ export function TransactionListPanel({
     });
   };
 
+  const toggleTransactionDetails = (transactionId: string) => {
+    setExpandedTransactionIds((current) => {
+      const next = new Set(current);
+      if (next.has(transactionId)) next.delete(transactionId); else next.add(transactionId);
+      return next;
+    });
+  };
+
   const handleUndoGroup = async () => {
     if (!undoTarget) return;
     try {
@@ -743,7 +761,6 @@ export function TransactionListPanel({
 
   const allSelected = filtered.length > 0 && selectedIds.size === filtered.length;
   const someSelected = canDeleteFinance && selectedIds.size > 0;
-  const showTypeColumn = type === 'all';
 
   const renderInstallmentBadge = (t: any) => {
     if (!t.installment_number) return null;
@@ -814,21 +831,171 @@ export function TransactionListPanel({
   const newLabel = type === 'entrada' ? fin.transactionList.newLabel.revenue : type === 'saida' ? fin.transactionList.newLabel.expense : fin.transactionList.newLabel.transaction;
   const emptyActionLabel = type === 'all' ? newLabel : `Nova ${newLabel.toLowerCase()}`;
 
+  const filterControl = (
+    <FilterButton
+      activeCount={activeFiltersCount}
+      onClear={clearFilters}
+      iconOnly={embedded}
+      className={embedded
+        ? 'h-8 w-8 border-0 bg-transparent p-0 shadow-none hover:bg-transparent'
+        : undefined}
+    >
+      {type === 'all' && (
+        <FilterCheckboxGroup
+          label={fin.transactionList.filters.type}
+          selected={typeFilter}
+          onChange={setTypeFilter}
+          emptyLabel={fin.transactionList.filters.typeAll}
+          options={[
+            { value: 'entrada', label: fin.transactionList.filters.typeRevenue },
+            { value: 'saida', label: fin.transactionList.filters.typeExpense },
+          ]}
+        />
+      )}
+      <FilterCheckboxGroup
+        label={fin.transactionList.filters.category}
+        selected={categoryFilter}
+        onChange={setCategoryFilter}
+        emptyLabel={fin.transactionList.filters.categoryAll}
+        options={categories.map((c) => {
+          const known = categoriesByName.get(c);
+          return {
+            value: c,
+            label: c,
+            icon: known ? filterIconNode(known.color, getCategoryIcon(known.icon)) : undefined,
+          };
+        })}
+      />
+      <FilterCheckboxGroup
+        label={fin.transactionList.filters.account}
+        selected={accountFilter}
+        onChange={setAccountFilter}
+        emptyLabel={fin.transactionList.filters.accountAll}
+        options={Array.from(accountNames.entries()).map(([id, acc]) => ({
+          value: id,
+          label: acc.type === 'caixa' ? `${acc.name} ${fin.transactionList.filters.cash}` : acc.name,
+          color: acc.color,
+        }))}
+      />
+      {costCenterOptions.length > 0 && (
+        <FilterCheckboxGroup
+          label={fin.costCenters.filterLabel}
+          selected={costCenterFilter}
+          onChange={setCostCenterFilter}
+          emptyLabel={fin.costCenters.filterEmptyLabel}
+          options={[
+            ...costCenterOptions,
+            { value: NO_COST_CENTER, label: fin.costCenters.dreNoCenter },
+          ]}
+        />
+      )}
+    </FilterButton>
+  );
+
+  const sortControl = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={cn(
+            'shrink-0',
+            embedded
+              ? 'h-8 w-8 border-0 bg-transparent p-0 shadow-none hover:bg-transparent'
+              : 'h-10 gap-2 sm:h-9',
+          )}
+          aria-label={embedded ? 'Ordenar movimentações' : undefined}
+          title={embedded ? 'Ordenar movimentações' : undefined}
+        >
+          <ArrowDownUp className="h-4 w-4" />
+          <span className={cn(embedded && 'sr-only')}>Ordenar</span>
+          {!embedded && sortConfig.direction && (
+            <span className="text-[10px] font-semibold uppercase text-muted-foreground">{sortConfig.direction}</span>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuItem onClick={() => handleSort('transaction_date')}>Data</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleSort('description')}>Descrição</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleSort('amount')}>Valor</DropdownMenuItem>
+        {!hideAccountColumn && <DropdownMenuItem onClick={() => handleSort('account_id')}>Conta</DropdownMenuItem>}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   return (
     <div className="space-y-4">
-      {/* Header inline — desktop. Mobile usa MobilePageHeader do parent + FAB. */}
-      {!isMobile && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-bold">{title}</h2>
-            <p className="text-sm text-muted-foreground">{filtered.length} {filtered.length !== 1 ? fin.transactionList.countPlural : fin.transactionList.countSingular}</p>
+      {/* No detalhe mestre–lista, todos os comandos operacionais formam uma
+          única toolbar. A busca absorve a largura; filtros e ordem ficam em
+          ícones identificados, sem empurrar Importar/Exportar/Nova para baixo. */}
+      {!isMobile && embedded && (
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="relative min-w-[8rem] flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder={fin.transactionList.search}
+              className="h-9 pl-10 pr-[4.75rem]"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center">
+              {filterControl}
+              {sortControl}
+            </div>
           </div>
+          {someSelected ? (
+            <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)} className="h-9 shrink-0">
+              <Trash2 className="mr-2 h-4 w-4" /> {fin.transactionList.deleteSelected} {selectedIds.size}
+            </Button>
+          ) : (
+            <>
+              {headerAction}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 shrink-0 gap-1">
+                    <FileDown className="h-4 w-4" /> {fin.transactionList.export} <ChevronDown className="ml-auto h-3.5 w-3.5 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem onClick={handleExportPDF} className="gap-2 cursor-pointer focus:bg-info focus:text-white hover:bg-info hover:text-white">
+                    <FileText className="h-4 w-4" /> PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportExcel} className="gap-2 cursor-pointer focus:bg-success focus:text-white hover:bg-success hover:text-white">
+                    <FileSpreadsheet className="h-4 w-4" /> Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportCsv} className="gap-2 cursor-pointer focus:bg-info focus:text-white hover:bg-info hover:text-white">
+                    <FileDown className="h-4 w-4" /> CSV
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {onNew && (
+                <Button onClick={onNew} size="sm" className={cn('h-9 shrink-0', buttonColor)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {newLabel}
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Header inline — desktop. Mobile usa MobilePageHeader do parent + FAB. */}
+      {!isMobile && !embedded && (
+        <div className={cn('flex flex-col gap-3 sm:flex-row sm:items-center', embedded ? 'sm:justify-end' : 'sm:justify-between')}>
+          {!embedded && (
+            <div>
+              <h2 className="text-xl font-bold">{title}</h2>
+              <p className="text-sm text-muted-foreground">{filtered.length} {filtered.length !== 1 ? fin.transactionList.countPlural : fin.transactionList.countSingular}</p>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             {someSelected && (
               <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)} className="min-h-11">
                 <Trash2 className="mr-2 h-4 w-4" /> {fin.transactionList.deleteSelected} {selectedIds.size}
               </Button>
             )}
+            {headerAction}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="min-h-11 gap-1">
@@ -867,8 +1034,76 @@ export function TransactionListPanel({
       )}
 
       {/* Mobile: contagem compacta + ação de excluir em massa (quando tem seleção). */}
-      {isMobile && (
-        <div className="flex items-center justify-between">
+      {isMobile && embedded && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            {filtered.length} {filtered.length !== 1 ? fin.transactionList.countPlural : fin.transactionList.countSingular}
+          </p>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder={fin.transactionList.search}
+              className="h-10 pl-10 pr-[4.75rem]"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center">
+              {filterControl}
+              {sortControl}
+            </div>
+          </div>
+          {someSelected ? (
+            <Button variant="destructive" size="sm" className="h-10 w-full" onClick={() => setBulkDeleteOpen(true)}>
+              <Trash2 className="mr-2 h-4 w-4" /> {fin.transactionList.deleteSelected} {selectedIds.size}
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2">
+              {headerAction}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-10 w-10 shrink-0 p-0"
+                    aria-label={fin.transactionList.export}
+                    title={fin.transactionList.export}
+                  >
+                    <FileDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem onClick={handleExportPDF} className="gap-2 cursor-pointer focus:bg-info focus:text-white hover:bg-info hover:text-white">
+                    <FileText className="h-4 w-4" /> PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportExcel} className="gap-2 cursor-pointer focus:bg-success focus:text-white hover:bg-success hover:text-white">
+                    <FileSpreadsheet className="h-4 w-4" /> Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportCsv} className="gap-2 cursor-pointer focus:bg-info focus:text-white hover:bg-info hover:text-white">
+                    <FileDown className="h-4 w-4" /> CSV
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {onNew && (
+                <Button
+                  onClick={onNew}
+                  size="sm"
+                  className={cn('h-10 min-w-0 flex-1 gap-1.5 px-3', buttonColor)}
+                  aria-label={newLabel}
+                >
+                  <Plus className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Nova</span>
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {isMobile && !embedded && (
+        <div className={cn(
+          'flex gap-2',
+          headerAction && onNew ? 'flex-col items-stretch' : 'items-center justify-between',
+        )}>
           <p className="text-xs text-muted-foreground">
             {filtered.length} {filtered.length !== 1 ? fin.transactionList.countPlural : fin.transactionList.countSingular}
           </p>
@@ -877,102 +1112,59 @@ export function TransactionListPanel({
               <Trash2 className="mr-2 h-3.5 w-3.5" /> {fin.transactionList.deleteSelected} {selectedIds.size}
             </Button>
           ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 gap-1">
-                  <FileDown className="h-3.5 w-3.5" /> {fin.transactionList.export} <ChevronDown className="h-3 w-3 opacity-60" />
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {headerAction}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 gap-1">
+                    <FileDown className="h-3.5 w-3.5" /> {fin.transactionList.export} <ChevronDown className="h-3 w-3 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem
+                    onClick={handleExportPDF}
+                    className="gap-2 cursor-pointer focus:bg-info focus:text-white hover:bg-info hover:text-white"
+                  >
+                    <FileText className="h-4 w-4" /> PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleExportExcel}
+                    className="gap-2 cursor-pointer focus:bg-success focus:text-white hover:bg-success hover:text-white"
+                  >
+                    <FileSpreadsheet className="h-4 w-4" /> Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleExportCsv}
+                    className="gap-2 cursor-pointer focus:bg-info focus:text-white hover:bg-info hover:text-white"
+                  >
+                    <FileDown className="h-4 w-4" /> CSV
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {headerAction && onNew && (
+                <Button onClick={onNew} size="sm" className={cn('h-8 gap-1.5', buttonColor)}>
+                  <Plus className="h-3.5 w-3.5" />
+                  {newLabel}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuItem
-                  onClick={handleExportPDF}
-                  className="gap-2 cursor-pointer focus:bg-info focus:text-white hover:bg-info hover:text-white"
-                >
-                  <FileText className="h-4 w-4" /> PDF
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleExportExcel}
-                  className="gap-2 cursor-pointer focus:bg-success focus:text-white hover:bg-success hover:text-white"
-                >
-                  <FileSpreadsheet className="h-4 w-4" /> Excel
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleExportCsv}
-                  className="gap-2 cursor-pointer focus:bg-info focus:text-white hover:bg-info hover:text-white"
-                >
-                  <FileDown className="h-4 w-4" /> CSV
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              )}
+            </div>
           )}
         </div>
       )}
 
       {/* Mobile: busca sozinha na 1ª linha, filtro na 2ª (régua MobileListToolbar).
           Desktop: busca + filtro na mesma linha, como sempre foi. */}
-      <ToolbarShell
-        isMobile={isMobile}
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder={fin.transactionList.search}
-      >
-        {/* FilterButton standard: tipo (quando type==='all') + categoria + conta.
-            Sem filtro de Status: Movimentações = só realizado (is_paid), todo registro é "Pago".
-            Drawer de baixo no mobile, sheet lateral no desktop (pattern v1.9.9). */}
-        <FilterButton activeCount={activeFiltersCount} onClear={clearFilters}>
-          {type === 'all' && (
-            <FilterCheckboxGroup
-              label={fin.transactionList.filters.type}
-              selected={typeFilter}
-              onChange={setTypeFilter}
-              emptyLabel={fin.transactionList.filters.typeAll}
-              options={[
-                { value: 'entrada', label: fin.transactionList.filters.typeRevenue },
-                { value: 'saida', label: fin.transactionList.filters.typeExpense },
-              ]}
-            />
-          )}
-          <FilterCheckboxGroup
-            label={fin.transactionList.filters.category}
-            selected={categoryFilter}
-            onChange={setCategoryFilter}
-            emptyLabel={fin.transactionList.filters.categoryAll}
-            options={categories.map((c) => {
-              // Categoria apagada do cadastro (texto livre, sem FK) não tem cor/ícone
-              // conhecidos: renderiza como hoje, só o nome.
-              const known = categoriesByName.get(c);
-              return {
-                value: c,
-                label: c,
-                icon: known ? filterIconNode(known.color, getCategoryIcon(known.icon)) : undefined,
-              };
-            })}
-          />
-          <FilterCheckboxGroup
-            label={fin.transactionList.filters.account}
-            selected={accountFilter}
-            onChange={setAccountFilter}
-            emptyLabel={fin.transactionList.filters.accountAll}
-            options={Array.from(accountNames.entries()).map(([id, acc]) => ({
-              value: id,
-              label: acc.type === 'caixa' ? `${acc.name} ${fin.transactionList.filters.cash}` : acc.name,
-              color: acc.color,
-            }))}
-          />
-          {costCenterOptions.length > 0 && (
-            <FilterCheckboxGroup
-              label={fin.costCenters.filterLabel}
-              selected={costCenterFilter}
-              onChange={setCostCenterFilter}
-              emptyLabel={fin.costCenters.filterEmptyLabel}
-              options={[
-                ...costCenterOptions,
-                { value: NO_COST_CENTER, label: fin.costCenters.dreNoCenter },
-              ]}
-            />
-          )}
-        </FilterButton>
-      </ToolbarShell>
+      {!embedded && (
+        <ToolbarShell
+          isMobile={isMobile}
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder={fin.transactionList.search}
+        >
+          {filterControl}
+          {sortControl}
+        </ToolbarShell>
+      )}
 
       {isLoading ? (
         <div className="space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[72px] w-full rounded-2xl" />)}</div>
@@ -1260,8 +1452,8 @@ export function TransactionListPanel({
       ) : (
         <Card className="rounded-2xl shadow-sm overflow-hidden">
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="min-w-0 [&>div]:overflow-x-hidden">
+              <Table className="table-fixed">
                 <TableHeader>
                   <TableRow>
                     {type !== 'all' && canDeleteFinance && (
@@ -1269,19 +1461,17 @@ export function TransactionListPanel({
                         <Checkbox checked={allSelected} onCheckedChange={toggleSelectAll} />
                       </SortableTableHead>
                     )}
-                    <SortableTableHead sortKey="transaction_date" sortConfig={sortConfig} onSort={handleSort}>{fin.transactionList.table.date}</SortableTableHead>
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[80px] text-center">{fin.transactionList.table.user}</SortableTableHead>
-                    {showTypeColumn && <SortableTableHead sortKey="transaction_type" sortConfig={sortConfig} onSort={handleSort}>{fin.transactionList.table.type}</SortableTableHead>}
+                    <SortableTableHead sortKey="transaction_date" sortConfig={sortConfig} onSort={handleSort} className="w-[7rem] whitespace-nowrap">{fin.transactionList.table.date}</SortableTableHead>
                     <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>{fin.transactionList.table.description}</SortableTableHead>
-                    <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">{fin.transactionList.table.category}</SortableTableHead>
-                    {!hideAccountColumn && (
-                      <SortableTableHead sortKey="account_id" sortConfig={sortConfig} onSort={handleSort} className="hidden 2xl:table-cell">{fin.transactionList.table.account}</SortableTableHead>
+                    {showDesktopAccountColumn && (
+                      <SortableTableHead sortKey="account_id" sortConfig={sortConfig} onSort={handleSort} className="w-[12rem]">{fin.transactionList.table.account}</SortableTableHead>
                     )}
-                    <SortableTableHead sortKey="amount" sortConfig={sortConfig} onSort={handleSort}>{fin.transactionList.table.amount}</SortableTableHead>
-                    {balanceAfterById && (
-                      <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="hidden text-right 2xl:table-cell">{resolvedBalanceAfterLabel}</SortableTableHead>
+                    <SortableTableHead sortKey="amount" sortConfig={sortConfig} onSort={handleSort} className="w-[9rem] text-right">{fin.transactionList.table.amount}</SortableTableHead>
+                    {showDesktopBalanceColumn && (
+                      <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[10rem] whitespace-nowrap text-right">{resolvedBalanceAfterLabel}</SortableTableHead>
                     )}
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[130px]">{fin.transactionList.table.actions}</SortableTableHead>
+                    {showDesktopUserColumn && <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[4rem] text-center">{fin.transactionList.table.user}</SortableTableHead>}
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[5rem] text-center">{fin.transactionList.table.actions}</SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1375,38 +1565,32 @@ export function TransactionListPanel({
                     <Fragment key={t.id}>
                     <TableRow
                       ref={t.id === highlightTransactionId ? highlightDesktopRef : undefined}
-                      onClick={!group ? () => setExpandedTransactionIds((current) => {
-                        const next = new Set(current);
-                        if (next.has(t.id)) next.delete(t.id); else next.add(t.id);
-                        return next;
-                      }) : undefined}
+                      onClick={!group ? () => toggleTransactionDetails(t.id) : undefined}
+                      onKeyDown={!group ? (event) => {
+                        if (event.key !== 'Enter' && event.key !== ' ') return;
+                        event.preventDefault();
+                        toggleTransactionDetails(t.id);
+                      } : undefined}
+                      tabIndex={!group ? 0 : undefined}
+                      aria-expanded={!group ? areDetailsExpanded : undefined}
+                      aria-controls={!group ? `transaction-details-${t.id}` : undefined}
+                      aria-label={!group ? `${t.description}. ${areDetailsExpanded ? 'Ocultar detalhes' : 'Mostrar detalhes'}` : undefined}
                       className={cn(
-                        !group && 'cursor-pointer',
+                        !group && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
                         selectedIds.has(t.id) && 'bg-primary/5',
                         t.id === highlightTransactionId && 'bg-primary/10 outline outline-2 -outline-offset-2 outline-primary',
                       )}
                     >
                       {type !== 'all' && canDeleteFinance && <TableCell onClick={(event) => event.stopPropagation()}><Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} /></TableCell>}
-                      <TableCell className="text-sm">{renderTransactionDate(t)}</TableCell>
-                      <TableCell className="text-center"><div className="flex justify-center">{renderCreatorAvatar(t)}</div></TableCell>
-                      {showTypeColumn && (
-                        <TableCell>
-                          <Badge className={t.transaction_type === 'entrada' ? 'bg-success text-white' : 'bg-destructive text-white'}>
-                            <span className="flex items-center gap-1">
-                              {t.transaction_type === 'entrada' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                              {t.transaction_type === 'entrada' ? fin.transactionList.badges.revenue : fin.transactionList.badges.expense}
-                            </span>
-                          </Badge>
-                        </TableCell>
-                      )}
-                      <TableCell>
-                        <div>
-                          <p className="font-medium flex items-center gap-1">
+                      <TableCell className="whitespace-nowrap text-sm">{renderTransactionDate(t)}</TableCell>
+                      <TableCell className="min-w-0">
+                        <div className="min-w-0">
+                          <p className="flex min-w-0 items-center gap-1 font-medium">
                             {group && <Layers className="h-4 w-4 text-primary shrink-0" />}
                             {!group && (areDetailsExpanded
                               ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                               : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />)}
-                            {t.description}
+                            <span className="min-w-0 truncate" title={t.description}>{t.description}</span>
                             {group && (
                               <Badge className="bg-primary text-white text-[10px] px-1.5 py-0">
                                 {fin.transactionList.paymentGroup.badge}
@@ -1446,30 +1630,60 @@ export function TransactionListPanel({
                                 .replace('{total}', String(group.fullCount))}
                             </p>
                           )}
+                          {!group && (
+                            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
+                              {!showDesktopAccountColumn && !hideAccountColumn && (t as any).account && (
+                                <span
+                                  className="inline-flex min-w-0 max-w-full items-center gap-1 text-[11px] text-muted-foreground"
+                                  title={(t as any).account.name}
+                                >
+                                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: (t as any).account.color }} />
+                                  <span className="truncate">
+                                    {(t as any).account.type === 'caixa'
+                                      ? `${(t as any).account.name} ${fin.transactionList.cashSuffix}`
+                                      : (t as any).account.name}
+                                  </span>
+                                </span>
+                              )}
+                              {t.category && (
+                                <span className="min-w-0 max-w-full">
+                                  <FinancialCategoryPill name={t.category} category={categoriesByName.get(t.category)} size="sm" />
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {t.category && <FinancialCategoryPill name={t.category} category={categoriesByName.get(t.category)} />}
-                      </TableCell>
-                      {!hideAccountColumn && (
-                        <TableCell className="hidden 2xl:table-cell">
+                      {showDesktopAccountColumn && (
+                        <TableCell className="min-w-0">
                           {(t as any).account && (
-                            <Badge variant="secondary" className="text-[10px] flex items-center gap-1 w-fit whitespace-nowrap">
-                              <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: (t as any).account.color }} />
-                              <span className="whitespace-nowrap">
+                            <span
+                              className="flex min-w-0 max-w-full items-center gap-1.5 text-xs text-foreground"
+                              title={(t as any).account.name}
+                            >
+                              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: (t as any).account.color }} />
+                              <span className="min-w-0 truncate">
                                 {(t as any).account.type === 'caixa' ? `${(t as any).account.name} ${fin.transactionList.cashSuffix}` : (t as any).account.name}
                               </span>
-                            </Badge>
+                            </span>
                           )}
                         </TableCell>
                       )}
-                      <TableCell onClick={(event) => event.stopPropagation()}>
+                      <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
                         <span className={`font-medium tabular-nums whitespace-nowrap ${t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}`}>
                           {t.transaction_type === 'entrada' ? '+' : '-'} {fmt(t.amount)}
                         </span>
+                        {!showDesktopBalanceColumn && balanceAfterById?.has(t.id) && (
+                          <span className={cn(
+                            'mt-1 block whitespace-nowrap text-[10px] tabular-nums text-muted-foreground',
+                            (balanceAfterById.get(t.id) ?? 0) < 0 && 'text-destructive',
+                          )}>
+                            {resolvedBalanceAfterShortLabel}: {fmt(balanceAfterById.get(t.id) ?? 0)}
+                          </span>
+                        )}
                       </TableCell>
-                      {balanceAfterById && (
-                        <TableCell className="hidden text-right 2xl:table-cell">
+                      {showDesktopBalanceColumn && (
+                        <TableCell className="text-right">
                           {balanceAfterById.has(t.id) ? (
                             <span className={cn(
                               'font-medium tabular-nums whitespace-nowrap',
@@ -1482,7 +1696,8 @@ export function TransactionListPanel({
                           )}
                         </TableCell>
                       )}
-                      <TableCell>
+                      {showDesktopUserColumn && <TableCell className="text-center"><div className="flex justify-center">{renderCreatorAvatar(t)}</div></TableCell>}
+                      <TableCell className="text-center">
                         <RowActionsMenu
                           actions={(group ? [
                             // Linha de LOTE: editar/excluir aqui seria ambíguo
@@ -1508,7 +1723,7 @@ export function TransactionListPanel({
                       </TableCell>
                     </TableRow>
                     {areDetailsExpanded && (
-                      <TableRow key={`${t.id}-details`} className="hover:bg-transparent">
+                      <TableRow id={`transaction-details-${t.id}`} key={`${t.id}-details`} className="hover:bg-transparent">
                         <TableCell colSpan={visibleColumnCount} className="p-0">
                           <FinancialTransactionDetailsPanel
                             transaction={t}
@@ -1603,7 +1818,7 @@ export function TransactionListPanel({
       </AlertDialog>
 
       {/* FAB mobile (fora do header). Desktop usa o botão inline acima. */}
-      {isMobile && onNew && (
+      {isMobile && onNew && !headerAction && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label={newLabel}

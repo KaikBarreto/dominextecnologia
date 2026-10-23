@@ -228,6 +228,9 @@ export function useCompanySettings() {
   return {
     settings: settingsQuery.data?.settings ?? null,
     isLoading: settingsQuery.isLoading,
+    isError: settingsQuery.isError,
+    error: settingsQuery.error ?? null,
+    refetch: settingsQuery.refetch,
     // true quando a query terminou e o usuário pertence a um tenant com
     // empresa — mesmo sem linha em company_settings (o save cria via INSERT).
     // super_admin e usuário sem company ficam false (auto-save morto).

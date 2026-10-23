@@ -49,6 +49,8 @@ interface FilterButtonProps {
   label?: string;
   /** className extra do botão trigger. */
   className?: string;
+  /** Exibe apenas o ícone, preservando rótulo acessível e contador ativo. */
+  iconOnly?: boolean;
 }
 
 export function FilterButton({
@@ -57,6 +59,7 @@ export function FilterButton({
   children,
   label,
   className,
+  iconOnly = false,
 }: FilterButtonProps) {
   const isMobile = useIsMobile();
   const { locale } = useAppLocaleContext();
@@ -71,18 +74,24 @@ export function FilterButton({
         <Button
           variant="outline"
           size="sm"
+          aria-label={iconOnly ? resolvedLabel : undefined}
+          title={iconOnly ? resolvedLabel : undefined}
           className={cn(
             'relative gap-2 h-9',
+            iconOnly && 'w-9 shrink-0 p-0',
             hasActive && 'border-primary text-primary',
             className,
           )}
         >
           <Filter className="h-4 w-4" />
-          <span>{resolvedLabel}</span>
+          <span className={cn(iconOnly && 'sr-only')}>{resolvedLabel}</span>
           {hasActive && (
             <Badge
               variant="default"
-              className="h-5 min-w-5 px-1.5 ml-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold"
+              className={cn(
+                'h-5 min-w-5 rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground',
+                iconOnly ? 'absolute -right-1.5 -top-1.5' : 'ml-1',
+              )}
             >
               {formatNumber(activeCount, locale)}
             </Badge>

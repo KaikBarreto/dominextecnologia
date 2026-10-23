@@ -14,7 +14,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { BarChart3, CircleDollarSign, Gauge, ListTree, ReceiptText, TrendingUp } from 'lucide-react';
+import { AlertCircle, BarChart3, CircleDollarSign, Gauge, ListTree, ReceiptText, RefreshCw, TrendingUp } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -63,9 +65,24 @@ export function FinanceReportsOverview({
   // Padrão agrupado: é como o BPO pediu para ler o relatório. Quem não usa
   // subcategoria não vê diferença nenhuma, nem o controle.
   const [groupCategories, setGroupCategories] = useState(true);
-  const { categories, isLoading: isLoadingCategories } = useFinancialCategories();
-  const { costCenters, isLoading: isLoadingCostCenters } = useCostCenters();
-  const { settings, isLoading: isLoadingSettings } = useCompanySettings();
+  const {
+    categories,
+    isLoading: isLoadingCategories,
+    isError: isErrorCategories,
+    refetch: refetchCategories,
+  } = useFinancialCategories();
+  const {
+    costCenters,
+    isLoading: isLoadingCostCenters,
+    isError: isErrorCostCenters,
+    refetch: refetchCostCenters,
+  } = useCostCenters();
+  const {
+    settings,
+    isLoading: isLoadingSettings,
+    isError: isErrorSettings,
+    refetch: refetchSettings,
+  } = useCompanySettings();
   const { locale, currency, timezone } = useAppLocaleContext();
   const isMobile = useIsMobile();
   const intlLocale = locale === 'pt-br' ? 'pt-BR' : locale === 'en' ? 'en-US' : locale === 'es' ? 'es-ES' : 'fr-FR';
@@ -89,9 +106,9 @@ export function FinanceReportsOverview({
    * lançamento guarda (mesma régua do DRE).
    */
   const categoryParents = useMemo(() => {
-    const tree = buildCategoryTree(categories as any[]);
+    const tree = buildCategoryTree(categories);
     const map = new Map<string, string>();
-    (categories as any[]).forEach((category) => {
+    categories.forEach((category) => {
       const parent = tree.parentOf(category);
       if (parent) map.set(category.name, parent.name);
     });
@@ -149,6 +166,18 @@ export function FinanceReportsOverview({
 
   if (isLoading || isLoadingCategories || isLoadingCostCenters || isLoadingSettings) {
     return <FinanceReportsOverviewLoading />;
+  }
+
+  if (isErrorCategories || isErrorCostCenters || isErrorSettings) {
+    return (
+      <FinanceReportsOverviewError
+        onRetry={() => {
+          void refetchCategories();
+          void refetchCostCenters();
+          void refetchSettings();
+        }}
+      />
+    );
   }
 
   return (
@@ -231,8 +260,8 @@ export function FinanceReportsOverview({
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="month" tick={{ fontSize: isMobile ? 10 : 11 }} />
-                <YAxis width={isMobile ? 50 : 72} tick={{ fontSize: isMobile ? 10 : 11 }} tickFormatter={compactMoney} />
+                <XAxis dataKey="month" tick={{ fontSize: isMobile ? 11 : 12 }} />
+                <YAxis width={isMobile ? 58 : 76} tick={{ fontSize: isMobile ? 11 : 12 }} tickFormatter={compactMoney} />
                 <Tooltip formatter={(value: number) => money(value)} />
                 <Legend wrapperStyle={isMobile ? { fontSize: 11 } : undefined} />
                 <Area type="monotone" dataKey="revenue" name="Receitas" stroke="hsl(var(--success))" strokeWidth={2} fill="url(#reports-revenue-gradient)" />
@@ -273,10 +302,16 @@ export function FinanceReportsOverview({
             <ReportsEmpty description="Os centros de custo usados nos lançamentos aparecerão aqui." />
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(230, visibleCostCenters.length * 46)}>
-              <BarChart data={visibleCostCenters} layout="vertical" margin={{ left: isMobile ? 0 : 18, right: 12 }}>
+              <BarChart data={visibleCostCenters} layout="vertical" margin={{ left: isMobile ? 0 : 12, right: 12 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                <XAxis type="number" tickFormatter={compactMoney} tick={{ fontSize: isMobile ? 11 : 12 }} />
-                <YAxis type="category" dataKey="name" width={isMobile ? 92 : 150} tick={{ fontSize: isMobile ? 11 : 12 }} />
+                <XAxis type="number" tickFormatter={compactMoney} tick={{ fontSize: 12 }} />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={isMobile ? 116 : 190}
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(value: string) => abbreviateAxisLabel(value, isMobile ? 17 : 30)}
+                />
                 <Tooltip formatter={(value: number) => money(value)} />
                 <Legend wrapperStyle={isMobile ? { fontSize: 11 } : undefined} />
                 <Bar dataKey="revenue" name="Receitas" fill="hsl(var(--success))" radius={[0, 4, 4, 0]} />
@@ -331,8 +366,11 @@ function CategoryDistribution({
   rows: FinanceReportCategoryRow[];
   money: (value: number) => string;
 }) {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const total = rows.reduce((sum, row) => sum + row.value, 0);
+
   return (
-    <Card className="border-0 bg-muted/20 shadow-none">
+    <Card className="overflow-visible border-0 bg-muted/20 shadow-none">
       <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-2">
         <CardTitle className="text-sm font-bold uppercase tracking-widest text-foreground/70">{title}</CardTitle>
       </CardHeader>
@@ -343,18 +381,73 @@ function CategoryDistribution({
           <div className="grid items-center gap-3 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             <ResponsiveContainer width="100%" height={210}>
               <PieChart>
-                <Pie data={rows} dataKey="value" nameKey="name" innerRadius={48} outerRadius={78} paddingAngle={2}>
-                  {rows.map((row, index) => <Cell key={row.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
+                <Pie
+                  data={rows}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={48}
+                  outerRadius={78}
+                  paddingAngle={2}
+                  isAnimationActive={false}
+                  onMouseEnter={(_, index) => setActiveIndex(index)}
+                  onMouseLeave={() => setActiveIndex(null)}
+                >
+                  {rows.map((row, index) => (
+                    <Cell
+                      key={row.name}
+                      fill={CHART_COLORS[index % CHART_COLORS.length]}
+                      opacity={activeIndex === null || activeIndex === index ? 1 : 0.2}
+                      stroke={activeIndex === index ? 'hsl(var(--background))' : 'transparent'}
+                      strokeWidth={activeIndex === index ? 4 : 0}
+                      style={{
+                        filter: activeIndex === index ? 'drop-shadow(0 8px 12px rgb(15 23 42 / 0.22))' : 'none',
+                        transition: 'opacity 160ms ease, filter 160ms ease',
+                      }}
+                    />
+                  ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => money(value)} />
+                <Tooltip
+                  allowEscapeViewBox={{ x: true, y: true }}
+                  wrapperStyle={{ zIndex: 80, pointerEvents: 'none' }}
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.[0]?.payload) return null;
+                    const row = payload[0].payload as FinanceReportCategoryRow;
+                    const share = total > 0 ? (row.value / total) * 100 : 0;
+                    return (
+                      <div className="min-w-44 rounded-xl border bg-popover px-3 py-2.5 text-xs text-popover-foreground shadow-xl">
+                        <p className="max-w-64 truncate font-semibold">{row.name}</p>
+                        <p className="mt-1.5 flex items-center justify-between gap-5">
+                          <span className="text-muted-foreground">Valor</span>
+                          <strong className="tabular-nums">{money(row.value)}</strong>
+                        </p>
+                        <p className="mt-1 flex items-center justify-between gap-5">
+                          <span className="text-muted-foreground">Participação</span>
+                          <strong className="tabular-nums">{share.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</strong>
+                        </p>
+                      </div>
+                    );
+                  }}
+                />
               </PieChart>
             </ResponsiveContainer>
             <div className="space-y-2">
               {rows.map((row, index) => (
-                <div key={row.name} className="flex items-center justify-between gap-3 text-xs">
+                <div
+                  key={row.name}
+                  tabIndex={0}
+                  className={cn(
+                    'flex items-center justify-between gap-3 rounded-md px-1.5 py-1 text-xs transition-opacity hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    activeIndex !== null && activeIndex !== index && 'opacity-35',
+                  )}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onMouseLeave={() => setActiveIndex(null)}
+                  onFocus={() => setActiveIndex(index)}
+                  onBlur={() => setActiveIndex(null)}
+                  aria-label={`${row.name}: ${money(row.value)}`}
+                >
                   <span className="flex min-w-0 items-center gap-2">
                     <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
-                    <span className="truncate text-muted-foreground">{row.name}</span>
+                    <span className="line-clamp-2 break-words leading-snug text-muted-foreground" title={row.name}>{row.name}</span>
                   </span>
                   <span className="shrink-0 font-medium tabular-nums">{money(row.value)}</span>
                 </div>
@@ -364,6 +457,26 @@ function CategoryDistribution({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function abbreviateAxisLabel(value: string, maxLength: number): string {
+  return value.length > maxLength ? `${value.slice(0, maxLength - 1).trimEnd()}…` : value;
+}
+
+function FinanceReportsOverviewError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <Alert variant="destructive" role="alert">
+      <AlertCircle className="h-4 w-4" />
+      <AlertTitle>Não foi possível carregar os relatórios</AlertTitle>
+      <AlertDescription className="space-y-3">
+        <p>Os dados parciais foram ocultados para evitar totais incorretos.</p>
+        <Button type="button" variant="outline" size="sm" onClick={onRetry} className="min-h-10 gap-2 border-destructive/40">
+          <RefreshCw className="h-4 w-4" aria-hidden="true" />
+          Tentar novamente
+        </Button>
+      </AlertDescription>
+    </Alert>
   );
 }
 

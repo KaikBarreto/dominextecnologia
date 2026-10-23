@@ -529,6 +529,10 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
   return {
     charges: list.data ?? [],
     isLoading: list.isLoading,
+    isFetching: list.isFetching,
+    isError: list.isError,
+    error: list.error,
+    refetch: list.refetch,
     companyId,
     create,
     refund,

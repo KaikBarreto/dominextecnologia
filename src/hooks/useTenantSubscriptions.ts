@@ -596,6 +596,10 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
   return {
     subscriptions: list.data ?? [],
     isLoading: list.isLoading,
+    isFetching: list.isFetching,
+    isError: list.isError,
+    error: list.error,
+    refetch: list.refetch,
     companyId,
     createSubscription,
     manageSubscription,

@@ -93,6 +93,8 @@ const CHART_COLORS = [
   'hsl(30, 80%, 55%)',
 ];
 
+const RESULT_CHART_COLOR = 'hsl(var(--info))';
+
 export function FinanceOverview({
   transactions,
   projectionTransactions,
@@ -167,6 +169,7 @@ export function FinanceOverview({
     [activeAccounts],
   );
   const [activeAccountGroup, setActiveAccountGroup] = useState('banco');
+  const [activeExpenseIndex, setActiveExpenseIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (accountGroups.length > 0 && !accountGroups.some((group) => group.value === activeAccountGroup)) {
@@ -537,7 +540,7 @@ export function FinanceOverview({
         <button
           type="button"
           onClick={() => onNavigate('contas')}
-          className="group min-h-32 rounded-xl border bg-card p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring xl:col-span-3"
+          className="group min-h-32 rounded-xl bg-transparent p-5 text-left transition-all hover:-translate-y-0.5 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring xl:col-span-3"
         >
           <span className="flex items-start justify-between gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-success text-white"><Clock className="h-4 w-4" /></span>
@@ -550,7 +553,7 @@ export function FinanceOverview({
         <button
           type="button"
           onClick={() => onNavigate('contas')}
-          className="group min-h-32 rounded-xl border bg-card p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring xl:col-span-4"
+          className="group min-h-32 rounded-xl bg-transparent p-5 text-left transition-all hover:-translate-y-0.5 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring xl:col-span-4"
         >
           <span className="flex items-start justify-between gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-destructive text-white"><Clock className="h-4 w-4" /></span>
@@ -560,7 +563,7 @@ export function FinanceOverview({
           <span className="mt-1 block truncate text-xl font-bold tabular-nums text-destructive" title={formatCurrency(summary.aPagar)}>{formatCurrency(summary.aPagar)}</span>
         </button>
 
-        <Card className="border bg-card shadow-sm md:col-span-2 xl:col-span-7">
+        <Card className="border-0 bg-transparent shadow-none md:col-span-2 xl:col-span-7">
           <CardHeader className="space-y-0 p-4 pb-2 sm:px-5 sm:pt-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -601,7 +604,7 @@ export function FinanceOverview({
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-12" aria-label="Indicadores e gráficos financeiros">
-        <Card className="border bg-card shadow-sm md:col-span-2 xl:col-span-7">
+        <Card className="border-0 bg-transparent shadow-none md:col-span-2 xl:col-span-7">
           <CardHeader className="p-4 pb-2 sm:p-5 sm:pb-2">
             <CardTitle className="text-base font-semibold">Fluxo realizado e resultado</CardTitle>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
@@ -626,14 +629,14 @@ export function FinanceOverview({
                   <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
                   <Bar dataKey="entradas" name={ov.charts.revenueBar} fill="url(#finance-revenue-bars)" radius={[5, 5, 0, 0]} maxBarSize={28} isAnimationActive={false} />
                   <Bar dataKey="saidas" name={ov.charts.expenseBar} fill="url(#finance-expense-bars)" radius={[5, 5, 0, 0]} maxBarSize={28} isAnimationActive={false} />
-                  <Line type="monotone" dataKey="resultado" name="Resultado" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 3, fill: 'hsl(var(--background))', strokeWidth: 2 }} activeDot={{ r: 5 }} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="resultado" name="Resultado" stroke={RESULT_CHART_COLOR} strokeWidth={3} dot={{ r: 3, fill: 'hsl(var(--background))', strokeWidth: 2 }} activeDot={{ r: 5 }} isAnimationActive={false} />
                 </ComposedChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border bg-card shadow-sm md:col-span-2 xl:col-span-5">
+        <Card className="border-0 bg-transparent shadow-none md:col-span-2 xl:col-span-5">
           <CardHeader className="p-4 pb-2 sm:p-5 sm:pb-2">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
@@ -692,7 +695,7 @@ export function FinanceOverview({
           </CardContent>
         </Card>
 
-        <Card className="border bg-card shadow-sm xl:col-span-5">
+        <Card className="border-0 bg-transparent shadow-none xl:col-span-5">
           <CardHeader className="p-4 pb-2 sm:p-5 sm:pb-2">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
@@ -726,7 +729,7 @@ export function FinanceOverview({
           </CardContent>
         </Card>
 
-        <Card className="border bg-card shadow-sm xl:col-span-7">
+        <Card className="overflow-visible border-0 bg-transparent shadow-none xl:col-span-7">
           <CardHeader className="p-4 pb-2 sm:p-5 sm:pb-2">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
@@ -757,19 +760,62 @@ export function FinanceOverview({
                         stroke="hsl(var(--card))"
                         strokeWidth={2}
                         isAnimationActive={false}
+                        onMouseEnter={(_, index) => setActiveExpenseIndex(index)}
+                        onMouseLeave={() => setActiveExpenseIndex(null)}
                       >
-                        {expenseCategoryData.map((item, index) => <Cell key={item.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
+                        {expenseCategoryData.map((item, index) => (
+                          <Cell
+                            key={item.name}
+                            fill={CHART_COLORS[index % CHART_COLORS.length]}
+                            opacity={activeExpenseIndex === null || activeExpenseIndex === index ? 1 : 0.2}
+                            stroke={activeExpenseIndex === index ? 'hsl(var(--background))' : 'hsl(var(--card))'}
+                            strokeWidth={activeExpenseIndex === index ? 4 : 2}
+                            style={{
+                              filter: activeExpenseIndex === index ? 'drop-shadow(0 8px 12px rgb(15 23 42 / 0.22))' : 'none',
+                              transition: 'opacity 160ms ease, filter 160ms ease',
+                            }}
+                          />
+                        ))}
                       </Pie>
-                      <Tooltip formatter={(value: number, _name: string, item) => [
-                        `${formatCurrency(value)} · ${Number(item.payload.share).toLocaleString(locale, { maximumFractionDigits: 1 })}%`,
-                        item.payload.name,
-                      ]} />
+                      <Tooltip
+                        allowEscapeViewBox={{ x: true, y: true }}
+                        wrapperStyle={{ zIndex: 80, pointerEvents: 'none' }}
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.[0]?.payload) return null;
+                          const item = payload[0].payload as (typeof expenseCategoryData)[number];
+                          return (
+                            <div className="min-w-44 rounded-xl border bg-popover px-3 py-2.5 text-xs text-popover-foreground shadow-xl">
+                              <p className="max-w-64 truncate font-semibold">{item.name}</p>
+                              <div className="mt-1.5 flex items-center justify-between gap-5">
+                                <span className="text-muted-foreground">Despesa</span>
+                                <strong className="tabular-nums">{formatCurrency(item.value)}</strong>
+                              </div>
+                              <div className="mt-1 flex items-center justify-between gap-5">
+                                <span className="text-muted-foreground">Participação</span>
+                                <strong className="tabular-nums">{item.share.toLocaleString(locale, { maximumFractionDigits: 1 })}%</strong>
+                              </div>
+                            </div>
+                          );
+                        }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
                 <div className="grid gap-1.5" aria-label="Legenda das despesas por categoria">
                   {expenseCategoryData.map((item, index) => (
-                    <div key={item.name} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted/40">
+                    <div
+                      key={item.name}
+                      tabIndex={0}
+                      className={cn(
+                        'grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-opacity hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        activeExpenseIndex !== null && activeExpenseIndex !== index && 'opacity-35',
+                      )}
+                      onMouseEnter={() => setActiveExpenseIndex(index)}
+                      onMouseLeave={() => setActiveExpenseIndex(null)}
+                      onFocus={() => setActiveExpenseIndex(index)}
+                      onBlur={() => setActiveExpenseIndex(null)}
+                      aria-label={`${item.name}: ${formatCurrency(item.value)}, ${item.share.toLocaleString(locale, { maximumFractionDigits: 1 })}%`}
+                    >
                       <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
                       <span className="truncate text-muted-foreground" title={item.name}>{item.name}</span>
                       <span className="text-right tabular-nums">
@@ -784,7 +830,7 @@ export function FinanceOverview({
           </CardContent>
         </Card>
 
-        <Card className="border bg-card shadow-sm xl:col-span-5">
+        <Card className="border-0 bg-transparent shadow-none xl:col-span-5">
           <CardHeader className="p-4 pb-2 sm:p-5 sm:pb-2">
             <CardTitle className="text-base font-semibold">Evolução do resultado</CardTitle>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Acumulado diário das movimentações realizadas no período.</p>
@@ -796,21 +842,21 @@ export function FinanceOverview({
               <ResponsiveContainer width="100%" height={250}>
                 <AreaChart data={balanceEvolutionData} margin={{ top: 16, right: 8, left: isMobile ? -18 : 4, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="finance-result-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.45} /><stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.04} /></linearGradient>
+                    <linearGradient id="finance-result-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={RESULT_CHART_COLOR} stopOpacity={0.45} /><stop offset="100%" stopColor={RESULT_CHART_COLOR} stopOpacity={0.04} /></linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
                   <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 4" />
                   <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} minTickGap={28} />
                   <YAxis axisLine={false} tickLine={false} width={isMobile ? 52 : 66} tickFormatter={(value: number) => formatCurrencyShort(value)} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
                   <Tooltip labelFormatter={(_, payload) => payload?.[0]?.payload?.date ? format(new Date(`${payload[0].payload.date}T12:00:00`), 'dd/MM/yyyy') : ''} formatter={(value: number) => [formatCurrency(value), 'Resultado acumulado']} />
-                  <Area type="monotone" dataKey="saldo" stroke="hsl(var(--primary))" strokeWidth={3} fill="url(#finance-result-area)" isAnimationActive={false} />
+                  <Area type="monotone" dataKey="saldo" stroke={RESULT_CHART_COLOR} strokeWidth={3} fill="url(#finance-result-area)" isAnimationActive={false} />
                 </AreaChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border bg-card shadow-sm xl:col-span-7">
+        <Card className="border-0 bg-transparent shadow-none xl:col-span-7">
           <CardHeader className="flex flex-row items-center justify-between gap-3 p-4 pb-3 sm:p-5 sm:pb-3">
             <div>
               <CardTitle className="text-base font-semibold">{ov.charts.recentMovements}</CardTitle>
