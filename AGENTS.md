@@ -79,6 +79,8 @@
 - Acoes secundarias como relatorio/exportacao usam botao neutro; criacao continua primaria. Badges semanticos usam cor saturada e texto branco, nunca fundo pastel com texto saturado.
 - Cabecalhos list-detail alinham ajuda, navegacao e acoes na mesma faixa quando houver espaco, evitando linhas vazias. Acoes frequentes da entidade aparecem antes dos dados secundarios.
 - Telas homologas nos produtos Dominex e EcoSistema compartilham estrutura, densidade e comportamento responsivo, preservando apenas campos e acoes proprios de cada produto.
+- Dashboards usam hierarquia, tipografia e respiro para agrupar informacao; evitar borda, fundo branco e sombra em toda secao. Reservar superficies fortes para o resumo ou a acao principal.
+- Graficos de pizza destacam a fatia em hover/foco e atenuam as demais; tooltip e legenda acompanham o destaque, permanecem legiveis e sem clipping, e a geometria final deve renderizar sem animacao inicial enganosa.
 
 ## Seguranca e Segredos
 
