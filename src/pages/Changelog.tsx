@@ -42,6 +42,33 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.42',
+    date: '24 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'As abas do sistema agora seguem um padrão só',
+        description: 'Em todas as telas, a navegação por abas usa a mesma linha embaixo da aba aberta. As abas que trocam a tela inteira ficaram maiores e em negrito, e as abas de dentro de uma ficha continuam mais leves — assim dá para saber de bate-pronto o que é navegação principal e o que é detalhe.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Funcionários e Notas Fiscais com mais espaço',
+        description: 'As duas telas trocaram a coluna de atalhos à esquerda pelas abas no topo, como no resto do sistema. Sobra mais largura para a lista e para o conteúdo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'DRE mais fácil de ler no computador',
+        description: 'Agora que o Demonstrativo de Resultado ocupa a largura toda da tela, os nomes das contas, os valores e os percentuais aparecem em letra maior. No celular nada muda.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Notas Fiscais sem o aviso "Como funciona?"',
+        description: 'O bloco explicativo no topo da tela de Notas Fiscais saiu, deixando a lista e os indicadores mais perto do começo da página.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.41',
     date: '23 de outubro de 2026',
     type: 'patch',

@@ -79,6 +79,7 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
       {/* Mesmo componente e variante em mobile, tablet e desktop. */}
       <MobilePillTabs
         variant="underline"
+        level="screen"
         tabs={[
           { value: 'clientes', label: t.tabLabel, icon: <Users className="h-4 w-4 shrink-0" /> },
           { value: 'fornecedores', label: tSuppliers.tabLabel, icon: <Truck className="h-4 w-4 shrink-0" /> },

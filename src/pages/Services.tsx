@@ -58,6 +58,7 @@ export default function ServicesPage() {
 
       <MobilePillTabs
         variant="underline"
+        level="screen"
         tabs={tabs.map((tab) => ({
           value: tab.value,
           label: tab.label,

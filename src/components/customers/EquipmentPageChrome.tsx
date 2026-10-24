@@ -71,6 +71,7 @@ export function EquipmentPageChrome({ activeTab, onTabChange }: EquipmentPageChr
 
       <MobilePillTabs
         variant="underline"
+        level="screen"
         tabs={[
           { value: 'equipamentos', label: tEq.tabEquipment, icon: <Package className="h-4 w-4 shrink-0" /> },
           { value: 'categorias', label: tEq.tabCategories, icon: <Tag className="h-4 w-4 shrink-0" /> },

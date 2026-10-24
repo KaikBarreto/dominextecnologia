@@ -50,6 +50,13 @@ interface SettingsSidebarLayoutProps {
    * Só no desktop. Opt-in — sem a prop, o layout se comporta como antes.
    */
   placeholderGroups?: string[];
+  /**
+   * `sidebar` (padrão): coluna vertical à esquerda — é o que telas com GRUPOS,
+   * cores por conta e rodapés de grupo precisam (Configurações, Financeiro).
+   * `underline`: barra de abas horizontal no topo, igual ao resto do sistema.
+   * Só faz sentido em lista PLANA de abas; grupos e rodapés são ignorados.
+   */
+  variant?: 'sidebar' | 'underline';
 }
 
 export function SettingsSidebarLayout({
@@ -60,6 +67,7 @@ export function SettingsSidebarLayout({
   sidebarFooter,
   groupFooters,
   placeholderGroups,
+  variant = 'sidebar',
 }: SettingsSidebarLayoutProps) {
   const isMobile = useIsMobile();
 
@@ -95,6 +103,31 @@ export function SettingsSidebarLayout({
           onTabChange={onTabChange}
         />
         <div>{children}</div>
+      </div>
+    );
+  }
+
+  // Abas da TELA em barra horizontal: mesma navegação do resto do sistema.
+  if (variant === 'underline') {
+    return (
+      <div className="space-y-6">
+        <MobilePillTabs
+          variant="underline"
+          level="screen"
+          className={isMobile ? undefined : 'mx-0'}
+          tabs={tabs.map((tab) => {
+            const Icon = tab.icon;
+            return {
+              value: tab.value,
+              label: tab.label,
+              icon: <Icon className="h-4 w-4 shrink-0" />,
+              sublabel: isMobile ? tab.mobileSublabel ?? tab.sublabel : tab.sublabel,
+            };
+          })}
+          activeTab={activeTab}
+          onTabChange={onTabChange}
+        />
+        <div className="min-w-0">{children}</div>
       </div>
     );
   }

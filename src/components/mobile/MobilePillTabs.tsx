@@ -31,6 +31,15 @@ interface MobilePillTabsProps {
   /** Navegacao usa linha inferior; seletores compactos mantem pills segmentadas. */
   variant?: 'segmented' | 'underline';
   /**
+   * Hierarquia da navegação (só muda o `underline`):
+   * - `screen`: abas da TELA (ex.: Clientes | Fornecedores). Maiores e em
+   *   negrito, porque mandam no que a página inteira mostra.
+   * - `section` (padrão): subabas e abas de uma ficha (ex.: Geral |
+   *   Equipamentos | Histórico do cliente). Mais leves, ficam abaixo na
+   *   hierarquia visual.
+   */
+  level?: 'screen' | 'section';
+  /**
    * Sufixo renderizado à direita do label de cada pill, dentro do container da
    * pill mas FORA do elemento clicável principal. Usar para ícones de ação
    * (ex: engrenagem de configuração) sem aninhar <button> dentro de <button>.
@@ -53,7 +62,13 @@ interface MobilePillTabsProps {
  * - Fade direito aparece só quando há conteúdo além da borda direita.
  * - Ambos os fades usam mask-image (funciona sobre qualquer superfície: tela, modal, card).
  */
-export function MobilePillTabs({ tabs, activeTab, onTabChange, className, variant = 'segmented', renderSuffix }: MobilePillTabsProps) {
+export function MobilePillTabs({ tabs, activeTab, onTabChange, className, variant = 'segmented', level = 'section', renderSuffix }: MobilePillTabsProps) {
+  // Tamanho/peso da aba por hierarquia. Só vale no underline: as pills
+  // segmentadas são seletores compactos e não entram nessa régua.
+  const alturaEPeso =
+    variant === 'underline' && level === 'screen'
+      ? 'h-11 text-[15px] font-semibold'
+      : 'h-9 text-sm font-medium';
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeDivRef = useRef<HTMLDivElement>(null);
   const activeButtonRef = useRef<HTMLButtonElement>(null);
@@ -203,7 +218,8 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
                 ref={isActive ? activeDivRef : undefined}
                 style={accentStyle}
                 className={cn(
-                  'snap-start shrink-0 inline-flex items-center text-sm font-medium transition-colors',
+                  'snap-start shrink-0 inline-flex items-center transition-colors',
+                  alturaEPeso,
                   variant === 'underline'
                     ? cn(
                         '-mb-px rounded-none border-b-2 bg-transparent shadow-none',
@@ -226,7 +242,7 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
                   onClick={() => onTabChange(tab.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTabChange(tab.value); } }}
                   className={cn(
-                    'inline-flex items-center gap-1.5 h-9 cursor-pointer select-none active:scale-95',
+                    'inline-flex items-center gap-1.5 h-full cursor-pointer select-none active:scale-95',
                     variant === 'underline' ? 'pl-4 pr-2' : 'pl-3.5 pr-1.5',
                   )}
                 >
@@ -268,7 +284,8 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
               onClick={() => onTabChange(tab.value)}
               style={accentStyle}
               className={cn(
-                'snap-start shrink-0 inline-flex items-center gap-1.5 h-9 text-sm font-medium transition-colors active:scale-95',
+                'snap-start shrink-0 inline-flex items-center gap-1.5 transition-colors active:scale-95',
+                alturaEPeso,
                 variant === 'underline'
                   ? cn(
                       '-mb-px rounded-none border-b-2 bg-transparent px-4 shadow-none',

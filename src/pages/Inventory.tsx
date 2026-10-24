@@ -664,6 +664,7 @@ export default function Inventory() {
 
       <MobilePillTabs
         variant="underline"
+        level="screen"
         className="mx-0"
         tabs={inventoryTabs.map((tab) => {
           const Icon = tab.icon;

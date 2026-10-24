@@ -1095,7 +1095,7 @@ export default function Employees() {
         }
       />
 
-      <SettingsSidebarLayout tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange}>
+      <SettingsSidebarLayout variant="underline" tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange}>
         {activeTab === 'list' ? (
           <div className="space-y-4">
             {!isMobile && viewMode === 'list' ? (

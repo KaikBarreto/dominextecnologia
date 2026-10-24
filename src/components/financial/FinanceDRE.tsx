@@ -1367,18 +1367,18 @@ export function FinanceDRE({
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex min-w-0 items-baseline gap-1.5">
-                {c.code && <span className="shrink-0 text-[10px] text-muted-foreground">{c.code}</span>}
-                <span className="truncate text-xs text-foreground/70">{label ?? c.name}</span>
+                {c.code && <span className="shrink-0 text-[10px] lg:text-[11px] text-muted-foreground">{c.code}</span>}
+                <span className="truncate text-xs lg:text-sm text-foreground/70">{label ?? c.name}</span>
               </span>
               {caption && (
-                <span className="block text-[10px] text-muted-foreground truncate">{caption}</span>
+                <span className="block text-[10px] lg:text-[11px] text-muted-foreground truncate">{caption}</span>
               )}
             </span>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-            <span className={cn('text-xs font-medium', valueColorClass)}>{valueLabel}</span>
+            <span className={cn('text-xs lg:text-sm font-medium', valueColorClass)}>{valueLabel}</span>
             {pctOfRevenue(c.value) && (
-              <span className="w-12 text-right text-[11px] tabular-nums text-muted-foreground">
+              <span className="w-12 text-right text-[11px] lg:text-xs tabular-nums text-muted-foreground">
                 {pctOfRevenue(c.value)}
               </span>
             )}
@@ -1395,21 +1395,21 @@ export function FinanceDRE({
             3º nível que dependesse só de `padding-left` fica ilegível. */}
         {canExpand && isOpen && (
           <div className="bg-muted/20 pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 space-y-1">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+            <p className="text-[10px] lg:text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
               {fin.costCenters.dreSectionTitle}
             </p>
             {expandedRows.map((r) => (
               <div key={r.id ?? '__none__'} className="flex items-center justify-between gap-2">
                 <span className="flex items-center gap-1.5 min-w-0">
                   <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: costCenterColor(r.id) }} />
-                  <span className="text-[11px] text-muted-foreground truncate">{costCenterLabel(r.id)}</span>
+                  <span className="text-[11px] lg:text-xs text-muted-foreground truncate">{costCenterLabel(r.id)}</span>
                 </span>
                 <span className="flex shrink-0 items-baseline gap-1.5">
-                  <span className={cn('text-[11px] font-medium tabular-nums', valueColorClass)}>
+                  <span className={cn('text-[11px] lg:text-xs font-medium tabular-nums', valueColorClass)}>
                     {isRevenue ? fmt(r.revenue) : `-${fmt(r.expense)}`}
                   </span>
                   {pctOfRevenue(isRevenue ? r.revenue : r.expense) && (
-                    <span className="w-12 text-right text-[10px] tabular-nums text-muted-foreground">
+                    <span className="w-12 text-right text-[10px] lg:text-[11px] tabular-nums text-muted-foreground">
                       {pctOfRevenue(isRevenue ? r.revenue : r.expense)}
                     </span>
                   )}
@@ -1465,17 +1465,17 @@ export function FinanceDRE({
             <span className="min-w-0 flex-1">
               <span className="flex min-w-0 items-baseline gap-1.5">
                 {categoryDreCodeMap.get(node.name) && (
-                  <span className="shrink-0 text-[10px] text-muted-foreground">{categoryDreCodeMap.get(node.name)}</span>
+                  <span className="shrink-0 text-[10px] lg:text-[11px] text-muted-foreground">{categoryDreCodeMap.get(node.name)}</span>
                 )}
-                <span className="truncate text-xs font-medium text-foreground/80">{node.name}</span>
+                <span className="truncate text-xs lg:text-sm font-medium text-foreground/80">{node.name}</span>
               </span>
-              <span className="block text-[10px] text-muted-foreground">{countLabel}</span>
+              <span className="block text-[10px] lg:text-[11px] text-muted-foreground">{countLabel}</span>
             </span>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-            <span className={cn('text-xs font-semibold', valueColorClass)}>{valueLabel}</span>
+            <span className={cn('text-xs lg:text-sm font-semibold', valueColorClass)}>{valueLabel}</span>
             {pctOfRevenue(node.total) && (
-              <span className="w-12 text-right text-[11px] tabular-nums text-muted-foreground">
+              <span className="w-12 text-right text-[11px] lg:text-xs tabular-nums text-muted-foreground">
                 {pctOfRevenue(node.total)}
               </span>
             )}
@@ -1487,7 +1487,7 @@ export function FinanceDRE({
 
         {isOpen && (
           <div className="bg-muted/20">
-            <p className="px-3 sm:px-4 pt-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+            <p className="px-3 sm:px-4 pt-1.5 text-[10px] lg:text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
               {fin.dre.categoryBreakdown.subcategoriesLabel}
             </p>
             <div className="divide-y divide-border/30">
@@ -1570,7 +1570,7 @@ export function FinanceDRE({
         onClick={onToggle}
         className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-muted/30 flex items-center justify-between hover:bg-muted/50 transition-colors"
       >
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        <span className="text-xs lg:text-sm font-medium text-muted-foreground uppercase tracking-wide">
           {label}
         </span>
         {open ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
@@ -1582,19 +1582,19 @@ export function FinanceDRE({
             // Seção sem nenhum lançamento no período. A linha some e o usuário
             // fica achando que o sistema não tem essa parte da DRE — por isso a
             // seção continua na tela, zerada e com o motivo escrito.
-            <p className="px-3 sm:px-4 py-3 pl-6 sm:pl-10 text-xs text-muted-foreground">
+            <p className="px-3 sm:px-4 py-3 pl-6 sm:pl-10 text-xs lg:text-sm text-muted-foreground">
               {fin.dre.table.emptySection}
             </p>
           )
       )}
       <div className="px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between border-t border-border/30">
-        <span className="text-sm text-foreground/80 pl-2 sm:pl-4 font-medium">{fin.dre.table.total}</span>
+        <span className="text-sm lg:text-base text-foreground/80 pl-2 sm:pl-4 font-medium">{fin.dre.table.total}</span>
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-medium text-foreground">
+          <span className="text-sm lg:text-base font-medium text-foreground">
             {isNegative ? `-${fmt(total)}` : fmt(total)}
           </span>
           {pctOfRevenue(total) && (
-            <span className="text-xs text-muted-foreground tabular-nums w-12 text-right">
+            <span className="text-xs lg:text-sm text-muted-foreground tabular-nums w-12 text-right">
               {pctOfRevenue(total)}
             </span>
           )}
@@ -1611,8 +1611,8 @@ export function FinanceDRE({
   ) => (
     <div>
       <div className="flex items-center gap-2 border-t border-border/30 bg-muted/40 px-3 py-2 sm:px-4">
-        <span className="text-[10px] font-semibold text-muted-foreground">{code}</span>
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+        <span className="text-[10px] lg:text-[11px] font-semibold text-muted-foreground">{code}</span>
+        <span className="text-xs lg:text-sm font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
       </div>
       {groupsForNature(nature).map((group) => (
         <CollapsibleSection

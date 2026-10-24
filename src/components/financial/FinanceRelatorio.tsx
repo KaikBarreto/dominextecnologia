@@ -166,6 +166,7 @@ export function FinanceRelatorio({
             key={value}
             value={value}
             variant="underline"
+            level="screen"
             className="min-h-11 gap-2 px-3 sm:px-4"
           >
             <Icon className="h-4 w-4" aria-hidden="true" />

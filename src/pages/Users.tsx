@@ -402,6 +402,7 @@ export default function Users() {
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'users' | 'presets')} className="w-full">
           <MobilePillTabs
             variant="underline"
+            level="screen"
             tabs={[
               { value: 'users', label: t.tabs.users },
               { value: 'presets', label: t.tabs.presets },

@@ -37,7 +37,6 @@ import {
 } from '@/components/fiscal/NfseDetailModal';
 import { NfseVisaoGeral } from '@/components/fiscal/NfseVisaoGeral';
 import { NfseStatsCards, type NfseStats } from '@/components/fiscal/NfseStatsCards';
-import { NfseComoFunciona } from '@/components/fiscal/NfseComoFunciona';
 import { nfseRowToEmission, type NfseListRow } from '@/components/fiscal/nfseRow';
 import { NfseListTab } from '@/components/fiscal/NfseListTab';
 import { NotasRecebidasTab } from '@/components/fiscal/inboundNotes/NotasRecebidasTab';
@@ -314,9 +313,6 @@ export default function NotasFiscais() {
         {isMobile && periodFilter}
       </div>
 
-      {/* Explicação em linguagem leiga — fechada por padrão */}
-      <NfseComoFunciona />
-
       {anyLoading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-7 w-7 animate-spin text-primary" />
@@ -340,6 +336,7 @@ export default function NotasFiscais() {
               A1, e quem explica isso é a própria aba (ela tem os avisos em
               cascata: sem certificado → sem opt-in → lista). */}
           <SettingsSidebarLayout
+            variant="underline"
             tabs={navTabs}
             activeTab={tab}
             onTabChange={(v) => setTab(v as 'visao-geral' | 'nfse' | 'recebidas' | 'automaticas')}

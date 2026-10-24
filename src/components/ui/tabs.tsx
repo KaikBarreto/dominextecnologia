@@ -7,6 +7,13 @@ const Tabs = TabsPrimitive.Root;
 
 export type TabsVisualVariant = "segmented" | "underline";
 
+/**
+ * Hierarquia da navegação (só muda o `underline`):
+ * - `screen`: abas da TELA — maiores e em negrito.
+ * - `section` (padrão): subabas e abas de ficha/modal — mais leves.
+ */
+export type TabsLevel = "screen" | "section";
+
 type TabsListProps = React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> & {
   variant?: TabsVisualVariant;
 };
@@ -30,18 +37,24 @@ TabsList.displayName = TabsPrimitive.List.displayName;
 
 type TabsTriggerProps = React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> & {
   variant?: TabsVisualVariant;
+  level?: TabsLevel;
 };
 
 const TabsTrigger = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Trigger>,
   TabsTriggerProps
->(({ className, variant = "segmented", ...props }, ref) => (
+>(({ className, variant = "segmented", level = "section", ...props }, ref) => (
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+      "inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+      // Abas de TELA mandam no que a página inteira mostra, então pesam mais
+      // que subabas e abas de ficha. Vale só no underline.
+      variant === "underline" && level === "screen"
+        ? "text-[15px] font-semibold"
+        : "text-sm font-medium",
       variant === "underline"
-        ? "-mb-px shrink-0 rounded-none border-b-2 border-transparent bg-transparent px-4 py-2 shadow-none hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+        ? "-mb-px shrink-0 rounded-none border-b-2 border-transparent bg-transparent px-4 py-2.5 shadow-none hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
         : "rounded-sm px-3 py-1.5 transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
       className,
     )}

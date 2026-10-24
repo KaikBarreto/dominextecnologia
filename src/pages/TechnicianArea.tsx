@@ -267,6 +267,7 @@ function ToolsShell({
         <div className="lg:hidden">
           <MobilePillTabs
             variant="underline"
+            level="screen"
             tabs={navItems.map((t) => ({
               value: t.value,
               label: t.label,
