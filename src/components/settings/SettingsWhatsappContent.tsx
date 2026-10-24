@@ -184,8 +184,10 @@ export function AsaasContent() {
 
   return (
     <div className="space-y-4">
+      {/* 3º nível (dentro de Integrações > Cobranças): botão segmentado, NÃO
+          aba. Duas barras underline coladas viram a mesma coisa visualmente e
+          ninguém sabe qual manda — régua de profundidade do sistema. */}
       <MobilePillTabs
-        variant="underline"
         tabs={sections}
         activeTab={activeSection}
         onTabChange={(value) => setActiveSection(value as AsaasSection)}

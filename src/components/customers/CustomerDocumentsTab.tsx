@@ -158,7 +158,6 @@ export function CustomerDocumentsTab({ customerId, canManage }: CustomerDocument
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <MobilePillTabs
-          variant="underline"
           className="mx-0 min-w-0 sm:w-auto"
           tabs={[
             { value: 'invoice', label: 'Notas fiscais', icon: <ReceiptText className="h-4 w-4" /> },

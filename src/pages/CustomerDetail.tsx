@@ -1570,9 +1570,10 @@ export function CustomerDetailContent() {
             </div>
           )}
 
-          {/* Navegação secundária segue a mesma linguagem underline da ficha. */}
+          {/* 3º nível (tela > ficha do cliente > recorte do Financeiro): botão
+              segmentado, NÃO aba. Underline aqui ficaria igual à barra de abas
+              da ficha logo acima — régua de profundidade do sistema. */}
           <MobilePillTabs
-            variant="underline"
             className="mx-0"
             tabs={[
               { value: 'tudo', label: t.subTabAll },
