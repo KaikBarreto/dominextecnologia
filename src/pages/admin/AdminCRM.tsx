@@ -116,6 +116,7 @@ export default function AdminCRM() {
             activeTab={activeTab}
             onTabChange={handleTabChange}
             variant="underline"
+            level="screen"
           />
         ) : (
           <div className="flex items-center gap-2" role="tablist" aria-label="Navegação do CRM Admin">

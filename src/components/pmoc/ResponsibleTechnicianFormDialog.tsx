@@ -375,12 +375,12 @@ export function ResponsibleTechnicianFormDialog({
         <div className="space-y-1.5">
           <Label>{trt.fieldSignature}</Label>
           <Tabs value={signatureMode} onValueChange={(v) => setSignatureMode(v as 'upload' | 'draw')}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="upload" className="gap-1.5">
+            <TabsList variant="underline">
+              <TabsTrigger variant="underline" value="upload" className="gap-1.5">
                 <Camera className="h-3.5 w-3.5" />
                 {trt.tabUpload}
               </TabsTrigger>
-              <TabsTrigger value="draw" className="gap-1.5">
+              <TabsTrigger variant="underline" value="draw" className="gap-1.5">
                 <Pen className="h-3.5 w-3.5" />
                 {trt.tabDraw}
               </TabsTrigger>

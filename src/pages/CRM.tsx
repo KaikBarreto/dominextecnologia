@@ -1249,34 +1249,20 @@ export default function CRM() {
   // Mesmo padrão visual do seletor de funil acima (pills roláveis no mobile,
   // pills num flex que quebra linha no desktop) — não inventa mecanismo novo.
   // ------------------------------------------------------------------
-  const mainTabs = isMobile ? (
+  // Abas de TELA do CRM: mesma barra underline do resto do sistema, igual em
+  // celular e computador (antes eram pills num flex só no desktop).
+  const mainTabs = (
     <MobilePillTabs
+      variant="underline"
+      level="screen"
+      className={isMobile ? undefined : 'mx-0'}
       tabs={[
-        { value: 'funil', label: t.mainTabFunnel },
-        { value: 'tarefas', label: t.mainTabTasks },
+        { value: 'funil', label: t.mainTabFunnel, icon: <ListFilter className="h-4 w-4 shrink-0" /> },
+        { value: 'tarefas', label: t.mainTabTasks, icon: <ListChecks className="h-4 w-4 shrink-0" /> },
       ]}
       activeTab={pageTab}
       onTabChange={(v) => setPageTab(v as 'funil' | 'tarefas')}
     />
-  ) : (
-    <div className="flex items-center gap-2">
-      {(['funil', 'tarefas'] as const).map((tab) => (
-        <button
-          key={tab}
-          type="button"
-          onClick={() => setPageTab(tab)}
-          className={cn(
-            'inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full text-sm font-medium transition-all',
-            pageTab === tab
-              ? 'bg-primary text-primary-foreground shadow-sm'
-              : 'bg-muted/50 text-muted-foreground hover:bg-muted',
-          )}
-        >
-          {tab === 'funil' ? <ListFilter className="h-3.5 w-3.5" /> : <ListChecks className="h-3.5 w-3.5" />}
-          {tab === 'funil' ? t.mainTabFunnel : t.mainTabTasks}
-        </button>
-      ))}
-    </div>
   );
 
   // ------------------------------------------------------------------

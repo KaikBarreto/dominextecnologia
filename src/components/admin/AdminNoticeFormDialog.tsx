@@ -149,10 +149,10 @@ export function AdminNoticeFormDialog({
       }
     >
       <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="conteudo">Conteúdo</TabsTrigger>
-          <TabsTrigger value="destino">Destino</TabsTrigger>
-          <TabsTrigger value="exibicao">Exibição</TabsTrigger>
+        <TabsList variant="underline">
+          <TabsTrigger variant="underline" value="conteudo">Conteúdo</TabsTrigger>
+          <TabsTrigger variant="underline" value="destino">Destino</TabsTrigger>
+          <TabsTrigger variant="underline" value="exibicao">Exibição</TabsTrigger>
         </TabsList>
 
         {/* ── Conteúdo ─────────────────────────────────────────────── */}

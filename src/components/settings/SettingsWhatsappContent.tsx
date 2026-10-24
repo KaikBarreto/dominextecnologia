@@ -185,6 +185,7 @@ export function AsaasContent() {
   return (
     <div className="space-y-4">
       <MobilePillTabs
+        variant="underline"
         tabs={sections}
         activeTab={activeSection}
         onTabChange={(value) => setActiveSection(value as AsaasSection)}

@@ -48,7 +48,7 @@ export const changelog: ChangelogEntry[] = [
     changes: [
       {
         title: 'As abas do sistema agora seguem um padrão só',
-        description: 'Em todas as telas, a navegação por abas usa a mesma linha embaixo da aba aberta. As abas que trocam a tela inteira ficaram maiores e em negrito, e as abas de dentro de uma ficha continuam mais leves — assim dá para saber de bate-pronto o que é navegação principal e o que é detalhe.',
+        description: 'Em todas as telas, a navegação por abas usa a mesma linha embaixo da aba aberta, inclusive no CRM e nas janelas de PMOC e de avisos, que ainda tinham o botão cinza. As abas que trocam a tela inteira ficaram maiores e em negrito, e as abas de dentro de uma ficha continuam mais leves — assim dá para saber de bate-pronto o que é navegação principal e o que é detalhe. Seletores como Dia/Semana/Mês da Agenda e as categorias do PDV continuam no formato de botão, porque filtram o conteúdo em vez de trocar de aba.',
         category: 'melhoria',
       },
       {
