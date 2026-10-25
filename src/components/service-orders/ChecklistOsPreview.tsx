@@ -1,7 +1,4 @@
-import {
-  ArrowLeft, Camera, CheckSquare2, FileSignature, FileText, Hash,
-  ListChecks, Pencil, Plus, Type, Video,
-} from 'lucide-react';
+import { ArrowLeft, Camera, CheckSquare2, Eye, FileSignature, FileText, Hash, ListChecks, Pencil, Plus, Type, Video } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { QUESTION_TYPES } from '@/hooks/useFormTemplates';
@@ -76,6 +73,8 @@ interface ChecklistOsPreviewProps {
   serviceTypes: ServiceType[];
   onEdit: () => void;
   onAddQuestion?: () => void;
+  /** Abre a prévia em tela cheia, com o visual do preenchimento da OS. */
+  onVerNaOs?: () => void;
   onBack: () => void;
   showBack: boolean;
 }
@@ -85,6 +84,7 @@ export function ChecklistOsPreview({
   serviceTypes,
   onEdit,
   onAddQuestion,
+  onVerNaOs,
   onBack,
   showBack,
 }: ChecklistOsPreviewProps) {
@@ -108,6 +108,14 @@ export function ChecklistOsPreview({
           {template.description && <p className="mt-1 text-sm text-muted-foreground">{template.description}</p>}
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {/* A lista abaixo é um resumo das perguntas; o "Ver" abre a prévia
+              com o MESMO visual que o técnico vê preenchendo a OS. */}
+          {onVerNaOs && (
+            <Button variant="outline" size="sm" onClick={onVerNaOs}>
+              <Eye className="mr-2 h-4 w-4" />
+              Ver
+            </Button>
+          )}
           {onAddQuestion && (
             <Button size="sm" onClick={onAddQuestion}>
               <Plus className="mr-2 h-4 w-4" />

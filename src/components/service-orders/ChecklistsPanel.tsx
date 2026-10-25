@@ -24,6 +24,7 @@ import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { ChecklistCatalogModal } from '@/components/technician/ChecklistCatalogModal';
+import { ChecklistPreviewDialog } from '@/components/service-orders/ChecklistPreviewDialog';
 import { ChecklistOsPreview } from '@/components/service-orders/ChecklistOsPreview';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { FormQuestion, FormTemplate } from '@/types/database';
@@ -51,6 +52,8 @@ export function ChecklistsPanel() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailMode, setDetailMode] = useState<'preview' | 'edit'>('preview');
+  // Prévia em tela cheia com o visual do preenchimento da OS.
+  const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [editorInitialAction, setEditorInitialAction] = useState<'create-question' | undefined>();
   const [editorSession, setEditorSession] = useState(0);
   const [mobileSearch, setMobileSearch] = useState('');
@@ -205,6 +208,7 @@ export function ChecklistsPanel() {
         serviceTypes={serviceTypes}
         onAddQuestion={() => openEditor('create-question')}
         onEdit={() => openEditor()}
+        onVerNaOs={() => setPreviewTemplateId(selectedTemplate.id)}
         onBack={() => setSelectedId(null)}
         showBack={isMobile}
       />
@@ -484,6 +488,14 @@ export function ChecklistsPanel() {
           setSelectedId(id);
           openEditor();
         }}
+      />
+
+      {/* Prévia com o visual do preenchimento da OS (botão "Ver" da ficha). */}
+      <ChecklistPreviewDialog
+        templateId={previewTemplateId}
+        open={!!previewTemplateId}
+        onOpenChange={(o) => { if (!o) setPreviewTemplateId(null); }}
+        templates={activeTemplates as any}
       />
 
       {/* Delete dialog */}

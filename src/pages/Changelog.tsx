@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.44',
+    date: '25 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ver como o checklist fica na Ordem de Serviço',
+        description: 'Na ficha de cada checklist há um botão Ver que abre a prévia exatamente como o técnico vai ver em campo: as mesmas perguntas, os mesmos botões de Conforme, Não-conforme e N/A. Dá para responder para sentir como fica — nada é salvo e nenhuma Ordem de Serviço é criada.',
+        category: 'recurso',
+      },
+      {
+        title: 'Catálogo de Checklists mais fácil de navegar',
+        description: 'O catálogo deixou de ser uma pilha de blocos que abrem e fecham. Agora os modelos e as seções da norma ficam listados à esquerda e as perguntas do item escolhido aparecem à direita, com o botão de importar no topo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.43',
     date: '25 de outubro de 2026',
     type: 'patch',

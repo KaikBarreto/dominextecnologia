@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.43";
+export const APP_VERSION = "1.37.44";
 
 export const VERSION_NOTES =
-  "O aviso de versão nova saiu do lugar errado e ficou limpo, e em Serviços os botões subiram para a mesma linha das abas, liberando espaço na tela.";
+  "Em Checklists, o botão Ver mostra como o checklist vai aparecer para o técnico na Ordem de Serviço, e o Catálogo de Checklists virou lista de um lado e perguntas do outro.";

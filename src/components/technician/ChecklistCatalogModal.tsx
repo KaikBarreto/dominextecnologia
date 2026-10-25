@@ -27,6 +27,7 @@ import { isAcSection } from '@/components/contracts/pmocMachineRoutine';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { FAMILY_TOOLTIPS } from '@/components/contracts/PmocChecklistPicker';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useIsCompact } from '@/hooks/use-mobile';
 import {
   getCatalogForSegment,
   segmentHasPmocCatalog,
@@ -54,6 +55,17 @@ interface ChecklistCatalogModalProps {
 }
 
 const norm = (s: string) => s.trim().toLowerCase();
+
+/** Uma linha da coluna da esquerda: um modelo curado OU uma seção do PMOC. */
+interface ItemDoCatalogo {
+  id: string;
+  grupo: string;
+  titulo: string;
+  descricao: string;
+  total: number;
+  template?: ChecklistTemplate;
+  atividades?: PmocCatalogActivity[];
+}
 
 /**
  * Mapeia o `default_freq_code` do catálogo PMOC ('M'|'T'|'S'|'A'|'E') pros
@@ -116,6 +128,7 @@ export function ChecklistCatalogModal({
   open, onOpenChange, mode = 'import', templateId, existingCount = 0,
   existingQuestions = [], onCreated,
 }: ChecklistCatalogModalProps) {
+  const isCompact = useIsCompact();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.checklistCatalog;
   const { toast } = useToast();
@@ -129,7 +142,8 @@ export function ChecklistCatalogModal({
   const serviceTemplates = useMemo(() => getCatalogForSegment(segment), [segment]);
 
   const [search, setSearch] = useState('');
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // Fonte aberta na direita (modelo curado ou seção do PMOC).
+  const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   // PMOC: seleção granular por id de atividade
   const [selectedPmoc, setSelectedPmoc] = useState<Record<string, boolean>>({});
   // Modo create: passo de nomear o checklist + perguntas acumuladas.
@@ -165,6 +179,7 @@ export function ChecklistCatalogModal({
 
   const resetState = () => {
     setSearch('');
+    setSelecionadoId(null);
     setSelectedPmoc({});
     setNameStep(false);
     setNewName('');
@@ -176,9 +191,6 @@ export function ChecklistCatalogModal({
     onOpenChange(o);
     if (!o) resetState();
   };
-
-  const toggleSection = (key: string) =>
-    setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
   const q = norm(search);
   const matches = (text: string) => !q || norm(text).includes(q);
@@ -376,6 +388,66 @@ export function ChecklistCatalogModal({
 
   const busy = createQuestionsBatch.isPending || createTemplate.isPending || creating;
 
+  // ---------------------------------------------------------------------------
+  // LISTA + DETALHES
+  //
+  // Antes o catálogo era uma pilha de acordeões: modelos curados, família
+  // "Expansão Direta", família "Sistemas Centrais", cada uma com subgrupos
+  // colapsáveis por dentro — três níveis de "abre e fecha" num modal. Agora é a
+  // mesma régua das telas de cliente/equipamento: a ESQUERDA lista as fontes
+  // (um modelo curado ou uma seção do PMOC por linha) e a DIREITA mostra as
+  // perguntas daquela fonte, com o botão de importar/selecionar no topo.
+  // ---------------------------------------------------------------------------
+  const itensDoCatalogo = useMemo(() => {
+    const lista: ItemDoCatalogo[] = filteredServiceTemplates.map((tpl) => ({
+      id: `tpl:${tpl.id}`,
+      grupo: t.sectionTemplates,
+      titulo: tpl.nome,
+      descricao: tpl.descricao,
+      total: tpl.questions.length,
+      template: tpl,
+    }));
+    if (showPmoc) {
+      for (const b of acTypeGroups) {
+        lista.push({
+          id: `ac:${b.group}`,
+          grupo: 'Expansão Direta',
+          titulo: b.label,
+          descricao: FAMILY_TOOLTIPS.expansaoDireta,
+          total: b.activities.length,
+          atividades: b.activities,
+        });
+      }
+      for (const g of otherGroups) {
+        lista.push({
+          id: `sec:${g.section}`,
+          grupo: 'Sistemas Centrais',
+          titulo: g.label,
+          descricao: FAMILY_TOOLTIPS.sistemasCentrais,
+          total: g.activities.length,
+          atividades: g.activities,
+        });
+      }
+    }
+    return lista;
+  }, [filteredServiceTemplates, acTypeGroups, otherGroups, showPmoc, t.sectionTemplates]);
+
+  // Ordem de exibição: cada grupo vira um subtítulo na coluna da esquerda.
+  const gruposDaLista = useMemo(() => {
+    const mapa = new Map<string, ItemDoCatalogo[]>();
+    for (const item of itensDoCatalogo) {
+      const atual = mapa.get(item.grupo);
+      if (atual) atual.push(item);
+      else mapa.set(item.grupo, [item]);
+    }
+    return [...mapa.entries()];
+  }, [itensDoCatalogo]);
+
+  // No desktop sempre há um item aberto (o primeiro, se o gestor não escolheu
+  // nenhum). No celular a lista vem primeiro e o detalhe só aparece no toque.
+  const itemEscolhido = itensDoCatalogo.find((i) => i.id === selecionadoId) ?? null;
+  const itemAberto = itemEscolhido ?? (isCompact ? null : itensDoCatalogo[0] ?? null);
+
   // Linha de UMA atividade PMOC (checkbox + descrição + selo de tipo).
   const renderPmocActivity = (a: PmocCatalogActivity) => {
     const already = !isCreate && existingSet.has(norm(a.description));
@@ -404,90 +476,6 @@ export function ChecklistCatalogModal({
           </div>
         </div>
       </label>
-    );
-  };
-
-  // Um subgrupo (tipo de tarefa OU section) dentro de uma família: cabeçalho
-  // colapsável + "marcar todas" + importar/selecionar o subgrupo inteiro.
-  const renderPmocSubGroup = (sub: { key: string; label: string; activities: PmocCatalogActivity[] }) => {
-    const isOpen = expanded[sub.key] ?? !!q;
-    const allOn = sub.activities.length > 0 && sub.activities.every(a => selectedPmoc[a.id]);
-    return (
-      <div key={sub.key}>
-        <div className={cn('flex items-center gap-2 px-3 py-2', isOpen && 'bg-muted/30')}>
-          <button
-            type="button"
-            className="flex flex-1 items-center gap-2 text-left min-w-0"
-            onClick={() => toggleSection(sub.key)}
-          >
-            {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
-            <span className="text-sm font-medium truncate">{sub.label}</span>
-            <Badge variant="secondary" className="text-xs shrink-0">{sub.activities.length}</Badge>
-          </button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 text-xs shrink-0"
-            onClick={() => handlePmocSection(sub.activities, sub.label)}
-            disabled={busy}
-          >
-            {isCreate ? t.btnSelect : t.btnImport}
-          </Button>
-        </div>
-        {isOpen && (
-          <div className="divide-y bg-muted/20">
-            <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground cursor-pointer hover:bg-muted/40">
-              <Checkbox
-                checked={allOn}
-                onCheckedChange={(c) => togglePmocSection(sub.activities, !!c)}
-              />
-              {allOn ? t.uncheckAllLabel : t.checkAllLabel}
-            </label>
-            {sub.activities.map(renderPmocActivity)}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Uma família (Expansão Direta / Sistemas Centrais): cabeçalho forte com "?",
-  // selo de selecionados, "Importar/Selecionar a família" + subgrupos por dentro.
-  const renderPmocFamily = (fam: {
-    familyKey: string;
-    title: string;
-    tip: string;
-    familyActivities: PmocCatalogActivity[];
-    subgroups: { key: string; label: string; activities: PmocCatalogActivity[] }[];
-  }) => {
-    const selectedInFamily = fam.familyActivities.filter(a => selectedPmoc[a.id]).length;
-    return (
-      <div key={fam.familyKey} className="rounded-lg border bg-card overflow-hidden">
-        <header className="flex flex-wrap items-center gap-2 border-b bg-muted/30 px-3 py-2">
-          <h4 className="text-sm font-semibold">{fam.title}</h4>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button type="button" className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={`Sobre ${fam.title}`}>
-                <HelpCircle className="h-3.5 w-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs text-xs">{fam.tip}</TooltipContent>
-          </Tooltip>
-          <Badge variant="secondary" className="text-xs shrink-0">{fam.familyActivities.length}</Badge>
-          {selectedInFamily > 0 && (
-            <Badge className="bg-emerald-600 text-white border-transparent text-[10px] shrink-0">{selectedInFamily} ✓</Badge>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            className="ml-auto h-7 text-xs shrink-0"
-            onClick={() => handlePmocSection(fam.familyActivities, fam.title)}
-            disabled={busy}
-          >
-            {isCreate ? t.btnSelectAll : t.btnImportAll}
-          </Button>
-        </header>
-        <div className="divide-y">{fam.subgroups.map(renderPmocSubGroup)}</div>
-      </div>
     );
   };
 
@@ -559,167 +547,194 @@ export function ChecklistCatalogModal({
       open={open}
       onOpenChange={handleOpenChange}
       title={t.modalTitle}
+      description={isCreate ? t.headerCreateSub : t.headerImportSub}
+      className="sm:max-w-5xl"
+      footer={
+        selectedPmocCount > 0 ? (
+          <div className="flex items-center justify-end">
+            <Button
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
+              onClick={handleSelectedPmoc}
+              disabled={busy}
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              {primaryActionLabel} {selectedPmocCount}
+            </Button>
+          </div>
+        ) : undefined
+      }
     >
-      <div className="space-y-4">
-        {/* Cabeçalho contextual */}
-        <div className="flex items-start gap-3 rounded-lg border bg-card p-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <BookOpen className="h-5 w-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold leading-tight">
-              {isCreate ? t.headerCreate : t.headerImport}
-            </p>
-            <p className="text-xs text-muted-foreground leading-snug mt-0.5">
-              {isCreate ? t.headerCreateSub : t.headerImportSub}
-            </p>
-          </div>
-        </div>
-
-        {/* Aviso */}
-        <div className="flex items-start gap-2 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/50 p-3">
-          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-          <p className="text-xs text-amber-800 dark:text-amber-200 leading-snug">
+      <div className="space-y-3">
+        {/* Aviso: uma linha, não um bloco — o conteúdo é a lista, não o alerta. */}
+        <p className="flex items-start gap-2 text-xs leading-snug text-amber-700 dark:text-amber-300">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
             <strong>{t.warningTitle}</strong> {t.warningBody}
-          </p>
-        </div>
+          </span>
+        </p>
 
-        {/* Busca */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t.searchPlaceholder}
-            className="pl-9"
-          />
-        </div>
-
-        {/* Templates de serviço curados — vêm PRIMEIRO */}
-        <section className="space-y-2">
-          <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-foreground/70">
-            <ClipboardList className="h-4 w-4 text-primary shrink-0" />
-            {t.sectionTemplates}
-          </h3>
-          {filteredServiceTemplates.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-3 text-center rounded-lg border border-dashed">
-              {t.emptyTemplates}
-            </p>
-          ) : (
-            <div className="rounded-lg border bg-card divide-y overflow-hidden">
-              {filteredServiceTemplates.map((tpl) => {
-                const key = `tpl:${tpl.id}`;
-                const isOpen = expanded[key] ?? false;
-                return (
-                  <div key={tpl.id}>
-                    <div className={cn('flex items-start gap-2 px-3 py-2', isOpen && 'bg-muted/30')}>
-                      <button
-                        type="button"
-                        className="flex flex-1 items-start gap-2 text-left min-w-0"
-                        onClick={() => toggleSection(key)}
-                      >
-                        {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">{tpl.nome}</span>
-                            <Badge variant="secondary" className="text-xs shrink-0">{tpl.questions.length}</Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground leading-snug">{tpl.descricao}</p>
-                        </div>
-                      </button>
-                      <Button
-                        size="sm"
-                        className="h-7 text-xs bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
-                        onClick={() => handleTemplate(tpl)}
-                        disabled={busy}
-                      >
-                        <Download className="mr-1.5 h-3.5 w-3.5" />
-                        {primaryActionLabel}
-                      </Button>
-                    </div>
-                    {isOpen && (
-                      <div className="divide-y bg-muted/20">
-                        {tpl.questions.map((cq, i) => {
-                          const already = !isCreate && existingSet.has(norm(cq.question));
-                          const tb = qTypeBadge(cq.question_type);
-                          return (
-                            <div key={i} className={cn('flex items-start gap-2 px-3 py-2 text-sm', already && 'opacity-50')}>
-                              <span className="text-xs text-muted-foreground mt-0.5 w-5 shrink-0">{i + 1}.</span>
-                              <div className="min-w-0 flex-1">
-                                <p className="leading-tight">{cq.question}</p>
-                                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                                  <Badge className={cn('text-[10px] font-medium', tb.className)}>
-                                    {tb.label}{cq.unit ? ` (${cq.unit})` : ''}
-                                  </Badge>
-                                  {cq.is_required && <Badge variant="destructive" className="text-[10px]">{MESSAGES[locale].app.os.formTemplates.editLabelRequired}</Badge>}
-                                  {already && <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5"><Check className="h-3 w-3" />{t.alreadyInChecklist}</span>}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+        <div className="lg:grid lg:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)] lg:gap-0">
+          {/* ----------------------------- LISTA ----------------------------- */}
+          <aside
+            className={cn(
+              'flex flex-col gap-3 lg:border-r lg:border-border lg:pr-4',
+              isCompact && itemAberto && 'hidden',
+            )}
+          >
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t.searchPlaceholder}
+                className="pl-9"
+              />
             </div>
-          )}
-        </section>
 
-        {/* Seção PMOC (só refrigeração) — vem DEPOIS dos modelos */}
-        {showPmoc && (
-          <section className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-foreground/70">
-                <Snowflake className="h-4 w-4 text-cyan-500 shrink-0" />
-                {t.sectionPmoc}
-              </h3>
-              {selectedPmocCount > 0 && (
-                <Button
-                  size="sm"
-                  className="h-8 bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={handleSelectedPmoc}
-                  disabled={busy}
-                >
-                  <Download className="mr-1.5 h-3.5 w-3.5" />
-                  {primaryActionLabel} {selectedPmocCount}
-                </Button>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t.pmocDescription.replace('{action}', isCreate ? t.pmocActionSelect : t.pmocActionImport)}
-            </p>
+            {pmocLoading && showPmoc && (
+              <p className="px-1 text-xs text-muted-foreground">{t.loadingPmoc}</p>
+            )}
 
-            {pmocLoading ? (
-              <p className="text-sm text-muted-foreground py-2">{t.loadingPmoc}</p>
-            ) : acActivitiesFlat.length === 0 && otherActivitiesFlat.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-3 text-center rounded-lg border border-dashed">
-                {t.emptyPmoc}
+            {itensDoCatalogo.length === 0 ? (
+              <p className="rounded-lg border border-dashed py-6 text-center text-sm text-muted-foreground">
+                {t.emptyTemplates}
               </p>
             ) : (
-              <div className="space-y-3">
-                {/* Família 1: Expansão Direta — agrupada por TIPO de tarefa. */}
-                {acActivitiesFlat.length > 0 && renderPmocFamily({
-                  familyKey: 'expansao',
-                  title: 'Expansão Direta',
-                  tip: FAMILY_TOOLTIPS.expansaoDireta,
-                  familyActivities: acActivitiesFlat,
-                  subgroups: acTypeGroups.map(b => ({ key: `tipo:${b.group}`, label: b.label, activities: b.activities })),
-                })}
+              <div className="space-y-4 lg:max-h-[55vh] lg:overflow-y-auto lg:pr-1">
+                {gruposDaLista.map(([grupo, itensDoGrupo]) => (
+                  <div key={grupo} className="space-y-0.5">
+                    <h3 className="px-2 pb-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                      {grupo}
+                    </h3>
+                    {itensDoGrupo.map((item) => {
+                      const marcadas = item.atividades
+                        ? item.atividades.filter((a) => selectedPmoc[a.id]).length
+                        : 0;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setSelecionadoId(item.id)}
+                          className={cn(
+                            'flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors',
+                            item.id === itemAberto?.id ? 'bg-muted' : 'hover:bg-muted/50',
+                          )}
+                        >
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium">{item.titulo}</span>
+                          {marcadas > 0 && (
+                            <Badge className="shrink-0 border-transparent bg-emerald-600 text-[10px] text-white">
+                              {marcadas} ✓
+                            </Badge>
+                          )}
+                          <Badge variant="secondary" className="shrink-0 text-xs">{item.total}</Badge>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
+          </aside>
 
-                {/* Família 2: Sistemas Centrais — agrupada por section. */}
-                {otherActivitiesFlat.length > 0 && renderPmocFamily({
-                  familyKey: 'centrais',
-                  title: 'Sistemas Centrais',
-                  tip: FAMILY_TOOLTIPS.sistemasCentrais,
-                  familyActivities: otherActivitiesFlat,
-                  subgroups: otherGroups.map(g => ({ key: `sec:${g.section}`, label: g.label, activities: g.activities })),
-                })}
+          {/* ---------------------------- DETALHE ---------------------------- */}
+          <section className={cn('min-w-0 lg:pl-5', isCompact && !itemAberto && 'hidden')}>
+            {!itemAberto ? (
+              <p className="py-10 text-center text-sm text-muted-foreground">{t.detailEmpty}</p>
+            ) : (
+              <div className="space-y-3">
+                {isCompact && (
+                  <button
+                    type="button"
+                    onClick={() => setSelecionadoId(null)}
+                    className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    {t.btnBackToCatalog}
+                  </button>
+                )}
+
+                <header className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      {itemAberto.template ? (
+                        <ClipboardList className="h-4 w-4 shrink-0 text-primary" />
+                      ) : (
+                        <Snowflake className="h-4 w-4 shrink-0 text-cyan-500" />
+                      )}
+                      <h3 className="truncate text-base font-semibold">{itemAberto.titulo}</h3>
+                      <Badge variant="secondary" className="shrink-0 text-xs">{itemAberto.total}</Badge>
+                    </div>
+                    <p className="mt-1 text-xs leading-snug text-muted-foreground">{itemAberto.descricao}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
+                    onClick={() =>
+                      itemAberto.template
+                        ? handleTemplate(itemAberto.template)
+                        : handlePmocSection(itemAberto.atividades ?? [], itemAberto.titulo)
+                    }
+                    disabled={busy}
+                  >
+                    <Download className="mr-1.5 h-3.5 w-3.5" />
+                    {itemAberto.template ? primaryActionLabel : (isCreate ? t.btnSelectAll : t.btnImportAll)}
+                  </Button>
+                </header>
+
+                {itemAberto.template ? (
+                  <div className="divide-y rounded-lg border">
+                    {itemAberto.template.questions.map((cq, i) => {
+                      const already = !isCreate && existingSet.has(norm(cq.question));
+                      const tb = qTypeBadge(cq.question_type);
+                      return (
+                        <div
+                          key={i}
+                          className={cn('flex items-start gap-2 px-3 py-2 text-sm', already && 'opacity-50')}
+                        >
+                          <span className="mt-0.5 w-5 shrink-0 text-xs text-muted-foreground">{i + 1}.</span>
+                          <div className="min-w-0 flex-1">
+                            <p className="leading-tight">{cq.question}</p>
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                              <Badge className={cn('text-[10px] font-medium', tb.className)}>
+                                {tb.label}{cq.unit ? ` (${cq.unit})` : ''}
+                              </Badge>
+                              {cq.is_required && (
+                                <Badge variant="destructive" className="text-[10px]">
+                                  {MESSAGES[locale].app.os.formTemplates.editLabelRequired}
+                                </Badge>
+                              )}
+                              {already && (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                                  <Check className="h-3 w-3" />{t.alreadyInChecklist}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="divide-y rounded-lg border">
+                    <label className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/40">
+                      <Checkbox
+                        checked={
+                          (itemAberto.atividades?.length ?? 0) > 0 &&
+                          (itemAberto.atividades ?? []).every((a) => selectedPmoc[a.id])
+                        }
+                        onCheckedChange={(c) => togglePmocSection(itemAberto.atividades ?? [], !!c)}
+                      />
+                      {(itemAberto.atividades ?? []).every((a) => selectedPmoc[a.id])
+                        ? t.uncheckAllLabel
+                        : t.checkAllLabel}
+                    </label>
+                    {(itemAberto.atividades ?? []).map(renderPmocActivity)}
+                  </div>
+                )}
               </div>
             )}
           </section>
-        )}
+        </div>
       </div>
     </ResponsiveModal>
   );
