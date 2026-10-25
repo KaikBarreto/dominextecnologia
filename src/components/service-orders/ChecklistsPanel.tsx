@@ -3,6 +3,7 @@ import { AlertCircle, ArrowDownAZ, Plus, FileText, Trash2, Pencil, BookOpen, Rot
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { Button } from '@/components/ui/button';
+import { ScreenActions } from '@/components/ui/ScreenActions';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -253,21 +254,31 @@ export function ChecklistsPanel() {
               {t.subtitle}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setCatalogOpen(true)}>
-              <BookOpen className="mr-2 h-4 w-4" />
-              {isMobile ? t.btnCatalog : t.btnCatalogFull}
-            </Button>
-            {!isMobile && (
+          {/* Celular mantém os botões aqui; no computador eles sobem pra MESMA
+              linha das abas da tela (ScreenActions). */}
+          {isMobile ? (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setCatalogOpen(true)}>
+                <BookOpen className="mr-2 h-4 w-4" />
+                {t.btnCatalog}
+              </Button>
+            </div>
+          ) : (
+            <ScreenActions>
+              <Button variant="outline" size="sm" onClick={() => setCatalogOpen(true)}>
+                <BookOpen className="mr-2 h-4 w-4" />
+                {t.btnCatalogFull}
+              </Button>
               <Button
+                size="sm"
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => setCreateOpen(true)}
               >
                 <Plus className="mr-2 h-4 w-4" />
                 {t.btnNew}
               </Button>
-            )}
-          </div>
+            </ScreenActions>
+          )}
         </div>
       )}
 

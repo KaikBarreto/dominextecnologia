@@ -1211,3 +1211,39 @@ body:has([data-app-overlay][data-state="open"], [data-vaul-drawer][data-state="o
     --gradient-brand: linear-gradient(135deg, hsl(160 100% 39%) 0%, hsl(160 85% 45%) 100%);
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Toast "Sistema atualizado" — o card escuro É o toast.
+   O <Toaster> global força em TODO toast uma caixa branca de 34rem com borda,
+   sombra e um bloco de ícone de 4,5rem (o quadrado colorido com o ✓). Num
+   toast.custom isso aparece em volta/ao lado do card, e foi exatamente o que
+   o CEO viu como "aviso de nova versão bugado": caixa de 544px com o ícone
+   padrão do Sonner sobrando à esquerda do card de 360px.
+   ───────────────────────────────────────────────────────────────────────── */
+[data-sonner-toast].toast-novidades {
+  width: auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+[data-sonner-toast].toast-novidades [data-icon],
+[data-sonner-toast].toast-novidades [data-close-button] {
+  display: none !important;
+}
+
+/* Toast sem `[data-icon]` (todo `toast.custom` é assim) ganha, lá em cima, uma
+   faixa de 4,5rem com um "✓" via ::after + padding-left de 4,5rem. Num aviso
+   com card próprio isso vira um bloco escuro com visto sobrando na quina — o
+   "bugado" do print. Aqui a faixa e o recuo saem. */
+[data-sonner-toast].toast-novidades {
+  padding-left: 0 !important;
+}
+
+[data-sonner-toast].toast-novidades::after {
+  content: none !important;
+  display: none !important;
+}

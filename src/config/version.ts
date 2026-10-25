@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.42";
+export const APP_VERSION = "1.37.43";
 
 export const VERSION_NOTES =
-  "As abas de tela do sistema seguem o mesmo padrão: linha embaixo da aba aberta, com nome em destaque. Funcionários e Notas Fiscais trocaram a coluna de atalhos pelas abas no topo, e os números do DRE ficaram maiores no computador.";
+  "O aviso de versão nova saiu do lugar errado e ficou limpo, e em Serviços os botões subiram para a mesma linha das abas, liberando espaço na tela.";

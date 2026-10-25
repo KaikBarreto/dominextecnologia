@@ -47,6 +47,12 @@ interface MobilePillTabsProps {
    * (ex: <span role="button" tabIndex={0}>).
    */
   renderSuffix?: (tab: PillTab, isActive: boolean) => ReactNode;
+  /**
+   * Conteúdo preso à DIREITA da barra (ex.: ações da tela). Fica na mesma
+   * linha das abas, aproveitando a faixa em vez de gastar outra linha.
+   * Só no `underline`: a pill segmentada é seletor compacto e não comporta.
+   */
+  actions?: ReactNode;
 }
 
 /**
@@ -62,7 +68,7 @@ interface MobilePillTabsProps {
  * - Fade direito aparece só quando há conteúdo além da borda direita.
  * - Ambos os fades usam mask-image (funciona sobre qualquer superfície: tela, modal, card).
  */
-export function MobilePillTabs({ tabs, activeTab, onTabChange, className, variant = 'segmented', level = 'section', renderSuffix }: MobilePillTabsProps) {
+export function MobilePillTabs({ tabs, activeTab, onTabChange, className, variant = 'segmented', level = 'section', renderSuffix, actions }: MobilePillTabsProps) {
   // Tamanho/peso da aba por hierarquia. Só vale no underline: as pills
   // segmentadas são seletores compactos e não entram nessa régua.
   const alturaEPeso =
@@ -163,8 +169,10 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
     return {};
   })();
 
-  return (
-    <div className={cn('relative -mx-3', className)}>
+  const comAcoes = variant === 'underline' && !!actions;
+
+  const barra = (
+    <div className={cn('relative -mx-3', comAcoes ? 'min-w-0 flex-1' : className)}>
       <div
         ref={scrollRef}
         role="tablist"
@@ -328,6 +336,17 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
           );
         })}
       </div>
+    </div>
+  );
+
+  if (!comAcoes) return barra;
+
+  // A linha inteira ganha a borda; a barra de abas perde a dela pra não
+  // desenhar duas linhas sobrepostas de comprimentos diferentes.
+  return (
+    <div className={cn('flex items-end gap-3 border-b border-border', className)}>
+      <div className="min-w-0 flex-1 [&>div>div]:border-b-0">{barra}</div>
+      <div className="shrink-0 pb-1.5">{actions}</div>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { fuzzyIncludesAny } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { Button } from '@/components/ui/button';
+import { ScreenActions } from '@/components/ui/ScreenActions';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -220,13 +221,14 @@ export function TaskTypesPanel() {
 
   return (
     <div className="space-y-4">
+      {/* No computador a ação sobe pra MESMA linha das abas da tela. */}
       {!isMobile && (
-        <div className="flex items-center justify-end gap-3">
-          <Button onClick={openCreate}>
+        <ScreenActions>
+          <Button size="sm" onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" />
             {t.btnNew}
           </Button>
-        </div>
+        </ScreenActions>
       )}
 
       {taskTypes.length === 0 ? (

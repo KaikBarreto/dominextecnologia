@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
+import { ScreenActionsSlot } from '@/components/ui/ScreenActions';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
@@ -66,6 +67,7 @@ export default function ServicesPage() {
         }))}
         activeTab={activeTab}
         onTabChange={setActiveTab}
+        actions={isMobile ? undefined : <ScreenActionsSlot />}
       />
 
       <div className="min-w-0">

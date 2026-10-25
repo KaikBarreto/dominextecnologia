@@ -5,6 +5,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import { fuzzyIncludesAny } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { ScreenActions } from '@/components/ui/ScreenActions';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -422,19 +423,19 @@ export function ServiceTypesPanel({
     <div className="space-y-4">
       {/* Header: no mobile escondemos texto explicativo e o botão vira FAB.
           Embutido em outro modal, o título some (o modal já tem o dele). */}
+      {/* No computador as ações sobem pra MESMA linha das abas da tela
+          (ScreenActions), em vez de gastarem uma linha inteira só pra elas. */}
       {!isMobile && (
-        <div className="flex items-center justify-end gap-3">
-          <div className="flex items-center gap-2 ml-auto">
-            <Button variant="outline" size="sm" onClick={() => setCategoriesDialogOpen(true)}>
-              <Tags className="mr-2 h-4 w-4" />
-              {tCat.btnManage}
-            </Button>
-            <Button onClick={handleNew}>
-              <Plus className="mr-2 h-4 w-4" />
-              {t.btnNew}
-            </Button>
-          </div>
-        </div>
+        <ScreenActions>
+          <Button variant="outline" size="sm" onClick={() => setCategoriesDialogOpen(true)}>
+            <Tags className="mr-2 h-4 w-4" />
+            {tCat.btnManage}
+          </Button>
+          <Button size="sm" onClick={handleNew}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t.btnNew}
+          </Button>
+        </ScreenActions>
       )}
 
       {/* Mobile: com dados, toolbar padrão (busca em cima, filtro+ações embaixo).

@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.43',
+    date: '25 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'O aviso de versão nova parou de aparecer quebrado',
+        description: 'O quadro escuro que avisa sobre uma atualização vinha com uma faixa cinza e um sinal de confirmado grudados na quina, e espremido dentro de uma caixa branca maior. Agora ele aparece inteiro e limpo.',
+        category: 'correcao',
+      },
+      {
+        title: 'Serviços com mais espaço na tela',
+        description: 'Em Tipos de Serviços, Tipos de Tarefas e Checklists, os botões de ação subiram para a mesma linha das abas, à direita. A lista e a ficha começam mais acima e sobra uma linha inteira de espaço.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.42',
     date: '24 de outubro de 2026',
     type: 'patch',

@@ -86,7 +86,8 @@ export const VersionUpdateNotification = () => {
                 ))}
                 {topics.length > MAX_TOPICS && (
                   <li className="pl-3 text-xs text-zinc-500">
-                    +{topics.length - MAX_TOPICS} novidade(s)
+                    +{topics.length - MAX_TOPICS}{' '}
+                    {topics.length - MAX_TOPICS === 1 ? 'novidade' : 'novidades'}
                   </li>
                 )}
               </ul>
@@ -107,9 +108,13 @@ export const VersionUpdateNotification = () => {
       ), {
         duration: 10000,
         position: 'top-center',
-        // Remove o traço/barra de progresso do topo (toast-with-progress
-        // global do Sonner). Sobra só o card escuro limpo.
-        className: 'no-toast-progress',
+        // O card escuro É o toast: `toast-novidades` (em index.css) desfaz a
+        // caixa branca de 34rem, a borda, a sombra e o bloco de ícone que o
+        // <Toaster> global impõe a todo toast. Sem isso o Sonner desenhava a
+        // própria caixa em volta e o ícone padrão sobrava ao lado do card.
+        className: 'toast-novidades',
+        icon: null,
+        closeButton: false,
       });
     }
   }, [isMobile, showUpdateNotification, currentVersion, dismissNotification, navigate]);
@@ -175,7 +180,8 @@ export const VersionUpdateNotification = () => {
               ))}
               {topics.length > MAX_TOPICS && (
                 <li className="pl-4 text-xs text-zinc-500">
-                  +{topics.length - MAX_TOPICS} novidade(s)
+                  +{topics.length - MAX_TOPICS}{' '}
+                  {topics.length - MAX_TOPICS === 1 ? 'novidade' : 'novidades'}
                 </li>
               )}
             </ul>
