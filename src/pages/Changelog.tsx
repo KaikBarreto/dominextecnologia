@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.45',
+    date: '25 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Dá para ver onde começa o catálogo PMOC',
+        description: 'No Catálogo de Checklists, as seções que vêm da norma PMOC agora têm uma faixa azul com o nome do catálogo, separando-as dos modelos de checklist sugeridos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.44',
     date: '25 de outubro de 2026',
     type: 'patch',

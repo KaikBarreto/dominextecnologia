@@ -65,6 +65,8 @@ interface ItemDoCatalogo {
   total: number;
   template?: ChecklistTemplate;
   atividades?: PmocCatalogActivity[];
+  /** Veio do catálogo PMOC (a norma), não de um modelo curado. */
+  daNorma?: boolean;
 }
 
 /**
@@ -416,6 +418,7 @@ export function ChecklistCatalogModal({
           descricao: FAMILY_TOOLTIPS.expansaoDireta,
           total: b.activities.length,
           atividades: b.activities,
+          daNorma: true,
         });
       }
       for (const g of otherGroups) {
@@ -426,6 +429,7 @@ export function ChecklistCatalogModal({
           descricao: FAMILY_TOOLTIPS.sistemasCentrais,
           total: g.activities.length,
           atividades: g.activities,
+          daNorma: true,
         });
       }
     }
@@ -601,11 +605,24 @@ export function ChecklistCatalogModal({
               </p>
             ) : (
               <div className="space-y-4 lg:max-h-[55vh] lg:overflow-y-auto lg:pr-1">
-                {gruposDaLista.map(([grupo, itensDoGrupo]) => (
+                {gruposDaLista.map(([grupo, itensDoGrupo]) => {
+                  // As seções da norma ganham uma barra azul SATURADA com texto
+                  // branco: sem ela, "Expansão Direta" e "Sistemas Centrais"
+                  // pareciam só mais dois grupos de modelo, e o gestor não via
+                  // onde começa o catálogo PMOC.
+                  const daNorma = itensDoGrupo.some((i) => i.daNorma);
+                  return (
                   <div key={grupo} className="space-y-0.5">
-                    <h3 className="px-2 pb-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                      {grupo}
-                    </h3>
+                    {daNorma ? (
+                      <h3 className="mb-1 flex items-center gap-1.5 rounded-md bg-sky-600 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
+                        <Snowflake className="h-3.5 w-3.5 shrink-0" />
+                        {t.sectionPmoc} · {grupo}
+                      </h3>
+                    ) : (
+                      <h3 className="px-2 pb-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                        {grupo}
+                      </h3>
+                    )}
                     {itensDoGrupo.map((item) => {
                       const marcadas = item.atividades
                         ? item.atividades.filter((a) => selectedPmoc[a.id]).length
@@ -631,7 +648,8 @@ export function ChecklistCatalogModal({
                       );
                     })}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </aside>
