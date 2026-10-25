@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.46',
+    date: '25 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Comparativo do DRE mais fácil de configurar',
+        description: 'Agora dá para alterar o período principal na própria comparação, escolher atalhos como período anterior ou mesmo período do ano passado e conferir uma prévia antes de aplicar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Planilha do DRE segue a mesma leitura da tela',
+        description: 'Na exportação para Excel, os períodos aparecem do mais antigo para o mais recente e a variação mostra com clareza o que aumentou ou diminuiu, inclusive nas despesas.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.37.45',
     date: '25 de outubro de 2026',
     type: 'patch',

@@ -33,6 +33,7 @@ interface FinanceRelatorioProps {
   allTransactions: (FinancialTransaction & { customer?: unknown })[];
   isLoading?: boolean;
   dateRange: DateRange;
+  onDateRangeChange: (range: DateRange) => void;
   summary: {
     totalEntradas: number;
     totalSaidas: number;
@@ -65,6 +66,7 @@ export function FinanceRelatorio({
   allTransactions,
   isLoading = false,
   dateRange,
+  onDateRangeChange,
   summary,
   activeTab,
   onTabChange,
@@ -184,6 +186,7 @@ export function FinanceRelatorio({
           <FinanceDRE
             transactions={allTransactions}
             range={dateRange}
+            onRangeChange={onDateRangeChange}
             canIncludeSubscriptionProjections={hasChargeModule}
           />
         ) : safeTab === 'analise' ? (

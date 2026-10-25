@@ -71,23 +71,55 @@ describe('buildDreExcelSheets', () => {
     expect(costCenters.freezePane).toEqual({ xSplit: 1, ySplit: 6, topLeftCell: 'B7' });
   });
 
-  it('gera comparativo com valores, variação absoluta, percentual e base zero explícita', () => {
+  it('ordena o comparativo cronologicamente e calcula a variação da esquerda para a direita', () => {
     const sheets = buildDreExcelSheets({
       ...report,
+      groups: [{
+        id: 'revenue',
+        name: 'Receita Bruta',
+        nature: 'revenue',
+        total: 10_000,
+        previous: 8_000,
+        categories: [{ name: 'Serviços', value: 10_000, previous: 8_000, color: '#000' }],
+      }],
       comparison: {
         currentPeriod: '01/09/2026 a 30/09/2026',
+        currentPeriodStart: '2026-09-01',
         comparisonPeriod: '01/08/2026 a 31/08/2026',
+        comparisonPeriodStart: '2026-08-01',
         rows: [
           { code: '01', label: 'Receita Bruta', current: 10_000, previous: 8_000, absolute: 2_000, percentage: 0.25 },
+          { code: '02', label: 'Impostos e Deduções', current: -1_000, previous: -500, absolute: -500, percentage: -1 },
           { code: '09', label: 'Resultado Final', current: 3_500, previous: 0, absolute: 3_500, percentage: null },
         ],
       },
     });
+    const dre = sheets.find((sheet) => sheet.name === 'DRE');
     const comparison = sheets.find((sheet) => sheet.name === 'Comparativo');
 
+    expect(dre).toBeDefined();
+    expect(dre!.rows[5]).toEqual([
+      'Demonstrativo',
+      '01/08/2026 a 31/08/2026',
+      '',
+      '01/09/2026 a 30/09/2026',
+      '',
+      'Variação',
+      '',
+    ]);
+    expect(dre!.rows).toContainEqual(['01 - RECEITA BRUTA', 8_000, 1, 10_000, 1, 2_000, 0.25]);
     expect(comparison).toBeDefined();
-    expect(comparison!.rows).toContainEqual(['01', 'Receita Bruta', 10_000, 8_000, 2_000, 0.25]);
-    expect(comparison!.rows).toContainEqual(['09', 'Resultado Final', 3_500, 0, 3_500, '']);
+    expect(comparison!.rows[5]).toEqual([
+      'Código',
+      'Indicador',
+      '01/08/2026 a 31/08/2026',
+      '01/09/2026 a 30/09/2026',
+      'Variação absoluta',
+      'Variação %',
+    ]);
+    expect(comparison!.rows).toContainEqual(['01', 'Receita Bruta', 8_000, 10_000, 2_000, 0.25]);
+    expect(comparison!.rows).toContainEqual(['02', 'Impostos e Deduções', 500, 1_000, 500, 1]);
+    expect(comparison!.rows).toContainEqual(['09', 'Resultado Final', 0, 3_500, 3_500, '']);
     expect(comparison!.freezePane).toEqual({ xSplit: 2, ySplit: 6, topLeftCell: 'C7' });
     expect(comparison!.currencyColumns).toEqual([3, 4, 5]);
     expect(comparison!.percentageColumns).toEqual([6]);

@@ -372,6 +372,10 @@ export default function Finance() {
             allTransactions={transactionsWithChildren}
             isLoading={isLoading}
             dateRange={range}
+            onDateRangeChange={(nextRange) => {
+              setPreset('custom');
+              setRange(nextRange);
+            }}
             summary={summary}
             activeTab={sectionTab}
             onTabChange={setSectionTab}

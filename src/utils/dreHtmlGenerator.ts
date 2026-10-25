@@ -71,7 +71,11 @@ export interface DreExportComparisonRow {
 
 export interface DreExportComparison {
   currentPeriod: string;
+  /** Data inicial ISO do período principal, usada para ordenar as colunas. */
+  currentPeriodStart?: string;
   comparisonPeriod: string;
+  /** Data inicial ISO do período comparativo, usada para ordenar as colunas. */
+  comparisonPeriodStart?: string;
   rows: DreExportComparisonRow[];
 }
 

@@ -90,7 +90,6 @@ import {
 import {
   calculateDreVariation,
   formatDreComparisonPeriod,
-  getDreComparisonRange,
 } from '@/lib/dre-period-comparison';
 
 interface FinanceDREProps {
@@ -102,6 +101,8 @@ interface FinanceDREProps {
   transactions: DreTransaction[];
   /** Período selecionado no topo da tela. Vazio = "Todos os tempos". */
   range?: DateRange;
+  /** Atualiza o período global quando ele for alterado dentro do comparativo. */
+  onRangeChange?: (range: DateRange) => void;
   /** Entitlement técnico de Cobranças. Sem ele, nem o toggle nem a query existem na UX. */
   canIncludeSubscriptionProjections?: boolean;
 }
@@ -144,6 +145,7 @@ interface CategoryBreakdown {
 export function FinanceDRE({
   transactions: rawTransactions,
   range,
+  onRangeChange,
   canIncludeSubscriptionProjections = false,
 }: FinanceDREProps) {
   const { settings } = useCompanySettings();
@@ -375,11 +377,10 @@ export function FinanceDRE({
     [range, selectTransactionsForRange],
   );
 
-  const automaticComparisonRange = useMemo(
-    () => getDreComparisonRange(range, 'previous_period'),
-    [range],
+  const comparisonRanges = useMemo(
+    () => comparisonSelections.slice(0, 3),
+    [comparisonSelections],
   );
-  const comparisonRanges = comparisonSelections.slice(0, 3);
   const comparisonRange = comparisonRanges[0];
 
   const comparisonTransactionsByPeriod = useMemo(
@@ -1200,7 +1201,9 @@ export function FinanceDRE({
     })),
     comparison: comparisonRange ? {
       currentPeriod: periodLabel,
+      currentPeriodStart: range?.from ? format(range.from, 'yyyy-MM-dd') : undefined,
       comparisonPeriod: comparisonPeriodLabel,
+      comparisonPeriodStart: comparisonRange.from ? format(comparisonRange.from, 'yyyy-MM-dd') : undefined,
       rows: comparisonRows,
     } : undefined,
     locale,
@@ -1793,10 +1796,12 @@ export function FinanceDRE({
           <DreComparisonDialog
             open={comparisonDialogOpen}
             onOpenChange={setComparisonDialogOpen}
-            currentPeriodLabel={periodLabel}
+            currentRange={range ?? { from: undefined, to: undefined }}
             value={comparisonRanges}
-            suggestedValue={automaticComparisonRange}
-            onApply={(next) => setComparisonSelections(next ?? [])}
+            onApply={(nextCurrentRange, nextComparisons) => {
+              onRangeChange?.(nextCurrentRange);
+              setComparisonSelections(nextComparisons ?? []);
+            }}
           />
 
           {/* Foto OPERACIONAL atual, separada da cadeia de contas do DRE. Ela
