@@ -251,7 +251,7 @@ export const frOverrides: MessagesOverride = {
     segmentsMenuAria: 'Nos secteurs',
     segmentsMenuHeader: 'Nos secteurs',
     solutionTaglines: {
-      'os-digital': 'Ordres de travail dans l’app, avec photos, checklists et signature du client.',
+      'os-digital': 'Ordres dans l’app, planning organisé et équipe sur la carte en direct.',
       'sistema-pmoc': 'Plans de maintenance automatiques par équipement, dans les temps.',
       'sistema-crm': 'Pipeline de clients et devis jusqu’à la conclusion de la vente.',
       'controle-financeiro': 'Comptes à payer, à recevoir et trésorerie sous contrôle.',
@@ -278,11 +278,11 @@ export const frOverrides: MessagesOverride = {
   },
 
   moduleLabels: {
-    'os-digital': 'Ordres de travail numériques',
+    'os-digital': 'Ordres, Planning et Suivi',
     'sistema-pmoc': 'Plans de maintenance',
     'sistema-crm': 'CRM & Ventes',
     'controle-financeiro': 'Finances',
-    'ponto-e-folha': 'Pointage & Paie (RH)',
+    'ponto-e-folha': 'Employés (RH)',
     'emissao-de-nota-fiscal': 'Facturation de services',
     'portal-do-cliente': 'Portail client',
     'controle-de-estoque': 'Inventaire',
@@ -380,19 +380,14 @@ export const frOverrides: MessagesOverride = {
       cta: 'Discuter sur WhatsApp',
       items: [
         {
-          title: 'Ordres de travail numériques',
+          title: 'Ordres, Planning et Suivi',
           description:
-            'Créez, assignez et suivez les ordres de travail avec photos, checklists, réponses vidéo, signature numérique et historique complet. Fini le papier et les reprises.',
+            'Créez et suivez les ordres avec photos, checklists et signatures. Organisez le planning, répartissez les interventions et suivez l’équipe sur la carte.',
         },
         {
           title: 'Application technicien sur le terrain',
           description:
             'Application mobile installable : le technicien reçoit l’ordre de travail, pointe son arrivée, prend des photos et recueille la signature du client, directement depuis le terrain.',
-        },
-        {
-          title: 'Planification et suivi des équipes',
-          description:
-            'Visualisez l’équipe sur une carte en direct, planifiez la tournée du jour et orientez les interventions vers le technicien le plus proche, sans conflit d’agenda.',
         },
         {
           title: 'Plans de maintenance automatiques',
@@ -410,7 +405,7 @@ export const frOverrides: MessagesOverride = {
             'Comptes à payer et à recevoir, trésorerie, cartes et catégories. Sachez ce qui entre, ce qui sort et ce qu’il vous reste vraiment.',
         },
         {
-          title: 'Pointage et paie (RH)',
+          title: 'Employés (RH)',
           description:
             'Pointage de l’équipe, acomptes, primes et paie. Bulletins prêts, sans feuille de calcul annexe.',
         },

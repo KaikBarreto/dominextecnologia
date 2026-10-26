@@ -15,7 +15,6 @@ import {
   Receipt,
   UserCircle,
   Package,
-  Map,
   ArrowRight,
   BadgeDollarSign,
   ShoppingCart,
@@ -79,16 +78,15 @@ function segmentAccent(slug: string): { bg: string } {
  * REGRA DE ÍCONE (régua CEO): cada módulo usa o MESMO ícone Lucide que a função
  * tem DENTRO do sistema autenticado (sidebar SidebarMenuContent.tsx / abas das
  * telas), pra dar continuidade visual entre a vitrine e o produto:
- *   - Ordem de Serviço      → ClipboardList  (sidebar "Ordens de Serviço")
+ *   - OS, Agenda e Rastreio → ClipboardList  (sidebar "Ordens de Serviço")
  *   - PMOC                  → ClipboardCheck (aba "Histórico PMOC" do contrato)
  *   - CRM                   → TrendingUp     (sidebar "CRM")
  *   - Financeiro            → DollarSign     (sidebar grupo "Financeiro")
- *   - Ponto & Folha         → Clock          (Funcionários → "Controle de Ponto")
+ *   - Funcionários (RH)     → Clock          (Funcionários → "Controle de Ponto")
  *   - NFS-e                 → Receipt        (sidebar "Notas Fiscais")
  *   - Portal do Cliente     → UserCircle     (sem item no sidebar; ícone canônico do módulo)
  *   - Estoque               → Package        (sidebar "Estoque")
  *   - Orçamentos & Contratos→ FileText       (sidebar "Orçamentos")
- *   - Rastreamento & Agenda → Map            (sidebar "Mapa e Rastreamento")
  *   - Área do Técnico™      → IMAGEM REDONDA do FAB da OS (não é ícone Lucide)
  *
  * O ícone fica SOLTO na cor verde da marca (sem quadradinho de fundo).
@@ -105,10 +103,10 @@ interface SolutionLink {
 
 const SOLUTION_LINKS: SolutionLink[] = [
   {
-    label: 'Ordem de Serviço Digital',
+    label: 'OS Digital, Agenda e Rastreamento',
     slug: '/os-digital',
     icon: ClipboardList,
-    tagline: 'OS no app, com foto, checklist e assinatura do cliente.',
+    tagline: 'OS no app, agenda organizada e equipe no mapa ao vivo.',
   },
   {
     label: 'PMOC',
@@ -129,7 +127,7 @@ const SOLUTION_LINKS: SolutionLink[] = [
     tagline: 'Contas a pagar, a receber e fluxo de caixa no controle.',
   },
   {
-    label: 'Ponto & Folha (RH)',
+    label: 'Funcionários (RH)',
     slug: '/ponto-e-folha',
     icon: Clock,
     tagline: 'Ponto da equipe, vales e folha sem planilha paralela.',
@@ -157,12 +155,6 @@ const SOLUTION_LINKS: SolutionLink[] = [
     slug: '/orcamentos-e-contratos',
     icon: FileText,
     tagline: 'Orçamento aprovado por link vira contrato e OS recorrente.',
-  },
-  {
-    label: 'Rastreamento & Agenda',
-    slug: '/rastreamento-de-equipes',
-    icon: Map,
-    tagline: 'Equipe no mapa ao vivo e rota do dia organizada.',
   },
   {
     label: 'Área do Técnico™',

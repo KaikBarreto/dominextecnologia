@@ -166,7 +166,7 @@ export type ModuleIdentity = Pick<ModuleData, 'slug' | 'navLabel' | 'icon' | 'te
 
 const osDigital: ModuleData = {
   slug: 'os-digital',
-  navLabel: 'Ordem de Serviço Digital',
+  navLabel: 'OS Digital, Agenda e Rastreamento',
   icon: ClipboardList,
   metaTitle:
     'Sistema de ordem de serviço digital para equipes de campo | Dominex',
@@ -174,11 +174,11 @@ const osDigital: ModuleData = {
     'Software de ordem de serviço digital para equipes de campo: OS no celular do técnico, checklist, foto antes/depois, assinatura do cliente, app instalável, agenda e relatório em PDF automático. Teste grátis 7 dias, sem cartão.',
 
   hero: {
-    eyebrow: 'Ordem de Serviço Digital',
-    h1: 'Sistema de ordem de serviço digital para equipes de campo',
-    h1Highlight: 'ordem de serviço digital',
+    eyebrow: 'OS Digital, Agenda e Rastreamento',
+    h1: 'OS digital, agenda e rastreamento para equipes de campo',
+    h1Highlight: 'OS digital, agenda e rastreamento',
     subtitle:
-      'Acabe com a OS em papel que some, atrasa e chega sem foto. A Dominex coloca a ordem de serviço no celular do técnico, com checklist, foto, assinatura e relatório pronto na hora, em campo.',
+      'Crie a OS, organize a agenda, distribua o chamado e acompanhe a equipe no mapa. O técnico executa tudo pelo celular, com checklist, fotos, assinatura e relatório pronto na hora.',
   },
 
   metrics: [
@@ -644,7 +644,7 @@ const financeiro: ModuleData = {
 
 const pontoFolha: ModuleData = {
   slug: 'ponto-e-folha',
-  navLabel: 'Ponto & Folha (RH)',
+  navLabel: 'Funcionários (RH)',
   icon: Clock,
   metaTitle:
     'Ponto eletrônico e folha de pagamento para equipes de campo | Dominex',
@@ -652,7 +652,7 @@ const pontoFolha: ModuleData = {
     'Ponto eletrônico e folha de pagamento para equipes de campo: registro de ponto com selfie e geolocalização, banco de horas, folha, vales e gestão de funcionários em um só lugar. Teste grátis 7 dias, sem cartão.',
 
   hero: {
-    eyebrow: 'Ponto & Folha (RH)',
+    eyebrow: 'Funcionários (RH)',
     h1: 'Ponto eletrônico e folha de pagamento para equipes de campo',
     h1Highlight: 'Ponto eletrônico e folha de pagamento',
     subtitle:
@@ -1519,16 +1519,15 @@ export interface ModuleNavLink {
 }
 
 export const MODULE_NAV_LINKS: ModuleNavLink[] = [
-  { label: 'Ordem de Serviço Digital', slug: 'os-digital', icon: ClipboardList },
+  { label: 'OS Digital, Agenda e Rastreamento', slug: 'os-digital', icon: ClipboardList },
   { label: 'PMOC', slug: 'sistema-pmoc', icon: ShieldCheck },
   { label: 'CRM & Vendas', slug: 'sistema-crm', icon: Users },
   { label: 'Financeiro', slug: 'controle-financeiro', icon: Wallet },
-  { label: 'Ponto & Folha (RH)', slug: 'ponto-e-folha', icon: Clock },
+  { label: 'Funcionários (RH)', slug: 'ponto-e-folha', icon: Clock },
   { label: 'Emissão de Nota Fiscal', slug: 'emissao-de-nota-fiscal', icon: FileText },
   { label: 'Portal do Cliente', slug: 'portal-do-cliente', icon: UserCircle },
   { label: 'Estoque', slug: 'controle-de-estoque', icon: Boxes },
   { label: 'Orçamentos & Contratos', slug: 'orcamentos-e-contratos', icon: FileSignature },
-  { label: 'Rastreamento & Agenda', slug: 'rastreamento-de-equipes', icon: MapPin },
   { label: 'Área do Técnico™', slug: 'area-do-tecnico', icon: Wrench },
   { label: 'WhatsApp integrado', slug: 'integracao-whatsapp', icon: MessageCircleMore },
   { label: 'Cobranças', slug: 'cobrancas-automaticas', icon: BadgeDollarSign },

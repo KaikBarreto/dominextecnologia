@@ -251,7 +251,7 @@ export const esOverrides: MessagesOverride = {
     segmentsMenuAria: 'Nuestros sectores',
     segmentsMenuHeader: 'Nuestros sectores',
     solutionTaglines: {
-      'os-digital': 'Órdenes de trabajo en la app, con fotos, checklists y firma del cliente.',
+      'os-digital': 'Órdenes en la app, agenda organizada y equipo en el mapa en vivo.',
       'sistema-pmoc': 'Planes de mantenimiento automáticos por equipo, en el calendario.',
       'sistema-crm': 'Embudo de clientes y propuestas hasta cerrar la venta.',
       'controle-financeiro': 'Cuentas por pagar, por cobrar y flujo de caja bajo control.',
@@ -278,11 +278,11 @@ export const esOverrides: MessagesOverride = {
   },
 
   moduleLabels: {
-    'os-digital': 'Órdenes de Trabajo Digitales',
+    'os-digital': 'Órdenes, Agenda y Rastreo',
     'sistema-pmoc': 'Planes de Mantenimiento',
     'sistema-crm': 'CRM y Ventas',
     'controle-financeiro': 'Finanzas',
-    'ponto-e-folha': 'Asistencia y Nómina (RR. HH.)',
+    'ponto-e-folha': 'Empleados (RR. HH.)',
     'emissao-de-nota-fiscal': 'Facturación de Servicios',
     'portal-do-cliente': 'Portal del Cliente',
     'controle-de-estoque': 'Inventario',
@@ -380,19 +380,14 @@ export const esOverrides: MessagesOverride = {
       cta: 'Hablar por WhatsApp',
       items: [
         {
-          title: 'Órdenes de trabajo digitales',
+          title: 'Órdenes, Agenda y Rastreo',
           description:
-            'Crea, asigna y sigue órdenes de trabajo con fotos, checklists, respuestas en video, firma digital e historial completo. Sin más papel ni retrabajo.',
+            'Crea y sigue órdenes con fotos, checklists y firmas. Organiza la agenda, distribuye los avisos y mira al equipo en el mapa en vivo.',
         },
         {
           title: 'App del técnico en el campo',
           description:
             'App móvil instalable: el técnico recibe la orden de trabajo, hace check-in, toma fotos y recoge la firma del cliente, directo desde el campo.',
-        },
-        {
-          title: 'Programación y rastreo del equipo',
-          description:
-            'Mira al equipo en un mapa en vivo, planifica la ruta del día y envía los avisos al técnico más cercano, sin conflictos de agenda.',
         },
         {
           title: 'Planes de mantenimiento automáticos',
@@ -410,7 +405,7 @@ export const esOverrides: MessagesOverride = {
             'Cuentas por pagar y por cobrar, flujo de caja, tarjetas y categorías. Sabe qué entra, qué sale y cuánto de verdad te queda.',
         },
         {
-          title: 'Asistencia y nómina (RR. HH.)',
+          title: 'Empleados (RR. HH.)',
           description:
             'Control de asistencia del equipo, anticipos, bonos y nómina. Recibos listos, sin planilla aparte.',
         },

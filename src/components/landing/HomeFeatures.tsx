@@ -9,7 +9,6 @@ import {
   Clock,
   DollarSign,
   FileText,
-  Map,
   MessageCircleMore,
   Package,
   Receipt,
@@ -28,7 +27,6 @@ import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 const HOME_FEATURE_ICONS = [
   ClipboardList,
   Smartphone,
-  Map,
   ClipboardCheck,
   TrendingUp,
   DollarSign,
@@ -48,7 +46,6 @@ const HOME_FEATURE_ICONS = [
 const HOME_FEATURE_SCREENSHOTS = [
   '/guia-tecnico/img/t5-lista-os.jpg',
   '/guia-tecnico/img/t7-os-compartilhada.jpg',
-  '/guia-tecnico/img/t0-dashboard-completo.jpg',
   '/guia-tecnico/img/t3-equipamentos.jpg',
   '/guia-tecnico/img/t10-gerenciar-estagios.jpg',
   '/guia-tecnico/img/t13-financeiro-contas.jpg',

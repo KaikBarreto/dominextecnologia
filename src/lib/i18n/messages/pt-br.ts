@@ -49,7 +49,7 @@ export const ptBr = {
     segmentsMenuHeader: 'Nossos segmentos',
     // Taglines do mega-menu Soluções, chaveadas pelo slug do módulo.
     solutionTaglines: {
-      'os-digital': 'OS no app, com foto, checklist e assinatura do cliente.',
+      'os-digital': 'OS no app, agenda organizada e equipe no mapa ao vivo.',
       'sistema-pmoc': 'Relatório PMOC automático pela Lei 13.589/2018.',
       'sistema-crm': 'Funil de clientes e propostas até fechar o negócio.',
       'controle-financeiro': 'Contas a pagar, a receber e fluxo de caixa no controle.',
@@ -81,11 +81,11 @@ export const ptBr = {
 
   // ── Nomes exibidos dos módulos no menu/rodapé, chaveados pelo slug ────────
   moduleLabels: {
-    'os-digital': 'Ordem de Serviço Digital',
+    'os-digital': 'OS Digital, Agenda e Rastreamento',
     'sistema-pmoc': 'PMOC',
     'sistema-crm': 'CRM & Vendas',
     'controle-financeiro': 'Financeiro',
-    'ponto-e-folha': 'Ponto & Folha (RH)',
+    'ponto-e-folha': 'Funcionários (RH)',
     'emissao-de-nota-fiscal': 'Emissão de Nota Fiscal',
     'portal-do-cliente': 'Portal do Cliente',
     'controle-de-estoque': 'Estoque',
@@ -208,19 +208,14 @@ export const ptBr = {
       cta: 'Falar no WhatsApp',
       items: [
         {
-          title: 'Ordens de serviço digitais',
+          title: 'OS Digital, Agenda e Rastreamento',
           description:
-            'Crie, atribua e acompanhe OS com foto, checklist, resposta em vídeo, assinatura digital e histórico completo. Acabou o papel e o retrabalho.',
+            'Crie e acompanhe OS com fotos, checklist e assinatura. Organize a agenda, distribua os chamados e veja a equipe no mapa ao vivo.',
         },
         {
           title: 'App do técnico em campo',
           description:
             'Aplicativo instalável no celular: o técnico recebe a OS, faz check-in, tira fotos e coleta a assinatura do cliente, direto do campo.',
-        },
-        {
-          title: 'Agenda e rastreamento de equipes',
-          description:
-            'Veja a equipe no mapa ao vivo, organize a rota do dia e distribua chamados pelo técnico mais próximo, sem conflito de horário.',
         },
         {
           title: 'PMOC automático',
@@ -238,7 +233,7 @@ export const ptBr = {
             'Contas a pagar e a receber, fluxo de caixa, cartões e categorias. Saiba quanto entra, quanto sai e o que sobra de verdade.',
         },
         {
-          title: 'Ponto e folha (RH)',
+          title: 'Funcionários (RH)',
           description:
             'Controle de ponto da equipe, vales, bônus e folha de pagamento. Recibos prontos, sem planilha paralela.',
         },

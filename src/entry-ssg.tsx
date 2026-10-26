@@ -621,7 +621,9 @@ function buildRouteEntry(basePath: string, locale: LocaleCode): RouteEntry | und
  */
 function buildBaseRoutes(): string[] {
   const segRoutes = getAllSegmentSlugs().map((slug) => `/${slug}`);
-  const modRoutes = getAllModuleSlugs().map((slug) => `/${slug}`);
+  const modRoutes = getAllModuleSlugs()
+    .filter((slug) => slug !== 'rastreamento-de-equipes')
+    .map((slug) => `/${slug}`);
   return [
     '/',
     ...segRoutes,

@@ -18,7 +18,7 @@
 
 import { Navigate, Route } from 'react-router-dom';
 import type { ReactElement } from 'react';
-import { PREFIXED_LOCALES, slugFor } from '@/lib/i18n';
+import { PREFIXED_LOCALES, slugFor, useLocale } from '@/lib/i18n';
 
 import SistemaParaRefrigeracao from '@/pages/segmentos/SistemaParaRefrigeracao';
 import SistemaParaEletricistas from '@/pages/segmentos/SistemaParaEletricistas';
@@ -40,7 +40,6 @@ import EmissaoDeNfse from '@/pages/modulos/EmissaoDeNfse';
 import PortalDoCliente from '@/pages/modulos/PortalDoCliente';
 import ControleDeEstoque from '@/pages/modulos/ControleDeEstoque';
 import OrcamentosEContratos from '@/pages/modulos/OrcamentosEContratos';
-import RastreamentoDeEquipes from '@/pages/modulos/RastreamentoDeEquipes';
 import AreaDoTecnico from '@/pages/modulos/AreaDoTecnico';
 import IntegracaoWhatsapp from '@/pages/modulos/IntegracaoWhatsapp';
 import CobrancasAutomaticas from '@/pages/modulos/CobrancasAutomaticas';
@@ -72,12 +71,16 @@ const WRAPPER_BY_KEY: Record<string, ReactElement> = {
   'portal-do-cliente': <PortalDoCliente />,
   'controle-de-estoque': <ControleDeEstoque />,
   'orcamentos-e-contratos': <OrcamentosEContratos />,
-  'rastreamento-de-equipes': <RastreamentoDeEquipes />,
   'area-do-tecnico': <AreaDoTecnico />,
   'integracao-whatsapp': <IntegracaoWhatsapp />,
   'cobrancas-automaticas': <CobrancasAutomaticas />,
   'pdv-e-loja': <PdvELoja />,
 };
+
+function LegacyTrackingRedirect() {
+  const { locale } = useLocale();
+  return <Navigate to={`../${slugFor('os-digital', locale)}`} replace />;
+}
 
 /**
  * Gera as <Route> de segmento/módulo do bloco /:lang, com o slug de cada idioma
@@ -92,6 +95,19 @@ export function localizedSegmentModuleRoutes(): ReactElement[] {
       element={<Navigate to="../emissao-de-nota-fiscal" replace />}
     />,
   ];
+  const legacyTrackingSlugs = new Set<string>([
+    'rastreamento-de-equipes',
+    ...PREFIXED_LOCALES.map((locale) => slugFor('rastreamento-de-equipes', locale)),
+  ]);
+  for (const slug of legacyTrackingSlugs) {
+    routes.push(
+      <Route
+        key={`legacy:rastreamento-de-equipes:${slug}`}
+        path={slug}
+        element={<LegacyTrackingRedirect />}
+      />,
+    );
+  }
   for (const key of Object.keys(WRAPPER_BY_KEY)) {
     const element = WRAPPER_BY_KEY[key];
     // Conjunto de slugs distintos entre os idiomas prefixados (hoje = { pt-br }).

@@ -55,15 +55,15 @@ const es: ModuleContentMap = {
   // ────────────────────────────────────────────────────────────────────────
   'os-digital': {
     slug: 'software-ordenes-de-trabajo',
-    metaTitle: 'Software de órdenes de trabajo para equipos de campo | Dominex',
+    metaTitle: 'Órdenes digitales, agenda y rastreo de equipos | Dominex',
     metaDescription:
-      'Software de órdenes de trabajo digitales para equipos de campo: órdenes en el móvil del técnico, listas de verificación, fotos de antes y después, firma del cliente, app instalable, agenda e informe PDF automático. Prueba gratis 7 días, sin tarjeta.',
+      'Órdenes digitales, agenda y rastreo de equipos en un solo sistema: app del técnico, checklists, fotos, firmas, mapa en vivo e informes PDF. Prueba gratis 7 días, sin tarjeta.',
     hero: {
-      eyebrow: 'Órdenes de trabajo digitales',
-      h1: 'Software de órdenes de trabajo para equipos de campo',
-      h1Highlight: 'órdenes de trabajo digitales',
+      eyebrow: 'Órdenes, Agenda y Rastreo',
+      h1: 'Órdenes digitales, agenda y rastreo para equipos de campo',
+      h1Highlight: 'Órdenes digitales, agenda y rastreo',
       subtitle:
-        'Despídete de las órdenes en papel que se pierden, llegan tarde y aparecen sin fotos. Dominex pone la orden de trabajo en el móvil de tu técnico, con lista de verificación, fotos, firma y un informe que queda listo en el momento, en pleno campo.',
+        'Crea la orden, organiza la agenda, distribuye el aviso y sigue al equipo en el mapa. El técnico completa todo desde el móvil con checklist, fotos, firma e informe inmediato.',
     },
     metrics: [
       { value: '50k+', label: 'órdenes de trabajo al mes en la plataforma' },
@@ -124,8 +124,8 @@ const es: ModuleContentMap = {
         },
       },
     ],
-    featuresHeading: 'Todo lo que tu orden de trabajo necesita, en un solo lugar',
-    featuresSubheading: 'Desde la solicitud hasta el informe, las órdenes digitales cubren cada paso',
+    featuresHeading: 'Desde la agenda hasta el informe, todo conectado',
+    featuresSubheading: 'Organiza el servicio, sigue al equipo y comprueba cada etapa de la orden',
     features: [
       { icon: ClipboardList, title: 'Creación rápida de órdenes', desc: 'Abre órdenes de instalación, mantenimiento y reparación en segundos, ya vinculadas al cliente y al equipo.' },
       { icon: CheckSquare, title: 'Lista de verificación por servicio', desc: 'Plantillas de lista por tipo de servicio mantienen cada visita en el camino correcto.' },
@@ -154,8 +154,8 @@ const es: ModuleContentMap = {
       { q: '¿Cómo empiezo? ¿Necesito tarjeta de crédito?', a: 'Solo crea una cuenta y úsala gratis durante 7 días, sin tarjeta de crédito. Configuras tu empresa en minutos y empiezas a abrir órdenes en la app.' },
     ],
     finalCta: {
-      title: 'Pasa tus órdenes de trabajo a digital',
-      subtitle: 'Gratis durante 7 días, sin tarjeta de crédito. Saca las órdenes del papel y pon a tu equipo de campo en control.',
+      title: 'Pon la operación de campo bajo control',
+      subtitle: 'Gratis durante 7 días, sin tarjeta. Digitaliza las órdenes, organiza la agenda y sigue al equipo en el mapa.',
     },
   },
 
@@ -490,7 +490,7 @@ const es: ModuleContentMap = {
     metaDescription:
       'Control horario y nómina para equipos de campo: fichaje con selfi y geolocalización, un balance de horas extra, nómina, anticipos y gestión de empleados, todo en un solo lugar. Prueba gratis 7 días, sin tarjeta.',
     hero: {
-      eyebrow: 'Control horario y nómina (RRHH)',
+      eyebrow: 'Empleados (RR. HH.)',
       h1: 'Control horario y nómina para equipos de campo',
       h1Highlight: 'Control horario y nómina',
       subtitle:

@@ -251,7 +251,7 @@ export const enOverrides: MessagesOverride = {
     segmentsMenuAria: 'Our industries',
     segmentsMenuHeader: 'Our industries',
     solutionTaglines: {
-      'os-digital': 'Work orders in the app, with photos, checklists and customer signature.',
+      'os-digital': 'Work orders in the app, organized scheduling and a live team map.',
       'sistema-pmoc': 'Automatic maintenance plans per equipment, on schedule.',
       'sistema-crm': 'Client pipeline and proposals all the way to closing the deal.',
       'controle-financeiro': 'Payables, receivables and cash flow under control.',
@@ -278,11 +278,11 @@ export const enOverrides: MessagesOverride = {
   },
 
   moduleLabels: {
-    'os-digital': 'Digital Work Orders',
+    'os-digital': 'Work Orders, Scheduling & Tracking',
     'sistema-pmoc': 'Maintenance Plans',
     'sistema-crm': 'CRM & Sales',
     'controle-financeiro': 'Finance',
-    'ponto-e-folha': 'Time & Payroll (HR)',
+    'ponto-e-folha': 'Employees (HR)',
     'emissao-de-nota-fiscal': 'Service Invoicing',
     'portal-do-cliente': 'Client Portal',
     'controle-de-estoque': 'Inventory',
@@ -380,19 +380,14 @@ export const enOverrides: MessagesOverride = {
       cta: 'Chat on WhatsApp',
       items: [
         {
-          title: 'Digital work orders',
+          title: 'Work Orders, Scheduling & Tracking',
           description:
-            'Create, assign and track work orders with photos, checklists, video responses, digital signature and full history. No more paper and rework.',
+            'Create and track work orders with photos, checklists and signatures. Organize the schedule, dispatch jobs and see the team on a live map.',
         },
         {
           title: 'Technician app in the field',
           description:
             'Installable mobile app: the technician receives the work order, checks in, takes photos and collects the customer signature, right from the field.',
-        },
-        {
-          title: 'Scheduling and team tracking',
-          description:
-            'See the team on a live map, plan the day route and route service calls to the nearest technician, with no schedule conflicts.',
         },
         {
           title: 'Automatic maintenance plans',
@@ -410,7 +405,7 @@ export const enOverrides: MessagesOverride = {
             'Payables and receivables, cash flow, cards and categories. Know what comes in, what goes out and what you actually keep.',
         },
         {
-          title: 'Time and payroll (HR)',
+          title: 'Employees (HR)',
           description:
             'Team time tracking, advances, bonuses and payroll. Pay slips ready, with no side spreadsheet.',
         },

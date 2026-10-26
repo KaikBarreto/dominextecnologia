@@ -23,7 +23,6 @@ Allow: /emissao-de-nota-fiscal
 Allow: /portal-do-cliente
 Allow: /controle-de-estoque
 Allow: /orcamentos-e-contratos
-Allow: /rastreamento-de-equipes
 Allow: /area-do-tecnico
 Allow: /integracao-whatsapp
 Allow: /cobrancas-automaticas

@@ -59,6 +59,26 @@ export function getModuleData(
   const content = localeMap?.[contentKey] ?? ptBr[contentKey];
   if (!content) return undefined;
 
+  // Agenda e rastreamento fazem parte do mesmo fluxo operacional da OS.
+  // Mantemos o conteúdo antigo como fonte das traduções e das imagens, mas a
+  // página pública de OS apresenta tudo como uma única solução. Os índices
+  // abaixo evitam duplicar a agenda, que já existe na lista principal.
+  const trackingContent =
+    localeMap?.['rastreamento-de-equipes'] ?? ptBr['rastreamento-de-equipes'];
+  const mergedContent =
+    contentKey === 'os-digital' && trackingContent
+      ? {
+          ...content,
+          pains: [...content.pains, ...trackingContent.pains],
+          deepDives: [...content.deepDives, ...trackingContent.deepDives],
+          features: [
+            ...content.features,
+            ...[0, 2, 3, 5].map((index) => trackingContent.features[index]).filter(Boolean),
+          ],
+          faq: [...content.faq, ...trackingContent.faq.slice(0, 4)],
+        }
+      : content;
+
   // Funde identidade + conteúdo numa única estrutura ModuleData.
   return {
     // Identidade (invariante por idioma)
@@ -69,7 +89,7 @@ export function getModuleData(
       techNicheSelector: identity.techNicheSelector,
     }),
     // Conteúdo (traduzível)
-    ...content,
+    ...mergedContent,
   };
 }
 

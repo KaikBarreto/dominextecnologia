@@ -59,15 +59,15 @@ const ptBr: ModuleContentMap = {
   // 1. OS Digital
   // ────────────────────────────────────────────────────────────────────────
   'os-digital': {
-    metaTitle: 'Sistema de ordem de serviço digital para equipes de campo | Dominex',
+    metaTitle: 'OS digital, agenda e rastreamento de equipes | Dominex',
     metaDescription:
-      'Software de ordem de serviço digital para equipes de campo: OS no celular do técnico, checklist, foto antes/depois, assinatura do cliente, app instalável, agenda e relatório em PDF automático. Teste grátis 7 dias, sem cartão.',
+      'OS digital, agenda e rastreamento de equipes em um só sistema: aplicativo do técnico, checklist, fotos, assinatura, mapa ao vivo e relatório em PDF. Teste grátis 7 dias, sem cartão.',
     hero: {
-      eyebrow: 'Ordem de Serviço Digital',
-      h1: 'Sistema de ordem de serviço digital para equipes de campo',
-      h1Highlight: 'ordem de serviço digital',
+      eyebrow: 'OS Digital, Agenda e Rastreamento',
+      h1: 'OS digital, agenda e rastreamento para equipes de campo',
+      h1Highlight: 'OS digital, agenda e rastreamento',
       subtitle:
-        'Acabe com a OS em papel que some, atrasa e chega sem foto. A Dominex coloca a ordem de serviço no celular do técnico, com checklist, foto, assinatura e relatório pronto na hora, em campo.',
+        'Crie a OS, organize a agenda, distribua o chamado e acompanhe a equipe no mapa. O técnico executa tudo pelo celular, com checklist, fotos, assinatura e relatório pronto na hora.',
     },
     metrics: [
       { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
@@ -128,8 +128,8 @@ const ptBr: ModuleContentMap = {
         },
       },
     ],
-    featuresHeading: 'Tudo que sua OS precisa, em um só lugar',
-    featuresSubheading: 'Do chamado ao relatório, a ordem de serviço digital cobre cada etapa',
+    featuresHeading: 'Da agenda ao relatório, tudo conectado',
+    featuresSubheading: 'Organize o atendimento, acompanhe a equipe e comprove cada etapa da OS',
     features: [
       { icon: ClipboardList, title: 'Criação rápida de OS', desc: 'Abra ordens de instalação, manutenção e corretiva em segundos, já com cliente e equipamento vinculados.' },
       { icon: CheckSquare, title: 'Checklist por serviço', desc: 'Modelos de checklist por tipo de atendimento garantem o passo a passo certo em cada visita.' },
@@ -158,8 +158,8 @@ const ptBr: ModuleContentMap = {
       { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você configura a empresa em minutos e já começa a abrir ordens de serviço no app.' },
     ],
     finalCta: {
-      title: 'Coloque a ordem de serviço no digital',
-      subtitle: '7 dias grátis, sem cartão. Tire a OS do papel e ponha sua equipe de campo no controle.',
+      title: 'Coloque a operação de campo no controle',
+      subtitle: '7 dias grátis, sem cartão. Digitalize as OS, organize a agenda e acompanhe a equipe no mapa.',
     },
   },
 
@@ -490,7 +490,7 @@ const ptBr: ModuleContentMap = {
     metaDescription:
       'Ponto eletrônico e folha de pagamento para equipes de campo: registro de ponto com selfie e geolocalização, banco de horas, folha, vales e gestão de funcionários em um só lugar. Teste grátis 7 dias, sem cartão.',
     hero: {
-      eyebrow: 'Ponto & Folha (RH)',
+      eyebrow: 'Funcionários (RH)',
       h1: 'Ponto eletrônico e folha de pagamento para equipes de campo',
       h1Highlight: 'Ponto eletrônico e folha de pagamento',
       subtitle:

@@ -82,7 +82,6 @@ const LLMS_ROUTE_GROUPS = [
       '/portal-do-cliente',
       '/controle-de-estoque',
       '/orcamentos-e-contratos',
-      '/rastreamento-de-equipes',
       '/area-do-tecnico',
       '/integracao-whatsapp',
       '/cobrancas-automaticas',

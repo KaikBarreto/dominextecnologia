@@ -104,7 +104,6 @@ import EmissaoDeNfse from "./pages/modulos/EmissaoDeNfse";
 import PortalDoCliente from "./pages/modulos/PortalDoCliente";
 import ControleDeEstoque from "./pages/modulos/ControleDeEstoque";
 import OrcamentosEContratos from "./pages/modulos/OrcamentosEContratos";
-import RastreamentoDeEquipes from "./pages/modulos/RastreamentoDeEquipes";
 import AreaDoTecnico from "./pages/modulos/AreaDoTecnico";
 import IntegracaoWhatsapp from "./pages/modulos/IntegracaoWhatsapp";
 import CobrancasAutomaticas from "./pages/modulos/CobrancasAutomaticas";
@@ -609,7 +608,7 @@ const publicMarketingRoutes = () => (
     <Route path="portal-do-cliente" element={<PortalDoCliente />} />
     <Route path="controle-de-estoque" element={<ControleDeEstoque />} />
     <Route path="orcamentos-e-contratos" element={<OrcamentosEContratos />} />
-    <Route path="rastreamento-de-equipes" element={<RastreamentoDeEquipes />} />
+    <Route path="rastreamento-de-equipes" element={<Navigate to="/os-digital" replace />} />
     <Route path="area-do-tecnico" element={<AreaDoTecnico />} />
     <Route path="integracao-whatsapp" element={<IntegracaoWhatsapp />} />
     <Route path="cobrancas-automaticas" element={<CobrancasAutomaticas />} />
