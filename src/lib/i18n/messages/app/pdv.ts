@@ -207,13 +207,13 @@ export const pdv = {
             'Este cliente não tem limite de crédito definido. A venda passa, mas sem teto.',
         },
       },
-      // Pós-venda. Fica visível na tela já limpa, pronta pro próximo cliente:
-      // balcão é fila, então nada de modal de sucesso pedindo clique.
+      // Pós-venda em TOAST (um só, sucesso + avisos juntos — ver `Pdv.tsx`).
+      // Balcão é fila: nada de modal de sucesso pedindo clique, e nada de
+      // faixa fixa roubando altura da grade de produtos.
       saleSuccess: {
         title: 'Venda nº {number} finalizada',
         total: 'Total {value}',
         change: 'Troco {value}',
-        dismiss: 'Fechar aviso',
         warnings: {
           local_nao_e_de_loja:
             'O local de estoque desta venda não está marcado como Loja. A baixa foi feita, mas vale ajustar em Configurações de Estoque.',
@@ -752,7 +752,6 @@ export const pdv = {
         title: 'Sale #{number} completed',
         total: 'Total {value}',
         change: 'Change {value}',
-        dismiss: 'Dismiss',
         warnings: {
           local_nao_e_de_loja:
             'The stock location of this sale is not marked as Store. Stock was deducted anyway, but it is worth fixing in Stock Settings.',
@@ -1290,7 +1289,6 @@ export const pdv = {
         title: 'Venta n.º {number} finalizada',
         total: 'Total {value}',
         change: 'Vuelto {value}',
-        dismiss: 'Cerrar aviso',
         warnings: {
           local_nao_e_de_loja:
             'El depósito de esta venta no está marcado como Tienda. La baja se hizo igual, pero conviene ajustarlo en Configuración de Stock.',
@@ -1819,7 +1817,6 @@ export const pdv = {
         title: 'Vente nº {number} finalisée',
         total: 'Total {value}',
         change: 'Monnaie {value}',
-        dismiss: `Fermer l'avis`,
         warnings: {
           local_nao_e_de_loja: `L'emplacement de stock de cette vente n'est pas marqué comme Boutique. La sortie a bien été faite, mais il vaut mieux corriger dans les Réglages de Stock.`,
           cliente_sem_limite_definido: `Le client n'a pas de limite de crédit définie.`,

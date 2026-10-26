@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Search, ShoppingBasket, CheckCircle2, X, ArrowLeft, Barcode } from 'lucide-react';
+import { ShoppingCart, Search, ShoppingBasket, ArrowLeft, Barcode } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -318,12 +318,6 @@ export default function Pdv() {
   const pendingAttachments = activeDraft ? attachmentsByDraft[activeDraft.id] ?? [] : [];
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(false);
-  const [saleSuccess, setSaleSuccess] = useState<{
-    number: number;
-    total: number;
-    change: number;
-    warnings: SaleWarningCode[];
-  } | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -677,9 +671,6 @@ export default function Pdv() {
   }
 
   function tryAdd(p: PdvGridProduct, quantity: number) {
-    // Item novo no carrinho = venda nova: o aviso da venda anterior sai da
-    // tela pra não confundir o troco de quem já foi embora com o desta.
-    setSaleSuccess(null);
     const result = addItem(cart, toProduct(p), quantity);
     // `=== false` (não `!result.ok`): sem strictNullChecks neste tsconfig, a
     // negação bare não estreita o discriminated union.
@@ -887,7 +878,6 @@ export default function Pdv() {
       editDraft: saleEditDrafts[activeDraft.id] ?? null,
       attachments: [...(attachmentsByDraft[activeDraft.id] ?? [])],
     };
-    setSaleSuccess(null);
     setCartDrawerOpen(false);
     setPaymentOpen(true);
   }
@@ -1035,11 +1025,41 @@ export default function Pdv() {
     // Remove EXATAMENTE o rascunho finalizado. Outro pedido que esteja ativo
     // (por storage event/troca rápida) não é limpo nem recebe o cliente dele.
     deleteDraft(draftId);
-    setSaleSuccess({
-      number: Number(result.numero) || 0,
-      total: Number(result.total) || 0,
-      change: Math.round(change * 100) / 100,
-      warnings: extractSaleWarnings(result.avisos),
+
+    // Pós-venda em TOAST, não em faixa fixa na tela (pedido do CEO 2026-10-26:
+    // "esse verde e amarelo tinha que aparecer como toasts").
+    //
+    // É UM toast só, carregando sucesso + avisos juntos: o `TOAST_LIMIT` do app
+    // é 1 (`src/hooks/use-toast.ts`), então um segundo `toast()` disparado na
+    // sequência MATA o primeiro — o aviso da RPC comeria o número do pedido e
+    // o troco. Por isso o aviso entra como faixa saturada DENTRO do corpo
+    // (régua de aviso = `NoticeBanner`, nunca texto âmbar solto).
+    const saleNumber = Number(result.numero) || 0;
+    const saleTotal = Number(result.total) || 0;
+    const saleChange = Math.round(change * 100) / 100;
+    const saleWarnings = extractSaleWarnings(result.avisos);
+    toast({
+      title: t.saleSuccess.title.replace('{number}', String(saleNumber)),
+      // `ToastDescription` é um <div> (Radix), então <div>/NoticeBanner aqui
+      // dentro é aninhamento válido — não trocar por <span>.
+      description: (
+        <div className="space-y-1.5">
+          <div className="font-semibold tabular-nums text-foreground">
+            {t.saleSuccess.total.replace('{value}', formatCurrency(saleTotal))}
+            {saleChange > 0
+              ? ` · ${t.saleSuccess.change.replace('{value}', formatCurrency(saleChange))}`
+              : ''}
+          </div>
+          {saleWarnings.map((code) => (
+            <NoticeBanner key={code} variant="warning" className="px-2 py-1.5 text-xs">
+              {t.saleSuccess.warnings[code]}
+            </NoticeBanner>
+          ))}
+        </div>
+      ),
+      // Toast some sozinho, e isto é dinheiro: troco e aviso ficam MUITO mais
+      // tempo na tela que o padrão (5s) pra o operador conferir sem correr.
+      duration: saleChange > 0 || saleWarnings.length > 0 ? 15000 : 8000,
     });
     setTimeout(() => searchInputRef.current?.focus(), 0);
   }
@@ -1300,7 +1320,6 @@ export default function Pdv() {
   }, [
     isMobileCart,
     isLoadingPdv,
-    saleSuccess,
     categoryTabs.length,
     hiddenCategoryTabs.length,
     hasOpenCashSession,
@@ -1551,44 +1570,6 @@ export default function Pdv() {
         >
           {t.editDraft.description}
         </NoticeBanner>
-      )}
-
-      {/* Pós-venda. Fica AQUI (acima da busca, fora do carrinho) de propósito:
-          no mobile o resumo vive dentro do drawer, que fecha ao finalizar, e o
-          operador perderia justamente o número do pedido e o TROCO. */}
-      {saleSuccess && (
-        <div className="space-y-2">
-          <NoticeBanner
-            variant="success"
-            icon={CheckCircle2}
-            title={t.saleSuccess.title.replace('{number}', String(saleSuccess.number))}
-            action={
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-success-foreground hover:bg-success-foreground/10"
-                onClick={() => setSaleSuccess(null)}
-                aria-label={t.saleSuccess.dismiss}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            }
-          >
-            <span className="font-semibold tabular-nums">
-              {t.saleSuccess.total.replace('{value}', formatCurrency(saleSuccess.total))}
-              {saleSuccess.change > 0
-                ? ` · ${t.saleSuccess.change.replace('{value}', formatCurrency(saleSuccess.change))}`
-                : ''}
-            </span>
-          </NoticeBanner>
-          {/* Aviso da RPC aparece, nunca é engolido. */}
-          {saleSuccess.warnings.map((code) => (
-            <NoticeBanner key={code} variant="warning">
-              {t.saleSuccess.warnings[code]}
-            </NoticeBanner>
-          ))}
-        </div>
       )}
 
       <div
