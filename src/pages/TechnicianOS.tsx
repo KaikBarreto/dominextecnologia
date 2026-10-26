@@ -91,6 +91,7 @@ import { PublicAppLocaleProvider, useAppLocaleContext } from '@/contexts/AppLoca
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
+import { canShareServiceOrder } from '@/lib/serviceOrderAccess';
 import { CustomerWhatsAppLink } from '@/components/CustomerWhatsAppLink';
 import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
@@ -963,7 +964,7 @@ function TechnicianOSInner() {
   }, [checklistGroups]);
   // Copia o link público de acompanhamento e mostra toast (link gerado já copia no ato).
   const handleCopyTrackingLink = async () => {
-    if (!id) return;
+    if (!id || !canShareServiceOrder(serviceOrder)) return;
     try {
       const link = buildServiceOrderShareLink({
         shortCode: (serviceOrder as any)?.public_short_code,
@@ -2102,6 +2103,7 @@ function TechnicianOSInner() {
   // Selo de conformidade PMOC (Lei Federal 13.589/2018). No modo cliente (anon)
   // o hook `useIsPmocOrder` não passa na RLS, então derivamos do payload público.
   const isPublicMode = forceReadOnly;
+  const canShareCurrentOrder = canShareServiceOrder(serviceOrder);
   const isPmocPublic = publicContract?.is_pmoc === true;
 
   // Pergunta de receita ao finalizar. Esta página troca a TELA INTEIRA assim que
@@ -3277,12 +3279,14 @@ function TechnicianOSInner() {
         </div>
 
         {/* Rodapé de ações fixo (desktop) — link público da OS. */}
-        <OsActionFooter>
-          <Button variant="outline" className="flex-1" onClick={handleCopyTrackingLink}>
-            {trackingLinkCopied ? <Check className="h-4 w-4 mr-2" /> : <Link2 className="h-4 w-4 mr-2" />}
-            {trackingLinkCopied ? tPublic.btnLinkCopied : tPublic.btnCopyLink}
-          </Button>
-        </OsActionFooter>
+        {canShareCurrentOrder && (
+          <OsActionFooter>
+            <Button variant="outline" className="flex-1" onClick={handleCopyTrackingLink}>
+              {trackingLinkCopied ? <Check className="h-4 w-4 mr-2" /> : <Link2 className="h-4 w-4 mr-2" />}
+              {trackingLinkCopied ? tPublic.btnLinkCopied : tPublic.btnCopyLink}
+            </Button>
+          </OsActionFooter>
+        )}
 
         {/* Photo preview modal */}
         <ImagePreviewModal
@@ -4516,19 +4520,21 @@ function TechnicianOSInner() {
                     </span>
                     <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnPauseOS}</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => { closeDesktopActions(); handleCopyTrackingLink(); }}
-                    className={cn(
-                      'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
-                      desktopActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
-                    )}
-                  >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
-                      <Link2 className="h-4 w-4" />
-                    </span>
-                    <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnCopyClientLink}</span>
-                  </button>
+                  {canShareCurrentOrder && (
+                    <button
+                      type="button"
+                      onClick={() => { closeDesktopActions(); handleCopyTrackingLink(); }}
+                      className={cn(
+                        'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
+                        desktopActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
+                      )}
+                    >
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                        <Link2 className="h-4 w-4" />
+                      </span>
+                      <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnCopyClientLink}</span>
+                    </button>
+                  )}
                 </div>
               </>
             )}
@@ -4651,19 +4657,21 @@ function TechnicianOSInner() {
                 <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnFinalizeOS}</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => { closeMobileActions(); handleCopyTrackingLink(); }}
-              className={cn(
-                'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
-                mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
-              )}
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
-                <Link2 className="h-4 w-4" />
-              </span>
-              <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnCopyOsLink}</span>
-            </button>
+            {canShareCurrentOrder && (
+              <button
+                type="button"
+                onClick={() => { closeMobileActions(); handleCopyTrackingLink(); }}
+                className={cn(
+                  'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
+                  mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
+                )}
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                  <Link2 className="h-4 w-4" />
+                </span>
+                <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnCopyOsLink}</span>
+              </button>
+            )}
             {/* Sair do preenchimento — sempre disponível (equivale ao "Voltar"
                 do header). Garante que o menu nunca fique sem ação útil. */}
             <button

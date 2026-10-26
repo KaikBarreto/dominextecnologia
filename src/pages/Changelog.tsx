@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.47',
+    date: '26 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastro de cliente conclui a configuração do portal',
+        description: 'Ao criar um cliente pelo computador, o sistema agora mantém o identificador do novo cadastro e aplica as opções do portal sem exibir erro nem correr o risco de repetir o cliente ao tentar novamente.',
+        category: 'correcao',
+      },
+      {
+        title: 'Links de OS respeitam a separação de tarefas internas',
+        description: 'Tarefas da agenda não aparecem mais como Ordens de Serviço nem oferecem um link público que não poderia ser aberto pelo cliente. As OS continuam disponíveis normalmente para acompanhamento e relatório.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.37.46',
     date: '25 de outubro de 2026',
     type: 'patch',

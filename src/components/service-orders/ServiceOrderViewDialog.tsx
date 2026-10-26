@@ -37,6 +37,7 @@ import { OsBillingDialog } from './OsBillingDialog';
 import { useServiceOrderBudget, useServiceOrderServiceTypes } from '@/hooks/useServiceOrderBudget';
 import { ServiceOrderBudgetSection } from './ServiceOrderBudgetSection';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { canShareServiceOrder } from '@/lib/serviceOrderAccess';
 
 interface OSPhoto {
   id: string;
@@ -702,7 +703,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         if (onDelete) {
           actions.push({ key: 'delete', icon: Trash2, label: tv.actionDelete, tone: 'destructive', onClick: () => { onOpenChange(false); onDelete(); } });
         }
-        if (serviceOrder.customer_id) {
+        if (canShareServiceOrder(serviceOrder)) {
           actions.push({
             key: 'tracking-link',
             icon: linkCopied ? Check : Link2,

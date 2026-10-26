@@ -34,6 +34,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatDateTime } from '@/lib/format';
 import { formatOSNumberDigits } from '@/lib/osNumber';
+import { canShareServiceOrder } from '@/lib/serviceOrderAccess';
 
 interface OSPhoto {
   id: string;
@@ -807,9 +808,11 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     serviceName: (serviceOrder as any).service_type?.name,
     osId: serviceOrder.id,
   };
-  const shareUrl = buildServiceOrderShareLink(shareLinkParams);
+  const canShare = canShareServiceOrder(serviceOrder);
+  const shareUrl = canShare ? buildServiceOrderShareLink(shareLinkParams) : null;
 
   const handleCopyLink = () => {
+    if (!canShare) return;
     // O PDF mantém a URL estável; só o link copiado ganha uma chave efêmera
     // para o WhatsApp não reutilizar a arte que armazenou antes da atualização.
     const url = buildServiceOrderShareLink({
@@ -1532,16 +1535,18 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
             {/* Link do relatório online desta OS — clicável na tela (href) e no PDF
                 (o renderer lê [data-pdf-link] e sobrepõe uma anotação clicável à
                 imagem). Documento sempre claro/print → cores slate hardcoded. */}
-            <p className="mt-1">
-              <a
-                href={shareUrl}
-                data-pdf-link={shareUrl}
-                className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-700 underline decoration-slate-300 break-all"
-              >
-                <LinkIcon className="h-3 w-3 shrink-0" />
-                {tR.viewReportOnline}
-              </a>
-            </p>
+            {shareUrl && (
+              <p className="mt-1">
+                <a
+                  href={shareUrl}
+                  data-pdf-link={shareUrl}
+                  className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-700 underline decoration-slate-300 break-all"
+                >
+                  <LinkIcon className="h-3 w-3 shrink-0" />
+                  {tR.viewReportOnline}
+                </a>
+              </p>
+            )}
           </div>
 
         </div>
@@ -1562,10 +1567,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
             <Printer className="h-4 w-4 mr-2" />
             {tR.btnPrint}
           </Button>
-          <Button variant="outline" onClick={handleCopyLink}>
-            <Link2 className="h-4 w-4 mr-2" />
-            {tR.btnCopyLink}
-          </Button>
+          {canShare && (
+            <Button variant="outline" onClick={handleCopyLink}>
+              <Link2 className="h-4 w-4 mr-2" />
+              {tR.btnCopyLink}
+            </Button>
+          )}
         </div>
       )}
 
@@ -1603,10 +1610,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="end" className="mb-2 min-w-[12rem]">
-                <DropdownMenuItem onClick={handleCopyLink}>
-                  <Link2 className="h-4 w-4 mr-2" />
-                  {tR.btnCopyLink}
-                </DropdownMenuItem>
+                {canShare && (
+                  <DropdownMenuItem onClick={handleCopyLink}>
+                    <Link2 className="h-4 w-4 mr-2" />
+                    {tR.btnCopyLink}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={handlePrint}>
                   <Printer className="h-4 w-4 mr-2" />
                   {tR.btnPrint}
@@ -1629,10 +1638,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
             <Printer className="h-4 w-4 mr-2" />
             {tR.btnPrint}
           </Button>
-          <Button variant="outline" onClick={handleCopyLink} className="flex-1">
-            <Link2 className="h-4 w-4 mr-2" />
-            {tR.btnCopyLink}
-          </Button>
+          {canShare && (
+            <Button variant="outline" onClick={handleCopyLink} className="flex-1">
+              <Link2 className="h-4 w-4 mr-2" />
+              {tR.btnCopyLink}
+            </Button>
+          )}
         </OsActionFooter>
       )}
 

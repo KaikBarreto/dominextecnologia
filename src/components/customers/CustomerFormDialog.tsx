@@ -95,7 +95,7 @@ interface CustomerFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   customer?: Customer | null;
-  onSubmit: (data: CustomerFormData & { street_number?: string; latitude?: number; longitude?: number }) => Promise<{ id?: string } | void>;
+  onSubmit: (data: CustomerFormData & { street_number?: string; latitude?: number; longitude?: number }) => Promise<{ id: string }>;
   isLoading?: boolean;
   /**
    * Default do "Atende como" ao CRIAR (ignorado ao editar, que sempre lê o

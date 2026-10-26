@@ -83,6 +83,7 @@ import { OsBilledBadge } from '@/components/service-orders/OsBilledBadge';
 import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
 import { isOpenPortalCall } from '@/lib/portalCalls';
 import { ResetServiceOrderDialog } from '@/components/service-orders/ResetServiceOrderDialog';
+import { isServiceOrderEntry } from '@/lib/serviceOrderAccess';
 
 export default function ServiceOrders() {
   const isMobile = useIsMobile();
@@ -194,6 +195,10 @@ export default function ServiceOrders() {
   const hasSearch = searchTerm.trim().length > 0;
 
   const filteredOrders = useMemo(() => {
+    // `service_orders` também armazena tarefas internas da agenda. A tela de OS
+    // nunca deve expor essas tarefas como ordens compartilháveis com o cliente.
+    const ordersOnly = serviceOrders.filter(isServiceOrderEntry);
+
     if (hasSearch) {
       // A exibição não leva mais zero à esquerda ("OS #123", não "OS
       // #000123"), mas quem digitar o formato antigo ("000123" — copiado de
@@ -208,7 +213,7 @@ export default function ServiceOrders() {
       const searchTermNoLeadingZeros = searchTerm.replace(/(^|\D)0+(?=\d)/g, '$1');
 
       // Filtros pausados: base é o universo completo de OS, só a busca restringe.
-      return serviceOrders.filter((os) => {
+      return ordersOnly.filter((os) => {
         const osCode = getOsCode(os);
         const orderNum = formatOSNumberDigits(os.order_number);
         return (
@@ -217,7 +222,6 @@ export default function ServiceOrders() {
           fuzzyIncludes(osCode, searchTermNoLeadingZeros) ||
           fuzzyIncludes(orderNum, searchTermNoLeadingZeros) ||
           fuzzyIncludes((os as any).service_type?.name, searchTerm) ||
-          fuzzyIncludes((os as any).task_title, searchTerm) ||
           fuzzyIncludes((os as any).equipment?.name, searchTerm) ||
           fuzzyIncludes(os.description, searchTerm) ||
           fuzzyIncludes(os.diagnosis, searchTerm) ||
@@ -249,7 +253,7 @@ export default function ServiceOrders() {
     // temporal da tela — combinado com o filtro de status.
     // `keepUndated`: OS sem data marcada NUNCA some da tela de trabalho — é assim
     // que o chamado do portal nasce, e ele mora na coluna fixa do portal no kanban.
-    const baseOrders = filterByDate(serviceOrders, 'scheduled_date', undefined, { keepUndated: true });
+    const baseOrders = filterByDate(ordersOnly, 'scheduled_date', undefined, { keepUndated: true });
     return baseOrders.filter((os) => {
       return statusFilter.length === 0 || statusFilter.includes(os.status);
     });

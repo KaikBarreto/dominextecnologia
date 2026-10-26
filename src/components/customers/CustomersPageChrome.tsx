@@ -92,9 +92,7 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
         open={novoOpen}
         onOpenChange={setNovoOpen}
         customer={null}
-        onSubmit={async (data: any) => {
-          await createCustomer.mutateAsync(data);
-        }}
+        onSubmit={(data) => createCustomer.mutateAsync(data)}
         isLoading={createCustomer.isPending}
       />
 

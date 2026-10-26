@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.46";
+export const APP_VERSION = "1.37.47";
 
 export const VERSION_NOTES =
-  "O comparativo do DRE agora permite escolher períodos com mais facilidade, conferir uma prévia e exportar a planilha na mesma ordem da tela.";
+  "O cadastro de clientes conclui corretamente a configuração do portal, e tarefas internas não aparecem mais como OS compartilháveis.";
