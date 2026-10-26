@@ -1232,4 +1232,66 @@ const fr: ModuleContentMap = {
   },
 };
 
+const legacySalesContent = fr['orcamentos-e-contratos'];
+
+fr['sistema-de-orcamentos'] = {
+  ...legacySalesContent,
+  slug: 'logiciel-de-devis',
+  metaTitle: 'Logiciel de devis et propositions pour les services | Dominex',
+  metaDescription: 'Créez des devis professionnels, envoyez les propositions par lien et transformez l’approbation en ordre de travail.',
+  hero: {
+    eyebrow: 'Devis et propositions',
+    h1: 'Des devis professionnels qui deviennent des interventions',
+    h1Highlight: 'Des devis professionnels',
+    subtitle: 'Calculez le prix avec précision, présentez la proposition à votre image et obtenez l’approbation par lien. Transformez ensuite le périmètre approuvé en ordre de travail.',
+  },
+  pains: [legacySalesContent.pains[0], legacySalesContent.pains[1], legacySalesContent.pains[3]],
+  deepDives: legacySalesContent.deepDives.slice(0, 2).map((item, index) => ({
+    ...item,
+    image: index === 0
+      ? { src: '/guia-tecnico/img/t9-aba-precificacao.jpg', alt: 'Écran réel de tarification des services dans Dominex', fit: 'contain' as const }
+      : { src: '/guia-tecnico/img/t9-orcamento-publico.jpg', alt: 'Proposition publique Dominex ouverte pour approbation', fit: 'contain' as const },
+  })),
+  featuresHeading: 'Vendez avec une marge claire et sans ressaisie',
+  featuresSubheading: 'Les outils pour chiffrer, présenter et conclure le service',
+  features: [0, 1, 2, 5, 6, 7].map((index) => legacySalesContent.features[index]),
+  testimonialsHeading: '',
+  testimonials: [],
+  faq: [0, 1, 4, 5, 6].map((index) => legacySalesContent.faq[index]),
+  finalCta: {
+    title: 'Transformez les devis en ventes et les ventes en interventions',
+    subtitle: 'Gratuit pendant 7 jours, sans carte bancaire. Chiffrez, envoyez et suivez chaque proposition dans Dominex.',
+  },
+};
+
+fr['gestao-de-contratos'] = {
+  ...legacySalesContent,
+  slug: 'logiciel-de-gestion-des-contrats',
+  metaTitle: 'Logiciel de gestion des contrats récurrents | Dominex',
+  metaDescription: 'Organisez les contrats de maintenance, visites récurrentes, documents, renouvellements et ordres de travail automatiques.',
+  hero: {
+    eyebrow: 'Gestion des contrats',
+    h1: 'Des contrats récurrents avec chaque visite à jour',
+    h1Highlight: 'contrats récurrents',
+    subtitle: 'Définissez l’accord, les sites et la fréquence. Dominex organise les prochaines visites et relie documents, revenus et renouvellements au contrat.',
+  },
+  painsHeading: 'Un contrat récurrent ne peut pas dépendre de la mémoire',
+  painsSubheading: 'Transformez chaque accord en une routine opérationnelle claire',
+  pains: [legacySalesContent.pains[2]],
+  deepDives: legacySalesContent.deepDives.slice(2).map((item) => ({
+    ...item,
+    image: { src: '/guia-tecnico/img/t11-contrato-visao-geral.jpg', alt: 'Vue réelle d’un contrat récurrent dans Dominex', fit: 'contain' as const },
+  })),
+  featuresHeading: 'De l’accord signé à la visite terminée',
+  featuresSubheading: 'Contrôlez le portefeuille et automatisez la maintenance récurrente',
+  features: [3, 4, 6].map((index) => legacySalesContent.features[index]),
+  testimonialsHeading: '',
+  testimonials: [],
+  faq: [2, 3, 5, 6].map((index) => legacySalesContent.faq[index]),
+  finalCta: {
+    title: 'Faites de chaque contrat une opération prévisible',
+    subtitle: 'Gratuit pendant 7 jours, sans carte bancaire. Organisez les récurrences, documents et renouvellements dans Dominex.',
+  },
+};
+
 export default fr;

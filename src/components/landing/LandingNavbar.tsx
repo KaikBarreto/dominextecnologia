@@ -12,6 +12,7 @@ import {
   DollarSign,
   Clock,
   FileText,
+  FileSignature,
   Receipt,
   UserCircle,
   Package,
@@ -136,7 +137,7 @@ const SOLUTION_LINKS: SolutionLink[] = [
     label: 'Emissão de Nota Fiscal',
     slug: '/emissao-de-nota-fiscal',
     icon: Receipt,
-    tagline: 'NFS-e agora, com NF-e e NFC-e chegando ao mesmo módulo.',
+    tagline: 'NFS-e, NF-e e NFC-e ligadas a clientes, vendas e financeiro.',
   },
   {
     label: 'Portal do Cliente',
@@ -151,10 +152,16 @@ const SOLUTION_LINKS: SolutionLink[] = [
     tagline: 'Peças e materiais com baixa automática a cada OS.',
   },
   {
-    label: 'Orçamentos & Contratos',
-    slug: '/orcamentos-e-contratos',
+    label: 'Orçamentos',
+    slug: '/sistema-de-orcamentos',
     icon: FileText,
-    tagline: 'Orçamento aprovado por link vira contrato e OS recorrente.',
+    tagline: 'Precificação, proposta por link e conversão em OS.',
+  },
+  {
+    label: 'Contratos',
+    slug: '/gestao-de-contratos',
+    icon: FileSignature,
+    tagline: 'Recorrências, documentos e visitas geradas no prazo.',
   },
   {
     label: 'Área do Técnico™',

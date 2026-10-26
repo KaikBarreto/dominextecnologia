@@ -233,9 +233,15 @@ const MODULE_GUIDE_SCREENSHOTS: Record<string, { src: string; alt: string; fit?:
     src: '/guia-tecnico/img/t8-estoque.jpg',
     alt: 'Tela real do controle de estoque na Dominex',
   },
-  'orcamentos-e-contratos': {
+  'sistema-de-orcamentos': {
     src: '/guia-tecnico/img/t9-orcamentos.jpg',
     alt: 'Tela real da gestão de orçamentos na Dominex',
+    fit: 'contain',
+  },
+  'gestao-de-contratos': {
+    src: '/guia-tecnico/img/t11-contratos.jpg',
+    alt: 'Tela real da gestão de contratos na Dominex',
+    fit: 'contain',
   },
   'rastreamento-de-equipes': {
     src: '/guia-tecnico/img/t6-mapa.jpg',

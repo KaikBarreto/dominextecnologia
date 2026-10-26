@@ -54,10 +54,11 @@ export const ptBr = {
       'sistema-crm': 'Funil de clientes e propostas até fechar o negócio.',
       'controle-financeiro': 'Contas a pagar, a receber e fluxo de caixa no controle.',
       'ponto-e-folha': 'Ponto da equipe, vales e folha sem planilha paralela.',
-      'emissao-de-nota-fiscal': 'NFS-e agora, com NF-e e NFC-e chegando ao mesmo módulo.',
+      'emissao-de-nota-fiscal': 'NFS-e, NF-e e NFC-e ligadas a clientes, vendas e financeiro.',
       'portal-do-cliente': 'Seu cliente acompanha OS, orçamentos e histórico online.',
       'controle-de-estoque': 'Peças e materiais com baixa automática a cada OS.',
-      'orcamentos-e-contratos': 'Orçamento aprovado por link vira contrato e OS recorrente.',
+      'sistema-de-orcamentos': 'Precificação, proposta por link e conversão em OS.',
+      'gestao-de-contratos': 'Recorrências, documentos e visitas geradas no prazo.',
       'rastreamento-de-equipes': 'Equipe no mapa ao vivo e rota do dia organizada.',
       'area-do-tecnico': 'Calculadoras, gases e catálogo de equipamentos no bolso.',
       'integracao-whatsapp': 'Avisos automáticos de OS e cobranças no número da empresa.',
@@ -89,7 +90,8 @@ export const ptBr = {
     'emissao-de-nota-fiscal': 'Emissão de Nota Fiscal',
     'portal-do-cliente': 'Portal do Cliente',
     'controle-de-estoque': 'Estoque',
-    'orcamentos-e-contratos': 'Orçamentos & Contratos',
+    'sistema-de-orcamentos': 'Orçamentos',
+    'gestao-de-contratos': 'Contratos',
     'rastreamento-de-equipes': 'Rastreamento & Agenda',
     'area-do-tecnico': 'Área do Técnico™',
     'integracao-whatsapp': 'WhatsApp integrado',
@@ -240,7 +242,7 @@ export const ptBr = {
         {
           title: 'Emissão de Nota Fiscal',
           description:
-            'Emita NFS-e direto pela plataforma e prepare a operação para NF-e e NFC-e no mesmo módulo fiscal.',
+            'Emita NFS-e, NF-e e NFC-e direto pela plataforma, com clientes, vendas e financeiro no mesmo fluxo.',
         },
         {
           title: 'Portal do cliente',
@@ -253,9 +255,14 @@ export const ptBr = {
             'Peças e materiais com baixa automática a cada OS. Saiba o que tem em mãos antes de prometer prazo ao cliente.',
         },
         {
-          title: 'Orçamentos e contratos',
+          title: 'Orçamentos',
           description:
-            'Orçamento aprovado por link vira contrato e OS recorrente. Do "fechou" ao serviço agendado sem digitar tudo de novo.',
+            'Forme o preço com custos e BDI, envie a proposta por link e transforme a aprovação em OS sem digitar tudo de novo.',
+        },
+        {
+          title: 'Contratos',
+          description:
+            'Organize vigência, unidades e documentos. A recorrência gera as próximas visitas e mantém o histórico do contrato em dia.',
         },
         {
           title: 'Área do Técnico™',

@@ -62,7 +62,7 @@ import {
  * Regras:
  *  - PT-BR sempre, copy dor-primeiro, marca = Dominex (NUNCA Auctus).
  *  - CTA principal NÃO muda: "Teste grátis 7 dias, sem cartão".
- *  - A página fiscal apresenta NFS-e disponível e NF-e/NFC-e como expansão do módulo.
+ *  - A página fiscal apresenta NFS-e, NF-e e NFC-e como partes do mesmo módulo.
  */
 
 export interface ModuleMetric {
@@ -1118,7 +1118,7 @@ const estoque: ModuleData = {
 /* 9. Orçamentos & Contratos → /orcamentos-e-contratos               */
 /* ================================================================== */
 
-const orcamentosContratos: ModuleData = {
+export const legacyOrcamentosContratos: ModuleData = {
   slug: 'orcamentos-e-contratos',
   navLabel: 'Orçamentos & Contratos',
   icon: FileSignature,
@@ -1479,6 +1479,18 @@ const areaTecnico: ModuleData = {
 /* Registro                                                           */
 /* ================================================================== */
 
+const orcamentos: ModuleIdentity = {
+  slug: 'sistema-de-orcamentos',
+  navLabel: 'Orçamentos',
+  icon: FileText,
+};
+
+const contratos: ModuleIdentity = {
+  slug: 'gestao-de-contratos',
+  navLabel: 'Contratos',
+  icon: FileSignature,
+};
+
 export const MODULES: Record<string, ModuleIdentity> = {
   'os-digital': osDigital,
   'sistema-pmoc': pmoc,
@@ -1488,7 +1500,8 @@ export const MODULES: Record<string, ModuleIdentity> = {
   'emissao-de-nota-fiscal': nfse,
   'portal-do-cliente': portalCliente,
   'controle-de-estoque': estoque,
-  'orcamentos-e-contratos': orcamentosContratos,
+  orcamentos,
+  contratos,
   'rastreamento-de-equipes': rastreamentoAgenda,
   'area-do-tecnico': areaTecnico,
   whatsapp: {
@@ -1527,7 +1540,8 @@ export const MODULE_NAV_LINKS: ModuleNavLink[] = [
   { label: 'Emissão de Nota Fiscal', slug: 'emissao-de-nota-fiscal', icon: FileText },
   { label: 'Portal do Cliente', slug: 'portal-do-cliente', icon: UserCircle },
   { label: 'Estoque', slug: 'controle-de-estoque', icon: Boxes },
-  { label: 'Orçamentos & Contratos', slug: 'orcamentos-e-contratos', icon: FileSignature },
+  { label: 'Orçamentos', slug: 'sistema-de-orcamentos', icon: FileText },
+  { label: 'Contratos', slug: 'gestao-de-contratos', icon: FileSignature },
   { label: 'Área do Técnico™', slug: 'area-do-tecnico', icon: Wrench },
   { label: 'WhatsApp integrado', slug: 'integracao-whatsapp', icon: MessageCircleMore },
   { label: 'Cobranças', slug: 'cobrancas-automaticas', icon: BadgeDollarSign },

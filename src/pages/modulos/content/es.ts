@@ -1231,4 +1231,66 @@ const es: ModuleContentMap = {
   },
 };
 
+const legacySalesContent = es['orcamentos-e-contratos'];
+
+es['sistema-de-orcamentos'] = {
+  ...legacySalesContent,
+  slug: 'software-de-presupuestos',
+  metaTitle: 'Software de presupuestos y propuestas para servicios | Dominex',
+  metaDescription: 'Crea presupuestos profesionales, envía propuestas por enlace y convierte la aprobación en una orden de trabajo.',
+  hero: {
+    eyebrow: 'Presupuestos y propuestas',
+    h1: 'Presupuestos profesionales que se convierten en servicio',
+    h1Highlight: 'Presupuestos profesionales',
+    subtitle: 'Calcula el precio con seguridad, presenta la propuesta con tu marca y recibe la aprobación por enlace. Después convierte el alcance aprobado en una orden de trabajo.',
+  },
+  pains: [legacySalesContent.pains[0], legacySalesContent.pains[1], legacySalesContent.pains[3]],
+  deepDives: legacySalesContent.deepDives.slice(0, 2).map((item, index) => ({
+    ...item,
+    image: index === 0
+      ? { src: '/guia-tecnico/img/t9-aba-precificacao.jpg', alt: 'Pantalla real de cálculo de precios en Dominex', fit: 'contain' as const }
+      : { src: '/guia-tecnico/img/t9-orcamento-publico.jpg', alt: 'Propuesta pública de Dominex para aprobación', fit: 'contain' as const },
+  })),
+  featuresHeading: 'Vende con margen y sin retrabajo',
+  featuresSubheading: 'Recursos para calcular, presentar y cerrar el servicio',
+  features: [0, 1, 2, 5, 6, 7].map((index) => legacySalesContent.features[index]),
+  testimonialsHeading: '',
+  testimonials: [],
+  faq: [0, 1, 4, 5, 6].map((index) => legacySalesContent.faq[index]),
+  finalCta: {
+    title: 'Convierte presupuestos en ventas y ventas en servicios',
+    subtitle: 'Gratis durante 7 días, sin tarjeta. Calcula, envía y acompaña cada propuesta en Dominex.',
+  },
+};
+
+es['gestao-de-contratos'] = {
+  ...legacySalesContent,
+  slug: 'software-de-gestion-de-contratos',
+  metaTitle: 'Software de gestión de contratos recurrentes | Dominex',
+  metaDescription: 'Organiza contratos de mantenimiento, visitas recurrentes, documentos, renovaciones y órdenes de trabajo automáticas.',
+  hero: {
+    eyebrow: 'Gestión de contratos',
+    h1: 'Contratos recurrentes con todas las visitas al día',
+    h1Highlight: 'Contratos recurrentes',
+    subtitle: 'Define el acuerdo, las unidades y la frecuencia. Dominex organiza las próximas visitas y mantiene documentos, ingresos y renovaciones conectados al contrato.',
+  },
+  painsHeading: 'Un contrato recurrente no puede depender de la memoria',
+  painsSubheading: 'Convierte cada acuerdo en una rutina operativa clara',
+  pains: [legacySalesContent.pains[2]],
+  deepDives: legacySalesContent.deepDives.slice(2).map((item) => ({
+    ...item,
+    image: { src: '/guia-tecnico/img/t11-contrato-visao-geral.jpg', alt: 'Vista real de un contrato recurrente en Dominex', fit: 'contain' as const },
+  })),
+  featuresHeading: 'Del acuerdo firmado a la visita terminada',
+  featuresSubheading: 'Controla la cartera y automatiza el mantenimiento recurrente',
+  features: [3, 4, 6].map((index) => legacySalesContent.features[index]),
+  testimonialsHeading: '',
+  testimonials: [],
+  faq: [2, 3, 5, 6].map((index) => legacySalesContent.faq[index]),
+  finalCta: {
+    title: 'Haz de cada contrato una operación previsible',
+    subtitle: 'Gratis durante 7 días, sin tarjeta. Organiza recurrencias, documentos y renovaciones en Dominex.',
+  },
+};
+
 export default es;

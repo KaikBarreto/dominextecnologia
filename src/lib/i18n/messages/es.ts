@@ -256,10 +256,11 @@ export const esOverrides: MessagesOverride = {
       'sistema-crm': 'Embudo de clientes y propuestas hasta cerrar la venta.',
       'controle-financeiro': 'Cuentas por pagar, por cobrar y flujo de caja bajo control.',
       'ponto-e-folha': 'Control de asistencia del equipo, anticipos y nómina sin planillas aparte.',
-      'emissao-de-nota-fiscal': 'Emite facturas de servicio directamente desde la plataforma.',
+      'emissao-de-nota-fiscal': 'Emite NFS-e, NF-e y NFC-e conectadas con ventas y finanzas.',
       'portal-do-cliente': 'Tu cliente sigue órdenes de trabajo, presupuestos e historial en línea.',
       'controle-de-estoque': 'Piezas y materiales descontados automáticamente en cada orden.',
-      'orcamentos-e-contratos': 'Un presupuesto aprobado se convierte en contrato y órdenes recurrentes.',
+      'sistema-de-orcamentos': 'Precios, propuestas por enlace y conversión en orden de trabajo.',
+      'gestao-de-contratos': 'Visitas recurrentes, documentos y renovaciones en un solo lugar.',
       'rastreamento-de-equipes': 'Equipo en mapa en vivo y la ruta del día organizada.',
       'area-do-tecnico': 'Calculadoras, tablas de gases y catálogo de equipos en tu bolsillo.',
     },
@@ -283,10 +284,11 @@ export const esOverrides: MessagesOverride = {
     'sistema-crm': 'CRM y Ventas',
     'controle-financeiro': 'Finanzas',
     'ponto-e-folha': 'Empleados (RR. HH.)',
-    'emissao-de-nota-fiscal': 'Facturación de Servicios',
+    'emissao-de-nota-fiscal': 'Emisión de Facturas',
     'portal-do-cliente': 'Portal del Cliente',
     'controle-de-estoque': 'Inventario',
-    'orcamentos-e-contratos': 'Presupuestos y Contratos',
+    'sistema-de-orcamentos': 'Presupuestos',
+    'gestao-de-contratos': 'Contratos',
     'rastreamento-de-equipes': 'Rastreo y Programación',
     'area-do-tecnico': 'Kit del Técnico™',
   },
@@ -410,9 +412,9 @@ export const esOverrides: MessagesOverride = {
             'Control de asistencia del equipo, anticipos, bonos y nómina. Recibos listos, sin planilla aparte.',
         },
         {
-          title: 'Emisión de NFS-e (Factura de Servicio)',
+          title: 'Emisión de facturas',
           description:
-            'Emite facturas de servicio directamente desde la plataforma, por cliente, siguiendo tus reglas fiscales locales.',
+            'Emite NFS-e, NF-e y NFC-e desde la plataforma, conectadas con clientes, ventas y finanzas.',
         },
         {
           title: 'Portal del cliente',
@@ -425,9 +427,14 @@ export const esOverrides: MessagesOverride = {
             'Piezas y materiales descontados automáticamente en cada orden de trabajo. Sabe qué tienes disponible antes de prometer un plazo.',
         },
         {
-          title: 'Presupuestos y contratos',
+          title: 'Presupuestos',
           description:
-            'Un presupuesto aprobado por enlace se convierte en contrato y órdenes de trabajo recurrentes. De "venta cerrada" a un trabajo programado sin volver a escribir todo.',
+            'Calcula costes y margen, envía la propuesta por enlace y convierte la aprobación en una orden sin volver a escribir.',
+        },
+        {
+          title: 'Contratos',
+          description:
+            'Organiza vigencia, unidades y documentos. La recurrencia programa las próximas visitas y mantiene el historial actualizado.',
         },
         {
           title: 'Kit del Técnico™',

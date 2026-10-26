@@ -594,18 +594,18 @@ const ptBr: ModuleContentMap = {
   'emissao-de-nota-fiscal': {
     metaTitle: 'Emissão de Nota Fiscal: NFS-e, NF-e e NFC-e | Dominex',
     metaDescription:
-      'Emita NFS-e dentro da Dominex e prepare sua operação para NF-e e NFC-e no mesmo módulo fiscal, ligado a clientes, vendas e financeiro.',
+      'Emita NFS-e, NF-e e NFC-e dentro da Dominex, no mesmo módulo fiscal ligado a clientes, vendas e financeiro.',
     hero: {
       eyebrow: 'Emissão de Nota Fiscal',
       h1: 'Emissão de nota fiscal ligada à sua operação',
       h1Highlight: 'Emissão de nota fiscal',
       subtitle:
-        'Emita NFS-e direto pela Dominex, usando os dados que já estão no cliente e no serviço. NF-e e NFC-e entram na expansão do mesmo módulo para unificar serviços, produtos e vendas de balcão.',
+        'Emita NFS-e, NF-e e NFC-e direto pela Dominex, usando os dados que já estão nos clientes, serviços, produtos e vendas de balcão.',
     },
     metrics: [
       { value: 'NFS-e', label: 'emissão de serviço disponível na plataforma' },
-      { value: 'NF-e', label: 'documento de produto previsto na expansão fiscal' },
-      { value: 'NFC-e', label: 'nota ao consumidor prevista para o PDV' },
+      { value: 'NF-e', label: 'documento fiscal para venda de produtos' },
+      { value: 'NFC-e', label: 'nota ao consumidor integrada ao PDV' },
       { value: 'Por cliente', label: 'emissão amarrada ao cadastro do cliente' },
     ],
     painsHeading: 'A nota fiscal não pode ser um sistema à parte',
@@ -614,7 +614,7 @@ const ptBr: ModuleContentMap = {
       {
         pain: 'Emitir nota em outro sistema, com outro login e outra senha',
         solution:
-          'A NFS-e é emitida dentro da Dominex, por cliente, sem abrir emissor separado nem redigitar dados. NF-e e NFC-e seguem a mesma arquitetura fiscal em expansão.',
+          'NFS-e, NF-e e NFC-e são emitidas dentro da Dominex, sem abrir outro emissor nem redigitar os dados da operação.',
       },
       {
         pain: 'Dados do cliente digitados de novo só para a nota',
@@ -636,7 +636,7 @@ const ptBr: ModuleContentMap = {
       {
         icon: FileText,
         title: 'Nota fiscal emitida sem sair da plataforma',
-        body: 'A NFS-e é emitida dentro da Dominex, na mesma plataforma onde você gerencia clientes e serviços. A evolução do módulo incorpora NF-e para produtos e NFC-e para vendas ao consumidor, preservando cadastro, histórico e financeiro no mesmo fluxo.',
+        body: 'NFS-e, NF-e e NFC-e são emitidas dentro da Dominex, na mesma plataforma onde você gerencia clientes, serviços, produtos e vendas. Cadastro, histórico e financeiro continuam no mesmo fluxo.',
         image: {
           src: '/modulos/emissao-de-nfse/1.webp',
           alt: 'Pessoa organizando documentos e usando um notebook na mesa do escritório',
@@ -645,7 +645,7 @@ const ptBr: ModuleContentMap = {
       {
         icon: Building2,
         title: 'Conformidade conforme o tipo de documento',
-        body: 'Na NFS-e, a Dominex verifica a cobertura do município e as regras da prefeitura. A expansão para NF-e e NFC-e considera os requisitos estaduais e de venda ao consumidor, sem misturar regras fiscais diferentes.',
+        body: 'A Dominex aplica o fluxo correspondente a cada documento: regras municipais para NFS-e, estaduais para NF-e e as exigências da venda ao consumidor para NFC-e.',
         image: {
           src: '/modulos/emissao-de-nfse/2.webp',
           alt: 'Profissional conferindo documentos fiscais e formulários de imposto sobre a mesa de madeira',
@@ -654,7 +654,7 @@ const ptBr: ModuleContentMap = {
       {
         icon: Receipt,
         title: 'Um histórico fiscal para serviço, produto e balcão',
-        body: 'Cada documento fica ligado ao cliente e à operação que o originou. Você acompanha NFS-e emitidas hoje e, com a expansão, NF-e e NFC-e no mesmo histórico, reduzindo duplicidade e conferência manual.',
+        body: 'Cada documento fica ligado ao cliente e à operação que o originou. Você acompanha NFS-e, NF-e e NFC-e no mesmo histórico, reduzindo duplicidade e conferência manual.',
         image: {
           src: '/modulos/emissao-de-nfse/3.webp',
           alt: 'Pessoa manuseando e organizando recibos e notas em papel, mantendo o histórico em ordem',
@@ -662,11 +662,11 @@ const ptBr: ModuleContentMap = {
       },
     ],
     featuresHeading: 'Emissão fiscal sem criar outra operação',
-    featuresSubheading: 'NFS-e disponível e uma base única para NF-e e NFC-e',
+    featuresSubheading: 'NFS-e, NF-e e NFC-e em uma única operação fiscal',
     features: [
       { icon: FileText, title: 'Emissão de NFS-e', desc: 'Emita a nota fiscal de serviço direto na plataforma, sem emissor avulso.' },
-      { icon: Receipt, title: 'NF-e em expansão', desc: 'A emissão de nota de produto entra no mesmo módulo fiscal da Dominex.' },
-      { icon: FileCheck2, title: 'NFC-e em expansão', desc: 'A nota ao consumidor será ligada às vendas do PDV e ao financeiro.' },
+      { icon: Receipt, title: 'Emissão de NF-e', desc: 'Emita a nota de produto no mesmo módulo fiscal da Dominex.' },
+      { icon: FileCheck2, title: 'Emissão de NFC-e', desc: 'Ligue a nota ao consumidor às vendas do PDV e ao financeiro.' },
       { icon: UserCircle, title: 'Emissão por cliente', desc: 'A nota puxa os dados do cadastro do cliente que você já tem.' },
       { icon: Building2, title: 'Conformidade municipal', desc: 'O sistema respeita as regras do seu município ao emitir.' },
       { icon: CheckSquare, title: 'Verificação de cobertura', desc: 'Antes de emitir, o sistema confere se o município é suportado.' },
@@ -680,18 +680,18 @@ const ptBr: ModuleContentMap = {
       { quote: 'Saber se meu município aceita antes de emitir evita dor de cabeça. O sistema confere por mim.', name: 'Bruno S.', role: 'Proprietário', company: 'serviços de campo' },
     ],
     faq: [
-      { q: 'Quais notas fiscais a Dominex contempla?', a: 'A NFS-e para prestação de serviços já faz parte do módulo. NF-e para produtos e NFC-e para vendas ao consumidor estão previstas na expansão da mesma área fiscal.' },
+      { q: 'Quais notas fiscais a Dominex contempla?', a: 'O módulo contempla NFS-e para prestação de serviços, NF-e para produtos e NFC-e para vendas ao consumidor.' },
       { q: 'Qual é a diferença entre NFS-e, NF-e e NFC-e?', a: 'NFS-e registra serviços e segue regras municipais. NF-e documenta circulação de produtos e segue regras estaduais. NFC-e é voltada à venda presencial ao consumidor e se conecta naturalmente ao PDV.' },
-      { q: 'Preciso de outro sistema para emitir a nota?', a: 'Não. A NFS-e é emitida de dentro da Dominex, por cliente, sem abrir um emissor avulso nem usar outro login. Você seleciona o cliente e emite na mesma plataforma onde já trabalha.' },
+      { q: 'Preciso de outro sistema para emitir a nota?', a: 'Não. NFS-e, NF-e e NFC-e são emitidas dentro da Dominex, sem abrir um emissor avulso nem usar outro login.' },
       { q: 'A emissão respeita as regras do meu município?', a: 'Sim. O ISS é municipal e a Dominex verifica a cobertura do seu município antes de emitir, respeitando o padrão da prefeitura. Onde a emissão é suportada, a nota sai conforme as exigências da cidade.' },
       { q: 'A nota puxa os dados do cliente automaticamente?', a: 'Sim. A emissão usa os dados do cadastro do cliente que você já tem na plataforma, sem redigitar nada.' },
-      { q: 'Consigo acompanhar as notas que emiti?', a: 'Sim. As NFS-e ficam registradas e organizadas por cliente, com o histórico do que já foi emitido, ajudando a controlar o faturamento e a evitar duplicidade.' },
+      { q: 'Consigo acompanhar as notas que emiti?', a: 'Sim. NFS-e, NF-e e NFC-e ficam registradas e ligadas ao cliente e à operação, ajudando a controlar o faturamento e evitar duplicidade.' },
       { q: 'Todos os municípios são suportados?', a: 'A cobertura é municipal e o sistema verifica seu município antes de emitir. Algumas cidades mantêm emissor próprio fora do padrão nacional; nesses casos o sistema sinaliza a situação na verificação de cobertura.' },
-      { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você ativa o módulo fiscal e começa pela emissão de NFS-e no cadastro do cliente.' },
+      { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você ativa o módulo fiscal e configura os documentos que sua operação emite.' },
     ],
     finalCta: {
       title: 'Centralize a emissão fiscal na sua operação',
-      subtitle: 'Comece pela NFS-e e prepare a empresa para NF-e e NFC-e no mesmo módulo da Dominex.',
+      subtitle: 'Emita NFS-e, NF-e e NFC-e no mesmo módulo fiscal da Dominex.',
     },
   },
 
@@ -1521,6 +1521,162 @@ const ptBr: ModuleContentMap = {
       title: 'Venda no balcão sem criar um segundo sistema para a loja',
       subtitle: 'Conecte PDV, caixa, estoque, fiado e financeiro na mesma operação.',
     },
+  },
+};
+
+const legacySalesContent = ptBr['orcamentos-e-contratos'];
+
+ptBr['sistema-de-orcamentos'] = {
+  ...legacySalesContent,
+  metaTitle: 'Sistema de orçamentos e propostas para serviços | Dominex',
+  metaDescription:
+    'Crie orçamentos profissionais, calcule custos e BDI, envie propostas por link e transforme a aprovação em ordem de serviço. Teste grátis por 7 dias.',
+  hero: {
+    eyebrow: 'Orçamentos e propostas',
+    h1: 'Orçamentos profissionais que viram serviço',
+    h1Highlight: 'Orçamentos profissionais',
+    subtitle:
+      'Monte preços com segurança, apresente a proposta com a sua marca e receba a aprovação por link. Depois, transforme o que foi vendido em ordem de serviço sem redigitar o escopo.',
+  },
+  metrics: [
+    { value: 'Proposta por link', label: 'para o cliente abrir e aprovar' },
+    { value: 'Custos + BDI', label: 'preço formado com margem visível' },
+    { value: 'Aprovou, virou OS', label: 'sem cadastrar tudo outra vez' },
+  ],
+  painsHeading: 'Pare de montar preço no improviso',
+  painsSubheading: 'Da composição de custos à aprovação, tudo fica no mesmo fluxo',
+  pains: [legacySalesContent.pains[0], legacySalesContent.pains[1], legacySalesContent.pains[3]],
+  deepDives: [
+    {
+      icon: Calculator,
+      title: 'Preço formado com custos e BDI',
+      body: 'Cadastre materiais, mão de obra e outros recursos para formar o custo do serviço. A precificação mostra a composição e ajuda a aplicar margem e BDI antes de apresentar o valor ao cliente.',
+      image: {
+        src: '/guia-tecnico/img/t9-aba-precificacao.jpg',
+        alt: 'Tela real da Dominex com a precificação detalhada do serviço',
+        fit: 'contain',
+      },
+    },
+    {
+      icon: Send,
+      title: 'Proposta bonita, compartilhada por link',
+      body: 'Configure apresentação, validade, condições e identidade visual. O cliente recebe um link público para analisar a proposta pelo celular ou computador, sem criar conta na Dominex.',
+      image: {
+        src: '/guia-tecnico/img/t9-orcamento-publico.jpg',
+        alt: 'Proposta pública da Dominex aberta para aprovação do cliente',
+        fit: 'contain',
+      },
+    },
+    {
+      icon: TrendingUp,
+      title: 'O que foi aprovado segue para a operação',
+      body: 'A aprovação fica registrada e o orçamento pode ser convertido em ordem de serviço. Cliente, itens e escopo seguem juntos para a equipe executar exatamente o que foi vendido.',
+      image: {
+        src: '/guia-tecnico/img/t9-orcamentos.jpg',
+        alt: 'Lista real de orçamentos com status dentro da Dominex',
+        fit: 'contain',
+      },
+    },
+  ],
+  featuresHeading: 'Venda com margem e sem retrabalho',
+  featuresSubheading: 'Recursos para precificar, apresentar e fechar o serviço',
+  features: [
+    { icon: Calculator, title: 'Precificação detalhada', desc: 'Custos, recursos, margem e BDI antes de enviar o valor.' },
+    { icon: FileText, title: 'Orçamento profissional', desc: 'Itens e condições organizados com a identidade da empresa.' },
+    { icon: Send, title: 'Proposta por link', desc: 'O cliente abre no celular, sem login e sem instalar nada.' },
+    { icon: CheckSquare, title: 'Aprovação registrada', desc: 'Status e aceite ficam documentados no próprio orçamento.' },
+    { icon: TrendingUp, title: 'Conversão em OS', desc: 'Leve o escopo aprovado para a execução sem redigitar.' },
+    { icon: UserCircle, title: 'Histórico do cliente', desc: 'Consulte todas as propostas ligadas a cada cliente.' },
+  ],
+  testimonialsHeading: '',
+  testimonials: [],
+  faq: [legacySalesContent.faq[0], legacySalesContent.faq[1], legacySalesContent.faq[4], legacySalesContent.faq[5], legacySalesContent.faq[6]],
+  finalCta: {
+    title: 'Transforme orçamento em venda e venda em serviço',
+    subtitle: 'Teste grátis por 7 dias, sem cartão. Precifique, envie e acompanhe cada proposta na Dominex.',
+  },
+};
+
+ptBr['gestao-de-contratos'] = {
+  ...legacySalesContent,
+  metaTitle: 'Gestão de contratos recorrentes e manutenção | Dominex',
+  metaDescription:
+    'Organize contratos de manutenção, recorrências, unidades, documentos, renovações e ordens de serviço automáticas em uma única plataforma.',
+  hero: {
+    eyebrow: 'Gestão de contratos',
+    h1: 'Contratos recorrentes com as visitas sempre em dia',
+    h1Highlight: 'Contratos recorrentes',
+    subtitle:
+      'Cadastre o acordo, defina unidades e recorrências e deixe a Dominex organizar as próximas visitas. Documentos, receitas, renovações e histórico ficam ligados ao contrato.',
+  },
+  metrics: [
+    { value: 'OS automática', label: 'gerada conforme a recorrência' },
+    { value: 'Portal por link', label: 'para o cliente acompanhar o contrato' },
+    { value: 'Histórico completo', label: 'visitas, documentos e receitas juntos' },
+  ],
+  painsHeading: 'Contrato recorrente não pode depender da memória',
+  painsSubheading: 'A Dominex transforma cada acordo em uma rotina operacional clara',
+  pains: [
+    legacySalesContent.pains[2],
+    {
+      pain: 'Documentos, unidades e visitas espalhados em várias pastas',
+      solution: 'Cada contrato concentra unidades atendidas, documentos, receitas e o histórico das ordens de serviço geradas.',
+    },
+    {
+      pain: 'Renovação descoberta quando o contrato já venceu',
+      solution: 'Acompanhe vigência e status na carteira de contratos e faça a renovação mantendo a continuidade do histórico.',
+    },
+  ],
+  deepDives: [
+    {
+      icon: Repeat,
+      title: 'Recorrência que organiza as próximas visitas',
+      body: 'Defina o cliente, a vigência, o tipo de manutenção e a frequência de atendimento. A Dominex usa essas regras para gerar as ordens de serviço no período certo.',
+      image: {
+        src: '/guia-tecnico/img/t11-contrato-visao-geral.jpg',
+        alt: 'Visão geral de um contrato recorrente dentro da Dominex',
+        fit: 'contain',
+      },
+    },
+    {
+      icon: Building2,
+      title: 'Unidades e operação ligadas ao contrato',
+      body: 'Organize os locais atendidos, equipamentos e visitas de cada unidade. O portal público permite que o cliente acompanhe o contrato por link, sem criar usuário.',
+      image: {
+        src: '/guia-tecnico/img/t11-portal-do-contrato.jpg',
+        alt: 'Portal público de um contrato gerenciado na Dominex',
+        fit: 'contain',
+      },
+    },
+    {
+      icon: FileCheck2,
+      title: 'Documentos, receitas e renovação no mesmo histórico',
+      body: 'Anexe os documentos do contrato, registre as receitas relacionadas e renove a vigência sem perder o que já foi executado. A gestão fica pronta para consulta e auditoria.',
+      image: {
+        src: '/guia-tecnico/img/t11-contrato-documentos.jpg',
+        alt: 'Documentos vinculados a um contrato na Dominex',
+        fit: 'contain',
+      },
+    },
+  ],
+  featuresHeading: 'Do acordo assinado à visita concluída',
+  featuresSubheading: 'Controle a carteira e automatize a rotina de manutenção',
+  features: [
+    { icon: FileSignature, title: 'Carteira de contratos', desc: 'Vigência, status e cliente organizados em uma única visão.' },
+    { icon: Repeat, title: 'Recorrência configurável', desc: 'Programe a frequência correta para cada contrato.' },
+    { icon: ClipboardList, title: 'Geração de OS', desc: 'Crie as ordens recorrentes seguindo as regras do acordo.' },
+    { icon: Building2, title: 'Unidades atendidas', desc: 'Separe locais, equipamentos e visitas dentro do contrato.' },
+    { icon: FileCheck2, title: 'Documentos vinculados', desc: 'Mantenha arquivos e comprovantes junto do histórico.' },
+    { icon: RefreshCw, title: 'Renovação', desc: 'Atualize a vigência preservando o histórico do cliente.' },
+    { icon: Banknote, title: 'Receitas do contrato', desc: 'Registre e consulte os valores ligados à recorrência.' },
+    { icon: UserCircle, title: 'Portal do contrato', desc: 'Compartilhe o acompanhamento com o cliente por link.' },
+  ],
+  testimonialsHeading: '',
+  testimonials: [],
+  faq: [legacySalesContent.faq[2], legacySalesContent.faq[3], legacySalesContent.faq[5], legacySalesContent.faq[6]],
+  finalCta: {
+    title: 'Faça cada contrato virar uma operação previsível',
+    subtitle: 'Teste grátis por 7 dias, sem cartão. Organize recorrências, visitas, documentos e renovações na Dominex.',
   },
 };
 

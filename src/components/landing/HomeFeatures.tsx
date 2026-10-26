@@ -9,6 +9,7 @@ import {
   Clock,
   DollarSign,
   FileText,
+  FileSignature,
   MessageCircleMore,
   Package,
   Receipt,
@@ -35,6 +36,7 @@ const HOME_FEATURE_ICONS = [
   UserCircle,
   Package,
   FileText,
+  FileSignature,
   Wrench,
   BarChart3,
   MessageCircleMore,
@@ -53,12 +55,13 @@ const HOME_FEATURE_SCREENSHOTS = [
   '/guia-tecnico/img/t13-financeiro-relatorio.jpg',
   '/guia-tecnico/img/t12-cliente-aba-chamados.jpg',
   '/guia-tecnico/img/t8-posicao-estoque.jpg',
+  '/guia-tecnico/img/t9-orcamentos.jpg',
   '/guia-tecnico/img/t11-contratos.jpg',
   '/guia-tecnico/img/t4-servicos.jpg',
   '/guia-tecnico/img/t17-dashboard-kpis.jpg',
   '/guia-tecnico/img/t1-integracoes-whatsapp.jpg',
   '/guia-tecnico/img/t13-financeiro-movimentacoes.jpg',
-  '/guia-tecnico/img/t9-orcamentos.jpg',
+  '/guia-tecnico/img/t8-estoque.jpg',
 ];
 
 export default function HomeFeatures() {

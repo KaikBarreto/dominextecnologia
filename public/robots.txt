@@ -22,7 +22,8 @@ Allow: /ponto-e-folha
 Allow: /emissao-de-nota-fiscal
 Allow: /portal-do-cliente
 Allow: /controle-de-estoque
-Allow: /orcamentos-e-contratos
+Allow: /sistema-de-orcamentos
+Allow: /gestao-de-contratos
 Allow: /area-do-tecnico
 Allow: /integracao-whatsapp
 Allow: /cobrancas-automaticas

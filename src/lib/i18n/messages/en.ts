@@ -256,10 +256,11 @@ export const enOverrides: MessagesOverride = {
       'sistema-crm': 'Client pipeline and proposals all the way to closing the deal.',
       'controle-financeiro': 'Payables, receivables and cash flow under control.',
       'ponto-e-folha': 'Team time tracking, advances and payroll without side spreadsheets.',
-      'emissao-de-nota-fiscal': 'Issue service invoices straight from the platform.',
+      'emissao-de-nota-fiscal': 'Issue NFS-e, NF-e and NFC-e connected to sales and finance.',
       'portal-do-cliente': 'Your client follows work orders, quotes and history online.',
       'controle-de-estoque': 'Parts and materials deducted automatically on every work order.',
-      'orcamentos-e-contratos': 'An approved quote becomes a contract and recurring work orders.',
+      'sistema-de-orcamentos': 'Pricing, proposals by link and work order conversion.',
+      'gestao-de-contratos': 'Recurring visits, documents and renewals in one place.',
       'rastreamento-de-equipes': 'Team on a live map and the day route organized.',
       'area-do-tecnico': 'Calculators, gas tables and an equipment catalog in your pocket.',
     },
@@ -283,10 +284,11 @@ export const enOverrides: MessagesOverride = {
     'sistema-crm': 'CRM & Sales',
     'controle-financeiro': 'Finance',
     'ponto-e-folha': 'Employees (HR)',
-    'emissao-de-nota-fiscal': 'Service Invoicing',
+    'emissao-de-nota-fiscal': 'Tax Invoicing',
     'portal-do-cliente': 'Client Portal',
     'controle-de-estoque': 'Inventory',
-    'orcamentos-e-contratos': 'Quotes & Contracts',
+    'sistema-de-orcamentos': 'Quotes',
+    'gestao-de-contratos': 'Contracts',
     'rastreamento-de-equipes': 'Tracking & Scheduling',
     'area-do-tecnico': 'Technician Toolkit™',
   },
@@ -410,9 +412,9 @@ export const enOverrides: MessagesOverride = {
             'Team time tracking, advances, bonuses and payroll. Pay slips ready, with no side spreadsheet.',
         },
         {
-          title: 'NFS-e issuance (Service Invoice)',
+          title: 'Tax invoicing',
           description:
-            'Issue service invoices straight from the platform, per client, following your local tax rules.',
+            'Issue NFS-e, NF-e and NFC-e from the platform, connected to customers, sales and finance.',
         },
         {
           title: 'Client portal',
@@ -425,9 +427,14 @@ export const enOverrides: MessagesOverride = {
             'Parts and materials deducted automatically on every work order. Know what is on hand before you promise a deadline.',
         },
         {
-          title: 'Quotes and contracts',
+          title: 'Quotes',
           description:
-            'An approved quote by link becomes a contract and recurring work orders. From "deal closed" to a scheduled job without retyping everything.',
+            'Build pricing with costs and margin, send the proposal by link and turn approval into a work order without retyping.',
+        },
+        {
+          title: 'Contracts',
+          description:
+            'Organize terms, locations and documents. Recurrence schedules upcoming visits and keeps the contract history current.',
         },
         {
           title: 'Technician Toolkit™',

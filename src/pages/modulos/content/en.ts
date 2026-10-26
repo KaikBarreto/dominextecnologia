@@ -1231,4 +1231,66 @@ const en: ModuleContentMap = {
   },
 };
 
+const legacySalesContent = en['orcamentos-e-contratos'];
+
+en['sistema-de-orcamentos'] = {
+  ...legacySalesContent,
+  slug: 'quote-management-software',
+  metaTitle: 'Quote and proposal software for service companies | Dominex',
+  metaDescription: 'Build professional quotes, send proposals by link and turn approval into a work order without retyping the scope.',
+  hero: {
+    eyebrow: 'Quotes and proposals',
+    h1: 'Professional quotes that turn into service work',
+    h1Highlight: 'Professional quotes',
+    subtitle: 'Price with confidence, present the proposal with your brand and collect approval by link. Then turn the approved scope into a work order.',
+  },
+  pains: [legacySalesContent.pains[0], legacySalesContent.pains[1], legacySalesContent.pains[3]],
+  deepDives: legacySalesContent.deepDives.slice(0, 2).map((item, index) => ({
+    ...item,
+    image: index === 0
+      ? { src: '/guia-tecnico/img/t9-aba-precificacao.jpg', alt: 'Real Dominex service pricing screen', fit: 'contain' as const }
+      : { src: '/guia-tecnico/img/t9-orcamento-publico.jpg', alt: 'Dominex public proposal opened for customer approval', fit: 'contain' as const },
+  })),
+  featuresHeading: 'Sell with margin and without rework',
+  featuresSubheading: 'Tools to price, present and close the service',
+  features: [0, 1, 2, 5, 6, 7].map((index) => legacySalesContent.features[index]),
+  testimonialsHeading: '',
+  testimonials: [],
+  faq: [0, 1, 4, 5, 6].map((index) => legacySalesContent.faq[index]),
+  finalCta: {
+    title: 'Turn quotes into sales and sales into service work',
+    subtitle: 'Free for 7 days, no credit card. Price, send and track every proposal in Dominex.',
+  },
+};
+
+en['gestao-de-contratos'] = {
+  ...legacySalesContent,
+  slug: 'contract-management-software',
+  metaTitle: 'Recurring contract management software | Dominex',
+  metaDescription: 'Organize maintenance contracts, recurring visits, documents, renewals and automatically generated work orders.',
+  hero: {
+    eyebrow: 'Contract management',
+    h1: 'Recurring contracts with every visit on schedule',
+    h1Highlight: 'Recurring contracts',
+    subtitle: 'Define the agreement, locations and service frequency. Dominex organizes upcoming visits and keeps documents, revenue and renewals connected to the contract.',
+  },
+  painsHeading: 'Recurring contracts cannot depend on memory',
+  painsSubheading: 'Turn each agreement into a clear operating routine',
+  pains: [legacySalesContent.pains[2]],
+  deepDives: legacySalesContent.deepDives.slice(2).map((item) => ({
+    ...item,
+    image: { src: '/guia-tecnico/img/t11-contrato-visao-geral.jpg', alt: 'Real overview of a recurring contract in Dominex', fit: 'contain' as const },
+  })),
+  featuresHeading: 'From signed agreement to completed visit',
+  featuresSubheading: 'Control the portfolio and automate recurring maintenance',
+  features: [3, 4, 6].map((index) => legacySalesContent.features[index]),
+  testimonialsHeading: '',
+  testimonials: [],
+  faq: [2, 3, 5, 6].map((index) => legacySalesContent.faq[index]),
+  finalCta: {
+    title: 'Make every contract a predictable operation',
+    subtitle: 'Free for 7 days, no credit card. Organize recurring visits, documents and renewals in Dominex.',
+  },
+};
+
 export default en;

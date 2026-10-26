@@ -103,7 +103,8 @@ import PontoEFolha from "./pages/modulos/PontoEFolha";
 import EmissaoDeNfse from "./pages/modulos/EmissaoDeNfse";
 import PortalDoCliente from "./pages/modulos/PortalDoCliente";
 import ControleDeEstoque from "./pages/modulos/ControleDeEstoque";
-import OrcamentosEContratos from "./pages/modulos/OrcamentosEContratos";
+import Orcamentos from "./pages/modulos/Orcamentos";
+import ContratosModulo from "./pages/modulos/Contratos";
 import AreaDoTecnico from "./pages/modulos/AreaDoTecnico";
 import IntegracaoWhatsapp from "./pages/modulos/IntegracaoWhatsapp";
 import CobrancasAutomaticas from "./pages/modulos/CobrancasAutomaticas";
@@ -607,7 +608,9 @@ const publicMarketingRoutes = () => (
     <Route path="emissao-de-nfse" element={<Navigate to="/emissao-de-nota-fiscal" replace />} />
     <Route path="portal-do-cliente" element={<PortalDoCliente />} />
     <Route path="controle-de-estoque" element={<ControleDeEstoque />} />
-    <Route path="orcamentos-e-contratos" element={<OrcamentosEContratos />} />
+    <Route path="sistema-de-orcamentos" element={<Orcamentos />} />
+    <Route path="gestao-de-contratos" element={<ContratosModulo />} />
+    <Route path="orcamentos-e-contratos" element={<Navigate to="/sistema-de-orcamentos" replace />} />
     <Route path="rastreamento-de-equipes" element={<Navigate to="/os-digital" replace />} />
     <Route path="area-do-tecnico" element={<AreaDoTecnico />} />
     <Route path="integracao-whatsapp" element={<IntegracaoWhatsapp />} />

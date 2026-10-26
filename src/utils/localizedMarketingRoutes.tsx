@@ -39,7 +39,8 @@ import PontoEFolha from '@/pages/modulos/PontoEFolha';
 import EmissaoDeNfse from '@/pages/modulos/EmissaoDeNfse';
 import PortalDoCliente from '@/pages/modulos/PortalDoCliente';
 import ControleDeEstoque from '@/pages/modulos/ControleDeEstoque';
-import OrcamentosEContratos from '@/pages/modulos/OrcamentosEContratos';
+import Orcamentos from '@/pages/modulos/Orcamentos';
+import Contratos from '@/pages/modulos/Contratos';
 import AreaDoTecnico from '@/pages/modulos/AreaDoTecnico';
 import IntegracaoWhatsapp from '@/pages/modulos/IntegracaoWhatsapp';
 import CobrancasAutomaticas from '@/pages/modulos/CobrancasAutomaticas';
@@ -70,7 +71,8 @@ const WRAPPER_BY_KEY: Record<string, ReactElement> = {
   'emissao-de-nota-fiscal': <EmissaoDeNfse />,
   'portal-do-cliente': <PortalDoCliente />,
   'controle-de-estoque': <ControleDeEstoque />,
-  'orcamentos-e-contratos': <OrcamentosEContratos />,
+  'sistema-de-orcamentos': <Orcamentos />,
+  'gestao-de-contratos': <Contratos />,
   'area-do-tecnico': <AreaDoTecnico />,
   'integracao-whatsapp': <IntegracaoWhatsapp />,
   'cobrancas-automaticas': <CobrancasAutomaticas />,
@@ -80,6 +82,11 @@ const WRAPPER_BY_KEY: Record<string, ReactElement> = {
 function LegacyTrackingRedirect() {
   const { locale } = useLocale();
   return <Navigate to={`../${slugFor('os-digital', locale)}`} replace />;
+}
+
+function LegacyQuotesContractsRedirect() {
+  const { locale } = useLocale();
+  return <Navigate to={`../${slugFor('sistema-de-orcamentos', locale)}`} replace />;
 }
 
 /**
@@ -95,6 +102,19 @@ export function localizedSegmentModuleRoutes(): ReactElement[] {
       element={<Navigate to="../emissao-de-nota-fiscal" replace />}
     />,
   ];
+  const legacyQuotesContractsSlugs = new Set<string>([
+    'orcamentos-e-contratos',
+    ...PREFIXED_LOCALES.map((locale) => slugFor('orcamentos-e-contratos', locale)),
+  ]);
+  for (const slug of legacyQuotesContractsSlugs) {
+    routes.push(
+      <Route
+        key={`legacy:orcamentos-e-contratos:${slug}`}
+        path={slug}
+        element={<LegacyQuotesContractsRedirect />}
+      />,
+    );
+  }
   const legacyTrackingSlugs = new Set<string>([
     'rastreamento-de-equipes',
     ...PREFIXED_LOCALES.map((locale) => slugFor('rastreamento-de-equipes', locale)),
@@ -111,7 +131,10 @@ export function localizedSegmentModuleRoutes(): ReactElement[] {
   for (const key of Object.keys(WRAPPER_BY_KEY)) {
     const element = WRAPPER_BY_KEY[key];
     // Conjunto de slugs distintos entre os idiomas prefixados (hoje = { pt-br }).
-    const slugs = new Set<string>();
+    // Mantém também a key pt-br como rota de compatibilidade. A detecção
+    // automática de idioma pode preservar o slug atual ao adicionar /en, /es
+    // ou /fr antes de o seletor trocar para o slug traduzido.
+    const slugs = new Set<string>([key]);
     for (const loc of PREFIXED_LOCALES) slugs.add(slugFor(key, loc));
     for (const slug of slugs) {
       routes.push(<Route key={`${key}:${slug}`} path={slug} element={element} />);
