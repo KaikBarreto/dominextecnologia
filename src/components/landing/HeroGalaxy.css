@@ -30,10 +30,10 @@
 .dark .dominex-home-hero::before {
   background: radial-gradient(
     ellipse 54% 60% at 50% 51%,
-    #101014 0%,
-    rgb(16 16 20 / 98%) 31%,
-    rgb(16 16 20 / 84%) 47%,
-    rgb(16 16 20 / 25%) 68%,
+    rgb(16 16 20 / 72%) 0%,
+    rgb(16 16 20 / 60%) 31%,
+    rgb(16 16 20 / 34%) 47%,
+    rgb(16 16 20 / 8%) 68%,
     transparent 82%
   );
 }

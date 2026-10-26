@@ -38,14 +38,15 @@ import { TECH_TOOLS_BY_SEGMENT } from '@/config/technicianArea';
  * nicho colorido). NÃO usar em outras páginas de módulo.
  *
  * Chaveado pelo VALUE interno do segmento (refrigeracao, eletrica, solar,
- * telecom, cftv, construcao, elevadores, limpeza, dedetizacao) — os mesmos
+ * telecom, cftv, construcao, elevadores, limpeza, dedetizacao, ti_assistencia) — os mesmos
  * values de `companySegments.ts`. O seletor pega label/ícone/cor de
  * `getSegment(value)`; aqui guardamos só o mapa value → ferramentas.
  *
- * Refrigeração reusa as ferramentas REAIS do app (`TECH_TOOLS_BY_SEGMENT`),
- * fonte única — label→title, descricao→description, mesmo ícone. Os outros 8
- * nichos ainda não têm ferramenta real implementada: nome/ícone espelham os
- * teasers de `technicianArea.ts` e a descrição é de marketing (PT-BR, plausível).
+ * Refrigeração e assistência técnica reusam as ferramentas REAIS do app
+ * (`TECH_TOOLS_BY_SEGMENT`), fonte única — label→title,
+ * descricao→description, mesmo ícone. Os outros nichos ainda não têm ferramenta
+ * real implementada: nome/ícone espelham os teasers de `technicianArea.ts` e a
+ * descrição é de marketing (PT-BR, plausível).
  */
 
 export interface NicheTool {
@@ -56,6 +57,11 @@ export interface NicheTool {
 
 /** Refrigeração: ferramentas REAIS do app (fonte única), não reescrever. */
 const refrigeracaoTools: NicheTool[] = (TECH_TOOLS_BY_SEGMENT.refrigeracao ?? []).map(
+  (t) => ({ icon: t.icon, title: t.label, description: t.descricao })
+);
+
+/** Assistência técnica: ferramentas REAIS do app (fonte única), não reescrever. */
+const tiAssistenciaTools: NicheTool[] = (TECH_TOOLS_BY_SEGMENT.ti_assistencia ?? []).map(
   (t) => ({ icon: t.icon, title: t.label, description: t.descricao })
 );
 
@@ -241,4 +247,5 @@ export const TOOLS_BY_SEGMENT: Record<string, NicheTool[]> = {
       description: 'Programe o intervalo de reaplicação pela praga e o produto.',
     },
   ],
+  ti_assistencia: tiAssistenciaTools,
 };

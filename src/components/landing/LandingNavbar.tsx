@@ -235,9 +235,6 @@ export default function LandingNavbar() {
   // resto. Usamos canonicalPath (sem prefixo de locale) para bater com as chaves
   // de SEGMENTS (ex: 'sistema-para-refrigeracao'). Calculamos o texto legível
   // por cima — branco na maioria, escuro só nos acentos claros.
-  const ctaBg = '#101512';
-  const ctaFg = '#ffffff';
-
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 25);
     window.addEventListener('scroll', onScroll);
@@ -307,13 +304,16 @@ export default function LandingNavbar() {
 
   return (
     <nav
-      className={`fixed left-0 right-0 top-0 z-50 min-h-16 border-b transition-all duration-300 ${
-        scrolled
-          ? 'border-[#dce1dc] bg-white/90 shadow-[0_8px_30px_rgba(16,21,18,0.07)] backdrop-blur-xl dark:border-white/10 dark:bg-[#0d0e11]/90'
-          : 'border-[#e7eae6] bg-white/[0.86] shadow-[0_8px_30px_rgba(16,21,18,0.05)] backdrop-blur-xl dark:border-white/10 dark:bg-[#0d0e11]/[0.88]'
-      }`}
+      className="fixed left-0 right-0 top-0 z-50 min-h-16"
     >
-      <div className="mx-auto w-full px-4 sm:px-6 md:px-6 xl:w-[calc(100%-360px)] xl:max-w-[1440px] xl:px-0">
+      <div
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute inset-0 -z-10 border-b border-[#dce1dc] bg-white/90 shadow-[0_8px_30px_rgba(16,21,18,0.07)] backdrop-blur-xl transition-transform duration-500 ease-out dark:border-white/10 dark:bg-[#0d0e11]/90',
+          scrolled ? 'translate-y-0' : '-translate-y-full',
+        )}
+      />
+      <div className="relative mx-auto w-full px-4 sm:px-6 md:px-6 xl:w-[calc(100%-360px)] xl:max-w-[1440px] xl:px-0">
         <div className="relative flex h-16 items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr] md:gap-12">
           {/* Header mobile: [☰ esquerda] [logo centro] [idioma direita]. Os dois
               elementos das pontas são `md:hidden` e ABSOLUTOS nas bordas — assim
@@ -590,8 +590,7 @@ export default function LandingNavbar() {
             {/* Criar Conta — verde da marca na home/módulos; cor do segmento na
                 landing daquele segmento. Texto via resolveWcagForeground (contraste WCAG). */}
             <Button
-              className="rounded-full border border-[#101512] px-5 gap-2 shadow-none transition-all hover:-translate-y-0.5 hover:bg-black dark:border-white dark:bg-white dark:text-[#101512] dark:hover:bg-white/90"
-              style={{ backgroundColor: ctaBg, color: ctaFg }}
+              className="gap-2 rounded-full border border-[#101512] bg-[#101512] px-5 text-white shadow-none transition-all hover:-translate-y-0.5 hover:bg-black hover:text-white dark:border-[#00C597] dark:bg-[#00C597] dark:text-white dark:hover:bg-[#00ad85] dark:hover:text-white"
               asChild
             >
               <WhatsAppCtaLink>
@@ -617,8 +616,7 @@ export default function LandingNavbar() {
         createPortal(
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-[#dce1dc] bg-white/95 backdrop-blur-xl px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-white/10 dark:bg-[#090c0a]/95">
             <WhatsAppCtaLink
-              className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold whitespace-normal text-center leading-tight hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: ctaBg, color: ctaFg }}
+              className="inline-flex w-full items-center justify-center gap-2 whitespace-normal rounded-xl bg-[#101512] px-5 py-2.5 text-center text-sm font-semibold leading-tight text-white transition-colors hover:bg-black dark:bg-[#00C597] dark:text-white dark:hover:bg-[#00ad85]"
             >
               {m.trialSticky}
               <ArrowRight className="h-4 w-4 shrink-0" />
@@ -773,8 +771,7 @@ export default function LandingNavbar() {
               </Link>
             </Button>
             <Button
-              className="w-full rounded-full gap-2 hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: ctaBg, color: ctaFg }}
+              className="w-full gap-2 rounded-full bg-[#101512] text-white transition-colors hover:bg-black hover:text-white dark:bg-[#00C597] dark:text-white dark:hover:bg-[#00ad85] dark:hover:text-white"
               asChild
             >
               <WhatsAppCtaLink>
