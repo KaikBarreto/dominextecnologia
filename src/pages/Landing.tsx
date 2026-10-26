@@ -1,7 +1,6 @@
 import { useEffect, type CSSProperties } from 'react';
 import LandingNavbar from '@/components/landing/LandingNavbar';
 import HeroSection from '@/components/landing/HeroSection';
-import LogosSection from '@/components/landing/LogosSection';
 import ProblemSolutionSection from '@/components/landing/ProblemSolutionSection';
 import HomeFeatures from '@/components/landing/HomeFeatures';
 import HowItWorks from '@/components/landing/HowItWorks';
@@ -39,7 +38,6 @@ export default function Landing() {
         <LandingNavbar />
         <HeroSection />
         <main>
-          <LogosSection />
           <ProblemSolutionSection />
           <HomeFeatures />
           <HowItWorks />

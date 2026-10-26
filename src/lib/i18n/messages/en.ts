@@ -355,9 +355,6 @@ export const enOverrides: MessagesOverride = {
       videoUnsupported: 'Your browser does not support HTML5 video.',
       videoLabel: 'Dominex demo',
     },
-    logos: {
-      eyebrow: 'Companies already mastering their operations with Dominex',
-    },
     problemSolution: {
       problemsTitle: 'Is your operation stuck on improvisation?',
       solutionsTitle: 'With Dominex, you get full control',

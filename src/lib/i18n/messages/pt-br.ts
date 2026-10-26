@@ -183,9 +183,6 @@ export const ptBr = {
       videoUnsupported: 'Seu navegador não suporta vídeo HTML5.',
       videoLabel: 'Demonstração da Dominex',
     },
-    logos: {
-      eyebrow: 'Empresas que já dominam suas operações com a Dominex',
-    },
     problemSolution: {
       problemsTitle: 'Sua operação travada no improviso?',
       solutionsTitle: 'Com a Dominex, você tem controle total',
