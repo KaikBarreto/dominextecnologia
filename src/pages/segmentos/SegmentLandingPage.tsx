@@ -1,6 +1,6 @@
 import { useEffect, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, XCircle, CheckCircle2, Star } from 'lucide-react';
+import { ArrowRight, XCircle, CheckCircle2 } from 'lucide-react';
 import { useLocale, useCanonicalSlugRedirect } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
 import { localizeHash } from '@/lib/i18n/localizeHash';
@@ -19,7 +19,7 @@ import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton'
 import ScrollSyncFeatures from '@/components/landing/ScrollSyncFeatures';
 import DeepDiveSection from '@/components/landing/DeepDiveSection';
 import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
-import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
+import MarketingHeroBackdrop from '@/components/landing/MarketingHeroBackdrop';
 import { resolveWcagForeground } from '@/lib/colorContrast';
 import type { SegmentData } from './segmentsData';
 
@@ -82,26 +82,17 @@ export default function SegmentLandingPage({ data }: { data: SegmentData }) {
   } as CSSProperties;
 
   return (
-    <div className="relative min-h-screen" style={pageStyle}>
-      {/* Dark veil de fundo (espelha Landing.tsx), tingido na cor do segmento */}
-      <div className="fixed inset-0 z-0 bg-[hsl(0,0%,4%)]">
-        <DarkVeilBackground
-          accentColor={data.accentColor}
-          veilHueShiftOverride={data.veilHueShift}
-          speed={0.5}
-        />
-        <div className="absolute inset-0 bg-[hsl(0,0%,4%)]/60 pointer-events-none" />
-      </div>
-
-      <div className="relative z-10">
+    <div className="relative min-h-screen bg-white text-[#101512] dark:bg-[#070908] dark:text-white" style={pageStyle}>
+      <div className="relative">
         <LandingNavbar />
         <SegmentHero data={data} />
-        <SegmentMetrics data={data} />
-        <SegmentPains data={data} />
-        <SegmentDeepDives data={data} />
-        <SegmentFeatures data={data} />
-        <SegmentTestimonials data={data} />
-        <SegmentFaq data={data} />
+        <main className="[&>section:nth-child(odd)]:bg-white [&>section:nth-child(even)]:bg-[#f5f4ef] dark:[&>section:nth-child(odd)]:bg-[#070908] dark:[&>section:nth-child(even)]:bg-[#0b100d]">
+          <SegmentMetrics data={data} />
+          <SegmentPains data={data} />
+          <SegmentDeepDives data={data} />
+          <SegmentFeatures data={data} />
+          <SegmentFaq data={data} />
+        </main>
         <SegmentFinalCta data={data} />
         <LandingFooter />
       </div>
@@ -124,8 +115,12 @@ function SegmentHero({ data }: { data: SegmentData }) {
   const after = idx >= 0 ? hero.h1.slice(idx + hero.h1Highlight.length) : '';
 
   return (
-    <section className="relative min-h-[88vh] flex items-center pt-16 overflow-hidden">
-      <div className="absolute inset-0">
+    <section className="relative min-h-[88vh] flex items-center bg-white pt-16 overflow-hidden dark:bg-[#070908]">
+      <MarketingHeroBackdrop
+        accentColor={data.accentColor}
+        veilHueShiftOverride={data.veilHueShift}
+      />
+      <div className="absolute inset-0 z-0">
         <div
           className="absolute inset-0"
           style={{
@@ -153,7 +148,7 @@ function SegmentHero({ data }: { data: SegmentData }) {
 
         <h1
           lang={locale === 'pt-br' ? 'pt-BR' : locale}
-          className="text-4xl sm:text-5xl lg:text-[3.4rem] font-bold text-white leading-[1.12] tracking-tight break-words hyphens-auto"
+          className="text-4xl sm:text-5xl lg:text-[3.4rem] font-bold text-[#101512] dark:text-white leading-[1.12] tracking-tight break-words hyphens-auto"
         >
           {before}
           {idx >= 0 && (
@@ -170,7 +165,7 @@ function SegmentHero({ data }: { data: SegmentData }) {
           {after}
         </h1>
 
-        <p className="mt-7 text-lg text-white/50 max-w-2xl mx-auto leading-relaxed">
+        <p className="mt-7 text-lg text-[#5c665f] dark:text-white/60 max-w-2xl mx-auto leading-relaxed">
           {hero.subtitle}
         </p>
 
@@ -180,7 +175,7 @@ function SegmentHero({ data }: { data: SegmentData }) {
             className="text-base px-8 py-6 w-full sm:w-auto border-0 transition-opacity hover:opacity-90 whitespace-normal h-auto text-center leading-tight"
             style={{
               backgroundColor: 'var(--seg-accent)',
-              color: 'var(--seg-accent-fg)',
+              color: '#ffffff',
               boxShadow: '0 0 40px -8px color-mix(in srgb, var(--seg-accent) 60%, transparent)',
             }}
             asChild
@@ -193,7 +188,7 @@ function SegmentHero({ data }: { data: SegmentData }) {
           <Button
             size="lg"
             variant="ghost"
-            className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 w-full sm:w-auto whitespace-normal h-auto text-center leading-tight"
+            className="text-[#202722] border border-[#ccd3cd] hover:bg-[#f0f3ef] hover:text-[#101512] dark:border-white/20 dark:text-white dark:hover:bg-white/10 dark:hover:text-white px-8 py-6 w-full sm:w-auto whitespace-normal h-auto text-center leading-tight"
             asChild
           >
             <Link to={localizeInternal('/', locale) + '#' + localizeHash('recursos', locale)}>{messages.pageChrome.seePlans}</Link>
@@ -209,7 +204,7 @@ function SegmentHero({ data }: { data: SegmentData }) {
 function SegmentMetrics({ data }: { data: SegmentData }) {
   const ref = useScrollReveal();
   return (
-    <section className="py-12 border-y border-white/5">
+    <section className="py-12 border-y border-[#e0e4e0]">
       <div ref={ref} className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
           {data.metrics.map((m) => (
@@ -220,7 +215,7 @@ function SegmentMetrics({ data }: { data: SegmentData }) {
               >
                 {m.value}
               </p>
-              <p className="mt-2 text-sm text-white/50 leading-snug">{m.label}</p>
+              <p className="mt-2 text-sm text-[#5c665f] dark:text-white/55 leading-snug">{m.label}</p>
             </div>
           ))}
         </div>
@@ -239,22 +234,22 @@ function SegmentPains({ data }: { data: SegmentData }) {
     <section className="py-24">
       <div ref={ref} className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 break-words">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#101512] dark:text-white mb-4 break-words">
             {c.segment.painsHeading}
           </h2>
-          <p className="text-white/55 max-w-2xl mx-auto">
+          <p className="text-[#5c665f] dark:text-white/55 max-w-2xl mx-auto">
             {c.segment.painsSubheading}
           </p>
         </div>
 
         {/* MOBILE: cada par vira um card vertical limpo, com respiro generoso.
-            "O problema" em cima (tom de alerta neutro) + "Com o Dominex" embaixo,
+            "O problema" em cima (tom de alerta neutro) + "Com a Dominex" embaixo,
             destacado no acento do segmento. Sem setas espremidas, sem tabela. */}
         <div className="md:hidden space-y-5">
           {data.pains.map((p) => (
             <div
               key={p.pain}
-              className="overflow-hidden rounded-2xl border border-white/10 bg-[hsl(0,0%,6%)]"
+              className="overflow-hidden rounded-2xl border border-[#d9ded8] bg-white dark:border-white/10 dark:bg-white/[0.03]"
             >
               {/* O problema */}
               <div className="px-5 pt-5 pb-4">
@@ -264,14 +259,14 @@ function SegmentPains({ data }: { data: SegmentData }) {
                     {c.problemLabel}
                   </span>
                 </div>
-                <p className="text-white/55 text-[0.95rem] leading-relaxed">{p.pain}</p>
+                <p className="text-[#646d67] dark:text-white/55 text-[0.95rem] leading-relaxed">{p.pain}</p>
               </div>
 
-              {/* Com o Dominex — destacado no acento */}
+              {/* Com a Dominex — destacado no acento */}
               <div
                 className="px-5 pt-4 pb-5 border-t"
                 style={{
-                  borderColor: 'color-mix(in srgb, var(--seg-accent) 22%, hsl(0 0% 100% / 0.08))',
+                  borderColor: 'color-mix(in srgb, var(--seg-accent) 28%, #d9ded8)',
                   backgroundImage:
                     'linear-gradient(to bottom, color-mix(in srgb, var(--seg-accent) 9%, transparent), transparent)',
                 }}
@@ -285,7 +280,7 @@ function SegmentPains({ data }: { data: SegmentData }) {
                     {c.withDominex}
                   </span>
                 </div>
-                <p className="text-white font-medium text-[0.95rem] leading-relaxed">
+                <p className="text-[#17201b] dark:text-white/80 font-medium text-[0.95rem] leading-relaxed">
                   {p.solution}
                 </p>
               </div>
@@ -294,16 +289,16 @@ function SegmentPains({ data }: { data: SegmentData }) {
         </div>
 
         {/* DESKTOP: tabela estilizada Problema × Solução (mantida). */}
-        <div className="hidden md:block overflow-hidden rounded-2xl border border-white/10 bg-[hsl(0,0%,6%)]">
-          <div className="grid grid-cols-2 border-b border-white/10">
+        <div className="hidden md:block overflow-hidden rounded-2xl border border-[#d9ded8] bg-white shadow-[0_28px_70px_-52px_rgba(16,36,27,0.35)] dark:border-white/10 dark:bg-white/[0.03]">
+          <div className="grid grid-cols-2 border-b border-[#d9ded8] bg-[#f0f2ee] dark:border-white/10 dark:bg-white/[0.04]">
             <div className="flex items-center justify-center gap-2.5 px-7 py-5">
               <XCircle className="h-6 w-6 text-destructive shrink-0" />
-              <span className="text-lg sm:text-xl font-bold text-white text-center">
+              <span className="text-lg sm:text-xl font-bold text-[#262d29] text-center">
                 {c.problemLabel}
               </span>
             </div>
             <div
-              className="flex items-center justify-center gap-2.5 px-7 py-5 border-l border-white/10"
+              className="flex items-center justify-center gap-2.5 px-7 py-5 border-l border-[#d9ded8]"
               style={{
                 backgroundImage:
                   'linear-gradient(to right, color-mix(in srgb, var(--seg-accent) 7%, transparent), transparent)',
@@ -313,7 +308,7 @@ function SegmentPains({ data }: { data: SegmentData }) {
                 className="h-6 w-6 shrink-0"
                 style={{ color: 'var(--seg-accent)' }}
               />
-              <span className="text-lg sm:text-xl font-bold text-white text-center">
+              <span className="text-lg sm:text-xl font-bold text-[#17201b] dark:text-white text-center">
                 {c.withDominex}
               </span>
             </div>
@@ -323,16 +318,16 @@ function SegmentPains({ data }: { data: SegmentData }) {
           {data.pains.map((p, i) => (
             <div
               key={p.pain}
-              className={`group grid grid-cols-2 transition-colors hover:bg-white/[0.015] ${
-                i > 0 ? 'border-t border-white/10' : ''
+              className={`group grid grid-cols-2 transition-colors hover:bg-[#f8faf7] ${
+                i > 0 ? 'border-t border-[#e2e6e1]' : ''
               }`}
             >
               <div className="flex items-start gap-3 px-7 py-6">
                 <XCircle className="h-5 w-5 text-destructive/70 shrink-0 mt-0.5" />
-                <p className="text-white/55 text-[0.95rem] leading-snug">{p.pain}</p>
+                <p className="text-[#646d67] dark:text-white/55 text-[0.95rem] leading-snug">{p.pain}</p>
               </div>
               <div
-                className="relative flex items-start gap-3 px-7 py-6 border-l border-white/10"
+                className="relative flex items-start gap-3 px-7 py-6 border-l border-[#e2e6e1]"
                 style={{
                   backgroundImage:
                     'linear-gradient(to right, color-mix(in srgb, var(--seg-accent) 6%, transparent), transparent)',
@@ -342,7 +337,7 @@ function SegmentPains({ data }: { data: SegmentData }) {
                   className="h-5 w-5 shrink-0 mt-0.5"
                   style={{ color: 'var(--seg-accent)' }}
                 />
-                <p className="text-white font-medium text-[0.95rem] leading-snug">
+                <p className="text-[#17201b] dark:text-white/80 font-medium text-[0.95rem] leading-snug">
                   {p.solution}
                 </p>
               </div>
@@ -367,8 +362,9 @@ function SegmentDeepDives({ data }: { data: SegmentData }) {
     <DeepDiveSection
       dives={data.deepDives}
       accent="var(--seg-accent)"
-      iconChipClassName="text-white"
-      iconChipStyle={{ backgroundImage: SEG_ACCENT_BADGE_GRADIENT }}
+      iconChipClassName="bg-white border border-[#dce1dc]"
+      iconChipStyle={{ color: 'var(--seg-accent)' }}
+      tone="light"
     />
   );
 }
@@ -412,40 +408,6 @@ function SegmentFeatures({ data }: { data: SegmentData }) {
   );
 }
 
-/* --------------------------- Depoimentos --------------------------- */
-
-function SegmentTestimonials({ data }: { data: SegmentData }) {
-  const ref = useScrollReveal();
-  const { messages } = useLocale();
-  return (
-    <section className="py-24">
-      <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
-        <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-16">
-          {messages.pageChrome.segment.testimonialsHeading}
-        </h2>
-        <div className="grid gap-6 md:grid-cols-3">
-          {data.testimonials.map((t) => (
-            <div key={t.name} className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-8">
-              <div className="flex gap-1 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-4 w-4 fill-warning text-warning" />
-                ))}
-              </div>
-              <p className="text-white/70 text-sm leading-relaxed mb-6">"{t.quote}"</p>
-              <div>
-                <p className="text-sm font-semibold text-white">{t.name}</p>
-                <p className="text-xs text-white/55">
-                  {t.role} — {t.company}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 /* ------------------------------ FAQ -------------------------------- */
 
 function SegmentFaq({ data }: { data: SegmentData }) {
@@ -454,7 +416,7 @@ function SegmentFaq({ data }: { data: SegmentData }) {
   return (
     <section className="py-24">
       <div ref={ref} className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 scroll-reveal">
-        <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-12">
+        <h2 className="text-3xl sm:text-4xl font-bold text-[#101512] dark:text-white text-center mb-12">
           {messages.pageChrome.faqHeading}
         </h2>
         <Accordion type="single" collapsible className="grid md:grid-cols-2 gap-3">
@@ -462,12 +424,12 @@ function SegmentFaq({ data }: { data: SegmentData }) {
             <AccordionItem
               key={i}
               value={`faq-${i}`}
-              className="rounded-xl border border-white/10 bg-white/[0.02] px-6 data-[state=open]:[border-color:color-mix(in_srgb,var(--seg-accent)_20%,transparent)] h-fit"
+              className="rounded-xl border border-[#d9ded8] bg-white px-6 data-[state=open]:[border-color:color-mix(in_srgb,var(--seg-accent)_35%,transparent)] h-fit dark:border-white/10 dark:bg-white/[0.03]"
             >
-              <AccordionTrigger className="text-sm text-white/80 hover:text-white hover:no-underline py-5 text-left">
+              <AccordionTrigger className="text-sm text-[#29312d] hover:text-[#101512] hover:no-underline py-5 text-left dark:text-white/80 dark:hover:text-white">
                 {faq.q}
               </AccordionTrigger>
-              <AccordionContent className="text-sm text-white/55 leading-relaxed pb-5">
+              <AccordionContent className="text-sm text-[#626c66] leading-relaxed pb-5 dark:text-white/55">
                 {faq.a}
               </AccordionContent>
             </AccordionItem>
@@ -485,7 +447,7 @@ function SegmentFinalCta({ data }: { data: SegmentData }) {
   const { locale, messages } = useLocale();
   const c = messages.pageChrome;
   return (
-    <section className="relative py-32 overflow-hidden">
+    <section className="relative overflow-hidden bg-[#161b1a] py-32">
       <div
         className="absolute inset-0 opacity-[0.04]"
         style={{

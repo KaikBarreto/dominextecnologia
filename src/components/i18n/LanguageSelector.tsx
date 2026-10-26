@@ -185,6 +185,7 @@ function CompactTrigger({
   height = 30,
   flagWidth = 42,
   compact = false,
+  surface = 'dark',
 }: {
   /** Altura do pill em px. */
   height?: number;
@@ -192,11 +193,13 @@ function CompactTrigger({
   flagWidth?: number;
   /** Modo compacto (mobile): aperta o padding do código e encolhe o chevron. */
   compact?: boolean;
+  surface?: Surface;
 }) {
   const [open, setOpen] = useState(false);
   const { locale, handleSelect } = useLanguageSwitch();
   const current = LOCALES.find((l) => l.code === locale) ?? LOCALES[0];
   const ariaLabel = MESSAGES[locale].app.shell.languageSwitcher.ariaLabel;
+  const isDark = surface === 'dark';
 
   return (
     <DropdownMenu.Root open={open} onOpenChange={setOpen}>
@@ -213,9 +216,11 @@ function CompactTrigger({
           type="button"
           aria-label={ariaLabel}
           className={cn(
-            'inline-flex items-stretch p-0 overflow-hidden border border-white/15',
-            'bg-white/5 backdrop-blur-sm',
-            'text-xs font-semibold text-white/75 hover:bg-white/10 hover:text-white',
+            'inline-flex items-stretch overflow-hidden border p-0 backdrop-blur-sm',
+            'text-xs font-semibold',
+            isDark
+              ? 'border-white/15 bg-white/5 text-white/75 hover:bg-white/10 hover:text-white'
+              : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 dark:border-white/15 dark:bg-white/5 dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white',
             'transition-colors shadow-sm',
           )}
           style={{ height }}
@@ -262,8 +267,8 @@ function CompactTrigger({
           align="end"
           sideOffset={6}
           className={cn(
-            'z-[60] min-w-[10rem] overflow-hidden rounded-xl border border-white/10',
-            'bg-[hsl(0,0%,8%)] p-1 shadow-2xl',
+            'z-[60] min-w-[10rem] overflow-hidden rounded-xl border p-1 shadow-2xl',
+            isDark ? 'border-white/10 bg-[hsl(0,0%,8%)]' : 'border-neutral-200 bg-white dark:border-white/10 dark:bg-[hsl(0,0%,8%)]',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
           )}
@@ -274,7 +279,12 @@ function CompactTrigger({
               <DropdownMenu.Item
                 key={l.code}
                 onSelect={() => handleSelect(l.code, () => setOpen(false))}
-                className="flex cursor-pointer select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-white/85 outline-none transition-colors focus:bg-white/10 focus:text-white data-[highlighted]:bg-white/10"
+                className={cn(
+                  'flex cursor-pointer select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm outline-none transition-colors',
+                  isDark
+                    ? 'text-white/85 focus:bg-white/10 focus:text-white data-[highlighted]:bg-white/10'
+                    : 'text-neutral-700 focus:bg-neutral-100 data-[highlighted]:bg-neutral-100',
+                )}
               >
                 <FlagIcon locale={l.code} size={20} />
                 <span className="flex-1">{l.label}</span>
@@ -303,7 +313,7 @@ function CompactTrigger({
 //
 // z-index: 55 — acima da navbar (z-50) e dos mega menus (z-50), abaixo dos
 //   modais/overlays (z-60+). O dropdown Content usa z-[60] via Portal Radix.
-function CornerSelector() {
+function CornerSelector({ surface = 'dark' }: { surface?: Surface }) {
   if (typeof document === 'undefined') return null;
 
   return createPortal(
@@ -318,7 +328,7 @@ function CornerSelector() {
         zIndex: 55,
       }}
     >
-      <CompactTrigger />
+      <CompactTrigger surface={surface} />
     </div>,
     document.body,
   );
@@ -332,13 +342,13 @@ export default function LanguageSelector({
   className,
 }: LanguageSelectorProps) {
   if (variant === 'corner') {
-    return <CornerSelector />;
+    return <CornerSelector surface={surface} />;
   }
   if (variant === 'compact') {
     // Trigger em fluxo (sem fixed/portal do wrapper). Quem posiciona é o pai.
     // Menor que o desktop (corner): 22px de altura x 30px de bandeira mantém a
     // proporção ~1.4:1 e não fica desproporcional ao lado do logo no mobile.
-    return <CompactTrigger height={22} flagWidth={30} compact />;
+    return <CompactTrigger height={22} flagWidth={30} compact surface={surface} />;
   }
   return (
     <DefaultSelector surface={surface} fullWidth={fullWidth} className={className} />

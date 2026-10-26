@@ -1,10 +1,11 @@
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
-import logoWhite from '@/assets/logo-horizontal-verde.png';
 import { SEGMENT_NAV_LINKS } from '@/pages/segmentos/segmentsData';
 import { MODULE_NAV_LINKS } from '@/pages/modulos/modulesData';
 import { getSegment } from '@/utils/companySegments';
 import { useLocale } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
+import DominexBrandLogo from '@/components/landing/DominexBrandLogo';
 
 /**
  * Mapa slug-da-landing → valor de segmento em `companySegments` (fonte única das
@@ -30,7 +31,7 @@ function segmentColor(slug: string): string {
 }
 
 const footerLinkClass =
-  'text-sm text-white/55 hover:text-white transition-colors';
+  'text-sm text-[#667069] hover:text-primary transition-colors dark:text-white/55 dark:hover:text-white';
 
 export default function LandingFooter() {
   const { locale, messages } = useLocale();
@@ -48,16 +49,16 @@ export default function LandingFooter() {
     { label: f.linkPrivacy, to: '/privacidade' },
   ];
   return (
-    <footer className="relative border-t border-white/5 pt-16 pb-8">
+    <footer className="relative border-t border-[#e0e4e0] bg-white pt-16 pb-8 dark:border-white/5 dark:bg-[#070908]">
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Faixa única: logo + colunas verticais lado a lado (estilo Auvo) */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-10 mb-12">
           {/* Brand — ocupa a linha inteira no mobile */}
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <img src={logoWhite} alt="Dominex" className="h-10 w-auto" />
+              <DominexBrandLogo className="w-[196px]" />
             </div>
-            <p className="text-sm text-white/55 mb-4">
+            <p className="text-sm text-[#667069] mb-4 dark:text-white/55">
               {f.tagline}
             </p>
           </div>
@@ -69,7 +70,7 @@ export default function LandingFooter() {
               de propósito: o site público não pode puxar --primary, senão o
               white-label de um tenant logado vazaria a cor dele aqui. */}
           <div>
-            <h3 className="text-sm font-semibold text-white mb-4">{f.solutions}</h3>
+            <h3 className="text-sm font-semibold text-[#101512] mb-4 dark:text-white">{f.solutions}</h3>
             <ul className="space-y-2">
               {MODULE_NAV_LINKS.map((mod) => {
                 const Icon = mod.icon;
@@ -77,7 +78,7 @@ export default function LandingFooter() {
                   <li key={mod.slug}>
                     <Link
                       to={localizeInternal(`/${mod.slug}`, locale)}
-                      className="group relative flex items-center text-sm text-white/55 transition-colors hover:text-white focus-visible:text-white focus-visible:outline-none"
+                      className="group relative flex items-center text-sm text-[#667069] transition-colors hover:text-primary focus-visible:text-primary focus-visible:outline-none dark:text-white/55 dark:hover:text-white dark:focus-visible:text-white"
                     >
                       {/* Ícone do módulo no verde da marca — invisível e um pouco
                           à esquerda; entra (fade + slide) no hover/foco. */}
@@ -102,7 +103,7 @@ export default function LandingFooter() {
               segmento SATURADO na cor daquele nicho (group-hover/focus-within, com
               transição suave — não quebra foco por teclado). */}
           <div>
-            <h3 className="text-sm font-semibold text-white mb-4">{f.segments}</h3>
+            <h3 className="text-sm font-semibold text-[#101512] mb-4 dark:text-white">{f.segments}</h3>
             <ul className="space-y-2">
               {SEGMENT_NAV_LINKS.map((seg) => {
                 const Icon = seg.icon;
@@ -111,7 +112,8 @@ export default function LandingFooter() {
                   <li key={seg.slug}>
                     <Link
                       to={localizeInternal(`/${seg.slug}`, locale)}
-                      className="group relative flex items-center text-sm text-white/55 transition-colors hover:text-white focus-visible:text-white focus-visible:outline-none"
+                      className="group relative flex items-center text-sm text-[#667069] transition-colors hover:text-[var(--seg-accent)] focus-visible:text-[var(--seg-accent)] focus-visible:outline-none dark:text-white/55 dark:hover:text-[var(--seg-accent)] dark:focus-visible:text-[var(--seg-accent)]"
+                      style={{ '--seg-accent': color } as CSSProperties}
                     >
                       {/* Ícone do segmento na cor pura — parte invisível e um pouco
                           à esquerda; entra (fade + slide) no hover/foco. */}
@@ -133,7 +135,7 @@ export default function LandingFooter() {
 
           {/* Institucional — coluna única enxuta (Empresa + Suporte unidas) */}
           <div>
-            <h3 className="text-sm font-semibold text-white mb-4">{f.institutional}</h3>
+            <h3 className="text-sm font-semibold text-[#101512] mb-4 dark:text-white">{f.institutional}</h3>
             <ul className="space-y-2">
               {institutionalLinks.map((item) => (
                 <li key={item.to}>
@@ -146,8 +148,8 @@ export default function LandingFooter() {
           </div>
         </div>
 
-        <div className="border-t border-white/5 pt-6 flex items-center justify-center">
-          <p className="text-xs text-white/50">
+        <div className="border-t border-[#e0e4e0] pt-6 flex items-center justify-center dark:border-white/5">
+          <p className="text-xs text-[#778079] dark:text-white/50">
             © {new Date().getFullYear()} Dominex. {f.copyright}
           </p>
         </div>

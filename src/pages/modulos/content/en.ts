@@ -591,7 +591,7 @@ const en: ModuleContentMap = {
   // ────────────────────────────────────────────────────────────────────────
   // 6. Electronic service invoicing
   // ────────────────────────────────────────────────────────────────────────
-  'emissao-de-nfse': {
+  'emissao-de-nota-fiscal': {
     slug: 'service-invoice-software',
     metaTitle: 'Electronic Service Invoicing Software for Service Companies | Dominex',
     metaDescription:

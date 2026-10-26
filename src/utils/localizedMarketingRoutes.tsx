@@ -16,7 +16,7 @@
 // a existir sozinha, sem tocar aqui.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { Route } from 'react-router-dom';
+import { Navigate, Route } from 'react-router-dom';
 import type { ReactElement } from 'react';
 import { PREFIXED_LOCALES, slugFor } from '@/lib/i18n';
 
@@ -42,6 +42,9 @@ import ControleDeEstoque from '@/pages/modulos/ControleDeEstoque';
 import OrcamentosEContratos from '@/pages/modulos/OrcamentosEContratos';
 import RastreamentoDeEquipes from '@/pages/modulos/RastreamentoDeEquipes';
 import AreaDoTecnico from '@/pages/modulos/AreaDoTecnico';
+import IntegracaoWhatsapp from '@/pages/modulos/IntegracaoWhatsapp';
+import CobrancasAutomaticas from '@/pages/modulos/CobrancasAutomaticas';
+import PdvELoja from '@/pages/modulos/PdvELoja';
 
 /**
  * Mapa key canônica (slug pt-br) → elemento do wrapper. A key de segmento é o
@@ -65,12 +68,15 @@ const WRAPPER_BY_KEY: Record<string, ReactElement> = {
   'sistema-crm': <CrmModulo />,
   'controle-financeiro': <ControleFinanceiro />,
   'ponto-e-folha': <PontoEFolha />,
-  'emissao-de-nfse': <EmissaoDeNfse />,
+  'emissao-de-nota-fiscal': <EmissaoDeNfse />,
   'portal-do-cliente': <PortalDoCliente />,
   'controle-de-estoque': <ControleDeEstoque />,
   'orcamentos-e-contratos': <OrcamentosEContratos />,
   'rastreamento-de-equipes': <RastreamentoDeEquipes />,
   'area-do-tecnico': <AreaDoTecnico />,
+  'integracao-whatsapp': <IntegracaoWhatsapp />,
+  'cobrancas-automaticas': <CobrancasAutomaticas />,
+  'pdv-e-loja': <PdvELoja />,
 };
 
 /**
@@ -79,7 +85,13 @@ const WRAPPER_BY_KEY: Record<string, ReactElement> = {
  * são RELATIVOS ao /:lang (sem barra inicial), como o React Router espera.
  */
 export function localizedSegmentModuleRoutes(): ReactElement[] {
-  const routes: ReactElement[] = [];
+  const routes: ReactElement[] = [
+    <Route
+      key="legacy:emissao-de-nfse"
+      path="emissao-de-nfse"
+      element={<Navigate to="../emissao-de-nota-fiscal" replace />}
+    />,
+  ];
   for (const key of Object.keys(WRAPPER_BY_KEY)) {
     const element = WRAPPER_BY_KEY[key];
     // Conjunto de slugs distintos entre os idiomas prefixados (hoje = { pt-br }).

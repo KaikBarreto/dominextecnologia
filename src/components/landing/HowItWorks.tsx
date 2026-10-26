@@ -16,14 +16,14 @@ export default function HowItWorks() {
   }));
 
   return (
-    <section id="como-funciona" className="py-24">
+    <section id="como-funciona" className="bg-white py-24 dark:bg-[#070908]">
       <div ref={ref} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-reveal">
-        <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-16 break-words">
+        <h2 className="mb-16 break-words text-center text-3xl font-bold tracking-[-0.025em] text-[#101512] dark:text-white sm:text-4xl">
           {t.heading}
         </h2>
 
         <div className="grid md:grid-cols-3 gap-8 relative">
-          <div className="hidden md:block absolute top-24 left-[16.67%] right-[16.67%] h-0.5 bg-gradient-to-r from-primary/0 via-primary/40 to-primary/0" />
+          <div className="absolute left-[16.67%] right-[16.67%] top-24 hidden h-px bg-[#dbe2dc] dark:bg-white/10 md:block" />
 
           {steps.map((s) => (
             <div key={s.num} className="relative text-center">
@@ -34,13 +34,13 @@ export default function HowItWorks() {
                     /20 (1,37:1) pra /[0.55] (~3,32:1) só pra bater o mínimo de
                     texto grande (48px bold, limiar 3:1), sem virar texto
                     "sério" que competiria com o título. */}
-                <span className="text-5xl font-black text-primary/[0.55] mb-4" aria-hidden="true">{s.num}</span>
-                <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 relative z-10">
+                <span className="mb-4 text-5xl font-black text-primary/70" aria-hidden="true">{s.num}</span>
+                <div className="relative z-10 mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#dfe5e0] bg-white shadow-sm dark:border-white dark:bg-white dark:shadow-none">
                   <s.icon className="h-7 w-7 text-primary" />
                 </div>
               </div>
-              <h3 className="text-lg font-semibold text-white mb-2 break-words">{s.title}</h3>
-              <p className="text-sm text-white/55 max-w-xs mx-auto">{s.desc}</p>
+              <h3 className="mb-2 break-words text-lg font-semibold text-[#101512] dark:text-white">{s.title}</h3>
+              <p className="mx-auto max-w-xs text-sm leading-relaxed text-[#657068] dark:text-white/55">{s.desc}</p>
             </div>
           ))}
         </div>

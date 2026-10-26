@@ -591,7 +591,7 @@ const es: ModuleContentMap = {
   // ────────────────────────────────────────────────────────────────────────
   // 6. Facturación de servicios electrónica
   // ────────────────────────────────────────────────────────────────────────
-  'emissao-de-nfse': {
+  'emissao-de-nota-fiscal': {
     slug: 'software-facturacion-servicios',
     metaTitle: 'Software de facturación de servicios para empresas de servicios | Dominex',
     metaDescription:

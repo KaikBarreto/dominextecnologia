@@ -19,12 +19,15 @@ Allow: /os-digital
 Allow: /sistema-crm
 Allow: /controle-financeiro
 Allow: /ponto-e-folha
-Allow: /emissao-de-nfse
+Allow: /emissao-de-nota-fiscal
 Allow: /portal-do-cliente
 Allow: /controle-de-estoque
 Allow: /orcamentos-e-contratos
 Allow: /rastreamento-de-equipes
 Allow: /area-do-tecnico
+Allow: /integracao-whatsapp
+Allow: /cobrancas-automaticas
+Allow: /pdv-e-loja
 Allow: /pmoc/unidade/
 Disallow: /auth
 Disallow: /cadastro

@@ -11,9 +11,9 @@ export default function LogosSection() {
   const { messages } = useLocale();
 
   return (
-    <section className="relative py-16 border-y border-white/5">
+    <section className="relative border-y border-[#e3e7e2] bg-white py-16 dark:border-white/5 dark:bg-[#070908]">
       <div ref={ref} className="scroll-reveal">
-        <p className="text-center text-sm text-white/60 uppercase tracking-widest mb-8">
+        <p className="mb-8 text-center text-sm font-semibold uppercase tracking-[0.18em] text-[#6c766f] dark:text-white/60">
           {messages.home.logos.eyebrow}
         </p>
         <div className="overflow-hidden">
@@ -21,9 +21,9 @@ export default function LogosSection() {
             {[...logos, ...logos].map((name, i) => (
               <div
                 key={i}
-                className="flex items-center gap-2 text-white/50 hover:text-white/80 transition-opacity whitespace-nowrap"
+                className="flex items-center gap-2 whitespace-nowrap text-[#667169] transition-colors hover:text-[#101512] dark:text-white/50 dark:hover:text-white/80"
               >
-                <div className="h-8 w-8 rounded-lg bg-white/10 flex items-center justify-center text-xs font-bold text-white/70">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#dfe5e0] bg-[#f5f7f4] text-xs font-bold text-[#354039] dark:border-white/10 dark:bg-white/10 dark:text-white/70">
                   {name[0]}
                 </div>
                 <span className="text-sm font-medium">{name}</span>

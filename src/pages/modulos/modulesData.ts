@@ -38,6 +38,9 @@ import {
   Eye,
   Send,
   Repeat,
+  MessageCircleMore,
+  BadgeDollarSign,
+  ShoppingCart,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -59,7 +62,7 @@ import {
  * Regras:
  *  - PT-BR sempre, copy dor-primeiro, marca = Dominex (NUNCA Auctus).
  *  - CTA principal NÃO muda: "Teste grátis 7 dias, sem cartão".
- *  - Nota fiscal é sempre NFS-e (serviço), NUNCA NF-e.
+ *  - A página fiscal apresenta NFS-e disponível e NF-e/NFC-e como expansão do módulo.
  */
 
 export interface ModuleMetric {
@@ -77,7 +80,7 @@ export interface ModuleDeepDive {
   title: string;
   body: string;
   /** Foto semântica opcional do card (com parallax leve no desktop). */
-  image?: { src: string; alt: string };
+  image?: { src: string; alt: string; fit?: 'cover' | 'contain'; position?: string };
 }
 
 export interface ModuleFeature {
@@ -150,6 +153,13 @@ export interface ModuleData {
   techNicheSelector?: boolean;
 }
 
+/**
+ * Identidade mínima usada pelo catálogo e pelo loader. O conteúdo traduzível
+ * continua em `content/<locale>.ts`; módulos novos não precisam duplicar toda a
+ * copy neste arquivo legado.
+ */
+export type ModuleIdentity = Pick<ModuleData, 'slug' | 'navLabel' | 'icon' | 'techNicheSelector'>;
+
 /* ================================================================== */
 /* 1. Ordem de Serviço Digital → /os-digital                          */
 /* ================================================================== */
@@ -168,7 +178,7 @@ const osDigital: ModuleData = {
     h1: 'Sistema de ordem de serviço digital para equipes de campo',
     h1Highlight: 'ordem de serviço digital',
     subtitle:
-      'Acabe com a OS em papel que some, atrasa e chega sem foto. O Dominex coloca a ordem de serviço no celular do técnico — com checklist, foto, assinatura e relatório pronto na hora, em campo.',
+      'Acabe com a OS em papel que some, atrasa e chega sem foto. A Dominex coloca a ordem de serviço no celular do técnico — com checklist, foto, assinatura e relatório pronto na hora, em campo.',
   },
 
   metrics: [
@@ -179,7 +189,7 @@ const osDigital: ModuleData = {
   ],
 
   painsHeading: 'A OS em papel custa caro todo dia',
-  painsSubheading: 'Onde a ordem de serviço trava no improviso, o Dominex entra no controle',
+  painsSubheading: 'Onde a ordem de serviço trava no improviso, a Dominex entra no controle',
   pains: [
     {
       pain: '"Cadê a OS daquele atendimento de ontem?"',
@@ -216,7 +226,7 @@ const osDigital: ModuleData = {
     {
       icon: Download,
       title: 'App instalável no celular do técnico',
-      body: 'O Dominex tem app instalável (PWA) no celular do técnico, sem precisar baixar na loja de aplicativos. A equipe abre a ordem de serviço, tira foto, preenche o checklist e coleta a assinatura do cliente direto do celular, em campo. O que o técnico registra aparece na hora para o escritório acompanhar.',
+      body: 'A Dominex tem app instalável (PWA) no celular do técnico, sem precisar baixar na loja de aplicativos. A equipe abre a ordem de serviço, tira foto, preenche o checklist e coleta a assinatura do cliente direto do celular, em campo. O que o técnico registra aparece na hora para o escritório acompanhar.',
       image: {
         src: '/modulos/os-digital/2.webp',
         alt: 'Técnico com equipamento de proteção usando o celular em campo na obra',
@@ -240,7 +250,7 @@ const osDigital: ModuleData = {
     { icon: CheckSquare, title: 'Checklist por serviço', desc: 'Modelos de checklist por tipo de atendimento garantem o passo a passo certo em cada visita.' },
     { icon: Camera, title: 'Foto antes e depois', desc: 'Registro fotográfico anexado à OS comprova o estado do serviço e protege sua empresa.' },
     { icon: PenLine, title: 'Assinatura do cliente', desc: 'O cliente assina na tela do celular e a assinatura entra no relatório final.' },
-    { icon: Download, title: 'App instalável', desc: 'Instale o Dominex no celular do técnico, como um app, sem loja de aplicativos.' },
+    { icon: Download, title: 'App instalável', desc: 'Instale a Dominex no celular do técnico, como um app, sem loja de aplicativos.' },
     { icon: Calendar, title: 'Agenda e distribuição', desc: 'Veja a fila do dia e atribua o chamado ao técnico mais próximo, sem conflito de horário.' },
     { icon: FileSignature, title: 'Relatório automático', desc: 'PDF com sua marca pronto ao finalizar, com fotos, checklist e assinatura.' },
     { icon: BarChart3, title: 'Painel por status', desc: 'OS abertas, em andamento e concluídas em um painel ao vivo da operação.' },
@@ -254,8 +264,8 @@ const osDigital: ModuleData = {
   ],
 
   faq: [
-    { q: 'O que é uma ordem de serviço digital?', a: 'É a OS criada, executada e fechada direto no sistema e no app do técnico, sem papel. Toda a visita — checklist, fotos antes/depois, assinatura do cliente e relatório — fica registrada no Dominex e vinculada ao cliente e ao equipamento.' },
-    { q: 'O técnico usa a OS pelo celular? Precisa instalar algum programa?', a: 'O Dominex tem app instalável (PWA) no celular do técnico, sem baixar na loja de aplicativos. Em campo, ele abre a OS, tira fotos, preenche o checklist e coleta a assinatura do cliente direto pelo celular — o que registra aparece na hora para o escritório.' },
+    { q: 'O que é uma ordem de serviço digital?', a: 'É a OS criada, executada e fechada direto no sistema e no app do técnico, sem papel. Toda a visita — checklist, fotos antes/depois, assinatura do cliente e relatório — fica registrada na Dominex e vinculada ao cliente e ao equipamento.' },
+    { q: 'O técnico usa a OS pelo celular? Precisa instalar algum programa?', a: 'A Dominex tem app instalável (PWA) no celular do técnico, sem baixar na loja de aplicativos. Em campo, ele abre a OS, tira fotos, preenche o checklist e coleta a assinatura do cliente direto pelo celular — o que registra aparece na hora para o escritório.' },
     { q: 'Consigo anexar fotos e coletar a assinatura do cliente na OS?', a: 'Sim. Cada ordem de serviço aceita fotos antes e depois e a assinatura do cliente colhida na tela do celular. Tudo entra no relatório final em PDF.' },
     { q: 'O sistema gera relatório de ordem de serviço automaticamente?', a: 'Sim. Ao finalizar a OS, o relatório em PDF com a sua logo e cores sai pronto, com checklist preenchido, fotos e assinatura. Você envia ao cliente na hora.' },
     { q: 'Dá para usar checklists diferentes por tipo de serviço?', a: 'Sim. Você cria modelos de checklist por tipo de atendimento (instalação, preventiva, corretiva) e o técnico segue o passo a passo certo em cada visita.' },
@@ -287,7 +297,7 @@ const pmoc: ModuleData = {
     h1: 'Software de PMOC para climatização e refrigeração',
     h1Highlight: 'PMOC',
     subtitle:
-      'Pare de montar o Plano de Manutenção em planilha paralela. O Dominex gera o PMOC por equipamento conforme a Lei 13.589/2018, agenda as visitas sozinho e entrega o relatório pronto para a fiscalização.',
+      'Pare de montar o Plano de Manutenção em planilha paralela. A Dominex gera o PMOC por equipamento conforme a Lei 13.589/2018, agenda as visitas sozinho e entrega o relatório pronto para a fiscalização.',
   },
 
   metrics: [
@@ -298,7 +308,7 @@ const pmoc: ModuleData = {
   ],
 
   painsHeading: 'O PMOC não pode ser feito na correria',
-  painsSubheading: 'Onde a planilha paralela falha, o Dominex garante conformidade',
+  painsSubheading: 'Onde a planilha paralela falha, a Dominex garante conformidade',
   pains: [
     {
       pain: 'PMOC montado à mão, sem rastro e fora da lei',
@@ -326,7 +336,7 @@ const pmoc: ModuleData = {
     {
       icon: RefreshCw,
       title: 'PMOC automático conforme a Lei 13.589/2018',
-      body: 'O Plano de Manutenção, Operação e Controle exigido por lei para sistemas de climatização de uso coletivo é montado a partir dos equipamentos do contrato. O Dominex distribui as visitas no ciclo, monta o checklist de cada uma conforme a fase do plano, registra o responsável técnico e gera a planilha PMOC e o relatório de conformidade prontos para apresentar em fiscalização — sem planilha paralela.',
+      body: 'O Plano de Manutenção, Operação e Controle exigido por lei para sistemas de climatização de uso coletivo é montado a partir dos equipamentos do contrato. A Dominex distribui as visitas no ciclo, monta o checklist de cada uma conforme a fase do plano, registra o responsável técnico e gera a planilha PMOC e o relatório de conformidade prontos para apresentar em fiscalização — sem planilha paralela.',
       image: {
         src: '/modulos/sistema-pmoc/1.webp',
         alt: 'Técnico de refrigeração medindo gás com manômetros na condensadora do ar-condicionado',
@@ -374,7 +384,7 @@ const pmoc: ModuleData = {
 
   faq: [
     { q: 'O que é PMOC e por que é obrigatório?', a: 'O PMOC (Plano de Manutenção, Operação e Controle) é exigido pela Lei Federal 13.589/2018 para sistemas de climatização de uso coletivo. Ele documenta a manutenção preventiva, o responsável técnico e o histórico de cada equipamento, e deve ser apresentado em fiscalização.' },
-    { q: 'O Dominex gera o PMOC automaticamente?', a: 'Sim. O sistema monta o PMOC a partir dos equipamentos do contrato, distribui as visitas no ciclo, monta o checklist de cada uma e gera a planilha e o relatório de conformidade prontos para a fiscalização — sem planilha paralela.' },
+    { q: 'A Dominex gera o PMOC automaticamente?', a: 'Sim. O sistema monta o PMOC a partir dos equipamentos do contrato, distribui as visitas no ciclo, monta o checklist de cada uma e gera a planilha e o relatório de conformidade prontos para a fiscalização — sem planilha paralela.' },
     { q: 'O plano de manutenção é por equipamento ou por contrato?', a: 'Por equipamento. Cada máquina tem seu próprio cronograma, checklist e histórico de visitas, com a rotina certa para cada fase do ciclo de 12 meses.' },
     { q: 'As visitas PMOC são agendadas sozinhas?', a: 'Sim. As visitas recorrentes são geradas pelo sistema no intervalo correto (mensal, trimestral, semestral), já com o checklist da fase pronto. A preventiva não depende da memória da equipe.' },
     { q: 'Tem QR Code no equipamento?', a: 'Sim. Você cola um QR Code na máquina e o técnico, ao escanear, cai direto no registro daquele equipamento, com histórico e a próxima visita PMOC.' },
@@ -408,7 +418,7 @@ const crm: ModuleData = {
     h1: 'CRM para empresas de serviço e manutenção',
     h1Highlight: 'CRM',
     subtitle:
-      'Lead chegou no WhatsApp e morreu na caixa de entrada? O CRM do Dominex organiza seu funil de vendas em kanban, atribui cada oportunidade a um vendedor e leva do primeiro contato ao contrato fechado.',
+      'Lead chegou no WhatsApp e morreu na caixa de entrada? O CRM da Dominex organiza seu funil de vendas em kanban, atribui cada oportunidade a um vendedor e leva do primeiro contato ao contrato fechado.',
   },
 
   metrics: [
@@ -494,7 +504,7 @@ const crm: ModuleData = {
   ],
 
   faq: [
-    { q: 'O que o CRM do Dominex faz?', a: 'Ele organiza sua operação comercial: captura leads, monta o funil de vendas em kanban, atribui cada oportunidade a um vendedor e leva do orçamento à proposta e ao contrato, com conversão direta em ordem de serviço.' },
+    { q: 'O que o CRM da Dominex faz?', a: 'Ele organiza sua operação comercial: captura leads, monta o funil de vendas em kanban, atribui cada oportunidade a um vendedor e leva do orçamento à proposta e ao contrato, com conversão direta em ordem de serviço.' },
     { q: 'Como funciona o funil de vendas?', a: 'O funil é um kanban com etapas (novo, em contato, orçamento, proposta, fechamento). Você arrasta cada oportunidade pela etapa certa e vê o cliente, o valor estimado e o responsável em cada card.' },
     { q: 'Consigo atribuir oportunidades a vendedores?', a: 'Sim. Cada oportunidade tem um vendedor responsável e você acompanha o pipeline e o desempenho de cada um.' },
     { q: 'O CRM se conecta com orçamentos e contratos?', a: 'Sim. A partir da oportunidade você monta o orçamento, transforma em proposta enviada por link e fecha em contrato — tudo amarrado à oportunidade, sem arquivo solto.' },
@@ -527,7 +537,7 @@ const financeiro: ModuleData = {
     h1: 'Controle financeiro para empresas de serviço',
     h1Highlight: 'Controle financeiro',
     subtitle:
-      'Não sabe se o mês fechou no azul? O Dominex organiza contas a pagar e a receber, mostra o fluxo de caixa em tempo real e fecha o DRE — para você decidir com número, não no chute.',
+      'Não sabe se o mês fechou no azul? A Dominex organiza contas a pagar e a receber, mostra o fluxo de caixa em tempo real e fecha o DRE — para você decidir com número, não no chute.',
   },
 
   metrics: [
@@ -538,7 +548,7 @@ const financeiro: ModuleData = {
   ],
 
   painsHeading: 'Decidir no chute custa o lucro do mês',
-  painsSubheading: 'Onde a planilha não conta a verdade, o Dominex mostra o número',
+  painsSubheading: 'Onde a planilha não conta a verdade, a Dominex mostra o número',
   pains: [
     {
       pain: '"Será que tem dinheiro pra pagar isso?"',
@@ -584,7 +594,7 @@ const financeiro: ModuleData = {
     {
       icon: CreditCard,
       title: 'Cartão de crédito sem bagunçar o caixa',
-      body: 'No Dominex a despesa de cartão entra como prevista e quem vira pagamento de verdade é a fatura agregada — então o saldo da sua conta nunca aparece menor do que é. Você acompanha o total da fatura por cartão e concilia o que foi de fato gasto, sem confundir despesa com pagamento.',
+      body: 'Na Dominex a despesa de cartão entra como prevista e quem vira pagamento de verdade é a fatura agregada — então o saldo da sua conta nunca aparece menor do que é. Você acompanha o total da fatura por cartão e concilia o que foi de fato gasto, sem confundir despesa com pagamento.',
       image: {
         src: '/modulos/controle-financeiro/3.webp',
         alt: 'Pessoa fazendo pagamento por aproximação com cartão de crédito em uma maquininha',
@@ -613,10 +623,10 @@ const financeiro: ModuleData = {
   ],
 
   faq: [
-    { q: 'O que o controle financeiro do Dominex faz?', a: 'Ele organiza contas a pagar e a receber, mostra o fluxo de caixa em tempo real, fecha o DRE do mês, trata o cartão de crédito separadamente e ajuda na conciliação — para você decidir com número, não no chute.' },
+    { q: 'O que o controle financeiro da Dominex faz?', a: 'Ele organiza contas a pagar e a receber, mostra o fluxo de caixa em tempo real, fecha o DRE do mês, trata o cartão de crédito separadamente e ajuda na conciliação — para você decidir com número, não no chute.' },
     { q: 'Como funciona o fluxo de caixa?', a: 'O fluxo consolida todas as entradas e saídas e projeta o saldo dos próximos dias. Você enxerga quanto entrou, quanto vai sair e quanto sobra, em tempo real.' },
     { q: 'O sistema gera DRE?', a: 'Sim. O DRE (Demonstração do Resultado) fecha o mês automaticamente com receitas, custos e despesas categorizados, mostrando a margem real do negócio sem montar planilha.' },
-    { q: 'Como o Dominex trata o cartão de crédito?', a: 'A despesa de cartão entra como prevista (não como pagamento), e quem de fato vira pagamento é a fatura agregada. Assim o saldo da sua conta nunca aparece menor do que realmente é.' },
+    { q: 'Como a Dominex trata o cartão de crédito?', a: 'A despesa de cartão entra como prevista (não como pagamento), e quem de fato vira pagamento é a fatura agregada. Assim o saldo da sua conta nunca aparece menor do que realmente é.' },
     { q: 'Consigo controlar contas a pagar e a receber com vencimento?', a: 'Sim. Cada conta tem vencimento, categoria e cliente ou fornecedor. O sistema organiza por data e avisa o que está perto de vencer.' },
     { q: 'Dá para acompanhar o saldo de várias contas e caixas?', a: 'Sim. Você acompanha o saldo de cada caixa e conta bancária da empresa e concilia o que foi previsto com o que de fato entrou e saiu.' },
     { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você lança suas contas e já enxerga o fluxo de caixa e o resultado do mês.' },
@@ -646,7 +656,7 @@ const pontoFolha: ModuleData = {
     h1: 'Ponto eletrônico e folha de pagamento para equipes de campo',
     h1Highlight: 'Ponto eletrônico e folha de pagamento',
     subtitle:
-      'Sua equipe começa o dia no cliente, não no escritório — então o ponto de papel não serve. O Dominex registra o ponto com selfie e localização, calcula o banco de horas e fecha a folha com vales descontados.',
+      'Sua equipe começa o dia no cliente, não no escritório — então o ponto de papel não serve. A Dominex registra o ponto com selfie e localização, calcula o banco de horas e fecha a folha com vales descontados.',
   },
 
   metrics: [
@@ -657,7 +667,7 @@ const pontoFolha: ModuleData = {
   ],
 
   painsHeading: 'Controlar a jornada de quem vive na rua é difícil',
-  painsSubheading: 'Onde a folha de ponto de papel não chega, o Dominex registra',
+  painsSubheading: 'Onde a folha de ponto de papel não chega, a Dominex registra',
   pains: [
     {
       pain: 'Técnico começa o dia no cliente e o ponto fica sem registro',
@@ -732,7 +742,7 @@ const pontoFolha: ModuleData = {
   ],
 
   faq: [
-    { q: 'Como funciona o ponto eletrônico do Dominex?', a: 'O funcionário registra entrada, saída e intervalos pelo celular, de onde estiver, com selfie e geolocalização em cada batida. Ideal para equipes de campo que começam o dia direto no cliente.' },
+    { q: 'Como funciona o ponto eletrônico da Dominex?', a: 'O funcionário registra entrada, saída e intervalos pelo celular, de onde estiver, com selfie e geolocalização em cada batida. Ideal para equipes de campo que começam o dia direto no cliente.' },
     { q: 'O ponto comprova quem bateu e de onde?', a: 'Sim. Cada batida guarda uma selfie do funcionário e a localização, dando comprovação de quem registrou o ponto e onde.' },
     { q: 'O banco de horas é calculado automaticamente?', a: 'Sim. A partir das batidas, o sistema calcula horas trabalhadas, extras e faltas, mantendo o banco de horas atualizado sem planilha.' },
     { q: 'Dá para fechar a folha de pagamento no sistema?', a: 'Sim. O fechamento consolida salário, banco de horas e vales, descontando os vales automaticamente. O recibo de pagamento sai pronto.' },
@@ -748,12 +758,12 @@ const pontoFolha: ModuleData = {
 };
 
 /* ================================================================== */
-/* 6. NFS-e → /emissao-de-nfse                                       */
+/* 6. Emissão de Nota Fiscal → /emissao-de-nota-fiscal               */
 /* ================================================================== */
 
 const nfse: ModuleData = {
-  slug: 'emissao-de-nfse',
-  navLabel: 'NFS-e',
+  slug: 'emissao-de-nota-fiscal',
+  navLabel: 'Emissão de Nota Fiscal',
   icon: FileText,
   metaTitle:
     'Emissão de NFS-e para empresas de serviço | Dominex',
@@ -765,7 +775,7 @@ const nfse: ModuleData = {
     h1: 'Emissão de NFS-e para empresas de serviço',
     h1Highlight: 'NFS-e',
     subtitle:
-      'Prestou o serviço e ainda precisa abrir outro sistema para emitir a nota? O Dominex emite a NFS-e por cliente, com a conformidade do seu município, sem sair da plataforma onde você já trabalha.',
+      'Prestou o serviço e ainda precisa abrir outro sistema para emitir a nota? A Dominex emite a NFS-e por cliente, com a conformidade do seu município, sem sair da plataforma onde você já trabalha.',
   },
 
   metrics: [
@@ -776,12 +786,12 @@ const nfse: ModuleData = {
   ],
 
   painsHeading: 'A nota fiscal não pode ser um sistema à parte',
-  painsSubheading: 'Onde o emissor avulso atrapalha, o Dominex integra',
+  painsSubheading: 'Onde o emissor avulso atrapalha, a Dominex integra',
   pains: [
     {
       pain: 'Emitir nota em outro sistema, com outro login e outra senha',
       solution:
-        'A NFS-e é emitida dentro do Dominex, por cliente, sem abrir emissor separado nem redigitar dados. Menos troca de tela, menos erro.',
+        'A NFS-e é emitida dentro da Dominex, por cliente, sem abrir emissor separado nem redigitar dados. Menos troca de tela, menos erro.',
     },
     {
       pain: 'Dados do cliente digitados de novo só para a nota',
@@ -804,7 +814,7 @@ const nfse: ModuleData = {
     {
       icon: FileText,
       title: 'NFS-e emitida sem sair da plataforma',
-      body: 'A NFS-e (Nota Fiscal de Serviço eletrônica) é emitida de dentro do Dominex, na mesma plataforma onde você gerencia clientes e serviços. Você seleciona o cliente, confere os dados que já estão no cadastro e emite — sem abrir um emissor avulso, sem outro login, sem redigitar nada.',
+      body: 'A NFS-e (Nota Fiscal de Serviço eletrônica) é emitida de dentro da Dominex, na mesma plataforma onde você gerencia clientes e serviços. Você seleciona o cliente, confere os dados que já estão no cadastro e emite — sem abrir um emissor avulso, sem outro login, sem redigitar nada.',
       image: {
         src: '/modulos/emissao-de-nfse/1.webp',
         alt: 'Pessoa organizando documentos e usando um notebook na mesa do escritório',
@@ -813,7 +823,7 @@ const nfse: ModuleData = {
     {
       icon: Building2,
       title: 'Conformidade municipal por cidade',
-      body: 'O ISS é municipal e cada prefeitura tem suas regras. O Dominex verifica a cobertura do seu município antes de emitir, respeitando o padrão da cidade. Onde a emissão é suportada, você emite a NFS-e com tranquilidade, sabendo que a nota está conforme as exigências da prefeitura.',
+      body: 'O ISS é municipal e cada prefeitura tem suas regras. A Dominex verifica a cobertura do seu município antes de emitir, respeitando o padrão da cidade. Onde a emissão é suportada, você emite a NFS-e com tranquilidade, sabendo que a nota está conforme as exigências da prefeitura.',
       image: {
         src: '/modulos/emissao-de-nfse/2.webp',
         alt: 'Profissional conferindo documentos fiscais e formulários de imposto sobre a mesa de madeira',
@@ -845,15 +855,15 @@ const nfse: ModuleData = {
 
   testimonialsHeading: 'Quem integrou a nota, ganhou tempo',
   testimonials: [
-    { quote: 'Eu emitia a nota em outro sistema, com outro login. Agora emito direto no Dominex, pelo cadastro do cliente.', name: 'Rodrigo A.', role: 'Sócio', company: 'empresa de serviços' },
+    { quote: 'Eu emitia a nota em outro sistema, com outro login. Agora emito direto na Dominex, pelo cadastro do cliente.', name: 'Rodrigo A.', role: 'Sócio', company: 'empresa de serviços' },
     { quote: 'Parei de redigitar dado de cliente só pra nota. Seleciono o cliente e emito a NFS-e.', name: 'Fábio M.', role: 'Administrador', company: 'manutenção e instalação' },
     { quote: 'Saber se meu município aceita antes de emitir evita dor de cabeça. O sistema confere por mim.', name: 'Bruno S.', role: 'Proprietário', company: 'serviços de campo' },
   ],
 
   faq: [
-    { q: 'O que é NFS-e?', a: 'NFS-e é a Nota Fiscal de Serviço eletrônica, o documento fiscal de quem presta serviço (cujo imposto, o ISS, é municipal). É diferente da NF-e, que é da venda de produtos. O Dominex emite NFS-e, voltada para empresas prestadoras de serviço.' },
-    { q: 'Preciso de outro sistema para emitir a nota?', a: 'Não. A NFS-e é emitida de dentro do Dominex, por cliente, sem abrir um emissor avulso nem usar outro login. Você seleciona o cliente e emite na mesma plataforma onde já trabalha.' },
-    { q: 'A emissão respeita as regras do meu município?', a: 'Sim. O ISS é municipal e o Dominex verifica a cobertura do seu município antes de emitir, respeitando o padrão da prefeitura. Onde a emissão é suportada, a nota sai conforme as exigências da cidade.' },
+    { q: 'O que é NFS-e?', a: 'NFS-e é a Nota Fiscal de Serviço eletrônica, o documento fiscal de quem presta serviço (cujo imposto, o ISS, é municipal). É diferente da NF-e, que é da venda de produtos. A Dominex emite NFS-e, voltada para empresas prestadoras de serviço.' },
+    { q: 'Preciso de outro sistema para emitir a nota?', a: 'Não. A NFS-e é emitida de dentro da Dominex, por cliente, sem abrir um emissor avulso nem usar outro login. Você seleciona o cliente e emite na mesma plataforma onde já trabalha.' },
+    { q: 'A emissão respeita as regras do meu município?', a: 'Sim. O ISS é municipal e a Dominex verifica a cobertura do seu município antes de emitir, respeitando o padrão da prefeitura. Onde a emissão é suportada, a nota sai conforme as exigências da cidade.' },
     { q: 'A nota puxa os dados do cliente automaticamente?', a: 'Sim. A emissão usa os dados do cadastro do cliente que você já tem na plataforma, sem redigitar nada.' },
     { q: 'Consigo acompanhar as notas que emiti?', a: 'Sim. As NFS-e ficam registradas e organizadas por cliente, com o histórico do que já foi emitido, ajudando a controlar o faturamento e a evitar duplicidade.' },
     { q: 'Todos os municípios são suportados?', a: 'A cobertura é municipal e o sistema verifica seu município antes de emitir. Algumas cidades mantêm emissor próprio fora do padrão nacional; nesses casos o sistema sinaliza a situação na verificação de cobertura.' },
@@ -1003,7 +1013,7 @@ const estoque: ModuleData = {
     h1: 'Controle de estoque para equipes de campo',
     h1Highlight: 'Controle de estoque',
     subtitle:
-      'A peça acabou bem na hora do atendimento e ninguém viu? O Dominex controla peças e materiais, dá baixa automática a cada ordem de serviço e mostra o que tem em estoque de verdade.',
+      'A peça acabou bem na hora do atendimento e ninguém viu? A Dominex controla peças e materiais, dá baixa automática a cada ordem de serviço e mostra o que tem em estoque de verdade.',
   },
 
   metrics: [
@@ -1014,7 +1024,7 @@ const estoque: ModuleData = {
   ],
 
   painsHeading: 'Estoque no escuro trava o atendimento',
-  painsSubheading: 'Onde a peça some sem registro, o Dominex dá baixa certa',
+  painsSubheading: 'Onde a peça some sem registro, a Dominex dá baixa certa',
   pains: [
     {
       pain: 'Técnico chega no cliente e a peça não tinha mais no estoque',
@@ -1089,7 +1099,7 @@ const estoque: ModuleData = {
   ],
 
   faq: [
-    { q: 'O que o controle de estoque do Dominex faz?', a: 'Ele cadastra peças e materiais, registra entradas e saídas, dá baixa automática por ordem de serviço e permite inventário — para você saber o que tem, o que saiu e em qual atendimento.' },
+    { q: 'O que o controle de estoque da Dominex faz?', a: 'Ele cadastra peças e materiais, registra entradas e saídas, dá baixa automática por ordem de serviço e permite inventário — para você saber o que tem, o que saiu e em qual atendimento.' },
     { q: 'A baixa de estoque acontece automaticamente?', a: 'Sim. O material usado é lançado na própria ordem de serviço e o estoque baixa sozinho, amarrando o consumo à OS e ao cliente.' },
     { q: 'Consigo saber o custo de material por atendimento?', a: 'Sim. Como a baixa está vinculada à OS, você enxerga quanto de material cada atendimento consumiu, deixando os próximos orçamentos mais precisos.' },
     { q: 'Como funciona o inventário?', a: 'Você faz a contagem física quando quiser, compara com o saldo do sistema e ajusta a divergência. O estoque volta a refletir a realidade.' },
@@ -1122,7 +1132,7 @@ const orcamentosContratos: ModuleData = {
     h1: 'Orçamentos e contratos para empresas de serviço',
     h1Highlight: 'Orçamentos e contratos',
     subtitle:
-      'Orçamento feito de cabeça e contrato esquecido até o cliente reclamar? O Dominex monta orçamentos profissionais, vira proposta por link e fecha contratos recorrentes que geram as ordens de serviço sozinhos.',
+      'Orçamento feito de cabeça e contrato esquecido até o cliente reclamar? A Dominex monta orçamentos profissionais, vira proposta por link e fecha contratos recorrentes que geram as ordens de serviço sozinhos.',
   },
 
   metrics: [
@@ -1133,7 +1143,7 @@ const orcamentosContratos: ModuleData = {
   ],
 
   painsHeading: 'Orçamento e contrato no improviso travam a receita',
-  painsSubheading: 'Onde falta padrão, o Dominex profissionaliza e automatiza',
+  painsSubheading: 'Onde falta padrão, a Dominex profissionaliza e automatiza',
   pains: [
     {
       pain: 'Orçamento feito de cabeça, sem padrão e sem rastro',
@@ -1179,7 +1189,7 @@ const orcamentosContratos: ModuleData = {
     {
       icon: Repeat,
       title: 'Contratos recorrentes que geram as OS sozinhos',
-      body: 'Para manutenção preventiva e atendimento periódico, cadastre o contrato com a recorrência certa (mensal, bimestral, trimestral). O Dominex gera as ordens de serviço automaticamente no intervalo combinado, já com o escopo do contrato. A receita recorrente roda sem depender da memória de ninguém e nenhum SLA fura.',
+      body: 'Para manutenção preventiva e atendimento periódico, cadastre o contrato com a recorrência certa (mensal, bimestral, trimestral). A Dominex gera as ordens de serviço automaticamente no intervalo combinado, já com o escopo do contrato. A receita recorrente roda sem depender da memória de ninguém e nenhum SLA fura.',
       image: {
         src: '/modulos/orcamentos-e-contratos/3.webp',
         alt: 'Mão assinando um contrato com caneta sobre a mesa de madeira',
@@ -1208,9 +1218,9 @@ const orcamentosContratos: ModuleData = {
   ],
 
   faq: [
-    { q: 'Como funcionam os orçamentos no Dominex?', a: 'Você monta orçamentos com itens, mão de obra e material num documento profissional com a sua marca, ligado ao cliente. O orçamento fica registrado e pode virar proposta, contrato ou ordem de serviço.' },
+    { q: 'Como funcionam os orçamentos na Dominex?', a: 'Você monta orçamentos com itens, mão de obra e material num documento profissional com a sua marca, ligado ao cliente. O orçamento fica registrado e pode virar proposta, contrato ou ordem de serviço.' },
     { q: 'O cliente aprova a proposta por link?', a: 'Sim. A proposta vai por link, o cliente abre no celular e aprova com registro de quando aprovou. Você acompanha quem abriu e quem fechou, sem depender do "ok" no WhatsApp.' },
-    { q: 'O que são contratos recorrentes?', a: 'São contratos de manutenção preventiva ou atendimento periódico com recorrência configurável (mensal, bimestral, trimestral). O Dominex gera as ordens de serviço automaticamente no intervalo certo, com o escopo do contrato pronto.' },
+    { q: 'O que são contratos recorrentes?', a: 'São contratos de manutenção preventiva ou atendimento periódico com recorrência configurável (mensal, bimestral, trimestral). A Dominex gera as ordens de serviço automaticamente no intervalo certo, com o escopo do contrato pronto.' },
     { q: 'Os contratos geram ordens de serviço sozinhos?', a: 'Sim. Cadastrado o contrato com a recorrência, as OS são geradas pelo sistema no intervalo combinado, sem você precisar lembrar — nenhum SLA fura por esquecimento.' },
     { q: 'O orçamento aprovado vira ordem de serviço?', a: 'Sim. Com um clique, o orçamento aprovado vira ordem de serviço, levando o escopo vendido para o campo. Comercial e operação trabalham com os mesmos dados.' },
     { q: 'Os orçamentos e contratos ficam ligados ao cliente?', a: 'Sim. Cada orçamento e contrato fica no histórico do cliente, organizado, para consulta e acompanhamento.' },
@@ -1241,7 +1251,7 @@ const rastreamentoAgenda: ModuleData = {
     h1: 'Rastreamento de equipes e agenda para serviços de campo',
     h1Highlight: 'Rastreamento de equipes',
     subtitle:
-      'Fica ligando para saber onde cada técnico está? O Dominex mostra a equipe no mapa em tempo real, organiza a agenda do dia e valida o check-in pelo endereço do cliente.',
+      'Fica ligando para saber onde cada técnico está? A Dominex mostra a equipe no mapa em tempo real, organiza a agenda do dia e valida o check-in pelo endereço do cliente.',
   },
 
   metrics: [
@@ -1327,7 +1337,7 @@ const rastreamentoAgenda: ModuleData = {
   ],
 
   faq: [
-    { q: 'O Dominex mostra onde minha equipe está em tempo real?', a: 'Sim. O mapa ao vivo mostra onde cada técnico está enquanto trabalha, para você acompanhar a operação de campo sem ficar ligando.' },
+    { q: 'A Dominex mostra onde minha equipe está em tempo real?', a: 'Sim. O mapa ao vivo mostra onde cada técnico está enquanto trabalha, para você acompanhar a operação de campo sem ficar ligando.' },
     { q: 'Como funciona a agenda e a roteirização?', a: 'A agenda organiza os atendimentos do dia por técnico e ajuda a roteirizar, distribuindo o chamado pelo técnico mais próximo do endereço, reduzindo deslocamento e evitando conflito de horário.' },
     { q: 'O check-in comprova que o técnico foi ao cliente?', a: 'Sim. O check-in e o check-out são validados pelo endereço do cliente, com horário registrado, comprovando a presença na visita e o tempo no atendimento.' },
     { q: 'Tem histórico de deslocamento?', a: 'Sim. O histórico guarda os pontos-chave do percurso do dia, para você conferir por onde a equipe passou e justificar o tempo em campo.' },
@@ -1469,18 +1479,33 @@ const areaTecnico: ModuleData = {
 /* Registro                                                           */
 /* ================================================================== */
 
-export const MODULES: Record<string, ModuleData> = {
+export const MODULES: Record<string, ModuleIdentity> = {
   'os-digital': osDigital,
   'sistema-pmoc': pmoc,
   'crm': crm,
   'controle-financeiro': financeiro,
   'ponto-e-folha': pontoFolha,
-  'emissao-de-nfse': nfse,
+  'emissao-de-nota-fiscal': nfse,
   'portal-do-cliente': portalCliente,
   'controle-de-estoque': estoque,
   'orcamentos-e-contratos': orcamentosContratos,
   'rastreamento-de-equipes': rastreamentoAgenda,
   'area-do-tecnico': areaTecnico,
+  whatsapp: {
+    slug: 'integracao-whatsapp',
+    navLabel: 'WhatsApp integrado',
+    icon: MessageCircleMore,
+  },
+  cobrancas: {
+    slug: 'cobrancas-automaticas',
+    navLabel: 'Cobranças',
+    icon: BadgeDollarSign,
+  },
+  pdv: {
+    slug: 'pdv-e-loja',
+    navLabel: 'PDV & Loja',
+    icon: ShoppingCart,
+  },
 };
 
 /**
@@ -1499,10 +1524,13 @@ export const MODULE_NAV_LINKS: ModuleNavLink[] = [
   { label: 'CRM & Vendas', slug: 'sistema-crm', icon: Users },
   { label: 'Financeiro', slug: 'controle-financeiro', icon: Wallet },
   { label: 'Ponto & Folha (RH)', slug: 'ponto-e-folha', icon: Clock },
-  { label: 'NFS-e', slug: 'emissao-de-nfse', icon: FileText },
+  { label: 'Emissão de Nota Fiscal', slug: 'emissao-de-nota-fiscal', icon: FileText },
   { label: 'Portal do Cliente', slug: 'portal-do-cliente', icon: UserCircle },
   { label: 'Estoque', slug: 'controle-de-estoque', icon: Boxes },
   { label: 'Orçamentos & Contratos', slug: 'orcamentos-e-contratos', icon: FileSignature },
   { label: 'Rastreamento & Agenda', slug: 'rastreamento-de-equipes', icon: MapPin },
   { label: 'Área do Técnico™', slug: 'area-do-tecnico', icon: Wrench },
+  { label: 'WhatsApp integrado', slug: 'integracao-whatsapp', icon: MessageCircleMore },
+  { label: 'Cobranças', slug: 'cobrancas-automaticas', icon: BadgeDollarSign },
+  { label: 'PDV & Loja', slug: 'pdv-e-loja', icon: ShoppingCart },
 ];

@@ -33,7 +33,7 @@ export const ptBr = {
   // ── Navbar ──────────────────────────────────────────────────────────────
   nav: {
     platform: 'Plataforma',
-    solutions: 'Soluções',
+    solutions: 'Funcionalidades',
     segments: 'Segmentos',
     pricing: 'Preços',
     blog: 'Blog',
@@ -44,7 +44,7 @@ export const ptBr = {
     openMenuAria: 'Abrir menu',
     closeMenuAria: 'Fechar menu',
     solutionsMenuAria: 'Nossas soluções',
-    solutionsMenuHeader: 'Tudo o que a plataforma faz',
+    solutionsMenuHeader: 'Tudo o que a plataforma conecta',
     segmentsMenuAria: 'Nossos segmentos',
     segmentsMenuHeader: 'Nossos segmentos',
     // Taglines do mega-menu Soluções, chaveadas pelo slug do módulo.
@@ -54,12 +54,15 @@ export const ptBr = {
       'sistema-crm': 'Funil de clientes e propostas até fechar o negócio.',
       'controle-financeiro': 'Contas a pagar, a receber e fluxo de caixa no controle.',
       'ponto-e-folha': 'Ponto da equipe, vales e folha sem planilha paralela.',
-      'emissao-de-nfse': 'Emita a nota fiscal de serviço direto pela plataforma.',
+      'emissao-de-nota-fiscal': 'NFS-e agora, com NF-e e NFC-e chegando ao mesmo módulo.',
       'portal-do-cliente': 'Seu cliente acompanha OS, orçamentos e histórico online.',
       'controle-de-estoque': 'Peças e materiais com baixa automática a cada OS.',
       'orcamentos-e-contratos': 'Orçamento aprovado por link vira contrato e OS recorrente.',
       'rastreamento-de-equipes': 'Equipe no mapa ao vivo e rota do dia organizada.',
       'area-do-tecnico': 'Calculadoras, gases e catálogo de equipamentos no bolso.',
+      'integracao-whatsapp': 'Avisos automáticos de OS e cobranças no número da empresa.',
+      'cobrancas-automaticas': 'Pix, boleto, cartão e recorrência ligados ao financeiro.',
+      'pdv-e-loja': 'Venda, caixa, fiado e estoque na mesma operação.',
     },
     // Taglines do mega-menu Segmentos, chaveadas pelo slug do segmento.
     segmentTaglines: {
@@ -83,12 +86,15 @@ export const ptBr = {
     'sistema-crm': 'CRM & Vendas',
     'controle-financeiro': 'Financeiro',
     'ponto-e-folha': 'Ponto & Folha (RH)',
-    'emissao-de-nfse': 'NFS-e',
+    'emissao-de-nota-fiscal': 'Emissão de Nota Fiscal',
     'portal-do-cliente': 'Portal do Cliente',
     'controle-de-estoque': 'Estoque',
     'orcamentos-e-contratos': 'Orçamentos & Contratos',
     'rastreamento-de-equipes': 'Rastreamento & Agenda',
     'area-do-tecnico': 'Área do Técnico™',
+    'integracao-whatsapp': 'WhatsApp integrado',
+    'cobrancas-automaticas': 'Cobranças',
+    'pdv-e-loja': 'PDV & Loja',
   },
 
   // ── Nomes exibidos dos segmentos no menu/rodapé/home, pelo slug ───────────
@@ -108,7 +114,7 @@ export const ptBr = {
   // ── Rodapé ────────────────────────────────────────────────────────────────
   footer: {
     tagline: 'Domine a execução do seu negócio.',
-    solutions: 'Soluções',
+    solutions: 'Funcionalidades',
     segments: 'Segmentos',
     institutional: 'Institucional',
     linkAbout: 'Quem somos',
@@ -127,7 +133,7 @@ export const ptBr = {
     seeAllPlans: 'Ver todos os planos',
     faqHeading: 'Perguntas frequentes',
     problemLabel: 'O problema',
-    withDominex: 'Com o Dominex',
+    withDominex: 'Com a Dominex',
     // Planos (ponte). Valores comerciais são apresentados somente no atendimento.
     pricing: {
       heading: 'Planos para cada fase da sua operação',
@@ -137,15 +143,28 @@ export const ptBr = {
     // Só do SEGMENTO (no módulo essas seções vêm do data.*).
     segment: {
       painsHeading: 'As dores do dia a dia, resolvidas',
-      painsSubheading: 'Onde a operação trava no improviso, o Dominex entra no controle',
+      painsSubheading: 'Onde a operação trava no improviso, a Dominex entra no controle',
       featuresHeading: 'Tudo que sua operação precisa, em um só lugar',
       featuresSubheading:
-        'Do chamado ao relatório, o Dominex cobre cada etapa do serviço em campo',
-      testimonialsHeading: 'Quem usa o Dominex, não volta para o improviso',
+        'Do chamado ao relatório, a Dominex cobre cada etapa do serviço em campo',
+      testimonialsHeading: 'Quem usa a Dominex, não volta para o improviso',
     },
     // Seletor de nicho (Área do Técnico™).
     nicheSearchPlaceholder: 'Buscar nicho...',
     nicheEmpty: 'Nenhum nicho encontrado.',
+    moduleNav: {
+      overview: 'Visão geral',
+      workflow: 'Como funciona',
+      resources: 'Recursos',
+      faq: 'Dúvidas',
+    },
+    motionMock: {
+      label: 'Vídeo explicativo',
+      status: 'Motion em produção',
+      placeholder: 'Espaço reservado · vertical 9:16',
+      play: 'Reproduzir demonstração',
+      storyboard: 'Roteiro visual do módulo',
+    },
   },
 
   // ── Home ────────────────────────────────────────────────────────────────
@@ -156,36 +175,36 @@ export const ptBr = {
       srHeadline:
         'Sistema de ordem de serviço, PMOC e gestão para refrigeração e equipes de campo. Domine a execução do seu negócio.',
       subtitle:
-        'Chega de planilha, WhatsApp e retrabalho. O Dominex centraliza suas OS, rastreia sua equipe e entrega dados reais para você crescer.',
+        'Chega de planilhas soltas, informação espalhada e retrabalho. A Dominex conecta atendimento, campo, WhatsApp, cobranças, financeiro, estoque e loja para sua empresa crescer com controle.',
       ctaPrimary: 'Falar no WhatsApp',
       ctaSecondary: 'Conhecer recursos',
       videoUnsupported: 'Seu navegador não suporta vídeo HTML5.',
-      videoLabel: 'Demonstração do Dominex',
+      videoLabel: 'Demonstração da Dominex',
     },
     logos: {
-      eyebrow: 'Empresas que já dominam suas operações com o Dominex',
+      eyebrow: 'Empresas que já dominam suas operações com a Dominex',
     },
     problemSolution: {
       problemsTitle: 'Sua operação travada no improviso?',
-      solutionsTitle: 'Com o Dominex, você tem controle total',
+      solutionsTitle: 'Com a Dominex, você tem controle total',
       problems: [
         'OS em papel ou Excel perdido',
         'Técnico sem informação no campo',
-        'Cliente ligando "cadê meu técnico?"',
+        'Cliente sem aviso sobre técnico, serviço ou cobrança',
         'Relatórios feitos na mão, horas depois',
         'Sem visibilidade do que está acontecendo agora',
       ],
       solutions: [
         'OS digital criada em segundos',
         'App para o técnico com tudo que precisa',
-        'Rastreamento em tempo real no mapa',
+        'WhatsApp e rastreamento atualizando o cliente',
         'Relatórios automáticos ao finalizar',
         'Dashboard com KPIs ao vivo',
       ],
     },
     features: {
       heading: 'Tudo que sua operação precisa, em um só lugar',
-      subheading: 'Do chamado ao faturamento, o Dominex cobre cada etapa do serviço',
+      subheading: 'Do chamado ao faturamento, a Dominex cobre cada etapa do serviço',
       cta: 'Falar no WhatsApp',
       items: [
         {
@@ -224,9 +243,9 @@ export const ptBr = {
             'Controle de ponto da equipe, vales, bônus e folha de pagamento. Recibos prontos, sem planilha paralela.',
         },
         {
-          title: 'Emissão de NFS-e (Nota Fiscal de Serviço)',
+          title: 'Emissão de Nota Fiscal',
           description:
-            'Emita a nota fiscal de serviço direto pela plataforma, por cliente, com o código fiscal do seu município.',
+            'Emita NFS-e direto pela plataforma e prepare a operação para NF-e e NFC-e no mesmo módulo fiscal.',
         },
         {
           title: 'Portal do cliente',
@@ -252,6 +271,21 @@ export const ptBr = {
           title: 'Relatórios e indicadores',
           description:
             'Painel com OS por status, tempo médio de atendimento e avaliação dos clientes. Decisões baseadas em dados, não no achismo.',
+        },
+        {
+          title: 'WhatsApp integrado',
+          description:
+            'Conecte o número da empresa por QR Code e automatize avisos de técnico a caminho, serviço iniciado, OS concluída e etapas da cobrança.',
+        },
+        {
+          title: 'Cobranças com Pix, boleto e cartão',
+          description:
+            'Gere cobranças avulsas ou recorrentes, compartilhe o link de pagamento e mantenha o recebimento conciliado com o financeiro.',
+        },
+        {
+          title: 'PDV, caixa e loja',
+          description:
+            'Venda no balcão com código de barras, pagamento misto, fiado, baixa de estoque e controle do turno de caixa na mesma operação.',
         },
       ],
     },
@@ -294,7 +328,7 @@ export const ptBr = {
       },
     },
     testimonials: {
-      heading: 'Quem usa o Dominex, não volta para o improviso',
+      heading: 'Quem usa a Dominex, não volta para o improviso',
       items: [
         {
           quote:
@@ -373,7 +407,7 @@ export const ptBr = {
             'Tudo do Pro +',
             '15 usuários inclusos',
             'CRM / Funil de vendas',
-            'Emissão de NFS-e (Nota Fiscal de Serviço)',
+            'Emissão de Nota Fiscal',
             'White Label (sua marca)',
             'Suporte prioritário',
           ],
@@ -389,7 +423,7 @@ export const ptBr = {
       heading: 'Perguntas frequentes',
       items: [
         {
-          q: 'O Dominex serve para qual tipo de empresa?',
+          q: 'A Dominex serve para qual tipo de empresa?',
           a: 'Para empresas que prestam serviços técnicos em campo: refrigeração e climatização, PMOC, manutenção predial, elétrica, dedetização, telecom, segurança eletrônica, instalações, assistência técnica e qualquer operação que envolva equipes externas e ordens de serviço.',
         },
         {
@@ -406,7 +440,7 @@ export const ptBr = {
         },
         {
           q: 'Consigo controlar PMOC e contratos recorrentes?',
-          a: 'Sim. O Dominex gera automaticamente as ordens de serviço dos contratos de manutenção (mensal, bimestral, trimestral etc.) e mantém o calendário PMOC organizado por equipamento e cliente.',
+          a: 'Sim. A Dominex gera automaticamente as ordens de serviço dos contratos de manutenção (mensal, bimestral, trimestral etc.) e mantém o calendário PMOC organizado por equipamento e cliente.',
         },
         {
           q: 'Posso personalizar formulários, checklists e relatórios?',
@@ -587,7 +621,7 @@ export const ptBr = {
     s1Link: 'Política de Privacidade',
     s1Post: '. Caso não concorde, não utilize o serviço.',
     s2Title: '2. Descrição do Serviço',
-    s2P: 'O Dominex é uma plataforma SaaS (Software as a Service) para gestão de equipes de campo, ordens de serviço, clientes, equipamentos, financeiro e recursos humanos, destinada a empresas prestadoras de serviços técnicos.',
+    s2P: 'A Dominex é uma plataforma SaaS (Software as a Service) para gestão de equipes de campo, ordens de serviço, clientes, equipamentos, financeiro e recursos humanos, destinada a empresas prestadoras de serviços técnicos.',
     s3Title: '3. Cadastro e Conta',
     s3Items: [
       'O Usuário é responsável pela veracidade das informações fornecidas no cadastro.',
@@ -598,7 +632,7 @@ export const ptBr = {
     s4Title: '4. Período de Teste',
     s4P: 'Oferecemos um período gratuito de 7 dias com acesso ao plano selecionado. Ao término do período, a conta é suspensa automaticamente caso não haja assinatura ativa. Os dados são mantidos por 90 dias adicionais para eventual reativação.',
     s5Title: '5. Propriedade dos Dados',
-    s5Pre: 'Os dados inseridos na plataforma (clientes, ordens de serviço, funcionários, financeiro) são de propriedade da empresa-usuária. O Dominex os processa exclusivamente para prestar o serviço contratado, nos termos da ',
+    s5Pre: 'Os dados inseridos na plataforma (clientes, ordens de serviço, funcionários, financeiro) são de propriedade da empresa-usuária. A Dominex os processa exclusivamente para prestar o serviço contratado, nos termos da ',
     s5Link: 'Política de Privacidade',
     s5Post: '.',
     s6Title: '6. Uso Aceitável',
@@ -615,7 +649,7 @@ export const ptBr = {
     s8Title: '8. Suspensão e Cancelamento',
     s8P: 'Reservamo-nos o direito de suspender ou encerrar contas que violem estes Termos, após notificação ao Usuário. O cancelamento voluntário pode ser feito a qualquer momento nas configurações da conta.',
     s9Title: '9. Limitação de Responsabilidade',
-    s9P: 'O Dominex não se responsabiliza por danos indiretos, perda de dados por falha do Usuário em realizar backups próprios, ou interrupções causadas por força maior ou falhas de terceiros (provedores de internet, infraestrutura de nuvem).',
+    s9P: 'A Dominex não se responsabiliza por danos indiretos, perda de dados por falha do Usuário em realizar backups próprios, ou interrupções causadas por força maior ou falhas de terceiros (provedores de internet, infraestrutura de nuvem).',
     s10Title: '10. Alterações nos Termos',
     s10P: 'Podemos atualizar estes Termos periodicamente. Alterações significativas serão comunicadas com antecedência mínima de 30 dias por e-mail. O uso continuado do serviço após as alterações implica aceitação.',
     s11Title: '11. Foro e Lei Aplicável',

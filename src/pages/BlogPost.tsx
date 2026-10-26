@@ -23,12 +23,11 @@ import { enUS, es, fr, ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { captureUtmParams } from '@/lib/whatsapp';
 import LandingFooter from '@/components/landing/LandingFooter';
+import LandingNavbar from '@/components/landing/LandingNavbar';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
 import { BlogSidebar } from '@/components/blog/BlogSidebar';
 import { BlogTableOfContents } from '@/components/blog/BlogTableOfContents';
 import { RelatedPosts } from '@/components/blog/RelatedPosts';
-import BlogNavbar from '@/components/blog/BlogNavbar';
-import { useBlogTheme } from '@/components/blog/useBlogTheme';
 import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 import { COMPANY_WHATSAPP_NUMBER } from '@/components/landing/whatsappNumbers';
 import { BLOG_AUTHOR_AVATAR } from '@/components/blog/blogShared';
@@ -127,7 +126,6 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
   const viewTracked = useRef(false);
   const queryClient = useQueryClient();
   const sessionId = getSessionId();
-  const { theme, toggleTheme } = useBlogTheme();
   // Idioma da URL: resolve o post por (slug + locale). Sob /es/blog/... só a
   // versão es; se não existir nesse idioma, cai no 404 (NUNCA no pt-br).
   // `toLocale` prefixa links internos pro idioma atual (Voltar ao blog, CTA).
@@ -389,7 +387,8 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
 
   if (isLoading) {
     return (
-      <div>
+      <div style={DOMINEX_BRAND_VARS}>
+        <LandingNavbar />
         <div className="flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-[hsl(0,0%,4%)]">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
@@ -400,6 +399,7 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
   if (!post) {
     return (
       <div style={DOMINEX_BRAND_VARS}>
+        <LandingNavbar />
         <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-neutral-50 px-4 text-center text-neutral-900 dark:bg-[hsl(0,0%,4%)] dark:text-white">
           <Newspaper className="h-12 w-12 text-neutral-300 dark:text-white/20" />
           <h1 className="text-xl font-bold text-neutral-900 dark:text-white">{t.postNotFoundTitle}</h1>
@@ -420,14 +420,13 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
   const hasLiked = !!userLike;
 
   return (
-    // O tema do blog controla `.dark` no <html> (useBlogTheme), pra as variantes
-    // `dark:` resolverem de verdade mesmo com o `.dark` global do index.html.
-    // Container raiz com bg claro OPACO (bg-neutral-50) pra não vazar o body escuro.
+    // O artigo compartilha o mesmo header e a mesma preferência de tema do site.
+    // Container raiz opaco evita o fundo do body vazar durante a montagem.
     <div style={DOMINEX_BRAND_VARS}>
       <div className="relative min-h-screen bg-neutral-50 text-neutral-900 dark:bg-[hsl(0,0%,4%)] dark:text-white">
-        <BlogNavbar theme={theme} onToggleTheme={toggleTheme} />
+        <LandingNavbar />
 
-        <div className="mx-auto max-w-7xl px-4 pb-24 pt-10 sm:px-6 lg:px-8 2xl:max-w-[1550px]">
+        <div className="mx-auto max-w-7xl px-4 pb-24 pt-28 sm:px-6 lg:px-8 2xl:max-w-[1550px]">
           {/* Layout:
               - mobile: 1 coluna (só artigo, sidebar empilha abaixo)
               - lg → 2xl: layout ORIGINAL [conteúdo 1fr | sidebar 320px], SEM TOC

@@ -2,6 +2,7 @@ import type { AnchorHTMLAttributes, MouseEvent, ReactNode } from 'react';
 import { buildWhatsAppUrl } from '@/lib/whatsapp';
 import { useLocale } from '@/lib/i18n';
 import { COMPANY_WHATSAPP_NUMBER } from './whatsappNumbers';
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 
 interface WhatsAppCtaLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   children: ReactNode;
@@ -43,6 +44,7 @@ export default function WhatsAppCtaLink({
       rel="noopener noreferrer"
       onClick={handleClick}
     >
+      <WhatsAppIcon className="h-4 w-4 shrink-0" />
       {children}
     </a>
   );

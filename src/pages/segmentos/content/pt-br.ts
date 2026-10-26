@@ -43,7 +43,7 @@ const ptBr: SegmentContentMap = {
       h1: 'Sistema de ordem de serviço e PMOC para empresas de refrigeração e climatização',
       h1Highlight: 'refrigeração e climatização',
       subtitle:
-        'Chega de OS no papel e técnico sem histórico no campo. O Dominex centraliza suas ordens de serviço, automatiza o PMOC e mantém o registro de cada equipamento, gás e visita na palma da mão.',
+        'Chega de OS no papel e técnico sem histórico no campo. A Dominex centraliza suas ordens de serviço, automatiza o PMOC e mantém o registro de cada equipamento, gás e visita na palma da mão.',
     },
     metrics: [
       { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
@@ -60,7 +60,7 @@ const ptBr: SegmentContentMap = {
       {
         pain: 'PMOC feito na correria, sem rastro e fora da lei',
         solution:
-          'O Dominex gera o cronograma PMOC automaticamente por equipamento, conforme a Lei 13.589/2018, com checklist de cada visita, responsável técnico e relatório pronto pra fiscalização.',
+          'A Dominex gera o cronograma PMOC automaticamente por equipamento, conforme a Lei 13.589/2018, com checklist de cada visita, responsável técnico e relatório pronto pra fiscalização.',
       },
       {
         pain: 'Contrato de manutenção preventiva esquecido até o cliente reclamar',
@@ -95,7 +95,7 @@ const ptBr: SegmentContentMap = {
       {
         icon: Smartphone,
         title: 'Tudo no celular do técnico, direto do telhado',
-        body: 'O serviço de refrigeração acontece em cobertura, casa de máquinas e subsolo de shopping — e é tudo resolvido pelo celular. O app do Dominex é instalável no aparelho (PWA): o técnico abre a OS, tira foto, mede pressão, preenche o checklist e coleta a assinatura do cliente ali mesmo, no local do serviço. A OS sai pronta na hora, sem voltar pro escritório nem refazer relatório.',
+        body: 'O serviço de refrigeração acontece em cobertura, casa de máquinas e subsolo de shopping — e é tudo resolvido pelo celular. O app da Dominex é instalável no aparelho (PWA): o técnico abre a OS, tira foto, mede pressão, preenche o checklist e coleta a assinatura do cliente ali mesmo, no local do serviço. A OS sai pronta na hora, sem voltar pro escritório nem refazer relatório.',
         image: {
           src: '/segmentos/refrigeracao/3.webp',
           alt: 'Técnicos atendendo a unidade externa de ar-condicionado no telhado',
@@ -169,16 +169,16 @@ const ptBr: SegmentContentMap = {
     ],
     faq: [
       {
-        q: 'O Dominex serve para empresas de refrigeração e climatização?',
+        q: 'A Dominex serve para empresas de refrigeração e climatização?',
         a: 'Sim. Foi feito para empresas que instalam e mantêm split, multi-split, VRF, chiller, câmara fria, self-contained e fancoil. Você cadastra cada equipamento, controla o gás refrigerante, gera PMOC e organiza contratos de manutenção preventiva em um só lugar.',
       },
       {
         q: 'O PMOC é obrigatório? O sistema gera o PMOC?',
-        a: 'O PMOC (Plano de Manutenção, Operação e Controle) é exigido pela Lei Federal 13.589/2018 para sistemas de climatização de uso coletivo. O Dominex monta o cronograma PMOC automaticamente a partir dos equipamentos do contrato, com checklist por visita, responsável técnico e relatório de conformidade pronto para fiscalização.',
+        a: 'O PMOC (Plano de Manutenção, Operação e Controle) é exigido pela Lei Federal 13.589/2018 para sistemas de climatização de uso coletivo. A Dominex monta o cronograma PMOC automaticamente a partir dos equipamentos do contrato, com checklist por visita, responsável técnico e relatório de conformidade pronto para fiscalização.',
       },
       {
         q: 'O técnico usa pelo celular? Precisa instalar algum app?',
-        a: 'Sim, é tudo no celular. O Dominex é um app instalável no aparelho do técnico (PWA) — sem precisar baixar nada da loja. No local do serviço, ele abre a OS, tira fotos, registra pressões, preenche o checklist e coleta a assinatura do cliente direto pelo celular. A OS sai pronta na hora.',
+        a: 'Sim, é tudo no celular. A Dominex é um app instalável no aparelho do técnico (PWA) — sem precisar baixar nada da loja. No local do serviço, ele abre a OS, tira fotos, registra pressões, preenche o checklist e coleta a assinatura do cliente direto pelo celular. A OS sai pronta na hora.',
       },
       {
         q: 'Consigo controlar o gás e o histórico de cada equipamento?',
@@ -190,7 +190,7 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'Como funcionam os contratos de manutenção preventiva?',
-        a: 'Você cadastra o contrato com a recorrência desejada (mensal, bimestral, trimestral etc.) e o Dominex gera as ordens de serviço automaticamente no intervalo certo, por equipamento. Você nunca mais esquece uma preventiva ou fura um SLA.',
+        a: 'Você cadastra o contrato com a recorrência desejada (mensal, bimestral, trimestral etc.) e a Dominex gera as ordens de serviço automaticamente no intervalo certo, por equipamento. Você nunca mais esquece uma preventiva ou fura um SLA.',
       },
       {
         q: 'Tenho ferramentas técnicas de refrigeração no sistema?',
@@ -221,7 +221,7 @@ const ptBr: SegmentContentMap = {
       h1: 'Sistema de ordem de serviço para empresas de instalações elétricas',
       h1Highlight: 'instalações elétricas',
       subtitle:
-        'Quadro montado, padrão de entrada trocado, manutenção feita — e nada disso virou registro? O Dominex digitaliza suas ordens de serviço, guarda o histórico de cada instalação e coloca laudo, checklist e foto na mão do eletricista.',
+        'Quadro montado, padrão de entrada trocado, manutenção feita — e nada disso virou registro? A Dominex digitaliza suas ordens de serviço, guarda o histórico de cada instalação e coloca laudo, checklist e foto na mão do eletricista.',
     },
     metrics: [
       { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
@@ -273,7 +273,7 @@ const ptBr: SegmentContentMap = {
       {
         icon: Smartphone,
         title: 'Tudo no celular do eletricista, direto da obra',
-        body: 'Quadro montado, padrão de entrada trocado, inspeção feita — e o registro fica pronto no mesmo instante. O app do Dominex é instalável no celular do eletricista (PWA): no local do serviço ele abre a OS, tira foto antes/depois, percorre o checklist de segurança e coleta a assinatura do cliente ali mesmo. O relatório sai pronto na hora, sem voltar pra anotar no escritório.',
+        body: 'Quadro montado, padrão de entrada trocado, inspeção feita — e o registro fica pronto no mesmo instante. O app da Dominex é instalável no celular do eletricista (PWA): no local do serviço ele abre a OS, tira foto antes/depois, percorre o checklist de segurança e coleta a assinatura do cliente ali mesmo. O relatório sai pronto na hora, sem voltar pra anotar no escritório.',
         image: {
           src: '/segmentos/eletrica/3.webp',
           alt: 'Eletricista de capacete usando o celular no local da obra, ao ar livre',
@@ -282,7 +282,7 @@ const ptBr: SegmentContentMap = {
       {
         icon: RefreshCw,
         title: 'Contratos de manutenção elétrica recorrente',
-        body: 'Condomínios, indústrias e comércios precisam de manutenção preventiva periódica do sistema elétrico. Cadastre o contrato com a recorrência certa (mensal, trimestral) e o Dominex gera as ordens de serviço sozinho no intervalo combinado, com o checklist da inspeção pronto. Você cumpre o contrato sem depender da memória de ninguém.',
+        body: 'Condomínios, indústrias e comércios precisam de manutenção preventiva periódica do sistema elétrico. Cadastre o contrato com a recorrência certa (mensal, trimestral) e a Dominex gera as ordens de serviço sozinho no intervalo combinado, com o checklist da inspeção pronto. Você cumpre o contrato sem depender da memória de ninguém.',
         image: {
           src: '/segmentos/eletrica/4.webp',
           alt: 'Técnico com EPI fazendo manutenção em painéis elétricos em ambiente industrial',
@@ -356,7 +356,7 @@ const ptBr: SegmentContentMap = {
     ],
     faq: [
       {
-        q: 'O Dominex serve para empresas de instalações e manutenção elétrica?',
+        q: 'A Dominex serve para empresas de instalações e manutenção elétrica?',
         a: 'Sim. Foi feito para eletricistas e empresas que instalam e mantêm sistemas elétricos: padrão de entrada, quadros de distribuição, instalações trifásicas, circuitos e manutenção preventiva. Você cadastra cada ponto de instalação, registra o histórico e gera ordens de serviço, orçamentos e relatórios em um só lugar.',
       },
       {
@@ -369,7 +369,7 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'O eletricista usa pelo celular? Precisa instalar algum app?',
-        a: 'Sim, é tudo no celular. O Dominex é um app instalável no aparelho do eletricista (PWA), sem precisar baixar da loja. No local do serviço ele abre a OS, tira fotos, percorre o checklist de segurança e coleta a assinatura do cliente direto pelo celular. O relatório sai pronto na hora.',
+        a: 'Sim, é tudo no celular. A Dominex é um app instalável no aparelho do eletricista (PWA), sem precisar baixar da loja. No local do serviço ele abre a OS, tira fotos, percorre o checklist de segurança e coleta a assinatura do cliente direto pelo celular. O relatório sai pronto na hora.',
       },
       {
         q: 'Dá para gerar orçamento de instalação elétrica?',
@@ -377,7 +377,7 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'Como funcionam os contratos de manutenção preventiva elétrica?',
-        a: 'Você cadastra o contrato com a recorrência desejada (mensal, trimestral etc.) e o Dominex gera as ordens de serviço automaticamente no intervalo certo, com o checklist da inspeção pronto. Ideal para condomínios, indústrias e comércios com manutenção periódica.',
+        a: 'Você cadastra o contrato com a recorrência desejada (mensal, trimestral etc.) e a Dominex gera as ordens de serviço automaticamente no intervalo certo, com o checklist da inspeção pronto. Ideal para condomínios, indústrias e comércios com manutenção periódica.',
       },
       {
         q: 'Consigo ver onde minha equipe está em campo?',
@@ -408,7 +408,7 @@ const ptBr: SegmentContentMap = {
       h1: 'Sistema de ordem de serviço e O&M para empresas de energia solar',
       h1Highlight: 'energia solar',
       subtitle:
-        'Instalou a usina, mas o pós-venda virou bagunça? O Dominex organiza as ordens de serviço de instalação e O&M, guarda o histórico de cada usina, inversor e visita, e mantém os contratos de manutenção rodando sozinhos.',
+        'Instalou a usina, mas o pós-venda virou bagunça? A Dominex organiza as ordens de serviço de instalação e O&M, guarda o histórico de cada usina, inversor e visita, e mantém os contratos de manutenção rodando sozinhos.',
     },
     metrics: [
       { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
@@ -451,7 +451,7 @@ const ptBr: SegmentContentMap = {
       {
         icon: RefreshCw,
         title: 'Contratos de O&M que geram as OS sozinhos',
-        body: 'A operação e manutenção (O&M) de usinas é o que sustenta a geração ao longo dos anos. Cadastre o contrato com a recorrência de limpeza e inspeção (mensal, trimestral, semestral) e o Dominex gera as ordens de serviço automaticamente no intervalo certo, com o checklist da rotina pronto. A manutenção preventiva acontece sem você precisar lembrar.',
+        body: 'A operação e manutenção (O&M) de usinas é o que sustenta a geração ao longo dos anos. Cadastre o contrato com a recorrência de limpeza e inspeção (mensal, trimestral, semestral) e a Dominex gera as ordens de serviço automaticamente no intervalo certo, com o checklist da rotina pronto. A manutenção preventiva acontece sem você precisar lembrar.',
         image: {
           src: '/segmentos/solar/2.webp',
           alt: 'Três técnicos uniformizados e de capacete limpando módulos solares no telhado',
@@ -460,7 +460,7 @@ const ptBr: SegmentContentMap = {
       {
         icon: Smartphone,
         title: 'Tudo no celular da equipe, direto no telhado',
-        body: 'As usinas ficam em telhado, galpão e área rural — e a equipe resolve tudo pelo celular no local. O app do Dominex é instalável no aparelho (PWA): a equipe abre a OS, tira foto da limpeza dos módulos, preenche o checklist de inspeção do inversor e coleta a assinatura do cliente ali mesmo, na usina. O relatório da visita sai pronto na hora, sem refazer no escritório.',
+        body: 'As usinas ficam em telhado, galpão e área rural — e a equipe resolve tudo pelo celular no local. O app da Dominex é instalável no aparelho (PWA): a equipe abre a OS, tira foto da limpeza dos módulos, preenche o checklist de inspeção do inversor e coleta a assinatura do cliente ali mesmo, na usina. O relatório da visita sai pronto na hora, sem refazer no escritório.',
         image: {
           src: '/segmentos/solar/3.webp',
           alt: 'Técnico de energia solar com EPI trabalhando em módulos no telhado sob céu azul',
@@ -534,7 +534,7 @@ const ptBr: SegmentContentMap = {
     ],
     faq: [
       {
-        q: 'O Dominex serve para empresas de energia solar fotovoltaica?',
+        q: 'A Dominex serve para empresas de energia solar fotovoltaica?',
         a: 'Sim. Foi feito para integradores e empresas que instalam e mantêm usinas fotovoltaicas. Você cadastra cada usina com módulos, inversor e estrutura, registra o histórico de instalação e O&M, e organiza as ordens de serviço, contratos e relatórios em um só lugar.',
       },
       {
@@ -543,19 +543,19 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'Como funcionam os contratos de O&M e manutenção preventiva?',
-        a: 'Você cadastra o contrato de O&M com a recorrência de limpeza e inspeção (mensal, trimestral, semestral) e o Dominex gera as ordens de serviço automaticamente no intervalo certo, com o checklist da rotina pronto. A manutenção preventiva acontece sem depender da memória da equipe.',
+        a: 'Você cadastra o contrato de O&M com a recorrência de limpeza e inspeção (mensal, trimestral, semestral) e a Dominex gera as ordens de serviço automaticamente no intervalo certo, com o checklist da rotina pronto. A manutenção preventiva acontece sem depender da memória da equipe.',
       },
       {
         q: 'A equipe usa pelo celular? Precisa instalar algum app?',
-        a: 'Sim, é tudo no celular. O Dominex é um app instalável no aparelho da equipe (PWA), sem baixar da loja. Na usina, a equipe abre a OS, tira fotos da limpeza dos módulos, preenche o checklist de inspeção do inversor e coleta a assinatura do cliente direto pelo celular. O relatório sai pronto na hora.',
+        a: 'Sim, é tudo no celular. A Dominex é um app instalável no aparelho da equipe (PWA), sem baixar da loja. Na usina, a equipe abre a OS, tira fotos da limpeza dos módulos, preenche o checklist de inspeção do inversor e coleta a assinatura do cliente direto pelo celular. O relatório sai pronto na hora.',
       },
       {
         q: 'Consigo comprovar a limpeza de módulos e a inspeção?',
         a: 'Sim. O técnico fecha a OS com fotos antes/depois da limpeza, checklist de inspeção preenchido e assinatura do cliente na hora. O relatório em PDF com a sua marca sai pronto para entregar ao cliente e comprovar o serviço.',
       },
       {
-        q: 'O Dominex faz monitoramento da geração em tempo real?',
-        a: 'O Dominex organiza o serviço de campo: ordens de serviço, contratos de O&M, histórico por usina e comprovação das visitas. Ele não substitui o portal do inversor, mas centraliza tudo o que a equipe faz na usina para que a manutenção mantenha a geração em dia.',
+        q: 'A Dominex faz monitoramento da geração em tempo real?',
+        a: 'A Dominex organiza o serviço de campo: ordens de serviço, contratos de O&M, histórico por usina e comprovação das visitas. Ela não substitui o portal do inversor, mas centraliza tudo o que a equipe faz na usina para que a manutenção mantenha a geração em dia.',
       },
       {
         q: 'Consigo ver onde minha equipe de instalação está?',
@@ -586,7 +586,7 @@ const ptBr: SegmentContentMap = {
       h1: 'Sistema de ordem de serviço para provedores de internet e telecomunicações',
       h1Highlight: 'provedores de internet',
       subtitle:
-        'Instalação de fibra, chamado de suporte, troca de ONU — e cada técnico anotando no caderno? O Dominex organiza suas ordens de serviço, agenda as visitas e guarda o histórico de CTO, ONU e equipamento de cada assinante.',
+        'Instalação de fibra, chamado de suporte, troca de ONU — e cada técnico anotando no caderno? A Dominex organiza suas ordens de serviço, agenda as visitas e guarda o histórico de CTO, ONU e equipamento de cada assinante.',
     },
     metrics: [
       { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
@@ -638,7 +638,7 @@ const ptBr: SegmentContentMap = {
       {
         icon: Smartphone,
         title: 'Tudo no celular do técnico, direto no poste',
-        body: 'Instalação de fibra acontece em poste, caixa de passagem, subsolo e condomínio — e o técnico resolve tudo pelo celular no local. O app do Dominex é instalável no aparelho (PWA): ele abre a OS, registra a CTO e a ONU, tira foto da instalação, preenche o checklist e coleta a assinatura do assinante ali mesmo. A OS sai pronta na hora, sem voltar pra central pra fechar.',
+        body: 'Instalação de fibra acontece em poste, caixa de passagem, subsolo e condomínio — e o técnico resolve tudo pelo celular no local. O app da Dominex é instalável no aparelho (PWA): ele abre a OS, registra a CTO e a ONU, tira foto da instalação, preenche o checklist e coleta a assinatura do assinante ali mesmo. A OS sai pronta na hora, sem voltar pra central pra fechar.',
         image: {
           src: '/segmentos/telecom/3.webp',
           alt: 'Técnico com capacete e cinto de segurança trabalhando em cabos no alto de um poste',
@@ -712,7 +712,7 @@ const ptBr: SegmentContentMap = {
     ],
     faq: [
       {
-        q: 'O Dominex serve para provedores de internet e empresas de telecom?',
+        q: 'A Dominex serve para provedores de internet e empresas de telecom?',
         a: 'Sim. Foi feito para provedores (ISP) e empresas de telecomunicações que instalam fibra, atendem chamados de suporte e gerenciam equipamentos em campo. Você cadastra cada assinante com o ponto de conexão, registra o histórico de CTO e ONU e organiza ordens de serviço, agendamento e relatórios em um só lugar.',
       },
       {
@@ -729,7 +729,7 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'O técnico usa pelo celular? Precisa instalar algum app?',
-        a: 'Sim, é tudo no celular. O Dominex é um app instalável no aparelho do técnico (PWA), sem baixar da loja. No local da instalação ele abre a OS, registra a CTO e a ONU, tira fotos, preenche o checklist e coleta a assinatura do assinante direto pelo celular. A OS sai pronta na hora.',
+        a: 'Sim, é tudo no celular. A Dominex é um app instalável no aparelho do técnico (PWA), sem baixar da loja. No local da instalação ele abre a OS, registra a CTO e a ONU, tira fotos, preenche o checklist e coleta a assinatura do assinante direto pelo celular. A OS sai pronta na hora.',
       },
       {
         q: 'Consigo acompanhar a reincidência de chamados?',
@@ -764,7 +764,7 @@ const ptBr: SegmentContentMap = {
       h1: 'Sistema de ordem de serviço para empresas de CFTV e segurança eletrônica',
       h1Highlight: 'CFTV e segurança eletrônica',
       subtitle:
-        'Câmera instalada, alarme configurado, controle de acesso entregue — e o histórico some? O Dominex organiza suas ordens de serviço, guarda o registro de cada equipamento e mantém os contratos de monitoramento rodando.',
+        'Câmera instalada, alarme configurado, controle de acesso entregue — e o histórico some? A Dominex organiza suas ordens de serviço, guarda o registro de cada equipamento e mantém os contratos de monitoramento rodando.',
     },
     metrics: [
       { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
@@ -807,7 +807,7 @@ const ptBr: SegmentContentMap = {
       {
         icon: RefreshCw,
         title: 'Contratos de monitoramento e manutenção recorrente',
-        body: 'O monitoramento e a manutenção periódica do sistema de segurança são a receita recorrente do negócio. Cadastre o contrato com a recorrência de inspeção (mensal, trimestral) e o Dominex gera as ordens de serviço automaticamente no intervalo certo, com o checklist da ronda técnica pronto. A preventiva acontece sem você precisar lembrar.',
+        body: 'O monitoramento e a manutenção periódica do sistema de segurança são a receita recorrente do negócio. Cadastre o contrato com a recorrência de inspeção (mensal, trimestral) e a Dominex gera as ordens de serviço automaticamente no intervalo certo, com o checklist da ronda técnica pronto. A preventiva acontece sem você precisar lembrar.',
         image: {
           src: '/segmentos/cftv/2.webp',
           alt: 'Operador em sala de monitoramento acompanhando imagens das câmeras em vários monitores',
@@ -816,7 +816,7 @@ const ptBr: SegmentContentMap = {
       {
         icon: Smartphone,
         title: 'Tudo no celular do técnico, direto na fachada',
-        body: 'Instalação e manutenção de CFTV acontecem em laje, fachada e estacionamento — e o técnico resolve tudo pelo celular no local. O app do Dominex é instalável no aparelho (PWA): ele abre a OS, fotografa cada câmera, registra o equipamento, preenche o checklist e coleta a assinatura do cliente ali mesmo. A OS sai pronta na hora, sem voltar pro escritório pra fechar.',
+        body: 'Instalação e manutenção de CFTV acontecem em laje, fachada e estacionamento — e o técnico resolve tudo pelo celular no local. O app da Dominex é instalável no aparelho (PWA): ele abre a OS, fotografa cada câmera, registra o equipamento, preenche o checklist e coleta a assinatura do cliente ali mesmo. A OS sai pronta na hora, sem voltar pro escritório pra fechar.',
         image: {
           src: '/segmentos/cftv/3.webp',
           alt: 'Câmera de segurança tipo dome instalada na fachada de um prédio',
@@ -890,7 +890,7 @@ const ptBr: SegmentContentMap = {
     ],
     faq: [
       {
-        q: 'O Dominex serve para empresas de CFTV e segurança eletrônica?',
+        q: 'A Dominex serve para empresas de CFTV e segurança eletrônica?',
         a: 'Sim. Foi feito para empresas que instalam e mantêm câmeras, alarmes, sensores e controle de acesso. Você cadastra o parque instalado de cada cliente, registra o histórico por equipamento e organiza ordens de serviço, contratos de monitoramento e relatórios em um só lugar.',
       },
       {
@@ -899,7 +899,7 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'Como funcionam os contratos de monitoramento e manutenção?',
-        a: 'Você cadastra o contrato com a recorrência de inspeção (mensal, trimestral etc.) e o Dominex gera as ordens de serviço automaticamente no intervalo certo, com o checklist da ronda técnica pronto. A manutenção preventiva acontece sem depender da memória da equipe.',
+        a: 'Você cadastra o contrato com a recorrência de inspeção (mensal, trimestral etc.) e a Dominex gera as ordens de serviço automaticamente no intervalo certo, com o checklist da ronda técnica pronto. A manutenção preventiva acontece sem depender da memória da equipe.',
       },
       {
         q: 'Dá para comprovar a manutenção e a ronda técnica?',
@@ -907,7 +907,7 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'O técnico usa pelo celular? Precisa instalar algum app?',
-        a: 'Sim, é tudo no celular. O Dominex é um app instalável no aparelho do técnico (PWA), sem baixar da loja. No local ele abre a OS, fotografa cada câmera, registra o equipamento, preenche o checklist e coleta a assinatura do cliente direto pelo celular. A OS sai pronta na hora.',
+        a: 'Sim, é tudo no celular. A Dominex é um app instalável no aparelho do técnico (PWA), sem baixar da loja. No local ele abre a OS, fotografa cada câmera, registra o equipamento, preenche o checklist e coleta a assinatura do cliente direto pelo celular. A OS sai pronta na hora.',
       },
       {
         q: 'Consigo controlar o estoque de câmeras e equipamentos?',
@@ -942,7 +942,7 @@ const ptBr: SegmentContentMap = {
       h1: 'Sistema de ordem de serviço para empresas de construção civil',
       h1Highlight: 'construção civil',
       subtitle:
-        'Equipe na obra, vistoria pendente, assistência pós-obra sem registro? O Dominex organiza as ordens de serviço das suas equipes em campo, registra vistorias e medições e mantém o histórico de cada unidade na palma da mão.',
+        'Equipe na obra, vistoria pendente, assistência pós-obra sem registro? A Dominex organiza as ordens de serviço das suas equipes em campo, registra vistorias e medições e mantém o histórico de cada unidade na palma da mão.',
     },
     metrics: [
       { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
@@ -994,7 +994,7 @@ const ptBr: SegmentContentMap = {
       {
         icon: Smartphone,
         title: 'Tudo no celular da equipe, direto no canteiro',
-        body: 'A obra é o lugar do serviço: subsolo, estrutura, áreas em construção — e a equipe resolve tudo pelo celular no local. O app do Dominex é instalável no aparelho (PWA): a equipe abre a OS, registra a vistoria, tira fotos da etapa, preenche o checklist e coleta a assinatura ali mesmo, no canteiro. O relatório sai pronto na hora, sem refazer no escritório.',
+        body: 'A obra é o lugar do serviço: subsolo, estrutura, áreas em construção — e a equipe resolve tudo pelo celular no local. O app da Dominex é instalável no aparelho (PWA): a equipe abre a OS, registra a vistoria, tira fotos da etapa, preenche o checklist e coleta a assinatura ali mesmo, no canteiro. O relatório sai pronto na hora, sem refazer no escritório.',
         image: {
           src: '/segmentos/construcao/3.webp',
           alt: 'Trabalhador de obra consulta a planta do projeto em um tablet no canteiro',
@@ -1068,7 +1068,7 @@ const ptBr: SegmentContentMap = {
     ],
     faq: [
       {
-        q: 'O Dominex serve para empresas de construção civil?',
+        q: 'A Dominex serve para empresas de construção civil?',
         a: 'Sim. Foi feito para construtoras, incorporadoras e empresas de obras que precisam organizar equipes em campo, vistorias, medições e assistência técnica pós-obra. Você distribui tarefas como ordens de serviço, registra cada etapa com foto e mantém o histórico por unidade em um só lugar.',
       },
       {
@@ -1085,7 +1085,7 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'A equipe usa pelo celular? Precisa instalar algum app?',
-        a: 'Sim, é tudo no celular. O Dominex é um app instalável no aparelho da equipe (PWA), sem baixar da loja. No canteiro a equipe abre a OS, registra a vistoria, tira fotos da etapa, preenche o checklist e coleta a assinatura direto pelo celular. O relatório sai pronto na hora.',
+        a: 'Sim, é tudo no celular. A Dominex é um app instalável no aparelho da equipe (PWA), sem baixar da loja. No canteiro a equipe abre a OS, registra a vistoria, tira fotos da etapa, preenche o checklist e coleta a assinatura direto pelo celular. O relatório sai pronto na hora.',
       },
       {
         q: 'Consigo acompanhar o andamento do cronograma?',
@@ -1120,7 +1120,7 @@ const ptBr: SegmentContentMap = {
       h1: 'Sistema de ordem de serviço para empresas de manutenção de elevadores',
       h1Highlight: 'manutenção de elevadores',
       subtitle:
-        'Contrato mensal, preventiva no prazo, chamado de emergência atendido — e o histórico de cada elevador some? O Dominex organiza suas ordens de serviço, mantém os contratos recorrentes rodando e guarda o registro de cada equipamento.',
+        'Contrato mensal, preventiva no prazo, chamado de emergência atendido — e o histórico de cada elevador some? A Dominex organiza suas ordens de serviço, mantém os contratos recorrentes rodando e guarda o registro de cada equipamento.',
     },
     metrics: [
       { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
@@ -1163,7 +1163,7 @@ const ptBr: SegmentContentMap = {
       {
         icon: RefreshCw,
         title: 'Contratos mensais que geram a preventiva sozinhos',
-        body: 'A manutenção preventiva mensal é a base do contrato de elevadores. Cadastre o contrato com a recorrência mensal e o Dominex gera as ordens de serviço automaticamente no intervalo certo, com o checklist da rotina de preventiva pronto. Você nunca mais perde uma visita contratual nem fica exposto se o cliente questionar a periodicidade.',
+        body: 'A manutenção preventiva mensal é a base do contrato de elevadores. Cadastre o contrato com a recorrência mensal e a Dominex gera as ordens de serviço automaticamente no intervalo certo, com o checklist da rotina de preventiva pronto. Você nunca mais perde uma visita contratual nem fica exposto se o cliente questionar a periodicidade.',
         image: {
           src: '/segmentos/elevadores/2.webp',
           alt: 'Técnico realiza manutenção em maquinário industrial',
@@ -1172,7 +1172,7 @@ const ptBr: SegmentContentMap = {
       {
         icon: Smartphone,
         title: 'Tudo no celular do técnico, direto na casa de máquinas',
-        body: 'A casa de máquinas, o poço e a caixa de corrida são o lugar do serviço — e o técnico resolve tudo pelo celular ali mesmo. O app do Dominex é instalável no aparelho (PWA): ele abre a OS, preenche o checklist de inspeção, registra peças, tira fotos e coleta a assinatura do responsável no local. O relatório sai pronto na hora, sem refazer no escritório.',
+        body: 'A casa de máquinas, o poço e a caixa de corrida são o lugar do serviço — e o técnico resolve tudo pelo celular ali mesmo. O app da Dominex é instalável no aparelho (PWA): ele abre a OS, preenche o checklist de inspeção, registra peças, tira fotos e coleta a assinatura do responsável no local. O relatório sai pronto na hora, sem refazer no escritório.',
         image: {
           src: '/segmentos/elevadores/3.webp',
           alt: 'Vista do poço industrial de elevador iluminado',
@@ -1246,12 +1246,12 @@ const ptBr: SegmentContentMap = {
     ],
     faq: [
       {
-        q: 'O Dominex serve para empresas de manutenção de elevadores?',
+        q: 'A Dominex serve para empresas de manutenção de elevadores?',
         a: 'Sim. Foi feito para empresas que fazem manutenção preventiva e corretiva de elevadores sob contrato mensal. Você cadastra cada elevador, mantém o histórico por equipamento, gera as preventivas automaticamente e registra os chamados de emergência em um só lugar.',
       },
       {
         q: 'Como funcionam os contratos mensais de preventiva?',
-        a: 'Você cadastra o contrato com recorrência mensal e o Dominex gera as ordens de serviço de preventiva automaticamente no intervalo certo, com o checklist da rotina pronto. Você cumpre o contrato sem depender da memória da equipe e fica protegido se a periodicidade for questionada.',
+        a: 'Você cadastra o contrato com recorrência mensal e a Dominex gera as ordens de serviço de preventiva automaticamente no intervalo certo, com o checklist da rotina pronto. Você cumpre o contrato sem depender da memória da equipe e fica protegido se a periodicidade for questionada.',
       },
       {
         q: 'Dá para registrar o histórico de cada elevador?',
@@ -1263,7 +1263,7 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'O técnico usa pelo celular? Precisa instalar algum app?',
-        a: 'Sim, é tudo no celular. O Dominex é um app instalável no aparelho do técnico (PWA), sem baixar da loja. Na casa de máquinas ele abre a OS, preenche o checklist de inspeção, registra peças, tira fotos e coleta a assinatura do responsável direto pelo celular. O relatório sai pronto na hora.',
+        a: 'Sim, é tudo no celular. A Dominex é um app instalável no aparelho do técnico (PWA), sem baixar da loja. Na casa de máquinas ele abre a OS, preenche o checklist de inspeção, registra peças, tira fotos e coleta a assinatura do responsável direto pelo celular. O relatório sai pronto na hora.',
       },
       {
         q: 'Gera relatório de manutenção para o condomínio?',
@@ -1298,7 +1298,7 @@ const ptBr: SegmentContentMap = {
       h1: 'Sistema de ordem de serviço para empresas de limpeza e conservação',
       h1Highlight: 'limpeza e conservação',
       subtitle:
-        'Posto de serviço sem comprovação, ronda sem registro, cliente cobrando o que foi feito? O Dominex organiza as ordens de serviço por contrato e posto, com checklist, foto e assinatura provando cada limpeza.',
+        'Posto de serviço sem comprovação, ronda sem registro, cliente cobrando o que foi feito? A Dominex organiza as ordens de serviço por contrato e posto, com checklist, foto e assinatura provando cada limpeza.',
     },
     metrics: [
       { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
@@ -1350,7 +1350,7 @@ const ptBr: SegmentContentMap = {
       {
         icon: Smartphone,
         title: 'Tudo no celular da equipe, direto no posto',
-        body: 'Os postos de limpeza incluem subsolo, garagem e escadaria — e a equipe resolve tudo pelo celular no local. O app do Dominex é instalável no aparelho (PWA): a equipe abre a OS, marca o checklist da rotina, tira foto antes/depois e coleta a assinatura do responsável ali mesmo, no posto. A comprovação fica registrada na hora, sem depender de anotar depois.',
+        body: 'Os postos de limpeza incluem subsolo, garagem e escadaria — e a equipe resolve tudo pelo celular no local. O app da Dominex é instalável no aparelho (PWA): a equipe abre a OS, marca o checklist da rotina, tira foto antes/depois e coleta a assinatura do responsável ali mesmo, no posto. A comprovação fica registrada na hora, sem depender de anotar depois.',
         image: {
           src: '/segmentos/limpeza/3.webp',
           alt: 'Funcionária de limpeza com equipamento de proteção passando rodo no piso de um galpão',
@@ -1424,7 +1424,7 @@ const ptBr: SegmentContentMap = {
     ],
     faq: [
       {
-        q: 'O Dominex serve para empresas de limpeza e conservação?',
+        q: 'A Dominex serve para empresas de limpeza e conservação?',
         a: 'Sim. Foi feito para empresas que operam postos e contratos de limpeza e conservação. Você cadastra cada contrato com seus postos e rotinas, gera as ordens de serviço, comprova a execução com foto e assinatura e acompanha o cumprimento em um só lugar.',
       },
       {
@@ -1441,7 +1441,7 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'A equipe usa pelo celular? Precisa instalar algum app?',
-        a: 'Sim, é tudo no celular. O Dominex é um app instalável no aparelho da equipe (PWA), sem baixar da loja. No posto a equipe abre a OS, marca o checklist da rotina, tira foto antes/depois e coleta a assinatura do responsável direto pelo celular. A comprovação fica registrada na hora.',
+        a: 'Sim, é tudo no celular. A Dominex é um app instalável no aparelho da equipe (PWA), sem baixar da loja. No posto a equipe abre a OS, marca o checklist da rotina, tira foto antes/depois e coleta a assinatura do responsável direto pelo celular. A comprovação fica registrada na hora.',
       },
       {
         q: 'Consigo montar o checklist de cada rotina de limpeza?',
@@ -1476,7 +1476,7 @@ const ptBr: SegmentContentMap = {
       h1: 'Sistema de ordem de serviço para empresas de dedetização e controle de pragas',
       h1Highlight: 'dedetização e controle de pragas',
       subtitle:
-        'Produto aplicado sem registro, certificado feito na correria, contrato periódico esquecido? O Dominex organiza suas ordens de serviço, registra os produtos aplicados e emite o certificado com a sua marca em cada visita.',
+        'Produto aplicado sem registro, certificado feito na correria, contrato periódico esquecido? A Dominex organiza suas ordens de serviço, registra os produtos aplicados e emite o certificado com a sua marca em cada visita.',
     },
     metrics: [
       { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
@@ -1519,7 +1519,7 @@ const ptBr: SegmentContentMap = {
       {
         icon: RefreshCw,
         title: 'Contratos e agendamento periódico de reaplicação',
-        body: 'O controle de pragas depende de reaplicação na frequência certa. Cadastre o contrato com a recorrência (mensal, bimestral, trimestral) e o Dominex gera as ordens de serviço de reaplicação automaticamente no intervalo combinado, com o agendamento já feito. O cliente fica protegido e você não perde a renovação por esquecimento.',
+        body: 'O controle de pragas depende de reaplicação na frequência certa. Cadastre o contrato com a recorrência (mensal, bimestral, trimestral) e a Dominex gera as ordens de serviço de reaplicação automaticamente no intervalo combinado, com o agendamento já feito. O cliente fica protegido e você não perde a renovação por esquecimento.',
         image: {
           src: '/segmentos/dedetizacao/2.webp',
           alt: 'Aplicadora com equipamento de proteção pulverizando produto durante a reaplicação',
@@ -1528,7 +1528,7 @@ const ptBr: SegmentContentMap = {
       {
         icon: Smartphone,
         title: 'Tudo no celular do aplicador, direto no local',
-        body: 'A dedetização acontece em galpão, subsolo e depósito — e o aplicador resolve tudo pelo celular ali mesmo. O app do Dominex é instalável no aparelho (PWA): ele abre a OS, registra os produtos e a dosagem, tira foto do serviço, preenche o checklist e coleta a assinatura do cliente no local. O certificado sai pronto na hora, sem refazer no escritório.',
+        body: 'A dedetização acontece em galpão, subsolo e depósito — e o aplicador resolve tudo pelo celular ali mesmo. O app da Dominex é instalável no aparelho (PWA): ele abre a OS, registra os produtos e a dosagem, tira foto do serviço, preenche o checklist e coleta a assinatura do cliente no local. O certificado sai pronto na hora, sem refazer no escritório.',
         image: {
           src: '/segmentos/dedetizacao/3.webp',
           alt: 'Aplicador uniformizado realizando dedetização no interior de um galpão',
@@ -1602,7 +1602,7 @@ const ptBr: SegmentContentMap = {
     ],
     faq: [
       {
-        q: 'O Dominex serve para empresas de dedetização e controle de pragas?',
+        q: 'A Dominex serve para empresas de dedetização e controle de pragas?',
         a: 'Sim. Foi feito para empresas de dedetização, desratização e controle de pragas. Você cadastra cada cliente, registra os produtos aplicados em cada visita, emite o certificado de dedetização e mantém os contratos de reaplicação recorrente em um só lugar.',
       },
       {
@@ -1615,11 +1615,11 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'Como funcionam os contratos de reaplicação periódica?',
-        a: 'Você cadastra o contrato com a recorrência desejada (mensal, bimestral, trimestral etc.) e o Dominex gera as ordens de serviço de reaplicação automaticamente no intervalo certo, com o agendamento já feito. O cliente fica protegido e você não perde a renovação por esquecimento.',
+        a: 'Você cadastra o contrato com a recorrência desejada (mensal, bimestral, trimestral etc.) e a Dominex gera as ordens de serviço de reaplicação automaticamente no intervalo certo, com o agendamento já feito. O cliente fica protegido e você não perde a renovação por esquecimento.',
       },
       {
         q: 'O aplicador usa pelo celular? Precisa instalar algum app?',
-        a: 'Sim, é tudo no celular. O Dominex é um app instalável no aparelho do aplicador (PWA), sem baixar da loja. No local ele abre a OS, registra os produtos e a dosagem, tira foto do serviço, preenche o checklist e coleta a assinatura do cliente direto pelo celular. O certificado sai pronto na hora.',
+        a: 'Sim, é tudo no celular. A Dominex é um app instalável no aparelho do aplicador (PWA), sem baixar da loja. No local ele abre a OS, registra os produtos e a dosagem, tira foto do serviço, preenche o checklist e coleta a assinatura do cliente direto pelo celular. O certificado sai pronto na hora.',
       },
       {
         q: 'Consigo comprovar a aplicação em uma fiscalização?',
@@ -1654,7 +1654,7 @@ const ptBr: SegmentContentMap = {
       h1: 'Sistema de ordem de serviço para assistência técnica de celular, notebook e PC',
       h1Highlight: 'assistência técnica de celular, notebook e PC',
       subtitle:
-        'Aparelho entrou e o cliente fica perguntando o andamento? O Dominex organiza a entrada do dispositivo, o diagnóstico, o orçamento aprovado por link e avisa o cliente quando está pronto, tudo rastreável do balcão ao técnico.',
+        'Aparelho entrou e o cliente fica perguntando o andamento? A Dominex organiza a entrada do dispositivo, o diagnóstico, o orçamento aprovado por link e avisa o cliente quando está pronto, tudo rastreável do balcão ao técnico.',
     },
     metrics: [
       { value: '+50 mil', label: 'ordens de serviço por mês na plataforma' },
@@ -1768,7 +1768,7 @@ const ptBr: SegmentContentMap = {
     ],
     faq: [
       {
-        q: 'O Dominex serve para lojas de assistência técnica de celular e informática?',
+        q: 'A Dominex serve para lojas de assistência técnica de celular e informática?',
         a: 'Sim. Foi feito para lojas que recebem aparelhos para reparo, como celulares, notebooks e PCs. Você abre a OS de entrada, registra o diagnóstico, envia o orçamento por link, controla o estoque de peças e emite o recibo de retirada com garantia, tudo em um só lugar.',
       },
       {
@@ -1785,7 +1785,7 @@ const ptBr: SegmentContentMap = {
       },
       {
         q: 'O técnico usa pelo celular? Precisa instalar algum app?',
-        a: 'Sim, é tudo no celular. O Dominex é um app instalável no aparelho do técnico (PWA), sem baixar da loja. Na bancada ele abre a OS, registra o diagnóstico, aplica as peças e finaliza o serviço. O recibo sai pronto na hora.',
+        a: 'Sim, é tudo no celular. A Dominex é um app instalável no aparelho do técnico (PWA), sem baixar da loja. Na bancada ele abre a OS, registra o diagnóstico, aplica as peças e finaliza o serviço. O recibo sai pronto na hora.',
       },
       {
         q: 'Consigo acompanhar em que status está cada aparelho?',

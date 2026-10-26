@@ -1,0 +1,214 @@
+.dominex-hero-galaxy {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  contain: layout paint;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 16% 18%, rgb(0 197 151 / 9%), transparent 28%),
+    radial-gradient(circle at 84% 77%, rgb(0 197 151 / 6%), transparent 27%);
+}
+
+.dominex-home-hero::before {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: radial-gradient(
+    ellipse 54% 60% at 50% 51%,
+    #f7f7f5 0%,
+    rgb(247 247 245 / 98%) 31%,
+    rgb(247 247 245 / 86%) 47%,
+    rgb(247 247 245 / 27%) 68%,
+    transparent 82%
+  );
+  content: '';
+  pointer-events: none;
+  animation: dominex-hero-scrim-reveal 900ms cubic-bezier(0.22, 1, 0.36, 1) 700ms both;
+}
+
+.dark .dominex-home-hero::before {
+  background: radial-gradient(
+    ellipse 54% 60% at 50% 51%,
+    #101014 0%,
+    rgb(16 16 20 / 98%) 31%,
+    rgb(16 16 20 / 84%) 47%,
+    rgb(16 16 20 / 25%) 68%,
+    transparent 82%
+  );
+}
+
+.dominex-home-hero-copy h1,
+.dominex-home-hero-lower {
+  animation: dominex-hero-copy-reveal 780ms cubic-bezier(0.22, 1, 0.36, 1) 820ms both;
+}
+
+.dominex-home-hero-lower { animation-delay: 940ms; }
+
+.dominex-home-hero-logo {
+  animation: dominex-hero-logo-reveal 900ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
+}
+
+.dominex-home-hero-highlight {
+  margin-bottom: -0.13em;
+  padding-right: 0.08em;
+  padding-bottom: 0.13em;
+  background: linear-gradient(100deg, #101512 0%, #00a980 43%, #00c597 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.dark .dominex-home-hero-highlight {
+  background-image: linear-gradient(100deg, #ffffff 0%, #72e8c8 43%, #00c597 100%);
+}
+
+@keyframes dominex-hero-logo-reveal {
+  from { opacity: 0; clip-path: inset(0 100% 0 0); transform: translateY(4px) scale(0.985); }
+  to { opacity: 1; clip-path: inset(0); transform: translateY(0) scale(1); }
+}
+
+@keyframes dominex-hero-scrim-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dominex-hero-copy-reveal {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dark .dominex-hero-galaxy {
+  background:
+    radial-gradient(circle at 16% 18%, rgb(0 197 151 / 13%), transparent 28%),
+    radial-gradient(circle at 84% 77%, rgb(0 197 151 / 8%), transparent 27%);
+}
+
+.dominex-hero-galaxy-guides {
+  position: absolute;
+  inset: -8%;
+  width: 116%;
+  height: 116%;
+  overflow: visible;
+  opacity: 0;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.dominex-hero-galaxy-guides circle,
+.dominex-hero-galaxy-guides path {
+  fill: none;
+  stroke: rgb(16 21 18 / 14%);
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.dominex-hero-galaxy-guides path { stroke-width: 0.8px; }
+.dominex-hero-galaxy-guides circle {
+  stroke: rgb(16 21 18 / 8%);
+  stroke-dasharray: 1 8;
+}
+
+.dark .dominex-hero-galaxy-guides circle,
+.dark .dominex-hero-galaxy-guides path { stroke: rgb(255 255 255 / 14%); }
+.dark .dominex-hero-galaxy-guides circle { stroke: rgb(255 255 255 / 8%); }
+
+.dominex-hero-galaxy-cards { position: absolute; inset: 0; }
+
+.dominex-hero-galaxy-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: clamp(158px, 14.5vw, 260px);
+  aspect-ratio: 16 / 9;
+  overflow: visible;
+  border: 0;
+  border-radius: clamp(12px, 1.15vw, 20px);
+  background: #fff;
+  box-shadow: 0 22px 58px rgb(16 21 18 / 18%);
+  opacity: 0;
+  transform-origin: 50% 50%;
+  will-change: transform, filter, opacity;
+}
+
+.dark .dominex-hero-galaxy-card {
+  background: #18191e;
+  box-shadow: 0 22px 58px rgb(0 0 0 / 40%);
+}
+
+.dominex-hero-galaxy-card > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid rgb(16 21 18 / 13%);
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.dark .dominex-hero-galaxy-card > img { border-color: rgb(255 255 255 / 14%); }
+
+.dominex-hero-galaxy-badge {
+  position: absolute;
+  right: -9%;
+  bottom: -18%;
+  display: grid;
+  width: clamp(38px, 3.8vw, 62px);
+  aspect-ratio: 1;
+  place-items: center;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--card-accent);
+  color: #fff;
+  box-shadow: 0 12px 28px rgb(16 21 18 / 22%);
+}
+
+.dark .dominex-hero-galaxy-badge { border-color: #101014; }
+
+.dominex-hero-galaxy-badge svg {
+  width: 46%;
+  height: 46%;
+  stroke-width: 2.2;
+}
+
+.dominex-hero-galaxy-card:nth-child(4n + 1) .dominex-hero-galaxy-badge {
+  top: -16%;
+  bottom: auto;
+}
+
+.dominex-hero-galaxy-card:nth-child(4n + 2) .dominex-hero-galaxy-badge {
+  right: auto;
+  bottom: -18%;
+  left: -8%;
+}
+
+.dominex-hero-galaxy-card:nth-child(4n + 3) .dominex-hero-galaxy-badge {
+  top: -16%;
+  right: auto;
+  bottom: auto;
+  left: -8%;
+}
+
+@media (max-width: 680px) {
+  .dominex-hero-galaxy-card { width: 154px; }
+  .dominex-hero-galaxy-guides {
+    inset: -2% -38%;
+    width: 176%;
+    height: 104%;
+    opacity: 0.58;
+  }
+  .dominex-hero-galaxy-badge { width: 38px; border-width: 2px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dominex-hero-galaxy-card { transition: none; }
+  .dominex-home-hero::before,
+  .dominex-home-hero-copy h1,
+  .dominex-home-hero-lower,
+  .dominex-home-hero-logo {
+    animation: none;
+    clip-path: none;
+    opacity: 1;
+    transform: none;
+  }
+}

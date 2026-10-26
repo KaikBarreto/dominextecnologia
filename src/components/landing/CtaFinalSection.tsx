@@ -9,39 +9,24 @@ export default function CtaFinalSection() {
   const t = useLocale().messages.home.ctaFinal;
 
   return (
-    <section className="relative py-32 overflow-hidden">
-      <div
-        className="absolute inset-0 opacity-[0.04]"
-        style={{
-          backgroundImage: 'radial-gradient(hsl(0,0%,50%) 1px, transparent 1px)',
-          backgroundSize: '20px 20px',
-        }}
-      />
+    <section className="relative overflow-hidden border-t border-[#e3e7e2] bg-[#f4f6f2] py-32 dark:border-white/10 dark:bg-[#050706]">
 
       <div ref={ref} className="relative mx-auto max-w-3xl px-4 text-center scroll-reveal">
-        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6 break-words">
+        <h2 className="mb-6 break-words text-3xl font-bold tracking-[-0.035em] text-[#101512] dark:text-white sm:text-4xl lg:text-5xl">
           {t.heading}
         </h2>
-        <p className="text-lg text-white/50 mb-10 max-w-xl mx-auto">
+        <p className="mx-auto mb-10 max-w-xl text-lg leading-relaxed text-[#657068] dark:text-white/55">
           {t.subtitle}
         </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="flex justify-center">
           <Button
             size="lg"
-            className="bg-primary text-primary-foreground hover:bg-primary/90 px-10 py-6 text-base shadow-brand-glow whitespace-normal h-auto text-center leading-tight"
+            className="h-auto whitespace-normal bg-primary px-10 py-6 text-center text-base leading-tight text-white shadow-[0_14px_30px_-16px_rgba(0,197,151,0.75)] hover:bg-[#00ad85]"
             asChild
           >
             <WhatsAppCtaLink>
               {t.ctaPrimary} <ArrowRight className="ml-2 h-5 w-5 shrink-0" />
             </WhatsAppCtaLink>
-          </Button>
-          <Button
-            size="lg"
-            variant="ghost"
-            className="text-white border border-white/20 hover:bg-white/10 hover:text-white px-8 py-6 whitespace-normal h-auto text-center leading-tight"
-            asChild
-          >
-            <WhatsAppCtaLink>{t.ctaSecondary}</WhatsAppCtaLink>
           </Button>
         </div>
       </div>

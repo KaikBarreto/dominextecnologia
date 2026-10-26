@@ -106,6 +106,9 @@ import ControleDeEstoque from "./pages/modulos/ControleDeEstoque";
 import OrcamentosEContratos from "./pages/modulos/OrcamentosEContratos";
 import RastreamentoDeEquipes from "./pages/modulos/RastreamentoDeEquipes";
 import AreaDoTecnico from "./pages/modulos/AreaDoTecnico";
+import IntegracaoWhatsapp from "./pages/modulos/IntegracaoWhatsapp";
+import CobrancasAutomaticas from "./pages/modulos/CobrancasAutomaticas";
+import PdvELoja from "./pages/modulos/PdvELoja";
 // Páginas legais públicas — pequenas, mantidas EAGER (linkadas no rodapé da landing).
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfUse from "./pages/TermsOfUse";
@@ -601,12 +604,16 @@ const publicMarketingRoutes = () => (
     <Route path="sistema-crm" element={<CrmModulo />} />
     <Route path="controle-financeiro" element={<ControleFinanceiro />} />
     <Route path="ponto-e-folha" element={<PontoEFolha />} />
-    <Route path="emissao-de-nfse" element={<EmissaoDeNfse />} />
+    <Route path="emissao-de-nota-fiscal" element={<EmissaoDeNfse />} />
+    <Route path="emissao-de-nfse" element={<Navigate to="/emissao-de-nota-fiscal" replace />} />
     <Route path="portal-do-cliente" element={<PortalDoCliente />} />
     <Route path="controle-de-estoque" element={<ControleDeEstoque />} />
     <Route path="orcamentos-e-contratos" element={<OrcamentosEContratos />} />
     <Route path="rastreamento-de-equipes" element={<RastreamentoDeEquipes />} />
     <Route path="area-do-tecnico" element={<AreaDoTecnico />} />
+    <Route path="integracao-whatsapp" element={<IntegracaoWhatsapp />} />
+    <Route path="cobrancas-automaticas" element={<CobrancasAutomaticas />} />
+    <Route path="pdv-e-loja" element={<PdvELoja />} />
   </>
 );
 

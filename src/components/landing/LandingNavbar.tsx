@@ -17,14 +17,11 @@ import {
   Package,
   Map,
   ArrowRight,
-  type LucideProps,
+  BadgeDollarSign,
+  ShoppingCart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { resolveWcagForeground } from '@/lib/colorContrast';
-
-/** Verde da marca Dominex (#00C597) — fallback do CTA fora de páginas de segmento. */
-const BRAND_GREEN = '#00C597';
 
 /**
  * Imagem REDONDA da Área do Técnico™ — a MESMA do botão flutuante (FAB) do
@@ -33,16 +30,18 @@ const BRAND_GREEN = '#00C597';
  */
 const AREA_TECNICO_FAB_IMG =
   'https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/landingpage/app/ferramentas-tecnico-fab-v4.jpg';
-import logoWhite from '@/assets/logo-horizontal-verde.png';
-import { SEGMENT_NAV_LINKS, SEGMENTS } from '@/pages/segmentos/segmentsData';
+import { SEGMENT_NAV_LINKS } from '@/pages/segmentos/segmentsData';
 import { getSegment } from '@/utils/companySegments';
 import LanguageSelector from '@/components/i18n/LanguageSelector';
 import { useLocale } from '@/lib/i18n';
 import { resolveSlug } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
 import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
+import MarketingThemeToggle from '@/components/landing/MarketingThemeToggle';
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
+import DominexBrandLogo from '@/components/landing/DominexBrandLogo';
 
-type MenuIcon = ComponentType<LucideProps>;
+type MenuIcon = ComponentType<{ className?: string }>;
 
 /**
  * Mapa slug-da-landing → valor de segmento em `companySegments` (fonte única das
@@ -62,20 +61,14 @@ const SEGMENT_VALUE_BY_SLUG: Record<string, string> = {
 };
 
 /**
- * Cor SATURADA PURA do segmento + cor de texto/ícone que fica legível por cima
- * dela. A cor nunca é escurecida: o quadradinho do ícone e o card em hover usam
- * exatamente `seg.color` de companySegments (régua CEO: o usuário tem que ver a
- * cor saturada de verdade). O contraste é resolvido pela COR DO TEXTO, não pela
- * cor de fundo: `resolveWcagForeground` mede o contraste de verdade (fórmula
- * WCAG) contra branco e contra escuro-neutro e devolve o que ganhar — medido
- * em produção, TODAS as 10 cores de segmento reprovam 4,5:1 com texto branco
- * (ex.: cyan #06b6d4 mede 2,43:1), então na prática o escuro-neutro
- * (#1a1a1a, mesmo tom do --primary-foreground) ganha em todas.
+ * Cor SATURADA PURA do segmento. O quadrado do ícone usa exatamente
+ * `seg.color` de companySegments e o ícone permanece branco em todos os
+ * estados, conforme a linguagem visual definida para os cards de segmento.
  */
-function segmentAccent(slug: string): { bg: string; fg: string } {
+function segmentAccent(slug: string): { bg: string } {
   const value = SEGMENT_VALUE_BY_SLUG[slug];
   const bg = (value && getSegment(value)?.color) || '#06b6d4';
-  return { bg, fg: resolveWcagForeground(bg) };
+  return { bg };
 }
 
 /**
@@ -142,10 +135,10 @@ const SOLUTION_LINKS: SolutionLink[] = [
     tagline: 'Ponto da equipe, vales e folha sem planilha paralela.',
   },
   {
-    label: 'NFS-e',
-    slug: '/emissao-de-nfse',
+    label: 'Emissão de Nota Fiscal',
+    slug: '/emissao-de-nota-fiscal',
     icon: Receipt,
-    tagline: 'Emita a nota fiscal de serviço direto pela plataforma.',
+    tagline: 'NFS-e agora, com NF-e e NFC-e chegando ao mesmo módulo.',
   },
   {
     label: 'Portal do Cliente',
@@ -176,6 +169,24 @@ const SOLUTION_LINKS: SolutionLink[] = [
     slug: '/area-do-tecnico',
     image: AREA_TECNICO_FAB_IMG,
     tagline: 'Calculadoras, gases e catálogo de equipamentos no bolso.',
+  },
+  {
+    label: 'WhatsApp integrado',
+    slug: '/integracao-whatsapp',
+    icon: WhatsAppIcon,
+    tagline: 'Avisos automáticos de OS e cobranças no número da empresa.',
+  },
+  {
+    label: 'Cobranças',
+    slug: '/cobrancas-automaticas',
+    icon: BadgeDollarSign,
+    tagline: 'Pix, boleto, cartão e recorrência ligados ao financeiro.',
+  },
+  {
+    label: 'PDV & Loja',
+    slug: '/pdv-e-loja',
+    icon: ShoppingCart,
+    tagline: 'Venda, caixa, fiado e estoque na mesma operação.',
   },
 ];
 
@@ -225,9 +236,8 @@ export default function LandingNavbar() {
   // resto. Usamos canonicalPath (sem prefixo de locale) para bater com as chaves
   // de SEGMENTS (ex: 'sistema-para-refrigeracao'). Calculamos o texto legível
   // por cima — branco na maioria, escuro só nos acentos claros.
-  const ctaSegment = SEGMENTS[canonicalPath.replace(/^\//, '')];
-  const ctaBg = ctaSegment?.accentColor ?? BRAND_GREEN;
-  const ctaFg = resolveWcagForeground(ctaBg);
+  const ctaBg = '#101512';
+  const ctaFg = '#ffffff';
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 25);
@@ -298,12 +308,14 @@ export default function LandingNavbar() {
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? 'bg-[hsl(0,0%,5%)]/90 backdrop-blur-xl border-b border-white/5' : 'bg-transparent'
+      className={`fixed left-0 right-0 top-0 z-50 min-h-16 border-b transition-all duration-300 ${
+        scrolled
+          ? 'border-[#dce1dc] bg-white/90 shadow-[0_8px_30px_rgba(16,21,18,0.07)] backdrop-blur-xl dark:border-white/10 dark:bg-[#0d0e11]/90'
+          : 'border-[#e7eae6] bg-white/[0.86] shadow-[0_8px_30px_rgba(16,21,18,0.05)] backdrop-blur-xl dark:border-white/10 dark:bg-[#0d0e11]/[0.88]'
       }`}
     >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="relative flex h-16 items-center justify-between">
+      <div className="mx-auto w-full px-4 sm:px-6 md:px-6 xl:w-[calc(100%-360px)] xl:max-w-[1440px] xl:px-0">
+        <div className="relative flex h-16 items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr] md:gap-12">
           {/* Header mobile: [☰ esquerda] [logo centro] [idioma direita]. Os dois
               elementos das pontas são `md:hidden` e ABSOLUTOS nas bordas — assim
               não empurram o logo (que segue centralizado via max-md:absolute) e
@@ -316,7 +328,7 @@ export default function LandingNavbar() {
             aria-label={m.openMenuAria}
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen(true)}
-            className="md:hidden absolute left-0 inline-flex h-10 w-10 items-center justify-center text-white"
+            className="md:hidden absolute left-0 inline-flex h-10 w-10 items-center justify-center text-[#101512] dark:text-white"
           >
             <Menu className="h-6 w-6" />
           </button>
@@ -326,18 +338,19 @@ export default function LandingNavbar() {
             to={localizeInternal('/', locale)}
             className="flex items-center gap-2 max-md:absolute max-md:left-1/2 max-md:-translate-x-1/2"
           >
-            <img src={logoWhite} alt="Dominex" className="h-10 w-auto" />
+            <DominexBrandLogo className="w-[118px] md:w-[138px]" />
           </Link>
 
           {/* Seletor de idioma mobile — mesmo visual do desktop (variante compact:
               bandeira edge-to-edge + código + chevron), à direita. flex + h-16
               centraliza o pill (h-30px) verticalmente no header. */}
-          <div className="md:hidden absolute right-0 flex h-16 items-center">
-            <LanguageSelector surface="dark" variant="compact" />
+          <div className="md:hidden absolute right-0 flex h-16 items-center gap-1.5">
+            <MarketingThemeToggle variant="compact" />
+            <LanguageSelector surface="light" variant="compact" />
           </div>
 
           {/* Desktop links */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden items-center gap-7 md:flex md:justify-self-center">
             {/* Soluções — dropdown (hover no desktop, focável/clicável p/ teclado) */}
             <div
               ref={solutionsRef}
@@ -349,7 +362,9 @@ export default function LandingNavbar() {
                 type="button"
                 aria-haspopup="menu"
                 aria-expanded={solutionsOpen}
-                onClick={() => setSolutionsOpen((o) => !o)}
+                // O foco já abre o menu. Alternar aqui fazia o mesmo clique
+                // abrir no `focus` e fechar no `click`, sobretudo por teclado.
+                onClick={() => setSolutionsOpen(true)}
                 onFocus={openSolutionsOnHover}
                 onKeyDown={(e) => {
                   if (e.key === 'ArrowDown') {
@@ -359,7 +374,7 @@ export default function LandingNavbar() {
                 }}
                 className={cn(
                   'relative flex items-center gap-1 text-sm transition-colors py-1',
-                  solutionsOpen ? 'text-white font-medium' : 'text-white/60 hover:text-white'
+                  solutionsOpen ? 'text-[#101512] font-medium dark:text-white' : 'text-[#5f6862] hover:text-[#101512] dark:text-white/60 dark:hover:text-white'
                 )}
               >
                 {m.solutions}
@@ -376,9 +391,9 @@ export default function LandingNavbar() {
                 <div
                   role="menu"
                   aria-label={m.solutionsMenuAria}
-                  className="absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,860px)] -translate-x-1/2 rounded-2xl border border-white/10 bg-[hsl(0,0%,8%)] p-4 shadow-2xl"
+                  className="absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,860px)] -translate-x-1/2 rounded-2xl border border-[#dce1dc] bg-white p-4 shadow-2xl dark:border-white/10 dark:bg-[#101311]"
                 >
-                  <p className="px-2 pb-3 text-xs font-semibold uppercase tracking-wider text-white/55">
+                  <p className="px-2 pb-3 text-xs font-semibold uppercase tracking-wider text-[#707973]">
                     {m.solutionsMenuHeader}
                   </p>
                   <div className="grid grid-cols-3 gap-1">
@@ -397,7 +412,7 @@ export default function LandingNavbar() {
                             // depender de --primary (sobrescrito pelo white-label
                             // do tenant logado / accent de página de segmento).
                             'hover:bg-[#00C597] focus-visible:bg-[#00C597] focus-visible:outline-none',
-                            isCurrent && 'bg-[#00C597]/10'
+                            isCurrent && 'bg-[#00C597]'
                           )}
                         >
                           {sol.image ? (
@@ -409,7 +424,10 @@ export default function LandingNavbar() {
                               className="h-9 w-9 shrink-0 rounded-full object-cover"
                             />
                           ) : (
-                            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center text-[#00C597] transition-colors duration-200 group-hover:text-white group-focus-visible:text-white">
+                            <span className={cn(
+                              'inline-flex h-9 w-9 shrink-0 items-center justify-center text-[#00C597] transition-colors duration-200 group-hover:text-white group-focus-visible:text-white',
+                              isCurrent && 'text-white',
+                            )}>
                               {Icon && <Icon className="h-[20px] w-[20px]" />}
                             </span>
                           )}
@@ -417,13 +435,16 @@ export default function LandingNavbar() {
                             <span
                               className={cn(
                                 'block text-sm font-medium leading-tight transition-colors duration-200',
-                                isCurrent ? 'text-white' : 'text-white/85',
+                                isCurrent ? 'text-white' : 'text-[#28302b] dark:text-white/85',
                                 'group-hover:text-white group-focus-visible:text-white'
                               )}
                             >
                               {moduleLabelBySlug(sol.slug)}
                             </span>
-                            <span className="mt-0.5 block text-xs leading-snug text-white/45 transition-colors duration-200 group-hover:text-white/90 group-focus-visible:text-white/90">
+                            <span className={cn(
+                              'mt-0.5 block text-xs leading-snug text-[#6c756f] transition-colors duration-200 group-hover:text-white/90 group-focus-visible:text-white/90 dark:text-white/50',
+                              isCurrent && 'text-white/70 dark:text-white/70',
+                            )}>
                               {solutionTaglineBySlug(sol.slug)}
                             </span>
                           </span>
@@ -456,7 +477,7 @@ export default function LandingNavbar() {
                 }}
                 className={cn(
                   'relative flex items-center gap-1 text-sm transition-colors py-1',
-                  segmentsOpen ? 'text-white font-medium' : 'text-white/60 hover:text-white'
+                  segmentsOpen ? 'text-[#101512] font-medium dark:text-white' : 'text-[#5f6862] hover:text-[#101512] dark:text-white/60 dark:hover:text-white'
                 )}
               >
                 {m.segments}
@@ -471,9 +492,9 @@ export default function LandingNavbar() {
                 <div
                   role="menu"
                   aria-label={m.segmentsMenuAria}
-                  className="absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,860px)] -translate-x-1/2 rounded-2xl border border-white/10 bg-[hsl(0,0%,8%)] p-4 shadow-2xl"
+                  className="absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,860px)] -translate-x-1/2 rounded-2xl border border-[#dce1dc] bg-white p-4 shadow-2xl dark:border-white/10 dark:bg-[#101311]"
                 >
-                  <p className="px-2 pb-3 text-xs font-semibold uppercase tracking-wider text-white/55">
+                  <p className="px-2 pb-3 text-xs font-semibold uppercase tracking-wider text-[#707973]">
                     {m.segmentsMenuHeader}
                   </p>
                   <div className="grid grid-cols-3 gap-1">
@@ -491,20 +512,22 @@ export default function LandingNavbar() {
                           onClick={() => setSegmentsOpen(false)}
                           style={{
                             ['--seg-accent' as string]: accent.bg,
-                            ['--seg-fg' as string]: accent.fg,
                           }}
                           className={cn(
                             'group flex items-start gap-3 rounded-xl p-3 transition-colors duration-200',
                             // Hover/foco: card satura na COR PURA do segmento.
                             'hover:bg-[var(--seg-accent)] focus-visible:bg-[var(--seg-accent)] focus-visible:outline-none',
-                            isCurrent && 'bg-white/5'
+                            isCurrent && 'bg-[var(--seg-accent)]'
                           )}
                         >
-                          {/* Normal: quadradinho na cor pura, ícone na cor de contraste.
+                          {/* Normal: quadradinho na cor pura, ícone branco.
                               Hover/foco: quadradinho some (transparente) → ícone solto
                               direto sobre o card saturado. */}
                           <span
-                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-200 bg-[var(--seg-accent)] text-[var(--seg-fg)] group-hover:bg-transparent group-focus-visible:bg-transparent group-hover:text-[var(--seg-fg)] group-focus-visible:text-[var(--seg-fg)]"
+                            className={cn(
+                              'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--seg-accent)] text-white transition-colors duration-200 group-hover:bg-transparent group-focus-visible:bg-transparent',
+                              isCurrent && 'bg-transparent text-white',
+                            )}
                           >
                             <Icon className="h-[18px] w-[18px]" />
                           </span>
@@ -512,14 +535,17 @@ export default function LandingNavbar() {
                             <span
                               className={cn(
                                 'block text-sm font-medium leading-tight transition-colors duration-200',
-                                isCurrent ? 'text-white' : 'text-white/85',
-                                'group-hover:text-[var(--seg-fg)] group-focus-visible:text-[var(--seg-fg)]'
+                                isCurrent ? 'text-white' : 'text-[#28302b] dark:text-white/85',
+                                'group-hover:text-white group-focus-visible:text-white'
                               )}
                             >
                               {segmentLabelBySlug(seg.slug)}
                             </span>
                             {tagline && (
-                              <span className="mt-0.5 block text-xs leading-snug text-white/45 transition-colors duration-200 group-hover:text-[var(--seg-fg)] group-focus-visible:text-[var(--seg-fg)] group-hover:opacity-90 group-focus-visible:opacity-90">
+                              <span className={cn(
+                                'mt-0.5 block text-xs leading-snug transition-colors duration-200 group-hover:text-white/90 group-focus-visible:text-white/90',
+                                isCurrent ? 'text-white/90' : 'text-[#6c756f] dark:text-white/50',
+                              )}>
                                 {tagline}
                               </span>
                             )}
@@ -538,8 +564,8 @@ export default function LandingNavbar() {
               className={cn(
                 'relative text-sm transition-colors py-1',
                 canonicalPath.startsWith('/blog')
-                  ? 'text-white font-medium'
-                  : 'text-white/60 hover:text-white'
+                  ? 'text-[#101512] font-medium dark:text-white'
+                  : 'text-[#5f6862] hover:text-[#101512] dark:text-white/60 dark:hover:text-white'
               )}
             >
               Blog
@@ -555,8 +581,8 @@ export default function LandingNavbar() {
           {/* Desktop CTA */}
           {/* mr-24 no md+ reserva o canto superior direito p/ o seletor de idioma
               (variant="corner", fixed no canto) não sobrepor o CTA "Criar Conta". */}
-          <div className="hidden md:flex items-center gap-3 md:mr-24">
-            <Button variant="ghost" className="text-white border border-white/20 hover:bg-white/10 hover:text-white gap-2" asChild>
+          <div className="hidden items-center gap-2 md:mr-40 md:flex md:justify-self-end xl:mr-0">
+            <Button variant="ghost" className="rounded-full text-[#344038] hover:bg-transparent hover:text-black dark:text-white/75 dark:hover:bg-transparent dark:hover:text-white gap-2" asChild>
               <Link to={localizeInternal('/login', locale)}>
                 <LogIn className="h-4 w-4" />
                 {m.login}
@@ -565,7 +591,7 @@ export default function LandingNavbar() {
             {/* Criar Conta — verde da marca na home/módulos; cor do segmento na
                 landing daquele segmento. Texto via resolveWcagForeground (contraste WCAG). */}
             <Button
-              className="gap-2 hover:opacity-90 transition-opacity"
+              className="rounded-full border border-[#101512] px-5 gap-2 shadow-none transition-all hover:-translate-y-0.5 hover:bg-black dark:border-white dark:bg-white dark:text-[#101512] dark:hover:bg-white/90"
               style={{ backgroundColor: ctaBg, color: ctaFg }}
               asChild
             >
@@ -590,7 +616,7 @@ export default function LandingNavbar() {
       {scrolled &&
         !mobileOpen &&
         createPortal(
-          <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[hsl(0,0%,5%)]/95 backdrop-blur-xl px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-[#dce1dc] bg-white/95 backdrop-blur-xl px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-white/10 dark:bg-[#090c0a]/95">
             <WhatsAppCtaLink
               className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold whitespace-normal text-center leading-tight hover:opacity-90 transition-opacity"
               style={{ backgroundColor: ctaBg, color: ctaFg }}
@@ -608,7 +634,7 @@ export default function LandingNavbar() {
       {mobileOpen &&
         createPortal(
         <div
-          className="md:hidden fixed inset-0 z-50 flex flex-col bg-[hsl(0,0%,5%)] animate-in fade-in slide-in-from-top-2 duration-200"
+          className="md:hidden fixed inset-0 z-50 flex flex-col bg-[#f8faf7] animate-in fade-in slide-in-from-top-2 duration-200 dark:bg-[#090c0a]"
           style={{ height: '100dvh', width: '100vw' }}
         >
           {/* Header do overlay — apenas o X de fechar, à direita (sem logo, sem
@@ -616,7 +642,7 @@ export default function LandingNavbar() {
           <div className="flex h-16 shrink-0 items-center justify-end px-4">
             <button
               type="button"
-              className="text-white"
+              className="text-[#101512] dark:text-white"
               aria-label={m.closeMenuAria}
               onClick={() => setMobileOpen(false)}
             >
@@ -634,16 +660,7 @@ export default function LandingNavbar() {
               imagem quebrada. */}
           <div className="mb-6 flex justify-center">
             <Link to={localizeInternal('/', locale)} onClick={() => setMobileOpen(false)}>
-              <img
-                src={logoWhite}
-                alt="Dominex"
-                width={1601}
-                height={326}
-                className="h-10 w-auto"
-                onError={(e) => {
-                  e.currentTarget.style.visibility = 'hidden';
-                }}
-              />
+              <DominexBrandLogo className="w-[196px]" />
             </Link>
           </div>
           {/* Soluções — grupo expansível no mobile */}
@@ -651,7 +668,7 @@ export default function LandingNavbar() {
             type="button"
             aria-expanded={mobileSolutionsOpen}
             onClick={() => setMobileSolutionsOpen((o) => !o)}
-            className="flex w-full items-center justify-between py-3 text-sm text-white/70 border-b border-white/5 transition-colors hover:text-white"
+            className="flex w-full items-center justify-between py-3 text-sm text-[#4f5953] border-b border-[#dde2dd] transition-colors hover:text-[#101512]"
           >
             <span>{m.solutions}</span>
             <ChevronDown
@@ -670,7 +687,7 @@ export default function LandingNavbar() {
                       setMobileOpen(false);
                       setMobileSolutionsOpen(false);
                     }}
-                    className="flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm text-white/65 transition-colors hover:bg-white/5 hover:text-white"
+                    className="flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm text-[#59635d] transition-colors hover:bg-[#edf1ed] hover:text-[#101512]"
                   >
                     {sol.image ? (
                       <img
@@ -697,7 +714,7 @@ export default function LandingNavbar() {
             type="button"
             aria-expanded={mobileSegmentsOpen}
             onClick={() => setMobileSegmentsOpen((o) => !o)}
-            className="flex w-full items-center justify-between py-3 text-sm text-white/70 border-b border-white/5 transition-colors hover:text-white"
+            className="flex w-full items-center justify-between py-3 text-sm text-[#4f5953] border-b border-[#dde2dd] transition-colors hover:text-[#101512]"
           >
             <span>{m.segments}</span>
             <ChevronDown
@@ -718,11 +735,11 @@ export default function LandingNavbar() {
                       setMobileOpen(false);
                       setMobileSegmentsOpen(false);
                     }}
-                    className="flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm text-white/65 transition-colors hover:bg-white/5 hover:text-white"
+                    className="flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm text-[#59635d] transition-colors hover:bg-[#edf1ed] hover:text-[#101512]"
                   >
                     <span
                       className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
-                      style={{ backgroundColor: accent.bg, color: accent.fg }}
+                      style={{ backgroundColor: accent.bg, color: '#ffffff' }}
                     >
                       <Icon className="h-4 w-4" />
                     </span>
@@ -740,8 +757,8 @@ export default function LandingNavbar() {
             className={cn(
               'block py-3 text-sm border-b border-white/5 transition-colors',
               canonicalPath.startsWith('/blog')
-                ? 'text-white font-medium border-l-2 border-l-primary pl-3'
-                : 'text-white/70 hover:text-white'
+                ? 'text-[#101512] font-medium border-l-2 border-l-primary pl-3'
+                : 'text-[#4f5953] hover:text-[#101512]'
             )}
           >
             Blog
@@ -750,14 +767,14 @@ export default function LandingNavbar() {
           {/* Seletor de idioma agora vive no header (variante compact), à direita:
               fora do overlay pra não empilhar controles no menu. */}
           <div className="mt-4 flex flex-col gap-3">
-            <Button variant="ghost" className="w-full text-white border border-white/20 hover:bg-white/10 hover:text-white gap-2" asChild>
+            <Button variant="ghost" className="w-full text-[#202722] border border-[#cfd5d0] hover:bg-[#eef2ee] hover:text-[#101512] gap-2" asChild>
               <Link to={localizeInternal('/login', locale)}>
                 <LogIn className="h-4 w-4" />
                 {m.login}
               </Link>
             </Button>
             <Button
-              className="w-full gap-2 hover:opacity-90 transition-opacity"
+              className="w-full rounded-full gap-2 hover:opacity-90 transition-opacity"
               style={{ backgroundColor: ctaBg, color: ctaFg }}
               asChild
             >
@@ -775,7 +792,8 @@ export default function LandingNavbar() {
       {/* Seletor de idioma fixo no canto superior direito extremo — via portal
           (fora do backdrop-blur do nav, que criaria containing block e quebraria
           position:fixed de filhos). Só visível no desktop (hidden no mobile). */}
-      <LanguageSelector variant="corner" />
+      <MarketingThemeToggle />
+      <LanguageSelector surface="light" variant="corner" />
     </nav>
   );
 }

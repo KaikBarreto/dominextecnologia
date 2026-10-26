@@ -6,13 +6,11 @@ import ProblemSolutionSection from '@/components/landing/ProblemSolutionSection'
 import HomeFeatures from '@/components/landing/HomeFeatures';
 import HowItWorks from '@/components/landing/HowItWorks';
 import ProductMockup from '@/components/landing/ProductMockup';
-import TestimonialsSection from '@/components/landing/TestimonialsSection';
 import SegmentsSection from '@/components/landing/SegmentsSection';
 import FaqSection from '@/components/landing/FaqSection';
 import CtaFinalSection from '@/components/landing/CtaFinalSection';
 import LandingFooter from '@/components/landing/LandingFooter';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
-import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
 import { captureUtmParams } from '@/lib/whatsapp';
 
 // A landing é página pública e NUNCA deve herdar o white-label do tenant logado.
@@ -36,27 +34,20 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className="relative min-h-screen" style={DOMINEX_BRAND_VARS}>
-      {/* Dark veil de fundo de TODA a landing — fixo, rola por baixo do conteúdo (igual login) */}
-      <div className="fixed inset-0 z-0 bg-[hsl(0,0%,4%)]">
-        <DarkVeilBackground hueShift={53} speed={0.5} />
-        {/* abafador: deixa o veil DISCRETO. Ajustável: mais alpha = mais escuro/sutil */}
-        <div className="absolute inset-0 bg-[hsl(0,0%,4%)]/60 pointer-events-none" />
-      </div>
-
-      {/* Conteúdo por cima do veil */}
-      <div className="relative z-10">
+    <div className="relative min-h-screen bg-white text-[#101512] dark:bg-[#070908] dark:text-white" style={DOMINEX_BRAND_VARS}>
+      <div className="relative">
         <LandingNavbar />
         <HeroSection />
-        <LogosSection />
-        <ProblemSolutionSection />
-        <HomeFeatures />
-        <HowItWorks />
-        <ProductMockup />
-        <TestimonialsSection />
-        <SegmentsSection />
-        <FaqSection />
-        <CtaFinalSection />
+        <main>
+          <LogosSection />
+          <ProblemSolutionSection />
+          <HomeFeatures />
+          <HowItWorks />
+          <ProductMockup />
+          <SegmentsSection />
+          <FaqSection />
+          <CtaFinalSection />
+        </main>
         <LandingFooter />
       </div>
       <WhatsAppFloatingButton />
