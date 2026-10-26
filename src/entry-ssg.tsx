@@ -186,7 +186,7 @@ function hreflangBlock(basePath: string): string {
 
 const HOME_TITLES: Record<LocaleCode, string> = {
   'pt-br':
-    'Dominex — Sistema de Ordem de Serviço, PMOC e Gestão para Refrigeração e Equipes de Campo',
+    'Dominex | Sistema de Ordem de Serviço, PMOC e Gestão para Refrigeração e Equipes de Campo',
   en: 'Dominex | Work Order and Field Service Management Software',
   es: 'Dominex | Software de Órdenes de Servicio y Gestión de Equipos de Campo',
   fr: 'Dominex | Logiciel de Bons de Travail et Gestion des Équipes Terrain',
@@ -219,14 +219,14 @@ const HOME_KEYWORDS: Partial<Record<LocaleCode, string>> = {
 // travessão (—) na copy; marca "Dominex" preservada.
 
 const QUEM_SOMOS_TITLES: Record<LocaleCode, string> = {
-  'pt-br': 'Quem somos — Dominex | Gestão para equipes de campo',
-  en: 'About Us — Dominex | Management for Field Service Teams',
-  es: 'Quiénes somos — Dominex | Gestión para equipos de campo',
-  fr: 'Qui sommes-nous — Dominex | Gestion pour les équipes terrain',
+  'pt-br': 'Quem somos | Dominex | Gestão para equipes de campo',
+  en: 'About Us | Dominex | Management for Field Service Teams',
+  es: 'Quiénes somos | Dominex | Gestión para equipos de campo',
+  fr: 'Qui sommes-nous | Dominex | Gestion pour les équipes terrain',
 };
 const QUEM_SOMOS_DESCRIPTIONS: Record<LocaleCode, string> = {
   'pt-br':
-    'Conheça a Dominex: sistema de ordem de serviço, PMOC e gestão para empresas de serviço e equipes de campo — refrigeração, elétrica, energia solar e mais. Feito para quem domina o campo.',
+    'Conheça a Dominex: sistema de ordem de serviço, PMOC e gestão para empresas de refrigeração, elétrica, energia solar e outros serviços de campo. Feito para quem domina o campo.',
   en:
     'Meet Dominex: work order, maintenance and management software for field service companies, covering HVAC, electrical, solar energy, pest control and more. Built for teams that master the field.',
   es:
@@ -236,10 +236,10 @@ const QUEM_SOMOS_DESCRIPTIONS: Record<LocaleCode, string> = {
 };
 
 const BLOG_TITLES: Record<LocaleCode, string> = {
-  'pt-br': 'Blog — Dominex | Gestão para equipes de campo',
-  en: 'Blog — Dominex | Field Service Management',
-  es: 'Blog — Dominex | Gestión para equipos de campo',
-  fr: 'Blog — Dominex | Gestion pour les équipes terrain',
+  'pt-br': 'Blog | Dominex | Gestão para equipes de campo',
+  en: 'Blog | Dominex | Field Service Management',
+  es: 'Blog | Dominex | Gestión para equipos de campo',
+  fr: 'Blog | Dominex | Gestion pour les équipes terrain',
 };
 const BLOG_DESCRIPTIONS: Record<LocaleCode, string> = {
   'pt-br':
@@ -253,10 +253,10 @@ const BLOG_DESCRIPTIONS: Record<LocaleCode, string> = {
 };
 
 const PRIVACIDADE_TITLES: Record<LocaleCode, string> = {
-  'pt-br': 'Política de Privacidade — Dominex',
-  en: 'Privacy Policy — Dominex',
-  es: 'Política de Privacidad — Dominex',
-  fr: 'Politique de Confidentialité — Dominex',
+  'pt-br': 'Política de Privacidade | Dominex',
+  en: 'Privacy Policy | Dominex',
+  es: 'Política de Privacidad | Dominex',
+  fr: 'Politique de Confidentialité | Dominex',
 };
 const PRIVACIDADE_DESCRIPTIONS: Record<LocaleCode, string> = {
   'pt-br':
@@ -270,10 +270,10 @@ const PRIVACIDADE_DESCRIPTIONS: Record<LocaleCode, string> = {
 };
 
 const TERMOS_TITLES: Record<LocaleCode, string> = {
-  'pt-br': 'Termos de Uso — Dominex',
-  en: 'Terms of Use — Dominex',
-  es: 'Términos de Uso — Dominex',
-  fr: "Conditions d'utilisation — Dominex",
+  'pt-br': 'Termos de Uso | Dominex',
+  en: 'Terms of Use | Dominex',
+  es: 'Términos de Uso | Dominex',
+  fr: "Conditions d'utilisation | Dominex",
 };
 const TERMOS_DESCRIPTIONS: Record<LocaleCode, string> = {
   'pt-br':
@@ -929,7 +929,7 @@ export function renderBlogPost(
   const homeUrl = absUrl('/', locale);
   const title = post.meta_title || post.title;
   const description = post.meta_description || post.excerpt || '';
-  const fullTitle = `${title} — Blog Dominex`;
+  const fullTitle = `${title} | Blog Dominex`;
   const image = absolutePublicUrl(post.cover_image_url);
 
   // JSON-LD: Breadcrumb (Início > Blog > post) + Article. Removemos os globais da

@@ -47,7 +47,7 @@ const ROUTE_TITLES: Record<string, string> = {
 };
 
 const SUFFIX = " | Dominex";
-const DEFAULT_TITLE = "Dominex — Gestão de Equipes de Campo e Ordens de Serviço";
+const DEFAULT_TITLE = "Dominex | Gestão de Equipes de Campo e Ordens de Serviço";
 
 /**
  * Resolve o nome limpo da tela atual (sem sufixo " | Dominex") a partir do pathname.

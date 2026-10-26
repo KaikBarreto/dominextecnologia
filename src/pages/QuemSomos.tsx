@@ -33,9 +33,9 @@ const DOMINEX_BRAND_VARS = {
   '--gradient-brand': 'linear-gradient(135deg, hsl(160 100% 39%) 0%, hsl(160 85% 45%) 100%)',
 } as CSSProperties;
 
-const META_TITLE = 'Quem somos — Dominex | Gestão para equipes de campo';
+const META_TITLE = 'Quem somos | Dominex | Gestão para equipes de campo';
 const META_DESCRIPTION =
-  'Conheça a Dominex: sistema de ordem de serviço, PMOC e gestão para empresas de serviço e equipes de campo — refrigeração, elétrica, energia solar e mais. Feito para quem domina o campo.';
+  'Conheça a Dominex: sistema de ordem de serviço, PMOC e gestão para empresas de refrigeração, elétrica, energia solar e outros serviços de campo. Feito para quem domina o campo.';
 
 // Ícones dos valores, na ORDEM do array messages.quemSomos.values.
 const VALUE_ICONS = [Smartphone, HardHat, Gauge, ShieldCheck, MapPin, HeartHandshake];

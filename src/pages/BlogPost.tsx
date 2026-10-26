@@ -282,7 +282,7 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
     const url = `${SITE_URL}${localizePath(`/blog/${post.slug}`, locale)}`;
     const image = post.cover_image_url || DEFAULT_OG_IMAGE;
 
-    document.title = `${title} — Blog Dominex`;
+    document.title = `${title} | Blog Dominex`;
 
     // <html lang> do idioma da página (restaurado no cleanup).
     const htmlEl = document.documentElement;

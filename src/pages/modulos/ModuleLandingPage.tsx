@@ -37,6 +37,7 @@ import DeepDiveSection from '@/components/landing/DeepDiveSection';
 import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 import ModuleFeatureCarousel from '@/components/landing/ModuleFeatureCarousel';
 import MarketingHeroBackdrop from '@/components/landing/MarketingHeroBackdrop';
+import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
 import DominexBrandLogo from '@/components/landing/DominexBrandLogo';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { getSiteSegments, getSegment } from '@/utils/companySegments';
@@ -552,8 +553,13 @@ function ModuleVideoMock({ data }: { data: ModuleData }) {
   const videoSrc = MODULE_MOTION_VIDEOS[data.slug];
 
   return (
-    <section className="overflow-hidden bg-[#161b1a] px-4 py-16 text-white sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-      <div className="mx-auto grid max-w-[1080px] items-center gap-12 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-20">
+    <section className="relative overflow-hidden bg-[#080a09] px-4 py-16 text-white sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+        <DarkVeilBackground speed={0.5} />
+        <div className="absolute inset-0 bg-black/25" />
+      </div>
+
+      <div className="relative z-10 mx-auto grid max-w-[1080px] items-center gap-12 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-20">
         <div className="mx-auto max-w-2xl text-center lg:mx-0 lg:text-left">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
             Demonstração da função

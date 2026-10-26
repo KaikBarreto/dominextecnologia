@@ -45,7 +45,7 @@ import {
 } from 'lucide-react';
 
 /**
- * Catálogo de páginas de MÓDULO (aba "Soluções" da landing — estilo Auvo:
+ * Catálogo de páginas de MÓDULO (aba "Soluções" da landing, estilo Auvo:
  * "Auvo PMOC", "Auvo Financeiro"...). Arquitetura paralela à de segmentos
  * (src/pages/segmentos), data-driven, ZERO conteúdo hard-coded no componente.
  *
@@ -108,14 +108,14 @@ export interface ModuleData {
   navLabel: string;
   /** Ícone do módulo. */
   icon: LucideIcon;
-  /** <title> da aba — keyword-rico. */
+  /** <title> da aba, keyword-rico. */
   metaTitle: string;
-  /** <meta name="description"> — keyword-rico. */
+  /** <meta name="description">, keyword-rico. */
   metaDescription: string;
 
   hero: {
     eyebrow: string;
-    /** H1 — DEVE conter a keyword principal de busca do módulo. */
+    /** H1, DEVE conter a keyword principal de busca do módulo. */
     h1: string;
     /** Destaque colorido dentro do H1 (substring exata de `h1`). */
     h1Highlight: string;
@@ -178,7 +178,7 @@ const osDigital: ModuleData = {
     h1: 'Sistema de ordem de serviço digital para equipes de campo',
     h1Highlight: 'ordem de serviço digital',
     subtitle:
-      'Acabe com a OS em papel que some, atrasa e chega sem foto. A Dominex coloca a ordem de serviço no celular do técnico — com checklist, foto, assinatura e relatório pronto na hora, em campo.',
+      'Acabe com a OS em papel que some, atrasa e chega sem foto. A Dominex coloca a ordem de serviço no celular do técnico, com checklist, foto, assinatura e relatório pronto na hora, em campo.',
   },
 
   metrics: [
@@ -204,7 +204,7 @@ const osDigital: ModuleData = {
     {
       pain: 'Relatório de visita digitado horas depois, no fim do dia',
       solution:
-        'Ao finalizar a OS no campo, o relatório em PDF com a sua marca já sai pronto — com fotos, checklist e assinatura. Você envia ao cliente na hora, sem retrabalho no escritório.',
+        'Ao finalizar a OS no campo, o relatório em PDF com a sua marca já sai pronto, com fotos, checklist e assinatura. Você envia ao cliente na hora, sem retrabalho no escritório.',
     },
     {
       pain: 'Chamado distribuído por WhatsApp e ninguém sabe o que está pendente',
@@ -264,8 +264,8 @@ const osDigital: ModuleData = {
   ],
 
   faq: [
-    { q: 'O que é uma ordem de serviço digital?', a: 'É a OS criada, executada e fechada direto no sistema e no app do técnico, sem papel. Toda a visita — checklist, fotos antes/depois, assinatura do cliente e relatório — fica registrada na Dominex e vinculada ao cliente e ao equipamento.' },
-    { q: 'O técnico usa a OS pelo celular? Precisa instalar algum programa?', a: 'A Dominex tem app instalável (PWA) no celular do técnico, sem baixar na loja de aplicativos. Em campo, ele abre a OS, tira fotos, preenche o checklist e coleta a assinatura do cliente direto pelo celular — o que registra aparece na hora para o escritório.' },
+    { q: 'O que é uma ordem de serviço digital?', a: 'É a OS criada, executada e fechada direto no sistema e no app do técnico, sem papel. A visita inteira fica registrada na Dominex e vinculada ao cliente e ao equipamento, incluindo checklist, fotos antes/depois, assinatura do cliente e relatório.' },
+    { q: 'O técnico usa a OS pelo celular? Precisa instalar algum programa?', a: 'A Dominex tem app instalável (PWA) no celular do técnico, sem baixar na loja de aplicativos. Em campo, ele abre a OS, tira fotos, preenche o checklist e coleta a assinatura do cliente direto pelo celular. Tudo o que registra aparece na hora para o escritório.' },
     { q: 'Consigo anexar fotos e coletar a assinatura do cliente na OS?', a: 'Sim. Cada ordem de serviço aceita fotos antes e depois e a assinatura do cliente colhida na tela do celular. Tudo entra no relatório final em PDF.' },
     { q: 'O sistema gera relatório de ordem de serviço automaticamente?', a: 'Sim. Ao finalizar a OS, o relatório em PDF com a sua logo e cores sai pronto, com checklist preenchido, fotos e assinatura. Você envia ao cliente na hora.' },
     { q: 'Dá para usar checklists diferentes por tipo de serviço?', a: 'Sim. Você cria modelos de checklist por tipo de atendimento (instalação, preventiva, corretiva) e o técnico segue o passo a passo certo em cada visita.' },
@@ -336,7 +336,7 @@ const pmoc: ModuleData = {
     {
       icon: RefreshCw,
       title: 'PMOC automático conforme a Lei 13.589/2018',
-      body: 'O Plano de Manutenção, Operação e Controle exigido por lei para sistemas de climatização de uso coletivo é montado a partir dos equipamentos do contrato. A Dominex distribui as visitas no ciclo, monta o checklist de cada uma conforme a fase do plano, registra o responsável técnico e gera a planilha PMOC e o relatório de conformidade prontos para apresentar em fiscalização — sem planilha paralela.',
+      body: 'O Plano de Manutenção, Operação e Controle exigido por lei para sistemas de climatização de uso coletivo é montado a partir dos equipamentos do contrato. A Dominex distribui as visitas no ciclo, monta o checklist de cada uma conforme a fase do plano, registra o responsável técnico e gera a planilha PMOC e o relatório de conformidade prontos para apresentar em fiscalização, sem planilha paralela.',
       image: {
         src: '/modulos/sistema-pmoc/1.webp',
         alt: 'Técnico de refrigeração medindo gás com manômetros na condensadora do ar-condicionado',
@@ -384,7 +384,7 @@ const pmoc: ModuleData = {
 
   faq: [
     { q: 'O que é PMOC e por que é obrigatório?', a: 'O PMOC (Plano de Manutenção, Operação e Controle) é exigido pela Lei Federal 13.589/2018 para sistemas de climatização de uso coletivo. Ele documenta a manutenção preventiva, o responsável técnico e o histórico de cada equipamento, e deve ser apresentado em fiscalização.' },
-    { q: 'A Dominex gera o PMOC automaticamente?', a: 'Sim. O sistema monta o PMOC a partir dos equipamentos do contrato, distribui as visitas no ciclo, monta o checklist de cada uma e gera a planilha e o relatório de conformidade prontos para a fiscalização — sem planilha paralela.' },
+    { q: 'A Dominex gera o PMOC automaticamente?', a: 'Sim. O sistema monta o PMOC a partir dos equipamentos do contrato, distribui as visitas no ciclo, monta o checklist de cada uma e gera a planilha e o relatório de conformidade prontos para a fiscalização, sem planilha paralela.' },
     { q: 'O plano de manutenção é por equipamento ou por contrato?', a: 'Por equipamento. Cada máquina tem seu próprio cronograma, checklist e histórico de visitas, com a rotina certa para cada fase do ciclo de 12 meses.' },
     { q: 'As visitas PMOC são agendadas sozinhas?', a: 'Sim. As visitas recorrentes são geradas pelo sistema no intervalo correto (mensal, trimestral, semestral), já com o checklist da fase pronto. A preventiva não depende da memória da equipe.' },
     { q: 'Tem QR Code no equipamento?', a: 'Sim. Você cola um QR Code na máquina e o técnico, ao escanear, cai direto no registro daquele equipamento, com histórico e a próxima visita PMOC.' },
@@ -411,7 +411,7 @@ const crm: ModuleData = {
   metaTitle:
     'CRM para empresas de serviço e manutenção | Dominex',
   metaDescription:
-    'CRM para empresas de serviço e manutenção: capture leads, organize o funil de vendas em kanban, atribua a cada vendedor e leve do orçamento à proposta e ao contrato — com conversão direta em ordem de serviço. Teste grátis 7 dias, sem cartão.',
+    'CRM para empresas de serviço e manutenção: capture leads, organize o funil de vendas em kanban, atribua a cada vendedor e leve do orçamento à proposta e ao contrato, com conversão direta em ordem de serviço. Teste grátis 7 dias, sem cartão.',
 
   hero: {
     eyebrow: 'CRM & Vendas',
@@ -439,7 +439,7 @@ const crm: ModuleData = {
     {
       pain: 'Pipeline na cabeça do vendedor, sem visibilidade nenhuma',
       solution:
-        'O funil em kanban mostra todas as oportunidades por etapa — do primeiro contato ao fechamento. Você vê o pipeline inteiro e onde o negócio está travando.',
+        'O funil em kanban mostra todas as oportunidades por etapa, do primeiro contato ao fechamento. Você vê o pipeline inteiro e onde o negócio está travando.',
     },
     {
       pain: 'Orçamento, proposta e contrato em arquivos soltos',
@@ -466,7 +466,7 @@ const crm: ModuleData = {
     {
       icon: FileSignature,
       title: 'Orçamento → proposta → contrato no mesmo fluxo',
-      body: 'A partir da oportunidade você monta o orçamento com itens, mão de obra e material, transforma em proposta enviada por link e fecha em contrato. Tudo fica amarrado à oportunidade do CRM — o vendedor acompanha a aprovação e nada se perde entre o "vou pensar" e o "fechado".',
+      body: 'A partir da oportunidade você monta o orçamento com itens, mão de obra e material, transforma em proposta enviada por link e fecha em contrato. Tudo fica amarrado à oportunidade do CRM. O vendedor acompanha a aprovação e nada se perde entre o "vou pensar" e o "fechado".',
       image: {
         src: '/modulos/crm/2.webp',
         alt: 'Profissionais revisando um contrato e proposta sobre a mesa no escritório',
@@ -507,7 +507,7 @@ const crm: ModuleData = {
     { q: 'O que o CRM da Dominex faz?', a: 'Ele organiza sua operação comercial: captura leads, monta o funil de vendas em kanban, atribui cada oportunidade a um vendedor e leva do orçamento à proposta e ao contrato, com conversão direta em ordem de serviço.' },
     { q: 'Como funciona o funil de vendas?', a: 'O funil é um kanban com etapas (novo, em contato, orçamento, proposta, fechamento). Você arrasta cada oportunidade pela etapa certa e vê o cliente, o valor estimado e o responsável em cada card.' },
     { q: 'Consigo atribuir oportunidades a vendedores?', a: 'Sim. Cada oportunidade tem um vendedor responsável e você acompanha o pipeline e o desempenho de cada um.' },
-    { q: 'O CRM se conecta com orçamentos e contratos?', a: 'Sim. A partir da oportunidade você monta o orçamento, transforma em proposta enviada por link e fecha em contrato — tudo amarrado à oportunidade, sem arquivo solto.' },
+    { q: 'O CRM se conecta com orçamentos e contratos?', a: 'Sim. A partir da oportunidade você monta o orçamento, transforma em proposta enviada por link e fecha em contrato. Tudo fica amarrado à oportunidade, sem arquivo solto.' },
     { q: 'Quando fecho a venda, preciso recadastrar o cliente para a OS?', a: 'Não. A oportunidade ganha vira ordem de serviço com um clique, levando cliente, endereço e o escopo vendido. O comercial e o campo trabalham com os mesmos dados.' },
     { q: 'Dá para acompanhar a taxa de conversão?', a: 'Sim. Você acompanha o pipeline, vê quantas oportunidades avançam por etapa e identifica onde o negócio costuma travar.' },
     { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você cadastra seus leads e já começa a organizar o funil de vendas.' },
@@ -537,7 +537,7 @@ const financeiro: ModuleData = {
     h1: 'Controle financeiro para empresas de serviço',
     h1Highlight: 'Controle financeiro',
     subtitle:
-      'Não sabe se o mês fechou no azul? A Dominex organiza contas a pagar e a receber, mostra o fluxo de caixa em tempo real e fecha o DRE — para você decidir com número, não no chute.',
+      'Não sabe se o mês fechou no azul? A Dominex organiza contas a pagar e a receber, mostra o fluxo de caixa em tempo real e fecha o DRE para você decidir com número, não no chute.',
   },
 
   metrics: [
@@ -594,7 +594,7 @@ const financeiro: ModuleData = {
     {
       icon: CreditCard,
       title: 'Cartão de crédito sem bagunçar o caixa',
-      body: 'Na Dominex a despesa de cartão entra como prevista e quem vira pagamento de verdade é a fatura agregada — então o saldo da sua conta nunca aparece menor do que é. Você acompanha o total da fatura por cartão e concilia o que foi de fato gasto, sem confundir despesa com pagamento.',
+      body: 'Na Dominex, a despesa de cartão entra como prevista e a fatura agregada vira o pagamento real. Assim, o saldo da sua conta nunca aparece menor do que é. Você acompanha o total da fatura por cartão e concilia o que foi de fato gasto, sem confundir despesa com pagamento.',
       image: {
         src: '/modulos/controle-financeiro/3.webp',
         alt: 'Pessoa fazendo pagamento por aproximação com cartão de crédito em uma maquininha',
@@ -623,7 +623,7 @@ const financeiro: ModuleData = {
   ],
 
   faq: [
-    { q: 'O que o controle financeiro da Dominex faz?', a: 'Ele organiza contas a pagar e a receber, mostra o fluxo de caixa em tempo real, fecha o DRE do mês, trata o cartão de crédito separadamente e ajuda na conciliação — para você decidir com número, não no chute.' },
+    { q: 'O que o controle financeiro da Dominex faz?', a: 'Ele organiza contas a pagar e a receber, mostra o fluxo de caixa em tempo real, fecha o DRE do mês, trata o cartão de crédito separadamente e ajuda na conciliação para você decidir com número, não no chute.' },
     { q: 'Como funciona o fluxo de caixa?', a: 'O fluxo consolida todas as entradas e saídas e projeta o saldo dos próximos dias. Você enxerga quanto entrou, quanto vai sair e quanto sobra, em tempo real.' },
     { q: 'O sistema gera DRE?', a: 'Sim. O DRE (Demonstração do Resultado) fecha o mês automaticamente com receitas, custos e despesas categorizados, mostrando a margem real do negócio sem montar planilha.' },
     { q: 'Como a Dominex trata o cartão de crédito?', a: 'A despesa de cartão entra como prevista (não como pagamento), e quem de fato vira pagamento é a fatura agregada. Assim o saldo da sua conta nunca aparece menor do que realmente é.' },
@@ -649,14 +649,14 @@ const pontoFolha: ModuleData = {
   metaTitle:
     'Ponto eletrônico e folha de pagamento para equipes de campo | Dominex',
   metaDescription:
-    'Ponto eletrônico e folha de pagamento para equipes de campo: registro de ponto com selfie e geolocalização, banco de horas, folha, vales e gestão de funcionários — tudo num só lugar. Teste grátis 7 dias, sem cartão.',
+    'Ponto eletrônico e folha de pagamento para equipes de campo: registro de ponto com selfie e geolocalização, banco de horas, folha, vales e gestão de funcionários em um só lugar. Teste grátis 7 dias, sem cartão.',
 
   hero: {
     eyebrow: 'Ponto & Folha (RH)',
     h1: 'Ponto eletrônico e folha de pagamento para equipes de campo',
     h1Highlight: 'Ponto eletrônico e folha de pagamento',
     subtitle:
-      'Sua equipe começa o dia no cliente, não no escritório — então o ponto de papel não serve. A Dominex registra o ponto com selfie e localização, calcula o banco de horas e fecha a folha com vales descontados.',
+      'Sua equipe começa o dia no cliente, não no escritório. Por isso, o ponto de papel não serve. A Dominex registra o ponto com selfie e localização, calcula o banco de horas e fecha a folha com vales descontados.',
   },
 
   metrics: [
@@ -695,7 +695,7 @@ const pontoFolha: ModuleData = {
     {
       icon: Smartphone,
       title: 'Ponto com selfie e geolocalização',
-      body: 'O funcionário registra entrada, saída e intervalos pelo celular, de onde estiver. Cada batida guarda uma selfie e a localização, então você comprova quem bateu o ponto e de onde — ideal para equipes que começam o dia direto no cliente, sem passar pela empresa.',
+      body: 'O funcionário registra entrada, saída e intervalos pelo celular, de onde estiver. Cada batida guarda uma selfie e a localização, então você comprova quem bateu o ponto e de onde. É ideal para equipes que começam o dia direto no cliente, sem passar pela empresa.',
       image: {
         src: '/modulos/ponto-e-folha/1.webp',
         alt: 'Trabalhador de campo com equipamento de segurança consultando o celular na obra',
@@ -814,7 +814,7 @@ const nfse: ModuleData = {
     {
       icon: FileText,
       title: 'NFS-e emitida sem sair da plataforma',
-      body: 'A NFS-e (Nota Fiscal de Serviço eletrônica) é emitida de dentro da Dominex, na mesma plataforma onde você gerencia clientes e serviços. Você seleciona o cliente, confere os dados que já estão no cadastro e emite — sem abrir um emissor avulso, sem outro login, sem redigitar nada.',
+      body: 'A NFS-e (Nota Fiscal de Serviço eletrônica) é emitida de dentro da Dominex, na mesma plataforma onde você gerencia clientes e serviços. Você seleciona o cliente, confere os dados que já estão no cadastro e emite, sem abrir um emissor avulso, sem outro login, sem redigitar nada.',
       image: {
         src: '/modulos/emissao-de-nfse/1.webp',
         alt: 'Pessoa organizando documentos e usando um notebook na mesa do escritório',
@@ -887,14 +887,14 @@ const portalCliente: ModuleData = {
   metaTitle:
     'Portal do cliente para empresas de serviço | Dominex',
   metaDescription:
-    'Portal do cliente para empresas de serviço: seu cliente acompanha a ordem de serviço, vê o histórico de atendimentos, acessa documentos e aprova o orçamento por link — sem precisar ligar para o escritório. Teste grátis 7 dias, sem cartão.',
+    'Portal do cliente para empresas de serviço: seu cliente acompanha a ordem de serviço, vê o histórico de atendimentos, acessa documentos e aprova o orçamento por link, sem precisar ligar para o escritório. Teste grátis 7 dias, sem cartão.',
 
   hero: {
     eyebrow: 'Portal do Cliente',
     h1: 'Portal do cliente para empresas de serviço',
     h1Highlight: 'Portal do cliente',
     subtitle:
-      'Seu cliente liga toda hora pra saber se o técnico já foi? Com o Portal do Cliente, ele acompanha a ordem de serviço, vê o histórico, acessa os documentos e aprova o orçamento por link — sozinho.',
+      'Seu cliente liga toda hora pra saber se o técnico já foi? Com o Portal do Cliente, ele acompanha a ordem de serviço, vê o histórico, acessa os documentos e aprova o orçamento por link sem ajuda.',
   },
 
   metrics: [
@@ -910,7 +910,7 @@ const portalCliente: ModuleData = {
     {
       pain: '"O técnico já foi? Já resolveu?"',
       solution:
-        'O cliente abre o portal por link e vê o status da ordem de serviço em tempo real — agendada, em andamento, concluída. O telefone para de tocar pela mesma coisa.',
+        'O cliente abre o portal por link e vê o status da ordem de serviço em tempo real: agendada, em andamento ou concluída. O telefone para de tocar pela mesma coisa.',
     },
     {
       pain: 'Cliente pede o histórico de atendimentos e ninguém acha',
@@ -933,7 +933,7 @@ const portalCliente: ModuleData = {
     {
       icon: Eye,
       title: 'O cliente acompanha a ordem de serviço sozinho',
-      body: 'Pelo Portal do Cliente, acessado por um link (sem instalar app), o cliente vê em que pé está a ordem de serviço: agendada, técnico a caminho, em andamento, concluída. Ele acompanha o atendimento em tempo real e para de ligar para o escritório a cada hora — sua equipe ganha sossego para trabalhar.',
+      body: 'Pelo Portal do Cliente, acessado por um link (sem instalar app), o cliente vê em que pé está a ordem de serviço: agendada, técnico a caminho, em andamento ou concluída. Ele acompanha o atendimento em tempo real e para de ligar para o escritório a cada hora. Sua equipe ganha sossego para trabalhar.',
       image: {
         src: '/modulos/portal-do-cliente/1.webp',
         alt: 'Cliente sorrindo acompanhando o atendimento pelo celular em casa',
@@ -942,7 +942,7 @@ const portalCliente: ModuleData = {
     {
       icon: BookOpen,
       title: 'Histórico e documentos sempre à mão',
-      body: 'Todo o histórico de atendimentos do cliente fica no portal: as OS anteriores, as datas, o que foi feito e os relatórios em PDF. Os documentos ficam disponíveis para consulta a qualquer momento, então o cliente não precisa pedir "manda de novo aquele relatório" — está tudo lá.',
+      body: 'Todo o histórico de atendimentos do cliente fica no portal: as OS anteriores, as datas, o que foi feito e os relatórios em PDF. Os documentos ficam disponíveis para consulta a qualquer momento, então o cliente não precisa pedir "manda de novo aquele relatório". Está tudo lá.',
       image: {
         src: '/modulos/portal-do-cliente/2.webp',
         alt: 'Mãos consultando documentos impressos ao lado de um notebook sobre a mesa',
@@ -951,7 +951,7 @@ const portalCliente: ModuleData = {
     {
       icon: CheckSquare,
       title: 'Aprovação de orçamento por link',
-      body: 'O orçamento chega ao cliente por link e ele aprova direto no portal, com registro de quando aprovou. A aprovação não se perde no WhatsApp nem no e-mail, e o que foi aprovado segue para virar ordem de serviço — fechando o ciclo do comercial à execução sem fricção.',
+      body: 'O orçamento chega ao cliente por link e ele aprova direto no portal, com registro de quando aprovou. A aprovação não se perde no WhatsApp nem no e-mail. O que foi aprovado vira ordem de serviço e fecha o ciclo do comercial à execução sem fricção.',
       image: {
         src: '/modulos/portal-do-cliente/3.webp',
         alt: 'Homem sorrindo aprovando algo no notebook',
@@ -980,7 +980,7 @@ const portalCliente: ModuleData = {
   ],
 
   faq: [
-    { q: 'O que é o Portal do Cliente?', a: 'É uma área onde o seu cliente acompanha as ordens de serviço, vê o histórico de atendimentos, acessa documentos e aprova orçamentos — sozinho, sem ligar para o escritório.' },
+    { q: 'O que é o Portal do Cliente?', a: 'É uma área onde o seu cliente acompanha as ordens de serviço, vê o histórico de atendimentos, acessa documentos e aprova orçamentos sem ajuda e sem ligar para o escritório.' },
     { q: 'O cliente precisa instalar um aplicativo?', a: 'Não. O acesso é por link: o cliente abre no navegador e já enxerga o status da OS, o histórico e os documentos.' },
     { q: 'O cliente consegue acompanhar a ordem de serviço em tempo real?', a: 'Sim. Ele vê o status da OS (agendada, em andamento, concluída) em tempo real, o que reduz drasticamente os telefonemas para o escritório.' },
     { q: 'Dá para o cliente aprovar orçamento pelo portal?', a: 'Sim. O orçamento chega por link e o cliente aprova direto no portal, com registro de quando aprovou. A aprovação não se perde no WhatsApp.' },
@@ -1061,7 +1061,7 @@ const estoque: ModuleData = {
     {
       icon: PackageMinus,
       title: 'Baixa automática por ordem de serviço',
-      body: 'O material usado no atendimento é lançado na própria ordem de serviço e o estoque baixa sozinho. Isso amarra o consumo à OS: você sabe o que saiu, em qual serviço e para qual cliente — e ainda enxerga o custo de material por atendimento, deixando os próximos orçamentos mais precisos.',
+      body: 'O material usado no atendimento é lançado na própria ordem de serviço e o estoque baixa sozinho. Isso amarra o consumo à OS: você sabe o que saiu, em qual serviço e para qual cliente. Também enxerga o custo de material por atendimento e deixa os próximos orçamentos mais precisos.',
       image: {
         src: '/modulos/controle-de-estoque/2.webp',
         alt: 'Funcionário de estoque registrando itens com leitor e tablet no galpão',
@@ -1070,7 +1070,7 @@ const estoque: ModuleData = {
     {
       icon: ClipboardList,
       title: 'Inventário para manter o saldo confiável',
-      body: 'Quando precisar, rode o inventário: confira a contagem física contra o saldo do sistema e ajuste a divergência. O estoque volta a refletir a realidade, e você descobre furo ou perda antes que ele atrapalhe o próximo atendimento — não depois que a peça faltou no cliente.',
+      body: 'Quando precisar, rode o inventário: confira a contagem física contra o saldo do sistema e ajuste a divergência. O estoque volta a refletir a realidade, e você descobre furos ou perdas antes que prejudiquem o próximo atendimento.',
       image: {
         src: '/modulos/controle-de-estoque/3.webp',
         alt: 'Funcionário conferindo o inventário do estoque com um tablet no galpão',
@@ -1099,7 +1099,7 @@ const estoque: ModuleData = {
   ],
 
   faq: [
-    { q: 'O que o controle de estoque da Dominex faz?', a: 'Ele cadastra peças e materiais, registra entradas e saídas, dá baixa automática por ordem de serviço e permite inventário — para você saber o que tem, o que saiu e em qual atendimento.' },
+    { q: 'O que o controle de estoque da Dominex faz?', a: 'Ele cadastra peças e materiais, registra entradas e saídas, dá baixa automática por ordem de serviço e permite inventário. Assim, você sabe o que tem, o que saiu e em qual atendimento.' },
     { q: 'A baixa de estoque acontece automaticamente?', a: 'Sim. O material usado é lançado na própria ordem de serviço e o estoque baixa sozinho, amarrando o consumo à OS e ao cliente.' },
     { q: 'Consigo saber o custo de material por atendimento?', a: 'Sim. Como a baixa está vinculada à OS, você enxerga quanto de material cada atendimento consumiu, deixando os próximos orçamentos mais precisos.' },
     { q: 'Como funciona o inventário?', a: 'Você faz a contagem física quando quiser, compara com o saldo do sistema e ajusta a divergência. O estoque volta a refletir a realidade.' },
@@ -1180,7 +1180,7 @@ const orcamentosContratos: ModuleData = {
     {
       icon: Send,
       title: 'Proposta por link, aprovação registrada',
-      body: 'O orçamento vira proposta enviada por link: o cliente abre no celular, confere e aprova — com registro de quando aprovou. Você acompanha o status (enviada, vista, aprovada) e para de depender do "ok" no WhatsApp que some. A aprovação fica documentada, pronta para virar contrato ou ordem de serviço.',
+      body: 'O orçamento vira proposta enviada por link: o cliente abre no celular, confere e aprova. A data da aprovação fica registrada. Você acompanha o status (enviada, vista, aprovada) e para de depender do "ok" no WhatsApp que some. A aprovação fica documentada, pronta para virar contrato ou ordem de serviço.',
       image: {
         src: '/modulos/orcamentos-e-contratos/2.webp',
         alt: 'Pessoa sorrindo aprovando uma proposta pelo celular',
@@ -1221,7 +1221,7 @@ const orcamentosContratos: ModuleData = {
     { q: 'Como funcionam os orçamentos na Dominex?', a: 'Você monta orçamentos com itens, mão de obra e material num documento profissional com a sua marca, ligado ao cliente. O orçamento fica registrado e pode virar proposta, contrato ou ordem de serviço.' },
     { q: 'O cliente aprova a proposta por link?', a: 'Sim. A proposta vai por link, o cliente abre no celular e aprova com registro de quando aprovou. Você acompanha quem abriu e quem fechou, sem depender do "ok" no WhatsApp.' },
     { q: 'O que são contratos recorrentes?', a: 'São contratos de manutenção preventiva ou atendimento periódico com recorrência configurável (mensal, bimestral, trimestral). A Dominex gera as ordens de serviço automaticamente no intervalo certo, com o escopo do contrato pronto.' },
-    { q: 'Os contratos geram ordens de serviço sozinhos?', a: 'Sim. Cadastrado o contrato com a recorrência, as OS são geradas pelo sistema no intervalo combinado, sem você precisar lembrar — nenhum SLA fura por esquecimento.' },
+    { q: 'Os contratos geram ordens de serviço sozinhos?', a: 'Sim. Cadastrado o contrato com a recorrência, as OS são geradas pelo sistema no intervalo combinado, sem você precisar lembrar. Assim, nenhum SLA fura por esquecimento.' },
     { q: 'O orçamento aprovado vira ordem de serviço?', a: 'Sim. Com um clique, o orçamento aprovado vira ordem de serviço, levando o escopo vendido para o campo. Comercial e operação trabalham com os mesmos dados.' },
     { q: 'Os orçamentos e contratos ficam ligados ao cliente?', a: 'Sim. Cada orçamento e contrato fica no histórico do cliente, organizado, para consulta e acompanhamento.' },
     { q: 'Como começo a usar? Precisa de cartão?', a: 'É só criar a conta e usar 7 dias grátis, sem cartão de crédito. Você monta seu primeiro orçamento e já envia a proposta por link.' },
@@ -1308,7 +1308,7 @@ const rastreamentoAgenda: ModuleData = {
     {
       icon: MapPin,
       title: 'Check-in/out validado e histórico de deslocamento',
-      body: 'O técnico faz check-in e check-out na visita, validados pelo endereço do cliente, com horário registrado — comprovando a presença no atendimento. O histórico de deslocamento guarda os pontos-chave do percurso, então você confere por onde a equipe passou e justifica o tempo gasto em campo.',
+      body: 'O técnico faz check-in e check-out na visita, validados pelo endereço do cliente, com horário registrado. Isso comprova a presença no atendimento. O histórico de deslocamento guarda os pontos-chave do percurso, então você confere por onde a equipe passou e justifica o tempo gasto em campo.',
       image: {
         src: '/modulos/rastreamento-de-equipes/3.webp',
         alt: 'Técnico saindo da van de serviço ao chegar no endereço do cliente para o check-in',
@@ -1339,7 +1339,7 @@ const rastreamentoAgenda: ModuleData = {
   faq: [
     { q: 'A Dominex mostra onde minha equipe está em tempo real?', a: 'Sim. O mapa ao vivo mostra onde cada técnico está enquanto trabalha, para você acompanhar a operação de campo sem ficar ligando.' },
     { q: 'Como funciona a agenda e a roteirização?', a: 'A agenda organiza os atendimentos do dia por técnico e ajuda a roteirizar, distribuindo o chamado pelo técnico mais próximo do endereço, reduzindo deslocamento e evitando conflito de horário.' },
-    { q: 'O check-in comprova que o técnico foi ao cliente?', a: 'Sim. O check-in e o check-out são validados pelo endereço do cliente, com horário registrado, comprovando a presença na visita e o tempo no atendimento.' },
+    { q: 'O check-in comprova que o técnico foi ao cliente?', a: 'Sim. O check-in e o check-out são validados pelo endereço do cliente e registram o horário. Isso comprova a presença na visita e o tempo no atendimento.' },
     { q: 'Tem histórico de deslocamento?', a: 'Sim. O histórico guarda os pontos-chave do percurso do dia, para você conferir por onde a equipe passou e justificar o tempo em campo.' },
     { q: 'A roteirização ajuda a fazer mais atendimentos por dia?', a: 'Sim. Ao distribuir pelo técnico mais próximo e organizar a rota, a equipe atravessa menos a cidade à toa e atende mais clientes no mesmo dia.' },
     { q: 'O cliente ganha previsibilidade de horário?', a: 'Sim. Com a agenda organizada, você dá ao cliente uma janela de atendimento mais previsível e reduz visitas furadas.' },
@@ -1370,7 +1370,7 @@ const areaTecnico: ModuleData = {
     h1: 'Área do Técnico™: o app de campo da sua equipe',
     h1Highlight: 'Área do Técnico™',
     subtitle:
-      'O técnico não trabalha sentado no escritório — ele precisa de tudo no celular. A Área do Técnico™ é um app instalável no celular que traz a ordem de serviço, as ferramentas de cálculo e o catálogo na palma da mão, em campo.',
+      'O técnico trabalha em campo e precisa de tudo no celular. A Área do Técnico™ é um app instalável que reúne a ordem de serviço, as ferramentas de cálculo e o catálogo na palma da mão.',
   },
 
   metrics: [
@@ -1409,7 +1409,7 @@ const areaTecnico: ModuleData = {
     {
       icon: Smartphone,
       title: 'O app de campo (PWA) com a OS na palma da mão',
-      body: 'A Área do Técnico™ é um app instalável no celular (PWA), sem loja de aplicativos. O técnico vê a fila do dia, abre a ordem de serviço completa — cliente, endereço com mapa, equipamento e histórico — executa o checklist, tira foto, colhe a assinatura e fecha o serviço. Tudo de campo, sem voltar ao escritório.',
+      body: 'A Área do Técnico™ é um app instalável no celular (PWA), sem loja de aplicativos. O técnico vê a fila do dia e abre a ordem de serviço completa, com cliente, endereço, mapa, equipamento e histórico. Depois, executa o checklist, tira fotos, colhe a assinatura e fecha o serviço sem voltar ao escritório.',
       image: {
         src: '/modulos/area-do-tecnico/1.webp',
         alt: 'Técnico de macacão usando o celular em campo para abrir a ordem de serviço',
@@ -1427,7 +1427,7 @@ const areaTecnico: ModuleData = {
     {
       icon: Download,
       title: 'App instalável no celular, sem loja de aplicativos',
-      body: 'A Área do Técnico™ é um app instalável (PWA): o técnico adiciona ao celular direto pelo navegador, sem passar por loja de aplicativos, e abre como qualquer outro app — leve e rápido. A ordem de serviço, as ferramentas de cálculo e o catálogo ficam na palma da mão, prontos para usar no cliente, em campo.',
+      body: 'A Área do Técnico™ é um app instalável (PWA): o técnico adiciona ao celular direto pelo navegador, sem passar por loja de aplicativos, e abre como qualquer outro app. É leve e rápido. A ordem de serviço, as ferramentas de cálculo e o catálogo ficam na palma da mão, prontos para usar no cliente, em campo.',
       image: {
         src: '/modulos/area-do-tecnico/3.webp',
         alt: 'Profissional com capacete consultando o app num tablet no local de trabalho',
@@ -1450,7 +1450,7 @@ const areaTecnico: ModuleData = {
 
   testimonialsHeading: 'O técnico no controle, direto do celular',
   testimonials: [
-    { quote: 'A Área do Técnico™ virou o app oficial da equipe. OS, foto, assinatura — tudo do celular, no cliente.', name: 'Diego F.', role: 'Gestor', company: 'refrigeração e climatização' },
+    { quote: 'A Área do Técnico™ virou o app oficial da equipe. OS, foto e assinatura, tudo pelo celular e na frente do cliente.', name: 'Diego F.', role: 'Gestor', company: 'refrigeração e climatização' },
     { quote: 'As ferramentas de cálculo de gás e superaquecimento no bolso reduziram erro no campo. O técnico calcula certo na hora.', name: 'Aline R.', role: 'Coordenadora Técnica', company: 'manutenção de ar-condicionado' },
     { quote: 'Ter a OS, as calculadoras e o catálogo todos no celular mudou o dia do técnico. Ele resolve no cliente, sem voltar pra base nem carregar manual impresso.', name: 'Thiago P.', role: 'Fundador', company: 'serviços de refrigeração' },
   ],
@@ -1458,7 +1458,7 @@ const areaTecnico: ModuleData = {
   faq: [
     { q: 'O que é a Área do Técnico™?', a: 'É o app de campo da sua equipe: um aplicativo instalável no celular (PWA) com a ordem de serviço, as ferramentas técnicas de cálculo e o catálogo de equipamentos, tudo na palma da mão do técnico para usar no cliente.' },
     { q: 'Preciso baixar na loja de aplicativos?', a: 'Não. A Área do Técnico™ é um PWA: instala direto pelo navegador no celular do técnico, sem passar por loja de aplicativos, e fica leve e rápida.' },
-    { q: 'Quais ferramentas técnicas estão disponíveis?', a: 'Cálculo de carga e curvas de pressão por temperatura dos gases refrigerantes, cálculo de superaquecimento, dimensionamento de contator e relé térmico com partida direta, e um catálogo de equipamentos com fotos e manuais — tudo no celular.' },
+    { q: 'Quais ferramentas técnicas estão disponíveis?', a: 'Cálculo de carga e curvas de pressão por temperatura dos gases refrigerantes, cálculo de superaquecimento, dimensionamento de contator e relé térmico com partida direta, além de um catálogo de equipamentos com fotos e manuais. Tudo fica no celular.' },
     { q: 'O técnico consegue executar a ordem de serviço pelo app?', a: 'Sim. Ele abre a OS completa (cliente, endereço, equipamento, histórico), preenche o checklist, tira fotos, colhe a assinatura e fecha o serviço, tudo do celular.' },
     { q: 'A equipe usa tudo direto do celular, em campo?', a: 'Sim. A ordem de serviço, as ferramentas de cálculo e o catálogo de equipamentos ficam no celular do técnico, prontos para usar no cliente. Ele executa a OS, faz os cálculos e consulta o catálogo em campo, sem voltar ao escritório nem carregar manual impresso.' },
     { q: 'As ferramentas de cálculo servem para refrigeração e climatização?', a: 'Sim. As calculadoras de gás, superaquecimento e curvas de pressão são voltadas ao dia a dia de refrigeração e climatização, e o dimensionamento de contator atende instalação e partida de equipamentos.' },

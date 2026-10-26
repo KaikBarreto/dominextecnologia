@@ -1,6 +1,6 @@
 // Fase 6: inglês GENERALIZADO (sem lei/imposto/órgão específico do Brasil).
-// Override parcial sobre o pt-br (fonte). Marca "Dominex" mantida. Sem travessão
-// (—) na copy: usar vírgula/ponto-e-vírgula.
+// Override parcial sobre o pt-br (fonte). Marca "Dominex" mantida.
+// Na copy, usar vírgula, ponto ou ponto e vírgula em vez de travessão.
 //
 // Institucionais legais (privacidade/termos) são TRADUÇÃO AUTOMÁTICA de texto
 // jurídico, generalizada; precisam de revisão profissional antes de virar
@@ -691,7 +691,7 @@ export const enOverrides: MessagesOverride = {
   privacidade: {
     back: '← Back',
     title: 'Privacy Policy',
-    version: 'Version 1.0 — last updated: April 2026',
+    version: 'Version 1.0. Last updated: April 2026',
     s1Title: '1. Data Controller Identification',
     s1P1Strong: 'Dominex Tecnologia',
     s1P1: '{strong} is the controller of the personal data processed on this platform, under applicable data protection law.',
@@ -723,10 +723,10 @@ export const enOverrides: MessagesOverride = {
     ] as [string, string][],
     s4Title: '4. Sharing with Third Parties (Sub-processors)',
     s4Items: [
-      { strong: 'Supabase Inc.', rest: '(USA) — database, authentication and file storage. International transfer based on standard contractual clauses.' },
-      { strong: 'OpenStreetMap/Nominatim', rest: '— address geocoding (proxied by the server, without directly sending the user IP).' },
-      { strong: 'Address lookup service', rest: '— postal code lookup for address auto-fill.' },
-      { strong: 'Payment gateways', rest: '— charge processing. We have no access to card data.' },
+      { strong: 'Supabase Inc.', rest: '(USA), database, authentication and file storage. International transfer based on standard contractual clauses.' },
+      { strong: 'OpenStreetMap/Nominatim:', rest: 'address geocoding (proxied by the server, without directly sending the user IP).' },
+      { strong: 'Address lookup service:', rest: 'postal code lookup for address auto-fill.' },
+      { strong: 'Payment gateways:', rest: 'charge processing. We have no access to card data.' },
     ],
     s4Note: 'We do not sell, rent or share personal data with third parties for advertising purposes.',
     s5Title: '5. Data Retention',
@@ -770,7 +770,7 @@ export const enOverrides: MessagesOverride = {
   termos: {
     back: '← Back',
     title: 'Terms of Use',
-    version: 'Version 1.0 — last updated: April 2026',
+    version: 'Version 1.0. Last updated: April 2026',
     s1Title: '1. Acceptance of Terms',
     s1Pre: 'By registering and using the Dominex platform, you ("User") agree to these Terms of Use and to our ',
     s1Link: 'Privacy Policy',
@@ -820,7 +820,7 @@ export const enOverrides: MessagesOverride = {
     heroHighlight: 'run the field',
     subtitle: 'Work orders, preventive maintenance, team management and how to take your operation off paper.',
     searchPlaceholder: 'Search articles...',
-    metaTitle: 'Blog — Dominex | Field Service Management',
+    metaTitle: 'Blog | Dominex | Field Service Management',
     metaDescription:
       'Practical articles on work orders, maintenance plans, team management and how to bring your field operation under control. Content by Dominex.',
     allCategories: 'All',

@@ -1,6 +1,6 @@
 // Fase 6: español GENERALIZADO (sin ley/impuesto/órgano específico de ningún país).
-// Override parcial sobre el pt-br (fuente). Marca "Dominex" mantenida. Sin raya
-// (—) en la copy: usar coma/punto y coma.
+// Override parcial sobre el pt-br (fuente). Marca "Dominex" mantenida.
+// En la copy, usar coma, punto o punto y coma en vez de raya.
 //
 // Los institucionales legales (privacidad/términos) son TRADUCCIÓN AUTOMÁTICA de
 // texto jurídico, generalizada; necesitan revisión profesional antes de volverse
@@ -691,7 +691,7 @@ export const esOverrides: MessagesOverride = {
   privacidade: {
     back: '← Volver',
     title: 'Política de Privacidad',
-    version: 'Versión 1.0 — última actualización: abril de 2026',
+    version: 'Versión 1.0. Última actualización: abril de 2026',
     s1Title: '1. Identificación del Responsable del Tratamiento',
     s1P1Strong: 'Dominex Tecnologia',
     s1P1: '{strong} es el responsable de los datos personales tratados en esta plataforma, conforme a la legislación de protección de datos aplicable.',
@@ -723,10 +723,10 @@ export const esOverrides: MessagesOverride = {
     ] as [string, string][],
     s4Title: '4. Compartir con Terceros (Subencargados)',
     s4Items: [
-      { strong: 'Supabase Inc.', rest: '(EE. UU.) — base de datos, autenticación y almacenamiento de archivos. Transferencia internacional basada en cláusulas contractuales estándar.' },
-      { strong: 'OpenStreetMap/Nominatim', rest: '— geocodificación de direcciones (mediada por el servidor, sin enviar directamente la IP del usuario).' },
-      { strong: 'Servicio de búsqueda de direcciones', rest: '— búsqueda de código postal para autocompletar direcciones.' },
-      { strong: 'Pasarelas de pago', rest: '— procesamiento de cobros. No tenemos acceso a los datos de tarjeta.' },
+      { strong: 'Supabase Inc.', rest: '(EE. UU.), base de datos, autenticación y almacenamiento de archivos. Transferencia internacional basada en cláusulas contractuales estándar.' },
+      { strong: 'OpenStreetMap/Nominatim:', rest: 'geocodificación de direcciones (mediada por el servidor, sin enviar directamente la IP del usuario).' },
+      { strong: 'Servicio de búsqueda de direcciones:', rest: 'búsqueda de código postal para autocompletar direcciones.' },
+      { strong: 'Pasarelas de pago:', rest: 'procesamiento de cobros. No tenemos acceso a los datos de tarjeta.' },
     ],
     s4Note: 'No vendemos, alquilamos ni compartimos datos personales con terceros con fines publicitarios.',
     s5Title: '5. Conservación de los Datos',
@@ -770,7 +770,7 @@ export const esOverrides: MessagesOverride = {
   termos: {
     back: '← Volver',
     title: 'Términos de Uso',
-    version: 'Versión 1.0 — última actualización: abril de 2026',
+    version: 'Versión 1.0. Última actualización: abril de 2026',
     s1Title: '1. Aceptación de los Términos',
     s1Pre: 'Al registrarte y usar la plataforma Dominex, tú ("Usuario") aceptas estos Términos de Uso y nuestra ',
     s1Link: 'Política de Privacidad',
@@ -820,7 +820,7 @@ export const esOverrides: MessagesOverride = {
     heroHighlight: 'domina el campo',
     subtitle: 'Órdenes de trabajo, mantenimiento preventivo, gestión de equipo y cómo sacar tu operación del papel.',
     searchPlaceholder: 'Buscar artículos...',
-    metaTitle: 'Blog — Dominex | Gestión para equipos de campo',
+    metaTitle: 'Blog | Dominex | Gestión para equipos de campo',
     metaDescription:
       'Artículos prácticos sobre órdenes de servicio, gestión de equipos y cómo llevar el control de tu operación de campo. Contenido de Dominex.',
     allCategories: 'Todas',

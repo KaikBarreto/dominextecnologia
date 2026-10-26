@@ -1,6 +1,6 @@
 // Fase 6: français GÉNÉRALISÉ (sans loi/impôt/organisme spécifique au Brésil).
-// Override partiel sur le pt-br (source). Marque "Dominex" conservée. Pas de tiret
-// cadratin (—) dans la copie : utiliser la virgule/point-virgule.
+// Override partiel sur le pt-br (source). Marque "Dominex" conservée.
+// Dans la copie, utiliser la virgule, le point ou le point-virgule.
 //
 // Institutionnels légaux (confidentialité/conditions) sont une TRADUCTION
 // AUTOMATIQUE de texte juridique, généralisée ; nécessitent une relecture
@@ -692,7 +692,7 @@ export const frOverrides: MessagesOverride = {
   privacidade: {
     back: '← Retour',
     title: 'Politique de confidentialité',
-    version: 'Version 1.0 — dernière mise à jour : avril 2026',
+    version: 'Version 1.0. Dernière mise à jour : avril 2026',
     s1Title: '1. Identification du responsable du traitement',
     s1P1Strong: 'Dominex Tecnologia',
     s1P1: '{strong} est le responsable du traitement des données personnelles traitées sur cette plateforme, conformément à la législation applicable sur la protection des données.',
@@ -724,10 +724,10 @@ export const frOverrides: MessagesOverride = {
     ] as [string, string][],
     s4Title: '4. Partage avec des tiers (sous-traitants)',
     s4Items: [
-      { strong: 'Supabase Inc.', rest: '(États-Unis) — base de données, authentification et stockage de fichiers. Transfert international fondé sur des clauses contractuelles types.' },
-      { strong: 'OpenStreetMap/Nominatim', rest: '— géocodage d’adresses (relayé par le serveur, sans envoyer directement l’IP de l’utilisateur).' },
-      { strong: 'Service de recherche d’adresses', rest: '— recherche de code postal pour le remplissage automatique de l’adresse.' },
-      { strong: 'Passerelles de paiement', rest: '— traitement des paiements. Nous n’avons aucun accès aux données de carte.' },
+      { strong: 'Supabase Inc.', rest: '(États-Unis), base de données, authentification et stockage de fichiers. Transfert international fondé sur des clauses contractuelles types.' },
+      { strong: 'OpenStreetMap/Nominatim :', rest: 'géocodage d’adresses (relayé par le serveur, sans envoyer directement l’IP de l’utilisateur).' },
+      { strong: 'Service de recherche d’adresses :', rest: 'recherche de code postal pour le remplissage automatique de l’adresse.' },
+      { strong: 'Passerelles de paiement :', rest: 'traitement des paiements. Nous n’avons aucun accès aux données de carte.' },
     ],
     s4Note: 'Nous ne vendons, ne louons ni ne partageons de données personnelles avec des tiers à des fins publicitaires.',
     s5Title: '5. Conservation des données',
@@ -771,7 +771,7 @@ export const frOverrides: MessagesOverride = {
   termos: {
     back: '← Retour',
     title: 'Conditions d’utilisation',
-    version: 'Version 1.0 — dernière mise à jour : avril 2026',
+    version: 'Version 1.0. Dernière mise à jour : avril 2026',
     s1Title: '1. Acceptation des conditions',
     s1Pre: 'En vous inscrivant et en utilisant la plateforme Dominex, vous (« Utilisateur ») acceptez ces Conditions d’utilisation ainsi que notre ',
     s1Link: 'Politique de confidentialité',
@@ -821,7 +821,7 @@ export const frOverrides: MessagesOverride = {
     heroHighlight: 'maîtrisent le terrain',
     subtitle: 'Ordres de travail, maintenance préventive, gestion d’équipe et comment sortir votre activité du papier.',
     searchPlaceholder: 'Rechercher des articles...',
-    metaTitle: 'Blog — Dominex | Gestion pour les équipes terrain',
+    metaTitle: 'Blog | Dominex | Gestion pour les équipes terrain',
     metaDescription:
       'Articles pratiques sur les bons de travail, la gestion des équipes et comment maîtriser votre opération terrain. Contenu Dominex.',
     allCategories: 'Toutes',

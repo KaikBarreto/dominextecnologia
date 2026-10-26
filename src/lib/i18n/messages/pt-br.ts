@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// i18n — strings de UI do SITE PÚBLICO (pt-br é a FONTE da verdade do shape).
+// i18n, strings de UI do SITE PÚBLICO (pt-br é a FONTE da verdade do shape).
 //
 // pt-br carrega o texto EXATO que hoje está cravado no JSX (nada reescrito aqui:
 // é só mover string pra chave). en traduz; es/fr caem no fallback pt-br por ora.
@@ -13,10 +13,10 @@
 //   • quemSomos  → página institucional /quem-somos
 //   • privacidade / termos → páginas legais (tradução automática; ver relatório)
 //
-// Conteúdo longo de segmento/módulo/blog NÃO vem por aqui — é dados por idioma
+// Conteúdo longo de segmento/módulo/blog NÃO vem por aqui, é dados por idioma
 // em content/<locale>.ts (outra frente).
 //
-// APP LOGADO: o namespace `app` NÃO vive mais inline aqui — ele é organizado por
+// APP LOGADO: o namespace `app` NÃO vive mais inline aqui, ele é organizado por
 // DOMÍNIO em `messages/app/*.ts` (cada arquivo com os 4 locales juntos) e agregado
 // por `appByLocale` (messages/app/index.ts). pt-br usa `appByLocale['pt-br']`;
 // en/es/fr recebem sua fatia em messages/index.ts (não sobrescrevem `app` inline).
@@ -265,7 +265,7 @@ export const ptBr = {
         {
           title: 'Área do Técnico™',
           description:
-            'Calculadoras, tabelas de gases e catálogo de equipamentos no bolso do técnico — a caixa de ferramentas que faltava no celular dele.',
+            'Calculadoras, tabelas de gases e catálogo de equipamentos no bolso do técnico. É a caixa de ferramentas que faltava no celular dele.',
         },
         {
           title: 'Relatórios e indicadores',
@@ -468,7 +468,7 @@ export const ptBr = {
         },
         {
           q: 'Meus dados estão seguros? E a LGPD?',
-          a: 'Utilizamos infraestrutura em nuvem (Supabase) com criptografia em trânsito e em repouso, backups automáticos e isolamento entre empresas (multi-tenant). Estamos em processo de adequação contínua à LGPD — você pode acessar nossa Política de Privacidade para detalhes sobre coleta, uso e seus direitos como titular.',
+          a: 'Utilizamos infraestrutura em nuvem (Supabase) com criptografia em trânsito e em repouso, backups automáticos e isolamento entre empresas (multi-tenant). Estamos em processo de adequação contínua à LGPD. Você pode acessar nossa Política de Privacidade para detalhes sobre coleta, uso e seus direitos como titular.',
         },
       ],
     },
@@ -493,17 +493,17 @@ export const ptBr = {
     missionTitle: 'Nossa missão',
     missionP1Strong: 'ordem de serviço, PMOC e gestão',
     missionP1:
-      'A Dominex é um sistema de {strong} feito para empresas de serviço e equipes de campo — refrigeração e climatização, elétrica, energia solar, CFTV, provedores de internet, elevadores, dedetização, limpeza e conservação, construção e muito mais.',
+      'A Dominex é um sistema de {strong} feito para empresas de serviço e equipes de campo: refrigeração e climatização, elétrica, energia solar, CFTV, provedores de internet, elevadores, dedetização, limpeza, construção e muito mais.',
     missionP2:
       'Acreditamos que o técnico não deveria perder tempo com ordem de serviço em papel, nem o gestor deveria ficar no escuro sobre o que acontece na rua. Por isso reunimos num lugar só o que antes vivia espalhado em caderno, grupo de WhatsApp e planilha: CRM, orçamento, contrato, ordem de serviço, PMOC, rastreamento de equipe, controle de estoque, financeiro e folha.',
     missionP3:
-      'Nosso compromisso é simples: deixar a operação organizada, rastreável e fácil de tocar — pra você focar no serviço bem feito, não na burocracia.',
+      'Nosso compromisso é simples: deixar a operação organizada, rastreável e fácil de tocar. Assim, você foca no serviço bem feito, não na burocracia.',
     valuesTitle: 'No que a gente acredita',
     valuesSubtitle: 'Os princípios que guiam cada decisão sobre o produto.',
     values: [
       {
         title: 'Tudo no celular do técnico',
-        body: 'Equipe em campo precisa de tudo na mão. O app é instalável no celular e o técnico abre a ordem de serviço, registra foto, checklist e assinatura direto no local do serviço — sem papel e sem voltar pro escritório.',
+        body: 'Equipe em campo precisa de tudo na mão. O app é instalável no celular e o técnico abre a ordem de serviço, registra foto, checklist e assinatura direto no local do serviço, sem papel e sem voltar pro escritório.',
       },
       {
         title: 'Feito pra quem domina o campo',
@@ -511,7 +511,7 @@ export const ptBr = {
       },
       {
         title: 'Rápido de começar',
-        body: 'Sem implantação interminável. Você cria a conta, cadastra sua equipe e já está emitindo ordem de serviço no mesmo dia — sem cartão pra testar.',
+        body: 'Sem implantação interminável. Você cria a conta, cadastra sua equipe e já está emitindo ordem de serviço no mesmo dia, sem cartão pra testar.',
       },
       {
         title: 'Seus dados são seus',
@@ -531,11 +531,11 @@ export const ptBr = {
       'São 7 dias grátis, sem cartão de crédito. Cadastre sua equipe e comece a emitir ordem de serviço hoje mesmo.',
   },
 
-  // ── Política de Privacidade (texto jurídico — validar antes de oficializar) ─
+  // ── Política de Privacidade (texto jurídico, validar antes de oficializar) ─
   privacidade: {
     back: '← Voltar',
     title: 'Política de Privacidade',
-    version: 'Versão 1.0 — última atualização: abril de 2026',
+    version: 'Versão 1.0. Última atualização: abril de 2026',
     s1Title: '1. Identificação do Controlador',
     s1P1Strong: 'Dominex Tecnologia',
     s1P1: '{strong} é a controladora dos dados pessoais tratados nesta plataforma, nos termos da Lei nº 13.709/2018 (LGPD).',
@@ -551,7 +551,7 @@ export const ptBr = {
       { strong: 'De geolocalização:', rest: 'coordenadas GPS dos técnicos durante atendimentos (a cada 30s)' },
       { strong: 'Biométricos/imagem:', rest: 'selfies para registro de ponto eletrônico e fotos de equipamentos' },
       { strong: 'De clientes da empresa-usuária:', rest: 'nome, CPF/CNPJ, e-mail, telefone, endereço, equipamentos' },
-      { strong: 'Financeiros:', rest: 'registros de transações (sem dados de cartão de crédito — processados por gateways externos)' },
+      { strong: 'Financeiros:', rest: 'registros de transações (sem dados de cartão de crédito, processados por gateways externos)' },
     ],
     s3Title: '3. Finalidades e Bases Legais (Art. 7º e 11 LGPD)',
     s3ColPurpose: 'Finalidade',
@@ -567,10 +567,10 @@ export const ptBr = {
     ] as [string, string][],
     s4Title: '4. Compartilhamento com Terceiros (Sub-processadores)',
     s4Items: [
-      { strong: 'Supabase Inc.', rest: '(EUA) — banco de dados, autenticação e armazenamento de arquivos. Transferência internacional baseada em cláusulas contratuais padrão (Art. 33 LGPD).' },
-      { strong: 'OpenStreetMap/Nominatim', rest: '— geocodificação de endereços (proxiado pelo servidor, sem envio direto do IP do usuário).' },
-      { strong: 'ViaCEP', rest: '— consulta de CEP para autopreenchimento de endereço.' },
-      { strong: 'Gateways de pagamento', rest: '(Stripe/Pagar.me/Mercado Pago) — processamento de cobranças. Não temos acesso a dados de cartão.' },
+      { strong: 'Supabase Inc.', rest: '(EUA), banco de dados, autenticação e armazenamento de arquivos. Transferência internacional baseada em cláusulas contratuais padrão (Art. 33 LGPD).' },
+      { strong: 'OpenStreetMap/Nominatim:', rest: 'geocodificação de endereços (proxiado pelo servidor, sem envio direto do IP do usuário).' },
+      { strong: 'ViaCEP:', rest: 'consulta de CEP para autopreenchimento de endereço.' },
+      { strong: 'Gateways de pagamento', rest: '(Stripe/Pagar.me/Mercado Pago), processamento de cobranças. Não temos acesso a dados de cartão.' },
     ],
     s4Note: 'Não vendemos, alugamos ou compartilhamos dados pessoais com terceiros para fins publicitários.',
     s5Title: '5. Retenção de Dados',
@@ -611,11 +611,11 @@ export const ptBr = {
     s10NotePost: '.',
   },
 
-  // ── Termos de Uso (texto jurídico — validar antes de oficializar) ──────────
+  // ── Termos de Uso (texto jurídico, validar antes de oficializar) ──────────
   termos: {
     back: '← Voltar',
     title: 'Termos de Uso',
-    version: 'Versão 1.0 — última atualização: abril de 2026',
+    version: 'Versão 1.0. Última atualização: abril de 2026',
     s1Title: '1. Aceitação dos Termos',
     s1Pre: 'Ao se cadastrar e utilizar a plataforma Dominex, você ("Usuário") concorda com estes Termos de Uso e com nossa ',
     s1Link: 'Política de Privacidade',
@@ -653,12 +653,12 @@ export const ptBr = {
     s10Title: '10. Alterações nos Termos',
     s10P: 'Podemos atualizar estes Termos periodicamente. Alterações significativas serão comunicadas com antecedência mínima de 30 dias por e-mail. O uso continuado do serviço após as alterações implica aceitação.',
     s11Title: '11. Foro e Lei Aplicável',
-    s11P: 'Estes Termos são regidos pelas leis brasileiras. Fica eleito o foro da Comarca de São Paulo — SP para dirimir quaisquer controvérsias.',
+    s11P: 'Estes Termos são regidos pelas leis brasileiras. Fica eleito o foro da Comarca de São Paulo/SP para dirimir quaisquer controvérsias.',
     s12Title: '12. Contato',
     s12Pre: 'Dúvidas sobre estes Termos: ',
   },
 
-  // ── Cadastro (/cadastro) — stepper de 5 etapas ─────────────────────────────
+  // ── Cadastro (/cadastro), stepper de 5 etapas ─────────────────────────────
   // Texto EXATO cravado hoje no Registration.tsx (só movido pra chave). Site
   // público: sem white-label, marca "Dominex". en/es/fr traduzem; ausências
   // caem no pt-br.
@@ -678,7 +678,7 @@ export const ptBr = {
       success: 'Sucesso',
     },
 
-    // Etapa 1 — Dados da empresa
+    // Etapa 1, Dados da empresa
     companyName: 'Nome da Empresa*',
     companyNamePlaceholder: 'Ex: Minha Empresa Ltda',
     country: 'País da empresa*',
@@ -713,15 +713,15 @@ export const ptBr = {
     state: 'UF',
     statePlaceholder: 'UF',
 
-    // Etapa 2 — Segmento
+    // Etapa 2, Segmento
     segmentTitle: 'Qual o segmento do seu negócio?',
     segmentSubtitle: 'Selecione pra personalizar sua experiência',
 
-    // Etapa 3 — Origem
+    // Etapa 3, Origem
     originTitle: 'Como você nos conheceu?',
     originSubtitle: 'Selecione de onde você veio',
 
-    // Etapa 4 — Acesso
+    // Etapa 4, Acesso
     accessEmailLabel: 'Email de acesso:',
     password: 'Senha*',
     passwordPlaceholder: 'Crie sua senha',
@@ -878,7 +878,7 @@ export const ptBr = {
 
       // Toasts
       toastCodeSentTitle: 'Código enviado',
-      toastCodeSentDesc: 'Verifique seu email — pode levar até 1 minuto.',
+      toastCodeSentDesc: 'Verifique seu email. O envio pode levar até 1 minuto.',
       toastErrorTitle: 'Erro',
       toastSendCodeFallback: 'Não foi possível enviar o código',
       toastInvalidCodeTitle: 'Código inválido',
@@ -919,7 +919,7 @@ export const ptBr = {
   // Só o "chrome" (badges, títulos de seção, busca, empty states, CTA da sidebar
   // e rótulos de card). O CONTEÚDO dos posts vem do banco, filtrado por locale,
   // e NÃO passa por aqui. Texto EXATO cravado hoje no JSX (só movido pra chave).
-  // Site público: marca "Dominex", sem white-label. Sem travessão (—).
+  // Site público: marca "Dominex", sem white-label e sem travessão na copy.
   blog: {
     // Cabeçalho da listagem
     badge: 'Blog da Dominex',
@@ -927,7 +927,7 @@ export const ptBr = {
     heroHighlight: 'domina o campo',
     subtitle: 'Ordem de serviço, PMOC, gestão de equipe e como tirar a operação do papel.',
     searchPlaceholder: 'Buscar artigos...',
-    metaTitle: 'Blog — Dominex | Gestão para equipes de campo',
+    metaTitle: 'Blog | Dominex | Gestão para equipes de campo',
     metaDescription:
       'Artigos práticos sobre ordem de serviço, PMOC, gestão de equipe e como tirar a operação de campo do papel. Conteúdo da Dominex.',
     allCategories: 'Todos',
