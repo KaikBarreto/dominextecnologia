@@ -1,18 +1,28 @@
 import type { CSSProperties } from 'react';
 import { getSiteSegments } from '@/utils/companySegments';
-import { TOOLS_BY_SEGMENT } from '@/pages/modulos/tecnicoNicheTools';
+import { localizeNicheTools, TOOLS_BY_SEGMENT } from '@/pages/modulos/tecnicoNicheTools';
+import { useLocale } from '@/lib/i18n';
 import './TechnicianToolsOrbit.css';
 
-const ORBIT_ITEMS = getSiteSegments().map((segment, index) => ({
-  segment,
-  tool: TOOLS_BY_SEGMENT[segment.value]?.[index % (TOOLS_BY_SEGMENT[segment.value]?.length || 1)],
-}));
-
 export default function TechnicianToolsOrbit() {
+  const { locale, messages } = useLocale();
+  const registry = messages.app.technicianTools.toolsRegistry as Record<
+    string,
+    { label: string; description: string }
+  >;
+  const segmentLabels = messages.app.technicianTools.segments as Record<string, string>;
+  const orbitItems = getSiteSegments().map((segment, index) => {
+    const tools = localizeNicheTools(TOOLS_BY_SEGMENT[segment.value] ?? [], locale, registry);
+    return {
+      segment: { ...segment, label: segmentLabels[segment.value] ?? segment.label },
+      tool: tools[index % (tools.length || 1)],
+    };
+  });
+
   return (
     <div className="technician-orbit" aria-hidden="true">
       <div className="technician-orbit__ring technician-orbit__ring--outer">
-        {ORBIT_ITEMS.map(({ segment, tool }, index) => {
+        {orbitItems.map(({ segment, tool }, index) => {
           const Icon = tool?.icon ?? segment.icon;
           return (
             <div
@@ -20,8 +30,8 @@ export default function TechnicianToolsOrbit() {
               className="technician-orbit__item"
               style={
                 {
-                  '--orbit-angle': `${index * (360 / ORBIT_ITEMS.length)}deg`,
-                  '--orbit-color': segment.color,
+                  '--orbit-angle': `${index * (360 / orbitItems.length)}deg`,
+                  '--orbit-color': tool?.accent ?? segment.color,
                 } as CSSProperties
               }
             >
@@ -37,7 +47,7 @@ export default function TechnicianToolsOrbit() {
       </div>
 
       <div className="technician-orbit__ring technician-orbit__ring--inner">
-        {ORBIT_ITEMS.slice(0, 6).map(({ segment }, index) => {
+        {orbitItems.slice(0, 6).map(({ segment }, index) => {
           const Icon = segment.icon;
           return (
             <div

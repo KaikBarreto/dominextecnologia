@@ -29,7 +29,7 @@ import MarketingHeroBackdrop from '@/components/landing/MarketingHeroBackdrop';
 import TechnicianToolsOrbit from '@/components/landing/TechnicianToolsOrbit';
 import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
 import { AreaTecnicoIcon } from '@/components/icons/MenuIcons';
-import { TOOLS_BY_SEGMENT } from './tecnicoNicheTools';
+import { localizeNicheTools, TOOLS_BY_SEGMENT } from './tecnicoNicheTools';
 import { getModuleData } from './content/loader';
 
 const DOMINEX_BRAND_VARS = {
@@ -44,32 +44,30 @@ const DOMINEX_BRAND_VARS = {
 const MOTION_VIDEO =
   'https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/landingpage/motions/area-tecnico-9x16.mp4';
 
-const FLOW = [
+const FLOW_MEDIA = [
   {
     number: '01',
     icon: ClipboardCheck,
-    title: 'Recebe a OS completa',
-    description: 'Cliente, endereço, equipamento, histórico e checklist chegam organizados no celular.',
     image: '/guia-tecnico/img/t7-area-tecnico-inicio.jpg',
-    alt: 'Tela inicial real da Área do Técnico com as ordens de serviço',
   },
   {
     number: '02',
     icon: Wrench,
-    title: 'Resolve sem improviso',
-    description: 'Ferramentas e referências do segmento ajudam o técnico a decidir e calcular no local.',
     image: '/guia-tecnico/img/t7-area-tecnico.jpg',
-    alt: 'Tela real das ferramentas disponíveis na Área do Técnico',
   },
   {
     number: '03',
     icon: PenLine,
-    title: 'Entrega na hora',
-    description: 'O cliente confere, assina no celular e recebe um atendimento com começo, meio e fim.',
     image: '/guia-tecnico/img/t7-os-compartilhada.jpg',
-    alt: 'Tela real do relatório compartilhado ao concluir a ordem de serviço',
   },
 ];
+
+function interpolateCopy(template: string, values: Record<string, string>) {
+  return Object.entries(values).reduce(
+    (result, [key, value]) => result.split(`{${key}}`).join(value),
+    template,
+  );
+}
 
 function darken(hex: string, factor = 0.76) {
   const value = hex.replace('#', '');
@@ -124,6 +122,9 @@ export default function AreaDoTecnico() {
 
 function TechnicianHero() {
   const { locale, messages } = useLocale();
+  const copy = messages.pageChrome.areaTechnician;
+  const productName =
+    (messages.moduleLabels as Record<string, string>)['area-do-tecnico'] ?? 'Área do Técnico™';
 
   return (
     <section
@@ -136,19 +137,19 @@ function TechnicianHero() {
       <div className="relative z-20 mx-auto flex w-full max-w-[1160px] flex-col items-center text-center">
         <div className="mb-7 inline-flex items-center gap-3 text-[#101512] dark:text-white sm:mb-9">
           <AreaTecnicoIcon className="h-11 w-11 shrink-0 text-primary sm:h-14 sm:w-14" />
-          <span className="text-xl font-semibold tracking-[-0.035em] sm:text-2xl">Área do Técnico™</span>
+          <span className="text-xl font-semibold tracking-[-0.035em] sm:text-2xl">{productName}</span>
         </div>
 
         <h1
           lang={locale === 'pt-br' ? 'pt-BR' : locale}
           className="m-0 max-w-[1040px] text-balance text-[clamp(2.8rem,6vw,6rem)] font-semibold leading-[0.9] tracking-[-0.06em]"
         >
-          Cada serviço e ferramenta técnica
-          <span className="dominex-home-hero-highlight block pb-[0.08em]">no mesmo app</span>
+          {copy.heroPrefix}
+          <span className="dominex-home-hero-highlight block pb-[0.08em]">{copy.heroHighlight}</span>
         </h1>
 
         <p className="mt-7 max-w-[720px] text-balance text-base leading-7 text-[#626b65] dark:text-white/65 sm:text-lg sm:leading-8">
-          Da ordem de serviço ao cálculo técnico, sua equipe resolve o trabalho em campo pelo celular, com recursos pensados para cada segmento.
+          {copy.heroSubtitle}
         </p>
 
         <div className="mt-8 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row">
@@ -169,7 +170,7 @@ function TechnicianHero() {
             asChild
           >
             <a href="#ferramentas-area-tecnico">
-              Explorar ferramentas
+              {copy.exploreTools}
               <ChevronRight className="ml-1 h-4 w-4" />
             </a>
           </Button>
@@ -180,6 +181,9 @@ function TechnicianHero() {
 }
 
 function TechnicianVideo() {
+  const { messages } = useLocale();
+  const copy = messages.pageChrome.areaTechnician;
+
   return (
     <section className="relative overflow-hidden bg-[#080a09] px-4 py-16 text-white sm:px-6 sm:py-20 lg:px-8 lg:py-24">
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
@@ -189,15 +193,15 @@ function TechnicianVideo() {
 
       <div className="relative z-10 mx-auto grid max-w-[1120px] items-center gap-12 lg:grid-cols-[minmax(0,1fr)_350px] lg:gap-24">
         <div className="mx-auto max-w-2xl text-center lg:mx-0 lg:text-left">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Veja funcionando</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{copy.videoEyebrow}</p>
           <h2 className="mt-5 text-balance text-3xl font-semibold tracking-[-0.04em] sm:text-5xl sm:leading-[1.04]">
-            O atendimento inteiro cabe na mão do técnico
+            {copy.videoTitle}
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-white/65 sm:text-lg sm:leading-8 lg:mx-0">
-            Veja como a equipe abre a OS, consulta informações e conclui o serviço em uma experiência feita para o celular.
+            {copy.videoSubtitle}
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm font-medium text-white/72 lg:justify-start">
-            {['Vídeo vertical 9:16', 'Controle de som', 'Sem reprodução automática'].map((item) => (
+            {copy.videoBadges.map((item) => (
               <span key={item} className="inline-flex items-center gap-2">
                 <Check className="h-4 w-4 text-primary" />
                 {item}
@@ -216,10 +220,10 @@ function TechnicianVideo() {
                 controls
                 preload="metadata"
                 poster="/guia-tecnico/img/t7-area-tecnico-inicio.jpg"
-                aria-label="Demonstração em vídeo da Área do Técnico"
+                aria-label={copy.videoAria}
               >
                 <source src={MOTION_VIDEO} type="video/mp4" />
-                Seu navegador não oferece suporte a vídeo HTML5.
+                {copy.videoUnsupported}
               </video>
             </div>
           </div>
@@ -230,10 +234,20 @@ function TechnicianVideo() {
 }
 
 function SegmentToolExplorer() {
-  const segments = getSiteSegments();
+  const { locale, messages } = useLocale();
+  const copy = messages.pageChrome.areaTechnician;
+  const segmentLabels = messages.app.technicianTools.segments as Record<string, string>;
+  const registry = messages.app.technicianTools.toolsRegistry as Record<
+    string,
+    { label: string; description: string }
+  >;
+  const segments = getSiteSegments().map((segment) => ({
+    ...segment,
+    label: segmentLabels[segment.value] ?? segment.label,
+  }));
   const [activeSegment, setActiveSegment] = useState(segments[0].value);
   const selected = segments.find((segment) => segment.value === activeSegment) ?? segments[0];
-  const tools = TOOLS_BY_SEGMENT[selected.value] ?? [];
+  const tools = localizeNicheTools(TOOLS_BY_SEGMENT[selected.value] ?? [], locale, registry);
   const available = (TECH_TOOLS_BY_SEGMENT[selected.value]?.length ?? 0) > 0;
   const displayColor = darken(selected.color);
   const SelectedIcon = selected.icon;
@@ -248,17 +262,17 @@ function SegmentToolExplorer() {
     <section id="ferramentas-area-tecnico" className="scroll-mt-24 bg-[#f6f6f3] py-20 dark:bg-[#0b0d0c] sm:py-28">
       <div className="mx-auto max-w-[1320px] px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Ferramentas por segmento</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{copy.toolsEyebrow}</p>
           <h2 className="mt-4 text-balance text-4xl font-semibold tracking-[-0.045em] text-[#101512] dark:text-white sm:text-5xl">
-            A mesma Área do Técnico, adaptada ao trabalho de cada equipe
+            {copy.toolsTitle}
           </h2>
           <p className="mt-5 max-w-2xl text-base leading-7 text-[#616b64] dark:text-white/60 sm:text-lg sm:leading-8">
-            Escolha um segmento para conhecer as ferramentas, o que cada uma resolve e o que já está disponível no produto.
+            {copy.toolsSubtitle}
           </p>
         </div>
 
         <div className="-mx-4 mt-10 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
-          <div className="flex min-w-max gap-2" role="group" aria-label="Escolha um segmento">
+          <div className="flex min-w-max gap-2" role="group" aria-label={copy.segmentPicker}>
             {segments.map((segment) => {
               const Icon = segment.icon;
               const active = segment.value === selected.value;
@@ -302,18 +316,24 @@ function SegmentToolExplorer() {
                     <SelectedIcon className="h-7 w-7" style={{ color: displayColor }} />
                   </span>
                   <span className="rounded-full border border-white/30 bg-black/15 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-white">
-                    {available ? 'Disponível agora' : 'Em planejamento'}
+                    {available ? copy.available : copy.planned}
                   </span>
                 </div>
                 <h3 className="mt-8 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">{selected.label}</h3>
-                <p className="mt-4 max-w-md text-base leading-7 text-white/78">{selected.description}</p>
+                <p className="mt-4 max-w-md text-base leading-7 text-white/78">
+                  {interpolateCopy(copy.genericSegmentDescription, { segment: selected.label })}
+                </p>
 
                 <div className="mt-9 overflow-hidden rounded-[1.3rem] border border-white/18 bg-black/20 p-2 shadow-2xl backdrop-blur-sm lg:mt-auto">
                   <div className="overflow-hidden rounded-[0.95rem] bg-white">
                     <img
                       key={previewImage}
                       src={previewImage}
-                      alt={available ? `Tela real das ferramentas para ${selected.label}` : 'Prévia da seleção de ferramentas na Área do Técnico'}
+                      alt={
+                        available
+                          ? interpolateCopy(copy.realPreviewAlt, { segment: selected.label })
+                          : copy.plannedPreviewAlt
+                      }
                       width={1180}
                       height={897}
                       loading="eager"
@@ -329,15 +349,15 @@ function SegmentToolExplorer() {
               <div className="flex flex-col gap-3 border-b border-[#e1e5e1] pb-7 dark:border-white/10 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.16em]" style={{ color: displayColor }}>
-                    {tools.length} {tools.length === 1 ? 'ferramenta' : 'ferramentas'}
+                    {tools.length} {tools.length === 1 ? copy.toolSingular : copy.toolPlural}
                   </p>
                   <h3 className="mt-2 text-2xl font-semibold tracking-[-0.035em] text-[#101512] dark:text-white">
-                    O que o técnico encontra aqui
+                    {copy.toolListTitle}
                   </h3>
                 </div>
                 {!available && (
                   <p className="max-w-[245px] text-sm leading-5 text-[#707973] dark:text-white/48">
-                    Prévia do conjunto planejado para este segmento.
+                    {copy.plannedNote}
                   </p>
                 )}
               </div>
@@ -345,12 +365,16 @@ function SegmentToolExplorer() {
               <div className="grid sm:grid-cols-2">
                 {tools.map((tool, index) => {
                   const Icon = tool.icon;
+                  const toolColor = tool.accent ?? displayColor;
                   return (
                     <div
-                      key={tool.title}
+                      key={tool.id}
                       className={`flex gap-4 border-[#e5e8e5] py-5 dark:border-white/10 sm:pr-5 ${index < tools.length - 2 ? 'border-b' : ''} ${index % 2 === 1 ? 'sm:border-l sm:pl-6 sm:pr-0' : ''}`}
                     >
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-white" style={{ backgroundColor: displayColor }}>
+                      <span
+                        className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-white"
+                        style={{ backgroundColor: toolColor }}
+                      >
                         <Icon className="h-5 w-5" />
                       </span>
                       <div>
@@ -364,7 +388,7 @@ function SegmentToolExplorer() {
 
               <div className="mt-8 border-t border-[#e1e5e1] pt-7 dark:border-white/10">
                 <WhatsAppCtaLink className="inline-flex items-center gap-2 text-sm font-bold text-[#101512] hover:text-primary dark:text-white dark:hover:text-primary">
-                  Quero ver a Área do Técnico na minha empresa
+                  {copy.toolsCta}
                   <ArrowRight className="h-4 w-4" />
                 </WhatsAppCtaLink>
               </div>
@@ -377,23 +401,35 @@ function SegmentToolExplorer() {
 }
 
 function FieldFlow() {
+  const { messages } = useLocale();
+  const copy = messages.pageChrome.areaTechnician;
+  const flow = FLOW_MEDIA.map((media, index) => ({
+    ...media,
+    ...copy.flowSteps[index],
+  }));
+  const flowBadges = [
+    { icon: Download, label: copy.flowBadges[0] },
+    { icon: ImageIcon, label: copy.flowBadges[1] },
+    { icon: Wrench, label: copy.flowBadges[2] },
+  ];
+
   return (
     <section className="bg-white py-20 dark:bg-[#070908] sm:py-28">
       <div className="mx-auto max-w-[1260px] px-4 sm:px-6 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-[0.72fr_1.28fr] lg:items-end">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Do chamado à entrega</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{copy.flowEyebrow}</p>
             <h2 className="mt-4 text-balance text-4xl font-semibold tracking-[-0.045em] text-[#101512] dark:text-white sm:text-5xl">
-              O campo trabalha sem depender do escritório
+              {copy.flowTitle}
             </h2>
           </div>
           <p className="max-w-2xl text-base leading-7 text-[#616b64] dark:text-white/60 sm:text-lg sm:leading-8 lg:justify-self-end">
-            Informação pronta para executar, evidências organizadas e uma conclusão profissional na frente do cliente.
+            {copy.flowSubtitle}
           </p>
         </div>
 
         <div className="mt-12 grid gap-px overflow-hidden rounded-[1.65rem] border border-[#dfe3df] bg-[#dfe3df] dark:border-white/10 dark:bg-white/10 lg:grid-cols-3">
-          {FLOW.map((step) => {
+          {flow.map((step) => {
             const Icon = step.icon;
             return (
               <article key={step.number} className="group bg-[#f8f8f6] p-4 dark:bg-[#101311] sm:p-5">
@@ -422,9 +458,12 @@ function FieldFlow() {
         </div>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-sm font-semibold text-[#4e5851] dark:text-white/62">
-          <span className="inline-flex items-center gap-2"><Download className="h-4 w-4 text-primary" /> Instala pelo navegador</span>
-          <span className="inline-flex items-center gap-2"><ImageIcon className="h-4 w-4 text-primary" /> Fotos dentro da OS</span>
-          <span className="inline-flex items-center gap-2"><Wrench className="h-4 w-4 text-primary" /> Ferramentas no mesmo acesso</span>
+          {flowBadges.map(({ icon: Icon, label }) => (
+            <span key={label} className="inline-flex items-center gap-2">
+              <Icon className="h-4 w-4 text-primary" />
+              {label}
+            </span>
+          ))}
         </div>
       </div>
     </section>
