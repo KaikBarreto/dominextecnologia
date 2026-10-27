@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.50";
+export const APP_VERSION = "1.37.51";
 
 export const VERSION_NOTES =
-  "Gerenciar o plano ficou mais limpo, com módulos e opções mais fáceis de comparar.";
+  "O acesso ganhou uma apresentação mais clara do produto, e administradores podem solicitar a NFS-e da assinatura no histórico de pagamentos.";

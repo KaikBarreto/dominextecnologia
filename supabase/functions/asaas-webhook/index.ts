@@ -53,7 +53,8 @@
 //
 // Adaptado do EcoSistema (asaas-webhook/index.ts). Divergências de schema:
 //  - companies NÃO tem base_subscription_value, crm_lead_id, referral_discount_balance.
-//  - NFS-e fora de escopo (sem nfse_* em admin_financial_transactions aqui).
+//  - NFS-e da assinatura é persistida só em subscription_payments; não mistura
+//    com nfse_emissions nem com o financeiro operacional dos tenants.
 //  - subscription_plans usa included_modules (jsonb); company_modules usa activated_at + quantity.
 //  - Vencimento via RPC compute_next_expiration (BRT-aware no banco), NÃO helper TS.
 
@@ -81,6 +82,10 @@ import {
   webhookResponseFor,
 } from "../_shared/asaas-webhook-renewal.ts";
 import { resolveNfseRepricedRenewalAmount } from "../_shared/nfse-base-reprice.ts";
+import {
+  invoiceStatusFromEvent,
+  safeInvoiceErrorMessage,
+} from "../_shared/subscription-nfse.ts";
 
 const NFSE_BASE_REPRICE_REASON = "Reajuste do nível 1 de Notas Fiscais de R$ 100 para R$ 150";
 
@@ -1781,6 +1786,74 @@ Deno.serve(async (req) => {
     const event: string = body?.event ?? "";
     const payment = body?.payment ?? null;
     console.log(`[webhook] evento ${event} recebido`);
+
+    // ==========================================================
+    // NFS-e DA ASSINATURA — estado fiscal separado do pagamento
+    // ----------------------------------------------------------
+    // Eventos INVOICE_* não carregam `body.payment`; a cobrança vinculada vem
+    // em `body.invoice.payment`. Por isso este ramo precisa vir antes do gate
+    // genérico "evento sem payment". As atualizações são idempotentes: uma
+    // reentrega do mesmo evento apenas reaplica o mesmo snapshot.
+    // ==========================================================
+    if (event.startsWith("INVOICE_")) {
+      const invoice = body?.invoice;
+      if (!invoice?.id) {
+        console.log(`[invoice] ${event} sem invoice.id — ignorado`);
+        return json({ received: true, ignored: "sem invoice" });
+      }
+
+      const invoiceStatus = invoiceStatusFromEvent(event, invoice.status);
+      const isFailure = ["ERROR", "CANCELED", "CANCELLED"]
+        .includes(invoiceStatus);
+      const nfseUpdate: Record<string, unknown> = {
+        nfse_status: invoiceStatus,
+        nfse_invoice_id: invoice.id,
+        nfse_error: isFailure ? safeInvoiceErrorMessage() : null,
+        nfse_requested_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      if (typeof invoice.pdfUrl === "string" && invoice.pdfUrl) {
+        nfseUpdate.nfse_pdf_url = invoice.pdfUrl;
+      }
+      if (typeof invoice.xmlUrl === "string" && invoice.xmlUrl) {
+        nfseUpdate.nfse_xml_url = invoice.xmlUrl;
+      }
+      if (invoice.number !== null && invoice.number !== undefined && String(invoice.number)) {
+        nfseUpdate.nfse_number = String(invoice.number);
+      }
+
+      const { data: matchedByInvoice, error: invoiceMatchError } = await supabase
+        .from("subscription_payments")
+        .update(nfseUpdate)
+        .eq("nfse_invoice_id", invoice.id)
+        .select("id");
+      if (invoiceMatchError) {
+        throw new RetryableWebhookError(
+          `atualização fiscal por invoice_id falhou (${invoice.id}): ${invoiceMatchError.message}`,
+          invoiceMatchError,
+        );
+      }
+
+      let matched = matchedByInvoice?.length ?? 0;
+      if (matched === 0 && typeof invoice.payment === "string" && invoice.payment) {
+        const { data: matchedByPayment, error: paymentMatchError } = await supabase
+          .from("subscription_payments")
+          .update(nfseUpdate)
+          .eq("asaas_payment_id", invoice.payment)
+          .is("nfse_invoice_id", null)
+          .select("id");
+        if (paymentMatchError) {
+          throw new RetryableWebhookError(
+            `atualização fiscal por payment falhou (${invoice.payment}): ${paymentMatchError.message}`,
+            paymentMatchError,
+          );
+        }
+        matched = matchedByPayment?.length ?? 0;
+      }
+
+      console.log(`[invoice] ${event} invoice=${invoice.id} status=${invoiceStatus} matched=${matched}`);
+      return json({ received: true, invoice: true, matched: matched > 0 });
+    }
 
     // ==========================================================
     // PIX AUTOMÁTICO — autorização CRIADA (apenas informativo)

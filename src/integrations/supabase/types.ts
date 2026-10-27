@@ -12837,6 +12837,13 @@ export type Database = {
           id: string
           invoice_url: string | null
           ltv_credited_at: string | null
+          nfse_error: string | null
+          nfse_invoice_id: string | null
+          nfse_number: string | null
+          nfse_pdf_url: string | null
+          nfse_requested_at: string | null
+          nfse_status: string | null
+          nfse_xml_url: string | null
           paid_at: string | null
           payment_method: string | null
           pix_copy_paste: string | null
@@ -12859,6 +12866,13 @@ export type Database = {
           id?: string
           invoice_url?: string | null
           ltv_credited_at?: string | null
+          nfse_error?: string | null
+          nfse_invoice_id?: string | null
+          nfse_number?: string | null
+          nfse_pdf_url?: string | null
+          nfse_requested_at?: string | null
+          nfse_status?: string | null
+          nfse_xml_url?: string | null
           paid_at?: string | null
           payment_method?: string | null
           pix_copy_paste?: string | null
@@ -12881,6 +12895,13 @@ export type Database = {
           id?: string
           invoice_url?: string | null
           ltv_credited_at?: string | null
+          nfse_error?: string | null
+          nfse_invoice_id?: string | null
+          nfse_number?: string | null
+          nfse_pdf_url?: string | null
+          nfse_requested_at?: string | null
+          nfse_status?: string | null
+          nfse_xml_url?: string | null
           paid_at?: string | null
           payment_method?: string | null
           pix_copy_paste?: string | null
@@ -15573,6 +15594,14 @@ export type Database = {
           p_amount: number
           p_asaas_payment_id: string
           p_company_id: string
+        }
+        Returns: boolean
+      }
+      claim_subscription_payment_nfse: {
+        Args: {
+          p_company_id: string
+          p_payment_id: string
+          p_stale_before: string
         }
         Returns: boolean
       }

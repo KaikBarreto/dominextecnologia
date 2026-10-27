@@ -189,10 +189,15 @@ export default function Billing() {
 
   // Dados pendentes para NFS-e
   const missingNfseFields: string[] = [];
-  if (!company.cnpj) missingNfseFields.push('CNPJ/CPF');
-  if (!company.email) missingNfseFields.push('Email');
-  if (!company.contact_name) missingNfseFields.push('Nome do responsável');
-  if (!company.phone) missingNfseFields.push('Telefone');
+  const nfseDocument = String(company.cnpj || '').replace(/\D/g, '');
+  const nfsePostalCode = String(company.zip_code || '').replace(/\D/g, '');
+  if (nfseDocument.length !== 11 && nfseDocument.length !== 14) missingNfseFields.push('CNPJ/CPF');
+  if (!company.email) missingNfseFields.push('e-mail');
+  if (!company.phone) missingNfseFields.push('telefone');
+  if (!company.address) missingNfseFields.push('endereço');
+  if (!company.address_number && !company.street_number) missingNfseFields.push('número');
+  if (!company.neighborhood) missingNfseFields.push('bairro');
+  if (nfsePostalCode.length !== 8) missingNfseFields.push('CEP');
 
   // Valor a exibir: aplica desconto anual só no display
   const displayAmountDue = company.billing_cycle === 'yearly'
@@ -433,7 +438,7 @@ export default function Billing() {
           ) : null}
 
           {/* Renovação automática ativa */}
-          {(company as any).asaas_subscription_id && hasValidCardPayment && (
+          {company.asaas_subscription_id && hasValidCardPayment && (
             <div className="bg-background border rounded-xl p-4 flex items-start gap-3">
               <div className="p-1.5 bg-muted rounded-lg shrink-0 mt-0.5">
                 <CreditCard className="h-4 w-4 text-foreground" />

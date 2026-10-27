@@ -75,6 +75,13 @@ verify_jwt = false
 [functions.asaas-webhook]
 verify_jwt = false
 
+# request-subscription-nfse: cliente autenticado solicita a NFS-e de um
+# pagamento quitado da própria empresa. A função valida o Bearer e a posse do
+# tenant internamente antes de usar service_role; verify_jwt=false permite copy
+# de erro em PT-BR e mantém o mesmo padrão das demais funções Asaas.
+[functions.request-subscription-nfse]
+verify_jwt = false
+
 # backfill-asaas-customers: provisiona customer Asaas para empresas sem
 # asaas_customer_id. Autentica DENTRO da função por super_admin (Bearer JWT)
 # OU header x-cron-secret == CRON_SECRET (chamada do cron pg_cron como postgres).

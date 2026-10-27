@@ -1,5 +1,17 @@
 import { useMemo, useState } from 'react';
-import { CreditCard, ChevronLeft, ChevronRight, ExternalLink, Receipt } from 'lucide-react';
+import {
+  AlertTriangle,
+  CreditCard,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  ExternalLink,
+  FileCode2,
+  Loader2,
+  Receipt,
+  RefreshCw,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,6 +25,9 @@ import { formatBRL } from '@/utils/currency';
 import type { SubscriptionPaymentHistoryItem } from '@/hooks/useSubscriptionPaymentHistory';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { useRequestSubscriptionNfse } from '@/hooks/useRequestSubscriptionNfse';
+import { getSubscriptionNfseState } from '@/lib/subscriptionNfse';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PaymentHistoryListProps {
   payments: SubscriptionPaymentHistoryItem[];
@@ -94,8 +109,117 @@ function StatusBadge({ status, t }: { status: string; t: ReturnType<typeof usePa
 
 const PER_PAGE_OPTIONS = [5, 10, 20];
 
+function NfseActionZone({
+  payment,
+  canRequest,
+}: {
+  payment: SubscriptionPaymentHistoryItem;
+  canRequest: boolean;
+}) {
+  const t = usePaymentHistoryT();
+  const requestNfse = useRequestSubscriptionNfse();
+  const serverState = getSubscriptionNfseState({
+    paymentStatus: payment.status,
+    nfseStatus: payment.nfseStatus,
+    nfsePdfUrl: payment.nfsePdfUrl,
+    nfseRequestedAt: payment.nfseRequestedAt,
+  });
+  const state = requestNfse.isPending ? 'processing' : serverState;
+
+  const handleRequest = async () => {
+    try {
+      await requestNfse.mutateAsync(payment.id);
+      toast.success(t.nfseRequested);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t.nfseRequestError);
+    }
+  };
+
+  if (state === 'not_paid') {
+    return (
+      <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Receipt className="h-3.5 w-3.5 shrink-0" />
+        <span>{t.nfseAfterPayment}</span>
+      </div>
+    );
+  }
+
+  if (state === 'processing') {
+    return (
+      <Button variant="secondary" size="sm" disabled className="mt-2 h-8 gap-1.5 text-xs">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        {t.nfseProcessing}
+      </Button>
+    );
+  }
+
+  if (state === 'issued') {
+    return (
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {payment.nfseNumber && (
+          <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+            {t.nfseNumber.replace('{number}', payment.nfseNumber)}
+          </span>
+        )}
+        {payment.nfsePdfUrl && (
+          <Button asChild variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+            <a href={payment.nfsePdfUrl} target="_blank" rel="noopener noreferrer">
+              <Download className="h-3.5 w-3.5" />
+              {t.nfseDownloadPdf}
+            </a>
+          </Button>
+        )}
+        {payment.nfseXmlUrl && (
+          <Button asChild variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+            <a href={payment.nfseXmlUrl} target="_blank" rel="noopener noreferrer">
+              <FileCode2 className="h-3.5 w-3.5" />
+              {t.nfseDownloadXml}
+            </a>
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  if (state === 'error') {
+    if (!canRequest) {
+      return <p className="mt-2 text-xs text-muted-foreground">{t.nfseAdminOnly}</p>;
+    }
+    return (
+      <div className="mt-2 rounded-md border border-destructive/30 bg-destructive/5 p-2">
+        <div className="flex items-start gap-1.5 text-xs text-destructive">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>{payment.nfseError || t.nfseRequestError}</span>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-2 h-8 gap-1.5 text-xs"
+          onClick={handleRequest}
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          {t.nfseTryAgain}
+        </Button>
+      </div>
+    );
+  }
+
+  if (!canRequest) {
+    return <p className="mt-2 text-xs text-muted-foreground">{t.nfseAdminOnly}</p>;
+  }
+
+  return (
+    <Button variant="outline" size="sm" className="mt-2 h-8 gap-1.5 text-xs" onClick={handleRequest}>
+      <Receipt className="h-3.5 w-3.5" />
+      {t.nfseRequest}
+    </Button>
+  );
+}
+
 export function PaymentHistoryList({ payments, isLoading }: PaymentHistoryListProps) {
   const t = usePaymentHistoryT();
+  const { isAdminOrGestor, hasRole } = useAuth();
+  const canRequestNfse = isAdminOrGestor() || hasRole('super_admin');
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
 
@@ -173,6 +297,7 @@ export function PaymentHistoryList({ payments, isLoading }: PaymentHistoryListPr
                       {t.viewCharge}
                     </a>
                   )}
+                  <NfseActionZone payment={p} canRequest={canRequestNfse} />
                 </div>
               </div>
 

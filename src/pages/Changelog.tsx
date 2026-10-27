@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.51',
+    date: '27 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'NFS-e da assinatura no histórico de pagamentos',
+        description: 'Administradores e gestores podem solicitar a nota fiscal de uma assinatura já paga e, assim que ela for emitida, baixar o PDF e o XML no mesmo lugar. A tela também orienta quando falta completar algum dado da empresa.',
+        category: 'recurso',
+      },
+      {
+        title: 'Acesso mais claro e com o Dominex em contexto',
+        description: 'A tela de entrada agora apresenta o produto com telas reais no computador, mantém o formulário direto no celular e adapta logo, campos e contraste aos temas claro e escuro.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.50',
     date: '27 de outubro de 2026',
     type: 'patch',

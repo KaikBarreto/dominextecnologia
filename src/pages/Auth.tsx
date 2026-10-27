@@ -1,23 +1,23 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, Loader2, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Mail, Lock, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { ForgotPasswordFlow } from '@/components/auth/ForgotPasswordFlow';
 import { SessionConfirmDialog } from '@/components/SessionConfirmDialog';
-import logoWhite from '@/assets/logo-horizontal-verde.png';
-import DarkVeil from '@/components/ui/DarkVeil';
+import logoLight from '@/assets/logo-dark.png';
+import logoDark from '@/assets/logo-horizontal-verde.png';
+import { LoginShowcase } from '@/components/auth/LoginShowcase';
 import { SystemFooter } from '@/components/layout/SystemFooter';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsDark } from '@/hooks/useIsDark';
 import { supabase } from '@/integrations/supabase/client';
 import { trackUsage } from '@/lib/trackUsage';
 import { getDeviceInfo } from '@/lib/sessionUtils';
@@ -69,9 +69,9 @@ function GoogleIcon({ className }: { className?: string }) {
 function OrDivider({ label }: { label: string }) {
   return (
     <div className="relative flex items-center">
-      <div className="flex-1 border-t border-white/15" />
-      <span className="px-3 text-[10px] uppercase tracking-widest text-white/40">{label}</span>
-      <div className="flex-1 border-t border-white/15" />
+      <div className="flex-1 border-t border-slate-200 dark:border-white/15" />
+      <span className="px-3 text-[10px] uppercase tracking-widest text-slate-400 dark:text-white/40">{label}</span>
+      <div className="flex-1 border-t border-slate-200 dark:border-white/15" />
     </div>
   );
 }
@@ -81,7 +81,7 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const isMobile = useIsMobile();
+  const isDark = useIsDark();
 
   // Session management state
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
@@ -385,393 +385,124 @@ export default function Auth() {
     toast({ title: t.toastLoginCanceled });
   };
 
-  // Show skeleton while auth state is loading
-  if (loading) {
-    return (
-      <div className="relative flex min-h-screen items-center justify-center p-4 overflow-hidden">
-        <div className="absolute inset-0 z-0 bg-[hsl(0,0%,4%)]" />
-        <div className="w-full max-w-md relative z-10">
-          <div className="mb-8 flex flex-col items-center gap-3">
-            <div className="h-14 w-48 rounded-lg bg-white/10 animate-pulse" />
-            <div className="h-4 w-64 rounded bg-white/10 animate-pulse" />
+  const toggleTheme = () => {
+    const nextIsDark = !document.documentElement.classList.contains('dark');
+    document.documentElement.classList.toggle('dark', nextIsDark);
+    localStorage.setItem('theme', nextIsDark ? 'dark' : 'light');
+  };
+
+  const authShell = (content: ReactNode) => (
+    <div className="min-h-[100dvh] bg-white text-[#151819] dark:bg-[#0c0f10] dark:text-white">
+      <div className="grid min-h-[100dvh] md:grid-cols-[minmax(360px,46%)_1fr] xl:grid-cols-[minmax(480px,42%)_1fr]">
+        <main className="relative flex min-h-[100dvh] items-center justify-center overflow-y-auto px-6 py-[max(env(safe-area-inset-top),2rem)] pb-[max(env(safe-area-inset-bottom),2rem)] sm:px-10 md:px-8 lg:px-12 xl:px-16">
+          <div className="absolute right-5 top-5 z-20 flex items-center gap-2">
+            <LanguageSelector variant="compact" surface="light" />
+            <button type="button" onClick={toggleTheme} className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 transition-colors hover:border-[#00C597] hover:text-[#008f70] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00C597] dark:border-white/15 dark:bg-white/[0.04] dark:text-white/70 dark:hover:border-[#00C597] dark:hover:text-white" aria-label={isDark ? 'Usar tema claro' : 'Usar tema escuro'}>
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
           </div>
-          <div className="rounded-xl bg-white/5 border border-white/10 p-8 space-y-6">
-            <div className="h-6 w-20 mx-auto rounded bg-white/10 animate-pulse" />
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="h-3 w-16 rounded bg-white/10 animate-pulse" />
-                <div className="h-10 w-full rounded-md bg-white/10 animate-pulse" />
-              </div>
-              <div className="space-y-2">
-                <div className="h-3 w-16 rounded bg-white/10 animate-pulse" />
-                <div className="h-10 w-full rounded-md bg-white/10 animate-pulse" />
-              </div>
-              <div className="h-10 w-full rounded-md bg-white/10 animate-pulse" />
+          <div className="w-full max-w-[430px]">
+            <div className="mb-9 md:mb-8 xl:mb-10">
+              <img src={logoLight} alt="Dominex" className="h-auto w-[220px] max-w-[70%] object-contain dark:hidden" />
+              <img src={logoDark} alt="Dominex" className="hidden h-auto w-[220px] max-w-[70%] object-contain dark:block" />
             </div>
+            {content}
+            <div className="mt-8"><SystemFooter variant={isDark ? 'dark' : 'light'} /></div>
           </div>
-        </div>
+        </main>
+        <LoginShowcase />
       </div>
-    );
-  }
-
-  // ── Mobile: bottom-sheet pattern app-nativo ──
-  if (isMobile) {
-    return (
-      <div className="relative min-h-[100dvh] overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <DarkVeil hueShift={53} speed={0.5} />
-        </div>
-
-        {/* Seletor de idioma fixo no canto (via portal), preserva query. */}
-        <LanguageSelector variant="corner" />
-
-        <div className="relative z-10 flex flex-col min-h-[100dvh]">
-          {/* Logo flutuante sobre o veil */}
-          <div className="flex-1 flex flex-col items-center justify-end px-6 pb-10 pt-[max(env(safe-area-inset-top),2rem)]">
-            <img src={logoWhite} alt="Dominex" className="h-14 w-auto" onError={() => {}} />
-            <p className="text-white/80 text-xs mt-2 tracking-wider">{t.logoTagline}</p>
-          </div>
-
-          {/* Bottom sheet com o form */}
-          <div className="bg-black/40 backdrop-blur-2xl border-t border-white/10 rounded-t-[28px] shadow-2xl shadow-black/50 px-6 pt-6 pb-[max(env(safe-area-inset-bottom),3rem)] animate-in slide-in-from-bottom-12 duration-500 ease-out text-white">
-            <div className="mx-auto h-1 w-10 rounded-full bg-muted mb-5" />
-
-            {!showForgotPassword && (
-              <div className="text-center mb-5">
-                <h1 className="text-xl font-semibold uppercase tracking-widest">{t.loginTitle}</h1>
-              </div>
-            )}
-
-            {showForgotPassword ? (
-              <ForgotPasswordFlow
-                initialEmail={form.getValues('email')}
-                onBack={() => setShowForgotPassword(false)}
-              />
-            ) : (
-              <div className="space-y-5">
-                {authError && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{authError}</AlertDescription>
-                  </Alert>
-                )}
-
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-4" autoComplete="on">
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs uppercase tracking-wider text-white/60">{t.emailLabel}</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
-                              <Input
-                                {...field}
-                                type="email"
-                                placeholder={t.emailPlaceholder} autoCapitalize="none"
-                                autoComplete="email"
-                                disabled={isLoading}
-                                className="pl-10 h-12 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/40"
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs uppercase tracking-wider text-white/60">{t.passwordLabel}</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
-                              <Input
-                                {...field}
-                                type={showPassword ? 'text' : 'password'}
-                                placeholder={t.passwordPlaceholder}
-                                autoComplete="current-password"
-                                disabled={isLoading}
-                                className="pl-10 pr-10 h-12 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/40"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
-                                disabled={isLoading}
-                              >
-                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                              </button>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="flex items-center justify-between">
-                      <FormField
-                        control={form.control}
-                        name="rememberMe"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                disabled={isLoading}
-                              />
-                            </FormControl>
-                            <FormLabel className="text-xs text-white/60 cursor-pointer">
-                              {t.rememberMe}
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowForgotPassword(true)}
-                        className="text-xs text-primary hover:underline uppercase tracking-wider font-medium"
-                        disabled={isLoading}
-                      >
-                        {t.forgotPassword}
-                      </button>
-                    </div>
-
-                    <Button type="submit" className="w-full h-12 text-base font-semibold uppercase tracking-wider" disabled={isLoading}>
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          {t.signingIn}
-                        </>
-                      ) : (
-                        t.signIn
-                      )}
-                    </Button>
-                  </form>
-                </Form>
-
-                <OrDivider label={t.orDivider} />
-
-                <button
-                  type="button"
-                  onClick={handleGoogleLogin}
-                  disabled={isLoading}
-                  className="flex h-12 w-full items-center justify-center gap-3 rounded-md bg-white text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <GoogleIcon className="h-5 w-5" />
-                  {t.continueWithGoogle}
-                </button>
-
-                <div className="text-center text-[11px] text-white/60 pt-2 border-t uppercase tracking-wider">
-                  {t.noAccount}{' '}
-                  <Link to={localizeInternal('/cadastro', locale)} className="text-primary font-semibold hover:underline">
-                    {t.signUp}
-                  </Link>
-                </div>
-              </div>
-            )}
-
-            {/* Rodapé com versão, link Auctus, copyright e botão atualizar */}
-            <div className="mt-6 pt-4 border-t">
-              <SystemFooter />
-            </div>
-          </div>
-        </div>
-
-        <SessionConfirmDialog
-          open={sessionDialogOpen}
-          onOpenChange={setSessionDialogOpen}
-          existingSessions={existingSessionsInfo}
-          disconnectOthers={disconnectOthers}
-          onDisconnectOthersChange={setDisconnectOthers}
-          onConfirm={handleSessionContinue}
-          onCancel={handleSessionCancel}
-          isLoading={isLoading}
-        />
-      </div>
-    );
-  }
-
-  // ── Desktop: layout atual (Card dark com backdrop-blur) ──
-  return (
-    <div className="relative flex min-h-screen items-center justify-center p-4 overflow-hidden">
-      <div className="absolute inset-0 z-0">
-        <DarkVeil hueShift={53} speed={0.5} />
-      </div>
-
-      {/* Seletor de idioma fixo no canto (via portal), preserva query. */}
-      <LanguageSelector variant="corner" />
-
-      <div className="w-full max-w-md relative z-10">
-        <div className="mb-8 flex flex-col items-center">
-          <img src={logoWhite} alt="Dominex" className="h-16 w-auto mb-2" onError={() => {}} />
-          <p className="text-white/80 text-sm">{t.logoTagline}</p>
-        </div>
-
-        <Card className="border-0 bg-black/60 backdrop-blur-md shadow-2xl">
-          <CardContent className="p-8">
-            {showForgotPassword ? (
-              <ForgotPasswordFlow
-                initialEmail={form.getValues('email')}
-                onBack={() => setShowForgotPassword(false)}
-              />
-            ) : (
-              <div className="space-y-6">
-                <div className="text-center">
-                  <h1 className="text-xl font-semibold text-white uppercase tracking-widest">{t.loginTitle}</h1>
-                </div>
-
-                {authError && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{authError}</AlertDescription>
-                  </Alert>
-                )}
-
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-4" autoComplete="on">
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">{t.emailLabel}</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                              <Input
-                                {...field}
-                                type="email"
-                                placeholder={t.emailPlaceholder}
-                                autoComplete="email"
-                                autoFocus
-                                disabled={isLoading}
-                                className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60">{t.passwordLabel}</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                              <Input
-                                {...field}
-                                type={showPassword ? 'text' : 'password'}
-                                placeholder={t.passwordPlaceholder}
-                                autoComplete="current-password"
-                                disabled={isLoading}
-                                className="pl-10 bg-primary/[0.08] border-primary/30 text-white placeholder:text-white/50 focus:border-primary"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
-                                disabled={isLoading}
-                              >
-                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                              </button>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="flex flex-col gap-3">
-                      <FormField
-                        control={form.control}
-                        name="rememberMe"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center space-x-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                disabled={isLoading}
-                                className="border-white/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                              />
-                            </FormControl>
-                            <FormLabel className="text-xs font-normal uppercase tracking-widest text-white/60 cursor-pointer">
-                              {t.rememberMe}
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowForgotPassword(true)}
-                        className="text-xs text-white/60 hover:text-primary uppercase tracking-widest transition-colors text-left"
-                        disabled={isLoading}
-                      >
-                        {t.forgotPassword}
-                      </button>
-                    </div>
-
-                    <Button type="submit" className="w-full uppercase tracking-widest text-sm font-semibold" disabled={isLoading}>
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          {t.signingIn}
-                        </>
-                      ) : (
-                        t.signIn
-                      )}
-                    </Button>
-                  </form>
-                </Form>
-
-                <OrDivider label={t.orDivider} />
-
-                <button
-                  type="button"
-                  onClick={handleGoogleLogin}
-                  disabled={isLoading}
-                  className="flex h-11 w-full items-center justify-center gap-3 rounded-md bg-white text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <GoogleIcon className="h-5 w-5" />
-                  {t.continueWithGoogle}
-                </button>
-
-                <div className="text-center text-xs text-white/50 pt-4 border-t border-white/10 uppercase tracking-widest">
-                  {t.noAccount}{' '}
-                  <Link to={localizeInternal('/cadastro', locale)} className="text-white font-bold hover:text-primary transition-colors">
-                    {t.signUp}
-                  </Link>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="mt-6">
-          <SystemFooter variant="dark" />
-        </div>
-      </div>
-
-      <SessionConfirmDialog
-        open={sessionDialogOpen}
-        onOpenChange={setSessionDialogOpen}
-        existingSessions={existingSessionsInfo}
-        disconnectOthers={disconnectOthers}
-        onDisconnectOthersChange={setDisconnectOthers}
-        onConfirm={handleSessionContinue}
-        onCancel={handleSessionCancel}
-        isLoading={isLoading}
-      />
     </div>
+  );
+
+  if (loading) {
+    return authShell(
+      <div aria-label="Carregando acesso" className="space-y-7">
+        <div className="space-y-2"><div className="h-9 w-64 animate-pulse rounded bg-slate-200 dark:bg-white/10" /><div className="h-5 w-52 animate-pulse rounded bg-slate-100 dark:bg-white/[0.07]" /></div>
+        <div className="space-y-5"><div className="space-y-2"><div className="h-3 w-14 animate-pulse rounded bg-slate-200 dark:bg-white/10" /><div className="h-12 w-full animate-pulse rounded-md bg-slate-100 dark:bg-white/[0.07]" /></div><div className="space-y-2"><div className="h-3 w-14 animate-pulse rounded bg-slate-200 dark:bg-white/10" /><div className="h-12 w-full animate-pulse rounded-md bg-slate-100 dark:bg-white/[0.07]" /></div><div className="h-12 w-full animate-pulse rounded-md bg-slate-200 dark:bg-white/10" /></div>
+      </div>,
+    );
+  }
+
+  return (
+    <>
+      {authShell(
+        <>
+          {!showForgotPassword && (
+            <div className="mb-7">
+              <h1 className="font-montserrat text-[2rem] font-semibold leading-tight tracking-[-0.035em] text-[#151819] dark:text-white sm:text-[2.25rem]">Acesse sua conta</h1>
+              <p className="mt-2 text-base text-slate-500 dark:text-white/60">Entre para continuar no Dominex.</p>
+            </div>
+          )}
+
+          {showForgotPassword ? (
+            <ForgotPasswordFlow initialEmail={form.getValues('email')} onBack={() => setShowForgotPassword(false)} />
+          ) : (
+            <div className="space-y-5">
+              {authError && <Alert variant="destructive"><AlertDescription>{authError}</AlertDescription></Alert>}
+
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-4" autoComplete="on">
+                  <FormField control={form.control} name="email" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-medium text-slate-600 dark:text-white/65">{t.emailLabel}</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-white/45" />
+                          <Input {...field} type="email" placeholder={t.emailPlaceholder} autoComplete="email" autoCapitalize="none" autoFocus disabled={isLoading} className="h-12 rounded-md border-slate-200 bg-white pl-10 text-[#151819] placeholder:text-slate-400 focus-visible:border-[#00C597] focus-visible:ring-[#00C597]/15 dark:border-white/15 dark:bg-white/[0.05] dark:text-white dark:placeholder:text-white/38" />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+
+                  <FormField control={form.control} name="password" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-medium text-slate-600 dark:text-white/65">{t.passwordLabel}</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-white/45" />
+                          <Input {...field} type={showPassword ? 'text' : 'password'} placeholder={t.passwordPlaceholder} autoComplete="current-password" disabled={isLoading} className="h-12 rounded-md border-slate-200 bg-white pl-10 pr-11 text-[#151819] placeholder:text-slate-400 focus-visible:border-[#00C597] focus-visible:ring-[#00C597]/15 dark:border-white/15 dark:bg-white/[0.05] dark:text-white dark:placeholder:text-white/38" />
+                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-1 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center text-slate-400 transition-colors hover:text-[#008f70] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[#00C597] dark:text-white/45 dark:hover:text-white" disabled={isLoading} aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}>
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+
+                  <div className="flex items-center justify-between gap-4">
+                    <FormField control={form.control} name="rememberMe" render={({ field }) => (
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isLoading} className="border-slate-300 data-[state=checked]:border-[#00C597] data-[state=checked]:bg-[#00C597] dark:border-white/30" /></FormControl>
+                        <FormLabel className="cursor-pointer text-xs text-slate-500 dark:text-white/55">{t.rememberMe}</FormLabel>
+                      </FormItem>
+                    )} />
+                    <button type="button" onClick={() => setShowForgotPassword(true)} className="text-xs font-semibold text-[#008f70] transition-colors hover:text-[#006d56] hover:underline dark:text-[#00C597]" disabled={isLoading}>{t.forgotPassword}</button>
+                  </div>
+
+                  <Button type="submit" className="h-12 w-full rounded-md bg-[#151819] text-sm font-semibold text-white hover:bg-[#00A981] focus-visible:ring-[#00C597] dark:bg-[#00C597] dark:text-[#07110f] dark:hover:bg-[#16d7a9]" disabled={isLoading}>
+                    {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t.signingIn}</> : t.signIn}
+                  </Button>
+                </form>
+              </Form>
+
+              <OrDivider label={t.orDivider} />
+
+              <button type="button" onClick={handleGoogleLogin} disabled={isLoading} className="flex h-12 w-full items-center justify-center gap-3 rounded-md border border-slate-200 bg-white text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/15 dark:bg-white/[0.05] dark:text-white/80 dark:hover:bg-white/10">
+                <GoogleIcon className="h-5 w-5" />{t.continueWithGoogle}
+              </button>
+
+              <div className="border-t border-slate-100 pt-4 text-center text-xs text-slate-500 dark:border-white/10 dark:text-white/50">
+                {t.noAccount}{' '}<Link to={localizeInternal('/cadastro', locale)} className="font-semibold text-[#008f70] transition-colors hover:text-[#006d56] hover:underline dark:text-[#00C597]">{t.signUp}</Link>
+              </div>
+            </div>
+          )}
+        </>,
+      )}
+
+      <SessionConfirmDialog open={sessionDialogOpen} onOpenChange={setSessionDialogOpen} existingSessions={existingSessionsInfo} disconnectOthers={disconnectOthers} onDisconnectOthersChange={setDisconnectOthers} onConfirm={handleSessionContinue} onCancel={handleSessionCancel} isLoading={isLoading} />
+    </>
   );
 }
