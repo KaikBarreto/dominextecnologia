@@ -15,6 +15,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { SearchField, SearchFieldAction } from '@/components/ui/search-field-actions';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -633,48 +634,43 @@ export function FinanceMovimentacoes({
           <h3 className="text-sm font-semibold">Contas e cartões</h3>
           <p className="text-xs text-muted-foreground">Selecione para abrir o extrato e as ações.</p>
         </div>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+        <SearchField
             value={accountSearch}
             onChange={(event) => setAccountSearch(event.target.value)}
             placeholder="Buscar conta ou cartão"
-            className="h-9 pl-9"
+            actions={
+              <>
+                <FilterButton
+                  activeCount={accountTypeFilter.length > 0 ? 1 : 0}
+                  onClear={() => setAccountTypeFilter([])}
+                  embedded
+                >
+                  <FilterCheckboxGroup
+                    label="Tipo"
+                    selected={accountTypeFilter}
+                    onChange={setAccountTypeFilter}
+                    emptyLabel="Todos os tipos"
+                    options={[
+                      { value: 'account', label: 'Contas bancárias e caixa' },
+                      { value: 'card', label: 'Cartões' },
+                    ]}
+                  />
+                </FilterButton>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <SearchFieldAction icon={ArrowDownUp} label="Ordenar" tooltip="Ordenar contas" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuRadioGroup value={accountSort} onValueChange={(value) => setAccountSort(value as typeof accountSort)}>
+                      <DropdownMenuRadioItem value="name">Nome (A–Z)</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="balance-desc">Maior valor</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="balance-asc">Menor valor</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            }
           />
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <FilterButton
-            activeCount={accountTypeFilter.length > 0 ? 1 : 0}
-            onClear={() => setAccountTypeFilter([])}
-            className="w-full"
-          >
-            <FilterCheckboxGroup
-              label="Tipo"
-              selected={accountTypeFilter}
-              onChange={setAccountTypeFilter}
-              emptyLabel="Todos os tipos"
-              options={[
-                { value: 'account', label: 'Contas bancárias e caixa' },
-                { value: 'card', label: 'Cartões' },
-              ]}
-            />
-          </FilterButton>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="sm" className="h-9 w-full gap-2">
-                <ArrowDownUp className="h-4 w-4" />
-                Ordenar
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuRadioGroup value={accountSort} onValueChange={(value) => setAccountSort(value as typeof accountSort)}>
-                <DropdownMenuRadioItem value="name">Nome (A–Z)</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="balance-desc">Maior valor</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="balance-asc">Menor valor</DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto pr-4">

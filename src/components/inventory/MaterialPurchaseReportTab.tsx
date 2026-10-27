@@ -21,6 +21,7 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { SearchField } from '@/components/ui/search-field-actions';
 import { useMaterialPurchaseReport, type MaterialPurchaseReportRow } from '@/hooks/useMaterialPurchaseReport';
 import { useMaterialGroups } from '@/hooks/useMaterialGroups';
 import { useStocks } from '@/hooks/useStocks';
@@ -386,9 +387,14 @@ export function MaterialPurchaseReportTab() {
       {report.error && <NoticeBanner variant="destructive" action={t.retry} onClick={() => void report.refetch()}>{t.loadError}</NoticeBanner>}
 
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-        <div className="relative min-w-0 flex-1 lg:max-w-sm"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t.searchPlaceholder} className="pl-9" /></div>
+        <SearchField
+          containerClassName="min-w-0 flex-1 lg:max-w-sm"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder={t.searchPlaceholder}
+          actions={<FilterButton activeCount={activeFilterCount} onClear={clearFilters} embedded>{filters}</FilterButton>}
+        />
         <div className="flex flex-wrap items-center gap-2">
-          <FilterButton activeCount={activeFilterCount} onClear={clearFilters}>{filters}</FilterButton>
           <SegmentedControl value={viewMode} onValueChange={(value) => setViewMode(value as MaterialPurchaseReportView)} size="sm" aria-label={t.view.label} className="min-w-[210px]" options={[{ value: 'material', label: t.view.material }, { value: 'group', label: t.view.group }]} />
         </div>
       </div>

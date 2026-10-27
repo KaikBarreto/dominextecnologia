@@ -127,7 +127,7 @@ describe('ListDetailLayout', () => {
 
     const primeiraLinha = () => within(screen.getAllByRole('listitem')[0]);
     expect(primeiraLinha().getByText('Ana')).toBeInTheDocument();
-    expect(screen.getByText('3 registros')).toBeInTheDocument();
+    expect(screen.getByLabelText('3 registros')).toHaveTextContent('3');
 
     // Ordenação abre um menu compacto com os critérios disponíveis.
     const botao = screen.getByRole('button', { name: 'Ordenar: Nome (A-Z)' });
@@ -157,7 +157,7 @@ describe('ListDetailLayout', () => {
 
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
     expect(screen.getByText('Geral (Todos)')).toHaveClass('font-bold');
-    expect(screen.getByText('1 registro')).toBeInTheDocument();
+    expect(screen.getByLabelText('1 registro')).toHaveTextContent('1');
     expect(screen.getByText('Histórico selecionado').parentElement).toHaveClass('hidden');
 
     rerender(

@@ -74,6 +74,7 @@ import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { SearchField } from '@/components/ui/search-field-actions';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -762,24 +763,22 @@ export default function Inventory() {
               </MobileListToolbar>
             ) : (
               <div className="flex items-center gap-2">
-                <div className="relative flex-1 sm:max-w-sm">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
+                <SearchField
+                    containerClassName="flex-1 sm:max-w-sm"
                     placeholder={t.search.placeholderFull}
-                    className="pl-10"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    actions={hasAnyFilter ? (
+                      <FilterButton
+                        activeCount={activeFilterCount}
+                        onClear={clearFilters}
+                        embedded
+                      >
+                        {filterContent}
+                      </FilterButton>
+                    ) : undefined}
                   />
-                </div>
                 <div className="flex items-center gap-2 shrink-0 ml-auto">
-                  {hasAnyFilter && (
-                    <FilterButton
-                      activeCount={activeFilterCount}
-                      onClear={clearFilters}
-                    >
-                      {filterContent}
-                    </FilterButton>
-                  )}
                   {exportDropdown()}
                   <Button
                     className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"

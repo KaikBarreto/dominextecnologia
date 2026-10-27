@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { SearchField } from '@/components/ui/search-field-actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -389,56 +390,54 @@ export function PdvCashHistoryPanel({
       />
 
       <div className="flex flex-col gap-2 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+        <SearchField
+            containerClassName="flex-1"
             value={search}
             onChange={(e) => resetPage(setSearch)(e.target.value)}
             placeholder={texts.search}
-            className="pl-9"
+            actions={
+              <FilterButton
+                activeCount={activeFilterCount}
+                onClear={clearAdvancedFilters}
+                label={texts.filters}
+                embedded
+              >
+                <div className="space-y-1.5">
+                  <Label>{texts.filterType}</Label>
+                  <Select value={kind} onValueChange={resetPage((value: string) => setKind(value as PdvLedgerKind | 'all'))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{texts.typeAll}</SelectItem>
+                      <SelectItem value="venda">{texts.kindSale}</SelectItem>
+                      <SelectItem value="compra">{texts.kindPurchase}</SelectItem>
+                      <SelectItem value="receita">{texts.kindRevenue}</SelectItem>
+                      <SelectItem value="despesa">{texts.kindExpense}</SelectItem>
+                      <SelectItem value="sangria">{texts.kindBleed}</SelectItem>
+                      <SelectItem value="suprimento">{texts.kindSupply}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{texts.filterAccount}</Label>
+                  <Select value={account} onValueChange={resetPage(setAccount)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{texts.filterAllAccounts}</SelectItem>
+                      {accountOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{texts.filterAmount}</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <PdvMoneyInput value={minAmount} onChange={resetPage(setMinAmount)} placeholder={texts.filterMinimum} />
+                    <PdvMoneyInput value={maxAmount} onChange={resetPage(setMaxAmount)} placeholder={texts.filterMaximum} />
+                  </div>
+                </div>
+              </FilterButton>
+            }
           />
-        </div>
         <div className="grid grid-cols-2 gap-2 sm:flex">
-          <FilterButton
-            activeCount={activeFilterCount}
-            onClear={clearAdvancedFilters}
-            label={texts.filters}
-            className="w-full justify-center sm:w-auto"
-          >
-            <div className="space-y-1.5">
-              <Label>{texts.filterType}</Label>
-              <Select value={kind} onValueChange={resetPage((value: string) => setKind(value as PdvLedgerKind | 'all'))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{texts.typeAll}</SelectItem>
-                  <SelectItem value="venda">{texts.kindSale}</SelectItem>
-                  <SelectItem value="compra">{texts.kindPurchase}</SelectItem>
-                  <SelectItem value="receita">{texts.kindRevenue}</SelectItem>
-                  <SelectItem value="despesa">{texts.kindExpense}</SelectItem>
-                  <SelectItem value="sangria">{texts.kindBleed}</SelectItem>
-                  <SelectItem value="suprimento">{texts.kindSupply}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>{texts.filterAccount}</Label>
-              <Select value={account} onValueChange={resetPage(setAccount)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{texts.filterAllAccounts}</SelectItem>
-                  {accountOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>{texts.filterAmount}</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <PdvMoneyInput value={minAmount} onChange={resetPage(setMinAmount)} placeholder={texts.filterMinimum} />
-                <PdvMoneyInput value={maxAmount} onChange={resetPage(setMaxAmount)} placeholder={texts.filterMaximum} />
-              </div>
-            </div>
-          </FilterButton>
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

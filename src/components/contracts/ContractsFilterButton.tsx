@@ -15,6 +15,7 @@ import {
 } from '@/components/mobile/FilterCheckboxGroup';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { SearchFieldAction } from '@/components/ui/search-field-actions';
 
 // Opções de Saúde e Tipo (multi-select). Vazio = mostra tudo.
 const HEALTH_OPTIONS: FilterCheckboxOption[] = [
@@ -46,6 +47,8 @@ interface ContractsFilterButtonProps {
   activeCount: number;
   /** Limpa apenas os filtros de status/saúde/tipo (não mexe na busca). */
   onClear: () => void;
+  /** Renderiza o gatilho dentro do campo de busca. */
+  embedded?: boolean;
 }
 
 /**
@@ -66,6 +69,7 @@ export function ContractsFilterButton({
   onTypeChange,
   activeCount,
   onClear,
+  embedded = false,
 }: ContractsFilterButtonProps) {
   const [open, setOpen] = useState(false);
   const { locale } = useAppLocaleContext();
@@ -74,18 +78,26 @@ export function ContractsFilterButton({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline" className="gap-2 h-10 shrink-0">
-          <SlidersHorizontal className="h-4 w-4" />
-          Filtros
-          {activeCount > 0 && (
-            <Badge
-              variant="secondary"
-              className="ml-1 h-5 min-w-5 px-1.5 text-[10px]"
-            >
-              {activeCount}
-            </Badge>
-          )}
-        </Button>
+        {embedded ? (
+          <SearchFieldAction
+            icon={SlidersHorizontal}
+            label="Filtros"
+            activeCount={activeCount}
+          />
+        ) : (
+          <Button variant="outline" className="gap-2 h-10 shrink-0">
+            <SlidersHorizontal className="h-4 w-4" />
+            Filtros
+            {activeCount > 0 && (
+              <Badge
+                variant="secondary"
+                className="ml-1 h-5 min-w-5 px-1.5 text-[10px]"
+              >
+                {activeCount}
+              </Badge>
+            )}
+          </Button>
+        )}
       </SheetTrigger>
       <SheetContent
         side="right"

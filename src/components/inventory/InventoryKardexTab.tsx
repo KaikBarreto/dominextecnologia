@@ -10,7 +10,6 @@ import {
   History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -20,7 +19,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterButton } from '@/components/ui/FilterButton';
-import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import {
   DateRangeFilter,
@@ -179,7 +177,6 @@ function initials(name: string | null, email: string | null): string {
 }
 
 export function InventoryKardexTab() {
-  const isMobile = useIsMobile();
   const { locale, timezone } = useAppLocaleContext();
   const tInv = MESSAGES[locale].app.inventory;
   const t = tInv.kardex;
@@ -287,17 +284,8 @@ export function InventoryKardexTab() {
     </div>
   );
 
-  const listFilters = isMobile ? (
-    <FilterSheet
-      triggerLabel={tInv.filters.button}
-      activeCount={activeFilterCount}
-      onClear={clearFilters}
-      triggerClassName="h-9"
-    >
-      {filterControls}
-    </FilterSheet>
-  ) : (
-    <FilterButton activeCount={activeFilterCount} onClear={clearFilters}>
+  const listFilters = (
+    <FilterButton activeCount={activeFilterCount} onClear={clearFilters} embedded>
       {filterControls}
     </FilterButton>
   );

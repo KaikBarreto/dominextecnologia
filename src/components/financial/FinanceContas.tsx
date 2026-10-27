@@ -23,6 +23,7 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { SearchField, SearchFieldAction } from '@/components/ui/search-field-actions';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { kpiValueSizeClass } from './kpiChipSize';
 import type { FinancialTransaction } from '@/types/database';
@@ -893,6 +894,61 @@ export function FinanceContas({
     setCostCenterFilter([]);
   };
 
+  const embeddedFilterControl = (
+    <FilterButton activeCount={activeFilterCount} onClear={resetFilters} embedded>
+      <div className="space-y-2">
+        <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</Label>
+        <Select value={filter} onValueChange={(value) => setFilter(value as FilterStatus)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>{filters.map((item) => <SelectItem key={item.key} value={item.key}>{item.label}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+      {availableCategories.length > 0 && (
+        <FilterCheckboxGroup
+          label={fin.accounts.categoryFilter.label}
+          selected={categoryFilter}
+          onChange={setCategoryFilter}
+          emptyLabel={fin.accounts.categoryFilter.emptyLabel}
+          options={availableCategories.map((category) => {
+            const known = categoriesByName.get(category);
+            return {
+              value: category,
+              label: category,
+              icon: known ? filterIconNode(known.color, getCategoryIcon(known.icon)) : undefined,
+            };
+          })}
+        />
+      )}
+      {availableCostCenters.length > 0 && (
+        <FilterCheckboxGroup
+          label={fin.costCenters.filterLabel}
+          selected={costCenterFilter}
+          onChange={setCostCenterFilter}
+          emptyLabel={fin.costCenters.filterEmptyLabel}
+          options={[...availableCostCenters, { value: NO_COST_CENTER, label: fin.costCenters.dreNoCenter }]}
+        />
+      )}
+    </FilterButton>
+  );
+
+  const embeddedSortControl = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <SearchFieldAction
+          icon={ArrowDownUp}
+          label="Ordenar"
+          tooltip={sortConfig.direction ? `Ordenar: ${sortConfig.direction}` : 'Ordenar contas'}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuItem onClick={() => handleSort('_status_order')}>Prioridade operacional</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleSort('_due_ts')}>Vencimento</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleSort('_amount_num')}>Valor</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleSort('description')}>Descrição</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   const visibleInvoices = !searchActive && categoryFilter.length === 0 && costCenterFilter.length === 0
     ? cardInvoices
     : [];
@@ -1039,15 +1095,14 @@ export function FinanceContas({
           ))}
         </div>
         <div className="space-y-2 lg:flex lg:items-center lg:gap-3 lg:space-y-0">
-          <div className="relative min-w-0 flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+          <SearchField
+              containerClassName="min-w-0 flex-1"
               placeholder={isNarrow ? fin.accounts.searchShort : fin.accounts.search}
-              className="h-10 pl-10"
+              className="h-10"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
+              actions={<>{embeddedFilterControl}{embeddedSortControl}</>}
             />
-          </div>
           {/* Mobile: Exportar + Filtros à esquerda, alternador lista/calendário
               encostado à direita (régua da toolbar mobile). */}
           <div className="grid grid-cols-2 items-center gap-2 pb-1 sm:flex sm:flex-wrap lg:flex-nowrap lg:pb-0 shrink-0">
@@ -1065,57 +1120,6 @@ export function FinanceContas({
               <DropdownMenuItem onClick={handleExportExcel}><FileSpreadsheet className="mr-2 h-4 w-4" />Excel</DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportPDF}><FileText className="mr-2 h-4 w-4" />PDF</DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportCsv}><FileDown className="mr-2 h-4 w-4" />CSV</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <FilterButton activeCount={activeFilterCount} onClear={resetFilters} className="w-full shrink-0 sm:w-auto">
-            <div className="space-y-2">
-              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</Label>
-              <Select value={filter} onValueChange={(value) => setFilter(value as FilterStatus)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{filters.map((item) => <SelectItem key={item.key} value={item.key}>{item.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            {availableCategories.length > 0 && (
-              <FilterCheckboxGroup
-                label={fin.accounts.categoryFilter.label}
-                selected={categoryFilter}
-                onChange={setCategoryFilter}
-                emptyLabel={fin.accounts.categoryFilter.emptyLabel}
-                options={availableCategories.map((category) => {
-                  // Categoria apagada do cadastro (texto livre, sem FK) não tem
-                  // cor/ícone conhecidos: renderiza como hoje, só o nome.
-                  const known = categoriesByName.get(category);
-                  return {
-                    value: category,
-                    label: category,
-                    icon: known ? filterIconNode(known.color, getCategoryIcon(known.icon)) : undefined,
-                  };
-                })}
-              />
-            )}
-            {availableCostCenters.length > 0 && (
-              <FilterCheckboxGroup
-                label={fin.costCenters.filterLabel}
-                selected={costCenterFilter}
-                onChange={setCostCenterFilter}
-                emptyLabel={fin.costCenters.filterEmptyLabel}
-                options={[...availableCostCenters, { value: NO_COST_CENTER, label: fin.costCenters.dreNoCenter }]}
-              />
-            )}
-          </FilterButton>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="sm" className="h-10 w-full shrink-0 gap-2 sm:h-9 sm:w-auto">
-                <ArrowDownUp className="h-4 w-4" />
-                Ordenar
-                {sortConfig.direction && <span className="text-[10px] font-semibold uppercase text-muted-foreground">{sortConfig.direction}</span>}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onClick={() => handleSort('_status_order')}>Prioridade operacional</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleSort('_due_ts')}>Vencimento</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleSort('_amount_num')}>Valor</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleSort('description')}>Descrição</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
             {/* No mobile "Nova Conta" virou FAB (fim do componente): ocupava uma

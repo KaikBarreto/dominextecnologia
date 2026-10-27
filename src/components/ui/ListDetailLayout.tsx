@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ArrowDownUp, ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
+import { ArrowDownUp, ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { SearchField, SearchFieldAction } from '@/components/ui/search-field-actions';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select,
@@ -223,7 +223,7 @@ export function ListDetailLayout({
       const limite = Math.min(window.innerHeight, scroller.getBoundingClientRect().bottom);
       // Altura FIXA, não máxima: assim a coluna não muda de tamanho conforme o
       // resultado da busca e a paginação fica sempre colada embaixo.
-      el.style.height = `${Math.max(320, limite - Math.max(top, 16) - 16)}px`;
+      el.style.height = `${Math.max(180, limite - Math.max(top, 16) - 16)}px`;
     };
     update();
     document.addEventListener('scroll', update, true);
@@ -344,9 +344,20 @@ export function ListDetailLayout({
           aria-label={listTitle}
         >
           <div className="border-b border-border/60 pb-3">
-            <div className="mb-3 flex items-start gap-2">
+            <div className="mb-2 flex items-start gap-2">
               <div className="min-w-0 flex-1">
-                <h2 className="truncate text-sm font-semibold">{listTitle}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="min-w-0 truncate text-sm font-semibold">{listTitle}</h2>
+                  <span
+                    className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-semibold tabular-nums text-muted-foreground"
+                    aria-label={(pagination.totalItems === 1 ? t.records : t.recordsPlural).replace(
+                      '{count}',
+                      formatNumber(pagination.totalItems, locale),
+                    )}
+                  >
+                    {formatNumber(pagination.totalItems, locale)}
+                  </span>
+                </div>
                 {listDescription && (
                   <p className="mt-0.5 text-xs text-muted-foreground">{listDescription}</p>
                 )}
@@ -363,31 +374,21 @@ export function ListDetailLayout({
                 <PanelLeftClose className="h-4 w-4" />
               </Button>
             </div>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
+            <SearchField
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder={searchPlaceholder}
-                className="h-9 pl-9"
-              />
-            </div>
-            <div className={cn('mt-2 grid gap-2', listFilters && 'grid-cols-2')}>
-              {listFilters && (
-                <div className="min-w-0 [&>button]:w-full">{listFilters}</div>
-              )}
+                actions={
+                  <>
+                    {listFilters}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-9 min-w-0 justify-center gap-2"
-                    aria-label={`${t.sortLabel}: ${activeSort.label}`}
-                  >
-                    <ArrowDownUp className="h-4 w-4 shrink-0" aria-hidden="true" />
-                    <span>{t.sortLabel}</span>
-                  </Button>
+                      <SearchFieldAction
+                        icon={ArrowDownUp}
+                        label={t.sortLabel}
+                        tooltip={`${t.sortLabel}: ${activeSort.label}`}
+                        aria-label={`${t.sortLabel}: ${activeSort.label}`}
+                      />
                 </PopoverTrigger>
                 <PopoverContent align="end" className="w-64 space-y-1 p-2">
                   <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -415,16 +416,9 @@ export function ListDetailLayout({
                   })}
                 </PopoverContent>
               </Popover>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 px-3 py-2.5">
-            <span className="min-w-0 truncate text-xs text-muted-foreground">
-              {(pagination.totalItems === 1 ? t.records : t.recordsPlural).replace(
-                '{count}',
-                formatNumber(pagination.totalItems, locale),
-              )}
-            </span>
+                  </>
+                }
+              />
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">

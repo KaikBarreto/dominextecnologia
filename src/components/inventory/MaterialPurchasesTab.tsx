@@ -15,6 +15,7 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { SearchField } from '@/components/ui/search-field-actions';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
@@ -238,22 +239,22 @@ export function MaterialPurchasesTab({ openNewOnMount = false }: { openNewOnMoun
       ) : (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           {/* Busca + filtro de status (desktop = FilterButton). */}
-          <div className="flex items-center gap-2 flex-1">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pl-9"
+          <div className="flex-1">
+            <SearchField
+                className="h-10"
                 placeholder={t.search.placeholder}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <FilterButton
-              activeCount={statusFilter.length > 0 ? 1 : 0}
-              onClear={() => setStatusFilter([])}
-            >
-              {statusFilterContent}
-            </FilterButton>
+                actions={
+                  <FilterButton
+                    activeCount={statusFilter.length > 0 ? 1 : 0}
+                    onClear={() => setStatusFilter([])}
+                    embedded
+                  >
+                    {statusFilterContent}
+                  </FilterButton>
+                }
+            />
           </div>
           <div className="flex gap-2">
             <Button variant="outline" className="gap-1.5" onClick={() => setSuppliersOpen(true)}>
