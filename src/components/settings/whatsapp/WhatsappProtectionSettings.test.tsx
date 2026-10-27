@@ -10,7 +10,7 @@ import {
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const OS = 'Avisos de serviço';
-const COBRANCA = 'Lembretes de cobrança';
+const LEMBRETES = 'Lembretes de cobrança';
 
 describe('WhatsappProtectionSettings', () => {
   let container: HTMLDivElement;
@@ -31,6 +31,7 @@ describe('WhatsappProtectionSettings', () => {
     preferences: WhatsappAutomationPreferences,
     onPreferencesChange: (next: WhatsappAutomationPreferences) => void = () => {},
     readOnly = false,
+    isSaving = false,
   ) => {
     act(() => {
       root.render(
@@ -38,6 +39,7 @@ describe('WhatsappProtectionSettings', () => {
           locale="pt-br"
           preferences={preferences}
           readOnly={readOnly}
+          isSaving={isSaving}
           onPreferencesChange={onPreferencesChange}
         />,
       );
@@ -55,21 +57,22 @@ describe('WhatsappProtectionSettings', () => {
 
     expect(container.textContent).toContain('Proteção do número');
     expect(container.textContent).toContain(OS);
-    expect(container.textContent).toContain(COBRANCA);
-    expect(container.textContent).toContain('Horário de Brasília.');
+    expect(container.textContent).toContain(LEMBRETES);
+    expect(container.textContent).toContain('Fuso horário configurado para a empresa.');
+    expect(container.textContent).toContain('Cobrança gerada, lembrete de vencimento e aviso de atraso.');
 
     // OS nasce nos 7 dias: o cliente chama técnico no domingo também.
     expect(day(OS, 'Dom')?.getAttribute('aria-pressed')).toBe('true');
     // Cobrança nasce sem domingo.
-    expect(day(COBRANCA, 'Dom')?.getAttribute('aria-pressed')).toBe('false');
-    expect(day(COBRANCA, 'Sáb')?.getAttribute('aria-pressed')).toBe('true');
+    expect(day(LEMBRETES, 'Dom')?.getAttribute('aria-pressed')).toBe('false');
+    expect(day(LEMBRETES, 'Sáb')?.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('mexer nos dias da cobrança não altera a janela de OS', () => {
     const onPreferencesChange = vi.fn();
     render(DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES, onPreferencesChange);
 
-    click(day(COBRANCA, 'Sáb'));
+    click(day(LEMBRETES, 'Sáb'));
 
     expect(onPreferencesChange).toHaveBeenCalledTimes(1);
     const atualizado = onPreferencesChange.mock.calls[0][0];
@@ -105,21 +108,25 @@ describe('WhatsappProtectionSettings', () => {
       onPreferencesChange,
     );
 
-    click(day(COBRANCA, 'Qua'));
+    click(day(LEMBRETES, 'Qua'));
 
     expect(onPreferencesChange.mock.calls[0][0].sendWindow.reminders.days).toEqual([1, 3, 5]);
   });
 
-  it('avisa quando um dos grupos fica sem nenhum dia', () => {
+  it('impede retirar o último dia para não restaurar o padrão silenciosamente', () => {
+    const onPreferencesChange = vi.fn();
     render({
       ...DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES,
       sendWindow: {
         transactional: DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES.sendWindow.transactional,
-        reminders: { startHour: 8, endHour: 20, days: [] },
+        reminders: { startHour: 8, endHour: 20, days: [1] },
       },
-    });
+    }, onPreferencesChange);
 
-    expect(container.textContent).toContain('esses avisos nunca saem');
+    expect(day(LEMBRETES, 'Seg')).toHaveProperty('disabled', true);
+    click(day(LEMBRETES, 'Seg'));
+    expect(onPreferencesChange).not.toHaveBeenCalled();
+    expect(container.textContent).toContain('Mantenha pelo menos um dia marcado');
   });
 
   it('não oferece mais interruptor de comportamento humano', () => {
@@ -140,7 +147,17 @@ describe('WhatsappProtectionSettings', () => {
     render(DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES, onPreferencesChange, true);
 
     click(day(OS, 'Dom'));
-    click(day(COBRANCA, 'Sáb'));
+    click(day(LEMBRETES, 'Sáb'));
+
+    expect(onPreferencesChange).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia alterações enquanto as preferências estão sendo salvas', () => {
+    const onPreferencesChange = vi.fn();
+    render(DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES, onPreferencesChange, false, true);
+
+    click(day(OS, 'Dom'));
+    click(day(LEMBRETES, 'Sáb'));
 
     expect(onPreferencesChange).not.toHaveBeenCalled();
   });

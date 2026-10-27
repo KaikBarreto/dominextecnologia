@@ -316,6 +316,7 @@ function WhatsappContent() {
             locale={locale}
             preferences={preferences}
             readOnly={readOnly}
+            isSaving={update.isPending}
             onPreferencesChange={setPreferences}
           />
           <WhatsappAutomationSettings

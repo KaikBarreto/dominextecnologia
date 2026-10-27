@@ -3,6 +3,7 @@ import {
   checkWhatsappNumbers,
   EVOLUTION_WEBHOOK_CONFIG_VERSION,
   EvolutionApiError,
+  EvolutionConfigError,
   humanGapSeconds,
   markMessagesAsRead,
   sendPresence,
@@ -33,6 +34,7 @@ type Job = {
 };
 
 type SettingsData = { automation_preferences: unknown };
+type RegionalSettingsData = { country_code: string; timezone: string | null };
 type CustomerData = { name: string };
 type CompanyData = { name: string };
 type WebhookConnection = {
@@ -102,11 +104,72 @@ async function reconcileWebhookConfigs(supabase: SupabaseClient): Promise<number
   return configured;
 }
 
-function normalizePhone(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const digits = raw.replace(/\D/g, "");
-  if (digits.length < 10) return null;
-  return digits.startsWith("55") ? digits : `55${digits}`;
+type CountryPhoneRule = {
+  dialCode: string;
+  nationalMin: number;
+  nationalMax: number;
+  stripTrunkZero: boolean;
+};
+
+// Mesma allowlist regional exposta pela aplicacao. Os limites sao usados para
+// distinguir um numero nacional de um E.164 ja persistido sem o sinal de "+".
+const COUNTRY_PHONE_RULES: Readonly<Record<string, CountryPhoneRule>> = {
+  BR: { dialCode: "55", nationalMin: 10, nationalMax: 11, stripTrunkZero: true },
+  CV: { dialCode: "238", nationalMin: 7, nationalMax: 7, stripTrunkZero: false },
+  PT: { dialCode: "351", nationalMin: 9, nationalMax: 9, stripTrunkZero: false },
+  AO: { dialCode: "244", nationalMin: 9, nationalMax: 9, stripTrunkZero: false },
+  MZ: { dialCode: "258", nationalMin: 9, nationalMax: 9, stripTrunkZero: false },
+  ST: { dialCode: "239", nationalMin: 7, nationalMax: 7, stripTrunkZero: false },
+  GW: { dialCode: "245", nationalMin: 7, nationalMax: 7, stripTrunkZero: false },
+  TL: { dialCode: "670", nationalMin: 7, nationalMax: 8, stripTrunkZero: false },
+  US: { dialCode: "1", nationalMin: 10, nationalMax: 10, stripTrunkZero: false },
+  GB: { dialCode: "44", nationalMin: 9, nationalMax: 10, stripTrunkZero: true },
+  CA: { dialCode: "1", nationalMin: 10, nationalMax: 10, stripTrunkZero: false },
+  AU: { dialCode: "61", nationalMin: 9, nationalMax: 9, stripTrunkZero: true },
+  ES: { dialCode: "34", nationalMin: 9, nationalMax: 9, stripTrunkZero: false },
+  MX: { dialCode: "52", nationalMin: 10, nationalMax: 10, stripTrunkZero: false },
+  AR: { dialCode: "54", nationalMin: 10, nationalMax: 11, stripTrunkZero: true },
+  CL: { dialCode: "56", nationalMin: 9, nationalMax: 9, stripTrunkZero: false },
+  CO: { dialCode: "57", nationalMin: 10, nationalMax: 10, stripTrunkZero: false },
+  PE: { dialCode: "51", nationalMin: 9, nationalMax: 9, stripTrunkZero: false },
+  UY: { dialCode: "598", nationalMin: 8, nationalMax: 8, stripTrunkZero: false },
+  PY: { dialCode: "595", nationalMin: 9, nationalMax: 9, stripTrunkZero: true },
+  BO: { dialCode: "591", nationalMin: 8, nationalMax: 8, stripTrunkZero: false },
+  FR: { dialCode: "33", nationalMin: 9, nationalMax: 9, stripTrunkZero: true },
+  BE: { dialCode: "32", nationalMin: 9, nationalMax: 9, stripTrunkZero: true },
+  CH: { dialCode: "41", nationalMin: 9, nationalMax: 9, stripTrunkZero: true },
+  DE: { dialCode: "49", nationalMin: 5, nationalMax: 11, stripTrunkZero: true },
+  IT: { dialCode: "39", nationalMin: 6, nationalMax: 11, stripTrunkZero: false },
+  JP: { dialCode: "81", nationalMin: 9, nationalMax: 10, stripTrunkZero: true },
+};
+
+export function normalizePhone(
+  raw: string | null | undefined,
+  countryCode: string,
+): string | null {
+  const value = raw?.trim();
+  if (!value) return null;
+
+  const international = value.startsWith("+") || value.startsWith("00");
+  let digits = value.replace(/\D/g, "");
+  if (value.startsWith("00")) digits = digits.slice(2);
+  if (international) return digits.length >= 8 && digits.length <= 15 ? digits : null;
+
+  const rule = COUNTRY_PHONE_RULES[countryCode.trim().toUpperCase()];
+  if (!rule) return null;
+
+  const e164NationalLength = digits.startsWith(rule.dialCode)
+    ? digits.length - rule.dialCode.length
+    : -1;
+  if (e164NationalLength >= rule.nationalMin && e164NationalLength <= rule.nationalMax) {
+    return digits.length >= 8 && digits.length <= 15 ? digits : null;
+  }
+
+  if (rule.stripTrunkZero) digits = digits.replace(/^0/, "");
+  if (digits.length < rule.nationalMin || digits.length > rule.nationalMax) return null;
+
+  const normalized = `${rule.dialCode}${digits}`;
+  return normalized.length >= 8 && normalized.length <= 15 ? normalized : null;
 }
 
 function money(value: number | string): string {
@@ -169,9 +232,18 @@ async function recordEvent(
 }
 
 async function skipJob(supabase: SupabaseClient, job: Job, code: string, message: string, phone?: string | null) {
-  await supabase.from("whatsapp_send_jobs").update({
+  const { data: skipped } = await supabase.from("whatsapp_send_jobs").update({
     status: "skipped", locked_at: null, last_error_code: code, last_error: message,
-  }).eq("id", job.id).eq("company_id", job.company_id);
+  })
+    .eq("id", job.id)
+    .eq("company_id", job.company_id)
+    .eq("status", "processing")
+    .select("id")
+    .maybeSingle();
+  // Uma alteracao concorrente pode ter cancelado o job depois do claim. Nesse
+  // caso preservamos o estado mais novo e nao criamos um evento de "ignorado"
+  // para um processamento que ja nao nos pertence.
+  if (!skipped) return;
   await recordEvent(supabase, job, { status: "ignorado", phone: phone ?? null, error: message, sent_at: new Date().toISOString() });
 }
 
@@ -184,10 +256,52 @@ async function retryJob(supabase: SupabaseClient, job: Job, code: string, messag
   await supabase.from("whatsapp_send_jobs").update({
     status: "retry",
     locked_at: null,
+    dispatch_started_at: null,
     last_error_code: code,
     last_error: message,
     next_attempt_at: new Date(Date.now() + delaySeconds * 1000).toISOString(),
-  }).eq("id", job.id).eq("company_id", job.company_id);
+  })
+    .eq("id", job.id)
+    .eq("company_id", job.company_id)
+    .eq("status", "processing");
+}
+
+async function failJob(
+  supabase: SupabaseClient,
+  job: Job,
+  code: string,
+  message: string,
+  phone?: string | null,
+): Promise<boolean> {
+  const { data: failed, error } = await supabase.from("whatsapp_send_jobs").update({
+    status: "failed",
+    locked_at: null,
+    last_error_code: code,
+    last_error: message,
+  })
+    .eq("id", job.id)
+    .eq("company_id", job.company_id)
+    .eq("status", "processing")
+    .select("id")
+    .maybeSingle();
+  if (error) {
+    console.error("[whatsapp-send-worker] fail job update failed", {
+      job_id: job.id,
+      code,
+      message: error.message,
+    });
+    return false;
+  }
+  // Cancelamento/reagendamento concorrente ganha da falha local. Nao cria
+  // auditoria de erro para um processamento que ja nao pertence ao worker.
+  if (!failed) return false;
+  await recordEvent(supabase, job, {
+    phone: phone ?? null,
+    status: "erro",
+    error: message,
+    sent_at: new Date().toISOString(),
+  });
+  return true;
 }
 
 /**
@@ -225,7 +339,10 @@ async function deferJob(
     last_error_code: code,
     last_error: message,
     next_attempt_at: nextAttemptAt.toISOString(),
-  }).eq("id", job.id).eq("company_id", job.company_id);
+  })
+    .eq("id", job.id)
+    .eq("company_id", job.company_id)
+    .eq("status", "processing");
 }
 
 /**
@@ -271,14 +388,13 @@ function randomMs(minSeconds: number, maxSeconds: number): number {
 }
 
 /**
- * Hora local de Brasília (0–23). A edge roda em UTC, então a conversão é de
- * verdade, via `Intl` com `America/Sao_Paulo` — NUNCA subtraindo 3 horas na
- * mão (lei do projeto: fuso Brasil, e a regra de fuso não é uma subtração).
+ * Hora local da empresa (0–23). A edge roda em UTC, então a conversão usa o
+ * fuso IANA salvo no tenant, sem deslocamento fixo.
  */
-function brasiliaHour(at: Date = new Date()): number {
+function companyHour(timezone: string | null, at: Date = new Date()): number {
   try {
     const formatted = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/Sao_Paulo",
+      timeZone: timezone || "UTC",
       hour: "numeric",
       hour12: false,
     }).format(at);
@@ -289,6 +405,10 @@ function brasiliaHour(at: Date = new Date()): number {
     // Runtime sem base de fuso: não vale derrubar um envio por causa da hora.
   }
   return at.getUTCHours();
+}
+
+export function isDeliveryUnknownStatus(status: number): boolean {
+  return status === 0 || status === 408 || status >= 500;
 }
 
 async function sentCount(
@@ -305,7 +425,8 @@ async function sentCount(
     .in("status", ["enviado", "entregue", "lido"])
     .gte("sent_at", since);
   if (phone) query = query.eq("phone", phone);
-  const { count } = await query;
+  const { count, error } = await query;
+  if (error) throw new Error(`Não foi possível consultar o volume de envios: ${error.message}`);
   return count ?? 0;
 }
 
@@ -444,28 +565,45 @@ async function goodbyePresence(instanceName: string, phone: string): Promise<voi
 }
 
 async function buildOsMessage(supabase: SupabaseClient, job: Job, settings: SettingsData, customer: CustomerData) {
-  const { data: os } = await supabase
+  const { data: os, error: osError } = await supabase
     .from("service_orders")
-    .select("id, company_id, order_number, public_short_code, technician_id, service_type_id")
+    .select("id, company_id, order_number, public_short_code, technician_id, service_type_id, scheduled_date, scheduled_time, schedule_plan")
     .eq("id", job.source_id)
     .eq("company_id", job.company_id)
     .maybeSingle();
+  if (osError) throw new Error(`Não foi possível consultar a OS: ${osError.message}`);
   if (!os) return null;
 
   const [technicianResult, serviceResult] = await Promise.all([
     os.technician_id
-      ? supabase.from("profiles").select("full_name").eq("user_id", os.technician_id).maybeSingle()
-      : Promise.resolve({ data: null }),
+      ? supabase.from("profiles").select("full_name").eq("user_id", os.technician_id).eq("company_id", job.company_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
     os.service_type_id
-      ? supabase.from("service_types").select("name").eq("id", os.service_type_id).maybeSingle()
-      : Promise.resolve({ data: null }),
+      ? supabase.from("service_types").select("name").eq("id", os.service_type_id).eq("company_id", job.company_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ]);
-  const key = job.event_key.split(".")[1] as "a_caminho" | "em_andamento" | "concluida";
+  const auxiliaryError = technicianResult.error || serviceResult.error;
+  if (auxiliaryError) {
+    throw new Error(`Não foi possível consultar os detalhes da OS: ${auxiliaryError.message}`);
+  }
+  const key = job.event_key.split(".")[1] as "scheduled_reminder" | "a_caminho" | "em_andamento" | "concluida";
   const style = pickStyle(pref(settings.automation_preferences, ["os", "events", key, "template"], "automatic"));
   const technician = technicianResult.data?.full_name ?? "nosso técnico";
   const service = serviceResult.data?.name ?? "seu atendimento";
   const order = os.order_number ? `#${os.order_number}` : "";
+  const firstJourney = Array.isArray(os.schedule_plan) && os.schedule_plan.length > 0
+    ? os.schedule_plan[0] as Record<string, unknown>
+    : null;
+  const scheduledDate = typeof firstJourney?.date === "string" ? firstJourney.date : os.scheduled_date;
+  const scheduledTime = typeof firstJourney?.time === "string" ? firstJourney.time : os.scheduled_time;
+  const reminderDate = dateBr(scheduledDate);
+  const reminderTime = scheduledTime ? String(scheduledTime).slice(0, 5) : "horário não informado";
   const actions = {
+    scheduled_reminder: {
+      objective: `Lembrete: sua visita da OS ${order} está agendada para ${reminderDate}, às ${reminderTime}.`,
+      cordial: `Passando para lembrar que sua visita da OS ${order} está agendada para ${reminderDate}, às ${reminderTime}.`,
+      detailed: `Sua visita para ${service}, referente à OS ${order}, está agendada para ${reminderDate}, às ${reminderTime}.`,
+    },
     a_caminho: {
       objective: `O técnico ${technician} está a caminho para atender a OS ${order}.`,
       cordial: `Boas notícias: o técnico ${technician} já está a caminho para atender você na OS ${order}.`,
@@ -499,12 +637,13 @@ async function buildBillingMessage(
   customer: CustomerData,
   company: CompanyData,
 ) {
-  const { data: charge } = await supabase
+  const { data: charge, error: chargeError } = await supabase
     .from("tenant_charges")
     .select("id, company_id, value, due_date, public_short_code, status")
     .eq("id", job.source_id)
     .eq("company_id", job.company_id)
     .maybeSingle();
+  if (chargeError) throw new Error(`Não foi possível consultar a cobrança: ${chargeError.message}`);
   if (!charge || !["PENDING", "OVERDUE"].includes(charge.status)) return null;
 
   const key = job.event_key.split(".")[1] as "created" | "before_due" | "due_today" | "after_due";
@@ -556,16 +695,105 @@ async function buildBillingMessage(
   ].join("\n");
 }
 
+async function validateScheduledReminderBeforeSend(
+  supabase: SupabaseClient,
+  job: Job,
+  phone: string,
+): Promise<boolean> {
+  if (job.event_key !== "os.scheduled_reminder") return true;
+
+  const { data: validation, error: validationError } = await supabase.rpc(
+    "whatsapp_validate_scheduled_os_reminder",
+    { p_job_id: job.id, p_company_id: job.company_id, p_phone: phone },
+  );
+  if (validationError) {
+    await deferJob(
+      supabase,
+      job,
+      "scheduled_reminder_validation_unavailable",
+      "Não foi possível confirmar novamente o agendamento da OS.",
+      new Date(Date.now() + 300 * 1000),
+    );
+    return false;
+  }
+  if (validation !== "valid") {
+    const reason = validation === "appointment_passed"
+      ? "O horário agendado da visita já passou."
+      : "O agendamento ou a configuração do lembrete mudou antes do envio.";
+    await skipJob(supabase, job, `scheduled_reminder_${validation ?? "obsolete"}`, reason, phone);
+    return false;
+  }
+  return true;
+}
+
+async function beginScheduledReminderDispatch(
+  supabase: SupabaseClient,
+  job: Job,
+  phone: string,
+): Promise<boolean> {
+  if (job.event_key !== "os.scheduled_reminder") return true;
+
+  const { data: result, error } = await supabase.rpc(
+    "whatsapp_begin_scheduled_os_dispatch",
+    { p_job_id: job.id, p_company_id: job.company_id, p_phone: phone },
+  );
+  if (error) {
+    // A resposta pode ter se perdido depois do commit. Nao transformamos em
+    // retry: a recuperacao de orfao decide pelo marker persistido no banco.
+    console.error("[whatsapp-send-worker] dispatch marker unavailable", {
+      job_id: job.id,
+      message: error.message,
+    });
+    return false;
+  }
+  if (result === "ready") return true;
+
+  const reason = result === "appointment_passed"
+    ? "O horário agendado da visita já passou."
+    : "O agendamento ou a configuração do lembrete mudou antes do envio.";
+  await skipJob(supabase, job, `scheduled_reminder_${result ?? "obsolete"}`, reason, phone);
+  return false;
+}
+
 async function processJob(supabase: SupabaseClient, job: Job) {
-  const [{ data: connection }, { data: settings }, { data: customer }, { data: company }, moduleResult] = await Promise.all([
+  const [connectionResult, settingsResult, customerResult, companyResult, moduleResult, regionalSettingsResult] = await Promise.all([
     supabase.from("whatsapp_connections").select("*").eq("id", job.connection_id).eq("company_id", job.company_id).maybeSingle(),
     supabase.from("company_whatsapp_settings").select("*").eq("company_id", job.company_id).maybeSingle(),
     job.customer_id
       ? supabase.from("customers").select("id, company_id, name, phone, celular, whatsapp_notifications_enabled, whatsapp_opt_out_at").eq("id", job.customer_id).eq("company_id", job.company_id).maybeSingle()
-      : Promise.resolve({ data: null }),
+      : Promise.resolve({ data: null, error: null }),
     supabase.from("companies").select("name").eq("id", job.company_id).maybeSingle(),
     supabase.rpc("company_has_module", { p_company_id: job.company_id, p_module_code: "whatsapp" }),
+    supabase.from("company_settings").select("country_code, timezone").eq("company_id", job.company_id).maybeSingle(),
   ]);
+
+  const initialReadError = [
+    connectionResult.error,
+    settingsResult.error,
+    customerResult.error,
+    companyResult.error,
+    moduleResult.error,
+    regionalSettingsResult.error,
+  ].find(Boolean);
+  if (initialReadError) {
+    console.error("[whatsapp-send-worker] initial data query failed", {
+      job_id: job.id,
+      message: initialReadError.message,
+    });
+    return deferJob(
+      supabase,
+      job,
+      "initial_data_unavailable",
+      "Não foi possível confirmar os dados necessários para o envio.",
+      new Date(Date.now() + 300 * 1000),
+    );
+  }
+
+  const connection = connectionResult.data;
+  const settings = settingsResult.data;
+  const customer = customerResult.data;
+  const company = companyResult.data;
+  const regionalSettings = regionalSettingsResult.data as RegionalSettingsData | null;
 
   if (moduleResult.data !== true) return skipJob(supabase, job, "module_inactive", "Módulo de WhatsApp inativo.");
   // Daqui até o `sendText` nenhum caminho de adiamento chamou o provedor: são
@@ -583,7 +811,13 @@ async function processJob(supabase: SupabaseClient, job: Job) {
     );
   }
   if (job.provider !== "evolution_qr") {
-    return skipJob(supabase, job, "provider_not_implemented", "A Meta Cloud API ainda não está liberada.");
+    return deferJob(
+      supabase,
+      job,
+      "provider_not_implemented",
+      "O provedor configurado ainda não está disponível para este envio.",
+      new Date(Date.now() + 3600 * 1000),
+    );
   }
   if (!connection.instance_name) {
     return skipJob(supabase, job, "invalid_connection", "A conexão QR Code não possui uma instância válida.");
@@ -614,17 +848,56 @@ async function processJob(supabase: SupabaseClient, job: Job) {
       );
     }
   }
-  if (!customer?.whatsapp_notifications_enabled || customer.whatsapp_opt_out_at) {
+  if (!customer) {
+    return skipJob(supabase, job, "customer_unavailable", "O cliente vinculado ao envio não foi encontrado.");
+  }
+  if (!customer.whatsapp_notifications_enabled || customer.whatsapp_opt_out_at) {
     return skipJob(supabase, job, "customer_opt_out", "O cliente não autorizou mensagens pelo WhatsApp.");
   }
-  const phone = normalizePhone(customer.celular ?? customer.phone);
+  if (!regionalSettings?.country_code) {
+    return deferJob(
+      supabase,
+      job,
+      "country_settings_unavailable",
+      "Não foi possível confirmar o país usado para validar o telefone.",
+      new Date(Date.now() + 300 * 1000),
+    );
+  }
+  if (!COUNTRY_PHONE_RULES[regionalSettings.country_code.trim().toUpperCase()]) {
+    return deferJob(
+      supabase,
+      job,
+      "country_not_supported",
+      "O país configurado ainda não é compatível com os envios pelo WhatsApp.",
+      new Date(Date.now() + 3600 * 1000),
+    );
+  }
+  const phone = normalizePhone(customer.celular?.trim() || customer.phone, regionalSettings.country_code);
   if (!phone) return skipJob(supabase, job, "invalid_phone", "Cliente sem WhatsApp válido cadastrado.");
 
-  const { data: optedOut } = await supabase
+  const { data: optedOut, error: optedOutError } = await supabase
     .from("whatsapp_opt_outs").select("phone").eq("company_id", job.company_id).eq("phone", phone).maybeSingle();
+  if (optedOutError) {
+    return deferJob(
+      supabase,
+      job,
+      "opt_out_check_unavailable",
+      "Não foi possível confirmar a autorização do cliente para este envio.",
+      new Date(Date.now() + 300 * 1000),
+    );
+  }
   if (optedOut) return skipJob(supabase, job, "customer_opt_out", "O cliente pediu para parar os envios.", phone);
 
-  const { data: canSend } = await supabase.rpc("whatsapp_can_send", { p_company_id: job.company_id });
+  const { data: canSend, error: quotaError } = await supabase.rpc("whatsapp_can_send", { p_company_id: job.company_id });
+  if (quotaError) {
+    return deferJob(
+      supabase,
+      job,
+      "quota_check_unavailable",
+      "Não foi possível conferir o limite mensal do módulo.",
+      new Date(Date.now() + 300 * 1000),
+    );
+  }
   if (canSend !== true) return skipJob(supabase, job, "monthly_quota", "Limite mensal do módulo atingido.", phone);
 
   // Antes de qualquer limite de volume: o número existe mesmo no WhatsApp?
@@ -635,11 +908,28 @@ async function processJob(supabase: SupabaseClient, job: Job) {
   }
 
   const now = Date.now();
-  const [hourCount, dayCount, recipientCount] = await Promise.all([
-    sentCount(supabase, job, new Date(now - 60 * 60 * 1000).toISOString()),
-    sentCount(supabase, job, new Date(now - 24 * 60 * 60 * 1000).toISOString()),
-    sentCount(supabase, job, new Date(now - 24 * 60 * 60 * 1000).toISOString(), phone),
-  ]);
+  let hourCount: number;
+  let dayCount: number;
+  let recipientCount: number;
+  try {
+    [hourCount, dayCount, recipientCount] = await Promise.all([
+      sentCount(supabase, job, new Date(now - 60 * 60 * 1000).toISOString()),
+      sentCount(supabase, job, new Date(now - 24 * 60 * 60 * 1000).toISOString()),
+      sentCount(supabase, job, new Date(now - 24 * 60 * 60 * 1000).toISOString(), phone),
+    ]);
+  } catch (error) {
+    console.error("[whatsapp-send-worker] volume query failed", {
+      job_id: job.id,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return deferJob(
+      supabase,
+      job,
+      "volume_check_unavailable",
+      "Não foi possível conferir os limites de volume do envio.",
+      new Date(now + 300 * 1000),
+    );
+  }
   // Limites de volume: adiados pra MAIOR entre o atraso de hoje e a próxima
   // abertura da janela de envio (volumeDeferAt).
   if (hourCount >= MAX_PER_HOUR) {
@@ -729,23 +1019,43 @@ async function processJob(supabase: SupabaseClient, job: Job) {
   }
 
   let text: string | null;
-  if (job.source_type === "service_order") {
-    text = await buildOsMessage(supabase, job, settings, customer);
-  } else {
-    // O nome identifica o remetente antes do link de pagamento. Sem ele, não
-    // enviamos uma cobrança genérica que possa parecer fraude ao cliente.
-    if (!company?.name?.trim()) {
-      return deferJob(
-        supabase,
-        job,
-        "company_name_unavailable",
-        "O nome da empresa está indisponível para montar a mensagem.",
-        new Date(Date.now() + 300 * 1000),
-      );
+  try {
+    if (job.source_type === "service_order") {
+      text = await buildOsMessage(supabase, job, settings, customer);
+    } else {
+      // O nome identifica o remetente antes do link de pagamento. Sem ele, não
+      // enviamos uma cobrança genérica que possa parecer fraude ao cliente.
+      if (!company?.name?.trim()) {
+        return deferJob(
+          supabase,
+          job,
+          "company_name_unavailable",
+          "O nome da empresa está indisponível para montar a mensagem.",
+          new Date(Date.now() + 300 * 1000),
+        );
+      }
+      text = await buildBillingMessage(supabase, job, settings, customer, company);
     }
-    text = await buildBillingMessage(supabase, job, settings, customer, company);
+  } catch (error) {
+    console.error("[whatsapp-send-worker] source query failed", {
+      job_id: job.id,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return deferJob(
+      supabase,
+      job,
+      "source_check_unavailable",
+      "Não foi possível confirmar os dados da mensagem.",
+      new Date(Date.now() + 300 * 1000),
+    );
   }
   if (!text) return skipJob(supabase, job, "source_unavailable", "A origem não existe mais ou a cobrança já foi paga.", phone);
+
+  // O cron fotografa primeira jornada + timing no job. Rele tudo no banco no
+  // ultimo instante antes de qualquer efeito visivel (marcar leitura/presenca)
+  // e do provedor: reagendamento, cancelamento, mudanca de cliente/configuracao
+  // ou visita que ja passou tornam o job obsoleto.
+  if (!(await validateScheduledReminderBeforeSend(supabase, job, phone))) return;
 
   const prefs = settings.automation_preferences;
 
@@ -757,6 +1067,7 @@ async function processJob(supabase: SupabaseClient, job: Job) {
     await markConversationRead(supabase, job, connection.instance_name, phone);
   }
 
+  let providerCallStarted = false;
   try {
     // "Abriu o app". Enfeite de comportamento: silencioso, nunca bloqueia.
     try {
@@ -765,35 +1076,92 @@ async function processJob(supabase: SupabaseClient, job: Job) {
       // Presença não é parte do envio.
     }
 
-    // `delayMs` faz o "digitando" NO SERVIDOR: por baixo o Baileys faz
-    // presenceSubscribe → composing → espera o delay → paused → envia. Por
-    // isso o `sendText` leva esses segundos pra retornar — é await de rede,
-    // não CPU da edge presa num laço.
     const delayMs = pref<boolean>(prefs, ["humanBehavior", "simulateTyping"], true) === false
       ? undefined
       : typingDelayMs(text);
-    const sent = await sendText(connection.instance_name, phone, text, { delayMs });
+
+    // O lembrete agendado precisa validar o snapshot DEPOIS da espera humana.
+    // Portanto, nele a digitacao e simulada localmente e o provedor recebe o
+    // envio sem `delay`; nos eventos transacionais antigos o delay server-side
+    // permanece inalterado.
+    if (job.event_key === "os.scheduled_reminder" && delayMs !== undefined) {
+      try {
+        await sendPresence(connection.instance_name, phone, "composing");
+      } catch {
+        // Presenca nao e parte do envio.
+      }
+      await sleep(delayMs);
+      try {
+        await sendPresence(connection.instance_name, phone, "paused");
+      } catch {
+        // Presenca nao e parte do envio.
+      }
+    }
+
+    // Segunda barreira depois dos efeitos humanos e imediatamente antes da
+    // chamada que pode enviar. Fecha a janela de corrida aberta por marcar
+    // leitura/presenca enquanto o agendamento ainda podia mudar.
+    if (!(await beginScheduledReminderDispatch(supabase, job, phone))) {
+      await goodbyePresence(connection.instance_name, phone);
+      return;
+    }
+
+    providerCallStarted = true;
+    const sent = await sendText(
+      connection.instance_name,
+      phone,
+      text,
+      job.event_key === "os.scheduled_reminder" ? undefined : { delayMs },
+    );
     const sentAt = new Date().toISOString();
-    await recordEvent(supabase, job, {
-      phone, status: "enviado", error: null, sent_at: sentAt, provider_message_id: sent.id,
-    });
-    await supabase.from("whatsapp_send_jobs").update({
-      status: "sent", locked_at: null, sent_at: sentAt, provider_message_id: sent.id,
-      last_error: null, last_error_code: null,
-    }).eq("id", job.id).eq("company_id", job.company_id);
     // Cadência humana (log-normal + pausa longa ocasional + curva horária) em
     // vez de intervalo uniforme, que é assinatura estatística de máquina.
-    const gapSeconds = humanGapSeconds(brasiliaHour());
-    await supabase.from("whatsapp_connections").update({
-      next_send_at: new Date(Date.now() + gapSeconds * 1000).toISOString(),
-      consecutive_failures: 0, last_error: null, last_seen_at: sentAt,
-    }).eq("id", job.connection_id).eq("company_id", job.company_id);
+    const gapSeconds = humanGapSeconds(companyHour(regionalSettings.timezone));
+    const nextSendAt = new Date(Date.now() + gapSeconds * 1000).toISOString();
+    if (job.event_key === "os.scheduled_reminder") {
+      const { data: finalized, error: finalizeError } = await supabase.rpc(
+        "whatsapp_finalize_scheduled_os_reminder",
+        {
+          p_job_id: job.id,
+          p_company_id: job.company_id,
+          p_phone: phone,
+          p_provider_message_id: sent.id,
+          p_sent_at: sentAt,
+          p_next_send_at: nextSendAt,
+        },
+      );
+      if (finalizeError || finalized !== true) {
+        // O provedor ja aceitou. Manter processing+marker impede duplicidade;
+        // a recuperacao classifica delivery_unknown se o commit nao ocorreu.
+        console.error("[whatsapp-send-worker] scheduled reminder finalization unavailable", {
+          job_id: job.id,
+          message: finalizeError?.message ?? "finalization_rejected",
+        });
+        await goodbyePresence(connection.instance_name, phone);
+        return;
+      }
+    } else {
+      await recordEvent(supabase, job, {
+        phone, status: "enviado", error: null, sent_at: sentAt, provider_message_id: sent.id,
+      });
+      await supabase.from("whatsapp_send_jobs").update({
+        status: "sent", locked_at: null, sent_at: sentAt, provider_message_id: sent.id,
+        last_error: null, last_error_code: null,
+      }).eq("id", job.id).eq("company_id", job.company_id);
+      await supabase.from("whatsapp_connections").update({
+        next_send_at: nextSendAt,
+        consecutive_failures: 0, last_error: null, last_seen_at: sentAt,
+      }).eq("id", job.connection_id).eq("company_id", job.company_id);
+    }
     // Só AGORA, com job=sent, evento=enviado e a conexão já reagendada: nenhum
     // timeout da presença final pode fazer um envio bem-sucedido parecer falha.
     await goodbyePresence(connection.instance_name, phone);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const status = error instanceof EvolutionApiError ? error.status : 0;
+    const deliveryUnknown = providerCallStarted &&
+      !(error instanceof EvolutionConfigError) &&
+      isDeliveryUnknownStatus(status);
     const failures = (connection.consecutive_failures ?? 0) + 1;
     const mustPause = status === 401 || status === 403 || failures >= 3;
     await supabase.from("whatsapp_connections").update({
@@ -802,19 +1170,25 @@ async function processJob(supabase: SupabaseClient, job: Job) {
       last_error: message.slice(0, 500),
       last_seen_at: new Date().toISOString(),
     }).eq("id", job.connection_id).eq("company_id", job.company_id);
-    if (mustPause || job.attempts >= MAX_ATTEMPTS) {
-      await supabase.from("whatsapp_send_jobs").update({
-        status: "failed", locked_at: null, last_error_code: status === 403 ? "possible_ban" : "send_failed",
-        last_error: message.slice(0, 500),
-      }).eq("id", job.id).eq("company_id", job.company_id);
-      await recordEvent(supabase, job, { phone, status: "erro", error: message.slice(0, 500), sent_at: new Date().toISOString() });
+    if (deliveryUnknown) {
+      // Rede/timeout/5xx nao provam rejeicao. O provedor pode ter aceitado e a
+      // resposta ter se perdido; repetir automaticamente criaria duplicidade.
+      await failJob(supabase, job, "delivery_unknown", message.slice(0, 500), phone);
+    } else if (mustPause || job.attempts >= MAX_ATTEMPTS) {
+      await failJob(
+        supabase,
+        job,
+        status === 403 ? "possible_ban" : "send_failed",
+        message.slice(0, 500),
+        phone,
+      );
     } else {
-      // ÚNICO retryJob que sobra no arquivo, de propósito: aqui houve chamada
-      // real ao provedor e ela falhou — isso é tentativa, e tem que contar
-      // contra o MAX_ATTEMPTS. Todos os outros caminhos de adiamento acima são
-      // deferJob, porque nenhum deles tocou o provedor.
+      // So repetimos quando uma resposta HTTP definitiva (4xx) prova que o
+      // provedor nao aceitou a mensagem. Configuracao local tambem falha antes
+      // de qualquer request e pode ser tentada novamente apos correcao.
       await retryJob(supabase, job, "send_failed", message.slice(0, 500), Math.min(3600, 30 * (2 ** job.attempts)));
     }
+    await goodbyePresence(connection.instance_name, phone);
   }
 }
 

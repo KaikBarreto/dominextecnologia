@@ -14477,6 +14477,7 @@ export type Database = {
           customer_id: string | null
           dedupe_key: string
           defers: number
+          dispatch_started_at: string | null
           event_key: string
           id: string
           last_error: string | null
@@ -14485,6 +14486,8 @@ export type Database = {
           next_attempt_at: string
           provider: string
           provider_message_id: string | null
+          schedule_snapshot_at: string | null
+          schedule_snapshot_timing: string | null
           sent_at: string | null
           source_id: string
           source_type: string
@@ -14499,6 +14502,7 @@ export type Database = {
           customer_id?: string | null
           dedupe_key: string
           defers?: number
+          dispatch_started_at?: string | null
           event_key: string
           id?: string
           last_error?: string | null
@@ -14507,6 +14511,8 @@ export type Database = {
           next_attempt_at?: string
           provider: string
           provider_message_id?: string | null
+          schedule_snapshot_at?: string | null
+          schedule_snapshot_timing?: string | null
           sent_at?: string | null
           source_id: string
           source_type: string
@@ -14521,6 +14527,7 @@ export type Database = {
           customer_id?: string | null
           dedupe_key?: string
           defers?: number
+          dispatch_started_at?: string | null
           event_key?: string
           id?: string
           last_error?: string | null
@@ -14529,6 +14536,8 @@ export type Database = {
           next_attempt_at?: string
           provider?: string
           provider_message_id?: string | null
+          schedule_snapshot_at?: string | null
+          schedule_snapshot_timing?: string | null
           sent_at?: string | null
           source_id?: string
           source_type?: string
@@ -17558,6 +17567,7 @@ export type Database = {
           customer_id: string | null
           dedupe_key: string
           defers: number
+          dispatch_started_at: string | null
           event_key: string
           id: string
           last_error: string | null
@@ -17566,6 +17576,8 @@ export type Database = {
           next_attempt_at: string
           provider: string
           provider_message_id: string | null
+          schedule_snapshot_at: string | null
+          schedule_snapshot_timing: string | null
           sent_at: string | null
           source_id: string
           source_type: string
@@ -17589,7 +17601,46 @@ export type Database = {
         }
         Returns: boolean
       }
+      whatsapp_company_timezone: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
+      whatsapp_begin_scheduled_os_dispatch: {
+        Args: { p_company_id: string; p_job_id: string; p_phone: string }
+        Returns: string
+      }
+      whatsapp_country_dial_code: {
+        Args: { p_country_code: string }
+        Returns: string
+      }
       whatsapp_enqueue_due_reminders: { Args: never; Returns: number }
+      whatsapp_enqueue_scheduled_os_reminder_job: {
+        Args: {
+          p_company_id: string
+          p_customer_id: string
+          p_dedupe_key: string
+          p_next_attempt_at?: string
+          p_scheduled_at: string
+          p_source_id: string
+          p_timing: string
+        }
+        Returns: string
+      }
+      whatsapp_enqueue_scheduled_os_reminders: {
+        Args: never
+        Returns: number
+      }
+      whatsapp_finalize_scheduled_os_reminder: {
+        Args: {
+          p_company_id: string
+          p_job_id: string
+          p_next_send_at: string
+          p_phone: string
+          p_provider_message_id: string
+          p_sent_at: string
+        }
+        Returns: boolean
+      }
       whatsapp_enqueue_transactional_job: {
         Args: {
           p_company_id: string
@@ -17600,6 +17651,10 @@ export type Database = {
           p_source_id: string
           p_source_type: string
         }
+        Returns: string
+      }
+      whatsapp_normalize_phone: {
+        Args: { p_company_id: string; p_raw: string }
         Returns: string
       }
       whatsapp_event_window_group: {
@@ -17622,6 +17677,10 @@ export type Database = {
           p_event_key: string
           p_from?: string
         }
+        Returns: string
+      }
+      whatsapp_validate_scheduled_os_reminder: {
+        Args: { p_company_id: string; p_job_id: string; p_phone: string }
         Returns: string
       }
       whatsapp_purge_inbound_keys: { Args: never; Returns: number }

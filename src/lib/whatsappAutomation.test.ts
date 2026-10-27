@@ -21,6 +21,8 @@ describe('whatsappAutomation', () => {
     expect(normalized.os.events.concluida).toEqual(
       DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES.os.events.concluida,
     );
+    expect(normalized.os.events.scheduled_reminder.enabled).toBe(false);
+    expect(normalized.os.events.scheduled_reminder.timing).toBe('day_before');
     expect(normalized.billing.daysBeforeDue).toBe(7);
   });
 
@@ -147,7 +149,53 @@ describe('whatsappAutomation', () => {
     expect(normalized.sendWindow.reminders.days).toEqual([7]);
   });
 
-  it('conta os sete fluxos ativos por padrão', () => {
+  it('mantém sete fluxos ativos porque o lembrete de visita nasce desligado', () => {
     expect(countEnabledWhatsappAutomations(DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES)).toBe(7);
+  });
+
+  it('preserva o momento válido do lembrete e descarta valores desconhecidos', () => {
+    expect(normalizeWhatsappAutomationPreferences({
+      os: { events: { scheduled_reminder: { timing: 'same_day' } } },
+    }).os.events.scheduled_reminder.timing).toBe('same_day');
+
+    expect(normalizeWhatsappAutomationPreferences({
+      os: { events: { scheduled_reminder: { timing: 'two_days_before' } } },
+    }).os.events.scheduled_reminder.timing).toBe('day_before');
+  });
+
+  it('monta a prévia do lembrete de visita com data, horário e link da OS', () => {
+    const preview = buildWhatsappMessagePreview(
+      { domain: 'os', key: 'scheduled_reminder' },
+      DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES,
+    );
+
+    expect(preview).toContain('agendada para 28/10/2026, às 09:00');
+    expect(preview).not.toContain('amanhã');
+    expect(preview).not.toContain('hoje');
+    expect(preview).toContain('*Acompanhe a OS:* https://www.dominex.app/os/1048');
+  });
+
+  it('mantém a prévia coerente no envio no dia e respeita a opção de ocultar o link', () => {
+    const preferences = {
+      ...DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES,
+      os: {
+        ...DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES.os,
+        includeLink: false,
+        events: {
+          ...DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES.os.events,
+          scheduled_reminder: {
+            ...DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES.os.events.scheduled_reminder,
+            timing: 'same_day' as const,
+          },
+        },
+      },
+    };
+    const preview = buildWhatsappMessagePreview(
+      { domain: 'os', key: 'scheduled_reminder' },
+      preferences,
+    );
+
+    expect(preview).toContain('agendada para 28/10/2026, às 09:00');
+    expect(preview).not.toContain('Acompanhe a OS');
   });
 });
