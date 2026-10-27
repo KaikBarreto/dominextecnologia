@@ -355,7 +355,7 @@ export default function Customers() {
     <FilterButton
       activeCount={customerKindFilter === 'all' ? 0 : 1}
       onClear={() => setCustomerKindFilter('all')}
-      className="w-full"
+      embedded
     >
       {kindFilterControl}
     </FilterButton>

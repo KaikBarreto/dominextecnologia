@@ -50,6 +50,7 @@ import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { SearchField } from '@/components/ui/search-field-actions';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
@@ -409,28 +410,28 @@ function QuotesList() {
 
   // Filtros desktop — busca inline + FilterButton (Onda UI-2).
   const desktopFilters = (
-    <div className="flex flex-col sm:flex-row gap-3">
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
+    <div>
+      <SearchField
+        containerClassName="flex-1"
           placeholder={tq.searchPlaceholder}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-      <FilterButton
-        activeCount={statusFilter.length > 0 ? 1 : 0}
-        onClear={() => setStatusFilter([])}
-      >
-        <FilterCheckboxGroup
-          label={tq.filterStatus}
-          options={statusOptions}
-          selected={statusFilter}
-          onChange={setStatusFilter}
-          emptyLabel={tq.filterAll}
-        />
-      </FilterButton>
+        actions={
+          <FilterButton
+            activeCount={statusFilter.length > 0 ? 1 : 0}
+            onClear={() => setStatusFilter([])}
+            embedded
+          >
+            <FilterCheckboxGroup
+              label={tq.filterStatus}
+              options={statusOptions}
+              selected={statusFilter}
+              onChange={setStatusFilter}
+              emptyLabel={tq.filterAll}
+            />
+          </FilterButton>
+        }
+      />
     </div>
   );
 

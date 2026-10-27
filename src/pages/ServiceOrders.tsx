@@ -67,6 +67,7 @@ import { KPICard } from '@/components/dashboard/KPICard';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { SearchField } from '@/components/ui/search-field-actions';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -694,27 +695,26 @@ export default function ServiceOrders() {
             ) : (
               <>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-2 flex-1">
-                    <div className="relative flex-1 sm:max-w-sm">
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
+                  <div className="flex-1 sm:max-w-sm">
+                    <SearchField
                         placeholder={t.search.placeholderFull}
-                        className="pl-10"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
+                        actions={
+                          <FilterButton
+                            activeCount={structuredActiveCount}
+                            onClear={clearStructuredFilters}
+                            embedded
+                          >
+                            <FilterCheckboxGroup
+                              label={t.filters.status}
+                              options={statusOptions.map((s) => ({ value: s.key, label: s.label, color: s.color }))}
+                              selected={statusFilter}
+                              onChange={setStatusFilter}
+                            />
+                          </FilterButton>
+                        }
                       />
-                    </div>
-                    <FilterButton
-                      activeCount={structuredActiveCount}
-                      onClear={clearStructuredFilters}
-                    >
-                      <FilterCheckboxGroup
-                        label={t.filters.status}
-                        options={statusOptions.map((s) => ({ value: s.key, label: s.label, color: s.color }))}
-                        selected={statusFilter}
-                        onChange={setStatusFilter}
-                      />
-                    </FilterButton>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button

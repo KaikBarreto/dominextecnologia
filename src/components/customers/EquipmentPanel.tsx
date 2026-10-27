@@ -382,7 +382,7 @@ export function EquipmentPanel() {
           listTitle={tEq.listHeading}
           storageKey="equipment-list-detail"
           listFilters={(
-            <FilterButton activeCount={activeFilterCount} onClear={clearFilters}>
+            <FilterButton activeCount={activeFilterCount} onClear={clearFilters} embedded>
               {filterContent}
             </FilterButton>
           )}

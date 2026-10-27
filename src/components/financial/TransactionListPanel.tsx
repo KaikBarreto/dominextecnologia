@@ -21,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SignedLink } from '@/components/ui/SignedLink';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { SearchField, SearchFieldAction } from '@/components/ui/search-field-actions';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useCostCenters } from '@/hooks/useCostCenters';
@@ -243,30 +244,14 @@ function ToolbarShell({
   searchPlaceholder: string;
   children: React.ReactNode;
 }) {
-  if (isMobile) {
-    return (
-      <MobileListToolbar
-        searchValue={search}
-        onSearchChange={onSearchChange}
-        searchPlaceholder={searchPlaceholder}
-      >
-        {children}
-      </MobileListToolbar>
-    );
-  }
   return (
-    <div className="flex flex-col sm:flex-row gap-2">
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder={searchPlaceholder}
-          className="pl-10"
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-        />
-      </div>
-      {children}
-    </div>
+    <SearchField
+      placeholder={searchPlaceholder}
+      className={isMobile ? 'h-10' : undefined}
+      value={search}
+      onChange={(event) => onSearchChange(event.target.value)}
+      actions={children}
+    />
   );
 }
 
@@ -835,10 +820,7 @@ export function TransactionListPanel({
     <FilterButton
       activeCount={activeFiltersCount}
       onClear={clearFilters}
-      iconOnly={embedded}
-      className={embedded
-        ? 'h-8 w-8 border-0 bg-transparent p-0 shadow-none hover:bg-transparent'
-        : undefined}
+      embedded
     >
       {type === 'all' && (
         <FilterCheckboxGroup
@@ -895,25 +877,11 @@ export function TransactionListPanel({
   const sortControl = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className={cn(
-            'shrink-0',
-            embedded
-              ? 'h-8 w-8 border-0 bg-transparent p-0 shadow-none hover:bg-transparent'
-              : 'h-10 gap-2 sm:h-9',
-          )}
-          aria-label={embedded ? 'Ordenar movimentações' : undefined}
-          title={embedded ? 'Ordenar movimentações' : undefined}
-        >
-          <ArrowDownUp className="h-4 w-4" />
-          <span className={cn(embedded && 'sr-only')}>Ordenar</span>
-          {!embedded && sortConfig.direction && (
-            <span className="text-[10px] font-semibold uppercase text-muted-foreground">{sortConfig.direction}</span>
-          )}
-        </Button>
+        <SearchFieldAction
+          icon={ArrowDownUp}
+          label="Ordenar"
+          tooltip={sortConfig.direction ? `Ordenar movimentações: ${sortConfig.direction}` : 'Ordenar movimentações'}
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
         <DropdownMenuItem onClick={() => handleSort('transaction_date')}>Data</DropdownMenuItem>
@@ -931,19 +899,13 @@ export function TransactionListPanel({
           ícones identificados, sem empurrar Importar/Exportar/Nova para baixo. */}
       {!isMobile && embedded && (
         <div className="flex min-w-0 items-center gap-2">
-          <div className="relative min-w-[8rem] flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+          <SearchField
+              containerClassName="min-w-[8rem] flex-1"
               placeholder={fin.transactionList.search}
-              className="h-9 pl-10 pr-[4.75rem]"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
+              actions={<>{filterControl}{sortControl}</>}
             />
-            <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center">
-              {filterControl}
-              {sortControl}
-            </div>
-          </div>
           {someSelected ? (
             <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)} className="h-9 shrink-0">
               <Trash2 className="mr-2 h-4 w-4" /> {fin.transactionList.deleteSelected} {selectedIds.size}

@@ -34,6 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { SearchField } from '@/components/ui/search-field-actions';
 import {
   useLeads,
   type Lead,
@@ -1352,25 +1353,24 @@ export default function CRM() {
           </FilterSheet>
         </MobileListToolbar>
       ) : (
-        <div className="flex flex-row items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+        <div>
+          <SearchField
+              containerClassName="flex-1"
               placeholder={t.tasks.searchPlaceholder}
-              className="pl-10"
               value={taskSearch}
               onChange={(e) => setTaskSearch(e.target.value)}
+              actions={
+                <FilterButton activeCount={taskAssigneeFilter.length} onClear={() => setTaskAssigneeFilter([])} embedded>
+                  <FilterCheckboxGroup
+                    label={t.tasks.filterAssignee}
+                    options={taskAssigneeOptions}
+                    selected={taskAssigneeFilter}
+                    onChange={setTaskAssigneeFilter}
+                    emptyLabel={t.tasks.filterAssigneeAll}
+                  />
+                </FilterButton>
+              }
             />
-          </div>
-          <FilterButton activeCount={taskAssigneeFilter.length} onClear={() => setTaskAssigneeFilter([])}>
-            <FilterCheckboxGroup
-              label={t.tasks.filterAssignee}
-              options={taskAssigneeOptions}
-              selected={taskAssigneeFilter}
-              onChange={setTaskAssigneeFilter}
-              emptyLabel={t.tasks.filterAssigneeAll}
-            />
-          </FilterButton>
         </div>
       )}
 
@@ -1770,59 +1770,58 @@ export default function CRM() {
 
       {/* Search and Filters */}
       <div className="flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+        <SearchField
+            containerClassName="flex-1"
             placeholder={t.searchPlaceholder}
-            className="pl-10"
             value={filters.search}
             onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-          />
-        </div>
+            actions={
+              <FilterButton
+                activeCount={activeFiltersCount}
+                onClear={clearFilters}
+                embedded
+              >
+                <FilterCheckboxGroup
+                  label={t.filterOrigin}
+                  options={sourceOptions}
+                  selected={filters.source}
+                  onChange={(next) => setFilters((prev) => ({ ...prev, source: next }))}
+                  emptyLabel={t.filterOriginAll}
+                />
 
-        <FilterButton
-          activeCount={activeFiltersCount}
-          onClear={clearFilters}
-        >
-          <FilterCheckboxGroup
-            label={t.filterOrigin}
-            options={sourceOptions}
-            selected={filters.source}
-            onChange={(next) => setFilters((prev) => ({ ...prev, source: next }))}
-            emptyLabel={t.filterOriginAll}
-          />
+                <FilterCheckboxGroup
+                  label={t.filterSalesperson}
+                  options={assignedToOptions}
+                  selected={filters.assignedTo}
+                  onChange={(next) => setFilters((prev) => ({ ...prev, assignedTo: next }))}
+                  emptyLabel={t.filterSalespersonAll}
+                />
 
-          <FilterCheckboxGroup
-            label={t.filterSalesperson}
-            options={assignedToOptions}
-            selected={filters.assignedTo}
-            onChange={(next) => setFilters((prev) => ({ ...prev, assignedTo: next }))}
-            emptyLabel={t.filterSalespersonAll}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-2">
+                    <Label>{t.filterMinValue}</Label>
+                    <Input
+                      type="number"
+                      placeholder={t.filterMinPlaceholder}
+                      value={filters.minValue}
+                      onChange={(e) => setFilters(prev => ({ ...prev, minValue: e.target.value }))}
+                      onPaste={(e) => handleMoneyFilterPaste(e, (v) => setFilters(prev => ({ ...prev, minValue: v })))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t.filterMaxValue}</Label>
+                    <Input
+                      type="number"
+                      placeholder={t.filterMaxPlaceholder}
+                      value={filters.maxValue}
+                      onChange={(e) => setFilters(prev => ({ ...prev, maxValue: e.target.value }))}
+                      onPaste={(e) => handleMoneyFilterPaste(e, (v) => setFilters(prev => ({ ...prev, maxValue: v })))}
+                    />
+                  </div>
+                </div>
+              </FilterButton>
+            }
           />
-
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-2">
-              <Label>{t.filterMinValue}</Label>
-              <Input
-                type="number"
-                placeholder={t.filterMinPlaceholder}
-                value={filters.minValue}
-                onChange={(e) => setFilters(prev => ({ ...prev, minValue: e.target.value }))}
-                onPaste={(e) => handleMoneyFilterPaste(e, (v) => setFilters(prev => ({ ...prev, minValue: v })))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{t.filterMaxValue}</Label>
-              <Input
-                type="number"
-                placeholder={t.filterMaxPlaceholder}
-                value={filters.maxValue}
-                onChange={(e) => setFilters(prev => ({ ...prev, maxValue: e.target.value }))}
-                onPaste={(e) => handleMoneyFilterPaste(e, (v) => setFilters(prev => ({ ...prev, maxValue: v })))}
-              />
-            </div>
-          </div>
-        </FilterButton>
         <Button onClick={() => setDialogOpen(true)} className="shrink-0 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
           <Plus className="h-4 w-4" />
           {t.newOpportunity}
