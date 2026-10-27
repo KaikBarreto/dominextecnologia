@@ -54,11 +54,12 @@ test('policies finais aplicam entitlement e mantêm portais públicos com menor 
     );
   }
 
-  assert.ok(
+  assert.equal(
     critical.some(
       (policy) => policy.relation.table === 'customers' && policy.roles.includes('anon'),
     ),
-    'policy anon de customers foi removida',
+    false,
+    'customers não deve expor SELECT anon direto; o portal usa get_portal_data SECURITY DEFINER',
   );
   assert.equal(
     critical.some(

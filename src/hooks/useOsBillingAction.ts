@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useCanLaunchOsRevenue } from '@/hooks/useCanLaunchOsRevenue';
+import { fetchOsRevenueSuggestedAmount } from '@/hooks/useOsRevenueSuggestedAmount';
 import type { OsRevenueContext } from '@/hooks/useOsFinishRevenuePrompt';
 
 /**
@@ -36,8 +37,8 @@ export interface OsBillingSource {
 export interface OsBillingAction {
   /** Pode ver a ação? `screen:finance` + `fn:os_finish_revenue`. */
   canBill: boolean;
-  /** Abre o diálogo pra esta OS. */
-  open: (os: OsBillingSource) => void;
+  /** Relê o total canônico e abre o diálogo pra esta OS. */
+  open: (os: OsBillingSource) => Promise<void>;
   /** Contexto da OS aberta no momento (null quando fechado). */
   context: OsRevenueContext | null;
   /** Estado do diálogo, pra quem precisa controlar o render. */
@@ -73,9 +74,22 @@ export function useOsBillingAction(): OsBillingAction {
 
   const [isOpen, setOpen] = useState(false);
   const [context, setContext] = useState<OsRevenueContext | null>(null);
+  // Duas ações rápidas podem terminar fora de ordem na rede. Só a abertura
+  // mais recente pode vencer; sem este token, clicar A e depois B poderia abrir
+  // B e logo sobrescrevê-la com a resposta atrasada de A.
+  const openRequestRef = useRef(0);
 
-  const open = useCallback((os: OsBillingSource) => {
-    setContext(buildOsBillingContext(os));
+  const open = useCallback(async (os: OsBillingSource) => {
+    const requestId = ++openRequestRef.current;
+    const baseContext = buildOsBillingContext(os);
+    const freshSuggestedAmount = await fetchOsRevenueSuggestedAmount(os.id);
+
+    if (requestId !== openRequestRef.current) return;
+
+    setContext({
+      ...baseContext,
+      suggestedAmount: freshSuggestedAmount ?? baseContext.suggestedAmount ?? null,
+    });
     setOpen(true);
   }, []);
 

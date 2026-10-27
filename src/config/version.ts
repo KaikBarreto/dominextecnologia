@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.53";
+export const APP_VERSION = "1.37.54";
 
 export const VERSION_NOTES =
-  "Configurações e usuários ganharam navegação mais clara, lista com detalhes e um formulário de permissões mais confortável.";
+  "Ao faturar uma Ordem de Serviço, o valor atualizado de serviços e materiais agora aparece preenchido automaticamente.";

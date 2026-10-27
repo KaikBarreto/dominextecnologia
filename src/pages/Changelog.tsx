@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.54',
+    date: '27 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Valor da OS preenchido corretamente no faturamento',
+        description: 'Ao concluir ou faturar uma Ordem de Serviço, o formulário financeiro agora busca o valor atualizado de serviços e materiais, evitando que o lançamento comece zerado ou com um total antigo.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.37.53',
     date: '27 de outubro de 2026',
     type: 'patch',

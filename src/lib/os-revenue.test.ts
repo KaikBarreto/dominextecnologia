@@ -53,10 +53,12 @@ describe('resolveOsRevenueSuggestedAmount', () => {
     expect(resolveOsRevenueSuggestedAmount(ctx({ suggestedAmount: 100 }))).toBe(100);
   });
 
-  it('devolve null para null/undefined/NaN', () => {
+  it('devolve null para null/undefined/NaN/infinito/negativo', () => {
     expect(resolveOsRevenueSuggestedAmount(ctx({ suggestedAmount: null }))).toBeNull();
     expect(resolveOsRevenueSuggestedAmount(ctx({ suggestedAmount: undefined }))).toBeNull();
     expect(resolveOsRevenueSuggestedAmount(ctx({ suggestedAmount: NaN }))).toBeNull();
+    expect(resolveOsRevenueSuggestedAmount(ctx({ suggestedAmount: Infinity }))).toBeNull();
+    expect(resolveOsRevenueSuggestedAmount(ctx({ suggestedAmount: -1 }))).toBeNull();
   });
 });
 
