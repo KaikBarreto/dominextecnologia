@@ -55,16 +55,30 @@ export interface NicheTool {
   icon: LucideIcon;
   title: string;
   description: string;
+  /** Cor operacional da ferramenta no app. Ausente enquanto ela for só teaser. */
+  accent?: string;
 }
 
 /** Refrigeração: ferramentas REAIS do app (fonte única), não reescrever. */
 const refrigeracaoTools: NicheTool[] = (TECH_TOOLS_BY_SEGMENT.refrigeracao ?? []).map(
-  (t) => ({ id: t.id, icon: t.icon, title: t.label, description: t.descricao })
+  (t) => ({
+    id: t.id,
+    icon: t.icon,
+    title: t.label,
+    description: t.descricao,
+    accent: t.accent,
+  })
 );
 
 /** Assistência técnica: ferramentas REAIS do app (fonte única), não reescrever. */
 const tiAssistenciaTools: NicheTool[] = (TECH_TOOLS_BY_SEGMENT.ti_assistencia ?? []).map(
-  (t) => ({ id: t.id, icon: t.icon, title: t.label, description: t.descricao })
+  (t) => ({
+    id: t.id,
+    icon: t.icon,
+    title: t.label,
+    description: t.descricao,
+    accent: t.accent,
+  })
 );
 
 /**

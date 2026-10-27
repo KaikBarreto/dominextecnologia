@@ -19,6 +19,8 @@ describe('localizeNicheTools', () => {
 
     expect(tools[0].title).toBe('Catalog');
     expect(tools[1].title).toBe('Thermal Load');
+    expect(tools[0].accent).toBe('hsl(217 91% 60%)');
+    expect(tools[1].accent).toBe('hsl(0 84% 60%)');
   });
 
   it('traduz também as ferramentas planejadas de cada segmento', () => {

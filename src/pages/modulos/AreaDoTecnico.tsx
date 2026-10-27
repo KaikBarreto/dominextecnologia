@@ -365,12 +365,16 @@ function SegmentToolExplorer() {
               <div className="grid sm:grid-cols-2">
                 {tools.map((tool, index) => {
                   const Icon = tool.icon;
+                  const toolColor = tool.accent ?? displayColor;
                   return (
                     <div
                       key={tool.id}
                       className={`flex gap-4 border-[#e5e8e5] py-5 dark:border-white/10 sm:pr-5 ${index < tools.length - 2 ? 'border-b' : ''} ${index % 2 === 1 ? 'sm:border-l sm:pl-6 sm:pr-0' : ''}`}
                     >
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-white" style={{ backgroundColor: displayColor }}>
+                      <span
+                        className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-white"
+                        style={{ backgroundColor: toolColor }}
+                      >
                         <Icon className="h-5 w-5" />
                       </span>
                       <div>

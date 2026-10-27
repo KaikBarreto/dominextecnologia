@@ -31,7 +31,7 @@ export default function TechnicianToolsOrbit() {
               style={
                 {
                   '--orbit-angle': `${index * (360 / orbitItems.length)}deg`,
-                  '--orbit-color': segment.color,
+                  '--orbit-color': tool?.accent ?? segment.color,
                 } as CSSProperties
               }
             >
