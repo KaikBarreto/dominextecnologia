@@ -101,7 +101,10 @@ vi.mock('@/components/ui/SearchableSelect', () => ({
   },
 }));
 
-import { QuoteFormDialog, buildMaterialItem } from './QuoteFormDialog';
+import { QuoteFormDialog, buildMaterialItem, calculateQuoteCommercialTotal } from './QuoteFormDialog';
+import { BDISummaryCard } from './BDISummaryCard';
+import { calculateCommercialPaymentOptions } from '@/lib/quote-commercial-total';
+import { calculateBDI } from '@/hooks/useBDICalculator';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -326,6 +329,84 @@ describe('buildMaterialItem — prova de não-regressão de preço (função pur
   it('sem nome (nem catálogo nem manual) devolve null — chamador filtra', () => {
     const item = buildMaterialItem({ inv: null, manualName: '  ', manualPrice: 10, quantity: 1, profitRate: 10, bdiFactor: 0.3 });
     expect(item).toBeNull();
+  });
+});
+
+describe('QuoteFormDialog — total comercial canônico', () => {
+  it('usa preço de venda, deslocamento e desconto nas parcelas, sem trocar pelo custo/BDI', () => {
+    const material = buildMaterialItem({
+      inv: { id: 'inv-total', name: 'Filtro', sale_price: 50, cost_price: 30 } as any,
+      manualName: null,
+      manualPrice: 0,
+      quantity: 2,
+      profitRate: 20,
+      bdiFactor: 0.7,
+    })!;
+    const bdi = calculateBDI({
+      taxRate: 5,
+      adminRate: 5,
+      profitRate: 20,
+      items: [{ totalCost: material.unit_total_cost * material.quantity }],
+      distanceKm: 10,
+      kmCost: 1.5,
+      cardDiscountRate: 5,
+      cardInstallments: 3,
+    });
+    const commercial = calculateQuoteCommercialTotal({
+      itemsTotal: material.total_price,
+      displacementCost: bdi.displacementCost,
+      discountType: 'percentual',
+      discountValue: 10,
+    });
+    const payment = calculateCommercialPaymentOptions(commercial.finalTotal, 5, 3);
+
+    expect(material.total_price).toBe(100);
+    expect(bdi.totalCost).toBe(75);
+    expect(bdi.finalPrice).not.toBe(commercial.finalTotal);
+    expect(commercial).toEqual({
+      subtotalBeforeDiscount: 115,
+      discountAmount: 11.5,
+      finalTotal: 103.5,
+    });
+    expect(payment.cashPrice).toBeCloseTo(98.325);
+    expect(payment.installmentValue).toBe(34.5);
+  });
+
+  it('trata o desconto em valor como quantia fixa', () => {
+    expect(calculateQuoteCommercialTotal({
+      itemsTotal: 100,
+      displacementCost: 15,
+      discountType: 'valor',
+      discountValue: 10,
+    })).toEqual({
+      subtotalBeforeDiscount: 115,
+      discountAmount: 10,
+      finalTotal: 105,
+    });
+  });
+
+  it('mostra total e parcela pelo valor comercial, mantendo BDI apenas como sugestão', () => {
+    act(() => {
+      root.render(
+        <BDISummaryCard data={{
+          bdiFactor: 0.7,
+          displacementCost: 15,
+          totalCost: 75,
+          finalPrice: 107.14,
+          weightedProfitRate: 20,
+          commercialTotal: 103.5,
+          cashDiscountRate: 5,
+          cardInstallments: 3,
+        }} />,
+      );
+    });
+
+    const text = container.textContent ?? '';
+    expect(text).toContain('Sugestão pelo BDI');
+    expect(text).toContain('Total do orçamento');
+    expect(text).toContain('R$\u00a0103,50');
+    expect(text).toContain('3x cartão');
+    expect(text).toContain('R$\u00a034,50');
   });
 });
 

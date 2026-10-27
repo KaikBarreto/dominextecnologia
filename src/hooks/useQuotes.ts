@@ -6,6 +6,7 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { MESSAGES } from '@/lib/i18n/messages';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { getQuoteCommercialTotal } from '@/lib/quote-commercial-total';
 
 export interface QuoteItem {
   id?: string;
@@ -397,12 +398,12 @@ export function useQuotes() {
     return q;
   });
 
-  const totalOpen = quotes.filter(q => q.status === 'enviado').reduce((s, q) => s + (q.total_value ?? 0), 0);
+  const totalOpen = quotes.filter(q => q.status === 'enviado').reduce((s, q) => s + getQuoteCommercialTotal(q), 0);
   const totalApproved = quotes.filter(q => q.status === 'aprovado').length;
   const totalSent = quotes.filter(q => ['enviado', 'aprovado', 'rejeitado'].includes(q.status)).length;
   const conversionRate = totalSent > 0 ? Math.round((totalApproved / totalSent) * 100) : 0;
   const avgTicket = totalApproved > 0
-    ? quotes.filter(q => q.status === 'aprovado').reduce((s, q) => s + (q.total_value ?? 0), 0) / totalApproved
+    ? quotes.filter(q => q.status === 'aprovado').reduce((s, q) => s + getQuoteCommercialTotal(q), 0) / totalApproved
     : 0;
 
   // BDI KPIs
@@ -411,8 +412,8 @@ export function useQuotes() {
     if (quotesWithCost.length === 0) return 0;
     const margins = quotesWithCost.map(q => {
       const cost = Number(q.total_cost ?? 0);
-      const price = Number(q.final_price ?? q.total_value ?? 0);
-      return cost > 0 ? ((price - cost) / price) * 100 : 0;
+      const price = getQuoteCommercialTotal(q);
+      return price > 0 && cost > 0 ? ((price - cost) / price) * 100 : 0;
     });
     return Math.round(margins.reduce((a, b) => a + b, 0) / margins.length);
   })();

@@ -57,6 +57,9 @@
 - White-label e multi-tenant nao podem vazar dados entre empresas/tenants.
 - Copy de UI, erro e email para usuario final deve ser PT-BR.
 - Hook e a fronteira do Supabase: componente nao deve chamar `supabase.from(...)` direto sem motivo claro.
+- Intervalos escolhidos em calendario devem comparar por dia civil inclusivo; horario em `from`/`to` nao pode excluir o primeiro ou o ultimo dia selecionado.
+- Cache React Query derivado deve compartilhar a raiz da entidade ou ser invalidado na mutation canonica junto com todas as leituras afetadas; nao depender apenas do callback do componente chamador.
+- Conceito financeiro deve ter uma fonte canonica explicita e consistente entre UI, persistencia, relatorios, cobranca e conversoes; metricas auxiliares precisam de nome distinto.
 - Toda mudanca de schema exige nova migration e revisao dos tipos gerados quando aplicavel.
 - Toda mudanca na API Publica (rotas, schemas, scopes, autenticacao, rate limits, erros, idempotencia, disponibilidade ou ciclo de chaves) exige, na mesma entrega, revisar e atualizar quando necessario `docs/api/openapi.v1.yaml`, a experiencia `/docs` em `src/pages/docs/**`, os Markdown publicos em `public/docs/**`, `public/docs/llms.txt` e os testes de contrato/exemplos. Mesmo quando nao houver alteracao textual, registrar que a consistencia foi verificada. Exemplos devem usar somente dados ficticios e nunca conter segredos reais.
 - Edge function privilegiada deve validar `Authorization` e permissao/role antes de agir.
@@ -80,6 +83,7 @@
 - Cabecalhos list-detail alinham ajuda, navegacao e acoes na mesma faixa quando houver espaco, evitando linhas vazias. Acoes frequentes da entidade aparecem antes dos dados secundarios.
 - Telas homologas nos produtos Dominex e EcoSistema compartilham estrutura, densidade e comportamento responsivo, preservando apenas campos e acoes proprios de cada produto.
 - Dashboards usam hierarquia, tipografia e respiro para agrupar informacao; evitar borda, fundo branco e sombra em toda secao. Reservar superficies fortes para o resumo ou a acao principal.
+- Valores monetarios operacionais nunca usam ellipsis: o container deve refluir, crescer ou adotar apresentacao compacta preservando o numero completo.
 - Graficos de pizza destacam a fatia em hover/foco e atenuam as demais; tooltip e legenda acompanham o destaque, permanecem legiveis e sem clipping, e a geometria final deve renderizar sem animacao inicial enganosa.
 
 ## Seguranca e Segredos

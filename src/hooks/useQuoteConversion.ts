@@ -11,7 +11,9 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { resolveSystemCategoryNameFresh } from '@/hooks/useFinancialCategories';
 import { SERVICE_ORDER_BUDGET_KEY, SERVICE_ORDER_SERVICE_TYPES_KEY } from '@/hooks/useServiceOrderBudget';
+import { SERVICE_ORDER_OPTIONS_KEY } from '@/hooks/useServiceOrderOptions';
 import type { QuoteEquipmentServiceAssignment } from '@/lib/quoteServiceDistribution';
+import { getQuoteCommercialTotal } from '@/lib/quote-commercial-total';
 
 interface ApproveQuoteParams {
   quote: Quote;
@@ -165,6 +167,7 @@ export function useQuoteConversion() {
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ['quotes'] });
     queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+    queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
     queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
     queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
     queryClient.invalidateQueries({ queryKey: ['account-balances'] });
@@ -225,7 +228,7 @@ export function useQuoteConversion() {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
 
-      const grossAmount = Number(quote.final_price ?? quote.total_value ?? 0);
+      const grossAmount = getQuoteCommercialTotal(quote);
 
       // ═══════════════════════ MODO "VOU RECEBER DEPOIS" ═══════════════════════
       if (approval.mode === 'a_receber') {

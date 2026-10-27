@@ -237,21 +237,27 @@ function CandidateRow({
   const { locale, currency } = useAppLocaleContext();
   const isCredit = candidate.transaction_type === 'entrada';
   const counterparty = candidate.customer_name || candidate.supplier_name || candidate.employee_name;
+  const description = candidate.description || '—';
+  const metadata = `${formatDateBR(candidate.due_date || candidate.paid_date || candidate.transaction_date)}${counterparty ? ` · ${counterparty}` : ''}`;
   return (
-    <div className="flex items-center justify-between gap-2 rounded-md border bg-card p-2.5">
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-foreground">{candidate.description || '—'}</p>
-        <p className="truncate text-xs text-muted-foreground">
-          {formatDateBR(candidate.due_date || candidate.paid_date || candidate.transaction_date)}
-          {counterparty ? ` · ${counterparty}` : ''}
-        </p>
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-card p-2.5">
+      <div className="min-w-0 basis-48 flex-1">
+        <p className="truncate text-sm font-medium text-foreground" title={description}>{description}</p>
+        <p className="truncate text-xs text-muted-foreground" title={metadata}>{metadata}</p>
       </div>
       <p className={cn('shrink-0 text-sm font-semibold tabular-nums', isCredit ? 'text-success' : 'text-destructive')}>
         {formatMoney(candidate.amount, currency, locale)}
       </p>
-      <Button size="sm" className="shrink-0 bg-success text-success-foreground hover:bg-success/90" disabled={isPending} onClick={onAction}>
+      <Button
+        size="sm"
+        className="max-w-full shrink-0 overflow-hidden bg-success text-success-foreground hover:bg-success/90"
+        disabled={isPending}
+        onClick={onAction}
+        aria-label={actionLabel}
+        title={actionLabel}
+      >
         {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-        {actionLabel}
+        <span className="min-w-0 truncate">{actionLabel}</span>
       </Button>
     </div>
   );
@@ -342,6 +348,9 @@ export function EntryActionPanel({ entry, accountId, kind, finalized, mutations,
   const suggestedCandidate = hasSuggestion
     ? suggestion.candidates.find((c) => c.id === suggestion.suggested_transaction_id) ?? suggestion.candidates[0] ?? null
     : null;
+  const suggestedMatchLabel = suggestedCandidate
+    ? t.confirmMatchWith.replace('{description}', suggestedCandidate.description || '—')
+    : t.confirmMatch;
 
   if (mode === 'candidates') {
     return (
@@ -461,7 +470,7 @@ export function EntryActionPanel({ entry, accountId, kind, finalized, mutations,
           {suggestedCandidate ? (
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="truncate text-sm text-foreground">{suggestedCandidate.description || '—'}</p>
+                <p className="truncate text-sm text-foreground" title={suggestedCandidate.description || '—'}>{suggestedCandidate.description || '—'}</p>
                 <p className="text-xs text-muted-foreground">{formatDateBR(suggestedCandidate.transaction_date)}</p>
               </div>
               <p className={cn('shrink-0 text-sm font-semibold tabular-nums', isCredit ? 'text-success' : 'text-destructive')}>
@@ -473,14 +482,16 @@ export function EntryActionPanel({ entry, accountId, kind, finalized, mutations,
           )}
           <Button
             size="sm"
-            className="w-full bg-success text-success-foreground hover:bg-success/90"
+            className="w-full min-w-0 max-w-full overflow-hidden bg-success text-success-foreground hover:bg-success/90"
             disabled={mutations.matchExisting.isPending}
+            aria-label={suggestedMatchLabel}
+            title={suggestedMatchLabel}
             onClick={() =>
               mutations.matchExisting.mutate({ entryId: entry.id, financialTransactionId: suggestion.suggested_transaction_id! })
             }
           >
             {mutations.matchExisting.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1 h-3.5 w-3.5" />}
-            {suggestedCandidate ? t.confirmMatchWith.replace('{description}', suggestedCandidate.description || '—') : t.confirmMatch}
+            <span className="min-w-0 truncate">{suggestedMatchLabel}</span>
           </Button>
         </div>
       )}
@@ -1030,6 +1041,12 @@ function CardIdleDestinations({
   const suggestedPayment = hasPaymentSuggestion
     ? payment.candidates.find((c) => c.id === payment.suggested_transaction_id) ?? payment.candidates[0] ?? null
     : null;
+  const purchaseMatchLabel = suggestedPurchase
+    ? t.confirmMatchWith.replace('{description}', suggestedPurchase.description || '—')
+    : t.confirmMatch;
+  const paymentMatchLabel = suggestedPayment
+    ? t.confirmMatchWith.replace('{description}', suggestedPayment.description || '—')
+    : t.confirmMatch;
 
   const cardDestinations = getOfferedDestinations('card', isCredit);
 
@@ -1048,7 +1065,7 @@ function CardIdleDestinations({
           {suggestedPurchase ? (
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="truncate text-sm text-foreground">{suggestedPurchase.description || '—'}</p>
+                <p className="truncate text-sm text-foreground" title={suggestedPurchase.description || '—'}>{suggestedPurchase.description || '—'}</p>
                 <p className="text-xs text-muted-foreground">{formatDateBR(suggestedPurchase.transaction_date)}</p>
               </div>
               <p className="shrink-0 text-sm font-semibold tabular-nums text-destructive">
@@ -1060,14 +1077,16 @@ function CardIdleDestinations({
           )}
           <Button
             size="sm"
-            className="w-full bg-success text-success-foreground hover:bg-success/90"
+            className="w-full min-w-0 max-w-full overflow-hidden bg-success text-success-foreground hover:bg-success/90"
             disabled={mutations.matchCardPurchase.isPending}
+            aria-label={purchaseMatchLabel}
+            title={purchaseMatchLabel}
             onClick={() =>
               mutations.matchCardPurchase.mutate({ entryId: entry.id, financialTransactionId: purchase.suggested_transaction_id! })
             }
           >
             {mutations.matchCardPurchase.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1 h-3.5 w-3.5" />}
-            {suggestedPurchase ? t.confirmMatchWith.replace('{description}', suggestedPurchase.description || '—') : t.confirmMatch}
+            <span className="min-w-0 truncate">{purchaseMatchLabel}</span>
           </Button>
         </div>
       )}
@@ -1096,7 +1115,7 @@ function CardIdleDestinations({
           {suggestedPayment ? (
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="truncate text-sm text-foreground">{suggestedPayment.description || '—'}</p>
+                <p className="truncate text-sm text-foreground" title={suggestedPayment.description || '—'}>{suggestedPayment.description || '—'}</p>
                 <p className="text-xs text-muted-foreground">{formatDateBR(suggestedPayment.paid_date || suggestedPayment.transaction_date)}</p>
               </div>
               <p className="shrink-0 text-sm font-semibold tabular-nums text-success">
@@ -1108,14 +1127,16 @@ function CardIdleDestinations({
           )}
           <Button
             size="sm"
-            className="w-full bg-success text-success-foreground hover:bg-success/90"
+            className="w-full min-w-0 max-w-full overflow-hidden bg-success text-success-foreground hover:bg-success/90"
             disabled={mutations.matchCardBillPayment.isPending}
+            aria-label={paymentMatchLabel}
+            title={paymentMatchLabel}
             onClick={() =>
               mutations.matchCardBillPayment.mutate({ entryId: entry.id, financialTransactionId: payment.suggested_transaction_id! })
             }
           >
             {mutations.matchCardBillPayment.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1 h-3.5 w-3.5" />}
-            {suggestedPayment ? t.confirmMatchWith.replace('{description}', suggestedPayment.description || '—') : t.confirmMatch}
+            <span className="min-w-0 truncate">{paymentMatchLabel}</span>
           </Button>
         </div>
       )}

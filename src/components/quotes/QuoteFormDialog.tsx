@@ -78,6 +78,29 @@ function parseDecimalInput(raw: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+export function calculateQuoteCommercialTotal({
+  itemsTotal,
+  displacementCost,
+  discountType,
+  discountValue,
+}: {
+  itemsTotal: number;
+  displacementCost: number;
+  discountType: 'percentual' | 'valor';
+  discountValue: number;
+}) {
+  const subtotalBeforeDiscount = Math.max(0, itemsTotal) + Math.max(0, displacementCost);
+  const discountAmount = discountType === 'percentual'
+    ? subtotalBeforeDiscount * (discountValue / 100)
+    : discountValue;
+
+  return {
+    subtotalBeforeDiscount,
+    discountAmount,
+    finalTotal: Math.max(0, subtotalBeforeDiscount - discountAmount),
+  };
+}
+
 /**
  * Monta um `FormQuoteItem` de MATERIAL — função pura, extraída do antigo
  * `handleAddMaterial` byte a byte igual (nenhum cálculo novo). É a MESMA
@@ -777,11 +800,12 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
   // ── Totals ──
   const totalItemsPrice = items.reduce((s, i) => s + i.total_price, 0);
-  const subtotalBeforeDiscount = totalItemsPrice + bdi.displacementCost;
-  const discountAmount = discountType === 'percentual'
-    ? subtotalBeforeDiscount * (discountValue / 100)
-    : discountValue;
-  const finalTotal = Math.max(0, subtotalBeforeDiscount - discountAmount);
+  const { discountAmount, finalTotal } = calculateQuoteCommercialTotal({
+    itemsTotal: totalItemsPrice,
+    displacementCost: bdi.displacementCost,
+    discountType,
+    discountValue,
+  });
 
   // ── Build payload (shared by submit + draft) ──
   const buildPayload = (status?: string): QuoteInput => ({
@@ -1028,7 +1052,12 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
           {tq.bdiAlertWarning}
         </NoticeBanner>
       )}
-      <BDISummaryCard data={{ ...bdi, cardInstallments: cardInstallmentsCfg }} />
+      <BDISummaryCard data={{
+        ...bdi,
+        commercialTotal: finalTotal,
+        cashDiscountRate: cardDiscountRateCfg,
+        cardInstallments: cardInstallmentsCfg,
+      }} />
     </section>
   );
 

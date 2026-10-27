@@ -21,6 +21,7 @@
 
 import { PARTIAL_RECEIPT_CATEGORY } from '@/lib/finance-constants';
 import { todayInTz } from '@/lib/timezone';
+import { isDateInCivilRange } from '@/lib/date-range';
 
 /**
  * Regime da DRE:
@@ -90,17 +91,16 @@ export function parseDreDate(raw: string): Date {
 
 /**
  * Corte de período da DRE. Range vazio (preset "Todos os tempos") passa tudo.
- * Bordas são INCLUSIVAS — o `DateRangeFilter` entrega `from` no começo do dia e
- * `to` no fim do dia.
+ * Bordas são INCLUSIVAS por DATA CIVIL. Alguns chamadores entregam `to` no
+ * começo do último dia (00:00), enquanto outros entregam no fim (23:59:59).
+ * Normalizar aqui impede que um lançamento `YYYY-MM-DD`, ancorado ao meio-dia,
+ * seja excluído só por essa diferença de horário.
  */
 export function isInDreRange(effective: string | null, range?: DreDateRange): boolean {
   if (!range?.from && !range?.to) return true;
   if (!effective) return false;
   const d = parseDreDate(effective);
-  if (isNaN(d.getTime())) return false;
-  if (range?.from && d < range.from) return false;
-  if (range?.to && d > range.to) return false;
-  return true;
+  return isDateInCivilRange(d, range);
 }
 
 /**

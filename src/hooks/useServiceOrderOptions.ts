@@ -18,7 +18,10 @@ import { useUserCompany } from '@/hooks/useUserCompany';
  * `SearchableSelect` é client-side em cima dessa janela.
  */
 
-export const SERVICE_ORDER_OPTIONS_KEY = 'service-order-options';
+// Compartilha a raiz com a listagem completa. Assim, qualquer fluxo legítimo
+// que cria/edita/remove OS e já invalida `['service-orders']` também atualiza
+// este seletor derivado; uma chave paralela deixava a opção antiga por até 60s.
+export const SERVICE_ORDER_OPTIONS_KEY = 'service-orders';
 
 /** Quantas OSs recentes entram no seletor. */
 const JANELA = 300;

@@ -1094,11 +1094,12 @@ export const crm = {
       avgProfit: 'Lucro Médio',
       totalCost: 'Custo Total',
       displacement: '+ Deslocamento',
-      finalPrice: 'Preço Final',
+      finalPrice: 'Sugestão pelo BDI',
+      commercialTotal: 'Total do orçamento',
       paymentOptions: 'Opções de Pagamento',
       cashDiscount: 'À vista ({pct}% desc.)',
       cardInstallments: '{n}x cartão',
-      marginNote: 'Margem calculada automaticamente',
+      marginNote: 'Custos e margem são referências internas',
     },
 
     // ── PDF de Proposta (VanguardaTemplate / AuroraTemplate / PrismaTemplate) ──
@@ -2204,11 +2205,12 @@ export const crm = {
       avgProfit: 'Avg. Profit',
       totalCost: 'Total Cost',
       displacement: '+ Travel',
-      finalPrice: 'Final Price',
+      finalPrice: 'BDI Suggested Price',
+      commercialTotal: 'Quote Total',
       paymentOptions: 'Payment Options',
       cashDiscount: 'Cash ({pct}% off)',
       cardInstallments: '{n}x card',
-      marginNote: 'Margin calculated automatically',
+      marginNote: 'Costs and margin are internal references',
     },
 
     proposalPdf: {
@@ -3301,11 +3303,12 @@ export const crm = {
       avgProfit: 'Ganancia Media',
       totalCost: 'Costo Total',
       displacement: '+ Desplazamiento',
-      finalPrice: 'Precio Final',
+      finalPrice: 'Precio sugerido por BDI',
+      commercialTotal: 'Total del presupuesto',
       paymentOptions: 'Opciones de Pago',
       cashDiscount: 'Al contado ({pct}% desc.)',
       cardInstallments: '{n}x tarjeta',
-      marginNote: 'Margen calculado automáticamente',
+      marginNote: 'Los costos y el margen son referencias internas',
     },
 
     proposalPdf: {
@@ -4397,11 +4400,12 @@ export const crm = {
       avgProfit: 'Marge Moyenne',
       totalCost: 'Coût Total',
       displacement: '+ Déplacement',
-      finalPrice: 'Prix Final',
+      finalPrice: 'Prix suggéré par le BDI',
+      commercialTotal: 'Total du devis',
       paymentOptions: 'Options de Paiement',
       cashDiscount: 'Au comptant ({pct}% remise)',
       cardInstallments: '{n}x carte',
-      marginNote: 'Marge calculée automatiquement',
+      marginNote: 'Les coûts et la marge sont des références internes',
     },
 
     proposalPdf: {
