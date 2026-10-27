@@ -1,4 +1,4 @@
-import { CalendarDays, CircleDollarSign, ClipboardCheck, UsersRound } from 'lucide-react';
+import { Building2, CalendarDays, ChevronRight, CircleDollarSign, ClipboardCheck, MapPin, UsersRound, Wrench } from 'lucide-react';
 
 const features = [
   { label: 'Ordens de serviço', icon: ClipboardCheck },
@@ -40,7 +40,37 @@ export function LoginShowcase() {
           </div>
           <div className="absolute bottom-[-3%] left-0 hidden w-[27%] min-w-[158px] overflow-hidden rounded-[30px] border-[6px] border-[#090b0c] bg-[#090b0c] shadow-[0_30px_55px_-22px_rgba(0,0,0,.95)] xl:block 2xl:min-w-[180px]">
             <div className="absolute left-1/2 top-1.5 z-10 h-4 w-[42%] -translate-x-1/2 rounded-full bg-[#090b0c]" />
-            <div className="aspect-[9/18.5] overflow-hidden rounded-[23px] bg-white"><img src="/guia-tecnico/img/t6-agenda.jpg" alt="Agenda do Dominex" className="h-full w-full object-cover object-left-top" /></div>
+            <div className="aspect-[9/18.5] overflow-hidden rounded-[23px] bg-[#f5f7f8] text-[#171a1b]" role="img" aria-label="Preenchimento de uma ordem de serviço no Dominex">
+              <div className="flex h-full flex-col px-3 pb-3 pt-7">
+                <div className="flex items-center justify-between border-b border-[#dfe4e6] pb-2">
+                  <span className="text-[7px] font-bold uppercase tracking-[0.12em] text-[#596367]">Nova ordem de serviço</span>
+                  <span className="rounded-full bg-[#00C597] px-2 py-0.5 text-[7px] font-bold text-[#07110f]">1 de 3</span>
+                </div>
+                <div className="pb-2 pt-2.5">
+                  <strong className="block font-montserrat text-[12px] leading-tight tracking-[-0.025em]">Cliente e serviço</strong>
+                  <span className="mt-0.5 block text-[7px] leading-tight text-[#6f7a7e]">Preencha os dados do atendimento.</span>
+                </div>
+                <div className="grid gap-1.5">
+                  <div className="rounded-[8px] border border-[#d9dfe1] bg-white px-2 py-1.5 shadow-sm">
+                    <span className="flex items-center gap-1 text-[6px] font-semibold uppercase tracking-[0.08em] text-[#788286]"><Building2 className="h-2.5 w-2.5 text-[#00a980]" />Cliente</span>
+                    <strong className="mt-0.5 block truncate text-[8px] font-semibold">Mercado Boa Vista</strong>
+                  </div>
+                  <div className="rounded-[8px] border border-[#d9dfe1] bg-white px-2 py-1.5 shadow-sm">
+                    <span className="flex items-center gap-1 text-[6px] font-semibold uppercase tracking-[0.08em] text-[#788286]"><Wrench className="h-2.5 w-2.5 text-[#00a980]" />Tipo de serviço</span>
+                    <strong className="mt-0.5 block truncate text-[8px] font-semibold">Manutenção preventiva</strong>
+                  </div>
+                  <div className="rounded-[8px] border border-[#d9dfe1] bg-white px-2 py-1.5 shadow-sm">
+                    <span className="flex items-center gap-1 text-[6px] font-semibold uppercase tracking-[0.08em] text-[#788286]"><MapPin className="h-2.5 w-2.5 text-[#00a980]" />Local do atendimento</span>
+                    <strong className="mt-0.5 block truncate text-[8px] font-semibold">Unidade Centro</strong>
+                  </div>
+                  <div className="rounded-[8px] border border-[#d9dfe1] bg-white px-2 py-1.5 shadow-sm">
+                    <span className="flex items-center gap-1 text-[6px] font-semibold uppercase tracking-[0.08em] text-[#788286]"><ClipboardCheck className="h-2.5 w-2.5 text-[#00a980]" />Equipamento</span>
+                    <strong className="mt-0.5 block truncate text-[8px] font-semibold">Split 12.000 BTU</strong>
+                  </div>
+                </div>
+                <button type="button" tabIndex={-1} className="mt-auto flex h-8 w-full items-center justify-center gap-1 rounded-[8px] bg-[#00C597] text-[8px] font-bold text-[#07110f] shadow-[0_8px_18px_-10px_rgba(0,197,151,.8)]">Continuar <ChevronRight className="h-3 w-3" /></button>
+              </div>
+            </div>
           </div>
         </div>
 

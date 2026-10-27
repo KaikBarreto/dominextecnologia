@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.52',
+    date: '27 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ordem de serviço em destaque no acesso',
+        description: 'A prévia do celular na tela de entrada agora mostra o preenchimento de uma OS com cliente, serviço, local e equipamento, sem recortes vazios ou difíceis de reconhecer.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.51',
     date: '27 de outubro de 2026',
     type: 'patch',
