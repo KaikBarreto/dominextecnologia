@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.52";
+export const APP_VERSION = "1.37.53";
 
 export const VERSION_NOTES =
-  "A vitrine de acesso agora mostra o preenchimento de uma ordem de serviço no celular, com conteúdo legível e alinhado ao uso real do Dominex.";
+  "Configurações e usuários ganharam navegação mais clara, lista com detalhes e um formulário de permissões mais confortável.";

@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.53',
+    date: '27 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Configurações e acessos mais fáceis de navegar',
+        description: 'As áreas de Configurações e Usuários agora usam abas mais claras, lista com detalhes e um formulário maior para revisar dados e permissões com mais conforto.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.52',
     date: '27 de outubro de 2026',
     type: 'patch',

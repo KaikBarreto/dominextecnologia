@@ -12,7 +12,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { useEmployees } from '@/hooks/useEmployees';
@@ -175,6 +174,7 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
       onOpenChange={onOpenChange}
       title={isEditing ? tf.titleEdit : tf.titleCreate}
       description={isEditing ? tf.descEdit : tf.descCreate}
+      className="sm:max-w-[1000px]"
       footer={
         <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">{tf.cancel}</Button>
@@ -185,7 +185,8 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
         </div>
       }
     >
-      <div className="space-y-6 pb-4 pr-1">
+      <div className="grid gap-0 pb-4 pr-1 lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] lg:divide-x lg:divide-border">
+        <div className="space-y-6 lg:pr-6">
           {/* Photo + Basic Info */}
           <div className="grid grid-cols-1 gap-4">
             {/* Photo Upload */}
@@ -333,11 +334,10 @@ export function UserFormDialog({ open, onOpenChange, onSubmit, presets, editingU
               {form.role === 'tecnico' ? tf.descTech : tf.descInternal}
             </p>
           </div>
-
-          <Separator />
+        </div>
 
           {/* Permissões: perfis rápidos + telas com as ações de cada uma dentro */}
-          <div className="space-y-3">
+          <div className="mt-6 space-y-3 border-t border-border pt-6 lg:mt-0 lg:border-t-0 lg:pl-6 lg:pt-0">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-primary" />
               <h3 className="text-[13px] font-semibold uppercase tracking-widest text-foreground/85">{tf.sectionPermissions}</h3>

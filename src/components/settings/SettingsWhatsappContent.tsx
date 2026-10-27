@@ -379,12 +379,10 @@ export function WhatsappSectionNav({
     section === 'inbox' || section === 'campaigns'
     || (section !== 'connection' && !isConnected);
   return (
-    /* Underline é o padrão de navegação por abas do sistema (mesmo componente
-       das abas WhatsApp/Cobranças logo acima). Antes era uma grade de pills com
-       borda dentro de uma caixa com borda, que somava mais duas molduras numa
-       tela que já tinha molduras demais. */
+    /* Terceiro nível dentro de Configurações > Integrações > WhatsApp: controle
+       segmentado, não outra barra underline. Assim cada profundidade mantém uma
+       forma própria e duas barras iguais nunca ficam coladas. */
     <MobilePillTabs
-      variant="underline"
       tabs={sections.map((section) => {
         const Icon = SECTION_ICONS[section];
         return { value: section, label: labels[section], icon: <Icon className="h-4 w-4 shrink-0" /> };

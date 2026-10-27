@@ -3,18 +3,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
-import { Search, Shield, Settings2, UserPlus, Pencil, UserX, UserCheck, Trash2, ShieldCheck, Plus, LayoutList, LayoutGrid, Users as UsersIcon } from 'lucide-react';
+import { Search, Settings2, UserPlus, ShieldCheck, Plus, Users as UsersIcon } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useUsers, type UserWithRole } from '@/hooks/useUsers';
@@ -27,8 +22,8 @@ import { UserFormDialog } from '@/components/users/UserFormDialog';
 import { UserLimitModal } from '@/components/UserLimitModal';
 import { useEmployees } from '@/hooks/useEmployees';
 import { PermissionPresetDialog } from '@/components/users/PermissionPresetDialog';
-import { UserListMobile } from '@/components/users/UserListMobile';
 import { PresetListMobile } from '@/components/users/PresetListMobile';
+import { UsersMasterDetail } from '@/components/users/UsersMasterDetail';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FABButton } from '@/components/mobile/FABButton';
 import { getErrorMessage, getInvokeErrorMessage } from '@/utils/errorMessages';
@@ -38,7 +33,7 @@ export default function Users() {
   const isMobile = useIsMobile();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.settings.users;
-  const { users, isLoading, updateUserRole, canManageRoles, currentUserRole } = useUsers();
+  const { users, isLoading, error: usersError, updateUserRole, canManageRoles, currentUserRole } = useUsers();
   const { userPermissions, upsertPermissions } = useUserPermissions();
   const { presets, createPreset, updatePreset, deletePreset } = usePermissionPresets();
   const { maxUsers, currentUserCount, canAddUser } = useCompanyModules();
@@ -56,17 +51,6 @@ export default function Users() {
   const [deletingPreset, setDeletingPreset] = useState<PermissionPreset | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<{ src: string; alt: string } | null>(null);
   const [userLimitOpen, setUserLimitOpen] = useState(false);
-  // View mode (lista é o default) — persistido em localStorage, igual EcoSistema.
-  const [viewMode, setViewMode] = useState<'list' | 'cards'>(() => {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem('users-view-mode') : null;
-    return saved === 'cards' || saved === 'list' ? saved : 'list';
-  });
-  const handleViewModeChange = (value: string) => {
-    if (value === 'list' || value === 'cards') {
-      setViewMode(value);
-      localStorage.setItem('users-view-mode', value);
-    }
-  };
 
   // Inicia criação de usuário respeitando o limite do plano. No limite → modal de
   // "Contratar mais usuários" (que leva ao Gerenciar Meu Plano focado em extras).
@@ -79,18 +63,10 @@ export default function Users() {
     setUserFormOpen(true);
   };
 
-  const filteredUsers = users.filter(u =>
-    fuzzyIncludes(u.full_name, searchQuery) ||
-    fuzzyIncludes(u.phone, searchQuery)
-  );
-
   const filteredPresets = presets.filter(p =>
     fuzzyIncludes(p.name, searchQuery) ||
     fuzzyIncludes(p.description, searchQuery)
   );
-
-  const getInitials = (name: string) =>
-    name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
   const getUserPermission = (userId: string) =>
     userPermissions.find(p => p.user_id === userId);
@@ -330,8 +306,6 @@ export default function Users() {
     setUserFormOpen(true);
   };
 
-  const isCurrentUser = (profile: UserWithRole) => profile.user_id === user?.id;
-
   // Conta ativos pelo status da CONTA (profiles.is_active). undefined = ativo.
   const activeCount = users.filter(u => u.is_active !== false).length;
 
@@ -387,6 +361,26 @@ export default function Users() {
     }
   };
 
+  const usersMasterDetail = (
+    <UsersMasterDetail
+      users={users}
+      isLoading={isLoading}
+      error={usersError}
+      currentUserId={user?.id}
+      canManageRoles={canManageRoles}
+      canAddUser={canAddUser}
+      userPermissions={userPermissions}
+      presets={presets}
+      onRetry={() => void queryClient.refetchQueries({ queryKey: ['users'] })}
+      onCreate={startCreateUser}
+      onEdit={(profile) => void openEditUser(profile)}
+      onDeactivate={(profile) => void handleDeactivateUser(profile)}
+      onReactivate={(profile) => void handleReactivateUser(profile)}
+      onDelete={setDeletingUser}
+      onPreviewPhoto={(src, alt) => setPreviewPhoto({ src, alt })}
+    />
+  );
+
   // ---------------------------------------------------------------------------
   // MOBILE — 2 tabs (Usuários / Presets), padrão app nativo.
   // ---------------------------------------------------------------------------
@@ -411,33 +405,20 @@ export default function Users() {
             onTabChange={(v) => setActiveTab(v as 'users' | 'presets')}
           />
 
-          {/* Busca compartilhada (placeholder muda conforme tab) */}
-          <div className="relative mt-3">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={activeTab === 'users' ? t.searchPlaceholderUsers : t.searchPlaceholderPresets}
-              className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+          {activeTab === 'presets' ? (
+            <div className="relative mt-3">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder={t.searchPlaceholderPresets}
+                className="pl-10"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          ) : null}
 
           <TabsContent value="users" className="mt-3">
-            <UserListMobile
-              users={filteredUsers}
-              isLoading={isLoading}
-              searchQuery={searchQuery}
-              currentUserId={user?.id}
-              canManageRoles={canManageRoles}
-              canAddUser={canAddUser}
-              userPermissions={userPermissions}
-              presets={presets}
-              onEdit={openEditUser}
-              onDeactivate={handleDeactivateUser}
-              onReactivate={handleReactivateUser}
-              onDelete={(u) => setDeletingUser(u)}
-              onPreviewPhoto={(src, alt) => setPreviewPhoto({ src, alt })}
-            />
+            {usersMasterDetail}
           </TabsContent>
 
           <TabsContent value="presets" className="mt-3">
@@ -560,10 +541,6 @@ export default function Users() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <ToggleGroup type="single" value={viewMode} onValueChange={handleViewModeChange}>
-            <ToggleGroupItem value="list" aria-label={t.viewList}><LayoutList className="h-4 w-4" /></ToggleGroupItem>
-            <ToggleGroupItem value="cards" aria-label={t.viewCards}><LayoutGrid className="h-4 w-4" /></ToggleGroupItem>
-          </ToggleGroup>
           <Button variant="outline" size="sm" onClick={() => setPresetDialogOpen(true)}>
             <Settings2 className="h-4 w-4 mr-2" />
             {t.btnSettings}
@@ -577,185 +554,19 @@ export default function Users() {
         </div>
       </div>
 
-      <div className="space-y-4">
-          {/* Aviso de limite atingido: convida a contratar mais usuários */}
-          {!canAddUser && canManageRoles && (
-            <NoticeBanner
-              variant="warning"
-              icon={UsersIcon}
-              title={t.limitTitle.replace('{count}', String(currentUserCount)).replace('{max}', String(maxUsers))}
-              action={
-                <Button size="sm" onClick={() => setUserLimitOpen(true)}>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  {t.btnHireMore}
-                </Button>
-              }
-            >
-              {t.limitDesc}
-            </NoticeBanner>
-          )}
+      {!canAddUser && canManageRoles ? (
+        <NoticeBanner
+          variant="warning"
+          icon={UsersIcon}
+          title={t.limitTitle.replace('{count}', String(currentUserCount)).replace('{max}', String(maxUsers))}
+          action={<Button size="sm" onClick={() => setUserLimitOpen(true)}><UserPlus className="mr-2 h-4 w-4" />{t.btnHireMore}</Button>}
+        >
+          {t.limitDesc}
+        </NoticeBanner>
+      ) : null}
 
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={t.searchPlaceholderDesktop}
-              className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+      {usersMasterDetail}
 
-          {/* Users List */}
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map(i => (
-                <Card key={i}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
-                      <Skeleton className="h-12 w-12 rounded-full" />
-                      <div className="flex-1 space-y-2">
-                        <Skeleton className="h-4 w-40" />
-                        <Skeleton className="h-3 w-24" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : filteredUsers.length === 0 ? (
-            <Card>
-              <CardContent className="py-12">
-                <p className="text-center text-muted-foreground">
-                  {searchQuery ? t.emptyFiltered : t.emptyAll}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className={viewMode === 'cards' ? 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3' : 'space-y-3'}>
-              {filteredUsers.map((userProfile) => {
-                const perm = getUserPermission(userProfile.user_id);
-                const isActive = userProfile.is_active !== false;
-                const permCount = perm?.permissions?.length || 0;
-                const preset = perm?.preset_id ? presets.find(p => p.id === perm.preset_id) : null;
-                // Curinga '*' (Acesso Total dinâmico) OU snapshot legado com todas as chaves.
-                // FRÁGIL: derivar "tem tudo" de CONTAGEM quebra sozinho a cada permissão
-                // nova no catálogo (o total sobe, o snapshot do usuário não). Critério
-                // confiável = curinga '*' ou comparação por CONTEÚDO (allKeys.every).
-                // Mantido só como fallback pra snapshot legado. Ver v1.22.x / fn:delete_finance.
-                const isAllPerms = (perm?.permissions?.includes('*') ?? false) || permCount >= getAllPermissionKeys().length;
-
-                return (
-                  <Card key={userProfile.id} className={`hover:shadow-md transition-shadow ${!isActive ? 'opacity-60' : ''}`}>
-                    <CardContent className="p-4">
-                      <div className={cn(
-                        'flex justify-between gap-3',
-                        viewMode === 'cards'
-                          ? 'flex-col'
-                          : 'flex-col sm:flex-row sm:items-center',
-                      )}>
-                        {/* Avatar + Info */}
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div
-                            className="shrink-0 cursor-pointer"
-                            onClick={() => userProfile.avatar_url && setPreviewPhoto({ src: userProfile.avatar_url, alt: userProfile.full_name })}
-                          >
-                            <Avatar className="h-12 w-12 border-2 border-border">
-                              <AvatarImage src={userProfile.avatar_url || undefined} alt={userProfile.full_name} />
-                              <AvatarFallback className="bg-muted text-muted-foreground">
-                                {getInitials(userProfile.full_name)}
-                              </AvatarFallback>
-                            </Avatar>
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2 mb-1">
-                              <h3 className="font-semibold text-base truncate">{userProfile.full_name}</h3>
-                              {isCurrentUser(userProfile) && (
-                                <Badge variant="outline" className="text-xs">{t.badgeYou}</Badge>
-                              )}
-                              {isActive ? (
-                                <Badge className="bg-primary text-primary-foreground text-xs">{t.badgeActive}</Badge>
-                              ) : (
-                                <Badge className="bg-destructive hover:bg-destructive text-white text-xs">{t.badgeInactive}</Badge>
-                              )}
-                            </div>
-                            <p className="text-sm text-muted-foreground truncate">{userProfile.phone || '—'}</p>
-                            <div className="flex flex-wrap items-center gap-2 mt-2">
-                              <Badge className="bg-secondary text-secondary-foreground border-0 text-xs">
-                                <Shield className="h-3 w-3 mr-1.5" />
-                                {preset ? preset.name : isAllPerms ? t.badgeAllPerms : t.badgePermCount.replace('{count}', String(permCount))}
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        {canManageRoles && (
-                          <div className={cn(
-                            'flex gap-2 shrink-0',
-                            viewMode === 'cards' ? 'justify-end pt-1 border-t mt-1' : 'self-end sm:self-center',
-                          )}>
-                            <Button
-                              variant="edit-ghost"
-                              size="sm"
-                              onClick={() => openEditUser(userProfile)}
-                              title={t.btnEdit}
-                            >
-                              <Pencil className="h-4 w-4 sm:mr-2" />
-                              <span className="hidden sm:inline">{t.btnEdit}</span>
-                            </Button>
-                            {!isCurrentUser(userProfile) && (
-                              <>
-                                {isActive ? (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleDeactivateUser(userProfile)}
-                                    title={t.btnDeactivate}
-                                    className="hover:bg-orange-500 hover:text-white hover:border-orange-500"
-                                  >
-                                    <UserX className="h-4 w-4 sm:mr-2" />
-                                    <span className="hidden sm:inline">{t.btnDeactivate}</span>
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleReactivateUser(userProfile)}
-                                    disabled={!canAddUser}
-                                    title={canAddUser
-                                      ? t.btnReactivate
-                                      : t.btnReactivateDisabledTitle}
-                                    className="hover:bg-green-600 hover:text-white hover:border-green-600"
-                                  >
-                                    <UserCheck className="h-4 w-4 sm:mr-2" />
-                                    <span className="hidden sm:inline">{t.btnReactivate}</span>
-                                  </Button>
-                                )}
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setDeletingUser(userProfile)}
-                                  title={t.btnDeleteTitle}
-                                  className="hover:bg-destructive hover:text-white hover:border-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-      </div>
-
-      {/* Dialogs */}
       <UserFormDialog
         open={userFormOpen}
         onOpenChange={(open) => { setUserFormOpen(open); if (!open) setEditingUser(null); }}
@@ -773,41 +584,23 @@ export default function Users() {
         onDelete={async (id) => { await deletePreset.mutateAsync(id); }}
       />
 
-      {/* Delete Confirmation */}
       <AlertDialog open={!!deletingUser} onOpenChange={(open) => { if (!open) setDeletingUser(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t.deleteUserTitle}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t.deleteUserDesc.replace('{name}', deletingUser?.full_name ?? '')}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{t.deleteUserDesc.replace('{name}', deletingUser?.full_name ?? '')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteLoading}>{t.cancel}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteUser}
-              disabled={deleteLoading}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={handleDeleteUser} disabled={deleteLoading} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleteLoading ? t.deleteLoading : t.deletePermanently}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <ImagePreviewModal
-        src={previewPhoto?.src || ''}
-        alt={previewPhoto?.alt}
-        open={!!previewPhoto}
-        onClose={() => setPreviewPhoto(null)}
-      />
-
-      <UserLimitModal
-        open={userLimitOpen}
-        onOpenChange={setUserLimitOpen}
-        currentUserCount={currentUserCount}
-        maxUsers={maxUsers}
-      />
+      <ImagePreviewModal src={previewPhoto?.src || ''} alt={previewPhoto?.alt} open={!!previewPhoto} onClose={() => setPreviewPhoto(null)} />
+      <UserLimitModal open={userLimitOpen} onOpenChange={setUserLimitOpen} currentUserCount={currentUserCount} maxUsers={maxUsers} />
     </div>
   );
 }

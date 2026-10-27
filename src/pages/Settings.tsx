@@ -1944,6 +1944,7 @@ export default function Settings() {
           tabs={visibleTabs}
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          variant="underline"
         >
           {renderContent()}
         </SettingsSidebarLayout>
