@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { TrendingUp, CreditCard, ArrowRight } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
 import { useOsBillingState, OS_BILLING_STATE_KEY } from '@/hooks/useOsBillingState';
+import { OS_BILLING_FLAGS_KEY } from '@/hooks/useOsBillingFlags';
 import { OS_REVENUE_SUMMARY_KEY } from '@/hooks/useOsRevenueSummary';
 import type { OsRevenueContext } from '@/hooks/useOsFinishRevenuePrompt';
 import { buildOsRevenueDescription, buildOsRevenuePrefill } from '@/lib/os-revenue';
@@ -78,6 +79,23 @@ interface FlowProps {
 
 type OsBillingStep = 'choice' | 'revenue' | 'charge';
 
+/**
+ * Mantém sincronizadas as três leituras do faturamento da OS:
+ * resumo, diálogo individual e selos em lote da lista/quadro/agenda.
+ *
+ * O cache dos selos inclui empresa e o lote de IDs na chave; por isso a
+ * invalidação usa apenas o prefixo raiz, cobrindo todas as visões ativas sem
+ * tentar reconstruir `Map`s otimistas com respostas parciais da cobrança.
+ */
+export function invalidateOsBillingQueries(
+  queryClient: Pick<QueryClient, 'invalidateQueries'>,
+  serviceOrderId: string,
+) {
+  queryClient.invalidateQueries({ queryKey: [OS_REVENUE_SUMMARY_KEY] });
+  queryClient.invalidateQueries({ queryKey: [OS_BILLING_STATE_KEY, serviceOrderId] });
+  queryClient.invalidateQueries({ queryKey: [OS_BILLING_FLAGS_KEY] });
+}
+
 function OsBillingFlow({ open, onOpenChange, context }: FlowProps) {
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.osBilling;
@@ -127,8 +145,7 @@ function OsBillingFlow({ open, onOpenChange, context }: FlowProps) {
     context.osNumber != null ? t.osLabel.replace('{number}', String(context.osNumber)) : null;
 
   const invalidateBillingQueries = () => {
-    queryClient.invalidateQueries({ queryKey: [OS_REVENUE_SUMMARY_KEY] });
-    queryClient.invalidateQueries({ queryKey: [OS_BILLING_STATE_KEY, context.serviceOrderId] });
+    invalidateOsBillingQueries(queryClient, context.serviceOrderId);
   };
 
   const goToFinanceScreen = (path: string) => {

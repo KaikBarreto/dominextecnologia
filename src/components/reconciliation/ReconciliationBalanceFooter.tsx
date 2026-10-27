@@ -90,13 +90,13 @@ export function ReconciliationBalanceFooter({
 
   return (
     <div className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4">
-        <div className={cn('grid gap-3 sm:gap-6', hasMatchedDiffs ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3')}>
-          <div className="min-w-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 sm:gap-4 sm:p-4">
+        <div className="flex min-w-0 flex-1 flex-wrap gap-x-6 gap-y-3">
+          <div className="min-w-max flex-1">
             <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">
               {label1}
             </p>
-            <p className="mt-0.5 truncate text-sm font-semibold tabular-nums sm:text-base">
+            <p className="mt-0.5 whitespace-nowrap text-sm font-semibold tabular-nums sm:text-base">
               {billTotalIsCreditOnly ? formatMoney(0, currency, locale) : fmt(value1)}
             </p>
             {billTotalIsCreditOnly && (
@@ -106,20 +106,20 @@ export function ReconciliationBalanceFooter({
             )}
           </div>
 
-          <div className="min-w-0">
+          <div className="min-w-max flex-1">
             <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">
               {label2}
             </p>
-            <p className="mt-0.5 truncate text-sm font-semibold tabular-nums sm:text-base">{fmt(value2)}</p>
+            <p className="mt-0.5 whitespace-nowrap text-sm font-semibold tabular-nums sm:text-base">{fmt(value2)}</p>
           </div>
 
-          <div className="min-w-0">
+          <div className="min-w-max flex-1">
             <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">
               {label3}
             </p>
             <p
               className={cn(
-                'mt-0.5 truncate text-sm font-bold tabular-nums sm:text-base',
+                'mt-0.5 whitespace-nowrap text-sm font-bold tabular-nums sm:text-base',
                 isZeroed ? 'text-success' : 'text-destructive',
               )}
             >
@@ -128,11 +128,11 @@ export function ReconciliationBalanceFooter({
           </div>
 
           {hasMatchedDiffs && (
-            <div className="min-w-0">
+            <div className="min-w-max flex-1">
               <p className="text-[11px] font-medium uppercase tracking-wide text-warning sm:text-xs">
                 {t.matchedDifferences}
               </p>
-              <p className="mt-0.5 flex items-center gap-1 truncate text-sm font-semibold tabular-nums text-warning sm:text-base">
+              <p className="mt-0.5 flex items-center gap-1 whitespace-nowrap text-sm font-semibold tabular-nums text-warning sm:text-base">
                 {fmt(matchedValueDifferenceTotal)}
                 <span className="text-xs font-normal text-muted-foreground">({matchedValueDifferenceCount})</span>
               </p>
@@ -201,17 +201,17 @@ export function ReconciliationBalanceFooter({
           <div className="grid grid-cols-3 gap-3 rounded-md border bg-muted/30 p-3">
             <div className="min-w-0">
               <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label1}</p>
-              <p className="mt-0.5 truncate text-sm font-semibold tabular-nums">
+              <p className="mt-0.5 whitespace-nowrap text-sm font-semibold tabular-nums">
                 {billTotalIsCreditOnly ? formatMoney(0, currency, locale) : fmt(value1)}
               </p>
             </div>
             <div className="min-w-0">
               <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label2}</p>
-              <p className="mt-0.5 truncate text-sm font-semibold tabular-nums">{fmt(value2)}</p>
+              <p className="mt-0.5 whitespace-nowrap text-sm font-semibold tabular-nums">{fmt(value2)}</p>
             </div>
             <div className="min-w-0">
               <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label3}</p>
-              <p className={cn('mt-0.5 truncate text-sm font-semibold tabular-nums', isZeroed ? 'text-success' : 'text-destructive')}>
+              <p className={cn('mt-0.5 whitespace-nowrap text-sm font-semibold tabular-nums', isZeroed ? 'text-success' : 'text-destructive')}>
                 {fmt(value3)}
               </p>
             </div>

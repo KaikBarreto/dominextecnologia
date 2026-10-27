@@ -7,6 +7,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { MESSAGES, type Messages } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { getQuoteCommercialTotal } from '@/lib/quote-commercial-total';
 import {
   FileText, Plus, Search, Pencil, Trash2, Eye, CheckCircle2, XCircle,
   ExternalLink, DollarSign, ArrowRight, Settings2, TrendingUp,
@@ -651,7 +652,7 @@ function QuotesList() {
             {pagination.paginatedItems.map((q) => {
               const StatusIcon = STATUS_ICONS[q.status] ?? FileText;
               const statusHex = STATUS_HEX[q.status] ?? '#64748b';
-              const price = Number(q.final_price ?? q.total_value ?? 0);
+              const price = getQuoteCommercialTotal(q);
 
               return (
                 <MobileListItem
@@ -727,7 +728,7 @@ function QuotesList() {
                 <SortableTableHead sortKey="customers.name" sortConfig={sortConfig} onSort={handleSort}>{tq.colCustomer}</SortableTableHead>
                 <SortableTableHead sortKey="created_at" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">{tq.colDate}</SortableTableHead>
                 <SortableTableHead sortKey="total_cost" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">{tq.colCost}</SortableTableHead>
-                <SortableTableHead sortKey="final_price" sortConfig={sortConfig} onSort={handleSort}>{tq.colValue}</SortableTableHead>
+                <SortableTableHead sortKey="total_value" sortConfig={sortConfig} onSort={handleSort}>{tq.colValue}</SortableTableHead>
                 <TableHead className="hidden lg:table-cell">{tq.colMargin}</TableHead>
                 <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>{tq.colStatus}</SortableTableHead>
                 <TableHead className="text-right">{tq.colActions}</TableHead>
@@ -736,7 +737,7 @@ function QuotesList() {
             <TableBody>
               {pagination.paginatedItems.map((q) => {
                 const cost = Number(q.total_cost ?? 0);
-                const price = Number(q.final_price ?? q.total_value ?? 0);
+                const price = getQuoteCommercialTotal(q);
                 const margin = price > 0 && cost > 0 ? Math.round(((price - cost) / price) * 100) : null;
                 return (
                 <TableRow key={q.id}>
@@ -907,7 +908,7 @@ function QuotesList() {
         open={!!approvingQuote}
         onOpenChange={(v) => { if (!v) setApprovingQuote(null); }}
         quoteNumber={approvingQuote?.quote_number ?? null}
-        amount={Number(approvingQuote?.final_price ?? approvingQuote?.total_value ?? 0)}
+        amount={getQuoteCommercialTotal(approvingQuote)}
         defaultMode={companySettings?.quote_approval_revenue_mode ?? 'a_receber'}
         defaultInstallments={approvingQuote?.receivable_installments ?? undefined}
         defaultFirstDueDate={approvingQuote?.receivable_first_due_date ?? null}
@@ -1001,7 +1002,7 @@ function QuotesList() {
           onOpenChange={(v) => { if (!v) setChargeQuote(null); }}
           presetCustomerId={chargeQuote.customer_id ?? undefined}
           lockCustomer
-          presetAmount={Number(chargeQuote.final_price ?? chargeQuote.total_value ?? 0) || undefined}
+          presetAmount={getQuoteCommercialTotal(chargeQuote) || undefined}
           presetDescription={`Orçamento Nº ${chargeQuote.quote_number}`}
           source={{ type: 'quote', id: chargeQuote.id }}
         />

@@ -24,6 +24,7 @@ import {
 } from '@/hooks/useServiceOrderBudget';
 import type { ServiceOrderBudgetItem } from '@/lib/serviceOrderBudget';
 import { normalizeServiceOrderSchedulePlan } from '@/lib/serviceOrderSchedule';
+import { SERVICE_ORDER_OPTIONS_KEY } from '@/hooks/useServiceOrderOptions';
 
 export interface ServiceOrderEquipmentItem {
   equipment_id?: string;
@@ -407,6 +408,7 @@ export function useServiceOrders() {
     },
     onSuccess: (created: any) => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_BUDGET_KEY] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_SERVICE_TYPES_KEY] });
@@ -674,6 +676,7 @@ export function useServiceOrders() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['paused-orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['service-ratings'] });
@@ -747,6 +750,7 @@ export function useServiceOrders() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({ title: 'OS excluída com sucesso!' });
     },
@@ -771,6 +775,7 @@ export function useServiceOrders() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['paused-orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['service-ratings'] });
@@ -795,6 +800,7 @@ export function useServiceOrders() {
       bookServiceOrderSchedule({ ...input, timezone }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({ title: 'OS reagendada com sucesso!' });
     },

@@ -15,6 +15,9 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { PARTIAL_RECEIPT_CATEGORY } from '@/lib/finance-constants';
 import { SYSTEM_CATEGORY_ROLES } from '@/lib/finance-system-categories';
 import { resolveSystemCategoryNameFresh } from '@/hooks/useFinancialCategories';
+import { OS_BILLING_FLAGS_KEY } from '@/hooks/useOsBillingFlags';
+import { OS_BILLING_STATE_KEY } from '@/hooks/useOsBillingState';
+import { OS_REVENUE_SUMMARY_KEY } from '@/hooks/useOsRevenueSummary';
 
 /**
  * Retornos das RPCs de lote, DERIVADOS dos types gerados do banco — nunca
@@ -311,6 +314,13 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     queryClient.invalidateQueries({ queryKey: ['contract-transactions'] });
     queryClient.invalidateQueries({ queryKey: ['account-balances'] });
+    // Uma transação vinculada a OS muda os selos da lista/quadro/agenda e o
+    // estado do diálogo de faturamento. Invalidamos por prefixo porque edição,
+    // exclusão e operações em lote podem afetar tanto o vínculo antigo quanto
+    // o novo, e reconstruir esses Maps otimisticamente seria incompleto.
+    queryClient.invalidateQueries({ queryKey: [OS_REVENUE_SUMMARY_KEY] });
+    queryClient.invalidateQueries({ queryKey: [OS_BILLING_STATE_KEY] });
+    queryClient.invalidateQueries({ queryKey: [OS_BILLING_FLAGS_KEY] });
     // O Caixa inclui lançamentos financeiros avulsos no turno e o saldo do
     // cofre. Qualquer mutation financeira precisa deixá-los stale também — ao
     // voltar de outra tela, o operador não pode ver o fechamento antigo.

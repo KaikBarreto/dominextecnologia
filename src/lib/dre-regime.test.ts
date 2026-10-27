@@ -75,6 +75,13 @@ describe('isInDreRange', () => {
     expect(isInDreRange('2026-02-28', { from, to })).toBe(true);
   });
 
+  it('inclui o último dia civil quando `to` chega à meia-noite', () => {
+    const toAtMidnight = new Date(2026, 1, 28, 0, 0, 0);
+
+    expect(isInDreRange('2026-02-28', { from, to: toAtMidnight })).toBe(true);
+    expect(isInDreRange('2026-03-01', { from, to: toAtMidnight })).toBe(false);
+  });
+
   it('só `from` funciona como "a partir de"', () => {
     expect(isInDreRange('2026-01-31', { from })).toBe(false);
     expect(isInDreRange('2026-12-31', { from })).toBe(true);

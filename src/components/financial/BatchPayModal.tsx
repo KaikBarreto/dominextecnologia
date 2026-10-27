@@ -126,7 +126,7 @@ export function BatchPayModal({
   // Só contas caixa/banco ATIVAS entram no select (nunca cartão).
   const accountOptions = useMemo(
     () => buildAccountOptions(
-      accounts.filter((a) => a.is_active && a.type !== 'cartao') as any,
+      accounts.filter((a) => a.is_active && a.type !== 'cartao'),
       { cashSuffix: fin.transactionList.cashSuffix, includeCard: false },
     ),
     [accounts, fin.transactionList.cashSuffix],
@@ -187,9 +187,9 @@ export function BatchPayModal({
         <div className={cn('flex items-center gap-3 rounded-2xl p-4 text-white', accentBg)}>
           {/* Ícone branco direto no fundo saturado, sem círculo atrás. */}
           <Layers className="h-6 w-6 shrink-0" />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-[11px] uppercase tracking-wider opacity-90 leading-tight">{t.total}</p>
-            <p className="text-xl font-bold tabular-nums leading-tight truncate">{fmt(total)}</p>
+            <p className="break-words text-xl font-bold leading-tight tabular-nums">{fmt(total)}</p>
           </div>
         </div>
 

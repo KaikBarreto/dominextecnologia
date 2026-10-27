@@ -1069,7 +1069,7 @@ export default function ServiceOrders() {
               <>
                 {!isMobile && (
                   <div className="flex items-center justify-between">
-                    <div className="flex items-baseline gap-2 min-w-0">
+                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
                       <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70">
                         {t.sections.byStatus}
                       </h2>
@@ -1077,7 +1077,7 @@ export default function ServiceOrders() {
                           exibia o número do recorte — dava pra jurar que tinha
                           visto tudo. Só aparece quando há recorte de fato. */}
                       {filteredOrders.length !== serviceOrders.length && (
-                        <span className="text-xs text-muted-foreground tabular-nums truncate">
+                        <span className="text-xs text-muted-foreground tabular-nums">
                           {t.sections.showingOf
                             .replace('{n}', String(filteredOrders.length))
                             .replace('{total}', String(serviceOrders.length))}

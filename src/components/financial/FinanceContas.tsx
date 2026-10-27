@@ -40,6 +40,7 @@ import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings
 import { useAuth } from '@/contexts/AuthContext';
 import { useAllCreditCardBills, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import { isTransactionInDateRange } from '@/lib/finance-date';
+import { isDateInCivilRange } from '@/lib/date-range';
 import { useCostCenters } from '@/hooks/useCostCenters';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { filterByCostCenters, NO_COST_CENTER } from '@/lib/cost-center-breakdown';
@@ -359,9 +360,7 @@ export function FinanceContas({
     const inRange = eligible.filter((b) => {
       if (!dateRange?.from && !dateRange?.to) return true;
       const dueDate = parseLocalDate(b.due_date);
-      if (dateRange.from && dueDate < dateRange.from) return false;
-      if (dateRange.to && dueDate > dateRange.to) return false;
-      return true;
+      return isDateInCivilRange(dueDate, dateRange);
     });
     return inRange.filter((b) => {
       if (filter === 'todas') return true;
@@ -498,8 +497,7 @@ export function FinanceContas({
           // Respeita o filtro de período (mesma lógica de cardInvoices)
           if (dateRange?.from || dateRange?.to) {
             const dueDate = parseLocalDate(b.due_date);
-            if (dateRange.from && dueDate < dateRange.from) return false;
-            if (dateRange.to && dueDate > dateRange.to) return false;
+            if (!isDateInCivilRange(dueDate, dateRange)) return false;
           }
           return true;
         })
@@ -1149,14 +1147,14 @@ export function FinanceContas({
             (medido no browser em 390px). */}
         <div className="flex snap-x scroll-pl-3 gap-2 overflow-x-auto px-3 pb-1 sm:grid sm:grid-cols-2 sm:scroll-pl-0 sm:px-0 scrollbar-none">
           {kpis.map(({ label, shortLabel, value, icon: Icon, color }) => (
-            <Card key={label} className={cn('min-w-[168px] snap-start border-0 text-white shadow-none', color)}>
+            <Card key={label} className={cn('w-max min-w-[168px] flex-none snap-start border-0 text-white shadow-none sm:w-auto sm:min-w-0', color)}>
               <CardContent className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1 p-3 sm:gap-y-0 sm:p-4">
                 <span className="col-start-1 row-start-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 sm:row-span-2 sm:h-9 sm:w-9"><Icon className="h-4 w-4" /></span>
                 <p className="col-start-2 row-start-1 min-w-0 truncate text-[11px] font-medium uppercase tracking-wider text-white/80">
                   <span className="sm:hidden">{shortLabel}</span>
                   <span className="hidden sm:inline">{label}</span>
                 </p>
-                <p className={cn('col-span-2 row-start-2 min-w-0 truncate font-bold tabular-nums sm:col-span-1 sm:col-start-2 sm:text-lg', kpiSizeClass)}>{fmt(value)}</p>
+                <p className={cn('col-span-2 row-start-2 whitespace-nowrap font-bold tabular-nums sm:col-span-1 sm:col-start-2 sm:text-lg', kpiSizeClass)}>{fmt(value)}</p>
               </CardContent>
             </Card>
           ))}
@@ -1730,7 +1728,7 @@ export function FinanceContas({
                   ? batchMsg.selectedOne
                   : batchMsg.selectedMany.replace('{count}', String(batchSelection.count))}
               </p>
-              <p className="text-sm font-bold tabular-nums leading-tight truncate">
+              <p className="whitespace-nowrap text-sm font-bold leading-tight tabular-nums">
                 {batchMsg.total}: {fmt(batchSelection.total)}
               </p>
             </div>

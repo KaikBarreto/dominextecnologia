@@ -106,7 +106,7 @@ export function FinancialDRESection({ transactions, categories, periodLabel }: P
         netRevenue: dre.receitaLiquida,
         grossProfit: dre.lucroBruto,
         margin: dre.margem,
-      } as any, periodLabel);
+      }, periodLabel);
       const w = window.open('', '_blank');
       if (w) { w.document.write(html); w.document.close(); }
     } finally {
@@ -136,24 +136,24 @@ export function FinancialDRESection({ transactions, categories, periodLabel }: P
 
         <Card className="relative overflow-hidden border-0 shadow-lg bg-blue-500 text-white">
           <CardContent className="p-4 lg:p-6">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1 lg:space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1 space-y-1 lg:space-y-2">
                 <p className="text-xs lg:text-sm font-medium text-white/80">Receita Líquida</p>
-                <p className="text-lg lg:text-2xl font-bold tracking-tight truncate">{fmt(dre.receitaLiquida)}</p>
+                <p className="break-words text-lg font-bold tracking-tight tabular-nums lg:text-2xl">{fmt(dre.receitaLiquida)}</p>
               </div>
-              <div className="p-2 rounded-xl bg-blue-600"><TrendingUp className="h-4 w-4 text-white" /></div>
+              <div className="shrink-0 p-2 rounded-xl bg-blue-600"><TrendingUp className="h-4 w-4 text-white" /></div>
             </div>
           </CardContent>
         </Card>
 
         <Card className={cn('relative overflow-hidden border-0 shadow-lg text-white', dre.ebitda >= 0 ? 'bg-emerald-500' : 'bg-red-500')}>
           <CardContent className="p-4 lg:p-6">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1 lg:space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1 space-y-1 lg:space-y-2">
                 <p className="text-xs lg:text-sm font-medium text-white/80">Resultado Líquido</p>
-                <p className="text-lg lg:text-2xl font-bold tracking-tight truncate">{fmt(dre.ebitda)}</p>
+                <p className="break-words text-lg font-bold tracking-tight tabular-nums lg:text-2xl">{fmt(dre.ebitda)}</p>
               </div>
-              <div className={cn('p-2 rounded-xl', dre.ebitda >= 0 ? 'bg-emerald-600' : 'bg-red-600')}>
+              <div className={cn('shrink-0 p-2 rounded-xl', dre.ebitda >= 0 ? 'bg-emerald-600' : 'bg-red-600')}>
                 <ResultIcon className="h-4 w-4 text-white" />
               </div>
             </div>

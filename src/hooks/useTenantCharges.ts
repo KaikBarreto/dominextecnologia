@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserCompany } from '@/hooks/useUserCompany';
+import { QUOTE_CHARGED_IDS_QUERY_KEY } from '@/hooks/useQuoteChargedIds';
+import { OS_BILLING_FLAGS_KEY } from '@/hooks/useOsBillingFlags';
+import { OS_BILLING_STATE_KEY } from '@/hooks/useOsBillingState';
+import { OS_REVENUE_SUMMARY_KEY } from '@/hooks/useOsRevenueSummary';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // useTenantCharges — fronteira do Supabase para as COBRANÇAS que o tenant emite
@@ -512,7 +516,7 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
         typeof responseBody?.finance_warning === 'string' ? responseBody.finance_warning : null;
       return { orphan: false, charge: { ...charge, financeWarning } };
     },
-    onSuccess: () => {
+    onSuccess: (_result, input) => {
       // Invalida a listagem filtrada (por cliente, se aplicável) e a geral.
       queryClient.invalidateQueries({ queryKey: listKey });
       // Garante que a lista sem filtro (Financeiro) também atualiza quando a
@@ -523,6 +527,24 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
       queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      // Ao cobrar um orcamento, a lista precisa bloquear sua aprovacao
+      // financeira imediatamente. A invalidacao por prefixo cobre qualquer
+      // empresa em cache sem depender do contexto de onde o dialog foi aberto.
+      if (input.source_type === 'quote') {
+        queryClient.invalidateQueries({ queryKey: QUOTE_CHARGED_IDS_QUERY_KEY });
+      }
+      // O callback da tela de OS também invalida estas leituras, mas manter a
+      // regra na fronteira da mutation cobre qualquer outro fluxo presente ou
+      // futuro que crie a mesma cobrança sem depender do componente chamador.
+      if (input.source_type === 'service_order') {
+        queryClient.invalidateQueries({ queryKey: [OS_REVENUE_SUMMARY_KEY] });
+        queryClient.invalidateQueries({
+          queryKey: input.source_id
+            ? [OS_BILLING_STATE_KEY, input.source_id]
+            : [OS_BILLING_STATE_KEY],
+        });
+        queryClient.invalidateQueries({ queryKey: [OS_BILLING_FLAGS_KEY] });
+      }
     },
   });
 
