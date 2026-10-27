@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.47";
+export const APP_VERSION = "1.37.48";
 
 export const VERSION_NOTES =
-  "O cadastro de clientes conclui corretamente a configuração do portal, e tarefas internas não aparecem mais como OS compartilháveis.";
+  "Conflitos de agenda podem ser autorizados sem perder equipamentos ou checklists, e os avisos da Agenda orientam o usuário sem códigos técnicos.";

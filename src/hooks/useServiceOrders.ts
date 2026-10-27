@@ -85,6 +85,22 @@ export function groupScopeItems(items: RawScopeItem[]): GroupedScopeItem[] {
   }));
 }
 
+/**
+ * A RPC transacional de override nasceu antes de checklists avulsos e de
+ * serviços por equipamento. Ela aceita somente pares
+ * `equipment_id`/`form_template_id` e exige um equipamento em cada linha.
+ *
+ * O escopo completo continua sendo sincronizado logo após a criação pela RPC
+ * atual `sync_service_order_scope_with_services`; aqui enviamos apenas a parte
+ * compatível para que autorizar um conflito não transforme um checklist avulso
+ * em `schedule_equipment_not_found` nem rejeite `service_type_ids`.
+ */
+export function getLegacyOverrideEquipmentItems(items: RawScopeItem[] = []) {
+  return items.flatMap(({ equipment_id, form_template_id }) => (
+    equipment_id ? [{ equipment_id, form_template_id }] : []
+  ));
+}
+
 export interface ServiceOrderInput extends ScheduleBookingOverride {
   customer_id: string;
   equipment_id?: string;
@@ -320,7 +336,7 @@ export function useServiceOrders() {
         const { data, error } = await supabase.rpc(createOverrideRpc as never, {
           p_order: orderPayload,
           p_override_justification: input.schedule_override_reason?.trim(),
-          p_equipment_items: equipment_items ?? [],
+          p_equipment_items: getLegacyOverrideEquipmentItems(equipment_items),
           p_assignee_user_ids: assignee_user_ids ?? [],
         } as never);
         if (error) throw normalizeScheduleBookingError(error);

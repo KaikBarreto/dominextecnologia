@@ -56,6 +56,7 @@
 - RLS e seguranca; filtro client e UX. Sempre avaliar os dois.
 - White-label e multi-tenant nao podem vazar dados entre empresas/tenants.
 - Copy de UI, erro e email para usuario final deve ser PT-BR.
+- Codigos internos de backend, RPC, SQLSTATE, nomes de tabela, constraint ou detalhes tecnicos nunca devem aparecer em toast, email ou copy para usuario final; mapear o erro de dominio para uma orientacao clara em PT-BR antes do fallback generico e cobrir a familia de codigos com teste quando aplicavel.
 - Hook e a fronteira do Supabase: componente nao deve chamar `supabase.from(...)` direto sem motivo claro.
 - Toda mudanca de schema exige nova migration e revisao dos tipos gerados quando aplicavel.
 - Toda mudanca na API Publica (rotas, schemas, scopes, autenticacao, rate limits, erros, idempotencia, disponibilidade ou ciclo de chaves) exige, na mesma entrega, revisar e atualizar quando necessario `docs/api/openapi.v1.yaml`, a experiencia `/docs` em `src/pages/docs/**`, os Markdown publicos em `public/docs/**`, `public/docs/llms.txt` e os testes de contrato/exemplos. Mesmo quando nao houver alteracao textual, registrar que a consistencia foi verificada. Exemplos devem usar somente dados ficticios e nunca conter segredos reais.

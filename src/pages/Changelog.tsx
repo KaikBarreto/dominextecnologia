@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.48',
+    date: '27 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Atendimentos emergenciais podem ser autorizados mesmo com conflito',
+        description: 'Ao justificar uma sobreposição de horário, a nova OS agora é criada corretamente mesmo quando possui checklist avulso ou serviços associados aos equipamentos.',
+        category: 'correcao',
+      },
+      {
+        title: 'Avisos da Agenda mais claros',
+        description: 'Erros de agendamento agora explicam em português o que precisa ser revisto, sem exibir códigos internos ou mensagens técnicas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.47',
     date: '26 de outubro de 2026',
     type: 'patch',
