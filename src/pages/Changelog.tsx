@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.49',
+    date: '27 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Lembrete de visita agendada pelo WhatsApp',
+        description: 'Nas automações do WhatsApp, agora é possível avisar o cliente um dia antes ou no próprio dia da visita. A mensagem pode incluir o link de acompanhamento da OS e respeita o horário configurado para os lembretes.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.37.48',
     date: '27 de outubro de 2026',
     type: 'patch',
