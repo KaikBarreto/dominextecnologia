@@ -21,7 +21,7 @@ import {
 import { format } from 'date-fns';
 import { enUS, es, fr, ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { captureUtmParams } from '@/lib/whatsapp';
+import { buildWhatsAppUrl, captureUtmParams, getPageContextFragment } from '@/lib/whatsapp';
 import LandingFooter from '@/components/landing/LandingFooter';
 import LandingNavbar from '@/components/landing/LandingNavbar';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
@@ -67,8 +67,12 @@ const COMMENT_DATE_FORMATS = {
  * Converte essas âncoras no servidor e no cliente para o WhatsApp oficial, de
  * modo que o HTML prerenderizado também não divulgue um funil desativado.
  */
-function replaceRegistrationCtas(content: string, label: string) {
-  const whatsappUrl = `https://wa.me/${COMPANY_WHATSAPP_NUMBER}`;
+function replaceRegistrationCtas(content: string, label: string, locale: LocaleCode) {
+  const whatsappUrl = buildWhatsAppUrl(
+    COMPANY_WHATSAPP_NUMBER,
+    getPageContextFragment('/blog', locale),
+    locale,
+  );
 
   return content.replace(
     /<a\b([^>]*?)\bhref=(["'])\/cadastro(?:\?[^"']*)?\2([^>]*)>[\s\S]*?<\/a>/gi,
@@ -513,6 +517,7 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                   __html: replaceRegistrationCtas(
                     stripDuplicateLeadingTitle(post.content || '', post.title),
                     t.postCtaButton,
+                    locale,
                   ),
                 }}
               />

@@ -1,5 +1,6 @@
 import type { AnchorHTMLAttributes, MouseEvent, ReactNode } from 'react';
-import { buildWhatsAppUrl } from '@/lib/whatsapp';
+import { useLocation } from 'react-router-dom';
+import { buildWhatsAppUrl, getPageContextFragment } from '@/lib/whatsapp';
 import { useLocale } from '@/lib/i18n';
 import { COMPANY_WHATSAPP_NUMBER } from './whatsappNumbers';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
@@ -22,7 +23,14 @@ export default function WhatsAppCtaLink({
   ...props
 }: WhatsAppCtaLinkProps) {
   const { locale } = useLocale();
-  const directUrl = `https://wa.me/${COMPANY_WHATSAPP_NUMBER}`;
+  const { pathname } = useLocation();
+  const contextualFragment =
+    fragmentOverride ?? getPageContextFragment(pathname, locale);
+  const contextualUrl = buildWhatsAppUrl(
+    COMPANY_WHATSAPP_NUMBER,
+    contextualFragment,
+    locale,
+  );
 
   function handleClick(event: MouseEvent<HTMLAnchorElement>) {
     onClick?.(event);
@@ -30,7 +38,7 @@ export default function WhatsAppCtaLink({
 
     event.preventDefault();
     window.open(
-      buildWhatsAppUrl(COMPANY_WHATSAPP_NUMBER, fragmentOverride, locale),
+      buildWhatsAppUrl(COMPANY_WHATSAPP_NUMBER, contextualFragment, locale),
       '_blank',
       'noopener,noreferrer',
     );
@@ -39,7 +47,7 @@ export default function WhatsAppCtaLink({
   return (
     <a
       {...props}
-      href={directUrl}
+      href={contextualUrl}
       target="_blank"
       rel="noopener noreferrer"
       onClick={handleClick}
