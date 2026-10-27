@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.49";
+export const APP_VERSION = "1.37.50";
 
 export const VERSION_NOTES =
-  "Agora é possível lembrar o cliente pelo WhatsApp um dia antes ou no dia da visita agendada.";
+  "Gerenciar o plano ficou mais limpo, com módulos e opções mais fáceis de comparar.";

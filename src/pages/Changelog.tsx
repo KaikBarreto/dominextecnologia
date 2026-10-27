@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.50',
+    date: '27 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Gerenciamento de plano mais fácil de ler',
+        description: 'Planos e módulos agora aparecem com menos cores concorrentes, deixando preços, recursos incluídos e opções selecionadas mais fáceis de comparar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.49',
     date: '27 de outubro de 2026',
     type: 'patch',

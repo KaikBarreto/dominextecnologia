@@ -63,15 +63,6 @@ const getPlanIcon = (code: string) => {
   }
 };
 
-const getPlanIconBg = (code: string) => {
-  switch (code) {
-    case 'start': return 'bg-emerald-600 text-white';
-    case 'avancado': return 'bg-blue-600 text-white';
-    case 'master': return 'bg-amber-500 text-white';
-    default: return 'bg-primary text-primary-foreground';
-  }
-};
-
 interface ModulesManagementCardProps {
   /** Abre o modal automaticamente ao montar (deep-link de ?addModule/?addUsers). */
   autoOpen?: boolean;
@@ -390,7 +381,7 @@ export function ModulesManagementCard({
           />
           <span className={cn('text-xs font-medium', billingCycle === 'yearly' && 'text-primary')}>{tBilling.cycleYearly}</span>
           {billingCycle === 'yearly' && (
-            <Badge className="bg-emerald-600 text-white text-[10px] px-1.5 py-0 hover:bg-emerald-600">-20%</Badge>
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">-20%</Badge>
           )}
         </div>
       </div>
@@ -536,7 +527,7 @@ export function ModulesManagementCard({
             />
             <span className={cn('text-xs font-medium', isYearly && 'text-primary')}>{tBilling.cycleYearly}</span>
             {isYearly && (
-              <Badge className="bg-emerald-600 text-white text-[10px] px-1.5 py-0 hover:bg-emerald-600">-20%</Badge>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">-20%</Badge>
             )}
           </div>
         </div>
@@ -723,20 +714,26 @@ export function ModulesManagementCard({
                         type="button"
                         key={p.code}
                         disabled={isCurrent}
+                        aria-pressed={isSelected}
                         onClick={() => !isCurrent && setSelectedPlan(p.code)}
                         className={cn(
-                          'relative w-full text-left rounded-xl border-2 p-3 transition-all',
-                          isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/30',
-                          isCurrent && 'opacity-60 cursor-not-allowed',
+                          'relative w-full text-left rounded-xl border p-3 transition-colors',
+                          isSelected
+                            ? 'border-primary/60 bg-primary/[0.04] ring-1 ring-primary/15'
+                            : 'border-border/70 hover:border-muted-foreground/40 hover:bg-muted/20',
+                          isCurrent && 'cursor-not-allowed bg-muted/20',
                         )}
                       >
                         {isCurrent && (
-                          <Badge className="absolute -top-2 right-3 bg-primary text-primary-foreground text-[10px] px-1.5">
-                            Atual
+                          <Badge variant="secondary" className="absolute -top-2 right-3 border border-border text-[10px] px-1.5">
+                            Plano atual
                           </Badge>
                         )}
                         <div className="flex items-start gap-3">
-                          <div className={cn('p-2 rounded-lg shrink-0', getPlanIconBg(p.code))}>
+                          <div className={cn(
+                            'p-2 rounded-lg shrink-0 bg-muted text-muted-foreground transition-colors',
+                            isSelected && 'bg-primary/10 text-primary',
+                          )}>
                             {getPlanIcon(p.code)}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -744,18 +741,18 @@ export function ModulesManagementCard({
                               <h3 className="font-bold text-base">{p.name}</h3>
                               {isSelected && <CheckCircle2 className="h-4 w-4 text-primary" />}
                             </div>
-                            <div className="flex flex-wrap gap-1 mt-1.5">
-                              <Badge className="text-[10px] px-1.5 py-0 bg-blue-600 text-white hover:bg-blue-600">
-                                <Users className="h-2.5 w-2.5 mr-0.5" />
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] text-muted-foreground">
+                              <span className="inline-flex items-center gap-1 font-medium text-foreground/75">
+                                <Users className="h-3 w-3" />
                                 {p.max_users} usuários
-                              </Badge>
-                              <Badge className="text-[10px] px-1.5 py-0 bg-emerald-600 text-white hover:bg-emerald-600">
+                              </span>
+                              <span>
                                 {BASIC_BUNDLE_LABEL}
-                              </Badge>
+                              </span>
                               {planModules.map((m) => (
-                                <Badge key={m.code} className="text-[10px] px-1.5 py-0 bg-emerald-600 text-white hover:bg-emerald-600">
+                                <span key={m.code} className="before:content-['·'] before:mr-3 before:text-border">
                                   {m.name}
-                                </Badge>
+                                </span>
                               ))}
                             </div>
                           </div>
@@ -767,9 +764,9 @@ export function ModulesManagementCard({
                               </>
                             ) : (
                               <>
-                                <p className="text-lg font-bold text-emerald-600">R$ {formatBRL(yearly)}</p>
+                                <p className="text-lg font-bold">R$ {formatBRL(yearly)}</p>
                                 <p className="text-[10px] text-muted-foreground">/ano</p>
-                                <p className="text-[10px] text-emerald-600">
+                                <p className="text-[10px] text-muted-foreground">
                                   ≈ R$ {formatBRL(calculateMonthlyEquivalent(yearly))}/mês
                                 </p>
                               </>
@@ -792,13 +789,16 @@ export function ModulesManagementCard({
 
                 {/* Módulo básico (obrigatório, sempre incluso) */}
                 {baseModule && (
-                  <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-emerald-600 text-white">
-                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <div className="flex items-center gap-2.5 p-2.5 rounded-lg border border-border/70 bg-muted/30">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{BASIC_BUNDLE_LABEL}</p>
-                      <p className="text-[11px] text-white/80 line-clamp-2">{BASIC_BUNDLE_DESCRIPTION}</p>
+                      <p className="text-[11px] text-muted-foreground line-clamp-2">{BASIC_BUNDLE_DESCRIPTION}</p>
                     </div>
-                    <span className="text-sm font-semibold">R$ {formatBRL(baseModule.price)}</span>
+                    <div className="text-right shrink-0">
+                      <span className="block text-sm font-semibold">R$ {formatBRL(baseModule.price)}</span>
+                      <span className="text-[10px] text-muted-foreground">Base do plano</span>
+                    </div>
                   </div>
                 )}
 
@@ -816,22 +816,25 @@ export function ModulesManagementCard({
                       <button
                         type="button"
                         key={m.code}
+                        aria-pressed={checked}
                         onClick={() => toggleModule(m.code)}
                         className={cn(
                           'w-full text-left flex items-start gap-2.5 p-2.5 rounded-lg border transition-colors',
-                          checked ? 'bg-emerald-600 border-emerald-600 text-white' : 'hover:bg-muted/50',
+                          checked
+                            ? 'border-primary/50 bg-primary/[0.04] ring-1 ring-primary/10'
+                            : 'border-border/70 hover:border-muted-foreground/30 hover:bg-muted/30',
                         )}
                       >
                         <Checkbox checked={checked} className="shrink-0 mt-0.5 pointer-events-none" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2">
-                            <p className={cn('font-medium text-sm', checked && 'text-white')}>{m.name}</p>
-                            <span className={cn('text-sm font-semibold shrink-0', checked ? 'text-white' : 'text-primary')}>
+                            <p className="font-medium text-sm">{m.name}</p>
+                            <span className="text-sm font-semibold text-foreground shrink-0">
                               {m.price === 0 ? 'Grátis' : `R$ ${formatBRL(m.price)}`}
                             </span>
                           </div>
                           {m.description && (
-                            <p className={cn('text-[11px] mt-0.5', checked ? 'text-white/80' : 'text-muted-foreground')}>
+                            <p className="text-[11px] mt-0.5 text-muted-foreground">
                               {m.description}
                             </p>
                           )}
