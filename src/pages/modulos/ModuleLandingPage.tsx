@@ -60,6 +60,13 @@ const DOMINEX_BRAND_VARS = {
   '--seg-accent': '#00C597',
 } as CSSProperties;
 
+function interpolateCopy(template: string, values: Record<string, string>) {
+  return Object.entries(values).reduce(
+    (result, [key, value]) => result.split(`{${key}}`).join(value),
+    template,
+  );
+}
+
 /**
  * Renderiza uma landing de MÓDULO inteira a partir de um objeto `ModuleData`.
  * Arquitetura paralela à de segmentos (estilo Auvo: "Auvo PMOC", "Auvo
@@ -277,8 +284,14 @@ const MODULE_MOTION_VIDEOS: Partial<Record<string, string>> = {
 };
 
 function ModuleProductPreview({ data }: { data: ModuleData }) {
+  const { messages } = useLocale();
   const screenshot = MODULE_GUIDE_SCREENSHOTS[data.slug];
   if (!screenshot) return <ModuleMotionMock data={data} />;
+  const moduleLabel =
+    (messages.moduleLabels as Record<string, string>)[data.slug] ?? data.navLabel;
+  const previewTitle = interpolateCopy(messages.pageChrome.motionMock.previewTitle, {
+    module: moduleLabel,
+  });
 
   return (
     <div className="relative mx-auto w-full max-w-[760px] overflow-hidden rounded-[1.4rem] border border-[#dce1dc] bg-white p-2.5 shadow-[0_32px_100px_-40px_rgba(16,21,18,0.38)] dark:border-white/10 dark:bg-[#101311] sm:rounded-[1.75rem] sm:p-4">
@@ -287,13 +300,13 @@ function ModuleProductPreview({ data }: { data: ModuleData }) {
         <span className="h-2.5 w-2.5 rounded-full bg-[#f6c94c]" />
         <span className="h-2.5 w-2.5 rounded-full bg-[#32c86e]" />
         <span className="ml-3 truncate text-xs font-medium text-[#68736c] dark:text-white/50">
-          {data.navLabel} na Dominex
+          {previewTitle}
         </span>
       </div>
       <div className="aspect-[16/10] overflow-hidden rounded-[1.05rem] border border-[#e0e4e0] bg-white dark:border-white/10 dark:bg-[#0a0d0b]">
         <img
           src={screenshot.src}
-          alt={screenshot.alt}
+          alt={previewTitle}
           width={1180}
           height={897}
           loading="eager"
@@ -555,8 +568,12 @@ function ModuleDeepDives({ data }: { data: ModuleData }) {
 }
 
 function ModuleVideoMock({ data }: { data: ModuleData }) {
+  const { messages } = useLocale();
+  const copy = messages.pageChrome.motionMock;
   const screenshot = data.deepDives.find((dive) => dive.image)?.image;
   const videoSrc = MODULE_MOTION_VIDEOS[data.slug];
+  const moduleLabel =
+    (messages.moduleLabels as Record<string, string>)[data.slug] ?? data.navLabel;
 
   return (
     <section className="relative overflow-hidden bg-[#080a09] px-4 py-16 text-white sm:px-6 sm:py-20 lg:px-8 lg:py-24">
@@ -568,18 +585,16 @@ function ModuleVideoMock({ data }: { data: ModuleData }) {
       <div className="relative z-10 mx-auto grid max-w-[1080px] items-center gap-12 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-20">
         <div className="mx-auto max-w-2xl text-center lg:mx-0 lg:text-left">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
-            Demonstração da função
+            {copy.sectionEyebrow}
           </p>
           <h2 className="mt-5 text-3xl font-semibold tracking-[-0.04em] sm:text-5xl sm:leading-[1.05]">
-            Veja {data.navLabel} funcionando na prática
+            {interpolateCopy(copy.sectionTitle, { module: moduleLabel })}
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-white/65 sm:text-lg sm:leading-8 lg:mx-0">
-            {videoSrc
-              ? 'Veja o fluxo desta função em um motion vertical, com leitura confortável no celular e presença no desktop.'
-              : 'O vídeo motion vertical vai mostrar o fluxo desta função em menos de um minuto, com leitura confortável no celular e presença no desktop.'}
+            {videoSrc ? copy.sectionReady : copy.sectionPending}
           </p>
           <p className="mt-6 text-xs font-semibold uppercase tracking-[0.16em] text-white/40">
-            Formato vertical · 9:16 · com legendas
+            {copy.sectionFormat}
           </p>
         </div>
 
@@ -597,10 +612,10 @@ function ModuleVideoMock({ data }: { data: ModuleData }) {
                   playsInline
                   controls
                   preload="metadata"
-                  aria-label={`Demonstração em vídeo de ${data.navLabel}`}
+                  aria-label={interpolateCopy(copy.videoAria, { module: moduleLabel })}
                 >
                   <source src={videoSrc} type="video/mp4" />
-                  Seu navegador não oferece suporte a vídeo HTML5.
+                  {copy.unsupported}
                 </video>
               ) : screenshot ? (
                 <img
@@ -622,8 +637,8 @@ function ModuleVideoMock({ data }: { data: ModuleData }) {
                     <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-[#101512] shadow-xl">
                       <CirclePlay className="h-8 w-8" />
                     </span>
-                    <p className="mt-5 text-sm font-semibold text-white">Vídeo motion em produção</p>
-                    <p className="mt-1 text-xs text-white/60">Espaço reservado em 9:16</p>
+                    <p className="mt-5 text-sm font-semibold text-white">{copy.frameStatus}</p>
+                    <p className="mt-1 text-xs text-white/60">{copy.framePlaceholder}</p>
                   </div>
                   <div className="absolute inset-x-5 bottom-5 h-1 overflow-hidden rounded-full bg-white/20">
                     <div className="h-full w-1/3 rounded-full bg-primary" />

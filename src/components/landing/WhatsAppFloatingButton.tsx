@@ -4,7 +4,8 @@ import { COMPANY_WHATSAPP_NUMBER } from "@/components/landing/whatsappNumbers";
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 
 export default function WhatsAppFloatingButton() {
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
+  const copy = messages.pageChrome.whatsappFloat;
 
   // URL montada no clique para incluir a página e a UTM atuais na mensagem.
   const handleClick = () => {
@@ -14,7 +15,7 @@ export default function WhatsAppFloatingButton() {
 
   return (
     <aside
-      aria-label="Atendimento pelo WhatsApp"
+      aria-label={copy.regionAria}
       className="fixed bottom-24 right-5 z-50 flex items-center gap-2 md:bottom-6 md:right-6"
     >
       <div className="hidden items-center gap-2 rounded-full border border-[#dfe4df] bg-white px-4 py-2 shadow-lg sm:flex dark:border-white/10 dark:bg-[#151a17]">
@@ -23,7 +24,7 @@ export default function WhatsAppFloatingButton() {
           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#25D366]" />
         </span>
         <span className="whitespace-nowrap text-sm font-semibold text-[#202722] dark:text-white">
-          Respondemos em até 5 min
+          {copy.responseTime}
         </span>
       </div>
       <div className="relative">
@@ -32,7 +33,7 @@ export default function WhatsAppFloatingButton() {
           type="button"
           onClick={handleClick}
           className="relative flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-110 hover:shadow-xl"
-          aria-label="Fale conosco no WhatsApp"
+          aria-label={copy.buttonAria}
         >
           <WhatsAppIcon className="h-7 w-7" />
         </button>

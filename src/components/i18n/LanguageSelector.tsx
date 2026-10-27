@@ -283,7 +283,7 @@ function CompactTrigger({
                   'flex cursor-pointer select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm outline-none transition-colors',
                   isDark
                     ? 'text-white/85 focus:bg-white/10 focus:text-white data-[highlighted]:bg-white/10'
-                    : 'text-neutral-700 focus:bg-neutral-100 data-[highlighted]:bg-neutral-100',
+                    : 'text-neutral-700 focus:bg-neutral-100 data-[highlighted]:bg-neutral-100 dark:text-white/85 dark:focus:bg-white/10 dark:focus:text-white dark:data-[highlighted]:bg-white/10',
                 )}
               >
                 <FlagIcon locale={l.code} size={20} />

@@ -10,6 +10,7 @@ import {
 import { ArrowLeft, ArrowRight, type LucideIcon } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { useLocale } from '@/lib/i18n';
 
 export interface ModuleFeatureCarouselItem {
   icon: LucideIcon;
@@ -30,6 +31,13 @@ function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+function interpolate(template: string, values: Record<string, string | number>) {
+  return Object.entries(values).reduce(
+    (result, [key, value]) => result.split(`{${key}}`).join(String(value)),
+    template,
+  );
+}
+
 export default function ModuleFeatureCarousel({
   features,
   heading,
@@ -38,6 +46,8 @@ export default function ModuleFeatureCarousel({
   controlSlot,
   sectionId = 'recursos-modulo',
 }: ModuleFeatureCarouselProps) {
+  const { messages } = useLocale();
+  const copy = messages.pageChrome.featureCarousel;
   const viewportRef = useRef<HTMLUListElement>(null);
   const itemRefs = useRef<Array<HTMLLIElement | null>>([]);
   const scrollFrameRef = useRef<number>();
@@ -162,7 +172,7 @@ export default function ModuleFeatureCarousel({
         <header className="grid gap-8 border-b border-slate-950/15 pb-10 dark:border-white/15 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)] lg:items-end lg:gap-16">
           <div>
             <p className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-primary">
-              Recursos do módulo
+              {copy.eyebrow}
             </p>
             <h2
               id={`${sectionId}-title`}
@@ -256,12 +266,12 @@ export default function ModuleFeatureCarousel({
             </div>
 
             <div className="mt-7 flex flex-wrap items-center justify-between gap-5">
-              <div className="flex items-center gap-2" aria-label="Selecionar página do carrossel">
+              <div className="flex items-center gap-2" aria-label={copy.pageChooser}>
                 {Array.from({ length: pageCount }, (_, page) => (
                   <button
                     key={page}
                     type="button"
-                    aria-label={`Ir para a página ${page + 1} de ${pageCount}`}
+                    aria-label={interpolate(copy.goToPage, { page: page + 1, total: pageCount })}
                     aria-current={currentPage === page ? 'true' : undefined}
                     onClick={() => goToPage(page)}
                     className={cn(
@@ -278,7 +288,7 @@ export default function ModuleFeatureCarousel({
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  aria-label="Ver recursos anteriores"
+                  aria-label={copy.previous}
                   aria-controls={`${sectionId}-carousel`}
                   disabled={!hasMultiplePages || currentPage === 0}
                   onClick={() => goToPage(currentPage - 1)}
@@ -288,7 +298,7 @@ export default function ModuleFeatureCarousel({
                 </button>
                 <button
                   type="button"
-                  aria-label="Ver próximos recursos"
+                  aria-label={copy.next}
                   aria-controls={`${sectionId}-carousel`}
                   disabled={!hasMultiplePages || currentPage === pageCount - 1}
                   onClick={() => goToPage(currentPage + 1)}
@@ -300,14 +310,18 @@ export default function ModuleFeatureCarousel({
             </div>
 
             <p id={`${sectionId}-carousel-status`} className="sr-only" aria-live="polite" aria-atomic="true">
-              Página {currentPage + 1} de {pageCount}. Exibindo recursos{' '}
-              {currentPage * visibleCount + 1} a{' '}
-              {Math.min((currentPage + 1) * visibleCount, features.length)} de {features.length}.
+              {interpolate(copy.status, {
+                page: currentPage + 1,
+                total: pageCount,
+                from: currentPage * visibleCount + 1,
+                to: Math.min((currentPage + 1) * visibleCount, features.length),
+                count: features.length,
+              })}
             </p>
           </div>
         ) : (
           <p className="mt-10 border-l-2 border-emerald-600 pl-5 text-slate-600">
-            Os recursos deste módulo serão apresentados em breve.
+            {copy.empty}
           </p>
         )}
 
