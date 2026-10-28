@@ -48,4 +48,15 @@ describe('getDateRangeFromPreset — âncora no fuso do Brasil', () => {
     expect(from?.getDate()).toBe(15);
     expect(to?.getDate()).toBe(15);
   });
+
+  it('"este mês" cobre o dia 31 inteiro sem invadir o primeiro dia do mês seguinte', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-28T15:00:00.000Z'));
+
+    const { from, to } = getDateRangeFromPreset('this_month');
+
+    expect(from).toEqual(new Date(2026, 9, 1, 0, 0, 0, 0));
+    expect(to).toEqual(new Date(2026, 9, 31, 23, 59, 59, 999));
+    expect(new Date(2026, 10, 1, 0, 0, 0, 0) <= (to as Date)).toBe(false);
+  });
 });

@@ -15,7 +15,12 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import type { DateRange } from '@/components/ui/DateRangeFilter';
+import {
+  getDateRangeFromPreset,
+  type DatePreset,
+  type DateRange,
+} from '@/components/ui/DateRangeFilter';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { formatDrePeriodLabel } from '@/lib/dre-period-label';
@@ -39,6 +44,55 @@ const periodLabel = (range?: DateRange) => isComplete(range)
   ? formatDrePeriodLabel(range)
   : 'Selecione o período';
 
+const QUICK_PERIOD_PRESETS: Array<{ key: DatePreset; label: string }> = [
+  { key: 'today', label: 'Hoje' },
+  { key: 'last7', label: 'Últimos 7 dias' },
+  { key: 'this_month', label: 'Este mês' },
+  { key: 'last_month', label: 'Mês passado' },
+  { key: 'last30', label: 'Últimos 30 dias' },
+  { key: 'this_year', label: 'Este ano' },
+];
+
+function QuickPeriodPresets({
+  value,
+  timeZone,
+  onChange,
+}: {
+  value?: DateRange;
+  timeZone?: string | null;
+  onChange: (range: DateRange) => void;
+}) {
+  return (
+    <div className="mb-4 space-y-2">
+      <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Atalhos de período
+      </span>
+      <div className="flex flex-wrap gap-2">
+        {QUICK_PERIOD_PRESETS.map((preset) => {
+          const range = getDateRangeFromPreset(preset.key, timeZone);
+          const active = periodKey(value) === periodKey(range);
+          return (
+            <button
+              key={preset.key}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(range)}
+              className={cn(
+                'rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                active
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'bg-background text-foreground hover:border-foreground/30 hover:bg-muted',
+              )}
+            >
+              {preset.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 type PreviewPeriod = {
   key: string;
   label: string;
@@ -55,6 +109,7 @@ export function DreComparisonDialog({
   onApply,
 }: DreComparisonDialogProps) {
   const isMobile = useIsMobile();
+  const { timezone } = useAppLocaleContext();
   const [currentDraft, setCurrentDraft] = useState<DateRange>(currentRange);
   const [selected, setSelected] = useState<DateRange[]>(value);
   const [customDraft, setCustomDraft] = useState<DateRange | undefined>();
@@ -68,7 +123,17 @@ export function DreComparisonDialog({
     setCustomDraft(getDreComparisonRange(currentRange, 'previous_period'));
     setEditingCurrent(false);
     setChoosingCustom(false);
-  }, [currentRange, open, value]);
+    // O pai pode recriar os objetos de intervalo a cada render. Inicializar
+    // somente na abertura preserva o rascunho enquanto o usuário edita.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const updateCurrentDraft = (range: DateRange) => {
+    setCurrentDraft(range);
+    if (!choosingCustom && isComplete(range)) {
+      setCustomDraft(getDreComparisonRange(range, 'previous_period'));
+    }
+  };
 
   const selectedComparisons = useMemo(
     () => selected.filter((range) => isComplete(range) && periodKey(range) !== periodKey(currentDraft)),
@@ -184,15 +249,19 @@ export function DreComparisonDialog({
             {editingCurrent && (
               <div className="mt-4 border-t pt-4">
                 <p className="mb-3 text-xs text-muted-foreground">Selecione a data inicial e a data final do período principal.</p>
-                <Calendar
-                  mode="range"
-                  selected={currentDraft}
-                  onSelect={(range) => setCurrentDraft({ from: range?.from, to: range?.to })}
-                  locale={ptBR}
-                  numberOfMonths={isMobile ? 1 : 2}
-                  defaultMonth={currentDraft.from}
-                  className="p-0"
-                />
+                <QuickPeriodPresets value={currentDraft} timeZone={timezone} onChange={updateCurrentDraft} />
+                <div className="flex justify-center overflow-x-auto">
+                  <Calendar
+                    key={periodKey(currentDraft)}
+                    mode="range"
+                    selected={currentDraft}
+                    onSelect={(range) => updateCurrentDraft({ from: range?.from, to: range?.to })}
+                    locale={ptBR}
+                    numberOfMonths={isMobile ? 1 : 2}
+                    defaultMonth={currentDraft.from}
+                    className="w-max p-0"
+                  />
+                </div>
                 <div className="mt-3 flex justify-end">
                   <Button type="button" size="sm" onClick={() => setEditingCurrent(false)} disabled={!isComplete(currentDraft)}>
                     Usar este período
@@ -270,17 +339,21 @@ export function DreComparisonDialog({
                   Adicionar período
                 </Button>
               </div>
-              <Calendar
-                mode="range"
-                selected={customDraft}
-                onSelect={(range) => setCustomDraft(range
-                  ? { from: range.from, to: range.to }
-                  : undefined)}
-                locale={ptBR}
-                numberOfMonths={isMobile ? 1 : 2}
-                defaultMonth={customDraft?.from}
-                className="p-0"
-              />
+              <QuickPeriodPresets value={customDraft} timeZone={timezone} onChange={setCustomDraft} />
+              <div className="flex justify-center overflow-x-auto">
+                <Calendar
+                  key={periodKey(customDraft)}
+                  mode="range"
+                  selected={customDraft}
+                  onSelect={(range) => setCustomDraft(range
+                    ? { from: range.from, to: range.to }
+                    : undefined)}
+                  locale={ptBR}
+                  numberOfMonths={isMobile ? 1 : 2}
+                  defaultMonth={customDraft?.from}
+                  className="w-max p-0"
+                />
+              </div>
             </section>
           )}
 

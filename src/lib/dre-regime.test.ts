@@ -82,6 +82,14 @@ describe('isInDreRange', () => {
     expect(isInDreRange('2026-03-01', { from, to: toAtMidnight })).toBe(false);
   });
 
+  it('inclui o dia 31 e não invade o dia 1 do mês seguinte', () => {
+    const octoberFrom = new Date(2026, 9, 1, 0, 0, 0);
+    const octoberTo = new Date(2026, 9, 31, 23, 59, 59, 999);
+
+    expect(isInDreRange('2026-10-31', { from: octoberFrom, to: octoberTo })).toBe(true);
+    expect(isInDreRange('2026-11-01', { from: octoberFrom, to: octoberTo })).toBe(false);
+  });
+
   it('só `from` funciona como "a partir de"', () => {
     expect(isInDreRange('2026-01-31', { from })).toBe(false);
     expect(isInDreRange('2026-12-31', { from })).toBe(true);

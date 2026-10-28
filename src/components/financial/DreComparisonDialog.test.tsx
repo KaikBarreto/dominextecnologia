@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DreComparisonDialog } from './DreComparisonDialog';
 
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => true }));
@@ -10,6 +10,10 @@ const october2026 = {
 };
 
 describe('DreComparisonDialog', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('oferece atalhos claros, mostra a prévia cronológica e aplica a comparação escolhida', () => {
     const onApply = vi.fn();
 
@@ -56,5 +60,26 @@ describe('DreComparisonDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remover comparações' }));
 
     expect(onApply).toHaveBeenCalledWith(october2026, undefined);
+  });
+
+  it('oferece os mesmos atalhos no período principal e no outro período', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-28T15:00:00.000Z'));
+
+    render(
+      <DreComparisonDialog
+        open
+        onOpenChange={() => undefined}
+        currentRange={october2026}
+        onApply={() => undefined}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Alterar período' }));
+    expect(screen.getAllByRole('button', { name: 'Este mês' })).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: /Outro período/i }));
+    expect(screen.getAllByRole('button', { name: 'Este mês' })).toHaveLength(2);
+    expect(screen.getAllByText('Atalhos de período')).toHaveLength(2);
   });
 });
