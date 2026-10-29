@@ -11,8 +11,41 @@ const env = {
 test('recusa preflight sem expor CORS', async () => {
   const response = await handleRequest(new Request('https://api.dominex.app/v1/capabilities', { method: 'OPTIONS' }), env);
   assert.equal(response.status, 405);
+  assert.equal(response.headers.get('allow'), 'GET, POST, PATCH');
   assert.equal(response.headers.get('access-control-allow-origin'), null);
   assert.equal(response.headers.get('cache-control'), 'no-store, max-age=0');
+});
+
+test('encaminha PATCH de card CRM com JSON e chave de idempotencia', async () => {
+  const originalFetch = globalThis.fetch;
+  let upstreamRequest;
+  globalThis.fetch = async (input, init) => {
+    upstreamRequest = new Request(input, init);
+    return new Response(JSON.stringify({ id: '018f9c91-8c0c-7c15-a9c1-c6245482a333' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+  try {
+    const response = await handleRequest(new Request(
+      'https://api.dominex.app/v1/crm/cards/018f9c91-8c0c-7c15-a9c1-c6245482a333',
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer dmx_live_public.secret',
+          'Idempotency-Key': 'crm-update-event-42',
+        },
+        body: JSON.stringify({ title: 'Renovacao anual' }),
+      },
+    ), env);
+    assert.equal(response.status, 200);
+    assert.equal(upstreamRequest.method, 'PATCH');
+    assert.equal(upstreamRequest.headers.get('idempotency-key'), 'crm-update-event-42');
+    assert.deepEqual(await upstreamRequest.json(), { title: 'Renovacao anual' });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('recusa corpo maior que 64 KiB antes do upstream', async () => {

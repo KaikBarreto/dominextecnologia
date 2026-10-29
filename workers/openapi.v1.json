@@ -3,7 +3,7 @@
   "info": {
     "title": "Dominex Public API",
     "version": "1.0.0",
-    "summary": "Agendamento seguro de ordens de servico para integracoes server-to-server.",
+    "summary": "Operacao de campo e CRM para integracoes server-to-server.",
     "description": "API REST publica e multi-tenant da Dominex. O contrato usa nomes tecnicos em\ningles; este documento explica o comportamento em portugues brasileiro.\n\nA chave e um segredo de servidor. Nao use esta API diretamente em navegador,\naplicativo mobile distribuido ou qualquer cliente onde o segredo possa ser extraido.\n",
     "contact": {
       "name": "Dominex Tecnologia",
@@ -40,6 +40,10 @@
     {
       "name": "Service orders",
       "description": "Criacao idempotente e consulta de Ordens de Servico da integracao."
+    },
+    {
+      "name": "CRM",
+      "description": "Descoberta de funis e criacao, consulta, atualizacao e movimento de cards comerciais."
     }
   ],
   "security": [
@@ -529,6 +533,391 @@
           }
         }
       }
+    },
+    "/crm/pipelines": {
+      "get": {
+        "operationId": "listCrmPipelines",
+        "tags": [
+          "CRM"
+        ],
+        "summary": "Lista funis comerciais e suas etapas ordenadas.",
+        "x-required-scope": "crm_cards:read",
+        "responses": {
+          "200": {
+            "description": "Funis comerciais do tenant; frentes de projetos nao participam.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CrmPipeline"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/crm/cards": {
+      "get": {
+        "operationId": "listCrmCards",
+        "tags": [
+          "CRM"
+        ],
+        "summary": "Lista cards dos funis comerciais com paginacao por cursor.",
+        "x-required-scope": "crm_cards:read",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "description": "Cursor opaco devolvido em next_cursor."
+          },
+          {
+            "name": "pipeline_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "stage_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "updated_since",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "ISO 8601 com offset."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pagina de cards ordenada por atualizacao e UUID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrmCardList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/Unprocessable"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createCrmCard",
+        "tags": [
+          "CRM"
+        ],
+        "summary": "Cria um card comercial de forma idempotente.",
+        "description": "O servidor deriva `pipeline_id` de `stage_id`; nunca envie `company_id` ou `pipeline_id`.",
+        "x-required-scope": "crm_cards:write",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCrmCardRequest"
+              },
+              "examples": {
+                "commercialOpportunity": {
+                  "value": {
+                    "external_id": "erp-opportunity-1042",
+                    "title": "Contrato de manutencao preventiva",
+                    "stage_id": "018f9c91-8c0c-7c15-a9c1-c6245482b101",
+                    "customer_id": "018f9c91-8c0c-7c15-a9c1-c6245482b202",
+                    "value": 18500,
+                    "probability": 60,
+                    "source": "ERP parceiro"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Replay idempotente da resposta persistida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrmCard"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Card criado; Location aponta para a consulta por UUID.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrmCard"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "422": {
+            "$ref": "#/components/responses/Unprocessable"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/crm/cards/{id}": {
+      "get": {
+        "operationId": "getCrmCard",
+        "tags": [
+          "CRM"
+        ],
+        "summary": "Consulta um card comercial por UUID.",
+        "x-required-scope": "crm_cards:read",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CrmCardId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Card localizado no tenant.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrmCard"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateCrmCard",
+        "tags": [
+          "CRM"
+        ],
+        "summary": "Atualiza campos ou move um card para outra etapa comercial.",
+        "description": "Enviar `stage_id` move o card e registra a mudanca no historico. Exclusao fisica nao esta disponivel.",
+        "x-required-scope": "crm_cards:write",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CrmCardId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCrmCardRequest"
+              },
+              "examples": {
+                "moveStage": {
+                  "value": {
+                    "stage_id": "018f9c91-8c0c-7c15-a9c1-c6245482b303",
+                    "probability": 80
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Card atualizado ou replay idempotente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrmCard"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "422": {
+            "$ref": "#/components/responses/Unprocessable"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/crm/cards/by-external-id/{external_id}": {
+      "get": {
+        "operationId": "getCrmCardByExternalId",
+        "tags": [
+          "CRM"
+        ],
+        "summary": "Consulta um card pela referencia registrada pela integracao.",
+        "x-required-scope": "crm_cards:read",
+        "parameters": [
+          {
+            "name": "external_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Card localizado no tenant.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrmCard"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -541,6 +930,15 @@
       }
     },
     "parameters": {
+      "CrmCardId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
       "IdempotencyKey": {
         "name": "Idempotency-Key",
         "in": "header",
@@ -838,8 +1236,390 @@
           "availability:read",
           "customers:resolve",
           "service_orders:create",
-          "service_orders:read"
+          "service_orders:read",
+          "crm_cards:read",
+          "crm_cards:write"
         ]
+      },
+      "CrmStage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "color",
+          "position",
+          "is_won",
+          "is_lost"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "is_won": {
+            "type": "boolean"
+          },
+          "is_lost": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CrmPipeline": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "color",
+          "position",
+          "is_default",
+          "tracks_value",
+          "stages"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "is_default": {
+            "type": "boolean"
+          },
+          "tracks_value": {
+            "type": "boolean"
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CrmStage"
+            }
+          }
+        }
+      },
+      "CrmCardFields": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "stage_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customer_id": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 99999999.99
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "probability": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "oneOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expected_close_date": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notes": {
+            "oneOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "CreateCrmCardRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "stage_id"
+        ],
+        "properties": {
+          "external_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "stage_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customer_id": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 99999999.99
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "probability": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "oneOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expected_close_date": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notes": {
+            "oneOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateCrmCardRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CrmCardFields"
+          }
+        ],
+        "minProperties": 1
+      },
+      "CrmCard": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "external_id",
+          "title",
+          "pipeline_id",
+          "stage_id",
+          "customer_id",
+          "value",
+          "probability",
+          "source",
+          "expected_close_date",
+          "notes",
+          "created_at",
+          "updated_at",
+          "idempotent_replay"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "external_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "pipeline_id": {
+            "type": "string",
+            "format": "uuid",
+            "readOnly": true
+          },
+          "stage_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Pode ser null apenas em cards legados; toda nova criacao exige uma etapa."
+          },
+          "customer_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "value": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 99999999.99
+          },
+          "probability": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 100
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expected_close_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "idempotent_replay": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "CrmCardList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "next_cursor"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CrmCard"
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
       },
       "DistributionMode": {
         "type": "string",

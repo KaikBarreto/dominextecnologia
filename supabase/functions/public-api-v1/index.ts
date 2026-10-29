@@ -101,6 +101,26 @@ function routeName(method: string, path: string): string {
   if (method === "POST" && path === "/v1/service-orders") {
     return "service_orders_create";
   }
+  if (method === "GET" && path === "/v1/crm/pipelines") {
+    return "crm_pipelines_list";
+  }
+  if (method === "GET" && path === "/v1/crm/cards") {
+    return "crm_cards_list";
+  }
+  if (method === "POST" && path === "/v1/crm/cards") {
+    return "crm_cards_create";
+  }
+  if (
+    method === "GET" && path.startsWith("/v1/crm/cards/by-external-id/")
+  ) {
+    return "crm_cards_get_external";
+  }
+  if (method === "GET" && path.startsWith("/v1/crm/cards/")) {
+    return "crm_cards_get";
+  }
+  if (method === "PATCH" && path.startsWith("/v1/crm/cards/")) {
+    return "crm_cards_update";
+  }
   if (
     method === "GET" && path.startsWith("/v1/service-orders/by-external-id/")
   ) {
@@ -140,6 +160,15 @@ function requiredScope(route: string): string | null {
     route === "service_orders_get" || route === "service_orders_get_external"
   ) {
     return "service_orders:read";
+  }
+  if (
+    route === "crm_pipelines_list" || route === "crm_cards_list" ||
+    route === "crm_cards_get" || route === "crm_cards_get_external"
+  ) {
+    return "crm_cards:read";
+  }
+  if (route === "crm_cards_create" || route === "crm_cards_update") {
+    return "crm_cards:write";
   }
   return null;
 }
@@ -215,6 +244,26 @@ function rpcFailure(
       "Recurso nao encontrado",
       "O recurso informado nao existe.",
     ],
+    invalid_stage: [
+      404,
+      "Etapa nao encontrada",
+      "A etapa informada nao existe em um funil comercial deste tenant.",
+    ],
+    invalid_customer: [
+      404,
+      "Cliente nao encontrado",
+      "O cliente informado nao existe neste tenant.",
+    ],
+    invalid_cursor: [
+      400,
+      "Cursor invalido",
+      "Use o next_cursor retornado pela API.",
+    ],
+    request_in_progress: [
+      409,
+      "Requisicao em processamento",
+      "Aguarde a tentativa original e repita com a mesma chave.",
+    ],
     subscription_unavailable: [
       503,
       "Servico indisponivel",
@@ -226,6 +275,15 @@ function rpcFailure(
     if (normalized.includes(code)) {
       return apiProblem(status, code, title, detail, requestId);
     }
+  }
+  if (["22023", "22P02", "23514"].includes(String(error.code ?? ""))) {
+    return apiProblem(
+      422,
+      "validation_error",
+      "Dados invalidos",
+      "Revise os campos enviados e tente novamente.",
+      requestId,
+    );
   }
   console.error("[public-api-v1] rpc_failed", {
     code: error.code ?? "unknown",
@@ -303,7 +361,7 @@ async function audit(
   }
   const auditRoute = route === "availability"
     ? "availability"
-    : method === "POST"
+    : method !== "GET"
     ? "mutation"
     : "general";
   const { error } = await ctx.admin.rpc("public_api_insert_request_audit", {
@@ -942,6 +1000,289 @@ function validateCreateOrder(
   return normalized as JsonObject;
 }
 
+function validDateOnly(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value;
+}
+
+function validateCrmCardPayload(
+  body: JsonObject,
+  mode: "create" | "update",
+  requestId: string,
+): JsonObject | Response {
+  const writable = [
+    "title",
+    "stage_id",
+    "customer_id",
+    "value",
+    "probability",
+    "source",
+    "expected_close_date",
+    "notes",
+  ] as const;
+  const allowed = mode === "create" ? ["external_id", ...writable] : writable;
+  if (!hasOnlyKeys(body, allowed)) {
+    return apiProblem(
+      400,
+      "unknown_field",
+      "Campo nao permitido",
+      "A requisicao contem campos nao suportados.",
+      requestId,
+    );
+  }
+  if (mode === "update" && Object.keys(body).length === 0) {
+    return apiProblem(
+      422,
+      "empty_update",
+      "Atualizacao vazia",
+      "Informe ao menos um campo para atualizar.",
+      requestId,
+    );
+  }
+  if (mode === "create" && body.external_id !== undefined) {
+    if (
+      typeof body.external_id !== "string" || !body.external_id.trim() ||
+      body.external_id.length > 200 ||
+      body.external_id.startsWith("__internal__:")
+    ) {
+      return apiProblem(
+        422,
+        "invalid_external_id",
+        "Referencia invalida",
+        "external_id deve ter entre 1 e 200 caracteres.",
+        requestId,
+      );
+    }
+  }
+  if (
+    (mode === "create" || body.title !== undefined) &&
+    (typeof body.title !== "string" || !body.title.trim() ||
+      body.title.length > 200)
+  ) {
+    return apiProblem(
+      422,
+      "invalid_title",
+      "Titulo invalido",
+      "title e obrigatorio e aceita ate 200 caracteres.",
+      requestId,
+    );
+  }
+  if (
+    (mode === "create" || body.stage_id !== undefined) &&
+    !uuidOrNull(body.stage_id)
+  ) {
+    return apiProblem(
+      422,
+      "invalid_stage",
+      "Etapa invalida",
+      "stage_id deve ser um UUID de etapa comercial valido.",
+      requestId,
+    );
+  }
+  if (
+    body.customer_id !== undefined && body.customer_id !== null &&
+    !uuidOrNull(body.customer_id)
+  ) {
+    return apiProblem(
+      422,
+      "invalid_customer",
+      "Cliente invalido",
+      "customer_id deve ser um UUID valido ou null.",
+      requestId,
+    );
+  }
+  if (
+    body.value !== undefined && body.value !== null &&
+    (typeof body.value !== "number" || !Number.isFinite(body.value) ||
+      body.value < 0 || body.value > 99_999_999.99)
+  ) {
+    return apiProblem(
+      422,
+      "invalid_value",
+      "Valor invalido",
+      "value deve ser um numero nao negativo dentro do limite aceito.",
+      requestId,
+    );
+  }
+  if (
+    body.probability !== undefined && body.probability !== null &&
+    (!Number.isInteger(body.probability) || Number(body.probability) < 0 ||
+      Number(body.probability) > 100)
+  ) {
+    return apiProblem(
+      422,
+      "invalid_probability",
+      "Probabilidade invalida",
+      "probability deve ser um inteiro entre 0 e 100.",
+      requestId,
+    );
+  }
+  for (const [field, max] of [["source", 200], ["notes", 10_000]] as const) {
+    const value = body[field];
+    if (
+      value !== undefined && value !== null &&
+      (typeof value !== "string" || value.length > max)
+    ) {
+      return apiProblem(
+        422,
+        `invalid_${field}`,
+        "Campo invalido",
+        `${field} deve ser texto com ate ${max} caracteres ou null.`,
+        requestId,
+      );
+    }
+  }
+  if (
+    body.expected_close_date !== undefined &&
+    body.expected_close_date !== null &&
+    !validDateOnly(body.expected_close_date)
+  ) {
+    return apiProblem(
+      422,
+      "invalid_expected_close_date",
+      "Data invalida",
+      "expected_close_date deve usar o formato YYYY-MM-DD ou null.",
+      requestId,
+    );
+  }
+
+  const normalized = structuredClone(body);
+  if (typeof normalized.title === "string") {
+    normalized.title = normalized.title.trim();
+  }
+  if (typeof normalized.external_id === "string") {
+    normalized.external_id = normalized.external_id.trim();
+  }
+  return normalized;
+}
+
+function validateCrmCardList(
+  url: URL,
+  requestId: string,
+): JsonObject | Response {
+  const allowed = new Set([
+    "limit",
+    "cursor",
+    "pipeline_id",
+    "stage_id",
+    "updated_since",
+  ]);
+  if ([...url.searchParams.keys()].some((key) => !allowed.has(key))) {
+    return apiProblem(
+      400,
+      "unknown_query_parameter",
+      "Parametro nao permitido",
+      "A consulta contem parametros nao suportados.",
+      requestId,
+    );
+  }
+  const rawLimit = url.searchParams.get("limit");
+  const limit = rawLimit === null ? 50 : Number(rawLimit);
+  const cursor = url.searchParams.get("cursor");
+  const pipelineId = url.searchParams.get("pipeline_id");
+  const stageId = url.searchParams.get("stage_id");
+  const updatedSince = url.searchParams.get("updated_since");
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    return apiProblem(
+      422,
+      "invalid_limit",
+      "Limite invalido",
+      "limit deve ser um inteiro entre 1 e 100.",
+      requestId,
+    );
+  }
+  if (cursor !== null && (!cursor || cursor.length > 500)) {
+    return apiProblem(
+      422,
+      "invalid_cursor",
+      "Cursor invalido",
+      "Use o next_cursor retornado pela API.",
+      requestId,
+    );
+  }
+  if (pipelineId !== null && !uuidOrNull(pipelineId)) {
+    return apiProblem(
+      422,
+      "invalid_pipeline",
+      "Funil invalido",
+      "pipeline_id deve ser UUID.",
+      requestId,
+    );
+  }
+  if (stageId !== null && !uuidOrNull(stageId)) {
+    return apiProblem(
+      422,
+      "invalid_stage",
+      "Etapa invalida",
+      "stage_id deve ser UUID.",
+      requestId,
+    );
+  }
+  if (updatedSince !== null && !isIsoWithOffset(updatedSince)) {
+    return apiProblem(
+      422,
+      "invalid_updated_since",
+      "Data invalida",
+      "updated_since deve ser ISO 8601 com offset.",
+      requestId,
+    );
+  }
+  return {
+    limit,
+    cursor,
+    pipeline_id: pipelineId,
+    stage_id: stageId,
+    updated_since: updatedSince,
+  };
+}
+
+function idempotencyKeyOrProblem(
+  req: Request,
+  requestId: string,
+): string | Response {
+  const value = req.headers.get("idempotency-key")?.trim() ?? "";
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,199}$/.test(value)) {
+    return apiProblem(
+      400,
+      "invalid_idempotency_key",
+      "Chave de idempotencia invalida",
+      "Envie Idempotency-Key com 8 a 200 caracteres seguros.",
+      requestId,
+    );
+  }
+  return value;
+}
+
+async function readApiJson(
+  req: Request,
+  requestId: string,
+): Promise<JsonObject | Response> {
+  try {
+    return await readJsonBody(req);
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return apiProblem(
+        413,
+        "payload_too_large",
+        "Requisicao muito grande",
+        "O corpo excede 64 KiB.",
+        requestId,
+      );
+    }
+    return apiProblem(
+      400,
+      "invalid_json",
+      "JSON invalido",
+      "Envie um objeto JSON valido.",
+      requestId,
+    );
+  }
+}
+
 async function routeRequest(
   req: Request,
   url: URL,
@@ -1155,6 +1496,132 @@ async function routeRequest(
     });
   }
 
+  if (route === "crm_pipelines_list") {
+    const { data, error } = await ctx.admin.rpc(
+      "public_api_get_crm_pipelines",
+      { p_integration_id: ctx.integration.id },
+    );
+    if (error) return rpcFailure(error, ctx.requestId);
+    const problem = asRpcProblem(data, ctx.requestId);
+    return problem ?? apiJson(firstRpcRow(data), 200, ctx.requestId);
+  }
+
+  if (route === "crm_cards_list") {
+    const params = validateCrmCardList(url, ctx.requestId);
+    if (params instanceof Response) return params;
+    const { data, error } = await ctx.admin.rpc(
+      "public_api_list_crm_cards",
+      {
+        p_integration_id: ctx.integration.id,
+        p_limit: params.limit,
+        p_cursor: params.cursor,
+        p_pipeline_id: params.pipeline_id,
+        p_stage_id: params.stage_id,
+        p_updated_since: params.updated_since,
+      },
+    );
+    if (error) return rpcFailure(error, ctx.requestId);
+    const problem = asRpcProblem(data, ctx.requestId);
+    return problem ?? apiJson(firstRpcRow(data), 200, ctx.requestId);
+  }
+
+  if (route === "crm_cards_create") {
+    const idempotencyKey = idempotencyKeyOrProblem(req, ctx.requestId);
+    if (idempotencyKey instanceof Response) return idempotencyKey;
+    const body = await readApiJson(req, ctx.requestId);
+    if (body instanceof Response) return body;
+    const payload = validateCrmCardPayload(body, "create", ctx.requestId);
+    if (payload instanceof Response) return payload;
+    const requestHash = await sha256Hex(canonicalJson(payload));
+    const { data, error } = await ctx.admin.rpc(
+      "public_api_create_crm_card",
+      {
+        p_integration_id: ctx.integration.id,
+        p_idempotency_key: idempotencyKey,
+        p_request_hash: requestHash,
+        p_payload: payload,
+      },
+    );
+    if (error) return rpcFailure(error, ctx.requestId);
+    const problem = asRpcProblem(data, ctx.requestId);
+    if (problem) return problem;
+    const result = firstRpcRow(data);
+    const replay = isPlainObject(result) && result.idempotent_replay === true;
+    return apiJson(result, replay ? 200 : 201, ctx.requestId, {
+      Location: isPlainObject(result) && typeof result.id === "string"
+        ? `/v1/crm/cards/${result.id}`
+        : "/v1/crm/cards",
+    });
+  }
+
+  if (
+    route === "crm_cards_get" || route === "crm_cards_get_external" ||
+    route === "crm_cards_update"
+  ) {
+    const byExternal = route === "crm_cards_get_external";
+    const prefix = byExternal
+      ? "/v1/crm/cards/by-external-id/"
+      : "/v1/crm/cards/";
+    let identifier: string;
+    try {
+      identifier = decodeURIComponent(
+        publicApiPath(url.pathname).slice(prefix.length),
+      );
+    } catch {
+      return apiProblem(
+        400,
+        "invalid_identifier",
+        "Identificador invalido",
+        "O identificador nao e valido.",
+        ctx.requestId,
+      );
+    }
+    if (
+      !identifier || identifier.length > 200 ||
+      (!byExternal && !UUID_RE.test(identifier))
+    ) {
+      return apiProblem(
+        400,
+        "invalid_identifier",
+        "Identificador invalido",
+        "O identificador nao e valido.",
+        ctx.requestId,
+      );
+    }
+
+    if (route === "crm_cards_update") {
+      const idempotencyKey = idempotencyKeyOrProblem(req, ctx.requestId);
+      if (idempotencyKey instanceof Response) return idempotencyKey;
+      const body = await readApiJson(req, ctx.requestId);
+      if (body instanceof Response) return body;
+      const payload = validateCrmCardPayload(body, "update", ctx.requestId);
+      if (payload instanceof Response) return payload;
+      const requestHash = await sha256Hex(canonicalJson(payload));
+      const { data, error } = await ctx.admin.rpc(
+        "public_api_update_crm_card",
+        {
+          p_integration_id: ctx.integration.id,
+          p_card_id: identifier,
+          p_idempotency_key: idempotencyKey,
+          p_request_hash: requestHash,
+          p_payload: payload,
+        },
+      );
+      if (error) return rpcFailure(error, ctx.requestId);
+      const problem = asRpcProblem(data, ctx.requestId);
+      return problem ?? apiJson(firstRpcRow(data), 200, ctx.requestId);
+    }
+
+    const { data, error } = await ctx.admin.rpc("public_api_get_crm_card", {
+      p_integration_id: ctx.integration.id,
+      p_card_id: byExternal ? null : identifier,
+      p_external_id: byExternal ? identifier : null,
+    });
+    if (error) return rpcFailure(error, ctx.requestId);
+    const problem = asRpcProblem(data, ctx.requestId);
+    return problem ?? apiJson(firstRpcRow(data), 200, ctx.requestId);
+  }
+
   if (
     route === "service_orders_get" || route === "service_orders_get_external"
   ) {
@@ -1257,12 +1724,12 @@ Deno.serve(async (req) => {
         "Metodo nao permitido",
         "A API publica nao aceita chamadas de navegador.",
         requestId,
-        { Allow: "GET, POST" },
+        { Allow: "GET, POST, PATCH" },
       ),
       startedAt,
     );
   }
-  if (!["GET", "POST"].includes(method)) {
+  if (!["GET", "POST", "PATCH"].includes(method)) {
     return logRequestCompleted(
       requestId,
       route,
@@ -1272,13 +1739,13 @@ Deno.serve(async (req) => {
         "Metodo nao permitido",
         "Use um dos metodos documentados.",
         requestId,
-        { Allow: "GET, POST" },
+        { Allow: "GET, POST, PATCH" },
       ),
       startedAt,
     );
   }
   if (
-    method === "POST" &&
+    method !== "GET" &&
     !req.headers.get("content-type")?.toLowerCase().startsWith(
       "application/json",
     )
@@ -1376,7 +1843,7 @@ Deno.serve(async (req) => {
       AVAILABILITY_RATE_LIMIT,
     );
   }
-  if (!response && method === "POST") {
+  if (!response && method !== "GET") {
     response = await consumeRateLimit(ctx, "mutation", MUTATION_RATE_LIMIT);
   }
   if (!response) {

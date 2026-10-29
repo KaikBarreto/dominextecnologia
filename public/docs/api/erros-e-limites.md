@@ -21,7 +21,8 @@ Erros usam `application/problem+json`:
 - `409 schedule_conflict`: consulte disponibilidade novamente.
 - `409 idempotency_conflict`: incidente de implementação; não gere outra chave para mascarar.
 - `429`: aguarde `Retry-After` com jitter.
-- `500`/`503`/timeout: retry limitado; em criação preserve chave e payload.
+- `500`/`503`/timeout: retry limitado; em POST/PATCH preserve chave e payload.
+- `404` em CRM: card, etapa ou cliente não encontrado; não inferir outro tenant.
 
 ## Limites padrão
 
@@ -30,6 +31,7 @@ Erros usam `application/problem+json`:
 - 10 mutações/minuto.
 - Corpo máximo de 64 KiB.
 - Disponibilidade: até 31 dias e 50 slots.
+- Listagem de cards: até 100 itens por página; continue com `next_cursor`.
 
 Leia os limites vigentes em `GET /capabilities`.
 
