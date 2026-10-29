@@ -7,6 +7,7 @@ interface InventoryItemThumbnailProps {
   name: string;
   imageUrl?: string | null;
   accentColor?: string | null;
+  fallbackVariant?: 'accent' | 'plain';
   className?: string;
 }
 
@@ -18,6 +19,7 @@ export function InventoryItemThumbnail({
   name,
   imageUrl,
   accentColor,
+  fallbackVariant = 'accent',
   className,
 }: InventoryItemThumbnailProps) {
   const source = imageUrl ?? '';
@@ -60,9 +62,10 @@ export function InventoryItemThumbnail({
     <span
       className={cn(
         'flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted',
+        fallbackVariant === 'plain' && !showImage && 'border-transparent bg-transparent',
         className,
       )}
-      style={!showImage && accentColor
+      style={fallbackVariant === 'accent' && !showImage && accentColor
         ? { backgroundColor: `${accentColor}22`, color: accentColor }
         : undefined}
     >
@@ -82,8 +85,10 @@ export function InventoryItemThumbnail({
       ) : (
         <Package
           aria-hidden="true"
-          className="h-5 w-5"
-          style={!accentColor ? { color: 'hsl(var(--primary))' } : undefined}
+          className={cn('h-5 w-5', fallbackVariant === 'plain' && 'text-foreground')}
+          style={fallbackVariant === 'accent' && !accentColor
+            ? { color: 'hsl(var(--primary))' }
+            : undefined}
         />
       )}
     </span>

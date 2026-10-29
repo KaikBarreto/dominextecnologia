@@ -106,6 +106,7 @@ export function MaterialPriceAnalysis({
           name={row.material_name}
           imageUrl={imageUrlsByInventoryId?.get(row.inventory_id)}
           accentColor={row.group_color}
+          fallbackVariant="plain"
           className="h-9 w-9"
         />
       ),

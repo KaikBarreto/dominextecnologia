@@ -61,4 +61,17 @@ describe('InventoryItemThumbnail', () => {
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
     expect(container.querySelector('svg')).toBeInTheDocument();
   });
+
+  it('permite fallback simples sem fundo colorido', () => {
+    const { container } = render(
+      <InventoryItemThumbnail
+        name="Tubulação de cobre"
+        accentColor="#16a34a"
+        fallbackVariant="plain"
+      />,
+    );
+
+    expect(container.firstChild).toHaveClass('border-transparent', 'bg-transparent');
+    expect(container.querySelector('svg')).toHaveClass('text-foreground');
+  });
 });
