@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, BarChart3, Minus, PackageSearch, TrendingDown, TrendingUp } from 'lucide-react';
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
-  Line,
-  LineChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -310,7 +310,7 @@ export function MaterialPriceAnalysis({
               aria-label={t.chartAria.replace('{material}', material.material_name)}
             >
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 12, right: 12, left: isMobile ? -12 : 4, bottom: 4 }}>
+                <AreaChart data={chartData} margin={{ top: 12, right: 12, left: isMobile ? -12 : 4, bottom: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
                   <XAxis
                     dataKey="label"
@@ -366,19 +366,21 @@ export function MaterialPriceAnalysis({
                       );
                     }}
                   />
-                  <Line
+                  <Area
                     type="linear"
                     dataKey="averagePrice"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2.5}
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    connectNulls={false}
+                    fill="hsl(var(--primary))"
+                    fillOpacity={0.12}
+                    connectNulls
                     dot={{ r: 4, fill: 'hsl(var(--background))', strokeWidth: 2 }}
                     activeDot={{ r: 6 }}
                     isAnimationActive={false}
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             </div>
             <ul className="sr-only">

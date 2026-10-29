@@ -8,9 +8,11 @@ vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
 vi.mock('@/hooks/useSignedUrl', () => ({ resolveStorageUrl: async (url: string) => url }));
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: { children: ReactNode }) => <div data-testid="responsive-chart">{children}</div>,
-  LineChart: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AreaChart: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   CartesianGrid: () => null,
-  Line: () => null,
+  Area: ({ connectNulls }: { connectNulls?: boolean }) => (
+    <div data-testid="price-area" data-connect-nulls={String(Boolean(connectNulls))} />
+  ),
   ReferenceLine: () => null,
   Tooltip: () => null,
   XAxis: () => null,
@@ -54,6 +56,7 @@ describe('MaterialPriceAnalysis', () => {
     expect(screen.getByText('Último preço')).toBeInTheDocument();
     expect(screen.getByText('R$ 130,00 / kg')).toBeInTheDocument();
     expect(screen.getByTestId('responsive-chart')).toBeInTheDocument();
+    expect(screen.getByTestId('price-area')).toHaveAttribute('data-connect-nulls', 'true');
   });
 
   it('explains when there is not enough history for a ranking', () => {

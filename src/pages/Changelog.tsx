@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.2',
+    date: '29 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Leitura contínua da evolução dos preços',
+        description: 'Os gráficos de preço agora conectam a evolução em uma área visual e mantêm marcadores nos períodos com compras, facilitando a leitura diária, semanal e mensal.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.1',
     date: '29 de outubro de 2026',
     type: 'patch',
