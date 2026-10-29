@@ -22,6 +22,7 @@ import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { SearchField } from '@/components/ui/search-field-actions';
+import { MaterialPriceAnalysis } from '@/components/inventory/MaterialPriceAnalysis';
 import { useMaterialPurchaseReport, type MaterialPurchaseReportRow } from '@/hooks/useMaterialPurchaseReport';
 import { useMaterialGroups } from '@/hooks/useMaterialGroups';
 import { useStocks } from '@/hooks/useStocks';
@@ -385,6 +386,15 @@ export function MaterialPurchaseReportTab() {
 
       {pricedCoverage < 100 && <NoticeBanner variant="warning">{t.priceCoverageWarning.replace('{coverage}', `${number(pricedCoverage, { maximumFractionDigits: 1 })}%`)}</NoticeBanner>}
       {report.error && <NoticeBanner variant="destructive" action={t.retry} onClick={() => void report.refetch()}>{t.loadError}</NoticeBanner>}
+
+      {!report.error && (
+        <MaterialPriceAnalysis
+          rows={filteredMaterialRows}
+          startDate={startDate}
+          endDate={endDate}
+          isLoading={report.isLoading}
+        />
+      )}
 
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
         <SearchField

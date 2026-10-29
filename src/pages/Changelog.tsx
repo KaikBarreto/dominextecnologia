@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.0',
+    date: '29 de outubro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Evolução dos preços de compra por material',
+        description: 'No relatório de compras do estoque, agora é possível acompanhar como o preço de cada material mudou no período, conferir médias, menores e maiores valores e identificar rapidamente as maiores altas e quedas.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.37.55',
     date: '29 de outubro de 2026',
     type: 'patch',

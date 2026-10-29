@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+export const MATERIAL_PURCHASE_REPORT_QUERY_KEY = ['material-purchase-report'] as const;
+
 export interface MaterialPurchaseHistoryItem {
   date: string;
   kind: 'compra';
@@ -61,7 +63,7 @@ export function useMaterialPurchaseReport({
   createdByIds,
 }: Params) {
   return useQuery({
-    queryKey: ['material-purchase-report', startDate, endDate, stockIds, supplierIds, groupIds, createdByIds],
+    queryKey: [...MATERIAL_PURCHASE_REPORT_QUERY_KEY, startDate, endDate, stockIds, supplierIds, groupIds, createdByIds],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_material_purchase_report', {
         p_start_date: startDate || undefined,

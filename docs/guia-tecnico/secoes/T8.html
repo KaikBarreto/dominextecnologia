@@ -411,6 +411,13 @@
 
   <p>Abrindo uma linha aparece o <span class="ui">Histórico de compras</span>, com data, fornecedor, local, número da O.C., responsável, situação ou forma de pagamento, quantidade, valor unitário e total. Compra direta mostra o pagamento que foi lançado no Financeiro. O.C. tradicional sem lançamento financeiro aparece como <span class="ui">Não vinculado</span>, nunca como pendente por suposição.</p>
 
+  <h3>Evolução do preço de compra</h3>
+  <p>Abaixo do resumo, a área <span class="ui">Evolução do preço de compra</span> compara cada material apenas com o próprio histórico. A <span class="ui">Visão geral</span> destaca as maiores altas e quedas do período. Selecionando um material, aparecem o último preço, a média ponderada pela quantidade recebida, o menor e o maior preço, a variação e um gráfico por dia, semana, mês ou trimestre, conforme o tamanho do intervalo.</p>
+
+  <div class="regra">
+    Períodos sem compra ficam vazios no gráfico e unidades diferentes não são misturadas. Compras recebidas pelo fluxo de compras e compras diretas registradas no PDV atualizam essa análise.
+  </div>
+
   <div class="aviso">
     <span class="ui">Saldo atual</span> é o saldo de agora, mesmo quando o período do relatório está no passado. Para saber o saldo que existia numa data antiga, use a aba <span class="ui">Posição de Estoque</span>. Em recebimentos parciais antigos, o histórico comercial pode usar a data consolidada da O.C., porque essas compras não guardavam um evento detalhado para cada parcela recebida.
   </div>
@@ -425,7 +432,7 @@
     Saída, consumo, transferência e ajuste de estoque não são venda. O relatório não inventa faturamento a partir desses movimentos. Quando o PDV entrar, cada venda precisa trazer sua origem comercial e o custo congelado daquele momento para preservar a margem histórica.
   </div>
 
-  <!-- PRINT FALTANDO: t8-relatorio-compras — aba Relatório com os quatro indicadores, o cartão Total comprado expandido, filtros e a tabela por material. Capturar depois que a migration do relatório estiver aplicada e houver compras fictícias na conta de teste. -->
+  <!-- PRINT FALTANDO: t8-relatorio-compras — aba Relatório com indicadores, filtros, tabela por material e a análise de evolução dos preços. Capturar com compras fictícias na conta de teste. -->
 
   <h2 class="suporte">Suporte: problemas comuns</h2>
   <table class="faq">

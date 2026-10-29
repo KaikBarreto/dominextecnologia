@@ -6,6 +6,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { getErrorMessage } from '@/utils/errorMessages';
 import type { Database, Json, Tables } from '@/integrations/supabase/types';
+import { MATERIAL_PURCHASE_REPORT_QUERY_KEY } from '@/hooks/useMaterialPurchaseReport';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ORDEM DE COMPRA (O.C.)
@@ -393,6 +394,7 @@ export function useCompraOrdens(compraId: string | null): UseCompraOrdensResult 
       queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
       queryClient.invalidateQueries({ queryKey: ['low-stock'] });
+      queryClient.invalidateQueries({ queryKey: MATERIAL_PURCHASE_REPORT_QUERY_KEY });
       const count = (itens ?? []).filter((i) => Number(i.quantity) > 0).length;
       toast({
         title:
@@ -418,6 +420,7 @@ export function useCompraOrdens(compraId: string | null): UseCompraOrdensResult 
     },
     onSuccess: () => {
       invalidateOrdens();
+      queryClient.invalidateQueries({ queryKey: MATERIAL_PURCHASE_REPORT_QUERY_KEY });
       toast({ title: t.deleteSuccess });
     },
     onError: (error) => {

@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.55";
+export const APP_VERSION = "1.38.0";
 
 export const VERSION_NOTES =
-  "Contratos PMOC ganharam checklists personalizados por equipamento, e as telas de custos, equipes, estoque e navegação ficaram mais completas e fáceis de usar.";
+  "O relatório de compras do estoque agora mostra a evolução dos preços por material, com médias, extremos e as maiores variações do período.";
