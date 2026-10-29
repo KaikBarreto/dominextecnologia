@@ -28,6 +28,7 @@ import { Label } from '@/components/ui/label';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -72,7 +73,26 @@ import {
 } from '@/lib/publicProposal';
 import { formatBRL } from '@/utils/currency';
 import logoWhite from '@/assets/logo-white-horizontal.png';
-import { generateProposalSimulatorPdf } from '@/utils/proposalSimulatorPdf';
+import {
+  generateProposalSimulatorPdf,
+  type ProposalPdfModuleValue,
+} from '@/utils/proposalSimulatorPdf';
+
+type ModulePricePeriod = 'monthly' | 'annual';
+
+interface ProposalExportSettings {
+  showModulePrices: boolean;
+  modulePricePeriod: ModulePricePeriod;
+  showMonthlyPrice: boolean;
+  showPixInstallments: boolean;
+}
+
+const DEFAULT_EXPORT_SETTINGS: ProposalExportSettings = {
+  showModulePrices: false,
+  modulePricePeriod: 'monthly',
+  showMonthlyPrice: true,
+  showPixInstallments: true,
+};
 
 const MODULE_LABELS: Record<string, string> = {
   basic: 'Gestão completa de serviços e equipes',
@@ -386,6 +406,8 @@ export default function ProposalSimulator() {
   const [monthlyDiscount, setMonthlyDiscount] = useState(initialState.monthlyDiscount);
   const [installments, setInstallments] = useState(initialState.installments);
   const [monthlyPlanVisible, setMonthlyPlanVisible] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportSettings, setExportSettings] = useState<ProposalExportSettings>(DEFAULT_EXPORT_SETTINGS);
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'proposal' | 'structure' | 'pricing'>('proposal');
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -477,9 +499,16 @@ export default function ProposalSimulator() {
         modules: moduleBenefits(unit.moduleCodes, selectedModules),
         users: unit.users,
         monthly,
+        moduleValues: selectedModules
+          .filter((module) => module.price > 0)
+          .map((module): ProposalPdfModuleValue => ({
+            name: moduleDisplayName(module),
+            monthlyPrice: module.price,
+          })),
       };
     }
     const plan = plans.find((candidate) => candidate.code === unit.planCode) ?? plans[0];
+    const planModuleCodes = new Set([BASE_MODULE_CODE, ...(plan?.includedModules ?? [])]);
     return {
       unit,
       code: plan?.code ?? unit.planCode,
@@ -487,6 +516,12 @@ export default function ProposalSimulator() {
       modules: plan ? planModules(plan) : [],
       users: plan?.maxUsers ?? 0,
       monthly: plan?.price ?? 0,
+      moduleValues: proposalModules
+        .filter((module) => planModuleCodes.has(module.code) && module.price > 0)
+        .map((module): ProposalPdfModuleValue => ({
+          name: moduleDisplayName(module),
+          monthlyPrice: module.price,
+        })),
     };
   }), [extraUserPrice, plans, proposalModules, units]);
   const totals = useMemo(
@@ -599,7 +634,7 @@ export default function ProposalSimulator() {
     }
   }
 
-  async function generatePdf() {
+  async function generatePdf(settings: ProposalExportSettings) {
     if (!clientName.trim()) {
       toast.error('Informe o nome do cliente antes de gerar a proposta.');
       return;
@@ -625,10 +660,16 @@ export default function ProposalSimulator() {
             monthly: unitTotals.monthlyFull,
             yearlyFull: unitTotals.yearlyFull,
             yearlyDiscounted: unitTotals.yearlyFull,
+            moduleValues: view.moduleValues,
           };
         }),
         totals,
+        showModulePrices: settings.showModulePrices,
+        modulePricePeriod: settings.modulePricePeriod,
+        showMonthlyPrice: settings.showMonthlyPrice,
+        showPixInstallments: settings.showPixInstallments,
       });
+      setExportDialogOpen(false);
       toast.success('Proposta em PDF gerada com sucesso.');
     } catch (error) {
       console.error(error);
@@ -685,7 +726,7 @@ export default function ProposalSimulator() {
               <Copy className="mr-2 h-4 w-4" />
               Link
             </Button>
-            <Button size="sm" onClick={() => void generatePdf()} disabled={isGeneratingPdf || isLoading}>
+            <Button size="sm" onClick={() => setExportDialogOpen(true)} disabled={isGeneratingPdf || isLoading}>
               {isGeneratingPdf ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -696,6 +737,100 @@ export default function ProposalSimulator() {
             </Button>
           </div>
         </header>
+
+        <ResponsiveModal
+          open={exportDialogOpen}
+          onOpenChange={setExportDialogOpen}
+          title="Configurar proposta"
+          description="Escolha como os valores vão aparecer no PDF."
+          footer={(
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 hover:border-red-600 hover:bg-red-600 hover:text-white dark:hover:border-red-600 dark:hover:bg-red-600 dark:hover:text-white"
+                onClick={() => setExportDialogOpen(false)}
+                disabled={isGeneratingPdf}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                className="flex-1"
+                onClick={() => void generatePdf(exportSettings)}
+                disabled={isGeneratingPdf}
+              >
+                {isGeneratingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                {isGeneratingPdf ? 'Gerando...' : 'Gerar PDF'}
+              </Button>
+            </div>
+          )}
+        >
+          <div className="space-y-5 py-2">
+            <div className="rounded-lg bg-emerald-600 p-3 text-white">
+              <p className="text-sm font-semibold">Valor anual sempre incluído</p>
+              <p className="mt-1 text-xs text-white/80">A proposta sempre mostra o total anual e a economia negociada.</p>
+            </div>
+
+            <div className="divide-y divide-border/50">
+              <div className="flex items-center justify-between gap-4 py-4 first:pt-0">
+                <div>
+                  <Label htmlFor="proposal-export-monthly" className="text-sm font-semibold">Mostrar valor mensal</Label>
+                  <p className="mt-1 text-xs text-muted-foreground">Inclui a opção mensal e os totais por mês.</p>
+                </div>
+                <Switch
+                  id="proposal-export-monthly"
+                  checked={exportSettings.showMonthlyPrice}
+                  onCheckedChange={(checked) => setExportSettings((current) => ({ ...current, showMonthlyPrice: checked }))}
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-4 py-4">
+                <div>
+                  <Label htmlFor="proposal-export-pix" className="text-sm font-semibold">Mostrar parcelamento no Pix</Label>
+                  <p className="mt-1 text-xs text-muted-foreground">Exibe a quantidade de parcelas e o valor de cada uma.</p>
+                </div>
+                <Switch
+                  id="proposal-export-pix"
+                  checked={exportSettings.showPixInstallments}
+                  onCheckedChange={(checked) => setExportSettings((current) => ({ ...current, showPixInstallments: checked }))}
+                />
+              </div>
+
+              <div className="space-y-4 py-4 last:pb-0">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <Label htmlFor="proposal-export-modules" className="text-sm font-semibold">Mostrar valores dos módulos</Label>
+                    <p className="mt-1 text-xs text-muted-foreground">Mostra valores de catálogo sem alterar o total negociado do plano.</p>
+                  </div>
+                  <Switch
+                    id="proposal-export-modules"
+                    checked={exportSettings.showModulePrices}
+                    onCheckedChange={(checked) => setExportSettings((current) => ({ ...current, showModulePrices: checked }))}
+                  />
+                </div>
+
+                {exportSettings.showModulePrices && (
+                  <div className="space-y-2">
+                    <Label htmlFor="proposal-export-module-period">Valor dos módulos</Label>
+                    <Select
+                      value={exportSettings.modulePricePeriod}
+                      onValueChange={(value) => setExportSettings((current) => ({ ...current, modulePricePeriod: value as ModulePricePeriod }))}
+                    >
+                      <SelectTrigger id="proposal-export-module-period">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly">Mensal</SelectItem>
+                        <SelectItem value="annual">Anual conforme a condição negociada</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </ResponsiveModal>
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
           <TabsList variant="underline" className="mb-6 w-full print:hidden">

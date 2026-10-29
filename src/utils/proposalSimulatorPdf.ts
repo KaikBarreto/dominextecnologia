@@ -37,6 +37,12 @@ export interface ProposalPdfUnit {
   monthly: number;
   yearlyFull: number;
   yearlyDiscounted: number;
+  moduleValues?: ProposalPdfModuleValue[];
+}
+
+export interface ProposalPdfModuleValue {
+  name: string;
+  monthlyPrice: number;
 }
 
 export interface ProposalPdfTotals {
@@ -61,6 +67,10 @@ export interface GenerateProposalPdfInput {
   logoUrl: string;
   issuedAt?: Date;
   validityDays?: number;
+  showModulePrices?: boolean;
+  modulePricePeriod?: 'monthly' | 'annual';
+  showMonthlyPrice?: boolean;
+  showPixInstallments?: boolean;
 }
 
 export interface ProposalPdfMetadata {
@@ -81,6 +91,18 @@ function safeText(value: string, fallback: string): string {
     .join('')
     .trim();
   return cleaned || fallback;
+}
+
+function annualPriceFactor(input: GenerateProposalPdfInput): number {
+  if (input.totals.monthlyFull <= 0) return 12;
+  return input.totals.yearlyDiscounted / input.totals.monthlyFull;
+}
+
+function moduleDisplayValue(input: GenerateProposalPdfInput, monthlyPrice: number): number {
+  const value = input.modulePricePeriod === 'annual'
+    ? monthlyPrice * annualPriceFactor(input)
+    : monthlyPrice;
+  return Math.round(value * 100) / 100;
 }
 
 function proposalDiscountLabel(discount: ProposalDiscount, amount: number): string {
@@ -492,7 +514,9 @@ function drawCoverPage(
   doc.setFontSize(12);
   const summaryLine = input.units.length === 1
     ? `${planNames[0]} · ${totalUsers} ${totalUsers === 1 ? 'usuário' : 'usuários'}`
-    : `${metadata.unitSummary} · ${money(input.totals.monthly)}/mês`;
+    : input.showMonthlyPrice === false
+      ? `${metadata.unitSummary} · ${money(input.totals.yearlyDiscounted)}/ano`
+      : `${metadata.unitSummary} · ${money(input.totals.monthly)}/mês`;
   doc.text(summaryLine, MARGIN, 273);
 
   setTextColor(doc, MUTED);
@@ -504,17 +528,27 @@ function drawCoverPage(
 
 // ---------- Escopo ----------
 
-function unitCardHeight(doc: jsPDF, unit: ProposalPdfUnit): number {
+function unitCardHeight(doc: jsPDF, unit: ProposalPdfUnit, showModulePrices = false): number {
   // splitTextToSize mede com a fonte/tamanho ATIVOS no doc — sem fixar aqui, herda o que
   // sobrou de uma chamada anterior (ex. título 26pt) e infla a contagem de linhas.
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   const moduleLines = unit.modules.flatMap((label) => doc.splitTextToSize(safeText(label, 'Módulo'), 118));
-  return Math.max(26, 20 + moduleLines.length * 4.1);
+  const priceRows = showModulePrices ? (unit.moduleValues?.length ?? 0) : 0;
+  const pricesHeight = priceRows > 0 ? 9 + priceRows * 5 : 0;
+  return Math.max(26, 20 + moduleLines.length * 4.1 + pricesHeight);
 }
 
-function drawUnitCard(doc: jsPDF, displayFont: string, unit: ProposalPdfUnit, index: number, y: number): number {
-  const height = unitCardHeight(doc, unit);
+function drawUnitCard(
+  doc: jsPDF,
+  displayFont: string,
+  input: GenerateProposalPdfInput,
+  unit: ProposalPdfUnit,
+  index: number,
+  y: number,
+): number {
+  const showModulePrices = input.showModulePrices ?? false;
+  const height = unitCardHeight(doc, unit, showModulePrices);
   setFillColor(doc, CARD);
   doc.roundedRect(MARGIN, y, CONTENT_WIDTH, height, 3, 3, 'F');
 
@@ -532,7 +566,10 @@ function drawUnitCard(doc: jsPDF, displayFont: string, unit: ProposalPdfUnit, in
   doc.setFontSize(8);
   doc.text(`Plano ${safeText(unit.planName, 'Personalizado')} · ${unit.users} ${unit.users === 1 ? 'usuário' : 'usuários'}`, MARGIN + 18, y + 13.5);
 
-  const { intPart, centsPart } = moneyParts(unit.monthly);
+  const unitValue = input.showMonthlyPrice === false
+    ? unit.monthly * annualPriceFactor(input)
+    : unit.monthly;
+  const { intPart, centsPart } = moneyParts(unitValue);
   setTextColor(doc, WHITE);
   doc.setFont(displayFont, 'normal');
   doc.setFontSize(13);
@@ -541,7 +578,7 @@ function drawUnitCard(doc: jsPDF, displayFont: string, unit: ProposalPdfUnit, in
   setTextColor(doc, MUTED);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
-  doc.text('por mês', priceRight, y + 13.5, { align: 'right' });
+  doc.text(input.showMonthlyPrice === false ? 'por ano' : 'por mês', priceRight, y + 13.5, { align: 'right' });
 
   let moduleY = y + 20;
   doc.setFont('helvetica', 'normal');
@@ -554,6 +591,33 @@ function drawUnitCard(doc: jsPDF, displayFont: string, unit: ProposalPdfUnit, in
     doc.text(lines, MARGIN + 23, moduleY);
     moduleY += lines.length * 4.1;
   });
+
+  if (showModulePrices && unit.moduleValues?.length) {
+    moduleY += 2;
+    setDrawColor(doc, HAIRLINE);
+    doc.setLineWidth(0.25);
+    doc.line(MARGIN + 18, moduleY, PAGE_WIDTH - MARGIN - 6, moduleY);
+    moduleY += 5;
+    setTextColor(doc, GREEN);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.text('MÓDULOS E VALORES', MARGIN + 18, moduleY, { charSpace: 0.7 });
+    moduleY += 5;
+    unit.moduleValues.forEach((module) => {
+      setTextColor(doc, MUTED);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.text(ellipsizeToWidth(doc, safeText(module.name, 'Módulo'), 116), MARGIN + 18, moduleY);
+      doc.setFont('helvetica', 'bold');
+      doc.text(
+        `${money(moduleDisplayValue(input, module.monthlyPrice))}/${input.modulePricePeriod === 'annual' ? 'ano' : 'mês'}`,
+        PAGE_WIDTH - MARGIN - 6,
+        moduleY,
+        { align: 'right' },
+      );
+      moduleY += 5;
+    });
+  }
 
   return height;
 }
@@ -568,7 +632,13 @@ function buildUsersValuesRows(input: GenerateProposalPdfInput): UsersValuesRow[]
   const totalUsers = input.units.reduce((sum, unit) => sum + unit.users, 0);
   return [
     { label: 'Usuários inclusos', qty: String(totalUsers), value: 'Incluso' },
-    { label: 'Unidades contratadas', qty: String(input.units.length), value: money(input.totals.monthlyFull) },
+    {
+      label: 'Unidades contratadas',
+      qty: String(input.units.length),
+      value: input.showMonthlyPrice === false
+        ? money(input.totals.yearlyDiscounted)
+        : money(input.totals.monthlyFull),
+    },
   ];
 }
 
@@ -592,7 +662,7 @@ function drawUsersValuesTable(
   displayFont: string,
   rows: UsersValuesRow[],
   totalLabel: string,
-  totalMonthly: number,
+  totalValue: number,
   y: number,
 ): number {
   const startY = y;
@@ -636,7 +706,7 @@ function drawUsersValuesTable(
   doc.setFont(displayFont, 'normal');
   doc.setFontSize(13);
   doc.text(totalLabel, MARGIN, y);
-  drawRightAligned(doc, money(totalMonthly), TABLE_VALUE_RIGHT, y);
+  drawRightAligned(doc, money(totalValue), TABLE_VALUE_RIGHT, y);
   y += 3;
 
   return y - startY;
@@ -644,7 +714,14 @@ function drawUsersValuesTable(
 
 const INVESTMENT_BAND_HEIGHT = 36;
 
-function drawInvestmentBand(doc: jsPDF, displayFont: string, totals: ProposalPdfTotals, y: number): number {
+function drawInvestmentBand(
+  doc: jsPDF,
+  displayFont: string,
+  input: GenerateProposalPdfInput,
+  y: number,
+): number {
+  const { totals } = input;
+  const showMonthlyPrice = input.showMonthlyPrice ?? true;
   setFillColor(doc, GREEN);
   doc.roundedRect(MARGIN, y, CONTENT_WIDTH, INVESTMENT_BAND_HEIGHT, 3, 3, 'F');
 
@@ -652,23 +729,34 @@ function drawInvestmentBand(doc: jsPDF, displayFont: string, totals: ProposalPdf
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.text(
-    totals.monthlyDiscountAmount > 0 ? 'INVESTIMENTO MENSAL COM DESCONTO' : 'INVESTIMENTO MENSAL',
+    showMonthlyPrice
+      ? (totals.monthlyDiscountAmount > 0 ? 'INVESTIMENTO MENSAL COM DESCONTO' : 'INVESTIMENTO MENSAL')
+      : 'INVESTIMENTO ANUAL',
     MARGIN + 8,
     y + 12,
     { charSpace: 1.1 },
   );
 
-  drawBigMoney(doc, displayFont, totals.monthly, MARGIN + 8, y + 27, 26, 11, DARK, '/mês');
+  drawBigMoney(
+    doc,
+    displayFont,
+    showMonthlyPrice ? totals.monthly : totals.yearlyDiscounted,
+    MARGIN + 8,
+    y + 27,
+    26,
+    11,
+    DARK,
+    showMonthlyPrice ? '/mês' : '/ano',
+  );
 
   setTextColor(doc, DARK);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
-  const note = doc.splitTextToSize(
-    totals.monthlyDiscountAmount > 0
-      ? `Valor cheio: ${money(totals.monthlyFull)}/mês. Sem taxa de adesão e sem fidelidade.`
-      : 'Sem taxa de adesão, sem fidelidade. Módulos e usuários podem entrar ou sair a qualquer momento.',
-    64,
-  );
+  const note = doc.splitTextToSize(showMonthlyPrice
+    ? (totals.monthlyDiscountAmount > 0
+        ? `Valor cheio: ${money(totals.monthlyFull)}/mês. Sem taxa de adesão e sem fidelidade.`
+        : 'Sem taxa de adesão, sem fidelidade. Módulos e usuários podem entrar ou sair a qualquer momento.')
+    : `Economia total de ${money(totals.savings)} no anual.`, 64);
   doc.text(note, PAGE_WIDTH - MARGIN - 8, y + 13, { align: 'right' });
 
   return INVESTMENT_BAND_HEIGHT;
@@ -690,14 +778,14 @@ function renderScopePages(
   let y = addSectionHeader(doc, displayFont, 'O que entra na proposta', scopeTitleLines, label());
 
   input.units.forEach((unit, index) => {
-    const cardHeight = unitCardHeight(doc, unit);
+    const cardHeight = unitCardHeight(doc, unit, input.showModulePrices ?? false);
     if (y + cardHeight > PAGE_HEIGHT - 22) {
       doc.addPage();
       internalPage += 1;
       addDarkPage(doc);
       y = addSectionHeader(doc, displayFont, 'O que entra na proposta', ['continuação.'], label());
     }
-    y += drawUnitCard(doc, displayFont, unit, index, y) + 4;
+    y += drawUnitCard(doc, displayFont, input, unit, index, y) + 4;
   });
 
   // Tabela "usuários e valores" — se não couber com os cards, vai inteira pra página seguinte.
@@ -718,8 +806,10 @@ function renderScopePages(
     doc,
     displayFont,
     tableRows,
-    input.totals.monthlyDiscountAmount > 0 ? 'Mensal com desconto' : 'Total mensal',
-    input.totals.monthly,
+    input.showMonthlyPrice === false
+      ? 'Total anual'
+      : (input.totals.monthlyDiscountAmount > 0 ? 'Mensal com desconto' : 'Total mensal'),
+    input.showMonthlyPrice === false ? input.totals.yearlyDiscounted : input.totals.monthly,
     y,
   ) + 6;
 
@@ -731,10 +821,16 @@ function renderScopePages(
     doc.addPage();
     internalPage += 1;
     addDarkPage(doc);
-    addSectionHeader(doc, displayFont, 'Investimento', ['investimento mensal.'], label());
+    addSectionHeader(
+      doc,
+      displayFont,
+      'Investimento',
+      [input.showMonthlyPrice === false ? 'investimento anual.' : 'investimento mensal.'],
+      label(),
+    );
     bandY = PAGE_HEIGHT - bandBottomMargin - INVESTMENT_BAND_HEIGHT;
   }
-  drawInvestmentBand(doc, displayFont, input.totals, bandY);
+  drawInvestmentBand(doc, displayFont, input, bandY);
 
   return internalPage;
 }
@@ -785,7 +881,14 @@ function renderOrgChartPages(
     setTextColor(doc, GREEN);
     doc.setFont(displayFont, 'normal');
     doc.setFontSize(10);
-    doc.text(`${money(input.totals.monthly)}/mês`, rootX + rootWidth / 2, rootY + 8 + nameBlockHeight + 4, { align: 'center' });
+    doc.text(
+      input.showMonthlyPrice === false
+        ? `${money(input.totals.yearlyDiscounted)}/ano`
+        : `${money(input.totals.monthly)}/mês`,
+      rootX + rootWidth / 2,
+      rootY + 8 + nameBlockHeight + 4,
+      { align: 'center' },
+    );
 
     return height;
   };
@@ -806,7 +909,13 @@ function renderOrgChartPages(
     setTextColor(doc, GREEN);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9.5);
-    doc.text(`${money(unit.monthly)}/mês`, x + 6, y + 25);
+    doc.text(
+      input.showMonthlyPrice === false
+        ? `${money(unit.monthly * annualPriceFactor(input))}/ano`
+        : `${money(unit.monthly)}/mês`,
+      x + 6,
+      y + 25,
+    );
   };
 
   addDarkPage(doc);
@@ -879,44 +988,49 @@ function renderPaymentPage(
   internalPage: number,
   totalPagesLabel: number,
 ) {
+  const showMonthlyPrice = input.showMonthlyPrice ?? true;
+  const showPixInstallments = input.showPixInstallments ?? true;
   const label = `${pad2(internalPage)} / ${pad2(totalPagesLabel)}`;
   addDarkPage(doc);
-  const annualTitle = input.totals.annualDiscountAmount > 0
-    ? ['mensal negociado,', 'anual com benefício maior.']
-    : ['condições de', 'pagamento.'];
+  const annualTitle = !showMonthlyPrice
+    ? ['seu investimento,', 'no plano anual.']
+    : input.totals.annualDiscountAmount > 0
+      ? ['mensal negociado,', 'anual com benefício maior.']
+      : ['condições de', 'pagamento.'];
   addSectionHeader(doc, displayFont, 'Como pagar', annualTitle, label);
 
   const topY = 56;
   const blockHeight = 60;
-  const annualWidth = 112;
-  const monthlyWidth = CONTENT_WIDTH - annualWidth - 6;
+  const annualWidth = showMonthlyPrice ? 112 : CONTENT_WIDTH;
+  const monthlyWidth = showMonthlyPrice ? CONTENT_WIDTH - annualWidth - 6 : 0;
   const annualX = MARGIN;
   const monthlyX = MARGIN + annualWidth + 6;
 
-  // Card mensal.
-  setFillColor(doc, CARD);
-  doc.roundedRect(monthlyX, topY, monthlyWidth, blockHeight, 3, 3, 'F');
-  setTextColor(doc, MUTED);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.text(
-    `MENSAL · ${compactDiscountLabel(input.totals.monthlyDiscount, input.totals.monthlyDiscountAmount)}`,
-    monthlyX + 7,
-    topY + 10,
-    { charSpace: 0.35, maxWidth: monthlyWidth - 14 },
-  );
-  drawBigMoney(doc, displayFont, input.totals.monthly, monthlyX + 7, topY + 22, 15, 8, WHITE, '/mês');
-  setTextColor(doc, MUTED);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  if (input.totals.monthlyDiscountAmount > 0) {
-    doc.text(`De ${money(input.totals.monthlyFull)}/mês`, monthlyX + 7, topY + 29);
+  if (showMonthlyPrice) {
+    setFillColor(doc, CARD);
+    doc.roundedRect(monthlyX, topY, monthlyWidth, blockHeight, 3, 3, 'F');
+    setTextColor(doc, MUTED);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text(
+      `MENSAL · ${compactDiscountLabel(input.totals.monthlyDiscount, input.totals.monthlyDiscountAmount)}`,
+      monthlyX + 7,
+      topY + 10,
+      { charSpace: 0.35, maxWidth: monthlyWidth - 14 },
+    );
+    drawBigMoney(doc, displayFont, input.totals.monthly, monthlyX + 7, topY + 22, 15, 8, WHITE, '/mês');
+    setTextColor(doc, MUTED);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    if (input.totals.monthlyDiscountAmount > 0) {
+      doc.text(`De ${money(input.totals.monthlyFull)}/mês`, monthlyX + 7, topY + 29);
+    }
+    doc.text(
+      doc.splitTextToSize('Cobrança recorrente, sem fidelidade. Cancele quando quiser.', monthlyWidth - 14),
+      monthlyX + 7,
+      topY + (input.totals.monthlyDiscountAmount > 0 ? 36 : 31),
+    );
   }
-  doc.text(
-    doc.splitTextToSize('Cobrança recorrente, sem fidelidade. Cancele quando quiser.', monthlyWidth - 14),
-    monthlyX + 7,
-    topY + (input.totals.monthlyDiscountAmount > 0 ? 36 : 31),
-  );
 
   // Card anual.
   setFillColor(doc, GREEN_DARK_BG);
@@ -944,11 +1058,16 @@ function renderPaymentPage(
           : money(input.totals.annualDiscountAmount).replace(/,00$/, '')}`,
         `= ${money(input.totals.yearlyDiscounted).replace(/,00$/, '')}`,
       ]
-    : [
-        money(input.totals.monthlyFull).replace(/,00$/, ''),
-        '× 12',
-        `= ${money(input.totals.yearlyDiscounted).replace(/,00$/, '')}`,
-      ];
+    : showMonthlyPrice
+      ? [
+          money(input.totals.monthlyFull).replace(/,00$/, ''),
+          '× 12',
+          `= ${money(input.totals.yearlyDiscounted).replace(/,00$/, '')}`,
+        ]
+      : [
+          `De ${money(input.totals.yearlyFull).replace(/,00$/, '')}`,
+          `Por ${money(input.totals.yearlyDiscounted).replace(/,00$/, '')}`,
+        ];
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.5);
   let mx = annualX + 7;
@@ -967,14 +1086,23 @@ function renderPaymentPage(
     mx += w + 2.5;
   });
 
-  const equivRuns = [
-    { text: 'Equivale a ', bold: false },
-    { text: `${money(input.totals.yearlyDiscounted / 12)}/mês`, bold: true },
-    { text: ' e pode ser pago em ', bold: false },
-    { text: `até ${input.totals.installments}× de ${money(input.totals.pixInstallment)} no Pix`, bold: true },
-    { text: '.', bold: false },
-  ];
-  drawRichParagraph(doc, equivRuns, annualX + 7, topY + 42, annualWidth - 14, 7.5, 4.2);
+  const equivRuns: Array<{ text: string; bold: boolean }> = [];
+  if (showMonthlyPrice) {
+    equivRuns.push(
+      { text: 'Equivale a ', bold: false },
+      { text: `${money(input.totals.yearlyDiscounted / 12)}/mês`, bold: true },
+    );
+  }
+  if (showPixInstallments) {
+    equivRuns.push(
+      { text: showMonthlyPrice ? ' e pode ser pago em ' : 'Pode ser pago em ', bold: false },
+      { text: `até ${input.totals.installments}× de ${money(input.totals.pixInstallment)} no Pix`, bold: true },
+      { text: '.', bold: false },
+    );
+  }
+  if (equivRuns.length) {
+    drawRichParagraph(doc, equivRuns, annualX + 7, topY + 42, annualWidth - 14, 7.5, 4.2);
+  }
 
   // Badge de economia.
   const savingsLabel = input.totals.savings > 0
@@ -994,9 +1122,19 @@ function renderPaymentPage(
   const cardGap = 4;
   const cardWidth = (CONTENT_WIDTH - cardGap * 2) / 3;
   const paymentCards = [
-    { title: 'pix', desc: 'À vista no mensal ou no anual, com confirmação na hora.', highlight: `Anual em até ${input.totals.installments}× de ${money(input.totals.pixInstallment)}` },
-    { title: 'cartão', desc: 'Recorrência automática no mensal ou parcelamento do anual na bandeira.', highlight: 'Sem preocupação com vencimento' },
-    { title: 'boleto', desc: 'Vencimento combinado, enviado por e-mail e WhatsApp antes de vencer.', highlight: 'Mensal ou anual' },
+    {
+      title: 'pix',
+      desc: showMonthlyPrice ? 'À vista no mensal ou no anual, com confirmação na hora.' : 'Pagamento anual com confirmação na hora.',
+      highlight: showPixInstallments
+        ? `Anual em até ${input.totals.installments}× de ${money(input.totals.pixInstallment)}`
+        : 'Pagamento por Pix',
+    },
+    {
+      title: 'cartão',
+      desc: showMonthlyPrice ? 'Recorrência automática no mensal ou parcelamento do anual na bandeira.' : 'Pagamento do anual na bandeira escolhida.',
+      highlight: 'Sem preocupação com vencimento',
+    },
+    { title: 'boleto', desc: 'Vencimento combinado, enviado por e-mail e WhatsApp antes de vencer.', highlight: showMonthlyPrice ? 'Mensal ou anual' : 'Plano anual' },
   ];
   paymentCards.forEach((card, index) => {
     const x = MARGIN + index * (cardWidth + cardGap);
