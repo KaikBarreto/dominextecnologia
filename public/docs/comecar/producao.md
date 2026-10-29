@@ -11,7 +11,8 @@
 - [ ] `Retry-After` respeitado em `429`.
 - [ ] Authorization e dados pessoais removidos de logs/APM.
 - [ ] Alertas para `401`, `403`, `409`, `429` e `5xx`.
-- [ ] Teste concorrente produz exatamente uma OS.
+- [ ] Teste concorrente produz exatamente uma OS ou uma mutação de card.
+- [ ] POST/PATCH de cards reutilizam chave e payload após timeout.
 - [ ] Fallback humano para cliente ambíguo e agenda indisponível.
 - [ ] Testes feitos em tenant de demonstração com dados fictícios.
 

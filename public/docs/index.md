@@ -15,6 +15,7 @@
 4. Encontrar um cliente por identificador exato.
 5. Criar cliente e ordem de serviço de forma atômica quando necessário.
 6. Consultar uma OS criada pela mesma integração.
+7. Criar, listar, consultar, atualizar e mover cards nos funis comerciais do CRM.
 
 ## Regras essenciais
 
@@ -35,6 +36,7 @@
 - [Criar uma ordem de serviço](./guias/criar-os.md)
 - [Consultar disponibilidade](./guias/disponibilidade.md)
 - [Encontrar ou criar cliente](./guias/clientes.md)
+- [Gerenciar cards do CRM](./guias/cards-crm.md)
 - [Acompanhar uma OS](./guias/acompanhar-os.md)
 - [Exemplo: criar OS pelo WhatsApp](./guias/criar-os-whatsapp.md)
 - [Referência da API](./api/referencia.md)

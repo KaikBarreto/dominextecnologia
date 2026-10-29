@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.55";
+export const APP_VERSION = "1.37.56";
 
 export const VERSION_NOTES =
-  "Contratos PMOC ganharam checklists personalizados por equipamento, e as telas de custos, equipes, estoque e navegação ficaram mais completas e fáceis de usar.";
+  "A API oficial agora permite integrar, criar, consultar, atualizar e movimentar cards comerciais do CRM com segurança.";

@@ -6,6 +6,8 @@ export const PUBLIC_API_SCOPES = [
   'availability:read',
   'catalogs:read',
   'customers:resolve',
+  'crm_cards:read',
+  'crm_cards:write',
   'service_orders:read',
   'service_orders:create',
 ] as const;

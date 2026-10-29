@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.56',
+    date: '29 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cards do CRM disponíveis na API oficial',
+        description: 'Empresas podem conectar outros sistemas ao funil comercial para criar, consultar, atualizar e movimentar cards do CRM, com controle separado das permissões de leitura e edição.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.37.55',
     date: '29 de outubro de 2026',
     type: 'patch',

@@ -1,7 +1,7 @@
 import openApiDocument from './openapi.v1.json' with { type: 'json' };
 
 const MAX_BODY_BYTES = 64 * 1024;
-const API_METHODS = new Set(['GET', 'POST']);
+const API_METHODS = new Set(['GET', 'POST', 'PATCH']);
 const ALLOWED_RESPONSE_HEADERS = [
   'content-type',
   'x-request-id',
@@ -105,9 +105,9 @@ async function handleRequest(request, env) {
     return problem(404, 'not_found', 'Recurso não encontrado', 'Consulte a documentação da API.', requestId);
   }
   if (request.method === 'OPTIONS' || !API_METHODS.has(request.method)) {
-    return problem(405, 'method_not_allowed', 'Método não permitido', 'A API pública aceita somente os métodos documentados.', requestId, { Allow: 'GET, POST' });
+    return problem(405, 'method_not_allowed', 'Método não permitido', 'A API pública aceita somente os métodos documentados.', requestId, { Allow: 'GET, POST, PATCH' });
   }
-  if (request.method === 'POST' && !request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) {
+  if (request.method !== 'GET' && !request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) {
     return problem(400, 'invalid_content_type', 'Conteúdo inválido', 'Use Content-Type: application/json.', requestId);
   }
   if (!env.PUBLIC_API_UPSTREAM || !env.PUBLIC_API_PROXY_SECRET) {

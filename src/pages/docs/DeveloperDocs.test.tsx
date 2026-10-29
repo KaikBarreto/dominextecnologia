@@ -60,6 +60,19 @@ describe('DeveloperDocs', () => {
       .toBe('https://www.dominex.app/docs/llms.txt');
   });
 
+  it('documenta criação e gestão idempotente de cards do CRM', () => {
+    act(() => root.render(
+      <MemoryRouter initialEntries={['/docs/guias/cards-crm']}>
+        <DeveloperDocs />
+      </MemoryRouter>,
+    ));
+
+    expect(container.querySelector('h1')?.textContent).toBe('Gerenciar cards do CRM');
+    expect(container.textContent).toContain('POST e PATCH exigem Idempotency-Key');
+    expect(container.textContent).toContain('/crm/cards/by-external-id/{external_id}');
+    expect(container.querySelector('.docs-method.is-patch')?.textContent).toBe('PATCH');
+  });
+
   it('oferece snippets por linguagem e mantém o prompt como ação secundária', () => {
     act(() => root.render(
       <MemoryRouter initialEntries={['/docs/guias/acompanhar-os']}>

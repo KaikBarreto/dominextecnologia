@@ -83,6 +83,8 @@ const SCOPE_LABELS: Record<PublicApiScope, string> = {
   'availability:read': 'Consultar disponibilidade',
   'catalogs:read': 'Consultar catálogos',
   'customers:resolve': 'Localizar ou cadastrar clientes',
+  'crm_cards:read': 'Consultar funis e cards do CRM',
+  'crm_cards:write': 'Criar, editar e mover cards do CRM',
   'service_orders:read': 'Consultar ordens de serviço',
   'service_orders:create': 'Criar ordens de serviço',
 };
