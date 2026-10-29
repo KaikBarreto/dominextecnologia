@@ -313,6 +313,7 @@ export const enOverrides: MessagesOverride = {
     institutional: 'Company',
     linkAbout: 'About us',
     linkBlog: 'Blog',
+    linkDevelopers: 'Developers / API',
     linkTerms: 'Terms of use',
     linkPrivacy: 'Privacy Policy',
     copyright: 'All rights reserved. Built for teams that master the field.',

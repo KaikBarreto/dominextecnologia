@@ -121,6 +121,7 @@ export const ptBr = {
     institutional: 'Institucional',
     linkAbout: 'Quem somos',
     linkBlog: 'Blog',
+    linkDevelopers: 'Para desenvolvedores / API',
     linkTerms: 'Termos de uso',
     linkPrivacy: 'Política de Privacidade',
     copyright: 'Todos os direitos reservados. Feito para quem domina o campo.',

@@ -313,6 +313,7 @@ export const esOverrides: MessagesOverride = {
     institutional: 'Empresa',
     linkAbout: 'Quiénes somos',
     linkBlog: 'Blog',
+    linkDevelopers: 'Desarrolladores / API',
     linkTerms: 'Términos de uso',
     linkPrivacy: 'Política de Privacidad',
     copyright: 'Todos los derechos reservados. Hecho para equipos que dominan el campo.',
