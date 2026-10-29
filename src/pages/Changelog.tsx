@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.1',
+    date: '29 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Fotos dos materiais na evolução de preços',
+        description: 'A lista da análise de preços agora mostra a foto cadastrada de cada material. Quando não houver imagem, aparece um ícone de estoque alinhado com as demais listas do sistema.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.38.0',
     date: '29 de outubro de 2026',
     type: 'minor',
