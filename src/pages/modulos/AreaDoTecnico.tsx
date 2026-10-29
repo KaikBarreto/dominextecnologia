@@ -128,7 +128,7 @@ function TechnicianHero() {
 
   return (
     <section
-      className="technician-hero relative grid min-h-[100svh] place-items-center overflow-hidden border-b border-[#e3e7e2] bg-[#f7f7f5] px-4 pb-16 pt-[112px] dark:border-white/10 dark:bg-[#101014] sm:px-6 sm:pb-20 sm:pt-[124px]"
+      className="technician-hero relative grid min-h-[100svh] place-items-center overflow-hidden border-b border-[#e3e7e2] bg-[#f7f7f5] px-4 pb-16 pt-[112px] dark:border-white/10 dark:bg-[#070908] sm:px-6 sm:pb-20 sm:pt-[124px]"
     >
       <MarketingHeroBackdrop />
       <TechnicianToolsOrbit />
