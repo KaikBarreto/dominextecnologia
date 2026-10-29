@@ -450,7 +450,7 @@ function ModulePains({ data }: { data: ModuleData }) {
   const { messages } = useLocale();
   const c = messages.pageChrome;
   return (
-    <section className="bg-[#f7f7f5] py-24 dark:bg-[#101014]">
+    <section className="bg-[#f7f7f5] py-24 dark:bg-[#0b0d0c]">
       <div ref={ref} className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 scroll-reveal">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-[#101512] dark:text-white mb-4 break-words">
@@ -846,7 +846,7 @@ function ModuleFinalCta({ data }: { data: ModuleData }) {
   const { messages } = useLocale();
   const c = messages.pageChrome;
   return (
-    <section className="relative overflow-hidden border-t border-[#e0e4e0] bg-[#f5f4ef] py-32 dark:border-white/10 dark:bg-[#0b100d]">
+    <section className="relative overflow-hidden border-t border-[#e0e4e0] bg-[#f5f4ef] py-32 dark:border-white/10 dark:bg-[#0b0d0c]">
       <div
         className="absolute inset-0 opacity-[0.04]"
         style={{

@@ -166,7 +166,7 @@ export default function ModuleFeatureCarousel({
     <section
       id={sectionId}
       aria-labelledby={`${sectionId}-title`}
-      className="overflow-hidden bg-[#f4f2ec] py-20 text-slate-950 dark:bg-[#0b100d] dark:text-white sm:py-24 lg:py-28"
+      className="overflow-hidden bg-[#f4f2ec] py-20 text-slate-950 dark:bg-[#0b0d0c] dark:text-white sm:py-24 lg:py-28"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <header className="grid gap-8 border-b border-slate-950/15 pb-10 dark:border-white/15 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)] lg:items-end lg:gap-16">
@@ -219,8 +219,8 @@ export default function ModuleFeatureCarousel({
                         'flex min-h-[310px] w-full shrink-0 snap-start flex-col border p-6 sm:w-[calc((100%_-_1.5rem)/2)] sm:p-7 lg:w-[calc((100%_-_3rem)/3)] lg:p-8',
                         'rounded-lg transition-colors duration-300 motion-reduce:transition-none',
                         isHighlighted
-                          ? 'border-slate-950 bg-slate-950 text-white'
-                          : 'border-slate-950/15 bg-white text-slate-950 dark:border-white/10 dark:bg-white/[0.03] dark:text-white',
+                          ? 'border-slate-950 bg-slate-950 text-white dark:border-primary/55 dark:bg-[#151a17]'
+                          : 'border-slate-950/15 bg-white text-slate-950 dark:border-white/10 dark:bg-[#111412] dark:text-white',
                       )}
                     >
                       <div className="flex items-start justify-between gap-4">
