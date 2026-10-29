@@ -43,6 +43,7 @@ import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { getSiteSegments, getSegment } from '@/utils/companySegments';
 import { resolveWcagForeground } from '@/lib/colorContrast';
 import type { ModuleData } from './modulesData';
+import { getModuleMotionAsset } from './moduleMotionVideos';
 import { TOOLS_BY_SEGMENT } from './tecnicoNicheTools';
 
 // A landing de módulo (aba "Soluções") é pública e NUNCA herda o white-label do
@@ -271,16 +272,6 @@ const MODULE_GUIDE_SCREENSHOTS: Record<string, { src: string; alt: string; fit?:
     src: '/guia-tecnico/img/t8-estoque.jpg',
     alt: 'Tela real do estoque integrado às vendas na Dominex',
   },
-};
-
-/**
- * Motions verticais publicados no bucket público `landingpage/motions`.
- * O mapa é intencional: só troca o mock quando o vídeo real daquele módulo já
- * existe, evitando requests quebrados nas demais páginas.
- */
-const MODULE_MOTION_VIDEOS: Partial<Record<string, string>> = {
-  'area-do-tecnico':
-    'https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/landingpage/motions/area-tecnico-9x16.mp4',
 };
 
 function ModuleProductPreview({ data }: { data: ModuleData }) {
@@ -571,7 +562,8 @@ function ModuleVideoMock({ data }: { data: ModuleData }) {
   const { messages } = useLocale();
   const copy = messages.pageChrome.motionMock;
   const screenshot = data.deepDives.find((dive) => dive.image)?.image;
-  const videoSrc = MODULE_MOTION_VIDEOS[data.slug];
+  const motion = getModuleMotionAsset(data.slug);
+  const videoSrc = motion?.video;
   const moduleLabel =
     (messages.moduleLabels as Record<string, string>)[data.slug] ?? data.navLabel;
 
@@ -612,6 +604,7 @@ function ModuleVideoMock({ data }: { data: ModuleData }) {
                   playsInline
                   controls
                   preload="metadata"
+                  poster={motion?.poster ?? screenshot?.src}
                   aria-label={interpolateCopy(copy.videoAria, { module: moduleLabel })}
                 >
                   <source src={videoSrc} type="video/mp4" />

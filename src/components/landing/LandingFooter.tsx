@@ -42,9 +42,10 @@ export default function LandingFooter() {
   const segmentLabel = (slug: string) =>
     (messages.segmentLabels as Record<string, string>)[slug] ?? slug;
   // Coluna institucional: rotas reais (sem link quebrado), label localizado.
-  const institutionalLinks: { label: string; to: string }[] = [
+  const institutionalLinks: { label: string; to: string; localize?: boolean }[] = [
     { label: f.linkAbout, to: '/quem-somos' },
     { label: f.linkBlog, to: '/blog' },
+    { label: f.linkDevelopers, to: '/docs', localize: false },
     { label: f.linkTerms, to: '/termos' },
     { label: f.linkPrivacy, to: '/privacidade' },
   ];
@@ -139,7 +140,10 @@ export default function LandingFooter() {
             <ul className="space-y-2">
               {institutionalLinks.map((item) => (
                 <li key={item.to}>
-                  <Link to={localizeInternal(item.to, locale)} className={footerLinkClass}>
+                  <Link
+                    to={item.localize === false ? item.to : localizeInternal(item.to, locale)}
+                    className={footerLinkClass}
+                  >
                     {item.label}
                   </Link>
                 </li>

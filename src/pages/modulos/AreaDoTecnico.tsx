@@ -31,6 +31,7 @@ import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
 import { AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { localizeNicheTools, TOOLS_BY_SEGMENT } from './tecnicoNicheTools';
 import { getModuleData } from './content/loader';
+import { getModuleMotionAsset } from './moduleMotionVideos';
 
 const DOMINEX_BRAND_VARS = {
   '--primary': '160 100% 39%',
@@ -41,8 +42,7 @@ const DOMINEX_BRAND_VARS = {
   '--gradient-brand': 'linear-gradient(135deg, hsl(160 100% 39%) 0%, hsl(160 85% 45%) 100%)',
 } as CSSProperties;
 
-const MOTION_VIDEO =
-  'https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/landingpage/motions/area-tecnico-9x16.mp4';
+const MOTION_ASSET = getModuleMotionAsset('area-do-tecnico');
 
 const FLOW_MEDIA = [
   {
@@ -219,10 +219,10 @@ function TechnicianVideo() {
                 playsInline
                 controls
                 preload="metadata"
-                poster="/guia-tecnico/img/t7-area-tecnico-inicio.jpg"
+                poster={MOTION_ASSET?.poster}
                 aria-label={copy.videoAria}
               >
-                <source src={MOTION_VIDEO} type="video/mp4" />
+                {MOTION_ASSET && <source src={MOTION_ASSET.video} type="video/mp4" />}
                 {copy.videoUnsupported}
               </video>
             </div>
