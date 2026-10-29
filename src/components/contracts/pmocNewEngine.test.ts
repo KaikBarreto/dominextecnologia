@@ -13,7 +13,10 @@
 import { describe, it, expect } from 'vitest';
 
 import {
+  buildPmocItemsWithScope,
   buildPmocPlanFromMachines,
+  pickExcludedQuestionsForSource,
+  replaceExcludedQuestionsForSource,
   type MachineConfig,
   type MachineItemRef,
   type PlanActivityRow,
@@ -130,6 +133,80 @@ describe('buildPmocPlanFromMachines — ramo NOVO não materializa catálogo no 
     expect(rows).toHaveLength(1);
     expect(rows[0].catalog_activity_id ?? null).toBeNull();
     expect(rows[0].form_template_id).toBe('tpl-custom');
+  });
+});
+
+describe('buildPmocItemsWithScope — norma + personalizado compartilham a âncora da 1ª OS', () => {
+  it('preserva exclusões válidas das duas fontes e grava form_template_ids só com norma', () => {
+    const config: MachineConfig = {
+      ...newMachineConfig('eq-1', ['tpl-norma']),
+      customTemplateIds: ['tpl-custom'],
+      firstOsExcludedQuestions: [
+        'q-norma',
+        'q-custom',
+        'q-norma-toda-visita',
+        'q-custom-toda-visita',
+        'q-orfa',
+      ],
+    };
+
+    const [result] = buildPmocItemsWithScope({
+      items: [item('eq-1')],
+      machineConfigs: { 'eq-1': config },
+      templateQuestions: {
+        'tpl-norma': [
+          { id: 'q-norma', everyVisit: false },
+          { id: 'q-norma-toda-visita', everyVisit: true },
+        ],
+        'tpl-custom': [
+          { id: 'q-custom', everyVisit: false },
+          { id: 'q-custom-toda-visita', everyVisit: true },
+        ],
+      },
+    });
+
+    expect(result.form_template_ids).toEqual(['tpl-norma']);
+    expect(result.first_os_excluded_questions).toEqual(['q-norma', 'q-custom']);
+  });
+
+  it('falha fechado contra perda quando qualquer fonte selecionada ainda está carregando', () => {
+    const config: MachineConfig = {
+      ...newMachineConfig('eq-1', ['tpl-norma']),
+      customTemplateIds: ['tpl-custom-ainda-carregando'],
+      firstOsExcludedQuestions: ['q-custom-persistida'],
+    };
+
+    const [result] = buildPmocItemsWithScope({
+      items: [item('eq-1')],
+      machineConfigs: { 'eq-1': config },
+      templateQuestions: {
+        'tpl-norma': [{ id: 'q-norma', everyVisit: false }],
+      },
+      templatesLoading: true,
+    });
+
+    expect(result.form_template_ids).toEqual(['tpl-norma']);
+    expect(result.first_os_excluded_questions).toBeUndefined();
+  });
+});
+
+describe('exclusões da 1ª OS — editores de norma e personalizado não perdem dados entre si', () => {
+  const normQuestionIds = new Set(['q-norma-1', 'q-norma-2']);
+  const customQuestionIds = new Set(['q-custom-1', 'q-custom-2']);
+
+  it('recorta a fatia correta para cada editor', () => {
+    const excluded = ['q-norma-1', 'q-custom-1'];
+    expect(pickExcludedQuestionsForSource(excluded, normQuestionIds)).toEqual(['q-norma-1']);
+    expect(pickExcludedQuestionsForSource(excluded, customQuestionIds)).toEqual(['q-custom-1']);
+  });
+
+  it('alterar a norma preserva personalizados e alterar personalizados preserva a norma', () => {
+    const initial = ['q-norma-1', 'q-custom-1'];
+    const afterNorm = replaceExcludedQuestionsForSource(initial, normQuestionIds, ['q-norma-2']);
+    expect(afterNorm).toEqual(['q-custom-1', 'q-norma-2']);
+
+    const afterCustom = replaceExcludedQuestionsForSource(afterNorm, customQuestionIds, ['q-custom-2']);
+    expect(afterCustom).toEqual(['q-norma-2', 'q-custom-2']);
   });
 });
 

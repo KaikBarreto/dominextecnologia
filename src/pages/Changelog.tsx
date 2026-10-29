@@ -42,6 +42,38 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.37.55',
+    date: '29 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Checklist personalizado por equipamento no contrato PMOC',
+        description: 'Ao criar ou editar um contrato PMOC, agora é possível escolher separadamente os checklists da norma e os modelos personalizados de cada equipamento, sem uma seleção apagar a outra.',
+        category: 'recurso',
+      },
+      {
+        title: 'Custos Globais com busca e ficha completa',
+        description: 'Os recursos de custo agora ficam em uma lista pesquisável e ordenável, com filtros por categoria e situação. Ao selecionar um item, a composição, as horas, os valores e as observações aparecem na mesma tela.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Equipes podem reunir colaboradores de diferentes áreas',
+        description: 'A criação de equipes agora permite selecionar qualquer colaborador ativo da empresa, sem limitar a escolha apenas aos técnicos e sem alterar o cargo ou as permissões de cada pessoa.',
+        category: 'correcao',
+      },
+      {
+        title: 'Fotos dos materiais aparecem na listagem do estoque',
+        description: 'As fotos cadastradas nos materiais agora são exibidas com segurança na lista do estoque, tanto no computador quanto no celular, com um ícone alternativo quando a imagem não estiver disponível.',
+        category: 'correcao',
+      },
+      {
+        title: 'Abas internas mais consistentes e fáceis de navegar',
+        description: 'Orçamentos, Funcionários, contratos e outras telas de gestão agora usam abas horizontais com destaque mais claro para a seção ativa e rolagem quando não houver espaço.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.37.54',
     date: '27 de outubro de 2026',
     type: 'patch',

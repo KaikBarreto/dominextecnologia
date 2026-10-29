@@ -27,12 +27,12 @@ describe('ListDetailLayout', () => {
     );
 
     expect(screen.getByText('Ficha do cliente')).toBeInTheDocument();
-    expect(screen.getByText('1-2 / 2')).toBeInTheDocument();
+    expect(screen.getByText('Mostrando 1-2 de 2')).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText('Buscar clientes...'), { target: { value: 'Olinda' } });
     expect(screen.queryByText('Cliente Alpha')).not.toBeInTheDocument();
     expect(screen.getByText('Cliente Beta')).toBeInTheDocument();
-    expect(screen.getByText('1-1 / 1')).toBeInTheDocument();
+    expect(screen.getByText('Mostrando 1-1 de 1')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Cliente Beta/ }));
     expect(onSelect).toHaveBeenCalledWith('2');
@@ -95,15 +95,15 @@ describe('ListDetailLayout', () => {
     // 120 cadastros em páginas de 25: a lista monta 25 linhas, não 120.
     expect(screen.getAllByRole('listitem')).toHaveLength(25);
     // O selecionado (índice 80) está na 4ª página, e a lista abre nela.
-    expect(screen.getByText('76-100 / 120')).toBeInTheDocument();
+    expect(screen.getByText('Mostrando 76-100 de 120')).toBeInTheDocument();
     expect(screen.getByText('Cliente 080')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Anterior' }));
-    expect(screen.getByText('51-75 / 120')).toBeInTheDocument();
+    expect(screen.getByText('Mostrando 51-75 de 120')).toBeInTheDocument();
     expect(screen.queryByText('Cliente 080')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Próxima' }));
-    expect(screen.getByText('76-100 / 120')).toBeInTheDocument();
+    expect(screen.getByText('Mostrando 76-100 de 120')).toBeInTheDocument();
   });
 
   it('ordena pelo critério escolhido no menu compacto', async () => {

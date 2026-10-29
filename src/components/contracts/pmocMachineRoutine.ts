@@ -189,11 +189,10 @@ export interface MachineConfig {
   // feitos em TODA visita, ALÉM das atividades da norma. Independem do escopo
   // ('ac'/'full'). Default [].
   customTemplateIds: string[];
-  // Ids de perguntas (form_questions) dos checklists PERSONALIZADOS desta máquina
-  // que NÃO entram na 1ª OS dela (a âncora por equipamento que o render respeita,
-  // espelha `contract_items.first_os_excluded_questions`). Perguntas "toda visita"
-  // NUNCA entram aqui (sempre na 1ª OS). Default []. Só vale pros personalizados —
-  // o catálogo da norma tem fase própria (pmoc_start_visit).
+  // Ids de perguntas (form_questions) que NÃO entram na 1ª OS desta máquina
+  // (união dos templates de NORMA e PERSONALIZADOS selecionados). A âncora por
+  // equipamento espelha `contract_items.first_os_excluded_questions`; perguntas
+  // "toda visita" NUNCA entram aqui. Default [].
   firstOsExcludedQuestions: string[];
   // P2 (PMOC novo no motor comum): ids de form_templates de NORMA escolhidos no
   // editor inline desta máquina (CommonChecklistEditor). Espelha
@@ -530,8 +529,8 @@ export interface PmocItemWithScope {
   pmoc_scope: PmocMachineScope;
   pmoc_start_visit: number;
   // Âncora por equipamento (1ª-OS por pergunta). Sanitizada: só ids de perguntas
-  // que pertencem aos templates SELECIONADOS da máquina (personalizados no legado,
-  // OU templates de NORMA no PMOC novo); "toda visita" nunca entra.
+  // que pertencem aos templates SELECIONADOS da máquina (personalizados no legado;
+  // união norma + personalizados no PMOC novo); "toda visita" nunca entra.
   // `undefined` = templates ainda carregando e a máquina tem templates não
   // resolvidos → não dá pra sanitizar com segurança; o hook preserva o valor do
   // banco em vez de zerar (mesma guarda do checklist comum, evita perda de dado).
@@ -545,13 +544,49 @@ export interface TemplateQuestionRef {
   everyVisit: boolean;
 }
 
+/**
+ * Recorta, da união persistida de exclusões da máquina, somente as perguntas de
+ * uma fonte de templates (norma OU personalizados). O wizard mantém as duas
+ * fontes em editores separados, mas a coluna do banco é uma lista única.
+ */
+export function pickExcludedQuestionsForSource(
+  excluded: string[],
+  sourceQuestionIds: Iterable<string>,
+): string[] {
+  const source = new Set(sourceQuestionIds);
+  return excluded.filter((id) => source.has(id));
+}
+
+/**
+ * Substitui apenas a fatia de uma fonte na união de exclusões. Assim, remover
+ * ou alterar um checklist da norma não apaga escolhas dos personalizados (e
+ * vice-versa). Valores alheios à fonte são preservados para a sanitização final
+ * do builder — importante enquanto algum catálogo ainda está carregando.
+ */
+export function replaceExcludedQuestionsForSource(
+  excluded: string[],
+  sourceQuestionIds: Iterable<string>,
+  replacement: string[],
+): string[] {
+  const source = new Set(sourceQuestionIds);
+  const next = excluded.filter((id) => !source.has(id));
+  const seen = new Set(next);
+  for (const id of replacement) {
+    if (!source.has(id) || seen.has(id)) continue;
+    next.push(id);
+    seen.add(id);
+  }
+  return next;
+}
+
 export function buildPmocItemsWithScope(args: {
   items: MachineItemRef[];
   machineConfigs: Record<string, MachineConfig>;
   // Perguntas (id + everyVisit) de cada form_template, por id de template. Usado
   // pra sanitizar a âncora da 1ª OS: só ids que pertencem aos templates
-  // SELECIONADOS da máquina e que NÃO são "toda visita". Vazio/ausente = nada
-  // sanitiza (preserva [] — sem âncora), em vez de gravar lixo.
+  // SELECIONADOS da máquina e que NÃO são "toda visita". No PMOC novo a seleção
+  // válida é a união norma + personalizados; `form_template_ids` continua
+  // contendo exclusivamente os templates da norma.
   templateQuestions?: Record<string, TemplateQuestionRef[]>;
   // Quando os form_templates ainda estão carregando (`useFormTemplates`), uma
   // máquina com personalizados selecionados cujas perguntas ainda NÃO estão em
@@ -564,15 +599,15 @@ export function buildPmocItemsWithScope(args: {
   const { items, machineConfigs, templateQuestions = {}, templatesLoading = false } = args;
   return items.map((i) => {
     const cfg = machineConfigs[i.equipment_id];
-    // P2: a fonte da âncora da 1ª OS depende do caminho da máquina:
-    //  - PMOC NOVO  → templates de NORMA escolhidos no editor inline (normTemplateIds);
-    //  - PMOC legado→ personalizados do picker (customTemplateIds).
-    // Quando há normTemplateIds (não-vazio) usamos eles (e gravamos form_template_ids);
-    // senão caímos no comportamento legado. Os dois usam o MESMO `templateQuestions`
-    // (o chamador funde norma + personalizados nesse mapa).
+    // P2: no PMOC novo, a âncora da 1ª OS reúne perguntas dos templates de NORMA
+    // e PERSONALIZADOS. No legado há apenas os personalizados do picker. Os dois
+    // usam o MESMO `templateQuestions` (o chamador funde as duas fontes no mapa).
     const normTemplateIds = cfg?.normTemplateIds ?? [];
     const usingNorm = normTemplateIds.length > 0;
-    const selectedTemplateIds = usingNorm ? normTemplateIds : (cfg?.customTemplateIds ?? []);
+    const customTemplateIds = cfg?.customTemplateIds ?? [];
+    const selectedTemplateIds = usingNorm
+      ? [...normTemplateIds, ...customTemplateIds]
+      : customTemplateIds;
     // Guarda anti-perda-de-dado: templates carregando E há template selecionado
     // cujas perguntas ainda não resolveram → devolve undefined (hook preserva o banco).
     if (

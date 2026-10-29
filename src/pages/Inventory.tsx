@@ -97,6 +97,7 @@ import { InventoryCountsTab } from '@/components/inventory/InventoryCountsTab';
 import { StockPositionTab } from '@/components/inventory/StockPositionTab';
 import { MaterialPurchaseReportTab } from '@/components/inventory/MaterialPurchaseReportTab';
 import { formatMoney } from '@/lib/format';
+import { InventoryItemThumbnail } from '@/components/inventory/InventoryItemThumbnail';
 
 export default function Inventory() {
   const location = useLocation();
@@ -880,16 +881,11 @@ export default function Inventory() {
                             onClick={() => handleEdit(item)}
                             actions={itemActions}
                             leading={
-                              <div
-                                className="h-10 w-10 rounded-full flex items-center justify-center"
-                                style={
-                                  itemGroup?.color
-                                    ? { backgroundColor: `${itemGroup.color}22`, color: itemGroup.color }
-                                    : undefined
-                                }
-                              >
-                                <Package className="h-5 w-5" style={!itemGroup?.color ? { color: 'hsl(var(--primary))' } : undefined} />
-                              </div>
+                              <InventoryItemThumbnail
+                                name={item.name}
+                                imageUrl={item.image_url}
+                                accentColor={itemGroup?.color}
+                              />
                             }
                             title={
                               <div className="flex items-center gap-2 min-w-0">
@@ -992,9 +988,17 @@ export default function Inventory() {
                               return (
                                 <TableRow key={item.id} className={belowMin ? 'bg-destructive/5' : undefined}>
                                   <TableCell className="font-medium">
-                                    <div className="flex items-center gap-2">
-                                      <LowStockIcon item={item} />
-                                      {item.name}
+                                    <div className="flex min-w-0 items-center gap-2.5">
+                                      <InventoryItemThumbnail
+                                        name={item.name}
+                                        imageUrl={item.image_url}
+                                        accentColor={itemGroup?.color}
+                                        className="h-9 w-9"
+                                      />
+                                      <div className="flex min-w-0 items-center gap-1.5">
+                                        <LowStockIcon item={item} />
+                                        <span className="min-w-0 break-words">{item.name}</span>
+                                      </div>
                                     </div>
                                   </TableCell>
                                   <TableCell className="text-muted-foreground">{item.sku || '-'}</TableCell>

@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useTeams, type TeamWithMembers, type TeamInput } from '@/hooks/useTeams';
-import { useTechnicians } from '@/hooks/useProfiles';
+import { useActiveCompanyProfiles } from '@/hooks/useProfiles';
 import { TeamFormDialog } from '@/components/teams/TeamFormDialog';
 import { getTeamIcon } from '@/components/teams/teamIcons';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
@@ -34,7 +34,7 @@ export default function Teams() {
   const { locale } = useAppLocaleContext();
   const tTeams = MESSAGES[locale].app.os.teams;
   const { teamsWithMembers, isLoading, createTeam, updateTeam, deleteTeam } = useTeams();
-  const { data: profiles } = useTechnicians();
+  const { data: profiles } = useActiveCompanyProfiles();
   const [searchQuery, setSearchQuery] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<TeamWithMembers | null>(null);

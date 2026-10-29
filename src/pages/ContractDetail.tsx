@@ -1623,11 +1623,10 @@ export default function ContractDetail() {
       <div ref={headerSentinelRef} aria-hidden="true" className="h-px -mt-3 lg:hidden" />
 
       {/*
-        Navegação PMOC: usa o componente canônico SettingsSidebarLayout
-        (mesmo de Settings, Quotes, ServiceOrders, Financeiro). Desktop:
-        rail vertical à esquerda com fundo primary sólido no ativo. Mobile:
-        MobilePillTabs achatado. Só envolve o conteúdo quando isPmoc=true;
-        contratos não-PMOC seguem direto pra "Visão Geral" sem nav.
+        Navegação do contrato: usa o componente canônico SettingsSidebarLayout
+        (mesmo de Settings, Quotes e ServiceOrders), com abas underline
+        horizontais e roláveis. Contratos comuns e PMOC compartilham a casca,
+        variando apenas as abas disponíveis.
       */}
       {(() => {
         // Abas PMOC: Chamados é separado de Ocorrências (visitas planejadas).

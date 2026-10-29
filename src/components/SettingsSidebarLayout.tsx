@@ -4,6 +4,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { MobilePillTabs } from "@/components/mobile/MobilePillTabs";
 import { hexToRgbTriplet, idealForeground } from "@/lib/colorContrast";
 
+type AccentStyle = React.CSSProperties & {
+  [variable: `--${string}`]: string | number | undefined;
+};
+
 export interface SettingsTab {
   value: string;
   label: string;
@@ -51,10 +55,10 @@ interface SettingsSidebarLayoutProps {
    */
   placeholderGroups?: string[];
   /**
-   * `sidebar` (padrão): coluna vertical à esquerda — é o que telas com GRUPOS,
-   * cores por conta e rodapés de grupo precisam (Configurações, Financeiro).
-   * `underline`: barra de abas horizontal no topo, igual ao resto do sistema.
-   * Só faz sentido em lista PLANA de abas; grupos e rodapés são ignorados.
+   * `underline` (padrão): barra horizontal no topo, com rolagem quando faltar
+   * espaço. É a subnavegação canônica das telas de gestão.
+   * `sidebar`: exceção explícita para navegação hierárquica que realmente
+   * dependa de grupos, cores por item ou rodapés dentro do menu.
    */
   variant?: 'sidebar' | 'underline';
 }
@@ -67,7 +71,7 @@ export function SettingsSidebarLayout({
   sidebarFooter,
   groupFooters,
   placeholderGroups,
-  variant = 'sidebar',
+  variant = 'underline',
 }: SettingsSidebarLayoutProps) {
   const isMobile = useIsMobile();
 
@@ -160,23 +164,23 @@ export function SettingsSidebarLayout({
                   // - colorBg (saturado): ativo = bg cheio + branco; hover via classes.
                   // - sutil: ativo = bg translúcido + texto na cor; hover bem leve.
                   // - sem cor: primary de sempre.
-                  const accentStyle: React.CSSProperties = colorBg
-                    ? ({
-                        ['--tab-accent' as any]: `rgb(${rgb})`,
+                  const accentStyle: AccentStyle = colorBg
+                    ? {
+                        '--tab-accent': `rgb(${rgb})`,
                         // Texto contrastante calculado pela luminância da cor da
                         // conta (evita branco-no-branco quando a cor é clara).
-                        ['--tab-accent-fg' as any]: idealForeground(tab.accentColor),
+                        '--tab-accent-fg': idealForeground(tab.accentColor),
                         backgroundColor: isActive ? `rgb(${rgb})` : undefined,
                         color: isActive ? 'var(--tab-accent-fg)' : undefined,
-                      } as React.CSSProperties)
+                      }
                     : accented
-                    ? ({
-                        ['--tab-accent' as any]: `rgb(${rgb})`,
-                        ['--tab-accent-active-bg' as any]: `rgba(${rgb}, 0.16)`,
-                        ['--tab-accent-hover-bg' as any]: `rgba(${rgb}, 0.08)`,
+                    ? {
+                        '--tab-accent': `rgb(${rgb})`,
+                        '--tab-accent-active-bg': `rgba(${rgb}, 0.16)`,
+                        '--tab-accent-hover-bg': `rgba(${rgb}, 0.08)`,
                         backgroundColor: isActive ? `rgba(${rgb}, 0.16)` : undefined,
                         color: isActive ? `rgb(${rgb})` : undefined,
-                      } as React.CSSProperties)
+                      }
                     : {};
 
                   return (

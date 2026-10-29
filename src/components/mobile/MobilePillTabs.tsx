@@ -228,6 +228,7 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
                 className={cn(
                   'snap-start shrink-0 inline-flex items-center transition-colors',
                   alturaEPeso,
+                  variant === 'underline' && level === 'screen' && isActive && 'font-bold',
                   variant === 'underline'
                     ? cn(
                         '-mb-px rounded-none border-b-2 bg-transparent shadow-none',
@@ -294,6 +295,7 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
               className={cn(
                 'snap-start shrink-0 inline-flex items-center gap-1.5 transition-colors active:scale-95',
                 alturaEPeso,
+                variant === 'underline' && level === 'screen' && isActive && 'font-bold',
                 variant === 'underline'
                   ? cn(
                       '-mb-px rounded-none border-b-2 bg-transparent px-4 shadow-none',

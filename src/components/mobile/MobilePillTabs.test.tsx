@@ -38,4 +38,22 @@ describe('MobilePillTabs underline', () => {
     fireEvent.click(fornecedores);
     expect(onTabChange).toHaveBeenCalledWith('fornecedores');
   });
+
+  it('destaca em negrito a aba ativa de nível de tela', () => {
+    render(
+      <MobilePillTabs
+        variant="underline"
+        level="screen"
+        tabs={[
+          { value: 'orcamentos', label: 'Orçamentos' },
+          { value: 'custos', label: 'Custos dos Serviços' },
+        ]}
+        activeTab="orcamentos"
+        onTabChange={() => undefined}
+      />,
+    );
+
+    expect(screen.getByRole('tab', { name: 'Orçamentos' })).toHaveClass('font-bold');
+    expect(screen.getByRole('tab', { name: 'Custos dos Serviços' })).not.toHaveClass('font-bold');
+  });
 });

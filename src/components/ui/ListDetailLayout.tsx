@@ -240,9 +240,10 @@ export function ListDetailLayout({
     };
   }, [collapsed]);
 
-  // Sem a palavra "Mostrando": a coluna tem ~19rem e divide a linha com o
-  // seletor de itens por página e as setas.
-  const showingText = `${formatNumber(pagination.from, locale)}-${formatNumber(pagination.to, locale)} / ${formatNumber(pagination.totalItems, locale)}`;
+  const showingText = tPagination.showing
+    .replace('{from}', formatNumber(pagination.from, locale))
+    .replace('{to}', formatNumber(pagination.to, locale))
+    .replace('{total}', formatNumber(pagination.totalItems, locale));
 
   const renderListItem = (item: ListDetailItem) => {
     const selected = item.id === selectedId;
@@ -432,7 +433,7 @@ export function ListDetailLayout({
             )}
           </div>
 
-          <div className="flex items-center justify-between gap-1 border-t border-border/60 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-x-1 gap-y-1 border-t border-border/60 py-2">
             <Select
               value={String(pagination.pageSize)}
               onValueChange={(value) =>
@@ -449,7 +450,7 @@ export function ListDetailLayout({
                 <SelectItem value="all" className="text-xs">{tPagination.all}</SelectItem>
               </SelectContent>
             </Select>
-            <span className="min-w-0 truncate text-center text-xs text-muted-foreground">{showingText}</span>
+            <span className="min-w-[8rem] flex-1 whitespace-normal text-center text-xs leading-tight text-muted-foreground">{showingText}</span>
             <div className="flex shrink-0 items-center gap-0.5">
               <Button
                 type="button"

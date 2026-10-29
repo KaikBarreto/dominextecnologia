@@ -162,7 +162,7 @@ function click(el: HTMLElement) {
 }
 
 function clickTabByLabel(label: string) {
-  const el = qAll('[role="button"]').find((b) => b.textContent?.trim() === label);
+  const el = qAll('[role="tab"]').find((tab) => tab.textContent?.trim() === label);
   expect(el).toBeTruthy();
   click(el!);
 }

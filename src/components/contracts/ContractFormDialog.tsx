@@ -49,6 +49,8 @@ import {
   reconstructMachineConfigs,
   buildPmocPlanFromMachines,
   buildPmocItemsWithScope,
+  pickExcludedQuestionsForSource,
+  replaceExcludedQuestionsForSource,
 } from '@/components/contracts/pmocMachineRoutine';
 import { PmocChecklistPicker } from '@/components/contracts/PmocChecklistPicker';
 import { CommonChecklistEditor, type ChecklistTemplateOption } from '@/components/contracts/CommonChecklistEditor';
@@ -1693,8 +1695,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           activities: acts,
           customized: false,
           normTemplateIds: nextNorm,
-          // Recomeça a 1ª OS limpa ao trocar de família (perguntas mudam).
-          firstOsExcludedQuestions: usesInlinePmocEditor ? [] : cur.firstOsExcludedQuestions,
+          // Recomeça apenas a fatia da NORMA ao trocar de família. A coluna é
+          // uma união norma + personalizados; zerar tudo apagava as escolhas
+          // dos checklists próprios da empresa.
+          firstOsExcludedQuestions: usesInlinePmocEditor
+            ? cur.firstOsExcludedQuestions.filter((id) => !normChecklistQuestionIds.has(id))
+            : cur.firstOsExcludedQuestions,
         },
       };
     });
@@ -1714,7 +1720,24 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     const cfg = machineConfigs[eqId];
     return {
       normTemplateIds: cfg?.normTemplateIds ?? [],
-      excluded: cfg?.firstOsExcludedQuestions ?? [],
+      excluded: pickExcludedQuestionsForSource(
+        cfg?.firstOsExcludedQuestions ?? [],
+        normChecklistQuestionIds,
+      ),
+    };
+  };
+
+  // Mesmo estado persistido do editor da norma, mas recortado para a fonte de
+  // checklists personalizados. Manter os editores separados deixa explícito o
+  // que vem da norma e o que foi criado pela empresa.
+  const getMachineCustomChecklist = (eqId: string) => {
+    const cfg = machineConfigs[eqId];
+    return {
+      templateIds: cfg?.customTemplateIds ?? [],
+      excluded: pickExcludedQuestionsForSource(
+        cfg?.firstOsExcludedQuestions ?? [],
+        customChecklistQuestionIds,
+      ),
     };
   };
 
@@ -1737,7 +1760,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       const prevIds = cur.normTemplateIds ?? [];
       // Quais ids são NOVOS nesta chamada (entraram agora).
       const prevSet = new Set(prevIds);
-      let nextIds = [...templateIds];
+      const nextIds = [...templateIds];
       for (const id of templateIds) {
         if (prevSet.has(id)) continue; // já estava — não é entrada nova
         const t = normTemplateById.get(id);
@@ -1764,7 +1787,47 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     setMachineConfigs(prev => {
       const cur = prev[eqId];
       if (!cur) return prev;
-      return { ...prev, [eqId]: { ...cur, firstOsExcludedQuestions: excluded } };
+      return {
+        ...prev,
+        [eqId]: {
+          ...cur,
+          firstOsExcludedQuestions: replaceExcludedQuestionsForSource(
+            cur.firstOsExcludedQuestions,
+            normChecklistQuestionIds,
+            excluded,
+          ),
+        },
+      };
+    });
+  };
+
+  const setMachineCustomChecklistTemplates = (eqId: string, templateIds: string[]) => {
+    setMachineConfigs(prev => {
+      const cur = prev[eqId];
+      if (!cur) return prev;
+      const same =
+        cur.customTemplateIds.length === templateIds.length &&
+        cur.customTemplateIds.every((id, index) => id === templateIds[index]);
+      if (same) return prev;
+      return { ...prev, [eqId]: { ...cur, customTemplateIds: templateIds, customized: true } };
+    });
+  };
+
+  const setMachineCustomChecklistExcluded = (eqId: string, excluded: string[]) => {
+    setMachineConfigs(prev => {
+      const cur = prev[eqId];
+      if (!cur) return prev;
+      return {
+        ...prev,
+        [eqId]: {
+          ...cur,
+          firstOsExcludedQuestions: replaceExcludedQuestionsForSource(
+            cur.firstOsExcludedQuestions,
+            customChecklistQuestionIds,
+            excluded,
+          ),
+        },
+      };
     });
   };
 
@@ -1848,6 +1911,19 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           })),
         })),
     [templates],
+  );
+
+  // A coluna `first_os_excluded_questions` é uma união. Estes conjuntos definem
+  // a propriedade de cada fatia para os dois editores inline e impedem que um
+  // deles pode as exclusões pertencentes ao outro.
+  const customChecklistQuestionIds = useMemo(
+    () => new Set(commonChecklistTemplates.flatMap((template) => template.questions.map((q) => q.id))),
+    [commonChecklistTemplates],
+  );
+
+  const normChecklistQuestionIds = useMemo(
+    () => new Set(pmocNormTemplates.flatMap((template) => template.questions.map((q) => q.id))),
+    [pmocNormTemplates],
   );
 
   // Mapa de perguntas-toda-visita por template — usado pra NUNCA gravar uma
@@ -3369,15 +3445,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                 />
                               </div>
 
-                              {/* PMOC NOVO (P2): editor INLINE por máquina — mesmo
-                                  CommonChecklistEditor do contrato comum, alimentado
-                                  pelos templates de NORMA. Default por escopo:
+                              {/* PMOC NOVO (P2): editores INLINE por máquina — o
+                                  primeiro recebe os templates da NORMA e o segundo
+                                  os checklists PERSONALIZADOS da empresa. Default:
                                   'ac'→Expansão Direta (Essencial); 'full'→Sistemas
                                   Centrais (Essencial). Sem select de fase: a "1ª OS"
                                   é por pergunta (checkbox do editor). A geração pelo
                                   caminho comum fica pra P3. */}
                               {usesInlinePmocEditor ? (
-                                <div className="pt-1">
+                                <div className="space-y-3 pt-1">
                                   {pmocNormLoading ? (
                                     <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -3394,6 +3470,24 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                       groupLabel="Checklists da norma desta máquina"
                                     />
                                   )}
+
+                                  <div className="border-t border-border/60 pt-3">
+                                    {templatesLoading ? (
+                                      <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        Carregando checklists personalizados...
+                                      </span>
+                                    ) : (
+                                      <CommonChecklistEditor
+                                        templates={commonChecklistTemplates}
+                                        selectedTemplateIds={getMachineCustomChecklist(eqId).templateIds}
+                                        onChangeTemplates={(ids) => setMachineCustomChecklistTemplates(eqId, ids)}
+                                        excluded={getMachineCustomChecklist(eqId).excluded}
+                                        onChangeExcluded={(next) => setMachineCustomChecklistExcluded(eqId, next)}
+                                        groupLabel="Checklists personalizados desta máquina"
+                                      />
+                                    )}
+                                  </div>
                                 </div>
                               ) : (
                                 <>

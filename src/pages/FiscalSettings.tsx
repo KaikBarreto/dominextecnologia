@@ -103,8 +103,8 @@ function percentualTribSnFromDisplay(s: string): number | null {
 
 /**
  * Configurações Fiscais (NFS-e) — tela própria (era modal até a 1.25.x).
- * Espelha o desenho de `ContractSettings`/`SettingsSidebarLayout`: sidebar no
- * desktop, pills no mobile, cada seção com sua barra de ação fixa no rodapé.
+ * Espelha o desenho de `ContractSettings`/`SettingsSidebarLayout`: abas
+ * underline roláveis, cada seção com sua barra de ação fixa no rodapé.
  *
  * ⚠️ Dominex é own-row: UMA configuração fiscal por empresa (`useFiscalSettings`).
  * Não tem seletor de CNPJ/multi-emitente — isso existe só no EcoSistema.
