@@ -24,6 +24,7 @@ import { FilterButton } from '@/components/ui/FilterButton';
 import { SearchField } from '@/components/ui/search-field-actions';
 import { MaterialPriceAnalysis } from '@/components/inventory/MaterialPriceAnalysis';
 import { useMaterialPurchaseReport, type MaterialPurchaseReportRow } from '@/hooks/useMaterialPurchaseReport';
+import { useInventory } from '@/hooks/useInventory';
 import { useMaterialGroups } from '@/hooks/useMaterialGroups';
 import { useStocks } from '@/hooks/useStocks';
 import { useSuppliers } from '@/hooks/useSuppliers';
@@ -121,6 +122,7 @@ export function MaterialPurchaseReportTab() {
   const t = MESSAGES[locale].app.inventory.purchaseReport;
   const { toast } = useToast();
   const { stocks } = useStocks();
+  const { items: inventoryItems } = useInventory();
   const { suppliers } = useSuppliers();
   const { groups } = useMaterialGroups();
   const { users } = useUsers();
@@ -154,6 +156,10 @@ export function MaterialPurchaseReportTab() {
     createdByIds,
   });
   const rows = useMemo(() => report.data ?? [], [report.data]);
+  const materialImageUrls = useMemo(
+    () => new Map(inventoryItems.map((item) => [item.id, item.image_url])),
+    [inventoryItems],
+  );
 
   const applyPeriod = (preset: PeriodPreset) => {
     setPeriodPreset(preset);
@@ -390,6 +396,7 @@ export function MaterialPurchaseReportTab() {
       {!report.error && (
         <MaterialPriceAnalysis
           rows={filteredMaterialRows}
+          imageUrlsByInventoryId={materialImageUrls}
           startDate={startDate}
           endDate={endDate}
           isLoading={report.isLoading}

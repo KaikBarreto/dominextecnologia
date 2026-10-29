@@ -5,6 +5,7 @@ import type { MaterialPurchaseReportRow } from '@/hooks/useMaterialPurchaseRepor
 import { MaterialPriceAnalysis } from './MaterialPriceAnalysis';
 
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
+vi.mock('@/hooks/useSignedUrl', () => ({ resolveStorageUrl: async (url: string) => url }));
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: { children: ReactNode }) => <div data-testid="responsive-chart">{children}</div>,
   LineChart: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -60,5 +61,17 @@ describe('MaterialPriceAnalysis', () => {
     singlePurchase.history = singlePurchase.history.slice(0, 1);
     render(<MaterialPriceAnalysis rows={[singlePurchase]} />);
     expect(screen.getByText('Histórico ainda insuficiente')).toBeInTheDocument();
+  });
+
+  it('shows the material photo in the list when the catalog has one', async () => {
+    render(
+      <MaterialPriceAnalysis
+        rows={[row()]}
+        imageUrlsByInventoryId={new Map([['copper', 'https://example.com/copper.jpg']])}
+      />,
+    );
+
+    expect(await screen.findByRole('img', { name: 'Foto de Cobre' }))
+      .toHaveAttribute('src', 'https://example.com/copper.jpg');
   });
 });

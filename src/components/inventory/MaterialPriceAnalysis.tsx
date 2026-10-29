@@ -13,6 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { InventoryItemThumbnail } from '@/components/inventory/InventoryItemThumbnail';
 import { ListDetailLayout, type ListDetailItem } from '@/components/ui/ListDetailLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -34,6 +35,7 @@ const OVERVIEW_ID = '__price_overview__';
 
 interface MaterialPriceAnalysisProps {
   rows: MaterialPurchaseReportRow[];
+  imageUrlsByInventoryId?: ReadonlyMap<string, string | null>;
   startDate?: string;
   endDate?: string;
   isLoading?: boolean;
@@ -56,7 +58,13 @@ function Variation({ value, locale, compact = false }: { value: number | null; l
   );
 }
 
-export function MaterialPriceAnalysis({ rows, startDate, endDate, isLoading }: MaterialPriceAnalysisProps) {
+export function MaterialPriceAnalysis({
+  rows,
+  imageUrlsByInventoryId,
+  startDate,
+  endDate,
+  isLoading,
+}: MaterialPriceAnalysisProps) {
   const isMobile = useIsMobile();
   const { locale, currency } = useAppLocaleContext();
   const { money, date, number } = useLocaleFormatters();
@@ -93,10 +101,18 @@ export function MaterialPriceAnalysis({ rows, startDate, endDate, isLoading }: M
         .filter(Boolean)
         .join(' · '),
       searchText: `${row.sku} ${row.group_name ?? ''}`,
-      leading: <span className="block h-2.5 w-2.5 rounded-full bg-primary" aria-hidden="true" />,
+      leading: (
+        <InventoryItemThumbnail
+          name={row.material_name}
+          imageUrl={imageUrlsByInventoryId?.get(row.inventory_id)}
+          accentColor={row.group_color}
+          fallbackVariant="plain"
+          className="h-9 w-9"
+        />
+      ),
       trailing: <Variation value={change?.variationPercentage ?? null} locale={locale} compact />,
     };
-  }), [analyzableRows, changesByMaterial, locale, number, t.purchaseCount]);
+  }), [analyzableRows, changesByMaterial, imageUrlsByInventoryId, locale, number, t.purchaseCount]);
 
   const select = (id: string) => {
     setSelectedId(id);
