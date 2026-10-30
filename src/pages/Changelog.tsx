@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.3',
+    date: '30 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Comparativo completo de altas e quedas',
+        description: 'A visão geral da evolução dos preços agora compara as maiores altas e quedas em um gráfico selecionável. As curvas ficaram mais suaves e cada material também ganhou uma visão do volume comprado no período.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.2',
     date: '29 de outubro de 2026',
     type: 'patch',

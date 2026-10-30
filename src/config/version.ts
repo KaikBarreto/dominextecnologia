@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.2";
+export const APP_VERSION = "1.38.3";
 
 export const VERSION_NOTES =
-  "Os gráficos de evolução dos preços agora usam uma área contínua com marcadores nos períodos que tiveram compras.";
+  "A visão geral compara as maiores altas e quedas, as curvas ficaram mais suaves e cada material ganhou a análise de volume comprado.";
