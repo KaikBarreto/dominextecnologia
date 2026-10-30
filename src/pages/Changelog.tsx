@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.7',
+    date: '30 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Edição de empresas para vendedores autorizados',
+        description: 'Vendedores com acesso à gestão de empresas agora conseguem salvar alterações normalmente, sem receber o bloqueio reservado a usuários sem permissão.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.38.6',
     date: '30 de outubro de 2026',
     type: 'patch',
