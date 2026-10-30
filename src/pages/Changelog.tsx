@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.6',
+    date: '30 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Mais espaço nas fichas de clientes e equipamentos',
+        description: 'As opções de editar e excluir agora ficam reunidas no botão Ações, deixando o nome do cliente ou equipamento mais fácil de visualizar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.5',
     date: '30 de outubro de 2026',
     type: 'patch',

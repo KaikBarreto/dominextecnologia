@@ -747,26 +747,10 @@ export function CustomerDetailContent() {
           </div>
         </div>
         <div className="ml-auto shrink-0 flex items-center gap-2 sm:gap-3">
-          {/* Editar e Excluir em evidência no computador; o resto no menu de
-              mais ações. No celular tudo volta pro menu, por espaço. */}
-          {!isMobile && (
-            <>
-              <Button variant="ghost" size="sm" className="text-warning hover:text-warning" onClick={() => setEditCustomerOpen(true)}>
-                <Edit className="mr-2 h-4 w-4" />
-                {tCustomers.edit}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:bg-destructive hover:text-white"
-                onClick={() => setDeleteConfirmOpen(true)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {tCustomers.delete}
-              </Button>
-            </>
-          )}
+          {/* Todas as ações ficam concentradas em um único menu para preservar
+              o espaço disponível para o nome do cliente. */}
           <RowActionsMenu
+            ariaLabel={t.actions}
             label={t.actions}
             triggerClassName="border border-border px-3"
             actions={[
@@ -793,14 +777,12 @@ export function CustomerDetailContent() {
                 icon: Edit,
                 variant: 'edit',
                 onClick: () => setEditCustomerOpen(true),
-                hidden: !isMobile,
               },
               {
                 label: tCustomers.delete,
                 icon: Trash2,
                 variant: 'delete',
                 onClick: () => setDeleteConfirmOpen(true),
-                hidden: !isMobile,
               },
             ]}
           />

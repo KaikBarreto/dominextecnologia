@@ -486,36 +486,18 @@ export function EquipmentDetailContent() {
             </Badge>
           </p>
         </div>
-        {/* Editar e Excluir em evidência no computador; no celular ficam no
-            menu de ações, que é onde cabe. */}
+        {/* Todas as ações ficam concentradas em um único menu para preservar
+            o espaço disponível para o nome do equipamento. */}
         <div className="shrink-0 ml-auto flex items-center gap-2">
-          {isMobile ? (
-            <RowActionsMenu
-              ariaLabel={te.actions}
-              label={te.actions}
-              triggerClassName="border border-border px-3"
-              actions={[
-                { label: tEquipment.edit, icon: Edit, variant: 'edit', onClick: () => setEditEquipOpen(true) },
-                { label: tEquipment.delete, icon: Trash2, variant: 'delete', onClick: () => setDeleteEquipOpen(true) },
-              ]}
-            />
-          ) : (
-            <>
-              <Button variant="ghost" size="sm" className="text-warning hover:text-warning" onClick={() => setEditEquipOpen(true)}>
-                <Edit className="mr-2 h-4 w-4" />
-                {tEquipment.edit}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:bg-destructive hover:text-white"
-                onClick={() => setDeleteEquipOpen(true)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {tEquipment.delete}
-              </Button>
-            </>
-          )}
+          <RowActionsMenu
+            ariaLabel={te.actions}
+            label={te.actions}
+            triggerClassName="border border-border px-3"
+            actions={[
+              { label: tEquipment.edit, icon: Edit, variant: 'edit', onClick: () => setEditEquipOpen(true) },
+              { label: tEquipment.delete, icon: Trash2, variant: 'delete', onClick: () => setDeleteEquipOpen(true) },
+            ]}
+          />
         </div>
       </div>
 
