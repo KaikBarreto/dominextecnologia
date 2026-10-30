@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, BarChart3, Minus, PackageSearch, TrendingDown, TrendingUp } from 'lucide-react';
 import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  Cell,
   CartesianGrid,
-  Line,
-  LineChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -16,6 +19,7 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { InventoryItemThumbnail } from '@/components/inventory/InventoryItemThumbnail';
 import { ListDetailLayout, type ListDetailItem } from '@/components/ui/ListDetailLayout';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { MaterialPurchaseReportRow } from '@/hooks/useMaterialPurchaseReport';
@@ -182,45 +186,12 @@ export function MaterialPriceAnalysis({
       .filter((item) => item.variationPercentage < 0)
       .sort((a, b) => a.variationPercentage - b.variationPercentage)
       .slice(0, 5);
-
-    const ranking = (title: string, description: string, rankingItems: MaterialPriceChange[], direction: 'up' | 'down') => (
-      <div className="min-w-0">
-        <div className="mb-3 flex items-start gap-2">
-          <span className={cn(
-            'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white',
-            direction === 'up' ? 'bg-destructive' : 'bg-success',
-          )}>
-            {direction === 'up' ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-          </span>
-          <div>
-            <h4 className="text-sm font-semibold">{title}</h4>
-            <p className="text-xs text-muted-foreground">{description}</p>
-          </div>
-        </div>
-        {rankingItems.length === 0 ? (
-          <p className="border-t py-5 text-sm text-muted-foreground">{t.noVariation}</p>
-        ) : (
-          <div className="divide-y border-y">
-            {rankingItems.map((item) => (
-              <button
-                key={item.inventoryId}
-                type="button"
-                onClick={() => onSelect(item.inventoryId)}
-                className="flex w-full items-center gap-3 px-1 py-3 text-left outline-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{item.materialName}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {money(item.previousPrice)} → {money(item.latestPrice)} / {item.unit}
-                  </span>
-                </span>
-                <Variation value={item.variationPercentage} locale={locale} />
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+    const overviewData = [...decreases, ...increases.slice().reverse()];
+    const largestVariation = Math.max(
+      1,
+      ...overviewData.map((item) => Math.abs(item.variationPercentage)),
     );
+    const symmetricDomain = Math.ceil(largestVariation * 1.2);
 
     return (
       <div className="min-w-0">
@@ -240,9 +211,93 @@ export function MaterialPriceAnalysis({
             description={t.insufficientDataDescription}
           />
         ) : (
-          <div className="grid gap-8 xl:grid-cols-2">
-            {ranking(t.increasesTitle, t.increasesDescription, increases, 'up')}
-            {ranking(t.decreasesTitle, t.decreasesDescription, decreases, 'down')}
+          <div className="min-w-0 border-y py-4">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-success" aria-hidden="true" />
+                  {t.decreasesTitle}
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-destructive" aria-hidden="true" />
+                  {t.increasesTitle}
+                </span>
+              </div>
+              <span className="text-muted-foreground">{t.overviewHint}</span>
+            </div>
+            <div
+              className="h-[320px] min-w-0 w-full sm:h-[360px]"
+              role="img"
+              aria-label={t.overviewChartAria}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={overviewData}
+                  layout="vertical"
+                  margin={{ top: 4, right: isMobile ? 8 : 32, left: isMobile ? -20 : 16, bottom: 0 }}
+                  onClick={(state) => {
+                    const item = state?.activePayload?.[0]?.payload as MaterialPriceChange | undefined;
+                    if (item) onSelect(item.inventoryId);
+                  }}
+                >
+                  <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis
+                    type="number"
+                    domain={[-symmetricDomain, symmetricDomain]}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(value) => `${value > 0 ? '+' : ''}${number(value)}%`}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="materialName"
+                    width={isMobile ? 104 : 168}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: 'hsl(var(--foreground))', fontSize: isMobile ? 10 : 11 }}
+                  />
+                  <ReferenceLine x={0} stroke="hsl(var(--foreground))" strokeOpacity={0.35} />
+                  <Tooltip
+                    cursor={{ fill: 'hsl(var(--muted) / 0.45)' }}
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.[0]?.payload) return null;
+                      const item = payload[0].payload as MaterialPriceChange;
+                      return (
+                        <div className="min-w-52 rounded-xl border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
+                          <p className="font-semibold">{item.materialName}</p>
+                          <p className="mt-2 flex items-center justify-between gap-4">
+                            <span className="text-muted-foreground">{t.variation}</span>
+                            <Variation value={item.variationPercentage} locale={locale} />
+                          </p>
+                          <p className="mt-1 flex items-center justify-between gap-4">
+                            <span className="text-muted-foreground">{t.priceRange}</span>
+                            <span className="tabular-nums">{money(item.previousPrice)} → {money(item.latestPrice)} / {item.unit}</span>
+                          </p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Bar dataKey="variationPercentage" radius={[4, 4, 4, 4]} barSize={18} className="cursor-pointer">
+                    {overviewData.map((item) => (
+                      <Cell
+                        key={item.inventoryId}
+                        fill={item.variationPercentage < 0 ? 'hsl(var(--success))' : 'hsl(var(--destructive))'}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <ul className="sr-only">
+              {overviewData.map((item) => (
+                <li key={item.inventoryId}>
+                  <button type="button" onClick={() => onSelect(item.inventoryId)}>
+                    {item.materialName}: {item.variationPercentage > 0 ? '+' : ''}{number(item.variationPercentage)}%
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>
@@ -303,90 +358,164 @@ export function MaterialPriceAnalysis({
             description={t.noPriceDescription}
           />
         ) : (
-          <>
-            <div
-              className="mt-5 h-[270px] min-w-0 w-full sm:h-[320px]"
-              role="img"
-              aria-label={t.chartAria.replace('{material}', material.material_name)}
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 12, right: 12, left: isMobile ? -12 : 4, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
-                  <XAxis
-                    dataKey="label"
-                    axisLine={false}
-                    tickLine={false}
-                    minTickGap={isMobile ? 28 : 18}
-                    interval="preserveStartEnd"
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    width={isMobile ? 58 : 72}
-                    tickFormatter={formatMoneyShort}
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
-                    domain={['auto', 'auto']}
-                  />
-                  {summary.averagePrice != null && (
-                    <ReferenceLine
-                      y={summary.averagePrice}
-                      stroke="hsl(var(--muted-foreground))"
-                      strokeDasharray="5 4"
-                      strokeOpacity={0.6}
+          <Tabs defaultValue="price" className="mt-5 min-w-0">
+            <TabsList className="h-auto w-full justify-start gap-6 rounded-none border-b bg-transparent p-0">
+              <TabsTrigger
+                value="price"
+                className="rounded-none border-b-2 border-transparent px-0 pb-2 pt-0 text-xs shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+              >
+                {t.priceTab}
+              </TabsTrigger>
+              <TabsTrigger
+                value="volume"
+                className="rounded-none border-b-2 border-transparent px-0 pb-2 pt-0 text-xs shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+              >
+                {t.volumeTab}
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="price" className="mt-0">
+              <div
+                className="h-[270px] min-w-0 w-full pt-5 sm:h-[320px]"
+                role="img"
+                aria-label={t.chartAria.replace('{material}', material.material_name)}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 12, right: 12, left: isMobile ? -12 : 4, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
+                    <XAxis
+                      dataKey="label"
+                      axisLine={false}
+                      tickLine={false}
+                      minTickGap={isMobile ? 28 : 18}
+                      interval="preserveStartEnd"
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
                     />
-                  )}
-                  <Tooltip
-                    cursor={{ stroke: 'hsl(var(--border))' }}
-                    allowEscapeViewBox={{ x: false, y: true }}
-                    content={({ active, payload }) => {
-                      if (!active || !payload?.[0]?.payload) return null;
-                      const point = payload[0].payload as MaterialPriceTrendPoint & { label: string };
-                      if (point.averagePrice == null) return null;
-                      return (
-                        <div className="min-w-52 rounded-xl border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
-                          <p className="font-semibold">{formatBucketPeriod(point, trend.granularity)}</p>
-                          <p className="mt-2 flex justify-between gap-4">
-                            <span className="text-muted-foreground">{t.weightedPrice}</span>
-                            <strong className="tabular-nums">{money(point.averagePrice)} / {material.unit}</strong>
-                          </p>
-                          <p className="mt-1 flex justify-between gap-4">
-                            <span className="text-muted-foreground">{t.priceRange}</span>
-                            <span className="tabular-nums">{money(point.minPrice ?? point.averagePrice)} – {money(point.maxPrice ?? point.averagePrice)}</span>
-                          </p>
-                          <p className="mt-1 flex justify-between gap-4">
-                            <span className="text-muted-foreground">{t.purchasedQuantity}</span>
-                            <span className="tabular-nums">{number(point.purchasedQuantity)} {material.unit}</span>
-                          </p>
-                          <p className="mt-1 flex justify-between gap-4">
-                            <span className="text-muted-foreground">{t.purchases}</span>
-                            <span className="tabular-nums">{number(point.purchaseCount)}</span>
-                          </p>
-                        </div>
-                      );
-                    }}
-                  />
-                  <Line
-                    type="linear"
-                    dataKey="averagePrice"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2.5}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    connectNulls={false}
-                    dot={{ r: 4, fill: 'hsl(var(--background))', strokeWidth: 2 }}
-                    activeDot={{ r: 6 }}
-                    isAnimationActive={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <ul className="sr-only">
-              {chartData.filter((point) => point.averagePrice != null).map((point) => (
-                <li key={point.key}>{formatBucketPeriod(point, trend.granularity)}: {money(point.averagePrice as number)}</li>
-              ))}
-            </ul>
-          </>
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      width={isMobile ? 58 : 72}
+                      tickFormatter={formatMoneyShort}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                      domain={['auto', 'auto']}
+                    />
+                    {summary.averagePrice != null && (
+                      <ReferenceLine
+                        y={summary.averagePrice}
+                        stroke="hsl(var(--muted-foreground))"
+                        strokeDasharray="5 4"
+                        strokeOpacity={0.6}
+                      />
+                    )}
+                    <Tooltip
+                      cursor={{ stroke: 'hsl(var(--border))' }}
+                      allowEscapeViewBox={{ x: false, y: true }}
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.[0]?.payload) return null;
+                        const point = payload[0].payload as MaterialPriceTrendPoint & { label: string };
+                        if (point.averagePrice == null) return null;
+                        return (
+                          <div className="min-w-52 rounded-xl border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
+                            <p className="font-semibold">{formatBucketPeriod(point, trend.granularity)}</p>
+                            <p className="mt-2 flex justify-between gap-4">
+                              <span className="text-muted-foreground">{t.weightedPrice}</span>
+                              <strong className="tabular-nums">{money(point.averagePrice)} / {material.unit}</strong>
+                            </p>
+                            <p className="mt-1 flex justify-between gap-4">
+                              <span className="text-muted-foreground">{t.priceRange}</span>
+                              <span className="tabular-nums">{money(point.minPrice ?? point.averagePrice)} – {money(point.maxPrice ?? point.averagePrice)}</span>
+                            </p>
+                            <p className="mt-1 flex justify-between gap-4">
+                              <span className="text-muted-foreground">{t.purchasedQuantity}</span>
+                              <span className="tabular-nums">{number(point.purchasedQuantity)} {material.unit}</span>
+                            </p>
+                            <p className="mt-1 flex justify-between gap-4">
+                              <span className="text-muted-foreground">{t.purchases}</span>
+                              <span className="tabular-nums">{number(point.purchaseCount)}</span>
+                            </p>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="averagePrice"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2.5}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      fill="hsl(var(--primary))"
+                      fillOpacity={0.12}
+                      connectNulls
+                      dot={{ r: 4, fill: 'hsl(var(--background))', strokeWidth: 2 }}
+                      activeDot={{ r: 6 }}
+                      isAnimationActive={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+              <ul className="sr-only">
+                {chartData.filter((point) => point.averagePrice != null).map((point) => (
+                  <li key={point.key}>{formatBucketPeriod(point, trend.granularity)}: {money(point.averagePrice as number)}</li>
+                ))}
+              </ul>
+            </TabsContent>
+            <TabsContent value="volume" className="mt-0">
+              <div
+                className="h-[270px] min-w-0 w-full pt-5 sm:h-[320px]"
+                role="img"
+                aria-label={t.volumeChartAria.replace('{material}', material.material_name)}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 12, right: 12, left: isMobile ? -12 : 4, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
+                    <XAxis
+                      dataKey="label"
+                      axisLine={false}
+                      tickLine={false}
+                      minTickGap={isMobile ? 28 : 18}
+                      interval="preserveStartEnd"
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      width={isMobile ? 42 : 56}
+                      tickFormatter={(value) => number(value)}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                    />
+                    <Tooltip
+                      cursor={{ fill: 'hsl(var(--muted) / 0.45)' }}
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.[0]?.payload) return null;
+                        const point = payload[0].payload as MaterialPriceTrendPoint & { label: string };
+                        if (point.purchasedQuantity <= 0) return null;
+                        return (
+                          <div className="min-w-48 rounded-xl border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
+                            <p className="font-semibold">{formatBucketPeriod(point, trend.granularity)}</p>
+                            <p className="mt-2 flex justify-between gap-4">
+                              <span className="text-muted-foreground">{t.purchasedQuantity}</span>
+                              <strong className="tabular-nums">{number(point.purchasedQuantity)} {material.unit}</strong>
+                            </p>
+                            <p className="mt-1 flex justify-between gap-4">
+                              <span className="text-muted-foreground">{t.purchases}</span>
+                              <span className="tabular-nums">{number(point.purchaseCount)}</span>
+                            </p>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Bar
+                      dataKey="purchasedQuantity"
+                      fill="hsl(var(--primary))"
+                      fillOpacity={0.72}
+                      radius={[5, 5, 0, 0]}
+                      isAnimationActive={false}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </TabsContent>
+          </Tabs>
         )}
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-3 text-xs text-muted-foreground">

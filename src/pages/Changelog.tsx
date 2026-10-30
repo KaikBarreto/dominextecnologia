@@ -42,6 +42,42 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.4',
+    date: '30 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'DRE com visões personalizadas e seguras',
+        description: 'O formato padrão continua igual. Quem precisar pode criar versões gerencial, contábil, EBITDA ou próprias usando os mesmos lançamentos e categorias. Itens sem classificação permanecem visíveis para conferência, e o modal de categoria agora mostra uma prévia simples do efeito no DRE.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.38.3',
+    date: '30 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Comparativo completo de altas e quedas',
+        description: 'A visão geral da evolução dos preços agora compara as maiores altas e quedas em um gráfico selecionável. As curvas ficaram mais suaves e cada material também ganhou uma visão do volume comprado no período.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.2',
+    date: '29 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Leitura contínua da evolução dos preços',
+        description: 'Os gráficos de preço agora conectam a evolução em uma área visual e mantêm marcadores nos períodos com compras, facilitando a leitura diária, semanal e mensal.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.1',
     date: '29 de outubro de 2026',
     type: 'patch',
