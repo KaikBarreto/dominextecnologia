@@ -42,6 +42,42 @@ describe('ListDetailLayout', () => {
     expect(screen.getByText('Ficha do cliente')).toBeInTheDocument();
   });
 
+  it('busca sem acento, com palavras fora de ordem e documento sem máscara', () => {
+    render(
+      <ListDetailLayout
+        items={[
+          {
+            id: '1',
+            title: 'Marcos Antônio Braga',
+            subtitle: '12.345.678/0001-90',
+          },
+          { id: '2', title: 'Beatriz Souza', subtitle: 'Recife' },
+        ]}
+        listTitle="Lista de clientes"
+        searchPlaceholder="Buscar clientes..."
+        emptyLabel="Nenhum cliente encontrado"
+        onSelect={vi.fn()}
+      >
+        <div>Ficha do cliente</div>
+      </ListDetailLayout>,
+    );
+
+    const search = screen.getByPlaceholderText('Buscar clientes...');
+
+    fireEvent.change(search, { target: { value: 'antonio' } });
+    expect(screen.getByText('Marcos Antônio Braga')).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: 'marcos braga' } });
+    expect(screen.getByText('Marcos Antônio Braga')).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: '12345678' } });
+    expect(screen.getByText('Marcos Antônio Braga')).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: 'inexistente' } });
+    expect(screen.queryByText('Marcos Antônio Braga')).not.toBeInTheDocument();
+    expect(screen.getByText('Nenhum cliente encontrado')).toBeInTheDocument();
+  });
+
   it('abre a foto sem selecionar outro registro', () => {
     const onSelect = vi.fn();
     const onImageClick = vi.fn();

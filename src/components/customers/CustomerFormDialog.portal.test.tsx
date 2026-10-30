@@ -133,6 +133,14 @@ function fillCustomerName(name = 'Cliente de teste') {
   });
 }
 
+function fillMobileDigitByDigit(digits: string) {
+  const input = screen.getByRole('textbox', { name: /celular/i });
+  for (let index = 1; index <= digits.length; index += 1) {
+    fireEvent.change(input, { target: { value: digits.slice(0, index) } });
+  }
+  return input;
+}
+
 describe('CustomerFormDialog — integração do Portal', () => {
   beforeEach(() => {
     loadedSettings = null;
@@ -186,6 +194,45 @@ describe('CustomerFormDialog — integração do Portal', () => {
     await waitFor(() => expect(saveSettings).toHaveBeenCalledTimes(2));
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('preserva o opt-in de WhatsApp ao digitar o celular e respeita o opt-out manual', () => {
+    render(
+      <CustomerFormDialog open onOpenChange={vi.fn()} onSubmit={vi.fn()} />,
+    );
+
+    const mobileInput = fillMobileDigitByDigit('11933334444');
+    const optIn = screen.getByRole('switch', { name: 'Receber mensagens pelo WhatsApp' });
+
+    expect(optIn).not.toBeDisabled();
+    expect(optIn).toHaveAttribute('data-state', 'checked');
+
+    fireEvent.click(optIn);
+    expect(optIn).toHaveAttribute('data-state', 'unchecked');
+
+    fireEvent.change(mobileInput, { target: { value: '' } });
+    fillMobileDigitByDigit('11988887777');
+
+    expect(optIn).not.toBeDisabled();
+    expect(optIn).toHaveAttribute('data-state', 'unchecked');
+  });
+
+  it('força o opt-in para false no payload quando o celular continua inválido', async () => {
+    const onSubmit = vi.fn().mockResolvedValue({ id: 'customer-with-invalid-mobile' });
+    saveSettings.mockResolvedValue({ ...DEFAULT_SETTINGS, token: 'portal-token' });
+
+    render(
+      <CustomerFormDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />,
+    );
+
+    fillCustomerName();
+    fillMobileDigitByDigit('1199');
+    submitForm();
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      whatsapp_notifications_enabled: false,
+    }));
   });
 
   it('bloqueia cliente novo protegido até receber senha válida e confirmação', async () => {

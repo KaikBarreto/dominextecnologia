@@ -46,6 +46,7 @@ import { LeadCaptureManagerDialog } from '@/components/customers/LeadCaptureMana
 import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { formatCustomerDocument, formatCustomerPhone } from '@/lib/customerDisplay';
 
 export type CustomerKindFilter = 'all' | 'servico' | 'loja';
 
@@ -156,7 +157,7 @@ interface CustomerGridCardProps {
 function CustomerGridCard({ customer, isMobile, canEdit, canDelete, pdvEnabled, onOpen, onPreviewPhoto, onEdit, onDelete, t }: CustomerGridCardProps) {
   const { locale } = useAppLocaleContext();
   const zoomPhotoLabel = MESSAGES[locale].app.common.listDetail.zoomPhoto.replace('{name}', customer.name);
-  const subtitleParts = [customer.phone || customer.celular, customer.city].filter(Boolean);
+  const subtitleParts = [formatCustomerPhone(customer.phone || customer.celular), customer.city].filter(Boolean);
   const subtitle = subtitleParts.length > 0
     ? subtitleParts.join(' • ')
     : (customer.company_name || customer.email || '—');
@@ -416,7 +417,11 @@ export default function Customers() {
           items={filteredCustomers.map((customer) => ({
             id: customer.id,
             title: customer.name,
-            subtitle: [customer.document, customer.phone || customer.celular, customer.city].filter(Boolean).join(' · ') || undefined,
+            subtitle: [
+              formatCustomerDocument(customer.document),
+              formatCustomerPhone(customer.phone || customer.celular),
+              customer.city,
+            ].filter(Boolean).join(' · ') || undefined,
             searchText: [customer.company_name, customer.nome_fantasia, customer.email, customer.address, customer.neighborhood].filter(Boolean).join(' '),
             imageUrl: customer.photo_url,
             imageAlt: tCommon.listDetail.zoomPhoto.replace('{name}', customer.name),
@@ -595,7 +600,7 @@ export default function Customers() {
                       : []),
                   ];
 
-                  const subtitleParts = [customer.phone || customer.celular, customer.city].filter(Boolean);
+                  const subtitleParts = [formatCustomerPhone(customer.phone || customer.celular), customer.city].filter(Boolean);
 
                   return (
                     <MobileListItem
@@ -734,7 +739,7 @@ export default function Customers() {
                                 <div>
                                   <p className="font-medium">{customer.name}</p>
                                   {customer.document && (
-                                    <p className="text-xs text-muted-foreground">{customer.document}</p>
+                                    <p className="text-xs text-muted-foreground">{formatCustomerDocument(customer.document)}</p>
                                   )}
                                 </div>
                               </TableCell>
@@ -755,7 +760,7 @@ export default function Customers() {
                                 <div className="space-y-1">
                                   {(customer.phone || customer.celular) && (
                                     <div className="flex items-center gap-1 text-sm">
-                                      <Phone className="h-3 w-3" />{customer.phone || customer.celular}
+                                      <Phone className="h-3 w-3" />{formatCustomerPhone(customer.phone || customer.celular)}
                                     </div>
                                   )}
                                   {customer.email && (

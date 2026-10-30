@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ArrowDownUp, ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { SearchField, SearchFieldAction } from '@/components/ui/search-field-actions';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -162,13 +162,10 @@ export function ListDetailLayout({
     resolvedSortOptions.find((option) => option.value === sortValue) ?? resolvedSortOptions[0];
 
   const visibleItems = useMemo(() => {
-    const normalizedSearch = search.trim().toLocaleLowerCase('pt-BR');
-    const filtered = !normalizedSearch
+    const filtered = !search.trim()
       ? items
       : items.filter((item) =>
-          `${item.title} ${item.subtitle ?? ''} ${item.searchText ?? ''}`
-            .toLocaleLowerCase('pt-BR')
-            .includes(normalizedSearch),
+          fuzzyIncludesAny([item.title, item.subtitle, item.searchText], search),
         );
     // slice() antes de sort(): sort ordena NO LUGAR e o array é do chamador.
     return filtered.slice().sort(activeSort.compare);

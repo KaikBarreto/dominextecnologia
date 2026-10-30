@@ -499,9 +499,6 @@ export function CustomerFormDialog({
                         onChange={(e) => {
                           const masked = mobileMask(e.target.value);
                           field.onChange(masked);
-                          if (masked.replace(/\D/g, '').length < 10) {
-                            form.setValue('whatsapp_notifications_enabled', false);
-                          }
                         }}
                       />
                     </FormControl>

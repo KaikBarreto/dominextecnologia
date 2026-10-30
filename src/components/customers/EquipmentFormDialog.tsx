@@ -1,7 +1,6 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
@@ -26,25 +25,12 @@ import { buildStorageFilePath } from '@/utils/storagePath';
 import type { Equipment, Customer } from '@/types/database';
 import type { EquipmentCategory } from '@/hooks/useEquipmentCategories';
 import { tenantFileOptions } from '@/utils/tenantStorage';
+import {
+  createEquipmentFormSchema,
+  type EquipmentFormData,
+} from '@/lib/equipmentFormValidation';
 
 const CACHE_KEY = 'equipment-form-draft';
-
-const equipmentSchema = z.object({
-  customer_id: z.string().min(1, 'customer_required'),
-  name: z.string().min(1, 'name_required'),
-  category_id: z.string().optional(),
-  identifier: z.string().optional(),
-  brand: z.string().optional(),
-  model: z.string().optional(),
-  serial_number: z.string().optional(),
-  capacity: z.string().optional(),
-  location: z.string().optional(),
-  install_date: z.string().optional(),
-  warranty_until: z.string().optional(),
-  notes: z.string().optional(),
-});
-
-type EquipmentFormData = z.infer<typeof equipmentSchema>;
 
 interface EquipmentFormDialogProps {
   open: boolean;
@@ -76,6 +62,10 @@ export function EquipmentFormDialog({
 
   const defaultCustomerId = equipment?.customer_id ?? (customers.length === 1 ? customers[0].id : '');
   const formContextKey = equipment?.id ?? `new:${defaultCustomerId || 'none'}`;
+  const equipmentSchema = useMemo(
+    () => createEquipmentFormSchema(tf),
+    [tf],
+  );
 
   const form = useForm<EquipmentFormData>({
     resolver: zodResolver(equipmentSchema),

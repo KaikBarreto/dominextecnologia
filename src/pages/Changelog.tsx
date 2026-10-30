@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.5',
+    date: '30 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastros de clientes mais consistentes',
+        description: 'A autorização para receber mensagens pelo WhatsApp agora é preservada durante o preenchimento do celular. CPF, CNPJ, telefone e CEP também aparecem formatados, e clientes vindos do formulário público são identificados com mais clareza.',
+        category: 'correcao',
+      },
+      {
+        title: 'Equipamentos mais fáceis de consultar e atualizar',
+        description: 'Campos obrigatórios apresentam mensagens no idioma do usuário, datas e respostas de sim ou não ficaram mais consistentes, e editar ou excluir um equipamento não exige mais recarregar a página.',
+        category: 'correcao',
+      },
+      {
+        title: 'Busca mais flexível nas listagens',
+        description: 'As buscas agora encontram resultados mesmo com diferenças de acentuação, ordem das palavras ou documentos digitados sem máscara.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.4',
     date: '30 de outubro de 2026',
     type: 'patch',

@@ -83,6 +83,12 @@ import { CustomerDeleteDebtNotice } from '@/components/customers/CustomerDeleteD
 import { useCustomerPaidExpenses, type CustomerPaidExpense } from '@/hooks/useCustomerPaidExpenses';
 import { buildPortalCallsPath } from '@/lib/portalCalls';
 import { CustomerDocumentsTab } from '@/components/customers/CustomerDocumentsTab';
+import {
+  formatCustomerDocument,
+  formatCustomerPhone,
+  formatCustomerZipCode,
+  getCustomerOriginLabel,
+} from '@/lib/customerDisplay';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos' | 'documentos' | 'cobrancas' | 'estoque';
 
@@ -822,24 +828,36 @@ export function CustomerDetailContent() {
 
             const originName = (customer as any).origin as string | undefined;
             if (originName) {
+              const isPublicForm = originName === 'public_form';
               const originData = activeOrigins.find(o => o.name === originName);
-              const LucideIcon = originData ? (LucideIcons as any)[originData.icon] : null;
+              const LucideIcon = isPublicForm
+                ? ClipboardList
+                : originData
+                  ? (LucideIcons as any)[originData.icon]
+                  : null;
+              const originLabel = getCustomerOriginLabel(originName, t.originPublicForm);
               rows.push({
                 label: t.fieldOrigin,
                 node: (
                   <div className="flex items-center gap-2">
-                    {LucideIcon && originData && (
-                      <div className="h-5 w-5 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: originData.color }}>
+                    {LucideIcon && (isPublicForm || originData) && (
+                      <div
+                        className={cn(
+                          'h-5 w-5 rounded flex items-center justify-center shrink-0',
+                          isPublicForm && 'bg-info',
+                        )}
+                        style={!isPublicForm && originData ? { backgroundColor: originData.color } : undefined}
+                      >
                         <LucideIcon className="h-3 w-3 text-white" />
                       </div>
                     )}
-                    <span className="text-sm font-medium leading-tight">{originName}</span>
+                    <span className="text-sm font-medium leading-tight">{originLabel}</span>
                   </div>
                 ),
               });
             }
             if (customer.document) {
-              rows.push({ label: t.fieldDocument, node: <span className="text-sm font-medium leading-tight">{customer.document}</span> });
+              rows.push({ label: t.fieldDocument, node: <span className="text-sm font-medium leading-tight">{formatCustomerDocument(customer.document)}</span> });
             }
             if ((customer as any).inscricao_estadual) {
               rows.push({ label: t.fieldInscricaoEstadual, node: <span className="text-sm font-medium leading-tight">{(customer as any).inscricao_estadual}</span> });
@@ -862,7 +880,7 @@ export function CustomerDetailContent() {
                 node: (
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium flex items-center gap-1 leading-tight">
-                      <Phone className="h-3 w-3 shrink-0" />{phoneMask(customer.phone)}
+                      <Phone className="h-3 w-3 shrink-0" />{formatCustomerPhone(customer.phone)}
                     </span>
                     <button
                       type="button"
@@ -888,7 +906,7 @@ export function CustomerDetailContent() {
                 node: (
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium flex items-center gap-1 leading-tight">
-                      <Phone className="h-3 w-3 shrink-0" />{phoneMask(celular)}
+                      <Phone className="h-3 w-3 shrink-0" />{formatCustomerPhone(celular)}
                     </span>
                     <button
                       type="button"
@@ -946,7 +964,7 @@ export function CustomerDetailContent() {
               customer.complement,
               customer.neighborhood,
               customer.city && customer.state ? `${customer.city} - ${customer.state}` : (customer.city || customer.state),
-              customer.zip_code
+              formatCustomerZipCode(customer.zip_code)
             ].filter(Boolean).join(', ');
             const encodedAddress = encodeURIComponent(fullAddress);
             const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;

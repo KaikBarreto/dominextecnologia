@@ -204,6 +204,7 @@ export const customers = {
       // Aba Geral — seção Informações
       sectionInfo: 'Informações',
       fieldOrigin: 'Origem',
+      originPublicForm: 'Formulário de captação',
       fieldDocument: 'CPF/CNPJ',
       fieldInscricaoEstadual: 'Inscrição Estadual',
       fieldEmail: 'Email',
@@ -755,6 +756,7 @@ export const customers = {
 
       sectionInfo: 'Information',
       fieldOrigin: 'Origin',
+      originPublicForm: 'Lead capture form',
       fieldDocument: 'Tax ID',
       fieldInscricaoEstadual: 'State registration',
       fieldEmail: 'Email',
@@ -1269,6 +1271,7 @@ export const customers = {
 
       sectionInfo: 'Información',
       fieldOrigin: 'Origen',
+      originPublicForm: 'Formulario de captación',
       fieldDocument: 'Documento fiscal',
       fieldInscricaoEstadual: 'Inscripción estatal',
       fieldEmail: 'Correo',
@@ -1783,6 +1786,7 @@ export const customers = {
 
       sectionInfo: 'Informations',
       fieldOrigin: 'Origine',
+      originPublicForm: 'Formulaire de capture',
       fieldDocument: 'Identifiant fiscal',
       fieldInscricaoEstadual: `Inscription d'État`,
       fieldEmail: 'E-mail',
