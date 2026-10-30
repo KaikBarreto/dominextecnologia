@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -77,6 +77,11 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { useDreGroups } from '@/hooks/useDreGroups';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { DreGroupsManagerDialog } from './DreGroupsManagerDialog';
+import { DreCustomStatementView } from '@/components/financial-report/DreCustomStatementView';
+import { useDreLayoutProfiles, mapDreLayoutBundle } from '@/hooks/useDreLayoutProfiles';
+import { buildCustomDreStatement, type DreNormalizedEntry } from '@/lib/dreCustomLayout';
+import { useAuth } from '@/contexts/AuthContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DreComparisonDialog } from './DreComparisonDialog';
 import {
   DreHierarchyTable,
@@ -149,9 +154,12 @@ export function FinanceDRE({
   canIncludeSubscriptionProjections = false,
 }: FinanceDREProps) {
   const { settings } = useCompanySettings();
+  const { profile } = useAuth();
+  const companyId = profile?.company_id ?? undefined;
   const { categories: financialCategories } = useFinancialCategories();
   const { dreGroups } = useDreGroups();
   const canManageFinanceSettings = useCanManageFinanceSettings();
+  const dreLayouts = useDreLayoutProfiles(companyId);
   const { costCenters } = useCostCenters();
   const { patrimony, isLoading: isLoadingPatrimony } = useOperationalPatrimony(rawTransactions);
   // `timezone`: fuso da empresa, usado pra decidir o que já é passado no
@@ -177,6 +185,22 @@ export function FinanceDRE({
   const [isDreSettingsOpen, setIsDreSettingsOpen] = useState(false);
   const [includeProjections, setIncludeProjections] = useState(false);
   const [showPatrimony, setShowPatrimony] = useState(false);
+  const [selectedDreView, setSelectedDreView] = useState('legacy');
+
+  const publishedDreProfiles = useMemo(
+    () => (dreLayouts.configuration?.profiles ?? []).filter((item) => !item.profile.is_archived && item.active),
+    [dreLayouts.configuration?.profiles],
+  );
+
+  useEffect(() => {
+    const configuration = dreLayouts.configuration;
+    if (!configuration) return;
+    const preferred = configuration.settings.mode === 'custom'
+      ? configuration.settings.default_profile_id
+      : null;
+    const available = preferred && publishedDreProfiles.some((item) => item.profile.id === preferred);
+    setSelectedDreView(available ? preferred : 'legacy');
+  }, [dreLayouts.configuration, publishedDreProfiles]);
 
   // Nome da categoria → classificação DRE. `outros` é movimento
   // patrimonial (aporte, empréstimo, aquisição de ativo etc.) e não compõe o
@@ -302,7 +326,7 @@ export function FinanceDRE({
   }, [rawTransactions]);
 
   const selectTransactionsForRange = useCallback(
-    (targetRange: DateRange | undefined) => {
+    (targetRange: DateRange | undefined, includeOutsideDre = false) => {
       // Fuso DA EMPRESA, não o do dispositivo nem São Paulo chumbado: mesma
       // regra de todo campo de data financeira (ver `todayInTz`). Empresa em
       // Cuiabá (UTC-4) abrindo a DRE às 23h15 do dia 30 tinha "hoje" = 31 e um
@@ -319,7 +343,8 @@ export function FinanceDRE({
         if (t.cancelled_at) continue;
         if (t.transfer_pair_id) continue;
         const configuredNature = categoryDreConfigMap.get(t.category ?? '')?.nature;
-        if (configuredNature === 'excluded' || isDreExcludedGroup(categoryDreGroupMap.get(t.category ?? ''))) continue;
+        if (!includeOutsideDre
+          && (configuredNature === 'excluded' || isDreExcludedGroup(categoryDreGroupMap.get(t.category ?? '')))) continue;
         if (regime === 'caixa' && !t.is_paid) continue;
         if (t.category === 'Pagamento de Fatura') continue;
         if (t.category === ADJUSTMENT_CATEGORY) continue;
@@ -388,6 +413,18 @@ export function FinanceDRE({
     [comparisonRanges, selectTransactionsForRange],
   );
 
+  // A visão personalizada usa o mesmo corte canônico, mas conserva também as
+  // categorias marcadas como "fora do DRE" para exibi-las na auditoria. Elas
+  // continuam sem afetar o resultado conforme a configuração publicada.
+  const customTransactionsInPeriod = useMemo(
+    () => selectTransactionsForRange(range, true),
+    [range, selectTransactionsForRange],
+  );
+  const customComparisonTransactionsByPeriod = useMemo(
+    () => comparisonRanges.map((comparisonPeriod) => selectTransactionsForRange(comparisonPeriod, true)),
+    [comparisonRanges, selectTransactionsForRange],
+  );
+
   const transactionsWithProjectionsInPeriod = useMemo(
     () => (
       canIncludeSubscriptionProjections && regime === 'competencia' && includeProjections
@@ -410,6 +447,86 @@ export function FinanceDRE({
     () => filterByCostCenters(transactionsWithProjectionsInPeriod, costCenterFilter),
     [transactionsWithProjectionsInPeriod, costCenterFilter]
   );
+  const customTransactions = useMemo(
+    () => filterByCostCenters(
+      canIncludeSubscriptionProjections && regime === 'competencia' && includeProjections
+        ? [...customTransactionsInPeriod, ...projectedTransactions]
+        : customTransactionsInPeriod,
+      costCenterFilter,
+    ),
+    [
+      canIncludeSubscriptionProjections,
+      regime,
+      includeProjections,
+      customTransactionsInPeriod,
+      projectedTransactions,
+      costCenterFilter,
+    ],
+  );
+  const customComparisonTransactionsBySelection = useMemo(
+    () => customComparisonTransactionsByPeriod.map((periodTransactions) => filterByCostCenters(periodTransactions, costCenterFilter)),
+    [customComparisonTransactionsByPeriod, costCenterFilter],
+  );
+
+  const selectedCustomProfile = useMemo(
+    () => publishedDreProfiles.find((item) => item.profile.id === selectedDreView) ?? null,
+    [publishedDreProfiles, selectedDreView],
+  );
+  const selectedCustomLayout = useMemo(
+    () => selectedCustomProfile?.active ? mapDreLayoutBundle(selectedCustomProfile.active) : null,
+    [selectedCustomProfile],
+  );
+  const categoryIdByName = useMemo(
+    () => new Map(financialCategories.map((category) => [category.name, category.id])),
+    [financialCategories],
+  );
+  const categoryColorByName = useMemo(
+    () => new Map(financialCategories.map((category) => [category.name, category.color])),
+    [financialCategories],
+  );
+  const costCenterNameById = useMemo(
+    () => new Map(costCenters.map((center) => [center.id, center.name])),
+    [costCenters],
+  );
+  const normalizeCustomEntries = useCallback((source: DreTransaction[]): DreNormalizedEntry[] => (
+    source.map((transaction) => ({
+      entryId: `${transaction.id}:${transaction.transaction_type}`,
+      sourceKind: 'category',
+      sourceKey: null,
+      categoryId: transaction.category ? categoryIdByName.get(transaction.category) ?? null : null,
+      label: transaction.category || fin.dre.fallbackCategory,
+      color: transaction.category ? categoryColorByName.get(transaction.category) ?? null : null,
+      costCenterId: transaction.cost_center_id ?? null,
+      costCenterName: transaction.cost_center_id
+        ? costCenterNameById.get(transaction.cost_center_id) ?? 'Centro de custo removido'
+        : null,
+      entryKind: transaction.transaction_type === 'entrada' ? 'income' : 'expense',
+      currency,
+      amount: Math.abs(Number(transaction.amount)),
+    }))
+  ), [categoryIdByName, categoryColorByName, costCenterNameById, currency, fin.dre.fallbackCategory]);
+
+  const customStatementState = useMemo(() => {
+    if (!selectedCustomLayout) return { statement: undefined, error: undefined };
+    try {
+      return {
+        statement: buildCustomDreStatement(selectedCustomLayout, normalizeCustomEntries(customTransactions), [currency]),
+        error: undefined,
+      };
+    } catch (error) {
+      return { statement: undefined, error };
+    }
+  }, [selectedCustomLayout, normalizeCustomEntries, customTransactions, currency]);
+  const customComparisonStatements = useMemo(() => {
+    if (!selectedCustomLayout) return [];
+    try {
+      return customComparisonTransactionsBySelection.map((items) => (
+        buildCustomDreStatement(selectedCustomLayout, normalizeCustomEntries(items), [currency])
+      ));
+    } catch {
+      return [];
+    }
+  }, [selectedCustomLayout, customComparisonTransactionsBySelection, normalizeCustomEntries, currency]);
   const comparisonTransactionsBySelection = useMemo(
     () => comparisonTransactionsByPeriod.map((periodTransactions) => filterByCostCenters(periodTransactions, costCenterFilter)),
     [comparisonTransactionsByPeriod, costCenterFilter],
@@ -1662,6 +1779,22 @@ export function FinanceDRE({
               {fin.dre.table.title}
             </CardTitle>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+              {publishedDreProfiles.length > 0 && (
+                <Select value={selectedDreView} onValueChange={setSelectedDreView}>
+                  <SelectTrigger
+                    aria-label="Selecionar visão do DRE"
+                    className="h-8 w-full min-w-[170px] border-background/20 bg-transparent text-xs text-background hover:bg-background/10 sm:w-auto"
+                  >
+                    <SelectValue placeholder="Visão do DRE" />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    <SelectItem value="legacy">DRE padrão</SelectItem>
+                    {publishedDreProfiles.map((item) => (
+                      <SelectItem key={item.profile.id} value={item.profile.id}>{item.profile.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               {canManageFinanceSettings && (
                 <Button
                   type="button"
@@ -1782,17 +1915,31 @@ export function FinanceDRE({
           )}
         </CardHeader>
         <CardContent className="p-0">
-          <DreHierarchyTable
-            sections={tableSections}
-            currentPeriodLabel={periodLabel}
-            currentPeriodStart={range?.from}
-            comparisonPeriodLabels={comparisonPeriodLabels}
-            comparisonPeriodStarts={comparisonRanges.map((comparisonRange) => comparisonRange.from)}
-            renderValue={fmt}
-            hasComparison={comparisonRanges.length > 0}
-            onComparePeriods={() => setComparisonDialogOpen(true)}
-            comparisonDisabled={!range?.from || !range.to}
-          />
+          {selectedCustomLayout ? (
+            <DreCustomStatementView
+              statement={customStatementState.statement}
+              isLoading={dreLayouts.isLoading}
+              error={customStatementState.error}
+              renderValue={(value) => fmt(value)}
+              currentPeriodLabel={periodLabel}
+              comparisonPeriodLabels={comparisonPeriodLabels}
+              comparisonStatements={customComparisonStatements}
+              onComparePeriods={() => setComparisonDialogOpen(true)}
+              comparisonDisabled={!range?.from || !range.to}
+            />
+          ) : (
+            <DreHierarchyTable
+              sections={tableSections}
+              currentPeriodLabel={periodLabel}
+              currentPeriodStart={range?.from}
+              comparisonPeriodLabels={comparisonPeriodLabels}
+              comparisonPeriodStarts={comparisonRanges.map((comparisonRange) => comparisonRange.from)}
+              renderValue={fmt}
+              hasComparison={comparisonRanges.length > 0}
+              onComparePeriods={() => setComparisonDialogOpen(true)}
+              comparisonDisabled={!range?.from || !range.to}
+            />
+          )}
           <DreComparisonDialog
             open={comparisonDialogOpen}
             onOpenChange={setComparisonDialogOpen}
@@ -2125,6 +2272,8 @@ export function FinanceDRE({
         open={isDreSettingsOpen}
         onOpenChange={setIsDreSettingsOpen}
         categories={financialCategories}
+        companyId={companyId}
+        canManage={canManageFinanceSettings}
       />
 
       <p className="text-xs text-muted-foreground text-center">

@@ -1,6 +1,7 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   AlertCircle,
+  FileBarChart,
   Check,
   ChevronDown,
   ChevronRight,
@@ -60,6 +61,7 @@ import {
   type CategoryTreeRow,
   type DreConfigCategory,
 } from './dre-config-dnd';
+import { DreLayoutProfilesPanel } from '@/components/financial-report/DreLayoutProfilesPanel';
 
 interface DreGroupsManagerProps {
   /** Categorias do tenant atual, com aparência e hierarquia usadas na prévia. */
@@ -70,6 +72,8 @@ interface DreGroupsManagerProps {
 interface DreGroupsManagerDialogProps extends Omit<DreGroupsManagerProps, 'showHeading'> {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  companyId?: string;
+  canManage?: boolean;
 }
 
 const NATURES: Array<{
@@ -611,16 +615,60 @@ export function DreGroupsManagerDialog({
   open,
   onOpenChange,
   categories,
+  companyId,
+  canManage = true,
 }: DreGroupsManagerDialogProps) {
+  const [showOtherViews, setShowOtherViews] = useState(false);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) setShowOtherViews(false);
+    onOpenChange(nextOpen);
+  };
+
   return (
     <ResponsiveModal
       open={open}
-      onOpenChange={onOpenChange}
-      title="Configurar DRE"
-      description="Organize os grupos e mova categorias arrastando. Use o seletor como alternativa acessível."
+      onOpenChange={handleOpenChange}
+      title={showOtherViews ? 'Outras visões do DRE' : 'Configurar DRE'}
+      description={showOtherViews
+        ? 'Crie formas diferentes de apresentar os mesmos lançamentos e categorias.'
+        : 'Organize os grupos e mova categorias arrastando. Use o seletor como alternativa acessível.'}
       className="sm:max-w-5xl"
     >
-      {open ? <DreGroupsManager categories={categories} showHeading={false} /> : null}
+      {open && showOtherViews ? (
+        <DreLayoutProfilesPanel
+          companyId={companyId}
+          canManage={canManage}
+          onBack={() => setShowOtherViews(false)}
+        />
+      ) : open ? (
+        <div className="space-y-5">
+          <DreGroupsManager categories={categories} showHeading={false} />
+          <div className="rounded-xl border bg-muted/20 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background">
+                  <FileBarChart className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Precisa de outra forma de ver o DRE?</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Opcional: crie visões gerencial, contábil, EBITDA ou próprias sem mexer nos lançamentos.
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                <Button asChild type="button" variant="ghost" size="sm">
+                  <a href="/docs/guias/dre-tres-visoes.pdf" target="_blank" rel="noreferrer">Ver exemplo em PDF</a>
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowOtherViews(true)}>
+                  Outras visões
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </ResponsiveModal>
   );
 }

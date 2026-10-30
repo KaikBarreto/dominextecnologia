@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.3";
+export const APP_VERSION = "1.38.4";
 
 export const VERSION_NOTES =
-  "A visão geral compara as maiores altas e quedas, as curvas ficaram mais suaves e cada material ganhou a análise de volume comprado.";
+  "O DRE agora pode ter visões gerencial, contábil, EBITDA ou personalizadas, sem alterar lançamentos nem o formato padrão já usado pela empresa.";

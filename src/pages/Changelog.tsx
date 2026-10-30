@@ -42,6 +42,18 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.4',
+    date: '30 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'DRE com visões personalizadas e seguras',
+        description: 'O formato padrão continua igual. Quem precisar pode criar versões gerencial, contábil, EBITDA ou próprias usando os mesmos lançamentos e categorias. Itens sem classificação permanecem visíveis para conferência, e o modal de categoria agora mostra uma prévia simples do efeito no DRE.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.38.3',
     date: '30 de outubro de 2026',
     type: 'patch',
