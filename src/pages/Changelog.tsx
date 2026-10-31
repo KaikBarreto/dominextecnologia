@@ -1,10 +1,7 @@
 import { useState, useMemo } from 'react';
-import { Search, History, Sparkles, Wrench, Bug, Shield } from 'lucide-react';
+import { Search, History, Sparkles, Wrench, Bug, Shield, ChevronDown, X } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp } from 'lucide-react';
 import { APP_VERSION } from '@/config/version';
 import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -25,22 +22,26 @@ export interface ChangelogEntry {
   changes: Change[];
 }
 
-const CATEGORY_ICONS: Record<ChangeCategory, any> = {
+const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
   recurso: Sparkles,
   melhoria: Wrench,
   correcao: Bug,
   seguranca: Shield,
 };
 
-const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
-  recurso: 'bg-success text-white hover:bg-success',
-  melhoria: 'bg-info text-white hover:bg-info',
-  correcao: 'bg-destructive text-white hover:bg-destructive',
-  seguranca: 'bg-secondary text-secondary-foreground hover:bg-secondary',
-};
-
-
 export const changelog: ChangelogEntry[] = [
+  {
+    version: '1.38.11',
+    date: '31 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Histórico de novidades mais fácil de acompanhar',
+        description: 'As versões, datas e categorias agora aparecem em uma linha do tempo mais clara, com busca, filtros e leitura confortável no computador e no celular.',
+        category: 'melhoria',
+      },
+    ],
+  },
   {
     version: '1.38.10',
     date: '31 de outubro de 2026',
@@ -12633,14 +12634,14 @@ export default function Changelog() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.settings.changelog;
 
-  const categoryConfig: Record<ChangeCategory, { label: string; icon: any; className: string }> = {
-    recurso: { label: t.categoryRecurso, icon: CATEGORY_ICONS.recurso, className: CATEGORY_CLASSNAMES.recurso },
-    melhoria: { label: t.categoryMelhoria, icon: CATEGORY_ICONS.melhoria, className: CATEGORY_CLASSNAMES.melhoria },
-    correcao: { label: t.categoryCorrecao, icon: CATEGORY_ICONS.correcao, className: CATEGORY_CLASSNAMES.correcao },
-    seguranca: { label: t.categorySeguranca, icon: CATEGORY_ICONS.seguranca, className: CATEGORY_CLASSNAMES.seguranca },
+  const categoryConfig: Record<ChangeCategory, { label: string; icon: LucideIcon; iconClass: string; textClass: string }> = {
+    recurso: { label: t.categoryRecurso, icon: CATEGORY_ICONS.recurso, iconClass: 'bg-success', textClass: 'text-success' },
+    melhoria: { label: t.categoryMelhoria, icon: CATEGORY_ICONS.melhoria, iconClass: 'bg-info', textClass: 'text-info' },
+    correcao: { label: t.categoryCorrecao, icon: CATEGORY_ICONS.correcao, iconClass: 'bg-destructive', textClass: 'text-destructive' },
+    seguranca: { label: t.categorySeguranca, icon: CATEGORY_ICONS.seguranca, iconClass: 'bg-secondary', textClass: 'text-secondary-foreground' },
   };
 
-  const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[] = [
+  const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: LucideIcon | null }[] = [
     { value: 'all', label: t.filterAll, icon: null },
     { value: 'recurso', label: t.filterRecurso, icon: Sparkles },
     { value: 'melhoria', label: t.filterMelhoria, icon: Wrench },
@@ -12650,7 +12651,7 @@ export default function Changelog() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<ChangeCategory | 'all'>('all');
-  const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set(['1.2.10']));
+  const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set([APP_VERSION]));
 
   const filteredChangelog = useMemo(() => {
     return changelog
@@ -12682,145 +12683,155 @@ export default function Changelog() {
     patch: 'Correção',
   };
 
+  const isFiltering = Boolean(searchTerm.trim() || activeFilter !== 'all');
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="space-y-1">
-        <p className="text-xs text-muted-foreground uppercase tracking-widest">{t.pageTitle}</p>
-        <div className="flex items-center gap-2">
-          <History className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">{t.pageTitle}</h1>
+    <div className="mx-auto w-full max-w-6xl space-y-8 py-2 sm:py-4">
+      <header className="flex flex-col gap-5 border-b border-border pb-8 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-2xl space-y-2">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Novidades da Dominex</p>
+          <h1 className="text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{t.pageTitle}</h1>
+          <p className="max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">Recursos, melhorias e correções explicados de forma direta para quem usa a plataforma.</p>
         </div>
-        <Badge className="bg-success text-white hover:bg-success">{t.currentVersionBadge}: {APP_VERSION}</Badge>
-      </div>
+        <div className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs text-muted-foreground shadow-sm">
+          <History className="h-4 w-4 text-primary" aria-hidden="true" />
+          <span>{t.currentVersionBadge} <strong className="font-semibold text-foreground">v{APP_VERSION}</strong></span>
+        </div>
+      </header>
 
-      {/* Search & Filters */}
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={t.searchPlaceholder}
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {filterConfig.map((f) => {
-              const isActive = activeFilter === f.value;
-              return (
-                <button
-                  key={f.value}
-                  onClick={() => setActiveFilter(f.value)}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors',
-                    isActive
-                      ? f.value === 'all'
-                        ? 'bg-foreground text-background'
-                        : f.value === 'recurso'
-                        ? 'bg-success text-white'
-                        : f.value === 'melhoria'
-                        ? 'bg-info text-white'
-                        : f.value === 'correcao'
-                        ? 'bg-destructive text-white'
-                        : 'bg-secondary text-secondary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-muted-foreground/20'
-                  )}
-                >
-                  {f.icon && <f.icon className="h-3 w-3" />}
-                  {f.label}
-                </button>
-              );
-            })}
-          </div>
-          {(searchTerm || activeFilter !== 'all') && (
-            <p className="text-xs text-muted-foreground">
-              {totalResults === 1
-                ? t.changesCount_one.replace('{count}', String(totalResults))
-                : t.changesCount_other.replace('{count}', String(totalResults))}
-            </p>
+      <section className="space-y-4 border-b border-border pb-6" aria-label="Buscar e filtrar atualizações">
+        <div className="relative max-w-2xl">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            placeholder={t.searchPlaceholder}
+            className="h-11 rounded-lg border-border bg-background pl-10 pr-10 shadow-none"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button type="button" onClick={() => setSearchTerm('')} aria-label="Limpar busca" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <X className="h-4 w-4" />
+            </button>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Changelog Entries */}
-      <div className="space-y-4">
-        {filteredChangelog.map((entry) => {
-          const isExpanded = expandedVersions.has(entry.version);
-          const isCurrent = entry.version === APP_VERSION;
+        <div className="flex flex-wrap gap-2" aria-label="Filtrar por categoria">
+          {filterConfig.map((filter) => {
+            const isActive = activeFilter === filter.value;
+            return (
+              <button
+                key={filter.value}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => setActiveFilter(filter.value)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  isActive ? 'border-foreground bg-foreground text-background' : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                {filter.icon && <filter.icon className="h-3.5 w-3.5" aria-hidden="true" />}
+                {filter.label}
+              </button>
+            );
+          })}
+        </div>
 
-          return (
-            <Card key={entry.version} className={cn(isCurrent && 'ring-2 ring-success/30')}>
-              <Collapsible open={isExpanded} onOpenChange={() => toggleVersion(entry.version)}>
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted rounded-t-lg transition-colors">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <h2 className="text-lg font-bold text-foreground">Versão {entry.version}</h2>
-                      <Badge className="bg-success text-white hover:bg-success">{typeLabel[entry.type]}</Badge>
-                      {isCurrent && <Badge className="bg-primary text-primary-foreground hover:bg-primary">{t.currentVersionBadge}</Badge>}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-muted-foreground hidden sm:inline">{entry.date}</span>
-                      {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                    </div>
+        <p className="text-xs text-muted-foreground" aria-live="polite">
+          {totalResults === 1
+            ? t.changesCount_one.replace('{count}', String(totalResults))
+            : t.changesCount_other.replace('{count}', String(totalResults))}
+          {' '}em {filteredChangelog.length} {filteredChangelog.length === 1 ? 'versão' : 'versões'}
+        </p>
+      </section>
+
+      {filteredChangelog.length === 0 ? (
+        <div className="flex min-h-56 flex-col items-center justify-center gap-2 border-y border-border py-12 text-center">
+          <Search className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+          <h2 className="font-semibold text-foreground">{t.emptyTitle}</h2>
+          <p className="text-sm text-muted-foreground">{t.emptyDesc}</p>
+          <button type="button" onClick={() => { setSearchTerm(''); setActiveFilter('all'); }} className="mt-2 rounded-md border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Limpar filtros</button>
+        </div>
+      ) : (
+        <ol className="divide-y divide-border border-y border-border">
+          {filteredChangelog.map((entry, entryIndex) => {
+            const isExpanded = isFiltering || expandedVersions.has(entry.version);
+            const isCurrent = entry.version === APP_VERSION;
+            const releaseId = `release-${entry.version.replace(/\./g, '-')}-${entryIndex}`;
+
+            return (
+              <li key={`${entry.version}-${entry.date}-${entryIndex}`} className="grid md:grid-cols-[10.5rem_minmax(0,1fr)]">
+                <div className="flex items-center justify-between gap-4 py-4 md:block md:py-6 md:pr-7">
+                  <div>
+                    <span className={cn('text-[0.65rem] font-semibold uppercase tracking-[0.16em]', isCurrent ? 'text-primary' : 'text-muted-foreground')}>
+                      {isCurrent ? t.currentVersionBadge : typeLabel[entry.type]}
+                    </span>
+                    <p className="mt-1 font-mono text-base font-semibold text-foreground">v{entry.version}</p>
                   </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="px-4 pb-4">
-                    <p className="text-sm text-muted-foreground mb-4 sm:hidden">{entry.date}</p>
-                    <div className="space-y-4">
-                      {entry.changes.map((change, i) => {
+                  <time className="text-xs text-muted-foreground md:mt-2 md:block">{entry.date}</time>
+                </div>
+
+                <section className="border-t border-border md:border-l md:border-t-0">
+                  <button
+                    type="button"
+                    aria-expanded={isExpanded}
+                    aria-controls={releaseId}
+                    disabled={isFiltering}
+                    onClick={() => toggleVersion(entry.version)}
+                    className="flex w-full items-center justify-between gap-4 px-0 py-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-default md:px-7 md:py-6"
+                  >
+                    <span>
+                      <strong className="block text-sm font-semibold text-foreground">{isCurrent ? t.currentVersionBadge : typeLabel[entry.type]}</strong>
+                      <small className="mt-1 block text-xs text-muted-foreground">{entry.changes.length} {entry.changes.length === 1 ? 'mudança' : 'mudanças'}</small>
+                    </span>
+                    <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', isExpanded && 'rotate-180')} aria-hidden="true" />
+                  </button>
+
+                  {isExpanded && (
+                    <div id={releaseId} className="divide-y divide-border border-t border-border md:ml-7">
+                      {entry.changes.map((change) => {
                         const config = categoryConfig[change.category];
+                        const Icon = config.icon;
                         return (
-                          <div key={i} className="space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-sm">{change.title}</span>
-                              <Badge className={config.className}>
-                                <config.icon className="h-3 w-3 mr-1" />
+                          <article key={`${entry.version}-${change.title}`} className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3 py-5 md:gap-4 md:py-6">
+                            <span className={cn('flex h-9 w-9 items-center justify-center rounded-full text-white shadow-sm', config.iconClass)}>
+                              <Icon className="h-4 w-4" aria-hidden="true" />
+                            </span>
+                            <div className="min-w-0">
+                              <button type="button" onClick={() => setActiveFilter(change.category)} className={cn('text-[0.65rem] font-semibold uppercase tracking-[0.16em] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', config.textClass)}>
                                 {config.label}
-                              </Badge>
+                              </button>
+                              <h2 className="mt-1 text-base font-semibold leading-snug text-foreground">{change.title}</h2>
+                              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{change.description}</p>
                             </div>
-                            <p className="text-sm text-muted-foreground">{change.description}</p>
-                          </div>
+                          </article>
                         );
                       })}
                     </div>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            </Card>
-          );
-        })}
+                  )}
+                </section>
+              </li>
+            );
+          })}
+        </ol>
+      )}
 
-        {filteredChangelog.length === 0 && (
-          <div className="text-center py-12">
-            <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium">{t.emptyTitle}</h3>
-            <p className="text-muted-foreground">{t.emptyDesc}</p>
+      <aside className="border-y border-border py-6">
+        <h2 className="text-sm font-semibold text-foreground">Como funciona o versionamento?</h2>
+        <div className="mt-4 grid gap-5 text-sm sm:grid-cols-3 sm:divide-x sm:divide-border">
+          <div>
+            <strong className="text-foreground">Versão Principal (X.0.0)</strong>
+            <p className="mt-1 text-muted-foreground">Mudanças grandes no sistema, como redesign completo ou novas funcionalidades principais.</p>
           </div>
-        )}
-      </div>
-
-      {/* Versioning explanation */}
-      <Card>
-        <CardContent className="p-4 sm:p-6 space-y-4">
-          <h3 className="text-base font-bold text-foreground">Como funciona o versionamento?</h3>
-          <div className="space-y-4 divide-y divide-border">
-            <div className="space-y-0.5">
-              <p className="text-sm font-bold text-success">Versão Principal (X.0.0)</p>
-              <p className="text-sm text-muted-foreground">Mudanças grandes no sistema, como redesign completo ou novas funcionalidades principais.</p>
-            </div>
-            <div className="space-y-0.5 pt-4">
-              <p className="text-sm font-bold text-primary">Nova Versão (0.X.0)</p>
-              <p className="text-sm text-muted-foreground">Novas funcionalidades e melhorias importantes no sistema.</p>
-            </div>
-            <div className="space-y-0.5 pt-4">
-              <p className="text-sm font-bold text-warning">Atualização (0.0.X)</p>
-              <p className="text-sm text-muted-foreground">Correções de bugs e pequenas melhorias de usabilidade.</p>
-            </div>
+          <div className="sm:pl-5">
+            <strong className="text-foreground">Nova Versão (0.X.0)</strong>
+            <p className="mt-1 text-muted-foreground">Novas funcionalidades e melhorias importantes no sistema.</p>
           </div>
-        </CardContent>
-      </Card>
+          <div className="sm:pl-5">
+            <strong className="text-foreground">Atualização (0.0.X)</strong>
+            <p className="mt-1 text-muted-foreground">Correções de bugs e pequenas melhorias de usabilidade.</p>
+          </div>
+        </div>
+      </aside>
     </div>
   );
 }
