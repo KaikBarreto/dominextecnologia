@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
 import dominexLogo from "@/assets/logo-white-horizontal.png";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -9,7 +10,10 @@ import {
   useDomiflixEpisodeExtras,
   useDomiflixLearningStatus,
   useMarkEpisodeWatched,
+  useDomiflixEpisodeMedia,
+  getDomiflixContinueUrl,
 } from "@/hooks/useDomiflix";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import {
   OVERLAY_PRIORITY,
@@ -17,6 +21,8 @@ import {
 } from "@/contexts/OverlayCoordinatorContext";
 
 export function DomiflixIntroGate() {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const {
     data: status,
     isLoading,
@@ -26,11 +32,13 @@ export function DomiflixIntroGate() {
   const lesson = status?.introGate.lesson ?? null;
   const { data: extras = { subtitles: [], resources: [] } } =
     useDomiflixEpisodeExtras(lesson?.episodeId);
+  const { data: media } = useDomiflixEpisodeMedia(lesson?.episodeId);
   const markWatched = useMarkEpisodeWatched();
   const acknowledge = useAcknowledgeDomiflixIntro();
   const progressRef = useRef({ current: 0, total: 0 });
   const [videoCompleted, setVideoCompleted] = useState(false);
   const [understood, setUnderstood] = useState(false);
+  const usePortraitVideo = isMobile && Boolean(media?.mobile_video_id);
   const gateOpen = isLoading || isError || Boolean(status?.introGate.required);
   const canRender = useOverlaySlot(gateOpen, {
     id: "domiflix-intro-gate",
@@ -61,6 +69,8 @@ export function DomiflixIntroGate() {
     if (!lesson || !videoCompleted || !understood) return;
     try {
       await acknowledge.mutateAsync(lesson.episodeId);
+      const refreshed = await refetch();
+      if (refreshed.data) navigate(getDomiflixContinueUrl(refreshed.data), { replace: true });
     } catch {
       toast.error("Não foi possível salvar sua confirmação. Tente novamente.");
     }
@@ -114,8 +124,9 @@ export function DomiflixIntroGate() {
           <div className="flex min-h-0 items-center bg-black/30 p-3 sm:p-5 lg:p-7 xl:p-9">
             <div className="w-full overflow-hidden rounded-sm border border-white/10 bg-black shadow-2xl shadow-black/40">
               <NetflixPlayer
-                videoId={lesson.videoId}
-                videoType={lesson.videoType}
+                videoId={usePortraitVideo ? media!.mobile_video_id! : lesson.videoId}
+                videoType={usePortraitVideo ? media!.mobile_video_type || lesson.videoType : lesson.videoType}
+                orientation={usePortraitVideo ? "portrait" : "landscape"}
                 titleName={lesson.moduleTitle}
                 titleSubLabel="Introdução"
                 episodeName={lesson.lessonTitle}
@@ -178,7 +189,7 @@ export function DomiflixIntroGate() {
                 <CheckCircle2 className="mr-2 h-4 w-4" />
               ) : null}
               {videoCompleted
-                ? "Confirmar e entrar no sistema"
+                ? "Confirmar e começar a primeira aula"
                 : "Assista até o final para continuar"}
             </Button>
           </section>

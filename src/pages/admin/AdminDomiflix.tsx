@@ -488,6 +488,8 @@ interface EpisodeFormData {
   description: string;
   video_id: string;
   video_type: "drive" | "youtube";
+  mobile_video_id: string;
+  mobile_video_type: "drive" | "youtube";
   thumbnail_url: string;
   recorded_at: string;
   season_id: string;
@@ -498,6 +500,8 @@ const EMPTY_EP_FORM: EpisodeFormData = {
   description: "",
   video_id: "",
   video_type: "drive",
+  mobile_video_id: "",
+  mobile_video_type: "drive",
   thumbnail_url: "",
   recorded_at: "",
   season_id: "",
@@ -528,6 +532,8 @@ function EpisodeFormDialog({
           description: editing.description ?? "",
           video_id: editing.video_id ?? "",
           video_type: editing.video_type,
+          mobile_video_id: editing.mobile_video_id ?? "",
+          mobile_video_type: editing.mobile_video_type ?? "drive",
           thumbnail_url: editing.thumbnail_url ?? "",
           recorded_at: editing.recorded_at ? editing.recorded_at.slice(0, 10) : "",
           season_id: editing.season_id ?? "",
@@ -550,6 +556,8 @@ function EpisodeFormDialog({
       description: form.description || null,
       video_id: form.video_id || null,
       video_type: form.video_type,
+      mobile_video_id: form.mobile_video_id || null,
+      mobile_video_type: form.mobile_video_id ? form.mobile_video_type : null,
       duration_minutes: null as number | null,
       thumbnail_url: thumbnailUrl,
       episode_number: null,
@@ -672,6 +680,16 @@ function EpisodeFormDialog({
             hint="Horizontal 16:9 — recomendado 640 × 360 px"
             aspectRatio="16/9"
           />
+
+          <div className="col-span-2 border-t pt-4"><p className="text-sm font-semibold">Versão para celular (opcional)</p><p className="mt-1 text-xs text-muted-foreground">Use o mesmo conteúdo em vídeo vertical 9:16. No celular ele substitui automaticamente a versão horizontal.</p></div>
+          <div className="col-span-2 space-y-1.5 sm:col-span-1">
+            <Label>Tipo do vídeo vertical</Label>
+            <Select value={form.mobile_video_type} onValueChange={(v) => setForm({ ...form, mobile_video_type: v as "drive" | "youtube" })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="drive">Google Drive</SelectItem><SelectItem value="youtube">YouTube</SelectItem></SelectContent></Select>
+          </div>
+          <div className="col-span-2 space-y-1.5 sm:col-span-1">
+            <Label>ID do vídeo 9:16</Label>
+            <Input value={form.mobile_video_id} onChange={(e) => { const raw = e.target.value; setForm({ ...form, mobile_video_id: form.mobile_video_type === "youtube" ? extractYouTubeId(raw) : extractDriveId(raw) }); }} placeholder="Cole o link ou ID do vídeo vertical" />
+          </div>
 
           <div className="col-span-2 space-y-1.5">
             <Label>Data de Gravação</Label>

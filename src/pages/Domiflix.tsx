@@ -5,7 +5,6 @@ import {
   BookOpen,
   Check,
   Clock3,
-  LockKeyhole,
   Play,
   Search,
 } from "lucide-react";
@@ -310,8 +309,6 @@ export default function Tutoriais() {
                                 <Check className="h-3.5 w-3.5" />
                               ) : current ? (
                                 <Play className="h-3.5 w-3.5 fill-current" />
-                              ) : future ? (
-                                <LockKeyhole className="h-3 w-3" />
                               ) : (
                                 lessonIndex + 1
                               )}
@@ -320,7 +317,7 @@ export default function Tutoriais() {
                               <span
                                 className={cn(
                                   "line-clamp-2 text-sm font-medium",
-                                  future ? "text-stone-500" : "text-stone-200",
+                                  future ? "text-stone-400" : "text-stone-200",
                                 )}
                               >
                                 {lesson.lessonTitle}
@@ -331,7 +328,11 @@ export default function Tutoriais() {
                                   : lesson.completed
                                     ? "Concluída"
                                     : future
-                                      ? "Consulta livre"
+                                      ? lesson.group === "core"
+                                        ? "Na sequência da formação básica"
+                                        : lesson.includedInPlan
+                                          ? "Na sequência do seu plano"
+                                          : "Conheça este módulo"
                                       : "Em andamento"}
                               </span>
                             </span>
@@ -552,8 +553,6 @@ export default function Tutoriais() {
                                     <Check className="h-3.5 w-3.5" />
                                   ) : current ? (
                                     <Play className="h-3.5 w-3.5 fill-current" />
-                                  ) : future ? (
-                                    <LockKeyhole className="h-3 w-3" />
                                   ) : (
                                     lessonIndex + 1
                                   )}
@@ -563,7 +562,7 @@ export default function Tutoriais() {
                                     className={cn(
                                       "block truncate text-sm font-medium",
                                       future
-                                        ? "text-stone-500"
+                                        ? "text-stone-400"
                                         : "text-stone-200",
                                       current && "text-white",
                                     )}
@@ -576,7 +575,11 @@ export default function Tutoriais() {
                                       : lesson.completed
                                         ? "Concluída"
                                         : future
-                                          ? "Disponível para consulta"
+                                          ? lesson.group === "core"
+                                            ? "Na sequência da formação básica"
+                                            : lesson.includedInPlan
+                                              ? "Na sequência do seu plano"
+                                              : "Conheça este módulo"
                                           : "Em andamento"}
                                   </span>
                                 </span>

@@ -111,6 +111,7 @@ export default function DomiflixWatchPage() {
   const [searchParams] = useSearchParams();
   const pathSlug = searchParams.get("trilha") || "tutoriais-do-sistema";
   const queryClient = useQueryClient();
+  const isMobileViewport = useIsMobile();
 
   const { data: resolvedTitleId } = useDomiflixTitleBySlug(titleSlug);
   const { data: titleData } = useDomiflixTitle(resolvedTitleId ?? undefined);
@@ -305,12 +306,8 @@ export default function DomiflixWatchPage() {
     } catch {
       saveProgressKeepalive();
     }
-    if (titleSlug) {
-      navigate(`/domiflix/${titleSlug}`);
-    } else {
-      navigate("/domiflix");
-    }
-  }, [navigate, saveProgressAsync, saveProgressKeepalive, titleSlug]);
+    navigate(`/domiflix?trilha=${encodeURIComponent(pathSlug)}`);
+  }, [navigate, pathSlug, saveProgressAsync, saveProgressKeepalive]);
 
   // Resolve resume-second for any given episode based on saved progress
   const resumeSecondsFor = useCallback(
@@ -418,22 +415,26 @@ export default function DomiflixWatchPage() {
 
   const startSec = startSeconds ? Math.max(0, parseInt(startSeconds, 10) || 0) : 0;
   const currentTrackLesson = learningStatus?.track.find((item) => item.episodeId === episode.id);
+  const usePortraitVideo = isMobileViewport && Boolean(episode.mobile_video_id);
+  const selectedVideoId = usePortraitVideo ? episode.mobile_video_id : episode.video_id;
+  const selectedVideoType = usePortraitVideo ? episode.mobile_video_type || episode.video_type : episode.video_type;
 
   return (
     <div className="domiflix-player-root fixed inset-0 z-[100] overflow-y-auto bg-[#141414] text-white lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:overflow-hidden">
       <aside className="hidden min-h-0 border-r border-white/10 lg:block">
         <DomiflixTrackPanel status={learningStatus} currentEpisodeId={episode.id} onSelect={navigateToTrackLesson} />
       </aside>
-      <div className="min-w-0 lg:min-h-0 lg:overflow-y-auto">
+      <div key={episode.id} className="min-w-0 animate-in fade-in slide-in-from-right-2 duration-300 lg:min-h-0 lg:overflow-y-auto">
         <div className="sticky top-0 z-10 flex h-12 items-center justify-between border-b border-white/10 bg-[#141414]/95 px-4 backdrop-blur lg:hidden">
           <button onClick={handleBack} className="flex items-center gap-2 text-sm text-stone-300"><ArrowLeft className="h-4 w-4" />Voltar</button>
           <button onClick={() => setMobileTrackOpen(true)} className="flex items-center gap-2 rounded bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-stone-200"><ListVideo className="h-4 w-4" />Ver trilha</button>
         </div>
-        <div className="flex aspect-video w-full items-center justify-center bg-black">
-        {episode.video_id ? (
+        <div className={cn("flex w-full items-center justify-center bg-black", usePortraitVideo ? "min-h-[72dvh] lg:min-h-[calc(100dvh-3rem)]" : "aspect-video")}>
+        {selectedVideoId ? (
           <NetflixPlayer
-          videoId={episode.video_id}
-          videoType={(episode.video_type as "youtube" | "drive") ?? "youtube"}
+          videoId={selectedVideoId}
+          videoType={(selectedVideoType as "youtube" | "drive") ?? "youtube"}
+          orientation={usePortraitVideo ? "portrait" : "landscape"}
           titleName={titleName}
           titleLogoUrl={titleData?.logo_url ?? null}
           titleSubLabel={titleSubLabel}
@@ -538,6 +539,7 @@ export interface NetflixPlayerProps {
   onSelectEpisode?: (ep: DomiflixEpisode) => void;
   subtitles?: DomiflixSubtitle[];
   locked?: boolean;
+  orientation?: "landscape" | "portrait";
 }
 
 export function NetflixPlayer({
@@ -562,6 +564,7 @@ export function NetflixPlayer({
   onSelectEpisode,
   subtitles = [],
   locked = false,
+  orientation = "landscape",
 }: NetflixPlayerProps) {
   const isMobile = useIsMobile();
   const ytContainerRef = useRef<HTMLDivElement>(null);
@@ -818,6 +821,7 @@ export function NetflixPlayer({
   // visualmente. Erros do lock são logados via console.warn (não toast) pra não
   // poluir UX em devices incompatíveis. Ver "Limitações conhecidas" no commit.
   useEffect(() => {
+    if (orientation === "portrait") return;
     const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
       || window.matchMedia("(max-width: 1024px)").matches;
     if (!isMobile) return;
@@ -913,7 +917,7 @@ export function NetflixPlayer({
         try { orientation.unlock(); } catch { /* noop */ }
       }
     };
-  }, []);
+  }, [orientation]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1147,18 +1151,18 @@ export function NetflixPlayer({
       const fs = !!document.fullscreenElement;
       setIsFullscreen(fs);
       // Lock landscape on mobile while in fullscreen (Netflix-style)
-      const orientation = (screen as any).orientation;
-      if (fs && orientation?.lock) {
-        orientation.lock("landscape").catch(() => {
+      const screenOrientation = (screen as any).orientation;
+      if (fs && screenOrientation?.lock && orientation !== "portrait") {
+        screenOrientation.lock("landscape").catch(() => {
           /* unsupported (iOS Safari) — silently ignore */
         });
-      } else if (!fs && orientation?.unlock) {
-        try { orientation.unlock(); } catch { /* noop */ }
+      } else if (!fs && screenOrientation?.unlock) {
+        try { screenOrientation.unlock(); } catch { /* noop */ }
       }
     };
     document.addEventListener("fullscreenchange", handler);
     return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
+  }, [orientation]);
 
   // Show "Next Episode" preview when within last 20s
   useEffect(() => {
@@ -1216,7 +1220,7 @@ export function NetflixPlayer({
       // aspect-video (16:9) ocupando o máximo do viewport sem cropar.
       // Em viewports portrait → letterbox top/bottom; em ultrawide → pillarbox laterais.
       // O container pai (`domiflix-player-root`) já é flex/center com fundo preto.
-      className="relative w-full h-full max-w-[177.78vh] max-h-[56.25vw] aspect-video bg-black select-none overflow-hidden"
+      className={cn("relative bg-black select-none overflow-hidden", orientation === "portrait" ? "aspect-[9/16] h-[min(78dvh,900px)] w-auto max-h-full max-w-full" : "aspect-video h-full w-full max-h-[56.25vw] max-w-[177.78vh]")}
       style={{ cursor: showHud ? "default" : "none" }}
       onMouseMove={resetHideTimer}
       onTouchStart={() => {
@@ -1762,11 +1766,13 @@ export function NetflixPlayer({
           <div className="flex items-center gap-1 md:gap-3">
             {/* Next episode button with hover preview */}
             {nextEpisode && onPlayNext && (
+              <div className="order-2">
               <NextEpisodeButton
                 nextEpisode={nextEpisode}
                 onPlayNext={onPlayNext}
                 titleData={titleData}
               />
+              </div>
             )}
 
             {titleData && titleData.type === "series" && onSelectEpisode && (
@@ -1777,6 +1783,7 @@ export function NetflixPlayer({
                   setShowEpisodes((v) => !v);
                 }}
                 className={cn(
+                  "order-3",
                   "text-white hover:scale-110 transition-transform p-1",
                   showEpisodes && "text-[#E50914]"
                 )}
@@ -1788,6 +1795,7 @@ export function NetflixPlayer({
 
             {/* Playback speed */}
             {onChangePlaybackSpeed && (
+              <div className="order-3">
               <SpeedButton
                 speed={playbackSpeed}
                 onChange={onChangePlaybackSpeed}
@@ -1797,10 +1805,11 @@ export function NetflixPlayer({
                   setShowSpeed(o);
                 }}
               />
+              </div>
             )}
 
             {subtitles.length > 0 && (
-              <div className="relative">
+              <div className="relative order-1">
                 <button
                   onClick={(event) => { event.stopPropagation(); setShowSubtitleMenu((open) => !open); }}
                   className={cn("p-1 text-white transition-transform hover:scale-110", activeSubtitleId && "text-red-500")}
@@ -1824,7 +1833,7 @@ export function NetflixPlayer({
 
             <button
               onClick={toggleFullscreen}
-              className="text-white hover:scale-110 transition-transform p-1"
+              className="order-4 p-1 text-white transition-transform hover:scale-110"
             >
               {isFullscreen ? (
                 <MinimizeIcon className="w-7 h-7 md:w-8 md:h-8" />
@@ -1842,18 +1851,18 @@ export function NetflixPlayer({
             overlay de baixo e os botões viravam inertes no celular. */}
         <div className="md:hidden flex items-center justify-center gap-8 sm:gap-10 pt-2 pb-3 text-white relative z-10 pointer-events-auto">
           {subtitles.length > 0 && (
-            <button
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
-                event.stopPropagation();
-                const currentIndex = activeSubtitleId ? subtitles.findIndex((subtitle) => subtitle.id === activeSubtitleId) : -1;
-                setActiveSubtitleId(subtitles[currentIndex + 1]?.id ?? null);
-              }}
-              className={cn("flex flex-col items-center gap-0.5", activeSubtitleId && "text-red-500")}
-            >
-              <Subtitles className="h-7 w-7" />
-              <span className="max-w-24 truncate text-[10px] font-light">{activeSubtitle?.label ?? "Legendas"}</span>
-            </button>
+            <div className="relative order-3">
+              <button onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setShowSubtitleMenu((open) => !open); }} className={cn("flex flex-col items-center gap-0.5", activeSubtitleId && "text-red-500")} aria-label="Selecionar legenda">
+                <Subtitles className="h-7 w-7" />
+                <span className="max-w-24 truncate text-[10px] font-light">{activeSubtitle?.label ?? "Legendas"}</span>
+              </button>
+              {showSubtitleMenu && (
+                <div className="absolute bottom-full left-1/2 mb-3 min-w-48 -translate-x-1/2 overflow-hidden rounded-sm border border-white/10 bg-[#181818] py-1 shadow-2xl">
+                  <button onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(null); setShowSubtitleMenu(false); }} className="block w-full px-3 py-2 text-left text-xs text-stone-400 hover:bg-white/[0.06] hover:text-white">Desligada</button>
+                  {subtitles.map((subtitle) => <button key={subtitle.id} onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(subtitle.id); setShowSubtitleMenu(false); }} className={cn("block w-full px-3 py-2 text-left text-xs", activeSubtitleId === subtitle.id ? "bg-white/[0.05] text-red-400" : "text-stone-300")}>{subtitle.label}</button>)}
+                </div>
+              )}
+            </div>
           )}
           {onChangePlaybackSpeed && (
             <button
@@ -1863,7 +1872,7 @@ export function NetflixPlayer({
                 setShowEpisodes(false);
                 setShowSpeed((v) => !v);
               }}
-              className="flex flex-col items-center gap-0.5 pointer-events-auto"
+              className="order-1 flex flex-col items-center gap-0.5 pointer-events-auto"
             >
               <SpeedIcon className="w-7 h-7" />
               <span className="text-[10px] font-light">Velocidade ({playbackSpeed}x)</span>
@@ -1879,7 +1888,7 @@ export function NetflixPlayer({
                 setShowEpisodes((v) => !v);
               }}
               className={cn(
-                "flex flex-col items-center gap-0.5 pointer-events-auto",
+                "order-2 flex flex-col items-center gap-0.5 pointer-events-auto",
                 showEpisodes && "text-[#E50914]"
               )}
             >
@@ -1895,7 +1904,7 @@ export function NetflixPlayer({
                 e.stopPropagation();
                 onPlayNext();
               }}
-              className="flex flex-col items-center gap-0.5 pointer-events-auto"
+              className="order-4 flex flex-col items-center gap-0.5 pointer-events-auto"
             >
               <NextEpisodeIcon className="w-7 h-7" />
               <span className="text-[10px] font-light">Próxima aula</span>

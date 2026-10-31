@@ -43,6 +43,8 @@ export interface DomiflixEpisode {
   description: string | null;
   video_id: string | null;
   video_type: "drive" | "youtube";
+  mobile_video_id?: string | null;
+  mobile_video_type?: "drive" | "youtube" | null;
   duration_minutes: number | null;
   thumbnail_url: string | null;
   order_index: number;
@@ -85,6 +87,23 @@ export interface DomiflixTrackLesson {
   completed: boolean;
   progressSeconds: number;
   durationSeconds: number;
+}
+
+export function getDomiflixLessonUrl(
+  status: DomiflixLearningStatus,
+  lesson: DomiflixTrackLesson,
+) {
+  const siblings = status.track.filter((item) => item.titleId === lesson.titleId);
+  const lessonNumber = Math.max(1, siblings.findIndex((item) => item.episodeId === lesson.episodeId) + 1);
+  const startAt = Math.max(0, Math.floor(lesson.progressSeconds));
+  return `/domiflix/assistir/${slugify(lesson.moduleTitle)}/${lessonNumber}${startAt ? `/${startAt}` : ""}?trilha=${encodeURIComponent(status.path.slug)}`;
+}
+
+export function getDomiflixContinueUrl(status: DomiflixLearningStatus) {
+  const next = status.track.find(
+    (lesson) => lesson.episodeId === status.nextLesson?.episodeId || (!lesson.completed && (lesson.group === "core" || lesson.includedInPlan)),
+  );
+  return next ? getDomiflixLessonUrl(status, next) : `/domiflix?trilha=${encodeURIComponent(status.path.slug)}`;
 }
 
 export interface DomiflixLearningStatus {
@@ -210,6 +229,7 @@ export function useDomiflixTitleBySlug(slug: string | undefined) {
   return useQuery({
     queryKey: ["domiflix-title-by-slug", slug],
     enabled: !!slug,
+    placeholderData: (previous) => previous,
     queryFn: async () => {
       if (!slug) return null;
 
@@ -304,6 +324,7 @@ export function useDomiflixTitle(id: string | undefined) {
   return useQuery({
     queryKey: ["domiflix-title", id],
     enabled: !!id,
+    placeholderData: (previous) => previous,
     queryFn: async () => {
       if (!id) return null;
 
@@ -482,6 +503,23 @@ export function useDomiflixEpisodeExtras(episodeId: string | undefined) {
         subtitles,
         resources: (resourceResult.data ?? []) as unknown as DomiflixResource[],
       };
+    },
+  });
+}
+
+export function useDomiflixEpisodeMedia(episodeId: string | undefined) {
+  return useQuery({
+    queryKey: ["domiflix-episode-media", episodeId],
+    enabled: !!episodeId,
+    queryFn: async () => {
+      if (!episodeId) return null;
+      const { data, error } = await supabase
+        .from("domiflix_episodes" as any)
+        .select("video_id, video_type, mobile_video_id, mobile_video_type")
+        .eq("id", episodeId)
+        .single();
+      if (error) throw error;
+      return data as unknown as Pick<DomiflixEpisode, "video_id" | "video_type" | "mobile_video_id" | "mobile_video_type">;
     },
   });
 }
