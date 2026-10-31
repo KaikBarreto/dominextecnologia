@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.7";
+export const APP_VERSION = "1.38.8";
 
 export const VERSION_NOTES =
-  "Vendedores autorizados agora conseguem editar as empresas sob sua responsabilidade sem bloqueio indevido.";
+  "Clientes e fornecedores agora podem receber etiquetas coloridas e campos personalizados em seus cadastros, fichas e seleções.";

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ClipboardList, Plus, Settings2, Truck, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCustomers } from '@/hooks/useCustomers';
+import { useCustomers, type CustomerInput } from '@/hooks/useCustomers';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
-import { CustomerOriginManagerDialog } from '@/components/customers/CustomerOriginManagerDialog';
+import { CustomerSettingsDialog } from '@/components/customers/CustomerSettingsDialog';
 import { LeadCaptureManagerDialog } from '@/components/customers/LeadCaptureManagerDialog';
 
 export type CustomersMainTab = 'clientes' | 'fornecedores';
@@ -40,11 +40,11 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
   const canCreateCustomer = isAdminOrGestor() || hasPermission('fn:create_customer');
 
   const [novoOpen, setNovoOpen] = useState(false);
-  const [originConfigOpen, setOriginConfigOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [leadFormsOpen, setLeadFormsOpen] = useState(false);
 
   // No celular as ações da tela vivem na toolbar/FAB da própria lista, não aqui.
-  const showActions = !isMobile && activeTab === 'clientes';
+  const showActions = !isMobile;
 
   return (
     <>
@@ -57,15 +57,15 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
             <>
               {/* No computador os botões levam rótulo: ícone sozinho vira
                   adivinhação. */}
-              <Button variant="outline" onClick={() => setOriginConfigOpen(true)} title={t.configureOrigins}>
+              <Button variant="outline" onClick={() => setSettingsOpen(true)} title="Configurações">
                 <Settings2 className="mr-2 h-4 w-4" />
-                {t.configureOrigins}
+                Configurações
               </Button>
-              <Button variant="outline" onClick={() => setLeadFormsOpen(true)} title={t.leadFormsFull}>
+              {activeTab === 'clientes' && <Button variant="outline" onClick={() => setLeadFormsOpen(true)} title={t.leadFormsFull}>
                 <ClipboardList className="mr-2 h-4 w-4" />
                 {t.leadFormsFull}
-              </Button>
-              {canCreateCustomer && (
+              </Button>}
+              {activeTab === 'clientes' && canCreateCustomer && (
                 <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setNovoOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
                   {t.newCustomer}
@@ -92,11 +92,11 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
         open={novoOpen}
         onOpenChange={setNovoOpen}
         customer={null}
-        onSubmit={(data) => createCustomer.mutateAsync(data)}
+        onSubmit={(data) => createCustomer.mutateAsync(data as CustomerInput)}
         isLoading={createCustomer.isPending}
       />
 
-      <CustomerOriginManagerDialog open={originConfigOpen} onOpenChange={setOriginConfigOpen} />
+      <CustomerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 
       <LeadCaptureManagerDialog open={leadFormsOpen} onOpenChange={setLeadFormsOpen} />
     </>

@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
+import type { TablesUpdate } from '@/integrations/supabase/types';
 
 export interface CustomerInput {
   name: string;
@@ -25,6 +26,8 @@ export interface CustomerInput {
   birth_date?: string;
   notes?: string;
   origin?: string;
+  label_id?: string | null;
+  custom_fields?: Record<string, unknown>;
   whatsapp_notifications_enabled?: boolean;
   // Dados fiscais (tomador NFS-e) — todos opcionais
   inscricao_municipal?: string;
@@ -89,7 +92,7 @@ export function useCustomers() {
     mutationFn: async ({ id, ...input }: CustomerInput & { id: string }) => {
       const { data, error } = await supabase
         .from('customers')
-        .update(input)
+        .update(input as TablesUpdate<'customers'>)
         .eq('id', id)
         .select()
         .single();

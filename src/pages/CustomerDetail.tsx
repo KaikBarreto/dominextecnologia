@@ -89,6 +89,9 @@ import {
   formatCustomerZipCode,
   getCustomerOriginLabel,
 } from '@/lib/customerDisplay';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { formatPartyFieldValue, usePartyFieldConfig } from '@/hooks/usePartyFieldConfig';
+import { PartyLabelBadge } from '@/components/customers/PartyLabelBadge';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos' | 'documentos' | 'cobrancas' | 'estoque';
 
@@ -197,6 +200,8 @@ export function CustomerDetailContent() {
 
   const { contacts, createContact, updateContact, deleteContact } = useCustomerContacts(id);
   const { activeOrigins } = useCustomerOrigins();
+  const { byId: labelById } = usePartyLabels();
+  const { fields: partyFields } = usePartyFieldConfig('customer');
   const {
     expenses: customerPaidExpenses,
     isLoading: customerPaidExpensesLoading,
@@ -312,8 +317,10 @@ export function CustomerDetailContent() {
         value: c.id,
         label: c.name,
         sublabel: c.document || c.phone || c.celular || undefined,
+        suffix: <PartyLabelBadge label={labelById(c.label_id)} />,
+        selectedSuffix: <PartyLabelBadge label={labelById(c.label_id)} compact />,
       })),
-    [customers]
+    [customers, labelById]
   );
   const customerOrders = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type !== 'tarefa');
   const customerTasks = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type === 'tarefa');
@@ -724,8 +731,8 @@ export function CustomerDetailContent() {
                             if (opt.value !== id) navigate(`/clientes/${opt.value}`);
                           }}
                         >
-                          <div className="min-w-0">
-                            <span className="block truncate">{opt.label}</span>
+                          <div className="min-w-0 flex-1">
+                            <span className="flex min-w-0 items-center gap-2"><span className="truncate">{opt.label}</span>{opt.suffix}</span>
                             {opt.sublabel && (
                               <span className="block text-xs text-muted-foreground truncate">{opt.sublabel}</span>
                             )}
@@ -738,6 +745,7 @@ export function CustomerDetailContent() {
               </PopoverContent>
             </Popover>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <PartyLabelBadge label={labelById(customer.label_id)} />
             <Badge variant={customer.customer_type === 'pj' ? 'default' : 'muted'}>
               {customer.customer_type === 'pj' ? 'PJ' : 'PF'}
             </Badge>
@@ -838,6 +846,12 @@ export function CustomerDetailContent() {
                 ),
               });
             }
+            const customerLabel = labelById(customer.label_id);
+            if (customerLabel) rows.push({ label: 'Etiqueta', node: <PartyLabelBadge label={customerLabel} className="text-xs" /> });
+            const customFields = customer.custom_fields ?? {};
+            partyFields
+              .filter((field) => field.is_visible && customFields[field.field_key] !== undefined && customFields[field.field_key] !== null && customFields[field.field_key] !== '')
+              .forEach((field) => rows.push({ label: field.label, node: <span className="text-sm font-medium leading-tight">{formatPartyFieldValue(field, customFields[field.field_key])}</span> }));
             if (customer.document) {
               rows.push({ label: t.fieldDocument, node: <span className="text-sm font-medium leading-tight">{formatCustomerDocument(customer.document)}</span> });
             }

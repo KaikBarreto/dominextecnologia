@@ -76,6 +76,8 @@ export interface Customer {
   notes?: string;
   photo_url?: string;
   origin?: string;
+  label_id?: string | null;
+  custom_fields?: Record<string, unknown>;
   whatsapp_notifications_enabled?: boolean;
   whatsapp_opt_in_at?: string | null;
   whatsapp_opt_out_at?: string | null;

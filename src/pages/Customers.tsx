@@ -41,12 +41,14 @@ import { SuppliersTab } from '@/components/customers/SuppliersTab';
 import { CustomersPageChrome, type CustomersMainTab } from '@/components/customers/CustomersPageChrome';
 import { CustomerDetailContent } from '@/pages/CustomerDetail';
 import { isUuid, extractShortCode } from '@/utils/prettyLinks';
-import { CustomerOriginManagerDialog } from '@/components/customers/CustomerOriginManagerDialog';
+import { CustomerSettingsDialog } from '@/components/customers/CustomerSettingsDialog';
 import { LeadCaptureManagerDialog } from '@/components/customers/LeadCaptureManagerDialog';
 import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { formatCustomerDocument, formatCustomerPhone } from '@/lib/customerDisplay';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadge } from '@/components/customers/PartyLabelBadge';
 
 export type CustomerKindFilter = 'all' | 'servico' | 'loja';
 
@@ -157,6 +159,7 @@ interface CustomerGridCardProps {
 function CustomerGridCard({ customer, isMobile, canEdit, canDelete, pdvEnabled, onOpen, onPreviewPhoto, onEdit, onDelete, t }: CustomerGridCardProps) {
   const { locale } = useAppLocaleContext();
   const zoomPhotoLabel = MESSAGES[locale].app.common.listDetail.zoomPhoto.replace('{name}', customer.name);
+  const { byId } = usePartyLabels();
   const subtitleParts = [formatCustomerPhone(customer.phone || customer.celular), customer.city].filter(Boolean);
   const subtitle = subtitleParts.length > 0
     ? subtitleParts.join(' • ')
@@ -190,6 +193,7 @@ function CustomerGridCard({ customer, isMobile, canEdit, canDelete, pdvEnabled, 
           <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
         </div>
         <div className="flex items-center justify-center gap-1.5">
+          <PartyLabelBadge label={byId(customer.label_id)} compact={isMobile} />
           <Badge
             variant={customer.customer_type === 'pj' ? 'default' : 'muted'}
             className="text-[10px] px-2 py-0.5"
@@ -246,7 +250,7 @@ export default function Customers() {
   const { id: routeParam } = useParams<{ id: string }>();
   // Só o celular usa estes: no desktop as ações (e os diálogos) vivem no
   // CustomersPageChrome, que aparece também na ficha do cliente.
-  const [originConfigOpen, setOriginConfigOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [leadFormsOpen, setLeadFormsOpen] = useState(false);
   const tSuppliers = MESSAGES[locale].app.customers.suppliers;
   const tCommon = MESSAGES[locale].app.common;
@@ -259,6 +263,7 @@ export default function Customers() {
   const canCreateOpportunity = hasModule('crm');
 
   const { customers, isLoading, isError, refetch, createCustomer, updateCustomer, deleteCustomer } = useCustomers();
+  const { byId: labelById } = usePartyLabels();
 
   // O param pode ser UUID antigo OU o link amigável `slug-do-nome-<codigo>`;
   // a coluna precisa do id REAL pra marcar a linha certa.
@@ -374,6 +379,13 @@ export default function Customers() {
           controles). No COMPUTADOR ele entra DENTRO do painel Lista de
           Clientes, junto da busca que ele filtra — ver `listFilters` abaixo. */}
       {isMobile && mainTab === 'clientes' && pdvEnabled && kindFilterControl}
+      {isMobile && mainTab === 'fornecedores' && (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
+            <Settings2 className="mr-2 h-4 w-4" />Configurações
+          </Button>
+        </div>
+      )}
 
       {mainTab === 'fornecedores' ? (
         <SuppliersTab />
@@ -389,13 +401,13 @@ export default function Customers() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setOriginConfigOpen(true)}
+            onClick={() => setSettingsOpen(true)}
             className="h-10 shrink-0 gap-2 px-3"
-            title={t.origins}
-            aria-label={t.origins}
+            title="Configurações"
+            aria-label="Configurações"
           >
             <Settings2 className="h-4 w-4" />
-            <span className="hidden min-[340px]:inline">{t.origins}</span>
+            <span className="hidden min-[340px]:inline">Configurações</span>
           </Button>
           <Button
             variant="outline"
@@ -434,9 +446,10 @@ export default function Customers() {
               </div>
             ),
             trailing: (
-              <Badge variant={customer.customer_type === 'pj' ? 'default' : 'muted'} className="px-1.5 py-0 text-[10px]">
-                {customer.customer_type === 'pj' ? t.typePj : t.typePf}
-              </Badge>
+              <div className="flex items-center gap-1">
+                <PartyLabelBadge label={labelById(customer.label_id)} />
+                <Badge variant={customer.customer_type === 'pj' ? 'default' : 'muted'} className="px-1.5 py-0 text-[10px]">{customer.customer_type === 'pj' ? t.typePj : t.typePf}</Badge>
+              </div>
             ),
           }))}
           listTitle={t.listHeading}
@@ -642,6 +655,7 @@ export default function Customers() {
                       }
                       trailing={
                         <div className="flex flex-col items-end gap-1">
+                          <PartyLabelBadge label={labelById(customer.label_id)} compact />
                           <Badge
                             variant={customer.customer_type === 'pj' ? 'default' : 'muted'}
                             className="text-[10px] px-2 py-0.5"
@@ -890,7 +904,7 @@ export default function Customers() {
 
       {isMobile && (
         <>
-          <CustomerOriginManagerDialog open={originConfigOpen} onOpenChange={setOriginConfigOpen} />
+          <CustomerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
           <LeadCaptureManagerDialog open={leadFormsOpen} onOpenChange={setLeadFormsOpen} />
         </>
       )}

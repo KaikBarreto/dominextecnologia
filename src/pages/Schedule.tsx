@@ -23,6 +23,8 @@ import { useServiceOrders, ServiceOrderInput } from '@/hooks/useServiceOrders';
 import { useTaskSubmit } from '@/hooks/useTaskSubmit';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useCustomers } from '@/hooks/useCustomers';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadge } from '@/components/customers/PartyLabelBadge';
 import { useTeams } from '@/hooks/useTeams';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -91,6 +93,7 @@ export default function Schedule() {
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, rescheduleServiceOrder, deleteServiceOrder, resetServiceOrder } = useServiceOrders();
   const { data: allProfiles = [] } = useProfiles();
   const { customers } = useCustomers();
+  const { byId: labelById } = usePartyLabels();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { teamsWithMembers } = useTeams();
@@ -952,8 +955,10 @@ export default function Schedule() {
                 options={customers.map((c) => ({
                   value: c.id,
                   label: c.name,
+                  suffix: <PartyLabelBadge label={labelById(c.label_id)} />,
+                  selectedSuffix: <PartyLabelBadge label={labelById(c.label_id)} compact />,
                   // Telefone/documento entram como termo de busca do filtro.
-                  keywords: [c.phone, c.celular, c.document, c.company_name].filter(
+                  keywords: [c.phone, c.celular, c.document, c.company_name, labelById(c.label_id)?.name].filter(
                     (k): k is string => !!k,
                   ),
                 }))}

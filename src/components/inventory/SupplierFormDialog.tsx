@@ -7,6 +7,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useSuppliers, type Supplier, type SupplierInput } from '@/hooks/useSuppliers';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { missingRequiredPartyFields, usePartyFieldConfig } from '@/hooks/usePartyFieldConfig';
+import { PartyFieldsForm } from '@/components/customers/PartyFieldsForm';
+import { PartyLabelBadge } from '@/components/customers/PartyLabelBadge';
+import { useToast } from '@/hooks/use-toast';
 
 interface SupplierFormDialogProps {
   open: boolean;
@@ -24,17 +30,24 @@ const EMPTY: SupplierInput = {
   email: '',
   address: '',
   notes: '',
+  label_id: null,
+  custom_fields: {},
 };
 
 export function SupplierFormDialog({ open, onOpenChange, supplier, onCreated }: SupplierFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.supplierForm;
   const { createSupplier, updateSupplier } = useSuppliers();
+  const { activeLabels, byId } = usePartyLabels();
+  const { fields: partyFields } = usePartyFieldConfig('supplier');
+  const { toast } = useToast();
   const isEditing = !!supplier;
   const [form, setForm] = useState<SupplierInput>(EMPTY);
+  const [customFieldErrors, setCustomFieldErrors] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open) return;
+    setCustomFieldErrors([]);
     if (supplier) {
       setForm({
         name: supplier.name,
@@ -44,6 +57,8 @@ export function SupplierFormDialog({ open, onOpenChange, supplier, onCreated }: 
         email: supplier.email ?? '',
         address: supplier.address ?? '',
         notes: supplier.notes ?? '',
+        label_id: (supplier as Supplier & { label_id?: string | null }).label_id ?? null,
+        custom_fields: ((supplier as Supplier & { custom_fields?: Record<string, unknown> }).custom_fields ?? {}),
       });
     } else {
       setForm(EMPTY);
@@ -56,6 +71,13 @@ export function SupplierFormDialog({ open, onOpenChange, supplier, onCreated }: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name?.trim()) return;
+    const missingFields = missingRequiredPartyFields(partyFields, form.custom_fields ?? {});
+    if (missingFields.length > 0) {
+      setCustomFieldErrors(missingFields.map((field) => field.field_key));
+      toast({ variant: 'destructive', title: 'Campos obrigatórios', description: 'Preencha os campos personalizados obrigatórios.' });
+      return;
+    }
+    setCustomFieldErrors([]);
     if (isEditing && supplier) {
       await updateSupplier.mutateAsync({ id: supplier.id, ...form });
     } else {
@@ -89,6 +111,17 @@ export function SupplierFormDialog({ open, onOpenChange, supplier, onCreated }: 
           <Label>{t.fields.name}</Label>
           <Input value={form.name} onChange={(e) => change('name', e.target.value)} placeholder={t.fields.namePlaceholder} required />
         </div>
+        <div className="space-y-2">
+          <Label>Etiqueta</Label>
+          <Select value={form.label_id || '__none__'} onValueChange={(value) => setForm((prev) => ({ ...prev, label_id: value === '__none__' ? null : value }))}>
+            <SelectTrigger><SelectValue placeholder="Sem etiqueta" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Sem etiqueta</SelectItem>
+              {activeLabels.map((label) => <SelectItem key={label.id} value={label.id}><PartyLabelBadge label={label} /></SelectItem>)}
+              {form.label_id && !activeLabels.some((label) => label.id === form.label_id) && byId(form.label_id) && <SelectItem value={form.label_id}><PartyLabelBadge label={byId(form.label_id)} /></SelectItem>}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>{t.fields.taxId}</Label>
@@ -113,6 +146,12 @@ export function SupplierFormDialog({ open, onOpenChange, supplier, onCreated }: 
           <Label>{t.fields.address}</Label>
           <Input value={form.address ?? ''} onChange={(e) => change('address', e.target.value)} placeholder={t.fields.addressPlaceholder} />
         </div>
+        <PartyFieldsForm
+          entityType="supplier"
+          values={form.custom_fields ?? {}}
+          onChange={(custom_fields) => setForm((prev) => ({ ...prev, custom_fields }))}
+          errors={customFieldErrors}
+        />
         <div className="space-y-2">
           <Label>{t.fields.notes}</Label>
           <Textarea value={form.notes ?? ''} onChange={(e) => change('notes', e.target.value)} placeholder={t.fields.notesPlaceholder} rows={2} />

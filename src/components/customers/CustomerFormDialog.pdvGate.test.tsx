@@ -55,6 +55,14 @@ vi.mock('@/hooks/useCustomerPortalSettings', async (importOriginal) => {
   };
 });
 
+vi.mock('@/hooks/usePartyLabels', () => ({
+  usePartyLabels: () => ({ labels: [], activeLabels: [], byId: () => undefined }),
+}));
+vi.mock('@/hooks/usePartyFieldConfig', () => ({
+  usePartyFieldConfig: () => ({ fields: [] }),
+  missingRequiredPartyFields: () => [],
+}));
+
 // Stand-ins leves — nada aqui importa pro teste do "Atende como".
 vi.mock('@/components/customers/OriginSelectField', () => ({ OriginSelectField: () => null }));
 vi.mock('@/components/CepLookup', () => ({ CepLookup: () => null }));
@@ -68,7 +76,7 @@ let container: HTMLDivElement;
 let root: Root;
 
 function mount(props: Partial<React.ComponentProps<typeof CustomerFormDialog>> = {}) {
-  const onSubmit = props.onSubmit ?? (async () => {});
+  const onSubmit = props.onSubmit ?? (async () => ({ id: 'customer-1' }));
   act(() => {
     root.render(
       <CustomerFormDialog
@@ -120,7 +128,7 @@ describe('CustomerFormDialog — "Atende como" (Serviço/Loja, módulo PDV)', ()
 
   it('sem o módulo PDV, o payload de criação NÃO leva is_service_customer/is_store_customer', async () => {
     state.hasPdv = false;
-    const onSubmit = vi.fn(async (_data?: unknown) => {});
+    const onSubmit = vi.fn(async (_data?: unknown) => ({ id: 'customer-1' }));
     mount({ onSubmit });
 
     const nameInput = Array.from(document.querySelectorAll('input')).find(
@@ -162,7 +170,7 @@ describe('CustomerFormDialog — "Atende como" (Serviço/Loja, módulo PDV)', ()
 
   it('com o módulo PDV, marcar os dois checkboxes é permitido (multi-seleção de verdade) e vai os dois no payload', async () => {
     state.hasPdv = true;
-    const onSubmit = vi.fn(async (_data?: unknown) => {});
+    const onSubmit = vi.fn(async (_data?: unknown) => ({ id: 'customer-1' }));
     mount({ onSubmit, defaultCustomerKind: 'servico' });
 
     const nameInput = Array.from(document.querySelectorAll('input')).find(
@@ -187,7 +195,7 @@ describe('CustomerFormDialog — "Atende como" (Serviço/Loja, módulo PDV)', ()
 
   it('com o módulo PDV, salvar sem NENHUM dos dois marcado não é erro de validação', async () => {
     state.hasPdv = true;
-    const onSubmit = vi.fn(async (_data?: unknown) => {});
+    const onSubmit = vi.fn(async (_data?: unknown) => ({ id: 'customer-1' }));
     mount({ onSubmit, defaultCustomerKind: 'servico' });
 
     const nameInput = Array.from(document.querySelectorAll('input')).find(

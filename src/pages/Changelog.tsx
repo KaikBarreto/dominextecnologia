@@ -42,6 +42,23 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.8',
+    date: '31 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Etiquetas visuais para clientes e fornecedores',
+        description: 'Agora é possível criar etiquetas coloridas, aplicá-las aos cadastros e reconhecê-las nas listas, fichas e seleções. Onde há espaço, o nome aparece completo; em campos estreitos, uma bandeirola colorida mostra o nome ao passar o mouse.',
+        category: 'recurso',
+      },
+      {
+        title: 'Campos personalizados reunidos nas configurações',
+        description: 'Origens, etiquetas e campos adicionais de clientes e fornecedores agora ficam reunidos em Configurações. Os campos podem ser usados nos cadastros e fichas, com controle separado do que aparece no Portal do Cliente.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.38.7',
     date: '30 de outubro de 2026',
     type: 'patch',

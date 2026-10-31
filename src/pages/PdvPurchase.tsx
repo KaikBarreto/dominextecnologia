@@ -34,6 +34,8 @@ import { useInventory } from '@/hooks/useInventory';
 import { usePdvPurchaseDraftWorkspace } from '@/hooks/usePdvPurchaseDraftWorkspace';
 import { useStocks } from '@/hooks/useStocks';
 import { useSuppliers } from '@/hooks/useSuppliers';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadge } from '@/components/customers/PartyLabelBadge';
 import { useToast } from '@/hooks/use-toast';
 import { formatMoney } from '@/lib/format';
 import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
@@ -67,6 +69,7 @@ export default function PdvPurchase() {
   const canRegister = useCanRegisterDirectMaterialPurchase();
   const { stocks, defaultStock } = useStocks();
   const { suppliers } = useSuppliers();
+  const { byId: labelById } = usePartyLabels();
   const { items: inventory } = useInventory();
   const { accounts } = useFinancialAccounts();
   const { categories } = useFinancialCategories();
@@ -111,9 +114,15 @@ export default function PdvPurchase() {
   const supplierOptions = useMemo(
     () => [
       { value: NO_SUPPLIER_VALUE, label: t.fields.supplierNone },
-      ...suppliers.map((supplier) => ({ value: supplier.id, label: supplier.name })),
+      ...suppliers.map((supplier) => ({
+        value: supplier.id,
+        label: supplier.name,
+        suffix: <PartyLabelBadge label={labelById(supplier.label_id)} />,
+        selectedSuffix: <PartyLabelBadge label={labelById(supplier.label_id)} compact />,
+        keywords: labelById(supplier.label_id)?.name ? [labelById(supplier.label_id)!.name] : undefined,
+      })),
     ],
-    [suppliers, t.fields.supplierNone],
+    [suppliers, t.fields.supplierNone, labelById],
   );
   const accountOptions = useMemo(
     () => eligibleAccounts.map((account) => ({ value: account.id, label: account.name })),

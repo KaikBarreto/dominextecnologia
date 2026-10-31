@@ -9,6 +9,8 @@ import { getDateFnsLocale } from '@/lib/format';
 import type { OsStatus } from '@/types/database';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { PartyLabelBadge } from '@/components/customers/PartyLabelBadge';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
 
 export type ViewMode = 'month' | 'week' | 'day';
 export type DisplayMode = 'calendar' | 'list';
@@ -42,6 +44,7 @@ interface ScheduleHeaderProps {
     celular?: string | null;
     document?: string | null;
     company_name?: string | null;
+    label_id?: string | null;
   }[];
   statusFilter: string[];
   onStatusFilterChange: (val: string[]) => void;
@@ -75,6 +78,7 @@ export function ScheduleHeader({
   onEntryTypeFilterChange,
 }: ScheduleHeaderProps) {
   const { locale } = useAppLocaleContext();
+  const { byId } = usePartyLabels();
   const t = MESSAGES[locale].app.os.scheduleHeader;
   const statusOptions: { value: OsStatus; label: string }[] = [
     { value: 'pendente', label: t.statusPendente },
@@ -175,8 +179,10 @@ export function ScheduleHeader({
               options={customers.map((c) => ({
                 value: c.id,
                 label: c.name,
+                suffix: <PartyLabelBadge label={byId(c.label_id)} />,
+                selectedSuffix: <PartyLabelBadge label={byId(c.label_id)} compact />,
                 // Telefone/documento entram como termo de busca do filtro.
-                keywords: [c.phone, c.celular, c.document, c.company_name].filter(
+                keywords: [c.phone, c.celular, c.document, c.company_name, byId(c.label_id)?.name].filter(
                   (k): k is string => !!k,
                 ),
               }))}

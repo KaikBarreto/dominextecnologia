@@ -89,6 +89,15 @@ vi.mock('@/hooks/use-mobile', () => ({
 }));
 vi.mock('@/components/customers/CustomerOriginManagerDialog', () => ({
   CustomerOriginManagerDialog: () => null,
+  CustomerOriginManagerContent: () => null,
+}));
+vi.mock('@/components/customers/CustomerSettingsDialog', () => ({ CustomerSettingsDialog: () => null }));
+vi.mock('@/hooks/usePartyLabels', () => ({
+  usePartyLabels: () => ({ labels: [], activeLabels: [], byId: () => undefined }),
+}));
+vi.mock('@/hooks/usePartyFieldConfig', () => ({
+  usePartyFieldConfig: () => ({ fields: [] }),
+  missingRequiredPartyFields: () => [],
 }));
 vi.mock('@/components/customers/LeadCaptureManagerDialog', () => ({
   LeadCaptureManagerDialog: () => null,

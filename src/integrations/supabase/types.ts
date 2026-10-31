@@ -3927,6 +3927,7 @@ export type Database = {
           complement: string | null
           created_at: string
           credit_limit: number | null
+          custom_fields: Json
           customer_type: Database["public"]["Enums"]["customer_type"]
           deleted_at: string | null
           document: string | null
@@ -3938,6 +3939,7 @@ export type Database = {
           is_deleted: boolean
           is_service_customer: boolean
           is_store_customer: boolean
+          label_id: string | null
           lat: number | null
           latitude: number | null
           lead_consent_at: string | null
@@ -3970,6 +3972,7 @@ export type Database = {
           complement?: string | null
           created_at?: string
           credit_limit?: number | null
+          custom_fields?: Json
           customer_type?: Database["public"]["Enums"]["customer_type"]
           deleted_at?: string | null
           document?: string | null
@@ -3981,6 +3984,7 @@ export type Database = {
           is_deleted?: boolean
           is_service_customer?: boolean
           is_store_customer?: boolean
+          label_id?: string | null
           lat?: number | null
           latitude?: number | null
           lead_consent_at?: string | null
@@ -4013,6 +4017,7 @@ export type Database = {
           complement?: string | null
           created_at?: string
           credit_limit?: number | null
+          custom_fields?: Json
           customer_type?: Database["public"]["Enums"]["customer_type"]
           deleted_at?: string | null
           document?: string | null
@@ -4024,6 +4029,7 @@ export type Database = {
           is_deleted?: boolean
           is_service_customer?: boolean
           is_store_customer?: boolean
+          label_id?: string | null
           lat?: number | null
           latitude?: number | null
           lead_consent_at?: string | null
@@ -4051,6 +4057,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "party_labels"
             referencedColumns: ["id"]
           },
         ]
@@ -8556,6 +8569,100 @@ export type Database = {
           },
         ]
       }
+      party_field_config: {
+        Row: {
+          company_id: string
+          created_at: string
+          entity_type: string
+          field_key: string
+          field_type: string
+          id: string
+          is_required: boolean
+          is_visible: boolean
+          is_visible_in_portal: boolean
+          label: string
+          options: Json | null
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          entity_type: string
+          field_key: string
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          is_visible?: boolean
+          is_visible_in_portal?: boolean
+          label: string
+          options?: Json | null
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          entity_type?: string
+          field_key?: string
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          is_visible?: boolean
+          is_visible_in_portal?: boolean
+          label?: string
+          options?: Json | null
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "party_field_config_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      party_labels: {
+        Row: {
+          color: string
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "party_labels_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       password_reset_codes: {
         Row: {
           attempts: number
@@ -12979,8 +13086,10 @@ export type Database = {
           cpf_cnpj: string | null
           created_at: string
           created_by: string | null
+          custom_fields: Json
           email: string | null
           id: string
+          label_id: string | null
           name: string
           notes: string | null
           phone: string | null
@@ -12993,8 +13102,10 @@ export type Database = {
           cpf_cnpj?: string | null
           created_at?: string
           created_by?: string | null
+          custom_fields?: Json
           email?: string | null
           id?: string
+          label_id?: string | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -13007,14 +13118,24 @@ export type Database = {
           cpf_cnpj?: string | null
           created_at?: string
           created_by?: string | null
+          custom_fields?: Json
           email?: string | null
           id?: string
+          label_id?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "party_labels"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       task_types: {
         Row: {

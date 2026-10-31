@@ -21,6 +21,8 @@ import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
 // mesma tabela `suppliers`). Não recriamos um segundo CRUD de fornecedor.
 import { SupplierFormDialog } from '@/components/inventory/SupplierFormDialog';
 import { SupplierDetailContent, SupplierDetailDialog } from '@/components/customers/SupplierDetailDialog';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadge } from '@/components/customers/PartyLabelBadge';
 
 /**
  * Aba "Fornecedores" dentro da tela Clientes. Pedido do CEO: fornecedor hoje
@@ -39,6 +41,7 @@ export function SuppliersTab() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.customers.suppliers;
   const { suppliers, isLoading, isError, refetch, deleteSupplier } = useSuppliers();
+  const { byId: labelById } = usePartyLabels();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [formOpen, setFormOpen] = useState(false);
@@ -129,6 +132,7 @@ export function SuppliersTab() {
                       }
                       title={supplier.name}
                       subtitle={subtitleParts.length > 0 ? subtitleParts.join(' • ') : t.noData}
+                      trailing={<PartyLabelBadge label={labelById((supplier as Supplier & { label_id?: string | null }).label_id)} compact />}
                     />
                   );
                 })}
@@ -159,6 +163,7 @@ export function SuppliersTab() {
                 <Truck className="h-5 w-5" />
               </div>
             ),
+            trailing: <PartyLabelBadge label={labelById((supplier as Supplier & { label_id?: string | null }).label_id)} />,
           }))}
           selectedId={selectedSupplier?.id}
           listTitle={t.listHeading}

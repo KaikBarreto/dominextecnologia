@@ -70,6 +70,7 @@ interface Customer {
   id: string;
   name: string;
   company_id: string;
+  custom_fields?: Record<string, unknown> | null;
 }
 
 interface EquipmentAttachment {
@@ -167,6 +168,7 @@ interface PortalPayload {
   equipment: Equipment[];
   service_orders: ServiceOrder[];
   equipment_field_config?: FieldConfig[];
+  customer_field_config?: FieldConfig[];
   contracts?: PortalContractSummary[];
   charges?: PortalCharge[];
   invoices?: PortalDocumentItem[];
@@ -268,6 +270,7 @@ export default function CustomerPortal() {
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [equipmentFieldConfig, setEquipmentFieldConfig] = useState<FieldConfig[]>([]);
+  const [customerFieldConfig, setCustomerFieldConfig] = useState<FieldConfig[]>([]);
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
   const [contracts, setContracts] = useState<PortalContractSummary[]>([]);
   const [charges, setCharges] = useState<PortalCharge[]>([]);
@@ -352,6 +355,7 @@ export default function CustomerPortal() {
       setCompanySettings(payload.company_settings ?? null);
       setEquipment(payload.equipment ?? []);
       setEquipmentFieldConfig(payload.equipment_field_config ?? []);
+      setCustomerFieldConfig(payload.customer_field_config ?? []);
       // TAREFA INTERNA NUNCA VAI PRO PORTAL. Tarefa é uma linha de
       // `service_orders` com `entry_type = 'tarefa'` (nota interna da equipe,
       // "lembrar de mandar orçamento"), e estava aparecendo pro cliente final
@@ -505,6 +509,7 @@ export default function CustomerPortal() {
         companySettings={companySettings}
         equipment={equipment}
         equipmentFieldConfig={equipmentFieldConfig}
+        customerFieldConfig={customerFieldConfig}
         serviceOrders={serviceOrders}
         contracts={contracts}
         charges={charges}
@@ -532,6 +537,7 @@ interface ContentProps {
   companySettings: CompanySettings | null;
   equipment: Equipment[];
   equipmentFieldConfig: FieldConfig[];
+  customerFieldConfig: FieldConfig[];
   serviceOrders: ServiceOrder[];
   contracts: PortalContractSummary[];
   charges: PortalCharge[];
@@ -572,6 +578,7 @@ function CustomerPortalContent({
   companySettings,
   equipment,
   equipmentFieldConfig,
+  customerFieldConfig,
   serviceOrders,
   contracts,
   charges,
@@ -1397,6 +1404,10 @@ function CustomerPortalContent({
   // Aba aberta esta protegida? Entao o corpo dela e o card de desbloqueio.
   const activeTabKey = TAB_PERMISSION_KEY[activeTab];
   const activeIsLocked = !!activeTabKey && lockedSet.has(activeTabKey);
+  const customerCustomRows = customerFieldConfig
+    .filter((field) => customer.custom_fields?.[field.field_key] !== undefined && customer.custom_fields?.[field.field_key] !== null && customer.custom_fields?.[field.field_key] !== '')
+    .sort((a, b) => a.position - b.position)
+    .map((field) => ({ label: field.label, value: formatFieldValue(customer.custom_fields?.[field.field_key], field.field_type) }));
 
   // ── Render principal com PublicPortalShell ──
   return (
@@ -1436,6 +1447,16 @@ function CustomerPortalContent({
         : undefined}
       navLabel={t.sidebarNavLabel}
     >
+      {customerCustomRows.length > 0 && (
+        <Card>
+          <CardContent className="p-4 sm:p-5">
+            <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-foreground/70">Informações</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {customerCustomRows.map((row) => <div key={row.label} className="min-w-0"><p className="text-xs text-muted-foreground">{row.label}</p><p className="break-words text-sm font-medium">{row.value}</p></div>)}
+            </div>
+          </CardContent>
+        </Card>
+      )}
       {/* Campo de busca de OS — no topo da aba */}
       {permissions.service_orders && activeTab === 'os' && !activeIsLocked && (
         <div className="mb-4">

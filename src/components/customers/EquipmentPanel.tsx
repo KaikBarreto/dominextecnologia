@@ -46,6 +46,8 @@ import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
 import { EquipmentDetailContent } from '@/pages/EquipmentDetail';
 import { isUuid, extractShortCode } from '@/utils/prettyLinks';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadge } from '@/components/customers/PartyLabelBadge';
 
 interface EquipmentGridCardProps {
   eq: Equipment & { customer?: any };
@@ -150,6 +152,7 @@ export function EquipmentPanel() {
 
   const { equipment, isLoading, isError, refetch, createEquipment } = useEquipment();
   const { customers } = useCustomers();
+  const { byId: labelById } = usePartyLabels();
   const { categories } = useEquipmentCategories();
 
   // A MESMA tela atende /equipamentos e /equipamentos/:id no computador: a rota
@@ -296,7 +299,13 @@ export function EquipmentPanel() {
       />
       <FilterCheckboxGroup
         label={tEq.filterCustomer}
-        options={customersWithEquipment.map((c) => ({ value: c.id, label: c.name }))}
+        options={customersWithEquipment.map((c) => ({
+          value: c.id,
+          label: c.name,
+          suffix: <PartyLabelBadge label={labelById(c.label_id)} />,
+          selectedSuffix: <PartyLabelBadge label={labelById(c.label_id)} compact />,
+          keywords: labelById(c.label_id)?.name ? [labelById(c.label_id)!.name] : undefined,
+        }))}
         selected={customerFilter}
         onChange={setCustomerFilter}
         emptyLabel={tEq.filterAllCustomers}
