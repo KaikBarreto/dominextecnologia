@@ -215,7 +215,7 @@ function TechnicianVideo() {
           <div className="relative rounded-[2.55rem] border border-white/15 bg-[#080a09] p-2.5 shadow-[0_38px_100px_-34px_rgba(0,0,0,.82)]">
             <div className="relative aspect-[9/16] overflow-hidden rounded-[2.05rem] border border-white/10 bg-black">
               <video
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain"
                 playsInline
                 controls
                 preload="metadata"

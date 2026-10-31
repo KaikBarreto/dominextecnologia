@@ -600,7 +600,7 @@ function ModuleVideoMock({ data }: { data: ModuleData }) {
               {videoSrc ? (
                 <video
                   data-module-motion-video
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                   playsInline
                   controls
                   preload="metadata"
