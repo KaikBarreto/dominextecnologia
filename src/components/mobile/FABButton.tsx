@@ -20,7 +20,7 @@ export function FABButton({ icon, label, onClick, variant = 'extended', classNam
 
   if (!isMobile) {
     return (
-      <Button onClick={onClick} className={cn('bg-primary text-primary-foreground hover:bg-primary/90', className)}>
+      <Button onClick={onClick} className={className}>
         <span className="mr-2 flex h-4 w-4 items-center justify-center">{icon}</span>
         {label}
       </Button>
@@ -35,7 +35,7 @@ export function FABButton({ icon, label, onClick, variant = 'extended', classNam
       onClick={onClick}
       aria-label={label}
       className={cn(
-        'mobile-fab fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-90 animate-in fade-in zoom-in-90',
+        'mobile-fab fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-action-primary text-action-primary-foreground shadow-lg shadow-black/20 transition-transform active:scale-90 animate-in fade-in zoom-in-90',
         className
       )}
       style={{ bottom: 'calc(96px + env(safe-area-inset-bottom))' }}
@@ -48,7 +48,7 @@ export function FABButton({ icon, label, onClick, variant = 'extended', classNam
       onClick={onClick}
       aria-label={label}
       className={cn(
-        'mobile-fab fixed right-4 z-40 flex h-12 items-center gap-1.5 rounded-full bg-primary pl-3.5 pr-4 text-primary-foreground shadow-md shadow-primary/25 transition-transform active:scale-95 animate-in fade-in zoom-in-90',
+        'mobile-fab fixed right-4 z-40 flex h-12 items-center gap-1.5 rounded-full bg-action-primary pl-3.5 pr-4 text-action-primary-foreground shadow-md shadow-black/20 transition-transform active:scale-95 animate-in fade-in zoom-in-90',
         className
       )}
       style={{ bottom: 'calc(96px + env(safe-area-inset-bottom))' }}

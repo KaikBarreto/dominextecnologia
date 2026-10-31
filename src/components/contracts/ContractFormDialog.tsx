@@ -1868,6 +1868,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         .map((t: any) => ({
           id: t.id,
           name: t.name,
+          color: t.color,
+          icon: t.icon,
           questionCount: (t.questions ?? []).length,
           // Perguntas (com frequência) pra expandir o personalizado no picker da
           // máquina e gerir o "Adicionar na 1ª OS?" por pergunta.
@@ -1901,6 +1903,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         .map((t: any) => ({
           id: t.id,
           name: t.name,
+          color: t.color,
+          icon: t.icon,
           questions: ((t.questions ?? []) as any[]).map((q) => ({
             id: q.id,
             question: q.question,
@@ -4601,7 +4605,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           {t.nav.next} <ChevronRight className="h-4 w-4 ml-1" />
         </Button>
       ) : (
-        <Button onClick={handleSubmit} disabled={submitting || !canNext()} className="bg-primary text-primary-foreground hover:bg-primary/90">
+        <Button onClick={handleSubmit} disabled={submitting || !canNext()}>
           {submitting ? (
             <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t.nav.saving}</>
           ) : isEditing ? t.nav.saveChanges : `${t.nav.createContract} (${visitCount} ${t.nav.oss})`}

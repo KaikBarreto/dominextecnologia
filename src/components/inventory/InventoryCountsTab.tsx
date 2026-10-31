@@ -201,7 +201,7 @@ export function InventoryCountsTab() {
       <div className="flex items-center justify-between gap-2">
         <div />
         <Button
-          className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
+          className="gap-2"
           onClick={() => setWizardOpen(true)}
         >
           <Plus className="h-4 w-4" />

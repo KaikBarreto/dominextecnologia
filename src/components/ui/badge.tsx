@@ -8,15 +8,15 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary",
-        secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary",
-        destructive: "border-transparent bg-destructive text-white hover:bg-destructive",
-        outline: "text-foreground",
+        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+        secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground",
+        destructive: "border-transparent bg-destructive text-white hover:bg-destructive hover:text-white",
+        outline: "text-foreground hover:text-foreground",
         // Saturated color variants with white text - same color on hover
-        success: "border-transparent bg-success text-white hover:bg-success",
-        warning: "border-transparent bg-warning text-white hover:bg-warning",
-        info: "border-transparent bg-info text-white hover:bg-info",
-        muted: "border-transparent bg-muted-foreground text-white hover:bg-muted-foreground",
+        success: "border-transparent bg-success text-white hover:bg-success hover:text-white",
+        warning: "border-transparent bg-warning text-white hover:bg-warning hover:text-white",
+        info: "border-transparent bg-info text-white hover:bg-info hover:text-white",
+        muted: "border-transparent bg-muted-foreground text-white hover:bg-muted-foreground hover:text-white",
       },
     },
     defaultVariants: {

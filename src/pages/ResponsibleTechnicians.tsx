@@ -217,7 +217,6 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
           actions={
             isMobile ? undefined : (
               <Button
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={openNew}
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -233,7 +232,6 @@ export function ResponsibleTechniciansContent({ embedded = false }: { embedded?:
       {embedded && !isMobile && (
         <div className="flex justify-end">
           <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={openNew}
           >
             <Plus className="mr-2 h-4 w-4" />

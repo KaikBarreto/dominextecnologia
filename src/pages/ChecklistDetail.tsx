@@ -5,7 +5,7 @@ import {
   CheckSquare, Type, Hash, Camera, ListChecks,
   ChevronUp, ChevronDown, BookOpen, Lock, Check,
   Search, ArrowUpDown, ChevronLeft, ChevronRight,
-  Video, Minus, PenLine, ImagePlus, ClipboardCheck,
+  Video, Minus, PenLine, ImagePlus, ClipboardCheck, MoreHorizontal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { buildChecklistQuestionPage, type ChecklistQuestionSort } from '@/lib/checklistQuestionList';
+import { ChecklistAppearancePopover } from '@/components/service-orders/ChecklistAppearance';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 type QuestionDraft = Partial<FormQuestionInsert> & {
   options?: string[];
@@ -491,24 +498,33 @@ export default function ChecklistDetail({
 
   return (
     <div className={cn(embedded ? "space-y-5" : "space-y-6", isMobile && "pb-24")}>
-      {/* Header */}
-      <div className="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-start">
+      {/* Cabeçalho responsivo: identidade e ações nunca disputam a mesma coluna
+          estreita; entre tablet e desktop as ações descem para uma segunda linha. */}
+      <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-3 border-b border-border/60 pb-4 2xl:grid-cols-[auto_minmax(0,1fr)_auto] 2xl:items-start">
         <Button
           variant="ghost"
-          size={embedded ? 'sm' : 'icon'}
+          size={embedded && !isMobile ? 'sm' : 'icon'}
           onClick={leaveEditor}
-          className={cn('self-start', embedded && '-ml-2 gap-2')}
+          className={cn('self-start', embedded && !isMobile && '-ml-2 gap-2')}
+          aria-label="Voltar à prévia"
         >
           <ArrowLeft className="h-5 w-5" />
-          {embedded && <span>Voltar à prévia</span>}
+          {embedded && !isMobile && <span>Voltar à prévia</span>}
         </Button>
-        <div className="flex-1 min-w-0">
-          {isEditingName ? (
-            <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-start gap-3">
+          <ChecklistAppearancePopover
+            name={template.name}
+            color={template.color}
+            icon={template.icon}
+            disabled={updateTemplate.isPending}
+            onChange={(appearance) => updateTemplate.mutate({ id: template.id, ...appearance })}
+          />
+          <div className="min-w-0 flex-1 pt-0.5">
+            {isEditingName ? (
               <Input
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                className="text-xl font-bold h-9"
+                className="h-9 min-w-0 text-lg font-bold sm:text-xl"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -527,16 +543,21 @@ export default function ChecklistDetail({
                   setIsEditingName(false);
                 }}
               />
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 group/name cursor-pointer" onClick={() => { setEditName(template.name); setIsEditingName(true); }}>
-              <h1 className="text-xl sm:text-2xl font-bold truncate">{template.name}</h1>
-              <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover/name:opacity-100 transition-opacity shrink-0" />
-            </div>
-          )}
-          <p className="text-sm text-muted-foreground">{sortedQuestions.length === 1 ? tC.questionsCount.replace('{n}', '1') : tC.questionsCountPlural.replace('{n}', String(sortedQuestions.length))}</p>
+            ) : (
+              <button
+                type="button"
+                className="group/name flex max-w-full items-start gap-2 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => { setEditName(template.name); setIsEditingName(true); }}
+                aria-label={`Editar nome de ${template.name}`}
+              >
+                <h1 className="break-words text-lg font-bold leading-tight sm:text-xl">{template.name}</h1>
+                <Pencil className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-60 transition-opacity group-hover/name:opacity-100" />
+              </button>
+            )}
+            <p className="mt-1 text-sm text-muted-foreground">{sortedQuestions.length === 1 ? tC.questionsCount.replace('{n}', '1') : tC.questionsCountPlural.replace('{n}', String(sortedQuestions.length))}</p>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 self-start sm:justify-end">
+        <div className="col-start-2 flex min-w-0 flex-wrap items-center gap-2 2xl:col-start-auto 2xl:justify-end">
           {!isMobile && (
             <>
               <Button variant="outline" size="sm" onClick={() => setCatalogOpen(true)}>
@@ -556,14 +577,27 @@ export default function ChecklistDetail({
             />
             <Label className="text-sm">{tC.labelActive}</Label>
           </div>
-          <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeleteTemplateOpen(true)}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Mais ações do checklist">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="text-destructive focus:bg-destructive focus:text-white"
+                onSelect={() => setDeleteTemplateOpen(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Desativar checklist
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       {/* Serviços habilitados — discreto, encostado à direita, sem card/borda */}
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-end">
         <Label className="text-sm text-muted-foreground">{tC.detailSectionServices}</Label>
         <ServicesMultiSelect
           services={serviceTypes.filter(t => t.is_active).map(t => ({ id: t.id, name: t.name, color: t.color }))}
@@ -714,19 +748,19 @@ export default function ChecklistDetail({
                   {effectiveTypes.map(type => {
                     const Icon = getQTypeIcon(type);
                     return (
-                      <Badge key={type} variant="outline" className="gap-1 px-1.5 py-0 text-[11px] font-normal text-muted-foreground">
+                      <Badge key={type} variant="outline" className="pointer-events-none gap-1 px-1.5 py-0 text-[11px] font-normal text-muted-foreground hover:text-muted-foreground">
                         <Icon className="h-3 w-3" />
                         {getQTypeLabel(type)}
                       </Badge>
                     );
                   })}
                   {effectiveTypes.length > 1 && (
-                    <Badge variant="outline" className="px-1.5 py-0 text-[11px] font-normal text-muted-foreground">
+                    <Badge variant="outline" className="pointer-events-none px-1.5 py-0 text-[11px] font-normal text-muted-foreground hover:text-muted-foreground">
                       {(question as any).answer_mode === 'combined' ? tC.answerModeCumulative : tC.answerModeExclusive}
                     </Badge>
                   )}
                   {effectiveTypes.includes('photo') && (question as any).require_camera && (
-                    <Badge variant="outline" className="gap-1 px-1.5 py-0 text-[11px] font-normal text-muted-foreground">
+                    <Badge variant="outline" className="pointer-events-none gap-1 px-1.5 py-0 text-[11px] font-normal text-muted-foreground hover:text-muted-foreground">
                       <Camera className="h-3 w-3" />
                       {tC.badgeCamera}
                     </Badge>
@@ -820,7 +854,6 @@ export default function ChecklistDetail({
             <div className="ml-auto flex gap-2">
               <Button variant="outline" onClick={() => { setQuestionModalOpen(false); resetQuestionForm(); }}>{tC.btnCancel}</Button>
               <Button
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={handleSaveQuestion}
                 disabled={!qForm.question?.trim() || selectedAnswerTypes.length === 0 || createQuestion.isPending || updateQuestion.isPending}
               >

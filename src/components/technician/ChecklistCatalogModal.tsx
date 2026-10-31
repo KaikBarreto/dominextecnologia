@@ -498,7 +498,6 @@ export function ChecklistCatalogModal({
               {t.btnBack}
             </Button>
             <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleCreate}
               disabled={!newName.trim() || busy}
             >
@@ -557,7 +556,7 @@ export function ChecklistCatalogModal({
         selectedPmocCount > 0 ? (
           <div className="flex items-center justify-end">
             <Button
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
+              className="w-full sm:w-auto"
               onClick={handleSelectedPmoc}
               disabled={busy}
             >
@@ -686,7 +685,7 @@ export function ChecklistCatalogModal({
                   </div>
                   <Button
                     size="sm"
-                    className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
+                    className="shrink-0"
                     onClick={() =>
                       itemAberto.template
                         ? handleTemplate(itemAberto.template)

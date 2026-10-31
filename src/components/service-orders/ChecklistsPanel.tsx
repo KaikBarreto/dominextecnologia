@@ -32,6 +32,8 @@ import { ListDetailLayout, type ListDetailSortOption } from '@/components/ui/Lis
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import ChecklistDetail from '@/pages/ChecklistDetail';
+import { ChecklistAppearanceFields, ChecklistIcon } from '@/components/service-orders/ChecklistAppearance';
+import { DEFAULT_CHECKLIST_COLOR, DEFAULT_CHECKLIST_ICON } from '@/lib/checklistAppearance';
 
 type TemplateWithServiceIds = { service_type_ids?: string[] };
 type ChecklistTemplate = FormTemplate & { questions?: FormQuestion[] };
@@ -47,6 +49,8 @@ export function ChecklistsPanel() {
   const [createOpen, setCreateOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newColor, setNewColor] = useState(DEFAULT_CHECKLIST_COLOR);
+  const [newIcon, setNewIcon] = useState(DEFAULT_CHECKLIST_ICON);
   const [allServices, setAllServices] = useState(true);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -65,7 +69,7 @@ export function ChecklistsPanel() {
   } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
   const { categories: serviceTypeCategories } = useServiceTypeCategories();
-  const activeTemplates = templates.filter((template) => template.is_active);
+  const activeTemplates = templates.filter((template) => template.is_active && !template.is_pmoc_default);
   const selectedTemplate = useMemo(
     () => activeTemplates.find((template) => template.id === selectedId) as ChecklistTemplate | undefined,
     [activeTemplates, selectedId],
@@ -98,9 +102,7 @@ export function ChecklistsPanel() {
         .filter(Boolean)
         .join(' '),
       leading: (
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
-          <FileText className="h-4 w-4" />
-        </span>
+        <ChecklistIcon color={template.color} icon={template.icon} className="h-9 w-9" iconClassName="h-4 w-4" />
       ),
       trailing: <Badge variant="outline" className="px-1.5 py-0 text-[10px] tabular-nums">{questionsCount}</Badge>,
     };
@@ -155,12 +157,14 @@ export function ChecklistsPanel() {
 
   const handleCreate = () => {
     if (!newName.trim()) return;
-    createTemplate.mutate({ name: newName }, {
+    createTemplate.mutate({ name: newName, color: newColor, icon: newIcon }, {
       onSuccess: (data) => {
         if (!allServices && selectedServiceIds.length > 0 && data) {
           setTemplateServices.mutate({ templateId: data.id, serviceTypeIds: selectedServiceIds });
         }
         setNewName('');
+        setNewColor(DEFAULT_CHECKLIST_COLOR);
+        setNewIcon(DEFAULT_CHECKLIST_ICON);
         setAllServices(true);
         setSelectedServiceIds([]);
         setCreateOpen(false);
@@ -275,7 +279,6 @@ export function ChecklistsPanel() {
               </Button>
               <Button
                 size="sm"
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => setCreateOpen(true)}
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -362,11 +365,7 @@ export function ChecklistsPanel() {
                     key={template.id}
                     onClick={() => selectTemplate(template.id)}
                     actions={itemActions}
-                    leading={
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <FileText className="h-5 w-5" />
-                      </div>
-                    }
+                    leading={<ChecklistIcon color={template.color} icon={template.icon} className="h-10 w-10" />}
                     title={template.name}
                     subtitle={`${questionsLabel} · ${scopeLabel}`}
                   />
@@ -421,7 +420,6 @@ export function ChecklistsPanel() {
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setCreateOpen(false)}>{t.btnCancel}</Button>
             <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleCreate}
               disabled={!newName.trim() || createTemplate.isPending}
             >
@@ -441,6 +439,13 @@ export function ChecklistsPanel() {
               className="mt-1"
             />
           </div>
+
+          <ChecklistAppearanceFields
+            color={newColor}
+            icon={newIcon}
+            onColorChange={setNewColor}
+            onIconChange={setNewIcon}
+          />
 
           <div className="space-y-3">
             <Label>{t.labelServices}</Label>

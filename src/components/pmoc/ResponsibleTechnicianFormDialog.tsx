@@ -292,7 +292,6 @@ export function ResponsibleTechnicianFormDialog({
           <Button
             onClick={handleSubmit}
             disabled={saving || !form.full_name.trim()}
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isEditing ? trt.saveBtn : trt.createBtn}

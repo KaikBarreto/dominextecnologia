@@ -5,6 +5,7 @@ import { hexToRgbTriplet, idealForeground } from '@/lib/colorContrast';
 export interface PillTab {
   value: string;
   label: string;
+  /** Obrigatório por convenção quando `variant="underline"` e `level="screen"`. */
   icon?: ReactNode;
   /** Texto menor à direita do label (ex: saldo/fatura da conta). */
   sublabel?: string;

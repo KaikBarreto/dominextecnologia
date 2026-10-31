@@ -782,7 +782,7 @@ export default function Inventory() {
                 <div className="flex items-center gap-2 shrink-0 ml-auto">
                   {exportDropdown()}
                   <Button
-                    className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
+                    className="gap-2"
                     onClick={openNewItem}
                   >
                     <Plus className="h-4 w-4" />

@@ -36,7 +36,7 @@ interface SpeedDialFABProps {
   mainIcon?: IconType;
   /**
    * Imagem do botão principal (opt-in). Quando setada, o botão renderiza a
-   * IMAGEM preenchendo o círculo (object-cover) em vez do `bg-primary` + ícone.
+   * IMAGEM preenchendo o círculo (object-cover) em vez da ação neutra + ícone.
    * Mantém forma/sombra/aria-label. Ausente → comportamento atual (ícone/accent).
    */
   mainImageUrl?: string;
@@ -217,12 +217,12 @@ export function SpeedDialFAB({
               'relative z-10 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full shadow-lg transition-transform active:scale-90',
               // Modo fundo-custom (veil): sem bg concorrente, o node preenche.
               // Modo imagem: bg-card como fundo de fallback enquanto carrega.
-              // Modo padrão (só ícone): bg-primary com cor de texto e sombra.
+              // Modo padrão (só ícone): ação neutra com cor de texto e sombra.
               hasCustomBg
                 ? 'shadow-black/30'
                 : showImage
                   ? 'bg-card ring-1 ring-black/10 shadow-black/30'
-                  : 'bg-primary text-primary-foreground shadow-primary/30',
+                  : 'bg-action-primary text-action-primary-foreground shadow-black/20',
             )}
           >
             {/* Modo fundo-custom: node de fundo (absolute inset-0) + ícone por cima */}

@@ -40,6 +40,7 @@ import { useFormTemplates, QUESTION_TYPES, type FormQuestionInsert } from '@/hoo
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import type { FormTemplate, FormQuestion } from '@/types/database';
 import { cn } from '@/lib/utils';
+import { ChecklistIcon } from '@/components/service-orders/ChecklistAppearance';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -356,7 +357,7 @@ export function FormTemplateManagerDialog({ children, initialTemplateId, open: c
                 )}
                 onClick={() => setSelectedTemplate(template as FormTemplate & { questions: FormQuestion[] })}
               >
-                <FileText className="h-4 w-4 text-muted-foreground" />
+                <ChecklistIcon color={template.color} icon={template.icon} className="h-8 w-8" iconClassName="h-4 w-4" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{template.name}</p>
                   <p className="text-xs text-muted-foreground">

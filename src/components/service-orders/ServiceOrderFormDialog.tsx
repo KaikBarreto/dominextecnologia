@@ -1891,7 +1891,7 @@ export function ServiceOrderFormDialog({
             {t.btnCancel}
           </Button>
           {isLastStep ? (
-            <Button type="submit" form="os-edit-form" disabled={isLoading || isSubmitting} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button type="submit" form="os-edit-form" disabled={isLoading || isSubmitting}>
               {(isLoading || isSubmitting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t.btnSave}
             </Button>
@@ -2134,7 +2134,7 @@ export function ServiceOrderFormDialog({
           {t.btnCancel}
         </Button>
         {isLastStep ? (
-          <Button type="submit" form="os-create-form" disabled={isLoading || isSubmitting} className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button type="submit" form="os-create-form" disabled={isLoading || isSubmitting}>
             {(isLoading || isSubmitting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {recurrenceEnabled ? t.btnCreateRecurring : t.btnCreate}
           </Button>

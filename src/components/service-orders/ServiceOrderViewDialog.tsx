@@ -38,6 +38,7 @@ import { useServiceOrderBudget, useServiceOrderServiceTypes } from '@/hooks/useS
 import { ServiceOrderBudgetSection } from './ServiceOrderBudgetSection';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { canShareServiceOrder } from '@/lib/serviceOrderAccess';
+import { ChecklistIcon } from '@/components/service-orders/ChecklistAppearance';
 
 interface OSPhoto {
   id: string;
@@ -59,7 +60,7 @@ interface EquipmentItem {
   equipment_id: string | null;
   form_template_id: string | null;
   equipment: { id: string; name: string; brand: string | null; model: string | null } | null;
-  form_template: { id: string; name: string } | null;
+  form_template: { id: string; name: string; color?: string | null; icon?: string | null } | null;
 }
 
 interface ServiceOrderViewDialogProps {
@@ -152,7 +153,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
     try {
       const { data: osData, error: osError } = await supabase
         .from('service_orders')
-        .select(`*, customer:customers(id, name, phone, celular, address, city, state), equipment:equipment(id, name, brand, model, serial_number), form_template:form_templates(id, name), service_type:service_types!service_orders_service_type_id_fkey(id, name, color)`)
+        .select(`*, customer:customers(id, name, phone, celular, address, city, state), equipment:equipment(id, name, brand, model, serial_number), form_template:form_templates(id, name, color, icon), service_type:service_types!service_orders_service_type_id_fkey(id, name, color)`)
         .eq('id', serviceOrderId).single();
       if (osError) throw osError;
       // Use snapshot as fallback when live joins return null (e.g. deleted customer/equipment)
@@ -218,7 +219,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
           equipment_id,
           form_template_id,
           equipment:equipment(id, name, brand, model),
-          form_template:form_templates(id, name)
+          form_template:form_templates(id, name, color, icon)
         `)
         .eq('service_order_id', serviceOrderId);
       const unwrap = (v: any) => Array.isArray(v) ? (v[0] || null) : v;
@@ -625,7 +626,8 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
               <CollapsibleTrigger asChild>
                 <CardHeader className="group py-3 min-h-[44px] cursor-pointer w-full flex-row items-center justify-between gap-2">
                   <CardTitle className="text-sm flex items-center gap-2 text-left">
-                    <ClipboardCheck className="h-4 w-4 shrink-0" /> {tv.checklistFallbackTitle}: {serviceOrder.form_template?.name}
+                    <ChecklistIcon color={serviceOrder.form_template?.color} icon={serviceOrder.form_template?.icon} className="h-7 w-7" iconClassName="h-3.5 w-3.5" />
+                    {tv.checklistFallbackTitle}: {serviceOrder.form_template?.name}
                   </CardTitle>
                   <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
                 </CardHeader>

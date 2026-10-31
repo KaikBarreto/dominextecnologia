@@ -1097,7 +1097,7 @@ export function CustomerDetailContent() {
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
               {t.equipmentHeading}
             </h2>
-            <Button className="hidden lg:flex bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setEditingEquipment(null); setEquipFormOpen(true); }}>
+            <Button className="hidden lg:flex" onClick={() => { setEditingEquipment(null); setEquipFormOpen(true); }}>
               <Plus className="mr-2 h-4 w-4" />
               {t.newEquipment}
             </Button>
@@ -1262,7 +1262,7 @@ export function CustomerDetailContent() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">{t.historyHeading}</h2>
-            <Button className="hidden lg:flex bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setOsFormOpen(true)}>
+            <Button className="hidden lg:flex" onClick={() => setOsFormOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               {t.newOs}
             </Button>
@@ -1322,7 +1322,7 @@ export function CustomerDetailContent() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">{t.tasksHeading}</h2>
-            <Button className="hidden lg:flex bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setTaskFormOpen(true)}>
+            <Button className="hidden lg:flex" onClick={() => setTaskFormOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               {t.newTask}
             </Button>
@@ -1461,7 +1461,7 @@ export function CustomerDetailContent() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">{t.contractsHeading}</h2>
-            <Button className="hidden lg:flex bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setContractFormOpen(true)}>
+            <Button className="hidden lg:flex" onClick={() => setContractFormOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               {t.newContract}
             </Button>

@@ -725,7 +725,7 @@ export default function ServiceOrders() {
                       <span className="hidden sm:inline">{t.filters.settings}</span>
                     </Button>
                     {canCreateOS && (
-                      <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setEditingOS(null); setFormOpen(true); }}>
+                      <Button onClick={() => { setEditingOS(null); setFormOpen(true); }}>
                         <Plus className="mr-2 h-4 w-4" />
                         {t.actions.newOs}
                       </Button>

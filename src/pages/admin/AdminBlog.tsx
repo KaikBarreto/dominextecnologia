@@ -81,8 +81,12 @@ export default function AdminBlog() {
 
       <Tabs defaultValue="artigos">
         <TabsList variant="underline">
-          <TabsTrigger variant="underline" level="screen" value="artigos">Artigos</TabsTrigger>
-          <TabsTrigger variant="underline" level="screen" value="comentarios">{commentsLabel}</TabsTrigger>
+          <TabsTrigger variant="underline" level="screen" value="artigos" className="gap-1.5">
+            <FileText className="h-4 w-4" /> Artigos
+          </TabsTrigger>
+          <TabsTrigger variant="underline" level="screen" value="comentarios" className="gap-1.5">
+            <MessageCircle className="h-4 w-4" /> {commentsLabel}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="artigos" className="mt-4">

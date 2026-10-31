@@ -8,6 +8,8 @@ import { getErrorMessage } from '@/utils/errorMessages';
 export interface FormTemplateInsert {
   name: string;
   description?: string;
+  color?: string;
+  icon?: string;
   is_active?: boolean;
 }
 

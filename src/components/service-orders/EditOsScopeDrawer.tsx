@@ -20,13 +20,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { cn, fuzzyIncludes } from '@/lib/utils';
+import { ChecklistIcon } from '@/components/service-orders/ChecklistAppearance';
 
 /** Item de escopo que já veio na OS (leitura da junção service_order_equipment). */
 export interface EditOsScopeSeedItem {
   equipment_id: string | null;
   form_template_id: string | null;
   equipment: { id: string; name: string } | null;
-  form_template: { id: string; name: string } | null;
+  form_template: { id: string; name: string; color?: string | null; icon?: string | null } | null;
 }
 
 /** IDs de escopo (equip×template) que TÊM resposta preenchida — pra confirmar perda. */
@@ -104,6 +105,10 @@ export function EditOsScopeDrawer({
   useEffect(() => { setPickerSearch(''); }, [pickerFor]);
   const templateName = (id: string) =>
     (templates ?? []).find((tpl: any) => tpl.id === id)?.name ?? id;
+  const templateAppearance = (id: string) => {
+    const template = (templates ?? []).find((tpl: any) => tpl.id === id);
+    return { color: template?.color, icon: template?.icon };
+  };
 
   // Hidrata o estado a partir do escopo atual sempre que o drawer abre.
   useEffect(() => {
@@ -349,6 +354,7 @@ export function EditOsScopeDrawer({
                         <ChecklistRow
                           key={tid}
                           name={templateName(tid)}
+                          {...templateAppearance(tid)}
                           index={ti}
                           count={g.templateIds.length}
                           onUp={() => moveTemplate(g.key, ti, -1)}
@@ -390,6 +396,7 @@ export function EditOsScopeDrawer({
                   <ChecklistRow
                     key={tid}
                     name={templateName(tid)}
+                    {...templateAppearance(tid)}
                     index={ti}
                     count={standaloneTemplateIds.length}
                     onUp={() => moveStandalone(ti, -1)}
@@ -477,6 +484,7 @@ export function EditOsScopeDrawer({
                             else if (pickerFor) toggleEquipmentTemplate(pickerFor, tpl.id);
                           }}
                         />
+                        <ChecklistIcon color={tpl.color} icon={tpl.icon} className="h-8 w-8" iconClassName="h-4 w-4" />
                         <span className="min-w-0 flex-1 truncate text-sm">{tpl.name}</span>
                       </label>
                     );
@@ -525,9 +533,11 @@ export function EditOsScopeDrawer({
 
 /** Linha de um checklist dentro de um grupo — nome + reordenar + remover. */
 function ChecklistRow({
-  name, index, count, onUp, onDown, onRemove,
+  name, color, icon, index, count, onUp, onDown, onRemove,
 }: {
   name: string;
+  color?: string | null;
+  icon?: string | null;
   index: number;
   count: number;
   onUp: () => void;
@@ -536,7 +546,7 @@ function ChecklistRow({
 }) {
   return (
     <div className="flex items-center gap-2 rounded-md bg-muted/40 pl-2.5 pr-1 py-1">
-      <ClipboardList className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <ChecklistIcon color={color} icon={icon} className="h-7 w-7" iconClassName="h-3.5 w-3.5" />
       <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
       <Button
         type="button" variant="ghost" size="icon" className="h-7 w-7"

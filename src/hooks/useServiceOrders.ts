@@ -203,7 +203,7 @@ export function useServiceOrders() {
             *,
             customer:customers(id, name, phone, celular, email, document, address, address_number, complement, neighborhood, city, state, zip_code, company_name, customer_type),
             equipment:equipment(id, name, brand, model),
-            form_template:form_templates(id, name),
+            form_template:form_templates(id, name, color, icon),
             service_type:service_types!service_orders_service_type_id_fkey(id, name, color, number_prefix),
             contract:contracts(id, name, is_pmoc)
           `)
@@ -571,7 +571,7 @@ export function useServiceOrders() {
               *,
               customer:customers(id, name, phone, celular, email, document, address, address_number, complement, neighborhood, city, state, zip_code, company_name, customer_type),
               equipment:equipment(id, name, brand, model, serial_number, location, capacity),
-              form_template:form_templates(id, name),
+              form_template:form_templates(id, name, color, icon),
               service_type:service_types!service_orders_service_type_id_fkey(id, name, color, number_prefix)
             `)
             .eq('id', id)

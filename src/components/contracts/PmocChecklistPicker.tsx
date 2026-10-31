@@ -23,6 +23,7 @@ import { frequencyLabel, isEveryVisit, type QuestionFrequency } from '@/componen
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { ChecklistIcon } from '@/components/service-orders/ChecklistAppearance';
 import {
   groupActivitiesByType,
   isEssentialFor,
@@ -60,6 +61,8 @@ export interface CustomChecklistQuestion extends QuestionFrequency {
 export interface CustomChecklistOption {
   id: string;
   name: string;
+  color?: string | null;
+  icon?: string | null;
   questionCount?: number;
   questions?: CustomChecklistQuestion[];
 }
@@ -585,6 +588,7 @@ function CustomTemplateRow({
           onClick={() => (expandable ? setOpen((o) => !o) : onToggle())}
           aria-expanded={expandable ? open : undefined}
         >
+          <ChecklistIcon color={tpl.color} icon={tpl.icon} className="h-8 w-8" iconClassName="h-4 w-4" />
           <div className="flex-1 min-w-0">
             <p className="text-sm text-foreground">{tpl.name}</p>
             <p className="text-xs text-muted-foreground">

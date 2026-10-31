@@ -45,8 +45,8 @@ describe('MobilePillTabs underline', () => {
         variant="underline"
         level="screen"
         tabs={[
-          { value: 'orcamentos', label: 'Orçamentos' },
-          { value: 'custos', label: 'Custos dos Serviços' },
+          { value: 'orcamentos', label: 'Orçamentos', icon: <span data-testid="icon-orcamentos" /> },
+          { value: 'custos', label: 'Custos dos Serviços', icon: <span data-testid="icon-custos" /> },
         ]}
         activeTab="orcamentos"
         onTabChange={() => undefined}
@@ -55,5 +55,7 @@ describe('MobilePillTabs underline', () => {
 
     expect(screen.getByRole('tab', { name: 'Orçamentos' })).toHaveClass('font-bold');
     expect(screen.getByRole('tab', { name: 'Custos dos Serviços' })).not.toHaveClass('font-bold');
+    expect(screen.getByTestId('icon-orcamentos')).toBeInTheDocument();
+    expect(screen.getByTestId('icon-custos')).toBeInTheDocument();
   });
 });

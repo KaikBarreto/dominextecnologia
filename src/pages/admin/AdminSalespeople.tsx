@@ -384,17 +384,19 @@ export default function AdminSalespeople() {
               variant="underline"
               level="screen"
               tabs={[
-                { value: 'vendedores', label: 'Vendedores' },
-                { value: 'activity', label: 'Atividade Comercial' },
+                { value: 'vendedores', label: 'Vendedores', icon: <Users className="h-4 w-4 shrink-0" /> },
+                { value: 'activity', label: 'Atividade Comercial', icon: <BarChart3 className="h-4 w-4 shrink-0" /> },
               ]}
               activeTab={activeTab}
               onTabChange={setActiveTab}
             />
           ) : (
             <TabsList variant="underline" className="grid w-full max-w-[420px] grid-cols-2">
-              <TabsTrigger variant="underline" value="vendedores">Vendedores</TabsTrigger>
-              <TabsTrigger variant="underline" value="activity">
-                <BarChart3 className="mr-1.5 h-3.5 w-3.5" /> Atividade Comercial
+              <TabsTrigger variant="underline" level="screen" value="vendedores" className="gap-1.5">
+                <Users className="h-4 w-4" /> Vendedores
+              </TabsTrigger>
+              <TabsTrigger variant="underline" level="screen" value="activity" className="gap-1.5">
+                <BarChart3 className="h-4 w-4" /> Atividade Comercial
               </TabsTrigger>
             </TabsList>
           )}

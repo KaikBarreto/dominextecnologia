@@ -66,7 +66,7 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
                 {t.leadFormsFull}
               </Button>}
               {activeTab === 'clientes' && canCreateCustomer && (
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setNovoOpen(true)}>
+                <Button onClick={() => setNovoOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
                   {t.newCustomer}
                 </Button>

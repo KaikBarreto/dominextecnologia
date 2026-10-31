@@ -6630,11 +6630,13 @@ export type Database = {
       }
       form_templates: {
         Row: {
+          color: string
           company_id: string
           created_at: string
           created_by: string | null
           description: string | null
           id: string
+          icon: string
           is_active: boolean
           is_pmoc_default: boolean
           name: string
@@ -6644,11 +6646,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          color?: string
           company_id: string
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
+          icon?: string
           is_active?: boolean
           is_pmoc_default?: boolean
           name: string
@@ -6658,11 +6662,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          color?: string
           company_id?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
+          icon?: string
           is_active?: boolean
           is_pmoc_default?: boolean
           name?: string

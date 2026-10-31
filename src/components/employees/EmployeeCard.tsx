@@ -181,7 +181,7 @@ export function EmployeeCard({ employee, balance, onEdit, onArchive, onArchiveWi
 
         <Button
           size="sm"
-          className="h-8 w-full gap-1.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+          className="h-8 w-full gap-1.5 text-xs"
           onClick={onExtract}
         >
           <FileText className="h-3.5 w-3.5" /> {t.card.viewExtract}

@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.10',
+    date: '31 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Identidade visual para checklists',
+        description: 'Cada checklist agora pode ter uma cor e um ícone próprios. Essa identificação acompanha a gestão, os contratos, as ordens de serviço e a execução em campo para facilitar o reconhecimento.',
+        category: 'recurso',
+      },
+      {
+        title: 'Gestão de checklists mais organizada e responsiva',
+        description: 'A lista, a prévia e o editor foram reorganizados para evitar ações duplicadas, cortes e quebras em telas intermediárias ou celulares. Perguntas e indicadores também mantêm contraste adequado ao passar o mouse.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Ações e abas com padrão visual consistente',
+        description: 'As ações principais do sistema usam fundo preto e texto branco, sem herdar a cor da empresa. As abas principais com linha inferior agora exibem ícones para facilitar a navegação.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.9',
     date: '31 de outubro de 2026',
     type: 'patch',

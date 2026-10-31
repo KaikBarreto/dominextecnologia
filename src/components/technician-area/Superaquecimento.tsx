@@ -293,7 +293,7 @@ function AvisoUnidade({ pressaoBruta, unidade, sugestao, onTrocarUnidade }: Avis
       <button
         type="button"
         onClick={() => onTrocarUnidade(sugestao.unidadeSugerida)}
-        className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-opacity active:opacity-80"
+        className="w-full rounded-lg bg-action-primary px-4 py-3 text-sm font-semibold text-action-primary-foreground transition-opacity active:opacity-80"
       >
         {t.switchUnit.replace('{unit}', sugestao.unidadeSugerida)}
       </button>

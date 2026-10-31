@@ -771,7 +771,7 @@ export function ProposalConfigDialog({ open, onOpenChange }: ProposalConfigDialo
           {tp.next} <ChevronRight className="h-4 w-4 ml-1" />
         </Button>
       ) : (
-        <Button onClick={handleSave} disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary/90">
+        <Button onClick={handleSave} disabled={saving}>
           {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {tp.saving}</> : <><Save className="h-4 w-4 mr-2" /> {tp.save}</>}
         </Button>
       )}

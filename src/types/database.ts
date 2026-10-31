@@ -215,6 +215,9 @@ export interface FormTemplate {
   id: string;
   name: string;
   description?: string;
+  /** Identidade visual canônica do checklist, compartilhada entre gestão e OS. */
+  color?: string;
+  icon?: string;
   is_active: boolean;
   service_type_id?: string;
   service_type_ids?: string[];

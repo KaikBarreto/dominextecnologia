@@ -116,7 +116,6 @@ export default function ChecklistsPage() {
                 {t.btnCatalogFull}
               </Button>
               <Button
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => setCreateOpen(true)}
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -374,7 +373,6 @@ export default function ChecklistsPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setCreateOpen(false)}>{t.btnCancel}</Button>
             <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleCreate}
               disabled={!newName.trim() || createTemplate.isPending}
             >

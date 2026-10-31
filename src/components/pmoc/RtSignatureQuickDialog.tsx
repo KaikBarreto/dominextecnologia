@@ -184,7 +184,6 @@ export function RtSignatureQuickDialog({
           <Button
             onClick={handleSubmit}
             disabled={saving || !file}
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {trt.sigSaveBtn}

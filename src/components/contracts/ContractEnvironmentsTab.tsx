@@ -228,6 +228,8 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
         .map((t: any) => ({
           id: t.id,
           name: t.name,
+          color: t.color,
+          icon: t.icon,
           questionCount: (t.questions ?? []).length,
           // Perguntas (com frequência) pra expandir o personalizado no picker da
           // máquina e gerir o "Adicionar na 1ª OS?" por pergunta.
@@ -500,6 +502,8 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
         .map((t: any) => ({
           id: t.id,
           name: t.name,
+          color: t.color,
+          icon: t.icon,
           questions: ((t.questions ?? []) as any[]).map((q) => ({
             id: q.id,
             question: q.question,

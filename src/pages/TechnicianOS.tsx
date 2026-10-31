@@ -113,6 +113,7 @@ import { OsConsumeStockDialog } from '@/components/service-orders/OsConsumeStock
 import { OsConsumptionSummaryDialog } from '@/components/service-orders/OsConsumptionSummaryDialog';
 import { useOsMaterials, useOsStockConsumptionEnabled, type CommitLineInput } from '@/hooks/useOsMaterials';
 import { useOsFinishRevenuePrompt } from '@/hooks/useOsFinishRevenuePrompt';
+import { ChecklistIcon } from '@/components/service-orders/ChecklistAppearance';
 import { OsFinishRevenueDialog } from '@/components/financial/OsFinishRevenueDialog';
 import {
   useServiceOrderEquipmentServiceTypes,
@@ -142,6 +143,8 @@ interface EquipmentItem {
   form_template: {
     id: string;
     name: string;
+    color?: string | null;
+    icon?: string | null;
     service_type_links?: Array<{
       service_type_id: string;
       service_type: { id: string; name: string; color: string | null } | null;
@@ -297,7 +300,14 @@ function OsEquipmentAccordionItem({
           // Checklist sem equipamento real (geral da OS): em vez do quadrado de foto,
           // um ícone discreto de checklist; o TÍTULO já é o NOME do checklist.
           // Equipamento real mantém foto (ou fallback Wrench).
-          leadingIcon={!equipment ? <ClipboardCheck className="h-5 w-5 text-primary" /> : undefined}
+          leadingIcon={!equipment ? (
+            <ChecklistIcon
+              color={checklists[0]?.item.form_template?.color}
+              icon={checklists[0]?.item.form_template?.icon}
+              className="h-9 w-9"
+              iconClassName="h-4 w-4"
+            />
+          ) : undefined}
           photo={equipment?.photo_url ?? null}
           name={headerName}
           category={equipment?.category ?? null}
@@ -373,7 +383,7 @@ function OsEquipmentAccordionItem({
                     onClick={() => toggleChecklist(itemKey)}
                     className="flex w-full items-center gap-2 p-2.5 text-left transition-colors hover:bg-muted/40"
                   >
-                    <ClipboardCheck className="h-4 w-4 text-primary shrink-0" />
+                    <ChecklistIcon color={item.form_template?.color} icon={item.form_template?.icon} className="h-8 w-8" iconClassName="h-4 w-4" />
                     <div className="flex-1 min-w-0 space-y-1">
                       <p className="text-sm font-semibold text-foreground break-words">
                         {item.form_template?.name || 'Checklist'}
@@ -1087,6 +1097,8 @@ function TechnicianOSInner() {
           form_template:form_templates(
             id,
             name,
+            color,
+            icon,
             service_type_links:form_template_service_types(
               service_type_id,
               service_type:service_types(id, name, color)
@@ -1384,7 +1396,7 @@ function TechnicianOSInner() {
           public_short_code,
           customer:customers(id, name, phone, celular, address, city, state, document, photo_url, latitude, longitude),
           equipment:equipment(id, name, brand, model, serial_number, location, capacity),
-          form_template:form_templates(id, name),
+          form_template:form_templates(id, name, color, icon),
           service_type:service_types!service_orders_service_type_id_fkey(id, name, color),
           contract:contracts(id, name, start_date, frequency_type, frequency_value, horizon_months)
         `);
@@ -3113,7 +3125,14 @@ function TechnicianOSInner() {
                                 // Sem equipamento real (checklist geral): ícone de
                                 // checklist no lugar da foto; título já é o NOME do
                                 // checklist (form_template.name).
-                                leadingIcon={!group.equipment?.equipment ? <ClipboardCheck className="h-5 w-5 text-primary" /> : undefined}
+                                leadingIcon={!group.equipment?.equipment ? (
+                                  <ChecklistIcon
+                                    color={group.equipment?.form_template?.color}
+                                    icon={group.equipment?.form_template?.icon}
+                                    className="h-9 w-9"
+                                    iconClassName="h-4 w-4"
+                                  />
+                                ) : undefined}
                                 photo={group.equipment?.equipment?.photo_url ?? null}
                                 name={group.equipment?.equipment?.name || group.equipment?.form_template?.name || 'Checklist'}
                                 category={eqCategory ? { name: eqCategory.name, color: eqCategory.color } : null}

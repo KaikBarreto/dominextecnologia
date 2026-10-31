@@ -51,7 +51,7 @@ export function EquipmentPageChrome() {
                 {tEq.configureFields}
               </Button>
               {canManageEquipment && (
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setNovoOpen(true)}>
+                <Button onClick={() => setNovoOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
                   {tEq.newEquipment}
                 </Button>

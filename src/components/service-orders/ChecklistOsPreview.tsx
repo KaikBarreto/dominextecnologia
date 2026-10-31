@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { QUESTION_TYPES } from '@/hooks/useFormTemplates';
 import type { ServiceType } from '@/hooks/useServiceTypes';
 import type { FormQuestion, FormTemplate } from '@/types/database';
+import { ChecklistIcon } from '@/components/service-orders/ChecklistAppearance';
 
 type ChecklistTemplate = FormTemplate & { questions?: FormQuestion[] };
 
@@ -101,25 +102,28 @@ export function ChecklistOsPreview({
         </Button>
       )}
 
-      <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Prévia na ordem de serviço</p>
-          <h3 className="mt-1 text-xl font-semibold text-foreground">{template.name}</h3>
-          {template.description && <p className="mt-1 text-sm text-muted-foreground">{template.description}</p>}
+      <div className="flex flex-col gap-4 border-b pb-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <ChecklistIcon color={template.color} icon={template.icon} className="h-11 w-11" />
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Prévia na ordem de serviço</p>
+            <h3 className="mt-1 break-words text-xl font-semibold leading-tight text-foreground">{template.name}</h3>
+            {template.description && <p className="mt-1 text-sm text-muted-foreground">{template.description}</p>}
+          </div>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap 2xl:shrink-0 2xl:justify-end">
           {/* A lista abaixo é um resumo das perguntas; o "Ver" abre a prévia
               com o MESMO visual que o técnico vê preenchendo a OS. */}
+          {onAddQuestion && (
+            <Button size="sm" className="col-span-2 sm:col-auto" onClick={onAddQuestion}>
+              <Plus className="mr-2 h-4 w-4" />
+              Adicionar pergunta
+            </Button>
+          )}
           {onVerNaOs && (
             <Button variant="outline" size="sm" onClick={onVerNaOs}>
               <Eye className="mr-2 h-4 w-4" />
-              Ver
-            </Button>
-          )}
-          {onAddQuestion && (
-            <Button size="sm" onClick={onAddQuestion}>
-              <Plus className="mr-2 h-4 w-4" />
-              Adicionar pergunta
+              Ver na OS
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={onEdit}>
@@ -162,9 +166,9 @@ export function ChecklistOsPreview({
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {getQuestionTypes(question).map((type) => (
-                        <Badge key={type} variant="outline" className="font-normal">{getQuestionTypeLabel(type)}</Badge>
+                        <Badge key={type} variant="outline" className="pointer-events-none font-normal">{getQuestionTypeLabel(type)}</Badge>
                       ))}
-                      <Badge variant={question.is_required ? 'secondary' : 'outline'} className="font-normal">
+                      <Badge variant={question.is_required ? 'secondary' : 'outline'} className="pointer-events-none font-normal">
                         {question.is_required ? 'Obrigatória' : 'Opcional'}
                       </Badge>
                     </div>

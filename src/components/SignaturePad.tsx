@@ -307,7 +307,7 @@ export function SignaturePad({ value, onChange, label, disabled }: SignaturePadP
                     }
                   }}
                   disabled={disabled}
-                  className="min-h-11 min-w-0 flex-1 gap-1.5 whitespace-nowrap px-2.5 !text-xs sm:!text-sm bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="min-h-11 min-w-0 flex-1 gap-1.5 whitespace-nowrap px-2.5 !text-xs sm:!text-sm"
                 >
                   <Check className="h-4 w-4 shrink-0" />
                   Confirmar
@@ -927,7 +927,7 @@ function SignatureFullscreen({ value, onDraftChange, onConfirm, onCancel }: Full
           <Button
             type="button"
             onClick={confirm}
-            className="h-12 flex-[1.6] bg-primary text-primary-foreground hover:bg-primary/90"
+            className="h-12 flex-[1.6]"
           >
             <Check className="mr-1.5 h-4 w-4" /> Confirmar
           </Button>

@@ -97,7 +97,7 @@ export function SuppliersTab() {
         >
           {labelFilter}
           <Button
-            className="h-10 w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+            className="h-10 w-full gap-2"
             onClick={openNew}
           >
             <Plus className="h-4 w-4" />
@@ -194,7 +194,7 @@ export function SuppliersTab() {
           {/* "Novo Fornecedor" no topo da coluna de detalhe: numa linha própria
               acima do layout, empurrava o painel da lista pra baixo. */}
           <div className="mb-4 flex justify-end">
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openNew}>
+            <Button onClick={openNew}>
               <Plus className="mr-2 h-4 w-4" />
               {t.newSupplier}
             </Button>

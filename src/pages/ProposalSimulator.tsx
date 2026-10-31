@@ -13,10 +13,12 @@ import {
   Moon,
   Plus,
   FileDown,
+  FileText,
   Loader2,
   Sparkles,
   Trash2,
   Sun,
+  TableProperties,
   X,
   Zap,
 } from 'lucide-react';
@@ -834,9 +836,15 @@ export default function ProposalSimulator() {
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
           <TabsList variant="underline" className="mb-6 w-full print:hidden">
-            <TabsTrigger variant="underline" value="proposal">Proposta</TabsTrigger>
-            <TabsTrigger variant="underline" value="structure">Organograma</TabsTrigger>
-            <TabsTrigger variant="underline" value="pricing">Tabela</TabsTrigger>
+            <TabsTrigger variant="underline" level="screen" value="proposal" className="gap-1.5">
+              <FileText className="h-4 w-4" /> Proposta
+            </TabsTrigger>
+            <TabsTrigger variant="underline" level="screen" value="structure" className="gap-1.5">
+              <Network className="h-4 w-4" /> Organograma
+            </TabsTrigger>
+            <TabsTrigger variant="underline" level="screen" value="pricing" className="gap-1.5">
+              <TableProperties className="h-4 w-4" /> Tabela
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="proposal" className="mt-0">

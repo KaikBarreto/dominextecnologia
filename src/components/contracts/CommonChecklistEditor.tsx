@@ -31,6 +31,7 @@ import { frequencyLabel, isEveryVisit, type QuestionFrequency } from '@/componen
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { ChecklistIcon } from '@/components/service-orders/ChecklistAppearance';
 
 // Forma mínima de uma pergunta do checklist usada aqui (subset de form_questions).
 export interface ChecklistQuestion extends QuestionFrequency {
@@ -43,6 +44,8 @@ export interface ChecklistQuestion extends QuestionFrequency {
 export interface ChecklistTemplateOption {
   id: string;
   name: string;
+  color?: string | null;
+  icon?: string | null;
   questions: ChecklistQuestion[];
 }
 
@@ -253,7 +256,10 @@ export function CommonChecklistEditor({
             <SelectContent>
               {availableTemplates.map((t) => (
                 <SelectItem key={t.id} value={t.id} className="text-xs">
-                  {t.name} ({t.questions.length})
+                  <span className="flex items-center gap-2">
+                    <ChecklistIcon color={t.color} icon={t.icon} className="h-6 w-6" iconClassName="h-3.5 w-3.5" />
+                    <span>{t.name} ({t.questions.length})</span>
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -352,7 +358,7 @@ function ChecklistBlock({
         aria-expanded={open}
         className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-muted/40"
       >
-        <ListChecks className="h-3.5 w-3.5 shrink-0 text-info" />
+        <ChecklistIcon color={template.color} icon={template.icon} className="h-7 w-7" iconClassName="h-3.5 w-3.5" />
         <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
           {tEditor.blockTitle} {template.name}
         </span>

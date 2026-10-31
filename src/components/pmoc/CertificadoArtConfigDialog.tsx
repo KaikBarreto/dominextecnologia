@@ -770,7 +770,7 @@ export function CertificadoArtConfigDialog({
           {t.next} <ChevronRight className="h-4 w-4 ml-1" />
         </Button>
       ) : (
-        <Button onClick={handleSave} disabled={isSaving} className="bg-primary text-primary-foreground hover:bg-primary/90">
+        <Button onClick={handleSave} disabled={isSaving}>
           {isSaving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t.saving}</> : <><Save className="h-4 w-4 mr-2" /> {t.save}</>}
         </Button>
       )}

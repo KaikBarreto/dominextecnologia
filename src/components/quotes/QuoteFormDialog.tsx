@@ -1614,7 +1614,6 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
             <Button
               onClick={handleSubmit}
               disabled={!canNext() || mutating || savingDraft}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {mutating
                 ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {tq.saving}</>

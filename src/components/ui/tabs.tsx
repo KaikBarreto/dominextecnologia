@@ -9,7 +9,7 @@ export type TabsVisualVariant = "segmented" | "underline";
 
 /**
  * Hierarquia da navegação (só muda o `underline`):
- * - `screen`: abas da TELA — maiores e em negrito.
+ * - `screen`: abas da TELA — maiores, em negrito e sempre com ícone semântico.
  * - `section` (padrão): subabas e abas de ficha/modal — mais leves.
  */
 export type TabsLevel = "screen" | "section";

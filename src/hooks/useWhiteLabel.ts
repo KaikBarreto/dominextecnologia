@@ -17,9 +17,9 @@ const WHITE_LABEL_VARS = [
   // redeclaram `--nav-neon: var(--wl-nav-neon, <verde>)` no próprio elemento —
   // setar `--nav-neon` só no :root seria sobrescrito por essa redeclaração.
   '--wl-nav-neon',
-  // Texto do botão/badge "default" (--primary-foreground) — derivado da cor
-  // do TENANT via `resolvePrimaryContrast`. Sem isso, marca clara (ex.:
-  // amarelo/laranja) herdaria o branco fixo do :root e ficaria ilegível.
+  // Texto de superfícies de marca (--primary-foreground) — derivado da cor
+  // do TENANT via `resolvePrimaryContrast`. Botões operacionais usam o par
+  // --action-primary no app e não são afetados pelo white-label.
   '--primary-foreground',
 ] as const;
 
@@ -81,7 +81,7 @@ function buildBrandGradient(hsl: string) {
 }
 
 // ── Contraste do PAR primary/primary-foreground ─────────────────────────────
-// Botão/badge "default" usa fundo --primary + texto --primary-foreground.
+// Superfícies de marca usam fundo --primary + texto --primary-foreground.
 // Verde default (#00C597) e várias cores de white-label medem <4.5:1 (WCAG AA)
 // contra texto branco — mas o MESMO fundo mede ótimo contraste contra um
 // texto escuro neutro. Decisão (CEO, pós-QA visual v1.24.0): a marca (matiz/

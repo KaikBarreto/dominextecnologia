@@ -398,8 +398,8 @@ export default function Users() {
             variant="underline"
             level="screen"
             tabs={[
-              { value: 'users', label: t.tabs.users },
-              { value: 'presets', label: t.tabs.presets },
+              { value: 'users', label: t.tabs.users, icon: <UsersIcon className="h-4 w-4 shrink-0" /> },
+              { value: 'presets', label: t.tabs.presets, icon: <Settings2 className="h-4 w-4 shrink-0" /> },
             ]}
             activeTab={activeTab}
             onTabChange={(v) => setActiveTab(v as 'users' | 'presets')}
