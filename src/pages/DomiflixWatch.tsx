@@ -150,12 +150,20 @@ export default function DomiflixWatchPage() {
   const currentTrackIndex = currentTrackLesson
     ? learningStatus?.track.findIndex((item) => item.episodeId === currentTrackLesson.episodeId) ?? -1
     : -1;
-  const nextTrackLesson = currentTrackIndex >= 0 ? learningStatus?.track[currentTrackIndex + 1] : undefined;
+  const rawNextTrackLesson = currentTrackIndex >= 0 ? learningStatus?.track[currentTrackIndex + 1] : undefined;
+  const currentLessonRequired = currentTrackLesson
+    ? currentTrackLesson.requiredForUser ?? (currentTrackLesson.group === "core" || currentTrackLesson.includedInPlan)
+    : false;
+  const nextRequiredTrackLesson = currentTrackIndex >= 0
+    ? learningStatus?.track.slice(currentTrackIndex + 1).find(
+        (lesson) => lesson.requiredForUser ?? (lesson.group === "core" || lesson.includedInPlan),
+      )
+    : undefined;
+  const nextTrackLesson = currentLessonRequired ? nextRequiredTrackLesson : rawNextTrackLesson;
   const crossesIntoOptionalModule = Boolean(
     currentTrackLesson &&
-      (currentTrackLesson.group === "core" || currentTrackLesson.includedInPlan) &&
-      nextTrackLesson?.group === "plan" &&
-      !nextTrackLesson.includedInPlan,
+      currentLessonRequired &&
+      !nextRequiredTrackLesson,
   );
   const trackNextEpisode: DomiflixEpisode | undefined = nextTrackLesson && !crossesIntoOptionalModule
     ? {
@@ -479,7 +487,7 @@ export default function DomiflixWatchPage() {
   const startSec = startSeconds ? Math.max(0, parseInt(startSeconds, 10) || 0) : 0;
   const usePortraitVideo = isMobileViewport && Boolean(episode.mobile_video_id);
   const requiredLessons = learningStatus?.track.filter(
-    (item) => item.group === "core" || item.includedInPlan,
+    (item) => item.requiredForUser ?? (item.group === "core" || item.includedInPlan),
   ) ?? [];
   const requiredLessonIndex = currentTrackLesson
     ? requiredLessons.findIndex((item) => item.episodeId === currentTrackLesson.episodeId)
@@ -498,7 +506,7 @@ export default function DomiflixWatchPage() {
     ? `${moduleNumber}.${Math.max(1, moduleLessonIndex + 1)}`
     : String(epNum);
   const titleSubLabel = currentTrackLesson
-    ? currentTrackLesson.group === "core" || currentTrackLesson.includedInPlan
+    ? currentLessonRequired
       ? `Aula ${lessonIndexLabel} · ${requiredLessonIndex + 1} de ${requiredLessons.length} na sua trilha`
       : `Aula ${lessonIndexLabel} · ${moduleLessonIndex + 1} de ${moduleLessons.length} neste módulo`
     : `Aula ${epNum}`;
@@ -506,7 +514,7 @@ export default function DomiflixWatchPage() {
   const contentTransitionError = titleLookup.isError || titleQuery.isError;
   const completedRequiredTrack = Boolean(
     currentTrackLesson &&
-      (currentTrackLesson.group === "core" || currentTrackLesson.includedInPlan) &&
+      currentLessonRequired &&
       (!nextTrackLesson || crossesIntoOptionalModule),
   );
   const selectedVideoId = usePortraitVideo ? episode.mobile_video_id : episode.video_id;
@@ -544,7 +552,7 @@ export default function DomiflixWatchPage() {
         {selectedVideoId ? (
           <NetflixPlayer
           videoId={selectedVideoId}
-          videoType={(selectedVideoType as "youtube" | "drive") ?? "youtube"}
+          videoType={(selectedVideoType as "youtube" | "drive" | "storage") ?? "youtube"}
           orientation={usePortraitVideo ? "portrait" : "landscape"}
           titleName={titleName}
           titleLogoUrl={titleData?.logo_url ?? null}
@@ -658,7 +666,7 @@ export default function DomiflixWatchPage() {
 
 export interface NetflixPlayerProps {
   videoId: string;
-  videoType: "youtube" | "drive";
+  videoType: "youtube" | "drive" | "storage";
   titleName: string;
   titleLogoUrl?: string | null;
   titleSubLabel: string;
@@ -795,6 +803,8 @@ export function NetflixPlayer({
 
   const isYouTube = videoType === "youtube";
   const isDrive = videoType === "drive";
+  const isStorage = videoType === "storage";
+  const isHtml5Video = isDrive || isStorage;
 
   // ── Intro sound effect ──
   // Plays the Domiflix intro before the video starts, while keeping the
@@ -1102,7 +1112,7 @@ export function NetflixPlayer({
 
   // ── Drive HTML5 video init ──
   useEffect(() => {
-    if (!isDrive) return;
+    if (!isHtml5Video) return;
     const v = videoElRef.current;
     if (!v) return;
     const onLoaded = () => {
@@ -1130,7 +1140,7 @@ export function NetflixPlayer({
       v.removeEventListener("pause", onPause);
       v.removeEventListener("ended", onEnd);
     };
-  }, [isDrive, startSeconds]);
+  }, [isHtml5Video, startSeconds]);
 
   // Time tick
   const onProgressRef = useRef(onProgressUpdate);
@@ -1227,20 +1237,24 @@ export function NetflixPlayer({
   }, [currentTime, duration]);
 
   // ── Frame preview (Drive only) ──
-  const driveStreamUrl = isDrive ? getDriveStreamUrl(videoId) : "";
+  const html5StreamUrl = isDrive
+    ? getDriveStreamUrl(videoId)
+    : isStorage
+      ? supabase.storage.from("domiflix-videos").getPublicUrl(videoId).data.publicUrl
+      : "";
 
   useEffect(() => {
-    if (!isDrive) return;
+    if (!isHtml5Video) return;
     const pv = previewVideoRef.current;
     if (!pv) return;
     const onMeta = () => setPreviewReady(true);
     pv.addEventListener("loadedmetadata", onMeta);
     return () => pv.removeEventListener("loadedmetadata", onMeta);
-  }, [isDrive]);
+  }, [isHtml5Video]);
 
   // Debounced preview seek + canvas draw
   useEffect(() => {
-    if (!isDrive || hoverPct === null || !previewReady) return;
+    if (!isHtml5Video || hoverPct === null || !previewReady) return;
     if (previewSeekTimer.current) cancelAnimationFrame(previewSeekTimer.current);
     previewSeekTimer.current = requestAnimationFrame(() => {
       const pv = previewVideoRef.current;
@@ -1260,7 +1274,7 @@ export function NetflixPlayer({
       };
       pv.addEventListener("seeked", drawOnSeeked);
     });
-  }, [hoverPct, isDrive, previewReady]);
+  }, [hoverPct, isHtml5Video, previewReady]);
 
   const playbackProgress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -1377,11 +1391,11 @@ export function NetflixPlayer({
             force a CORS preflight on every range request and slow the
             initial buffering. The hidden preview <video> below keeps
             CORS so it can be drawn into a canvas for thumbnails. */}
-      {isDrive && (
+      {isHtml5Video && (
         <>
           <video
             ref={videoElRef}
-            src={driveStreamUrl}
+            src={html5StreamUrl}
             // object-contain (não cover): mantém aspect ratio real do vídeo
             // sem cropar — letterbox/pillarbox dentro do container 16:9.
             className="absolute inset-0 w-full h-full object-contain"
@@ -1394,7 +1408,7 @@ export function NetflixPlayer({
               on-demand when the user hovers the progress bar. */}
           <video
             ref={previewVideoRef}
-            src={driveStreamUrl}
+            src={html5StreamUrl}
             className="hidden"
             preload="metadata"
             muted
@@ -1690,7 +1704,7 @@ export function NetflixPlayer({
                   className="absolute bottom-full mb-2 -translate-x-1/2 pointer-events-none"
                   style={{ left: `${hoverPct * 100}%` }}
                 >
-                  {isDrive && (
+                  {isHtml5Video && (
                     <div className="bg-black/90 rounded overflow-hidden border border-white/10 mb-1">
                       <canvas
                         ref={previewCanvasRef}

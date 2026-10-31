@@ -66,7 +66,7 @@ export default function Tutoriais() {
   }, [status]);
 
   const firstIncompleteSequence =
-    status?.track.find((lesson) => !lesson.completed && (lesson.group === "core" || lesson.includedInPlan))?.sequence ??
+    status?.track.find((lesson) => !lesson.completed && (lesson.requiredForUser ?? (lesson.group === "core" || lesson.includedInPlan)))?.sequence ??
     Number.POSITIVE_INFINITY;
   const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
   const visibleModules =

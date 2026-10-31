@@ -24,6 +24,7 @@ export interface DomiflixTitle {
   track_group?: "core" | "plan";
   track_order?: number;
   learning_path_id?: string;
+  required_screen_keys?: string[];
 }
 export interface DomiflixSeason {
   id: string;
@@ -43,9 +44,9 @@ export interface DomiflixEpisode {
   title: string;
   description: string | null;
   video_id: string | null;
-  video_type: "drive" | "youtube";
+  video_type: "drive" | "youtube" | "storage";
   mobile_video_id?: string | null;
-  mobile_video_type?: "drive" | "youtube" | null;
+  mobile_video_type?: "drive" | "youtube" | "storage" | null;
   is_active?: boolean;
   duration_minutes: number | null;
   thumbnail_url: string | null;
@@ -79,12 +80,13 @@ export interface DomiflixTrackLesson {
   moduleName: string | null;
   modulePrice: number | null;
   includedInPlan: boolean;
+  requiredForUser?: boolean;
   episodeId: string;
   lessonTitle: string;
   lessonDescription: string | null;
   episodeNumber: number | null;
   durationMinutes: number | null;
-  videoType: "drive" | "youtube";
+  videoType: "drive" | "youtube" | "storage";
   videoId: string;
   completed: boolean;
   progressSeconds: number;
@@ -103,7 +105,7 @@ export function getDomiflixLessonUrl(
 
 export function getDomiflixContinueUrl(status: DomiflixLearningStatus) {
   const next = status.track.find(
-    (lesson) => lesson.episodeId === status.nextLesson?.episodeId || (!lesson.completed && (lesson.group === "core" || lesson.includedInPlan)),
+    (lesson) => lesson.episodeId === status.nextLesson?.episodeId || (!lesson.completed && (lesson.requiredForUser ?? (lesson.group === "core" || lesson.includedInPlan))),
   );
   return next ? getDomiflixLessonUrl(status, next) : `/domiflix?trilha=${encodeURIComponent(status.path.slug)}`;
 }

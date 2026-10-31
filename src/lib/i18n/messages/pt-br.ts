@@ -509,7 +509,7 @@ export const ptBr = {
         },
         {
           q: 'Como funciona o teste grátis?',
-          a: 'São 7 dias com acesso completo ao plano escolhido, sem precisar de cartão de crédito. Você pode cancelar a qualquer momento e seus dados ficam preservados caso decida assinar depois.',
+          a: 'São 7 dias com acesso a todos os módulos, sem precisar de cartão de crédito. A DomiFlix destaca como trilha principal a base do sistema e as funções do plano escolhido; os demais módulos ficam livres para você conhecer antes de decidir.',
         },
         {
           q: 'Os dados das ordens de serviço ficam guardados para sempre?',
@@ -707,7 +707,7 @@ export const ptBr = {
       'Informe imediatamente qualquer acesso não autorizado à sua conta.',
     ],
     s4Title: '4. Período de Teste',
-    s4P: 'Oferecemos um período gratuito de 7 dias com acesso ao plano selecionado. Ao término do período, a conta é suspensa automaticamente caso não haja assinatura ativa. Os dados são mantidos por 90 dias adicionais para eventual reativação.',
+    s4P: 'Oferecemos um período gratuito de 7 dias com acesso aos módulos disponíveis para avaliação. O plano selecionado orienta a trilha principal de onboarding e a futura contratação. Ao término do período, a conta é suspensa automaticamente caso não haja assinatura ativa. Os dados são mantidos por 90 dias adicionais para eventual reativação.',
     s5Title: '5. Propriedade dos Dados',
     s5Pre: 'Os dados inseridos na plataforma (clientes, ordens de serviço, funcionários, financeiro) são de propriedade da empresa-usuária. A Dominex os processa exclusivamente para prestar o serviço contratado, nos termos da ',
     s5Link: 'Política de Privacidade',

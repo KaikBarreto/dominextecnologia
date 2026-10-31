@@ -53,7 +53,7 @@ export function DomiflixTrackPanel({
           <section className="border-b border-white/10 py-4">
             <div className="flex gap-3 px-5 pb-3">
               <div className="h-[72px] w-14 shrink-0 overflow-hidden rounded-sm bg-white/[0.05]">{module.cover ? <img src={module.cover} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center"><BookOpen className="h-4 w-4 text-stone-600" /></div>}</div>
-              <div className="min-w-0 pt-0.5"><DomiflixModuleBadge group={module.group} includedInPlan={module.includedInPlan} /><h2 className="mt-1.5 line-clamp-2 text-sm font-semibold">{module.title}</h2></div>
+              <div className="min-w-0 pt-0.5"><DomiflixModuleBadge group={module.group} includedInPlan={module.includedInPlan} accountStage={status.user.accountStage} /><h2 className="mt-1.5 line-clamp-2 text-sm font-semibold">{module.title}</h2></div>
             </div>
             <ol>
               {module.lessons.map((lesson, index) => {

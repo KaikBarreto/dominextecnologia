@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import {
@@ -86,6 +87,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AdminDomiflixSections } from "@/components/admin/AdminDomiflixSections";
 import { AdminDomiflixLessonExtras } from "@/components/admin/AdminDomiflixLessonExtras";
 import { AdminDomiflixLearningPaths } from "@/components/admin/AdminDomiflixLearningPaths";
+import { SCREEN_PERMISSIONS } from "@/hooks/usePermissions";
 
 // ─── Image Upload Helper ──────────────────────────────────────────────────────
 
@@ -191,6 +193,7 @@ interface TitleFormData {
   track_order: number;
   learning_path_id: string;
   module_code: string;
+  required_screen_keys: string[];
   is_active: boolean;
 }
 
@@ -208,6 +211,7 @@ const EMPTY_TITLE_FORM: TitleFormData = {
   track_order: 0,
   learning_path_id: "",
   module_code: "",
+  required_screen_keys: [],
   is_active: true,
 };
 
@@ -257,6 +261,7 @@ function TitleFormDialog({
           track_order: editing.track_order ?? editing.order_index,
           learning_path_id: editing.learning_path_id ?? "",
           module_code: "",
+          required_screen_keys: editing.required_screen_keys ?? [],
           is_active: editing.is_active ?? true,
         }
       : EMPTY_TITLE_FORM
@@ -294,6 +299,7 @@ function TitleFormDialog({
       track_group: form.track_group,
       track_order: form.track_order,
       learning_path_id: form.learning_path_id || learningPaths[0]?.id,
+      required_screen_keys: form.required_screen_keys,
       is_active: form.is_active,
     };
 
@@ -415,6 +421,32 @@ function TitleFormDialog({
             <Input type="number" min={0} value={form.track_order} onChange={(event) => setForm({ ...form, track_order: Number(event.target.value) || 0 })} />
           </div>
 
+          <div className="col-span-2 space-y-3 border-t pt-4">
+            <div>
+              <Label>Obrigatória para quem usa</Label>
+              <p className="mt-1 text-xs text-muted-foreground">Selecione as telas relacionadas. A aula continua disponível para todos, mas só entra no progresso obrigatório de quem pode acessar ao menos uma delas. Sem seleção, é obrigatória para todos.</p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {SCREEN_PERMISSIONS.map((screen) => {
+                const checked = form.required_screen_keys.includes(screen.key);
+                return (
+                  <label key={screen.key} className="flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={(next) => setForm((current) => ({
+                        ...current,
+                        required_screen_keys: next
+                          ? [...current.required_screen_keys, screen.key]
+                          : current.required_screen_keys.filter((key) => key !== screen.key),
+                      }))}
+                    />
+                    <span>{screen.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
           <ImageUploadField
             label="Logo branca do título (opcional)"
             value={form.logo_url}
@@ -500,9 +532,9 @@ interface EpisodeFormData {
   title: string;
   description: string;
   video_id: string;
-  video_type: "drive" | "youtube";
+  video_type: "drive" | "youtube" | "storage";
   mobile_video_id: string;
-  mobile_video_type: "drive" | "youtube";
+  mobile_video_type: "drive" | "youtube" | "storage";
   thumbnail_url: string;
   recorded_at: string;
   season_id: string;
@@ -645,7 +677,7 @@ function EpisodeFormDialog({
             <Select
               value={form.video_type}
               onValueChange={(v) =>
-                setForm({ ...form, video_type: v as "drive" | "youtube" })
+                setForm({ ...form, video_type: v as "drive" | "youtube" | "storage" })
               }
             >
               <SelectTrigger id="domiflix-video-type">
@@ -654,6 +686,7 @@ function EpisodeFormDialog({
               <SelectContent>
                 <SelectItem value="drive">Google Drive</SelectItem>
                 <SelectItem value="youtube">YouTube</SelectItem>
+                <SelectItem value="storage">Armazenamento DomiFlix</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -670,14 +703,18 @@ function EpisodeFormDialog({
                 const raw = e.target.value;
                 if (form.video_type === "youtube") {
                   setForm({ ...form, video_id: extractYouTubeId(raw) });
-                } else {
+                } else if (form.video_type === "drive") {
                   setForm({ ...form, video_id: extractDriveId(raw) });
+                } else {
+                  setForm({ ...form, video_id: raw });
                 }
               }}
               placeholder={
                 form.video_type === "drive"
                   ? "Cole o link do Drive ou o ID do arquivo"
-                  : "Cole o link do YouTube ou o ID"
+                  : form.video_type === "youtube"
+                    ? "Cole o link do YouTube ou o ID"
+                    : "Caminho do arquivo no bucket domiflix-videos"
               }
             />
             {form.video_type === "drive" && (
@@ -693,7 +730,7 @@ function EpisodeFormDialog({
             )}
             {form.video_id && (
               <Button type="button" variant="outline" size="sm" className="mt-2 min-h-11 gap-2 lg:min-h-9" asChild>
-                <a href={form.video_type === "youtube" ? `https://www.youtube.com/watch?v=${form.video_id}` : `https://drive.google.com/file/d/${form.video_id}/view`} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" />Testar vídeo horizontal</a>
+                <a href={form.video_type === "youtube" ? `https://www.youtube.com/watch?v=${form.video_id}` : form.video_type === "drive" ? `https://drive.google.com/file/d/${form.video_id}/view` : supabase.storage.from("domiflix-videos").getPublicUrl(form.video_id).data.publicUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" />Testar vídeo horizontal</a>
               </Button>
             )}
           </div>
@@ -709,14 +746,14 @@ function EpisodeFormDialog({
           <div className="col-span-2 border-t pt-4"><p className="text-sm font-semibold">Versão para celular (opcional)</p><p className="mt-1 text-xs text-muted-foreground">Use o mesmo conteúdo em vídeo vertical 9:16. No celular ele substitui automaticamente a versão horizontal.</p></div>
           <div className="col-span-2 space-y-1.5 lg:col-span-1">
             <Label htmlFor="domiflix-mobile-video-type">Tipo do vídeo vertical</Label>
-            <Select value={form.mobile_video_type} onValueChange={(v) => setForm({ ...form, mobile_video_type: v as "drive" | "youtube" })}><SelectTrigger id="domiflix-mobile-video-type"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="drive">Google Drive</SelectItem><SelectItem value="youtube">YouTube</SelectItem></SelectContent></Select>
+            <Select value={form.mobile_video_type} onValueChange={(v) => setForm({ ...form, mobile_video_type: v as "drive" | "youtube" | "storage" })}><SelectTrigger id="domiflix-mobile-video-type"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="drive">Google Drive</SelectItem><SelectItem value="youtube">YouTube</SelectItem><SelectItem value="storage">Armazenamento DomiFlix</SelectItem></SelectContent></Select>
           </div>
           <div className="col-span-2 space-y-1.5 lg:col-span-1">
             <Label htmlFor="domiflix-mobile-video-id">ID do vídeo 9:16</Label>
-            <Input id="domiflix-mobile-video-id" value={form.mobile_video_id} onChange={(e) => { const raw = e.target.value; setForm({ ...form, mobile_video_id: form.mobile_video_type === "youtube" ? extractYouTubeId(raw) : extractDriveId(raw) }); }} placeholder="Cole o link ou ID do vídeo vertical" />
+            <Input id="domiflix-mobile-video-id" value={form.mobile_video_id} onChange={(e) => { const raw = e.target.value; setForm({ ...form, mobile_video_id: form.mobile_video_type === "youtube" ? extractYouTubeId(raw) : form.mobile_video_type === "drive" ? extractDriveId(raw) : raw }); }} placeholder="Cole o link, ID ou caminho do vídeo vertical" />
             {form.mobile_video_id && (
               <Button type="button" variant="outline" size="sm" className="mt-2 min-h-11 w-full gap-2 lg:min-h-9" asChild>
-                <a href={form.mobile_video_type === "youtube" ? `https://www.youtube.com/watch?v=${form.mobile_video_id}` : `https://drive.google.com/file/d/${form.mobile_video_id}/view`} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" />Testar vídeo 9:16</a>
+                <a href={form.mobile_video_type === "youtube" ? `https://www.youtube.com/watch?v=${form.mobile_video_id}` : form.mobile_video_type === "drive" ? `https://drive.google.com/file/d/${form.mobile_video_id}/view` : supabase.storage.from("domiflix-videos").getPublicUrl(form.mobile_video_id).data.publicUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" />Testar vídeo 9:16</a>
               </Button>
             )}
           </div>
@@ -894,7 +931,7 @@ function SortableEpisodeRow({
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm line-clamp-1">{episode.title}</p>
         <p className="text-xs text-muted-foreground">
-          {episode.video_type === "youtube" ? "YouTube" : "Drive"}
+          {episode.video_type === "youtube" ? "YouTube" : episode.video_type === "storage" ? "DomiFlix" : "Drive"}
           {episode.duration_minutes ? ` • ${episode.duration_minutes}min` : ""}
           {episode.recorded_at &&
             ` • ${format(new Date(episode.recorded_at), "dd/MM/yyyy", { locale: ptBR })}`}

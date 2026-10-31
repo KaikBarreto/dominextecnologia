@@ -84,11 +84,11 @@ export function ModulesManagementCard({
   onAutoOpenConsumed,
 }: ModulesManagementCardProps = {}) {
   const navigate = useNavigate();
-  const { profile, isAdminOrGestor } = useAuth();
+  const { profile, isAdminOrGestor, hasRole } = useAuth();
   const companyId = profile?.company_id ?? null;
   const { locale } = useAppLocaleContext();
   const tBilling = MESSAGES[locale].app.settings.billing;
-  const canManageSubscription = isAdminOrGestor();
+  const canManageSubscription = isAdminOrGestor() || hasRole('super_admin');
 
   const {
     moduleCodes,
@@ -648,10 +648,16 @@ export function ModulesManagementCard({
           )}
 
           <div className="flex flex-col sm:flex-row gap-2">
-            <Button className="flex-1 h-12 text-base" onClick={() => handleOpenChange(true)}>
-              <Settings className="h-4 w-4 mr-2" />
-              {tBilling.btnManagePlan}
-            </Button>
+            {canManageSubscription ? (
+              <Button className="flex-1 h-12 text-base" onClick={() => handleOpenChange(true)}>
+                <Settings className="h-4 w-4 mr-2" />
+                {tBilling.btnManagePlan}
+              </Button>
+            ) : (
+              <div className="flex min-h-12 flex-1 items-center justify-center rounded-md border border-border px-4 text-center text-sm font-medium text-muted-foreground">
+                Peça ao administrador da empresa para alterar o plano.
+              </div>
+            )}
             {canManageSubscription && (
               <Button
                 variant="destructive-ghost"

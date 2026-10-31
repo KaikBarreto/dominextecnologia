@@ -1,4 +1,4 @@
-import { ArrowRight, Plus } from "lucide-react";
+import { ArrowRight, LockKeyhole, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -7,11 +7,13 @@ export function DomiflixModuleOffer({
   moduleName,
   modulePrice,
   accountStage,
+  canManageSubscription,
 }: {
   moduleCode: string;
   moduleName: string;
   modulePrice: number | null;
   accountStage: "trial" | "paid" | "neutral";
+  canManageSubscription: boolean;
 }) {
   const navigate = useNavigate();
   const formattedPrice = modulePrice == null
@@ -27,13 +29,20 @@ export function DomiflixModuleOffer({
           {formattedPrice && accountStage === "paid" ? ` A partir de ${formattedPrice}/mês, com o valor exato confirmado antes da contratação.` : " Escolha o módulo ao montar sua assinatura."}
         </p>
       </div>
-      <Button
-        onClick={() => navigate(accountStage === "paid" ? `/billing?addModule=${encodeURIComponent(moduleCode)}` : "/billing")}
-        className="mt-4 h-11 shrink-0 rounded-sm bg-red-600 px-4 font-semibold text-white hover:bg-red-500 sm:mt-0"
-      >
-        {accountStage === "paid" ? <Plus className="mr-2 h-4 w-4" /> : <ArrowRight className="mr-2 h-4 w-4" />}
-        {accountStage === "paid" ? "Adicionar ao meu plano" : "Escolher meu plano"}
-      </Button>
+      {canManageSubscription ? (
+        <Button
+          onClick={() => navigate(accountStage === "paid" ? `/billing?addModule=${encodeURIComponent(moduleCode)}` : "/billing")}
+          className="mt-4 h-11 shrink-0 rounded-sm bg-red-600 px-4 font-semibold text-white hover:bg-red-500 sm:mt-0"
+        >
+          {accountStage === "paid" ? <Plus className="mr-2 h-4 w-4" /> : <ArrowRight className="mr-2 h-4 w-4" />}
+          {accountStage === "paid" ? "Adicionar ao meu plano" : "Escolher meu plano"}
+        </Button>
+      ) : (
+        <div className="mt-4 inline-flex min-h-11 shrink-0 items-center gap-2 rounded-sm border border-white/15 px-4 text-sm font-semibold text-stone-300 sm:mt-0">
+          <LockKeyhole className="h-4 w-4" />
+          Peça ao administrador da empresa
+        </div>
+      )}
     </div>
   );
 }
