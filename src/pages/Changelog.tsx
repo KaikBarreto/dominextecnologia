@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.10',
+    date: '31 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'DomiFlix com trilhas guiadas',
+        description: 'As aulas agora podem ser organizadas em trilhas e módulos com uma sequência clara, mostrando o progresso de cada aula, módulo e formação completa.',
+        category: 'recurso',
+      },
+      {
+        title: 'Aprendizado de acordo com o plano',
+        description: 'A trilha prioriza a base do sistema e os módulos contratados. Os demais conteúdos continuam disponíveis para conhecer, com identificação clara do que faz parte do plano.',
+        category: 'recurso',
+      },
+      {
+        title: 'Acompanhamento durante o primeiro mês',
+        description: 'Lembretes ajudam cada usuário a retomar somente as aulas que ainda faltam na sua trilha durante os primeiros 30 dias.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.9',
     date: '31 de outubro de 2026',
     type: 'patch',

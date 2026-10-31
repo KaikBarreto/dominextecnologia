@@ -25,6 +25,7 @@ import { useIsCompact } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useTenantTasks } from '@/hooks/useTenantTasks';
+import { OVERLAY_PRIORITY, useOverlaySlot } from '@/contexts/OverlayCoordinatorContext';
 
 // ── localStorage helpers ─────────────────────────────────────────────────────
 
@@ -116,6 +117,8 @@ export function DailyTasksPopup({ userId, onOpenDrawer }: DailyTasksPopupProps) 
   const isCompact = useIsCompact();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.tasks;
+  const isActiveOverlay = useOverlaySlot(open, { id: 'daily-tasks', priority: OVERLAY_PRIORITY.reminder });
+  const visibleOpen = open && isActiveOverlay;
 
   // `today` vem do hook (fuso da empresa), nunca recalculado aqui.
   const { todayAndOverdue, today, isLoading } = useTenantTasks();
@@ -163,7 +166,7 @@ export function DailyTasksPopup({ userId, onOpenDrawer }: DailyTasksPopupProps) 
 
   if (isCompact) {
     return (
-      <Drawer open={open} onOpenChange={(v) => { if (!v) dismiss(); }}>
+      <Drawer open={visibleOpen} onOpenChange={(v) => { if (!v && isActiveOverlay) dismiss(); }}>
         <DrawerContent className="pb-[calc(env(safe-area-inset-bottom)+1rem)]">
           <div className="px-4 pt-2 pb-4">{body}</div>
         </DrawerContent>
@@ -172,7 +175,7 @@ export function DailyTasksPopup({ userId, onOpenDrawer }: DailyTasksPopupProps) 
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) dismiss(); }}>
+    <Dialog open={visibleOpen} onOpenChange={(v) => { if (!v && isActiveOverlay) dismiss(); }}>
       <DialogContent
         className="sm:max-w-md p-0 overflow-hidden border-0 bg-transparent shadow-none"
         aria-describedby={undefined}

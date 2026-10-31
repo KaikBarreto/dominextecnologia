@@ -20,8 +20,10 @@ export interface DomiflixTitle {
   live_url: string | null;
   live_scheduled_at: string | null;
   created_at: string;
+  track_group?: "core" | "plan";
+  track_order?: number;
+  learning_path_id?: string;
 }
-
 export interface DomiflixSeason {
   id: string;
   title_id: string;
@@ -57,6 +59,104 @@ export interface DomiflixProgress {
   watched_at: string;
   progress_seconds: number;
   duration_seconds: number;
+  company_id?: string | null;
+  last_progress_at?: string | null;
+}
+
+export interface DomiflixTrackLesson {
+  sequence: number;
+  titleId: string;
+  moduleTitle: string;
+  moduleDescription: string | null;
+  thumbnailUrl: string | null;
+  bannerUrl: string | null;
+  group: "core" | "plan";
+  moduleCode: string | null;
+  moduleName: string | null;
+  modulePrice: number | null;
+  includedInPlan: boolean;
+  episodeId: string;
+  lessonTitle: string;
+  lessonDescription: string | null;
+  episodeNumber: number | null;
+  durationMinutes: number | null;
+  videoType: "drive" | "youtube";
+  videoId: string;
+  completed: boolean;
+  progressSeconds: number;
+  durationSeconds: number;
+}
+
+export interface DomiflixLearningStatus {
+  path: DomiflixLearningPath;
+  paths: DomiflixLearningPath[];
+  user: {
+    firstName: string;
+    email: string;
+    companyName: string;
+    companyId: string;
+    accountStage: "trial" | "paid" | "neutral";
+    onboardingDay: number;
+  };
+  progress: {
+    coreTotal: number;
+    coreCompleted: number;
+    corePercent: number;
+    trackTotal: number;
+    trackCompleted: number;
+    trackPercent: number;
+    lastProgressAt: string | null;
+  };
+  reminder: {
+    severity: "none" | "invite" | "soft" | "critical" | "complete";
+    dismissedUntil: string | null;
+  };
+  nextLesson: {
+    titleId: string;
+    moduleTitle: string;
+    episodeId: string;
+    lessonTitle: string;
+    episodeNumber: number | null;
+    progressSeconds: number;
+  } | null;
+  introGate: {
+    required: boolean;
+    acknowledged: boolean;
+    lesson: DomiflixTrackLesson | null;
+  };
+  track: DomiflixTrackLesson[];
+}
+
+export interface DomiflixLearningPath {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  coverUrl: string | null;
+  isOnboarding: boolean;
+}
+
+export interface DomiflixSubtitle {
+  id: string;
+  episode_id: string;
+  language_code: string;
+  label: string;
+  format: "vtt" | "srt";
+  content: string | null;
+  storage_path: string | null;
+  is_default: boolean;
+  order_index: number;
+}
+
+export interface DomiflixResource {
+  id: string;
+  episode_id: string;
+  title: string;
+  description: string | null;
+  resource_type: "file" | "link";
+  url: string | null;
+  storage_path: string | null;
+  order_index: number;
 }
 
 export interface DomiflixWatchlistItem {
@@ -79,7 +179,7 @@ export function useDomiflixTitles() {
     queryKey: ["domiflix-titles"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("domiflix_titles")
+        .from("domiflix_titles" as any)
         .select("*")
         .order("order_index", { ascending: true })
         .order("created_at", { ascending: true });
@@ -94,7 +194,7 @@ export function useDomiflixFeatured() {
     queryKey: ["domiflix-featured"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("domiflix_titles")
+        .from("domiflix_titles" as any)
         .select("*")
         .eq("is_featured", true)
         .limit(1)
@@ -114,7 +214,7 @@ export function useDomiflixTitleBySlug(slug: string | undefined) {
       if (!slug) return null;
 
       const { data, error } = await supabase
-        .from("domiflix_titles")
+        .from("domiflix_titles" as any)
         .select("id, title")
         .order("order_index", { ascending: true });
       if (error) throw error;
@@ -149,7 +249,7 @@ export function useNextTitleFirstEpisode(currentTitleId: string | undefined) {
 
       // 1) Seção que contém o título (se estiver em mais de uma, pega a de menor order_index)
       const { data: links, error } = await supabase
-        .from("domiflix_section_titles")
+        .from("domiflix_section_titles" as any)
         .select("section_id, order_index")
         .eq("title_id", currentTitleId)
         .order("order_index", { ascending: true })
@@ -162,7 +262,7 @@ export function useNextTitleFirstEpisode(currentTitleId: string | undefined) {
 
       // 2) Próximo título da mesma seção
       const { data: nextLinks, error: e2 } = await supabase
-        .from("domiflix_section_titles")
+        .from("domiflix_section_titles" as any)
         .select("title_id")
         .eq("section_id", link.section_id)
         .gt("order_index", link.order_index)
@@ -174,7 +274,7 @@ export function useNextTitleFirstEpisode(currentTitleId: string | undefined) {
 
       // 3) Slug + primeiro episódio do próximo título
       const { data: nextTitle, error: e3 } = await supabase
-        .from("domiflix_titles")
+        .from("domiflix_titles" as any)
         .select("id, title")
         .eq("id", nextLink.title_id)
         .maybeSingle();
@@ -182,7 +282,7 @@ export function useNextTitleFirstEpisode(currentTitleId: string | undefined) {
       if (!nextTitle) return null;
 
       const { data: episodes, error: e4 } = await supabase
-        .from("domiflix_episodes")
+        .from("domiflix_episodes" as any)
         .select("*")
         .eq("title_id", nextLink.title_id)
         .order("order_index", { ascending: true })
@@ -208,15 +308,15 @@ export function useDomiflixTitle(id: string | undefined) {
       if (!id) return null;
 
       const [titleRes, seasonsRes, episodesRes] = await Promise.all([
-        supabase.from("domiflix_titles").select("*").eq("id", id).single(),
+        supabase.from("domiflix_titles" as any).select("*").eq("id", id).single(),
         supabase
-          .from("domiflix_seasons")
+          .from("domiflix_seasons" as any)
           .select("*")
           .eq("title_id", id)
           .order("order_index", { ascending: true })
           .order("season_number", { ascending: true }),
         supabase
-          .from("domiflix_episodes")
+          .from("domiflix_episodes" as any)
           .select("*")
           .eq("title_id", id)
           .order("order_index", { ascending: true })
@@ -253,7 +353,7 @@ export function useDomiflixEpisodeCounts() {
     queryKey: ["domiflix-episode-counts"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("domiflix_episodes")
+        .from("domiflix_episodes" as any)
         .select("title_id");
       if (error) throw error;
       const counts: Record<string, number> = {};
@@ -271,8 +371,8 @@ export function useDomiflixAllEpisodes() {
     queryKey: ["domiflix-all-episodes"],
     queryFn: async () => {
       const [episodesRes, seasonsRes] = await Promise.all([
-        supabase.from("domiflix_episodes").select("*").order("order_index"),
-        supabase.from("domiflix_seasons").select("*").order("order_index"),
+        supabase.from("domiflix_episodes" as any).select("*").order("order_index"),
+        supabase.from("domiflix_seasons" as any).select("*").order("order_index"),
       ]);
 
       const episodes = (episodesRes.data ?? []) as unknown as DomiflixEpisode[];
@@ -311,12 +411,77 @@ export function useDomiflixProgress() {
       if (!user) return [] as DomiflixProgress[];
 
       const { data, error } = await supabase
-        .from("domiflix_user_progress")
+        .from("domiflix_user_progress" as any)
         .select("*")
         .eq("user_id", user.id)
         .order("watched_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as DomiflixProgress[];
+    },
+  });
+}
+
+export function useDomiflixLearningStatus(enabled = true, pathSlug = "tutoriais-do-sistema") {
+  return useQuery({
+    queryKey: ["domiflix-learning-status", pathSlug],
+    enabled,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_domiflix_learning_status" as any, { p_path_slug: pathSlug });
+      if (error) throw error;
+      return data as unknown as DomiflixLearningStatus;
+    },
+  });
+}
+
+export function useDismissDomiflixReminder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("dismiss_domiflix_learning_reminder" as any);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["domiflix-learning-status"] }),
+  });
+}
+
+export function useAcknowledgeDomiflixIntro() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (episodeId: string) => {
+      const { error } = await supabase.rpc("acknowledge_domiflix_intro" as any, { p_episode_id: episodeId });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["domiflix-learning-status"] }),
+  });
+}
+
+export function useDomiflixEpisodeExtras(episodeId: string | undefined) {
+  return useQuery({
+    queryKey: ["domiflix-episode-extras", episodeId],
+    enabled: !!episodeId,
+    queryFn: async () => {
+      if (!episodeId) return { subtitles: [], resources: [] };
+      const [subtitleResult, resourceResult] = await Promise.all([
+        supabase.from("domiflix_episode_subtitles" as any).select("*").eq("episode_id", episodeId).order("order_index"),
+        supabase.from("domiflix_episode_resources" as any).select("*").eq("episode_id", episodeId).order("order_index"),
+      ]);
+      if (subtitleResult.error) throw subtitleResult.error;
+      if (resourceResult.error) throw resourceResult.error;
+      const subtitles = await Promise.all(((subtitleResult.data ?? []) as unknown as DomiflixSubtitle[]).map(async (subtitle) => {
+        if (subtitle.content || !subtitle.storage_path) return subtitle;
+        const { data: signed, error: signedError } = await supabase.storage
+          .from("domiflix-learning-assets")
+          .createSignedUrl(subtitle.storage_path, 300);
+        if (signedError || !signed?.signedUrl) return subtitle;
+        const response = await fetch(signed.signedUrl);
+        if (!response.ok) return subtitle;
+        return { ...subtitle, content: await response.text() };
+      }));
+      return {
+        subtitles,
+        resources: (resourceResult.data ?? []) as unknown as DomiflixResource[],
+      };
     },
   });
 }
@@ -331,12 +496,23 @@ export function useMarkEpisodeWatched() {
       progressSeconds,
       durationSeconds,
       completed,
+      insertOnly,
     }: {
       episodeId: string;
       titleId: string;
       progressSeconds?: number;
       durationSeconds?: number;
       completed?: boolean;
+      /**
+       * Quando `true`, só CRIA a linha se ela ainda não existir — se o usuário
+       * já tem progresso nesse episódio, a linha existente fica intacta.
+       *
+       * Usado pelo "marcar ao entrar" do player: abrir uma aula já concluída
+       * não pode sobrescrever `completed`/`progress_seconds` com zero.
+       * A garantia é do próprio Postgres (`ON CONFLICT DO NOTHING`), então não
+       * há corrida entre ler e escrever.
+       */
+      insertOnly?: boolean;
     }) => {
       const {
         data: { user },
@@ -347,24 +523,18 @@ export function useMarkEpisodeWatched() {
         ? progressSeconds / durationSeconds > 0.9
         : true);
 
-      const { error } = await supabase
-        .from("domiflix_user_progress")
-        .upsert(
-          {
-            user_id: user.id,
-            episode_id: episodeId,
-            title_id: titleId,
-            completed: isCompleted,
-            watched_at: new Date().toISOString(),
-            progress_seconds: progressSeconds ?? 0,
-            duration_seconds: durationSeconds ?? 0,
-          },
-          { onConflict: "user_id,episode_id" }
-        );
+      const { error } = await supabase.rpc("save_domiflix_progress" as any, {
+        p_episode_id: episodeId,
+        p_progress_seconds: progressSeconds ?? 0,
+        p_duration_seconds: durationSeconds ?? 0,
+        p_completed: isCompleted,
+        p_insert_only: insertOnly === true,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["domiflix-progress"] });
+      queryClient.invalidateQueries({ queryKey: ["domiflix-learning-status"] });
     },
   });
 }
@@ -381,7 +551,7 @@ export function useDomiflixWatchlist() {
       if (!user) return [] as DomiflixWatchlistItem[];
 
       const { data, error } = await supabase
-        .from("domiflix_watchlist")
+        .from("domiflix_watchlist" as any)
         .select("*")
         .eq("user_id", user.id)
         .order("added_at", { ascending: false });
@@ -409,14 +579,14 @@ export function useToggleWatchlist() {
 
       if (isInList) {
         const { error } = await supabase
-          .from("domiflix_watchlist")
+          .from("domiflix_watchlist" as any)
           .delete()
           .eq("user_id", user.id)
           .eq("title_id", titleId);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from("domiflix_watchlist")
+          .from("domiflix_watchlist" as any)
           .insert({ user_id: user.id, title_id: titleId });
         if (error) throw error;
       }
@@ -444,10 +614,13 @@ export function useCreateTitle() {
     mutationFn: async (
       data: Omit<DomiflixTitle, "id" | "created_at">
     ) => {
-      const { error } = await supabase
-        .from("domiflix_titles")
-        .insert([data] as any);
+      const { data: created, error } = await supabase
+        .from("domiflix_titles" as any)
+        .insert([data])
+        .select("id")
+        .single();
       if (error) throw error;
+      return (created as unknown as { id: string }).id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["domiflix-titles"] });
@@ -467,10 +640,11 @@ export function useUpdateTitle() {
       ...data
     }: Partial<DomiflixTitle> & { id: string }) => {
       const { error } = await supabase
-        .from("domiflix_titles")
-        .update(data as any)
+        .from("domiflix_titles" as any)
+        .update(data)
         .eq("id", id);
       if (error) throw error;
+      return id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["domiflix-titles"] });
@@ -488,7 +662,7 @@ export function useDeleteTitle() {
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("domiflix_titles")
+        .from("domiflix_titles" as any)
         .delete()
         .eq("id", id);
       if (error) throw error;
@@ -511,7 +685,7 @@ export function useCreateSeason() {
     ) => {
       // Append to end of queue: compute next order_index = max + 1
       const { data: existing } = await supabase
-        .from("domiflix_seasons")
+        .from("domiflix_seasons" as any)
         .select("order_index")
         .eq("title_id", data.title_id)
         .order("order_index", { ascending: false })
@@ -519,8 +693,8 @@ export function useCreateSeason() {
       const maxOrder = (existing as any)?.[0]?.order_index ?? -1;
       const payload = { ...data, order_index: (maxOrder ?? -1) + 1 };
       const { error } = await supabase
-        .from("domiflix_seasons")
-        .insert([payload] as any);
+        .from("domiflix_seasons" as any)
+        .insert([payload]);
       if (error) throw error;
     },
     onSuccess: (_data, vars) => {
@@ -541,8 +715,8 @@ export function useUpdateSeason() {
       ...data
     }: Partial<DomiflixSeason> & { id: string; title_id: string }) => {
       const { error } = await supabase
-        .from("domiflix_seasons")
-        .update(data as any)
+        .from("domiflix_seasons" as any)
+        .update(data)
         .eq("id", id);
       if (error) throw error;
       return { title_id };
@@ -561,7 +735,7 @@ export function useDeleteSeason() {
   return useMutation({
     mutationFn: async ({ id, title_id }: { id: string; title_id: string }) => {
       const { error } = await supabase
-        .from("domiflix_seasons")
+        .from("domiflix_seasons" as any)
         .delete()
         .eq("id", id);
       if (error) throw error;
@@ -584,7 +758,7 @@ export function useCreateEpisode() {
     ) => {
       // Append to end of queue within the same season (or "no season" bucket)
       let query = supabase
-        .from("domiflix_episodes")
+        .from("domiflix_episodes" as any)
         .select("order_index")
         .eq("title_id", data.title_id)
         .order("order_index", { ascending: false })
@@ -596,8 +770,8 @@ export function useCreateEpisode() {
       const maxOrder = (existing as any)?.[0]?.order_index ?? -1;
       const payload = { ...data, order_index: (maxOrder ?? -1) + 1 };
       const { error } = await supabase
-        .from("domiflix_episodes")
-        .insert([payload] as any);
+        .from("domiflix_episodes" as any)
+        .insert([payload]);
       if (error) throw error;
     },
     onSuccess: (_data, vars) => {
@@ -618,8 +792,8 @@ export function useUpdateEpisode() {
       ...data
     }: Partial<DomiflixEpisode> & { id: string; title_id: string }) => {
       const { error } = await supabase
-        .from("domiflix_episodes")
-        .update(data as any)
+        .from("domiflix_episodes" as any)
+        .update(data)
         .eq("id", id);
       if (error) throw error;
       return { title_id };
@@ -638,7 +812,7 @@ export function useDeleteEpisode() {
   return useMutation({
     mutationFn: async ({ id, title_id }: { id: string; title_id: string }) => {
       const { error } = await supabase
-        .from("domiflix_episodes")
+        .from("domiflix_episodes" as any)
         .delete()
         .eq("id", id);
       if (error) throw error;

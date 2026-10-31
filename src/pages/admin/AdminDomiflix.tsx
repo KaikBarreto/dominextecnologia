@@ -1,18 +1,14 @@
-import { useState, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { useState, useCallback, useEffect } from "react";
 import domiflixLogoDark from "@/assets/domiflix-logo-horizontal-preto.png";
-import domiflixLogoLight from "@/assets/domiflix-logo-horizontal.png";
+import domiflixLogoLight from "@/assets/domiflix-logo-horizontal-branco.png";
 import { typography } from "@/lib/typography";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DatePicker } from "@/components/ui/DatePicker";
-import { DateTimePicker } from "@/components/ui/DateTimePicker";
-import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
+import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,6 +41,8 @@ import {
   GripVertical,
   Upload,
   X,
+  Paperclip,
+  BookOpen,
 } from "lucide-react";
 import {
   useDomiflixTitles,
@@ -83,34 +81,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AdminDomiflixSections } from "@/components/admin/AdminDomiflixSections";
-
-// ─── Breadcrumb ────────────────────────────────────────────────────────────────
-
-interface BreadcrumbItem {
-  label: string;
-  path?: string;
-}
-
-function Breadcrumb({ items }: { items: BreadcrumbItem[] }) {
-  return (
-    <nav className="flex items-center flex-wrap gap-y-1 text-sm text-muted-foreground mb-4">
-      {items.map((item, index) => (
-        <div key={index} className="flex items-center">
-          {index > 0 && <ChevronRight className="h-4 w-4 mx-2" />}
-          {item.path ? (
-            <Link to={item.path} className="hover:text-foreground transition-colors">
-              {item.label}
-            </Link>
-          ) : (
-            <span className="text-foreground font-medium">{item.label}</span>
-          )}
-        </div>
-      ))}
-    </nav>
-  );
-}
+import { AdminDomiflixLessonExtras } from "@/components/admin/AdminDomiflixLessonExtras";
+import { AdminDomiflixLearningPaths } from "@/components/admin/AdminDomiflixLearningPaths";
 
 // ─── Image Upload Helper ──────────────────────────────────────────────────────
 
@@ -122,7 +96,6 @@ async function uploadDomiflixImage(file: File, folder: string): Promise<string> 
   const { data } = supabase.storage.from("domiflix-thumbnails").getPublicUrl(path);
   return data.publicUrl;
 }
-
 // ─── Video helpers ────────────────────────────────────────────────────────────
 import { extractYouTubeId, getYouTubeThumbnail } from "@/lib/youtube";
 import { extractDriveId } from "@/lib/drive";
@@ -213,6 +186,10 @@ interface TitleFormData {
   is_featured: boolean;
   live_url: string;
   live_scheduled_at: string;
+  track_group: "core" | "plan";
+  track_order: number;
+  learning_path_id: string;
+  module_code: string;
 }
 
 const EMPTY_TITLE_FORM: TitleFormData = {
@@ -225,6 +202,10 @@ const EMPTY_TITLE_FORM: TitleFormData = {
   is_featured: false,
   live_url: "",
   live_scheduled_at: "",
+  track_group: "core",
+  track_order: 0,
+  learning_path_id: "",
+  module_code: "",
 };
 
 function TitleFormDialog({
@@ -238,6 +219,22 @@ function TitleFormDialog({
 }) {
   const createTitle = useCreateTitle();
   const updateTitle = useUpdateTitle();
+  const { data: learningPaths = [] } = useQuery({
+    queryKey: ["domiflix-learning-paths-admin"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("domiflix_learning_paths" as any).select("id, title, is_active, order_index").eq("is_active", true).order("order_index");
+      if (error) throw error;
+      return (data ?? []) as unknown as Array<{ id: string; title: string }>;
+    },
+  });
+  const { data: subscriptionModules = [] } = useQuery({
+    queryKey: ["domiflix-subscription-modules-admin"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("subscription_modules").select("code, name").eq("is_active", true).order("sort_order");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const [form, setForm] = useState<TitleFormData>(() =>
     editing
@@ -253,12 +250,29 @@ function TitleFormDialog({
           live_scheduled_at: editing.live_scheduled_at
             ? editing.live_scheduled_at.slice(0, 16)
             : "",
+          track_group: editing.track_group ?? "core",
+          track_order: editing.track_order ?? editing.order_index,
+          learning_path_id: editing.learning_path_id ?? "",
+          module_code: "",
         }
       : EMPTY_TITLE_FORM
   );
 
+  useEffect(() => {
+    if (!open || !editing?.id) return;
+    let active = true;
+    void supabase.from("domiflix_title_modules" as any).select("module_code").eq("title_id", editing.id).limit(1).maybeSingle().then(({ data }) => {
+      if (active) setForm((current) => ({ ...current, module_code: (data as any)?.module_code ?? "" }));
+    });
+    return () => { active = false; };
+  }, [editing?.id, open]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (form.track_group === "plan" && !form.module_code) {
+      toast.error("Escolha o módulo comercial desta função");
+      return;
+    }
     const payload = {
       type: form.type,
       title: form.title,
@@ -273,12 +287,28 @@ function TitleFormDialog({
       live_scheduled_at: form.live_scheduled_at
         ? new Date(form.live_scheduled_at).toISOString()
         : null,
+      track_group: form.track_group,
+      track_order: form.track_order,
+      learning_path_id: form.learning_path_id || learningPaths[0]?.id,
     };
 
-    if (editing) {
-      await updateTitle.mutateAsync({ id: editing.id, ...payload });
+    const titleId = editing
+      ? await updateTitle.mutateAsync({ id: editing.id, ...payload })
+      : await createTitle.mutateAsync(payload as any);
+    if (form.track_group === "plan") {
+      const { error: moduleError } = await supabase
+        .from("domiflix_title_modules" as any)
+        .upsert({ title_id: titleId, module_code: form.module_code } as any, { onConflict: "title_id,module_code" });
+      if (moduleError) throw moduleError;
+      const { error: clearOtherModulesError } = await supabase
+        .from("domiflix_title_modules" as any)
+        .delete()
+        .eq("title_id", titleId)
+        .neq("module_code", form.module_code);
+      if (clearOtherModulesError) throw clearOtherModulesError;
     } else {
-      await createTitle.mutateAsync(payload as any);
+      const { error: clearError } = await supabase.from("domiflix_title_modules" as any).delete().eq("title_id", titleId);
+      if (clearError) throw clearError;
     }
     onOpenChange(false);
   }
@@ -289,7 +319,7 @@ function TitleFormDialog({
     <div className="flex gap-2">
       <Button
         type="button"
-        variant="outline"
+        variant="cancel"
         onClick={() => onOpenChange(false)}
         className="flex-1"
       >
@@ -302,7 +332,7 @@ function TitleFormDialog({
   );
 
   return (
-    <ResponsiveModal
+    <ResponsiveDialog
       open={open}
       onOpenChange={onOpenChange}
       title={editing ? "Editar Título" : "Novo Título"}
@@ -324,13 +354,13 @@ function TitleFormDialog({
                 <SelectItem value="series">
                   <span className="flex items-center gap-2">
                     <Tv className="w-4 h-4" />
-                    Série (Módulo de aulas)
+                    Módulo de aulas
                   </span>
                 </SelectItem>
                 <SelectItem value="movie">
                   <span className="flex items-center gap-2">
                     <Film className="w-4 h-4" />
-                    Filme (Live)
+                    Aula ao vivo
                   </span>
                 </SelectItem>
               </SelectContent>
@@ -345,6 +375,39 @@ function TitleFormDialog({
               required
               placeholder="Ex: Módulo de Vendas"
             />
+          </div>
+
+          <div className="col-span-2 space-y-1.5">
+            <Label>Curso / trilha</Label>
+            <Select value={form.learning_path_id || learningPaths[0]?.id || ""} onValueChange={(value) => setForm({ ...form, learning_path_id: value })}>
+              <SelectTrigger><SelectValue placeholder="Selecione o curso" /></SelectTrigger>
+              <SelectContent>{learningPaths.map((path) => <SelectItem key={path.id} value={path.id}>{path.title}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Grupo da trilha</Label>
+            <Select value={form.track_group} onValueChange={(value) => setForm({ ...form, track_group: value as "core" | "plan" })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="core">Formação básica</SelectItem>
+                <SelectItem value="plan">Função do plano</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {form.track_group === "plan" && (
+            <div className="col-span-2 space-y-1.5">
+              <Label>Módulo comercial *</Label>
+              <Select value={form.module_code} onValueChange={(value) => setForm({ ...form, module_code: value })}>
+                <SelectTrigger><SelectValue placeholder="Selecione o módulo que libera esta função" /></SelectTrigger>
+                <SelectContent>{subscriptionModules.map((module) => <SelectItem key={module.code} value={module.code}>{module.name}</SelectItem>)}</SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Define o badge do plano e o módulo oferecido abaixo do vídeo.</p>
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <Label>Ordem na trilha</Label>
+            <Input type="number" min={0} value={form.track_order} onChange={(event) => setForm({ ...form, track_order: Number(event.target.value) || 0 })} />
           </div>
 
           <ImageUploadField
@@ -404,17 +467,17 @@ function TitleFormDialog({
               </div>
               <div className="col-span-2 space-y-1.5">
                 <Label>Data/Hora da Live</Label>
-                <DateTimePicker
+                <Input
+                  type="datetime-local"
                   value={form.live_scheduled_at}
-                  onValueChange={(v) => setForm({ ...form, live_scheduled_at: v })}
-                  placeholder="dd/mm/aaaa --:--"
+                  onChange={(e) => setForm({ ...form, live_scheduled_at: e.target.value })}
                 />
               </div>
             </>
           )}
         </div>
       </form>
-    </ResponsiveModal>
+    </ResponsiveDialog>
   );
 }
 
@@ -509,7 +572,7 @@ function EpisodeFormDialog({
     <div className="flex gap-2">
       <Button
         type="button"
-        variant="outline"
+        variant="cancel"
         onClick={() => onOpenChange(false)}
         className="flex-1"
       >
@@ -522,39 +585,17 @@ function EpisodeFormDialog({
   );
 
   return (
-    <ResponsiveModal
+    <ResponsiveDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={editing ? "Editar Episódio" : "Novo Episódio"}
-      description="Preencha as informações do episódio/aula"
+      title={editing ? "Editar aula" : "Nova aula"}
+      description="Cada aula possui um único vídeo, sem temporadas."
       footer={episodeFooter}
     >
       <form id="domiflix-episode-form" onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          {seasons.length > 1 && (
-            <div className="col-span-2 space-y-1.5">
-              <Label>Temporada</Label>
-              <Select
-                value={form.season_id || "none"}
-                onValueChange={(v) => setForm({ ...form, season_id: v === "none" ? "" : v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sem temporada" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem temporada</SelectItem>
-                  {seasons.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.title} {s.season_number}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           <div className="col-span-2 space-y-1.5">
-            <Label>Título do Episódio *</Label>
+            <Label>Título da aula *</Label>
             <Input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -634,17 +675,15 @@ function EpisodeFormDialog({
 
           <div className="col-span-2 space-y-1.5">
             <Label>Data de Gravação</Label>
-            <DatePicker
+            <Input
+              type="date"
               value={form.recorded_at}
-              onValueChange={(v) => setForm({ ...form, recorded_at: v })}
-              placeholder="dd/mm/aaaa"
-              clearable
-              clearLabel="Limpar"
+              onChange={(e) => setForm({ ...form, recorded_at: e.target.value })}
             />
           </div>
         </div>
       </form>
-    </ResponsiveModal>
+    </ResponsiveDialog>
   );
 }
 
@@ -686,7 +725,7 @@ function SeasonFormDialog({
     <div className="flex gap-2">
       <Button
         type="button"
-        variant="outline"
+        variant="cancel"
         onClick={() => onOpenChange(false)}
         className="flex-1"
       >
@@ -699,7 +738,7 @@ function SeasonFormDialog({
   );
 
   return (
-    <ResponsiveModal
+    <ResponsiveDialog
       open={open}
       onOpenChange={onOpenChange}
       title={editing ? "Editar Temporada" : "Nova Temporada"}
@@ -709,10 +748,12 @@ function SeasonFormDialog({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label>Número</Label>
-            <NumericInput
-              value={String(form.season_number ?? "")}
-              onValueChange={(v) =>
-                setForm({ ...form, season_number: parseInt(v) || 1 })
+            <Input
+              type="number"
+              min={1}
+              value={form.season_number}
+              onChange={(e) =>
+                setForm({ ...form, season_number: parseInt(e.target.value) || 1 })
               }
             />
           </div>
@@ -733,7 +774,7 @@ function SeasonFormDialog({
           </div>
         </div>
       </form>
-    </ResponsiveModal>
+    </ResponsiveDialog>
   );
 }
 
@@ -743,10 +784,12 @@ function SortableEpisodeRow({
   episode,
   onEdit,
   onDelete,
+  onExtras,
 }: {
   episode: DomiflixEpisode;
   onEdit: () => void;
   onDelete: () => void;
+  onExtras?: () => void;
 }) {
   const {
     attributes,
@@ -801,12 +844,17 @@ function SortableEpisodeRow({
       </div>
 
       <div className="flex gap-1 shrink-0">
+        {onExtras && (
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onExtras} title="Legendas e materiais">
+            <Paperclip className="h-3.5 w-3.5" />
+          </Button>
+        )}
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
           <Pencil className="w-3.5 h-3.5" />
         </Button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="destructive-ghost" size="icon" className="h-7 w-7">
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </AlertDialogTrigger>
@@ -907,7 +955,7 @@ function SortableSeasonSection({
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive-ghost" size="icon" className="h-7 w-7">
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
                 <Trash2 className="w-3.5 h-3.5" />
               </Button>
             </AlertDialogTrigger>
@@ -962,7 +1010,6 @@ function SortableSeasonSection({
     </div>
   );
 }
-
 // ─── Detail view (title selected) ─────────────────────────────────────────────
 
 function TitleDetail({
@@ -981,6 +1028,7 @@ function TitleDetail({
   const [editingSeason, setEditingSeason] = useState<DomiflixSeason | null>(null);
   const [episodeDialog, setEpisodeDialog] = useState(false);
   const [editingEpisode, setEditingEpisode] = useState<DomiflixEpisode | null>(null);
+  const [extrasEpisode, setExtrasEpisode] = useState<DomiflixEpisode | null>(null);
   const [defaultSeasonIdForNewEp, setDefaultSeasonIdForNewEp] = useState<string>("");
 
   const sensors = useSensors(
@@ -1038,8 +1086,11 @@ function TitleDetail({
 
   if (!titleData) return null;
 
-  // Direct episodes (no season)
   const directEpisodes = titleData.episodes;
+  const allLessons = [
+    ...titleData.seasons.flatMap((season) => season.episodes),
+    ...directEpisodes,
+  ].sort((a, b) => a.order_index - b.order_index);
 
   return (
     <div>
@@ -1051,181 +1102,53 @@ function TitleDetail({
         <ChevronRight className="w-4 h-4 text-muted-foreground" />
         <span className="font-semibold text-foreground">{titleData.title}</span>
         <Badge variant={titleData.type === "series" ? "default" : "secondary"}>
-          {titleData.type === "series" ? "Série" : "Filme/Live"}
+          {titleData.type === "series" ? "Módulo" : "Aula ao vivo"}
         </Badge>
       </div>
 
-      {/* Séries: visão hierárquica temporadas > episódios */}
-      {titleData.type === "series" && (
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className={typography.sectionTitle}>Temporadas e Episódios</h3>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setEditingSeason(null);
-                  setSeasonDialog(true);
-                }}
-                className="gap-1.5"
-              >
-                <Plus className="w-4 h-4" />
-                Nova Temporada
-              </Button>
-              {titleData.seasons.length === 0 && (
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setDefaultSeasonIdForNewEp("");
-                    setEditingEpisode(null);
-                    setEpisodeDialog(true);
-                  }}
-                  className="gap-1.5"
-                >
-                  <Plus className="w-4 h-4" />
-                  Novo Episódio
-                </Button>
-              )}
-            </div>
+      <section className="mb-8">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h3 className={typography.sectionTitle}>Aulas na ordem da trilha</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Um vídeo por tema. Arraste para definir a sequência.</p>
           </div>
-
-          {titleData.seasons.length === 0 && directEpisodes.length === 0 && (
-            <p className="text-sm text-muted-foreground py-4 text-center border rounded-md">
-              Nenhuma temporada ou episódio cadastrado. Crie uma temporada e adicione episódios.
-            </p>
-          )}
-
-          {/* Drag-and-drop seasons */}
-          {titleData.seasons.length > 0 && (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleSeasonDragEnd}
-            >
-              <SortableContext
-                items={titleData.seasons.map((s) => s.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-3">
-                  {titleData.seasons.map((s) => (
-                    <SortableSeasonSection
-                      key={s.id}
-                      season={s}
-                      onEditSeason={() => {
-                        setEditingSeason(s);
-                        setSeasonDialog(true);
-                      }}
-                      onDeleteSeason={() =>
-                        deleteSeason.mutate({ id: s.id, title_id: titleId })
-                      }
-                      onEditEpisode={(ep) => {
-                        setEditingEpisode(ep);
-                        setEpisodeDialog(true);
-                      }}
-                      onDeleteEpisode={(ep) =>
-                        deleteEpisode.mutate({ id: ep.id, title_id: titleId })
-                      }
-                      onAddEpisode={() => {
-                        setDefaultSeasonIdForNewEp(s.id);
-                        setEditingEpisode(null);
-                        setEpisodeDialog(true);
-                      }}
-                      onEpisodeDragEnd={handleEpisodeDragEnd}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          )}
-
-          {/* Direct episodes (no season) */}
-          {directEpisodes.length > 0 && (
-            <div className="mt-4">
-              <p className="text-xs text-muted-foreground mb-2 font-medium">Sem temporada</p>
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={(e) => handleEpisodeDragEnd(e, directEpisodes)}
-              >
-                <SortableContext
-                  items={directEpisodes.map((ep) => ep.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-1.5">
-                    {directEpisodes.map((ep) => (
-                      <SortableEpisodeRow
-                        key={ep.id}
-                        episode={ep}
-                        onEdit={() => {
-                          setEditingEpisode(ep);
-                          setEpisodeDialog(true);
-                        }}
-                        onDelete={() =>
-                          deleteEpisode.mutate({ id: ep.id, title_id: titleId })
-                        }
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            </div>
-          )}
+          <Button
+            size="sm"
+            onClick={() => {
+              setDefaultSeasonIdForNewEp("");
+              setEditingEpisode(null);
+              setEpisodeDialog(true);
+            }}
+            className="gap-1.5"
+          >
+            <Plus className="h-4 w-4" />
+            Nova aula
+          </Button>
         </div>
-      )}
 
-      {/* Filmes/Lives: lista simples de gravações */}
-      {titleData.type === "movie" && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className={typography.sectionTitle}>Gravações</h3>
-            <Button
-              size="sm"
-              onClick={() => {
-                setDefaultSeasonIdForNewEp("");
-                setEditingEpisode(null);
-                setEpisodeDialog(true);
-              }}
-              className="gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              Nova Gravação
-            </Button>
-          </div>
-          {directEpisodes.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center border rounded-md">
-              Nenhuma gravação cadastrada
-            </p>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={(e) => handleEpisodeDragEnd(e, directEpisodes)}
-            >
-              <SortableContext
-                items={directEpisodes.map((ep) => ep.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-1.5">
-                  {directEpisodes.map((ep) => (
-                    <SortableEpisodeRow
-                      key={ep.id}
-                      episode={ep}
-                      onEdit={() => {
-                        setEditingEpisode(ep);
-                        setEpisodeDialog(true);
-                      }}
-                      onDelete={() =>
-                        deleteEpisode.mutate({ id: ep.id, title_id: titleId })
-                      }
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          )}
-        </div>
-      )}
+        {allLessons.length === 0 ? (
+          <p className="rounded-md border py-8 text-center text-sm text-muted-foreground">Nenhuma aula cadastrada neste módulo.</p>
+        ) : (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(event) => handleEpisodeDragEnd(event, allLessons)}>
+            <SortableContext items={allLessons.map((lesson) => lesson.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-1.5">
+                {allLessons.map((lesson) => (
+                  <SortableEpisodeRow
+                    key={lesson.id}
+                    episode={lesson}
+                    onEdit={() => {
+                      setEditingEpisode(lesson);
+                      setEpisodeDialog(true);
+                    }}
+                    onExtras={() => setExtrasEpisode(lesson)}
+                    onDelete={() => deleteEpisode.mutate({ id: lesson.id, title_id: titleId })}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
+      </section>
 
       {seasonDialog && (
         <SeasonFormDialog
@@ -1240,11 +1163,12 @@ function TitleDetail({
           open={episodeDialog}
           onOpenChange={setEpisodeDialog}
           titleId={titleId}
-          seasons={titleData.seasons}
+          seasons={[]}
           editing={editingEpisode}
           defaultSeasonId={defaultSeasonIdForNewEp}
         />
       )}
+      <AdminDomiflixLessonExtras episode={extrasEpisode} open={!!extrasEpisode} onOpenChange={(open) => !open && setExtrasEpisode(null)} />
     </div>
   );
 }
@@ -1350,8 +1274,9 @@ function SortableTitleRow({
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button
-              variant="destructive-ghost"
+              variant="ghost"
               size="icon"
+              className="text-destructive hover:text-destructive"
               onClick={(e) => e.stopPropagation()}
             >
               <Trash2 className="w-4 h-4" />
@@ -1361,7 +1286,7 @@ function SortableTitleRow({
             <AlertDialogHeader>
               <AlertDialogTitle>Remover &quot;{title.title}&quot;?</AlertDialogTitle>
               <AlertDialogDescription>
-                Todas as temporadas e episódios serão removidos. Ação irreversível.
+                Todas as aulas deste módulo serão removidas. Ação irreversível.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -1430,7 +1355,6 @@ export default function AdminDomiflix() {
   if (selectedTitleId) {
     return (
       <div className="p-4 sm:p-8 max-w-4xl">
-        <Breadcrumb items={[{ label: "Domiflix", path: "/admin/domiflix" }]} />
         <TitleDetail titleId={selectedTitleId} onBack={() => setSelectedTitleId(null)} />
       </div>
     );
@@ -1438,14 +1362,12 @@ export default function AdminDomiflix() {
 
   return (
     <div className="p-4 sm:p-8">
-      <Breadcrumb items={[{ label: "Domiflix" }]} />
-
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <img src={domiflixLogoDark} alt="Domiflix" className="h-9 object-contain dark:hidden" />
           <img src={domiflixLogoLight} alt="Domiflix" className="h-9 object-contain hidden dark:block" />
           <div>
-            <p className="text-sm text-muted-foreground">Gerenciar módulos, séries e lives</p>
+            <p className="text-sm text-muted-foreground">Gerenciar cursos, módulos, aulas e lives</p>
           </div>
         </div>
         <Button
@@ -1462,18 +1384,19 @@ export default function AdminDomiflix() {
 
       <Tabs defaultValue="series">
         <TabsList variant="underline" className="mb-6">
-          <TabsTrigger variant="underline" level="screen" value="series" className="gap-2">
+          <TabsTrigger value="series" className="gap-2">
             <Tv className="w-4 h-4" />
-            Séries ({seriesTitles.length})
+            Módulos ({seriesTitles.length})
           </TabsTrigger>
-          <TabsTrigger variant="underline" level="screen" value="movies" className="gap-2">
+          <TabsTrigger value="movies" className="gap-2">
             <Film className="w-4 h-4" />
             Lives ({movieTitles.length})
           </TabsTrigger>
-          <TabsTrigger variant="underline" level="screen" value="sections" className="gap-2">
+          <TabsTrigger value="sections" className="gap-2">
             <GripVertical className="w-4 h-4" />
             Seções
           </TabsTrigger>
+          <TabsTrigger value="paths" className="gap-2"><BookOpen className="w-4 h-4" />Cursos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="series">
@@ -1483,7 +1406,7 @@ export default function AdminDomiflix() {
             <div className="text-center py-16 text-muted-foreground">
               <Tv className="w-12 h-12 mx-auto mb-3 opacity-30" />
               <p>Nenhuma série cadastrada</p>
-              <p className="text-sm">Crie um título do tipo "Série" para começar</p>
+              <p className="text-sm">Crie um módulo para começar</p>
             </div>
           ) : (
             <DndContext
@@ -1524,7 +1447,7 @@ export default function AdminDomiflix() {
             <div className="text-center py-16 text-muted-foreground">
               <Film className="w-12 h-12 mx-auto mb-3 opacity-30" />
               <p>Nenhuma live cadastrada</p>
-              <p className="text-sm">Crie um título do tipo "Filme" para lives</p>
+              <p className="text-sm">Crie uma aula ao vivo para começar</p>
             </div>
           ) : (
             <DndContext
@@ -1560,6 +1483,9 @@ export default function AdminDomiflix() {
 
         <TabsContent value="sections">
           <AdminDomiflixSections />
+        </TabsContent>
+        <TabsContent value="paths">
+          <AdminDomiflixLearningPaths />
         </TabsContent>
       </Tabs>
 
