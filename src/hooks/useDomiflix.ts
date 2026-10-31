@@ -16,6 +16,7 @@ export interface DomiflixTitle {
   logo_url: string | null;
   tags: string[];
   is_featured: boolean;
+  is_active?: boolean;
   order_index: number;
   live_url: string | null;
   live_scheduled_at: string | null;
@@ -45,6 +46,7 @@ export interface DomiflixEpisode {
   video_type: "drive" | "youtube";
   mobile_video_id?: string | null;
   mobile_video_type?: "drive" | "youtube" | null;
+  is_active?: boolean;
   duration_minutes: number | null;
   thumbnail_url: string | null;
   order_index: number;

@@ -43,6 +43,7 @@ import {
   X,
   Paperclip,
   BookOpen,
+  ExternalLink,
 } from "lucide-react";
 import {
   useDomiflixTitles,
@@ -190,6 +191,7 @@ interface TitleFormData {
   track_order: number;
   learning_path_id: string;
   module_code: string;
+  is_active: boolean;
 }
 
 const EMPTY_TITLE_FORM: TitleFormData = {
@@ -206,6 +208,7 @@ const EMPTY_TITLE_FORM: TitleFormData = {
   track_order: 0,
   learning_path_id: "",
   module_code: "",
+  is_active: true,
 };
 
 function TitleFormDialog({
@@ -254,6 +257,7 @@ function TitleFormDialog({
           track_order: editing.track_order ?? editing.order_index,
           learning_path_id: editing.learning_path_id ?? "",
           module_code: "",
+          is_active: editing.is_active ?? true,
         }
       : EMPTY_TITLE_FORM
   );
@@ -290,6 +294,7 @@ function TitleFormDialog({
       track_group: form.track_group,
       track_order: form.track_order,
       learning_path_id: form.learning_path_id || learningPaths[0]?.id,
+      is_active: form.is_active,
     };
 
     const titleId = editing
@@ -455,6 +460,14 @@ function TitleFormDialog({
             />
           </div>
 
+          <div className="col-span-2 flex items-center justify-between gap-4 rounded-md border border-border bg-muted p-3">
+            <div>
+              <Label htmlFor="domiflix-title-active">Publicado</Label>
+              <p className="text-xs text-muted-foreground">Desative para preparar o módulo sem mostrá-lo aos clientes.</p>
+            </div>
+            <Switch id="domiflix-title-active" checked={form.is_active} onCheckedChange={(checked) => setForm({ ...form, is_active: checked })} />
+          </div>
+
           {form.type === "movie" && (
             <>
               <div className="col-span-2 space-y-1.5">
@@ -493,6 +506,7 @@ interface EpisodeFormData {
   thumbnail_url: string;
   recorded_at: string;
   season_id: string;
+  is_active: boolean;
 }
 
 const EMPTY_EP_FORM: EpisodeFormData = {
@@ -505,6 +519,7 @@ const EMPTY_EP_FORM: EpisodeFormData = {
   thumbnail_url: "",
   recorded_at: "",
   season_id: "",
+  is_active: true,
 };
 
 function EpisodeFormDialog({
@@ -537,6 +552,7 @@ function EpisodeFormDialog({
           thumbnail_url: editing.thumbnail_url ?? "",
           recorded_at: editing.recorded_at ? editing.recorded_at.slice(0, 10) : "",
           season_id: editing.season_id ?? "",
+          is_active: editing.is_active ?? true,
         }
       : { ...EMPTY_EP_FORM, season_id: defaultSeasonId || "" }
   );
@@ -564,6 +580,7 @@ function EpisodeFormDialog({
       order_index: editing?.order_index ?? 0,
       recorded_at: form.recorded_at ? new Date(form.recorded_at).toISOString() : null,
       season_id: form.season_id || null,
+      is_active: form.is_active,
     };
 
     if (editing) {
@@ -603,8 +620,9 @@ function EpisodeFormDialog({
       <form id="domiflix-episode-form" onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2 space-y-1.5">
-            <Label>Título da aula *</Label>
+            <Label htmlFor="domiflix-lesson-title">Título da aula *</Label>
             <Input
+              id="domiflix-lesson-title"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               required
@@ -613,8 +631,9 @@ function EpisodeFormDialog({
           </div>
 
           <div className="col-span-2 space-y-1.5">
-            <Label>Descrição</Label>
+            <Label htmlFor="domiflix-lesson-description">Descrição</Label>
             <Textarea
+              id="domiflix-lesson-description"
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={2}
@@ -622,14 +641,14 @@ function EpisodeFormDialog({
           </div>
 
           <div className="col-span-2 space-y-1.5">
-            <Label>Tipo de vídeo</Label>
+            <Label htmlFor="domiflix-video-type">Tipo de vídeo</Label>
             <Select
               value={form.video_type}
               onValueChange={(v) =>
                 setForm({ ...form, video_type: v as "drive" | "youtube" })
               }
             >
-              <SelectTrigger>
+              <SelectTrigger id="domiflix-video-type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -640,11 +659,12 @@ function EpisodeFormDialog({
           </div>
 
           <div className="col-span-2 space-y-1.5">
-            <Label>
+            <Label htmlFor="domiflix-video-id">
               ID do vídeo{" "}
               <span className="text-muted-foreground font-normal">(aceita link completo)</span>
             </Label>
             <Input
+              id="domiflix-video-id"
               value={form.video_id}
               onChange={(e) => {
                 const raw = e.target.value;
@@ -671,6 +691,11 @@ function EpisodeFormDialog({
                 Sem thumbnail? Será usado o frame do YouTube automaticamente.
               </p>
             )}
+            {form.video_id && (
+              <Button type="button" variant="outline" size="sm" className="mt-2 min-h-11 gap-2 lg:min-h-9" asChild>
+                <a href={form.video_type === "youtube" ? `https://www.youtube.com/watch?v=${form.video_id}` : `https://drive.google.com/file/d/${form.video_id}/view`} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" />Testar vídeo horizontal</a>
+              </Button>
+            )}
           </div>
 
           <ImageUploadField
@@ -682,22 +707,36 @@ function EpisodeFormDialog({
           />
 
           <div className="col-span-2 border-t pt-4"><p className="text-sm font-semibold">Versão para celular (opcional)</p><p className="mt-1 text-xs text-muted-foreground">Use o mesmo conteúdo em vídeo vertical 9:16. No celular ele substitui automaticamente a versão horizontal.</p></div>
-          <div className="col-span-2 space-y-1.5 sm:col-span-1">
-            <Label>Tipo do vídeo vertical</Label>
-            <Select value={form.mobile_video_type} onValueChange={(v) => setForm({ ...form, mobile_video_type: v as "drive" | "youtube" })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="drive">Google Drive</SelectItem><SelectItem value="youtube">YouTube</SelectItem></SelectContent></Select>
+          <div className="col-span-2 space-y-1.5 lg:col-span-1">
+            <Label htmlFor="domiflix-mobile-video-type">Tipo do vídeo vertical</Label>
+            <Select value={form.mobile_video_type} onValueChange={(v) => setForm({ ...form, mobile_video_type: v as "drive" | "youtube" })}><SelectTrigger id="domiflix-mobile-video-type"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="drive">Google Drive</SelectItem><SelectItem value="youtube">YouTube</SelectItem></SelectContent></Select>
           </div>
-          <div className="col-span-2 space-y-1.5 sm:col-span-1">
-            <Label>ID do vídeo 9:16</Label>
-            <Input value={form.mobile_video_id} onChange={(e) => { const raw = e.target.value; setForm({ ...form, mobile_video_id: form.mobile_video_type === "youtube" ? extractYouTubeId(raw) : extractDriveId(raw) }); }} placeholder="Cole o link ou ID do vídeo vertical" />
+          <div className="col-span-2 space-y-1.5 lg:col-span-1">
+            <Label htmlFor="domiflix-mobile-video-id">ID do vídeo 9:16</Label>
+            <Input id="domiflix-mobile-video-id" value={form.mobile_video_id} onChange={(e) => { const raw = e.target.value; setForm({ ...form, mobile_video_id: form.mobile_video_type === "youtube" ? extractYouTubeId(raw) : extractDriveId(raw) }); }} placeholder="Cole o link ou ID do vídeo vertical" />
+            {form.mobile_video_id && (
+              <Button type="button" variant="outline" size="sm" className="mt-2 min-h-11 w-full gap-2 lg:min-h-9" asChild>
+                <a href={form.mobile_video_type === "youtube" ? `https://www.youtube.com/watch?v=${form.mobile_video_id}` : `https://drive.google.com/file/d/${form.mobile_video_id}/view`} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" />Testar vídeo 9:16</a>
+              </Button>
+            )}
           </div>
 
           <div className="col-span-2 space-y-1.5">
-            <Label>Data de Gravação</Label>
+            <Label htmlFor="domiflix-recorded-at">Data de Gravação</Label>
             <Input
+              id="domiflix-recorded-at"
               type="date"
               value={form.recorded_at}
               onChange={(e) => setForm({ ...form, recorded_at: e.target.value })}
             />
+          </div>
+
+          <div className="col-span-2 flex items-center justify-between gap-4 rounded-md border border-border bg-muted p-3">
+            <div>
+              <Label htmlFor="domiflix-lesson-active">Aula publicada</Label>
+              <p className="text-xs text-muted-foreground">Rascunhos não entram na trilha nem no progresso dos clientes.</p>
+            </div>
+            <Switch id="domiflix-lesson-active" checked={form.is_active} onCheckedChange={(checked) => setForm({ ...form, is_active: checked })} />
           </div>
         </div>
       </form>
@@ -828,11 +867,12 @@ function SortableEpisodeRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 p-2.5 pl-3 border rounded bg-background hover:bg-muted/30 transition-colors"
+      className="grid grid-cols-[44px_56px_minmax(0,1fr)] items-center gap-2 rounded border bg-background p-2 transition-colors hover:bg-muted/30 lg:flex lg:gap-3 lg:p-2.5 lg:pl-3"
     >
       <button
         type="button"
-        className="shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+        aria-label={`Reordenar ${episode.title}`}
+        className="flex h-11 w-11 shrink-0 touch-none cursor-grab items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing lg:h-auto lg:w-auto"
         {...attributes}
         {...listeners}
       >
@@ -859,20 +899,21 @@ function SortableEpisodeRow({
           {episode.recorded_at &&
             ` • ${format(new Date(episode.recorded_at), "dd/MM/yyyy", { locale: ptBR })}`}
         </p>
+        {episode.is_active === false && <Badge variant="outline" className="mt-1 border-amber-500 text-amber-700">Rascunho</Badge>}
       </div>
 
-      <div className="flex gap-1 shrink-0">
+      <div className="col-span-3 flex shrink-0 justify-end gap-1 border-t pt-2 lg:col-auto lg:border-0 lg:pt-0">
         {onExtras && (
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onExtras} title="Legendas e materiais">
+          <Button variant="ghost" size="icon" className="h-11 w-11 lg:h-7 lg:w-7" onClick={onExtras} title="Legendas e materiais" aria-label="Legendas e materiais">
             <Paperclip className="h-3.5 w-3.5" />
           </Button>
         )}
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
+        <Button variant="ghost" size="icon" className="h-11 w-11 lg:h-7 lg:w-7" onClick={onEdit} aria-label={`Editar ${episode.title}`}>
           <Pencil className="w-3.5 h-3.5" />
         </Button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
+            <Button variant="ghost" size="icon" className="h-11 w-11 text-destructive hover:text-destructive lg:h-7 lg:w-7" aria-label={`Excluir ${episode.title}`}>
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </AlertDialogTrigger>
@@ -1112,20 +1153,22 @@ function TitleDetail({
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5">
+      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <Button variant="ghost" size="sm" onClick={onBack} className="min-h-11 gap-1.5 lg:min-h-9">
           <ArrowLeft className="w-4 h-4" />
           Títulos
         </Button>
         <ChevronRight className="w-4 h-4 text-muted-foreground" />
-        <span className="font-semibold text-foreground">{titleData.title}</span>
+        <span className="min-w-0 break-words font-semibold text-foreground">{titleData.title}</span>
         <Badge variant={titleData.type === "series" ? "default" : "secondary"}>
           {titleData.type === "series" ? "Módulo" : "Aula ao vivo"}
         </Badge>
+        </div>
       </div>
 
       <section className="mb-8">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h3 className={typography.sectionTitle}>Aulas na ordem da trilha</h3>
             <p className="mt-1 text-xs text-muted-foreground">Um vídeo por tema. Arraste para definir a sequência.</p>
@@ -1137,7 +1180,7 @@ function TitleDetail({
               setEditingEpisode(null);
               setEpisodeDialog(true);
             }}
-            className="gap-1.5"
+            className="min-h-11 w-full gap-1.5 lg:min-h-9 lg:w-auto"
           >
             <Plus className="h-4 w-4" />
             Nova aula
@@ -1225,12 +1268,13 @@ function SortableTitleRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 p-3 border rounded-md bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+      className="grid cursor-pointer grid-cols-[44px_64px_minmax(0,1fr)] items-center gap-2 rounded-md border bg-card p-3 transition-colors hover:bg-muted/50 lg:flex lg:gap-3"
       onClick={onSelect}
     >
       <button
         type="button"
-        className="shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+        aria-label={`Reordenar ${title.title}`}
+        className="flex h-11 w-11 shrink-0 touch-none cursor-grab items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing lg:h-auto lg:w-auto"
         onClick={(e) => e.stopPropagation()}
         {...attributes}
         {...listeners}
@@ -1262,13 +1306,15 @@ function SortableTitleRow({
           {title.is_featured && (
             <Star className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
           )}
+          {title.is_active === false && <Badge variant="outline" className="border-amber-500 text-amber-700">Rascunho</Badge>}
         </div>
       </div>
 
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="col-span-3 flex shrink-0 items-center justify-end gap-1 border-t pt-2 lg:col-auto lg:border-0 lg:pt-0">
         <Button
           variant="ghost"
           size="icon"
+          className="h-11 w-11 lg:h-10 lg:w-10"
           onClick={(e) => {
             e.stopPropagation();
             onEdit();
@@ -1279,6 +1325,7 @@ function SortableTitleRow({
         <Button
           variant="ghost"
           size="icon"
+          className="h-11 w-11 lg:h-10 lg:w-10"
           onClick={(e) => {
             e.stopPropagation();
             onToggleFeatured();
@@ -1294,7 +1341,7 @@ function SortableTitleRow({
             <Button
               variant="ghost"
               size="icon"
-              className="text-destructive hover:text-destructive"
+              className="h-11 w-11 text-destructive hover:text-destructive lg:h-10 lg:w-10"
               onClick={(e) => e.stopPropagation()}
             >
               <Trash2 className="w-4 h-4" />
@@ -1380,8 +1427,8 @@ export default function AdminDomiflix() {
 
   return (
     <div className="p-4 sm:p-8">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
           <img src={domiflixLogoDark} alt="Domiflix" className="h-9 object-contain dark:hidden" />
           <img src={domiflixLogoLight} alt="Domiflix" className="h-9 object-contain hidden dark:block" />
           <div>
@@ -1393,7 +1440,7 @@ export default function AdminDomiflix() {
             setEditingTitle(null);
             setTitleDialog(true);
           }}
-          className="gap-2"
+          className="min-h-11 w-full gap-2 lg:w-auto"
         >
           <Plus className="w-4 h-4" />
           Novo Título
@@ -1401,7 +1448,7 @@ export default function AdminDomiflix() {
       </div>
 
       <Tabs defaultValue="series">
-        <TabsList variant="underline" className="mb-6">
+        <div className="mb-6 overflow-x-auto"><TabsList variant="underline" className="w-max min-w-full justify-start">
           <TabsTrigger value="series" className="gap-2">
             <Tv className="w-4 h-4" />
             Módulos ({seriesTitles.length})
@@ -1415,7 +1462,7 @@ export default function AdminDomiflix() {
             Seções
           </TabsTrigger>
           <TabsTrigger value="paths" className="gap-2"><BookOpen className="w-4 h-4" />Cursos</TabsTrigger>
-        </TabsList>
+        </TabsList></div>
 
         <TabsContent value="series">
           {isLoading ? (
