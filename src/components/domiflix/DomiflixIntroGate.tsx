@@ -21,6 +21,20 @@ import {
 } from "@/contexts/OverlayCoordinatorContext";
 import { useAuth } from "@/contexts/AuthContext";
 
+function getSavedTrialProgress(key: string | null) {
+  if (!key || typeof window === "undefined") return 0;
+  const saved = window.localStorage.getItem(key);
+  if (!saved || saved === "1") return 0;
+  try {
+    const parsed = JSON.parse(saved) as { progressSeconds?: number };
+    return Number.isFinite(parsed.progressSeconds)
+      ? Math.max(0, parsed.progressSeconds ?? 0)
+      : 0;
+  } catch {
+    return 0;
+  }
+}
+
 export function DomiflixIntroGate() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -49,12 +63,13 @@ export function DomiflixIntroGate() {
     user?.id && lesson?.episodeId
       ? `domiflix:intro-trial-skipped:${user.id}:${lesson.episodeId}`
       : null;
+  const savedTrialProgress = getSavedTrialProgress(trialSkipKey);
   const trialSkipped = Boolean(
     isTrial &&
     trialSkipKey &&
     (skippedTrialKey === trialSkipKey ||
       (typeof window !== "undefined" &&
-        window.localStorage.getItem(trialSkipKey) === "1")),
+        window.localStorage.getItem(trialSkipKey) !== null)),
   );
   const gateOpen =
     isLoading ||
@@ -107,7 +122,7 @@ export function DomiflixIntroGate() {
   }, [canRender, gateOpen, isError, isLoading, lesson?.videoId]);
 
   if (!isLoading && !isError && !status?.introGate.required) return null;
-  if (!canRender) return null;
+  if (!gateOpen || !canRender) return null;
   async function ended() {
     if (!lesson || hasCompletedVideo) return;
     const { current, total } = progressRef.current;
@@ -141,21 +156,25 @@ export function DomiflixIntroGate() {
   async function skipDuringTrial() {
     if (!isTrial || !lesson || !trialSkipKey) return;
     const { current, total } = progressRef.current;
+    const progressSeconds = Math.max(current, lesson.progressSeconds);
+    const durationSeconds = Math.max(total, lesson.durationSeconds);
+    window.localStorage.setItem(
+      trialSkipKey,
+      JSON.stringify({ progressSeconds, durationSeconds }),
+    );
+    setSkippedTrialKey(trialSkipKey);
+
+    if (progressSeconds <= lesson.progressSeconds) return;
     try {
       await markWatched.mutateAsync({
         episodeId: lesson.episodeId,
         titleId: lesson.titleId,
-        progressSeconds: Math.max(current, lesson.progressSeconds),
-        durationSeconds: Math.max(total, lesson.durationSeconds),
+        progressSeconds,
+        durationSeconds,
         completed: false,
       });
     } catch {
-      toast.error(
-        "Você pode continuar o teste, mas não conseguimos salvar o ponto exato do vídeo.",
-      );
-    } finally {
-      window.localStorage.setItem(trialSkipKey, "1");
-      setSkippedTrialKey(trialSkipKey);
+      // O ponto local já foi salvo; o pulo do teste não deve bloquear o usuário.
     }
   }
   if (isLoading)
@@ -220,7 +239,12 @@ export function DomiflixIntroGate() {
                 titleSubLabel="Introdução"
                 episodeName={lesson.lessonTitle}
                 episodeDescription={lesson.lessonDescription ?? undefined}
-                startSeconds={Math.max(0, Math.floor(lesson.progressSeconds))}
+                startSeconds={Math.max(
+                  0,
+                  Math.floor(
+                    Math.max(lesson.progressSeconds, savedTrialProgress),
+                  ),
+                )}
                 onBack={() => undefined}
                 onEnded={ended}
                 onProgressUpdate={(current, total) => {
