@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ArrowLeft, BookOpen, Check, ChevronRight, Play } from "lucide-react";
+import { ArrowLeft, BookOpen, Check, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { DomiflixLearningStatus, DomiflixTrackLesson } from "@/hooks/useDomiflix";
 import { cn } from "@/lib/utils";
@@ -63,15 +63,17 @@ export function DomiflixTrackPanel({
                     <button
                       onClick={() => onSelect(lesson)}
                       aria-current={active ? "step" : undefined}
+                      aria-label={`Aula ${moduleIndex + 1}.${index + 1}: ${lesson.lessonTitle}`}
                       className={cn(
                         "group flex min-h-11 w-full items-center gap-3 px-5 py-2.5 text-left hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white",
                         active && "border-l-2 border-red-600 bg-white/[0.06] pl-[18px]",
                       )}
                     >
-                      <span className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-sm bg-white/[0.06] text-[11px] text-stone-500", lesson.completed && "text-emerald-400", active && "bg-red-600 text-white")}>
-                        {lesson.completed ? <Check className="h-3 w-3" /> : active ? <Play className="h-3 w-3 fill-current" /> : index + 1}
+                      <span className={cn("flex h-6 min-w-9 shrink-0 items-center justify-center rounded-sm bg-white/[0.06] px-1.5 text-[11px] font-semibold tabular-nums text-stone-500", lesson.completed && !active && "text-emerald-400", active && "bg-red-600 text-white")}>
+                        {moduleIndex + 1}.{index + 1}
                       </span>
                       <span className={cn("min-w-0 flex-1 truncate text-xs font-medium", active ? "text-white" : "text-stone-400")}>{lesson.lessonTitle}</span>
+                      {lesson.completed && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-400" aria-label="Aula concluída" />}
                       <ChevronRight className="h-3.5 w-3.5 text-stone-700 group-hover:text-stone-400" />
                     </button>
                   </li>

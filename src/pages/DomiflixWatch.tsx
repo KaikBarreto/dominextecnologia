@@ -490,10 +490,17 @@ export default function DomiflixWatchPage() {
   const moduleLessonIndex = currentTrackLesson
     ? moduleLessons.findIndex((item) => item.episodeId === currentTrackLesson.episodeId)
     : -1;
+  const trackModuleIds = Array.from(new Set((learningStatus?.track ?? []).map((item) => item.titleId)));
+  const moduleNumber = currentTrackLesson
+    ? Math.max(1, trackModuleIds.indexOf(currentTrackLesson.titleId) + 1)
+    : 1;
+  const lessonIndexLabel = currentTrackLesson
+    ? `${moduleNumber}.${Math.max(1, moduleLessonIndex + 1)}`
+    : String(epNum);
   const titleSubLabel = currentTrackLesson
     ? currentTrackLesson.group === "core" || currentTrackLesson.includedInPlan
-      ? `Aula ${requiredLessonIndex + 1} de ${requiredLessons.length} na sua trilha`
-      : `Aula ${moduleLessonIndex + 1} de ${moduleLessons.length} neste módulo`
+      ? `Aula ${lessonIndexLabel} · ${requiredLessonIndex + 1} de ${requiredLessons.length} na sua trilha`
+      : `Aula ${lessonIndexLabel} · ${moduleLessonIndex + 1} de ${moduleLessons.length} neste módulo`
     : `Aula ${epNum}`;
   const contentTransitioning = titleLookup.isPlaceholderData || titleQuery.isPlaceholderData;
   const contentTransitionError = titleLookup.isError || titleQuery.isError;
@@ -622,6 +629,7 @@ export default function DomiflixWatchPage() {
         </div>
         <DomiflixLessonDetails
           moduleTitle={titleName}
+          lessonIndex={lessonIndexLabel}
           lessonTitle={episode.title}
           description={episode.description}
           resources={extras.resources}
@@ -720,13 +728,14 @@ export function NetflixPlayer({
   const [showHud, setShowHud] = useState(true);
   const [hudLocked, setHudLocked] = useState(false);
   const [seeking, setSeeking] = useState(false);
-  const [activeSubtitleId, setActiveSubtitleId] = useState<string | null>(null);
+  const [activeSubtitleId, setActiveSubtitleId] = useState<string | null | undefined>(undefined);
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
 
   useEffect(() => {
     setActiveSubtitleId((current) => {
+      if (current === null) return null;
       if (current && subtitles.some((subtitle) => subtitle.id === current)) return current;
-      return subtitles.find((subtitle) => subtitle.is_default)?.id ?? null;
+      return subtitles.find((subtitle) => subtitle.is_default)?.id;
     });
   }, [subtitles]);
 
@@ -1823,6 +1832,7 @@ export function NetflixPlayer({
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowSpeed(false);
+                  setShowSubtitleMenu(false);
                   setShowEpisodes((v) => !v);
                 }}
                 className={cn(
@@ -1844,35 +1854,51 @@ export function NetflixPlayer({
                 onChange={onChangePlaybackSpeed}
                 open={showSpeed}
                 onOpenChange={(o) => {
-                  if (o) setShowEpisodes(false);
+                  if (o) {
+                    setShowEpisodes(false);
+                    setShowSubtitleMenu(false);
+                  }
                   setShowSpeed(o);
                 }}
               />
               </div>
             )}
 
-            {subtitles.length > 0 && (
-              <div className="relative order-1">
+            <div className="relative order-1">
                 <button
-                  onClick={(event) => { event.stopPropagation(); setShowSubtitleMenu((open) => !open); }}
-                  className={cn("rounded-sm p-1 text-white transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transform-none motion-reduce:transition-none", activeSubtitleId && "text-red-500")}
-                  title="Legendas"
-                  aria-label="Selecionar legenda"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setShowEpisodes(false);
+                    setShowSpeed(false);
+                    setShowSubtitleMenu((open) => !open);
+                  }}
+                  className={cn("rounded-sm p-1 text-white transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transform-none motion-reduce:transition-none", activeSubtitle && "text-red-500")}
+                  title={activeSubtitle ? `Legendas: ${activeSubtitle.label}` : "Legendas desativadas"}
+                  aria-label={activeSubtitle ? `Trocar legenda. Atual: ${activeSubtitle.label}` : "Ativar ou escolher legenda"}
+                  aria-expanded={showSubtitleMenu}
                 >
                   <Subtitles className="h-7 w-7" />
                 </button>
                 {showSubtitleMenu && (
-                  <div className="absolute bottom-full right-0 mb-3 min-w-48 overflow-hidden rounded-md border border-white/10 bg-[#181818] py-1 shadow-2xl">
-                    <button onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(null); setShowSubtitleMenu(false); }} className="block w-full px-3 py-2 text-left text-xs text-stone-400 hover:bg-white/[0.06] hover:text-white">Desligada</button>
+                  <div className="absolute bottom-full right-0 mb-3 w-64 overflow-hidden rounded-md border border-white/10 bg-[#181818] py-1 shadow-2xl" role="menu" aria-label="Opções de legenda">
+                    <div className="border-b border-white/10 px-3 py-2">
+                      <p className="text-xs font-semibold text-white">Legendas</p>
+                      <p className="mt-0.5 text-[11px] leading-4 text-stone-500">Escolha uma faixa ou assista sem legenda adicional.</p>
+                    </div>
+                    <button onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(null); setShowSubtitleMenu(false); }} className={cn("flex min-h-10 w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs hover:bg-white/[0.06]", !activeSubtitle ? "text-white" : "text-stone-400")} role="menuitemradio" aria-checked={!activeSubtitle}>
+                      Sem legendas
+                      {!activeSubtitle && <Check className="h-3.5 w-3.5 text-red-400" />}
+                    </button>
                     {subtitles.map((subtitle) => (
-                      <button key={subtitle.id} onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(subtitle.id); setShowSubtitleMenu(false); }} className={cn("block w-full px-3 py-2 text-left text-xs hover:bg-white/[0.06]", activeSubtitleId === subtitle.id ? "text-red-400" : "text-stone-300")}>
+                      <button key={subtitle.id} onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(subtitle.id); setShowSubtitleMenu(false); }} className={cn("flex min-h-10 w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs hover:bg-white/[0.06]", activeSubtitleId === subtitle.id ? "text-white" : "text-stone-300")} role="menuitemradio" aria-checked={activeSubtitleId === subtitle.id}>
                         {subtitle.label}
+                        {activeSubtitleId === subtitle.id && <Check className="h-3.5 w-3.5 text-red-400" />}
                       </button>
                     ))}
+                    {subtitles.length === 0 && <p className="border-t border-white/10 px-3 py-2 text-[11px] leading-4 text-stone-500">Nenhuma faixa opcional foi vinculada. Se houver texto na imagem, ele faz parte do próprio vídeo e não pode ser desligado.</p>}
                   </div>
                 )}
               </div>
-            )}
 
             <button
               onClick={toggleFullscreen}
@@ -1894,26 +1920,27 @@ export function NetflixPlayer({
             stacking order. Sem isso, em alguns devices o toque "vazava" pro
             overlay de baixo e os botões viravam inertes no celular. */}
         <div className="md:hidden flex items-center justify-center gap-8 sm:gap-10 pt-2 pb-3 text-white relative z-10 pointer-events-auto">
-          {subtitles.length > 0 && (
-            <div className="relative order-3">
-              <button onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setShowSubtitleMenu((open) => !open); }} className={cn("flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white", activeSubtitleId && "text-red-500")} aria-label="Selecionar legenda">
+          <div className="relative order-3">
+              <button onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setShowEpisodes(false); setShowSpeed(false); setShowSubtitleMenu((open) => !open); }} className={cn("flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white", activeSubtitle && "text-red-500")} aria-label={activeSubtitle ? `Trocar legenda. Atual: ${activeSubtitle.label}` : "Ativar ou escolher legenda"} aria-expanded={showSubtitleMenu}>
                 <Subtitles className="h-7 w-7" />
-                <span className="max-w-24 truncate text-[10px] font-light">{activeSubtitle?.label ?? "Legendas"}</span>
+                <span className="max-w-24 truncate text-[10px] font-light">{activeSubtitle?.label ?? "Sem legendas"}</span>
               </button>
               {showSubtitleMenu && (
-                <div className="absolute bottom-full left-1/2 mb-3 min-w-48 -translate-x-1/2 overflow-hidden rounded-sm border border-white/10 bg-[#181818] py-1 shadow-2xl">
-                  <button onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(null); setShowSubtitleMenu(false); }} className="block w-full px-3 py-2 text-left text-xs text-stone-400 hover:bg-white/[0.06] hover:text-white">Desligada</button>
-                  {subtitles.map((subtitle) => <button key={subtitle.id} onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(subtitle.id); setShowSubtitleMenu(false); }} className={cn("block w-full px-3 py-2 text-left text-xs", activeSubtitleId === subtitle.id ? "bg-white/[0.05] text-red-400" : "text-stone-300")}>{subtitle.label}</button>)}
+                <div className="absolute bottom-full left-1/2 mb-3 w-64 -translate-x-1/2 overflow-hidden rounded-sm border border-white/10 bg-[#181818] py-1 shadow-2xl" role="menu" aria-label="Opções de legenda">
+                  <div className="border-b border-white/10 px-3 py-2"><p className="text-xs font-semibold text-white">Legendas</p><p className="mt-0.5 text-[11px] leading-4 text-stone-500">Escolha uma faixa ou assista sem legenda adicional.</p></div>
+                  <button onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(null); setShowSubtitleMenu(false); }} className={cn("flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs", !activeSubtitle ? "bg-white/[0.05] text-white" : "text-stone-400")} role="menuitemradio" aria-checked={!activeSubtitle}><span>Sem legendas</span>{!activeSubtitle && <Check className="h-3.5 w-3.5 text-red-400" />}</button>
+                  {subtitles.map((subtitle) => <button key={subtitle.id} onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(subtitle.id); setShowSubtitleMenu(false); }} className={cn("flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs", activeSubtitleId === subtitle.id ? "bg-white/[0.05] text-white" : "text-stone-300")} role="menuitemradio" aria-checked={activeSubtitleId === subtitle.id}><span>{subtitle.label}</span>{activeSubtitleId === subtitle.id && <Check className="h-3.5 w-3.5 text-red-400" />}</button>)}
+                  {subtitles.length === 0 && <p className="border-t border-white/10 px-3 py-2 text-[11px] leading-4 text-stone-500">Nenhuma faixa opcional foi vinculada. Legendas gravadas na imagem não podem ser desligadas.</p>}
                 </div>
               )}
             </div>
-          )}
           {onChangePlaybackSpeed && (
             <button
               onPointerDown={(e) => { e.stopPropagation(); }}
               onClick={(e) => {
                 e.stopPropagation();
                 setShowEpisodes(false);
+                setShowSubtitleMenu(false);
                 setShowSpeed((v) => !v);
               }}
               className="order-1 flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-sm pointer-events-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
@@ -1930,6 +1957,7 @@ export function NetflixPlayer({
               onClick={(e) => {
                 e.stopPropagation();
                 setShowSpeed(false);
+                setShowSubtitleMenu(false);
                 setShowEpisodes((v) => !v);
               }}
               className={cn(

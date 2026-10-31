@@ -11,6 +11,7 @@ const WhatsAppLogo = ({ className }: { className?: string }) => (
 
 export function DomiflixLessonDetails({
   moduleTitle,
+  lessonIndex,
   lessonTitle,
   description,
   resources,
@@ -25,6 +26,7 @@ export function DomiflixLessonDetails({
   pathTitle,
 }: {
   moduleTitle: string;
+  lessonIndex: string;
   lessonTitle: string;
   description: string | null;
   resources: DomiflixResource[];
@@ -39,13 +41,13 @@ export function DomiflixLessonDetails({
   pathTitle: string;
 }) {
   const supportMessage = [
-    "Olá, equipe de suporte! Preciso tirar uma dúvida sobre uma aula da DomiFlix.",
+    `Olá, equipe de suporte! Preciso tirar uma dúvida sobre a aula ${lessonIndex} — ${lessonTitle}, da DomiFlix.`,
     "",
     `E-mail do usuário: ${userEmail || "não identificado"}`,
     `Empresa: ${companyName || "não identificada"}`,
     `Trilha: ${pathTitle}`,
     `Módulo: ${moduleTitle}`,
-    `Aula: ${lessonTitle}`,
+    `Aula: ${lessonIndex} — ${lessonTitle}`,
     "",
     "Minha dúvida: ",
   ].join("\n");
@@ -64,7 +66,7 @@ export function DomiflixLessonDetails({
   return (
     <section className="px-4 py-7 text-stone-100 sm:px-7 lg:px-8">
       <DomiflixModuleBadge group={group} includedInPlan={includedInPlan} className="mb-3" />
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-red-500">{moduleTitle}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-red-500">{moduleTitle} · Aula {lessonIndex}</p>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{lessonTitle}</h1>
       <p className="mt-4 max-w-3xl whitespace-pre-line text-sm leading-6 text-stone-400 sm:text-base">
         {description || "Esta aula ainda não possui uma descrição."}
