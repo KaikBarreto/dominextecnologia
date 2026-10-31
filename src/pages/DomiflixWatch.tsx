@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ChevronDown, Check, Gauge, Lock, List, Subtitles, SkipForward, Clock, ListVideo } from "lucide-react";
+import { ArrowLeft, ChevronDown, Check, CircleCheckBig, Gauge, Loader2, Lock, List, Subtitles, SkipForward, Clock, ListVideo } from "lucide-react";
 
 import {
   useDomiflixTitleBySlug,
@@ -15,6 +15,7 @@ import {
   DomiflixSubtitle,
   useDomiflixEpisodeExtras,
   useDomiflixLearningStatus,
+  getDomiflixLessonUrl,
   type DomiflixTrackLesson,
 } from "@/hooks/useDomiflix";
 import {
@@ -113,15 +114,24 @@ export default function DomiflixWatchPage() {
   const queryClient = useQueryClient();
   const isMobileViewport = useIsMobile();
 
-  const { data: resolvedTitleId } = useDomiflixTitleBySlug(titleSlug);
-  const { data: titleData } = useDomiflixTitle(resolvedTitleId ?? undefined);
+  const titleLookup = useDomiflixTitleBySlug(titleSlug);
+  const resolvedTitleId = titleLookup.data;
+  const titleQuery = useDomiflixTitle(resolvedTitleId ?? undefined);
+  const titleData = titleQuery.data;
   const { data: progress = [] } = useDomiflixProgress();
   const { data: prefs } = useDomiflixPreferences();
   const updateSpeed = useUpdatePlaybackSpeed();
   const markWatched = useMarkEpisodeWatched();
   const markedRef = useRef(false);
   const [mobileTrackOpen, setMobileTrackOpen] = useState(false);
+  const [completionOpen, setCompletionOpen] = useState(false);
+  const [advanceCountdown, setAdvanceCountdown] = useState(4);
+  const [autoAdvancePaused, setAutoAdvancePaused] = useState(false);
   const { data: learningStatus } = useDomiflixLearningStatus(true, pathSlug);
+  const prefersReducedMotion = useMemo(
+    () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false,
+    [],
+  );
 
   // All episodes flat
   const allEpisodes: DomiflixEpisode[] = useMemo(() => {
@@ -135,16 +145,51 @@ export default function DomiflixWatchPage() {
   const episodeIndex = Math.max(0, epNum - 1);
   const episode = allEpisodes[episodeIndex];
   const { data: extras = { subtitles: [], resources: [] } } = useDomiflixEpisodeExtras(episode?.id);
-  const nextEpisodeSameTitle = allEpisodes[episodeIndex + 1];
+  const legacyNextEpisodeSameTitle = allEpisodes[episodeIndex + 1];
+  const currentTrackLesson = learningStatus?.track.find((item) => item.episodeId === episode?.id);
+  const currentTrackIndex = currentTrackLesson
+    ? learningStatus?.track.findIndex((item) => item.episodeId === currentTrackLesson.episodeId) ?? -1
+    : -1;
+  const nextTrackLesson = currentTrackIndex >= 0 ? learningStatus?.track[currentTrackIndex + 1] : undefined;
+  const crossesIntoOptionalModule = Boolean(
+    currentTrackLesson &&
+      (currentTrackLesson.group === "core" || currentTrackLesson.includedInPlan) &&
+      nextTrackLesson?.group === "plan" &&
+      !nextTrackLesson.includedInPlan,
+  );
+  const trackNextEpisode: DomiflixEpisode | undefined = nextTrackLesson && !crossesIntoOptionalModule
+    ? {
+        id: nextTrackLesson.episodeId,
+        title_id: nextTrackLesson.titleId,
+        season_id: null,
+        episode_number: nextTrackLesson.episodeNumber,
+        title: nextTrackLesson.lessonTitle,
+        description: nextTrackLesson.lessonDescription,
+        video_id: nextTrackLesson.videoId,
+        video_type: nextTrackLesson.videoType,
+        mobile_video_id: nextTrackLesson.mobileVideoId,
+        mobile_video_type: nextTrackLesson.mobileVideoType,
+        duration_minutes: nextTrackLesson.durationMinutes,
+        thumbnail_url: nextTrackLesson.thumbnailUrl,
+        order_index: nextTrackLesson.sequence,
+        recorded_at: null,
+        created_at: "",
+      }
+    : undefined;
+  const nextEpisodeSameTitle = currentTrackLesson
+    ? nextTrackLesson?.titleId === currentTrackLesson.titleId
+      ? trackNextEpisode
+      : undefined
+    : legacyNextEpisodeSameTitle;
 
-  // Quando estamos no último episódio do módulo atual, buscamos o primeiro
-  // episódio do próximo módulo dentro da mesma seção (ex: Tutoriais).
-  const isLastInTitle = !nextEpisodeSameTitle;
+  const isLastInTitle = !legacyNextEpisodeSameTitle;
   const { data: nextSection } = useNextTitleFirstEpisode(
-    isLastInTitle ? resolvedTitleId ?? undefined : undefined
+    isLastInTitle && !currentTrackLesson ? resolvedTitleId ?? undefined : undefined
   );
   const crossSectionNextEpisode = isLastInTitle ? nextSection?.firstEpisode : undefined;
-  const nextEpisode = nextEpisodeSameTitle ?? crossSectionNextEpisode;
+  const nextEpisode = currentTrackLesson
+    ? trackNextEpisode
+    : nextEpisodeSameTitle ?? crossSectionNextEpisode;
 
   const seasonInfo =
     titleData?.type === "series" && episode
@@ -331,10 +376,15 @@ export default function DomiflixWatchPage() {
     }
     if (!nextEpisode || !titleSlug) return;
 
+    if (currentTrackLesson && nextTrackLesson && learningStatus) {
+      navigate(getDomiflixLessonUrl(learningStatus, nextTrackLesson), { replace: true });
+      return;
+    }
+
     // Caso 1: próximo episódio é do mesmo título
     if (nextEpisodeSameTitle) {
       const startAt = resumeSecondsFor(nextEpisodeSameTitle.id);
-      const path = `/domiflix/assistir/${titleSlug}/${epNum + 1}${startAt > 0 ? `/${startAt}` : ""}`;
+      const path = `/domiflix/assistir/${titleSlug}/${epNum + 1}${startAt > 0 ? `/${startAt}` : ""}?trilha=${encodeURIComponent(pathSlug)}`;
       navigate(path, { replace: true });
       return;
     }
@@ -342,7 +392,7 @@ export default function DomiflixWatchPage() {
     // Caso 2: próximo é o primeiro episódio do próximo módulo na mesma seção
     if (crossSectionNextEpisode && nextSection?.nextTitleSlug) {
       const startAt = resumeSecondsFor(crossSectionNextEpisode.id);
-      const path = `/domiflix/assistir/${nextSection.nextTitleSlug}/1${startAt > 0 ? `/${startAt}` : ""}`;
+      const path = `/domiflix/assistir/${nextSection.nextTitleSlug}/1${startAt > 0 ? `/${startAt}` : ""}?trilha=${encodeURIComponent(pathSlug)}`;
       navigate(path, { replace: true });
     }
   }, [
@@ -350,28 +400,47 @@ export default function DomiflixWatchPage() {
     nextEpisodeSameTitle,
     crossSectionNextEpisode,
     nextSection,
+    currentTrackLesson,
+    nextTrackLesson,
+    learningStatus,
     titleSlug,
     epNum,
+    pathSlug,
     navigate,
     resumeSecondsFor,
     saveProgressAsync,
     saveProgressKeepalive,
   ]);
 
-  // Called when current video ends. If there's a next episode, go to it.
-  // Otherwise, return to the Domiflix home screen.
-  const handleVideoEnded = useCallback(async () => {
-    if (nextEpisode) {
-      await goToNextEpisode();
+  useEffect(() => {
+    setCompletionOpen(false);
+    setAdvanceCountdown(4);
+    setAutoAdvancePaused(false);
+  }, [episode?.id]);
+
+  useEffect(() => {
+    if (!completionOpen || !nextEpisode || prefersReducedMotion || autoAdvancePaused) return;
+    if (advanceCountdown <= 0) {
+      void goToNextEpisode();
       return;
     }
+    const timer = window.setTimeout(
+      () => setAdvanceCountdown((current) => current - 1),
+      1000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [advanceCountdown, autoAdvancePaused, completionOpen, goToNextEpisode, nextEpisode, prefersReducedMotion]);
+
+  const handleVideoEnded = useCallback(async () => {
     try {
       await saveProgressAsync();
     } catch {
       saveProgressKeepalive();
     }
-    navigate("/domiflix", { replace: true });
-  }, [nextEpisode, goToNextEpisode, navigate, saveProgressAsync, saveProgressKeepalive]);
+    setAdvanceCountdown(4);
+    setAutoAdvancePaused(false);
+    setCompletionOpen(true);
+  }, [saveProgressAsync, saveProgressKeepalive]);
 
   const navigateToEpisode = useCallback(
     async (ep: DomiflixEpisode) => {
@@ -383,11 +452,11 @@ export default function DomiflixWatchPage() {
       const idx = allEpisodes.findIndex((e) => e.id === ep.id);
       if (idx >= 0 && titleSlug) {
         const startAt = resumeSecondsFor(ep.id);
-        const path = `/domiflix/assistir/${titleSlug}/${idx + 1}${startAt > 0 ? `/${startAt}` : ""}`;
+        const path = `/domiflix/assistir/${titleSlug}/${idx + 1}${startAt > 0 ? `/${startAt}` : ""}?trilha=${encodeURIComponent(pathSlug)}`;
         navigate(path, { replace: true });
       }
     },
-    [allEpisodes, titleSlug, navigate, resumeSecondsFor, saveProgressAsync, saveProgressKeepalive]
+    [allEpisodes, titleSlug, navigate, pathSlug, resumeSecondsFor, saveProgressAsync, saveProgressKeepalive]
   );
 
   const navigateToTrackLesson = useCallback((lesson: DomiflixTrackLesson) => {
@@ -407,15 +476,32 @@ export default function DomiflixWatchPage() {
   }
 
   const titleName = titleData?.title ?? "";
-  const titleSubLabel = (() => {
-    const parts: string[] = [];
-    parts.push(`Aula ${epNum}`);
-    return parts.join(" ");
-  })();
-
   const startSec = startSeconds ? Math.max(0, parseInt(startSeconds, 10) || 0) : 0;
-  const currentTrackLesson = learningStatus?.track.find((item) => item.episodeId === episode.id);
   const usePortraitVideo = isMobileViewport && Boolean(episode.mobile_video_id);
+  const requiredLessons = learningStatus?.track.filter(
+    (item) => item.group === "core" || item.includedInPlan,
+  ) ?? [];
+  const requiredLessonIndex = currentTrackLesson
+    ? requiredLessons.findIndex((item) => item.episodeId === currentTrackLesson.episodeId)
+    : -1;
+  const moduleLessons = currentTrackLesson
+    ? learningStatus?.track.filter((item) => item.titleId === currentTrackLesson.titleId) ?? []
+    : [];
+  const moduleLessonIndex = currentTrackLesson
+    ? moduleLessons.findIndex((item) => item.episodeId === currentTrackLesson.episodeId)
+    : -1;
+  const titleSubLabel = currentTrackLesson
+    ? currentTrackLesson.group === "core" || currentTrackLesson.includedInPlan
+      ? `Aula ${requiredLessonIndex + 1} de ${requiredLessons.length} na sua trilha`
+      : `Aula ${moduleLessonIndex + 1} de ${moduleLessons.length} neste módulo`
+    : `Aula ${epNum}`;
+  const contentTransitioning = titleLookup.isPlaceholderData || titleQuery.isPlaceholderData;
+  const contentTransitionError = titleLookup.isError || titleQuery.isError;
+  const completedRequiredTrack = Boolean(
+    currentTrackLesson &&
+      (currentTrackLesson.group === "core" || currentTrackLesson.includedInPlan) &&
+      (!nextTrackLesson || crossesIntoOptionalModule),
+  );
   const selectedVideoId = usePortraitVideo ? episode.mobile_video_id : episode.video_id;
   const selectedVideoType = usePortraitVideo ? episode.mobile_video_type || episode.video_type : episode.video_type;
 
@@ -424,12 +510,30 @@ export default function DomiflixWatchPage() {
       <aside className="hidden min-h-0 border-r border-white/10 lg:block">
         <DomiflixTrackPanel status={learningStatus} currentEpisodeId={episode.id} onSelect={navigateToTrackLesson} />
       </aside>
-      <div key={episode.id} className="min-w-0 animate-in fade-in slide-in-from-right-2 duration-300 lg:min-h-0 lg:overflow-y-auto">
+      <div key={episode.id} className="relative min-w-0 animate-in fade-in slide-in-from-right-2 duration-300 motion-reduce:animate-none lg:min-h-0 lg:overflow-y-auto">
+        {contentTransitionError ? (
+          <div className="absolute inset-0 z-[60] grid place-items-center bg-[#141414]/94 px-6 text-center backdrop-blur-sm" role="alert">
+            <div className="max-w-sm">
+              <p className="text-lg font-semibold text-white">Não foi possível abrir esta aula</p>
+              <p className="mt-2 text-sm leading-6 text-stone-300">A trilha continua no lugar. Confira sua conexão e tente carregar novamente.</p>
+              <button type="button" onClick={() => { void titleLookup.refetch(); void titleQuery.refetch(); }} className="mt-5 min-h-11 rounded-sm bg-red-600 px-5 text-sm font-semibold text-white hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400">
+                Tentar novamente
+              </button>
+            </div>
+          </div>
+        ) : contentTransitioning && (
+          <div className="absolute inset-0 z-[60] grid place-items-center bg-[#141414]/88 backdrop-blur-sm" role="status" aria-live="polite">
+            <div className="flex items-center gap-3 text-sm font-medium text-stone-200">
+              <Loader2 className="h-5 w-5 animate-spin text-red-500 motion-reduce:animate-none" />
+              Preparando a próxima aula…
+            </div>
+          </div>
+        )}
         <div className="sticky top-0 z-10 flex h-12 items-center justify-between border-b border-white/10 bg-[#141414]/95 px-4 backdrop-blur lg:hidden">
-          <button onClick={handleBack} className="flex items-center gap-2 text-sm text-stone-300"><ArrowLeft className="h-4 w-4" />Voltar</button>
-          <button onClick={() => setMobileTrackOpen(true)} className="flex items-center gap-2 rounded bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-stone-200"><ListVideo className="h-4 w-4" />Ver trilha</button>
+          <button onClick={handleBack} className="flex min-h-11 items-center gap-2 rounded-sm text-sm text-stone-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"><ArrowLeft className="h-4 w-4" />Voltar</button>
+          <button onClick={() => setMobileTrackOpen(true)} className="flex min-h-11 items-center gap-2 rounded-sm bg-white/[0.06] px-3 text-xs font-semibold text-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"><ListVideo className="h-4 w-4" />Ver trilha</button>
         </div>
-        <div className={cn("flex w-full items-center justify-center bg-black", usePortraitVideo ? "min-h-[72dvh] lg:min-h-[calc(100dvh-3rem)]" : "aspect-video")}>
+        <div className={cn("relative flex w-full items-center justify-center bg-black", usePortraitVideo ? "min-h-[72dvh] lg:min-h-[calc(100dvh-3rem)]" : "aspect-video")}>
         {selectedVideoId ? (
           <NetflixPlayer
           videoId={selectedVideoId}
@@ -486,6 +590,34 @@ export default function DomiflixWatchPage() {
             Voltar
           </button>
         </div>
+        )}
+        {completionOpen && (
+          <div className="absolute inset-0 z-[60] grid place-items-center bg-black/90 px-5 py-8 text-center backdrop-blur-sm" role="dialog" aria-label="Aula concluída" onPointerMove={() => setAutoAdvancePaused(true)} onFocusCapture={() => setAutoAdvancePaused(true)}>
+            <div className="w-full max-w-md">
+              <CircleCheckBig className="mx-auto h-12 w-12 text-emerald-400" />
+              <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">Aula concluída</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">
+                {nextEpisode ? "Vamos para a próxima" : completedRequiredTrack ? "Sua trilha obrigatória está em dia" : "Conteúdo concluído"}
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-stone-300">
+                {nextEpisode
+                  ? prefersReducedMotion || autoAdvancePaused
+                    ? "Avance quando estiver pronto."
+                    : `A próxima aula começa em ${advanceCountdown} segundo${advanceCountdown === 1 ? "" : "s"}.`
+                  : crossesIntoOptionalModule
+                    ? "Você concluiu as aulas da formação básica e dos módulos do seu plano. Os demais módulos continuam disponíveis para conhecer."
+                    : "Seu progresso foi salvo. Você pode revisar esta aula ou voltar aos módulos."}
+              </p>
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
+                <button type="button" onClick={() => setCompletionOpen(false)} className="min-h-11 rounded-sm border border-white/20 px-5 text-sm font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+                  Ficar nesta aula
+                </button>
+                <button type="button" onClick={() => nextEpisode ? void goToNextEpisode() : navigate(`/domiflix?trilha=${encodeURIComponent(pathSlug)}`)} className="min-h-11 rounded-sm bg-red-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black">
+                  {nextEpisode ? "Próxima aula agora" : "Ver todos os módulos"}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
         </div>
         <DomiflixLessonDetails
@@ -806,122 +938,33 @@ export function NetflixPlayer({
     [isYouTube]
   );
 
-  const toggleFullscreen = useCallback(() => {
+  const toggleFullscreen = useCallback(async () => {
     const el = document.querySelector(".domiflix-player-root");
     if (!el) return;
-    if (document.fullscreenElement) document.exitFullscreen();
-    else (el as HTMLElement).requestFullscreen();
-  }, []);
-
-  // Auto-enter fullscreen + lock STRICTLY landscape on mobile (Netflix-style)
-  // Estratégia em camadas:
-  //   1. Fullscreen API → screen.orientation.lock('landscape')  [Android Chrome/Firefox]
-  //   2. CSS rotation fallback (.domiflix-force-landscape)        [iOS Safari, browsers sem lock]
-  // O player NUNCA deve aparecer em portrait — se o lock JS falhar, o CSS rotaciona
-  // visualmente. Erros do lock são logados via console.warn (não toast) pra não
-  // poluir UX em devices incompatíveis. Ver "Limitações conhecidas" no commit.
-  useEffect(() => {
-    if (orientation === "portrait") return;
-    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
-      || window.matchMedia("(max-width: 1024px)").matches;
-    if (!isMobile) return;
-
-    const root = document.querySelector(".domiflix-player-root") as HTMLElement | null;
-
-    const applyCssFallback = () => {
-      const portrait = window.matchMedia("(orientation: portrait)").matches;
-      if (root) root.classList.toggle("domiflix-force-landscape", portrait);
-    };
-
-    const tryLockOrientation = () => {
-      const orientation = (screen as any).orientation;
-      if (orientation?.lock) {
-        orientation.lock("landscape").catch((err: any) => {
-          // Browser não suporta lock fora de fullscreen (ex: Safari iOS),
-          // ou já está locked em outra direção. Fallback CSS toma conta.
-          console.warn("[Domiflix] orientation.lock('landscape') falhou:", err?.message ?? err);
-          applyCssFallback();
-        });
-      } else {
-        // Screen Orientation API ausente (iOS Safari < 16.4 etc).
-        applyCssFallback();
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      return;
+    }
+    try {
+      await (el as HTMLElement).requestFullscreen();
+      const screenOrientation = screen.orientation as ScreenOrientation & {
+        lock?: (orientation: "landscape") => Promise<void>;
+      };
+      if (orientation === "landscape" && screenOrientation?.lock) {
+        await screenOrientation.lock("landscape").catch(() => undefined);
       }
-    };
-
-    const tryEnter = () => {
-      if (!root) return;
-      if (document.fullscreenElement) {
-        // Já em fullscreen — só tenta o lock e aplica fallback se precisar.
-        tryLockOrientation();
-        return;
-      }
-      const req = root.requestFullscreen?.();
-      if (req && typeof req.then === "function") {
-        req
-          .then(() => tryLockOrientation())
-          .catch((err: any) => {
-            console.warn("[Domiflix] requestFullscreen falhou:", err?.message ?? err);
-            applyCssFallback();
-          });
-      } else {
-        // requestFullscreen não disponível — só CSS fallback.
-        applyCssFallback();
-      }
-    };
-
-    // Tenta imediatamente + em qualquer interação (necessário em browsers
-    // que exigem user gesture pra fullscreen/lock).
-    const timer = setTimeout(tryEnter, 300);
-    const onInteract = () => { tryEnter(); };
-    window.addEventListener("touchstart", onInteract, { once: true, passive: true });
-    window.addEventListener("click", onInteract, { once: true });
-
-    // Reage ao usuário rotacionar de fato o device — se voltar pra portrait,
-    // re-aplica fallback CSS pra forçar visualmente landscape.
-    const mql = window.matchMedia("(orientation: portrait)");
-    const onOrient = () => {
-      if (root && !document.fullscreenElement) applyCssFallback();
-    };
-    mql.addEventListener?.("change", onOrient);
-
-    // orientationchange (legado, ainda dispara em alguns devices Android).
-    const onLegacyOrient = () => {
-      if (root && !document.fullscreenElement) applyCssFallback();
-    };
-    window.addEventListener("orientationchange", onLegacyOrient);
-
-    // Quando a aba volta a ficar visível, alguns browsers liberam o lock —
-    // re-tenta pra manter a experiência consistente.
-    const onVisibility = () => {
-      if (document.visibilityState === "visible" && root) {
-        if (document.fullscreenElement) {
-          tryLockOrientation();
-        } else {
-          applyCssFallback();
-        }
-      }
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("touchstart", onInteract);
-      window.removeEventListener("click", onInteract);
-      window.removeEventListener("orientationchange", onLegacyOrient);
-      document.removeEventListener("visibilitychange", onVisibility);
-      mql.removeEventListener?.("change", onOrient);
-      if (root) root.classList.remove("domiflix-force-landscape");
-      // Libera o lock ao sair do player.
-      const orientation = (screen as any).orientation;
-      if (orientation?.unlock) {
-        try { orientation.unlock(); } catch { /* noop */ }
-      }
-    };
+    } catch {
+      // Alguns navegadores não oferecem fullscreen; o player continua inline.
+    }
   }, [orientation]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("button, a, input, textarea, select, [role='checkbox'], [role='menuitem'], [contenteditable='true']")) {
+        return;
+      }
       switch (e.key) {
         case " ":
         case "k":
@@ -1812,7 +1855,7 @@ export function NetflixPlayer({
               <div className="relative order-1">
                 <button
                   onClick={(event) => { event.stopPropagation(); setShowSubtitleMenu((open) => !open); }}
-                  className={cn("p-1 text-white transition-transform hover:scale-110", activeSubtitleId && "text-red-500")}
+                  className={cn("rounded-sm p-1 text-white transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transform-none motion-reduce:transition-none", activeSubtitleId && "text-red-500")}
                   title="Legendas"
                   aria-label="Selecionar legenda"
                 >
@@ -1833,7 +1876,8 @@ export function NetflixPlayer({
 
             <button
               onClick={toggleFullscreen}
-              className="order-4 p-1 text-white transition-transform hover:scale-110"
+              className="order-4 rounded-sm p-1 text-white transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transform-none motion-reduce:transition-none"
+              aria-label={isFullscreen ? "Sair da tela cheia" : "Abrir em tela cheia"}
             >
               {isFullscreen ? (
                 <MinimizeIcon className="w-7 h-7 md:w-8 md:h-8" />
@@ -1852,7 +1896,7 @@ export function NetflixPlayer({
         <div className="md:hidden flex items-center justify-center gap-8 sm:gap-10 pt-2 pb-3 text-white relative z-10 pointer-events-auto">
           {subtitles.length > 0 && (
             <div className="relative order-3">
-              <button onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setShowSubtitleMenu((open) => !open); }} className={cn("flex flex-col items-center gap-0.5", activeSubtitleId && "text-red-500")} aria-label="Selecionar legenda">
+              <button onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setShowSubtitleMenu((open) => !open); }} className={cn("flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white", activeSubtitleId && "text-red-500")} aria-label="Selecionar legenda">
                 <Subtitles className="h-7 w-7" />
                 <span className="max-w-24 truncate text-[10px] font-light">{activeSubtitle?.label ?? "Legendas"}</span>
               </button>
@@ -1872,7 +1916,8 @@ export function NetflixPlayer({
                 setShowEpisodes(false);
                 setShowSpeed((v) => !v);
               }}
-              className="order-1 flex flex-col items-center gap-0.5 pointer-events-auto"
+              className="order-1 flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-sm pointer-events-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              aria-label={`Velocidade de reprodução: ${playbackSpeed}x`}
             >
               <SpeedIcon className="w-7 h-7" />
               <span className="text-[10px] font-light">Velocidade ({playbackSpeed}x)</span>
@@ -1888,9 +1933,10 @@ export function NetflixPlayer({
                 setShowEpisodes((v) => !v);
               }}
               className={cn(
-                "order-2 flex flex-col items-center gap-0.5 pointer-events-auto",
+                "order-2 flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-sm pointer-events-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
                 showEpisodes && "text-[#E50914]"
               )}
+              aria-label="Abrir lista de aulas"
             >
               <EpisodesListIcon className="w-7 h-7" />
               <span className="text-[10px] font-light">Episódios</span>
@@ -1904,7 +1950,8 @@ export function NetflixPlayer({
                 e.stopPropagation();
                 onPlayNext();
               }}
-              className="order-4 flex flex-col items-center gap-0.5 pointer-events-auto"
+              className="order-4 flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-sm pointer-events-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              aria-label="Reproduzir próxima aula"
             >
               <NextEpisodeIcon className="w-7 h-7" />
               <span className="text-[10px] font-light">Próxima aula</span>

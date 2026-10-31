@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
 import dominexLogo from "@/assets/logo-white-horizontal.png";
@@ -36,6 +36,7 @@ export function DomiflixIntroGate() {
   const markWatched = useMarkEpisodeWatched();
   const acknowledge = useAcknowledgeDomiflixIntro();
   const progressRef = useRef({ current: 0, total: 0 });
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [videoCompleted, setVideoCompleted] = useState(false);
   const [understood, setUnderstood] = useState(false);
   const usePortraitVideo = isMobile && Boolean(media?.mobile_video_id);
@@ -44,6 +45,43 @@ export function DomiflixIntroGate() {
     id: "domiflix-intro-gate",
     priority: OVERLAY_PRIORITY.critical,
   });
+
+  useEffect(() => {
+    if (!gateOpen || !canRender) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusTimer = window.setTimeout(() => dialog.focus(), 0);
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          "button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex='-1'])",
+        ),
+      ).filter((element) => !element.hasAttribute("aria-hidden"));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", trapFocus);
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.removeEventListener("keydown", trapFocus);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [canRender, gateOpen, isError, isLoading, lesson?.videoId]);
 
   if (!isLoading && !isError && !status?.introGate.required) return null;
   if (!canRender) return null;
@@ -104,10 +142,12 @@ export function DomiflixIntroGate() {
     );
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-[10000] overflow-y-auto bg-[#111] text-white"
       role="dialog"
       aria-modal="true"
       aria-label="Introdução obrigatória"
+      tabIndex={-1}
     >
       <div className="flex min-h-[100dvh] flex-col">
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-4 sm:h-[72px] sm:px-7 lg:px-9">
@@ -178,6 +218,11 @@ export function DomiflixIntroGate() {
                 Assisti ao vídeo até o final e entendi os combinados.
               </span>
             </label>
+            <p className="sr-only" aria-live="polite">
+              {videoCompleted
+                ? "Vídeo concluído. Marque que assistiu e entendeu para continuar."
+                : "Assista ao vídeo até o final para liberar a confirmação."}
+            </p>
             <Button
               onClick={confirm}
               disabled={!videoCompleted || !understood || acknowledge.isPending}
