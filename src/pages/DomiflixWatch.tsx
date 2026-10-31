@@ -137,7 +137,10 @@ export default function DomiflixWatchPage() {
   const allEpisodes: DomiflixEpisode[] = useMemo(() => {
     if (!titleData) return [];
     return titleData.type === "series"
-      ? titleData.seasons.flatMap((s) => s.episodes)
+      ? [
+          ...titleData.episodes,
+          ...titleData.seasons.flatMap((season) => season.episodes),
+        ]
       : titleData.episodes;
   }, [titleData]);
 
@@ -476,9 +479,57 @@ export default function DomiflixWatchPage() {
   }, [learningStatus?.track, navigate, pathSlug]);
 
   if (!episode) {
+    const contentPending =
+      titleLookup.isPending ||
+      Boolean(resolvedTitleId && titleQuery.isPending);
+
+    if (!contentPending) {
+      const moduleHasNoLessons = Boolean(titleData && allEpisodes.length === 0);
+      return (
+        <div className="domiflix-root fixed inset-0 z-[100] grid place-items-center bg-[#141414] px-6 text-white">
+          <div className="max-w-md text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-500">
+              DomiFlix
+            </p>
+            <h1 className="mt-3 text-2xl font-semibold tracking-tight">
+              {moduleHasNoLessons ? "Esta aula ainda não está disponível" : "Não encontramos esta aula"}
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-stone-400">
+              {moduleHasNoLessons
+                ? "O módulo continua na trilha e será liberado assim que o vídeo for publicado."
+                : "O endereço pode ter mudado ou a aula pode ter sido atualizada. Volte à trilha para escolher outra aula."}
+            </p>
+            <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => navigate(`/domiflix?trilha=${encodeURIComponent(pathSlug)}`)}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-sm bg-red-600 px-5 text-sm font-semibold text-white hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Voltar à trilha
+              </button>
+              {(titleLookup.isError || titleQuery.isError) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void titleLookup.refetch();
+                    if (resolvedTitleId) void titleQuery.refetch();
+                  }}
+                  className="min-h-11 rounded-sm border border-white/15 px-5 text-sm font-semibold text-stone-200 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                >
+                  Tentar novamente
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div className="domiflix-root fixed inset-0 z-[100] bg-[#141414] flex flex-col items-center justify-center gap-7">
+      <div className="domiflix-root fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-[#141414] text-white" role="status" aria-live="polite">
         <div className="domiflix-spinner" />
+        <p className="text-sm font-medium text-stone-300">Preparando a aula…</p>
       </div>
     );
   }
