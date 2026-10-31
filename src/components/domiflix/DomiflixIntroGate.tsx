@@ -52,6 +52,7 @@ export function DomiflixIntroGate() {
   const markWatched = useMarkEpisodeWatched();
   const acknowledge = useAcknowledgeDomiflixIntro();
   const progressRef = useRef({ current: 0, total: 0 });
+  const completionTriggeredRef = useRef(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const [videoCompleted, setVideoCompleted] = useState(false);
   const [understood, setUnderstood] = useState(false);
@@ -81,7 +82,9 @@ export function DomiflixIntroGate() {
   });
 
   useEffect(() => {
-    setVideoCompleted(Boolean(lesson?.completed));
+    const alreadyCompleted = Boolean(lesson?.completed);
+    setVideoCompleted(alreadyCompleted);
+    completionTriggeredRef.current = alreadyCompleted;
   }, [lesson?.completed, lesson?.episodeId]);
 
   useEffect(() => {
@@ -124,7 +127,9 @@ export function DomiflixIntroGate() {
   if (!isLoading && !isError && !status?.introGate.required) return null;
   if (!gateOpen || !canRender) return null;
   async function ended() {
-    if (!lesson || hasCompletedVideo) return;
+    if (!lesson || hasCompletedVideo || completionTriggeredRef.current) return;
+    completionTriggeredRef.current = true;
+    setVideoCompleted(true);
     const { current, total } = progressRef.current;
     try {
       await markWatched.mutateAsync({
@@ -134,11 +139,8 @@ export function DomiflixIntroGate() {
         durationSeconds: total,
         completed: true,
       });
-      setVideoCompleted(true);
     } catch {
-      toast.error(
-        "Não foi possível registrar o vídeo. Confira sua conexão e tente novamente.",
-      );
+      // A confirmação final refaz esta gravação de forma atômica no servidor.
     }
   }
   async function confirm() {
@@ -249,6 +251,9 @@ export function DomiflixIntroGate() {
                 onEnded={ended}
                 onProgressUpdate={(current, total) => {
                   progressRef.current = { current, total };
+                  if (total > 0 && current >= total - 1) {
+                    void ended();
+                  }
                 }}
                 subtitles={extras.subtitles}
                 locked
