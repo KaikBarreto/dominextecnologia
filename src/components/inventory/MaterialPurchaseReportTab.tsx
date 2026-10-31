@@ -29,7 +29,7 @@ import { useMaterialGroups } from '@/hooks/useMaterialGroups';
 import { useStocks } from '@/hooks/useStocks';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { usePartyLabels } from '@/hooks/usePartyLabels';
-import { PartyLabelBadge } from '@/components/customers/PartyLabelBadge';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { useUsers } from '@/hooks/useUsers';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -126,7 +126,7 @@ export function MaterialPurchaseReportTab() {
   const { stocks } = useStocks();
   const { items: inventoryItems } = useInventory();
   const { suppliers } = useSuppliers();
-  const { byId: labelById } = usePartyLabels();
+  const { labelsFor } = usePartyLabels();
   const { groups } = useMaterialGroups();
   const { users } = useUsers();
   const { settings: companySettings } = useCompanySettings();
@@ -274,7 +274,7 @@ export function MaterialPurchaseReportTab() {
   const filters = (
     <>
       <FilterCheckboxGroup label={t.filters.materials} options={materialOptions} selected={materialIds} onChange={setMaterialIds} emptyLabel={t.filters.allMaterials} />
-      <FilterCheckboxGroup label={t.filters.suppliers} options={suppliers.map((item) => ({ value: item.id, label: item.name, suffix: <PartyLabelBadge label={labelById(item.label_id)} />, keywords: labelById(item.label_id)?.name ? [labelById(item.label_id)!.name] : undefined }))} selected={supplierIds} onChange={setSupplierIds} emptyLabel={t.filters.allSuppliers} />
+      <FilterCheckboxGroup label={t.filters.suppliers} options={suppliers.map((item) => { const labels = labelsFor('supplier', item.id); return { value: item.id, label: item.name, suffix: <PartyLabelBadges labels={labels} mode="summary" />, keywords: labels.map((label) => label.name) }; })} selected={supplierIds} onChange={setSupplierIds} emptyLabel={t.filters.allSuppliers} />
       <FilterCheckboxGroup label={t.filters.stocks} options={stocks.map((item) => ({ value: item.id, label: item.name }))} selected={stockIds} onChange={setStockIds} emptyLabel={t.filters.allStocks} />
       <FilterCheckboxGroup label={t.filters.groups} options={groups.map((item) => ({ value: item.id, label: item.name, color: item.color }))} selected={groupIds} onChange={setGroupIds} emptyLabel={t.filters.allGroups} />
       <FilterCheckboxGroup label={t.filters.users} options={users.map((item) => ({ value: item.user_id, label: item.full_name }))} selected={createdByIds} onChange={setCreatedByIds} emptyLabel={t.filters.allUsers} />

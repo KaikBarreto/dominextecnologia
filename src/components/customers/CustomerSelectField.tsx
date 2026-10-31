@@ -6,7 +6,7 @@ import { QuickCustomerDialog } from '@/components/financial/QuickCustomerDialog'
 import { cn } from '@/lib/utils';
 import type { Customer } from '@/types/database';
 import { usePartyLabels } from '@/hooks/usePartyLabels';
-import { PartyLabelBadge } from '@/components/customers/PartyLabelBadge';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 
 export interface CustomerSelectFieldProps {
   value?: string;
@@ -81,22 +81,22 @@ export function CustomerSelectField({
 }: CustomerSelectFieldProps) {
   const [quickOpen, setQuickOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const { byId } = usePartyLabels();
+  const { labelsFor } = usePartyLabels();
 
   const options = [
     ...(allowNone ? [{ value: noneValue, label: noneLabel }] : []),
     ...customers.map((c) => {
-      const label = byId(c.label_id);
+      const labels = labelsFor('customer', c.id);
       return {
         value: c.id,
         label: c.name,
         sublabel: c.document || c.email || c.phone || c.celular || undefined,
         // O sublabel mostra só UM dado, mas a busca enxerga todos, inclusive a etiqueta.
-        keywords: [c.company_name, c.nome_fantasia, c.document, c.email, c.phone, c.celular, label?.name].filter(
+        keywords: [c.company_name, c.nome_fantasia, c.document, c.email, c.phone, c.celular, ...labels.map((label) => label.name)].filter(
           (k): k is string => !!k,
         ),
-        suffix: <PartyLabelBadge label={label} />,
-        selectedSuffix: <PartyLabelBadge label={label} compact />,
+        suffix: <PartyLabelBadges labels={labels} mode="summary" />,
+        selectedSuffix: <PartyLabelBadges labels={labels} mode="compact" />,
       };
     }),
   ];

@@ -19,7 +19,7 @@ import type { Supplier } from '@/hooks/useSuppliers';
 import { formatMoney } from '@/lib/format';
 import { usePartyLabels } from '@/hooks/usePartyLabels';
 import { formatPartyFieldValue, usePartyFieldConfig } from '@/hooks/usePartyFieldConfig';
-import { PartyLabelBadge } from '@/components/customers/PartyLabelBadge';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 
 /**
  * Ficha do fornecedor: dados de cadastro + histórico de gastos
@@ -44,7 +44,7 @@ export function SupplierDetailContent({ supplier }: { supplier: Supplier }) {
   const formatCurrency = (value: number) => formatMoney(value, currency, locale);
   const t = MESSAGES[locale].app.customers.suppliers.detail;
   const { transactions, isLoading } = useFinancial();
-  const { byId: labelById } = usePartyLabels();
+  const { labelsFor } = usePartyLabels();
   const { fields: partyFields } = usePartyFieldConfig('supplier');
   const partyData = supplier as Supplier & { label_id?: string | null; custom_fields?: Record<string, unknown> };
 
@@ -71,7 +71,7 @@ export function SupplierDetailContent({ supplier }: { supplier: Supplier }) {
         <div className="space-y-3">
           <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/70">{t.infoHeading}</h3>
           <div className="grid gap-3 sm:grid-cols-2">
-            {partyData.label_id && <div className="sm:col-span-2"><PartyLabelBadge label={labelById(partyData.label_id)} className="text-xs" /></div>}
+            {labelsFor('supplier', supplier.id).length > 0 && <div className="sm:col-span-2"><PartyLabelBadges labels={labelsFor('supplier', supplier.id)} /></div>}
             {supplier.cpf_cnpj && (
               <div className="flex items-center gap-2 text-sm">
                 <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />

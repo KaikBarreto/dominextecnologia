@@ -91,7 +91,7 @@ import {
 } from '@/lib/customerDisplay';
 import { usePartyLabels } from '@/hooks/usePartyLabels';
 import { formatPartyFieldValue, usePartyFieldConfig } from '@/hooks/usePartyFieldConfig';
-import { PartyLabelBadge } from '@/components/customers/PartyLabelBadge';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos' | 'documentos' | 'cobrancas' | 'estoque';
 
@@ -200,7 +200,8 @@ export function CustomerDetailContent() {
 
   const { contacts, createContact, updateContact, deleteContact } = useCustomerContacts(id);
   const { activeOrigins } = useCustomerOrigins();
-  const { byId: labelById } = usePartyLabels();
+  const { labelsFor } = usePartyLabels();
+  const { labelsFor: equipmentLabelsFor } = usePartyLabels('equipment');
   const { fields: partyFields } = usePartyFieldConfig('customer');
   const {
     expenses: customerPaidExpenses,
@@ -317,10 +318,10 @@ export function CustomerDetailContent() {
         value: c.id,
         label: c.name,
         sublabel: c.document || c.phone || c.celular || undefined,
-        suffix: <PartyLabelBadge label={labelById(c.label_id)} />,
-        selectedSuffix: <PartyLabelBadge label={labelById(c.label_id)} compact />,
+        suffix: <PartyLabelBadges labels={labelsFor('customer', c.id)} mode="summary" />,
+        selectedSuffix: <PartyLabelBadges labels={labelsFor('customer', c.id)} mode="compact" />,
       })),
-    [customers, labelById]
+    [customers, labelsFor]
   );
   const customerOrders = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type !== 'tarefa');
   const customerTasks = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type === 'tarefa');
@@ -745,7 +746,7 @@ export function CustomerDetailContent() {
               </PopoverContent>
             </Popover>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            <PartyLabelBadge label={labelById(customer.label_id)} />
+            <PartyLabelBadges labels={labelsFor('customer', customer.id)} />
             <Badge variant={customer.customer_type === 'pj' ? 'default' : 'muted'}>
               {customer.customer_type === 'pj' ? 'PJ' : 'PF'}
             </Badge>
@@ -846,8 +847,8 @@ export function CustomerDetailContent() {
                 ),
               });
             }
-            const customerLabel = labelById(customer.label_id);
-            if (customerLabel) rows.push({ label: 'Etiqueta', node: <PartyLabelBadge label={customerLabel} className="text-xs" /> });
+            const customerLabels = labelsFor('customer', customer.id);
+            if (customerLabels.length) rows.push({ label: 'Etiquetas', node: <PartyLabelBadges labels={customerLabels} /> });
             const customFields = customer.custom_fields ?? {};
             partyFields
               .filter((field) => field.is_visible && customFields[field.field_key] !== undefined && customFields[field.field_key] !== null && customFields[field.field_key] !== '')
@@ -1148,9 +1149,12 @@ export function CustomerDetailContent() {
                       )
                     }
                     title={
-                      <span className="truncate">
-                        {eq.name}
-                        {eq.model && <span className="text-muted-foreground font-normal"> · {eq.model}</span>}
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="truncate">
+                          {eq.name}
+                          {eq.model && <span className="text-muted-foreground font-normal"> · {eq.model}</span>}
+                        </span>
+                        <PartyLabelBadges labels={equipmentLabelsFor('equipment', eq.id)} mode="summary" />
                       </span>
                     }
                     subtitle={
@@ -1206,7 +1210,10 @@ export function CustomerDetailContent() {
                           </TableCell>
                           <TableCell>
                             <div>
-                              <p className="font-medium">{eq.name}</p>
+                              <div className="flex min-w-0 items-center gap-2">
+                                <p className="font-medium">{eq.name}</p>
+                                <PartyLabelBadges labels={equipmentLabelsFor('equipment', eq.id)} mode="summary" />
+                              </div>
                               {eq.identifier && (
                                 <p className="text-xs text-muted-foreground font-mono">{eq.identifier}</p>
                               )}
@@ -1869,17 +1876,20 @@ export function CustomerDetailContent() {
         equipment={editingEquipment}
         onSubmit={async (data: any) => {
           if (editingEquipment) {
-            const { error } = await supabase.from('equipment').update(data).eq('id', editingEquipment.id);
+            const { data: updated, error } = await supabase.from('equipment').update(data).eq('id', editingEquipment.id).select('id').single();
             if (error) {
               toast({ variant: 'destructive', title: t.equipUpdateError, description: getErrorMessage(error) });
               return;
             }
             queryClient.invalidateQueries({ queryKey: ['equipment'] });
             toast({ title: t.equipUpdated });
+            setEditingEquipment(null);
+            return updated;
           } else {
-            await createEquipment.mutateAsync({ ...data, customer_id: id });
+            const created = await createEquipment.mutateAsync({ ...data, customer_id: id });
+            setEditingEquipment(null);
+            return created;
           }
-          setEditingEquipment(null);
         }}
         customers={customer ? [customer] : []}
         categories={categories}

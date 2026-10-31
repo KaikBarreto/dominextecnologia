@@ -7,11 +7,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useSuppliers, type Supplier, type SupplierInput } from '@/hooks/useSuppliers';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePartyLabels } from '@/hooks/usePartyLabels';
 import { missingRequiredPartyFields, usePartyFieldConfig } from '@/hooks/usePartyFieldConfig';
 import { PartyFieldsForm } from '@/components/customers/PartyFieldsForm';
-import { PartyLabelBadge } from '@/components/customers/PartyLabelBadge';
+import { PartyLabelMultiSelect } from '@/components/customers/PartyLabelMultiSelect';
 import { useToast } from '@/hooks/use-toast';
 
 interface SupplierFormDialogProps {
@@ -38,16 +37,21 @@ export function SupplierFormDialog({ open, onOpenChange, supplier, onCreated }: 
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.supplierForm;
   const { createSupplier, updateSupplier } = useSuppliers();
-  const { activeLabels, byId } = usePartyLabels();
+  const { labels, labelIdsFor, setEntityLabels, isLoading: labelsLoading } = usePartyLabels();
   const { fields: partyFields } = usePartyFieldConfig('supplier');
   const { toast } = useToast();
   const isEditing = !!supplier;
   const [form, setForm] = useState<SupplierInput>(EMPTY);
   const [customFieldErrors, setCustomFieldErrors] = useState<string[]>([]);
+  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
+  const [labelsInitialized, setLabelsInitialized] = useState(false);
+  const selectableLabels = labels.filter((label) => label.is_active || selectedLabelIds.includes(label.id));
 
   useEffect(() => {
     if (!open) return;
     setCustomFieldErrors([]);
+    setSelectedLabelIds(supplier ? (labelIdsFor('supplier', supplier.id).length ? labelIdsFor('supplier', supplier.id) : supplier.label_id ? [supplier.label_id] : []) : []);
+    setLabelsInitialized(!supplier || !labelsLoading);
     if (supplier) {
       setForm({
         name: supplier.name,
@@ -63,7 +67,14 @@ export function SupplierFormDialog({ open, onOpenChange, supplier, onCreated }: 
     } else {
       setForm(EMPTY);
     }
-  }, [supplier, open]);
+  }, [supplier, open, labelIdsFor, labelsLoading]);
+
+  useEffect(() => {
+    if (!open || !supplier || labelsLoading || labelsInitialized) return;
+    const ids = labelIdsFor('supplier', supplier.id);
+    setSelectedLabelIds(ids.length ? ids : supplier.label_id ? [supplier.label_id] : []);
+    setLabelsInitialized(true);
+  }, [open, supplier, labelsLoading, labelsInitialized, labelIdsFor]);
 
   const change = (field: keyof SupplierInput, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -78,16 +89,23 @@ export function SupplierFormDialog({ open, onOpenChange, supplier, onCreated }: 
       return;
     }
     setCustomFieldErrors([]);
+    let savedId: string;
+    let createdSupplier: Supplier | null = null;
+    const payload = { ...form, label_id: selectedLabelIds[0] ?? null };
     if (isEditing && supplier) {
-      await updateSupplier.mutateAsync({ id: supplier.id, ...form });
+      await updateSupplier.mutateAsync({ id: supplier.id, ...payload });
+      savedId = supplier.id;
     } else {
-      const created = await createSupplier.mutateAsync(form);
-      onCreated?.(created);
+      const created = await createSupplier.mutateAsync(payload);
+      savedId = created.id;
+      createdSupplier = created;
     }
+    await setEntityLabels.mutateAsync({ entityType: 'supplier', entityId: savedId, labelIds: selectedLabelIds });
+    if (createdSupplier) onCreated?.(createdSupplier);
     onOpenChange(false);
   };
 
-  const isPending = createSupplier.isPending || updateSupplier.isPending;
+  const isPending = createSupplier.isPending || updateSupplier.isPending || labelsLoading;
 
   return (
     <ResponsiveModal
@@ -100,27 +118,20 @@ export function SupplierFormDialog({ open, onOpenChange, supplier, onCreated }: 
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
             {t.cancel}
           </Button>
-          <Button onClick={handleSubmit as any} disabled={isPending || !form.name?.trim()} className="flex-1">
+          <Button type="submit" form="supplier-form" disabled={isPending || !form.name?.trim()} className="flex-1">
             {isPending ? t.saving : t.save}
           </Button>
         </div>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form id="supplier-form" onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label>{t.fields.name}</Label>
           <Input value={form.name} onChange={(e) => change('name', e.target.value)} placeholder={t.fields.namePlaceholder} required />
         </div>
         <div className="space-y-2">
-          <Label>Etiqueta</Label>
-          <Select value={form.label_id || '__none__'} onValueChange={(value) => setForm((prev) => ({ ...prev, label_id: value === '__none__' ? null : value }))}>
-            <SelectTrigger><SelectValue placeholder="Sem etiqueta" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">Sem etiqueta</SelectItem>
-              {activeLabels.map((label) => <SelectItem key={label.id} value={label.id}><PartyLabelBadge label={label} /></SelectItem>)}
-              {form.label_id && !activeLabels.some((label) => label.id === form.label_id) && byId(form.label_id) && <SelectItem value={form.label_id}><PartyLabelBadge label={byId(form.label_id)} /></SelectItem>}
-            </SelectContent>
-          </Select>
+          <Label>Etiquetas</Label>
+          <PartyLabelMultiSelect labels={selectableLabels} value={selectedLabelIds} onValueChange={(ids) => { setSelectedLabelIds(ids); setLabelsInitialized(true); }} disabled={labelsLoading} />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">

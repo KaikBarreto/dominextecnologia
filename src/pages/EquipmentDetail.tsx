@@ -55,6 +55,8 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatOSNumber } from '@/lib/osNumber';
 import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { buildPortalCallsPath, isPortalCall } from '@/lib/portalCalls';
 
 type TabKey = 'geral' | 'anexos' | 'tarefas' | 'chamados';
@@ -161,6 +163,8 @@ export function EquipmentDetailContent() {
   const { customers } = useCustomers();
   const { categories } = useEquipmentCategories();
   const { fields: fieldConfigs } = useEquipmentFieldConfig();
+  const { labelsFor: equipmentLabelsFor } = usePartyLabels('equipment');
+  const equipmentLabels = equipmentLabelsFor('equipment', equipment?.id);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [attachViewMode, setAttachViewMode] = useState<'gallery' | 'list'>('gallery');
   const [editEquipOpen, setEditEquipOpen] = useState(false);
@@ -384,6 +388,7 @@ export function EquipmentDetailContent() {
       update: updateEquipment.mutateAsync,
       onSuccess: () => toast({ title: tCustomerDetail.equipUpdated }),
     });
+    return { id: equipment.id };
   };
 
   const handleDeleteEquipment = async () => {
@@ -465,8 +470,8 @@ export function EquipmentDetailContent() {
                               if (eq.id !== equipment.id) navigate(`/equipamentos/${eq.id}`);
                             }}
                           >
-                            <div className="min-w-0">
-                              <span className="block truncate">{eq.name}</span>
+                            <div className="min-w-0 flex-1">
+                              <span className="flex min-w-0 items-center gap-2"><span className="truncate">{eq.name}</span><PartyLabelBadges labels={equipmentLabelsFor('equipment', eq.id)} mode="summary" /></span>
                               {sublabel && (
                                 <span className="block text-xs text-muted-foreground truncate">{sublabel}</span>
                               )}
@@ -479,6 +484,7 @@ export function EquipmentDetailContent() {
                 </Command>
               </PopoverContent>
             </Popover>
+          <PartyLabelBadges labels={equipmentLabels} mode="summary" className="mt-2" />
           <p className="text-muted-foreground text-sm flex items-center gap-2 flex-wrap">
             {equipment.identifier && <span className="font-mono">ID: {equipment.identifier}</span>}
             <Badge variant={equipment.status === 'active' ? 'default' : 'secondary'}>

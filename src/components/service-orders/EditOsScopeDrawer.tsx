@@ -224,6 +224,7 @@ export function EditOsScopeDrawer({
         return [...prev, { key: c.id, equipmentId: c.id, equipmentName: c.name, templateIds: [] }];
       });
     }
+    return created as { id?: string } | undefined;
   };
 
   // ── Salvar ──────────────────────────────────────────────────────────────

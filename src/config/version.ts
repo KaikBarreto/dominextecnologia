@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.8";
+export const APP_VERSION = "1.38.9";
 
 export const VERSION_NOTES =
-  "Clientes e fornecedores agora podem receber etiquetas coloridas e campos personalizados em seus cadastros, fichas e seleções.";
+  "Clientes, fornecedores e equipamentos agora podem receber várias etiquetas, com filtros, identificação nos seletores e configurações reunidas.";

@@ -45,7 +45,7 @@ import {
 import { usePartyLabels } from '@/hooks/usePartyLabels';
 import { missingRequiredPartyFields, usePartyFieldConfig } from '@/hooks/usePartyFieldConfig';
 import { PartyFieldsForm } from '@/components/customers/PartyFieldsForm';
-import { PartyLabelBadge } from '@/components/customers/PartyLabelBadge';
+import { PartyLabelMultiSelect } from '@/components/customers/PartyLabelMultiSelect';
 
 
 const customerSchema = z.object({
@@ -136,6 +136,8 @@ export function CustomerFormDialog({
   const [persistedCustomerId, setPersistedCustomerId] = useState<string | null>(null);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
   const [customFieldErrors, setCustomFieldErrors] = useState<string[]>([]);
+  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
+  const [labelsInitialized, setLabelsInitialized] = useState(false);
   // Coordenadas capturadas ao escolher uma sugestão do autocomplete de endereço.
   // Se ficar null no save, tentamos geocodificar o endereço digitado (best-effort).
   const [pickedCoords, setPickedCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -143,7 +145,8 @@ export function CustomerFormDialog({
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.customers.form;
   const tOrigins = MESSAGES[locale].app.equipment.origins;
-  const { activeLabels, byId } = usePartyLabels();
+  const { labels, labelIdsFor, setEntityLabels, isLoading: labelsLoading } = usePartyLabels();
+  const selectableLabels = labels.filter((label) => label.is_active || selectedLabelIds.includes(label.id));
   const { fields: partyFields } = usePartyFieldConfig('customer');
 
   const isEditing = !!customer;
@@ -185,6 +188,8 @@ export function CustomerFormDialog({
       setPortalPasswordConfirmation('');
       setCustomFieldValues((customer?.custom_fields ?? {}) as Record<string, unknown>);
       setCustomFieldErrors([]);
+      setSelectedLabelIds(customer ? (labelIdsFor('customer', customer.id).length ? labelIdsFor('customer', customer.id) : customer.label_id ? [customer.label_id] : []) : []);
+      setLabelsInitialized(!customer || !labelsLoading);
       // Pré-carrega coords já salvas no cliente (edição); novo cliente começa sem coords.
       const lat = (customer as any)?.latitude;
       const lng = (customer as any)?.longitude;
@@ -237,6 +242,13 @@ export function CustomerFormDialog({
       }
     }
   }, [open, customer?.id]);
+
+  useEffect(() => {
+    if (!open || !customer || labelsLoading || labelsInitialized) return;
+    const ids = labelIdsFor('customer', customer.id);
+    setSelectedLabelIds(ids.length ? ids : customer.label_id ? [customer.label_id] : []);
+    setLabelsInitialized(true);
+  }, [open, customer, labelsLoading, labelsInitialized, labelIdsFor]);
 
   useEffect(() => {
     if (open && portal.settings) {
@@ -302,7 +314,7 @@ export function CustomerFormDialog({
 
         const cleanedData = {
           ...data,
-          label_id: data.label_id || null,
+          label_id: selectedLabelIds[0] ?? null,
           custom_fields: customFieldValues,
           whatsapp_notifications_enabled:
             data.whatsapp_notifications_enabled && (data.celular || '').replace(/\D/g, '').length >= 10,
@@ -331,6 +343,8 @@ export function CustomerFormDialog({
         }
         setPersistedCustomerId(targetCustomerId);
       }
+
+      await setEntityLabels.mutateAsync({ entityType: 'customer', entityId: targetCustomerId, labelIds: selectedLabelIds });
 
       const savedPortal = await portal.saveSettings({
         targetCustomerId,
@@ -364,7 +378,7 @@ export function CustomerFormDialog({
       <Button
         type="submit"
         form="customer-form"
-        disabled={isLoading || uploadingPhoto || portal.isSaving || portalUnavailable}
+        disabled={isLoading || uploadingPhoto || portal.isSaving || portalUnavailable || labelsLoading}
         className="text-white"
       >
         {(isLoading || uploadingPhoto || portal.isSaving) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -604,20 +618,10 @@ export function CustomerFormDialog({
                     <FormMessage />
                   </FormItem>
                 )} />
-                <FormField control={form.control} name="label_id" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Etiqueta</FormLabel>
-                    <Select value={field.value || '__none__'} onValueChange={(value) => field.onChange(value === '__none__' ? '' : value)}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Sem etiqueta" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="__none__">Sem etiqueta</SelectItem>
-                        {activeLabels.map((label) => <SelectItem key={label.id} value={label.id}><PartyLabelBadge label={label} /></SelectItem>)}
-                        {field.value && !activeLabels.some((label) => label.id === field.value) && byId(field.value) && <SelectItem value={field.value}><PartyLabelBadge label={byId(field.value)} /></SelectItem>}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                <FormItem>
+                  <FormLabel>Etiquetas</FormLabel>
+                  <PartyLabelMultiSelect labels={selectableLabels} value={selectedLabelIds} onValueChange={(ids) => { setSelectedLabelIds(ids); setLabelsInitialized(true); }} disabled={labelsLoading} />
+                </FormItem>
                 <PartyFieldsForm entityType="customer" values={customFieldValues} onChange={setCustomFieldValues} errors={customFieldErrors} />
                 <FormField control={form.control} name="notes" render={({ field }) => (
                   <FormItem className="sm:col-span-2">

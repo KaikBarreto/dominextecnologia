@@ -19,6 +19,8 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { EquipmentAvatar } from '@/components/contracts/EquipmentAvatar';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { useEquipment } from '@/hooks/useEquipment';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { useContracts, REGENERABLE_OS_STATUSES, type Contract, type ContractItem } from '@/hooks/useContracts';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useToast } from '@/hooks/use-toast';
@@ -63,6 +65,7 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
   // Equipamentos do cliente do contrato (escopo por customer_id). Mesma fonte
   // que o ContractFormDialog usa pra o picker de itens.
   const { equipment } = useEquipment(contract.customer_id || undefined);
+  const { labelsFor: equipmentLabelsFor } = usePartyLabels('equipment');
   const activeEquipment = useMemo(() => equipment.filter((eq: any) => eq.status === 'active'), [equipment]);
 
   // Lookup pela LISTA COMPLETA (não só active): um item do contrato pode apontar
@@ -99,11 +102,18 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
     return workingItems.filter((item) => {
       const eq = item.equipment_id ? equipmentById.get(item.equipment_id) : undefined;
       return fuzzyIncludesAny(
-        [item.item_name, eq?.brand, eq?.model, eq?.serial_number, eq?.identifier],
+        [
+          item.item_name,
+          eq?.brand,
+          eq?.model,
+          eq?.serial_number,
+          eq?.identifier,
+          ...(item.equipment_id ? equipmentLabelsFor('equipment', item.equipment_id).map((label) => label.name) : []),
+        ],
         search,
       );
     });
-  }, [workingItems, search, equipmentById]);
+  }, [workingItems, search, equipmentById, equipmentLabelsFor]);
 
   // Picker de equipamentos (multi-seleção) — só equipamentos do cliente que
   // ainda não estão no contrato.
@@ -132,9 +142,12 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
   const pickerEquipment = useMemo(() => {
     return activeEquipment.filter((eq: any) => {
       if (usedEquipmentIds.has(eq.id)) return false;
-      return fuzzyIncludesAny([eq.name, eq.brand, eq.model, eq.serial_number, eq.identifier], pickerSearch);
+      return fuzzyIncludesAny(
+        [eq.name, eq.brand, eq.model, eq.serial_number, eq.identifier, ...equipmentLabelsFor('equipment', eq.id).map((label) => label.name)],
+        pickerSearch,
+      );
     });
-  }, [activeEquipment, usedEquipmentIds, pickerSearch]);
+  }, [activeEquipment, usedEquipmentIds, pickerSearch, equipmentLabelsFor]);
 
   const togglePicker = (eqId: string) => {
     setPickerSelection((prev) => {
@@ -280,7 +293,10 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
                           }
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="break-words text-sm font-medium">{item.item_name}</p>
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <p className="break-words text-sm font-medium">{item.item_name}</p>
+                            {item.equipment_id && <PartyLabelBadges labels={equipmentLabelsFor('equipment', item.equipment_id)} mode="summary" />}
+                          </div>
                           {detailLine && (
                             <p className="break-words text-xs text-muted-foreground">{detailLine}</p>
                           )}
@@ -394,7 +410,10 @@ export function ContractEquipmentTab({ contract }: ContractEquipmentTabProps) {
                       {selected && <Check className="h-3.5 w-3.5" />}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{eq.name}</p>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <p className="truncate text-sm font-medium">{eq.name}</p>
+                        <PartyLabelBadges labels={equipmentLabelsFor('equipment', eq.id)} mode="summary" />
+                      </div>
                       {[eq.brand, eq.model].filter(Boolean).length > 0 && (
                         <p className="truncate text-xs text-muted-foreground">
                           {[eq.brand, eq.model].filter(Boolean).join(' - ')}

@@ -20,7 +20,7 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { EquipmentFormDialog } from './EquipmentFormDialog';
-import { EquipmentFieldConfigDialog } from './EquipmentFieldConfigDialog';
+import { EquipmentSettingsDialog } from './EquipmentSettingsDialog';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -46,8 +46,8 @@ import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
 import { EquipmentDetailContent } from '@/pages/EquipmentDetail';
 import { isUuid, extractShortCode } from '@/utils/prettyLinks';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
-import { usePartyLabels } from '@/hooks/usePartyLabels';
-import { PartyLabelBadge } from '@/components/customers/PartyLabelBadge';
+import { usePartyLabels, type PartyLabel } from '@/hooks/usePartyLabels';
+import { PartyLabelBadge, PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 
 interface EquipmentGridCardProps {
   eq: Equipment & { customer?: any };
@@ -59,10 +59,11 @@ interface EquipmentGridCardProps {
   onPreviewPhoto: (e: React.MouseEvent) => void;
   onEdit: (e?: React.MouseEvent) => void;
   onDelete: (e?: React.MouseEvent) => void;
+  labels: PartyLabel[];
 }
 
 function EquipmentGridCard({
-  eq, categoryName, categoryColor, isMobile, canManage, onOpen, onPreviewPhoto, onEdit, onDelete,
+  eq, categoryName, categoryColor, isMobile, canManage, onOpen, onPreviewPhoto, onEdit, onDelete, labels,
 }: EquipmentGridCardProps) {
   const customerName = eq.customer?.name;
   const { locale } = useAppLocaleContext();
@@ -103,6 +104,7 @@ function EquipmentGridCard({
               {eq.model && <span className="text-muted-foreground font-normal"> · {eq.model}</span>}
             </p>
             {customerName && <p className="text-xs text-muted-foreground truncate">{customerName}</p>}
+            <PartyLabelBadges labels={labels} mode="summary" className="mt-1" />
           </div>
           <div className="flex items-center justify-between gap-2">
             {categoryName ? (
@@ -136,6 +138,7 @@ export function EquipmentPanel() {
   // Multi-select. Vazio = todas/todos (filtro inativo).
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [customerFilter, setCustomerFilter] = useState<string[]>([]);
+  const [labelFilter, setLabelFilter] = useState<string[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editingEquipment, setEditingEquipment] = useState<(Equipment & { customer?: any }) | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -152,7 +155,8 @@ export function EquipmentPanel() {
 
   const { equipment, isLoading, isError, refetch, createEquipment } = useEquipment();
   const { customers } = useCustomers();
-  const { byId: labelById } = usePartyLabels();
+  const { labelsFor: partyLabelsFor } = usePartyLabels();
+  const { labels: equipmentLabels, labelsFor: equipmentLabelsFor } = usePartyLabels('equipment');
   const { categories } = useEquipmentCategories();
 
   // A MESMA tela atende /equipamentos e /equipamentos/:id no computador: a rota
@@ -177,12 +181,15 @@ export function EquipmentPanel() {
       fuzzyIncludes(eq.identifier, searchTerm) ||
       fuzzyIncludes(eq.brand, searchTerm) ||
       fuzzyIncludes(eq.model, searchTerm) ||
-      fuzzyIncludes(eq.customer?.name, searchTerm);
+      fuzzyIncludes(eq.customer?.name, searchTerm) ||
+      equipmentLabelsFor('equipment', eq.id).some((label) => fuzzyIncludes(label.name, searchTerm));
     const matchesCategory =
       categoryFilter.length === 0 || (eq.category_id && categoryFilter.includes(eq.category_id));
     const matchesCustomer =
       customerFilter.length === 0 || (eq.customer_id && customerFilter.includes(eq.customer_id));
-    return matchesSearch && matchesCategory && matchesCustomer;
+    const equipmentLabelIds = equipmentLabelsFor('equipment', eq.id).map((label) => label.id);
+    const matchesLabel = labelFilter.length === 0 || labelFilter.some((id) => equipmentLabelIds.includes(id));
+    return matchesSearch && matchesCategory && matchesCustomer && matchesLabel;
   });
 
   // Pré-calcula campos derivados pra sort estável em colunas que dependem de
@@ -203,17 +210,20 @@ export function EquipmentPanel() {
 
   const handleSubmit = async (data: EquipmentInput) => {
     if (editingEquipment) {
-      const { error } = await supabase.from('equipment').update(data).eq('id', editingEquipment.id);
+      const { data: updated, error } = await supabase.from('equipment').update(data).eq('id', editingEquipment.id).select('id').single();
       if (error) {
         toast({ variant: 'destructive', title: tCustDetail.equipUpdateError, description: getErrorMessage(error) });
-        return;
+        return undefined;
       }
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       toast({ title: tCustDetail.equipUpdated });
+      setEditingEquipment(null);
+      return updated;
     } else {
-      await createEquipment.mutateAsync(data);
+      const created = await createEquipment.mutateAsync(data);
+      setEditingEquipment(null);
+      return created;
     }
-    setEditingEquipment(null);
   };
 
   const handleDelete = async () => {
@@ -257,10 +267,11 @@ export function EquipmentPanel() {
   const clearFilters = () => {
     setCategoryFilter([]);
     setCustomerFilter([]);
+    setLabelFilter([]);
   };
 
   const activeFilterCount =
-    (categoryFilter.length > 0 ? 1 : 0) + (customerFilter.length > 0 ? 1 : 0);
+    (categoryFilter.length > 0 ? 1 : 0) + (customerFilter.length > 0 ? 1 : 0) + (labelFilter.length > 0 ? 1 : 0);
 
   // Stats por categoria — só renderiza no mobile e se houver categorias.
   const statItems: StatCarouselItem[] = categories.map((cat) => {
@@ -302,13 +313,23 @@ export function EquipmentPanel() {
         options={customersWithEquipment.map((c) => ({
           value: c.id,
           label: c.name,
-          suffix: <PartyLabelBadge label={labelById(c.label_id)} />,
-          selectedSuffix: <PartyLabelBadge label={labelById(c.label_id)} compact />,
-          keywords: labelById(c.label_id)?.name ? [labelById(c.label_id)!.name] : undefined,
+          suffix: <PartyLabelBadges labels={partyLabelsFor('customer', c.id)} mode="summary" />,
+          keywords: partyLabelsFor('customer', c.id).map((label) => label.name),
         }))}
         selected={customerFilter}
         onChange={setCustomerFilter}
         emptyLabel={tEq.filterAllCustomers}
+      />
+      <FilterCheckboxGroup
+        label="Etiquetas"
+        options={equipmentLabels.map((label) => ({
+          value: label.id,
+          label: label.name,
+          suffix: <PartyLabelBadge label={label} />,
+        }))}
+        selected={labelFilter}
+        onChange={setLabelFilter}
+        emptyLabel="Todas as etiquetas"
       />
     </div>
   );
@@ -381,12 +402,7 @@ export function EquipmentPanel() {
                 <Package className="h-5 w-5" />
               </div>
             ),
-            trailing: (
-              <span
-                className={cn('h-2 w-2 rounded-full', eq.status === 'active' ? 'bg-success' : 'bg-muted-foreground/50')}
-                title={eq.status === 'active' ? tEq.statusActive : tEq.statusInactive}
-              />
-            ),
+            trailing: <span className="flex items-center gap-2"><PartyLabelBadges labels={equipmentLabelsFor('equipment', eq.id)} mode="summary" /><span className={cn('h-2 w-2 rounded-full', eq.status === 'active' ? 'bg-success' : 'bg-muted-foreground/50')} title={eq.status === 'active' ? tEq.statusActive : tEq.statusInactive} /></span>,
           }))}
           listTitle={tEq.listHeading}
           storageKey="equipment-list-detail"
@@ -421,8 +437,8 @@ export function EquipmentPanel() {
           ) : filteredEquipment.length === 0 ? (
             <EmptyState
               icon={<Package className="h-12 w-12" />}
-              title={categoryFilter.length > 0 || customerFilter.length > 0 ? tEq.emptySearch : tEq.emptyNone}
-              description={categoryFilter.length > 0 || customerFilter.length > 0 ? tEq.emptySearchDesc : tEq.emptyNoneDescAdd}
+              title={categoryFilter.length > 0 || customerFilter.length > 0 || labelFilter.length > 0 ? tEq.emptySearch : tEq.emptyNone}
+              description={categoryFilter.length > 0 || customerFilter.length > 0 || labelFilter.length > 0 ? tEq.emptySearchDesc : tEq.emptyNoneDescAdd}
             />
           ) : (
             <EmptyState
@@ -447,8 +463,8 @@ export function EquipmentPanel() {
         ) : filteredEquipment.length === 0 ? (
           <EmptyState
             icon={<Package className="h-12 w-12" />}
-            title={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? tEq.emptySearch : tEq.emptyNone}
-            description={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? tEq.emptySearchDesc : tEq.emptyNoneDescAdd}
+            title={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 || labelFilter.length > 0 ? tEq.emptySearch : tEq.emptyNone}
+            description={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 || labelFilter.length > 0 ? tEq.emptySearchDesc : tEq.emptyNoneDescAdd}
           />
         ) : (
           <>
@@ -468,6 +484,7 @@ export function EquipmentPanel() {
                   }}
                   onEdit={(e) => handleEdit(eq, e)}
                   onDelete={(e) => handleDeleteClick(eq, e)}
+                  labels={equipmentLabelsFor('equipment', eq.id)}
                 />
               ))}
             </div>
@@ -498,8 +515,8 @@ export function EquipmentPanel() {
         ) : filteredEquipment.length === 0 ? (
           <EmptyState
             icon={<Package className="h-12 w-12" />}
-            title={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? tEq.emptySearch : tEq.emptyNone}
-            description={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? tEq.emptySearchDesc : tEq.emptyNoneDescTapMobile}
+            title={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 || labelFilter.length > 0 ? tEq.emptySearch : tEq.emptyNone}
+            description={searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 || labelFilter.length > 0 ? tEq.emptySearchDesc : tEq.emptyNoneDescTapMobile}
           />
         ) : (
           <>
@@ -566,9 +583,12 @@ export function EquipmentPanel() {
                       )
                     }
                     title={
-                      <span className="truncate">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="truncate">
                         {eq.name}
                         {eq.model && <span className="text-muted-foreground font-normal"> · {eq.model}</span>}
+                        </span>
+                        <PartyLabelBadges labels={equipmentLabelsFor('equipment', eq.id)} mode="summary" />
                       </span>
                     }
                     subtitle={
@@ -634,10 +654,10 @@ export function EquipmentPanel() {
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Package className="mb-4 h-12 w-12 text-muted-foreground" />
                   <h3 className="text-lg font-medium">
-                    {searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? tEq.emptySearch : tEq.emptyNone}
+                    {searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 || labelFilter.length > 0 ? tEq.emptySearch : tEq.emptyNone}
                   </h3>
                   <p className="text-muted-foreground">
-                    {searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 ? tEq.emptySearchDesc : tEq.emptyNoneDescClick}
+                    {searchTerm || categoryFilter.length > 0 || customerFilter.length > 0 || labelFilter.length > 0 ? tEq.emptySearchDesc : tEq.emptyNoneDescClick}
                   </p>
                 </div>
               ) : (
@@ -670,6 +690,7 @@ export function EquipmentPanel() {
                             <TableCell>
                               <div>
                                 <p className="font-medium">{eq.name}</p>
+                                <PartyLabelBadges labels={equipmentLabelsFor('equipment', eq.id)} mode="summary" className="mt-1" />
                                 {eq.identifier && (
                                   <p className="text-xs text-muted-foreground font-mono">{eq.identifier}</p>
                                 )}
@@ -743,7 +764,7 @@ export function EquipmentPanel() {
         equipmentCount={equipment.length}
       />
 
-      <EquipmentFieldConfigDialog
+      <EquipmentSettingsDialog
         open={configOpen}
         onOpenChange={setConfigOpen}
       />

@@ -35,7 +35,7 @@ import { usePdvPurchaseDraftWorkspace } from '@/hooks/usePdvPurchaseDraftWorkspa
 import { useStocks } from '@/hooks/useStocks';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { usePartyLabels } from '@/hooks/usePartyLabels';
-import { PartyLabelBadge } from '@/components/customers/PartyLabelBadge';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { useToast } from '@/hooks/use-toast';
 import { formatMoney } from '@/lib/format';
 import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
@@ -69,7 +69,7 @@ export default function PdvPurchase() {
   const canRegister = useCanRegisterDirectMaterialPurchase();
   const { stocks, defaultStock } = useStocks();
   const { suppliers } = useSuppliers();
-  const { byId: labelById } = usePartyLabels();
+  const { labelsFor } = usePartyLabels();
   const { items: inventory } = useInventory();
   const { accounts } = useFinancialAccounts();
   const { categories } = useFinancialCategories();
@@ -114,15 +114,15 @@ export default function PdvPurchase() {
   const supplierOptions = useMemo(
     () => [
       { value: NO_SUPPLIER_VALUE, label: t.fields.supplierNone },
-      ...suppliers.map((supplier) => ({
+      ...suppliers.map((supplier) => { const labels = labelsFor('supplier', supplier.id); return {
         value: supplier.id,
         label: supplier.name,
-        suffix: <PartyLabelBadge label={labelById(supplier.label_id)} />,
-        selectedSuffix: <PartyLabelBadge label={labelById(supplier.label_id)} compact />,
-        keywords: labelById(supplier.label_id)?.name ? [labelById(supplier.label_id)!.name] : undefined,
-      })),
+        suffix: <PartyLabelBadges labels={labels} mode="summary" />,
+        selectedSuffix: <PartyLabelBadges labels={labels} mode="compact" />,
+        keywords: labels.map((label) => label.name),
+      }; }),
     ],
-    [suppliers, t.fields.supplierNone, labelById],
+    [suppliers, t.fields.supplierNone, labelsFor],
   );
   const accountOptions = useMemo(
     () => eligibleAccounts.map((account) => ({ value: account.id, label: account.name })),

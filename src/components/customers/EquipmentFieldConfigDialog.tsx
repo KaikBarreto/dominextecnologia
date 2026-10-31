@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode }
 import { cn } from '@/lib/utils';
 import {
   Plus, Trash2, GripVertical, Eye, EyeOff, Type, Hash, Calendar, ToggleLeft,
-  List, Check, X, ChevronUp, ChevronDown, Settings2,
+  List, Check, X, ChevronUp, ChevronDown, Settings2, Globe2,
 } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,21 @@ import { CSS } from '@dnd-kit/utilities';
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  embedded?: boolean;
+}
+
+interface ManagerShellProps extends Props {
+  title: string;
+  className?: string;
+  children: ReactNode;
+}
+
+function EmbeddedManagerShell({ children }: ManagerShellProps) {
+  return <>{children}</>;
+}
+
+function ModalManagerShell({ open, onOpenChange, title, className, children }: ManagerShellProps) {
+  return <ResponsiveModal open={open} onOpenChange={onOpenChange} title={title} className={className}>{children}</ResponsiveModal>;
 }
 
 type FieldType = EquipmentFieldConfig['field_type'];
@@ -178,6 +193,7 @@ function SortableFieldRow({
   labels,
   onLabelChange,
   onToggleVisible,
+  onTogglePortal,
   onToggleRequired,
   onTypeChange,
   onOptionsChange,
@@ -201,6 +217,7 @@ function SortableFieldRow({
   };
   onLabelChange: (label: string) => void;
   onToggleVisible: () => void;
+  onTogglePortal: () => void;
   onToggleRequired: () => void;
   onTypeChange: (type: FieldType) => void;
   onOptionsChange: (options: string[]) => void;
@@ -290,6 +307,15 @@ function SortableFieldRow({
           />
         </div>
 
+        <div className="w-14 shrink-0 flex items-center justify-center gap-1 pt-1" title="Mostrar no portal">
+          <Globe2 className="h-3.5 w-3.5 text-muted-foreground" />
+          <Switch
+            checked={field.is_visible_in_portal}
+            onCheckedChange={onTogglePortal}
+            aria-label="Mostrar campo no portal"
+          />
+        </div>
+
         {/* Coluna: Obrigatório */}
         <div className="w-16 shrink-0 flex justify-center pt-1">
           <Switch checked={field.is_required} onCheckedChange={onToggleRequired} />
@@ -327,7 +353,7 @@ function SortableFieldRow({
   );
 }
 
-export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
+export function EquipmentFieldConfigDialog({ open, onOpenChange, embedded = false }: Props) {
   const isMobile = useIsMobile();
   const { locale } = useAppLocaleContext();
   const tfc = MESSAGES[locale].app.equipment.fieldConfig;
@@ -403,6 +429,10 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
     patchField(field.id, { is_required: !field.is_required });
   };
 
+  const handleTogglePortal = (field: EquipmentFieldConfig) => {
+    patchField(field.id, { is_visible_in_portal: !field.is_visible_in_portal });
+  };
+
   const handleLabelChange = (field: EquipmentFieldConfig, label: string) => {
     patchField(field.id, { label });
   };
@@ -449,6 +479,7 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
       field_type: newFieldType,
       options: newFieldType === 'select' ? cleanedOptions : undefined,
       is_visible: true,
+      is_visible_in_portal: false,
       is_required: false,
       position: fields.length,
     });
@@ -525,9 +556,11 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
     </div>
   );
 
+  const ManagerShell = embedded ? EmbeddedManagerShell : ModalManagerShell;
+
   return (
     <>
-      <ResponsiveModal open={open} onOpenChange={onOpenChange} title={tfc.dialogTitle} className="sm:max-w-3xl">
+      <ManagerShell open={open} onOpenChange={onOpenChange} title={tfc.dialogTitle} className="sm:max-w-3xl" embedded={embedded}>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             {tfc.dialogDesc}
@@ -577,6 +610,12 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
                     label: field.is_required ? tfc.menuMakeOptional : tfc.menuMakeRequired,
                     icon: <ToggleLeft className="h-4 w-4" />,
                     onClick: () => handleToggleRequired(field),
+                  },
+                  {
+                    key: 'toggle-portal',
+                    label: field.is_visible_in_portal ? 'Ocultar do portal' : 'Mostrar no portal',
+                    icon: <Globe2 className="h-4 w-4" />,
+                    onClick: () => handleTogglePortal(field),
                   },
                   {
                     key: 'delete',
@@ -664,6 +703,7 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
                   <span className="flex-1 min-w-0 px-2">{tfc.colName}</span>
                   <span className="w-40 shrink-0 px-2">{tfc.colType}</span>
                   <span className="w-14 shrink-0 text-center">{tfc.colVisible}</span>
+                  <span className="w-14 shrink-0 text-center">Portal</span>
                   <span className="w-16 shrink-0 text-center">{tfc.colRequired}</span>
                   <span className="w-10 shrink-0" aria-hidden />
                 </div>
@@ -681,6 +721,7 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
                           labels={sortableRowLabels}
                           onLabelChange={(label) => handleLabelChange(field, label)}
                           onToggleVisible={() => handleToggleVisible(field)}
+                          onTogglePortal={() => handleTogglePortal(field)}
                           onToggleRequired={() => handleToggleRequired(field)}
                           onTypeChange={(type) => handleTypeChange(field, type)}
                           onOptionsChange={(opts) => handleOptionsChange(field, opts)}
@@ -696,7 +737,7 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
 
           {addBlock}
         </div>
-      </ResponsiveModal>
+      </ManagerShell>
 
       {/* Editor de tipo + opções por campo (mobile: ações secundárias no dialog). */}
       <ResponsiveModal
@@ -749,6 +790,18 @@ export function EquipmentFieldConfigDialog({ open, onOpenChange }: Props) {
                 />
               </div>
             )}
+
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <p className="text-sm font-medium">Mostrar no portal</p>
+                <p className="text-xs text-muted-foreground">Disponibiliza este campo nos portais do cliente e do contrato.</p>
+              </div>
+              <Switch
+                checked={editField.is_visible_in_portal}
+                onCheckedChange={() => handleTogglePortal(editField)}
+                aria-label="Mostrar campo no portal"
+              />
+            </div>
           </div>
         )}
       </ResponsiveModal>

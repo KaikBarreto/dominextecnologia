@@ -10,6 +10,7 @@ DECLARE
   v_company_b uuid := gen_random_uuid();
   v_label_a uuid;
   v_label_b uuid;
+  v_label_a_second uuid;
   v_customer uuid;
   v_supplier uuid;
   v_portal_token text;
@@ -17,6 +18,7 @@ DECLARE
   v_cross_customer_blocked boolean := false;
   v_cross_supplier_blocked boolean := false;
   v_duplicate_blocked boolean := false;
+  v_cross_assignment_blocked boolean := false;
 BEGIN
   PERFORM set_config('request.jwt.claims', '{"role":"service_role"}', true);
 
@@ -40,6 +42,10 @@ BEGIN
   INSERT INTO public.party_labels (company_id, name, color)
   VALUES (v_company_b, 'BLOQUEADO', '#DC2626')
   RETURNING id INTO v_label_b;
+
+  INSERT INTO public.party_labels (company_id, name, color)
+  VALUES (v_company_a, 'VIP', '#2563EB')
+  RETURNING id INTO v_label_a_second;
 
   BEGIN
     INSERT INTO public.party_labels (company_id, name, color)
@@ -70,6 +76,32 @@ BEGIN
     '{"categoria":"Critico"}'::jsonb
   )
   RETURNING id INTO v_supplier;
+
+  INSERT INTO public.customer_label_assignments (company_id, customer_id, label_id, position)
+  VALUES (v_company_a, v_customer, v_label_a_second, 1);
+
+  IF (SELECT count(*) FROM public.customer_label_assignments WHERE customer_id = v_customer) <> 2 THEN
+    RAISE EXCEPTION 'Backfill/atribuicao multipla do cliente nao preservou duas etiquetas';
+  END IF;
+
+  UPDATE public.customers SET label_id = v_label_a_second WHERE id = v_customer;
+  IF (SELECT count(*) FROM public.customer_label_assignments WHERE customer_id = v_customer) <> 2
+     OR (SELECT position FROM public.customer_label_assignments WHERE customer_id = v_customer AND label_id = v_label_a_second) <> 0
+  THEN
+    RAISE EXCEPTION 'Compatibilidade singular removeu etiquetas adicionais ou nao promoveu a primeira etiqueta';
+  END IF;
+  UPDATE public.customers SET label_id = v_label_a WHERE id = v_customer;
+
+  BEGIN
+    INSERT INTO public.customer_label_assignments (company_id, customer_id, label_id, position)
+    VALUES (v_company_a, v_customer, v_label_b, 2);
+  EXCEPTION WHEN foreign_key_violation THEN
+    v_cross_assignment_blocked := true;
+  END;
+
+  IF NOT v_cross_assignment_blocked THEN
+    RAISE EXCEPTION 'Atribuicao multi-etiqueta cross-tenant nao foi bloqueada';
+  END IF;
 
   BEGIN
     UPDATE public.customers SET label_id = v_label_b WHERE id = v_customer;
@@ -147,8 +179,16 @@ BEGIN
     RAISE EXCEPTION 'Excluir etiqueta nao limpou os vinculos das entidades';
   END IF;
 
+  IF (SELECT count(*) FROM public.customer_label_assignments WHERE customer_id = v_customer) <> 1 THEN
+    RAISE EXCEPTION 'Excluir etiqueta removeu atribuicoes adicionais do cliente';
+  END IF;
+
   IF has_table_privilege('anon', 'public.party_labels', 'SELECT')
      OR has_table_privilege('anon', 'public.party_field_config', 'SELECT')
+     OR has_table_privilege('anon', 'public.customer_label_assignments', 'SELECT')
+     OR has_function_privilege('anon', 'public.set_customer_labels(uuid,uuid[])', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.set_supplier_labels(uuid,uuid[])', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.set_equipment_labels(uuid,uuid[])', 'EXECUTE')
      OR has_function_privilege('anon', 'public.get_portal_data_before_party_fields(text,text)', 'EXECUTE')
   THEN
     RAISE EXCEPTION 'Catalogo ou funcao interna expostos a anon';

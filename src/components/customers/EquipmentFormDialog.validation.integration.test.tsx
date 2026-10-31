@@ -17,6 +17,14 @@ vi.mock('@/hooks/useEquipmentFieldConfig', () => ({
   useEquipmentFieldConfig: () => ({ fields: [], isLoading: false }),
 }));
 
+vi.mock('@/hooks/usePartyLabels', () => ({
+  usePartyLabels: () => ({
+    activeLabels: [],
+    labelIdsFor: () => [],
+    setEntityLabels: { mutateAsync: vi.fn() },
+  }),
+}));
+
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));

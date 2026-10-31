@@ -61,6 +61,13 @@ import { PortalChargesSection } from '@/components/portal/PortalChargesSection';
 import { formatOSNumber } from '@/lib/osNumber';
 import { PortalDocumentsSection, type PortalDocumentItem } from '@/components/portal/PortalDocumentsSection';
 import { PortalUnlockCard } from '@/components/portal/PortalUnlockCard';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
+
+interface PortalLabel {
+  id: string;
+  name: string;
+  color: string;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Interfaces e constantes
@@ -71,6 +78,7 @@ interface Customer {
   name: string;
   company_id: string;
   custom_fields?: Record<string, unknown> | null;
+  labels?: PortalLabel[];
 }
 
 interface EquipmentAttachment {
@@ -98,6 +106,7 @@ interface Equipment {
   category?: { name: string; color: string } | null;
   attachments_public?: boolean;
   attachments?: EquipmentAttachment[];
+  labels?: PortalLabel[];
 }
 
 interface FieldConfig {
@@ -1062,7 +1071,7 @@ function CustomerPortalContent({
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="break-words text-sm font-semibold">{selectedEq.name}</p>
+            <div className="flex min-w-0 flex-wrap items-center gap-2"><p className="break-words text-sm font-semibold">{selectedEq.name}</p><PartyLabelBadges labels={selectedEq.labels} mode="summary" /></div>
             {(selectedEq.brand || selectedEq.model) && (
               <p className="text-xs text-muted-foreground">
                 {[selectedEq.brand, selectedEq.model].filter(Boolean).join(' · ')}
@@ -1300,7 +1309,7 @@ function CustomerPortalContent({
                   )}
                   <div className="flex flex-1 min-w-0 items-center gap-3 px-4 py-3">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{eq.name}</p>
+                      <div className="flex min-w-0 items-center gap-2"><p className="font-medium truncate">{eq.name}</p><PartyLabelBadges labels={eq.labels} mode="summary" /></div>
                       <p className="text-xs text-muted-foreground truncate">
                         {[eq.brand, eq.model].filter(Boolean).join(' - ')}
                       </p>
@@ -1447,6 +1456,7 @@ function CustomerPortalContent({
         : undefined}
       navLabel={t.sidebarNavLabel}
     >
+      {!!customer.labels?.length && <PartyLabelBadges labels={customer.labels} mode="full" className="mb-4" />}
       {customerCustomRows.length > 0 && (
         <Card>
           <CardContent className="p-4 sm:p-5">
@@ -1583,7 +1593,13 @@ function CustomerPortalContent({
               <SearchableSelect
                 options={[
                   { value: 'none', label: t.ticketEquipmentNone },
-                  ...equipment.map((eq) => ({ value: eq.id, label: eq.name })),
+                  ...equipment.map((eq) => ({
+                    value: eq.id,
+                    label: eq.name,
+                    suffix: <PartyLabelBadges labels={eq.labels} mode="summary" />,
+                    selectedSuffix: <PartyLabelBadges labels={eq.labels} mode="compact" />,
+                    keywords: eq.labels?.map((label) => label.name),
+                  })),
                 ]}
                 value={ticketEquipmentId || 'none'}
                 onValueChange={(v) => setTicketEquipmentId(v === 'none' ? '' : v)}

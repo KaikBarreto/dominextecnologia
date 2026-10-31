@@ -9,7 +9,7 @@ import { getDateFnsLocale } from '@/lib/format';
 import type { OsStatus } from '@/types/database';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { PartyLabelBadge } from '@/components/customers/PartyLabelBadge';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { usePartyLabels } from '@/hooks/usePartyLabels';
 
 export type ViewMode = 'month' | 'week' | 'day';
@@ -78,7 +78,7 @@ export function ScheduleHeader({
   onEntryTypeFilterChange,
 }: ScheduleHeaderProps) {
   const { locale } = useAppLocaleContext();
-  const { byId } = usePartyLabels();
+  const { labelsFor } = usePartyLabels();
   const t = MESSAGES[locale].app.os.scheduleHeader;
   const statusOptions: { value: OsStatus; label: string }[] = [
     { value: 'pendente', label: t.statusPendente },
@@ -176,16 +176,16 @@ export function ScheduleHeader({
             />
             <FilterCheckboxGroup
               label={t.filterCustomer}
-              options={customers.map((c) => ({
+              options={customers.map((c) => { const labels = labelsFor('customer', c.id); return {
                 value: c.id,
                 label: c.name,
-                suffix: <PartyLabelBadge label={byId(c.label_id)} />,
-                selectedSuffix: <PartyLabelBadge label={byId(c.label_id)} compact />,
-                // Telefone/documento entram como termo de busca do filtro.
-                keywords: [c.phone, c.celular, c.document, c.company_name, byId(c.label_id)?.name].filter(
+                suffix: <PartyLabelBadges labels={labels} mode="summary" />,
+                selectedSuffix: <PartyLabelBadges labels={labels} mode="compact" />,
+                // Telefone/documento e todas as etiquetas entram na busca.
+                keywords: [c.phone, c.celular, c.document, c.company_name, ...labels.map((label) => label.name)].filter(
                   (k): k is string => !!k,
                 ),
-              }))}
+              }; })}
               selected={customerFilter}
               onChange={onCustomerFilterChange}
             />

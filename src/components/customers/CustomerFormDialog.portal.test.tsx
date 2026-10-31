@@ -93,7 +93,7 @@ vi.mock('@/components/customers/CustomerOriginManagerDialog', () => ({
 }));
 vi.mock('@/components/customers/CustomerSettingsDialog', () => ({ CustomerSettingsDialog: () => null }));
 vi.mock('@/hooks/usePartyLabels', () => ({
-  usePartyLabels: () => ({ labels: [], activeLabels: [], byId: () => undefined }),
+  usePartyLabels: () => ({ labels: [], activeLabels: [], isLoading: false, labelIdsFor: () => [], setEntityLabels: { mutateAsync: vi.fn().mockResolvedValue(undefined) } }),
 }));
 vi.mock('@/hooks/usePartyFieldConfig', () => ({
   usePartyFieldConfig: () => ({ fields: [] }),

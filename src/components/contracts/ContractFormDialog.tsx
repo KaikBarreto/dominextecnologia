@@ -22,6 +22,8 @@ import { useCustomers, CustomerInput } from '@/hooks/useCustomers';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { useEquipment } from '@/hooks/useEquipment';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
 import { useTechnicians, useProfiles } from '@/hooks/useProfiles';
@@ -459,6 +461,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const initialIsPmocRef = useState<{ value: boolean }>({ value: false })[0];
 
   const { equipment, createEquipment } = useEquipment(customerId || undefined);
+  const { labelsFor: equipmentLabelsFor } = usePartyLabels('equipment');
   const { categories: equipmentCategories } = useEquipmentCategories();
   const activeEquipment = equipment.filter(eq => eq.status === 'active');
 
@@ -4687,6 +4690,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         }
         setShowQuickEquip(false);
         setMemberPickerEnvKey(null);
+        return created;
       }}
     />
 
@@ -4748,7 +4752,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       </div>
                       <EquipmentAvatar photoUrl={eq.photo_url} name={eq.name} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{eq.name}</p>
+                        <p className="flex min-w-0 items-center gap-2 text-sm font-medium"><span className="truncate">{eq.name}</span><PartyLabelBadges labels={equipmentLabelsFor('equipment', eq.id)} mode="summary" /></p>
                         {[eq.brand, eq.model].filter(Boolean).length > 0 && (
                           <p className="truncate text-xs text-muted-foreground">{[eq.brand, eq.model].filter(Boolean).join(' - ')}</p>
                         )}

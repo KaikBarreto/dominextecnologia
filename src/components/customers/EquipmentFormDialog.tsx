@@ -14,6 +14,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
+import { PartyLabelMultiSelect } from '@/components/customers/PartyLabelMultiSelect';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
 import { Loader2, ImagePlus, X } from 'lucide-react';
 import { useEquipmentFieldConfig } from '@/hooks/useEquipmentFieldConfig';
 import { useToast } from '@/hooks/use-toast';
@@ -36,7 +38,7 @@ interface EquipmentFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   equipment?: (Equipment & { customer?: any }) | null;
-  onSubmit: (data: EquipmentFormData) => Promise<void>;
+  onSubmit: (data: EquipmentFormData) => Promise<{ id?: string } | void>;
   customers: Customer[];
   categories?: EquipmentCategory[];
   isLoading?: boolean;
@@ -49,6 +51,7 @@ export function EquipmentFormDialog({
   open, onOpenChange, equipment, onSubmit, customers, categories = [], isLoading, equipmentCount = 0,
 }: EquipmentFormDialogProps) {
   const { fields: fieldConfig } = useEquipmentFieldConfig();
+  const { activeLabels, labelIdsFor, setEntityLabels } = usePartyLabels('equipment');
   const { toast } = useToast();
   const { locale } = useAppLocaleContext();
   const tf = MESSAGES[locale].app.equipment.form;
@@ -57,11 +60,14 @@ export function EquipmentFormDialog({
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
   const [customFieldErrors, setCustomFieldErrors] = useState<string[]>([]);
+  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initializedContextRef = useRef<string | null>(null);
 
   const defaultCustomerId = equipment?.customer_id ?? (customers.length === 1 ? customers[0].id : '');
   const formContextKey = equipment?.id ?? `new:${defaultCustomerId || 'none'}`;
+  const persistedLabelIds = labelIdsFor('equipment', equipment?.id);
+  const persistedLabelIdsKey = persistedLabelIds.join(',');
   const equipmentSchema = useMemo(
     () => createEquipmentFormSchema(tf),
     [tf],
@@ -162,6 +168,11 @@ export function EquipmentFormDialog({
     setCustomFieldErrors([]);
   }, [open, formContextKey, form, defaultCustomerId, equipment]);
 
+  useEffect(() => {
+    if (!open) return;
+    setSelectedLabelIds(equipment?.id && persistedLabelIdsKey ? persistedLabelIdsKey.split(',') : []);
+  }, [open, equipment?.id, persistedLabelIdsKey]);
+
   const uploadPhoto = async (): Promise<string | null> => {
     if (!photoFile) return null;
 
@@ -231,7 +242,11 @@ export function EquipmentFormDialog({
         cleaned.custom_fields = mergedCustom;
       }
 
-      await onSubmit(cleaned);
+      const saved = await onSubmit(cleaned);
+      const equipmentId = (saved as { id?: string } | undefined)?.id ?? equipment?.id;
+      if (equipmentId) {
+        await setEntityLabels.mutateAsync({ entityType: 'equipment', entityId: equipmentId, labelIds: selectedLabelIds });
+      }
       sessionStorage.removeItem(CACHE_KEY);
       form.reset();
       setPhotoFile(null);
@@ -391,6 +406,16 @@ export function EquipmentFormDialog({
                 )}
               />
             )}
+
+            <div className="space-y-2 sm:col-span-2">
+              <FormLabel>Etiquetas</FormLabel>
+              <PartyLabelMultiSelect
+                labels={activeLabels}
+                value={selectedLabelIds}
+                onValueChange={setSelectedLabelIds}
+                placeholder="Selecione uma ou mais etiquetas"
+              />
+            </div>
 
             {/* Built-in configurable fields */}
             {builtInVisible.map((fc) => {

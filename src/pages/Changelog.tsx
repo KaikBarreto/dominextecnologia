@@ -42,6 +42,28 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.9',
+    date: '31 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Várias etiquetas por cliente, fornecedor e equipamento',
+        description: 'Agora cada cadastro pode receber mais de uma etiqueta e as listagens podem ser filtradas por essas classificações. Nas seleções, a primeira etiqueta aparece ao lado do nome e o indicador +N revela as demais sem ocupar espaço excessivo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Configurações completas de equipamentos',
+        description: 'Categorias, etiquetas e campos personalizados de equipamentos ficam reunidos em uma única área de Configurações, com as informações disponíveis nas fichas, listagens e seleções.',
+        category: 'recurso',
+      },
+      {
+        title: 'Informações controladas nos portais',
+        description: 'Etiquetas e campos de equipamentos podem ser liberados para os portais de forma explícita, mantendo classificações internas protegidas por padrão.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.8',
     date: '31 de outubro de 2026',
     type: 'patch',
