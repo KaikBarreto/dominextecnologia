@@ -25,6 +25,8 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { todayInTz } from '@/lib/timezone';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 
 interface DirectMaterialPurchaseDialogProps {
   open: boolean;
@@ -69,6 +71,7 @@ export function DirectMaterialPurchaseDialog({
   const { toast } = useToast();
   const { stocks, defaultStock } = useStocks();
   const { suppliers } = useSuppliers();
+  const { labelsFor } = usePartyLabels();
   const { items: inventory } = useInventory();
   const { accounts } = useFinancialAccounts();
   const { categories } = useFinancialCategories();
@@ -99,8 +102,17 @@ export function DirectMaterialPurchaseDialog({
   );
 
   const supplierOptions = useMemo(
-    () => suppliers.map((supplier) => ({ value: supplier.id, label: supplier.name })),
-    [suppliers],
+    () => suppliers.map((supplier) => {
+      const labels = labelsFor('supplier', supplier.id);
+      return {
+        value: supplier.id,
+        label: supplier.name,
+        suffix: <PartyLabelBadges labels={labels} mode="summary" />,
+        selectedSuffix: <PartyLabelBadges labels={labels} mode="compact" />,
+        keywords: labels.map((label) => label.name),
+      };
+    }),
+    [suppliers, labelsFor],
   );
   const accountOptions = useMemo(
     () => eligibleAccounts.map((account) => ({ value: account.id, label: account.name })),

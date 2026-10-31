@@ -25,6 +25,8 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipment } from '@/hooks/useEquipment';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { useProfiles } from '@/hooks/useProfiles';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
@@ -220,6 +222,7 @@ export function ServiceOrderFormDialog({
   const [svcCity, setSvcCity] = useState('');
   const [svcState, setSvcState] = useState('');
   const { equipment: rawEquipment } = useEquipment(selectedCustomerId);
+  const { labelsFor: equipmentLabelsFor } = usePartyLabels('equipment');
   // BUG 1.23.x — sem customerId, useEquipment devolve TODOS os equipamentos da
   // empresa (comportamento correto pra outras telas, ex. página de Equipamentos,
   // onde não mexemos). Aqui, sem cliente selecionado (ex. modo "Cliente avulso",
@@ -1565,7 +1568,7 @@ export function ServiceOrderFormDialog({
                       />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{eq.name}</p>
+                      <p className="flex min-w-0 items-center gap-2 text-sm font-medium"><span className="truncate">{eq.name}</span><PartyLabelBadges labels={equipmentLabelsFor('equipment', eq.id)} mode="summary" /></p>
                       <p className="text-xs text-muted-foreground">
                         {[eq.brand, eq.model].filter(Boolean).join(' - ') || t.equipmentNoDetails}
                       </p>
@@ -2467,7 +2470,9 @@ export function ServiceOrderFormDialog({
             const { data: created, error } = await supabase.from('equipment').insert({ ...data, company_id } as any).select().single();
             if (!error && created) {
               setSelectedEquipmentIds(prev => [...prev, (created as any).id]);
+              return created;
             }
+            return undefined;
           }}
           customers={[customers.find(c => c.id === selectedCustomerId)!].filter(Boolean)}
           isLoading={false}

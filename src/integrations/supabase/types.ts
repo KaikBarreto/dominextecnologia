@@ -3915,6 +3915,15 @@ export type Database = {
           },
         ]
       }
+      customer_label_assignments: {
+        Row: { company_id: string; created_at: string; created_by: string | null; customer_id: string; label_id: string; position: number }
+        Insert: { company_id: string; created_at?: string; created_by?: string | null; customer_id: string; label_id: string; position?: number }
+        Update: { company_id?: string; created_at?: string; created_by?: string | null; customer_id?: string; label_id?: string; position?: number }
+        Relationships: [
+          { foreignKeyName: "customer_label_assignments_customer_id_company_id_fkey"; columns: ["customer_id", "company_id"]; isOneToOne: false; referencedRelation: "customers"; referencedColumns: ["id", "company_id"] },
+          { foreignKeyName: "customer_label_assignments_label_id_company_id_fkey"; columns: ["label_id", "company_id"]; isOneToOne: false; referencedRelation: "party_labels"; referencedColumns: ["id", "company_id"] },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -3927,6 +3936,7 @@ export type Database = {
           complement: string | null
           created_at: string
           credit_limit: number | null
+          custom_fields: Json
           customer_type: Database["public"]["Enums"]["customer_type"]
           deleted_at: string | null
           document: string | null
@@ -3938,6 +3948,7 @@ export type Database = {
           is_deleted: boolean
           is_service_customer: boolean
           is_store_customer: boolean
+          label_id: string | null
           lat: number | null
           latitude: number | null
           lead_consent_at: string | null
@@ -3970,6 +3981,7 @@ export type Database = {
           complement?: string | null
           created_at?: string
           credit_limit?: number | null
+          custom_fields?: Json
           customer_type?: Database["public"]["Enums"]["customer_type"]
           deleted_at?: string | null
           document?: string | null
@@ -3981,6 +3993,7 @@ export type Database = {
           is_deleted?: boolean
           is_service_customer?: boolean
           is_store_customer?: boolean
+          label_id?: string | null
           lat?: number | null
           latitude?: number | null
           lead_consent_at?: string | null
@@ -4013,6 +4026,7 @@ export type Database = {
           complement?: string | null
           created_at?: string
           credit_limit?: number | null
+          custom_fields?: Json
           customer_type?: Database["public"]["Enums"]["customer_type"]
           deleted_at?: string | null
           document?: string | null
@@ -4024,6 +4038,7 @@ export type Database = {
           is_deleted?: boolean
           is_service_customer?: boolean
           is_store_customer?: boolean
+          label_id?: string | null
           lat?: number | null
           latitude?: number | null
           lead_consent_at?: string | null
@@ -4051,6 +4066,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "party_labels"
             referencedColumns: ["id"]
           },
         ]
@@ -5351,6 +5373,15 @@ export type Database = {
           },
         ]
       }
+      equipment_label_assignments: {
+        Row: { company_id: string; created_at: string; created_by: string | null; equipment_id: string; label_id: string; position: number }
+        Insert: { company_id: string; created_at?: string; created_by?: string | null; equipment_id: string; label_id: string; position?: number }
+        Update: { company_id?: string; created_at?: string; created_by?: string | null; equipment_id?: string; label_id?: string; position?: number }
+        Relationships: [
+          { foreignKeyName: "equipment_label_assignments_equipment_id_company_id_fkey"; columns: ["equipment_id", "company_id"]; isOneToOne: false; referencedRelation: "equipment"; referencedColumns: ["id", "company_id"] },
+          { foreignKeyName: "equipment_label_assignments_label_id_company_id_fkey"; columns: ["label_id", "company_id"]; isOneToOne: false; referencedRelation: "party_labels"; referencedColumns: ["id", "company_id"] },
+        ]
+      }
       equipment: {
         Row: {
           attachments_public: boolean
@@ -5607,6 +5638,7 @@ export type Database = {
           id: string
           is_required: boolean
           is_visible: boolean
+          is_visible_in_portal: boolean
           label: string
           options: Json | null
           position: number
@@ -5620,6 +5652,7 @@ export type Database = {
           id?: string
           is_required?: boolean
           is_visible?: boolean
+          is_visible_in_portal?: boolean
           label: string
           options?: Json | null
           position?: number
@@ -5633,6 +5666,7 @@ export type Database = {
           id?: string
           is_required?: boolean
           is_visible?: boolean
+          is_visible_in_portal?: boolean
           label?: string
           options?: Json | null
           position?: number
@@ -8549,6 +8583,106 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "os_statuses_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      party_field_config: {
+        Row: {
+          company_id: string
+          created_at: string
+          entity_type: string
+          field_key: string
+          field_type: string
+          id: string
+          is_required: boolean
+          is_visible: boolean
+          is_visible_in_portal: boolean
+          label: string
+          options: Json | null
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          entity_type: string
+          field_key: string
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          is_visible?: boolean
+          is_visible_in_portal?: boolean
+          label: string
+          options?: Json | null
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          entity_type?: string
+          field_key?: string
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          is_visible?: boolean
+          is_visible_in_portal?: boolean
+          label?: string
+          options?: Json | null
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "party_field_config_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      party_labels: {
+        Row: {
+          color: string
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          scope: string
+          show_in_portal: boolean
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          scope?: string
+          show_in_portal?: boolean
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          scope?: string
+          show_in_portal?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "party_labels_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
@@ -12971,6 +13105,15 @@ export type Database = {
         }
         Relationships: []
       }
+      supplier_label_assignments: {
+        Row: { company_id: string; created_at: string; created_by: string | null; label_id: string; position: number; supplier_id: string }
+        Insert: { company_id: string; created_at?: string; created_by?: string | null; label_id: string; position?: number; supplier_id: string }
+        Update: { company_id?: string; created_at?: string; created_by?: string | null; label_id?: string; position?: number; supplier_id?: string }
+        Relationships: [
+          { foreignKeyName: "supplier_label_assignments_supplier_id_company_id_fkey"; columns: ["supplier_id", "company_id"]; isOneToOne: false; referencedRelation: "suppliers"; referencedColumns: ["id", "company_id"] },
+          { foreignKeyName: "supplier_label_assignments_label_id_company_id_fkey"; columns: ["label_id", "company_id"]; isOneToOne: false; referencedRelation: "party_labels"; referencedColumns: ["id", "company_id"] },
+        ]
+      }
       suppliers: {
         Row: {
           address: string | null
@@ -12979,8 +13122,10 @@ export type Database = {
           cpf_cnpj: string | null
           created_at: string
           created_by: string | null
+          custom_fields: Json
           email: string | null
           id: string
+          label_id: string | null
           name: string
           notes: string | null
           phone: string | null
@@ -12993,8 +13138,10 @@ export type Database = {
           cpf_cnpj?: string | null
           created_at?: string
           created_by?: string | null
+          custom_fields?: Json
           email?: string | null
           id?: string
+          label_id?: string | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -13007,14 +13154,24 @@ export type Database = {
           cpf_cnpj?: string | null
           created_at?: string
           created_by?: string | null
+          custom_fields?: Json
           email?: string | null
           id?: string
+          label_id?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "party_labels"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       task_types: {
         Row: {
@@ -14939,6 +15096,9 @@ export type Database = {
       }
     }
     Functions: {
+      set_customer_labels: { Args: { p_customer_id: string; p_label_ids: string[] }; Returns: undefined }
+      set_equipment_labels: { Args: { p_equipment_id: string; p_label_ids: string[] }; Returns: undefined }
+      set_supplier_labels: { Args: { p_supplier_id: string; p_label_ids: string[] }; Returns: undefined }
       _affiliates_resolve_slug: {
         Args: { p_id: string; p_name: string; p_self_id?: string }
         Returns: string

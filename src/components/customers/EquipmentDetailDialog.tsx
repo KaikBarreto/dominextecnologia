@@ -27,6 +27,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import type { Equipment } from '@/types/database';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 
 interface Props {
   open: boolean;
@@ -102,6 +104,8 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
   const { fields: fieldConfigs } = useEquipmentFieldConfig();
   const { toast } = useToast();
   const { updateEquipment } = useEquipment();
+  const { labelsFor } = usePartyLabels('equipment');
+  const equipmentLabels = labelsFor('equipment', equipment?.id);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [deleteAttachmentId, setDeleteAttachmentId] = useState<string | null>(null);
 
@@ -368,6 +372,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
   return (
     <>
       <ResponsiveModal open={open} onOpenChange={onOpenChange} title={equipment.name}>
+        <PartyLabelBadges labels={equipmentLabels} mode="summary" className="mb-4" />
         {/* Tabs */}
         <div className="flex gap-1 border-b mb-4">
           {tabs.map((tab) => (

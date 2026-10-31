@@ -29,6 +29,8 @@ import { useCompraOrdens, type CompraOrdemRow } from '@/hooks/useCompraOrdens';
 import { generateOrdemCompraPdf } from '@/utils/ordemCompraPdfGenerator';
 import { CotacaoDialog } from './CotacaoDialog';
 import { OrdemCompraReceiveDialog } from './OrdemCompraReceiveDialog';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 
 /** Sentinela pro Select de "fornecedor escolhido": Radix crasha com SelectItem value="". */
 const NO_SUPPLIER = '__none__';
@@ -47,6 +49,7 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
   const tOrdens = tCompras.ordens;
   const { money } = useLocaleFormatters();
   const { suppliers } = useSuppliers();
+  const { labelsFor } = usePartyLabels();
   const { settings: companySettings } = useCompanySettings();
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
   const { loadCompra, setStatus, deleteCompra, setChosenCotacao } = useCompras();
@@ -151,8 +154,17 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
     const used = new Set(cotacoes.map((c) => c.supplier_id));
     return suppliers
       .filter((s) => !used.has(s.id))
-      .map((s) => ({ value: s.id, label: s.name }));
-  }, [suppliers, cotacoes]);
+      .map((s) => {
+        const labels = labelsFor('supplier', s.id);
+        return {
+          value: s.id,
+          label: s.name,
+          suffix: <PartyLabelBadges labels={labels} mode="summary" />,
+          selectedSuffix: <PartyLabelBadges labels={labels} mode="compact" />,
+          keywords: labels.map((label) => label.name),
+        };
+      });
+  }, [suppliers, cotacoes, labelsFor]);
 
   // Cotação mais barata (entre as que têm total > 0).
   const cheapestId = useMemo(() => {

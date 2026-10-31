@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Truck, Plus, Pencil, Trash2, Eye } from 'lucide-react';
-import { fuzzyIncludes } from '@/lib/utils';
+import { Truck, Plus, Pencil, Trash2, Eye, Check } from 'lucide-react';
+import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -21,6 +21,9 @@ import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
 // mesma tabela `suppliers`). Não recriamos um segundo CRUD de fornecedor.
 import { SupplierFormDialog } from '@/components/inventory/SupplierFormDialog';
 import { SupplierDetailContent, SupplierDetailDialog } from '@/components/customers/SupplierDetailDialog';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
+import { FilterButton } from '@/components/ui/FilterButton';
 
 /**
  * Aba "Fornecedores" dentro da tela Clientes. Pedido do CEO: fornecedor hoje
@@ -39,19 +42,24 @@ export function SuppliersTab() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.customers.suppliers;
   const { suppliers, isLoading, isError, refetch, deleteSupplier } = useSuppliers();
+  const { activeLabels, labelsFor } = usePartyLabels();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
   const [viewingSupplier, setViewingSupplier] = useState<Supplier | null>(null);
+  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
 
   const filteredSuppliers = suppliers.filter((supplier) =>
     fuzzyIncludes(supplier.name, searchTerm) ||
     fuzzyIncludes(supplier.cpf_cnpj ?? '', searchTerm) ||
     fuzzyIncludes(supplier.contact_name ?? '', searchTerm) ||
     fuzzyIncludes(supplier.email ?? '', searchTerm) ||
-    fuzzyIncludes(supplier.address ?? '', searchTerm),
+    fuzzyIncludes(supplier.address ?? '', searchTerm) ||
+    labelsFor('supplier', supplier.id).some((label) => fuzzyIncludes(label.name, searchTerm)),
+  ).filter((supplier) =>
+    selectedLabelIds.length === 0 || labelsFor('supplier', supplier.id).some((label) => selectedLabelIds.includes(label.id)),
   );
   const selectedSupplier = viewingSupplier
     ? suppliers.find((supplier) => supplier.id === viewingSupplier.id) ?? viewingSupplier
@@ -70,6 +78,15 @@ export function SuppliersTab() {
     setSupplierToDelete(null);
   };
 
+  const labelFilter = (
+    <FilterButton activeCount={selectedLabelIds.length} onClear={() => setSelectedLabelIds([])} iconOnly={isMobile} embedded={!isMobile}>
+      <div className="space-y-2">
+        <p className="text-sm font-medium">Etiquetas</p>
+        {activeLabels.length ? activeLabels.map((label) => { const checked = selectedLabelIds.includes(label.id); return <button key={label.id} type="button" onClick={() => setSelectedLabelIds((current) => checked ? current.filter((id) => id !== label.id) : [...current, label.id])} className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-muted"><span className="h-3 w-7 rounded-full" style={{ backgroundColor: label.color }} /><span className="min-w-0 flex-1 truncate text-sm">{label.name}</span><Check className={cn('h-4 w-4 text-primary', !checked && 'invisible')} /></button>; }) : <p className="text-sm text-muted-foreground">Nenhuma etiqueta cadastrada.</p>}
+      </div>
+    </FilterButton>
+  );
+
   return (
     <div className="space-y-4">
       {isMobile ? (
@@ -78,6 +95,7 @@ export function SuppliersTab() {
           onSearchChange={setSearchTerm}
           searchPlaceholder={t.searchPlaceholderMobile}
         >
+          {labelFilter}
           <Button
             className="h-10 w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={openNew}
@@ -129,6 +147,7 @@ export function SuppliersTab() {
                       }
                       title={supplier.name}
                       subtitle={subtitleParts.length > 0 ? subtitleParts.join(' • ') : t.noData}
+                      trailing={<PartyLabelBadges labels={labelsFor('supplier', supplier.id)} mode="compact" />}
                     />
                   );
                 })}
@@ -148,7 +167,7 @@ export function SuppliersTab() {
         </>
       ) : (
         <ListDetailLayout
-          items={suppliers.map((supplier) => ({
+          items={filteredSuppliers.map((supplier) => ({
             id: supplier.id,
             title: supplier.name,
             subtitle: [supplier.cpf_cnpj, supplier.contact_name, supplier.phone].filter(Boolean).join(' · ') || undefined,
@@ -159,9 +178,11 @@ export function SuppliersTab() {
                 <Truck className="h-5 w-5" />
               </div>
             ),
+            trailing: <PartyLabelBadges labels={labelsFor('supplier', supplier.id)} mode="summary" />,
           }))}
           selectedId={selectedSupplier?.id}
           listTitle={t.listHeading}
+          listFilters={labelFilter}
           storageKey="suppliers-list-detail"
           searchPlaceholder={t.searchPlaceholderMobile}
           emptyLabel={t.emptySearch}
@@ -190,7 +211,7 @@ export function SuppliersTab() {
               description={t.loadErrorDesc}
               action={{ label: t.retry, onClick: () => refetch() }}
             />
-          ) : suppliers.length === 0 ? (
+          ) : filteredSuppliers.length === 0 ? (
             <EmptyState
               icon={<Truck className="h-12 w-12" />}
               title={t.emptyNone}

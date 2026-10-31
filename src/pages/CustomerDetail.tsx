@@ -83,6 +83,15 @@ import { CustomerDeleteDebtNotice } from '@/components/customers/CustomerDeleteD
 import { useCustomerPaidExpenses, type CustomerPaidExpense } from '@/hooks/useCustomerPaidExpenses';
 import { buildPortalCallsPath } from '@/lib/portalCalls';
 import { CustomerDocumentsTab } from '@/components/customers/CustomerDocumentsTab';
+import {
+  formatCustomerDocument,
+  formatCustomerPhone,
+  formatCustomerZipCode,
+  getCustomerOriginLabel,
+} from '@/lib/customerDisplay';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { formatPartyFieldValue, usePartyFieldConfig } from '@/hooks/usePartyFieldConfig';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos' | 'documentos' | 'cobrancas' | 'estoque';
 
@@ -191,6 +200,9 @@ export function CustomerDetailContent() {
 
   const { contacts, createContact, updateContact, deleteContact } = useCustomerContacts(id);
   const { activeOrigins } = useCustomerOrigins();
+  const { labelsFor } = usePartyLabels();
+  const { labelsFor: equipmentLabelsFor } = usePartyLabels('equipment');
+  const { fields: partyFields } = usePartyFieldConfig('customer');
   const {
     expenses: customerPaidExpenses,
     isLoading: customerPaidExpensesLoading,
@@ -306,8 +318,10 @@ export function CustomerDetailContent() {
         value: c.id,
         label: c.name,
         sublabel: c.document || c.phone || c.celular || undefined,
+        suffix: <PartyLabelBadges labels={labelsFor('customer', c.id)} mode="summary" />,
+        selectedSuffix: <PartyLabelBadges labels={labelsFor('customer', c.id)} mode="compact" />,
       })),
-    [customers]
+    [customers, labelsFor]
   );
   const customerOrders = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type !== 'tarefa');
   const customerTasks = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type === 'tarefa');
@@ -718,8 +732,8 @@ export function CustomerDetailContent() {
                             if (opt.value !== id) navigate(`/clientes/${opt.value}`);
                           }}
                         >
-                          <div className="min-w-0">
-                            <span className="block truncate">{opt.label}</span>
+                          <div className="min-w-0 flex-1">
+                            <span className="flex min-w-0 items-center gap-2"><span className="truncate">{opt.label}</span>{opt.suffix}</span>
                             {opt.sublabel && (
                               <span className="block text-xs text-muted-foreground truncate">{opt.sublabel}</span>
                             )}
@@ -732,6 +746,7 @@ export function CustomerDetailContent() {
               </PopoverContent>
             </Popover>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <PartyLabelBadges labels={labelsFor('customer', customer.id)} />
             <Badge variant={customer.customer_type === 'pj' ? 'default' : 'muted'}>
               {customer.customer_type === 'pj' ? 'PJ' : 'PF'}
             </Badge>
@@ -741,26 +756,10 @@ export function CustomerDetailContent() {
           </div>
         </div>
         <div className="ml-auto shrink-0 flex items-center gap-2 sm:gap-3">
-          {/* Editar e Excluir em evidência no computador; o resto no menu de
-              mais ações. No celular tudo volta pro menu, por espaço. */}
-          {!isMobile && (
-            <>
-              <Button variant="ghost" size="sm" className="text-warning hover:text-warning" onClick={() => setEditCustomerOpen(true)}>
-                <Edit className="mr-2 h-4 w-4" />
-                {tCustomers.edit}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:bg-destructive hover:text-white"
-                onClick={() => setDeleteConfirmOpen(true)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {tCustomers.delete}
-              </Button>
-            </>
-          )}
+          {/* Todas as ações ficam concentradas em um único menu para preservar
+              o espaço disponível para o nome do cliente. */}
           <RowActionsMenu
+            ariaLabel={t.actions}
             label={t.actions}
             triggerClassName="border border-border px-3"
             actions={[
@@ -787,14 +786,12 @@ export function CustomerDetailContent() {
                 icon: Edit,
                 variant: 'edit',
                 onClick: () => setEditCustomerOpen(true),
-                hidden: !isMobile,
               },
               {
                 label: tCustomers.delete,
                 icon: Trash2,
                 variant: 'delete',
                 onClick: () => setDeleteConfirmOpen(true),
-                hidden: !isMobile,
               },
             ]}
           />
@@ -822,24 +819,42 @@ export function CustomerDetailContent() {
 
             const originName = (customer as any).origin as string | undefined;
             if (originName) {
+              const isPublicForm = originName === 'public_form';
               const originData = activeOrigins.find(o => o.name === originName);
-              const LucideIcon = originData ? (LucideIcons as any)[originData.icon] : null;
+              const LucideIcon = isPublicForm
+                ? ClipboardList
+                : originData
+                  ? (LucideIcons as any)[originData.icon]
+                  : null;
+              const originLabel = getCustomerOriginLabel(originName, t.originPublicForm);
               rows.push({
                 label: t.fieldOrigin,
                 node: (
                   <div className="flex items-center gap-2">
-                    {LucideIcon && originData && (
-                      <div className="h-5 w-5 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: originData.color }}>
+                    {LucideIcon && (isPublicForm || originData) && (
+                      <div
+                        className={cn(
+                          'h-5 w-5 rounded flex items-center justify-center shrink-0',
+                          isPublicForm && 'bg-info',
+                        )}
+                        style={!isPublicForm && originData ? { backgroundColor: originData.color } : undefined}
+                      >
                         <LucideIcon className="h-3 w-3 text-white" />
                       </div>
                     )}
-                    <span className="text-sm font-medium leading-tight">{originName}</span>
+                    <span className="text-sm font-medium leading-tight">{originLabel}</span>
                   </div>
                 ),
               });
             }
+            const customerLabels = labelsFor('customer', customer.id);
+            if (customerLabels.length) rows.push({ label: 'Etiquetas', node: <PartyLabelBadges labels={customerLabels} /> });
+            const customFields = customer.custom_fields ?? {};
+            partyFields
+              .filter((field) => field.is_visible && customFields[field.field_key] !== undefined && customFields[field.field_key] !== null && customFields[field.field_key] !== '')
+              .forEach((field) => rows.push({ label: field.label, node: <span className="text-sm font-medium leading-tight">{formatPartyFieldValue(field, customFields[field.field_key])}</span> }));
             if (customer.document) {
-              rows.push({ label: t.fieldDocument, node: <span className="text-sm font-medium leading-tight">{customer.document}</span> });
+              rows.push({ label: t.fieldDocument, node: <span className="text-sm font-medium leading-tight">{formatCustomerDocument(customer.document)}</span> });
             }
             if ((customer as any).inscricao_estadual) {
               rows.push({ label: t.fieldInscricaoEstadual, node: <span className="text-sm font-medium leading-tight">{(customer as any).inscricao_estadual}</span> });
@@ -862,7 +877,7 @@ export function CustomerDetailContent() {
                 node: (
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium flex items-center gap-1 leading-tight">
-                      <Phone className="h-3 w-3 shrink-0" />{phoneMask(customer.phone)}
+                      <Phone className="h-3 w-3 shrink-0" />{formatCustomerPhone(customer.phone)}
                     </span>
                     <button
                       type="button"
@@ -888,7 +903,7 @@ export function CustomerDetailContent() {
                 node: (
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium flex items-center gap-1 leading-tight">
-                      <Phone className="h-3 w-3 shrink-0" />{phoneMask(celular)}
+                      <Phone className="h-3 w-3 shrink-0" />{formatCustomerPhone(celular)}
                     </span>
                     <button
                       type="button"
@@ -946,7 +961,7 @@ export function CustomerDetailContent() {
               customer.complement,
               customer.neighborhood,
               customer.city && customer.state ? `${customer.city} - ${customer.state}` : (customer.city || customer.state),
-              customer.zip_code
+              formatCustomerZipCode(customer.zip_code)
             ].filter(Boolean).join(', ');
             const encodedAddress = encodeURIComponent(fullAddress);
             const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
@@ -1134,9 +1149,12 @@ export function CustomerDetailContent() {
                       )
                     }
                     title={
-                      <span className="truncate">
-                        {eq.name}
-                        {eq.model && <span className="text-muted-foreground font-normal"> · {eq.model}</span>}
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="truncate">
+                          {eq.name}
+                          {eq.model && <span className="text-muted-foreground font-normal"> · {eq.model}</span>}
+                        </span>
+                        <PartyLabelBadges labels={equipmentLabelsFor('equipment', eq.id)} mode="summary" />
                       </span>
                     }
                     subtitle={
@@ -1192,7 +1210,10 @@ export function CustomerDetailContent() {
                           </TableCell>
                           <TableCell>
                             <div>
-                              <p className="font-medium">{eq.name}</p>
+                              <div className="flex min-w-0 items-center gap-2">
+                                <p className="font-medium">{eq.name}</p>
+                                <PartyLabelBadges labels={equipmentLabelsFor('equipment', eq.id)} mode="summary" />
+                              </div>
                               {eq.identifier && (
                                 <p className="text-xs text-muted-foreground font-mono">{eq.identifier}</p>
                               )}
@@ -1855,17 +1876,20 @@ export function CustomerDetailContent() {
         equipment={editingEquipment}
         onSubmit={async (data: any) => {
           if (editingEquipment) {
-            const { error } = await supabase.from('equipment').update(data).eq('id', editingEquipment.id);
+            const { data: updated, error } = await supabase.from('equipment').update(data).eq('id', editingEquipment.id).select('id').single();
             if (error) {
               toast({ variant: 'destructive', title: t.equipUpdateError, description: getErrorMessage(error) });
               return;
             }
             queryClient.invalidateQueries({ queryKey: ['equipment'] });
             toast({ title: t.equipUpdated });
+            setEditingEquipment(null);
+            return updated;
           } else {
-            await createEquipment.mutateAsync({ ...data, customer_id: id });
+            const created = await createEquipment.mutateAsync({ ...data, customer_id: id });
+            setEditingEquipment(null);
+            return created;
           }
-          setEditingEquipment(null);
         }}
         customers={customer ? [customer] : []}
         categories={categories}

@@ -5,6 +5,8 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { QuickCustomerDialog } from '@/components/financial/QuickCustomerDialog';
 import { cn } from '@/lib/utils';
 import type { Customer } from '@/types/database';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 
 export interface CustomerSelectFieldProps {
   value?: string;
@@ -79,20 +81,24 @@ export function CustomerSelectField({
 }: CustomerSelectFieldProps) {
   const [quickOpen, setQuickOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { labelsFor } = usePartyLabels();
 
   const options = [
     ...(allowNone ? [{ value: noneValue, label: noneLabel }] : []),
-    ...customers.map((c) => ({
-      value: c.id,
-      label: c.name,
-      sublabel: c.document || c.email || c.phone || c.celular || undefined,
-      // O sublabel mostra só UM dado (o primeiro preenchido), mas a busca tem
-      // que enxergar todos — quem tem só o telefone do cliente na mão precisa
-      // achar ele aqui. Razão social entra junto pro mesmo motivo.
-      keywords: [c.company_name, c.nome_fantasia, c.document, c.email, c.phone, c.celular].filter(
-        (k): k is string => !!k,
-      ),
-    })),
+    ...customers.map((c) => {
+      const labels = labelsFor('customer', c.id);
+      return {
+        value: c.id,
+        label: c.name,
+        sublabel: c.document || c.email || c.phone || c.celular || undefined,
+        // O sublabel mostra só UM dado, mas a busca enxerga todos, inclusive a etiqueta.
+        keywords: [c.company_name, c.nome_fantasia, c.document, c.email, c.phone, c.celular, ...labels.map((label) => label.name)].filter(
+          (k): k is string => !!k,
+        ),
+        suffix: <PartyLabelBadges labels={labels} mode="summary" />,
+        selectedSuffix: <PartyLabelBadges labels={labels} mode="compact" />,
+      };
+    }),
   ];
 
   const handleCreateClick = (query = searchQuery) => {

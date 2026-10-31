@@ -338,12 +338,19 @@ export async function getInvokeErrorMessage(error: unknown): Promise<string | nu
 }
 
 /**
- * Violações de unicidade em que o SQLSTATE genérico ("Já existe um registro com
- * esses dados") não basta: o usuário precisa saber QUAL campo repetiu pra poder
- * consertar. Casadas pelo nome do índice, ANTES do mapa de SQLSTATE — senão o
- * `23505` resolveria primeiro e a mensagem específica nunca seria alcançada.
+ * Constraints em que o SQLSTATE genérico não orienta a ação correta. Inclui
+ * unicidade (qual campo repetiu) e referências (qual entidade ainda bloqueia a
+ * exclusão). Casadas pelo nome da constraint ANTES do mapa de SQLSTATE — senão
+ * `23505`/`23503` resolveriam primeiro e a mensagem específica se perderia.
  */
 const CONSTRAINT_MESSAGES: Array<{ constraint: string; text: string }> = [
+  {
+    // Precisa vir antes do SQLSTATE 23503 genérico. O prefixo da constraint
+    // varia conforme a tabela dona da referência (contrato, OS, PMOC...), mas
+    // todas preservam este sufixo estável.
+    constraint: '_equipment_id_fkey',
+    text: 'Este equipamento não pode ser excluído porque está vinculado a ordens de serviço, contratos ou planos PMOC.',
+  },
   {
     constraint: 'financial_categories_company_id_name_key',
     text: 'Já existe uma categoria com esse nome. Escolha outro nome.',

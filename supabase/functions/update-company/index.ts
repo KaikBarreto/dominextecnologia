@@ -31,11 +31,22 @@ Deno.serve(async (req) => {
     )
     const { data: auth, error: authError } = await supabase.auth.getUser(authHeader.slice(7))
     if (authError || !auth.user) return json({ error: 'Não autenticado.' }, 401)
-    const { data: isSuperAdmin } = await supabase.rpc('has_role', {
-      _user_id: auth.user.id,
-      _role: 'super_admin',
-    })
-    if (!isSuperAdmin) return json({ error: 'Apenas administradores podem editar empresas.' }, 403)
+    const [superAdminResult, companyPermissionResult] = await Promise.all([
+      supabase.rpc('has_role', {
+        _user_id: auth.user.id,
+        _role: 'super_admin',
+      }),
+      supabase.rpc('has_admin_permission', {
+        _user_id: auth.user.id,
+        _permission: 'admin_empresas',
+      }),
+    ])
+    if (superAdminResult.error || companyPermissionResult.error) {
+      throw new Error('Não foi possível validar sua permissão para editar empresas.')
+    }
+    if (!superAdminResult.data && !companyPermissionResult.data) {
+      return json({ error: 'Você não tem permissão para editar empresas.' }, 403)
+    }
 
     const body = await req.json()
     const companyId = typeof body.company_id === 'string' ? body.company_id : ''

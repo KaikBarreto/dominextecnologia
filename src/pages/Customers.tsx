@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { fuzzyIncludesAny, cn } from '@/lib/utils';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Users, Plus, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye, ClipboardList, Handshake, Truck, Wrench, Store } from 'lucide-react';
+import { Users, Plus, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye, ClipboardList, Handshake, Truck, Wrench, Store, Check } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
@@ -41,11 +41,15 @@ import { SuppliersTab } from '@/components/customers/SuppliersTab';
 import { CustomersPageChrome, type CustomersMainTab } from '@/components/customers/CustomersPageChrome';
 import { CustomerDetailContent } from '@/pages/CustomerDetail';
 import { isUuid, extractShortCode } from '@/utils/prettyLinks';
-import { CustomerOriginManagerDialog } from '@/components/customers/CustomerOriginManagerDialog';
+import { CustomerSettingsDialog } from '@/components/customers/CustomerSettingsDialog';
 import { LeadCaptureManagerDialog } from '@/components/customers/LeadCaptureManagerDialog';
 import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { formatCustomerDocument, formatCustomerPhone } from '@/lib/customerDisplay';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
+import type { PartyLabel } from '@/hooks/usePartyLabels';
 
 export type CustomerKindFilter = 'all' | 'servico' | 'loja';
 
@@ -151,12 +155,13 @@ interface CustomerGridCardProps {
   onEdit: (e?: React.MouseEvent) => void;
   onDelete: (e?: React.MouseEvent) => void;
   t: typeof MESSAGES['pt-br']['app']['customers'];
+  labels: PartyLabel[];
 }
 
-function CustomerGridCard({ customer, isMobile, canEdit, canDelete, pdvEnabled, onOpen, onPreviewPhoto, onEdit, onDelete, t }: CustomerGridCardProps) {
+function CustomerGridCard({ customer, isMobile, canEdit, canDelete, pdvEnabled, onOpen, onPreviewPhoto, onEdit, onDelete, t, labels }: CustomerGridCardProps) {
   const { locale } = useAppLocaleContext();
   const zoomPhotoLabel = MESSAGES[locale].app.common.listDetail.zoomPhoto.replace('{name}', customer.name);
-  const subtitleParts = [customer.phone || customer.celular, customer.city].filter(Boolean);
+  const subtitleParts = [formatCustomerPhone(customer.phone || customer.celular), customer.city].filter(Boolean);
   const subtitle = subtitleParts.length > 0
     ? subtitleParts.join(' • ')
     : (customer.company_name || customer.email || '—');
@@ -189,6 +194,7 @@ function CustomerGridCard({ customer, isMobile, canEdit, canDelete, pdvEnabled, 
           <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
         </div>
         <div className="flex items-center justify-center gap-1.5">
+          <PartyLabelBadges labels={labels} mode={isMobile ? 'summary' : 'full'} />
           <Badge
             variant={customer.customer_type === 'pj' ? 'default' : 'muted'}
             className="text-[10px] px-2 py-0.5"
@@ -233,6 +239,7 @@ export default function Customers() {
   const [viewMode, setViewMode] = useViewMode('customers-view-mode');
   // Filtro "Atende como" (Serviço/Loja) — só existe pra quem tem o módulo PDV.
   const [customerKindFilter, setCustomerKindFilter] = useState<CustomerKindFilter>('all');
+  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
   const pdvEnabled = hasModule('pdv');
   // Aba Fornecedores: pedido do CEO pra dar um lugar próprio ao cadastro que
   // hoje só existe dentro de Compras (Estoque). Herda a permissão de tela
@@ -245,7 +252,7 @@ export default function Customers() {
   const { id: routeParam } = useParams<{ id: string }>();
   // Só o celular usa estes: no desktop as ações (e os diálogos) vivem no
   // CustomersPageChrome, que aparece também na ficha do cliente.
-  const [originConfigOpen, setOriginConfigOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [leadFormsOpen, setLeadFormsOpen] = useState(false);
   const tSuppliers = MESSAGES[locale].app.customers.suppliers;
   const tCommon = MESSAGES[locale].app.common;
@@ -258,6 +265,7 @@ export default function Customers() {
   const canCreateOpportunity = hasModule('crm');
 
   const { customers, isLoading, isError, refetch, createCustomer, updateCustomer, deleteCustomer } = useCustomers();
+  const { activeLabels: partyLabels, labelsFor } = usePartyLabels();
 
   // O param pode ser UUID antigo OU o link amigável `slug-do-nome-<codigo>`;
   // a coluna precisa do id REAL pra marcar a linha certa.
@@ -293,9 +301,11 @@ export default function Customers() {
         customer.city,
         customer.state,
         customer.zip_code,
+        ...labelsFor('customer', customer.id).map((label) => label.name),
       ],
       searchTerm,
-    ) && (!pdvEnabled || matchesCustomerKindFilter(customer, customerKindFilter)),
+    ) && (!pdvEnabled || matchesCustomerKindFilter(customer, customerKindFilter))
+      && (selectedLabelIds.length === 0 || labelsFor('customer', customer.id).some((label) => selectedLabelIds.includes(label.id))),
   );
 
   const { sortedItems, sortConfig, handleSort } = useTableSort(filteredCustomers);
@@ -353,11 +363,12 @@ export default function Customers() {
   );
   const desktopKindFilterControl = (
     <FilterButton
-      activeCount={customerKindFilter === 'all' ? 0 : 1}
-      onClear={() => setCustomerKindFilter('all')}
+      activeCount={(customerKindFilter === 'all' ? 0 : 1) + selectedLabelIds.length}
+      onClear={() => { setCustomerKindFilter('all'); setSelectedLabelIds([]); }}
       embedded
     >
-      {kindFilterControl}
+      {pdvEnabled && <div className="space-y-2"><p className="text-sm font-medium">Atende como</p>{kindFilterControl}</div>}
+      <div className="space-y-2"><p className="text-sm font-medium">Etiquetas</p>{partyLabels.length ? partyLabels.map((label) => { const checked = selectedLabelIds.includes(label.id); return <button key={label.id} type="button" onClick={() => setSelectedLabelIds((current) => checked ? current.filter((id) => id !== label.id) : [...current, label.id])} className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-muted"><span className="h-3 w-7 rounded-full" style={{ backgroundColor: label.color }} /><span className="min-w-0 flex-1 truncate text-sm">{label.name}</span><Check className={cn('h-4 w-4 text-primary', !checked && 'invisible')} /></button>; }) : <p className="text-sm text-muted-foreground">Nenhuma etiqueta cadastrada.</p>}</div>
     </FilterButton>
   );
 
@@ -372,7 +383,13 @@ export default function Customers() {
           (fora da MobileListToolbar, cuja 2ª linha já está no limite de 3
           controles). No COMPUTADOR ele entra DENTRO do painel Lista de
           Clientes, junto da busca que ele filtra — ver `listFilters` abaixo. */}
-      {isMobile && mainTab === 'clientes' && pdvEnabled && kindFilterControl}
+      {isMobile && mainTab === 'fornecedores' && (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
+            <Settings2 className="mr-2 h-4 w-4" />Configurações
+          </Button>
+        </div>
+      )}
 
       {mainTab === 'fornecedores' ? (
         <SuppliersTab />
@@ -385,16 +402,20 @@ export default function Customers() {
           searchPlaceholder={t.searchPlaceholderMobile}
           trailing={<ViewModeToggle value={viewMode} onChange={setViewMode} />}
         >
+          <FilterButton activeCount={(customerKindFilter === 'all' ? 0 : 1) + selectedLabelIds.length} onClear={() => { setCustomerKindFilter('all'); setSelectedLabelIds([]); }} iconOnly>
+            {pdvEnabled && <div className="space-y-2"><p className="text-sm font-medium">Atende como</p>{kindFilterControl}</div>}
+            <div className="space-y-2"><p className="text-sm font-medium">Etiquetas</p>{partyLabels.map((label) => { const checked = selectedLabelIds.includes(label.id); return <button key={label.id} type="button" onClick={() => setSelectedLabelIds((current) => checked ? current.filter((id) => id !== label.id) : [...current, label.id])} className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-muted"><span className="h-3 w-7 rounded-full" style={{ backgroundColor: label.color }} /><span className="min-w-0 flex-1 truncate text-sm">{label.name}</span><Check className={cn('h-4 w-4 text-primary', !checked && 'invisible')} /></button>; })}</div>
+          </FilterButton>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setOriginConfigOpen(true)}
+            onClick={() => setSettingsOpen(true)}
             className="h-10 shrink-0 gap-2 px-3"
-            title={t.origins}
-            aria-label={t.origins}
+            title="Configurações"
+            aria-label="Configurações"
           >
             <Settings2 className="h-4 w-4" />
-            <span className="hidden min-[340px]:inline">{t.origins}</span>
+            <span className="hidden min-[340px]:inline">Configurações</span>
           </Button>
           <Button
             variant="outline"
@@ -416,7 +437,11 @@ export default function Customers() {
           items={filteredCustomers.map((customer) => ({
             id: customer.id,
             title: customer.name,
-            subtitle: [customer.document, customer.phone || customer.celular, customer.city].filter(Boolean).join(' · ') || undefined,
+            subtitle: [
+              formatCustomerDocument(customer.document),
+              formatCustomerPhone(customer.phone || customer.celular),
+              customer.city,
+            ].filter(Boolean).join(' · ') || undefined,
             searchText: [customer.company_name, customer.nome_fantasia, customer.email, customer.address, customer.neighborhood].filter(Boolean).join(' '),
             imageUrl: customer.photo_url,
             imageAlt: tCommon.listDetail.zoomPhoto.replace('{name}', customer.name),
@@ -429,14 +454,15 @@ export default function Customers() {
               </div>
             ),
             trailing: (
-              <Badge variant={customer.customer_type === 'pj' ? 'default' : 'muted'} className="px-1.5 py-0 text-[10px]">
-                {customer.customer_type === 'pj' ? t.typePj : t.typePf}
-              </Badge>
+              <div className="flex items-center gap-1">
+                <PartyLabelBadges labels={labelsFor('customer', customer.id)} mode="summary" />
+                <Badge variant={customer.customer_type === 'pj' ? 'default' : 'muted'} className="px-1.5 py-0 text-[10px]">{customer.customer_type === 'pj' ? t.typePj : t.typePf}</Badge>
+              </div>
             ),
           }))}
           listTitle={t.listHeading}
           storageKey="customers-list-detail"
-          listFilters={pdvEnabled ? desktopKindFilterControl : undefined}
+          listFilters={desktopKindFilterControl}
           searchPlaceholder={t.searchPlaceholderMobile}
           emptyLabel={t.emptySearch}
           selectedId={selectedCustomerId}
@@ -516,6 +542,7 @@ export default function Customers() {
                     onEdit={(e) => handleEdit(customer, e)}
                     onDelete={(e) => handleDeleteClick(customer, e)}
                     t={t}
+                    labels={labelsFor('customer', customer.id)}
                   />
                 ))}
               </div>
@@ -595,7 +622,7 @@ export default function Customers() {
                       : []),
                   ];
 
-                  const subtitleParts = [customer.phone || customer.celular, customer.city].filter(Boolean);
+                  const subtitleParts = [formatCustomerPhone(customer.phone || customer.celular), customer.city].filter(Boolean);
 
                   return (
                     <MobileListItem
@@ -637,6 +664,7 @@ export default function Customers() {
                       }
                       trailing={
                         <div className="flex flex-col items-end gap-1">
+                          <PartyLabelBadges labels={labelsFor('customer', customer.id)} mode="compact" />
                           <Badge
                             variant={customer.customer_type === 'pj' ? 'default' : 'muted'}
                             className="text-[10px] px-2 py-0.5"
@@ -734,7 +762,7 @@ export default function Customers() {
                                 <div>
                                   <p className="font-medium">{customer.name}</p>
                                   {customer.document && (
-                                    <p className="text-xs text-muted-foreground">{customer.document}</p>
+                                    <p className="text-xs text-muted-foreground">{formatCustomerDocument(customer.document)}</p>
                                   )}
                                 </div>
                               </TableCell>
@@ -755,7 +783,7 @@ export default function Customers() {
                                 <div className="space-y-1">
                                   {(customer.phone || customer.celular) && (
                                     <div className="flex items-center gap-1 text-sm">
-                                      <Phone className="h-3 w-3" />{customer.phone || customer.celular}
+                                      <Phone className="h-3 w-3" />{formatCustomerPhone(customer.phone || customer.celular)}
                                     </div>
                                   )}
                                   {customer.email && (
@@ -885,7 +913,7 @@ export default function Customers() {
 
       {isMobile && (
         <>
-          <CustomerOriginManagerDialog open={originConfigOpen} onOpenChange={setOriginConfigOpen} />
+          <CustomerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
           <LeadCaptureManagerDialog open={leadFormsOpen} onOpenChange={setLeadFormsOpen} />
         </>
       )}

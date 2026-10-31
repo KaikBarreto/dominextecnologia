@@ -29,7 +29,7 @@ import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { useEquipmentAttachments } from '@/hooks/useEquipmentAttachments';
 import { useEquipmentTasks } from '@/hooks/useEquipmentTasks';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { useEquipment } from '@/hooks/useEquipment';
+import { useEquipment, type EquipmentInput } from '@/hooks/useEquipment';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
@@ -41,6 +41,8 @@ import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
+import { formatEquipmentDate, isEquipmentBooleanTrue } from '@/lib/equipmentFieldValues';
+import { performEquipmentDetailDelete, performEquipmentDetailUpdate } from '@/lib/equipmentDetailActions';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { osStatusLabels } from '@/types/database';
@@ -53,6 +55,8 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatOSNumber } from '@/lib/osNumber';
 import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { buildPortalCallsPath, isPortalCall } from '@/lib/portalCalls';
 
 type TabKey = 'geral' | 'anexos' | 'tarefas' | 'chamados';
@@ -129,7 +133,12 @@ export function EquipmentDetailContent() {
   const isMobile = useIsMobile();
   const { settings: companySettings } = useCompanySettings();
   const qrConfig = useBrandedQrConfig();
-  const { equipment: allEquipment, isLoading: eqLoading } = useEquipment();
+  const {
+    equipment: allEquipment,
+    isLoading: eqLoading,
+    updateEquipment,
+    deleteEquipment,
+  } = useEquipment();
 
   // Resolve o equipamento a partir do param (UUID antigo OU código curto).
   const paramShortCode = isUuid(routeParam) ? null : extractShortCode(routeParam);
@@ -145,6 +154,7 @@ export function EquipmentDetailContent() {
 
   const { locale } = useAppLocaleContext();
   const tEquipment = MESSAGES[locale].app.equipment;
+  const tCustomerDetail = MESSAGES[locale].app.customers.detail;
   const tCommon = MESSAGES[locale].app.common;
   const te = tEquipment.detail;
   const { attachments, isLoading: attachLoading, uploadAttachment, deleteAttachment } = useEquipmentAttachments(id);
@@ -153,6 +163,8 @@ export function EquipmentDetailContent() {
   const { customers } = useCustomers();
   const { categories } = useEquipmentCategories();
   const { fields: fieldConfigs } = useEquipmentFieldConfig();
+  const { labelsFor: equipmentLabelsFor } = usePartyLabels('equipment');
+  const equipmentLabels = equipmentLabelsFor('equipment', equipment?.id);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [attachViewMode, setAttachViewMode] = useState<'gallery' | 'list'>('gallery');
   const [editEquipOpen, setEditEquipOpen] = useState(false);
@@ -368,6 +380,39 @@ export function EquipmentDetailContent() {
     toast({ title: tfc.detailDialogQrDownloaded });
   }, [equipment, qrValue, qrConfig, tfc.detailDialogQrDownloaded]);
 
+  const handleUpdateEquipment = async (data: EquipmentInput) => {
+    if (!equipment) return;
+    await performEquipmentDetailUpdate({
+      id: equipment.id,
+      data,
+      update: updateEquipment.mutateAsync,
+      onSuccess: () => toast({ title: tCustomerDetail.equipUpdated }),
+    });
+    return { id: equipment.id };
+  };
+
+  const handleDeleteEquipment = async () => {
+    if (!equipment) return;
+    await performEquipmentDetailDelete({
+      id: equipment.id,
+      remove: deleteEquipment.mutateAsync,
+      onSuccess: () => {
+        setDeleteEquipOpen(false);
+        toast({ title: tCustomerDetail.equipDeleted });
+        if (navState?.from === 'customer' && navState?.customerId) {
+          navigate(`/clientes/${navState.customerId}`, { state: { tab: 'equipamentos' } });
+        } else {
+          navigate('/equipamentos');
+        }
+      },
+      onError: (message) => toast({
+        variant: 'destructive',
+        title: tCustomerDetail.equipDeleteError,
+        description: message,
+      }),
+    });
+  };
+
   if (eqLoading) {
     return <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>;
   }
@@ -425,8 +470,8 @@ export function EquipmentDetailContent() {
                               if (eq.id !== equipment.id) navigate(`/equipamentos/${eq.id}`);
                             }}
                           >
-                            <div className="min-w-0">
-                              <span className="block truncate">{eq.name}</span>
+                            <div className="min-w-0 flex-1">
+                              <span className="flex min-w-0 items-center gap-2"><span className="truncate">{eq.name}</span><PartyLabelBadges labels={equipmentLabelsFor('equipment', eq.id)} mode="summary" /></span>
                               {sublabel && (
                                 <span className="block text-xs text-muted-foreground truncate">{sublabel}</span>
                               )}
@@ -439,6 +484,7 @@ export function EquipmentDetailContent() {
                 </Command>
               </PopoverContent>
             </Popover>
+          <PartyLabelBadges labels={equipmentLabels} mode="summary" className="mt-2" />
           <p className="text-muted-foreground text-sm flex items-center gap-2 flex-wrap">
             {equipment.identifier && <span className="font-mono">ID: {equipment.identifier}</span>}
             <Badge variant={equipment.status === 'active' ? 'default' : 'secondary'}>
@@ -446,36 +492,18 @@ export function EquipmentDetailContent() {
             </Badge>
           </p>
         </div>
-        {/* Editar e Excluir em evidência no computador; no celular ficam no
-            menu de ações, que é onde cabe. */}
+        {/* Todas as ações ficam concentradas em um único menu para preservar
+            o espaço disponível para o nome do equipamento. */}
         <div className="shrink-0 ml-auto flex items-center gap-2">
-          {isMobile ? (
-            <RowActionsMenu
-              ariaLabel={te.actions}
-              label={te.actions}
-              triggerClassName="border border-border px-3"
-              actions={[
-                { label: tEquipment.edit, icon: Edit, variant: 'edit', onClick: () => setEditEquipOpen(true) },
-                { label: tEquipment.delete, icon: Trash2, variant: 'delete', onClick: () => setDeleteEquipOpen(true) },
-              ]}
-            />
-          ) : (
-            <>
-              <Button variant="ghost" size="sm" className="text-warning hover:text-warning" onClick={() => setEditEquipOpen(true)}>
-                <Edit className="mr-2 h-4 w-4" />
-                {tEquipment.edit}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:bg-destructive hover:text-white"
-                onClick={() => setDeleteEquipOpen(true)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {tEquipment.delete}
-              </Button>
-            </>
-          )}
+          <RowActionsMenu
+            ariaLabel={te.actions}
+            label={te.actions}
+            triggerClassName="border border-border px-3"
+            actions={[
+              { label: tEquipment.edit, icon: Edit, variant: 'edit', onClick: () => setEditEquipOpen(true) },
+              { label: tEquipment.delete, icon: Trash2, variant: 'delete', onClick: () => setDeleteEquipOpen(true) },
+            ]}
+          />
         </div>
       </div>
 
@@ -631,14 +659,14 @@ export function EquipmentDetailContent() {
             if (equipment.serial_number) rows.push({ label: te.fieldSerialNumber, node: <span className="text-sm font-medium">{equipment.serial_number}</span> });
             if (equipment.capacity) rows.push({ label: te.fieldDescription, node: <span className="text-sm font-medium">{equipment.capacity}</span> });
             if (equipment.location) rows.push({ label: te.fieldLocation, node: <span className="text-sm font-medium">{equipment.location}</span> });
-            if ((equipment as any).install_date) rows.push({ label: te.fieldInstallDate, node: <span className="text-sm font-medium">{format(new Date((equipment as any).install_date), 'dd/MM/yyyy', { locale: ptBR })}</span> });
-            if ((equipment as any).warranty_until) rows.push({ label: te.fieldWarrantyUntil, node: <span className="text-sm font-medium">{format(new Date((equipment as any).warranty_until), 'dd/MM/yyyy', { locale: ptBR })}</span> });
+            if (equipment.install_date) rows.push({ label: te.fieldInstallDate, node: <span className="text-sm font-medium">{formatEquipmentDate(equipment.install_date, locale, companySettings?.timezone || 'America/Sao_Paulo')}</span> });
+            if (equipment.warranty_until) rows.push({ label: te.fieldWarrantyUntil, node: <span className="text-sm font-medium">{formatEquipmentDate(equipment.warranty_until, locale, companySettings?.timezone || 'America/Sao_Paulo')}</span> });
 
             visibleCustomFields.forEach(field => {
               let displayValue = String(customFields![field.field_key]);
-              if (field.field_type === 'boolean') displayValue = customFields![field.field_key] ? te.booleanYes : te.booleanNo;
+              if (field.field_type === 'boolean') displayValue = isEquipmentBooleanTrue(customFields![field.field_key]) ? te.booleanYes : te.booleanNo;
               if (field.field_type === 'date' && customFields![field.field_key]) {
-                try { displayValue = format(new Date(customFields![field.field_key]), 'dd/MM/yyyy', { locale: ptBR }); } catch { /* keep raw */ }
+                displayValue = formatEquipmentDate(customFields![field.field_key], locale, companySettings?.timezone || 'America/Sao_Paulo');
               }
               rows.push({ label: field.label, node: <span className="text-sm font-medium">{displayValue}</span> });
             });
@@ -1193,14 +1221,10 @@ export function EquipmentDetailContent() {
         open={editEquipOpen}
         onOpenChange={setEditEquipOpen}
         equipment={equipment}
-        onSubmit={async (data: any) => {
-          const { error } = await supabase.from('equipment').update(data).eq('id', equipment.id);
-          if (error) throw error;
-          window.location.reload();
-        }}
+        onSubmit={handleUpdateEquipment}
         customers={customers}
         categories={categories}
-        isLoading={false}
+        isLoading={updateEquipment.isPending}
       />
 
       {/* Delete Equipment Confirmation */}
@@ -1214,13 +1238,12 @@ export function EquipmentDetailContent() {
             <AlertDialogCancel>{te.cancel}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={async () => {
-                await supabase.from('equipment').delete().eq('id', equipment.id);
-                if (navState?.from === 'customer' && navState?.customerId) {
-                  navigate(`/clientes/${navState.customerId}`, { state: { tab: 'equipamentos' } });
-                } else {
-                  navigate('/equipamentos');
-                }
+              disabled={deleteEquipment.isPending}
+              onClick={(event) => {
+                // O AlertDialog fecha a ação por padrão. Impedimos isso para que
+                // uma recusa do banco mantenha a ficha e a confirmação abertas.
+                event.preventDefault();
+                void handleDeleteEquipment();
               }}
             >
               {te.delete}

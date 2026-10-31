@@ -42,6 +42,10 @@ import {
   useCustomerPortalSettings,
   type CustomerPortalSettings,
 } from '@/hooks/useCustomerPortalSettings';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { missingRequiredPartyFields, usePartyFieldConfig } from '@/hooks/usePartyFieldConfig';
+import { PartyFieldsForm } from '@/components/customers/PartyFieldsForm';
+import { PartyLabelMultiSelect } from '@/components/customers/PartyLabelMultiSelect';
 
 
 const customerSchema = z.object({
@@ -68,6 +72,7 @@ const customerSchema = z.object({
   zip_code: z.string().optional(),
   notes: z.string().optional(),
   origin: z.string().optional(),
+  label_id: z.string().optional(),
   // Dados fiscais (tomador NFS-e) — todos opcionais
   inscricao_municipal: z.string().optional(),
   inscricao_estadual: z.string().optional(),
@@ -87,7 +92,7 @@ const EMPTY_FORM: CustomerFormData = {
   email: '', phone: '', celular: '', birth_date: '', address: '', address_number: '',
   whatsapp_notifications_enabled: true,
   complement: '', neighborhood: '', city: '', state: '', zip_code: '',
-  notes: '', origin: '', inscricao_municipal: '', inscricao_estadual: '', ibge_municipality_code: '',
+  notes: '', origin: '', label_id: '', inscricao_municipal: '', inscricao_estadual: '', ibge_municipality_code: '',
   is_service_customer: true, is_store_customer: false,
 };
 
@@ -129,6 +134,10 @@ export function CustomerFormDialog({
   const [portalPassword, setPortalPassword] = useState('');
   const [portalPasswordConfirmation, setPortalPasswordConfirmation] = useState('');
   const [persistedCustomerId, setPersistedCustomerId] = useState<string | null>(null);
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
+  const [customFieldErrors, setCustomFieldErrors] = useState<string[]>([]);
+  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
+  const [labelsInitialized, setLabelsInitialized] = useState(false);
   // Coordenadas capturadas ao escolher uma sugestão do autocomplete de endereço.
   // Se ficar null no save, tentamos geocodificar o endereço digitado (best-effort).
   const [pickedCoords, setPickedCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -136,6 +145,9 @@ export function CustomerFormDialog({
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.customers.form;
   const tOrigins = MESSAGES[locale].app.equipment.origins;
+  const { labels, labelIdsFor, setEntityLabels, isLoading: labelsLoading } = usePartyLabels();
+  const selectableLabels = labels.filter((label) => label.is_active || selectedLabelIds.includes(label.id));
+  const { fields: partyFields } = usePartyFieldConfig('customer');
 
   const isEditing = !!customer;
   const portal = useCustomerPortalSettings(
@@ -174,6 +186,10 @@ export function CustomerFormDialog({
       setPortalSettings(DEFAULT_CUSTOMER_PORTAL_SETTINGS);
       setPortalPassword('');
       setPortalPasswordConfirmation('');
+      setCustomFieldValues((customer?.custom_fields ?? {}) as Record<string, unknown>);
+      setCustomFieldErrors([]);
+      setSelectedLabelIds(customer ? (labelIdsFor('customer', customer.id).length ? labelIdsFor('customer', customer.id) : customer.label_id ? [customer.label_id] : []) : []);
+      setLabelsInitialized(!customer || !labelsLoading);
       // Pré-carrega coords já salvas no cliente (edição); novo cliente começa sem coords.
       const lat = (customer as any)?.latitude;
       const lng = (customer as any)?.longitude;
@@ -217,6 +233,7 @@ export function CustomerFormDialog({
           zip_code: cepMask(customer?.zip_code ?? ''),
           notes: customer?.notes ?? '',
           origin: (customer as any)?.origin ?? '',
+          label_id: customer?.label_id ?? '',
           inscricao_municipal: (customer as any)?.inscricao_municipal ?? '',
           inscricao_estadual: (customer as any)?.inscricao_estadual ?? '',
           ibge_municipality_code: (customer as any)?.ibge_municipality_code ?? '',
@@ -225,6 +242,13 @@ export function CustomerFormDialog({
       }
     }
   }, [open, customer?.id]);
+
+  useEffect(() => {
+    if (!open || !customer || labelsLoading || labelsInitialized) return;
+    const ids = labelIdsFor('customer', customer.id);
+    setSelectedLabelIds(ids.length ? ids : customer.label_id ? [customer.label_id] : []);
+    setLabelsInitialized(true);
+  }, [open, customer, labelsLoading, labelsInitialized, labelIdsFor]);
 
   useEffect(() => {
     if (open && portal.settings) {
@@ -243,6 +267,14 @@ export function CustomerFormDialog({
   };
 
   const handleSubmit = async (data: CustomerFormData) => {
+    const missingFields = missingRequiredPartyFields(partyFields, customFieldValues);
+    if (missingFields.length > 0) {
+      setActiveTab('contato');
+      setCustomFieldErrors(missingFields.map((field) => field.field_key));
+      toast({ variant: 'destructive', title: 'Campos obrigatórios', description: 'Preencha os campos personalizados obrigatórios.' });
+      return;
+    }
+    setCustomFieldErrors([]);
     setUploadingPhoto(true);
     try {
       if (portalSettings.passwordEnabled) {
@@ -282,6 +314,8 @@ export function CustomerFormDialog({
 
         const cleanedData = {
           ...data,
+          label_id: selectedLabelIds[0] ?? null,
+          custom_fields: customFieldValues,
           whatsapp_notifications_enabled:
             data.whatsapp_notifications_enabled && (data.celular || '').replace(/\D/g, '').length >= 10,
           birth_date: data.birth_date || undefined,
@@ -309,6 +343,8 @@ export function CustomerFormDialog({
         }
         setPersistedCustomerId(targetCustomerId);
       }
+
+      await setEntityLabels.mutateAsync({ entityType: 'customer', entityId: targetCustomerId, labelIds: selectedLabelIds });
 
       const savedPortal = await portal.saveSettings({
         targetCustomerId,
@@ -342,7 +378,7 @@ export function CustomerFormDialog({
       <Button
         type="submit"
         form="customer-form"
-        disabled={isLoading || uploadingPhoto || portal.isSaving || portalUnavailable}
+        disabled={isLoading || uploadingPhoto || portal.isSaving || portalUnavailable || labelsLoading}
         className="text-white"
       >
         {(isLoading || uploadingPhoto || portal.isSaving) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -499,9 +535,6 @@ export function CustomerFormDialog({
                         onChange={(e) => {
                           const masked = mobileMask(e.target.value);
                           field.onChange(masked);
-                          if (masked.replace(/\D/g, '').length < 10) {
-                            form.setValue('whatsapp_notifications_enabled', false);
-                          }
                         }}
                       />
                     </FormControl>
@@ -585,6 +618,11 @@ export function CustomerFormDialog({
                     <FormMessage />
                   </FormItem>
                 )} />
+                <FormItem>
+                  <FormLabel>Etiquetas</FormLabel>
+                  <PartyLabelMultiSelect labels={selectableLabels} value={selectedLabelIds} onValueChange={(ids) => { setSelectedLabelIds(ids); setLabelsInitialized(true); }} disabled={labelsLoading} />
+                </FormItem>
+                <PartyFieldsForm entityType="customer" values={customFieldValues} onChange={setCustomFieldValues} errors={customFieldErrors} />
                 <FormField control={form.control} name="notes" render={({ field }) => (
                   <FormItem className="sm:col-span-2">
                     <FormLabel>{t.notes}</FormLabel>

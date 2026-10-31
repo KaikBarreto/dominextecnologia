@@ -166,7 +166,7 @@ describe('publicProposal', () => {
       [],
       0,
       {
-        annualDiscount: { mode: 'percent', value: 40 },
+        annualDiscount: { mode: 'percent', value: 50 },
         monthlyDiscount: { mode: 'percent', value: 50 },
         installments: 6,
       },
@@ -177,11 +177,11 @@ describe('publicProposal', () => {
       monthlyDiscount: { mode: 'percent', value: 50 },
       yearlyFull: 1200,
       yearlyNegotiatedBase: 600,
-      yearlyDiscounted: 360,
-      annualDiscountAmount: 240,
-      annualDiscount: { mode: 'percent', value: 40 },
-      savings: 840,
-      pixInstallment: 60,
+      yearlyDiscounted: 300,
+      annualDiscountAmount: 300,
+      annualDiscount: { mode: 'percent', value: 50 },
+      savings: 900,
+      pixInstallment: 50,
       installments: 6,
     });
   });
@@ -229,7 +229,7 @@ describe('publicProposal', () => {
   it('limita condições adulteradas da URL aos intervalos comerciais', () => {
     const parsed = parsePublicProposal(new URLSearchParams('d=99&x=1'));
 
-    expect(parsed.annualDiscount).toEqual({ mode: 'percent', value: 40 });
+    expect(parsed.annualDiscount).toEqual({ mode: 'percent', value: 50 });
     expect(parsed.monthlyDiscount).toEqual({ mode: 'percent', value: 0 });
     expect(parsed.installments).toBe(3);
   });
@@ -249,8 +249,8 @@ describe('publicProposal', () => {
     expect(totals.monthlyDiscountAmount).toBe(50);
     expect(totals.monthly).toBe(50);
     expect(totals.yearlyNegotiatedBase).toBe(600);
-    expect(totals.annualDiscountAmount).toBe(240);
-    expect(totals.yearlyDiscounted).toBe(360);
+    expect(totals.annualDiscountAmount).toBe(300);
+    expect(totals.yearlyDiscounted).toBe(300);
   });
 
   it('não deixa preço negativo contaminar o orçamento', () => {

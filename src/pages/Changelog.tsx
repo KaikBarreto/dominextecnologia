@@ -42,6 +42,91 @@ const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.9',
+    date: '31 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Várias etiquetas por cliente, fornecedor e equipamento',
+        description: 'Agora cada cadastro pode receber mais de uma etiqueta e as listagens podem ser filtradas por essas classificações. Nas seleções, a primeira etiqueta aparece ao lado do nome e o indicador +N revela as demais sem ocupar espaço excessivo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Configurações completas de equipamentos',
+        description: 'Categorias, etiquetas e campos personalizados de equipamentos ficam reunidos em uma única área de Configurações, com as informações disponíveis nas fichas, listagens e seleções.',
+        category: 'recurso',
+      },
+      {
+        title: 'Informações controladas nos portais',
+        description: 'Etiquetas e campos de equipamentos podem ser liberados para os portais de forma explícita, mantendo classificações internas protegidas por padrão.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.8',
+    date: '31 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Etiquetas visuais para clientes e fornecedores',
+        description: 'Agora é possível criar etiquetas coloridas, aplicá-las aos cadastros e reconhecê-las nas listas, fichas e seleções. Onde há espaço, o nome aparece completo; em campos estreitos, uma bandeirola colorida mostra o nome ao passar o mouse.',
+        category: 'recurso',
+      },
+      {
+        title: 'Campos personalizados reunidos nas configurações',
+        description: 'Origens, etiquetas e campos adicionais de clientes e fornecedores agora ficam reunidos em Configurações. Os campos podem ser usados nos cadastros e fichas, com controle separado do que aparece no Portal do Cliente.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.38.7',
+    date: '30 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Edição de empresas para vendedores autorizados',
+        description: 'Vendedores com acesso à gestão de empresas agora conseguem salvar alterações normalmente, sem receber o bloqueio reservado a usuários sem permissão.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.6',
+    date: '30 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Mais espaço nas fichas de clientes e equipamentos',
+        description: 'As opções de editar e excluir agora ficam reunidas no botão Ações, deixando o nome do cliente ou equipamento mais fácil de visualizar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.5',
+    date: '30 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastros de clientes mais consistentes',
+        description: 'A autorização para receber mensagens pelo WhatsApp agora é preservada durante o preenchimento do celular. CPF, CNPJ, telefone e CEP também aparecem formatados, e clientes vindos do formulário público são identificados com mais clareza.',
+        category: 'correcao',
+      },
+      {
+        title: 'Equipamentos mais fáceis de consultar e atualizar',
+        description: 'Campos obrigatórios apresentam mensagens no idioma do usuário, datas e respostas de sim ou não ficaram mais consistentes, e editar ou excluir um equipamento não exige mais recarregar a página.',
+        category: 'correcao',
+      },
+      {
+        title: 'Busca mais flexível nas listagens',
+        description: 'As buscas agora encontram resultados mesmo com diferenças de acentuação, ordem das palavras ou documentos digitados sem máscara.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.4',
     date: '30 de outubro de 2026',
     type: 'patch',
