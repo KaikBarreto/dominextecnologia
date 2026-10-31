@@ -35,6 +35,7 @@ import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { OriginBadge } from '@/components/admin/OriginBadge';
 import { useAffiliate } from '@/hooks/useAffiliateData';
 import { getEffectiveSubscriptionValue } from '@/utils/subscriptionPricing';
+import { CompanyTutorialSuccessTab } from '@/components/admin/CompanyTutorialSuccessTab';
 
 export default function AdminCompanyDetail() {
   const { id } = useParams();
@@ -45,7 +46,7 @@ export default function AdminCompanyDetail() {
   const [searchParams, setSearchParams] = useSearchParams();
   // Aba 'pagamentos' foi absorvida pela 'info' (histórico inline) — link antigo cai em 'info'.
   const rawTab = searchParams.get('tab') || 'info';
-  const activeTab = ['info', 'plano', 'atividade'].includes(rawTab) ? rawTab : 'info';
+  const activeTab = ['info', 'plano', 'atividade', 'sucesso'].includes(rawTab) ? rawTab : 'info';
   const [showEdit, setShowEdit] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -259,6 +260,7 @@ export default function AdminCompanyDetail() {
               { value: 'info', label: 'Informações' },
               { value: 'plano', label: 'Plano e Histórico' },
               { value: 'atividade', label: 'Atividade' },
+              { value: 'sucesso', label: 'Sucesso' },
             ]}
             activeTab={activeTab}
             onTabChange={(tab) => setSearchParams({ tab })}
@@ -268,6 +270,7 @@ export default function AdminCompanyDetail() {
             <TabsTrigger variant="underline" value="info">Informações</TabsTrigger>
             <TabsTrigger variant="underline" value="plano">Plano e Histórico</TabsTrigger>
             <TabsTrigger variant="underline" value="atividade">Atividade</TabsTrigger>
+            <TabsTrigger variant="underline" value="sucesso">Sucesso</TabsTrigger>
           </TabsList>
         )}
 
@@ -588,6 +591,10 @@ export default function AdminCompanyDetail() {
 
         <TabsContent value="atividade" className="mt-4">
           <CompanyActivityTab companyId={id!} />
+        </TabsContent>
+
+        <TabsContent value="sucesso" className="mt-4">
+          <CompanyTutorialSuccessTab companyId={id!} />
         </TabsContent>
       </Tabs>
 

@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.9";
+export const APP_VERSION = "1.38.11";
 
 export const VERSION_NOTES =
-  "Clientes, fornecedores e equipamentos agora podem receber várias etiquetas, com filtros, identificação nos seletores e configurações reunidas.";
+  "O histórico de novidades ganhou uma leitura mais clara, com versões, datas e categorias organizadas em uma linha do tempo responsiva.";

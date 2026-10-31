@@ -16,6 +16,7 @@ import {
   DrawerDescription,
 } from '@/components/ui/drawer';
 import { cn } from '@/lib/utils';
+import { OVERLAY_PRIORITY, useOverlaySlot } from '@/contexts/OverlayCoordinatorContext';
 
 export interface ResponsiveModalProps {
   open: boolean;
@@ -34,6 +35,8 @@ export interface ResponsiveModalProps {
    * tem mais efeito.
    */
   lockBackdrop?: boolean;
+  overlayId?: string;
+  overlayPriority?: number;
 }
 
 export function ResponsiveModal({
@@ -44,13 +47,17 @@ export function ResponsiveModal({
   children,
   className,
   footer,
+  overlayId,
+  overlayPriority = OVERLAY_PRIORITY.userAction,
 }: ResponsiveModalProps) {
   const isCompact = useIsCompact();
+  const isActiveOverlay = useOverlaySlot(open, { id: overlayId, priority: overlayPriority });
+  const visibleOpen = open && isActiveOverlay;
 
   if (isCompact) {
     return (
       // handleOnly: só o handle de cima arrasta pra fechar; arrastar no conteúdo rola.
-      <Drawer open={open} onOpenChange={onOpenChange} handleOnly>
+      <Drawer open={visibleOpen} onOpenChange={onOpenChange} handleOnly>
         <DrawerContent
           className="flex max-h-[90dvh] flex-col"
           // Modal de formulário: tap/clique fora NUNCA fecha. Fecha só por FECHAR,
@@ -98,7 +105,7 @@ export function ResponsiveModal({
 
   return (
     // Modal de formulário: clique fora NUNCA fecha (bloqueado aqui, não no primitivo). Escape segue ativo.
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={visibleOpen} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn('flex max-h-[90vh] flex-col sm:max-w-[600px]', className)}
         // Clique fora não fecha; Escape segue ativo (não bloqueado).

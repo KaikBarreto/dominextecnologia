@@ -24,6 +24,7 @@ import { useMarketingViewport } from "@/hooks/useMarketingViewport";
 import { localizedSegmentModuleRoutes } from "@/utils/localizedMarketingRoutes";
 import { useToast } from "@/hooks/use-toast";
 import { SubscriptionGate } from "@/components/SubscriptionGate";
+import { OverlayCoordinatorProvider } from "@/contexts/OverlayCoordinatorContext";
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -236,6 +237,9 @@ const DomiflixTitle = React.lazy(() => import("./pages/DomiflixTitle"));
 const DomiflixWatch = React.lazy(() => import("./pages/DomiflixWatch"));
 const DomiflixMinhaLista = React.lazy(() => import("./pages/DomiflixMinhaLista"));
 const DomiflixAvatarPicker = React.lazy(() => import("./pages/DomiflixAvatarPicker"));
+const DomiflixIntroGate = React.lazy(() =>
+  import("@/components/domiflix/DomiflixIntroGate").then((m) => ({ default: m.DomiflixIntroGate }))
+);
 
 // Layout — só carrega quando entra numa rota autenticada (lazy).
 const AppLayout = React.lazy(() =>
@@ -945,11 +949,11 @@ const AppRoutes = () => (
         bottom nav / footer) para imersão total no vídeo. */}
     <Route
       path="/domiflix/assistir/:titleSlug/:episodeNumber"
-      element={<SubscriptionProtectedRoute><DomiflixWatch /></SubscriptionProtectedRoute>}
+      element={<SubscriptionProtectedRoute><DomiflixIntroGate /><DomiflixWatch /></SubscriptionProtectedRoute>}
     />
     <Route
       path="/domiflix/assistir/:titleSlug/:episodeNumber/:startSeconds"
-      element={<SubscriptionProtectedRoute><DomiflixWatch /></SubscriptionProtectedRoute>}
+      element={<SubscriptionProtectedRoute><DomiflixIntroGate /><DomiflixWatch /></SubscriptionProtectedRoute>}
     />
 
     {/* Legacy OS share link: /:uuid -> /os-tecnico/:uuid?modo=cliente */}
@@ -995,9 +999,11 @@ const App = () => (
             <AppLocaleProvider>
               <UsageTracker />
               <SwipeBackProvider>
-                <TermsOfServiceWrapper>
+                <OverlayCoordinatorProvider>
+                  <TermsOfServiceWrapper>
                   <AppRoutes />
-                </TermsOfServiceWrapper>
+                  </TermsOfServiceWrapper>
+                </OverlayCoordinatorProvider>
               </SwipeBackProvider>
             </AppLocaleProvider>
           </AuthProvider>

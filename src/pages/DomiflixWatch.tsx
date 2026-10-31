@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronDown, Check, Lock, Clock } from "lucide-react";
-import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
-import { MESSAGES } from "@/lib/i18n/messages";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, ChevronDown, Check, CircleCheckBig, Gauge, Loader2, Lock, List, Subtitles, SkipForward, Clock, ListVideo } from "lucide-react";
 
 import {
   useDomiflixTitleBySlug,
@@ -14,6 +12,11 @@ import {
   DomiflixEpisode,
   DomiflixProgress,
   DomiflixTitleFull,
+  DomiflixSubtitle,
+  useDomiflixEpisodeExtras,
+  useDomiflixLearningStatus,
+  getDomiflixLessonUrl,
+  type DomiflixTrackLesson,
 } from "@/hooks/useDomiflix";
 import {
   useDomiflixPreferences,
@@ -21,8 +24,13 @@ import {
   PLAYBACK_SPEEDS,
 } from "@/hooks/useDomiflixPreferences";
 import { supabase } from "@/integrations/supabase/client";
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 import { getDriveStreamUrl } from "@/lib/drive";
 import { getYouTubeThumbnail } from "@/lib/youtube";
+import {
+  buildDomiflixProgressPayload,
+  DomiflixProgressPayload,
+} from "@/lib/domiflixProgress";
 import {
   PlayIcon,
   PauseIcon,
@@ -40,10 +48,13 @@ import {
 
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import domiflixLogo from "@/assets/domiflix-logo-horizontal.png";
+import domiflixLogo from "@/assets/domiflix-logo-horizontal-branco.png";
 import { playDomiflixIntro, stopDomiflixIntro } from "@/lib/domiflixIntroSound";
-
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { DomiflixTrackPanel } from "@/components/domiflix/DomiflixTrackPanel";
+import { DomiflixLessonDetails } from "@/components/domiflix/DomiflixLessonDetails";
+import { parseTimedText } from "@/lib/timedText";
+import { slugify } from "@/lib/slugify";
 
 // ─── YouTube IFrame API ──────────────────────────────────────────────────────
 
@@ -53,7 +64,6 @@ declare global {
     onYouTubeIframeAPIReady: (() => void) | undefined;
   }
 }
-
 let ytApiLoaded = false;
 let ytApiPromise: Promise<void> | null = null;
 
@@ -88,16 +98,7 @@ function fmt(seconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-type ProgressPayload = Pick<
-  DomiflixProgress,
-  | "user_id"
-  | "episode_id"
-  | "title_id"
-  | "completed"
-  | "watched_at"
-  | "progress_seconds"
-  | "duration_seconds"
->;
+type ProgressPayload = DomiflixProgressPayload;
 
 // ─── Player Page ─────────────────────────────────────────────────────────────
 
@@ -108,17 +109,29 @@ export default function DomiflixWatchPage() {
     startSeconds?: string;
   }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const pathSlug = searchParams.get("trilha") || "tutoriais-do-sistema";
   const queryClient = useQueryClient();
-  const { locale } = useAppLocaleContext();
-  const t = MESSAGES[locale].app.domiflix;
+  const isMobileViewport = useIsMobile();
 
-  const { data: resolvedTitleId } = useDomiflixTitleBySlug(titleSlug);
-  const { data: titleData } = useDomiflixTitle(resolvedTitleId ?? undefined);
+  const titleLookup = useDomiflixTitleBySlug(titleSlug);
+  const resolvedTitleId = titleLookup.data;
+  const titleQuery = useDomiflixTitle(resolvedTitleId ?? undefined);
+  const titleData = titleQuery.data;
   const { data: progress = [] } = useDomiflixProgress();
   const { data: prefs } = useDomiflixPreferences();
   const updateSpeed = useUpdatePlaybackSpeed();
   const markWatched = useMarkEpisodeWatched();
   const markedRef = useRef(false);
+  const [mobileTrackOpen, setMobileTrackOpen] = useState(false);
+  const [completionOpen, setCompletionOpen] = useState(false);
+  const [advanceCountdown, setAdvanceCountdown] = useState(4);
+  const [autoAdvancePaused, setAutoAdvancePaused] = useState(false);
+  const { data: learningStatus } = useDomiflixLearningStatus(true, pathSlug);
+  const prefersReducedMotion = useMemo(
+    () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false,
+    [],
+  );
 
   // All episodes flat
   const allEpisodes: DomiflixEpisode[] = useMemo(() => {
@@ -131,16 +144,52 @@ export default function DomiflixWatchPage() {
   const epNum = parseInt(episodeNumber ?? "1", 10);
   const episodeIndex = Math.max(0, epNum - 1);
   const episode = allEpisodes[episodeIndex];
-  const nextEpisodeSameTitle = allEpisodes[episodeIndex + 1];
+  const { data: extras = { subtitles: [], resources: [] } } = useDomiflixEpisodeExtras(episode?.id);
+  const legacyNextEpisodeSameTitle = allEpisodes[episodeIndex + 1];
+  const currentTrackLesson = learningStatus?.track.find((item) => item.episodeId === episode?.id);
+  const currentTrackIndex = currentTrackLesson
+    ? learningStatus?.track.findIndex((item) => item.episodeId === currentTrackLesson.episodeId) ?? -1
+    : -1;
+  const nextTrackLesson = currentTrackIndex >= 0 ? learningStatus?.track[currentTrackIndex + 1] : undefined;
+  const crossesIntoOptionalModule = Boolean(
+    currentTrackLesson &&
+      (currentTrackLesson.group === "core" || currentTrackLesson.includedInPlan) &&
+      nextTrackLesson?.group === "plan" &&
+      !nextTrackLesson.includedInPlan,
+  );
+  const trackNextEpisode: DomiflixEpisode | undefined = nextTrackLesson && !crossesIntoOptionalModule
+    ? {
+        id: nextTrackLesson.episodeId,
+        title_id: nextTrackLesson.titleId,
+        season_id: null,
+        episode_number: nextTrackLesson.episodeNumber,
+        title: nextTrackLesson.lessonTitle,
+        description: nextTrackLesson.lessonDescription,
+        video_id: nextTrackLesson.videoId,
+        video_type: nextTrackLesson.videoType,
+        mobile_video_id: nextTrackLesson.mobileVideoId,
+        mobile_video_type: nextTrackLesson.mobileVideoType,
+        duration_minutes: nextTrackLesson.durationMinutes,
+        thumbnail_url: nextTrackLesson.thumbnailUrl,
+        order_index: nextTrackLesson.sequence,
+        recorded_at: null,
+        created_at: "",
+      }
+    : undefined;
+  const nextEpisodeSameTitle = currentTrackLesson
+    ? nextTrackLesson?.titleId === currentTrackLesson.titleId
+      ? trackNextEpisode
+      : undefined
+    : legacyNextEpisodeSameTitle;
 
-  // Quando estamos no último episódio do módulo atual, buscamos o primeiro
-  // episódio do próximo módulo dentro da mesma seção (ex: Tutoriais).
-  const isLastInTitle = !nextEpisodeSameTitle;
+  const isLastInTitle = !legacyNextEpisodeSameTitle;
   const { data: nextSection } = useNextTitleFirstEpisode(
-    isLastInTitle ? resolvedTitleId ?? undefined : undefined
+    isLastInTitle && !currentTrackLesson ? resolvedTitleId ?? undefined : undefined
   );
   const crossSectionNextEpisode = isLastInTitle ? nextSection?.firstEpisode : undefined;
-  const nextEpisode = nextEpisodeSameTitle ?? crossSectionNextEpisode;
+  const nextEpisode = currentTrackLesson
+    ? trackNextEpisode
+    : nextEpisodeSameTitle ?? crossSectionNextEpisode;
 
   const seasonInfo =
     titleData?.type === "series" && episode
@@ -180,27 +229,22 @@ export default function DomiflixWatchPage() {
     };
   }, []);
 
+  // Progresso já salvo, lido por ref pra NÃO entrar nas deps do
+  // buildProgressPayload — o array muda de identidade a cada refetch e isso
+  // re-dispararia o efeito de save no unmount.
+  const progressRef = useRef<DomiflixProgress[]>(progress);
+  progressRef.current = progress;
+
   const buildProgressPayload = useCallback((): ProgressPayload | null => {
-    const userId = userIdRef.current;
     const epId = episode?.id;
-    const titleId = resolvedTitleId;
-    if (!userId || !epId || !titleId) return null;
-
-    const rawProgress = Math.round(progressSecondsRef.current);
-    const rawDuration = Math.round(durationSecondsRef.current);
-    const duration = Math.max(0, rawDuration);
-    const progressSeconds = duration > 0 ? Math.min(rawProgress, duration) : rawProgress;
-    if (progressSeconds <= 1) return null;
-
-    return {
-      user_id: userId,
-      episode_id: epId,
-      title_id: titleId,
-      completed: duration > 0 ? progressSeconds / duration > 0.9 : false,
-      watched_at: new Date().toISOString(),
-      progress_seconds: progressSeconds,
-      duration_seconds: duration,
-    };
+    return buildDomiflixProgressPayload({
+      userId: userIdRef.current,
+      episodeId: epId,
+      titleId: resolvedTitleId,
+      progressSeconds: progressSecondsRef.current,
+      durationSeconds: durationSecondsRef.current,
+      existing: epId ? progressRef.current.find((p) => p.episode_id === epId) ?? null : null,
+    });
   }, [episode?.id, resolvedTitleId]);
 
   // Synchronous-ish save using fetch keepalive (works on unload/navigation)
@@ -256,6 +300,9 @@ export default function DomiflixWatchPage() {
         completed: false,
         progressSeconds: 0,
         durationSeconds: 0,
+        // Só cria a linha se ainda não existir. Reabrir uma aula concluída
+        // não pode zerar o progresso nem desmarcar o "concluído".
+        insertOnly: true,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -304,12 +351,8 @@ export default function DomiflixWatchPage() {
     } catch {
       saveProgressKeepalive();
     }
-    if (titleSlug) {
-      navigate(`/domiflix/${titleSlug}`);
-    } else {
-      navigate("/domiflix");
-    }
-  }, [navigate, saveProgressAsync, saveProgressKeepalive, titleSlug]);
+    navigate(`/domiflix?trilha=${encodeURIComponent(pathSlug)}`);
+  }, [navigate, pathSlug, saveProgressAsync, saveProgressKeepalive]);
 
   // Resolve resume-second for any given episode based on saved progress
   const resumeSecondsFor = useCallback(
@@ -333,10 +376,15 @@ export default function DomiflixWatchPage() {
     }
     if (!nextEpisode || !titleSlug) return;
 
+    if (currentTrackLesson && nextTrackLesson && learningStatus) {
+      navigate(getDomiflixLessonUrl(learningStatus, nextTrackLesson), { replace: true });
+      return;
+    }
+
     // Caso 1: próximo episódio é do mesmo título
     if (nextEpisodeSameTitle) {
       const startAt = resumeSecondsFor(nextEpisodeSameTitle.id);
-      const path = `/domiflix/assistir/${titleSlug}/${epNum + 1}${startAt > 0 ? `/${startAt}` : ""}`;
+      const path = `/domiflix/assistir/${titleSlug}/${epNum + 1}${startAt > 0 ? `/${startAt}` : ""}?trilha=${encodeURIComponent(pathSlug)}`;
       navigate(path, { replace: true });
       return;
     }
@@ -344,7 +392,7 @@ export default function DomiflixWatchPage() {
     // Caso 2: próximo é o primeiro episódio do próximo módulo na mesma seção
     if (crossSectionNextEpisode && nextSection?.nextTitleSlug) {
       const startAt = resumeSecondsFor(crossSectionNextEpisode.id);
-      const path = `/domiflix/assistir/${nextSection.nextTitleSlug}/1${startAt > 0 ? `/${startAt}` : ""}`;
+      const path = `/domiflix/assistir/${nextSection.nextTitleSlug}/1${startAt > 0 ? `/${startAt}` : ""}?trilha=${encodeURIComponent(pathSlug)}`;
       navigate(path, { replace: true });
     }
   }, [
@@ -352,28 +400,47 @@ export default function DomiflixWatchPage() {
     nextEpisodeSameTitle,
     crossSectionNextEpisode,
     nextSection,
+    currentTrackLesson,
+    nextTrackLesson,
+    learningStatus,
     titleSlug,
     epNum,
+    pathSlug,
     navigate,
     resumeSecondsFor,
     saveProgressAsync,
     saveProgressKeepalive,
   ]);
 
-  // Called when current video ends. If there's a next episode, go to it.
-  // Otherwise, return to the Domiflix home screen.
-  const handleVideoEnded = useCallback(async () => {
-    if (nextEpisode) {
-      await goToNextEpisode();
+  useEffect(() => {
+    setCompletionOpen(false);
+    setAdvanceCountdown(4);
+    setAutoAdvancePaused(false);
+  }, [episode?.id]);
+
+  useEffect(() => {
+    if (!completionOpen || !nextEpisode || prefersReducedMotion || autoAdvancePaused) return;
+    if (advanceCountdown <= 0) {
+      void goToNextEpisode();
       return;
     }
+    const timer = window.setTimeout(
+      () => setAdvanceCountdown((current) => current - 1),
+      1000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [advanceCountdown, autoAdvancePaused, completionOpen, goToNextEpisode, nextEpisode, prefersReducedMotion]);
+
+  const handleVideoEnded = useCallback(async () => {
     try {
       await saveProgressAsync();
     } catch {
       saveProgressKeepalive();
     }
-    navigate("/domiflix", { replace: true });
-  }, [nextEpisode, goToNextEpisode, navigate, saveProgressAsync, saveProgressKeepalive]);
+    setAdvanceCountdown(4);
+    setAutoAdvancePaused(false);
+    setCompletionOpen(true);
+  }, [saveProgressAsync, saveProgressKeepalive]);
 
   const navigateToEpisode = useCallback(
     async (ep: DomiflixEpisode) => {
@@ -385,37 +452,100 @@ export default function DomiflixWatchPage() {
       const idx = allEpisodes.findIndex((e) => e.id === ep.id);
       if (idx >= 0 && titleSlug) {
         const startAt = resumeSecondsFor(ep.id);
-        const path = `/domiflix/assistir/${titleSlug}/${idx + 1}${startAt > 0 ? `/${startAt}` : ""}`;
+        const path = `/domiflix/assistir/${titleSlug}/${idx + 1}${startAt > 0 ? `/${startAt}` : ""}?trilha=${encodeURIComponent(pathSlug)}`;
         navigate(path, { replace: true });
       }
     },
-    [allEpisodes, titleSlug, navigate, resumeSecondsFor, saveProgressAsync, saveProgressKeepalive]
+    [allEpisodes, titleSlug, navigate, pathSlug, resumeSecondsFor, saveProgressAsync, saveProgressKeepalive]
   );
+
+  const navigateToTrackLesson = useCallback((lesson: DomiflixTrackLesson) => {
+    const siblings = learningStatus?.track.filter((item) => item.titleId === lesson.titleId) ?? [];
+    const lessonNumber = Math.max(1, siblings.findIndex((item) => item.episodeId === lesson.episodeId) + 1);
+    const startAt = Math.max(0, Math.floor(lesson.progressSeconds));
+    setMobileTrackOpen(false);
+    navigate(`/domiflix/assistir/${slugify(lesson.moduleTitle)}/${lessonNumber}${startAt ? `/${startAt}` : ""}?trilha=${encodeURIComponent(pathSlug)}`);
+  }, [learningStatus?.track, navigate, pathSlug]);
 
   if (!episode) {
     return (
-      <div className="domiflix-player-root fixed inset-0 z-[100] bg-[#141414] flex flex-col items-center justify-center gap-7">
+      <div className="domiflix-root fixed inset-0 z-[100] bg-[#141414] flex flex-col items-center justify-center gap-7">
         <div className="domiflix-spinner" />
       </div>
     );
   }
 
   const titleName = titleData?.title ?? "";
-  const titleSubLabel = (() => {
-    const parts: string[] = [];
-    if (seasonInfo) parts.push(`T${seasonInfo.season_number}`);
-    parts.push(t.player.episode.replace('{{number}}', String(episodeNumberInSeason)));
-    return parts.join(" ");
-  })();
-
   const startSec = startSeconds ? Math.max(0, parseInt(startSeconds, 10) || 0) : 0;
+  const usePortraitVideo = isMobileViewport && Boolean(episode.mobile_video_id);
+  const requiredLessons = learningStatus?.track.filter(
+    (item) => item.group === "core" || item.includedInPlan,
+  ) ?? [];
+  const requiredLessonIndex = currentTrackLesson
+    ? requiredLessons.findIndex((item) => item.episodeId === currentTrackLesson.episodeId)
+    : -1;
+  const moduleLessons = currentTrackLesson
+    ? learningStatus?.track.filter((item) => item.titleId === currentTrackLesson.titleId) ?? []
+    : [];
+  const moduleLessonIndex = currentTrackLesson
+    ? moduleLessons.findIndex((item) => item.episodeId === currentTrackLesson.episodeId)
+    : -1;
+  const trackModuleIds = Array.from(new Set((learningStatus?.track ?? []).map((item) => item.titleId)));
+  const moduleNumber = currentTrackLesson
+    ? Math.max(1, trackModuleIds.indexOf(currentTrackLesson.titleId) + 1)
+    : 1;
+  const lessonIndexLabel = currentTrackLesson
+    ? `${moduleNumber}.${Math.max(1, moduleLessonIndex + 1)}`
+    : String(epNum);
+  const titleSubLabel = currentTrackLesson
+    ? currentTrackLesson.group === "core" || currentTrackLesson.includedInPlan
+      ? `Aula ${lessonIndexLabel} · ${requiredLessonIndex + 1} de ${requiredLessons.length} na sua trilha`
+      : `Aula ${lessonIndexLabel} · ${moduleLessonIndex + 1} de ${moduleLessons.length} neste módulo`
+    : `Aula ${epNum}`;
+  const contentTransitioning = titleLookup.isPlaceholderData || titleQuery.isPlaceholderData;
+  const contentTransitionError = titleLookup.isError || titleQuery.isError;
+  const completedRequiredTrack = Boolean(
+    currentTrackLesson &&
+      (currentTrackLesson.group === "core" || currentTrackLesson.includedInPlan) &&
+      (!nextTrackLesson || crossesIntoOptionalModule),
+  );
+  const selectedVideoId = usePortraitVideo ? episode.mobile_video_id : episode.video_id;
+  const selectedVideoType = usePortraitVideo ? episode.mobile_video_type || episode.video_type : episode.video_type;
 
   return (
-    <div className="domiflix-player-root fixed inset-0 z-[100] bg-black flex items-center justify-center">
-      {episode.video_id ? (
-        <NetflixPlayer
-          videoId={episode.video_id}
-          videoType={(episode.video_type as "youtube" | "drive") ?? "youtube"}
+    <div className="domiflix-player-root fixed inset-0 z-[100] overflow-y-auto bg-[#141414] text-white lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:overflow-hidden">
+      <aside className="hidden min-h-0 border-r border-white/10 lg:block">
+        <DomiflixTrackPanel status={learningStatus} currentEpisodeId={episode.id} onSelect={navigateToTrackLesson} />
+      </aside>
+      <div key={episode.id} className="relative min-w-0 animate-in fade-in slide-in-from-right-2 duration-300 motion-reduce:animate-none lg:min-h-0 lg:overflow-y-auto">
+        {contentTransitionError ? (
+          <div className="absolute inset-0 z-[60] grid place-items-center bg-[#141414]/94 px-6 text-center backdrop-blur-sm" role="alert">
+            <div className="max-w-sm">
+              <p className="text-lg font-semibold text-white">Não foi possível abrir esta aula</p>
+              <p className="mt-2 text-sm leading-6 text-stone-300">A trilha continua no lugar. Confira sua conexão e tente carregar novamente.</p>
+              <button type="button" onClick={() => { void titleLookup.refetch(); void titleQuery.refetch(); }} className="mt-5 min-h-11 rounded-sm bg-red-600 px-5 text-sm font-semibold text-white hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400">
+                Tentar novamente
+              </button>
+            </div>
+          </div>
+        ) : contentTransitioning && (
+          <div className="absolute inset-0 z-[60] grid place-items-center bg-[#141414]/88 backdrop-blur-sm" role="status" aria-live="polite">
+            <div className="flex items-center gap-3 text-sm font-medium text-stone-200">
+              <Loader2 className="h-5 w-5 animate-spin text-red-500 motion-reduce:animate-none" />
+              Preparando a próxima aula…
+            </div>
+          </div>
+        )}
+        <div className="sticky top-0 z-10 flex h-12 items-center justify-between border-b border-white/10 bg-[#141414]/95 px-4 backdrop-blur lg:hidden">
+          <button onClick={handleBack} className="flex min-h-11 items-center gap-2 rounded-sm text-sm text-stone-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"><ArrowLeft className="h-4 w-4" />Voltar</button>
+          <button onClick={() => setMobileTrackOpen(true)} className="flex min-h-11 items-center gap-2 rounded-sm bg-white/[0.06] px-3 text-xs font-semibold text-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"><ListVideo className="h-4 w-4" />Ver trilha</button>
+        </div>
+        <div className={cn("relative flex w-full items-center justify-center bg-black", usePortraitVideo ? "min-h-[72dvh] lg:min-h-[calc(100dvh-3rem)]" : "aspect-video")}>
+        {selectedVideoId ? (
+          <NetflixPlayer
+          videoId={selectedVideoId}
+          videoType={(selectedVideoType as "youtube" | "drive") ?? "youtube"}
+          orientation={usePortraitVideo ? "portrait" : "landscape"}
           titleName={titleName}
           titleLogoUrl={titleData?.logo_url ?? null}
           titleSubLabel={titleSubLabel}
@@ -445,7 +575,7 @@ export default function DomiflixWatchPage() {
           titleData={titleData ?? null}
           progress={progress}
           currentEpisodeId={episode.id}
-          onSelectEpisode={navigateToEpisode}
+          subtitles={extras.subtitles}
         />
       ) : (
         <div className="flex flex-col items-center justify-center h-full gap-6 px-6 text-center">
@@ -454,27 +584,79 @@ export default function DomiflixWatchPage() {
           </div>
           <div className="space-y-2 max-w-md">
             <h2 className="text-2xl sm:text-3xl font-semibold text-white">
-              {t.player.episodeNotAvailable}
+              Essa aula ainda não está disponível
             </h2>
             <p className="text-sm sm:text-base text-white/60">
-              {t.player.episodeNotAvailableDesc}
+              Estamos finalizando a gravação. Em breve ela ficará disponível pra você assistir aqui.
             </p>
           </div>
           <button
             onClick={handleBack}
-            className="mt-2 inline-flex h-14 min-w-[200px] items-center justify-center rounded-md bg-red-600 px-8 text-base font-semibold text-white shadow-lg transition-colors hover:bg-red-700 active:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-black"
+            className="mt-2 inline-flex h-14 min-w-[200px] items-center justify-center rounded-md bg-red-600 px-8 text-base font-semibold text-white shadow-lg transition-colors hover:bg-red-700 active:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-0 focus:ring-offset-black"
           >
-            {t.player.back}
+            Voltar
           </button>
         </div>
-      )}
+        )}
+        {completionOpen && (
+          <div className="absolute inset-0 z-[60] grid place-items-center bg-black/90 px-5 py-8 text-center backdrop-blur-sm" role="dialog" aria-label="Aula concluída" onPointerMove={() => setAutoAdvancePaused(true)} onFocusCapture={() => setAutoAdvancePaused(true)}>
+            <div className="w-full max-w-md">
+              <CircleCheckBig className="mx-auto h-12 w-12 text-emerald-400" />
+              <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">Aula concluída</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">
+                {nextEpisode ? "Vamos para a próxima" : completedRequiredTrack ? "Sua trilha obrigatória está em dia" : "Conteúdo concluído"}
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-stone-300">
+                {nextEpisode
+                  ? prefersReducedMotion || autoAdvancePaused
+                    ? "Avance quando estiver pronto."
+                    : `A próxima aula começa em ${advanceCountdown} segundo${advanceCountdown === 1 ? "" : "s"}.`
+                  : crossesIntoOptionalModule
+                    ? "Você concluiu as aulas da formação básica e dos módulos do seu plano. Os demais módulos continuam disponíveis para conhecer."
+                    : "Seu progresso foi salvo. Você pode revisar esta aula ou voltar aos módulos."}
+              </p>
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
+                <button type="button" onClick={() => setCompletionOpen(false)} className="min-h-11 rounded-sm border border-white/20 px-5 text-sm font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+                  Ficar nesta aula
+                </button>
+                <button type="button" onClick={() => nextEpisode ? void goToNextEpisode() : navigate(`/domiflix?trilha=${encodeURIComponent(pathSlug)}`)} className="min-h-11 rounded-sm bg-red-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black">
+                  {nextEpisode ? "Próxima aula agora" : "Ver todos os módulos"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        </div>
+        <DomiflixLessonDetails
+          moduleTitle={titleName}
+          lessonIndex={lessonIndexLabel}
+          lessonTitle={episode.title}
+          description={episode.description}
+          resources={extras.resources}
+          group={currentTrackLesson?.group ?? "core"}
+          includedInPlan={currentTrackLesson?.includedInPlan ?? true}
+          moduleCode={currentTrackLesson?.moduleCode ?? null}
+          moduleName={currentTrackLesson?.moduleName ?? null}
+          modulePrice={currentTrackLesson?.modulePrice ?? null}
+          accountStage={learningStatus?.user.accountStage ?? "neutral"}
+          userEmail={learningStatus?.user.email ?? ""}
+          companyName={learningStatus?.user.companyName ?? ""}
+          pathTitle={learningStatus?.path.title ?? "Tutoriais do sistema"}
+        />
+      </div>
+      <Drawer open={mobileTrackOpen} onOpenChange={setMobileTrackOpen}>
+        <DrawerContent className="h-[88dvh] max-h-[88dvh] overflow-hidden border-white/10 bg-[#181818] p-0 text-white">
+          <DrawerHeader className="sr-only"><DrawerTitle>Sua trilha de tutoriais</DrawerTitle></DrawerHeader>
+          <DomiflixTrackPanel status={learningStatus} currentEpisodeId={episode.id} onSelect={navigateToTrackLesson} />
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
 
 // ─── Netflix-style Player ────────────────────────────────────────────────────
 
-interface NetflixPlayerProps {
+export interface NetflixPlayerProps {
   videoId: string;
   videoType: "youtube" | "drive";
   titleName: string;
@@ -495,9 +677,12 @@ interface NetflixPlayerProps {
   progress?: DomiflixProgress[];
   currentEpisodeId?: string;
   onSelectEpisode?: (ep: DomiflixEpisode) => void;
+  subtitles?: DomiflixSubtitle[];
+  locked?: boolean;
+  orientation?: "landscape" | "portrait";
 }
 
-function NetflixPlayer({
+export function NetflixPlayer({
   videoId,
   videoType,
   titleName,
@@ -517,10 +702,11 @@ function NetflixPlayer({
   progress: progressItems = [],
   currentEpisodeId,
   onSelectEpisode,
+  subtitles = [],
+  locked = false,
+  orientation = "landscape",
 }: NetflixPlayerProps) {
   const isMobile = useIsMobile();
-  const { locale } = useAppLocaleContext();
-  const t = MESSAGES[locale].app.domiflix;
   const ytContainerRef = useRef<HTMLDivElement>(null);
   const ytPlayerRef = useRef<any>(null);
   const videoElRef = useRef<HTMLVideoElement>(null);
@@ -542,6 +728,23 @@ function NetflixPlayer({
   const [showHud, setShowHud] = useState(true);
   const [hudLocked, setHudLocked] = useState(false);
   const [seeking, setSeeking] = useState(false);
+  const [activeSubtitleId, setActiveSubtitleId] = useState<string | null | undefined>(undefined);
+  const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
+
+  useEffect(() => {
+    setActiveSubtitleId((current) => {
+      if (current === null) return null;
+      if (current && subtitles.some((subtitle) => subtitle.id === current)) return current;
+      return subtitles.find((subtitle) => subtitle.is_default)?.id;
+    });
+  }, [subtitles]);
+
+  const activeSubtitle = subtitles.find((subtitle) => subtitle.id === activeSubtitleId) ?? null;
+  const subtitleCues = useMemo(
+    () => activeSubtitle?.content ? parseTimedText(activeSubtitle.content) : [],
+    [activeSubtitle?.content],
+  );
+  const visibleSubtitle = subtitleCues.find((cue) => currentTime >= cue.start && currentTime < cue.end)?.text ?? null;
 
   // YouTube bot wall detection — alguns usuários recebem "Faça login pra
   // confirmar que não é um robô" dentro do iframe. Não tem como bypassar
@@ -744,121 +947,33 @@ function NetflixPlayer({
     [isYouTube]
   );
 
-  const toggleFullscreen = useCallback(() => {
+  const toggleFullscreen = useCallback(async () => {
     const el = document.querySelector(".domiflix-player-root");
     if (!el) return;
-    if (document.fullscreenElement) document.exitFullscreen();
-    else (el as HTMLElement).requestFullscreen();
-  }, []);
-
-  // Auto-enter fullscreen + lock STRICTLY landscape on mobile (Netflix-style)
-  // Estratégia em camadas:
-  //   1. Fullscreen API → screen.orientation.lock('landscape')  [Android Chrome/Firefox]
-  //   2. CSS rotation fallback (.domiflix-force-landscape)        [iOS Safari, browsers sem lock]
-  // O player NUNCA deve aparecer em portrait — se o lock JS falhar, o CSS rotaciona
-  // visualmente. Erros do lock são logados via console.warn (não toast) pra não
-  // poluir UX em devices incompatíveis. Ver "Limitações conhecidas" no commit.
-  useEffect(() => {
-    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
-      || window.matchMedia("(max-width: 1024px)").matches;
-    if (!isMobile) return;
-
-    const root = document.querySelector(".domiflix-player-root") as HTMLElement | null;
-
-    const applyCssFallback = () => {
-      const portrait = window.matchMedia("(orientation: portrait)").matches;
-      if (root) root.classList.toggle("domiflix-force-landscape", portrait);
-    };
-
-    const tryLockOrientation = () => {
-      const orientation = (screen as any).orientation;
-      if (orientation?.lock) {
-        orientation.lock("landscape").catch((err: any) => {
-          // Browser não suporta lock fora de fullscreen (ex: Safari iOS),
-          // ou já está locked em outra direção. Fallback CSS toma conta.
-          console.warn("[Domiflix] orientation.lock('landscape') falhou:", err?.message ?? err);
-          applyCssFallback();
-        });
-      } else {
-        // Screen Orientation API ausente (iOS Safari < 16.4 etc).
-        applyCssFallback();
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      return;
+    }
+    try {
+      await (el as HTMLElement).requestFullscreen();
+      const screenOrientation = screen.orientation as ScreenOrientation & {
+        lock?: (orientation: "landscape") => Promise<void>;
+      };
+      if (orientation === "landscape" && screenOrientation?.lock) {
+        await screenOrientation.lock("landscape").catch(() => undefined);
       }
-    };
-
-    const tryEnter = () => {
-      if (!root) return;
-      if (document.fullscreenElement) {
-        // Já em fullscreen — só tenta o lock e aplica fallback se precisar.
-        tryLockOrientation();
-        return;
-      }
-      const req = root.requestFullscreen?.();
-      if (req && typeof req.then === "function") {
-        req
-          .then(() => tryLockOrientation())
-          .catch((err: any) => {
-            console.warn("[Domiflix] requestFullscreen falhou:", err?.message ?? err);
-            applyCssFallback();
-          });
-      } else {
-        // requestFullscreen não disponível — só CSS fallback.
-        applyCssFallback();
-      }
-    };
-
-    // Tenta imediatamente + em qualquer interação (necessário em browsers
-    // que exigem user gesture pra fullscreen/lock).
-    const timer = setTimeout(tryEnter, 300);
-    const onInteract = () => { tryEnter(); };
-    window.addEventListener("touchstart", onInteract, { once: true, passive: true });
-    window.addEventListener("click", onInteract, { once: true });
-
-    // Reage ao usuário rotacionar de fato o device — se voltar pra portrait,
-    // re-aplica fallback CSS pra forçar visualmente landscape.
-    const mql = window.matchMedia("(orientation: portrait)");
-    const onOrient = () => {
-      if (root && !document.fullscreenElement) applyCssFallback();
-    };
-    mql.addEventListener?.("change", onOrient);
-
-    // orientationchange (legado, ainda dispara em alguns devices Android).
-    const onLegacyOrient = () => {
-      if (root && !document.fullscreenElement) applyCssFallback();
-    };
-    window.addEventListener("orientationchange", onLegacyOrient);
-
-    // Quando a aba volta a ficar visível, alguns browsers liberam o lock —
-    // re-tenta pra manter a experiência consistente.
-    const onVisibility = () => {
-      if (document.visibilityState === "visible" && root) {
-        if (document.fullscreenElement) {
-          tryLockOrientation();
-        } else {
-          applyCssFallback();
-        }
-      }
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("touchstart", onInteract);
-      window.removeEventListener("click", onInteract);
-      window.removeEventListener("orientationchange", onLegacyOrient);
-      document.removeEventListener("visibilitychange", onVisibility);
-      mql.removeEventListener?.("change", onOrient);
-      if (root) root.classList.remove("domiflix-force-landscape");
-      // Libera o lock ao sair do player.
-      const orientation = (screen as any).orientation;
-      if (orientation?.unlock) {
-        try { orientation.unlock(); } catch { /* noop */ }
-      }
-    };
-  }, []);
+    } catch {
+      // Alguns navegadores não oferecem fullscreen; o player continua inline.
+    }
+  }, [orientation]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("button, a, input, textarea, select, [role='checkbox'], [role='menuitem'], [contenteditable='true']")) {
+        return;
+      }
       switch (e.key) {
         case " ":
         case "k":
@@ -867,11 +982,11 @@ function NetflixPlayer({
           break;
         case "ArrowLeft":
           e.preventDefault();
-          skip(-10);
+          if (!locked) skip(-10);
           break;
         case "ArrowRight":
           e.preventDefault();
-          skip(10);
+          if (!locked) skip(10);
           break;
         case "m":
           e.preventDefault();
@@ -883,13 +998,13 @@ function NetflixPlayer({
           break;
         case "Escape":
           if (document.fullscreenElement) document.exitFullscreen();
-          else onBackRef.current();
+          else if (!locked) onBackRef.current();
           break;
       }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [togglePlay, skip, toggleMute, toggleFullscreen]);
+  }, [togglePlay, skip, toggleMute, toggleFullscreen, locked]);
 
   // ── Create YouTube player ──
   useEffect(() => {
@@ -1088,18 +1203,18 @@ function NetflixPlayer({
       const fs = !!document.fullscreenElement;
       setIsFullscreen(fs);
       // Lock landscape on mobile while in fullscreen (Netflix-style)
-      const orientation = (screen as any).orientation;
-      if (fs && orientation?.lock) {
-        orientation.lock("landscape").catch(() => {
+      const screenOrientation = (screen as any).orientation;
+      if (fs && screenOrientation?.lock && orientation !== "portrait") {
+        screenOrientation.lock("landscape").catch(() => {
           /* unsupported (iOS Safari) — silently ignore */
         });
-      } else if (!fs && orientation?.unlock) {
-        try { orientation.unlock(); } catch { /* noop */ }
+      } else if (!fs && screenOrientation?.unlock) {
+        try { screenOrientation.unlock(); } catch { /* noop */ }
       }
     };
     document.addEventListener("fullscreenchange", handler);
     return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
+  }, [orientation]);
 
   // Show "Next Episode" preview when within last 20s
   useEffect(() => {
@@ -1157,7 +1272,7 @@ function NetflixPlayer({
       // aspect-video (16:9) ocupando o máximo do viewport sem cropar.
       // Em viewports portrait → letterbox top/bottom; em ultrawide → pillarbox laterais.
       // O container pai (`domiflix-player-root`) já é flex/center com fundo preto.
-      className="relative w-full h-full max-w-[177.78vh] max-h-[56.25vw] aspect-video bg-black select-none overflow-hidden"
+      className={cn("relative bg-black select-none overflow-hidden", orientation === "portrait" ? "aspect-[9/16] h-[min(78dvh,900px)] w-auto max-h-full max-w-full" : "aspect-video h-full w-full max-h-[56.25vw] max-w-[177.78vh]")}
       style={{ cursor: showHud ? "default" : "none" }}
       onMouseMove={resetHideTimer}
       onTouchStart={() => {
@@ -1214,10 +1329,13 @@ function NetflixPlayer({
               <div className="max-w-md text-center text-white">
                 <div className="mb-4 text-4xl">⚠️</div>
                 <h2 className="mb-2 text-xl font-semibold">
-                  {t.player.ytBlocked}
+                  Vídeo bloqueado pelo YouTube
                 </h2>
                 <p className="mb-6 text-sm text-white/70">
-                  {t.player.ytBlockedDesc}
+                  O YouTube está pedindo login pra confirmar que você não é um robô.
+                  Isso acontece em alguns navegadores e provedores de internet — não é
+                  problema do app. Você pode assistir direto no YouTube ou tentar
+                  recarregar.
                 </p>
                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
                   <button
@@ -1230,7 +1348,7 @@ function NetflixPlayer({
                     }
                     className="rounded bg-[#E50914] px-5 py-2 font-medium text-white hover:bg-[#f6121d]"
                   >
-                    {t.player.watchOnYouTube}
+                    Assistir no YouTube
                   </button>
                   <button
                     onClick={() => {
@@ -1240,7 +1358,7 @@ function NetflixPlayer({
                     }}
                     className="rounded border border-white/30 px-5 py-2 font-medium text-white hover:bg-white/10"
                   >
-                    {t.player.retry}
+                    Tentar novamente
                   </button>
                 </div>
               </div>
@@ -1325,6 +1443,14 @@ function NetflixPlayer({
         <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
       </div>
 
+      {visibleSubtitle && (
+        <div className="pointer-events-none absolute inset-x-4 bottom-[18%] z-[19] flex justify-center px-2 text-center sm:bottom-[15%]">
+          <span className="whitespace-pre-line rounded-sm bg-black/85 px-2.5 py-1 text-sm font-medium leading-snug text-white shadow-sm sm:text-base">
+            {visibleSubtitle}
+          </span>
+        </div>
+      )}
+
       {/* ── HUD: Back button + episode title (top-left, inline) ── */}
       <div
         className={cn(
@@ -1334,13 +1460,13 @@ function NetflixPlayer({
       >
         {/* Mobile: back left, title centered (bold name + light sub) */}
         <div className="md:hidden relative flex items-center h-9">
-          <button
+          {!locked && <button
             onClick={onBack}
             className="absolute left-0 flex items-center text-white hover:text-white transition-colors shrink-0"
-            aria-label={t.player.back}
+            aria-label="Voltar"
           >
             <ArrowLeft className="w-6 h-6" />
-          </button>
+          </button>}
           <div
             className="mx-auto max-w-[72%] text-center text-white text-sm truncate px-10"
             style={{ fontFamily: '"Netflix Sans","Helvetica Neue",Helvetica,Arial,sans-serif' }}
@@ -1354,13 +1480,13 @@ function NetflixPlayer({
 
         {/* Desktop: original layout */}
         <div className="hidden md:flex items-center gap-4">
-          <button
+          {!locked && <button
             onClick={onBack}
             className="flex items-center text-white/80 hover:text-white transition-colors shrink-0"
-            aria-label={t.player.back}
+            aria-label="Voltar"
           >
             <ArrowLeft className="w-6 h-6" />
-          </button>
+          </button>}
           {(titleName || episodeName) && (
             <div
               className="max-w-[420px] animate-fade-in min-w-0"
@@ -1374,7 +1500,7 @@ function NetflixPlayer({
               {(titleSubLabel || episodeName) && (
                 <div className="text-white/80 text-xs md:text-sm leading-tight mt-0.5 drop-shadow-md truncate">
                   {(() => {
-                    const compactSub = (titleSubLabel || "").replace(/Epis[oó]dio\s+/i, "Ep. ");
+                    const compactSub = (titleSubLabel || "").replace(/Episódio\s+/i, "Ep. ");
                     if (compactSub && episodeName) return `${compactSub}: ${episodeName}`;
                     return compactSub || episodeName || "";
                   })()}
@@ -1418,7 +1544,7 @@ function NetflixPlayer({
           <div className="relative h-full">
             <div className="absolute top-1/2 left-8 sm:left-12 md:left-20 right-6 sm:right-auto -translate-y-1/2 max-w-[640px] text-white">
               <p className="text-sm md:text-base text-white/70 font-light mb-1">
-                {t.player.youAreWatching}
+                Você está assistindo:
               </p>
               {titleLogoUrl ? (
                 <img
@@ -1434,7 +1560,7 @@ function NetflixPlayer({
               {episodeName && (
                 <p className="text-lg md:text-xl font-semibold text-white mb-2 drop-shadow-lg">
                   {(() => {
-                    const compactSub = (titleSubLabel || "").replace(/Epis[oó]dio\s+/i, "Ep. ");
+                    const compactSub = (titleSubLabel || "").replace(/Episódio\s+/i, "Ep. ");
                     return compactSub ? `${compactSub}: ${episodeName}` : episodeName;
                   })()}
                 </p>
@@ -1446,7 +1572,7 @@ function NetflixPlayer({
               )}
             </div>
             <div className="absolute bottom-32 right-10 text-white/80 text-base md:text-lg font-light tracking-wide drop-shadow-lg">
-              {t.player.paused}
+              Pausado
             </div>
           </div>
         </div>
@@ -1473,7 +1599,7 @@ function NetflixPlayer({
               }}
               className="px-5 py-2.5 rounded-sm bg-[#3A3A3A]/90 hover:bg-[#4A4A4A] text-white text-sm font-semibold transition-colors"
             >
-              {t.player.replayFromStart}
+              Voltar para o início
             </button>
 
             {/* Próximo episódio com preenchimento esquerda → direita */}
@@ -1495,7 +1621,7 @@ function NetflixPlayer({
                 {/* Conteúdo */}
                 <span className="relative flex items-center gap-2 px-5 py-2.5 text-black">
                   <PlayIcon className="w-4 h-4" />
-                  {t.player.nextEpisode}
+                  Próxima aula
                 </span>
               </button>
             )}
@@ -1514,7 +1640,7 @@ function NetflixPlayer({
         <div className="px-4 md:px-10 relative">
           <div className="flex items-center gap-3">
             <div
-              className="group relative flex-1 h-[6px] hover:h-[8px] bg-white/25 rounded-full cursor-pointer transition-all"
+              className={cn("group relative flex-1 h-[6px] bg-white/25 rounded-full transition-all", locked ? "cursor-default" : "cursor-pointer hover:h-[8px]")}
               onMouseMove={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
@@ -1523,6 +1649,7 @@ function NetflixPlayer({
               }}
               onMouseLeave={() => setHoverPct(null)}
               onMouseDown={(e) => {
+                if (locked) return;
                 setSeeking(true);
                 const rect = e.currentTarget.getBoundingClientRect();
                 const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
@@ -1606,19 +1733,19 @@ function NetflixPlayer({
               )}
             </button>
 
-            <button
+            {!locked && <button
               onClick={() => skip(-10)}
               className="text-white hover:scale-110 transition-transform p-1 hidden sm:block"
             >
               <SkipBack10Icon className="w-7 h-7 md:w-8 md:h-8" />
-            </button>
+            </button>}
 
-            <button
+            {!locked && <button
               onClick={() => skip(10)}
               className="text-white hover:scale-110 transition-transform p-1 hidden sm:block"
             >
               <SkipForward10Icon className="w-7 h-7 md:w-8 md:h-8" />
-            </button>
+            </button>}
 
             {/* Volume */}
             <div
@@ -1691,11 +1818,13 @@ function NetflixPlayer({
           <div className="flex items-center gap-1 md:gap-3">
             {/* Next episode button with hover preview */}
             {nextEpisode && onPlayNext && (
+              <div className="order-2">
               <NextEpisodeButton
                 nextEpisode={nextEpisode}
                 onPlayNext={onPlayNext}
                 titleData={titleData}
               />
+              </div>
             )}
 
             {titleData && titleData.type === "series" && onSelectEpisode && (
@@ -1703,13 +1832,15 @@ function NetflixPlayer({
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowSpeed(false);
+                  setShowSubtitleMenu(false);
                   setShowEpisodes((v) => !v);
                 }}
                 className={cn(
+                  "order-3",
                   "text-white hover:scale-110 transition-transform p-1",
                   showEpisodes && "text-[#E50914]"
                 )}
-                title={t.player.episodes}
+                title="Episódios"
               >
                 <EpisodesListIcon className="w-8 h-7 md:w-9 md:h-8" />
               </button>
@@ -1717,23 +1848,62 @@ function NetflixPlayer({
 
             {/* Playback speed */}
             {onChangePlaybackSpeed && (
+              <div className="order-3">
               <SpeedButton
                 speed={playbackSpeed}
                 onChange={onChangePlaybackSpeed}
                 open={showSpeed}
                 onOpenChange={(o) => {
-                  if (o) setShowEpisodes(false);
+                  if (o) {
+                    setShowEpisodes(false);
+                    setShowSubtitleMenu(false);
+                  }
                   setShowSpeed(o);
                 }}
-                tSpeed={t.player.speed}
-                tSpeedDefault={t.player.speedDefault}
               />
+              </div>
             )}
+
+            <div className="relative order-1">
+                <button
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setShowEpisodes(false);
+                    setShowSpeed(false);
+                    setShowSubtitleMenu((open) => !open);
+                  }}
+                  className={cn("rounded-sm p-1 text-white transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transform-none motion-reduce:transition-none", activeSubtitle && "text-red-500")}
+                  title={activeSubtitle ? `Legendas: ${activeSubtitle.label}` : "Legendas desativadas"}
+                  aria-label={activeSubtitle ? `Trocar legenda. Atual: ${activeSubtitle.label}` : "Ativar ou escolher legenda"}
+                  aria-expanded={showSubtitleMenu}
+                >
+                  <Subtitles className="h-7 w-7" />
+                </button>
+                {showSubtitleMenu && (
+                  <div className="absolute bottom-full right-0 mb-3 w-64 overflow-hidden rounded-md border border-white/10 bg-[#181818] py-1 shadow-2xl" role="menu" aria-label="Opções de legenda">
+                    <div className="border-b border-white/10 px-3 py-2">
+                      <p className="text-xs font-semibold text-white">Legendas</p>
+                      <p className="mt-0.5 text-[11px] leading-4 text-stone-500">Escolha uma faixa ou assista sem legenda adicional.</p>
+                    </div>
+                    <button onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(null); setShowSubtitleMenu(false); }} className={cn("flex min-h-10 w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs hover:bg-white/[0.06]", !activeSubtitle ? "text-white" : "text-stone-400")} role="menuitemradio" aria-checked={!activeSubtitle}>
+                      Sem legendas
+                      {!activeSubtitle && <Check className="h-3.5 w-3.5 text-red-400" />}
+                    </button>
+                    {subtitles.map((subtitle) => (
+                      <button key={subtitle.id} onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(subtitle.id); setShowSubtitleMenu(false); }} className={cn("flex min-h-10 w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs hover:bg-white/[0.06]", activeSubtitleId === subtitle.id ? "text-white" : "text-stone-300")} role="menuitemradio" aria-checked={activeSubtitleId === subtitle.id}>
+                        {subtitle.label}
+                        {activeSubtitleId === subtitle.id && <Check className="h-3.5 w-3.5 text-red-400" />}
+                      </button>
+                    ))}
+                    {subtitles.length === 0 && <p className="border-t border-white/10 px-3 py-2 text-[11px] leading-4 text-stone-500">Nenhuma faixa opcional foi vinculada. Se houver texto na imagem, ele faz parte do próprio vídeo e não pode ser desligado.</p>}
+                  </div>
+                )}
+              </div>
 
             <button
               onClick={toggleFullscreen}
-              className="text-white hover:scale-110 transition-transform p-1"
-              title={isFullscreen ? t.player.exitFullscreen : t.player.fullscreen}
+              className="order-4 rounded-sm p-1 text-white transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transform-none motion-reduce:transition-none"
+              aria-label={isFullscreen ? "Sair da tela cheia" : "Abrir em tela cheia"}
             >
               {isFullscreen ? (
                 <MinimizeIcon className="w-7 h-7 md:w-8 md:h-8" />
@@ -1750,18 +1920,34 @@ function NetflixPlayer({
             stacking order. Sem isso, em alguns devices o toque "vazava" pro
             overlay de baixo e os botões viravam inertes no celular. */}
         <div className="md:hidden flex items-center justify-center gap-8 sm:gap-10 pt-2 pb-3 text-white relative z-10 pointer-events-auto">
+          <div className="relative order-3">
+              <button onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setShowEpisodes(false); setShowSpeed(false); setShowSubtitleMenu((open) => !open); }} className={cn("flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white", activeSubtitle && "text-red-500")} aria-label={activeSubtitle ? `Trocar legenda. Atual: ${activeSubtitle.label}` : "Ativar ou escolher legenda"} aria-expanded={showSubtitleMenu}>
+                <Subtitles className="h-7 w-7" />
+                <span className="max-w-24 truncate text-[10px] font-light">{activeSubtitle?.label ?? "Sem legendas"}</span>
+              </button>
+              {showSubtitleMenu && (
+                <div className="absolute bottom-full left-1/2 mb-3 w-64 -translate-x-1/2 overflow-hidden rounded-sm border border-white/10 bg-[#181818] py-1 shadow-2xl" role="menu" aria-label="Opções de legenda">
+                  <div className="border-b border-white/10 px-3 py-2"><p className="text-xs font-semibold text-white">Legendas</p><p className="mt-0.5 text-[11px] leading-4 text-stone-500">Escolha uma faixa ou assista sem legenda adicional.</p></div>
+                  <button onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(null); setShowSubtitleMenu(false); }} className={cn("flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs", !activeSubtitle ? "bg-white/[0.05] text-white" : "text-stone-400")} role="menuitemradio" aria-checked={!activeSubtitle}><span>Sem legendas</span>{!activeSubtitle && <Check className="h-3.5 w-3.5 text-red-400" />}</button>
+                  {subtitles.map((subtitle) => <button key={subtitle.id} onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(subtitle.id); setShowSubtitleMenu(false); }} className={cn("flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs", activeSubtitleId === subtitle.id ? "bg-white/[0.05] text-white" : "text-stone-300")} role="menuitemradio" aria-checked={activeSubtitleId === subtitle.id}><span>{subtitle.label}</span>{activeSubtitleId === subtitle.id && <Check className="h-3.5 w-3.5 text-red-400" />}</button>)}
+                  {subtitles.length === 0 && <p className="border-t border-white/10 px-3 py-2 text-[11px] leading-4 text-stone-500">Nenhuma faixa opcional foi vinculada. Legendas gravadas na imagem não podem ser desligadas.</p>}
+                </div>
+              )}
+            </div>
           {onChangePlaybackSpeed && (
             <button
               onPointerDown={(e) => { e.stopPropagation(); }}
               onClick={(e) => {
                 e.stopPropagation();
                 setShowEpisodes(false);
+                setShowSubtitleMenu(false);
                 setShowSpeed((v) => !v);
               }}
-              className="flex flex-col items-center gap-0.5 pointer-events-auto"
+              className="order-1 flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-sm pointer-events-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              aria-label={`Velocidade de reprodução: ${playbackSpeed}x`}
             >
               <SpeedIcon className="w-7 h-7" />
-              <span className="text-[10px] font-light">{t.player.speedLabel.replace('{{speed}}', String(playbackSpeed))}</span>
+              <span className="text-[10px] font-light">Velocidade ({playbackSpeed}x)</span>
             </button>
           )}
 
@@ -1771,15 +1957,17 @@ function NetflixPlayer({
               onClick={(e) => {
                 e.stopPropagation();
                 setShowSpeed(false);
+                setShowSubtitleMenu(false);
                 setShowEpisodes((v) => !v);
               }}
               className={cn(
-                "flex flex-col items-center gap-0.5 pointer-events-auto",
+                "order-2 flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-sm pointer-events-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
                 showEpisodes && "text-[#E50914]"
               )}
+              aria-label="Abrir lista de aulas"
             >
               <EpisodesListIcon className="w-7 h-7" />
-              <span className="text-[10px] font-light">{t.player.episodes}</span>
+              <span className="text-[10px] font-light">Episódios</span>
             </button>
           )}
 
@@ -1790,10 +1978,11 @@ function NetflixPlayer({
                 e.stopPropagation();
                 onPlayNext();
               }}
-              className="flex flex-col items-center gap-0.5 pointer-events-auto"
+              className="order-4 flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-sm pointer-events-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              aria-label="Reproduzir próxima aula"
             >
               <NextEpisodeIcon className="w-7 h-7" />
-              <span className="text-[10px] font-light">{t.player.nextShort}</span>
+              <span className="text-[10px] font-light">Próxima aula</span>
             </button>
           )}
         </div>
@@ -1802,19 +1991,19 @@ function NetflixPlayer({
       {/* ── Mobile center cluster: skip-back / play-pause / skip-forward ── */}
       {ready && showHud && !showEpisodes && (
         <div className="player-controls md:hidden absolute inset-0 z-20 flex items-center justify-center gap-10 pointer-events-none">
-          <button
+          {!locked && <button
             onPointerDown={(e) => { e.stopPropagation(); }}
             onClick={(e) => { e.stopPropagation(); skip(-10); }}
             className="pointer-events-auto text-white p-3 -m-1"
-            aria-label={t.player.skipBack}
+            aria-label="Voltar 10 segundos"
           >
             <SkipBack10Icon className="w-10 h-10" />
-          </button>
+          </button>}
           <button
             onPointerDown={(e) => { e.stopPropagation(); }}
             onClick={(e) => { e.stopPropagation(); togglePlay(); }}
             className="pointer-events-auto w-16 h-16 flex items-center justify-center text-white"
-            aria-label={playing ? t.player.pause : t.player.play}
+            aria-label={playing ? "Pausar" : "Reproduzir"}
           >
             {playing ? (
               <PauseIcon className="w-12 h-12" />
@@ -1822,14 +2011,14 @@ function NetflixPlayer({
               <PlayIcon className="w-12 h-12 ml-1" />
             )}
           </button>
-          <button
+          {!locked && <button
             onPointerDown={(e) => { e.stopPropagation(); }}
             onClick={(e) => { e.stopPropagation(); skip(10); }}
             className="pointer-events-auto text-white p-3 -m-1"
-            aria-label={t.player.skipForward}
+            aria-label="Avançar 10 segundos"
           >
             <SkipForward10Icon className="w-10 h-10" />
-          </button>
+          </button>}
         </div>
       )}
 
@@ -1847,7 +2036,7 @@ function NetflixPlayer({
         <button
           onClick={(e) => { e.stopPropagation(); setHudLocked(false); }}
           className="md:hidden absolute z-30 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white pointer-events-auto"
-          aria-label={t.player.unlock}
+          aria-label="Desbloquear"
         >
           <Lock className="w-6 h-6" />
         </button>
@@ -1874,8 +2063,6 @@ function EpisodesOverlay({
   currentEpisodeProgressPct: number;
   onSelectEpisode: (ep: DomiflixEpisode) => void;
 }) {
-  const { locale } = useAppLocaleContext();
-  const t = MESSAGES[locale].app.domiflix;
   const seasons = titleData.type === "series" ? titleData.seasons : [];
   const progressByEpisode = useMemo(
     () => new Map(progress.map((item) => [item.episode_id, item])),
@@ -1957,7 +2144,7 @@ function EpisodesOverlay({
           <button
             onClick={onClose}
             className="text-white/60 hover:text-white text-xs"
-            aria-label={t.player.close}
+            aria-label="Fechar"
           >
             ✕
           </button>
@@ -1973,11 +2160,11 @@ function EpisodesOverlay({
                   className="w-full flex items-center justify-between px-5 py-4 bg-white/[0.04] hover:bg-white/[0.07] transition-colors"
                 >
                   <span className="text-white text-base font-light uppercase tracking-[0.18em]">
-                    {t.title.season.replace('{{number}}', String(season.season_number))}
+                    Temporada {season.season_number}
                   </span>
                   <div className="flex items-center gap-3">
                     <span className="text-white/50 text-xs uppercase tracking-wider font-light">
-                      {season.episodes.length === 1 ? t.title.episode_one.replace('{{count}}', '1') : t.title.episode_other.replace('{{count}}', String(season.episodes.length))}
+                      {season.episodes.length} {season.episodes.length === 1 ? "Episódio" : "Episódios"}
                     </span>
                     <ChevronDown
                       className={cn(
@@ -2016,14 +2203,14 @@ function EpisodesOverlay({
                             </span>
                             <div className="flex-1 min-w-0">
                               <span className="text-white font-bold text-sm block truncate">
-                                {t.player.episode.replace('{{number}}', String(displayEpisodeNumber))}
+                                Episódio {displayEpisodeNumber}
                               </span>
                             </div>
                             {episodeProgressPct >= 90 && (
                               <Check
                                 className="w-4 h-4 text-[#E50914] shrink-0"
                                 strokeWidth={3}
-                                aria-label={t.player.watched}
+                                aria-label="Assistido"
                               />
                             )}
                             {episodeProgressPct > 0 && episodeProgressPct < 90 && (
@@ -2063,10 +2250,10 @@ function EpisodesOverlay({
                               </button>
                               <div className="flex-1 min-w-0">
                                 <p className="text-white text-sm font-medium mb-1">
-                                  {ep.title || t.player.episode.replace('{{number}}', String(displayEpisodeNumber))}
+                                  {ep.title || `Episódio ${displayEpisodeNumber}`}
                                 </p>
                                 <p className="text-white/80 text-sm leading-snug line-clamp-4">
-                                  {ep.description || t.player.noDescription}
+                                  {ep.description || "Sem descrição."}
                                 </p>
                                 {ep.duration_minutes ? (
                                   <p className="text-[#E50914] text-[11px] font-semibold mt-1">
@@ -2089,7 +2276,6 @@ function EpisodesOverlay({
     </div>
   );
 }
-
 // ─── Next Episode Button (with hover preview card) ───────────────────────────
 function NextEpisodeButton({
   nextEpisode,
@@ -2100,8 +2286,6 @@ function NextEpisodeButton({
   onPlayNext: () => void;
   titleData?: DomiflixTitleFull | null;
 }) {
-  const { locale } = useAppLocaleContext();
-  const t = MESSAGES[locale].app.domiflix;
   const [open, setOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -2121,7 +2305,7 @@ function NextEpisodeButton({
           onPlayNext();
         }}
         className="text-white hover:scale-110 transition-transform p-1"
-        title={t.player.nextEpisode}
+        title="Próxima aula"
       >
         <NextEpisodeIcon className="w-7 h-7 md:w-8 md:h-8" />
       </button>
@@ -2135,7 +2319,7 @@ function NextEpisodeButton({
         )}
       >
         <div className="px-4 py-2.5 bg-black/40 border-b border-white/5">
-          <span className="text-white font-semibold text-sm">{t.player.nextEpisodeHeader}</span>
+          <span className="text-white font-semibold text-sm">Próxima aula</span>
         </div>
         <button
           onClick={(e) => {
@@ -2161,7 +2345,7 @@ function NextEpisodeButton({
             <p className="text-white text-sm font-bold mb-1 truncate">
               {nextEpisode.episode_number ?? ""}
               {nextEpisode.episode_number ? "  " : ""}
-              {nextEpisode.title || t.player.episode.replace('{{number}}', String(nextEpisode.episode_number ?? ""))}
+              {nextEpisode.title || "Próxima aula"}
             </p>
             {nextEpisode.description && (
               <p className="text-white/70 text-xs leading-snug line-clamp-3">
@@ -2181,20 +2365,12 @@ function SpeedButton({
   onChange,
   open,
   onOpenChange,
-  tSpeed,
-  tSpeedDefault,
 }: {
   speed: number;
   onChange: (s: number) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  tSpeed?: string;
-  tSpeedDefault?: string;
 }) {
-  const { locale } = useAppLocaleContext();
-  const tFallback = MESSAGES[locale].app.domiflix;
-  const speedLabel = tSpeed ?? tFallback.player.speed;
-  const speedDefaultLabel = tSpeedDefault ?? tFallback.player.speedDefault;
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Click-outside to close
@@ -2226,7 +2402,7 @@ function SpeedButton({
           "text-white hover:scale-110 transition-transform p-1",
           open && "text-[#E50914]"
         )}
-        title={speedLabel}
+        title="Velocidade"
       >
         <SpeedIcon className="w-7 h-7 md:w-8 md:h-8" />
       </button>

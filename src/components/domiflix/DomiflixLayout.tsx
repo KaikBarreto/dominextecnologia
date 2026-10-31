@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { ArrowLeft, Search, X, Play, ChevronRight } from "lucide-react";
-import logoWhite from "@/assets/domiflix-logo-horizontal.png";
+import logoWhite from "@/assets/domiflix-logo-horizontal-branco.png";
 import { cn, fuzzyIncludesAny } from "@/lib/utils";
 import { useDomiflixTitles, useDomiflixAllEpisodes } from "@/hooks/useDomiflix";
 import { slugify } from "@/lib/slugify";
@@ -16,6 +16,7 @@ import { DomiflixMoreMenuDrawer } from "./DomiflixMoreMenuDrawer";
 import { captureDomiflixOrigin } from "./domiflixReturn";
 import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
 import { MESSAGES } from "@/lib/i18n/messages";
+import { DomiflixIntroGate } from "./DomiflixIntroGate";
 
 const introPlayedKeys = new Set<string>();
 
@@ -188,6 +189,10 @@ export function DomiflixLayout() {
 
   return (
     <div className="domiflix-root min-h-screen bg-[#141414]">
+      {/* /domiflix é uma rota independente do AppLayout. Repete o mesmo gate
+          crítico aqui para impedir que o primeiro acesso contorne o vídeo ao
+          entrar diretamente na plataforma de ensino. */}
+      {!isAdminUser && user && <DomiflixIntroGate />}
       {/* ── Navbar fixa estilo Netflix ── */}
       <nav
         className={cn(

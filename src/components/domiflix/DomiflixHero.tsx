@@ -7,7 +7,7 @@ import {
 } from "@/hooks/useDomiflix";
 import { slugify } from "@/lib/slugify";
 import { cn } from "@/lib/utils";
-import domiflixLogo from "@/assets/domiflix-logo-horizontal.png";
+import domiflixLogo from "@/assets/domiflix-logo-horizontal-branco.png";
 import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
 import { MESSAGES } from "@/lib/i18n/messages";
 
