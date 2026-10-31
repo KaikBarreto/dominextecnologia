@@ -19,10 +19,12 @@ import {
   OVERLAY_PRIORITY,
   useOverlaySlot,
 } from "@/contexts/OverlayCoordinatorContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function DomiflixIntroGate() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { user } = useAuth();
   const {
     data: status,
     isLoading,
@@ -39,12 +41,33 @@ export function DomiflixIntroGate() {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [videoCompleted, setVideoCompleted] = useState(false);
   const [understood, setUnderstood] = useState(false);
+  const [skippedTrialKey, setSkippedTrialKey] = useState<string | null>(null);
   const usePortraitVideo = isMobile && Boolean(media?.mobile_video_id);
-  const gateOpen = isLoading || isError || Boolean(status?.introGate.required);
+  const isTrial = status?.user.accountStage === "trial";
+  const hasCompletedVideo = videoCompleted || Boolean(lesson?.completed);
+  const trialSkipKey =
+    user?.id && lesson?.episodeId
+      ? `domiflix:intro-trial-skipped:${user.id}:${lesson.episodeId}`
+      : null;
+  const trialSkipped = Boolean(
+    isTrial &&
+    trialSkipKey &&
+    (skippedTrialKey === trialSkipKey ||
+      (typeof window !== "undefined" &&
+        window.localStorage.getItem(trialSkipKey) === "1")),
+  );
+  const gateOpen =
+    isLoading ||
+    isError ||
+    (Boolean(status?.introGate.required) && !trialSkipped);
   const canRender = useOverlaySlot(gateOpen, {
     id: "domiflix-intro-gate",
     priority: OVERLAY_PRIORITY.critical,
   });
+
+  useEffect(() => {
+    setVideoCompleted(Boolean(lesson?.completed));
+  }, [lesson?.completed, lesson?.episodeId]);
 
   useEffect(() => {
     if (!gateOpen || !canRender) return;
@@ -86,7 +109,7 @@ export function DomiflixIntroGate() {
   if (!isLoading && !isError && !status?.introGate.required) return null;
   if (!canRender) return null;
   async function ended() {
-    if (!lesson || videoCompleted) return;
+    if (!lesson || hasCompletedVideo) return;
     const { current, total } = progressRef.current;
     try {
       await markWatched.mutateAsync({
@@ -104,13 +127,35 @@ export function DomiflixIntroGate() {
     }
   }
   async function confirm() {
-    if (!lesson || !videoCompleted || !understood) return;
+    if (!lesson || !hasCompletedVideo || !understood) return;
     try {
       await acknowledge.mutateAsync(lesson.episodeId);
+      if (trialSkipKey) window.localStorage.removeItem(trialSkipKey);
       const refreshed = await refetch();
-      if (refreshed.data) navigate(getDomiflixContinueUrl(refreshed.data), { replace: true });
+      if (refreshed.data)
+        navigate(getDomiflixContinueUrl(refreshed.data), { replace: true });
     } catch {
       toast.error("Não foi possível salvar sua confirmação. Tente novamente.");
+    }
+  }
+  async function skipDuringTrial() {
+    if (!isTrial || !lesson || !trialSkipKey) return;
+    const { current, total } = progressRef.current;
+    try {
+      await markWatched.mutateAsync({
+        episodeId: lesson.episodeId,
+        titleId: lesson.titleId,
+        progressSeconds: Math.max(current, lesson.progressSeconds),
+        durationSeconds: Math.max(total, lesson.durationSeconds),
+        completed: false,
+      });
+    } catch {
+      toast.error(
+        "Você pode continuar o teste, mas não conseguimos salvar o ponto exato do vídeo.",
+      );
+    } finally {
+      window.localStorage.setItem(trialSkipKey, "1");
+      setSkippedTrialKey(trialSkipKey);
     }
   }
   if (isLoading)
@@ -146,16 +191,14 @@ export function DomiflixIntroGate() {
       className="fixed inset-0 z-[10000] overflow-y-auto bg-[#111] text-white"
       role="dialog"
       aria-modal="true"
-      aria-label="Introdução obrigatória"
+      aria-label={
+        isTrial ? "Introdução do primeiro acesso" : "Introdução obrigatória"
+      }
       tabIndex={-1}
     >
       <div className="flex min-h-[100dvh] flex-col">
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-4 sm:h-[72px] sm:px-7 lg:px-9">
-          <img
-            src={dominexLogo}
-            alt="Dominex"
-            className="h-7 w-auto sm:h-8"
-          />
+          <img src={dominexLogo} alt="Dominex" className="h-7 w-auto sm:h-8" />
           <span className="rounded-sm bg-red-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white">
             Primeiro passo
           </span>
@@ -164,13 +207,20 @@ export function DomiflixIntroGate() {
           <div className="flex min-h-0 items-center bg-black/30 p-3 sm:p-5 lg:p-7 xl:p-9">
             <div className="w-full overflow-hidden rounded-sm border border-white/10 bg-black shadow-2xl shadow-black/40">
               <NetflixPlayer
-                videoId={usePortraitVideo ? media!.mobile_video_id! : lesson.videoId}
-                videoType={usePortraitVideo ? media!.mobile_video_type || lesson.videoType : lesson.videoType}
+                videoId={
+                  usePortraitVideo ? media!.mobile_video_id! : lesson.videoId
+                }
+                videoType={
+                  usePortraitVideo
+                    ? media!.mobile_video_type || lesson.videoType
+                    : lesson.videoType
+                }
                 orientation={usePortraitVideo ? "portrait" : "landscape"}
                 titleName={lesson.moduleTitle}
                 titleSubLabel="Introdução"
                 episodeName={lesson.lessonTitle}
                 episodeDescription={lesson.lessonDescription ?? undefined}
+                startSeconds={Math.max(0, Math.floor(lesson.progressSeconds))}
                 onBack={() => undefined}
                 onEnded={ended}
                 onProgressUpdate={(current, total) => {
@@ -190,27 +240,34 @@ export function DomiflixIntroGate() {
             </h1>
             <p className="mt-3 text-sm leading-6 text-stone-400">
               Este vídeo explica os combinados importantes da nossa parceria e
-              mostra como aproveitar os tutoriais. Assista até o final para
-              continuar.
+              mostra como aproveitar os tutoriais.{" "}
+              {isTrial
+                ? "Você pode assistir agora ou pular por enquanto durante o teste."
+                : "Assista até o final para continuar."}
             </p>
             <div className="mt-5 rounded-sm bg-white/[0.045] p-4">
               <div className="flex gap-3">
                 <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
                 <div>
-                  <p className="text-sm font-medium">Exibido uma única vez</p>
+                  <p className="text-sm font-medium">
+                    {isTrial
+                      ? "Você pode pular durante o teste"
+                      : "Falta concluir suas boas-vindas"}
+                  </p>
                   <p className="mt-1 text-xs leading-5 text-stone-500">
-                    Se você estiver em teste e depois contratar, esta
-                    confirmação continuará válida.
+                    {isTrial
+                      ? "Seu progresso fica salvo. Se contratar sem concluir, este vídeo volta como etapa obrigatória."
+                      : "Depois de concluir, esta etapa não será exibida novamente."}
                   </p>
                 </div>
               </div>
             </div>
             <label
-              className={`mt-5 flex items-start gap-3 rounded-sm border p-4 ${videoCompleted ? "cursor-pointer border-white/15 bg-white/[0.035]" : "cursor-not-allowed border-white/[0.06] opacity-45"}`}
+              className={`mt-5 flex items-start gap-3 rounded-sm border p-4 ${hasCompletedVideo ? "cursor-pointer border-white/15 bg-white/[0.035]" : "cursor-not-allowed border-white/[0.06] opacity-45"}`}
             >
               <Checkbox
                 checked={understood}
-                disabled={!videoCompleted}
+                disabled={!hasCompletedVideo}
                 onCheckedChange={(checked) => setUnderstood(checked === true)}
                 className="mt-0.5 border-stone-500 data-[state=checked]:border-red-600 data-[state=checked]:bg-red-600"
               />
@@ -219,24 +276,40 @@ export function DomiflixIntroGate() {
               </span>
             </label>
             <p className="sr-only" aria-live="polite">
-              {videoCompleted
+              {hasCompletedVideo
                 ? "Vídeo concluído. Marque que assistiu e entendeu para continuar."
                 : "Assista ao vídeo até o final para liberar a confirmação."}
             </p>
             <Button
               onClick={confirm}
-              disabled={!videoCompleted || !understood || acknowledge.isPending}
+              disabled={
+                !hasCompletedVideo || !understood || acknowledge.isPending
+              }
               className="mt-4 h-12 w-full bg-red-600 font-semibold text-white hover:bg-red-500 disabled:bg-stone-800"
             >
               {acknowledge.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : videoCompleted ? (
+              ) : hasCompletedVideo ? (
                 <CheckCircle2 className="mr-2 h-4 w-4" />
               ) : null}
-              {videoCompleted
+              {hasCompletedVideo
                 ? "Confirmar e começar a primeira aula"
-                : "Assista até o final para continuar"}
+                : "Assista até o final para confirmar"}
             </Button>
+            {isTrial && !hasCompletedVideo && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void skipDuringTrial()}
+                disabled={markWatched.isPending}
+                className="mt-3 h-11 w-full border-white/20 bg-transparent font-semibold text-white hover:bg-white/[0.08] hover:text-white"
+              >
+                {markWatched.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Pular por agora
+              </Button>
+            )}
           </section>
         </div>
       </div>
