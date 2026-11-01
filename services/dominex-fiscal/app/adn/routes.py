@@ -26,10 +26,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from ..security import exigir_token
+from ..security import exigir_escopo
 from . import schemas, servico
 
-protegido = [Depends(exigir_token)]
+protegido = [Depends(exigir_escopo("dfe:read"))]
 
 rotas_adn = APIRouter(prefix="/dfe/nfse", tags=["dfe"], dependencies=protegido)
 

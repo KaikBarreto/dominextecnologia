@@ -72,7 +72,13 @@ services:
       FISCAL_TLS_VERIFY: "1"
 
       # ---- Identificação do emissor no XML (campo verAplic).
-      FISCAL_VER_APLIC: ${FISCAL_VER_APLIC:-Dominex-1.0}
+      FISCAL_VER_APLIC: ${FISCAL_VER_APLIC:-MotorFiscal-1.1}
+
+      # ---- Travas de produção por família. Homologação continua permitida.
+      # Só altere uma trava depois do canário documentado no RUNBOOK.
+      FISCAL_NFE_PRODUCAO_HABILITADA: ${FISCAL_NFE_PRODUCAO_HABILITADA:-0}
+      FISCAL_NFCE_PRODUCAO_HABILITADA: ${FISCAL_NFCE_PRODUCAO_HABILITADA:-0}
+      FISCAL_MDFE_PRODUCAO_HABILITADA: ${FISCAL_MDFE_PRODUCAO_HABILITADA:-0}
 
       # ---- Observabilidade (GET /v1/infra/metricas, RUNBOOK §6.5) ----------
       # Diretório do retrato da box escrito pelo HOST. Ver o volume :ro abaixo.
@@ -122,6 +128,14 @@ services:
     # privada de cliente. Ninguém monta o socket aqui. Nunca.
     volumes:
       - /var/lib/dominex-fiscal:/var/lib/dominex-fiscal:ro
+      # Cadastro multicliente: segredo somente leitura, fora da imagem.
+      # O arquivo deve existir antes do deploy (RUNBOOK §1.4.1).
+      - type: bind
+        source: /etc/dominex-fiscal/clients.json
+        target: /run/secrets/dominex-fiscal/clients.json
+        read_only: true
+        bind:
+          create_host_path: false
 
     # ---- Blindagem do runtime ----
     security_opt:

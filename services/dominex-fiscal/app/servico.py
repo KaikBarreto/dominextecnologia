@@ -30,6 +30,7 @@ log = logging.getLogger("dominex-fiscal")
 
 STATUS_AUTORIZADA = "autorizada"
 STATUS_CANCELADA = "cancelada"
+STATUS_AGUARDANDO_CONFIRMACAO = "aguardando_confirmacao"
 
 TIPO_EVENTO_CANCELAMENTO = evento_mod.TIPO_EVENTO_CANCELAMENTO
 
@@ -89,10 +90,19 @@ def emitir(req: schemas.EmitirRequest) -> schemas.NfseResposta:
             xml_nfse = b""
 
     resumo = nfse_xml.resumir(xml_nfse) if xml_nfse else {}
-    chave = str(corpo.get("chaveAcesso") or resumo.get("chave_acesso") or "")
+    chave_corpo = str(corpo.get("chaveAcesso") or "")
+    chave_xml = str(resumo.get("chave_acesso") or "")
+    prova_integra = (
+        len(chave_corpo) == 50
+        and chave_corpo.isdigit()
+        and chave_xml == chave_corpo
+        and bool(xml_nfse)
+    )
+    chave = chave_corpo or chave_xml
 
     return schemas.NfseResposta(
-        status=STATUS_AUTORIZADA,
+        status=STATUS_AUTORIZADA if prova_integra else STATUS_AGUARDANDO_CONFIRMACAO,
+        situacao_oficial=STATUS_AUTORIZADA if prova_integra else STATUS_AGUARDANDO_CONFIRMACAO,
         chave_acesso=chave or None,
         numero=resumo.get("numero") or None,
         id_dps=str(corpo.get("idDps") or corpo.get("idDPS") or "") or None,
@@ -102,6 +112,9 @@ def emitir(req: schemas.EmitirRequest) -> schemas.NfseResposta:
         ambiente=req.ambiente,
         xml=xml_nfse.decode("utf-8", errors="replace") if xml_nfse else None,
         alertas=_alertas(corpo),
+        detalhe=None if prova_integra else {
+            "mensagem": "A emissão foi recebida, mas a prova oficial ainda precisa ser consultada. Não reenvie a nota."
+        },
     )
 
 
@@ -127,23 +140,39 @@ def consultar(chave: str, req: schemas.ConsultarRequest) -> schemas.NfseResposta
             xml_nfse = b""
 
     cancelada = False
+    evento_inconclusivo = False
     if evento and evento.get("eventoXmlGZipB64"):
         try:
             cancelada = nfse_xml.evento_de_cancelamento(
                 nfse_xml.descompactar(str(evento["eventoXmlGZipB64"]))
             )
         except (binascii.Error, OSError, ValueError):
-            cancelada = False
+            evento_inconclusivo = True
+    elif evento:
+        evento_inconclusivo = True
 
     resumo = nfse_xml.resumir(xml_nfse) if xml_nfse else {}
     return schemas.NfseResposta(
-        status=STATUS_CANCELADA if cancelada else STATUS_AUTORIZADA,
+        status=(
+            STATUS_CANCELADA if cancelada
+            else STATUS_AGUARDANDO_CONFIRMACAO if evento_inconclusivo
+            else STATUS_AUTORIZADA
+        ),
+        situacao_oficial=(
+            STATUS_CANCELADA if cancelada
+            else STATUS_AGUARDANDO_CONFIRMACAO if evento_inconclusivo
+            else STATUS_AUTORIZADA
+        ),
         chave_acesso=str(corpo.get("chaveAcesso") or resumo.get("chave_acesso") or chave),
         numero=resumo.get("numero") or None,
         data_emissao=resumo.get("data_emissao") or None,
         ambiente=req.ambiente,
         xml=xml_nfse.decode("utf-8", errors="replace") if xml_nfse else None,
         cancelada=cancelada,
+        detalhe=(
+            {"mensagem": "O evento fiscal existe, mas ainda não foi possível comprovar seu conteúdo."}
+            if evento_inconclusivo else None
+        ),
     )
 
 
@@ -177,13 +206,20 @@ def cancelar(chave: str, req: schemas.CancelarRequest) -> schemas.NfseResposta:
         except (binascii.Error, OSError, ValueError):
             xml_evento = b""
 
+    cancelamento_comprovado = bool(xml_evento) and nfse_xml.evento_de_cancelamento(xml_evento)
     return schemas.NfseResposta(
-        status=STATUS_CANCELADA,
+        status=STATUS_CANCELADA if cancelamento_comprovado else STATUS_AGUARDANDO_CONFIRMACAO,
+        situacao_oficial=(
+            STATUS_CANCELADA if cancelamento_comprovado else STATUS_AGUARDANDO_CONFIRMACAO
+        ),
         chave_acesso=chave,
         ambiente=req.ambiente,
         data_emissao=str(corpo.get("dataHoraProcessamento") or "") or None,
         xml=xml_evento.decode("utf-8", errors="replace") if xml_evento else None,
-        cancelada=True,
+        cancelada=cancelamento_comprovado,
+        detalhe=None if cancelamento_comprovado else {
+            "mensagem": "O pedido de cancelamento foi recebido, mas o evento oficial ainda precisa ser consultado. Não envie novamente."
+        },
     )
 
 

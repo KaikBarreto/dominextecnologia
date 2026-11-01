@@ -24,15 +24,16 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from ..security import exigir_token
+from ..security import exigir_escopo
 from . import schemas, servico
 
-protegido = [Depends(exigir_token)]
+leitura = [Depends(exigir_escopo("dfe:read"))]
+escrita = [Depends(exigir_escopo("dfe:write"))]
 
-rotas_dfe = APIRouter(prefix="/dfe", tags=["dfe"], dependencies=protegido)
+rotas_dfe = APIRouter(prefix="/dfe", tags=["dfe"])
 
 
-@rotas_dfe.post("/distribuicao")
+@rotas_dfe.post("/distribuicao", dependencies=leitura)
 async def distribuicao(req: schemas.DistribuicaoRequest) -> dict:
     """Busca as notas destinadas ao CNPJ a partir do NSU informado.
 
@@ -43,7 +44,7 @@ async def distribuicao(req: schemas.DistribuicaoRequest) -> dict:
     return servico.distribuir(req).model_dump(by_alias=True, exclude_none=True)
 
 
-@rotas_dfe.post("/consulta-chave")
+@rotas_dfe.post("/consulta-chave", dependencies=leitura)
 async def consulta_chave(req: schemas.ConsultaChaveRequest) -> dict:
     """Diagnóstico: uma nota pela chave. Não mexe na fila de NSU.
 
@@ -53,7 +54,7 @@ async def consulta_chave(req: schemas.ConsultaChaveRequest) -> dict:
     return servico.consultar_chave(req).model_dump(by_alias=True, exclude_none=True)
 
 
-@rotas_dfe.post("/manifestar", status_code=201)
+@rotas_dfe.post("/manifestar", status_code=201, dependencies=escrita)
 async def manifestar(req: schemas.ManifestacaoRequest) -> dict:
     """Transmite o evento do destinatário. NÃO TEM VOLTA.
 

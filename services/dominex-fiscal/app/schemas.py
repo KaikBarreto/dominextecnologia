@@ -179,6 +179,7 @@ class NfseResposta(BaseModel):
     """
 
     status: str
+    situacao_oficial: Optional[str] = Field(default=None, alias="situacaoOficial")
     chave_acesso: Optional[str] = Field(default=None, alias="chaveAcesso")
     numero: Optional[str] = None
     id_dps: Optional[str] = Field(default=None, alias="idDps")

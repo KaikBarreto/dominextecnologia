@@ -24,6 +24,7 @@ from ..errors import (
     DocumentoRejeitado,
     ServicoFiscalIndisponivel,
 )
+from ..rejections import traduzir_rejeicao
 
 log = logging.getLogger("dominex-fiscal.sefin")
 
@@ -165,7 +166,18 @@ class SefinClient:
             cod_erro,
             mensagens,
         )
-        raise DocumentoRejeitado(texto, codigo=cod_erro or "documento_rejeitado", detalhe=mensagens)
+        orientacao = traduzir_rejeicao(
+            "nfse_nacional",
+            cod_erro,
+            texto,
+            operacao=contexto,
+        )
+        raise DocumentoRejeitado(
+            texto,
+            codigo=cod_erro or "documento_rejeitado",
+            detalhe=mensagens,
+            orientacao=orientacao,
+        )
 
     # -- operações ------------------------------------------------------------
 

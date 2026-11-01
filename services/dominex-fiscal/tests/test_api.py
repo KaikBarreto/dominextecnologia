@@ -191,6 +191,28 @@ def test_emitir_usa_o_certificado_selado_e_devolve_status_canonico(
     assert b"cTribMun" in dps
 
 
+def test_emitir_sem_prova_oficial_fica_aguardando_e_nao_inventa_autorizacao(
+    cliente, pfx_de_teste, monkeypatch
+):
+    pfx, senha = pfx_de_teste
+    certificado = _selar(cliente, pfx, senha)["certificado"]
+
+    monkeypatch.setattr(
+        "app.sefin.client.requests.request",
+        lambda *_args, **_kwargs: RespostaFalsa(201, {"tipoAmbiente": 2}),
+    )
+    resposta = cliente.post(
+        "/v1/nfse/emitir",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+        json={**CORPO_BASE, "empresaId": EMPRESA, "certificado": certificado},
+    )
+    assert resposta.status_code == 201
+    dados = resposta.json()
+    assert dados["status"] == "aguardando_confirmacao"
+    assert dados["situacaoOficial"] == "aguardando_confirmacao"
+    assert "Não reenvie" in dados["detalhe"]["mensagem"]
+
+
 def test_certificado_de_outra_empresa_nao_emite(cliente, pfx_de_teste, sefin_falso):
     """Prova de isolamento: o envelope é amarrado ao company_id."""
     pfx, senha = pfx_de_teste
@@ -231,6 +253,33 @@ def test_cancelar_devolve_cancelada(cliente, pfx_de_teste, sefin_falso):
         base64.b64decode(sefin_falso[0]["json"]["pedidoRegistroEventoXmlGZipB64"])
     )
     assert b"nPedRegEvento" not in evento  # armadilha 6, no caminho real
+
+
+def test_cancelamento_sem_evento_oficial_fica_aguardando(
+    cliente, pfx_de_teste, monkeypatch
+):
+    pfx, senha = pfx_de_teste
+    certificado = _selar(cliente, pfx, senha)["certificado"]
+    monkeypatch.setattr(
+        "app.sefin.client.requests.request",
+        lambda *_args, **_kwargs: RespostaFalsa(201, {"tipoAmbiente": 2}),
+    )
+    resposta = cliente.post(
+        f"/v1/nfse/{CHAVE}/cancelar",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+        json={
+            "empresaId": EMPRESA,
+            "ambiente": 2,
+            "certificado": certificado,
+            "cnpjAutor": "34901457000199",
+            "motivo": "Emissao em duplicidade identificada pelo setor fiscal.",
+        },
+    )
+    assert resposta.status_code == 201
+    dados = resposta.json()
+    assert dados["status"] == "aguardando_confirmacao"
+    assert dados["cancelada"] is False
+    assert "Não envie novamente" in dados["detalhe"]["mensagem"]
 
 
 def test_rejeicao_do_governo_vira_mensagem_ptbr(cliente, pfx_de_teste, monkeypatch):

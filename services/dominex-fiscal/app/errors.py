@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from .rejections import OrientacaoFiscal, traduzir_rejeicao
+
 
 class ErroFiscal(Exception):
     """Base. `status` é o HTTP que o microserviço devolve à edge."""
@@ -24,6 +26,7 @@ class ErroFiscal(Exception):
         codigo: str | None = None,
         status: int | None = None,
         detalhe: Any = None,
+        orientacao: OrientacaoFiscal | dict[str, Any] | None = None,
     ) -> None:
         super().__init__(mensagem)
         self.mensagem = mensagem
@@ -32,11 +35,19 @@ class ErroFiscal(Exception):
         if status:
             self.status = status
         self.detalhe = detalhe
+        self.orientacao = orientacao or traduzir_rejeicao(
+            "motor_fiscal", self.codigo, mensagem
+        )
 
     def corpo(self) -> dict:
-        corpo: dict[str, Any] = {
-            "erro": {"codigo": self.codigo, "mensagem": self.mensagem},
-        }
+        erro: dict[str, Any] = {"codigo": self.codigo, "mensagem": self.mensagem}
+        if self.orientacao is not None:
+            erro["orientacao"] = (
+                self.orientacao.corpo()
+                if isinstance(self.orientacao, OrientacaoFiscal)
+                else self.orientacao
+            )
+        corpo: dict[str, Any] = {"erro": erro}
         if self.detalhe is not None:
             corpo["detalhe"] = self.detalhe
         return corpo

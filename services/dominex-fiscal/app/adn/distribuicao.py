@@ -46,6 +46,7 @@ from ..errors import (
     ErroFiscal,
     ServicoFiscalIndisponivel,
 )
+from ..rejections import traduzir_rejeicao
 
 log = logging.getLogger("dominex-fiscal.adn")
 
@@ -263,11 +264,23 @@ def interpretar(corpo: bytes, status_http: int) -> RespostaLote:
     )
 
     if resposta.status == STATUS_REJEICAO or (status_http == 400 and not itens):
+        primeiro = erros[0] if erros and isinstance(erros[0], dict) else {}
+        codigo = str(primeiro.get("codigo") or status_http or "").strip()
+        motivo = str(
+            primeiro.get("descricao")
+            or primeiro.get("mensagem")
+            or resposta.status
+            or ""
+        ).strip()
         raise DistribuicaoRejeitada(
             "O sistema nacional de NFS-e recusou a busca de notas deste CNPJ. "
             "Verifique se a empresa está habilitada a receber documentos no "
             "Ambiente Nacional.",
             detalhe={"status": resposta.status, "erros": erros or None},
+            orientacao=traduzir_rejeicao(
+                "adn_nfse", codigo, motivo,
+                operacao="buscar NFS-e recebidas",
+            ),
         )
     return resposta
 
@@ -321,6 +334,10 @@ def consultar_por_nsu(
                 "O sistema nacional de NFS-e pediu para aguardar antes de uma "
                 "nova busca. A próxima tentativa acontece automaticamente.",
                 detalhe={"http": 429, "retryAfter": espera},
+                orientacao=traduzir_rejeicao(
+                    "adn_nfse", "429", "Limite de consultas atingido",
+                    operacao="buscar NFS-e recebidas",
+                ),
             )
         if status_http in (401, 403):
             raise AcessoNegadoNoGoverno(CERTIFICADO_RECUSADO, detalhe=f"adn:http{status_http}")

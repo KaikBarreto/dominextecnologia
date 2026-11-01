@@ -268,6 +268,46 @@ npx supabase secrets list
 - **⚠️ Escopo:** consumir esses secrets no código da edge é da 🛡️ Plataforma (C7).
   Aqui a gente só publica o segredo e a URL.
 
+#### 1.4.1 — Adicionar outro produto sem compartilhar credencial
+
+O motor aceita clientes independentes. Cada produto recebe token, escopos e
+limite próprios; um token do EcoSistema nunca autentica como Dominex.
+
+Na VPS, gere o token sem imprimi-lo e grave o cadastro fora do repositório:
+
+```bash
+umask 077
+ECO_TOKEN=$(openssl rand -hex 48)
+CLIENTS_TMP=$(mktemp)
+export ECO_TOKEN
+jq -n '{
+  ecosistema: {
+    token: env.ECO_TOKEN,
+    scopes: ["nfe:*", "nfse:*", "mdfe:*", "dfe:*"],
+    rateLimitPerMinute: 600
+  }
+}' > "$CLIENTS_TMP"
+sudo install -m 0640 -o root -g deploy "$CLIENTS_TMP" /etc/dominex-fiscal/clients.json
+rm -f "$CLIENTS_TMP"
+sudo grep -q '^FISCAL_CLIENTS_FILE=' /etc/dominex-fiscal/service.env || \
+  printf '%s\n' 'FISCAL_CLIENTS_FILE=/run/secrets/dominex-fiscal/clients.json' | \
+  sudo tee -a /etc/dominex-fiscal/service.env >/dev/null
+unset ECO_TOKEN CLIENTS_TMP
+```
+
+Cadastre o mesmo token no cofre do produto consumidor por um canal seguro; ele
+não deve aparecer em terminal gravado, chat, log, banco de aplicação ou bundle.
+Depois do restart, valide com o token desse cliente:
+
+```bash
+curl -fsS https://fiscal.dominex.app/v1/capacidades \
+  -H "Authorization: Bearer $TOKEN_DO_CLIENTE" | jq .
+```
+
+A resposta precisa identificar somente o cliente esperado e listar apenas os
+escopos concedidos. Em seguida, prove que o token não acessa `/readyz` nem uma
+família fora de seu escopo (esperado: HTTP 403 sem corpo).
+
 ### 1.5 — `.env` do serviço (sem segredo nenhum)
 
 ```bash
@@ -276,7 +316,13 @@ cp .env.example .env && chmod 600 .env
 grep -v '^#' .env | grep .
 ```
 
-- **Esperar:** `REQ_FILE`, `FISCAL_HTTP_TIMEOUT`, `FISCAL_VER_APLIC`. **Nenhum segredo.**
+- **Esperar:** `REQ_FILE`, `FISCAL_HTTP_TIMEOUT`, `FISCAL_VER_APLIC`,
+  `FISCAL_NFE_PRODUCAO_HABILITADA=0`, `FISCAL_NFCE_PRODUCAO_HABILITADA=0` e
+  `FISCAL_MDFE_PRODUCAO_HABILITADA=0`. **Nenhum segredo.**
+
+As três travas valem apenas para mutações em produção. Homologação e consultas
+continuam funcionando. Mude uma trava para `1` somente durante o canário daquela
+família, com rollback pronto; nunca ligue as três de uma vez.
 
 > **DF-e (§10) não exige variável nova.** Os endereços do Ambiente Nacional, o
 > timeout (45s), o orçamento da rodada (75s) e o teto de páginas (3) têm padrão
