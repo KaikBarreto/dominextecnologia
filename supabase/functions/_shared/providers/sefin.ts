@@ -96,7 +96,11 @@ function ambienteDe(ctx: NfseProviderCtx): number {
 // -----------------------------------------------------------------------------
 
 interface ErroDoServico {
-  erro?: { codigo?: string; mensagem?: string };
+  erro?: {
+    codigo?: string;
+    mensagem?: string;
+    orientacao?: Record<string, unknown>;
+  };
 }
 
 const INDISPONIVEL =
@@ -147,7 +151,11 @@ async function chamar(
     "Não foi possível concluir a operação com a nota fiscal. Tente novamente.";
   const codigo = clean(payload?.erro?.codigo) || undefined;
   console.error(`${TAG} erro`, { caminho, status: resposta.status, codigo });
-  throw new NfseProviderError(mensagem, resposta.status, { codigo, raw: payload });
+  throw new NfseProviderError(mensagem, resposta.status, {
+    codigo,
+    raw: payload,
+    orientacao: payload?.erro?.orientacao,
+  });
 }
 
 async function chamarJson<T>(caminho: string, corpo: unknown): Promise<T> {
@@ -271,6 +279,8 @@ interface RespostaNfse {
   xml?: string;
   cancelada?: boolean;
   alertas?: Array<{ codigo?: string; descricao?: string }>;
+  orientacao?: Record<string, unknown>;
+  resposta?: { orientacao?: Record<string, unknown> };
 }
 
 /**
@@ -291,7 +301,22 @@ function paraResultado(
   referencia?: string,
 ): NfseResultado {
   const chave = clean(dados.chaveAcesso) || clean(referencia) || null;
-  const status = mapNfseStatus(dados.status, fallbackStatus);
+  const mapeado = mapNfseStatus(dados.status, fallbackStatus);
+  // Uma resposta síncrona incompleta não é autorização. O padrão nacional
+  // devolve chave, número e XML para a NFS-e emitida; sem esse conjunto a edge
+  // mantém reconciliação por consulta em vez de afirmar algo que o fisco ainda
+  // não comprovou.
+  const autorizacaoComprovada = mapeado === NFSE_STATUS.AUTORIZADA && Boolean(
+    chave && clean(dados.numero) && clean(dados.xml),
+  );
+  const cancelamentoComprovado = mapeado === NFSE_STATUS.CANCELADA && Boolean(
+    chave && dados.cancelada === true,
+  );
+  const status = (
+    (mapeado === NFSE_STATUS.AUTORIZADA && !autorizacaoComprovada) ||
+    (mapeado === NFSE_STATUS.CANCELADA && !cancelamentoComprovado)
+  ) ? NFSE_STATUS.CONFIRMACAO_PENDENTE : mapeado;
+  const confirmadoPeloFisco = autorizacaoComprovada || cancelamentoComprovado;
   return {
     status,
     referencia: chave,
@@ -301,6 +326,11 @@ function paraResultado(
     protocolo: null,
     emitidaEm: clean(dados.dataEmissao) || null,
     xml: dados.xml ?? null,
+    confirmadoPeloFisco,
+    evidenciaFiscal: confirmadoPeloFisco
+      ? { fonte: "sefin_nacional", codigo: clean(dados.status) || null }
+      : null,
+    orientacao: dados.orientacao ?? dados.resposta?.orientacao ?? null,
     // O XML autorizado é o documento fiscal: vai no `raw` para ficar guardado
     // em `nfse_events.payload` (append-only) até existir coluna própria.
     raw: dados,

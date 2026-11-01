@@ -175,6 +175,7 @@ async function rodarTolerandoColunaAusente(
  */
 const STATUS_DE_TENTATIVA_FALHA = new Set<string>([
   NFSE_STATUS.REJEITADA,
+  NFSE_STATUS.CONFIRMACAO_PENDENTE,
   NFSE_STATUS.FALHOU,
 ]);
 
@@ -229,7 +230,13 @@ const ERROS_SEM_TENTATIVA = new Set<string>([
 export function ehRecusaDeDocumento(err: unknown): boolean {
   if (!(err instanceof NfseProviderError)) return false;
   if (ERROS_SEM_TENTATIVA.has(clean(err.codigo))) return false;
-  return err.status === 400 || err.status === 422;
+  // HTTP 422 sozinho só prova que algum intermediário recusou a requisição. A
+  // tela só pode afirmar "rejeitada pela prefeitura" quando há código fiscal
+  // identificável no retorno oficial (E####) ou o contrato neutro do provedor
+  // declara a recusa fiscal.
+  const codigo = clean(err.codigo).toUpperCase();
+  return (codigo === "NFSE_REJECTED" || /^E\d{3,}$/i.test(codigo)) &&
+    (err.status === 400 || err.status === 422);
 }
 
 /** `true` quando a tentativa merece virar linha em `nfse_emissions`. */
@@ -1416,13 +1423,15 @@ export async function emitirNfseAutorizada(
      */
     const registrarTentativaFalha = async (err: unknown): Promise<void> => {
       const recusa = ehRecusaDeDocumento(err);
-      const statusFalha = recusa ? NFSE_STATUS.REJEITADA : NFSE_STATUS.FALHOU;
+      const statusFalha = recusa
+        ? NFSE_STATUS.REJEITADA
+        : NFSE_STATUS.CONFIRMACAO_PENDENTE;
       const codigo = err instanceof NfseProviderError ? clean(err.codigo) : "";
       // Mesma mensagem PT-BR que o usuário vê na tela — a linha não pode contar
       // uma história diferente do toast.
       const mensagem = err instanceof NfseProviderError
         ? friendlyFiscalMessage(err.codigo, err.message)
-        : "Falha inesperada ao emitir a nota fiscal.";
+        : "A emissão não foi confirmada pelo portal fiscal. O sistema vai conferir antes de permitir novo envio.";
 
       try {
         const { row, err: erroGravacao } = await persistirLinha({
@@ -1521,7 +1530,18 @@ export async function emitirNfseAutorizada(
 
     const referencia = resultado.referencia ?? null;
     const requisicaoId = resultado.requisicaoId ?? null;
-    const status = resultado.status || NFSE_STATUS.PENDENTE;
+    const statusRecebido = resultado.status || NFSE_STATUS.PENDENTE;
+    const statusTerminal = new Set<string>([
+      NFSE_STATUS.AUTORIZADA,
+      NFSE_STATUS.REJEITADA,
+      NFSE_STATUS.CANCELADA,
+    ]).has(statusRecebido);
+    // Nenhum provider pode promover para terminal sem indicar que recebeu a
+    // comprovação oficial. Isso protege inclusive integrações que mudem seu
+    // payload sem aviso.
+    const status = statusTerminal && resultado.confirmadoPeloFisco !== true
+      ? NFSE_STATUS.CONFIRMACAO_PENDENTE
+      : statusRecebido;
 
     // ---- Provedor SÍNCRONO (motor próprio): a nota já volta autorizada, com
     // número e chave. Gravar agora evita a janela em que a tela mostra
@@ -1542,6 +1562,16 @@ export async function emitirNfseAutorizada(
       fisqal_fiscal_request_id: requisicaoId,
       // Retentativa que agora deu certo: o motivo da falha anterior sai da linha.
       error_message: null,
+      status_fiscal_confirmado: resultado.confirmadoPeloFisco === true,
+      status_fiscal_confirmado_em: resultado.confirmadoPeloFisco === true
+        ? new Date().toISOString()
+        : null,
+      status_fiscal_fonte: resultado.confirmadoPeloFisco === true
+        ? (resultado.evidenciaFiscal?.fonte ?? "consulta_fiscal")
+        : null,
+      status_fiscal_evidencia: resultado.confirmadoPeloFisco === true
+        ? (resultado.evidenciaFiscal ?? null)
+        : null,
       // Mantém o comportamento histórico: rascunho que vira emissão carimba a
       // data; emissão standalone só carimba quando o provedor já autorizou.
       ...(emissionId ? { emitida_em: new Date().toISOString() } : {}),
@@ -1602,6 +1632,7 @@ export async function emitirNfseAutorizada(
         emission,
         already_emitted: false,
         message: "Nota fiscal enviada para emissão. Acompanhe o status.",
+        ...(resultado.orientacao ? { orientacao: resultado.orientacao } : {}),
       },
       202,
     );

@@ -22,6 +22,9 @@ export const NFSE_STATUS = {
   PROCESSANDO: "processando",
   AUTORIZADA: "autorizada",
   REJEITADA: "rejeitada",
+  /** Houve erro ou retorno incompleto; a situação no fisco ainda não é conhecida. */
+  CONFIRMACAO_PENDENTE: "confirmacao_pendente",
+  /** Legado: nunca é terminal e deve ser reconciliado como confirmação pendente. */
   FALHOU: "falhou",
   CANCELAMENTO_PENDENTE: "cancelamento_pendente",
   CANCELADA: "cancelada",
@@ -36,7 +39,6 @@ export const NFSE_CANONICAL_STATUSES: readonly string[] = Object.values(NFSE_STA
 export const NFSE_TERMINAL_STATUSES: readonly string[] = [
   NFSE_STATUS.AUTORIZADA,
   NFSE_STATUS.REJEITADA,
-  NFSE_STATUS.FALHOU,
   NFSE_STATUS.CANCELADA,
 ];
 
@@ -58,8 +60,10 @@ const RAW_TO_CANONICAL: Record<string, string> = {
   // terminais
   authorized: NFSE_STATUS.AUTORIZADA,
   rejected: NFSE_STATUS.REJEITADA,
-  failed: NFSE_STATUS.FALHOU,
-  error: NFSE_STATUS.FALHOU,
+  // "failed"/"error" são estados do intermediário, não prova de que a
+  // prefeitura rejeitou a nota. Mantemos a emissão em reconciliação.
+  failed: NFSE_STATUS.CONFIRMACAO_PENDENTE,
+  error: NFSE_STATUS.CONFIRMACAO_PENDENTE,
   cancelled: NFSE_STATUS.CANCELADA,
   canceled: NFSE_STATUS.CANCELADA,
 };

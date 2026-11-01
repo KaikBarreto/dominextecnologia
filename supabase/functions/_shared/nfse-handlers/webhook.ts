@@ -88,7 +88,9 @@ function statusForEvent(
     case "nfse.rejected":
       return NFSE_STATUS.REJEITADA;
     case "nfse.failed":
-      return NFSE_STATUS.FALHOU;
+      // Erro de transporte ou do intermediário não é rejeição da prefeitura.
+      // Mantém a emissão consultável até uma fonte oficial confirmar o destino.
+      return NFSE_STATUS.CONFIRMACAO_PENDENTE;
     case "nfse.cancelled":
     case "nfse.canceled":
       return NFSE_STATUS.CANCELADA;
@@ -183,11 +185,21 @@ export async function handleNfseWebhook(req: Request): Promise<Response> {
   }
 
   const companyId = emission.company_id;
-  const newStatus = statusForEvent(
+  const statusRecebido = statusForEvent(
     event,
     String(data?.status ?? "") || undefined,
     String(emission.status ?? "").trim(),
   );
+  // Webhook é sinal útil e autenticado, mas não substitui a consulta do
+  // documento. Mantemos a tela em reconciliação até o provedor devolver a
+  // evidência fiscal vinculada à NFS-e.
+  const newStatus = new Set<string>([
+    NFSE_STATUS.AUTORIZADA,
+    NFSE_STATUS.REJEITADA,
+    NFSE_STATUS.CANCELADA,
+  ]).has(statusRecebido)
+    ? NFSE_STATUS.CONFIRMACAO_PENDENTE
+    : statusRecebido;
 
   // ---- 5. Idempotência por (nfse_emission_id, event_type).
   const { data: dup } = await supabase
@@ -209,7 +221,7 @@ export async function handleNfseWebhook(req: Request): Promise<Response> {
     if (protocolo) update.protocolo = protocolo;
     update.emitida_em = String(data?.emitida_em ?? "").trim() || new Date().toISOString();
   }
-  if (newStatus === NFSE_STATUS.REJEITADA || newStatus === NFSE_STATUS.FALHOU) {
+  if (newStatus === NFSE_STATUS.REJEITADA) {
     update.error_message = String(data?.message ?? data?.motivo ?? "").trim() ||
       "A nota foi rejeitada pela prefeitura/SEFIN.";
   }

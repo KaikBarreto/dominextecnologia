@@ -35,6 +35,64 @@ const UNCONFIGURED_MESSAGE = 'Emissão de notas ainda não ativada. Tente novame
 const PROVIDER_UNSUPPORTED_MESSAGE =
   'A emissão por este caminho ainda não está disponível. Fale com o suporte para liberar a emissão da sua empresa.';
 
+/**
+ * Orientação segura devolvida pelo motor fiscal. É opcional para manter
+ * compatibilidade com edges antigas e com provedores ainda em transição.
+ */
+export interface NfseFiscalOrientation {
+  mensagem: string | null;
+  planoAcao: string[];
+  codigoOficial: string | null;
+  podeTentarNovamente: boolean | null;
+  precisaContabilidade: boolean | null;
+}
+
+function readOrientation(body: Record<string, unknown> | null): NfseFiscalOrientation | null {
+  const erro = body?.erro;
+  const resposta = body?.resposta;
+  const raw = body?.orientacao ??
+    (erro && typeof erro === 'object' && !Array.isArray(erro)
+      ? (erro as Record<string, unknown>).orientacao
+      : null) ??
+    (resposta && typeof resposta === 'object' && !Array.isArray(resposta)
+      ? (resposta as Record<string, unknown>).orientacao
+      : null);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+  const planoAcao = Array.isArray(value.planoAcao)
+    ? value.planoAcao.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    : [];
+  const mensagem = typeof value.mensagem === 'string' && value.mensagem.trim()
+    ? value.mensagem.trim()
+    : null;
+  const codigoOficial = typeof value.codigoOficial === 'string' && value.codigoOficial.trim()
+    ? value.codigoOficial.trim()
+    : null;
+  const podeTentarNovamente = typeof value.podeTentarNovamente === 'boolean'
+    ? value.podeTentarNovamente
+    : null;
+  const precisaContabilidade = typeof value.precisaContabilidade === 'boolean'
+    ? value.precisaContabilidade
+    : null;
+  return mensagem || planoAcao.length || codigoOficial || podeTentarNovamente != null || precisaContabilidade != null
+    ? { mensagem, planoAcao, codigoOficial, podeTentarNovamente, precisaContabilidade }
+    : null;
+}
+
+/** Texto curto para toast; detalhes permanecem disponíveis no objeto tipado. */
+export function nfseOrientationDescription(orientation: NfseFiscalOrientation | null): string | undefined {
+  if (!orientation) return undefined;
+  const parts = [
+    orientation.mensagem,
+    ...orientation.planoAcao,
+    orientation.codigoOficial ? `Código oficial: ${orientation.codigoOficial}.` : null,
+    orientation.podeTentarNovamente === true ? 'Você pode tentar novamente após seguir a orientação.' : null,
+    orientation.podeTentarNovamente === false ? 'Não tente emitir novamente antes de corrigir esta situação.' : null,
+    orientation.precisaContabilidade ? 'Revise com a contabilidade.' : null,
+  ].filter((item): item is string => !!item);
+  return parts.length ? parts.join(' ') : undefined;
+}
+
 export interface NfseEdgeResult<T = Record<string, unknown>> {
   ok: boolean;
   data: T | null;
@@ -53,6 +111,8 @@ export interface NfseEdgeResult<T = Record<string, unknown>> {
    * a UI lê esses campos pra montar o modal de upgrade. `null` no caminho feliz.
    */
   errorBody: Record<string, unknown> | null;
+  /** Instrução clara do motor fiscal, quando a resposta a fornecer. */
+  orientacao: NfseFiscalOrientation | null;
 }
 
 async function readBody(resp: Response | undefined): Promise<Record<string, unknown> | null> {
@@ -95,6 +155,7 @@ export async function invokeNfse<T = Record<string, unknown>>(
       unconfigured,
       providerUnsupported,
       errorBody: parsed,
+      orientacao: readOrientation(parsed),
     };
   }
 
@@ -116,6 +177,7 @@ export async function invokeNfse<T = Record<string, unknown>>(
       unconfigured,
       providerUnsupported,
       errorBody: payload,
+      orientacao: readOrientation(payload),
     };
   }
 
@@ -127,5 +189,6 @@ export async function invokeNfse<T = Record<string, unknown>>(
     unconfigured: false,
     providerUnsupported: false,
     errorBody: null,
+    orientacao: readOrientation(payload),
   };
 }

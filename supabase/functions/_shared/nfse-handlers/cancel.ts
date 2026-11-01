@@ -142,11 +142,27 @@ export async function handleNfseCancel(req: Request): Promise<Response> {
     const provider = getProvider(fiscal as Record<string, unknown> | null);
 
     const resultado = await provider.cancelar(ctx, referencia, motivo);
-    const newStatus = resultado.status;
+    const statusRecebido = resultado.status;
+    const newStatus = statusRecebido === NFSE_STATUS.CANCELADA &&
+        resultado.confirmadoPeloFisco !== true
+      ? NFSE_STATUS.CONFIRMACAO_PENDENTE
+      : statusRecebido;
 
     const { data: updated, error: updErr } = await supabase
       .from("nfse_emissions")
-      .update({ status: newStatus })
+      .update({
+        status: newStatus,
+        status_fiscal_confirmado: resultado.confirmadoPeloFisco === true,
+        status_fiscal_confirmado_em: resultado.confirmadoPeloFisco === true
+          ? new Date().toISOString()
+          : null,
+        status_fiscal_fonte: resultado.confirmadoPeloFisco === true
+          ? (resultado.evidenciaFiscal?.fonte ?? "consulta_fiscal")
+          : null,
+        status_fiscal_evidencia: resultado.confirmadoPeloFisco === true
+          ? (resultado.evidenciaFiscal ?? null)
+          : null,
+      })
       .eq("id", emission.id)
       .eq("company_id", companyId)
       .select("*")
@@ -172,7 +188,11 @@ export async function handleNfseCancel(req: Request): Promise<Response> {
       payload: { motivo: motivo || null, response: resultado.raw ?? null },
     });
 
-    return jsonResponse({ emission: updated, status: newStatus }, 200);
+    return jsonResponse({
+      emission: updated,
+      status: newStatus,
+      ...(resultado.orientacao ? { orientacao: resultado.orientacao } : {}),
+    }, 200);
   } catch (err) {
     const providerResp = providerErrorResponse(err);
     if (providerResp) return providerResp;

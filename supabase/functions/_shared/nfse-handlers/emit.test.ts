@@ -20,7 +20,7 @@ import {
 } from "../nfse-provider.ts";
 import { deveRegistrarTentativa, ehRecusaDeDocumento } from "./emit.ts";
 
-// --- Recusa da administração tributária → linha `rejeitada` -------------------
+// --- Recusa oficial → linha `rejeitada` ----------------------------------------
 
 Deno.test("rejeição do governo (E0312) é recusa de documento e vira linha", () => {
   const err = new NfseProviderError(
@@ -38,9 +38,10 @@ Deno.test("rejeição do provedor intermediado (NFSE_REJECTED) também vira linh
   assertEquals(deveRegistrarTentativa(err), true);
 });
 
-Deno.test("erro de validação (400) é recusa de documento", () => {
+Deno.test("erro de validação do intermediário não afirma recusa da prefeitura", () => {
   const err = new NfseProviderError("Dados inválidos", 400, { codigo: "VALIDATION_ERROR" });
-  assertEquals(ehRecusaDeDocumento(err), true);
+  assertEquals(ehRecusaDeDocumento(err), false);
+  assertEquals(deveRegistrarTentativa(err), true);
 });
 
 // --- Pré-condição nossa → NÃO vira linha -------------------------------------
@@ -80,7 +81,7 @@ Deno.test("serviço indisponível não vira linha nem recusa", () => {
   assertEquals(deveRegistrarTentativa(err), false);
 });
 
-// --- Desconhecido → vira linha `falhou` (é onde o rastro vale mais) ----------
+// --- Desconhecido → fica aguardando confirmação (o rastro continua) ----------
 
 Deno.test("erro 502 sem código vira linha, mas como falha e não como recusa", () => {
   const err = new NfseProviderError("Erro do provedor", 502);

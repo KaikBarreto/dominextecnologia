@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.12',
+    date: '1 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Status fiscal confirmado antes de concluir',
+        description: 'A nota só aparece como autorizada, rejeitada ou cancelada quando existe confirmação do órgão fiscal. Se a resposta ainda não for conclusiva, a tela informa que está conferindo e evita uma nova emissão por engano.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Erros fiscais com orientação clara',
+        description: 'Quando uma operação não puder ser concluída, a mensagem agora explica o que aconteceu, quais passos seguir e quando é indicado consultar a contabilidade.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.11',
     date: '31 de outubro de 2026',
     type: 'patch',

@@ -24,6 +24,7 @@ import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { useFiscalSettings } from '@/hooks/useFiscalSettings';
 import { useNfse, useNfseListPolling, type NfseEmission } from '@/hooks/useNfse';
+import { resolveNfseDisplayStatus } from '@/lib/fiscal/nfseStatusTruth';
 import { useNfseEmissionsPaged } from '@/hooks/useNfseEmissionsPaged';
 import { NfseQuotaBadge } from '@/components/fiscal/NfseQuotaBadge';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -184,7 +185,7 @@ export default function NotasFiscais() {
   const pendingIds = useMemo(
     () =>
       emissions
-        .filter((e) => !isNfseTerminal(e.status))
+        .filter((e) => !isNfseTerminal(resolveNfseDisplayStatus(e)))
         .slice(0, 10)
         .map((e) => e.id),
     [emissions],

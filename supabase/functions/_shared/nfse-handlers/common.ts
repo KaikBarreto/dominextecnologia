@@ -53,7 +53,12 @@ export function providerErrorResponse(
       ? friendlyFiscalMessage(err.codigo, err.message)
       : err.message;
     return jsonResponse(
-      { error: "fisqal_error", message, code: err.codigo },
+      {
+        error: "fisqal_error",
+        message,
+        code: err.codigo,
+        ...(err.orientacao ? { orientacao: err.orientacao } : {}),
+      },
       err.status >= 400 && err.status < 600 ? err.status : 502,
     );
   }

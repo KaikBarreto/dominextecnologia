@@ -59,7 +59,7 @@ import { useTableSort } from '@/hooks/useTableSort';
 import { useNfseEmissionsPaged } from '@/hooks/useNfseEmissionsPaged';
 import { useNfseEmission } from '@/hooks/useNfseEmission';
 import { useNfse } from '@/hooks/useNfse';
-import { invokeNfse } from '@/utils/nfseEdge';
+import { invokeNfse, nfseOrientationDescription } from '@/utils/nfseEdge';
 import { cpfCnpjMask } from '@/utils/masks';
 import { formatMoney, formatDate, formatNumber } from '@/lib/format';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -71,6 +71,7 @@ import { NovaNotaModal } from '@/components/fiscal/NovaNotaModal';
 import { NfseDetailModal, type NfseDetailAction } from '@/components/fiscal/NfseDetailModal';
 import { nfseDisplayDate, nfseRowToEmission, type NfseListRow } from '@/components/fiscal/nfseRow';
 import type { NfseInitialDraft, TribIssqn, TpRetIssqn } from '@/components/fiscal/nova-nota/types';
+import { resolveNfseDisplayStatus } from '@/lib/fiscal/nfseStatusTruth';
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -296,7 +297,9 @@ export function NfseListTab({ canEmit, dateStart, dateEnd }: NfseListTabProps) {
       const result = await invokeNfse('nfse-emit', { emissionId: row.id });
       toast.dismiss(tid);
       if (!result.ok) {
-        toast.error(result.message ?? tList.toastEmitError);
+        toast.error(result.message ?? tList.toastEmitError, {
+          description: nfseOrientationDescription(result.orientacao),
+        });
         return;
       }
       toast.success(tList.toastEmitSuccess);
@@ -446,9 +449,12 @@ export function NfseListTab({ canEmit, dateStart, dateEnd }: NfseListTabProps) {
   /** Itens do menu — compartilhados pelo menu de hover (desktop) e de clique (mobile). */
   const rowActionItems = (row: NfseListRow) => {
     const isDraft = row.status === 'rascunho';
-    const isRejected = row.status === 'rejeitada' || row.status === 'falhou';
+    // `falhou` é legado: não sabemos se o envio chegou ao fisco. Nunca oferece
+    // reemissão até a consulta confirmar rejeição oficial, evitando duplicidade.
+    const isRejected = row.status === 'rejeitada';
     const isAuthorized = row.status === 'autorizada';
-    const isPending = row.status === 'pendente' || row.status === 'processando';
+    const isPending = row.status === 'pendente' || row.status === 'processando' ||
+      row.status === 'confirmacao_pendente' || row.status === 'falhou';
     const isCancelled = row.status === 'cancelada';
     // Cancelamento pedido e ainda em andamento: a nota segue mudando de estado,
     // então precisa continuar consultável até virar "Cancelada".
@@ -949,7 +955,7 @@ export function NfseListTab({ canEmit, dateStart, dateEnd }: NfseListTabProps) {
                   </p>
                 )}
                 <div className="mt-1">
-                  <NfseStatusBadge status={row.status} />
+                  <NfseStatusBadge status={resolveNfseDisplayStatus(row)} />
                 </div>
               </div>
               <div className="flex items-center gap-0.5 shrink-0">
@@ -1096,7 +1102,7 @@ export function NfseListTab({ canEmit, dateStart, dateEnd }: NfseListTabProps) {
                         {fmtMoney(row.valor_servico) ?? '—'}
                       </TableCell>
                       <TableCell className="text-center">
-                        <NfseStatusBadge status={row.status} />
+                        <NfseStatusBadge status={resolveNfseDisplayStatus(row)} />
                       </TableCell>
                       <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                         <HoverDropdownMenu
