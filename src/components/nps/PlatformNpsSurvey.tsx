@@ -433,7 +433,7 @@ export function PlatformNpsSurvey() {
         dismissible={false}
       >
         <DrawerContent
-          className="flex max-h-[92dvh] flex-col overflow-hidden border-0 p-0"
+          className="flex max-h-[92dvh] flex-col overflow-hidden border-0 bg-primary p-0 [&>[data-vaul-handle]]:absolute [&>[data-vaul-handle]]:left-1/2 [&>[data-vaul-handle]]:top-2 [&>[data-vaul-handle]]:z-10 [&>[data-vaul-handle]]:m-0 [&>[data-vaul-handle]]:-translate-x-1/2 [&>[data-vaul-handle]]:bg-primary-foreground/35 [&>div:last-child>div:last-child]:bg-background"
           onPointerDownOutside={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
         >
