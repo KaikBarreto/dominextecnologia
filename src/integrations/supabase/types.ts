@@ -779,6 +779,10 @@ export type Database = {
           pct_applied: number
           reference_month: string | null
           status: string
+          status_fiscal_confirmado: boolean
+          status_fiscal_confirmado_em: string | null
+          status_fiscal_evidencia: Json | null
+          status_fiscal_fonte: string | null
         }
         Insert: {
           affiliate_id: string
@@ -794,6 +798,10 @@ export type Database = {
           pct_applied: number
           reference_month?: string | null
           status?: string
+          status_fiscal_confirmado?: boolean
+          status_fiscal_confirmado_em?: string | null
+          status_fiscal_evidencia?: Json | null
+          status_fiscal_fonte?: string | null
         }
         Update: {
           affiliate_id?: string
@@ -809,6 +817,10 @@ export type Database = {
           pct_applied?: number
           reference_month?: string | null
           status?: string
+          status_fiscal_confirmado?: boolean
+          status_fiscal_confirmado_em?: string | null
+          status_fiscal_evidencia?: Json | null
+          status_fiscal_fonte?: string | null
         }
         Relationships: [
           {

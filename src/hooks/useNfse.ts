@@ -25,6 +25,7 @@ export type NfseStatus =
   | 'autorizada'
   | 'rejeitada'
   | 'cancelada'
+  | 'confirmacao_pendente'
   | 'falhou'
   | string;
 
@@ -55,7 +56,7 @@ export interface EmitNfseInput {
 // disparava sempre e o período era medido pela data de CRIAÇÃO da nota, não
 // pela competência. Os totais estavam certos; o recorte é que não.
 const EMISSION_COLS =
-  'id, company_id, customer_id, financial_transaction_id, status, numero_nfse, chave_acesso, protocolo, pdf_url, xml_url, valor_servico, valor_iss, descricao_servico, idempotency_key, error_message, emitida_em, data_competencia, created_at, updated_at';
+  'id, company_id, customer_id, financial_transaction_id, status, status_fiscal_confirmado, status_fiscal_confirmado_em, status_fiscal_fonte, status_fiscal_evidencia, numero_nfse, chave_acesso, protocolo, pdf_url, xml_url, valor_servico, valor_iss, descricao_servico, idempotency_key, error_message, emitida_em, data_competencia, created_at, updated_at';
 
 export function useNfse() {
   const { companyId } = useUserCompany();
@@ -65,6 +66,10 @@ export function useNfse() {
   const emissionsQuery = useQuery({
     queryKey: listKey,
     enabled: !!companyId,
+    // Faz a validade temporal da prova ser reavaliada mesmo com a tela aberta.
+    // Esta leitura é só no banco; a consulta ao Fisco continua no polling
+    // controlado e limitado abaixo.
+    refetchInterval: 60_000,
     queryFn: async (): Promise<NfseEmission[]> => {
       const { data, error } = await supabase
         .from('nfse_emissions')
@@ -162,7 +167,7 @@ export interface NfseStatusPolling {
  * consulta). Enquanto a emissão estiver em estado NÃO-terminal e `enabled`,
  * consulta `nfse-status` a cada ~4,5s, atualizando a lista do `useNfse`
  * a cada sucesso, até:
- *   - o status virar terminal (autorizada/rejeitada/falhou/cancelada) → para;
+ *   - o status virar terminal confirmado (autorizada/rejeitada/cancelada) → para;
  *   - estourar ~2,5 min (POLL_MAX_DURATION_MS) → para e sinaliza `timedOut`;
  *   - a edge responder 503 (integração não ativada) → para;
  *   - o componente desmontar / `enabled` virar false → limpa o intervalo.

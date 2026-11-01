@@ -4,6 +4,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { MobileListItem } from '@/components/mobile/MobileListItem';
 import { NfseStatusBadge } from './nfseStatus';
+import { resolveNfseDisplayStatus } from '@/lib/fiscal/nfseStatusTruth';
 import { nfseDisplayDate, type NfseListRow } from './nfseRow';
 
 interface NfseVisaoGeralProps {
@@ -81,7 +82,7 @@ export function NfseVisaoGeral({ rows, loading = false, onOpenDetail }: NfseVisa
                     : ''}
                 </span>
               }
-              trailing={<NfseStatusBadge status={row.status} />}
+              trailing={<NfseStatusBadge status={resolveNfseDisplayStatus(row)} />}
             />
           );
         })}

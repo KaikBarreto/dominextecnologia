@@ -98,8 +98,31 @@ export async function handleNfseStatus(req: Request): Promise<Response> {
       statusAtual: clean(emission.status) || NFSE_STATUS.PENDENTE,
     });
 
-    const newStatus = resultado.status;
-    const update: Record<string, unknown> = { status: newStatus };
+    const statusRecebido = resultado.status;
+    const terminal = [
+      NFSE_STATUS.AUTORIZADA,
+      NFSE_STATUS.REJEITADA,
+      NFSE_STATUS.CANCELADA,
+    ].includes(statusRecebido as any);
+    // O status da tela só fecha quando o adaptador confirma que a consulta
+    // trouxe evidência fiscal. Resposta parcial, timeout ou status de fila do
+    // intermediário continuam em reconciliação.
+    const newStatus = terminal && resultado.confirmadoPeloFisco !== true
+      ? NFSE_STATUS.CONFIRMACAO_PENDENTE
+      : statusRecebido;
+    const update: Record<string, unknown> = {
+      status: newStatus,
+      status_fiscal_confirmado: resultado.confirmadoPeloFisco === true,
+      status_fiscal_confirmado_em: resultado.confirmadoPeloFisco === true
+        ? new Date().toISOString()
+        : null,
+      status_fiscal_fonte: resultado.confirmadoPeloFisco === true
+        ? (resultado.evidenciaFiscal?.fonte ?? "consulta_fiscal")
+        : null,
+      status_fiscal_evidencia: resultado.confirmadoPeloFisco === true
+        ? (resultado.evidenciaFiscal ?? null)
+        : null,
+    };
 
     if (newStatus === NFSE_STATUS.AUTORIZADA) {
       if (resultado.pdfUrl) update.pdf_url = resultado.pdfUrl;
@@ -110,7 +133,7 @@ export async function handleNfseStatus(req: Request): Promise<Response> {
       update.emitida_em = resultado.emitidaEm || new Date().toISOString();
     }
 
-    if (newStatus === NFSE_STATUS.REJEITADA || newStatus === NFSE_STATUS.FALHOU) {
+    if (newStatus === NFSE_STATUS.REJEITADA) {
       update.error_message = resultado.erro?.mensagem ||
         "A nota foi rejeitada pela prefeitura/SEFIN.";
     }
@@ -143,7 +166,11 @@ export async function handleNfseStatus(req: Request): Promise<Response> {
       payload: resultado.raw ?? null,
     });
 
-    return jsonResponse({ emission: updated, status: newStatus }, 200);
+    return jsonResponse({
+      emission: updated,
+      status: newStatus,
+      ...(resultado.orientacao ? { orientacao: resultado.orientacao } : {}),
+    }, 200);
   } catch (err) {
     const providerResp = providerErrorResponse(err);
     if (providerResp) return providerResp;

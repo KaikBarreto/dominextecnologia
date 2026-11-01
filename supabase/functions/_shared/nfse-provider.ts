@@ -74,16 +74,19 @@ export class NfseProviderError extends Error {
   codigo?: string;
   /** Corpo cru, para log/diagnóstico. NUNCA vai pro usuário. */
   raw?: unknown;
+  /** Orientação segura para o operador, sem payload técnico do provedor. */
+  orientacao?: Record<string, unknown>;
   constructor(
     message: string,
     status = 502,
-    opts: { codigo?: string; raw?: unknown } = {},
+    opts: { codigo?: string; raw?: unknown; orientacao?: Record<string, unknown> } = {},
   ) {
     super(message);
     this.name = "NfseProviderError";
     this.status = status;
     this.codigo = opts.codigo;
     this.raw = opts.raw;
+    this.orientacao = opts.orientacao;
   }
 }
 
@@ -248,6 +251,14 @@ export interface NfseResultado {
   pdfUrl?: string | null;
   /** Motivo de rejeição/falha. `mensagem` SEMPRE PT-BR amigável. */
   erro?: { codigo?: string; mensagem: string } | null;
+  /**
+   * Só `true` permite gravar um status fiscal terminal na tela. A evidência
+   * vem da consulta/documento oficial, nunca de inferência local ou timeout.
+   */
+  confirmadoPeloFisco?: boolean;
+  evidenciaFiscal?: { fonte: string; codigo?: string | null } | null;
+  /** Orientação segura devolvida pelo motor, quando houver. */
+  orientacao?: Record<string, unknown> | null;
   /** Resposta crua do provedor, para a trilha de auditoria (nfse_events.payload). */
   raw?: unknown;
 }

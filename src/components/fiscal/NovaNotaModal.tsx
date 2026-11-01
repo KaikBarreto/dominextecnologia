@@ -30,7 +30,7 @@ import { useUserCompany } from '@/hooks/useUserCompany';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
-import { invokeNfse } from '@/utils/nfseEdge';
+import { invokeNfse, nfseOrientationDescription } from '@/utils/nfseEdge';
 import { calculateNfseTaxes } from '@/utils/nfseTaxes';
 import { NfseQuotaBlockModal, type NfseQuotaBlockInfo } from '@/components/fiscal/NfseQuotaBlockModal';
 
@@ -635,7 +635,9 @@ export function NovaNotaModal({
         if (PESSOAS_EMIT_ERROR_CODES.has(emitRes.errorCode ?? '')) {
           setActiveStep('pessoas');
         }
-        toast.error(emitRes.message ?? s.toasts.emitError);
+        toast.error(emitRes.message ?? s.toasts.emitError, {
+          description: nfseOrientationDescription(emitRes.orientacao),
+        });
         return;
       }
 

@@ -195,11 +195,19 @@ export const fisqalProvider: NfseProvider = {
       )
     );
 
+    const statusCriacao = mapNfseStatus(created?.status, NFSE_STATUS.PENDENTE);
+
     return {
-      // Status SEMPRE canônico PT-BR — a Fisqal responde em inglês.
-      status: mapNfseStatus(created?.status, NFSE_STATUS.PENDENTE),
+      // A criação pode ser assíncrona e não carrega a prova do documento.
+      // Mesmo que o intermediário use um rótulo terminal, a consulta posterior
+      // é quem confirma a situação no fisco.
+      status: [NFSE_STATUS.AUTORIZADA, NFSE_STATUS.REJEITADA, NFSE_STATUS.CANCELADA]
+        .includes(statusCriacao as any)
+        ? NFSE_STATUS.CONFIRMACAO_PENDENTE
+        : statusCriacao,
       referencia: clean(created?.dpsId) || null,
       requisicaoId: clean(created?.fiscalRequestId) || null,
+      confirmadoPeloFisco: false,
       raw: created ?? null,
     };
   },
@@ -225,14 +233,33 @@ export const fisqalProvider: NfseProvider = {
     }
 
     // Desconhecido/vazio → mantém o status atual (não rebaixa a nota).
-    const status = mapNfseStatus(
-      doc?.status,
+    const statusBruto = clean(doc?.status).toLowerCase();
+    const mapeado = mapNfseStatus(
+      statusBruto,
       clean(opts?.statusAtual) || NFSE_STATUS.PENDENTE,
     );
+    const numero = clean(doc?.numero_nfse) || clean(doc?.numeroNfse) || clean(doc?.numero);
+    const chave = clean(doc?.chave_acesso) || clean(doc?.chaveAcesso);
+    const motivo = clean(doc?.message) || clean(doc?.motivo);
+    const statusTerminalDeclarado = ["authorized", "rejected", "cancelled", "canceled"]
+      .includes(statusBruto);
+    const comprovado = (
+      (mapeado === NFSE_STATUS.AUTORIZADA && Boolean(numero && chave)) ||
+      (mapeado === NFSE_STATUS.REJEITADA && Boolean(motivo)) ||
+      (mapeado === NFSE_STATUS.CANCELADA && Boolean(chave))
+    ) && statusTerminalDeclarado;
+    const status = [NFSE_STATUS.AUTORIZADA, NFSE_STATUS.REJEITADA, NFSE_STATUS.CANCELADA]
+      .includes(mapeado as any) && !comprovado
+      ? NFSE_STATUS.CONFIRMACAO_PENDENTE
+      : mapeado;
 
     const resultado: NfseResultado = {
       status,
       referencia,
+      confirmadoPeloFisco: comprovado,
+      evidenciaFiscal: comprovado
+        ? { fonte: "consulta_provedor", codigo: statusBruto || null }
+        : null,
       raw: { doc, timeline },
     };
 
@@ -248,8 +275,6 @@ export const fisqalProvider: NfseProvider = {
         if (xmlUrl) resultado.xmlUrl = xmlUrl;
       } catch (_) { /* best-effort */ }
 
-      const numero = clean(doc?.numero_nfse) || clean(doc?.numeroNfse) || clean(doc?.numero);
-      const chave = clean(doc?.chave_acesso) || clean(doc?.chaveAcesso);
       const protocolo = clean(doc?.protocolo);
       if (numero) resultado.numero = numero;
       if (chave) resultado.chaveAcesso = chave;
@@ -257,8 +282,7 @@ export const fisqalProvider: NfseProvider = {
       resultado.emitidaEm = clean(doc?.emitida_em) || clean(doc?.emitidaEm) || null;
     }
 
-    if (status === NFSE_STATUS.REJEITADA || status === NFSE_STATUS.FALHOU) {
-      const motivo = clean(doc?.message) || clean(doc?.motivo);
+    if (status === NFSE_STATUS.REJEITADA || status === NFSE_STATUS.CONFIRMACAO_PENDENTE) {
       if (motivo) resultado.erro = { mensagem: motivo };
     }
 
@@ -281,9 +305,15 @@ export const fisqalProvider: NfseProvider = {
 
     // A fila de cancelamento da Fisqal é assíncrona: pending/processing/sent aqui
     // querem dizer "cancelamento pendente", não "pendente". Ver _shared/nfse-status.ts.
+    const statusPedido = mapNfseCancelStatus(result?.status);
     return {
-      status: mapNfseCancelStatus(result?.status),
+      // Confirmação de cancelamento também vem da consulta do documento. O
+      // retorno do pedido pode ser uma fila do intermediário.
+      status: statusPedido === NFSE_STATUS.CANCELADA
+        ? NFSE_STATUS.CONFIRMACAO_PENDENTE
+        : statusPedido,
       referencia,
+      confirmadoPeloFisco: false,
       raw: result ?? null,
     };
   },

@@ -10,6 +10,10 @@ import type { NfseEmission } from '@/hooks/useNfse';
 export interface NfseEmissionRow {
   id: string;
   status: string;
+  status_fiscal_confirmado: boolean;
+  status_fiscal_confirmado_em: string | null;
+  status_fiscal_fonte: string | null;
+  status_fiscal_evidencia: NfseEmission['status_fiscal_evidencia'];
   numero_nfse: string | null;
   customer_id: string | null;
   customer_name: string | null;
@@ -86,7 +90,9 @@ export interface UseNfseEmissionsPagedReturn {
 }
 
 /** Status não-terminais — disparar polling/refetch enquanto presentes. */
-const PENDING_STATUSES = new Set(['pendente', 'processando', 'rascunho']);
+const PENDING_STATUSES = new Set([
+  'pendente', 'processando', 'rascunho', 'confirmacao_pendente', 'falhou',
+]);
 
 /**
  * Hook de listagem paginada de NFS-e — fronteira do Supabase.
