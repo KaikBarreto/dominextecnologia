@@ -247,20 +247,13 @@ export function PlatformNpsSurvey() {
                 setStage("score");
               }}
               className={cn(
-                "group flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 px-3 py-4 text-base font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-32",
+                "flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 px-3 py-4 text-base font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-32",
                 isEnjoying === true
                   ? "border-success bg-success text-white hover:bg-success hover:text-white"
                   : "border-border bg-background hover:border-success hover:bg-success hover:text-white",
               )}
             >
-            <span
-              className={cn(
-                'flex h-11 w-11 items-center justify-center rounded-full transition-colors group-hover:bg-white/20 group-hover:text-white',
-                isEnjoying === true ? 'bg-white/20 text-white' : 'bg-success/10 text-success',
-              )}
-            >
-                <ThumbsUp className="h-5 w-5" />
-              </span>
+              <ThumbsUp className="h-7 w-7" />
               <span className="flex items-center gap-1.5">
                 Sim {isEnjoying === true && <Check className="h-4 w-4" />}
               </span>
@@ -273,22 +266,13 @@ export function PlatformNpsSurvey() {
                 setStage("score");
               }}
               className={cn(
-                "group flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 px-3 py-4 text-base font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-32",
+                "flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 px-3 py-4 text-base font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-32",
                 isEnjoying === false
                   ? "border-destructive bg-destructive text-white hover:bg-destructive hover:text-white"
                   : "border-border bg-background hover:border-destructive hover:bg-destructive hover:text-white",
               )}
             >
-            <span
-              className={cn(
-                'flex h-11 w-11 items-center justify-center rounded-full transition-colors group-hover:bg-white/20 group-hover:text-white',
-                isEnjoying === false
-                  ? 'bg-white/20 text-white'
-                  : 'bg-destructive/10 text-destructive',
-              )}
-            >
-                <ThumbsDown className="h-5 w-5" />
-              </span>
+              <ThumbsDown className="h-7 w-7" />
               <span className="flex items-center gap-1.5">
                 Não {isEnjoying === false && <Check className="h-4 w-4" />}
               </span>
