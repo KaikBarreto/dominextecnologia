@@ -129,6 +129,8 @@ services:
     volumes:
       - /var/lib/dominex-fiscal:/var/lib/dominex-fiscal:ro
       # Cadastro multicliente: segredo somente leitura, fora da imagem.
+      # No host ele deve ser root:10001 0640: bind mounts preservam o GID
+      # numérico e o processo do container roda como 10001:10001.
       # O arquivo deve existir antes do deploy (RUNBOOK §1.4.1).
       - type: bind
         source: /etc/dominex-fiscal/clients.json

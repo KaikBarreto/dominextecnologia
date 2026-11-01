@@ -287,7 +287,10 @@ jq -n '{
     rateLimitPerMinute: 600
   }
 }' > "$CLIENTS_TMP"
-sudo install -m 0640 -o root -g deploy "$CLIENTS_TMP" /etc/dominex-fiscal/clients.json
+# O bind preserva os IDs numéricos do host. O processo no container roda como
+# 10001:10001, portanto o grupo do arquivo precisa ser 10001 (e não `fiscal` do
+# host, que hoje é GID 1002). Assim root administra e só o runtime consegue ler.
+sudo install -m 0640 -o root -g 10001 "$CLIENTS_TMP" /etc/dominex-fiscal/clients.json
 rm -f "$CLIENTS_TMP"
 sudo grep -q '^FISCAL_CLIENTS_FILE=' /etc/dominex-fiscal/service.env || \
   printf '%s\n' 'FISCAL_CLIENTS_FILE=/run/secrets/dominex-fiscal/clients.json' | \
