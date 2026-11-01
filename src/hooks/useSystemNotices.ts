@@ -31,9 +31,14 @@ export function useSystemNotices(scope: NoticeScope, enabled = true) {
   const queryClient = useQueryClient();
 
   const { data: notices = [], isLoading: noticesLoading } = useQuery({
-    queryKey: ['system-notices'],
+    // O tenant faz parte da chave: ao trocar de conta no mesmo navegador, o
+    // React Query não pode reaproveitar por 5 minutos a lista do tenant
+    // anterior. A RLS e o filtro local já fecham vazamento; a chave também
+    // evita que o novo tenant deixe de receber um aviso direcionado a ele.
+    queryKey: ['system-notices', companyId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from('admin_notices' as any) as any)
+      const { data, error } = await supabase
+        .from('admin_notices')
         .select(
           'id, title, message, variant, scope, is_dismissible, is_active, starts_at, ends_at, target_audience, target_ids, action_label, action_url, created_at, updated_at',
         )
@@ -41,7 +46,7 @@ export function useSystemNotices(scope: NoticeScope, enabled = true) {
         .order('created_at', { ascending: false })
         .limit(20);
       if (error) throw error;
-      return (data || []) as SystemNotice[];
+      return (data || []) as unknown as SystemNotice[];
     },
     // Espera a empresa resolver: sem ela, o recorte por tenant não dá pra
     // afirmar e a lista cacheada sairia sem os avisos direcionados.
@@ -52,7 +57,8 @@ export function useSystemNotices(scope: NoticeScope, enabled = true) {
   const { data: dismissals = [] } = useQuery({
     queryKey: ['system-notice-dismissals', user?.id],
     queryFn: async () => {
-      const { data, error } = await (supabase.from('admin_notice_dismissals' as any) as any)
+      const { data, error } = await supabase
+        .from('admin_notice_dismissals')
         .select('notice_id, dismissed_at');
       if (error) throw error;
       return (data || []) as NoticeDismissal[];
@@ -76,7 +82,7 @@ export function useSystemNotices(scope: NoticeScope, enabled = true) {
     mutationFn: async (noticeId: string) => {
       if (!user?.id) return;
       // Upsert: redispensar um aviso que foi editado só atualiza dismissed_at.
-      const { error } = await (supabase.from('admin_notice_dismissals' as any) as any).upsert(
+      const { error } = await supabase.from('admin_notice_dismissals').upsert(
         { notice_id: noticeId, user_id: user.id, dismissed_at: new Date().toISOString() },
         { onConflict: 'notice_id,user_id' },
       );

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ComponentType } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -24,6 +24,7 @@ import {
   HeartPulse,
   Handshake,
   Newspaper,
+  Megaphone,
   Building2,
   Map,
   Target,
@@ -69,14 +70,14 @@ import { cn } from '@/lib/utils';
 
 interface MenuItem {
   title: string;
-  icon: any;
+  icon: ComponentType<{ className?: string }>;
   path?: string;
   screenKey?: string;
   moduleKey?: ModuleCode;
   requiresSegment?: string;
   /** Gate dedicado: libera só se o segmento da empresa tem Área do Técnico™. */
   requiresTechTools?: boolean;
-  children?: { title: string; icon: any; path: string; screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string }[];
+  children?: { title: string; icon: ComponentType<{ className?: string }>; path: string; screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string }[];
 }
 
 const tenantMenuItems: MenuItem[] = [
@@ -168,6 +169,7 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Health Score', icon: HeartPulse, path: '/admin/health-score', screenKey: 'admin_health_score' },
   { title: 'Cobranças', icon: CreditCard, path: '/admin/cobrancas', screenKey: 'admin_cobrancas' },
   { title: 'Blog', icon: Newspaper, path: '/admin/blog', screenKey: 'admin_blog', masterOnly: true },
+  { title: 'Avisos e NPS', icon: Megaphone, path: '/admin/avisos', screenKey: 'admin_avisos', masterOnly: true },
   // Estatísticas (Sistema + Banco de dados + Infra). masterOnly = vendedor-admin não vê.
   { title: 'Estatísticas', icon: BarChart3, path: '/admin/estatisticas', screenKey: 'admin_estatisticas', masterOnly: true },
   { title: 'Domiflix', icon: Clapperboard, path: '/admin/domiflix', masterOnly: true },

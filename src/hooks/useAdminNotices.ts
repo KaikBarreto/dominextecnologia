@@ -2,18 +2,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { getErrorMessage } from '@/utils/errorMessages';
 import type { SystemNotice } from '@/lib/systemNotices';
 
 /**
  * CRUD dos avisos do sistema no painel master (Auctus).
  *
- * Quem pode escrever é decidido pela RLS de `admin_notices`:
- * `super_admin` OU admin com a permissão `admin_avisos` (Forma A, permissão
- * específica — não `is_admin_user()`). O gate de UI é 2ª camada.
- *
- * Tipagem em interface local até o `types.ts` ser regenerado pelo dev-database
- * (mesmo padrão de `useUserNotifications`).
+ * Quem pode escrever é decidido pela RLS de `admin_notices`: somente
+ * `super_admin`, a mesma régua da rota master-only. O gate de UI é 2ª camada.
  */
 export type AdminNoticeInput = {
   title: string;
@@ -34,15 +29,17 @@ export interface AdminNotice extends SystemNotice {
   created_by: string | null;
 }
 
+const noticeError = (action: string) => `Não foi possível ${action}. Tente novamente em alguns instantes.`;
+
 export function useAdminNotices() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: notices = [], isLoading } = useQuery({
-    queryKey: ['admin-notices'],
+  const noticesQuery = useQuery({
+    queryKey: ['admin', 'notices'],
     queryFn: async () => {
-      const { data, error } = await (supabase.from('admin_notices' as any) as any)
+      const { data, error } = await supabase.from('admin_notices')
         .select('*')
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -52,10 +49,10 @@ export function useAdminNotices() {
 
   // Quantas pessoas já dispensaram cada aviso. Serve de indicador de leitura
   // (a policy `admin_notice_dismissals_select_admin` libera só a leitura).
-  const { data: dismissCount = {} } = useQuery({
-    queryKey: ['admin-notice-dismiss-count'],
+  const dismissalsQuery = useQuery({
+    queryKey: ['admin', 'notices', 'dismiss-count'],
     queryFn: async () => {
-      const { data, error } = await (supabase.from('admin_notice_dismissals' as any) as any).select(
+      const { data, error } = await supabase.from('admin_notice_dismissals').select(
         'notice_id',
       );
       if (error) throw error;
@@ -68,13 +65,12 @@ export function useAdminNotices() {
   });
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['admin-notices'] });
-    queryClient.invalidateQueries({ queryKey: ['admin-notice-dismiss-count'] });
+    queryClient.invalidateQueries({ queryKey: ['admin', 'notices'] });
   };
 
   const createNotice = useMutation({
     mutationFn: async (input: AdminNoticeInput) => {
-      const { error } = await (supabase.from('admin_notices' as any) as any).insert({
+      const { error } = await supabase.from('admin_notices').insert({
         ...input,
         created_by: user?.id ?? null,
       });
@@ -84,13 +80,13 @@ export function useAdminNotices() {
       invalidate();
       toast({ title: 'Aviso publicado' });
     },
-    onError: (error) =>
-      toast({ title: 'Erro ao publicar aviso', description: getErrorMessage(error), variant: 'destructive' }),
+    onError: () =>
+      toast({ title: 'Erro ao publicar aviso', description: noticeError('publicar o aviso'), variant: 'destructive' }),
   });
 
   const updateNotice = useMutation({
     mutationFn: async ({ id, ...input }: AdminNoticeInput & { id: string }) => {
-      const { error } = await (supabase.from('admin_notices' as any) as any)
+      const { error } = await supabase.from('admin_notices')
         .update(input)
         .eq('id', id);
       if (error) throw error;
@@ -99,13 +95,13 @@ export function useAdminNotices() {
       invalidate();
       toast({ title: 'Aviso atualizado' });
     },
-    onError: (error) =>
-      toast({ title: 'Erro ao atualizar aviso', description: getErrorMessage(error), variant: 'destructive' }),
+    onError: () =>
+      toast({ title: 'Erro ao atualizar aviso', description: noticeError('atualizar o aviso'), variant: 'destructive' }),
   });
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      const { error } = await (supabase.from('admin_notices' as any) as any)
+      const { error } = await supabase.from('admin_notices')
         .update({ is_active: isActive })
         .eq('id', id);
       if (error) throw error;
@@ -114,31 +110,34 @@ export function useAdminNotices() {
       invalidate();
       toast({ title: variables.isActive ? 'Aviso ativado' : 'Aviso desativado' });
     },
-    onError: (error) =>
-      toast({ title: 'Erro ao alterar o aviso', description: getErrorMessage(error), variant: 'destructive' }),
+    onError: () =>
+      toast({ title: 'Erro ao alterar o aviso', description: noticeError('alterar o aviso'), variant: 'destructive' }),
   });
 
   const deleteNotice = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from('admin_notices' as any) as any).delete().eq('id', id);
+      const { error } = await supabase.from('admin_notices').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       invalidate();
       toast({ title: 'Aviso excluído' });
     },
-    onError: (error) =>
-      toast({ title: 'Erro ao excluir aviso', description: getErrorMessage(error), variant: 'destructive' }),
+    onError: () =>
+      toast({ title: 'Erro ao excluir aviso', description: noticeError('excluir o aviso'), variant: 'destructive' }),
   });
 
   return {
-    notices,
-    isLoading,
-    dismissCount,
-    createNotice: createNotice.mutate,
-    updateNotice: updateNotice.mutate,
-    toggleActive: toggleActive.mutate,
-    deleteNotice: deleteNotice.mutate,
+    notices: noticesQuery.data ?? [],
+    isLoading: noticesQuery.isLoading || dismissalsQuery.isLoading,
+    isError: noticesQuery.isError || dismissalsQuery.isError,
+    refetch: async () => Promise.all([noticesQuery.refetch(), dismissalsQuery.refetch()]),
+    dismissCount: dismissalsQuery.data ?? {},
+    createNotice: createNotice.mutateAsync,
+    updateNotice: updateNotice.mutateAsync,
+    toggleActive: toggleActive.mutateAsync,
+    deleteNotice: deleteNotice.mutateAsync,
     isSaving: createNotice.isPending || updateNotice.isPending,
+    isMutating: createNotice.isPending || updateNotice.isPending || toggleActive.isPending || deleteNotice.isPending,
   };
 }

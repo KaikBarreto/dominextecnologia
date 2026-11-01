@@ -32,6 +32,7 @@ import { AdminNotificationBell } from '@/components/admin/AdminNotificationBell'
 import { AppLanguageSwitcher } from '@/components/i18n/AppLanguageSwitcher';
 import { HeaderClock } from '@/components/layout/HeaderClock';
 import { SystemNoticeBanners } from '@/components/notices/SystemNoticeBanners';
+import { PlatformNpsSurvey } from '@/components/nps/PlatformNpsSurvey';
 import { SubscriptionRenewalBanner } from '@/components/billing/SubscriptionRenewalBanner';
 import { TasksDrawer } from '@/components/tasks/TasksDrawer';
 import { DailyTasksPopup } from '@/components/tasks/DailyTasksPopup';
@@ -124,6 +125,7 @@ export function AppLayout() {
   return (
     <>
       {!isAdminUser && user && <Suspense fallback={<div className="fixed inset-0 z-[10000] bg-[#111]" />}><DomiflixIntroGate /></Suspense>}
+      {!isAdminUser && user && <PlatformNpsSurvey />}
       <VersionUpdateNotification />
       {/* Popup diário de tarefas (1x/dia, BRT). Só para usuários não-admin. */}
       {!isAdminUser && user && (
@@ -190,8 +192,8 @@ function SidebarShell() {
           <DesktopSidebarHeader />
           <SubscriptionRenewalBanner />
           <DomiflixLearningReminder />
+          <SystemNoticeBanners scope="global" />
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
-            <SystemNoticeBanners scope="global" />
             <RouteTransition>
               <Outlet />
             </RouteTransition>
@@ -269,17 +271,17 @@ function DesktopSidebarHeader() {
 // ============================================================
 function TopbarShell() {
   return (
-    <div className="flex min-h-screen w-full max-w-full flex-col min-w-0">
+    <div className="flex h-[100dvh] w-full max-w-full flex-col overflow-hidden min-w-0">
       <TopNavbar />
       <SubscriptionRenewalBanner />
       <DomiflixLearningReminder />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
-        <SystemNoticeBanners scope="global" />
+      <SystemNoticeBanners scope="global" />
+      <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
         <RouteTransition>
           <Outlet />
         </RouteTransition>
       </main>
-      <footer className="border-t px-4 h-[52px] flex items-center justify-center">
+      <footer className="h-[52px] shrink-0 border-t px-4 flex items-center justify-center">
         <SystemFooter />
       </footer>
     </div>
@@ -314,6 +316,7 @@ function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
     <div className="flex h-[100dvh] w-full max-w-full flex-col bg-background">
       <MobileTabletHeader isAdminUser={isAdminUser} scrolled={scrolled} />
       <DomiflixLearningReminder />
+      <SystemNoticeBanners scope="global" />
       <MobilePullToRefresh
         onRefresh={handleRefresh}
         onScroll={(e) => {
@@ -326,7 +329,6 @@ function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
         className="flex-1 overflow-x-hidden min-w-0 max-w-full bg-background"
       >
         <main className="p-4 pb-[calc(8rem+env(safe-area-inset-bottom))] bg-background">
-          <SystemNoticeBanners scope="global" />
           <RouteTransition>
             <Outlet />
           </RouteTransition>

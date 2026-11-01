@@ -471,6 +471,200 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_notice_dismissals: {
+        Row: {
+          dismissed_at: string
+          notice_id: string
+          user_id: string
+        }
+        Insert: {
+          dismissed_at?: string
+          notice_id: string
+          user_id: string
+        }
+        Update: {
+          dismissed_at?: string
+          notice_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_notice_dismissals_notice_id_fkey"
+            columns: ["notice_id"]
+            isOneToOne: false
+            referencedRelation: "admin_notices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_notices: {
+        Row: {
+          action_label: string | null
+          action_url: string | null
+          created_at: string
+          created_by: string | null
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          is_dismissible: boolean
+          message: string
+          scope: string
+          starts_at: string | null
+          target_audience: string
+          target_ids: string[]
+          title: string
+          updated_at: string
+          variant: string
+        }
+        Insert: {
+          action_label?: string | null
+          action_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          is_dismissible?: boolean
+          message: string
+          scope?: string
+          starts_at?: string | null
+          target_audience?: string
+          target_ids?: string[]
+          title: string
+          updated_at?: string
+          variant?: string
+        }
+        Update: {
+          action_label?: string | null
+          action_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          is_dismissible?: boolean
+          message?: string
+          scope?: string
+          starts_at?: string | null
+          target_audience?: string
+          target_ids?: string[]
+          title?: string
+          updated_at?: string
+          variant?: string
+        }
+        Relationships: []
+      }
+      admin_nps_responses: {
+        Row: {
+          company_id: string
+          feedback: string | null
+          id: string
+          is_enjoying: boolean
+          responded_at: string
+          score: number
+          survey_id: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          feedback?: string | null
+          id?: string
+          is_enjoying: boolean
+          responded_at?: string
+          score: number
+          survey_id: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          feedback?: string | null
+          id?: string
+          is_enjoying?: boolean
+          responded_at?: string
+          score?: number
+          survey_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_nps_responses_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_nps_responses_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "admin_nps_surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_nps_surveys: {
+        Row: {
+          audience_snapshot: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          ends_at: string | null
+          enjoyment_question: string
+          feedback_prompt: string | null
+          google_review_min_score: number | null
+          google_review_url: string | null
+          id: string
+          is_active: boolean
+          recommendation_question: string
+          starts_at: string | null
+          target_audience: string
+          target_company_ids: string[]
+          title: string
+          trigger: string
+          updated_at: string
+        }
+        Insert: {
+          audience_snapshot?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          ends_at?: string | null
+          enjoyment_question?: string
+          feedback_prompt?: string | null
+          google_review_min_score?: number | null
+          google_review_url?: string | null
+          id?: string
+          is_active?: boolean
+          recommendation_question?: string
+          starts_at?: string | null
+          target_audience?: string
+          target_company_ids?: string[]
+          title: string
+          trigger?: string
+          updated_at?: string
+        }
+        Update: {
+          audience_snapshot?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          ends_at?: string | null
+          enjoyment_question?: string
+          feedback_prompt?: string | null
+          google_review_min_score?: number | null
+          google_review_url?: string | null
+          id?: string
+          is_active?: boolean
+          recommendation_question?: string
+          starts_at?: string | null
+          target_audience?: string
+          target_company_ids?: string[]
+          title?: string
+          trigger?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_permissions: {
         Row: {
           created_at: string
@@ -16257,6 +16451,19 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_pending_admin_nps: {
+        Args: never
+        Returns: {
+          description: string | null
+          enjoyment_question: string
+          feedback_prompt: string | null
+          google_review_min_score: number | null
+          google_review_url: string | null
+          id: string
+          recommendation_question: string
+          title: string
+        }[]
+      }
       get_or_create_ponto_kiosk_slug: {
         Args: { p_company_id: string }
         Returns: string
@@ -17516,6 +17723,20 @@ export type Database = {
         Returns: boolean
       }
       storage_stamp_company_ok: { Args: { meta: Json }; Returns: boolean }
+      submit_admin_nps: {
+        Args: {
+          p_feedback?: string | null
+          p_is_enjoying: boolean
+          p_score: number
+          p_survey_id: string
+        }
+        Returns: {
+          google_review_url: string | null
+          response_id: string
+          should_invite_google: boolean
+          survey_id: string
+        }[]
+      }
       submit_disc_assessment: {
         Args: {
           p_answers: Json

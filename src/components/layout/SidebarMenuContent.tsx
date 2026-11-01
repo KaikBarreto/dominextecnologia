@@ -45,7 +45,7 @@ import {
 } from 'lucide-react';
 import { OperacionalIcon, AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -82,14 +82,14 @@ import logoHorizontalVerde from '@/assets/logo-horizontal-verde.png';
 
 interface MenuItem {
   title: string;
-  icon: any;
+  icon: ComponentType<{ className?: string }>;
   path?: string;
   screenKey?: string;
   moduleKey?: ModuleCode;
   requiresSegment?: string;
   /** Gate dedicado: libera só se o segmento da empresa tem Área do Técnico™. */
   requiresTechTools?: boolean;
-  children?: { title: string; icon: any; path: string; screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string }[];
+  children?: { title: string; icon: ComponentType<{ className?: string }>; path: string; screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string }[];
 }
 
 // Estrutura preservada do AppSidebar antigo do Dominex — não inventar itens novos.
@@ -196,7 +196,7 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Health Score', icon: HeartPulse, path: '/admin/health-score', screenKey: 'admin_health_score' },
   { title: 'Cobranças', icon: CreditCard, path: '/admin/cobrancas', screenKey: 'admin_cobrancas' },
   { title: 'Blog', icon: Newspaper, path: '/admin/blog', screenKey: 'admin_blog', masterOnly: true },
-  { title: 'Avisos', icon: Megaphone, path: '/admin/avisos', screenKey: 'admin_avisos', masterOnly: true },
+  { title: 'Avisos e NPS', icon: Megaphone, path: '/admin/avisos', screenKey: 'admin_avisos', masterOnly: true },
   // Estatísticas engloba o antigo "Banco de Dados" (/admin/monitoramento) como
   // aba, mais Sistema (uso da base) e Infra. masterOnly: vendedor-admin NÃO vê.
   // ⚠️ Este array é O menu do painel admin. `AdminSidebarNav.tsx` é código

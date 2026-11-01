@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.11";
+export const APP_VERSION = "1.38.12";
 
 export const VERSION_NOTES =
-  "O histórico de novidades ganhou uma leitura mais clara, com versões, datas e categorias organizadas em uma linha do tempo responsiva.";
+  "Avisos importantes agora podem aparecer no topo do sistema, e a nova pesquisa de satisfação apresenta uma pergunta por vez com respostas fáceis de entender.";
