@@ -23,6 +23,7 @@ from app.nfe.documents import (
 from app.nfe.operations import (
     Record, executar, preparar_operacao, reconciliar_inutilizacao,
 )
+from app.nfe.api_schemas import PrepararInutilizacaoNfeRequest
 from app.nfe.xml import DS, NS, ErroNfeLocal, assinar_xml, montar_xml, validar_assinatura
 from tests.test_nfe_shadow import fake_credential, job_base, signed
 
@@ -136,6 +137,26 @@ class FiscalFixtures(unittest.TestCase):
 
 
 class DocumentTests(FiscalFixtures):
+    def test_contrato_inutilizacao_exige_ano_completo(self):
+        base = {
+            "empresaId": COMPANY,
+            "ambiente": 2,
+            "certificado": {
+                "pfxCifradoB64": "YQ==", "dekEnvelopadaB64": "YQ==",
+                "senhaCifradaB64": "YQ==", "nonceB64": "YQ==",
+                "algoritmo": "AES-256-GCM",
+            },
+            "tenantId": COMPANY,
+            "operationId": "10000000-0000-4000-8000-000000000001",
+            "snapshotHash": "a" * 64,
+            "uf": "SP", "cnpj": CNPJ, "ano": 2026, "serie": 1,
+            "numeroInicial": 1, "numeroFinal": 3,
+            "justificativa": "Numeros nao utilizados em teste local",
+        }
+        self.assertEqual(2026, PrepararInutilizacaoNfeRequest.model_validate(base).ano)
+        with self.assertRaises(ValueError):
+            PrepararInutilizacaoNfeRequest.model_validate({**base, "ano": 26})
+
     def test_eventos_assinados_validam_no_schema_oficial(self):
         for kind in EVENT_TYPES:
             xml, identity = self.make_event(kind)

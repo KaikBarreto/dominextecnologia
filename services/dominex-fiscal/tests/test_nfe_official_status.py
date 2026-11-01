@@ -19,11 +19,15 @@ def req_base(xml: str, key: str, **extra):
     )
 
 
-def cancelled(key: str, cstat: str = "101"):
+def cancelled(key: str, cstat: str = "101", *, with_event: bool = False):
     return {
         "cstat": cstat, "reason": "Cancelamento homologado", "key": key,
         "protocol": "135260000000001", "protocol_cstat": "100",
         "protocol_xml": "<protNFe/>", "response_xml": "<retConsSitNFe/>",
+        "events": ([{
+            "event_type": "110111", "sequence": "1", "cstat": "135",
+            "processed_xml": "<procEventoNFe/>",
+        }] if with_event else []),
     }
 
 
@@ -78,12 +82,26 @@ def test_cancelamento_ja_homologado_e_recuperado_sem_reenvio():
     xml, key = evento_assinado("cancellation")
     req = req_base(xml, key, tipo="cancellation", id_lote="3")
     with patch.object(service, "_credencial", return_value=fake_credential()), patch.object(
-        service.soap, "consultar", return_value=cancelled(key, "151")
+        service.soap, "consultar", return_value=cancelled(key, "151", with_event=True)
     ), patch.object(service.soap, "transmitir_evento") as transmitir:
         result = service.transmitir_evento(req)
     assert result["outcome"] == "accepted"
     assert result["recovered"] is True
     assert result["situacaoOficial"] == "cancelada"
+    assert result["xmlProcessado"] == "<procEventoNFe/>"
+    transmitir.assert_not_called()
+
+
+def test_cancelamento_sem_xml_do_evento_nao_finge_recuperacao_completa():
+    xml, key = evento_assinado("cancellation")
+    req = req_base(xml, key, tipo="cancellation", id_lote="3")
+    with patch.object(service, "_credencial", return_value=fake_credential()), patch.object(
+        service.soap, "consultar", return_value=cancelled(key, "151")
+    ), patch.object(service.soap, "transmitir_evento") as transmitir:
+        result = service.transmitir_evento(req)
+    assert result["outcome"] == "uncertain"
+    assert result["situacaoOficial"] == "cancelada"
+    assert result["xmlProcessado"] is None
     transmitir.assert_not_called()
 
 

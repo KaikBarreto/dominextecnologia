@@ -317,10 +317,21 @@ def transmitir_evento(req: schemas.TransmitirEventoNfeRequest) -> dict[str, Any]
         anterior = soap.consultar(chave, req.uf.upper(), ambiente, credencial)
         if anterior.get("cstat") in CANCELADA:
             if req.tipo == "cancellation":
+                evento = _evento_confirmado_na_consulta(
+                    anterior,
+                    tipo_evento=info.findtext(f"{{{xml.NS}}}tpEvento") or "",
+                    sequencia=info.findtext(f"{{{xml.NS}}}nSeqEvento") or "",
+                )
+                if not evento or not evento.get("processed_xml"):
+                    return _resultado(
+                        req, outcome="uncertain", recovered=False, chave=chave,
+                        situacaoOficial="cancelada", resposta=anterior,
+                        xmlProcessado=None,
+                    )
                 return _resultado(
                     req, outcome="accepted", recovered=True, chave=chave,
                     situacaoOficial="cancelada", resposta=anterior,
-                    xmlProcessado=None,
+                    xmlProcessado=evento["processed_xml"],
                 )
             return _resultado(
                 req, outcome="rejected", recovered=True, chave=chave,

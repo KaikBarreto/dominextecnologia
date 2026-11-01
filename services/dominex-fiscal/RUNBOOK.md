@@ -283,7 +283,7 @@ export ECO_TOKEN
 jq -n '{
   ecosistema: {
     token: env.ECO_TOKEN,
-    scopes: ["nfe:*", "nfse:*", "mdfe:*", "dfe:*"],
+    scopes: ["custody:write", "nfe:*", "nfse:*", "mdfe:*", "dfe:*"],
     rateLimitPerMinute: 600
   }
 }' > "$CLIENTS_TMP"

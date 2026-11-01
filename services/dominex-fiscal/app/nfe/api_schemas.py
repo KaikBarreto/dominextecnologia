@@ -63,7 +63,7 @@ class TransmitirEventoNfeRequest(OperacaoFiscal):
 class PrepararInutilizacaoNfeRequest(OperacaoFiscal):
     uf: str = Field(min_length=2, max_length=2)
     cnpj: str = Field(pattern=r"^[0-9]{14}$")
-    ano: int = Field(ge=0, le=99)
+    ano: int = Field(ge=2000, le=2099)
     serie: int = Field(ge=0, le=889)
     numero_inicial: int = Field(alias="numeroInicial", ge=1, le=999_999_999)
     numero_final: int = Field(alias="numeroFinal", ge=1, le=999_999_999)
