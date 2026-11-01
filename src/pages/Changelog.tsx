@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.12',
+    date: '1 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Janelas abrem sem piscar durante o carregamento',
+        description: 'Corrigimos a abertura de janelas e avisos que podiam aparecer e desaparecer rapidamente sobre telas como Orçamentos. A transição agora acontece de forma estável.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.38.11',
     date: '31 de outubro de 2026',
     type: 'patch',

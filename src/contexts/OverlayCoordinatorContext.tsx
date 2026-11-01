@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useId, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useId, useLayoutEffect, useMemo, useState } from "react";
 
 export const OVERLAY_PRIORITY = {
   marketing: 10,
@@ -41,7 +41,14 @@ export function useOverlaySlot(open: boolean, options?: { id?: string; priority?
   const register = coordinator?.register;
   const unregister = coordinator?.unregister;
 
-  useEffect(() => {
+  // O slot participa diretamente da visibilidade do modal. Registrar em um
+  // effect passivo deixa o navegador pintar um frame com `activeId = null`:
+  // a tela aparece, o overlay entra logo depois e, em consultas rápidas, sai
+  // novamente. O resultado visual é um modal "piscando" sobre a página.
+  //
+  // Layout effect conclui a arbitragem antes do paint, mantendo a troca entre
+  // overlays atômica para o usuário (inclusive no primeiro carregamento).
+  useLayoutEffect(() => {
     if (!register || !unregister || !open) return;
     register(id, priority);
     return () => unregister(id);
