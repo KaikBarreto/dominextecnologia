@@ -1,4 +1,4 @@
-import React, { memo, useState } from 'react';
+import React, { memo, useState, type ComponentType } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -38,6 +38,7 @@ import {
   ShoppingCart,
   History as HistoryIcon,
   BarChart3,
+  Megaphone,
 } from 'lucide-react';
 import { AreaTecnicoIcon, OperacionalIcon } from '@/components/icons/MenuIcons';
 import {
@@ -76,11 +77,11 @@ import { cn } from '@/lib/utils';
 
 interface MenuItem {
   title: string;
-  icon: any;
+  icon: ComponentType<{ className?: string }>;
   path?: string;
   screenKey?: string;
   moduleKey?: ModuleCode;
-  children?: { title: string; icon: any; path: string; screenKey?: string; moduleKey?: ModuleCode }[];
+  children?: { title: string; icon: ComponentType<{ className?: string }>; path: string; screenKey?: string; moduleKey?: ModuleCode }[];
 }
 
 const tenantMenuItems: MenuItem[] = [
@@ -149,6 +150,7 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Vendedores', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
   { title: 'Afiliados', icon: Handshake, path: '/admin/afiliados', screenKey: 'admin_afiliados' },
   { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro', screenKey: 'admin_financeiro' },
+  { title: 'Avisos e NPS', icon: Megaphone, path: '/admin/avisos', screenKey: 'admin_avisos', masterOnly: true },
   { title: 'Domiflix', icon: Clapperboard, path: '/admin/domiflix', masterOnly: true },
 ];
 

@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.13',
+    date: '1 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Avisos importantes dentro do sistema',
+        description: 'Comunicados da Dominex agora podem aparecer no topo do sistema, no período certo e somente para as empresas selecionadas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Pesquisa de satisfação mais simples',
+        description: 'A nova pesquisa apresenta uma pergunta por vez, com respostas grandes e fáceis de entender no computador e no celular.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.38.12',
     date: '1 de novembro de 2026',
     type: 'patch',

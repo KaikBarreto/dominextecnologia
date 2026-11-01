@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.12";
+export const APP_VERSION = "1.38.13";
 
 export const VERSION_NOTES =
-  "Janelas e avisos do sistema agora abrem de forma estável, sem piscar sobre a tela durante o carregamento.";
+  "Avisos importantes agora podem aparecer no topo do sistema, e a nova pesquisa de satisfação apresenta uma pergunta por vez com respostas fáceis de entender.";
