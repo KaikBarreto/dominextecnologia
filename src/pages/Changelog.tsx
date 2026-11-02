@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.15',
+    date: '2 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Status correto após baixa feita fora do Asaas',
+        description: 'Quando uma cobrança recorrente é recebida por outro meio e baixada no Asaas, o contrato agora deixa de aparecer como vencido e passa a mostrar o próximo vencimento correto. Se ainda houver outra cobrança atrasada, o aviso permanece.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.38.14',
     date: '2 de novembro de 2026',
     type: 'patch',
