@@ -9,33 +9,81 @@ export const OVERLAY_PRIORITY = {
   critical: 100,
 } as const;
 
-type Entry = { id: string; priority: number; order: number };
+type Entry = { id: string; priority: number; order: number; parentId: string | null };
 type OverlayContextValue = {
-  activeId: string | null;
-  register: (id: string, priority: number) => void;
+  activeIds: ReadonlySet<string>;
+  register: (id: string, priority: number, parentId: string | null) => void;
   unregister: (id: string) => void;
 };
 
 const OverlayContext = createContext<OverlayContextValue | null>(null);
+const OverlayParentContext = createContext<string | null>(null);
+
+/**
+ * Marca a identidade do modal atual para overlays renderizados dentro dele.
+ * Portals preservam contexto React, então um Dialog/Drawer filho continua
+ * sabendo quem é o pai mesmo sendo desenhado diretamente no <body>.
+ */
+export function OverlayNestingProvider({ id, children }: { id: string; children: React.ReactNode }) {
+  return <OverlayParentContext.Provider value={id}>{children}</OverlayParentContext.Provider>;
+}
 
 export function OverlayCoordinatorProvider({ children }: { children: React.ReactNode }) {
   const [entries, setEntries] = useState<Entry[]>([]);
-  const register = useCallback((id: string, priority: number) => {
+  const register = useCallback((id: string, priority: number, parentId: string | null) => {
     setEntries((current) => current.some((entry) => entry.id === id)
-      ? current.map((entry) => entry.id === id ? { ...entry, priority } : entry)
-      : [...current, { id, priority, order: Date.now() + Math.random() }]);
+      ? current.map((entry) => entry.id === id ? { ...entry, priority, parentId } : entry)
+      : [...current, { id, priority, parentId, order: Date.now() + Math.random() }]);
   }, []);
   const unregister = useCallback((id: string) => {
     setEntries((current) => current.filter((entry) => entry.id !== id));
   }, []);
-  const activeId = useMemo(() => [...entries]
-    .sort((a, b) => b.priority - a.priority || b.order - a.order)[0]?.id ?? null, [entries]);
 
-  return <OverlayContext.Provider value={{ activeId, register, unregister }}>{children}</OverlayContext.Provider>;
+  const activeIds = useMemo(() => {
+    const byId = new Map(entries.map((entry) => [entry.id, entry]));
+    const isAncestorOf = (ancestorId: string, entry: Entry) => {
+      const visited = new Set<string>();
+      let parentId = entry.parentId;
+      while (parentId && !visited.has(parentId)) {
+        if (parentId === ancestorId) return true;
+        visited.add(parentId);
+        parentId = byId.get(parentId)?.parentId ?? null;
+      }
+      return false;
+    };
+
+    // Prioridade continua vencendo overlays concorrentes. Em empate, um filho
+    // sempre fica acima do próprio pai, independentemente da ordem em que os
+    // layout effects registraram cada portal. Entre irmãos, o mais novo vence.
+    const top = [...entries].sort((a, b) => {
+      if (a.priority !== b.priority) return b.priority - a.priority;
+      if (isAncestorOf(a.id, b)) return 1;
+      if (isAncestorOf(b.id, a)) return -1;
+      return b.order - a.order;
+    })[0];
+
+    const chain = new Set<string>();
+    const visited = new Set<string>();
+    let current = top;
+    while (current && !visited.has(current.id)) {
+      chain.add(current.id);
+      visited.add(current.id);
+      current = current.parentId ? byId.get(current.parentId) : undefined;
+    }
+    return chain;
+  }, [entries]);
+
+  const value = useMemo(
+    () => ({ activeIds, register, unregister }),
+    [activeIds, register, unregister],
+  );
+
+  return <OverlayContext.Provider value={value}>{children}</OverlayContext.Provider>;
 }
 export function useOverlaySlot(open: boolean, options?: { id?: string; priority?: number }) {
   const generatedId = useId();
   const coordinator = useContext(OverlayContext);
+  const parentId = useContext(OverlayParentContext);
   const id = options?.id ?? `overlay-${generatedId}`;
   const priority = options?.priority ?? OVERLAY_PRIORITY.userAction;
   const register = coordinator?.register;
@@ -50,9 +98,9 @@ export function useOverlaySlot(open: boolean, options?: { id?: string; priority?
   // overlays atômica para o usuário (inclusive no primeiro carregamento).
   useLayoutEffect(() => {
     if (!register || !unregister || !open) return;
-    register(id, priority);
+    register(id, priority, parentId);
     return () => unregister(id);
-  }, [id, open, priority, register, unregister]);
+  }, [id, open, parentId, priority, register, unregister]);
 
-  return !coordinator || !open || coordinator.activeId === id;
+  return !coordinator || !open || coordinator.activeIds.has(id);
 }

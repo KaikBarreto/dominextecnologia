@@ -17,7 +17,11 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { cn } from "@/lib/utils";
-import { OVERLAY_PRIORITY, useOverlaySlot } from "@/contexts/OverlayCoordinatorContext";
+import {
+  OVERLAY_PRIORITY,
+  OverlayNestingProvider,
+  useOverlaySlot,
+} from "@/contexts/OverlayCoordinatorContext";
 
 interface ResponsiveDialogProps {
   open: boolean;
@@ -83,7 +87,9 @@ export function ResponsiveDialog({
 }: ResponsiveDialogProps) {
   const isMobile = useIsCompact();
   const scrollRef = React.useRef<HTMLDivElement>(null);
-  const isActiveOverlay = useOverlaySlot(open, { id: overlayId, priority: overlayPriority });
+  const generatedOverlayId = React.useId();
+  const resolvedOverlayId = overlayId ?? `responsive-dialog-${generatedOverlayId}`;
+  const isActiveOverlay = useOverlaySlot(open, { id: resolvedOverlayId, priority: overlayPriority });
   const visibleOpen = open && isActiveOverlay;
 
   React.useEffect(() => {
@@ -115,94 +121,98 @@ export function ResponsiveDialog({
 
   if (isMobile) {
     return (
-      <Drawer open={visibleOpen} onOpenChange={onOpenChange} dismissible={dismissible}>
-        <DrawerContent
+      <OverlayNestingProvider id={resolvedOverlayId}>
+        <Drawer open={visibleOpen} onOpenChange={onOpenChange} dismissible={dismissible}>
+          <DrawerContent
+            className={cn(
+              mobileFullHeight && "h-[95dvh] max-h-[95dvh]",
+              (customLayout || footer) && "flex flex-col min-h-0 overflow-hidden p-0 gap-0",
+              !dismissible && "[&>div:first-child]:hidden",
+              drawerClassName,
+            )}
+            onPointerDownOutside={dismissible ? undefined : (e) => e.preventDefault()}
+            onInteractOutside={dismissible ? undefined : (e) => e.preventDefault()}
+          >
+            {customLayout ? (
+              <>
+                <VisuallyHidden asChild>
+                  <DrawerTitle>{title}</DrawerTitle>
+                </VisuallyHidden>
+                {children}
+              </>
+            ) : (
+              <>
+                <DrawerHeader className="text-left shrink-0">
+                  <DrawerTitle>{title}</DrawerTitle>
+                  {description && <DrawerDescription>{description}</DrawerDescription>}
+                </DrawerHeader>
+                <ScrollArea
+                  ref={scrollRef}
+                  className={cn(
+                    "overflow-y-auto overflow-x-hidden px-4 pb-4 [&>div>div]:!block [&>div>div]:max-w-full",
+                    footer ? "flex-1 min-h-0" : mobileFullHeight ? "flex-1 min-h-0" : "max-h-[70vh]",
+                  )}
+                >
+                  {children}
+                </ScrollArea>
+                {footer && (
+                  <div className="shrink-0 border-t bg-background px-4 py-3">
+                    {footer}
+                  </div>
+                )}
+              </>
+            )}
+          </DrawerContent>
+        </Drawer>
+      </OverlayNestingProvider>
+    );
+  }
+
+  return (
+    <OverlayNestingProvider id={resolvedOverlayId}>
+      <Dialog open={visibleOpen} onOpenChange={dismissible ? onOpenChange : undefined}>
+        <DialogContent
           className={cn(
-            mobileFullHeight && "h-[95dvh] max-h-[95dvh]",
-            (customLayout || footer) && "flex flex-col min-h-0 overflow-hidden p-0 gap-0",
-            !dismissible && "[&>div:first-child]:hidden",
-            drawerClassName,
+            className,
+            (customLayout || footer) && "p-0 overflow-hidden flex flex-col min-h-0 gap-0",
+            footer && "max-h-[90vh]",
+            !dismissible && "[&>button]:hidden",
           )}
+          onEscapeKeyDown={dismissible ? undefined : (e) => e.preventDefault()}
           onPointerDownOutside={dismissible ? undefined : (e) => e.preventDefault()}
           onInteractOutside={dismissible ? undefined : (e) => e.preventDefault()}
         >
           {customLayout ? (
             <>
               <VisuallyHidden asChild>
-                <DrawerTitle>{title}</DrawerTitle>
+                <DialogTitle>{title}</DialogTitle>
               </VisuallyHidden>
               {children}
             </>
+          ) : footer ? (
+            <>
+              <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
+                <DialogTitle>{title}</DialogTitle>
+                {description && <DialogDescription>{description}</DialogDescription>}
+              </DialogHeader>
+              <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-6 pb-4">
+                {children}
+              </div>
+              <div className="shrink-0 border-t bg-background px-6 py-3">
+                {footer}
+              </div>
+            </>
           ) : (
             <>
-              <DrawerHeader className="text-left shrink-0">
-                <DrawerTitle>{title}</DrawerTitle>
-                {description && <DrawerDescription>{description}</DrawerDescription>}
-              </DrawerHeader>
-              <ScrollArea
-                ref={scrollRef}
-                className={cn(
-                  "overflow-y-auto overflow-x-hidden px-4 pb-4 [&>div>div]:!block [&>div>div]:max-w-full",
-                  footer ? "flex-1 min-h-0" : mobileFullHeight ? "flex-1 min-h-0" : "max-h-[70vh]",
-                )}
-              >
-                {children}
-              </ScrollArea>
-              {footer && (
-                <div className="shrink-0 border-t bg-background px-4 py-3">
-                  {footer}
-                </div>
-              )}
+              <DialogHeader>
+                <DialogTitle>{title}</DialogTitle>
+                {description && <DialogDescription>{description}</DialogDescription>}
+              </DialogHeader>
+              {children}
             </>
           )}
-        </DrawerContent>
-      </Drawer>
-    );
-  }
-
-  return (
-    <Dialog open={visibleOpen} onOpenChange={dismissible ? onOpenChange : undefined}>
-      <DialogContent
-        className={cn(
-          className,
-          (customLayout || footer) && "p-0 overflow-hidden flex flex-col min-h-0 gap-0",
-          footer && "max-h-[90vh]",
-          !dismissible && "[&>button]:hidden",
-        )}
-        onEscapeKeyDown={dismissible ? undefined : (e) => e.preventDefault()}
-        onPointerDownOutside={dismissible ? undefined : (e) => e.preventDefault()}
-        onInteractOutside={dismissible ? undefined : (e) => e.preventDefault()}
-      >
-        {customLayout ? (
-          <>
-            <VisuallyHidden asChild>
-              <DialogTitle>{title}</DialogTitle>
-            </VisuallyHidden>
-            {children}
-          </>
-        ) : footer ? (
-          <>
-            <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
-              <DialogTitle>{title}</DialogTitle>
-              {description && <DialogDescription>{description}</DialogDescription>}
-            </DialogHeader>
-            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-6 pb-4">
-              {children}
-            </div>
-            <div className="shrink-0 border-t bg-background px-6 py-3">
-              {footer}
-            </div>
-          </>
-        ) : (
-          <>
-            <DialogHeader>
-              <DialogTitle>{title}</DialogTitle>
-              {description && <DialogDescription>{description}</DialogDescription>}
-            </DialogHeader>
-            {children}
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </OverlayNestingProvider>
   );
 }

@@ -105,6 +105,7 @@ import { QuoteFormDialog, buildMaterialItem, calculateQuoteCommercialTotal } fro
 import { BDISummaryCard } from './BDISummaryCard';
 import { calculateCommercialPaymentOptions } from '@/lib/quote-commercial-total';
 import { calculateBDI } from '@/hooks/useBDICalculator';
+import { OverlayCoordinatorProvider } from '@/contexts/OverlayCoordinatorContext';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -115,7 +116,11 @@ let root: Root;
 
 function mount() {
   act(() => {
-    root.render(<QuoteFormDialog open onOpenChange={() => {}} />);
+    root.render(
+      <OverlayCoordinatorProvider>
+        <QuoteFormDialog open onOpenChange={() => {}} />
+      </OverlayCoordinatorProvider>,
+    );
   });
 }
 

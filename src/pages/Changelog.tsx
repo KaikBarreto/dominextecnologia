@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.14',
+    date: '2 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Adicionar materiais sem piscar a tela',
+        description: 'Ao adicionar materiais dentro de um orçamento, a janela agora permanece estável e pronta para buscar, ajustar quantidades e confirmar os itens.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.38.13',
     date: '1 de novembro de 2026',
     type: 'patch',
