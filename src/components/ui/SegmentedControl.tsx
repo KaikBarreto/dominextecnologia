@@ -16,6 +16,14 @@ export interface SegmentedControlProps<T extends string> {
   /** Desabilita o controle inteiro (além do `disabled` por opção). */
   disabled?: boolean;
   className?: string;
+  /**
+   * Sobrescreve apenas a aparência da opção ativa. Útil em áreas cujo
+   * accent da própria função é neutro (por exemplo, ações fiscais em preto),
+   * sem alterar o primary/white-label do restante do produto.
+   */
+  activeClassName?: string;
+  /** Estilo inline opcional do item ativo para accents fixos de domínio. */
+  activeStyle?: React.CSSProperties;
   size?: "sm" | "default";
   "aria-label"?: string;
 }
@@ -38,6 +46,8 @@ export function SegmentedControl<T extends string>({
   onValueChange,
   disabled = false,
   className,
+  activeClassName,
+  activeStyle,
   size = "default",
   "aria-label": ariaLabel,
 }: SegmentedControlProps<T>) {
@@ -110,6 +120,7 @@ export function SegmentedControl<T extends string>({
               onValueChange(option.value);
             }}
             onKeyDown={(e) => handleKeyDown(e, index)}
+            style={isActive ? activeStyle : undefined}
             className={cn(
               "inline-flex items-center justify-center gap-1.5 rounded-md border font-medium transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -117,7 +128,7 @@ export function SegmentedControl<T extends string>({
               isDisabled
                 ? "opacity-50 cursor-not-allowed border-input bg-background text-muted-foreground"
                 : isActive
-                ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                ? cn("border-primary bg-primary text-primary-foreground shadow-sm", activeClassName)
                 : "border-input bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           >

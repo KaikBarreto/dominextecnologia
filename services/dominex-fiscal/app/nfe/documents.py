@@ -57,9 +57,13 @@ def _context(uf: str, environment: str) -> tuple[str, str]:
     return UF_CODES[normalized], "1" if environment == "production" else "2"
 
 
-def validar_chave(key: str, uf: str, cnpj: str | None = None) -> str:
+def validar_chave(
+    key: str, uf: str, cnpj: str | None = None, *, model: str = "55"
+) -> str:
     _document(key, "Chave NF-e", 44)
-    if key[-1] != _dv(key[:43]) or key[:2] != UF_CODES.get(str(uf).upper()) or key[20:22] != "55":
+    if model not in {"55", "65"}:
+        raise ErroNfeLocal("Modelo fiscal inválido para validar a chave.")
+    if key[-1] != _dv(key[:43]) or key[:2] != UF_CODES.get(str(uf).upper()) or key[20:22] != model:
         raise ErroNfeLocal("Chave NF-e não corresponde à UF/modelo ou ao dígito verificador.")
     if cnpj is not None and key[6:20] != _document(cnpj, "CNPJ do emitente", 14):
         raise ErroNfeLocal("Chave NF-e não pertence ao emitente selecionado.")
@@ -80,11 +84,14 @@ def proxima_sequencia_cce(confirmed: list[int], *, pending: int | None = None) -
 def montar_evento(
     *, key: str, cnpj: str, uf: str, environment: str, kind: str, sequence: int,
     text: str, occurred_at: datetime, protocol: str | None = None,
+    model: str = "55",
 ) -> tuple[str, str]:
     code, tp_amb = _context(uf, environment)
-    validar_chave(key, uf, cnpj)
+    validar_chave(key, uf, cnpj, model=model)
     if kind not in EVENT_TYPES:
         raise ErroNfeLocal("Tipo de evento NF-e não suportado.")
+    if model == "65" and kind != "cancellation":
+        raise ErroNfeLocal("NFC-e aceita apenas o evento de cancelamento neste motor.")
     _number(sequence, "Sequência do evento", 1, 1 if kind == "cancellation" else 20)
     if not isinstance(occurred_at, datetime) or occurred_at.utcoffset() is None:
         raise ErroNfeLocal("A data do evento precisa de fuso horário explícito.")
@@ -182,7 +189,9 @@ def assinar_documento(xml: str, credential: CredencialFiscal, cnpj: str, kind: s
     return signed
 
 
-def validar_identidade(xml: str, kind: str, uf: str, environment: str) -> None:
+def validar_identidade(
+    xml: str, kind: str, uf: str, environment: str, *, model: str = "55"
+) -> None:
     """XSD verifica formato; o Id também precisa refletir os campos assinados."""
     code, tp_amb = _context(uf, environment)
     root = etree.fromstring(xml.encode(), etree.XMLParser(resolve_entities=False, no_network=True))
@@ -205,7 +214,12 @@ def validar_identidade(xml: str, kind: str, uf: str, environment: str) -> None:
         if info.findtext(f"{{{NS}}}cUF") != code or info.findtext(f"{{{NS}}}mod") != "55":
             raise ErroNfeLocal("UF/modelo da inutilização diverge da rota fiscal.")
     else:
-        key = validar_chave(info.findtext(f"{{{NS}}}chNFe"), uf, info.findtext(f"{{{NS}}}CNPJ"))
+        key = validar_chave(
+            info.findtext(f"{{{NS}}}chNFe"),
+            uf,
+            info.findtext(f"{{{NS}}}CNPJ"),
+            model=model,
+        )
         event_type = info.findtext(f"{{{NS}}}tpEvento")
         try:
             sequence = int(info.findtext(f"{{{NS}}}nSeqEvento"))

@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.16',
+    date: '2 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Impressora fiscal em Integrações',
+        description: 'A preparação da impressora térmica agora fica em Configurações > Integrações, separada das configurações do PDV. A janela do sistema funciona sem aplicativo; a impressão direta será liberada quando o Dominex Conector estiver disponível para baixar.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.38.15',
     date: '2 de novembro de 2026',
     type: 'patch',

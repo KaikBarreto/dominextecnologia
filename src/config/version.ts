@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.15";
+export const APP_VERSION = "1.38.16";
 
 export const VERSION_NOTES =
-  "Cobranças recorrentes baixadas fora do Asaas agora atualizam corretamente o status e o próximo vencimento do contrato.";
+  "A impressora fiscal agora é preparada em Configurações > Integrações, separada das configurações do PDV.";

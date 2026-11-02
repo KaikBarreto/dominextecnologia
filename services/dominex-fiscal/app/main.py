@@ -15,12 +15,23 @@ CONTRATO HTTP (fixo — a edge function e o Caddy dependem dele):
     POST /v1/dfe/manifestar                  → 201  (evento do destinatário)
     POST /v1/dfe/nfse/distribuicao           → 200  (NFS-e tomada, ver app/adn/)
 
+    POST /v1/nfce/preparar                   → 200  (modelo 65 + QR Code v3)
+    POST /v1/nfce/status-servico             → 200  (autorizador NFC-e da UF)
+    POST /v1/nfce/consultar                  → 200  (situação oficial por chave)
+    POST /v1/nfce/autorizar                  → 200  (síncrona + recuperação)
+    POST /v1/nfce/cancelamento/preparar      → 200  (evento 110111 assinado)
+    POST /v1/nfce/cancelamento/transmitir    → 200  (idempotente + reconciliação)
+    POST /v1/nfce/danfce                     → 200  (PDF oficial de 80 mm)
+
     POST /v1/certificado/selar               → 200  (custódia, ver abaixo)
     POST /v1/nfse/{chaveAcesso}/consultar    → 200  (alias de GET, ver abaixo)
     POST /v1/nfse/{chaveAcesso}/danfse       → 200  (alias de GET, ver abaixo)
 
 Auth: `Authorization: Bearer $FISCAL_SERVICE_TOKEN` em tudo menos `/healthz`.
 Sem header ⇒ **401 sem pista** (nada de "token ausente" vs "token inválido").
+
+NFC-e usa escopos `nfce:read`/`nfce:write`, matriz própria por UF e produção
+fechada enquanto `FISCAL_NFCE_PRODUCAO_HABILITADA=0`.
 
 ⚠️ POR QUE EXISTEM OS ALIASES POST DAS DUAS ROTAS GET
    Toda rota autenticada precisa receber o bloco `certificado` no CORPO — a VPS
@@ -113,9 +124,11 @@ async def capacidades(
                 "producaoHabilitada": cfg.nfe_producao_habilitada,
             },
             "nfce": {
-                "disponivel": False,
-                "operacoes": [],
-                "producaoHabilitada": cfg.nfce_producao_habilitada and False,
+                "disponivel": permitido("nfce"),
+                "operacoes": [
+                    "preparar", "consultar", "autorizar", "cancelar", "danfce"
+                ],
+                "producaoHabilitada": cfg.nfce_producao_habilitada,
             },
             "mdfe": {
                 "disponivel": permitido("mdfe"),
@@ -343,6 +356,12 @@ rotas.include_router(rotas_nfe)
 from .mdfe.routes import rotas_mdfe  # noqa: E402
 
 rotas.include_router(rotas_mdfe)
+
+# NFC-e modelo 65: nesta fase somente DANFE oficial a partir do XML autorizado.
+# Emissão permanece fechada e a capacidade de produção continua false.
+from .nfce.routes import rotas_nfce  # noqa: E402
+
+rotas.include_router(rotas_nfce)
 
 
 # =============================================================================

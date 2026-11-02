@@ -101,6 +101,9 @@
 | `POST /v1/nfse/emitir` · `POST /v1/nfse/{chave}/cancelar` · `GET|POST /v1/nfse/{chave}` · `GET|POST /v1/nfse/{chave}/danfse` · `POST /v1/certificado/selar` | Bearer | motor |
 | `GET /v1/nfse/autoteste` | Bearer | motor — canário de layout, **não transmite nada** |
 | `POST /v1/dfe/distribuicao` · `POST /v1/dfe/consulta-chave` · `POST /v1/dfe/manifestar` | Bearer | motor — **DF-e** (§10) |
+| `POST /v1/nfce/preparar` · `POST /v1/nfce/status-servico` · `POST /v1/nfce/consultar` · `POST /v1/nfce/autorizar` | Bearer + escopo NFC-e | modelo 65 — preparação, estado oficial, autorização e recuperação |
+| `POST /v1/nfce/cancelamento/preparar` · `POST /v1/nfce/cancelamento/transmitir` | Bearer + `nfce:write` | cancelamento oficial idempotente; não existe CC-e neste fluxo |
+| `POST /v1/nfce/danfce` | Bearer + `nfce:read` | PDF oficial de 80 mm a partir do XML autorizado |
 
 > As rotas do motor também respondem **sem** o prefixo `/v1` (alias). O caminho
 > oficial, e o que deve aparecer no log, é o `/v1`.
@@ -109,6 +112,14 @@
 (`1` = produção, `2` = homologação) vem **no corpo de cada requisição**. Isso é
 deliberado — não existe chave global que alguém vire sem querer, e o teste de fumaça
 roda em homologação sem tocar em nada do que os clientes usam.
+
+Para as famílias NF-e, NFC-e e MDF-e existe uma segunda trava de mutação em
+produção. NFC-e só aceita `ambiente=1` quando
+`FISCAL_NFCE_PRODUCAO_HABILITADA=1`; o padrão do repositório e da VPS é `0`.
+A matriz de webservices do modelo 65 é separada da NF-e e foi conferida no
+[portal oficial da NFC-e](https://dfe-portal.svrs.rs.gov.br/NFCE/Servicos) em
+02/11/2026. Antes de homologar uma nova UF, reconfira a página e as URLs do QR
+Code publicadas pelo ENCAT. O motor falha fechado para UF/ambiente não mapeado.
 
 ### As quatro decisões que valem explicação
 
