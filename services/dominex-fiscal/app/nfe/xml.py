@@ -255,9 +255,11 @@ def _icms(parent: etree._Element, tax: dict[str, Any]) -> None:
     _add(group, "CST", cst)
     base = tax.get("baseCalculo") or {}
     _add(group, "modBC", int(base.get("modalidadeDeterminacao") or 3))
-    if cst in {"51", "90"}:
+    if cst == "51":
         _add(group, "pRedBC", _rate(base.get("percentualReducao") or 0))
     _add(group, "vBC", _money(base.get("valor") or 0, "Base de ICMS"))
+    if cst == "90":
+        _add(group, "pRedBC", _rate(base.get("percentualReducao") or 0))
     _add(group, "pICMS", _rate(tax.get("aliquota") or 0, "Alíquota ICMS"))
     if cst == "51":
         deferred = tax.get("diferimento") or {}
@@ -343,7 +345,10 @@ def _ibscbs(parent: etree._Element, tax: dict[str, Any]) -> None:
         _add(part, rate_name, _rate(source.get("aliquota") or 0))
         if source.get("diferimento"):
             dif = etree.SubElement(part, etree.QName(NS, "gDif"))
-            _add(dif, "pDif", _rate(source["diferimento"].get("percentual") or 0))
+            percentage = source["diferimento"].get("percentual")
+            if percentage is None:
+                percentage = source["diferimento"].get("aliquota")
+            _add(dif, "pDif", _rate(percentage or 0))
             _add(dif, "vDif", _money(source["diferimento"].get("valor") or 0))
         _add(part, value_name, _money(source.get("valor") or 0))
     _add(group, "vIBS", _money(tax.get("valorIbs") or 0))
@@ -352,7 +357,10 @@ def _ibscbs(parent: etree._Element, tax: dict[str, Any]) -> None:
     _add(cbs, "pCBS", _rate(cbs_source.get("aliquota") or 0))
     if cbs_source.get("diferimento"):
         dif = etree.SubElement(cbs, etree.QName(NS, "gDif"))
-        _add(dif, "pDif", _rate(cbs_source["diferimento"].get("percentual") or 0))
+        percentage = cbs_source["diferimento"].get("percentual")
+        if percentage is None:
+            percentage = cbs_source["diferimento"].get("aliquota")
+        _add(dif, "pDif", _rate(percentage or 0))
         _add(dif, "vDif", _money(cbs_source["diferimento"].get("valor") or 0))
     _add(cbs, "vCBS", _money(cbs_source.get("valor") or 0))
 
@@ -420,10 +428,6 @@ def _items(root: etree._Element, payload: dict[str, Any]) -> None:
             _add(prod, "xPed", str(item["numeroCompra"])[:15])
         if item.get("pedidoCompra") is not None:
             _add(prod, "nItemPed", int(item["pedidoCompra"]))
-        if item.get("dfeReferenciado"):
-            ref = etree.SubElement(det, etree.QName(NS, "DFeReferenciado"))
-            _add(ref, "chaveAcesso", _digits(item["dfeReferenciado"].get("chaveAcesso")))
-            _add(ref, "nItem", int(item["dfeReferenciado"].get("numero")))
         taxes = item.get("tributos") or {}
         tax_node = etree.SubElement(det, etree.QName(NS, "imposto"))
         if taxes.get("valorAproximadoTributos") is not None:
@@ -435,6 +439,10 @@ def _items(root: etree._Element, payload: dict[str, Any]) -> None:
         _pis_cofins(tax_node, "COFINS", taxes.get("cofins") or {})
         if taxes.get("ibscbs"):
             _ibscbs(tax_node, taxes["ibscbs"])
+        if item.get("dfeReferenciado"):
+            ref = etree.SubElement(det, etree.QName(NS, "DFeReferenciado"))
+            _add(ref, "chaveAcesso", _digits(item["dfeReferenciado"].get("chaveAcesso")))
+            _add(ref, "nItem", int(item["dfeReferenciado"].get("numero")))
 
 
 def _totals(root: etree._Element, payload: dict[str, Any]) -> None:
@@ -553,6 +561,15 @@ def _payments(root: etree._Element, payload: dict[str, Any]) -> None:
         _add(node, "vTroco", _money(payload.get("troco"), "Troco"))
 
 
+def _authorized_xml(root: etree._Element, payload: dict[str, Any]) -> None:
+    for source in payload.get("responsavelAutorizado") or []:
+        node = etree.SubElement(root, etree.QName(NS, "autXML"))
+        document = _digits(source.get("cpfCnpj"))
+        if len(document) not in {11, 14}:
+            raise ErroNfeLocal("CPF/CNPJ autorizado para acessar o XML é inválido.")
+        _add(node, "CNPJ" if len(document) == 14 else "CPF", document)
+
+
 def _additional(root: etree._Element, payload: dict[str, Any]) -> None:
     if payload.get("informacoesComplementaresContribuinte") or payload.get("informacoesComplementares"):
         node = etree.SubElement(root, etree.QName(NS, "infAdic"))
@@ -560,10 +577,6 @@ def _additional(root: etree._Element, payload: dict[str, Any]) -> None:
             _add(node, "infAdFisco", payload["informacoesComplementaresContribuinte"])
         if payload.get("informacoesComplementares"):
             _add(node, "infCpl", payload["informacoesComplementares"])
-    for source in payload.get("responsavelAutorizado") or []:
-        node = etree.SubElement(root, etree.QName(NS, "autXML"))
-        document = _digits(source.get("cpfCnpj"))
-        _add(node, "CNPJ" if len(document) == 14 else "CPF", document)
     if payload.get("responsavelTecnico"):
         source = payload["responsavelTecnico"]
         node = etree.SubElement(root, etree.QName(NS, "infRespTec"))
@@ -626,6 +639,7 @@ def montar_xml(
         _add(node, "refNFe", key_ref)
     _emit(inf, payload, fiscal)
     _dest(inf, payload, required=model == "55")
+    _authorized_xml(inf, payload)
     _items(inf, payload)
     _totals(inf, payload)
     _transport(inf, payload)

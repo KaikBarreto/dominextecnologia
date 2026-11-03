@@ -193,6 +193,74 @@ class NfeShadowXmlTest(unittest.TestCase):
         with self.assertRaisesRegex(ErroNfeLocal, "ainda não suportado"):
             montar_xml(job)
 
+    def test_icms_90_respeita_ordem_oficial_do_grupo(self) -> None:
+        job = job_base()
+        job["payload"]["itens"][0]["tributos"]["icms"] = {
+            "origem": "0", "cst": "90",
+            "baseCalculo": {
+                "modalidadeDeterminacao": 3,
+                "percentualReducao": 10,
+                "valor": 22.5,
+            },
+            "aliquota": 18,
+            "valor": 4.05,
+        }
+        xml, _ = signed(job)
+        self.assertEqual([], validar_xsd(xml))
+        self.assertLess(xml.index("<vBC>22.50</vBC>"), xml.index("<pRedBC>10.0000</pRedBC>"))
+
+    def test_referencia_devolucao_por_item_fica_depois_dos_impostos(self) -> None:
+        job = job_base()
+        job["payload"]["itens"][0]["dfeReferenciado"] = {
+            "chaveAcesso": "3" * 44,
+            "numero": 1,
+        }
+        xml, _ = signed(job)
+        self.assertEqual([], validar_xsd(xml))
+        self.assertLess(xml.index("</imposto>"), xml.index("<DFeReferenciado>"))
+
+    def test_autxml_fica_antes_dos_itens_e_valida_no_xsd(self) -> None:
+        job = job_base()
+        job["payload"]["responsavelAutorizado"] = [
+            {"cpfCnpj": "13937073000156"},
+        ]
+        xml, _ = signed(job)
+        self.assertEqual([], validar_xsd(xml))
+        self.assertLess(xml.index("<autXML>"), xml.index("<det nItem="))
+
+    def test_ibscbs_diferimento_aceita_shape_real_do_ecosistema(self) -> None:
+        job = job_base()
+        job["payload"]["itens"][0]["tributos"]["ibscbs"] = {
+            "cst": "510", "classificacao": "510001", "baseCalculo": 25,
+            "uf": {
+                "aliquota": 0.1, "valor": 0,
+                "diferimento": {"aliquota": 100, "valor": 0.03},
+            },
+            "municipio": {
+                "aliquota": 0, "valor": 0,
+                "diferimento": {"aliquota": 100, "valor": 0},
+            },
+            "valorIbs": 0,
+            "cbs": {
+                "aliquota": 0.9, "valor": 0,
+                "diferimento": {"aliquota": 100, "valor": 0.23},
+            },
+        }
+        job["payload"]["total"].update({
+            "baseCalculoIbsCbs": 25,
+            "valorDiferimentoIbsUF": 0.03, "valorDevolucaoIbsUF": 0,
+            "valorIbsUF": 0, "valorDiferimentoIbsMunicipio": 0,
+            "valorDevolucaoIbsMunicipio": 0, "valorIbsMunicipio": 0,
+            "valorIbs": 0, "valorIbsCreditoPresumido": 0,
+            "valorIbsCreditoPresumidoSuspensao": 0,
+            "valorCbs": 0, "valorCbsDiferimento": 0.23,
+            "valorCbsDevolucao": 0, "valorCbsCreditoPresumido": 0,
+            "valorCbsCreditoPresumidoSuspensao": 0,
+        })
+        xml, _ = signed(job)
+        self.assertEqual([], validar_xsd(xml))
+        self.assertEqual(3, xml.count("<pDif>100.0000</pDif>"))
+
     def test_comparador_detecta_diferenca_fiscal(self) -> None:
         local, _ = signed(job_base())
         same = comparar(local, local)
