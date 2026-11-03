@@ -35,7 +35,9 @@ describe('ServiceOrderFormDialog — contrato do wizard', () => {
     expect(source).toContain("{ key: 'equipment' as const, label: t.stepEquipment }");
     expect(source).toContain("{ key: 'details' as const, label: t.stepDetails }");
     expect(source.match(/currentStepKey === 'client'/g)).toHaveLength(3);
-    expect(source.match(/<ServiceOrderBudgetSection/g)).toHaveLength(2);
+    // Criação e edição exibem a precificação tanto na etapa de atendimento
+    // quanto na revisão final, sem criar uma etapa isolada só para orçamento.
+    expect(source.match(/<ServiceOrderBudgetSection/g)).toHaveLength(4);
     expect(source.match(/<div className="border-t pt-5">\{scopeSummary\}<\/div>/g)).toHaveLength(2);
   });
 

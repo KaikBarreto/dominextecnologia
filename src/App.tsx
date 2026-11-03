@@ -71,6 +71,7 @@ class ErrorBoundary extends React.Component<
 }
 
 import { OfflineIndicator } from "@/components/pwa/OfflineIndicator";
+import { PwaRootEntry } from "@/components/pwa/PwaRootEntry";
 import { SwipeBackProvider } from "@/components/SwipeBack";
 import { StrayDropGuard } from "@/components/StrayDropGuard";
 import { TermsOfServiceWrapper } from "@/components/TermsOfServiceWrapper";
@@ -569,8 +570,10 @@ const UsageTracker = () => {
     localizados (via slugRegistry) no bloco /:lang. */}
 const sharedMarketingRoutes = () => (
   <>
-    {/* Landing page — public, no redirect */}
-    <Route index element={<Landing />} />
+    {/* No navegador, `/` continua sendo a landing. Em modo instalado, alguns
+        Safari/iOS persistem a URL atual em vez do start_url do manifesto; nesse
+        caso a raiz funciona como entrada do sistema e segue para /dashboard. */}
+    <Route index element={<PwaRootEntry><Landing /></PwaRootEntry>} />
 
     {/* Páginas institucionais / legais públicas — linkadas no rodapé. */}
     <Route path="quem-somos" element={<QuemSomos />} />

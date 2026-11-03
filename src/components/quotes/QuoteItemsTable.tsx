@@ -7,12 +7,13 @@ import { NumericInput, parseDecimalInputValue } from '@/components/ui/numeric-in
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useInventory } from '@/hooks/useInventory';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { useLocaleFormatters } from '@/lib/format/hooks';
-import type { QuoteItem } from '@/hooks/useQuotes';
 import type { ServiceType } from '@/hooks/useServiceTypes';
+import type { ServiceOrderBudgetItem, ServiceOrderBudgetPricingMode } from '@/lib/serviceOrderBudget';
 
 // Colar valor pronto (ex. "4.550" de uma planilha) num `<input type="number">`
 // é lido pelo navegador como decimal internacional e vira 4,55 — 1000x menor
@@ -25,10 +26,12 @@ function handleUnitPricePaste(e: React.ClipboardEvent<HTMLInputElement>, setUnit
 }
 
 interface QuoteItemsTableProps {
-  items: QuoteItem[];
-  onChange: (items: QuoteItem[]) => void;
+  items: ServiceOrderBudgetItem[];
+  onChange: (items: ServiceOrderBudgetItem[]) => void;
   readOnly?: boolean;
   showServicePicker?: boolean;
+  pricingEnabled?: boolean;
+  bdiFactor?: number;
 }
 
 function EditableDecimalValue({
@@ -88,7 +91,7 @@ function ServiceInputRow({
 }: {
   serviceOptions: { value: string; label: string; sublabel?: string; icon?: ReactNode }[];
   serviceTypes: Pick<ServiceType, 'id' | 'name' | 'default_price'>[];
-  onAdd: (item: QuoteItem) => void;
+  onAdd: (item: ServiceOrderBudgetItem) => void;
 }) {
   const { money } = useLocaleFormatters();
   const [serviceId, setServiceId] = useState('');
@@ -123,6 +126,8 @@ function ServiceInputRow({
       total_price: total,
       service_type_id: serviceId || null,
       inventory_id: null,
+      pricing_mode: 'registered',
+      price_override: priceNum,
     });
     setServiceId('');
     setDescription('');
@@ -204,7 +209,7 @@ function MaterialInputRow({
 }: {
   materialOptions: { value: string; label: string; sublabel?: string }[];
   inventoryItems: { id: string; name: string; sale_price: number | null; cost_price: number | null }[];
-  onAdd: (item: QuoteItem) => void;
+  onAdd: (item: ServiceOrderBudgetItem) => void;
 }) {
   const { money } = useLocaleFormatters();
   const [inventoryId, setInventoryId] = useState('');
@@ -238,6 +243,9 @@ function MaterialInputRow({
       total_price: total,
       inventory_id: inventoryId || null,
       service_type_id: null,
+      unit_total_cost: Number(inventoryItems.find(item => item.id === inventoryId)?.cost_price ?? 0),
+      pricing_mode: 'registered',
+      price_override: priceNum,
     });
     setInventoryId('');
     setDescription('');
@@ -312,7 +320,14 @@ function MaterialInputRow({
 }
 
 /* ─── Main ─── */
-export function QuoteItemsTable({ items, onChange, readOnly, showServicePicker = true }: QuoteItemsTableProps) {
+export function QuoteItemsTable({
+  items,
+  onChange,
+  readOnly,
+  showServicePicker = true,
+  pricingEnabled = false,
+  bdiFactor = 0.68,
+}: QuoteItemsTableProps) {
   const { money } = useLocaleFormatters();
   const { serviceTypes } = useServiceTypes();
   const { items: inventoryItems } = useInventory();
@@ -342,7 +357,7 @@ export function QuoteItemsTable({ items, onChange, readOnly, showServicePicker =
   const servicesSubtotal = serviceItems.reduce((s, i) => s + (i.total_price || 0), 0);
   const materialsSubtotal = materialItems.reduce((s, i) => s + (i.total_price || 0), 0);
 
-  const addItem = (item: QuoteItem) => {
+  const addItem = (item: ServiceOrderBudgetItem) => {
     onChange([...items, { ...item, position: items.length }]);
   };
 
@@ -350,7 +365,7 @@ export function QuoteItemsTable({ items, onChange, readOnly, showServicePicker =
     onChange(items.filter((_, i) => i !== globalIdx));
   };
 
-  const updateItem = (globalIdx: number, patch: Partial<QuoteItem>) => {
+  const updateItem = (globalIdx: number, patch: Partial<ServiceOrderBudgetItem>) => {
     onChange(items.map((item, index) => {
       if (index !== globalIdx) return item;
       const next = { ...item, ...patch };
@@ -363,7 +378,67 @@ export function QuoteItemsTable({ items, onChange, readOnly, showServicePicker =
     }));
   };
 
-  const getGlobalIndex = (item: QuoteItem) => items.indexOf(item);
+  const registeredPriceFor = (item: ServiceOrderBudgetItem) => {
+    if (item.item_type === 'material') {
+      const material = inventoryItems?.find(candidate => candidate.id === item.inventory_id);
+      return Number(material?.sale_price ?? material?.cost_price ?? item.unit_price ?? 0);
+    }
+    const service = serviceTypes?.find(candidate => candidate.id === item.service_type_id);
+    return Number(service?.default_price ?? item.unit_price ?? 0);
+  };
+
+  const changePricingMode = (globalIdx: number, mode: ServiceOrderBudgetPricingMode) => {
+    const item = items[globalIdx];
+    if (!item) return;
+    const unitCost = Number(item.unit_total_cost || 0);
+    const unitPrice = mode === 'cost_bdi'
+      ? Math.round((unitCost / Math.max(0.01, bdiFactor)) * 100) / 100
+      : mode === 'registered'
+        ? registeredPriceFor(item)
+        : Number(item.unit_price || 0);
+    updateItem(globalIdx, {
+      pricing_mode: mode,
+      unit_price: unitPrice,
+      bdi: bdiFactor,
+      price_override: mode === 'cost_bdi' ? null : unitPrice,
+    });
+  };
+
+  const pricingControl = (item: ServiceOrderBudgetItem, idx: number) => {
+    if (!pricingEnabled) return null;
+    const mode = item.pricing_mode ?? 'manual';
+    const unitCost = Number(item.unit_total_cost || 0);
+    if (readOnly) {
+      const modeLabel = mode === 'cost_bdi' ? 'Custo + BDI' : mode === 'registered' ? 'Preço cadastrado' : 'Valor manual';
+      return (
+        <p className="mt-1 text-[10px] font-normal text-muted-foreground">
+          {modeLabel} · Seu custo: {unitCost > 0 ? money(unitCost) : 'não informado'}
+        </p>
+      );
+    }
+    return (
+      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <Select value={mode} onValueChange={value => changePricingMode(idx, value as ServiceOrderBudgetPricingMode)}>
+          <SelectTrigger className="h-7 w-auto min-w-36 border-0 bg-muted/60 px-2 text-[11px] shadow-none" aria-label={`Modo de preço de ${item.description}`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="registered">Preço cadastrado</SelectItem>
+            <SelectItem value="cost_bdi" disabled={unitCost <= 0}>Custo + BDI</SelectItem>
+            <SelectItem value="manual">Valor manual</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="text-[10px] text-muted-foreground">
+          Seu custo: {unitCost > 0 ? money(unitCost) : 'não informado'}
+        </span>
+        {mode === 'manual' && unitCost > 0 && (
+          <span className="text-[10px] text-warning">fora do cálculo automático</span>
+        )}
+      </div>
+    );
+  };
+
+  const getGlobalIndex = (item: ServiceOrderBudgetItem) => items.indexOf(item);
 
   return (
     <div className="space-y-6">
@@ -382,7 +457,7 @@ export function QuoteItemsTable({ items, onChange, readOnly, showServicePicker =
               <TableRow>
                 <TableHead className="text-xs">Serviço</TableHead>
                 <TableHead className="w-[80px] text-xs">Qtd</TableHead>
-                <TableHead className="w-[110px] text-xs">Valor Unit.</TableHead>
+                <TableHead className="w-[110px] text-xs">{pricingEnabled ? 'Cliente paga / un.' : 'Valor Unit.'}</TableHead>
                 <TableHead className="w-[110px] text-xs">Total</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
@@ -399,7 +474,10 @@ export function QuoteItemsTable({ items, onChange, readOnly, showServicePicker =
                   const idx = getGlobalIndex(item);
                   return (
                     <TableRow key={idx} className="grid grid-cols-2 gap-3 p-3 md:table-row md:p-0">
-                      <TableCell className="col-span-2 p-0 text-sm font-medium md:table-cell md:p-4 md:text-xs">{item.description}</TableCell>
+                      <TableCell className="col-span-2 p-0 text-sm font-medium md:table-cell md:p-4 md:text-xs">
+                        {item.description}
+                        {pricingControl(item, idx)}
+                      </TableCell>
                       <TableCell className="p-0 text-xs md:table-cell md:p-4">
                         <span className="mb-0.5 block text-[10px] text-muted-foreground md:hidden">Quantidade</span>
                         {readOnly ? (
@@ -414,13 +492,17 @@ export function QuoteItemsTable({ items, onChange, readOnly, showServicePicker =
                         )}
                       </TableCell>
                       <TableCell className="p-0 text-right text-xs md:table-cell md:p-4 md:text-left">
-                        <span className="mb-0.5 block text-[10px] text-muted-foreground md:hidden">Valor unitário</span>
+                        <span className="mb-0.5 block text-[10px] text-muted-foreground md:hidden">{pricingEnabled ? 'Cliente paga / un.' : 'Valor unitário'}</span>
                         {readOnly ? (
                           <span className="whitespace-nowrap tabular-nums">{money(item.unit_price || 0)}</span>
                         ) : (
                           <EditableDecimalValue
                             value={Number(item.unit_price || 0)}
-                            onCommit={unit_price => updateItem(idx, { unit_price })}
+                            onCommit={unit_price => updateItem(idx, {
+                              unit_price,
+                              pricing_mode: 'manual',
+                              price_override: unit_price,
+                            })}
                             ariaLabel={`Valor unitário de ${item.description}`}
                             maxDecimals={2}
                             allowZero
@@ -486,7 +568,7 @@ export function QuoteItemsTable({ items, onChange, readOnly, showServicePicker =
               <TableRow>
                 <TableHead className="text-xs">Material</TableHead>
                 <TableHead className="w-[80px] text-xs">Qtd</TableHead>
-                <TableHead className="w-[110px] text-xs">Valor Unit.</TableHead>
+                <TableHead className="w-[110px] text-xs">{pricingEnabled ? 'Cliente paga / un.' : 'Valor Unit.'}</TableHead>
                 <TableHead className="w-[110px] text-xs">Total</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
@@ -510,7 +592,10 @@ export function QuoteItemsTable({ items, onChange, readOnly, showServicePicker =
                   const idx = getGlobalIndex(item);
                   return (
                     <TableRow key={idx} className="grid grid-cols-2 gap-3 p-3 md:table-row md:p-0">
-                      <TableCell className="col-span-2 p-0 text-sm font-medium md:table-cell md:p-4 md:text-xs">{item.description}</TableCell>
+                      <TableCell className="col-span-2 p-0 text-sm font-medium md:table-cell md:p-4 md:text-xs">
+                        {item.description}
+                        {pricingControl(item, idx)}
+                      </TableCell>
                       <TableCell className="p-0 text-xs md:table-cell md:p-4">
                         <span className="mb-0.5 block text-[10px] text-muted-foreground md:hidden">Quantidade</span>
                         {readOnly ? (
@@ -525,13 +610,17 @@ export function QuoteItemsTable({ items, onChange, readOnly, showServicePicker =
                         )}
                       </TableCell>
                       <TableCell className="p-0 text-right text-xs md:table-cell md:p-4 md:text-left">
-                        <span className="mb-0.5 block text-[10px] text-muted-foreground md:hidden">Valor unitário</span>
+                        <span className="mb-0.5 block text-[10px] text-muted-foreground md:hidden">{pricingEnabled ? 'Cliente paga / un.' : 'Valor unitário'}</span>
                         {readOnly ? (
                           <span className="whitespace-nowrap tabular-nums">{money(item.unit_price || 0)}</span>
                         ) : (
                           <EditableDecimalValue
                             value={Number(item.unit_price || 0)}
-                            onCommit={unit_price => updateItem(idx, { unit_price })}
+                            onCommit={unit_price => updateItem(idx, {
+                              unit_price,
+                              pricing_mode: 'manual',
+                              price_override: unit_price,
+                            })}
                             ariaLabel={`Valor unitário de ${item.description}`}
                             maxDecimals={2}
                             allowZero

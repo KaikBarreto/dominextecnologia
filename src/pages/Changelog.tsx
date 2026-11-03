@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.19',
+    date: '3 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Precificação completa dentro da nova OS',
+        description: 'Monte a ordem de serviço como um orçamento comum ou use custo + BDI. Cada serviço e material mostra o custo da empresa, o valor pago pelo cliente e permite escolher entre preço cadastrado, cálculo automático ou valor manual.',
+        category: 'recurso',
+      },
+      {
+        title: 'PWA abre diretamente no sistema',
+        description: 'Ao abrir o Dominex instalado na tela inicial do celular, o aplicativo agora entra no sistema ou apresenta o login quando a sessão expirou, sem ficar preso no site institucional.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.38.18',
     date: '3 de novembro de 2026',
     type: 'patch',

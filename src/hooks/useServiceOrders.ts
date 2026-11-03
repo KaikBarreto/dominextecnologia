@@ -22,7 +22,7 @@ import {
   syncServiceOrderBudget,
   syncServiceOrderServiceTypes,
 } from '@/hooks/useServiceOrderBudget';
-import type { ServiceOrderBudgetItem } from '@/lib/serviceOrderBudget';
+import type { ServiceOrderBudgetItem, ServiceOrderBudgetPricing } from '@/lib/serviceOrderBudget';
 import { normalizeServiceOrderSchedulePlan } from '@/lib/serviceOrderSchedule';
 import { SERVICE_ORDER_OPTIONS_KEY } from '@/hooks/useServiceOrderOptions';
 
@@ -113,6 +113,8 @@ export interface ServiceOrderInput extends ScheduleBookingOverride {
   service_type_ids?: string[];
   /** Itens comerciais previstos. Não representam consumo real de estoque. */
   budget_items?: ServiceOrderBudgetItem[];
+  /** Metodologia comercial da OS; sincronizada atomicamente com os itens. */
+  budget_pricing?: ServiceOrderBudgetPricing;
   status?: OsStatus;
   scheduled_date?: string;
   scheduled_time?: string;
@@ -297,6 +299,7 @@ export function useServiceOrders() {
         assignee_team_ids,
         service_type_ids,
         budget_items,
+        budget_pricing,
         confirm_scope_response_deletion,
         ...restWithBooking
       } = input;
@@ -354,7 +357,7 @@ export function useServiceOrders() {
           if (scopeError) throw scopeError;
         }
         if (createdId && budget_items !== undefined) {
-          await syncServiceOrderBudget(createdId, budget_items);
+          await syncServiceOrderBudget(createdId, budget_items, budget_pricing);
         }
         return data;
       }
@@ -401,7 +404,7 @@ export function useServiceOrders() {
         if (scopeError) throw scopeError;
       }
       if (budget_items !== undefined) {
-        await syncServiceOrderBudget(data.id, budget_items);
+        await syncServiceOrderBudget(data.id, budget_items, budget_pricing);
       }
 
       return data;
@@ -452,6 +455,7 @@ export function useServiceOrders() {
       equipment_items,
       service_type_ids,
       budget_items,
+      budget_pricing,
       confirm_scope_response_deletion,
       schedule_override,
       schedule_override_reason,
@@ -669,7 +673,7 @@ export function useServiceOrders() {
       }
 
       if (budget_items !== undefined) {
-        await syncServiceOrderBudget(id, budget_items);
+        await syncServiceOrderBudget(id, budget_items, budget_pricing);
       }
 
       return data;

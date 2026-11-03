@@ -152,6 +152,17 @@ export interface ServiceOrder {
   labor_value?: number;
   parts_value?: number;
   total_value?: number;
+  /** Snapshot da metodologia comercial usada no orçamento desta OS. */
+  use_bdi?: boolean;
+  tax_rate?: number;
+  admin_indirect_rate?: number;
+  profit_rate?: number;
+  bdi?: number;
+  total_cost?: number;
+  km_cost?: number;
+  distance_km?: number;
+  displacement_cost?: number;
+  commercial_adjustment?: number;
   check_in_time?: string;
   check_in_location?: { lat: number; lng: number } | null;
   check_out_time?: string;

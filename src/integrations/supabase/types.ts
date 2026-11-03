@@ -12295,13 +12295,23 @@ export type Database = {
           id: string
           inventory_id: string | null
           item_type: string
+          bdi: number
           position: number
+          price_override: number | null
+          pricing_mode: string
+          profit_rate: number
           quantity: number
           service_order_id: string
           service_type_id: string | null
           source_quote_item_id: string | null
           total_price: number
+          unit_extras_cost: number
+          unit_hourly_rate: number
+          unit_hours: number
+          unit_labor_cost: number
+          unit_materials_cost: number
           unit_price: number
+          unit_total_cost: number
           updated_at: string
         }
         Insert: {
@@ -12312,13 +12322,23 @@ export type Database = {
           id?: string
           inventory_id?: string | null
           item_type?: string
+          bdi?: number
           position?: number
+          price_override?: number | null
+          pricing_mode?: string
+          profit_rate?: number
           quantity?: number
           service_order_id: string
           service_type_id?: string | null
           source_quote_item_id?: string | null
           total_price?: number
+          unit_extras_cost?: number
+          unit_hourly_rate?: number
+          unit_hours?: number
+          unit_labor_cost?: number
+          unit_materials_cost?: number
           unit_price?: number
+          unit_total_cost?: number
           updated_at?: string
         }
         Update: {
@@ -12329,13 +12349,23 @@ export type Database = {
           id?: string
           inventory_id?: string | null
           item_type?: string
+          bdi?: number
           position?: number
+          price_override?: number | null
+          pricing_mode?: string
+          profit_rate?: number
           quantity?: number
           service_order_id?: string
           service_type_id?: string | null
           source_quote_item_id?: string | null
           total_price?: number
+          unit_extras_cost?: number
+          unit_hourly_rate?: number
+          unit_hours?: number
+          unit_labor_cost?: number
+          unit_materials_cost?: number
           unit_price?: number
+          unit_total_cost?: number
           updated_at?: string
         }
         Relationships: [
@@ -12621,6 +12651,9 @@ export type Database = {
       }
       service_orders: {
         Row: {
+          admin_indirect_rate: number
+          bdi: number
+          commercial_adjustment: number
           check_in_by: string | null
           check_in_location: Json | null
           check_in_time: string | null
@@ -12639,6 +12672,8 @@ export type Database = {
           customer_id: string | null
           description: string | null
           diagnosis: string | null
+          displacement_cost: number
+          distance_km: number
           duration_minutes: number
           entry_type: string
           equipment_id: string | null
@@ -12647,6 +12682,7 @@ export type Database = {
           id: string
           labor_hours: number | null
           labor_value: number | null
+          km_cost: number
           lead_id: string | null
           notes: string | null
           order_number: number
@@ -12658,6 +12694,7 @@ export type Database = {
           paused_at: string | null
           pmoc_conformity_notes: string | null
           pmoc_conformity_status: string | null
+          profit_rate: number
           public_short_code: string | null
           quote_id: string | null
           recurrence_end_date: string | null
@@ -12695,10 +12732,16 @@ export type Database = {
           tech_signed_by: string | null
           tech_signed_location: Json | null
           technician_id: string | null
+          tax_rate: number
+          total_cost: number
           total_value: number | null
           updated_at: string
+          use_bdi: boolean
         }
         Insert: {
+          admin_indirect_rate?: number
+          bdi?: number
+          commercial_adjustment?: number
           check_in_by?: string | null
           check_in_location?: Json | null
           check_in_time?: string | null
@@ -12717,6 +12760,8 @@ export type Database = {
           customer_id?: string | null
           description?: string | null
           diagnosis?: string | null
+          displacement_cost?: number
+          distance_km?: number
           duration_minutes?: number
           entry_type?: string
           equipment_id?: string | null
@@ -12725,6 +12770,7 @@ export type Database = {
           id?: string
           labor_hours?: number | null
           labor_value?: number | null
+          km_cost?: number
           lead_id?: string | null
           notes?: string | null
           order_number?: number
@@ -12736,6 +12782,7 @@ export type Database = {
           paused_at?: string | null
           pmoc_conformity_notes?: string | null
           pmoc_conformity_status?: string | null
+          profit_rate?: number
           public_short_code?: string | null
           quote_id?: string | null
           recurrence_end_date?: string | null
@@ -12773,10 +12820,16 @@ export type Database = {
           tech_signed_by?: string | null
           tech_signed_location?: Json | null
           technician_id?: string | null
+          tax_rate?: number
+          total_cost?: number
           total_value?: number | null
           updated_at?: string
+          use_bdi?: boolean
         }
         Update: {
+          admin_indirect_rate?: number
+          bdi?: number
+          commercial_adjustment?: number
           check_in_by?: string | null
           check_in_location?: Json | null
           check_in_time?: string | null
@@ -12795,6 +12848,8 @@ export type Database = {
           customer_id?: string | null
           description?: string | null
           diagnosis?: string | null
+          displacement_cost?: number
+          distance_km?: number
           duration_minutes?: number
           entry_type?: string
           equipment_id?: string | null
@@ -12803,6 +12858,7 @@ export type Database = {
           id?: string
           labor_hours?: number | null
           labor_value?: number | null
+          km_cost?: number
           lead_id?: string | null
           notes?: string | null
           order_number?: number
@@ -12814,6 +12870,7 @@ export type Database = {
           paused_at?: string | null
           pmoc_conformity_notes?: string | null
           pmoc_conformity_status?: string | null
+          profit_rate?: number
           public_short_code?: string | null
           quote_id?: string | null
           recurrence_end_date?: string | null
@@ -12851,8 +12908,11 @@ export type Database = {
           tech_signed_by?: string | null
           tech_signed_location?: Json | null
           technician_id?: string | null
+          tax_rate?: number
+          total_cost?: number
           total_value?: number | null
           updated_at?: string
+          use_bdi?: boolean
         }
         Relationships: [
           {
@@ -18121,7 +18181,7 @@ export type Database = {
         Returns: Json
       }
       sync_service_order_budget: {
-        Args: { p_items: Json; p_service_order_id: string }
+        Args: { p_items: Json; p_pricing?: Json; p_service_order_id: string }
         Returns: Json
       }
       sync_service_order_scope: {

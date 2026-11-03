@@ -52,6 +52,8 @@ import { useToast } from '@/hooks/use-toast';
 import type { ServiceOrder, ServiceOrderScheduleSlot, OsStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
+import { fetchServiceCostBreakdown } from '@/hooks/useServiceCostBreakdown';
+import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
@@ -71,9 +73,15 @@ import {
   useServiceOrderServiceTypes,
 } from '@/hooks/useServiceOrderBudget';
 import {
+  DEFAULT_SERVICE_ORDER_BUDGET_PRICING,
   appendMissingServiceOrderBudgetItems,
+  calculateServiceOrderBdiFactor,
+  preserveServiceOrderBudgetPricesAsManual,
+  recalculateAutomaticServiceOrderBudgetItems,
+  serviceOrderBudgetPricingSignature,
   serviceOrderBudgetSignature,
   type ServiceOrderBudgetItem,
+  type ServiceOrderBudgetPricing,
 } from '@/lib/serviceOrderBudget';
 import { groupScopeItems } from '@/hooks/useServiceOrders';
 import {
@@ -177,7 +185,11 @@ export function ServiceOrderFormDialog({
     serviceOrder?.service_type_id ? [serviceOrder.service_type_id] : [],
   );
   const [budgetItems, setBudgetItems] = useState<ServiceOrderBudgetItem[]>([]);
+  const [budgetPricing, setBudgetPricing] = useState<ServiceOrderBudgetPricing>(DEFAULT_SERVICE_ORDER_BUDGET_PRICING);
+  const budgetPricingTouchedRef = useRef(false);
   const loadedBudgetSigRef = useRef<string | null>(null);
+  const loadedBudgetPricingSigRef = useRef<string | null>(null);
+  const loadedBudgetPricingValueRef = useRef<ServiceOrderBudgetPricing>(DEFAULT_SERVICE_ORDER_BUDGET_PRICING);
   const loadedServiceTypesSigRef = useRef<string | null>(null);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [quickCreateCustomerOpen, setQuickCreateCustomerOpen] = useState(false);
@@ -251,7 +263,8 @@ export function ServiceOrderFormDialog({
     mode?: 'continue' | 'recurrence_all';
   } | null>(null);
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const { settings: pricingSettings } = usePricingSettings();
   const budgetQuery = useServiceOrderBudget(isEditing ? serviceOrder?.id : null);
   const serviceTypesQuery = useServiceOrderServiceTypes(isEditing ? serviceOrder?.id : null);
 
@@ -348,6 +361,7 @@ export function ServiceOrderFormDialog({
     _selectedCustomerId?: string;
     _selectedServiceTypeIds?: string[];
     _budgetItems?: ServiceOrderBudgetItem[];
+    _budgetPricing?: ServiceOrderBudgetPricing;
     _requireTechSignature?: boolean;
     _requireClientSignature?: boolean;
     _generateNpsSurvey?: boolean;
@@ -386,12 +400,13 @@ export function ServiceOrderFormDialog({
         _selectedCustomerId: selectedCustomerId,
         _selectedServiceTypeIds: selectedServiceTypeIds,
         _budgetItems: budgetItems,
+        _budgetPricing: budgetPricing,
         _requireTechSignature: requireTechSignature,
         _requireClientSignature: requireClientSignature,
         _generateNpsSurvey: generateNpsSurvey,
       });
     }
-  }, [watchedValues, selectedCustomerId, selectedServiceTypeIds, budgetItems, requireTechSignature, requireClientSignature, generateNpsSurvey, open, isEditing, draft.showResumePrompt]);
+  }, [watchedValues, selectedCustomerId, selectedServiceTypeIds, budgetItems, budgetPricing, requireTechSignature, requireClientSignature, generateNpsSurvey, open, isEditing, draft.showResumePrompt]);
 
   // Load existing equipment items when editing
   const loadExistingEquipmentItems = async (osId: string) => {
@@ -456,10 +471,32 @@ export function ServiceOrderFormDialog({
 
   useEffect(() => {
     if (open) {
+      const so = serviceOrder as any;
       setStep(0);
       setMaxStepReached(0);
       setBudgetItems([]);
       loadedBudgetSigRef.current = null;
+      budgetPricingTouchedRef.current = false;
+      const initialTaxRate = Number(so?.tax_rate ?? DEFAULT_SERVICE_ORDER_BUDGET_PRICING.tax_rate);
+      const initialAdminRate = Number(so?.admin_indirect_rate ?? DEFAULT_SERVICE_ORDER_BUDGET_PRICING.admin_indirect_rate);
+      const initialProfitRate = Number(so?.profit_rate ?? DEFAULT_SERVICE_ORDER_BUDGET_PRICING.profit_rate);
+      const initialPricing: ServiceOrderBudgetPricing = {
+        use_bdi: Boolean(so?.use_bdi),
+        tax_rate: initialTaxRate,
+        admin_indirect_rate: initialAdminRate,
+        profit_rate: initialProfitRate,
+        bdi: Number(so?.bdi ?? calculateServiceOrderBdiFactor(initialTaxRate, initialAdminRate, initialProfitRate)),
+        total_cost: Number(so?.total_cost ?? 0),
+        km_cost: Number(so?.km_cost ?? 0),
+        distance_km: Number(so?.distance_km ?? 0),
+        displacement_cost: Number(so?.displacement_cost ?? 0),
+        commercial_adjustment: Number(so?.commercial_adjustment ?? 0),
+      };
+      setBudgetPricing(initialPricing);
+      loadedBudgetPricingValueRef.current = initialPricing;
+      loadedBudgetPricingSigRef.current = isEditing
+        ? serviceOrderBudgetPricingSignature(initialPricing, [])
+        : null;
       const fallbackServiceIds = serviceOrder?.service_type_id ? [serviceOrder.service_type_id] : [];
       setSelectedServiceTypeIds(fallbackServiceIds);
       loadedServiceTypesSigRef.current = null;
@@ -470,7 +507,6 @@ export function ServiceOrderFormDialog({
       setScopeLoaded(false);
       loadedScopeSigRef.current = null;
       setExpandedEquipmentIds([]);
-      const so = serviceOrder as any;
       setRequireTechSignature(Boolean(so?.require_tech_signature));
       setRequireClientSignature(Boolean(so?.require_client_signature));
       setCustomerMode('existing');
@@ -547,9 +583,25 @@ export function ServiceOrderFormDialog({
   }, [open, serviceOrder, computedDate, computedTime, computedSchedulePlan]);
 
   useEffect(() => {
+    if (!open || isEditing || !pricingSettings || budgetPricingTouchedRef.current) return;
+    const taxRate = Number(pricingSettings.tax_rate ?? DEFAULT_SERVICE_ORDER_BUDGET_PRICING.tax_rate);
+    const adminRate = Number(pricingSettings.admin_indirect_rate ?? DEFAULT_SERVICE_ORDER_BUDGET_PRICING.admin_indirect_rate);
+    const profitRate = Number(pricingSettings.default_profit_rate ?? DEFAULT_SERVICE_ORDER_BUDGET_PRICING.profit_rate);
+    setBudgetPricing(current => ({
+      ...current,
+      tax_rate: taxRate,
+      admin_indirect_rate: adminRate,
+      profit_rate: profitRate,
+      bdi: calculateServiceOrderBdiFactor(taxRate, adminRate, profitRate),
+      km_cost: Number(pricingSettings.km_cost ?? 0),
+    }));
+  }, [open, isEditing, pricingSettings]);
+
+  useEffect(() => {
     if (!open || !isEditing || !budgetQuery.data) return;
     setBudgetItems(budgetQuery.data);
     loadedBudgetSigRef.current = serviceOrderBudgetSignature(budgetQuery.data);
+    loadedBudgetPricingSigRef.current = serviceOrderBudgetPricingSignature(loadedBudgetPricingValueRef.current, budgetQuery.data);
   }, [open, isEditing, budgetQuery.data]);
 
   useEffect(() => {
@@ -803,7 +855,7 @@ export function ServiceOrderFormDialog({
             });
             if (scopeError) throw scopeError;
           }
-          await syncServiceOrderBudget(row.id, budgetItems);
+          await syncServiceOrderBudget(row.id, budgetItems, budgetPricing);
         }));
       }
 
@@ -825,6 +877,7 @@ export function ServiceOrderFormDialog({
       service_type_id: data.service_type_id === 'none' ? undefined : (data.service_type_id || undefined),
       service_type_ids: selectedServiceTypeIds,
       budget_items: budgetItems,
+      budget_pricing: budgetPricing,
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
       equipment_id: effectiveEquipmentIds[0] || undefined,
@@ -883,11 +936,20 @@ export function ServiceOrderFormDialog({
         && JSON.stringify(selectedServiceTypeIds) !== loadedServiceTypesSigRef.current
           ? selectedServiceTypeIds
           : undefined,
-      budget_items:
+      budget_items: (
         loadedBudgetSigRef.current !== null
-        && serviceOrderBudgetSignature(budgetItems) !== loadedBudgetSigRef.current
-          ? budgetItems
-          : undefined,
+        && (
+          serviceOrderBudgetSignature(budgetItems) !== loadedBudgetSigRef.current
+          || serviceOrderBudgetPricingSignature(budgetPricing, budgetItems) !== loadedBudgetPricingSigRef.current
+        )
+      ) ? budgetItems : undefined,
+      budget_pricing: (
+        loadedBudgetSigRef.current !== null
+        && (
+          serviceOrderBudgetSignature(budgetItems) !== loadedBudgetSigRef.current
+          || serviceOrderBudgetPricingSignature(budgetPricing, budgetItems) !== loadedBudgetPricingSigRef.current
+        )
+      ) ? budgetPricing : undefined,
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
       form_template_id: equipmentTemplateMap[selectedEquipmentIds[0] || '']?.[0]
@@ -1079,6 +1141,7 @@ export function ServiceOrderFormDialog({
               scheduled_time,
               service_type_ids,
               budget_items,
+              budget_pricing,
               equipment_items,
               ...editableFields
             } = cleanedData;
@@ -1112,7 +1175,7 @@ export function ServiceOrderFormDialog({
                 if (scopeError) throw scopeError;
               }
               if (budget_items !== undefined) {
-                await syncServiceOrderBudget(os.id, budget_items);
+                await syncServiceOrderBudget(os.id, budget_items, budget_pricing ?? budgetPricing);
               }
             }
           }
@@ -1319,6 +1382,51 @@ export function ServiceOrderFormDialog({
         }] : [];
       });
       setBudgetItems(current => appendMissingServiceOrderBudgetItems(current, addedServices));
+
+      // A linha aparece imediatamente com o preço cadastrado. A composição de
+      // custo é enriquecida em segundo plano para o seletor não ficar esperando
+      // várias consultas; se o BDI já estiver ligado, o novo serviço passa a
+      // custo + BDI assim que a fonte canônica responder.
+      const companyId = profile?.company_id;
+      if (companyId) {
+        void Promise.all(addedServices.map(async service => ({
+          service,
+          breakdown: await fetchServiceCostBreakdown(queryClient, companyId, service.id),
+        }))).then(results => {
+          const factor = calculateServiceOrderBdiFactor(
+            budgetPricing.tax_rate,
+            budgetPricing.admin_indirect_rate,
+            budgetPricing.profit_rate,
+          );
+          setBudgetItems(current => current.map(item => {
+            const result = results.find(candidate => candidate.service.id === item.service_type_id);
+            if (!result) return item;
+            const { breakdown } = result;
+            const automatic = budgetPricing.use_bdi && breakdown.totalCost > 0;
+            const unitPrice = automatic
+              ? Math.round((breakdown.totalCost / factor) * 100) / 100
+              : Number(item.unit_price || 0);
+            return {
+              ...item,
+              unit_hourly_rate: breakdown.hourlyRate,
+              unit_hours: breakdown.hours,
+              unit_labor_cost: breakdown.laborCost,
+              unit_materials_cost: breakdown.materialsCost,
+              unit_extras_cost: breakdown.quoteExtrasCost,
+              unit_total_cost: breakdown.totalCost,
+              profit_rate: budgetPricing.profit_rate,
+              bdi: factor,
+              pricing_mode: automatic ? 'cost_bdi' : (item.pricing_mode ?? 'registered'),
+              price_override: automatic ? null : Number(item.unit_price || 0),
+              unit_price: unitPrice,
+              total_price: Math.round(Number(item.quantity || 0) * unitPrice * 100) / 100,
+            };
+          }));
+        }).catch(() => {
+          // O serviço e o preço cadastrado continuam válidos; custo indisponível
+          // apenas desabilita a modalidade automática naquela linha.
+        });
+      }
     }
 
     // Serviço novo entra, por padrão, nos equipamentos já marcados. A partir daí
@@ -1394,6 +1502,24 @@ export function ServiceOrderFormDialog({
       items.map(item => item.service_type_id),
     );
     if (merged.length !== selectedServiceTypeIds.length) handleServiceTypesChange(merged, false);
+  };
+
+  const handleBudgetPricingChange = (next: ServiceOrderBudgetPricing) => {
+    budgetPricingTouchedRef.current = true;
+    const factor = calculateServiceOrderBdiFactor(
+      next.tax_rate,
+      next.admin_indirect_rate,
+      next.profit_rate,
+    );
+    const normalized = { ...next, bdi: factor };
+    setBudgetPricing(normalized);
+    if (budgetPricing.use_bdi && !next.use_bdi) {
+      setBudgetItems(current => preserveServiceOrderBudgetPricesAsManual(current));
+      return;
+    }
+    if (next.use_bdi) {
+      setBudgetItems(current => recalculateAutomaticServiceOrderBudgetItems(current, factor));
+    }
   };
 
   // Bloco reutilizado nos dois modos (criar/editar): endereço de serviço próprio
@@ -2182,6 +2308,8 @@ export function ServiceOrderFormDialog({
                   <ServiceOrderBudgetSection
                     items={budgetItems}
                     onChange={handleBudgetItemsChange}
+                    pricing={budgetPricing}
+                    onPricingChange={handleBudgetPricingChange}
                     loading={isEditing && budgetQuery.isLoading}
                   />
                 </section>
@@ -2234,6 +2362,15 @@ export function ServiceOrderFormDialog({
               <div className="space-y-5">
                 <WizardReviewChecklist items={serviceOrderReviewItems} onEdit={setStep} />
                 <ServiceOrderReviewDetails data={formSummaryData} />
+                {budgetItems.length > 0 && (
+                  <section className="space-y-3 border-t pt-5" aria-label="Revisão da precificação">
+                    <div>
+                      <h3 className="text-sm font-semibold">Precificação da OS</h3>
+                      <p className="text-xs text-muted-foreground">Confira custos, metodologia e quanto o cliente pagará antes de salvar.</p>
+                    </div>
+                    <ServiceOrderBudgetSection items={budgetItems} pricing={budgetPricing} />
+                  </section>
+                )}
                 {(selectedEquipmentIds.length > 0 || selectedStandaloneTemplateIds.length > 0) && (
                   <div className="border-t pt-5">{scopeSummary}</div>
                 )}
@@ -2398,6 +2535,7 @@ export function ServiceOrderFormDialog({
               _selectedCustomerId,
               _selectedServiceTypeIds,
               _budgetItems,
+              _budgetPricing,
               _requireTechSignature,
               _requireClientSignature,
               _generateNpsSurvey,
@@ -2413,6 +2551,10 @@ export function ServiceOrderFormDialog({
               form.setValue('service_type_id', _selectedServiceTypeIds[0] ?? '');
             }
             if (_budgetItems) setBudgetItems(_budgetItems);
+            if (_budgetPricing) {
+              budgetPricingTouchedRef.current = true;
+              setBudgetPricing(_budgetPricing);
+            }
             if (_requireTechSignature !== undefined) setRequireTechSignature(_requireTechSignature);
             if (_requireClientSignature !== undefined) setRequireClientSignature(_requireClientSignature);
             if (_generateNpsSurvey !== undefined) setGenerateNpsSurvey(_generateNpsSurvey);
@@ -2580,6 +2722,8 @@ export function ServiceOrderFormDialog({
                 <ServiceOrderBudgetSection
                   items={budgetItems}
                   onChange={handleBudgetItemsChange}
+                  pricing={budgetPricing}
+                  onPricingChange={handleBudgetPricingChange}
                 />
               </section>
 
@@ -2706,6 +2850,15 @@ export function ServiceOrderFormDialog({
             <div className="space-y-5">
               <WizardReviewChecklist items={serviceOrderReviewItems} onEdit={setStep} />
               <ServiceOrderReviewDetails data={formSummaryData} />
+              {budgetItems.length > 0 && (
+                <section className="space-y-3 border-t pt-5" aria-label="Revisão da precificação">
+                  <div>
+                    <h3 className="text-sm font-semibold">Precificação da OS</h3>
+                    <p className="text-xs text-muted-foreground">Confira custos, metodologia e quanto o cliente pagará antes de criar.</p>
+                  </div>
+                  <ServiceOrderBudgetSection items={budgetItems} pricing={budgetPricing} />
+                </section>
+              )}
               {(selectedEquipmentIds.length > 0 || selectedStandaloneTemplateIds.length > 0) && (
                 <div className="border-t pt-5">{scopeSummary}</div>
               )}
