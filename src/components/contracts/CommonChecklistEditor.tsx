@@ -27,6 +27,17 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectSectionLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { frequencyLabel, isEveryVisit, type QuestionFrequency } from '@/components/contracts/questionFrequency';
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -344,48 +355,64 @@ function ChecklistBlock({
 
   return (
     <div className="bg-background">
-      {/* Cabeçalho-trigger do accordion: clicar abre/fecha este bloco (e fecha os
-          outros). O botão remover não pode alternar — stopPropagation. */}
-      <button
-        type="button"
-        onClick={onToggleOpen}
-        aria-expanded={open}
-        className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-muted/40"
-      >
-        <ListChecks className="h-3.5 w-3.5 shrink-0 text-info" />
-        <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
-          {tEditor.blockTitle} {template.name}
-        </span>
-        <Badge variant="outline" className="shrink-0 text-[10px] font-normal">
-          {includedCount} {tEditor.firstOsCount.replace('{total}', String(questions.length))}
-        </Badge>
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              e.stopPropagation();
-              onRemove();
-            }
-          }}
-          className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-          aria-label={`${tEditor.removeTooltip} ${template.name}`}
-          title={tEditor.removeTooltip}
+      {/* O remover fica FORA do trigger do accordion. Isso evita controles
+          interativos aninhados e garante que mouse, toque e teclado nunca
+          expandam/recolham o bloco quando a intenção é excluir. */}
+      <div className="flex items-center transition-colors hover:bg-muted/40">
+        <button
+          type="button"
+          onClick={onToggleOpen}
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5 text-left"
         >
-          <Trash2 className="h-3.5 w-3.5" />
-        </span>
-        <ChevronDown
-          className={cn(
-            'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
-            open && 'rotate-180',
-          )}
-        />
-      </button>
+          <ListChecks className="h-3.5 w-3.5 shrink-0 text-info" />
+          <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
+            {tEditor.blockTitle} {template.name}
+          </span>
+          <Badge variant="outline" className="shrink-0 text-[10px] font-normal">
+            {includedCount} {tEditor.firstOsCount.replace('{total}', String(questions.length))}
+          </Badge>
+          <ChevronDown
+            className={cn(
+              'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
+              open && 'rotate-180',
+            )}
+          />
+        </button>
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              type="button"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
+              className="mr-2 shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive hover:text-white focus-visible:bg-destructive focus-visible:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
+              aria-label={`${tEditor.removeTooltip} ${template.name}`}
+              title={tEditor.removeTooltip}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remover checklist?</AlertDialogTitle>
+              <AlertDialogDescription>
+                O checklist “{template.name}” e suas configurações da primeira OS serão removidos deste equipamento.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={onRemove}
+                className="bg-destructive text-white hover:bg-destructive/90 focus-visible:bg-destructive focus-visible:text-white"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Remover checklist
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
 
       {open && (
       <div className="border-t px-3 pb-3 pt-2.5">

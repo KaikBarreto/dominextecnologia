@@ -5,6 +5,7 @@ import {
   DollarSign,
   Gift,
   HardHat,
+  Loader2,
   Package,
   Pencil,
   Plus,
@@ -47,6 +48,9 @@ import { formatMoney, formatNumber } from '@/lib/format';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { CostResourceFormSheet } from './CostResourceFormSheet';
+import { CostCustomerComparison } from '@/components/pricing/CostCustomerComparison';
+import { calculateBDI } from '@/hooks/useBDICalculator';
+import { usePricingSettings } from '@/hooks/usePricingSettings';
 import {
   filterGlobalCostResources,
   type ResourceStatusFilter,
@@ -63,8 +67,33 @@ const CATEGORY_ICONS: Record<
   other: { icon: Package, hex: '#475569' },
 };
 
+interface ResourceCategoryPresentation {
+  value: CostResourceCategory;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  hex: string;
+}
+
+function getCategoryVisual(category: string | null | undefined) {
+  return CATEGORY_ICONS[category as CostResourceCategory] ?? CATEGORY_ICONS.other;
+}
+
+function ResourceCategoryBadge({ category }: { category: ResourceCategoryPresentation }) {
+  const Icon = category.icon;
+  return (
+    <Badge
+      data-resource-category-badge={category.value}
+      className="gap-1 border-0 text-white hover:opacity-90"
+      style={{ backgroundColor: category.hex }}
+    >
+      <Icon className="h-3 w-3" aria-hidden="true" />
+      {category.label}
+    </Badge>
+  );
+}
+
 function ResourceAvatar({ resource, className }: { resource: CostResource; className?: string }) {
-  const category = CATEGORY_ICONS[resource.category];
+  const category = getCategoryVisual(resource.category);
   const Icon = category.icon;
 
   if (resource.photo_url) {
@@ -88,7 +117,7 @@ export function GlobalCostsTab() {
   const fmt = useCallback((value: number) => formatMoney(value, currency, locale), [currency, locale]);
   const isMobile = useIsMobile();
 
-  const categoryConfig = useMemo(
+  const categoryConfig = useMemo<ResourceCategoryPresentation[]>(
     () => [
       { value: 'vehicle' as const, label: tgc.categoryVehicles, ...CATEGORY_ICONS.vehicle },
       { value: 'tool' as const, label: tgc.categoryTools, ...CATEGORY_ICONS.tool },
@@ -100,6 +129,29 @@ export function GlobalCostsTab() {
   );
 
   const { resources, kpis, isLoading, createResource, updateResource, deleteResource } = useCostResources();
+  const { settings: pricingSettings } = usePricingSettings();
+  const bdiReference = useMemo(() => {
+    const taxRate = Number(pricingSettings?.tax_rate ?? 10);
+    const adminRate = Number(pricingSettings?.admin_indirect_rate ?? 12);
+    const profitRate = Number(pricingSettings?.default_profit_rate ?? 10);
+    const common = {
+      taxRate,
+      adminRate,
+      profitRate,
+      distanceKm: 0,
+      kmCost: Number(pricingSettings?.km_cost ?? 1),
+      cardDiscountRate: Number(pricingSettings?.card_discount_rate ?? 6),
+      cardInstallments: Number(pricingSettings?.card_installments ?? 10),
+    };
+    const factor = calculateBDI({ ...common, items: [] }).bdiFactor;
+    return {
+      factor,
+      customerPrice: (cost: number) => calculateBDI({
+        ...common,
+        items: [{ totalCost: Math.max(0, cost), profitRate }],
+      }).finalPrice,
+    };
+  }, [pricingSettings]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<CostResourceCategory[]>([]);
@@ -128,6 +180,10 @@ export function GlobalCostsTab() {
     () => new Map(categoryConfig.map((category) => [category.value, category])),
     [categoryConfig],
   );
+  const resolveCategory = useCallback(
+    (category: string) => categoryByValue.get(category as CostResourceCategory) ?? categoryByValue.get('other')!,
+    [categoryByValue],
+  );
   const resourceById = useMemo(
     () => new Map(filteredResources.map((resource) => [resource.id, resource])),
     [filteredResources],
@@ -135,28 +191,39 @@ export function GlobalCostsTab() {
 
   const listItems: ListDetailItem[] = useMemo(
     () => filteredResources.map((resource) => {
-      const category = categoryByValue.get(resource.category)!;
+      const category = resolveCategory(resource.category);
       const statusLabel = resource.is_active ? tgc.badgeActive : tgc.badgeInactive;
       const amount = Number(resource.total_monthly_cost ?? 0);
       return {
         id: resource.id,
         title: resource.name,
-        subtitle: `${category.label} · ${statusLabel}`,
+        subtitle: resource.notes || undefined,
         searchText: `${category.label} ${statusLabel} ${resource.notes ?? ''}`,
         imageUrl: resource.photo_url,
         imageAlt: resource.name,
         leading: resource.photo_url ? undefined : <ResourceAvatar resource={resource} className="h-10 w-10" />,
         trailing: (
-          <span className="whitespace-nowrap text-right text-xs font-semibold tabular-nums text-foreground">
-            {fmt(amount)}
-            <span className="block text-[10px] font-normal text-muted-foreground">
-              {resource.category === 'gift' ? tgc.perUnit : tgc.perMonth}
+          <span className="flex max-w-[10rem] flex-col items-end gap-1.5">
+            <span className="flex max-w-full flex-wrap justify-end gap-1">
+              <ResourceCategoryBadge category={category} />
+              <Badge
+                data-resource-status-badge={resource.is_active ? 'active' : 'inactive'}
+                className={cn('border-0 text-white', resource.is_active ? 'bg-green-600 hover:bg-green-600' : 'bg-slate-600 hover:bg-slate-600')}
+              >
+                {statusLabel}
+              </Badge>
+            </span>
+            <span className="whitespace-nowrap text-right text-xs font-semibold tabular-nums text-foreground">
+              {fmt(amount)}
+              <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                {resource.category === 'gift' ? tgc.perUnit : tgc.perMonth}
+              </span>
             </span>
           </span>
         ),
       };
     }),
-    [categoryByValue, filteredResources, fmt, tgc],
+    [filteredResources, fmt, resolveCategory, tgc],
   );
 
   const sortOptions: ListDetailSortOption[] = useMemo(() => {
@@ -206,9 +273,9 @@ export function GlobalCostsTab() {
           setSelectedId(null);
           setMobileDetailOpen(false);
         }
+        setPendingDelete(null);
       },
     });
-    setPendingDelete(null);
   };
 
   const statItems: StatCarouselItem[] = useMemo(
@@ -270,10 +337,12 @@ export function GlobalCostsTab() {
       );
     }
 
-    const category = categoryByValue.get(selectedResource.category)!;
+    const category = resolveCategory(selectedResource.category);
     const totalMonthly = Number(selectedResource.total_monthly_cost ?? 0);
     const hourlyRate = Number(selectedResource.hourly_rate ?? 0);
     const isGift = selectedResource.category === 'gift';
+    const referenceCost = isGift ? totalMonthly : hourlyRate;
+    const referenceUnit = isGift ? 'unidade' : 'hora utilizada';
     return (
       <section className="overflow-hidden rounded-xl border bg-background">
         <div className="border-b p-4 sm:p-5">
@@ -287,8 +356,11 @@ export function GlobalCostsTab() {
               <div className="min-w-0">
                 <h2 className="break-words text-lg font-bold text-foreground">{selectedResource.name}</h2>
                 <div className="mt-1 flex flex-wrap gap-1.5">
-                  <Badge className="border-0 text-white" style={{ backgroundColor: category.hex }}>{category.label}</Badge>
-                  <Badge className={cn('border-0 text-white', selectedResource.is_active ? 'bg-green-600' : 'bg-slate-600')}>
+                  <ResourceCategoryBadge category={category} />
+                  <Badge
+                    data-resource-status-badge={selectedResource.is_active ? 'active' : 'inactive'}
+                    className={cn('border-0 text-white', selectedResource.is_active ? 'bg-green-600 hover:bg-green-600' : 'bg-slate-600 hover:bg-slate-600')}
+                  >
                     {selectedResource.is_active ? tgc.badgeActive : tgc.badgeInactive}
                   </Badge>
                 </div>
@@ -319,6 +391,16 @@ export function GlobalCostsTab() {
             <dd className="mt-1 whitespace-nowrap text-xl font-bold tabular-nums text-foreground">{isGift ? '—' : fmt(hourlyRate)}</dd>
           </div>
         </dl>
+
+        <CostCustomerComparison
+          className="mx-4 sm:mx-5"
+          cost={referenceCost}
+          customerPrice={bdiReference.customerPrice(referenceCost)}
+          formatValue={fmt}
+          costLabel={`Seu custo por ${referenceUnit}`}
+          customerLabel={`Cliente paga com BDI por ${referenceUnit}`}
+          note={`Referência para quando este recurso for incluído em um serviço ou orçamento. Coeficiente atual ${bdiReference.factor.toFixed(4)}; o valor final ainda pode mudar por quantidade, desconto ou preço manual.`}
+        />
 
         <div className="grid gap-0 lg:grid-cols-[minmax(0,1.5fr)_minmax(15rem,1fr)] lg:divide-x">
           <div className="p-4 sm:p-5">
@@ -453,8 +535,18 @@ export function GlobalCostsTab() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{tgc.deleteCancel}</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={confirmDelete}>{tgc.deleteConfirm}</AlertDialogAction>
+            <AlertDialogCancel disabled={deleteResource.isPending}>{tgc.deleteCancel}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteResource.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                confirmDelete();
+              }}
+            >
+              {deleteResource.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {tgc.deleteConfirm}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

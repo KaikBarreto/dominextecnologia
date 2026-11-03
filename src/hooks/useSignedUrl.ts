@@ -20,6 +20,16 @@ const PRIVATE_BUCKETS = [
 const SIGNED_TTL_SECONDS = 3600; // 1 hora
 
 const cache = new Map<string, { url: string; expiresAt: number }>();
+type PrivateBucket = (typeof PRIVATE_BUCKETS)[number];
+
+/** Reaproveita a URL assinada de forma síncrona ao remontar uma imagem. */
+function cachedStorageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const parsed = parseStorageUrl(url);
+  if (!parsed || !PRIVATE_BUCKETS.includes(parsed.bucket as PrivateBucket)) return url;
+  const cached = cache.get(`${parsed.bucket}/${parsed.path}`);
+  return cached && cached.expiresAt > Date.now() ? cached.url : url;
+}
 
 /**
  * Extrai o bucket e path de uma URL pública/assinada do Supabase Storage.
@@ -48,7 +58,7 @@ export async function resolveStorageUrl(url: string | null | undefined): Promise
   if (!url) return null;
   const parsed = parseStorageUrl(url);
   if (!parsed) return url;
-  if (!PRIVATE_BUCKETS.includes(parsed.bucket as any)) return url;
+  if (!PRIVATE_BUCKETS.includes(parsed.bucket as PrivateBucket)) return url;
 
   const cacheKey = `${parsed.bucket}/${parsed.path}`;
   const cached = cache.get(cacheKey);
@@ -75,7 +85,11 @@ export async function resolveStorageUrl(url: string | null | undefined): Promise
  * Hook React para resolver assincronamente uma URL de storage (gera signed URL se necessário).
  */
 export function useSignedUrl(url: string | null | undefined): string | null {
-  const [resolved, setResolved] = useState<string | null>(url ?? null);
+  // Ao pesquisar no PDV, cards fora do filtro são desmontados. Quando voltam,
+  // iniciar pela URL bruta fazia uma nova tentativa 403 antes de o efeito ler
+  // o cache, dando a impressão de que todas as fotos recarregavam. A URL
+  // assinada válida já conhecida nasce no primeiro render da remontagem.
+  const [resolved, setResolved] = useState<string | null>(() => cachedStorageUrl(url));
 
   useEffect(() => {
     let cancelled = false;
@@ -83,6 +97,7 @@ export function useSignedUrl(url: string | null | undefined): string | null {
       setResolved(null);
       return;
     }
+    setResolved(cachedStorageUrl(url));
     resolveStorageUrl(url).then((value) => {
       if (!cancelled) setResolved(value);
     });

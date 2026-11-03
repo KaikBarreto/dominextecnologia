@@ -93,7 +93,7 @@ export function ServiceOrderSchedulePlanner({
   }).format(new Date(`${date}T12:00:00Z`));
 
   return (
-    <section className="space-y-4 rounded-lg border bg-muted/20 p-4">
+    <section className="space-y-4">
       <div>
         <h3 className="text-sm font-semibold">{labels.period}</h3>
         <p className="mt-1 text-xs text-muted-foreground">{labels.dailyPlanHelp}</p>

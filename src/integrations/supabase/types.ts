@@ -10726,6 +10726,7 @@ export type Database = {
           total_price: number
           total_value: number | null
           updated_at: string
+          use_bdi: boolean
           valid_until: string | null
           view_count: number
         }
@@ -10769,6 +10770,7 @@ export type Database = {
           total_price?: number
           total_value?: number | null
           updated_at?: string
+          use_bdi?: boolean
           valid_until?: string | null
           view_count?: number
         }
@@ -10812,6 +10814,7 @@ export type Database = {
           total_price?: number
           total_value?: number | null
           updated_at?: string
+          use_bdi?: boolean
           valid_until?: string | null
           view_count?: number
         }
@@ -16350,6 +16353,34 @@ export type Database = {
       get_instance_recommendation: { Args: never; Returns: Json }
       get_landing_whatsapp_numbers: { Args: never; Returns: string[] }
       get_lead_capture_form: { Args: { p_short_code: string }; Returns: Json }
+      get_inventory_abc_report: {
+        Args: {
+          p_end_date?: string
+          p_start_date?: string
+          p_stock_ids?: string[]
+        }
+        Returns: {
+          current_balance: number
+          group_color: string
+          group_id: string
+          group_name: string
+          image_url: string
+          inventory_id: string
+          material_name: string
+          minimum_balance: number
+          pdv_cost: number
+          pdv_margin: number
+          pdv_quantity: number
+          pdv_revenue: number
+          sale_price: number
+          sku: string
+          stock_value: number
+          unit: string
+          unit_cost: number
+          usage_quantity: number
+          usage_value: number
+        }[]
+      }
       get_material_purchase_report: {
         Args: {
           p_created_by_ids?: string[]

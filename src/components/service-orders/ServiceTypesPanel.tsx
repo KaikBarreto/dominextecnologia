@@ -253,8 +253,12 @@ export function ServiceTypesPanel({
   }, [filteredTypes, handleEdit, isMobile, selectedId, serviceTypes]);
 
   useEffect(() => {
+    // O modal de criação tem estado próprio. Sem este bloqueio, limpar
+    // `editingId` em handleNew fazia o serviço selecionado ser reidratado no
+    // render seguinte e o botão Criar acabava operando sobre a primeira ficha.
+    if (formOpen) return;
     if (selectedType && editingId !== selectedType.id) handleEdit(selectedType);
-  }, [editingId, handleEdit, selectedType]);
+  }, [editingId, formOpen, handleEdit, selectedType]);
 
   const restoreSelectedForm = () => {
     if (selectedType) handleEdit(selectedType);

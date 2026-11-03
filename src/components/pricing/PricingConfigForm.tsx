@@ -1,22 +1,35 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calculator, Save } from 'lucide-react';
-import { usePricingSettings } from '@/hooks/usePricingSettings';
+import { Calculator, CheckCircle2, Loader2, Save } from 'lucide-react';
+import { usePricingSettings, type PricingSettingsUpdate } from '@/hooks/usePricingSettings';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 // Converte a string crua do input para number, com fallback se estiver vazia/inválida.
 const num = (s: string, fallback = 0) => {
-  const n = parseFloat(s);
+  const n = parseFloat(s.replace(',', '.'));
   return Number.isFinite(n) ? n : fallback;
 };
 
-export function PricingConfigForm() {
+export interface PricingPreviewSettings {
+  taxRate: number;
+  adminRate: number;
+  profitRate: number;
+  kmCost: number;
+  cardDiscountRate: number;
+  cardInstallments: number;
+}
+
+interface PricingConfigFormProps {
+  /** Atualiza somente a prévia em memória; persistência continua exclusiva do CTA Salvar. */
+  onPreviewChange?: (settings: PricingPreviewSettings) => void;
+}
+
+export function PricingConfigForm({ onPreviewChange }: PricingConfigFormProps = {}) {
   const { locale } = useAppLocaleContext();
   const tp = MESSAGES[locale].app.crm.pricing;
   const { settings, isLoading, upsertSettings } = usePricingSettings();
@@ -47,7 +60,36 @@ export function PricingConfigForm() {
     return Math.max(0.01, raw);
   }, [taxNum, adminNum, profitNum]);
 
-  const bdiRemainder = Math.max(0, 100 - taxNum - adminNum - profitNum);
+  const payload = useMemo<PricingSettingsUpdate>(() => ({
+    tax_rate: num(taxRate, 10),
+    admin_indirect_rate: num(adminRate, 12),
+    default_profit_rate: num(profitRate, 10),
+    km_cost: num(kmCost, 1),
+    card_discount_rate: num(cardDiscountRate, 6),
+    card_installments: Math.max(1, num(cardInstallments, 10)),
+  }), [adminRate, cardDiscountRate, cardInstallments, kmCost, profitRate, taxRate]);
+
+  useEffect(() => {
+    onPreviewChange?.({
+      taxRate: payload.tax_rate ?? 10,
+      adminRate: payload.admin_indirect_rate ?? 12,
+      profitRate: payload.default_profit_rate ?? 10,
+      kmCost: payload.km_cost ?? 1,
+      cardDiscountRate: payload.card_discount_rate ?? 6,
+      cardInstallments: payload.card_installments ?? 10,
+    });
+  }, [onPreviewChange, payload]);
+
+  const isDirty = !!settings && (
+    payload.tax_rate !== Number(settings.tax_rate ?? 10)
+    || payload.admin_indirect_rate !== Number(settings.admin_indirect_rate ?? 12)
+    || payload.default_profit_rate !== Number(settings.default_profit_rate ?? 10)
+    || payload.km_cost !== Number(settings.km_cost ?? 1)
+    || payload.card_discount_rate !== Number(settings.card_discount_rate ?? 6)
+    || payload.card_installments !== Number(settings.card_installments ?? 10)
+  );
+
+  const handleSave = () => upsertSettings.mutate(payload);
 
   if (isLoading) {
     return (
@@ -92,62 +134,18 @@ export function PricingConfigForm() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">{tp.taxLabel}</Label>
-              <Input type="number" min={0} step="0.01" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} />
+              <NumericInput decimal maxDecimals={2} value={taxRate} onValueChange={setTaxRate} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">{tp.adminLabel}</Label>
-              <Input type="number" min={0} step="0.01" value={adminRate} onChange={(e) => setAdminRate(e.target.value)} />
+              <NumericInput decimal maxDecimals={2} value={adminRate} onValueChange={setAdminRate} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">{tp.profitLabel}</Label>
-              <Input type="number" min={0} step="0.01" value={profitRate} onChange={(e) => setProfitRate(e.target.value)} />
+              <NumericInput decimal maxDecimals={2} value={profitRate} onValueChange={setProfitRate} />
             </div>
           </div>
 
-          {/* Barra de composição */}
-          <div>
-            <div className="flex rounded-full overflow-hidden h-2.5">
-              <div style={{ width: `${taxNum}%` }} className="bg-destructive transition-all" title={tp.legendTax.replace('{pct}', String(taxNum))} />
-              <div style={{ width: `${adminNum}%` }} className="bg-warning transition-all" title={tp.legendAdmin.replace('{pct}', String(adminNum))} />
-              <div style={{ width: `${profitNum}%` }} className="bg-success transition-all" title={tp.legendProfit.replace('{pct}', String(profitNum))} />
-              <div style={{ width: `${bdiRemainder}%` }} className="bg-primary transition-all" title={tp.legendBdi.replace('{pct}', bdiRemainder.toFixed(1))} />
-            </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-destructive inline-block" />
-                {tp.legendTax.replace('{pct}', String(taxNum))}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-warning inline-block" />
-                {tp.legendAdmin.replace('{pct}', String(adminNum))}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-success inline-block" />
-                {tp.legendProfit.replace('{pct}', String(profitNum))}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-primary inline-block" />
-                {tp.legendBdi.replace('{pct}', bdiRemainder.toFixed(1))}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex justify-end">
-            <Button
-              onClick={() => upsertSettings.mutate({
-                tax_rate: num(taxRate, 10),
-                admin_indirect_rate: num(adminRate, 12),
-                default_profit_rate: num(profitRate, 10),
-                km_cost: num(kmCost, 1),
-                card_discount_rate: num(cardDiscountRate, 6),
-                card_installments: Math.max(1, num(cardInstallments, 10)),
-              } as any)}
-              disabled={upsertSettings.isPending}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {upsertSettings.isPending ? tp.savingButton : tp.saveButton}
-            </Button>
-          </div>
         </CardContent>
       </Card>
 
@@ -158,11 +156,11 @@ export function PricingConfigForm() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">{tp.kmCostLabel}</Label>
-              <Input type="number" min={0} step="0.01" value={kmCost} onChange={(e) => setKmCost(e.target.value)} />
+              <NumericInput decimal maxDecimals={2} value={kmCost} onValueChange={setKmCost} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">{tp.cashDiscountLabel}</Label>
-              <Input type="number" min={0} step="0.01" value={cardDiscountRate} onChange={(e) => setCardDiscountRate(e.target.value)} />
+              <NumericInput decimal maxDecimals={2} value={cardDiscountRate} onValueChange={setCardDiscountRate} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">{tp.installmentsLabel}</Label>
@@ -170,24 +168,21 @@ export function PricingConfigForm() {
             </div>
           </div>
 
-          <div className="flex justify-end">
-            <Button
-              onClick={() => upsertSettings.mutate({
-                tax_rate: num(taxRate, 10),
-                admin_indirect_rate: num(adminRate, 12),
-                default_profit_rate: num(profitRate, 10),
-                km_cost: num(kmCost, 1),
-                card_discount_rate: num(cardDiscountRate, 6),
-                card_installments: Math.max(1, num(cardInstallments, 10)),
-              } as any)}
-              disabled={upsertSettings.isPending}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {upsertSettings.isPending ? tp.savingButton : tp.saveButton}
-            </Button>
-          </div>
         </CardContent>
       </Card>
+
+      <div className="flex flex-col gap-3 rounded-xl border bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          {!isDirty && <CheckCircle2 className="h-4 w-4 text-success" />}
+          {isDirty ? 'Há alterações de precificação ainda não salvas.' : 'Configurações de precificação atualizadas.'}
+        </p>
+        <Button onClick={handleSave} disabled={!isDirty || upsertSettings.isPending} className="shrink-0">
+          {upsertSettings.isPending
+            ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            : <Save className="mr-2 h-4 w-4" />}
+          {upsertSettings.isPending ? tp.savingButton : tp.saveButton}
+        </Button>
+      </div>
     </div>
   );
 }

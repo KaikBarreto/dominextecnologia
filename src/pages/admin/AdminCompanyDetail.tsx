@@ -1,7 +1,7 @@
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check, XCircle, Package, Users, RefreshCw, Handshake } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check, XCircle, Package, Users, RefreshCw, Handshake, Settings2 } from 'lucide-react';
 import { SelfServiceBadge } from '@/components/admin/company-lead/SelfServiceBadge';
 import { LeadWhatsAppButton } from '@/components/admin/company-lead/LeadWhatsAppButton';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,7 @@ export default function AdminCompanyDetail() {
   const rawTab = searchParams.get('tab') || 'info';
   const activeTab = ['info', 'plano', 'atividade', 'sucesso'].includes(rawTab) ? rawTab : 'info';
   const [showEdit, setShowEdit] = useState(false);
+  const [editInitialTab, setEditInitialTab] = useState<'basic' | 'commercial'>('basic');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [showCancelSubscriptionDialog, setShowCancelSubscriptionDialog] = useState(false);
@@ -223,7 +224,15 @@ export default function AdminCompanyDetail() {
           <ArrowLeft className="h-4 w-4" /> {isMobile ? 'Voltar' : 'Voltar para Empresas'}
         </Button>
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <Button variant="edit-ghost" size={isMobile ? 'sm' : 'default'} className="gap-1.5" onClick={() => setShowEdit(true)}>
+          <Button
+            variant="edit-ghost"
+            size={isMobile ? 'sm' : 'default'}
+            className="gap-1.5"
+            onClick={() => {
+              setEditInitialTab('basic');
+              setShowEdit(true);
+            }}
+          >
             <Edit className="h-4 w-4" /> {!isMobile && 'Editar'}
           </Button>
           {hasRecurrence && (
@@ -511,11 +520,24 @@ export default function AdminCompanyDetail() {
 
       {/* Módulos do Plano */}
       <Card className="mt-6">
-        <CardHeader className="pb-3">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5 text-primary" />
             Módulos do Plano
           </CardTitle>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => {
+              setEditInitialTab('commercial');
+              setShowEdit(true);
+            }}
+          >
+            <Settings2 className="h-4 w-4" />
+            Gerenciar módulos
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Resumo: Plano + Usuários */}
@@ -696,8 +718,11 @@ export default function AdminCompanyDetail() {
         open={showEdit}
         onOpenChange={setShowEdit}
         company={company}
+        initialTab={editInitialTab}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['admin-company', id] });
+          queryClient.invalidateQueries({ queryKey: ['admin-company-modules', id] });
+          queryClient.invalidateQueries({ queryKey: ['company-modules-info', id] });
           setShowEdit(false);
         }}
       />

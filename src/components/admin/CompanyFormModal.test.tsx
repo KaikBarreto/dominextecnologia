@@ -232,3 +232,15 @@ describe('CompanyFormModal — campo "Vencimento"', () => {
     expect(document.querySelector('input[type="date"]')).toBeNull();
   });
 });
+
+describe('CompanyFormModal — atalho de plano e módulos', () => {
+  it('abre diretamente na etapa Comercial quando solicitado pela ficha da empresa', () => {
+    mount({
+      company: { subscription_plan: 'personalizado', subscription_value: 500, custom_price: 0 },
+      initialTab: 'commercial',
+    });
+
+    expect(q('#company-max-users-default')).toBeTruthy();
+    expect(document.body.textContent).toContain('Gerenciar plano e módulos');
+  });
+});

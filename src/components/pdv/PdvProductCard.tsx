@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
  * campo) sem deixar um "sem foto" legítimo pendurado por tempo desproporcional.
  */
 const PHOTO_SKELETON_TIMEOUT_MS = 8000;
+const readyProductPhotos = new Set<string>();
 
 export interface PdvGridProduct {
   inventoryId: string;
@@ -37,6 +38,7 @@ export interface PdvGridProduct {
 interface PdvProductCardProps {
   product: PdvGridProduct;
   formatCurrency: (value: number) => string;
+  formatQuantity?: (value: number, unit: string) => string;
   outOfStockLabel: string;
   availableLabel: string;
   noPhotoLabel: string;
@@ -72,6 +74,10 @@ interface PdvProductCardProps {
    * transparência, evitando transformar logos e recortes em uma mancha de cor.
    */
   imageBackdrop?: 'blur' | 'cutout';
+  /** Resultado ativo da navegação por setas enquanto o foco segue na busca. */
+  keyboardActive?: boolean;
+  /** Sincroniza o índice quando o usuário entra na grade por Tab/setas. */
+  onKeyboardFocus?: () => void;
 }
 
 /**
@@ -85,6 +91,7 @@ interface PdvProductCardProps {
 function PdvProductCardImpl({
   product,
   formatCurrency,
+  formatQuantity = (value, unit) => `${value} ${unit}`,
   outOfStockLabel,
   availableLabel,
   noPhotoLabel,
@@ -92,6 +99,8 @@ function PdvProductCardImpl({
   compact = false,
   imageAspect = 'landscape',
   imageBackdrop = 'blur',
+  keyboardActive = false,
+  onKeyboardFocus,
 }: PdvProductCardProps) {
   const outOfStock = product.availableQuantity <= 0;
 
@@ -100,24 +109,32 @@ function PdvProductCardImpl({
   // de verdade, então nasce "pronto" (sem skeleton por cima). Com foto, nasce
   // "carregando" até o <img> real disparar `onLoad` (dois tempos: a URL
   // assinada E o download da imagem — o skeleton cobre os dois).
-  const [photoReady, setPhotoReady] = useState(() => !product.imageUrl);
+  const [photoReady, setPhotoReady] = useState(
+    () => !product.imageUrl || readyProductPhotos.has(product.imageUrl),
+  );
 
   useEffect(() => {
-    if (!product.imageUrl || photoReady) return;
+    const alreadyReady = !product.imageUrl || readyProductPhotos.has(product.imageUrl);
+    setPhotoReady(alreadyReady);
+    if (!product.imageUrl) return;
+    if (alreadyReady) return;
     const timeout = window.setTimeout(() => setPhotoReady(true), PHOTO_SKELETON_TIMEOUT_MS);
     return () => window.clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product.imageUrl]);
 
   return (
     <button
       type="button"
+      data-pdv-product-id={product.inventoryId}
+      tabIndex={outOfStock ? -1 : keyboardActive ? 0 : -1}
       disabled={outOfStock}
       aria-disabled={outOfStock}
+      onFocus={onKeyboardFocus}
       onClick={() => !outOfStock && onSelect(product)}
       className={cn(
         'group relative flex flex-col overflow-hidden rounded-lg border border-border bg-background text-left transition-shadow',
         outOfStock ? 'cursor-not-allowed' : 'hover:shadow-md active:scale-[0.98] cursor-pointer',
+        keyboardActive && !outOfStock && 'border-primary ring-2 ring-primary ring-offset-2',
       )}
     >
       {/* `opacity-60` fica SÓ na foto, nunca no botão inteiro: o selo "Sem
@@ -196,7 +213,10 @@ function PdvProductCardImpl({
                 )
               : undefined
           }
-          onLoad={() => setPhotoReady(true)}
+          onLoad={() => {
+            if (product.imageUrl) readyProductPhotos.add(product.imageUrl);
+            setPhotoReady(true);
+          }}
         />
       </div>
       {outOfStock && (
@@ -232,7 +252,7 @@ function PdvProductCardImpl({
           )}
         />
         <span className={cn('font-extrabold text-primary', compact ? 'text-sm' : 'text-base')}>
-          {formatCurrency(product.unitPrice)}
+          {formatCurrency(product.unitPrice)}<span className="text-[0.72em] font-semibold text-muted-foreground">/{product.unit?.trim() || 'un'}</span>
         </span>
         {!outOfStock && (
           <span
@@ -241,7 +261,10 @@ function PdvProductCardImpl({
               compact ? 'text-[10px] leading-none' : 'text-xs',
             )}
           >
-            {availableLabel.replace('{count}', String(product.availableQuantity))}
+            {availableLabel.replace(
+              '{count}',
+              formatQuantity(product.availableQuantity, product.unit?.trim() || 'un'),
+            )}
           </span>
         )}
       </div>

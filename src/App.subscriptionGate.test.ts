@@ -12,7 +12,7 @@ describe("wiring do gate de assinatura", () => {
       /Domiflix — fullscreen layout próprio[\s\S]+?<SubscriptionProtectedRoute>[\s\S]+?<DomiflixLayout \/>/,
     );
     expect(
-      source.match(/<SubscriptionProtectedRoute><DomiflixWatch \/><\/SubscriptionProtectedRoute>/g),
+      source.match(/<SubscriptionProtectedRoute><DomiflixIntroGate \/><DomiflixWatch \/><\/SubscriptionProtectedRoute>/g),
     ).toHaveLength(2);
   });
 

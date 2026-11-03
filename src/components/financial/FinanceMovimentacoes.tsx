@@ -14,6 +14,7 @@ import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { SearchField, SearchFieldAction } from '@/components/ui/search-field-actions';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
@@ -28,9 +29,9 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  MoreVertical, Pencil, Trash2, ArrowLeftRight, Plus, CreditCard,
+  MoreVertical, Pencil, Trash2, ArrowLeftRight, CreditCard,
   Landmark, Wallet, LayoutDashboard, Calculator, Loader2, SlidersHorizontal, Scale,
-  Upload, Search, ArrowDownUp, ChevronLeft, ChevronRight,
+  Upload, Search, ArrowDownUp, ChevronLeft, ChevronRight, Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { idealForeground } from '@/lib/colorContrast';
@@ -43,13 +44,36 @@ import { walkAccountBalance } from '@/lib/finance-balance';
 import { buildPaymentGroupIndex } from '@/lib/finance-batch-payment';
 
 const ALL_TAB = '__all__';
-/** Aba neutra "Conciliação" — vive logo depois de "Visão Geral", sem accentColor. */
 const RECONCILE_TAB = '__reconcile__';
 
 function getTypeIcon(type: string) {
   if (type === 'caixa') return Wallet;
   if (type === 'cartao') return CreditCard;
   return Landmark;
+}
+
+function ExpandableSectionAction({
+  label,
+  visibleLabel,
+  onClick,
+}: {
+  label: string;
+  visibleLabel: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="group/add inline-grid h-7 grid-cols-[1rem_0fr] items-center overflow-hidden rounded-md bg-primary px-1.5 text-primary-foreground shadow-sm transition-[grid-template-columns,gap,padding] duration-200 hover:grid-cols-[1rem_1fr] hover:gap-1.5 hover:px-2.5 focus-visible:grid-cols-[1rem_1fr] focus-visible:gap-1.5 focus-visible:px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
+    >
+      <Plus className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <span className="overflow-hidden whitespace-nowrap text-[11px] font-semibold normal-case tracking-normal opacity-0 transition-opacity duration-150 group-hover/add:opacity-100 group-focus-visible/add:opacity-100 motion-reduce:transition-none">
+        {visibleLabel}
+      </span>
+    </button>
+  );
 }
 
 /**
@@ -129,14 +153,21 @@ export function FinanceMovimentacoes({
   const isMobile = useIsMobile();
   const { locale, currency } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
+  const newAccountShortLabel = locale === 'pt-br'
+    ? 'Nova conta'
+    : fin.movements.sidebar.addMenuNewAccount;
+  const newCardShortLabel = locale === 'pt-br'
+    ? 'Novo cartão'
+    : fin.movements.sidebar.addMenuNewCard;
   const fmt = (v: number) => formatMoney(v, currency, locale);
   const {
     accounts, balances, cardBillTotals,
-    deleteAccount, transfer, canManageBankAccounts,
+    deleteAccount, transfer, canManageBankAccounts, isLoading: accountsLoading,
   } = useFinancialAccounts();
   const recalculateBills = useRecalculateBills();
 
   const [activeTab, setActiveTab] = useState<string>(ALL_TAB);
+  const [reconciliationReturnTab, setReconciliationReturnTab] = useState<string>(ALL_TAB);
   const [accountSearch, setAccountSearch] = useState('');
   const [accountTypeFilter, setAccountTypeFilter] = useState<string[]>([]);
   const [accountSort, setAccountSort] = useState<'name' | 'balance-desc' | 'balance-asc'>('name');
@@ -269,6 +300,26 @@ export function FinanceMovimentacoes({
     setEditingAccount(a);
     setFormOpen(true);
   };
+
+  const openReconciliation = () => {
+    if (activeTab !== RECONCILE_TAB) setReconciliationReturnTab(activeTab);
+    setActiveTab(RECONCILE_TAB);
+    if (isMobile) setMobileDetailOpen(true);
+  };
+
+  const closeReconciliation = () => {
+    const destination = reconciliationReturnTab === ALL_TAB
+      || accounts.some((account) => account.id === reconciliationReturnTab)
+      ? reconciliationReturnTab
+      : ALL_TAB;
+    setActiveTab(destination);
+    if (isMobile) setMobileDetailOpen(true);
+  };
+
+  const reconciliationReturnLabel = reconciliationReturnTab === ALL_TAB
+    ? fin.reconciliation.overviewDestination
+    : accounts.find((account) => account.id === reconciliationReturnTab)?.name
+      ?? fin.reconciliation.overviewDestination;
 
   // "Ajustar saldo": abre o dialog dedicado que gera UMA transação de ajuste
   // pela diferença até o saldo desejado. Só faz sentido pra conta/caixa
@@ -524,28 +575,6 @@ export function FinanceMovimentacoes({
     );
   };
 
-  // No mobile, criação fica no topo porque a coluna da lista pode sair de cena
-  // ao abrir o detalhe. No desktop ela vive apenas no rodapé da lista, evitando
-  // duas portas de entrada concorrentes.
-  const globalActions = canManageBankAccounts && isMobile ? (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button size="sm" className="gap-1.5 shrink-0" aria-label={fin.movements.header.addButton}>
-          <Plus className="h-4 w-4" />
-          {fin.movements.header.addButton}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => openNewAccount('banco')}>
-          <Landmark className="h-4 w-4" /> {fin.movements.sidebar.addMenuNewAccount}
-        </DropdownMenuItem>
-        <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => openNewAccount('cartao')}>
-          <CreditCard className="h-4 w-4" /> {fin.movements.sidebar.addMenuNewCard}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  ) : null;
-
   // A importação pertence ao mesmo grupo operacional de Exportar e Nova
   // movimentação. O painel recebe este botão como ação contextual; assim ele
   // não fica órfão no cabeçalho geral da página.
@@ -681,22 +710,40 @@ export function FinanceMovimentacoes({
           icon: LayoutDashboard,
           iconColor: '#047857',
         })}
-        {renderNavigatorItem({
-          value: RECONCILE_TAB,
-          label: fin.reconciliation.tabLabel,
-          icon: Scale,
-          iconColor: '#2563eb',
-        })}
-        {pagedAccounts.length === 0 ? (
+        {accountsLoading ? (
+          <div className="space-y-3 px-3 py-5" role="status" aria-label="Carregando contas e cartões">
+            {[0, 1, 2].map((item) => (
+              <div key={item} className="flex items-center gap-3">
+                <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-3 w-2/3" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              </div>
+            ))}
+            <span className="sr-only">Carregando contas e cartões...</span>
+          </div>
+        ) : pagedAccounts.length === 0 ? (
           <p className="px-3 py-8 text-center text-sm text-muted-foreground">Nenhuma conta encontrada.</p>
         ) : null}
-        {pagedCashBankAccounts.length > 0 && (
+        {!accountsLoading && (canManageBankAccounts || pagedCashBankAccounts.length > 0) && (
           <div className="flex items-center justify-between border-b border-border/60 px-2 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             <span>Contas</span>
-            <span className="tabular-nums">{filteredCashBankAccounts.length}</span>
+            <span className="flex items-center gap-2">
+              <span className="tabular-nums" aria-label={`${filteredCashBankAccounts.length} contas`}>
+                {filteredCashBankAccounts.length}
+              </span>
+              {canManageBankAccounts && (
+                <ExpandableSectionAction
+                  label={fin.movements.sidebar.addMenuNewAccount}
+                  visibleLabel={newAccountShortLabel}
+                  onClick={() => openNewAccount('banco')}
+                />
+              )}
+            </span>
           </div>
         )}
-        {pagedCashBankAccounts.map((account) => {
+        {!accountsLoading && pagedCashBankAccounts.map((account) => {
           const value = balances[account.id] ?? Number(account.initial_balance ?? 0);
           return renderNavigatorItem({
             value: account.id,
@@ -708,13 +755,24 @@ export function FinanceMovimentacoes({
             account,
           });
         })}
-        {pagedCardAccounts.length > 0 && (
+        {!accountsLoading && (canManageBankAccounts || pagedCardAccounts.length > 0) && (
           <div className="flex items-center justify-between border-b border-border/60 px-2 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             <span>Cartões</span>
-            <span className="tabular-nums">{filteredCardAccounts.length}</span>
+            <span className="flex items-center gap-2">
+              <span className="tabular-nums" aria-label={`${filteredCardAccounts.length} cartões`}>
+                {filteredCardAccounts.length}
+              </span>
+              {canManageBankAccounts && (
+                <ExpandableSectionAction
+                  label={fin.movements.sidebar.addMenuNewCard}
+                  visibleLabel={newCardShortLabel}
+                  onClick={() => openNewAccount('cartao')}
+                />
+              )}
+            </span>
           </div>
         )}
-        {pagedCardAccounts.map((account) => {
+        {!accountsLoading && pagedCardAccounts.map((account) => {
           const value = cardBillTotals[account.id] ?? 0;
           return renderNavigatorItem({
             value: account.id,
@@ -731,7 +789,7 @@ export function FinanceMovimentacoes({
       </div>
 
       <div className="space-y-2 border-t border-border/60 py-3 pr-4">
-        {filteredAccounts.length > 0 && (
+        {!accountsLoading && filteredAccounts.length > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <span className="min-w-0 whitespace-normal">
               Mostrando {pagedAccounts.length} de {filteredAccounts.length} itens
@@ -746,34 +804,23 @@ export function FinanceMovimentacoes({
             </span>
           </div>
         )}
-        {canManageBankAccounts && (
-          <div className="grid grid-cols-2 gap-2">
-            <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => openNewAccount('banco')}>
-              <Landmark className="h-3.5 w-3.5" /> Nova conta
-            </Button>
-            <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => openNewAccount('cartao')}>
-              <CreditCard className="h-3.5 w-3.5" /> Novo cartão
-            </Button>
-          </div>
-        )}
       </div>
     </aside>
   );
 
   return (
     <div className="space-y-4">
-      {isMobile ? (
-        /* Mobile: faixa compacta — título + "+" Adicionar (o consolidado de saldo
-           agora vive no card da aba Visão Geral, não mais aqui no topo). */
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-base font-bold">{fin.movements.header.titleMobile}</h2>
-          <div className="flex items-center gap-2 shrink-0">
-            {globalActions}
-          </div>
-        </div>
-      ) : (
-        <h2 className="text-lg font-bold">{fin.movements.header.titleDesktop}</h2>
-      )}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className={cn('font-bold', isMobile ? 'text-base' : 'text-lg')}>
+          {isMobile ? fin.movements.header.titleMobile : fin.movements.header.titleDesktop}
+        </h2>
+        {activeTab !== RECONCILE_TAB && (
+          <Button type="button" size="sm" className="gap-2" onClick={openReconciliation}>
+            <Scale className="h-4 w-4" />
+            {fin.reconciliation.entryAction}
+          </Button>
+        )}
+      </div>
 
       {isMobile && !mobileDetailOpen ? (
         <div className="overflow-hidden rounded-2xl border bg-card pl-4">
@@ -783,13 +830,18 @@ export function FinanceMovimentacoes({
         <div className="min-w-0 lg:grid lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] lg:gap-5">
           {!isMobile && accountNavigator}
           <section className="min-w-0 space-y-3" aria-label="Detalhes da conta selecionada">
-            {isMobile && (
+            {isMobile && activeTab !== RECONCILE_TAB && (
               <Button type="button" variant="ghost" size="sm" className="-ml-2 gap-2" onClick={() => setMobileDetailOpen(false)}>
                 <ChevronLeft className="h-4 w-4" /> Contas e cartões
               </Button>
             )}
         {activeTab === RECONCILE_TAB ? (
-          <ReconciliationTab state={reconciliationState} onStateChange={setReconciliationState} />
+          <ReconciliationTab
+            state={reconciliationState}
+            onStateChange={setReconciliationState}
+            onBack={closeReconciliation}
+            backLabel={fin.reconciliation.returnTo.replace('{destination}', reconciliationReturnLabel)}
+          />
         ) : activeTab === ALL_TAB ? (
           <div className="space-y-4">
             {/* Resumo único e limitado: a lista completa de contas já vive na

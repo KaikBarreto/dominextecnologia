@@ -242,27 +242,16 @@ export function InventoryKardexTab() {
   }, [items, selectedMaterialId]);
 
   const activeFilterCount =
-    (preset !== 'this_month' ? 1 : 0) +
     (typeFilter.length > 0 ? 1 : 0) +
     (stockFilter.length > 0 ? 1 : 0);
 
   const clearFilters = () => {
-    setPreset('this_month');
     setTypeFilter([]);
     setStockFilter([]);
   };
 
   const filterControls = (
     <div className="space-y-4">
-      <div className="space-y-1.5">
-        <p className="text-sm font-medium text-muted-foreground">{t.filters.period}</p>
-        <DateRangeFilter
-          value={range}
-          preset={preset}
-          onPresetChange={setPreset}
-          onRangeChange={setRange}
-        />
-      </div>
       {typeOptions.length > 0 && (
         <FilterCheckboxGroup
           label={t.filters.type}
@@ -425,6 +414,14 @@ export function InventoryKardexTab() {
                 ? [selectedMaterial.sku, selectedMaterial.category].filter(Boolean).join(' · ') || tList.materialDescription
                 : tList.generalDescription}
             </p>
+          </div>
+          <div className="shrink-0" aria-label={t.filters.period}>
+            <DateRangeFilter
+              value={range}
+              preset={preset}
+              onPresetChange={setPreset}
+              onRangeChange={setRange}
+            />
           </div>
           <Badge variant="outline" className="shrink-0 tabular-nums">
             {(filtered.length === 1 ? tList.movementCountOne : tList.movementCountMany).replace('{count}', String(filtered.length))}

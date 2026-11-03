@@ -27,7 +27,7 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipment } from '@/hooks/useEquipment';
 import { usePartyLabels } from '@/hooks/usePartyLabels';
 import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
-import { useProfiles } from '@/hooks/useProfiles';
+import { useActiveCompanyProfiles } from '@/hooks/useProfiles';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
@@ -83,6 +83,14 @@ import {
 } from '@/lib/serviceOrderServices';
 import { ServiceOrderSchedulePlanner } from '@/components/service-orders/ServiceOrderSchedulePlanner';
 import {
+  ServiceOrderFormStepper,
+  ServiceOrderFormSummary,
+  ServiceOrderReviewDetails,
+  type ServiceOrderFormSummaryData,
+  type ServiceOrderWizardStep,
+} from '@/components/service-orders/ServiceOrderFormShell';
+import { WizardMobileSummary, WizardReviewChecklist } from '@/components/ui/WizardReviewChecklist';
+import {
   normalizeServiceOrderSchedulePlan,
   shiftSchedulePlanToStart,
 } from '@/lib/serviceOrderSchedule';
@@ -128,12 +136,6 @@ interface ServiceOrderFormDialogProps {
   defaultAssigneeUserIds?: string[];
 }
 
-const STEPS = [
-  { key: 'client' as const },
-  { key: 'equipment' as const },
-  { key: 'details' as const },
-];
-
 /**
  * Assinatura estável do escopo (conjunto de pares equipamento×checklist) de uma
  * OS, pra detectar se o usuário REALMENTE mexeu no escopo antes de mandar
@@ -158,13 +160,17 @@ export function ServiceOrderFormDialog({
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.form;
   const { customers, createCustomer } = useCustomers();
-  const { data: technicians } = useProfiles();
+  // A lista de responsáveis deve vir do tenant ativo e carregar `avatar_url`.
+  // Além de respeitar a RLS, a chave de cache inclui a empresa e evita reaproveitar
+  // perfis da conta anterior depois de uma troca de tenant.
+  const { data: technicians } = useActiveCompanyProfiles();
   const { templates } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
   const { teams, teamsWithMembers } = useTeams();
   const { settings: npsSettings } = useNpsSettings();
   const isEditing = !!serviceOrder;
   const [step, setStep] = useState(0);
+  const [maxStepReached, setMaxStepReached] = useState(0);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(serviceOrder?.customer_id ?? defaultCustomerId);
   const [selectedServiceTypeIds, setSelectedServiceTypeIds] = useState<string[]>(
     serviceOrder?.service_type_id ? [serviceOrder.service_type_id] : [],
@@ -341,6 +347,9 @@ export function ServiceOrderFormDialog({
     _selectedCustomerId?: string;
     _selectedServiceTypeIds?: string[];
     _budgetItems?: ServiceOrderBudgetItem[];
+    _requireTechSignature?: boolean;
+    _requireClientSignature?: boolean;
+    _generateNpsSurvey?: boolean;
   };
   const draft = useFormDraft<OSDraft>({ key: 'service-order-form', isOpen: open, isEditing });
 
@@ -376,9 +385,12 @@ export function ServiceOrderFormDialog({
         _selectedCustomerId: selectedCustomerId,
         _selectedServiceTypeIds: selectedServiceTypeIds,
         _budgetItems: budgetItems,
+        _requireTechSignature: requireTechSignature,
+        _requireClientSignature: requireClientSignature,
+        _generateNpsSurvey: generateNpsSurvey,
       });
     }
-  }, [watchedValues, selectedCustomerId, selectedServiceTypeIds, budgetItems, open, isEditing, draft.showResumePrompt]);
+  }, [watchedValues, selectedCustomerId, selectedServiceTypeIds, budgetItems, requireTechSignature, requireClientSignature, generateNpsSurvey, open, isEditing, draft.showResumePrompt]);
 
   // Load existing equipment items when editing
   const loadExistingEquipmentItems = async (osId: string) => {
@@ -444,6 +456,7 @@ export function ServiceOrderFormDialog({
   useEffect(() => {
     if (open) {
       setStep(0);
+      setMaxStepReached(0);
       setBudgetItems([]);
       loadedBudgetSigRef.current = null;
       const fallbackServiceIds = serviceOrder?.service_type_id ? [serviceOrder.service_type_id] : [];
@@ -456,12 +469,13 @@ export function ServiceOrderFormDialog({
       setScopeLoaded(false);
       loadedScopeSigRef.current = null;
       setExpandedEquipmentIds([]);
-      setRequireClientSignature(false);
+      const so = serviceOrder as any;
+      setRequireTechSignature(Boolean(so?.require_tech_signature));
+      setRequireClientSignature(Boolean(so?.require_client_signature));
       setCustomerMode('existing');
       setAdhocName(''); setAdhocPhone(''); setAdhocCep(''); setAdhocAddress('');
       setAdhocCity(''); setAdhocState(''); setAdhocNeighborhood('');
       // Endereço de serviço: edição reflete o estado salvo; criação começa vazio.
-      const so = serviceOrder as any;
       const hasSvc = !!(so?.service_address || so?.service_city || so?.service_zip_code);
       setUseServiceAddress(hasSvc);
       const formatCep = (raw?: string | null) => {
@@ -1150,12 +1164,12 @@ export function ServiceOrderFormDialog({
     );
   };
 
-  const STEPS_WITH_LABELS = useMemo(() => [
+  const STEPS_WITH_LABELS = useMemo<ServiceOrderWizardStep[]>(() => [
     { key: 'client' as const, label: t.stepClient },
-    { key: 'budget' as const, label: t.stepBudget },
     { key: 'equipment' as const, label: t.stepEquipment },
     { key: 'details' as const, label: t.stepDetails },
-  ], [t.stepClient, t.stepBudget, t.stepEquipment, t.stepDetails]);
+    { key: 'review' as const, label: 'Revisão' },
+  ], [t.stepClient, t.stepEquipment, t.stepDetails]);
 
   // A etapa "Equipamentos e Checklists" agora sempre aparece: além do CRUD de
   // equipamentos (condicional ao tipo de serviço), ela hospeda os "Checklists
@@ -1163,6 +1177,8 @@ export function ServiceOrderFormDialog({
   const activeSteps = useMemo(() => STEPS_WITH_LABELS, [STEPS_WITH_LABELS]);
 
   const currentStepKey = activeSteps[step]?.key || 'client';
+  const showDesktopSummary = currentStepKey !== 'review';
+  const [navigationMessage, setNavigationMessage] = useState('');
 
   const canGoNext = () => {
     if (currentStepKey === 'client') {
@@ -1172,9 +1188,113 @@ export function ServiceOrderFormDialog({
     return true;
   };
 
-  const goNext = () => { if (step < activeSteps.length - 1 && canGoNext()) setStep(step + 1); };
+  const goNext = () => {
+    if (step >= activeSteps.length - 1) return;
+    if (canGoNext()) {
+      setNavigationMessage('');
+      setStep(step + 1);
+      return;
+    }
+
+    const message = customerMode === 'adhoc'
+      ? 'Informe o nome do cliente avulso para continuar.'
+      : 'Selecione o cliente que será atendido para continuar.';
+    setNavigationMessage(message);
+    requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(
+        customerMode === 'adhoc'
+          ? '[data-os-validation="adhoc-name"] input'
+          : '[data-os-validation="customer"] button',
+      );
+      target?.focus();
+    });
+  };
   const goBack = () => { if (step > 0) setStep(step - 1); };
   const isLastStep = step === activeSteps.length - 1;
+
+  useEffect(() => {
+    setMaxStepReached(current => Math.max(current, step));
+  }, [step]);
+
+  const schedulePlan = watchedValues.schedule_plan ?? [];
+  const firstSchedule = schedulePlan[0];
+  const customerName = customerMode === 'adhoc'
+    ? adhocName.trim()
+    : customers.find(customer => customer.id === selectedCustomerId)?.name ?? '';
+  const selectedServiceNames = selectedServiceTypeIds
+    .map(id => serviceTypes.find(service => service.id === id)?.name)
+    .filter((name): name is string => !!name);
+  const selectedChecklistCount = selectedStandaloneTemplateIds.length
+    + selectedEquipmentIds.reduce(
+      (total, equipmentId) => total + (equipmentTemplateMap[equipmentId]?.length ?? 0),
+      0,
+    );
+  const assigneeNames = selectedAssigneeUserIds
+    .map(id => technicians?.find(profile => profile.user_id === id)?.full_name)
+    .filter((name): name is string => !!name);
+  const teamNames = selectedAssigneeTeamIds
+    .map(id => teamsWithMembers.find(team => team.id === id)?.name)
+    .filter((name): name is string => !!name);
+  const scheduleLabel = firstSchedule
+    ? `${formatDate(firstSchedule.date, locale, timezone)} às ${firstSchedule.time.slice(0, 5)}`
+    : '';
+  const formSummaryData: ServiceOrderFormSummaryData = {
+    customerName,
+    serviceNames: selectedServiceNames,
+    equipmentCount: selectedEquipmentIds.length,
+    checklistCount: selectedChecklistCount,
+    assigneeNames,
+    teamNames,
+    scheduleLabel,
+    scheduleCount: schedulePlan.length,
+    budgetItemCount: budgetItems.length,
+    recurrenceLabel: recurrenceEnabled
+      ? recurrencePreview?.text ?? recurrencePreview?.error ?? t.recurrenceLabel
+      : null,
+    description: watchedValues.description,
+    notes: watchedValues.notes,
+    requireTechSignature,
+    requireClientSignature,
+    generateNpsSurvey,
+  };
+  const serviceOrderReviewItems = [
+    {
+      key: 'customer',
+      label: 'Atendimento',
+      detail: customerName ? customerName : 'Selecione o cliente ou informe o cliente avulso.',
+      complete: !!customerName,
+      stepIndex: activeSteps.findIndex(item => item.key === 'client'),
+    },
+    {
+      key: 'services',
+      label: 'Serviços e orçamento',
+      detail: selectedServiceNames.length > 0 || budgetItems.length > 0
+        ? `${selectedServiceNames.length} serviço(s) e ${budgetItems.length} item(ns) orçado(s).`
+        : 'Pode ser completado depois, se a OS ainda não tiver orçamento.',
+      complete: selectedServiceNames.length > 0 || budgetItems.length > 0,
+      optional: true,
+      stepIndex: activeSteps.findIndex(item => item.key === 'client'),
+    },
+    {
+      key: 'scope',
+      label: 'Escopo técnico',
+      detail: selectedEquipmentIds.length > 0 || selectedChecklistCount > 0
+        ? `${selectedEquipmentIds.length} equipamento(s) e ${selectedChecklistCount} checklist(s).`
+        : 'Equipamentos e checklists são opcionais nesta OS.',
+      complete: selectedEquipmentIds.length > 0 || selectedChecklistCount > 0,
+      optional: true,
+      stepIndex: activeSteps.findIndex(item => item.key === 'equipment'),
+    },
+    {
+      key: 'schedule',
+      label: 'Equipe e agenda',
+      detail: schedulePlan.length > 0
+        ? `${schedulePlan.length} visita(s) a partir de ${scheduleLabel}.`
+        : 'Defina ao menos uma data para a execução.',
+      complete: schedulePlan.length > 0,
+      stepIndex: activeSteps.findIndex(item => item.key === 'details'),
+    },
+  ];
 
   const handleServiceTypesChange = (ids: string[]) => {
     // Uma linha de serviço no orçamento também define o escopo operacional da
@@ -1266,7 +1386,7 @@ export function ServiceOrderFormDialog({
   // Bloco reutilizado nos dois modos (criar/editar): endereço de serviço próprio
   // da OS. Alavanca ligada revela campos estruturados (mesmo padrão do avulso).
   const serviceAddressSection = (
-    <div className="rounded-lg bg-muted/30 p-3 space-y-3">
+    <div className="space-y-3 rounded-xl border p-4">
       <div className="flex items-center justify-between gap-3">
         <Label className="cursor-default flex items-center gap-1.5 text-sm">
           <MapPinned className="h-4 w-4 text-primary" />
@@ -1386,7 +1506,7 @@ export function ServiceOrderFormDialog({
   );
 
   const scopeSummary = (
-    <section className="rounded-lg border bg-card p-3 space-y-3">
+    <section className="space-y-3">
       <div>
         <h3 className="text-sm font-semibold">{t.scopeSummaryTitle}</h3>
         <p className="text-xs text-muted-foreground">{t.scopeSummaryDescription}</p>
@@ -1438,23 +1558,69 @@ export function ServiceOrderFormDialog({
     </section>
   );
 
+  const completionPreferencesSection = (
+    <section className="space-y-3 border-t pt-4" aria-labelledby="os-completion-preferences-title">
+      <div>
+        <h3 id="os-completion-preferences-title" className="text-sm font-semibold">{t.completionTitle}</h3>
+        <p className="text-xs text-muted-foreground">{t.completionDescription}</p>
+      </div>
+      <div className="divide-y">
+        <div className="flex items-center justify-between gap-3 py-3 first:pt-0">
+          <Label className="cursor-default text-sm">{t.requireTechSignatureLabel}</Label>
+          <LabeledSwitch
+            value={requireTechSignature ? 'on' : 'off'}
+            onChange={(value) => setRequireTechSignature(value === 'on')}
+            off={{ value: 'off', label: t.switchNo }}
+            on={{ value: 'on', label: t.switchYes }}
+            aria-label={t.requireTechSignatureLabel}
+          />
+        </div>
+        <div className="flex items-center justify-between gap-3 py-3">
+          <Label className="cursor-default text-sm">{t.requireClientSignatureLabel}</Label>
+          <LabeledSwitch
+            value={requireClientSignature ? 'on' : 'off'}
+            onChange={(value) => setRequireClientSignature(value === 'on')}
+            off={{ value: 'off', label: t.switchNo }}
+            on={{ value: 'on', label: t.switchYes }}
+            aria-label={t.requireClientSignatureLabel}
+          />
+        </div>
+        <div className="flex items-center justify-between gap-3 py-3 last:pb-0">
+          <Label className="flex cursor-default items-center gap-1.5 text-sm">
+            <Star className="h-4 w-4 text-warning" />
+            {t.npsLabel}
+          </Label>
+          <LabeledSwitch
+            value={generateNpsSurvey ? 'on' : 'off'}
+            onChange={(value) => setGenerateNpsSurvey(value === 'on')}
+            off={{ value: 'off', label: t.switchNo }}
+            on={{ value: 'on', label: t.switchYes }}
+            aria-label={t.npsLabel}
+          />
+        </div>
+      </div>
+    </section>
+  );
+
   // Etapa 2 completa — "Equipamentos e Checklists". Reunimos o CRUD de
   // equipamentos (cada um expansível com os checklists dele dentro, espelhando a
   // UX do EditOsScopeDrawer) e, logo abaixo, a seção fixa de "Checklists avulsos"
   // (sempre disponível). Usada de forma idêntica em criar e editar.
   const equipmentAndChecklistsStep = (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* ── Equipamentos (condicional ao tipo de serviço exigir equipamento) ── */}
       {showEquipmentStep && (
-        <div className="space-y-3">
-          <Label className="text-sm font-medium flex items-center gap-1.5">
-            <Wrench className="h-4 w-4 text-muted-foreground" />
-            {t.equipmentSectionTitle}
-          </Label>
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm text-muted-foreground">
-              {equipment.length > 1 ? t.equipmentSelectMany : t.equipmentSelectOne}
-            </p>
+        <div className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 space-y-1">
+              <h2 className="flex items-center gap-2 text-base font-semibold">
+                <Wrench className="h-4 w-4 text-muted-foreground" />
+                {t.equipmentSectionTitle}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {equipment.length > 1 ? t.equipmentSelectMany : t.equipmentSelectOne}
+              </p>
+            </div>
             <div className="flex items-center">
               {equipment.length > 1 && (
                 <Button
@@ -1520,7 +1686,7 @@ export function ServiceOrderFormDialog({
             </p>
           )}
 
-          <div className="space-y-2 max-h-[340px] overflow-y-auto">
+          <div className="max-h-[340px] divide-y overflow-y-auto rounded-xl border">
             {equipment.map((eq) => {
               const checked = selectedEquipmentIds.includes(eq.id);
               const expanded = expandedEquipmentIds.includes(eq.id);
@@ -1543,8 +1709,8 @@ export function ServiceOrderFormDialog({
                 <div
                   key={eq.id}
                   className={cn(
-                    'rounded-lg transition-colors',
-                    checked ? 'border border-primary bg-primary/5' : 'bg-muted/30'
+                    'transition-colors',
+                    checked ? 'bg-muted/45' : 'bg-background hover:bg-muted/20'
                   )}
                 >
                   {/* Linha do equipamento — seleção + expandir */}
@@ -1769,8 +1935,7 @@ export function ServiceOrderFormDialog({
       )}
 
       {/* ── Checklists avulsos — seção fixa, sempre disponível ── */}
-      <div className="space-y-3">
-        {showEquipmentStep && <div className="border-t border-border/40" />}
+      <div className="space-y-3 border-t pt-5">
         <div className="space-y-1">
           <Label className="text-sm font-medium flex items-center gap-1.5">
             <ClipboardList className="h-4 w-4 text-muted-foreground" />
@@ -1877,7 +2042,17 @@ export function ServiceOrderFormDialog({
   // Edit mode: same multi-step form as create
   if (serviceOrder) {
     const editFooter = (
-      <div className="flex justify-between w-full">
+      <div className="flex w-full flex-col gap-2">
+        <WizardMobileSummary
+          title="Resumo da OS"
+          summary={`${customerName || 'Cliente não selecionado'} · ${schedulePlan.length} visita(s)`}
+        >
+          <ServiceOrderFormSummary data={formSummaryData} mode="mobile" />
+        </WizardMobileSummary>
+        {navigationMessage && !canGoNext() && (
+          <p className="text-right text-xs text-destructive" role="alert">{navigationMessage}</p>
+        )}
+        <div className="flex justify-between w-full">
         <div>
           {step > 0 && (
             <Button type="button" variant="outline" onClick={goBack}>
@@ -1896,52 +2071,64 @@ export function ServiceOrderFormDialog({
               {t.btnSave}
             </Button>
           ) : (
-            <Button type="button" onClick={(e) => { e.preventDefault(); goNext(); }} disabled={!canGoNext()}>
+            <Button
+              type="button"
+              onClick={(e) => { e.preventDefault(); goNext(); }}
+              aria-disabled={!canGoNext()}
+              className="aria-disabled:opacity-50"
+            >
               {t.btnNext}
               <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
           )}
+        </div>
         </div>
       </div>
     );
 
     return (
       <>
-      <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.titleEdit} className="sm:max-w-[920px]" footer={editFooter}>
+      <ResponsiveModal
+        open={open}
+        onOpenChange={onOpenChange}
+        title={t.titleEdit}
+        description="Revise contexto, escopo e agenda antes de salvar."
+        density="compact"
+        className="sm:h-[88vh] sm:max-h-[88vh] sm:w-[96vw] sm:max-w-[1180px]"
+        drawerClassName="h-[90dvh]"
+        footer={editFooter}
+      >
         {isPmocOrder && (
           <PmocComplianceBadge variant="ribbon" withTooltip className="mb-4" />
         )}
-        {/* Step indicators */}
-        <div className="flex flex-col items-center mb-6">
-          <div className="flex items-center justify-center gap-2">
-            {activeSteps.map((s, i) => (
-              <div key={s.key} className="flex items-center gap-2">
-                <div className={cn(
-                  'flex items-center justify-center h-8 w-8 rounded-full text-sm font-medium transition-colors',
-                  i < step ? 'bg-primary text-white' :
-                  i === step ? 'bg-primary text-white' :
-                  'bg-muted text-muted-foreground'
-                )}>
-                  {i < step ? <Check className="h-4 w-4" /> : i + 1}
-                </div>
-                <span className={cn('text-sm hidden sm:inline', i === step ? 'font-medium' : 'text-muted-foreground')}>
-                  {s.label}
-                </span>
-                {i < activeSteps.length - 1 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-              </div>
-            ))}
-          </div>
-          <p className="text-sm font-medium text-foreground mt-2 sm:hidden">{activeSteps[step]?.label}</p>
+        <div className="sticky top-0 z-20 -mx-1 mb-4 bg-background/95 px-1 pb-2 pt-0.5 backdrop-blur supports-[backdrop-filter]:bg-background/90">
+          <ServiceOrderFormStepper
+            steps={activeSteps}
+            currentIndex={step}
+            maxReachedIndex={maxStepReached}
+            onStepChange={(target) => { if (target <= maxStepReached) setStep(target); }}
+          />
         </div>
 
+        <div className={cn(
+          'grid gap-8',
+          showDesktopSummary && 'xl:grid-cols-[minmax(0,1fr)_288px] xl:gap-0 xl:divide-x',
+        )}>
+        <div className={cn('order-2 min-w-0 xl:order-1', showDesktopSummary && 'xl:pr-8')}>
         <Form {...form}>
           <form id="os-edit-form" onSubmit={(e) => { e.preventDefault(); if (isLastStep) form.handleSubmit(handleEditSubmit)(); }} className="space-y-4">
             <StepTransition stepKey={currentStepKey} index={step} className="space-y-4">
-            {/* Step 1: Client & Service */}
+            {/* Step 1: Atendimento e orçamento */}
             {currentStepKey === 'client' && (
-              <div className="space-y-4">
+              <div className="space-y-5">
+                <div className="space-y-1 border-b pb-4">
+                  <h2 className="text-base font-semibold">{t.stepClient}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Confirme quem será atendido, o endereço, os serviços e os itens previstos nesta OS.
+                  </p>
+                </div>
                 <FormField control={form.control} name="customer_id" render={({ field }) => (
-                  <FormItem>
+                  <FormItem data-os-validation="customer">
                     <FormLabel>{t.labelCustomer}</FormLabel>
                     <FormControl>
                       <CustomerSelectField
@@ -1975,24 +2162,29 @@ export function ServiceOrderFormDialog({
                     <FormMessage />
                   </FormItem>
                 )} />
-              </div>
-            )}
 
-            {currentStepKey === 'budget' && (
-              <ServiceOrderBudgetSection
-                items={budgetItems}
-                onChange={handleBudgetItemsChange}
-                loading={isEditing && budgetQuery.isLoading}
-              />
+                <section className="border-t pt-5">
+                  <ServiceOrderBudgetSection
+                    items={budgetItems}
+                    onChange={handleBudgetItemsChange}
+                    loading={isEditing && budgetQuery.isLoading}
+                  />
+                </section>
+              </div>
             )}
 
             {/* Step 2: Equipamentos e Checklists */}
             {currentStepKey === 'equipment' && equipmentAndChecklistsStep}
 
-            {/* Step 3: Agendamento e Detalhes */}
+            {/* Step 3: Equipe e agenda */}
             {currentStepKey === 'details' && (
-              <div className="space-y-4">
-                {scopeSummary}
+              <div className="space-y-5">
+                <div className="space-y-1 border-b pb-4">
+                  <h2 className="text-base font-semibold">{t.stepDetails}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Defina responsáveis, organize as jornadas e configure a conclusão da OS.
+                  </p>
+                </div>
                 {assigneeSection}
                 {schedulePlanningSection}
 
@@ -2016,26 +2208,31 @@ export function ServiceOrderFormDialog({
                     CRIAÇÃO e lá `isEditing` nunca é true, então não renderiza nada.
                     Some sozinho quando não há material lançado. */}
                 {serviceOrder?.id && <OsMaterialsSection serviceOrderId={serviceOrder.id} />}
+                {completionPreferencesSection}
+              </div>
+            )}
 
-                {/* Pesquisa de Satisfação (NPS) ao finalizar */}
-                <div className="flex items-center justify-between gap-3 border-t pt-3">
-                  <Label className="cursor-default flex items-center gap-1.5 text-sm">
-                    <Star className="h-4 w-4 text-warning" />
-                    {t.npsLabel}
-                  </Label>
-                  <LabeledSwitch
-                    value={generateNpsSurvey ? 'on' : 'off'}
-                    onChange={(v) => setGenerateNpsSurvey(v === 'on')}
-                    off={{ value: 'off', label: t.switchNo }}
-                    on={{ value: 'on', label: t.switchYes }}
-                    aria-label={t.npsLabel}
-                  />
-                </div>
+            {currentStepKey === 'review' && (
+              <div className="space-y-5">
+                <WizardReviewChecklist items={serviceOrderReviewItems} onEdit={setStep} />
+                <ServiceOrderReviewDetails data={formSummaryData} />
+                {(selectedEquipmentIds.length > 0 || selectedStandaloneTemplateIds.length > 0) && (
+                  <div className="border-t pt-5">{scopeSummary}</div>
+                )}
               </div>
             )}
             </StepTransition>
           </form>
         </Form>
+        </div>
+        {showDesktopSummary && (
+          <aside className="hidden min-w-0 xl:order-2 xl:block xl:pl-8">
+            <div className="xl:sticky xl:top-0">
+              <ServiceOrderFormSummary data={formSummaryData} />
+            </div>
+          </aside>
+        )}
+        </div>
       </ResponsiveModal>
 
       {/* Contract date propagation dialog */}
@@ -2120,7 +2317,17 @@ export function ServiceOrderFormDialog({
   }
 
   const createFooter = (
-    <div className="flex justify-between w-full">
+    <div className="flex w-full flex-col gap-2">
+      <WizardMobileSummary
+        title="Resumo da OS"
+        summary={`${customerName || 'Cliente não selecionado'} · ${schedulePlan.length} visita(s)`}
+      >
+        <ServiceOrderFormSummary data={formSummaryData} mode="mobile" />
+      </WizardMobileSummary>
+      {navigationMessage && !canGoNext() && (
+        <p className="text-right text-xs text-destructive" role="alert">{navigationMessage}</p>
+      )}
+      <div className="flex justify-between w-full">
       <div>
         {step > 0 && (
           <Button type="button" variant="outline" onClick={goBack}>
@@ -2139,22 +2346,45 @@ export function ServiceOrderFormDialog({
             {recurrenceEnabled ? t.btnCreateRecurring : t.btnCreate}
           </Button>
         ) : (
-          <Button type="button" onClick={(e) => { e.preventDefault(); goNext(); }} disabled={!canGoNext()}>
+          <Button
+            type="button"
+            onClick={(e) => { e.preventDefault(); goNext(); }}
+            aria-disabled={!canGoNext()}
+            className="aria-disabled:opacity-50"
+          >
             {t.btnNext}
             <ChevronRight className="ml-2 h-4 w-4" />
           </Button>
         )}
       </div>
+      </div>
     </div>
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.titleCreate} className="sm:max-w-[920px]" footer={createFooter}>
+    <ResponsiveModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={t.titleCreate}
+      description="Defina cliente, escopo e agenda antes de criar."
+      density="compact"
+      className="sm:h-[88vh] sm:max-h-[88vh] sm:w-[96vw] sm:max-w-[1180px]"
+      drawerClassName="h-[90dvh]"
+      footer={createFooter}
+    >
       <DraftResumeDialog
         open={draft.showResumePrompt}
         onResume={() => {
           if (draft.draftData) {
-            const { _selectedCustomerId, _selectedServiceTypeIds, _budgetItems, ...formValues } = draft.draftData;
+            const {
+              _selectedCustomerId,
+              _selectedServiceTypeIds,
+              _budgetItems,
+              _requireTechSignature,
+              _requireClientSignature,
+              _generateNpsSurvey,
+              ...formValues
+            } = draft.draftData;
             form.reset({
               ...formValues,
               schedule_plan: formValues.schedule_plan?.length ? formValues.schedule_plan : computedSchedulePlan,
@@ -2165,11 +2395,17 @@ export function ServiceOrderFormDialog({
               form.setValue('service_type_id', _selectedServiceTypeIds[0] ?? '');
             }
             if (_budgetItems) setBudgetItems(_budgetItems);
+            if (_requireTechSignature !== undefined) setRequireTechSignature(_requireTechSignature);
+            if (_requireClientSignature !== undefined) setRequireClientSignature(_requireClientSignature);
+            if (_generateNpsSurvey !== undefined) setGenerateNpsSurvey(_generateNpsSurvey);
           }
           draft.acceptDraft();
         }}
         onDiscard={() => {
           draft.discardDraft();
+          setRequireTechSignature(false);
+          setRequireClientSignature(false);
+          setGenerateNpsSurvey(npsSettings.generate_on_finish);
           form.reset({
             customer_id: '', equipment_id: '', technician_id: '',
             os_type: 'manutencao_corretiva', service_type_id: '',
@@ -2178,38 +2414,35 @@ export function ServiceOrderFormDialog({
           });
         }}
       />
-      {/* Step indicators */}
-      <div className="flex flex-col items-center mb-6">
-        <div className="flex items-center justify-center gap-2">
-          {activeSteps.map((s, i) => (
-            <div key={s.key} className="flex items-center gap-2">
-              <div className={cn(
-                'flex items-center justify-center h-8 w-8 rounded-full text-sm font-medium transition-colors',
-                i < step ? 'bg-primary text-white' :
-                i === step ? 'bg-primary text-white' :
-                'bg-muted text-muted-foreground'
-              )}>
-                {i < step ? <Check className="h-4 w-4" /> : i + 1}
-              </div>
-              <span className={cn('text-sm hidden sm:inline', i === step ? 'font-medium' : 'text-muted-foreground')}>
-                {s.label}
-              </span>
-              {i < activeSteps.length - 1 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-            </div>
-          ))}
-        </div>
-        <p className="text-sm font-medium text-foreground mt-2 sm:hidden">{activeSteps[step]?.label}</p>
+      <div className="sticky top-0 z-20 -mx-1 mb-4 bg-background/95 px-1 pb-2 pt-0.5 backdrop-blur supports-[backdrop-filter]:bg-background/90">
+        <ServiceOrderFormStepper
+          steps={activeSteps}
+          currentIndex={step}
+          maxReachedIndex={maxStepReached}
+          onStepChange={(target) => { if (target <= maxStepReached) setStep(target); }}
+        />
       </div>
 
+      <div className={cn(
+        'grid gap-8',
+        showDesktopSummary && 'xl:grid-cols-[minmax(0,1fr)_288px] xl:gap-0 xl:divide-x',
+      )}>
+      <div className={cn('order-2 min-w-0 xl:order-1', showDesktopSummary && 'xl:pr-8')}>
       <Form {...form}>
         <form id="os-create-form" onSubmit={(e) => { e.preventDefault(); if (isLastStep) handleCreateSubmit(); }} className="space-y-4">
           <StepTransition stepKey={currentStepKey} index={step} className="space-y-4">
-          {/* Step 1: Client & Service */}
+          {/* Step 1: Atendimento e orçamento */}
           {currentStepKey === 'client' && (
-            <div className="space-y-4">
-              {/* Customer mode toggle — alavanca centralizada */}
-              <div className="flex justify-center">
+            <div className="space-y-5">
+              <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 space-y-1">
+                  <h2 className="text-base font-semibold">{t.stepClient}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Escolha o cliente, defina o serviço e monte os itens previstos para a OS.
+                  </p>
+                </div>
                 <LabeledSwitch
+                  className="shrink-0 [&_button]:whitespace-nowrap [&_button]:text-sm"
                   value={customerMode}
                   onChange={(v) => {
                     if (v === 'existing') {
@@ -2229,7 +2462,7 @@ export function ServiceOrderFormDialog({
 
               {customerMode === 'existing' ? (
                 <FormField control={form.control} name="customer_id" render={({ field }) => (
-                  <FormItem>
+                  <FormItem data-os-validation="customer">
                     <FormLabel>{t.labelCustomer}</FormLabel>
                     <FormControl>
                       <CustomerSelectField
@@ -2248,7 +2481,7 @@ export function ServiceOrderFormDialog({
                 <div className="space-y-3 rounded-lg bg-muted/30 p-3">
                   <p className="text-xs text-muted-foreground">{t.adhocNote}</p>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="sm:col-span-2">
+                    <div className="sm:col-span-2" data-os-validation="adhoc-name">
                       <Label>{t.labelName}</Label>
                       <Input value={adhocName} onChange={e => setAdhocName(e.target.value)} placeholder={t.labelName.replace(' *', '')} />
                     </div>
@@ -2322,23 +2555,28 @@ export function ServiceOrderFormDialog({
                   <FormMessage />
                 </FormItem>
               )} />
-            </div>
-          )}
 
-          {currentStepKey === 'budget' && (
-            <ServiceOrderBudgetSection
-              items={budgetItems}
-              onChange={handleBudgetItemsChange}
-            />
+              <section className="border-t pt-5">
+                <ServiceOrderBudgetSection
+                  items={budgetItems}
+                  onChange={handleBudgetItemsChange}
+                />
+              </section>
+            </div>
           )}
 
           {/* Step 2: Equipamentos e Checklists */}
           {currentStepKey === 'equipment' && equipmentAndChecklistsStep}
 
-          {/* Step 3: Agendamento e Detalhes */}
+          {/* Step 3: Equipe e agenda */}
           {currentStepKey === 'details' && (
-            <div className="space-y-4">
-              {scopeSummary}
+            <div className="space-y-5">
+              <div className="space-y-1 border-b pb-4">
+                <h2 className="text-base font-semibold">{t.stepDetails}</h2>
+                <p className="text-sm text-muted-foreground">
+                  Defina responsáveis, organize as jornadas e configure a conclusão da OS.
+                </p>
+              </div>
               {assigneeSection}
               {schedulePlanningSection}
 
@@ -2437,25 +2675,31 @@ export function ServiceOrderFormDialog({
                 )}
               </div>
 
-              {/* Pesquisa de Satisfação (NPS) ao finalizar */}
-              <div className="flex items-center justify-between gap-3 border-t pt-3">
-                <Label className="cursor-default flex items-center gap-1.5 text-sm">
-                  <Star className="h-4 w-4 text-warning" />
-                  {t.npsLabel}
-                </Label>
-                <LabeledSwitch
-                  value={generateNpsSurvey ? 'on' : 'off'}
-                  onChange={(v) => setGenerateNpsSurvey(v === 'on')}
-                  off={{ value: 'off', label: t.switchNo }}
-                  on={{ value: 'on', label: t.switchYes }}
-                  aria-label={t.npsLabel}
-                />
-              </div>
+              {completionPreferencesSection}
+            </div>
+          )}
+
+          {currentStepKey === 'review' && (
+            <div className="space-y-5">
+              <WizardReviewChecklist items={serviceOrderReviewItems} onEdit={setStep} />
+              <ServiceOrderReviewDetails data={formSummaryData} />
+              {(selectedEquipmentIds.length > 0 || selectedStandaloneTemplateIds.length > 0) && (
+                <div className="border-t pt-5">{scopeSummary}</div>
+              )}
             </div>
           )}
           </StepTransition>
         </form>
       </Form>
+      </div>
+      {showDesktopSummary && (
+        <aside className="hidden min-w-0 xl:order-2 xl:block xl:pl-8">
+          <div className="xl:sticky xl:top-0">
+            <ServiceOrderFormSummary data={formSummaryData} />
+          </div>
+        </aside>
+      )}
+      </div>
 
       {/* Quick create equipment */}
       {selectedCustomerId && (

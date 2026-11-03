@@ -821,6 +821,8 @@ export const inventory = {
       empty: {
         noneTitle: 'Nenhum inventário',
         noneDescription: 'Crie um inventário para conferir e ajustar os saldos do estoque.',
+        noneFoundTitle: 'Nenhum inventário no período',
+        noneFoundDescription: 'Altere o período para consultar outros inventários.',
         noneItems: 'Nenhum item neste inventário.',
         noDivergences: 'Nenhuma divergência encontrada.',
       },
@@ -1831,6 +1833,8 @@ export const inventory = {
       empty: {
         noneTitle: 'No counts',
         noneDescription: 'Create a count to check and adjust stock balances.',
+        noneFoundTitle: 'No counts in this period',
+        noneFoundDescription: 'Change the period to review other counts.',
         noneItems: 'No items in this count.',
         noDivergences: 'No divergences found.',
       },
@@ -2841,6 +2845,8 @@ export const inventory = {
       empty: {
         noneTitle: 'Sin conteos',
         noneDescription: 'Crea un conteo para verificar y ajustar los saldos del inventario.',
+        noneFoundTitle: 'Sin conteos en este período',
+        noneFoundDescription: 'Cambia el período para consultar otros conteos.',
         noneItems: 'No hay ítems en este conteo.',
         noDivergences: 'No se encontraron divergencias.',
       },
@@ -3851,6 +3857,8 @@ export const inventory = {
       empty: {
         noneTitle: 'Aucun comptage',
         noneDescription: `Créez un comptage pour vérifier et ajuster les soldes de stock.`,
+        noneFoundTitle: 'Aucun comptage sur cette période',
+        noneFoundDescription: `Modifiez la période pour consulter d'autres comptages.`,
         noneItems: `Aucun article dans ce comptage.`,
         noDivergences: `Aucun écart trouvé.`,
       },

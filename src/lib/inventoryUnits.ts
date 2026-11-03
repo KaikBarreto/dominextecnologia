@@ -15,3 +15,15 @@ export function unitLabel(value: string | null | undefined): string {
   if (!value) return 'un';
   return INVENTORY_UNITS.find((u) => u.value === value)?.label ?? value;
 }
+
+/**
+ * Passo operacional usado pelos botões +/− do PDV.
+ *
+ * Peso, volume e comprimento são vendidos fracionados no balcão; embalagens e
+ * peças continuam inteiras. A edição direta ainda aceita até três casas, então
+ * o operador pode informar 0,025 kg mesmo quando o atalho anda de 0,1 em 0,1.
+ */
+export function inventoryQuantityStep(value: string | null | undefined): number {
+  const unit = value?.trim().toLowerCase();
+  return unit === 'kg' || unit === 'l' || unit === 'm' ? 0.1 : 1;
+}

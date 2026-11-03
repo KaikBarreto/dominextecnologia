@@ -1,17 +1,21 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FileText, Settings } from 'lucide-react';
 import { SettingsSidebarLayout } from './SettingsSidebarLayout';
 
-vi.mock('@/hooks/use-mobile', () => ({
-  useIsMobile: () => false,
-}));
+const useIsMobileMock = vi.hoisted(() => vi.fn(() => false));
+
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: useIsMobileMock }));
 
 beforeAll(() => {
   vi.stubGlobal('ResizeObserver', class {
     observe() {}
     disconnect() {}
   });
+});
+
+beforeEach(() => {
+  useIsMobileMock.mockReturnValue(false);
 });
 
 const tabs = [
@@ -60,5 +64,42 @@ describe('SettingsSidebarLayout', () => {
 
     expect(screen.getByRole('navigation')).toBeInTheDocument();
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+  });
+
+  it('alinha as ações da tela na mesma faixa da navegação underline', () => {
+    render(
+      <SettingsSidebarLayout
+        tabs={tabs}
+        activeTab="orcamentos"
+        onTabChange={() => undefined}
+        actions={<button type="button">Novo orçamento</button>}
+      >
+        <p>Conteúdo da aba</p>
+      </SettingsSidebarLayout>,
+    );
+
+    const action = screen.getByRole('button', { name: 'Novo orçamento' });
+    const navigationRow = action.parentElement?.parentElement;
+
+    expect(navigationRow).toHaveClass('flex', 'items-end', 'border-b');
+    expect(navigationRow).toContainElement(screen.getByRole('tablist'));
+  });
+
+  it('mantém as ações de desktop fora da navegação mobile', () => {
+    useIsMobileMock.mockReturnValue(true);
+
+    render(
+      <SettingsSidebarLayout
+        tabs={tabs}
+        activeTab="orcamentos"
+        onTabChange={() => undefined}
+        actions={<button type="button">Novo orçamento</button>}
+      >
+        <p>Conteúdo da aba</p>
+      </SettingsSidebarLayout>,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Novo orçamento' })).not.toBeInTheDocument();
+    expect(screen.getByRole('tablist')).toBeInTheDocument();
   });
 });

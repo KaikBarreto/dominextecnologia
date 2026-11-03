@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
-import { ArrowLeft, PackagePlus, Plus, ShieldAlert, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Keyboard, PackagePlus, Plus, ShieldAlert, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { InventoryMaterialSelect } from '@/components/inventory/InventoryMaterialSelect';
 import { SupplierFormDialog } from '@/components/inventory/SupplierFormDialog';
 import { PdvPurchaseSwitcher } from '@/components/pdv/PdvPurchaseSwitcher';
+import { PdvShortcutHelpDialog } from '@/components/pdv/PdvShortcutHelpDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useCanRegisterDirectMaterialPurchase } from '@/hooks/useCanRegisterDirectMaterialPurchase';
@@ -50,6 +51,7 @@ import {
   type PdvPurchasePaymentStatus,
 } from '@/lib/pdv/purchase-drafts';
 import { getPdvPurchaseWorkspaceMessages } from '@/lib/pdv/purchase-workspace-messages';
+import { isPdvEditableTarget, nextPdvIndex } from '@/lib/pdv/keyboard';
 import { todayInTz } from '@/lib/timezone';
 import { typography } from '@/lib/typography';
 import { cn } from '@/lib/utils';
@@ -79,9 +81,11 @@ export default function PdvPurchase() {
   const quantityInputRefs = useRef(new Map<string, HTMLInputElement>());
   const unitPriceInputRefs = useRef(new Map<string, HTMLInputElement>());
   const finalizeActionRef = useRef<HTMLButtonElement>(null);
+  const supplierTriggerRef = useRef<HTMLButtonElement>(null);
   const [submittingDraftId, setSubmittingDraftId] = useState<string | null>(null);
   const [supplierCreateDraftId, setSupplierCreateDraftId] = useState<string | null>(null);
   const [draftToFinalize, setDraftToFinalize] = useState<PdvPurchaseDraft | null>(null);
+  const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
 
   const today = todayInTz(timezone);
   const eligibleAccounts = useMemo(
@@ -226,6 +230,8 @@ export default function PdvPurchase() {
     // alerta abre nunca pode finalizar a compra vizinha.
     setDraftToFinalize({ ...draft, items: draft.items.map((item) => ({ ...item })) });
   };
+  const requestFinalizeRef = useRef(requestFinalize);
+  requestFinalizeRef.current = requestFinalize;
 
   const submit = async (draft: PdvPurchaseDraft) => {
     if (submittingDraftIdRef.current || registerPurchase.isPending) return;
@@ -269,6 +275,63 @@ export default function PdvPurchase() {
       setSubmittingDraftId((current) => current === submittedDraftId ? null : current);
     }
   };
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (isPdvEditableTarget(event.target)) return;
+
+      const helpKey = event.key === '?' || (event.code === 'Slash' && event.shiftKey);
+      if (helpKey) {
+        event.preventDefault();
+        if (!draftToFinalize && !supplierCreateDraftId) setShortcutHelpOpen(true);
+        return;
+      }
+      if (shortcutHelpOpen || draftToFinalize || supplierCreateDraftId || !activeDraft) return;
+      if (registerPurchase.isPending || submittingDraftId != null) return;
+
+      const key = event.key.toUpperCase();
+      if (key === 'F2') {
+        event.preventDefault();
+        focusMaterialSearch();
+      } else if (key === 'F3') {
+        event.preventDefault();
+        supplierTriggerRef.current?.focus();
+        supplierTriggerRef.current?.click();
+      } else if (key === 'F6' || key === 'F7') {
+        event.preventDefault();
+        const currentIndex = workspace.drafts.findIndex((draft) => draft.id === activeDraft.id);
+        const nextIndex = nextPdvIndex(currentIndex, workspace.drafts.length, key === 'F7' ? 1 : -1);
+        const target = workspace.drafts[nextIndex];
+        if (target) selectDraft(target.id);
+      } else if (key === 'F8') {
+        event.preventDefault();
+        if (workspace.drafts.length >= MAX_PDV_PURCHASE_DRAFTS) {
+          toast({ title: tw.limitReached });
+        } else {
+          createDraft();
+        }
+      } else if (key === 'F9') {
+        event.preventDefault();
+        requestFinalizeRef.current(activeDraft);
+      }
+    };
+
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [
+    activeDraft,
+    createDraft,
+    draftToFinalize,
+    selectDraft,
+    shortcutHelpOpen,
+    supplierCreateDraftId,
+    registerPurchase.isPending,
+    submittingDraftId,
+    toast,
+    tw.limitReached,
+    workspace.drafts,
+  ]);
 
   if (!activeDraft) return null;
 
@@ -321,6 +384,19 @@ export default function PdvPurchase() {
             <p className="truncate text-sm text-muted-foreground">{tw.subtitle}</p>
           </div>
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="shrink-0 gap-1.5"
+          onClick={() => setShortcutHelpOpen(true)}
+          aria-label={tw.shortcuts.open}
+          title={tw.shortcuts.open}
+        >
+          <Keyboard className="h-4 w-4" />
+          <span className="hidden sm:inline">{tw.shortcuts.open}</span>
+          <kbd className="rounded border bg-muted px-1 text-[10px] text-muted-foreground">?</kbd>
+        </Button>
         <div className="hidden w-[30rem] shrink-0 xl:block">
           <PdvPurchaseSwitcher {...purchaseSwitcherProps} header />
         </div>
@@ -350,6 +426,8 @@ export default function PdvPurchase() {
                 <div className="flex h-10 overflow-hidden rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring">
                   <SearchableSelect
                     id={`purchase-supplier-${draftId}`}
+                    triggerRef={supplierTriggerRef}
+                    focusSearchOnOpen
                     options={supplierOptions}
                     value={activeDraft.supplierId}
                     disabled={busy}
@@ -560,6 +638,22 @@ export default function PdvPurchase() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PdvShortcutHelpDialog
+        open={shortcutHelpOpen}
+        onOpenChange={setShortcutHelpOpen}
+        title={tw.shortcuts.title}
+        description={tw.shortcuts.description}
+        closeLabel={tw.shortcuts.close}
+        shortcuts={[
+          { keys: ['F2'], label: tw.shortcuts.material },
+          { keys: ['F3'], label: tw.shortcuts.supplier },
+          { keys: ['F6', 'F7'], label: tw.shortcuts.switchOrder },
+          { keys: ['F8'], label: tw.shortcuts.newOrder },
+          { keys: ['F9'], label: tw.shortcuts.finalize },
+          { keys: ['?'], label: tw.shortcuts.help },
+        ]}
+      />
     </div>
   );
 }

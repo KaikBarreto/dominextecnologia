@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   ClipboardList,
   Plus,
@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -97,6 +98,7 @@ export function InventoryCountsTab() {
   const { settings: companySettings } = useCompanySettings();
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
   const { toast } = useToast();
+  const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('all');
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [detailCount, setDetailCount] = useState<InventoryCount | null>(null);
@@ -104,6 +106,10 @@ export function InventoryCountsTab() {
   const [detailDivergences, setDetailDivergences] = useState<InventoryCountDivergence[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const filteredCounts = useMemo(
+    () => filterByDate(counts, 'created_at'),
+    [counts, filterByDate],
+  );
 
   const openDetail = useCallback(
     async (count: InventoryCount) => {
@@ -198,8 +204,13 @@ export function InventoryCountsTab() {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2">
-        <div />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <DateRangeFilter
+          value={range}
+          preset={preset}
+          onPresetChange={setPreset}
+          onRangeChange={setRange}
+        />
         <Button
           className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
           onClick={() => setWizardOpen(true)}
@@ -218,17 +229,17 @@ export function InventoryCountsTab() {
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
-          ) : counts.length === 0 ? (
+          ) : filteredCounts.length === 0 ? (
             <EmptyState
               size="compact"
               icon={<ClipboardList className="h-10 w-10" />}
-              title={t.empty.noneTitle}
-              description={t.empty.noneDescription}
+              title={counts.length === 0 ? t.empty.noneTitle : t.empty.noneFoundTitle}
+              description={counts.length === 0 ? t.empty.noneDescription : t.empty.noneFoundDescription}
               action={{ label: t.newCount, onClick: () => setWizardOpen(true) }}
             />
           ) : (
             <div className="rounded-xl border bg-card overflow-hidden">
-              {counts.map((count) => {
+              {filteredCounts.map((count) => {
                 const actions: ItemAction[] = [
                   {
                     key: 'view',
@@ -282,12 +293,12 @@ export function InventoryCountsTab() {
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
               </div>
-            ) : counts.length === 0 ? (
+            ) : filteredCounts.length === 0 ? (
               <EmptyState
                 size="compact"
                 icon={<ClipboardList className="h-10 w-10" />}
-                title={t.empty.noneTitle}
-                description={t.empty.noneDescription}
+                title={counts.length === 0 ? t.empty.noneTitle : t.empty.noneFoundTitle}
+                description={counts.length === 0 ? t.empty.noneDescription : t.empty.noneFoundDescription}
                 action={{ label: t.newCount, onClick: () => setWizardOpen(true) }}
               />
             ) : (
@@ -303,7 +314,7 @@ export function InventoryCountsTab() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {counts.map((count) => (
+                    {filteredCounts.map((count) => (
                       <TableRow key={count.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDetail(count)}>
                         <TableCell className="font-medium">
                           #{count.numero ?? '-'}

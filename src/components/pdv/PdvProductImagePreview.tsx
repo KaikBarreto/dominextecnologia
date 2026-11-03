@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { SignedImg } from '@/components/ui/SignedImg';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 interface PdvProductImagePreviewProps {
@@ -16,6 +17,8 @@ interface PdvProductImagePreviewProps {
   viewerDescription: string;
   className?: string;
 }
+
+const THUMBNAIL_SKELETON_TIMEOUT_MS = 8000;
 
 /**
  * Miniatura do item do carrinho com um gatilho acessível para o visualizador
@@ -32,6 +35,14 @@ export function PdvProductImagePreview({
 }: PdvProductImagePreviewProps) {
   const [open, setOpen] = useState(false);
   const hasImage = Boolean(imageUrl?.trim());
+  const [thumbnailReady, setThumbnailReady] = useState(!hasImage);
+
+  useEffect(() => {
+    setThumbnailReady(!hasImage);
+    if (!hasImage) return;
+    const timeout = window.setTimeout(() => setThumbnailReady(true), THUMBNAIL_SKELETON_TIMEOUT_MS);
+    return () => window.clearTimeout(timeout);
+  }, [hasImage, imageUrl]);
 
   if (!hasImage) {
     return (
@@ -51,18 +62,23 @@ export function PdvProductImagePreview({
       <button
         type="button"
         className={cn(
-          'shrink-0 overflow-hidden rounded-md transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          'relative shrink-0 overflow-hidden rounded-md transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
           className,
         )}
         aria-label={previewLabel}
         title={previewLabel}
         onClick={() => setOpen(true)}
       >
+        {!thumbnailReady && <Skeleton className="absolute inset-0 h-full w-full rounded-none" />}
         <SignedImg
           src={imageUrl}
           alt=""
           fallbackLabel={fallbackLabel}
-          className="h-full w-full object-cover"
+          className={cn(
+            'absolute inset-0 h-full w-full object-cover transition-opacity duration-200',
+            thumbnailReady ? 'opacity-100' : 'opacity-0',
+          )}
+          onLoad={() => setThumbnailReady(true)}
         />
       </button>
 

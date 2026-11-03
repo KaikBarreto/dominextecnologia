@@ -62,7 +62,7 @@ export function useServiceCosts(serviceId?: string | null) {
         service_id: serviceId,
         hourly_rate: input.hourly_rate,
         hours: input.hours,
-        extra_costs: (input.extra_costs ?? []) as any,
+        extra_costs: (input.extra_costs ?? []) as ServiceCostInsert['extra_costs'],
         notes: input.notes ?? null,
       };
 
@@ -91,9 +91,10 @@ export function useServiceCosts(serviceId?: string | null) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-costs'] });
+      queryClient.invalidateQueries({ queryKey: ['service-cost-breakdown'] });
       toast({ title: 'Custos do serviço salvos!' });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({ variant: 'destructive', title: 'Erro ao salvar custos', description: getErrorMessage(error) });
     },
   });

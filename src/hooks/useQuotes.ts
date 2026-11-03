@@ -62,6 +62,7 @@ export interface QuoteInput {
   distance_km?: number;
   displacement_cost?: number;
   bdi?: number;
+  use_bdi?: boolean;
   total_cost?: number;
   total_price?: number;
   price_override?: number;
@@ -111,6 +112,7 @@ export interface Quote {
   distance_km?: number | null;
   displacement_cost?: number | null;
   bdi?: number | null;
+  use_bdi?: boolean | null;
   total_cost?: number | null;
   total_price?: number | null;
   price_override?: number | null;
@@ -343,6 +345,7 @@ export function useQuotes() {
           km_cost: source.km_cost,
           distance_km: source.distance_km,
           bdi: source.bdi,
+          use_bdi: source.use_bdi ?? true,
         } as any)
         .select()
         .single();

@@ -29,6 +29,8 @@ export interface ResponsiveModalProps {
   description?: string;
   children: React.ReactNode;
   className?: string;
+  /** Classes aplicadas ao drawer móvel; use para estabilizar a altura de wizards entre etapas. */
+  drawerClassName?: string;
   /** Footer content rendered below the scrollable area (fica colado embaixo, fora do scroll) */
   footer?: React.ReactNode;
   /**
@@ -41,6 +43,8 @@ export interface ResponsiveModalProps {
   lockBackdrop?: boolean;
   overlayId?: string;
   overlayPriority?: number;
+  /** Reduz o cabeçalho e os intervalos sem alterar a área útil/altura do modal. */
+  density?: 'default' | 'compact';
 }
 
 export function ResponsiveModal({
@@ -50,9 +54,11 @@ export function ResponsiveModal({
   description,
   children,
   className,
+  drawerClassName,
   footer,
   overlayId,
   overlayPriority = OVERLAY_PRIORITY.userAction,
+  density = 'default',
 }: ResponsiveModalProps) {
   const isCompact = useIsCompact();
   const generatedOverlayId = React.useId();
@@ -66,7 +72,7 @@ export function ResponsiveModal({
         {/* handleOnly: só o handle de cima arrasta pra fechar; arrastar no conteúdo rola. */}
         <Drawer open={visibleOpen} onOpenChange={onOpenChange} handleOnly>
           <DrawerContent
-            className="flex max-h-[90dvh] flex-col"
+            className={cn('flex max-h-[90dvh] flex-col', drawerClassName)}
             // Modal de formulário: tap/clique fora NUNCA fecha. Fecha só por FECHAR,
             // pelos botões do rodapé, ou arrastando o handle de cima.
             onPointerDownOutside={(e) => e.preventDefault()}
@@ -89,19 +95,33 @@ export function ResponsiveModal({
                 o botão em x 288..377 — colidia até com título CURTO, em qualquer
                 drawer do app, não só no que estava sendo testado.
                 `px-28` = 112px deixa 10px de folga pra variação de fonte/idioma. */}
-            <DrawerHeader className="relative shrink-0 px-28 pt-7 pb-3">
+            <DrawerHeader className={cn(
+              'relative shrink-0 px-28',
+              density === 'compact' ? 'pb-2 pt-6' : 'pb-3 pt-7',
+            )}>
               <DrawerTitle className="text-center">{title}</DrawerTitle>
-              {description ? <DrawerDescription className="text-center mt-1">{description}</DrawerDescription> : null}
+              {description ? (
+                <DrawerDescription className={cn('text-center', density === 'compact' ? 'mt-0.5 text-xs' : 'mt-1')}>
+                  {description}
+                </DrawerDescription>
+              ) : null}
               <ModalCloseButton
                 className="absolute right-3 top-4"
                 onClick={() => onOpenChange(false)}
               />
             </DrawerHeader>
-            <div className={cn('min-h-0 flex-1 overflow-y-auto px-4 pb-6', className)}>
+            <div className={cn(
+              'min-h-0 flex-1 overflow-y-auto px-4',
+              density === 'compact' ? 'pb-4' : 'pb-6',
+              className,
+            )}>
               {children}
             </div>
             {footer ? (
-              <div className="shrink-0 border-t px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3">
+              <div className={cn(
+                'shrink-0 border-t px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]',
+                density === 'compact' ? 'pt-2.5' : 'pt-3',
+              )}>
                 {footer}
               </div>
             ) : null}
@@ -116,7 +136,11 @@ export function ResponsiveModal({
       {/* Modal de formulário: clique fora NUNCA fecha (bloqueado aqui, não no primitivo). Escape segue ativo. */}
       <Dialog open={visibleOpen} onOpenChange={onOpenChange}>
         <DialogContent
-          className={cn('flex max-h-[90vh] flex-col sm:max-w-[600px]', className)}
+          className={cn(
+            'flex max-h-[90vh] flex-col sm:max-w-[600px]',
+            density === 'compact' && 'gap-3 p-5',
+            className,
+          )}
           // Clique fora não fecha; Escape segue ativo (não bloqueado).
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
@@ -125,12 +149,12 @@ export function ResponsiveModal({
           {...(description ? {} : { 'aria-describedby': undefined })}
         >
           {/* pr-8 reserva espaço pro botão "FECHAR" que o DialogContent injeta no canto. */}
-          <DialogHeader className="shrink-0 pr-8">
+          <DialogHeader className={cn('shrink-0 pr-8', density === 'compact' && 'space-y-0.5')}>
             <DialogTitle>{title}</DialogTitle>
-            {description ? <DialogDescription>{description}</DialogDescription> : null}
+            {description ? <DialogDescription className={cn(density === 'compact' && 'text-xs')}>{description}</DialogDescription> : null}
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-          {footer ? <div className="shrink-0 border-t pt-3">{footer}</div> : null}
+          {footer ? <div className={cn('shrink-0 border-t', density === 'compact' ? 'pt-2.5' : 'pt-3')}>{footer}</div> : null}
         </DialogContent>
       </Dialog>
     </OverlayNestingProvider>

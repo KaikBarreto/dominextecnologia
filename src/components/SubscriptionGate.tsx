@@ -1,9 +1,151 @@
+import { useState } from "react";
 import { useSubscriptionBlock } from "@/hooks/useSubscriptionBlock";
 import { Navigate, useLocation } from "react-router-dom";
-import { AlertTriangle, LogOut, RefreshCw } from "lucide-react";
+import { AlertTriangle, Loader2, LogOut, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageLoading } from "@/components/ui/page-loading";
+import { DarkVeilPage } from "@/components/ui/DarkVeilPage";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWhiteLabel } from "@/hooks/useWhiteLabel";
+import { idealForeground } from "@/lib/colorContrast";
+
+const DOMINEX_ACCENT = "#00C597";
+
+interface SubscriptionUnavailableScreenProps {
+  retry: () => Promise<void>;
+  signOut: () => Promise<void>;
+  accentColor: string;
+}
+
+export function SubscriptionUnavailableScreen({
+  retry,
+  signOut,
+  accentColor,
+}: SubscriptionUnavailableScreenProps) {
+  const [pendingAction, setPendingAction] = useState<
+    "retry" | "sign-out" | null
+  >(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const accentForeground = idealForeground(accentColor);
+
+  const handleRetry = async () => {
+    setPendingAction("retry");
+    setActionError(null);
+    try {
+      await retry();
+    } catch {
+      setActionError(
+        "A validação continua indisponível. Aguarde um instante e tente novamente.",
+      );
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleSignOut = async () => {
+    setPendingAction("sign-out");
+    setActionError(null);
+    try {
+      await signOut();
+    } catch {
+      setActionError("Não foi possível encerrar a sessão. Tente novamente.");
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  return (
+    <DarkVeilPage accentColor={accentColor} contentClassName="max-w-4xl">
+      <section role="alert" aria-labelledby="subscription-unavailable-title">
+        <div className="mx-auto mb-7 flex h-12 w-12 items-center justify-center rounded-full border border-amber-300/30 bg-amber-400/10 text-amber-300 shadow-[0_0_40px_rgba(251,191,36,0.12)] sm:mb-9 sm:h-14 sm:w-14">
+          <AlertTriangle className="h-6 w-6 sm:h-7 sm:w-7" aria-hidden="true" />
+        </div>
+
+        <p className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-white/55 sm:text-sm">
+          Acesso pausado por segurança
+        </p>
+        <h1
+          id="subscription-unavailable-title"
+          className="mx-auto max-w-4xl text-balance text-4xl font-black leading-[0.98] tracking-[-0.045em] text-white sm:text-6xl lg:text-7xl"
+          style={{ fontFamily: "'Lufga', sans-serif", fontWeight: 900 }}
+        >
+          Não foi possível validar sua assinatura
+        </h1>
+        <p className="mx-auto mt-6 max-w-2xl text-pretty text-base leading-relaxed text-white/65 sm:mt-7 sm:text-lg">
+          Não conseguimos confirmar o acesso desta empresa agora. Seus dados
+          continuam protegidos; tente novamente ou encerre a sessão.
+        </p>
+
+        <div className="mx-auto mt-9 flex max-w-xl flex-col gap-3 sm:mt-10 sm:flex-row sm:justify-center">
+          <Button
+            size="lg"
+            className="min-h-12 w-full border-0 px-6 font-bold shadow-lg shadow-black/20 hover:brightness-110 sm:w-auto sm:min-w-56"
+            style={{ backgroundColor: accentColor, color: accentForeground }}
+            onClick={() => {
+              void handleRetry();
+            }}
+            disabled={pendingAction !== null}
+            aria-busy={pendingAction === "retry"}
+          >
+            {pendingAction === "retry" ? (
+              <Loader2
+                className="animate-spin motion-reduce:animate-none"
+                aria-hidden="true"
+              />
+            ) : (
+              <RefreshCw aria-hidden="true" />
+            )}
+            Tentar novamente
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            className="min-h-12 w-full border-white/25 bg-white/[0.07] px-6 font-semibold text-white backdrop-blur-sm hover:bg-white/15 hover:text-white sm:w-auto sm:min-w-40"
+            onClick={() => {
+              void handleSignOut();
+            }}
+            disabled={pendingAction !== null}
+            aria-busy={pendingAction === "sign-out"}
+          >
+            {pendingAction === "sign-out" ? (
+              <Loader2
+                className="animate-spin motion-reduce:animate-none"
+                aria-hidden="true"
+              />
+            ) : (
+              <LogOut aria-hidden="true" />
+            )}
+            {pendingAction === "sign-out" ? "Saindo…" : "Sair"}
+          </Button>
+        </div>
+        <p
+          className="mt-4 min-h-5 text-sm text-amber-200"
+          role="status"
+          aria-live="polite"
+        >
+          {actionError}
+        </p>
+      </section>
+    </DarkVeilPage>
+  );
+}
+
+function SubscriptionUnavailableGateScreen({
+  retry,
+  signOut,
+}: Omit<SubscriptionUnavailableScreenProps, "accentColor">) {
+  const { enabled: whiteLabelEnabled, primaryColor } = useWhiteLabel();
+  const accentColor =
+    whiteLabelEnabled && primaryColor ? primaryColor : DOMINEX_ACCENT;
+  return (
+    <SubscriptionUnavailableScreen
+      retry={retry}
+      signOut={signOut}
+      accentColor={accentColor}
+    />
+  );
+}
 
 /**
  * Gate de assinatura — espelha o comportamento do EcoSistema (ProtectedRoute):
@@ -42,27 +184,7 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
 
   if (status === "unavailable") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
-        <div className="w-full max-w-md space-y-5 rounded-lg border bg-card p-6 text-center shadow-sm">
-          <AlertTriangle className="mx-auto h-10 w-10 text-amber-500" aria-hidden />
-          <div className="space-y-2">
-            <h1 className="text-xl font-semibold">Não foi possível validar sua assinatura</h1>
-            <p className="text-sm text-muted-foreground">
-              Por segurança, o acesso ao sistema foi pausado. Tente novamente ou saia da conta.
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Button onClick={retry}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Tentar novamente
-            </Button>
-            <Button variant="outline" onClick={() => { void signOut(); }}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Sair
-            </Button>
-          </div>
-        </div>
-      </div>
+      <SubscriptionUnavailableGateScreen retry={retry} signOut={signOut} />
     );
   }
 

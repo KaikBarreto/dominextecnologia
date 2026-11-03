@@ -453,10 +453,10 @@ export const finance = {
         overviewTab: 'Visão Geral',
         groupAccounts: 'Contas Bancárias',
         groupCards: 'Cartões',
-        newAccount: 'Nova Conta',
-        newCard: 'Novo Cartão',
-        addMenuNewAccount: 'Nova Conta',
-        addMenuNewCard: 'Novo Cartão',
+        newAccount: 'Nova conta bancária',
+        newCard: 'Novo cartão de crédito',
+        addMenuNewAccount: 'Nova conta bancária',
+        addMenuNewCard: 'Novo cartão de crédito',
       },
       cardPurchases: {
         toggleLabel: 'Incluir compras no cartão',
@@ -1582,10 +1582,13 @@ export const finance = {
     // ── Conciliação bancária (extrato .OFX) ───────────────────────────────
     reconciliation: {
       tabLabel: 'Conciliação',
+      entryAction: 'Conciliação bancária (OFX)',
+      returnTo: 'Voltar para {destination}',
+      overviewDestination: 'Visão geral',
       tab: {
         accountSelectorLabel: 'Conta para conciliar',
         accountSelectorPlaceholder: 'Selecione a conta',
-        helpButton: 'Como funciona?',
+        helpButton: 'Ajuda',
         backButton: 'Voltar',
         closeButton: 'Fechar',
         importButton: 'Importar extrato',
@@ -2455,10 +2458,10 @@ export const finance = {
         overviewTab: 'Overview',
         groupAccounts: 'Bank Accounts',
         groupCards: 'Cards',
-        newAccount: 'New Account',
-        newCard: 'New Card',
-        addMenuNewAccount: 'New Account',
-        addMenuNewCard: 'New Card',
+        newAccount: 'New bank account',
+        newCard: 'New credit card',
+        addMenuNewAccount: 'New bank account',
+        addMenuNewCard: 'New credit card',
       },
       cardPurchases: {
         toggleLabel: 'Include credit card purchases',
@@ -3509,10 +3512,13 @@ export const finance = {
     // ── Bank reconciliation (.OFX statement) ──────────────────────────────
     reconciliation: {
       tabLabel: 'Reconciliation',
+      entryAction: 'Bank reconciliation (OFX)',
+      returnTo: 'Back to {destination}',
+      overviewDestination: 'Overview',
       tab: {
         accountSelectorLabel: 'Account to reconcile',
         accountSelectorPlaceholder: 'Select the account',
-        helpButton: 'How does it work?',
+        helpButton: 'Help',
         backButton: 'Back',
         closeButton: 'Close',
         importButton: 'Import statement',
@@ -4380,10 +4386,10 @@ export const finance = {
         overviewTab: 'Resumen',
         groupAccounts: 'Cuentas Bancarias',
         groupCards: 'Tarjetas',
-        newAccount: 'Nueva Cuenta',
-        newCard: 'Nueva Tarjeta',
-        addMenuNewAccount: 'Nueva Cuenta',
-        addMenuNewCard: 'Nueva Tarjeta',
+        newAccount: 'Nueva cuenta bancaria',
+        newCard: 'Nueva tarjeta de crédito',
+        addMenuNewAccount: 'Nueva cuenta bancaria',
+        addMenuNewCard: 'Nueva tarjeta de crédito',
       },
       cardPurchases: {
         toggleLabel: 'Incluir compras con tarjeta',
@@ -5434,10 +5440,13 @@ export const finance = {
     // ── Conciliación bancaria (extracto .OFX) ─────────────────────────────
     reconciliation: {
       tabLabel: 'Conciliación',
+      entryAction: 'Conciliación bancaria (OFX)',
+      returnTo: 'Volver a {destination}',
+      overviewDestination: 'Resumen',
       tab: {
         accountSelectorLabel: 'Cuenta para conciliar',
         accountSelectorPlaceholder: 'Seleccione la cuenta',
-        helpButton: '¿Cómo funciona?',
+        helpButton: 'Ayuda',
         backButton: 'Volver',
         closeButton: 'Cerrar',
         importButton: 'Importar extracto',
@@ -6305,10 +6314,10 @@ export const finance = {
         overviewTab: 'Vue d\'ensemble',
         groupAccounts: 'Comptes Bancaires',
         groupCards: 'Cartes',
-        newAccount: 'Nouveau Compte',
-        newCard: 'Nouvelle Carte',
-        addMenuNewAccount: 'Nouveau Compte',
-        addMenuNewCard: 'Nouvelle Carte',
+        newAccount: 'Nouveau compte bancaire',
+        newCard: 'Nouvelle carte de crédit',
+        addMenuNewAccount: 'Nouveau compte bancaire',
+        addMenuNewCard: 'Nouvelle carte de crédit',
       },
       cardPurchases: {
         toggleLabel: 'Inclure les achats par carte',
@@ -7359,10 +7368,13 @@ export const finance = {
     // ── Rapprochement bancaire (relevé .OFX) ──────────────────────────────
     reconciliation: {
       tabLabel: 'Rapprochement',
+      entryAction: 'Rapprochement bancaire (OFX)',
+      returnTo: 'Retour à {destination}',
+      overviewDestination: 'Vue d’ensemble',
       tab: {
         accountSelectorLabel: 'Compte à rapprocher',
         accountSelectorPlaceholder: 'Sélectionnez le compte',
-        helpButton: 'Comment ça marche ?',
+        helpButton: 'Aide',
         backButton: 'Retour',
         closeButton: 'Fermer',
         importButton: 'Importer le relevé',

@@ -38,6 +38,8 @@ interface SettingsSidebarLayoutProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   children: React.ReactNode;
+  /** Ações da tela alinhadas à direita da navegação underline. Só no desktop. */
+  actions?: React.ReactNode;
   /** Conteúdo fixo no rodapé do sidebar (ex: botões "Nova Conta"/"Novo Cartão"). Só no desktop. */
   sidebarFooter?: React.ReactNode;
   /**
@@ -68,6 +70,7 @@ export function SettingsSidebarLayout({
   activeTab,
   onTabChange,
   children,
+  actions,
   sidebarFooter,
   groupFooters,
   placeholderGroups,
@@ -132,6 +135,7 @@ export function SettingsSidebarLayout({
           })}
           activeTab={activeTab}
           onTabChange={onTabChange}
+          actions={actions}
         />
         <div className="min-w-0">{children}</div>
       </div>

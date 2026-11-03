@@ -28,7 +28,7 @@ import { useActiveEmployeeContractsMap } from '@/hooks/useEmployeeContracts';
 import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
 import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { useViewMode } from '@/hooks/useViewMode';
-import { getErrorMessage, getInvokeErrorMessage } from '@/utils/errorMessages';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog';
 import { EmployeeMovementModal } from '@/components/employees/EmployeeMovementModal';
 import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
@@ -39,6 +39,7 @@ import { ProcessesTab } from '@/components/employees/processes/ProcessesTab';
 import { AdminTimePanel } from '@/components/time-tracking/AdminTimePanel';
 import { TeamsPanel } from '@/components/teams/TeamsPanel';
 import { useEmployees, Employee } from '@/hooks/useEmployees';
+import { useEmployeeAccess, type EmployeeAccessRole } from '@/hooks/useEmployeeAccess';
 import { useEmployeeMovements } from '@/hooks/useEmployeeMovements';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { calculateEmployeeBalance, EmployeeMovement } from '@/utils/employeeCalculations';
@@ -171,6 +172,9 @@ export default function Employees() {
   const [viewMode, setViewMode] = useViewMode('employees-view-mode');
   const [formOpen, setFormOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  // Se o funcionário foi criado, mas a criação do acesso falhou, o retry deve
+  // atualizar o mesmo registro em vez de criar uma duplicata.
+  const [pendingCreatedEmployeeId, setPendingCreatedEmployeeId] = useState<string | null>(null);
   const [movementType, setMovementType] = useState<'vale' | 'bonus' | 'falta'>('vale');
   const [movementEmployee, setMovementEmployee] = useState<Employee | null>(null);
   // Uma chave por abertura do modal. Se a resposta da criação do vale se perder
@@ -193,6 +197,7 @@ export default function Employees() {
 
   const isMobile = useIsMobile();
   const { employees, isLoading, isError, refetch, createEmployee, updateEmployee, archiveEmployee } = useEmployees();
+  const { createAccess } = useEmployeeAccess();
   const activeEmployees = useMemo(
     () => employees.filter((employee) => employee.is_active !== false),
     [employees],
@@ -556,125 +561,79 @@ export default function Employees() {
     }
   }, [createFaceEnrollmentLink, queryClient, toast, t]);
 
-  const handleCreateOrUpdate = async (data: Partial<Employee> & { _createAccess?: boolean; _password?: string }) => {
-    const { _createAccess, _password, ...employeeData } = data as any;
-    
-    if (editingEmployee) {
-      const editingId = editingEmployee.id;
-      const editingName = editingEmployee.name;
-      const editingPhone = editingEmployee.phone;
-      const editingPhotoUrl = editingEmployee.photo_url;
-      const previousLinkedUserId = editingEmployee.user_id;
-      const pontoWasEnabled = editingEmployee.ponto_enabled;
+  const handleCreateOrUpdate = async (data: Partial<Employee> & {
+    _createAccess?: boolean;
+    _password?: string;
+    _accessRole?: EmployeeAccessRole;
+    _accessPermissions?: string[];
+    _accessPresetId?: string | null;
+  }) => {
+    const {
+      _createAccess,
+      _password,
+      _accessRole = 'tecnico',
+      _accessPermissions = [],
+      _accessPresetId,
+      ...employeeData
+    } = data;
+    // Durante a criação de acesso, somente a edge privilegiada escreve user_id.
+    // Isso preserva um vínculo que tenha sido concluído no servidor caso a
+    // resposta de rede se perca e o usuário clique em salvar novamente.
+    const employeeWriteData = _createAccess
+      ? Object.fromEntries(Object.entries(employeeData).filter(([key]) => key !== 'user_id')) as Partial<Employee>
+      : employeeData;
 
-      updateEmployee.mutate({ id: editingId, ...employeeData }, {
-        onSuccess: () => {
-          setFormOpen(false);
-          setEditingEmployee(null);
+    const pontoWasEnabled = editingEmployee?.ponto_enabled ?? false;
+    let savedEmployee: Employee;
 
-          // Side-effects rodam em paralelo, sem bloquear o estado da mutation
-          (async () => {
-            if (employeeData.ponto_enabled) {
-              await ensurePontoLink(editingId, pontoWasEnabled);
-            }
-            const linkedUserId = employeeData.user_id || previousLinkedUserId;
-            if (linkedUserId && employeeData.photo_url) {
-              try {
-                await supabase.from('profiles').update({ avatar_url: employeeData.photo_url }).eq('user_id', linkedUserId);
-              } catch {
-                // Falha silenciosa: avatar pode dessincronizar, mas o salvamento principal foi
-              }
-            }
+    try {
+      if (editingEmployee) {
+        savedEmployee = await updateEmployee.mutateAsync({ id: editingEmployee.id, ...employeeWriteData }) as Employee;
+      } else if (pendingCreatedEmployeeId) {
+        savedEmployee = await updateEmployee.mutateAsync({ id: pendingCreatedEmployeeId, ...employeeWriteData }) as Employee;
+      } else {
+        savedEmployee = await createEmployee.mutateAsync(employeeWriteData) as Employee;
+        setPendingCreatedEmployeeId(savedEmployee.id);
+      }
 
-            if (_createAccess && employeeData.email && _password) {
-              try {
-                const response = await supabase.functions.invoke('create-user', {
-                  body: {
-                    email: employeeData.email,
-                    password: _password,
-                    full_name: employeeData.name || editingName,
-                    phone: employeeData.phone || editingPhone || undefined,
-                    avatar_url: employeeData.photo_url || editingPhotoUrl || undefined,
-                    role: 'tecnico',
-                    employee_id: editingId,
-                  },
-                });
+      if (_createAccess) {
+        if (!employeeData.email || !_password) throw new Error('Informe e-mail e senha temporária para criar o acesso.');
+        await createAccess.mutateAsync({
+          employeeId: savedEmployee.id,
+          email: employeeData.email,
+          password: _password,
+          fullName: employeeData.name || savedEmployee.name,
+          phone: employeeData.phone,
+          avatarUrl: employeeData.photo_url,
+          role: _accessRole,
+          permissions: _accessPermissions,
+          presetId: _accessPresetId,
+        });
+        toast({
+          title: t.toasts.accessCreated,
+          description: t.toasts.accessCreatedDesc.replace('{email}', employeeData.email).replace('{password}', _password),
+          duration: 15000,
+        });
+      }
 
-                // Re-lança o erro original (preserva error.context com o corpo real da edge)
-                if (response.error) throw response.error;
-                const fnData = response.data;
-                if (fnData?.error) throw new Error(fnData.error);
+      if (employeeData.ponto_enabled) await ensurePontoLink(savedEmployee.id, pontoWasEnabled);
 
-                if (fnData?.user?.id) {
-                  await supabase.from('employees').update({ user_id: fnData.user.id }).eq('id', editingId);
-                }
+      const linkedUserId = _createAccess ? null : (employeeData.user_id || editingEmployee?.user_id);
+      if (linkedUserId && employeeData.photo_url) {
+        await supabase.from('profiles').update({ avatar_url: employeeData.photo_url }).eq('user_id', linkedUserId);
+      }
 
-                toast({
-                  title: t.toasts.accessCreated,
-                  description: t.toasts.accessCreatedDesc.replace('{email}', employeeData.email).replace('{password}', _password),
-                  duration: 15000,
-                });
-              } catch (err: any) {
-                const realMsg = await getInvokeErrorMessage(err);
-                toast({
-                  variant: 'destructive',
-                  title: t.toasts.employeeUpdatedAccessError,
-                  description: getErrorMessage(realMsg || err),
-                });
-              }
-            }
-          })();
-        },
+      setPendingCreatedEmployeeId(null);
+      setFormOpen(false);
+      setEditingEmployee(null);
+    } catch (error) {
+      const message = getErrorMessage(error);
+      toast({
+        variant: 'destructive',
+        title: _createAccess ? 'Não foi possível concluir o acesso' : 'Não foi possível salvar o funcionário',
+        description: message,
       });
-    } else {
-      createEmployee.mutate(employeeData, {
-        onSuccess: async (newEmployee: any) => {
-          setFormOpen(false);
-
-          if (employeeData.ponto_enabled && newEmployee?.id) {
-            await ensurePontoLink(newEmployee.id, false);
-          }
-
-          if (_createAccess && employeeData.email && _password) {
-            try {
-              const response = await supabase.functions.invoke('create-user', {
-                body: {
-                  email: employeeData.email,
-                  password: _password,
-                  full_name: employeeData.name,
-                  phone: employeeData.phone || undefined,
-                  avatar_url: employeeData.photo_url || undefined,
-                  role: 'tecnico',
-                  employee_id: newEmployee?.id || undefined,
-                },
-              });
-              
-              // Re-lança o erro original (preserva error.context com o corpo real da edge)
-              if (response.error) throw response.error;
-              const fnData = response.data;
-              if (fnData?.error) throw new Error(fnData.error);
-
-              // Link user_id to employee
-              if (fnData?.user?.id && newEmployee?.id) {
-                await supabase.from('employees').update({ user_id: fnData.user.id }).eq('id', newEmployee.id);
-              }
-
-              toast({
-                title: t.toasts.accessCreated,
-                description: t.toasts.accessCreatedDesc.replace('{email}', employeeData.email).replace('{password}', _password),
-                duration: 15000,
-              });
-            } catch (err: any) {
-              const realMsg = await getInvokeErrorMessage(err);
-              toast({
-                variant: 'destructive',
-                title: t.toasts.employeeCreatedAccessError,
-                description: getErrorMessage(realMsg || err),
-              });
-            }
-          }
-        },
-      });
+      throw error;
     }
   };
 
@@ -1053,7 +1012,7 @@ export default function Employees() {
     return acc?.name || t.extract.fallbacks.bankAccount;
   };
 
-  const openNewEmployee = () => { setEditingEmployee(null); setFormOpen(true); };
+  const openNewEmployee = () => { setPendingCreatedEmployeeId(null); setEditingEmployee(null); setFormOpen(true); };
   const copyEmployeePontoLink = useCallback(async (employee: Employee) => {
     if (!employee.ponto_slug) return;
     const link = `${window.location.origin}/ponto/${employee.ponto_slug}`;
@@ -1531,10 +1490,10 @@ export default function Employees() {
       {/* Dialogs */}
       <EmployeeFormDialog
         open={formOpen}
-        onOpenChange={o => { setFormOpen(o); if (!o) setEditingEmployee(null); }}
+        onOpenChange={o => { setFormOpen(o); if (!o) { setEditingEmployee(null); setPendingCreatedEmployeeId(null); } }}
         employee={editingEmployee}
         onSubmit={handleCreateOrUpdate}
-        isPending={createEmployee.isPending || updateEmployee.isPending}
+        isPending={createEmployee.isPending || updateEmployee.isPending || createAccess.isPending}
         onCreateForDisc={async (data) => {
           const newEmp = await createEmployee.mutateAsync(data as any);
           return { id: newEmp.id, name: newEmp.name };

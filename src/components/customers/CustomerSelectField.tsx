@@ -48,6 +48,8 @@ export interface CustomerSelectFieldProps {
   summaryLabel?: string;
   /** Rótulo acessível do quick-add externo no modo `summary`. */
   createLabel?: string;
+  /** Torna a ação de cadastro explícita em superfícies operacionais como o PDV. */
+  showCreateLabel?: boolean;
 }
 
 /**
@@ -78,6 +80,7 @@ export function CustomerSelectField({
   variant = 'default',
   summaryLabel,
   createLabel,
+  showCreateLabel = false,
 }: CustomerSelectFieldProps) {
   const [quickOpen, setQuickOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -146,14 +149,18 @@ export function CustomerSelectField({
       <Button
         type="button"
         variant="ghost"
-        size="icon"
+        size={showCreateLabel ? 'sm' : 'icon'}
         disabled={disabled}
         onClick={() => handleCreateClick()}
-        className="h-auto w-14 self-stretch shrink-0 rounded-none border-l border-background/15 bg-foreground text-background hover:bg-foreground/90 hover:text-background focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-background"
+        className={cn(
+          'h-auto self-stretch shrink-0 rounded-none border-l border-background/15 bg-foreground text-background hover:bg-foreground/90 hover:text-background focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-background',
+          showCreateLabel ? 'w-auto gap-1.5 px-3' : 'w-14',
+        )}
         aria-label={quickAddLabel}
         title={quickAddLabel}
       >
         <Plus className="h-4 w-4" />
+        {showCreateLabel && <span className="text-xs font-semibold">{quickAddLabel}</span>}
       </Button>
     </div>
   ) : (

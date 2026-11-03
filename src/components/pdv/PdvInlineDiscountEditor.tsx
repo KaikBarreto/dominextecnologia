@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { BadgePercent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatNumber, parseMoney } from '@/lib/format';
@@ -37,6 +38,8 @@ interface PdvInlineDiscountEditorProps {
   texts: PdvInlineDiscountEditorTexts;
   onApply: (discountAmount: number) => void;
   onEditingChange?: (editing: boolean) => void;
+  /** Gatilho compacto usado na linha do pedido, sem consumir uma linha textual. */
+  iconOnly?: boolean;
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -53,6 +56,7 @@ export function PdvInlineDiscountEditor({
   texts,
   onApply,
   onEditingChange,
+  iconOnly = false,
 }: PdvInlineDiscountEditorProps) {
   const editorRef = useRef<HTMLFormElement>(null);
   const [editing, setEditing] = useState(false);
@@ -125,7 +129,9 @@ export function PdvInlineDiscountEditor({
   };
 
   return (
-    <div className={variant === 'order' ? 'rounded-sm' : 'mt-1'}>
+    <div className={cn(
+      variant === 'order' ? 'rounded-sm' : iconOnly ? 'relative' : 'mt-1',
+    )}>
       {variant === 'order' ? (
         <button
           type="button"
@@ -143,6 +149,25 @@ export function PdvInlineDiscountEditor({
             <span className="tabular-nums">− {formatCurrency(normalizedApplied)}</span>
           </span>
         </button>
+      ) : iconOnly ? (
+        <button
+          type="button"
+          disabled={baseAmount <= 0}
+          aria-expanded={editing}
+          aria-label={`${editing ? texts.close : normalizedApplied > 0 ? texts.edit : texts.add}: ${label}`}
+          title={normalizedApplied > 0
+            ? `${texts.edit}: − ${formatCurrency(normalizedApplied)}`
+            : texts.add}
+          onClick={toggleEditor}
+          className={cn(
+            'flex h-7 w-7 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+            normalizedApplied > 0
+              ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+          )}
+        >
+          <BadgePercent className="h-4 w-4" />
+        </button>
       ) : (
         <button
           type="button"
@@ -150,7 +175,12 @@ export function PdvInlineDiscountEditor({
           aria-expanded={editing}
           aria-label={`${editing ? texts.close : normalizedApplied > 0 ? texts.edit : texts.add}: ${label}`}
           onClick={toggleEditor}
-          className="text-[11px] font-bold text-primary underline-offset-2 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+          className={cn(
+            'text-[11px] underline-offset-2 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+            normalizedApplied > 0
+              ? 'font-semibold text-primary'
+              : 'font-medium text-muted-foreground hover:text-foreground',
+          )}
         >
           {editing
             ? `${texts.close} ${label.toLocaleLowerCase()}`
@@ -165,7 +195,8 @@ export function PdvInlineDiscountEditor({
           ref={editorRef}
           className={cn(
             'mt-2.5 grid grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] items-end gap-x-2 gap-y-1.5 pb-0.5',
-            variant === 'line' && 'min-w-[14rem]',
+            variant === 'line' && !iconOnly && 'min-w-[14rem]',
+            iconOnly && 'absolute right-0 top-full z-30 mt-1 w-64 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-lg',
           )}
           onSubmit={(event) => {
             event.preventDefault();

@@ -39,9 +39,11 @@ interface CompraDetailViewProps {
   compra: CompraListRow;
   onBack: () => void;
   onEdit: (compra: CompraListRow) => void;
+  /** Dentro do list-detail, o voltar aparece só no mobile. */
+  embedded?: boolean;
 }
 
-export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewProps) {
+export function CompraDetailView({ compra, onBack, onEdit, embedded = false }: CompraDetailViewProps) {
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.purchaseDetail;
   const tCompras = MESSAGES[locale].app.inventory.compras;
@@ -228,14 +230,17 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
   ];
 
   return (
-    <div className="space-y-6">
+    <div className={cn('min-w-0', embedded ? 'space-y-5' : 'space-y-6')}>
       {/* Cabeçalho da compra */}
       <div className="space-y-2">
         {/* Breadcrumb discreto acima do título */}
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          className={cn(
+            'inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground',
+            embedded && 'lg:hidden',
+          )}
         >
           <ArrowLeft className="h-3.5 w-3.5" /> {t.backLabel}
         </button>

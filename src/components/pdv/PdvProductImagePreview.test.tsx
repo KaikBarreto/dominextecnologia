@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { PdvProductImagePreview } from '@/components/pdv/PdvProductImagePreview';
 
 vi.mock('@/components/ui/SignedImg', () => ({
-  SignedImg: ({ src, fallbackLabel }: { src?: string | null; fallbackLabel: string }) =>
-    src ? <img src={src} alt="" /> : <span>{fallbackLabel}</span>,
+  SignedImg: ({ src, fallbackLabel, ...props }: React.ImgHTMLAttributes<HTMLImageElement> & { src?: string | null; fallbackLabel: string }) =>
+    src ? <img src={src} alt="" {...props} /> : <span>{fallbackLabel}</span>,
 }));
 
 describe('PdvProductImagePreview', () => {
@@ -40,5 +40,21 @@ describe('PdvProductImagePreview', () => {
 
     expect(screen.getByText('Sem foto')).toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('mostra skeleton até a miniatura terminar de carregar', () => {
+    const { container } = render(
+      <PdvProductImagePreview
+        imageUrl="https://cdn.exemplo/produto.png"
+        name="Produto"
+        fallbackLabel="Sem foto"
+        openLabel="Ver foto de {name} em tela cheia"
+        viewerDescription="Visualização em tela cheia."
+      />,
+    );
+
+    expect(container.querySelector('.animate-pulse')).toBeInTheDocument();
+    fireEvent.load(container.querySelector('img')!);
+    expect(container.querySelector('.animate-pulse')).not.toBeInTheDocument();
   });
 });

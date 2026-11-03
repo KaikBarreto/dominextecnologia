@@ -15,6 +15,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 export interface PdvCartPanelTexts extends PdvCartSummaryTexts {
   title: string;
   itemsCount: string;
+  itemsCountOne?: string;
   draftHint: string;
   empty: string;
   emptyHint: string;
@@ -52,6 +53,7 @@ interface PdvCartPanelProps {
   /** Abre `PdvAdvancedOptionsDialog` (retrodatar + anexar foto). */
   onOpenAdvancedOptions: () => void;
   advancedOptionsActive: boolean;
+  advancedOptionsSummary?: string;
   /** Último produto adicionado ao pedido ativo, usado só para feedback visual. */
   additionFeedback?: { inventoryId: string; sequence: number };
   texts: PdvCartPanelTexts;
@@ -87,11 +89,13 @@ export function PdvCartPanel({
   onConfirmQuantityEdit,
   onOpenAdvancedOptions,
   advancedOptionsActive,
+  advancedOptionsSummary,
   additionFeedback,
   texts,
   className,
 }: PdvCartPanelProps) {
-  const itemCount = cart.lines.reduce((sum, l) => sum + l.quantity, 0);
+  // Produtos distintos: nunca somar kg + un + l sob o rótulo genérico "itens".
+  const itemCount = cart.lines.length;
   const [editingLineDiscount, setEditingLineDiscount] = useState<string | null>(null);
   const reduceMotion = useReducedMotion();
 
@@ -105,7 +109,9 @@ export function PdvCartPanel({
             <span className="font-bold">{texts.title}</span>
           </div>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {texts.itemsCount.replace('{count}', String(itemCount))} · {texts.draftHint}
+            {(itemCount === 1 && texts.itemsCountOne)
+              ? texts.itemsCountOne
+              : texts.itemsCount.replace('{count}', String(itemCount))} · {texts.draftHint}
           </p>
         </div>
         {cart.lines.length > 0 && (
@@ -267,6 +273,7 @@ export function PdvCartPanel({
         onGoToCashPanel={onGoToCashPanel}
         onOpenAdvancedOptions={onOpenAdvancedOptions}
         advancedOptionsActive={advancedOptionsActive}
+        advancedOptionsSummary={advancedOptionsSummary}
         texts={texts}
         className="min-h-0 flex-1 overflow-y-auto border-t border-border bg-muted/30"
       />

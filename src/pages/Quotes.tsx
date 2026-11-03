@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn, fuzzyIncludes, fuzzyIncludesPhone } from '@/lib/utils';
@@ -109,6 +109,7 @@ const STATUS_ICONS: Record<string, typeof FileText> = {
 // (tempo relativo no locale do usuário). last_viewed_at vem em UTC; date-fns calcula
 // o delta contra o "agora" local, então o "há X" bate.
 type TQ = Messages['app']['crm']['quotes'];
+type QuoteCustomerWithMobile = NonNullable<Quote['customers']> & { celular?: string | null };
 
 function QuoteViewsIndicator({
   quote,
@@ -153,7 +154,51 @@ function QuoteViewsIndicator({
   );
 }
 
-function QuotesList() {
+interface QuotesListProps {
+  formOpen: boolean;
+  editQuote: Quote | null;
+  configOpen: boolean;
+  onOpenNewQuote: () => void;
+  onOpenEditQuote: (quote: Quote) => void;
+  onFormOpenChange: (open: boolean) => void;
+  onConfigOpenChange: (open: boolean) => void;
+}
+
+interface QuotesHeaderActionsProps {
+  configureLabel: string;
+  newQuoteLabel: string;
+  onConfigure: () => void;
+  onNewQuote: () => void;
+}
+
+export function QuotesHeaderActions({
+  configureLabel,
+  newQuoteLabel,
+  onConfigure,
+  onNewQuote,
+}: QuotesHeaderActionsProps) {
+  return (
+    <div className="flex items-center gap-2">
+      <Button variant="outline" size="sm" onClick={onConfigure}>
+        {configureLabel}
+      </Button>
+      <Button size="sm" onClick={onNewQuote}>
+        <Plus className="mr-2 h-4 w-4" />
+        {newQuoteLabel}
+      </Button>
+    </div>
+  );
+}
+
+function QuotesList({
+  formOpen,
+  editQuote,
+  configOpen,
+  onOpenNewQuote,
+  onOpenEditQuote,
+  onFormOpenChange,
+  onConfigOpenChange,
+}: QuotesListProps) {
   const isMobile = useIsMobile();
   const { locale, currency } = useAppLocaleContext();
   const tq = MESSAGES[locale].app.crm.quotes;
@@ -214,11 +259,8 @@ function QuotesList() {
   };
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editQuote, setEditQuote] = useState<Quote | null>(null);
   const [viewQuote, setViewQuote] = useState<Quote | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [configOpen, setConfigOpen] = useState(false);
   const [approvingQuote, setApprovingQuote] = useState<Quote | null>(null);
   const [chargeQuote, setChargeQuote] = useState<Quote | null>(null);
   const [distributingQuote, setDistributingQuote] = useState<Quote | null>(null);
@@ -287,17 +329,19 @@ function QuotesList() {
     let list = quotes;
     if (statusFilter.length > 0) list = list.filter((q) => statusFilter.includes(q.status));
     if (search) {
-      list = list.filter(
-        (q) =>
+      list = list.filter((q) => {
+        const customer = q.customers as QuoteCustomerWithMobile | undefined;
+        return (
           fuzzyIncludes(q.customers?.name, search) ||
           fuzzyIncludes(q.prospect_name, search) ||
           fuzzyIncludes(String(q.quote_number), search) ||
           // Idem OS: telefone só com 6+ dígitos, pra não competir com o nº do
           // orçamento.
-          fuzzyIncludesPhone((q.customers as any)?.phone, search) ||
-          fuzzyIncludesPhone((q.customers as any)?.celular, search) ||
-          fuzzyIncludesPhone((q as any).prospect_phone, search)
-      );
+          fuzzyIncludesPhone(customer?.phone, search) ||
+          fuzzyIncludesPhone(customer?.celular, search) ||
+          fuzzyIncludesPhone(q.prospect_phone, search)
+        );
+      });
     }
     return list;
   }, [quotes, statusFilter, search]);
@@ -307,8 +351,10 @@ function QuotesList() {
 
   // KPIs no padrão KPICard (mesmo visual da tela de Ordens de Serviço).
   // Valores monetários usam `formattedValue` formatado com moeda/locale da empresa.
-  const fmtBRL = (v: number) =>
-    formatMoney(Math.round(v), currency, locale);
+  const fmtBRL = useCallback(
+    (value: number) => formatMoney(Math.round(value), currency, locale),
+    [currency, locale],
+  );
 
   const kpiCards = useMemo(() => {
     const base: Array<{
@@ -349,7 +395,7 @@ function QuotesList() {
     ];
 
     return base;
-  }, [kpis]);
+  }, [fmtBRL, kpis, tq.kpiAvgTicket, tq.kpiConversion, tq.kpiOpen]);
 
   // Filtros ativos pro badge.
   const activeFilterCount = (search ? 1 : 0) + (statusFilter.length > 0 ? 1 : 0);
@@ -398,7 +444,7 @@ function QuotesList() {
         <Button
           variant="outline"
           className="w-full justify-start gap-2"
-          onClick={() => setConfigOpen(true)}
+          onClick={() => onConfigOpenChange(true)}
           type="button"
         >
           <Settings2 className="h-4 w-4" />
@@ -532,7 +578,7 @@ function QuotesList() {
         label: tq.actionEdit,
         icon: <Pencil className="h-4 w-4" />,
         variant: 'edit',
-        onClick: () => { setEditQuote(q); setFormOpen(true); },
+        onClick: () => onOpenEditQuote(q),
       },
       {
         key: 'delete',
@@ -587,18 +633,6 @@ function QuotesList() {
         </>
       ) : (
         <>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4">
-            <div className="flex gap-2 flex-wrap">
-              <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
-                {tq.configureProposal}
-              </Button>
-              <Button size="sm" onClick={() => { setEditQuote(null); setFormOpen(true); }}>
-                <Plus className="h-4 w-4 mr-2" />
-                {tq.newQuote}
-              </Button>
-            </div>
-          </div>
-
           {/* KPIs desktop — padrão KPICard (mesmo da tela de Ordens de Serviço) */}
           <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
             {isLoading
@@ -641,7 +675,7 @@ function QuotesList() {
                 action={
                   search || statusFilter.length > 0
                     ? undefined
-                    : { label: tq.emptyActionLabel, onClick: () => { setEditQuote(null); setFormOpen(true); } }
+                    : { label: tq.emptyActionLabel, onClick: onOpenNewQuote }
                 }
               />
             </CardContent>
@@ -851,7 +885,7 @@ function QuotesList() {
                             label: tq.actionEdit,
                             icon: Pencil,
                             variant: 'edit',
-                            onClick: () => { setEditQuote(q); setFormOpen(true); },
+                            onClick: () => onOpenEditQuote(q),
                           },
                           {
                             label: tq.actionDelete,
@@ -886,14 +920,14 @@ function QuotesList() {
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label={tq.newQuoteShort}
-          onClick={() => { setEditQuote(null); setFormOpen(true); }}
+          onClick={onOpenNewQuote}
         />
       )}
 
       {/* Modals */}
       <QuoteFormDialog
         open={formOpen}
-        onOpenChange={(v) => { setFormOpen(v); if (!v) setEditQuote(null); }}
+        onOpenChange={onFormOpenChange}
         quote={editQuote}
       />
       {viewQuote && (
@@ -903,7 +937,7 @@ function QuotesList() {
           quote={viewQuote}
         />
       )}
-      <ProposalConfigDialog open={configOpen} onOpenChange={setConfigOpen} />
+      <ProposalConfigDialog open={configOpen} onOpenChange={onConfigOpenChange} />
 
       <ApproveQuoteModal
         open={!!approvingQuote}
@@ -1028,12 +1062,38 @@ function QuotesList() {
 
 export default function Quotes() {
   const [activeTab, setActiveTab] = useState('quotes');
+  const [formOpen, setFormOpen] = useState(false);
+  const [editQuote, setEditQuote] = useState<Quote | null>(null);
+  const [configOpen, setConfigOpen] = useState(false);
   const isMobile = useIsMobile();
   const { locale } = useAppLocaleContext();
   const tq = MESSAGES[locale].app.crm.quotes;
 
   const sidebarTabs = ALL_SIDEBAR_TAB_KEYS
     .map(t => ({ value: t.value, label: tq[t.labelKey], icon: t.icon }));
+
+  const openNewQuote = () => {
+    setEditQuote(null);
+    setFormOpen(true);
+  };
+
+  const openEditQuote = (quote: Quote) => {
+    setEditQuote(quote);
+    setFormOpen(true);
+  };
+
+  const handleFormOpenChange = (open: boolean) => {
+    setFormOpen(open);
+    if (!open) setEditQuote(null);
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (tab !== 'quotes') {
+      handleFormOpenChange(false);
+      setConfigOpen(false);
+    }
+  };
 
   return (
     <div className={cn('space-y-6', isMobile && 'pb-24')}>
@@ -1046,9 +1106,27 @@ export default function Quotes() {
       <SettingsSidebarLayout
         tabs={sidebarTabs}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
+        actions={activeTab === 'quotes' ? (
+          <QuotesHeaderActions
+            configureLabel={tq.configureProposal}
+            newQuoteLabel={tq.newQuote}
+            onConfigure={() => setConfigOpen(true)}
+            onNewQuote={openNewQuote}
+          />
+        ) : undefined}
       >
-        {activeTab === 'quotes' && <QuotesList />}
+        {activeTab === 'quotes' && (
+          <QuotesList
+            formOpen={formOpen}
+            editQuote={editQuote}
+            configOpen={configOpen}
+            onOpenNewQuote={openNewQuote}
+            onOpenEditQuote={openEditQuote}
+            onFormOpenChange={handleFormOpenChange}
+            onConfigOpenChange={setConfigOpen}
+          />
+        )}
         {activeTab === 'service-costs' && <ServiceCostsTab />}
         {activeTab === 'global-costs' && <GlobalCostsTab />}
         {activeTab === 'pricing' && <PricingTab />}

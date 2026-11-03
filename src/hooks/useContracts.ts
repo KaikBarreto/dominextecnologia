@@ -55,6 +55,10 @@ export interface Contract {
   // cliente final NÃO exibe os documentos PMOC (Dossiê, TRT, Certificado,
   // Cronograma). O gestor libera/oculta na aba Documentos do contrato.
   portal_documents_released: boolean;
+  /** Acesso geral ao Portal do Contrato. `false` exige usuário interno. */
+  portal_is_public: boolean;
+  /** Matriz de acesso por seção; chave ausente equivale a acesso sem senha. */
+  portal_sections: Record<string, 'free' | 'password' | 'hidden'>;
   // NFS-e automática por contrato (Onda 1 — migration 20261016140000).
   // `nfse_auto_enabled` nasce `false` em todo contrato (default de banco);
   // ligar é SEMPRE ação explícita de um humano na aba Financeiro. Overrides
@@ -2603,6 +2607,10 @@ export function useContracts() {
       unidade_cidade?: string | null;
       unidade_uf?: string | null;
       unidade_cep?: string | null;
+      // Configuração do Portal do Contrato. A RLS da própria linha de contracts
+      // continua sendo a fronteira multi-tenant; não há escrita privilegiada.
+      portal_is_public?: boolean;
+      portal_sections?: Record<string, 'free' | 'password' | 'hidden'>;
     }) => {
       const { id, assignee_user_ids, plan_activities, items, environments, expectedUpdatedAt, ...rest } = input;
 

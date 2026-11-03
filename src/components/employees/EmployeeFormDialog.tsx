@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { sanitizeStorageFileName } from '@/utils/storagePath';
-import { Loader2, Camera, Link2, Calculator, Clock } from 'lucide-react';
+import { Loader2, Camera, Link2, Calculator, Clock, ShieldCheck } from 'lucide-react';
 import { PasswordInput } from '@/components/PasswordInput';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -21,7 +21,10 @@ import { processImageFile } from '@/utils/imageConvert';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useToast } from '@/hooks/use-toast';
 import { Employee, PaymentFrequency, PaymentDayType } from '@/hooks/useEmployees';
-import { useUsers } from '@/hooks/useUsers';
+import { ROLE_LABELS, useUsers, type AppRole } from '@/hooks/useUsers';
+import { usePermissionPresets, useUserPermissions } from '@/hooks/usePermissions';
+import { PermissionsEditor } from '@/components/users/PermissionsEditor';
+import { getInitialEmployeeAccessState } from '@/hooks/useEmployeeAccess';
 import { cpfCnpjMask, phoneMask, pixKeyMask, cnpjMask } from '@/utils/masks';
 import { isValidCnpj } from '@/utils/cnpjValidation';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
@@ -39,11 +42,19 @@ import { PontoPinField } from '@/components/employees/PontoPinField';
 import { FaceBiometricsField } from '@/components/employees/FaceBiometricsField';
 import { tenantFileOptions } from '@/utils/tenantStorage';
 
+export type EmployeeFormSubmitData = Partial<Employee> & {
+  _createAccess?: boolean;
+  _password?: string;
+  _accessRole?: Exclude<AppRole, 'super_admin'>;
+  _accessPermissions?: string[];
+  _accessPresetId?: string | null;
+};
+
 interface EmployeeFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   employee?: Employee | null;
-  onSubmit: (data: Partial<Employee>) => void;
+  onSubmit: (data: EmployeeFormSubmitData) => void | Promise<void>;
   isPending?: boolean;
   /** Usado APENAS no fluxo "salvar+gerar DISC" na criação. Retorna o funcionário criado. */
   onCreateForDisc?: (data: Partial<Employee>) => Promise<{ id: string; name: string }>;
@@ -58,6 +69,8 @@ interface EmployeeFormDialogProps {
 export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isPending, onCreateForDisc, defaultRegime }: EmployeeFormDialogProps) {
   const { toast } = useToast();
   const { users } = useUsers();
+  const { presets } = usePermissionPresets();
+  const { userPermissions } = useUserPermissions();
   const { locale, currency } = useAppLocaleContext();
   const maskCurrency = (value: string) => currencyMask(value, currency, locale);
   const t = MESSAGES[locale].app.employees.form;
@@ -80,7 +93,9 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [useTemporaryPassword, setUseTemporaryPassword] = useState(false);
   const [password, setPassword] = useState('');
   const [linkedUserId, setLinkedUserId] = useState<string | null>(null);
-  const [showPasswordField, setShowPasswordField] = useState(false);
+  const [accessRole, setAccessRole] = useState<Exclude<AppRole, 'super_admin'>>('tecnico');
+  const [accessPermissions, setAccessPermissions] = useState<string[]>([]);
+  const [submitError, setSubmitError] = useState('');
   const [pontoEnabled, setPontoEnabled] = useState(false);
   const [monthlyCost, setMonthlyCost] = useState('');
   const [monthlyCostBreakdown, setMonthlyCostBreakdown] = useState<MonthlyCostBreakdown | null>(null);
@@ -103,10 +118,11 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   const [pjIsMei, setPjIsMei] = useState<boolean>(false);
   const TAB_DADOS = 'dados';
   const TAB_REMUNERACAO = 'remuneracao';
+  const TAB_ACESSO = 'acesso';
   const TAB_PONTO = 'ponto';
   const TAB_CONTRACT = 'contract';
   const TAB_DISC = 'disc';
-  type TabKey = typeof TAB_DADOS | typeof TAB_REMUNERACAO | typeof TAB_PONTO | typeof TAB_CONTRACT | typeof TAB_DISC;
+  type TabKey = typeof TAB_DADOS | typeof TAB_REMUNERACAO | typeof TAB_ACESSO | typeof TAB_PONTO | typeof TAB_CONTRACT | typeof TAB_DISC;
   const [activeTab, setActiveTab] = useState<TabKey>(TAB_DADOS);
   const isPj = employmentRegime === 'pj';
   // ID do funcionário recém-criado no fluxo "salvar+gerar DISC" na criação.
@@ -170,16 +186,26 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       }
       setPhotoUrl(employee?.photo_url || '');
       setPontoEnabled(employee?.ponto_enabled ?? false);
-      setCreateAccess(false);
+      const initialAccess = getInitialEmployeeAccessState(employee);
+      setCreateAccess(initialAccess.createAccess);
       setUseTemporaryPassword(false);
-      setPassword('');
-      setLinkedUserId(employee?.user_id || null);
+      setPassword(initialAccess.password);
+      setLinkedUserId(initialAccess.linkedUserId);
+      setAccessRole(initialAccess.role);
+      setAccessPermissions(initialAccess.permissions);
+      setSubmitError('');
       setActiveTab(TAB_DADOS);
       setCreatedEmployeeId(null);
       setCreatedEmployeeName(null);
       setIsSavingForDisc(false);
     }
   }, [open, employee?.id]);
+
+  useEffect(() => {
+    if (!open || !employee?.user_id) return;
+    const linkedRole = users.find(user => user.user_id === employee.user_id)?.role;
+    if (linkedRole && linkedRole !== 'super_admin') setAccessRole(linkedRole);
+  }, [open, employee?.user_id, users]);
 
   // Colar um valor pronto (ex. "4.550" de planilha) nos campos de dinheiro
   // (salário, custo mensal, VT) NÃO pode passar pela regra de centavos
@@ -211,7 +237,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('employee-photos').getPublicUrl(path);
       setPhotoUrl(publicUrl);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({ variant: 'destructive', title: tv.photoUploadError, description: getErrorMessage(err) });
     } finally {
       setUploading(false);
@@ -223,6 +249,14 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
   // o EmployeeDiscPanel continuar a geração do link.
   const handleSaveAndGenerateDisc = async () => {
     if (!name.trim()) { setActiveTab(TAB_DADOS); toast({ variant: 'destructive', title: tv.nameRequired }); return; }
+    if (createAccess) {
+      setActiveTab(TAB_ACESSO);
+      toast({
+        title: 'Conclua a criação do acesso primeiro',
+        description: 'Salve o funcionário pelo botão principal. Depois, abra a edição para gerar o link do perfil DISC.',
+      });
+      return;
+    }
     if (!onCreateForDisc) return;
     setIsSavingForDisc(true);
     try {
@@ -290,51 +324,64 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
     return isValidCnpj(pjCnpj);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { setActiveTab(TAB_DADOS); toast({ variant: 'destructive', title: tv.nameRequired }); return; }
-    if (createAccess && !email.trim()) { setActiveTab(TAB_DADOS); toast({ variant: 'destructive', title: tv.emailRequired }); return; }
+    if (createAccess && !email.trim()) { setActiveTab(TAB_ACESSO); toast({ variant: 'destructive', title: tv.emailRequired }); return; }
     const finalPassword = useTemporaryPassword ? (password || generatePassword()) : password;
-    if (createAccess && finalPassword.length < 6) { setActiveTab(TAB_REMUNERACAO); toast({ variant: 'destructive', title: tv.passwordMinLength }); return; }
+    if (createAccess && finalPassword.length < 6) { setActiveTab(TAB_ACESSO); toast({ variant: 'destructive', title: tv.passwordMinLength }); return; }
     if (!validatePjCnpj()) { setActiveTab(TAB_REMUNERACAO); toast({ variant: 'destructive', title: t.pj.cnpjInvalid }); return; }
-    draft.clearDraft();
-    onSubmit({
-      name: name.trim(),
-      cpf: cpf || null,
-      phone: phone || null,
-      email: email || null,
-      position: position || null,
-      salary: parseCurrency(salary),
-      monthly_cost: parseCurrency(monthlyCost) || null,
-      monthly_cost_breakdown: monthlyCostBreakdown,
-      hire_date: hireDate || null,
-      address: address || null,
-      pix_key: pixKey || null,
-      photo_url: photoUrl || null,
-      user_id: linkedUserId,
-      // PJ/MEI nunca usa ponto, mesmo que o toggle não tenha sido tocado nesta
-      // sessão de edição (a régua é: trocar pra PJ desliga o ponto sempre).
-      ponto_enabled: employmentRegime === 'pj' ? false : pontoEnabled,
-      payment_frequency: paymentFrequency,
-      payment_day_type: paymentFrequency === 'weekly' ? 'calendar' : paymentDayType,
-      payment_day: paymentFrequency === 'weekly' ? null : paymentDay,
-      payment_day_2: paymentFrequency === 'biweekly' ? paymentDay2 : null,
-      payment_weekday: paymentFrequency === 'weekly' ? paymentWeekday : null,
-      employment_regime: employmentRegime,
-      dependents_count: parseInt(dependentsCount || '0', 10),
-      vt_enabled: vtEnabled,
-      vt_monthly_value: parseCurrency(vtMonthlyValue),
-      cbo: cbo || null,
-      matricula: matricula || null,
-      pj_cnpj: pjCnpj || null,
-      pj_legal_name: pjLegalName || null,
-      pj_is_mei: pjIsMei,
-      _createAccess: createAccess,
-      _password: finalPassword,
-    } as any);
+    setSubmitError('');
+    try {
+      const submitData: EmployeeFormSubmitData = {
+        name: name.trim(),
+        cpf: cpf || null,
+        phone: phone || null,
+        email: email || null,
+        position: position || null,
+        salary: parseCurrency(salary),
+        monthly_cost: parseCurrency(monthlyCost) || null,
+        monthly_cost_breakdown: monthlyCostBreakdown,
+        hire_date: hireDate || null,
+        address: address || null,
+        pix_key: pixKey || null,
+        photo_url: photoUrl || null,
+        user_id: linkedUserId,
+        // PJ/MEI nunca usa ponto, mesmo que o toggle não tenha sido tocado nesta
+        // sessão de edição (a régua é: trocar pra PJ desliga o ponto sempre).
+        ponto_enabled: employmentRegime === 'pj' ? false : pontoEnabled,
+        payment_frequency: paymentFrequency,
+        payment_day_type: paymentFrequency === 'weekly' ? 'calendar' : paymentDayType,
+        payment_day: paymentFrequency === 'weekly' ? null : paymentDay,
+        payment_day_2: paymentFrequency === 'biweekly' ? paymentDay2 : null,
+        payment_weekday: paymentFrequency === 'weekly' ? paymentWeekday : null,
+        employment_regime: employmentRegime,
+        dependents_count: parseInt(dependentsCount || '0', 10),
+        vt_enabled: vtEnabled,
+        vt_monthly_value: parseCurrency(vtMonthlyValue),
+        cbo: cbo || null,
+        matricula: matricula || null,
+        pj_cnpj: pjCnpj || null,
+        pj_legal_name: pjLegalName || null,
+        pj_is_mei: pjIsMei,
+        _createAccess: createAccess,
+        _password: finalPassword,
+        _accessRole: accessRole,
+        _accessPermissions: accessPermissions,
+        _accessPresetId: presets.find(preset => preset.permissions.length === accessPermissions.length && preset.permissions.every(permission => accessPermissions.includes(permission)))?.id || null,
+      };
+      await onSubmit(submitData);
+      draft.clearDraft();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível concluir o cadastro.';
+      setSubmitError(message);
+      if (createAccess) setActiveTab(TAB_ACESSO);
+    }
   };
 
   const initials = name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() || '?';
+  const linkedUser = users.find(user => user.user_id === linkedUserId);
+  const linkedPermissions = userPermissions.find(item => item.user_id === linkedUserId)?.permissions || [];
 
   // Quando o funcionário foi criado via fluxo save-then-generate (criação + DISC),
   // o registro já existe no banco. O botão principal vira "Fechar" para evitar duplicação.
@@ -358,6 +405,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
       onOpenChange={onOpenChange}
       title={employee ? (isPj ? t.titleEditPj : t.titleEdit) : (isPj ? t.titleNewPj : t.titleNew)}
       footer={footer}
+      className="sm:max-w-[1000px]"
     >
       <DraftResumeDialog
         open={draft.showResumePrompt}
@@ -378,6 +426,7 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
             tabs={[
               { value: TAB_DADOS, label: t.tabData },
               { value: TAB_REMUNERACAO, label: t.tabPayment },
+              { value: TAB_ACESSO, label: 'Acesso' },
               // PJ/MEI não usa ponto eletrônico — a aba some, não só o conteúdo.
               ...(isPj ? [] : [{ value: TAB_PONTO, label: t.tabTimeclock }]),
               // Contrato só existe pra PJ/MEI (duração/valor/cobrança do serviço).
@@ -433,10 +482,6 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
           <div className="space-y-1.5">
             <Label>{t.fields.phone}</Label>
             <Input value={phone} onChange={e => setPhone(phoneMask(e.target.value))} placeholder="(00) 00000-0000" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t.fields.email}</Label>
-            <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" />
           </div>
           <div className="space-y-1.5">
             <Label>{t.fields.position}</Label>
@@ -697,73 +742,76 @@ export function EmployeeFormDialog({ open, onOpenChange, employee, onSubmit, isP
         </div>
         )}
 
-        {/* Link to existing user */}
-        <div className="rounded-lg border p-3 space-y-2">
-          <div className="flex items-center gap-2">
-            <Link2 className="h-4 w-4 text-muted-foreground" />
-            <Label className="text-sm font-medium">{t.linkUser.sectionTitle}</Label>
-          </div>
-          <Select value={linkedUserId || '_none'} onValueChange={(v) => setLinkedUserId(v === '_none' ? null : v)}>
-            <SelectTrigger>
-              <SelectValue placeholder={t.linkUser.placeholder} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="_none">{t.linkUser.noUser}</SelectItem>
-              {users.map(u => (
-                <SelectItem key={u.user_id} value={u.user_id}>
-                  {u.full_name} {u.phone ? `(${u.phone})` : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">{t.linkUser.hint}</p>
-        </div>
+          </TabsContent>
 
-        {/* Create system access toggle - on creation OR on edit when no linked user */}
-        {(!employee || (employee && !employee.user_id && !linkedUserId)) && (
-          <div className="rounded-lg border p-3 space-y-3">
-            <div className="flex items-center gap-2">
-              <Switch checked={createAccess} onCheckedChange={(v) => { setCreateAccess(v); if (v && !password) setPassword(''); }} />
-              <div>
-                <Label className="text-sm cursor-pointer">{t.createAccess.toggleLabel}</Label>
-                <p className="text-xs text-muted-foreground">{employee ? t.createAccess.toggleDescriptionEdit : t.createAccess.toggleDescriptionNew}</p>
+          <TabsContent value={TAB_ACESSO} className="space-y-4">
+            <div className="rounded-xl border bg-muted/20 p-4">
+              <div className="flex items-start gap-3">
+                <div className="rounded-lg bg-primary p-2 text-primary-foreground"><ShieldCheck className="h-5 w-5" /></div>
+                <div>
+                  <h3 className="font-medium">Acesso ao sistema</h3>
+                  <p className="text-sm text-muted-foreground">Vincule um usuário existente ou crie login, papel e permissões para este funcionário.</p>
+                </div>
               </div>
             </div>
-            {createAccess && (
-              <div className="space-y-3 pt-1">
-                {!email && <p className="text-xs text-destructive">{t.createAccess.missingEmailWarning}</p>}
-                {email && (
-                  <div className="rounded-md bg-muted/50 px-3 py-2">
-                    <p className="text-xs text-muted-foreground">{t.createAccess.loginLabel}</p>
-                    <p className="text-sm font-medium">{email}</p>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>{t.fields.email}</Label>
+                <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" />
+                <p className="text-xs text-muted-foreground">Usado como login quando um novo acesso for criado.</p>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2"><Link2 className="h-4 w-4 text-muted-foreground" /><Label>{t.linkUser.sectionTitle}</Label></div>
+                <Select value={linkedUserId || '_none'} onValueChange={(v) => { setLinkedUserId(v === '_none' ? null : v); if (v !== '_none') setCreateAccess(false); }}>
+                  <SelectTrigger><SelectValue placeholder={t.linkUser.placeholder} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">{t.linkUser.noUser}</SelectItem>
+                    {users.map(u => <SelectItem key={u.user_id} value={u.user_id}>{u.full_name} {u.role ? `— ${ROLE_LABELS[u.role]}` : ''}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">{t.linkUser.hint}</p>
+              </div>
+            </div>
+
+            {linkedUserId ? (
+              <div className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm space-y-1">
+                <p>Usuário vinculado: <strong>{linkedUser?.full_name || 'Usuário selecionado'}</strong>{linkedUser?.role ? ` · ${ROLE_LABELS[linkedUser.role]}` : ''}</p>
+                <p className="text-xs text-muted-foreground">
+                  {linkedPermissions.includes('*') ? 'Permissões: acesso total' : `Permissões: ${linkedPermissions.length} selecionada${linkedPermissions.length === 1 ? '' : 's'}`}. Para alterar um acesso existente, use Usuários e Permissões.
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-lg border p-4 space-y-4">
+                <div className="flex items-start gap-3">
+                  <Switch checked={createAccess} onCheckedChange={setCreateAccess} aria-label={t.createAccess.toggleLabel} />
+                  <div><Label>{t.createAccess.toggleLabel}</Label><p className="text-xs text-muted-foreground">{employee ? t.createAccess.toggleDescriptionEdit : t.createAccess.toggleDescriptionNew}</p></div>
+                </div>
+                {createAccess && (
+                  <div className="space-y-4 border-t pt-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label>Papel no sistema</Label>
+                        <Select value={accessRole} onValueChange={(value) => setAccessRole(value as Exclude<AppRole, 'super_admin'>)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>{(['admin', 'gestor', 'tecnico', 'comercial', 'financeiro'] as const).map(role => <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2"><Switch checked={useTemporaryPassword} onCheckedChange={(value) => { setUseTemporaryPassword(value); setPassword(''); }} /><Label>{t.createAccess.tempPasswordToggle}</Label></div>
+                        <div className="flex gap-2">
+                          {useTemporaryPassword ? <Input value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha temporária" /> : <PasswordInput value={password} onChange={e => setPassword(e.target.value)} placeholder={t.createAccess.passwordPlaceholder} />}
+                          {useTemporaryPassword && <Button type="button" variant="outline" onClick={() => setPassword(generatePassword())}>{t.createAccess.generateButton}</Button>}
+                        </div>
+                        {!useTemporaryPassword && <PasswordStrengthIndicator password={password} />}
+                      </div>
+                    </div>
+                    <div className="space-y-2"><Label>Permissões</Label><PermissionsEditor value={accessPermissions} onChange={setAccessPermissions} presets={presets} allowFullAccess /></div>
                   </div>
                 )}
-                <div className="flex items-center gap-2">
-                  <Switch checked={useTemporaryPassword} onCheckedChange={(v) => { setUseTemporaryPassword(v); setPassword(''); }} />
-                  <Label className="text-xs cursor-pointer">{t.createAccess.tempPasswordToggle}</Label>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>{useTemporaryPassword ? t.createAccess.tempPasswordLabel : t.createAccess.passwordLabel}</Label>
-                  {useTemporaryPassword ? (
-                    <div className="flex gap-2">
-                      <Input value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha" />
-                      <Button type="button" variant="outline" size="sm" onClick={() => setPassword(generatePassword())}>{t.createAccess.generateButton}</Button>
-                    </div>
-                  ) : (
-                    <>
-                      <PasswordInput value={password} onChange={e => setPassword(e.target.value)} placeholder={t.createAccess.passwordPlaceholder} />
-                      <PasswordStrengthIndicator password={password} />
-                    </>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    {useTemporaryPassword ? t.createAccess.tempPasswordHint : t.createAccess.passwordHint}
-                  </p>
-                </div>
               </div>
             )}
-          </div>
-        )}
-
+            {submitError && <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{submitError}</div>}
           </TabsContent>
 
           <TabsContent value={TAB_PONTO} className="space-y-4">

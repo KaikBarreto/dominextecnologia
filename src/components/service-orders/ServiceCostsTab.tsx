@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
-import { Calculator, Save, CheckCircle2, Loader2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Calculator, Save, CheckCircle2, Loader2, Trash2, Wrench } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,9 +12,10 @@ import { cn } from '@/lib/utils';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
-import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { useServiceCosts, type ExtraCostLine, computeExtraCostsTotal } from '@/hooks/useServiceCosts';
+import { useServiceCosts, type ExtraCostLine } from '@/hooks/useServiceCosts';
 import { useServiceMaterials } from '@/hooks/useServiceMaterials';
+import { useServiceCostResources } from '@/hooks/useServiceCostResources';
+import { serviceCostBreakdownQueryKey } from '@/hooks/useServiceCostBreakdown';
 import { ServiceMaterialsList } from '@/components/service-orders/ServiceMaterialsList';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useBDICalculator } from '@/hooks/useBDICalculator';
@@ -24,50 +26,103 @@ import { readPastedCents } from '@/lib/money-paste-mask';
 import { LaborCalculatorModal } from '@/components/service-orders/LaborCalculatorModal';
 import { ExtraCostModal } from '@/components/service-orders/ExtraCostModal';
 import { LinkedResourcesSection } from '@/components/service-orders/LinkedResourcesSection';
+import { useAuth } from '@/contexts/AuthContext';
+import { computeServiceCostBreakdown } from '@/lib/serviceCostBreakdown';
+import { CostCustomerComparison } from '@/components/pricing/CostCustomerComparison';
+import { ListDetailLayout, type ListDetailItem, type ListDetailSortOption } from '@/components/ui/ListDetailLayout';
+import { EmptyState } from '@/components/mobile/EmptyState';
+import { FilterButton } from '@/components/ui/FilterButton';
+import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 /** Número salvo → texto do campo. Vazio quando 0/nulo (nunca "0" travado) e vírgula como separador. */
 const toNumericText = (n?: number | null) => (!n ? '' : String(n).replace('.', ','));
 
+const UI = {
+  listTitle: 'Tipos de serviço',
+  listDescription: 'Selecione um serviço para configurar sua composição de custos.',
+  searchPlaceholder: 'Buscar tipo de serviço...',
+  emptyList: 'Nenhum tipo de serviço encontrado.',
+  selectTitle: 'Selecione um tipo de serviço',
+  selectDescription: 'A composição de mão de obra, recursos, materiais e o resumo aparecerão aqui.',
+  active: 'Ativo',
+  inactive: 'Inativo',
+  statusFilter: 'Situação',
+  sortNameAsc: 'Nome (A–Z)',
+  sortNameDesc: 'Nome (Z–A)',
+  deleteExtra: 'Excluir custo extra',
+  deleteExtraDescription: 'Este custo será removido da composição do serviço e o total será recalculado.',
+  cancel: 'Cancelar',
+  delete: 'Excluir',
+};
+
+function ServiceTypeAvatar({
+  color,
+  className = 'h-10 w-10',
+}: {
+  color: string;
+  className?: string;
+}) {
+  // `service_types` não possui campo de ícone. Wrench é o motivo canônico do
+  // domínio nas telas de Serviços e funciona como fallback estável.
+  return (
+    <span
+      data-service-type-avatar
+      aria-hidden="true"
+      className={`flex shrink-0 items-center justify-center rounded-lg text-white ${className}`}
+      style={{ backgroundColor: color }}
+    >
+      <Wrench className="h-5 w-5" aria-hidden="true" />
+    </span>
+  );
+}
+
 export function ServiceCostsTab() {
   const { locale, currency } = useAppLocaleContext();
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
   const tsc = MESSAGES[locale].app.crm.serviceCosts;
   const fmt = (v: number) => formatMoney(v, currency, locale);
 
   const isMobile = useIsMobile();
-  const { serviceTypes } = useServiceTypes();
+  const { serviceTypes, isLoading: serviceTypesLoading } = useServiceTypes();
   const [serviceId, setServiceId] = useState<string>('');
   const [costsTab, setCostsTab] = useState<string>('mao_de_obra');
-
-  // Auto-select first service type
-  useEffect(() => {
-    if (!serviceId && serviceTypes.length > 0) {
-      setServiceId(serviceTypes[0].id);
-    }
-  }, [serviceTypes, serviceId]);
-  const { cost, saveCost } = useServiceCosts(serviceId || null);
-  const { totalCost: materialsTotal } = useServiceMaterials(serviceId || null);
-
-  const serviceOptions = useMemo(
-    () => serviceTypes.map((st) => ({
-      value: st.id,
-      label: st.name,
-      icon: <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: st.color }} />,
-    })),
-    [serviceTypes]
-  );
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const { cost, saveCost, isLoading: costLoading, error: costError } = useServiceCosts(serviceId || null);
+  const {
+    materials,
+    isLoading: materialsLoading,
+    error: materialsError,
+  } = useServiceMaterials(serviceId || null);
 
   const [hourlyRate, setHourlyRate] = useState(0);
   const [hours, setHours] = useState(1);
   const [notes, setNotes] = useState('');
   const [extraCosts, setExtraCosts] = useState<ExtraCostLine[]>([]);
+  const [pendingExtraDeleteIndex, setPendingExtraDeleteIndex] = useState<number | null>(null);
   const [savedIndicator, setSavedIndicator] = useState(false);
 
   // Track if data was loaded from DB (to avoid saving empty state)
   const loadedRef = useRef(false);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dirtyRef = useRef(false);
+  const flushSaveRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     loadedRef.current = false;
+    if (costLoading || !serviceId) return;
     if (!cost) {
       setHourlyRate(0);
       setHours(1);
@@ -81,21 +136,33 @@ export function ServiceCostsTab() {
     setHours(Number(cost.hours ?? 1));
     setNumericText((prev) => ({ ...prev, hours: toNumericText(Number(cost.hours ?? 1)) }));
     setNotes(cost.notes ?? '');
-    setExtraCosts(((cost.extra_costs as any) ?? []) as ExtraCostLine[]);
+    setExtraCosts(((cost.extra_costs as unknown) ?? []) as ExtraCostLine[]);
     // Small delay to avoid triggering auto-save on load
-    setTimeout(() => { loadedRef.current = true; }, 200);
-  }, [cost?.id, serviceId]);
+    const loadedTimer = setTimeout(() => { loadedRef.current = true; }, 200);
+    return () => clearTimeout(loadedTimer);
+    // O estado local já contém as edições do mesmo registro; reidratar a cada
+    // refetch do objeto apagaria o que estiver sendo digitado.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cost?.id, costLoading, serviceId]);
 
-  const extrasTotal = useMemo(() => computeExtraCostsTotal(extraCosts), [extraCosts]);
-  const laborCost = useMemo(() => Math.max(0, hourlyRate * hours), [hourlyRate, hours]);
-  
-  // Track linked resources total
-  const [linkedResourcesTotal, setLinkedResourcesTotal] = useState(0);
-  
-  const totalServiceCost = useMemo(
-    () => laborCost + extrasTotal + (materialsTotal || 0) + linkedResourcesTotal,
-    [laborCost, extrasTotal, materialsTotal, linkedResourcesTotal]
-  );
+  // Recursos carregam junto da seleção do serviço, independentemente da aba
+  // ativa. Isso elimina o antigo Resumo=0 até a pessoa visitar "Recursos".
+  const resourcesState = useServiceCostResources(serviceId || null, hours);
+
+  const costBreakdown = useMemo(() => computeServiceCostBreakdown({
+    hourlyRate,
+    hours,
+    extraCosts,
+    materials,
+    resourceLinks: resourcesState.linkedResources,
+    resources: resourcesState.linkedResources.map((linked) => linked.resource),
+    gifts: resourcesState.gifts,
+  }), [extraCosts, hourlyRate, hours, materials, resourcesState.gifts, resourcesState.linkedResources]);
+  const laborCost = costBreakdown.laborCost;
+  const materialsTotal = costBreakdown.materialsCost;
+  const extrasTotal = costBreakdown.extrasCost;
+  const linkedResourcesTotal = costBreakdown.linkedResourcesCost;
+  const totalServiceCost = costBreakdown.totalCost;
 
   const { settings } = usePricingSettings();
   const defaultTaxRate = Number(settings?.tax_rate ?? 10);
@@ -161,18 +228,33 @@ export function ServiceCostsTab() {
   // Auto-save with debounce
   const triggerAutoSave = useCallback(() => {
     if (!serviceId || !loadedRef.current) return;
+    dirtyRef.current = true;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(async () => {
       await saveCost.mutateAsync({ hourly_rate: hourlyRate, hours, extra_costs: extraCosts, notes });
+      dirtyRef.current = false;
       setSavedIndicator(true);
       setTimeout(() => setSavedIndicator(false), 2000);
     }, 1000);
   }, [serviceId, hourlyRate, hours, extraCosts, notes, saveCost]);
 
+  const flushSave = useCallback(() => {
+    if (!serviceId || !loadedRef.current || !dirtyRef.current) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = null;
+    dirtyRef.current = false;
+    saveCost.mutate({ hourly_rate: hourlyRate, hours, extra_costs: extraCosts, notes });
+  }, [extraCosts, hourlyRate, hours, notes, saveCost, serviceId]);
+
+  flushSaveRef.current = flushSave;
+  useEffect(() => () => flushSaveRef.current(), []);
+
   // Trigger auto-save when data changes
   useEffect(() => {
     triggerAutoSave();
-    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+    // A mutação do React Query não faz parte do dado editável; reagir à sua
+    // identidade criaria novo debounce após cada render do estado da mutation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hourlyRate, hours, extraCosts, notes]);
 
   const addExtraLine = (label: string, amount: number) => {
@@ -205,37 +287,179 @@ export function ServiceCostsTab() {
   };
 
   const handleSave = async () => {
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = null;
     await saveCost.mutateAsync({ hourly_rate: hourlyRate, hours, extra_costs: extraCosts, notes });
+    dirtyRef.current = false;
     setSavedIndicator(true);
     setTimeout(() => setSavedIndicator(false), 2000);
   };
 
+  const detailLoading = !!serviceId && (costLoading || materialsLoading || resourcesState.isLoading);
+  const detailError = costError || materialsError || resourcesState.error;
+
+  // Mantém o snapshot canônico em cache enquanto a pessoa edita. Ao abrir o
+  // orçamento logo em seguida, o mesmo valor entra no item sem uma nova espera
+  // nem risco de ler as horas antigas durante o debounce do salvamento.
+  useEffect(() => {
+    const companyId = profile?.company_id;
+    if (!companyId || !serviceId || detailLoading || detailError) return;
+    queryClient.setQueryData(
+      serviceCostBreakdownQueryKey(companyId, serviceId),
+      costBreakdown,
+    );
+  }, [costBreakdown, detailError, detailLoading, profile?.company_id, queryClient, serviceId]);
+
+  const selectedService = useMemo(
+    () => serviceTypes.find((service) => service.id === serviceId) ?? null,
+    [serviceId, serviceTypes],
+  );
+  const visibleServices = useMemo(
+    () => serviceTypes.filter((service) => (
+      statusFilter.length === 0
+      || statusFilter.includes(service.is_active ? 'active' : 'inactive')
+    )),
+    [serviceTypes, statusFilter],
+  );
+  const listItems = useMemo<ListDetailItem[]>(() => visibleServices.map((service) => ({
+    id: service.id,
+    title: service.name,
+    subtitle: service.description || (service.is_active ? UI.active : UI.inactive),
+    searchText: [service.name, service.description, service.is_active ? UI.active : UI.inactive]
+      .filter(Boolean)
+      .join(' '),
+    leading: <ServiceTypeAvatar color={service.color} />,
+    trailing: (
+      <Badge variant={service.is_active ? 'success' : 'muted'} className="text-[9px]">
+        {service.is_active ? UI.active : UI.inactive}
+      </Badge>
+    ),
+  })), [visibleServices]);
+  const sortOptions = useMemo<ListDetailSortOption[]>(() => {
+    const byName = (a: ListDetailItem, b: ListDetailItem) =>
+      a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' });
+    return [
+      { value: 'name-asc', label: UI.sortNameAsc, shortLabel: 'A–Z', compare: byName },
+      { value: 'name-desc', label: UI.sortNameDesc, shortLabel: 'Z–A', compare: (a, b) => byName(b, a) },
+    ];
+  }, []);
+
+  const handleSelectService = useCallback((nextServiceId: string) => {
+    if (nextServiceId === serviceId) return;
+    flushSave();
+    loadedRef.current = false;
+    dirtyRef.current = false;
+    setCostsTab('mao_de_obra');
+    setServiceId(nextServiceId);
+  }, [flushSave, serviceId]);
+
+  useEffect(() => {
+    if (serviceId && !visibleServices.some((service) => service.id === serviceId)) {
+      flushSave();
+      setServiceId('');
+    }
+  }, [flushSave, serviceId, visibleServices]);
+
   return (
     <div className="space-y-4">
-      <Card className="border-0 bg-muted/20 shadow-none">
-        <CardContent className="p-4 space-y-5 sm:p-5">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-            <div>
-              <p className="text-lg font-semibold text-foreground">{tsc.title}</p>
-              <p className="text-sm text-muted-foreground">{tsc.subtitle}</p>
-            </div>
-            <div className="w-full sm:w-96">
-              <Label className="text-xs">{tsc.serviceTypeLabel}</Label>
-              <SearchableSelect
-                options={serviceOptions}
-                value={serviceId}
-                onValueChange={setServiceId}
-                placeholder={tsc.serviceTypePlaceholder}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground sm:text-xl">{tsc.title}</h2>
+        <p className="mt-0.5 text-sm text-muted-foreground">{tsc.subtitle}</p>
+      </div>
+
+      {serviceTypesLoading ? (
+        <div className="grid gap-5 lg:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)]">
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-full" />
+            {[1, 2, 3, 4, 5].map((index) => <Skeleton key={index} className="h-16 w-full" />)}
+          </div>
+          <Skeleton className="hidden min-h-[32rem] w-full lg:block" />
+        </div>
+      ) : (
+        <ListDetailLayout
+          items={listItems}
+          selectedId={serviceId || undefined}
+          listTitle={UI.listTitle}
+          listDescription={UI.listDescription}
+          listFilters={(
+            <FilterButton
+              activeCount={statusFilter.length > 0 ? 1 : 0}
+              onClear={() => setStatusFilter([])}
+              embedded
+            >
+              <FilterCheckboxGroup
+                label={UI.statusFilter}
+                options={[
+                  { value: 'active', label: UI.active },
+                  { value: 'inactive', label: UI.inactive },
+                ]}
+                selected={statusFilter}
+                onChange={setStatusFilter}
+                emptyLabel="Todas as situações"
+              />
+            </FilterButton>
+          )}
+          sortOptions={sortOptions}
+          pageSize={25}
+          storageKey="service-costs-types"
+          searchPlaceholder={UI.searchPlaceholder}
+          emptyLabel={UI.emptyList}
+          mobileDetailOpen={!!serviceId}
+          onSelect={handleSelectService}
+        >
+          {!selectedService ? (
+            <div className="flex min-h-[28rem] items-center justify-center">
+              <EmptyState
+                size="compact"
+                icon={<Wrench className="h-10 w-10" />}
+                title={UI.selectTitle}
+                description={UI.selectDescription}
               />
             </div>
-          </div>
-
-          {!serviceId ? (
-            <div className="rounded-lg bg-background/70 p-8 text-center text-sm text-muted-foreground">
-              {tsc.noServiceSelected}
-            </div>
           ) : (
-            <Tabs value={costsTab} onValueChange={setCostsTab} className="w-full">
+            <div className="min-w-0 space-y-4">
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground lg:hidden"
+                onClick={() => {
+                  flushSave();
+                  setServiceId('');
+                }}
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> Voltar aos tipos de serviço
+              </button>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <ServiceTypeAvatar
+                      color={selectedService.color}
+                      className="h-10 w-10"
+                    />
+                    <h3 className="text-lg font-semibold text-foreground">{selectedService.name}</h3>
+                    <Badge variant={selectedService.is_active ? 'success' : 'muted'}>
+                      {selectedService.is_active ? UI.active : UI.inactive}
+                    </Badge>
+                  </div>
+                  {selectedService.description && (
+                    <p className="mt-1 text-sm text-muted-foreground">{selectedService.description}</p>
+                  )}
+                </div>
+              </div>
+
+              {detailLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-56 w-full" />
+                </div>
+              ) : detailError ? (
+                <EmptyState
+                  size="compact"
+                  icon={<Wrench className="h-10 w-10" />}
+                  title="Não foi possível carregar os custos"
+                  description="Tente selecionar o serviço novamente. Nenhuma informação foi alterada."
+                />
+              ) : (
+                <Tabs value={costsTab} onValueChange={setCostsTab} className="w-full">
               {isMobile ? (
                 <MobilePillTabs
                   variant="underline"
@@ -284,11 +508,11 @@ export function ServiceCostsTab() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
                         <div className="space-y-1.5">
                           <Label className="text-xs">{tsc.laborHourlyCost}</Label>
-                          <Input type="number" min={0} step="0.01" value={hourlyRate} onChange={(e) => setHourlyRate(Number(e.target.value) || 0)} onPaste={handleHourlyRatePaste} />
+                          <Input type="number" min={0} step="0.01" value={hourlyRate} onChange={(e) => setHourlyRate(Number(e.target.value) || 0)} onPaste={handleHourlyRatePaste} onBlur={flushSave} />
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs">{tsc.laborHours}</Label>
-                          <NumericInput decimal value={numericText.hours} onValueChange={(v) => handleNumericChange('hours', v)} />
+                          <NumericInput decimal value={numericText.hours} onValueChange={(v) => handleNumericChange('hours', v)} onBlur={flushSave} />
                         </div>
                       </div>
                       <div className="rounded-lg bg-muted/40 p-3">
@@ -317,14 +541,21 @@ export function ServiceCostsTab() {
                             <div key={idx} className="grid grid-cols-1 sm:grid-cols-6 gap-2 items-end">
                               <div className="sm:col-span-4 space-y-1">
                                 <Label className="text-xs">{tsc.extrasDescLabel}</Label>
-                                <Input value={l.label} onChange={(e) => updateExtraLine(idx, { label: e.target.value })} />
+                                <Input value={l.label} onChange={(e) => updateExtraLine(idx, { label: e.target.value })} onBlur={flushSave} />
                               </div>
                               <div className="sm:col-span-2 space-y-1">
                                 <Label className="text-xs">{tsc.extrasValueLabel}</Label>
                                 <div className="flex gap-2">
-                                  <Input type="number" min={0} step="0.01" value={l.amount} onChange={(e) => updateExtraLine(idx, { amount: Number(e.target.value) || 0 })} onPaste={handleExtraAmountPaste(idx)} />
-                                  <Button variant="destructive-ghost" size="icon" onClick={() => removeExtraLine(idx)} className="h-10 w-10">
-                                    ×
+                                  <Input type="number" min={0} step="0.01" value={l.amount} onChange={(e) => updateExtraLine(idx, { amount: Number(e.target.value) || 0 })} onPaste={handleExtraAmountPaste(idx)} onBlur={flushSave} />
+                                  <Button
+                                    type="button"
+                                    variant="destructive-ghost"
+                                    size="icon"
+                                    onClick={() => setPendingExtraDeleteIndex(idx)}
+                                    className="h-10 w-10"
+                                    aria-label={`${UI.deleteExtra}: ${l.label || idx + 1}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
                               </div>
@@ -343,7 +574,7 @@ export function ServiceCostsTab() {
                   <Card className="border-0 bg-background/80 shadow-sm lg:col-span-3">
                     <CardContent className="p-4 space-y-2">
                       <Label className="text-xs">{tsc.notesLabel}</Label>
-                      <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder={tsc.notesPlaceholder} />
+                      <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder={tsc.notesPlaceholder} onBlur={flushSave} />
                       <div className="flex items-center justify-end gap-2">
                         {savedIndicator && (
                           <span className="text-xs text-success flex items-center gap-1">
@@ -364,12 +595,12 @@ export function ServiceCostsTab() {
                 <LinkedResourcesSection
                   serviceId={serviceId}
                   serviceHours={hours}
-                  onTotalChange={setLinkedResourcesTotal}
+                  resourcesState={resourcesState}
                 />
               </TabsContent>
 
               <TabsContent value="materiais" className="mt-4">
-                <ServiceMaterialsList serviceId={serviceId} />
+                <ServiceMaterialsList serviceId={serviceId} bdiFactor={bdi.bdiFactor} />
               </TabsContent>
 
               <TabsContent value="resumo" className="mt-4">
@@ -379,6 +610,10 @@ export function ServiceCostsTab() {
                         <Calculator className="h-4 w-4 text-primary" />
                         <p className="text-sm font-semibold text-foreground">{tsc.summaryTitle}</p>
                       </div>
+
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        Mão de obra, materiais, recursos e extras abaixo são custos da empresa. O preço ao cliente é formado aplicando as taxas do BDI sobre esse custo total.
+                      </p>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div className="rounded-xl bg-muted/30 p-3 shadow-sm">
@@ -434,28 +669,23 @@ export function ServiceCostsTab() {
                         </div>
                       </div>
 
-                      <div className="rounded-2xl bg-primary/5 p-4 shadow-sm">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-semibold text-foreground">{tsc.summaryTotalCost}</p>
-                          <p className="text-lg font-bold text-foreground">{fmt(totalServiceCost)}</p>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between">
-                          <p className="text-sm text-muted-foreground">{tsc.summarySuggestedPrice}</p>
-                          <p className="text-lg font-bold text-foreground">{fmt(bdi.finalPrice)}</p>
-                        </div>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {tsc.summaryBdiFactor
-                            .replace('{factor}', bdi.bdiFactor.toFixed(4))
-                            .replace('{profit}', simProfit.toFixed(2))}
-                        </p>
-                      </div>
+                      <CostCustomerComparison
+                        cost={totalServiceCost}
+                        customerPrice={bdi.finalPrice}
+                        formatValue={fmt}
+                        costLabel="Seu custo total para executar"
+                        customerLabel="Cliente paga com BDI"
+                        note={`Preço sugerido antes de descontos. Coeficiente ${bdi.bdiFactor.toFixed(4)}, com imposto ${simTax.toFixed(2)}%, administração ${simAdmin.toFixed(2)}% e lucro ${simProfit.toFixed(2)}%.`}
+                      />
                     </CardContent>
                   </Card>
               </TabsContent>
-            </Tabs>
+                </Tabs>
+              )}
+            </div>
           )}
-        </CardContent>
-      </Card>
+        </ListDetailLayout>
+      )}
 
       <LaborCalculatorModal
         open={laborCalcOpen}
@@ -471,6 +701,30 @@ export function ServiceCostsTab() {
         onOpenChange={setExtraCostModalOpen}
         onAdd={addExtraLine}
       />
+
+      <AlertDialog
+        open={pendingExtraDeleteIndex != null}
+        onOpenChange={(open) => { if (!open) setPendingExtraDeleteIndex(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{UI.deleteExtra}</AlertDialogTitle>
+            <AlertDialogDescription>{UI.deleteExtraDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{UI.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (pendingExtraDeleteIndex != null) removeExtraLine(pendingExtraDeleteIndex);
+                setPendingExtraDeleteIndex(null);
+              }}
+            >
+              {UI.delete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

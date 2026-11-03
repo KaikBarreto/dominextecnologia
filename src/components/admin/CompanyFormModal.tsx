@@ -51,6 +51,8 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   company?: any;
   onSuccess: () => void;
+  /** Permite abrir a edição direto no contexto comercial (ex.: módulos). */
+  initialTab?: 'basic' | 'commercial';
 }
 
 function generatePassword(length = 10): string {
@@ -90,7 +92,7 @@ function isValidCompanyPhone(value: string, countryCode: CountryCode): boolean {
   return /^[+\d\s().-]+$/.test(value) && digits.length >= 7 && digits.length <= 15;
 }
 
-export default function CompanyFormModal({ open, onOpenChange, company, onSuccess }: Props) {
+export default function CompanyFormModal({ open, onOpenChange, company, onSuccess, initialTab = 'basic' }: Props) {
   const { toast } = useToast();
   const { profile } = useAuth();
   const queryClient = useQueryClient();
@@ -274,8 +276,8 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       setAddr({ logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '' });
     }
     setSelectedModules([...BASE_MODULE_CODES]);
-    setActiveTab('basic');
-  }, [company, open]);
+    setActiveTab(isEditing ? initialTab : 'basic');
+  }, [company, initialTab, isEditing, open]);
 
   // A configuração regional chega por uma consulta separada. Atualiza apenas
   // os campos que dependem dela para não apagar edições já iniciadas no modal.
@@ -658,7 +660,9 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     updateField('admin_password', generatePassword(10));
   };
 
-  const title = isEditing ? 'Editar Empresa' : 'Nova Empresa';
+  const title = isEditing
+    ? (initialTab === 'commercial' ? 'Gerenciar plano e módulos' : 'Editar Empresa')
+    : 'Nova Empresa';
 
   // ========== Form content (shared) ==========
   const FormContent = (

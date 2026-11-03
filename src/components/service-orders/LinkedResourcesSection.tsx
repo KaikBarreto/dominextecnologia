@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -17,6 +17,7 @@ interface LinkedResourcesSectionProps {
   serviceId: string | null;
   serviceHours: number;
   onTotalChange?: (total: number) => void;
+  resourcesState?: ReturnType<typeof useServiceCostResources>;
 }
 
 const categoryIcons: Record<CostResourceCategory, React.ComponentType<{ className?: string }>> = {
@@ -27,10 +28,18 @@ const categoryIcons: Record<CostResourceCategory, React.ComponentType<{ classNam
   other: Package,
 };
 
-export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange }: LinkedResourcesSectionProps) {
+export function LinkedResourcesSection({
+  serviceId,
+  serviceHours,
+  onTotalChange,
+  resourcesState,
+}: LinkedResourcesSectionProps) {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm.costModals;
   const fmt = (v: number) => formatMoney(v, currency, locale);
+  const fallbackResourcesState = useServiceCostResources(serviceId, serviceHours, {
+    enabled: !resourcesState,
+  });
   const {
     linkedResources,
     allResources,
@@ -43,13 +52,13 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
     addGift,
     removeGift,
     isResourceLinked,
-  } = useServiceCostResources(serviceId, serviceHours);
+  } = resourcesState ?? fallbackResourcesState;
 
   const [expandedCategories, setExpandedCategories] = useState<CostResourceCategory[]>(['vehicle', 'tool', 'epi']);
   const [overrideInputs, setOverrideInputs] = useState<Record<string, string>>({});
 
   // Notify parent of total changes
-  useMemo(() => {
+  useEffect(() => {
     onTotalChange?.(totals.total);
   }, [totals.total, onTotalChange]);
 

@@ -13,9 +13,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as React from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 vi.mock('@/hooks/useServiceTypes', () => ({
-  useServiceTypes: () => ({ serviceTypes: [{ id: 'st-1', name: 'Manutenção', color: '#000000' }] }),
+  useServiceTypes: () => ({
+    serviceTypes: [{
+      id: 'st-1', name: 'Manutenção', color: '#000000', description: null, is_active: true,
+    }],
+    isLoading: false,
+  }),
 }));
 vi.mock('@/hooks/useServiceCosts', () => ({
   useServiceCosts: () => ({
@@ -26,11 +32,32 @@ vi.mock('@/hooks/useServiceCosts', () => ({
       notes: '',
       extra_costs: [{ label: 'Peça extra', amount: 10 }],
     },
-    saveCost: { mutateAsync: vi.fn().mockResolvedValue(undefined), isPending: false },
+    saveCost: { mutate: vi.fn(), mutateAsync: vi.fn().mockResolvedValue(undefined), isPending: false },
+    isLoading: false,
+    error: null,
   }),
   computeExtraCostsTotal: (lines: { amount: number }[]) => (lines ?? []).reduce((s, l) => s + (l.amount || 0), 0),
 }));
-vi.mock('@/hooks/useServiceMaterials', () => ({ useServiceMaterials: () => ({ totalCost: 0 }) }));
+vi.mock('@/hooks/useServiceMaterials', () => ({
+  useServiceMaterials: () => ({
+    materials: [{ subtotal: 25.6 }], totalCost: 25.6, isLoading: false, error: null,
+  }),
+}));
+vi.mock('@/hooks/useServiceCostResources', () => ({
+  useServiceCostResources: () => ({
+    linkedResources: [{
+      id: 'link-1', service_id: 'st-1', resource_id: 'resource-1', override_value: 84.85,
+      calculatedCost: 84.85,
+      resource: { id: 'resource-1', hourly_rate: 0, category: 'vehicle', name: 'Veículo' },
+    }],
+    allResources: [], gifts: [],
+    totals: { vehicle: 84.85, tool: 0, epi: 0, other: 0, gift: 0, total: 84.85 },
+    isLoading: false, error: null,
+  }),
+}));
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({ profile: { company_id: 'company-1' } }),
+}));
 vi.mock('@/hooks/usePricingSettings', () => ({ usePricingSettings: () => ({ settings: null }) }));
 vi.mock('@/hooks/useCompanyModules', () => ({ useCompanyModules: () => ({ hasModule: () => false }) }));
 vi.mock('@/components/service-orders/LinkedResourcesSection', () => ({ LinkedResourcesSection: () => null }));
@@ -42,20 +69,33 @@ vi.mock('@/components/service-orders/ExtraCostModal', () => ({ ExtraCostModal: (
 
 import { ServiceCostsTab } from './ServiceCostsTab';
 
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 let container: HTMLDivElement;
 let root: Root;
 
-function mount() {
+function mount(selectService = true) {
   act(() => {
-    root.render(<ServiceCostsTab />);
+    root.render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ServiceCostsTab />
+      </QueryClientProvider>,
+    );
   });
+  if (selectService) {
+    const serviceButton = Array.from(document.querySelectorAll('button'))
+      .find((button) => button.textContent?.includes('Manutenção'));
+    act(() => {
+      serviceButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+  }
 }
 
 function paste(input: HTMLInputElement, text: string) {
-  const pasteEvent = new Event('paste', { bubbles: true, cancelable: true }) as ClipboardEvent & { clipboardData: any };
-  pasteEvent.clipboardData = { getData: () => text };
+  const pasteEvent = new Event('paste', { bubbles: true, cancelable: true }) as ClipboardEvent;
+  Object.defineProperty(pasteEvent, 'clipboardData', {
+    value: { getData: () => text } as Pick<DataTransfer, 'getData'> as DataTransfer,
+  });
   act(() => {
     input.dispatchEvent(pasteEvent);
   });
@@ -78,6 +118,36 @@ function moneyInputs() {
 }
 
 describe('ServiceCostsTab — campos de dinheiro nativos (prova real de DOM)', () => {
+  it('usa quadrado saturado com ícone branco e a cor cadastrada na lista e no detalhe', () => {
+    mount();
+
+    const avatars = Array.from(document.querySelectorAll('[data-service-type-avatar]')) as HTMLElement[];
+    expect(avatars.length).toBeGreaterThanOrEqual(2);
+    expect(avatars.every((avatar) => avatar.style.backgroundColor === 'rgb(0, 0, 0)')).toBe(true);
+    expect(avatars.every((avatar) => avatar.querySelector('.lucide-wrench'))).toBe(true);
+    expect(avatars.every((avatar) => avatar.className.includes('text-white'))).toBe(true);
+  });
+
+  it('começa com lista compacta e estado vazio antes da seleção', () => {
+    mount(false);
+
+    expect(document.body.textContent).toContain('Tipos de serviço');
+    expect(document.body.textContent).toContain('Selecione um tipo de serviço');
+    expect(moneyInputs()).toHaveLength(0);
+  });
+
+  it('carrega recursos no Resumo sem visitar antes a aba Recursos', () => {
+    mount();
+
+    const summaryButton = Array.from(document.querySelectorAll('button'))
+      .find((button) => button.textContent?.includes('Resumo'));
+    expect(summaryButton).toBeTruthy();
+    act(() => summaryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    expect(document.body.textContent).toContain('84,85');
+    expect(document.body.textContent).toContain('120,45');
+  });
+
   it('colar "R$ 4.550" no custo por hora dá 4550, não 4.55 (bug do sócio)', () => {
     mount();
     const inputs = moneyInputs();
@@ -97,5 +167,20 @@ describe('ServiceCostsTab — campos de dinheiro nativos (prova real de DOM)', (
 
     paste(extraInput, 'R$ 4.550');
     expect(extraInput.value).toBe('4550');
+  });
+
+  it('pede confirmação antes de excluir um custo extra inline', () => {
+    mount();
+    const deleteButton = document.querySelector('button[aria-label^="Excluir custo extra"]') as HTMLButtonElement;
+    expect(deleteButton).toBeTruthy();
+
+    act(() => deleteButton.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(document.body.textContent).toContain('Este custo será removido da composição do serviço');
+    expect(moneyInputs()).toHaveLength(2);
+
+    const confirmButton = Array.from(document.querySelectorAll('button'))
+      .find((button) => button.textContent?.trim() === 'Excluir') as HTMLButtonElement;
+    act(() => confirmButton.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(moneyInputs()).toHaveLength(1);
   });
 });

@@ -18,7 +18,8 @@ import type { InventoryItem } from '@/hooks/useInventory';
  * Seleção de UM item devolvida pelo picker. `inventoryId` xor `manualName`:
  * quando vem do catálogo, `manualName` é null; quando é material avulso
  * (criado na hora, sem cadastro no estoque), `inventoryId` é null.
- * `unitPrice` é informativo pro item de catálogo (o preço de venda já
+ * `unitCost` e `unitPrice` mantêm separados o custo da empresa e o valor
+ * cobrado do cliente. `unitPrice` é informativo pro item de catálogo (o preço de venda já
  * cadastrado); quem monta o item final (`buildMaterialItem`) recalcula a
  * partir do próprio `inventory_id` pra garantir que o cálculo não diverge do
  * fluxo antigo — nunca confie só nesse campo pra item de catálogo.
@@ -27,6 +28,7 @@ export interface MaterialBatchSelection {
   inventoryId: string | null;
   manualName: string | null;
   quantity: number;
+  unitCost: number;
   unitPrice: number;
 }
 
@@ -44,6 +46,7 @@ interface MaterialBatchPickerProps {
 interface ManualDraft {
   name: string;
   quantity: number;
+  unitCost: number;
   unitPrice: number;
 }
 
@@ -151,7 +154,7 @@ export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [
     setManualDrafts((prev) => {
       const idx = prev.findIndex((d) => normalize(d.name) === normalizedSearch);
       if (idx === -1) {
-        return [...prev, { name: trimmedSearch, quantity: 0, unitPrice: 0, ...patch }];
+        return [...prev, { name: trimmedSearch, quantity: 0, unitCost: 0, unitPrice: 0, ...patch }];
       }
       const next = [...prev];
       next[idx] = { ...next[idx], ...patch };
@@ -185,13 +188,20 @@ export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [
           inventoryId: item.id,
           manualName: null,
           quantity: qty,
+          unitCost: Number(item.cost_price ?? 0),
           unitPrice: Number(item.sale_price ?? item.cost_price ?? 0),
         });
       }
     }
     for (const d of manualDrafts) {
       if (d.quantity > 0 && d.name.trim()) {
-        selections.push({ inventoryId: null, manualName: d.name.trim(), quantity: d.quantity, unitPrice: d.unitPrice });
+        selections.push({
+          inventoryId: null,
+          manualName: d.name.trim(),
+          quantity: d.quantity,
+          unitCost: d.unitCost,
+          unitPrice: d.unitPrice,
+        });
       }
     }
     if (selections.length === 0) return;
@@ -331,21 +341,35 @@ export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [
               )}
             >
               <p className="text-sm font-medium text-primary">{tq.materialPickerManual.replace('{name}', trimmedSearch)}</p>
-              <div className="flex flex-wrap items-center gap-2">
-                <Label className="whitespace-nowrap text-xs text-muted-foreground">{tq.materialPickerManualPrice}</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={manualDraft?.unitPrice || ''}
-                  onChange={(e) => upsertManualDraft({ unitPrice: parseFloat(e.target.value) || 0 })}
-                  onPaste={(e) => {
-                    const cents = readPastedCents(e);
-                    if (cents == null) return;
-                    upsertManualDraft({ unitPrice: cents / 100 });
-                  }}
-                  className="h-9 w-24 text-sm"
-                />
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="space-y-1">
+                  <Label className="block whitespace-nowrap text-xs text-muted-foreground">{tq.serviceColUnitCost}</Label>
+                  <Input
+                    aria-label={`${tq.serviceColUnitCost} de ${trimmedSearch}`}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={manualDraft?.unitCost || ''}
+                    onChange={(e) => upsertManualDraft({ unitCost: parseFloat(e.target.value) || 0 })}
+                    className="h-9 w-24 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="block whitespace-nowrap text-xs text-muted-foreground">{tq.materialPickerManualPrice}</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={manualDraft?.unitPrice || ''}
+                    onChange={(e) => upsertManualDraft({ unitPrice: parseFloat(e.target.value) || 0 })}
+                    onPaste={(e) => {
+                      const cents = readPastedCents(e);
+                      if (cents == null) return;
+                      upsertManualDraft({ unitPrice: cents / 100 });
+                    }}
+                    className="h-9 w-24 text-sm"
+                  />
+                </div>
                 <div className="ml-auto flex items-center gap-1">
                   <Button
                     type="button"

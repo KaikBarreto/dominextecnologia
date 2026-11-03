@@ -45,3 +45,18 @@ export function parseContractPortalSections(value: unknown): ContractPortalSecti
   }
   return out;
 }
+
+/**
+ * Aplica uma escolha da matriz mantendo o JSON canônico e enxuto.
+ * `free` não precisa ser persistido porque é exatamente o default do servidor.
+ */
+export function setContractPortalSectionState(
+  current: ContractPortalSections,
+  key: ContractPortalSectionKey,
+  state: ContractPortalSectionState,
+): ContractPortalSections {
+  const next = { ...current };
+  if (state === 'free') delete next[key];
+  else next[key] = state;
+  return next;
+}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { NumericInput } from '@/components/ui/numeric-input';
+import { NumericInput, parseDecimalInputValue } from '@/components/ui/numeric-input';
 import { cn } from '@/lib/utils';
 
 export interface PdvQuantityStepperProps {
@@ -10,6 +10,8 @@ export interface PdvQuantityStepperProps {
   availableQuantity: number;
   /** `+`/`−` dos botões (delta). */
   onIncrement: (delta: number) => void;
+  /** Passo dos botões. Peso/volume/comprimento usam 0,1; unidades usam 1. */
+  step?: number;
   /** Edição direta do número (absoluto). O CALLER aplica o teto do saldo via `setLineQuantity`. */
   onSetQuantity: (quantity: number) => void;
   /**
@@ -35,7 +37,8 @@ export interface PdvQuantityStepperProps {
  * com quantidade no PDV deve reusar este componente, não reinventar.
  *
  * Regras de edição:
- * - Inteiro puro (`NumericInput` sem `decimal`): aqui é unidade, não dinheiro.
+ * - Aceita quantidade fracionada com vírgula (ex.: `13,6 kg`), limitada a
+ *   três casas decimais. O carrinho e o banco persistem `numeric`, sem truncar.
  * - Apagar tudo NÃO vira "0 travado" (o `NumericInput` já resolve isso) —
  *   mas committar vazio REVERTE pro valor anterior em vez de remover a linha
  *   em silêncio (remover é ação explícita do botão de lixeira, não de um
@@ -49,6 +52,7 @@ export function PdvQuantityStepper({
   quantity,
   availableQuantity,
   onIncrement,
+  step = 1,
   onSetQuantity,
   onConfirmEdit,
   decrementAriaLabel,
@@ -70,13 +74,13 @@ export function PdvQuantityStepper({
   }, [editing]);
 
   function startEditing() {
-    setDraft(String(quantity));
+    setDraft(String(quantity).replace('.', ','));
     setEditing(true);
   }
 
   function commit(options: { focusSearch: boolean }) {
-    const parsed = draft.trim() === '' ? NaN : parseInt(draft, 10);
-    if (Number.isFinite(parsed)) {
+    const parsed = parseDecimalInputValue(draft);
+    if (parsed != null && parsed > 0) {
       onSetQuantity(parsed);
     }
     // Vazio/inválido: revert silencioso (não é falha, é edição incompleta —
@@ -91,7 +95,8 @@ export function PdvQuantityStepper({
 
   const btnSize = size === 'sm' ? 'h-7 w-7' : 'h-8 w-8';
   const iconSize = size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4';
-  const numberWidth = size === 'sm' ? 'w-6' : 'w-8';
+  // Quantidade fracionada precisa caber inteira (`13,600`), sem ellipsis.
+  const numberWidth = size === 'sm' ? 'w-12' : 'w-14';
 
   return (
     <div className={cn('flex items-center gap-1', className)}>
@@ -100,7 +105,7 @@ export function PdvQuantityStepper({
         variant="outline"
         size="icon"
         className={btnSize}
-        onClick={() => onIncrement(-1)}
+        onClick={() => onIncrement(-step)}
         aria-label={decrementAriaLabel}
       >
         <Minus className={iconSize} />
@@ -111,6 +116,8 @@ export function PdvQuantityStepper({
           ref={inputRef}
           value={draft}
           onValueChange={setDraft}
+          decimal
+          maxDecimals={3}
           aria-label={editAriaLabel}
           className={cn(
             numberWidth,
@@ -143,7 +150,7 @@ export function PdvQuantityStepper({
             'cursor-text border-b border-dashed border-muted-foreground/50 text-center text-sm font-semibold tabular-nums text-foreground transition-colors hover:border-primary hover:border-solid hover:text-primary',
           )}
         >
-          {quantity}
+          {String(quantity).replace('.', ',')}
         </button>
       )}
 
@@ -153,7 +160,7 @@ export function PdvQuantityStepper({
         size="icon"
         className={btnSize}
         disabled={atMax}
-        onClick={() => onIncrement(1)}
+        onClick={() => onIncrement(step)}
         aria-label={incrementAriaLabel}
       >
         <Plus className={iconSize} />

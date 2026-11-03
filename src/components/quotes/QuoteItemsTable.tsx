@@ -81,8 +81,9 @@ function ServiceInputRow({
   };
 
   return (
-    <TableRow className="bg-muted/50 border-b-2 border-border">
-      <TableCell>
+    <TableRow className="grid grid-cols-2 gap-3 border-b-2 border-border bg-muted/50 p-3 md:table-row md:p-0">
+      <TableCell className="col-span-2 p-0 md:table-cell md:p-4">
+        <span className="mb-1 block text-[11px] font-medium text-muted-foreground md:hidden">Serviço</span>
         <SearchableSelect
           options={serviceOptions}
           value={serviceId}
@@ -90,45 +91,51 @@ function ServiceInputRow({
           placeholder="Selecionar serviço..."
           searchPlaceholder="Buscar serviço..."
           emptyMessage="Nenhum serviço encontrado"
-          className="h-8 text-xs"
+          className="h-9 w-full text-xs md:h-8"
         />
       </TableCell>
-      <TableCell>
+      <TableCell className="p-0 md:table-cell md:p-4">
+        <span className="mb-1 block text-[11px] font-medium text-muted-foreground md:hidden">Quantidade</span>
         <NumericInput
           decimal
           placeholder="0"
           value={quantity}
           onValueChange={(v) => setQuantity(v)}
-          className="h-8 text-xs bg-background w-20"
+          className="h-9 w-full bg-background text-xs md:h-8 md:w-20"
         />
       </TableCell>
-      <TableCell>
+      <TableCell className="p-0 md:table-cell md:p-4">
+        <span className="mb-1 block text-[11px] font-medium text-muted-foreground md:hidden">Valor unitário</span>
         <Input
           type="number"
           placeholder="0,00"
           value={unitPrice}
           onChange={(e) => setUnitPrice(e.target.value)}
           onPaste={(e) => handleUnitPricePaste(e, setUnitPrice)}
-          className="h-8 text-xs bg-background w-24"
+          className="h-9 w-full bg-background text-xs md:h-8 md:w-24"
           min={0}
           step="0.01"
         />
       </TableCell>
-      <TableCell className="font-medium text-sm whitespace-nowrap">
-        {money(total)}
+      <TableCell className="flex items-end p-0 text-sm font-medium md:table-cell md:p-4">
+        <div>
+          <span className="mb-1 block text-[11px] font-medium text-muted-foreground md:hidden">Total previsto</span>
+          <span className="whitespace-nowrap tabular-nums">{money(total)}</span>
+        </div>
       </TableCell>
-      <TableCell>
+      <TableCell className="flex items-end justify-end p-0 md:table-cell md:p-4">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 type="button"
                 size="icon"
-                className="h-8 w-8"
+                className="h-9 w-full px-3 md:h-8 md:w-8 md:px-0"
                 onClick={handleAdd}
                 disabled={!description || qtyNum <= 0}
               >
                 <Plus className="h-4 w-4" />
+                <span className="ml-1 md:hidden">Incluir</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent>Incluir</TooltipContent>
@@ -188,8 +195,9 @@ function MaterialInputRow({
   };
 
   return (
-    <TableRow className="bg-muted/50 border-b-2 border-border">
-      <TableCell>
+    <TableRow className="grid grid-cols-2 gap-3 border-b-2 border-border bg-muted/50 p-3 md:table-row md:p-0">
+      <TableCell className="col-span-2 p-0 md:table-cell md:p-4">
+        <span className="mb-1 block text-[11px] font-medium text-muted-foreground md:hidden">Material</span>
         <SearchableSelect
           options={materialOptions}
           value={inventoryId}
@@ -197,45 +205,51 @@ function MaterialInputRow({
           placeholder="Selecionar material..."
           searchPlaceholder="Buscar material do estoque..."
           emptyMessage="Nenhum material encontrado"
-          className="h-8 text-xs"
+          className="h-9 w-full text-xs md:h-8"
         />
       </TableCell>
-      <TableCell>
+      <TableCell className="p-0 md:table-cell md:p-4">
+        <span className="mb-1 block text-[11px] font-medium text-muted-foreground md:hidden">Quantidade</span>
         <NumericInput
           decimal
           placeholder="0"
           value={quantity}
           onValueChange={(v) => setQuantity(v)}
-          className="h-8 text-xs bg-background w-20"
+          className="h-9 w-full bg-background text-xs md:h-8 md:w-20"
         />
       </TableCell>
-      <TableCell>
+      <TableCell className="p-0 md:table-cell md:p-4">
+        <span className="mb-1 block text-[11px] font-medium text-muted-foreground md:hidden">Valor unitário</span>
         <Input
           type="number"
           placeholder="0,00"
           value={unitPrice}
           onChange={(e) => setUnitPrice(e.target.value)}
           onPaste={(e) => handleUnitPricePaste(e, setUnitPrice)}
-          className="h-8 text-xs bg-background w-24"
+          className="h-9 w-full bg-background text-xs md:h-8 md:w-24"
           min={0}
           step="0.01"
         />
       </TableCell>
-      <TableCell className="font-medium text-sm whitespace-nowrap">
-        {money(total)}
+      <TableCell className="flex items-end p-0 text-sm font-medium md:table-cell md:p-4">
+        <div>
+          <span className="mb-1 block text-[11px] font-medium text-muted-foreground md:hidden">Total previsto</span>
+          <span className="whitespace-nowrap tabular-nums">{money(total)}</span>
+        </div>
       </TableCell>
-      <TableCell>
+      <TableCell className="flex items-end justify-end p-0 md:table-cell md:p-4">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 type="button"
                 size="icon"
-                className="h-8 w-8"
+                className="h-9 w-full px-3 md:h-8 md:w-8 md:px-0"
                 onClick={handleAdd}
                 disabled={!description || qtyNum <= 0}
               >
                 <Plus className="h-4 w-4" />
+                <span className="ml-1 md:hidden">Incluir</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent>Incluir</TooltipContent>
@@ -298,9 +312,9 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
           </span>
         </div>
 
-        <div className="border rounded-lg overflow-hidden">
-          <Table>
-            <TableHeader>
+        <div className="overflow-hidden rounded-lg border">
+          <Table className="block w-full md:table">
+            <TableHeader className="hidden md:table-header-group">
               <TableRow>
                 <TableHead className="text-xs">Serviço</TableHead>
                 <TableHead className="w-[80px] text-xs">Qtd</TableHead>
@@ -309,7 +323,7 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="block md:table-row-group">
               {!readOnly && (
                 <ServiceInputRow
                   serviceOptions={serviceOptions}
@@ -318,8 +332,8 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                 />
               )}
               {serviceItems.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground text-xs py-4">
+                <TableRow className="block md:table-row">
+                  <TableCell colSpan={5} className="block py-4 text-center text-xs text-muted-foreground md:table-cell">
                     Nenhum serviço adicionado.
                   </TableCell>
                 </TableRow>
@@ -327,12 +341,21 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                 serviceItems.map((item) => {
                   const idx = getGlobalIndex(item);
                   return (
-                    <TableRow key={idx}>
-                      <TableCell className="text-xs font-medium">{item.description}</TableCell>
-                      <TableCell className="text-xs">{item.quantity}</TableCell>
-                      <TableCell className="text-xs">{money(item.unit_price || 0)}</TableCell>
-                      <TableCell className="text-xs font-medium">{money(item.total_price || 0)}</TableCell>
-                      <TableCell>
+                    <TableRow key={idx} className="grid grid-cols-2 gap-3 p-3 md:table-row md:p-0">
+                      <TableCell className="col-span-2 p-0 text-sm font-medium md:table-cell md:p-4 md:text-xs">{item.description}</TableCell>
+                      <TableCell className="p-0 text-xs md:table-cell md:p-4">
+                        <span className="mb-0.5 block text-[10px] text-muted-foreground md:hidden">Quantidade</span>
+                        <span className="tabular-nums">{item.quantity}</span>
+                      </TableCell>
+                      <TableCell className="p-0 text-right text-xs md:table-cell md:p-4 md:text-left">
+                        <span className="mb-0.5 block text-[10px] text-muted-foreground md:hidden">Valor unitário</span>
+                        <span className="whitespace-nowrap tabular-nums">{money(item.unit_price || 0)}</span>
+                      </TableCell>
+                      <TableCell className="p-0 text-xs font-medium md:table-cell md:p-4">
+                        <span className="mb-0.5 block text-[10px] font-normal text-muted-foreground md:hidden">Total</span>
+                        <span className="whitespace-nowrap tabular-nums">{money(item.total_price || 0)}</span>
+                      </TableCell>
+                      <TableCell className="flex justify-end p-0 md:table-cell md:p-4">
                         {!readOnly && (
                           <Button
                             type="button"
@@ -350,14 +373,14 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                 })
               )}
               {serviceItems.length > 0 && (
-                <TableRow className="bg-muted/30">
-                  <TableCell colSpan={3} className="text-right text-xs font-medium text-muted-foreground">
+                <TableRow className="grid grid-cols-[1fr_auto] items-center bg-muted/30 px-3 py-2 md:table-row md:px-0 md:py-0">
+                  <TableCell colSpan={3} className="p-0 text-xs font-medium text-muted-foreground md:table-cell md:p-4 md:text-right">
                     Subtotal Serviços
                   </TableCell>
-                  <TableCell className="text-xs font-bold text-foreground">
+                  <TableCell className="p-0 text-right text-xs font-bold text-foreground md:table-cell md:p-4 md:text-left">
                     {money(servicesSubtotal)}
                   </TableCell>
-                  <TableCell />
+                  <TableCell className="hidden md:table-cell" />
                 </TableRow>
               )}
             </TableBody>
@@ -374,9 +397,9 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
           </span>
         </div>
 
-        <div className="border rounded-lg overflow-hidden">
-          <Table>
-            <TableHeader>
+        <div className="overflow-hidden rounded-lg border">
+          <Table className="block w-full md:table">
+            <TableHeader className="hidden md:table-header-group">
               <TableRow>
                 <TableHead className="text-xs">Material</TableHead>
                 <TableHead className="w-[80px] text-xs">Qtd</TableHead>
@@ -385,7 +408,7 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="block md:table-row-group">
               {!readOnly && (
                 <MaterialInputRow
                   materialOptions={materialOptions}
@@ -394,8 +417,8 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                 />
               )}
               {materialItems.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground text-xs py-4">
+                <TableRow className="block md:table-row">
+                  <TableCell colSpan={5} className="block py-4 text-center text-xs text-muted-foreground md:table-cell">
                     Nenhum material adicionado.
                   </TableCell>
                 </TableRow>
@@ -403,12 +426,21 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                 materialItems.map((item) => {
                   const idx = getGlobalIndex(item);
                   return (
-                    <TableRow key={idx}>
-                      <TableCell className="text-xs font-medium">{item.description}</TableCell>
-                      <TableCell className="text-xs">{item.quantity}</TableCell>
-                      <TableCell className="text-xs">{money(item.unit_price || 0)}</TableCell>
-                      <TableCell className="text-xs font-medium">{money(item.total_price || 0)}</TableCell>
-                      <TableCell>
+                    <TableRow key={idx} className="grid grid-cols-2 gap-3 p-3 md:table-row md:p-0">
+                      <TableCell className="col-span-2 p-0 text-sm font-medium md:table-cell md:p-4 md:text-xs">{item.description}</TableCell>
+                      <TableCell className="p-0 text-xs md:table-cell md:p-4">
+                        <span className="mb-0.5 block text-[10px] text-muted-foreground md:hidden">Quantidade</span>
+                        <span className="tabular-nums">{item.quantity}</span>
+                      </TableCell>
+                      <TableCell className="p-0 text-right text-xs md:table-cell md:p-4 md:text-left">
+                        <span className="mb-0.5 block text-[10px] text-muted-foreground md:hidden">Valor unitário</span>
+                        <span className="whitespace-nowrap tabular-nums">{money(item.unit_price || 0)}</span>
+                      </TableCell>
+                      <TableCell className="p-0 text-xs font-medium md:table-cell md:p-4">
+                        <span className="mb-0.5 block text-[10px] font-normal text-muted-foreground md:hidden">Total</span>
+                        <span className="whitespace-nowrap tabular-nums">{money(item.total_price || 0)}</span>
+                      </TableCell>
+                      <TableCell className="flex justify-end p-0 md:table-cell md:p-4">
                         {!readOnly && (
                           <Button
                             type="button"
@@ -426,14 +458,14 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                 })
               )}
               {materialItems.length > 0 && (
-                <TableRow className="bg-muted/30">
-                  <TableCell colSpan={3} className="text-right text-xs font-medium text-muted-foreground">
+                <TableRow className="grid grid-cols-[1fr_auto] items-center bg-muted/30 px-3 py-2 md:table-row md:px-0 md:py-0">
+                  <TableCell colSpan={3} className="p-0 text-xs font-medium text-muted-foreground md:table-cell md:p-4 md:text-right">
                     Subtotal Materiais
                   </TableCell>
-                  <TableCell className="text-xs font-bold text-foreground">
+                  <TableCell className="p-0 text-right text-xs font-bold text-foreground md:table-cell md:p-4 md:text-left">
                     {money(materialsSubtotal)}
                   </TableCell>
-                  <TableCell />
+                  <TableCell className="hidden md:table-cell" />
                 </TableRow>
               )}
             </TableBody>

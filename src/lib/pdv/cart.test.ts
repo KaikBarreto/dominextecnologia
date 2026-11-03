@@ -109,6 +109,14 @@ describe('setLineQuantity', () => {
     expect(result.lines[0].quantity).toBe(5);
   });
 
+  it('preserva quantidade fracionada sem arredondar para uma unidade inteira', () => {
+    const withItem = addItem(EMPTY_CART, product({ availableQuantity: 5 }), 1).cart;
+    const result = setLineQuantity(withItem, 'p1', 0.5);
+
+    expect(result.lines[0].quantity).toBe(0.5);
+    expect(computeSubtotal(result)).toBe(12.5);
+  });
+
   it('quantidade zero remove a linha', () => {
     const withItem = addItem(EMPTY_CART, product(), 1).cart;
     const result = setLineQuantity(withItem, 'p1', 0);
@@ -129,6 +137,18 @@ describe('incrementLineQuantity', () => {
     const withItem = addItem(EMPTY_CART, product(), 1).cart;
     const result = incrementLineQuantity(withItem, 'p1', -1);
     expect(result.lines).toHaveLength(0);
+  });
+
+  it('mantém a fração ao incrementar pelos botões', () => {
+    const withItem = addItem(EMPTY_CART, product(), 0.5).cart;
+    const result = incrementLineQuantity(withItem, 'p1', 1);
+    expect(result.lines[0].quantity).toBe(1.5);
+  });
+
+  it('normaliza resíduos de ponto flutuante ao usar passo fracionado', () => {
+    const withItem = addItem(EMPTY_CART, product(), 0.2).cart;
+    const result = incrementLineQuantity(withItem, 'p1', 0.1);
+    expect(result.lines[0].quantity).toBe(0.3);
   });
 
   it('não faz nada se a linha não existe', () => {
