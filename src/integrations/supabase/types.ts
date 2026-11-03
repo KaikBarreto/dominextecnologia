@@ -1827,6 +1827,68 @@ export type Database = {
           },
         ]
       }
+      company_nfce_settings: {
+        Row: {
+          access_url_homologation: string | null
+          access_url_production: string | null
+          approved_at: string | null
+          approved_by: string | null
+          company_id: string
+          created_at: string
+          enabled: boolean
+          homologation_approved: boolean
+          next_number: number
+          production_approved: boolean
+          qr_base_url_homologation: string | null
+          qr_base_url_production: string | null
+          series: number
+          uf: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_url_homologation?: string | null
+          access_url_production?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id: string
+          created_at?: string
+          enabled?: boolean
+          homologation_approved?: boolean
+          next_number?: number
+          production_approved?: boolean
+          qr_base_url_homologation?: string | null
+          qr_base_url_production?: string | null
+          series?: number
+          uf?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_url_homologation?: string | null
+          access_url_production?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id?: string
+          created_at?: string
+          enabled?: boolean
+          homologation_approved?: boolean
+          next_number?: number
+          production_approved?: boolean
+          qr_base_url_homologation?: string | null
+          qr_base_url_production?: string | null
+          series?: number
+          uf?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_nfce_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_origins: {
         Row: {
           color: string | null
@@ -7251,6 +7313,18 @@ export type Database = {
           created_at: string
           customer_id: string | null
           description: string | null
+          fiscal_cest: string | null
+          fiscal_cfop_internal: string | null
+          fiscal_cfop_interstate: string | null
+          fiscal_cofins_cst: string | null
+          fiscal_gtin: string | null
+          fiscal_ibs_cbs_cst: string | null
+          fiscal_icms_code: string | null
+          fiscal_ipi_cst: string | null
+          fiscal_ncm: string | null
+          fiscal_origin: string | null
+          fiscal_pis_cst: string | null
+          fiscal_tax_unit: string | null
           group_id: string | null
           id: string
           image_url: string | null
@@ -7276,6 +7350,18 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           description?: string | null
+          fiscal_cest?: string | null
+          fiscal_cfop_internal?: string | null
+          fiscal_cfop_interstate?: string | null
+          fiscal_cofins_cst?: string | null
+          fiscal_gtin?: string | null
+          fiscal_ibs_cbs_cst?: string | null
+          fiscal_icms_code?: string | null
+          fiscal_ipi_cst?: string | null
+          fiscal_ncm?: string | null
+          fiscal_origin?: string | null
+          fiscal_pis_cst?: string | null
+          fiscal_tax_unit?: string | null
           group_id?: string | null
           id?: string
           image_url?: string | null
@@ -7301,6 +7387,18 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           description?: string | null
+          fiscal_cest?: string | null
+          fiscal_cfop_internal?: string | null
+          fiscal_cfop_interstate?: string | null
+          fiscal_cofins_cst?: string | null
+          fiscal_gtin?: string | null
+          fiscal_ibs_cbs_cst?: string | null
+          fiscal_icms_code?: string | null
+          fiscal_ipi_cst?: string | null
+          fiscal_ncm?: string | null
+          fiscal_origin?: string | null
+          fiscal_pis_cst?: string | null
+          fiscal_tax_unit?: string | null
           group_id?: string | null
           id?: string
           image_url?: string | null
@@ -8064,6 +8162,219 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      nfce_documents: {
+        Row: {
+          access_key: string | null
+          authorized_at: string | null
+          cancelled_at: string | null
+          company_id: string
+          created_at: string
+          danfce_pdf_path: string | null
+          environment: number
+          id: string
+          last_error_code: string | null
+          last_error_message: string | null
+          next_action: string | null
+          number: number | null
+          official_checked_at: string | null
+          official_status: string | null
+          operation_id: string
+          order_id: string
+          processed_xml_path: string | null
+          protocol: string | null
+          series: number
+          signed_xml_path: string | null
+          snapshot: Json | null
+          snapshot_hash: string | null
+          status: string
+          uf: string
+          updated_at: string
+        }
+        Insert: {
+          access_key?: string | null
+          authorized_at?: string | null
+          cancelled_at?: string | null
+          company_id: string
+          created_at?: string
+          danfce_pdf_path?: string | null
+          environment?: number
+          id?: string
+          last_error_code?: string | null
+          last_error_message?: string | null
+          next_action?: string | null
+          number?: number | null
+          official_checked_at?: string | null
+          official_status?: string | null
+          operation_id?: string
+          order_id: string
+          processed_xml_path?: string | null
+          protocol?: string | null
+          series: number
+          signed_xml_path?: string | null
+          snapshot?: Json | null
+          snapshot_hash?: string | null
+          status?: string
+          uf: string
+          updated_at?: string
+        }
+        Update: {
+          access_key?: string | null
+          authorized_at?: string | null
+          cancelled_at?: string | null
+          company_id?: string
+          created_at?: string
+          danfce_pdf_path?: string | null
+          environment?: number
+          id?: string
+          last_error_code?: string | null
+          last_error_message?: string | null
+          next_action?: string | null
+          number?: number | null
+          official_checked_at?: string | null
+          official_status?: string | null
+          operation_id?: string
+          order_id?: string
+          processed_xml_path?: string | null
+          protocol?: string | null
+          series?: number
+          signed_xml_path?: string | null
+          snapshot?: Json | null
+          snapshot_hash?: string | null
+          status?: string
+          uf?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfce_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfce_documents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nfce_events: {
+        Row: {
+          company_id: string
+          created_at: string
+          cstat: string | null
+          document_id: string
+          event_type: string
+          id: string
+          message: string | null
+          official_status: string | null
+          payload: Json | null
+          status: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          cstat?: string | null
+          document_id: string
+          event_type: string
+          id?: string
+          message?: string | null
+          official_status?: string | null
+          payload?: Json | null
+          status?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          cstat?: string | null
+          document_id?: string
+          event_type?: string
+          id?: string
+          message?: string | null
+          official_status?: string | null
+          payload?: Json | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfce_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfce_events_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "nfce_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nfce_outbox: {
+        Row: {
+          attempts: number
+          company_id: string
+          created_at: string
+          document_id: string
+          id: string
+          last_error_code: string | null
+          last_error_message: string | null
+          locked_at: string | null
+          locked_by: string | null
+          next_attempt_at: string
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          company_id: string
+          created_at?: string
+          document_id: string
+          id?: string
+          last_error_code?: string | null
+          last_error_message?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          next_attempt_at?: string
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          company_id?: string
+          created_at?: string
+          document_id?: string
+          id?: string
+          last_error_code?: string | null
+          last_error_message?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          next_attempt_at?: string
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfce_outbox_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfce_outbox_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: true
+            referencedRelation: "nfce_documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       nfe_imports: {
         Row: {

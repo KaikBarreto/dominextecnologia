@@ -31,6 +31,30 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.16',
+    date: '2 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Impressora fiscal em Integrações',
+        description: 'A preparação da impressora térmica agora fica em Configurações > Integrações, separada das configurações do PDV. A janela do sistema funciona sem aplicativo; a impressão direta será liberada quando o Dominex Conector estiver disponível para baixar.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.38.15',
+    date: '2 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Status correto após baixa feita fora do Asaas',
+        description: 'Quando uma cobrança recorrente é recebida por outro meio e baixada no Asaas, o contrato agora deixa de aparecer como vencido e passa a mostrar o próximo vencimento correto. Se ainda houver outra cobrança atrasada, o aviso permanece.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.38.14',
     date: '2 de novembro de 2026',
     type: 'patch',

@@ -120,7 +120,7 @@ def _provider_context(provider_xml: str | None) -> tuple[str | None, str | None]
 
 def _access_key(
     payload: dict[str, Any], fiscal: dict[str, Any], emitted_at: datetime,
-    payload_sha256: str, provider_key: str | None,
+    payload_sha256: str, provider_key: str | None, *, model: str = "55",
 ) -> str:
     if provider_key:
         return provider_key
@@ -136,7 +136,18 @@ def _access_key(
     if not 0 <= series <= 999 or not 1 <= number <= 999_999_999:
         raise ErroNfeLocal("Série ou número da NF-e fora do limite oficial.")
     numeric = str(int(payload_sha256[:12], 16) % 100_000_000).zfill(8)
-    raw = f"{UF_CODES[uf]}{emitted_at:%y%m}{cnpj}55{series:03d}{number:09d}1{numeric}"
+    if model not in {"55", "65"}:
+        raise ErroNfeLocal("Modelo fiscal deve ser 55 ou 65.")
+    try:
+        emission_type = int(payload.get("tipoEmissao") or 1)
+    except (TypeError, ValueError):
+        raise ErroNfeLocal("Tipo de emissão inválido.") from None
+    if emission_type not in ({1, 9} if model == "65" else {1}):
+        raise ErroNfeLocal("Tipo de emissão ainda não suportado para este modelo.")
+    raw = (
+        f"{UF_CODES[uf]}{emitted_at:%y%m}{cnpj}{model}{series:03d}"
+        f"{number:09d}{emission_type}{numeric}"
+    )
     return raw + _dv(raw)
 
 
@@ -195,8 +206,10 @@ def _emit(root: etree._Element, payload: dict[str, Any], fiscal: dict[str, Any])
     _add(node, "CRT", crt)
 
 
-def _dest(root: etree._Element, payload: dict[str, Any]) -> None:
+def _dest(root: etree._Element, payload: dict[str, Any], *, required: bool = True) -> None:
     data = payload.get("destinatario") or {}
+    if not data and not required:
+        return
     node = etree.SubElement(root, etree.QName(NS, "dest"))
     document = _digits(data.get("cpfCnpj"))
     if len(document) == 14:
@@ -513,6 +526,8 @@ def _payments(root: etree._Element, payload: dict[str, Any]) -> None:
         if source.get("descricaoMeio"):
             _add(item, "xPag", source["descricaoMeio"])
         _add(item, "vPag", _money(source.get("valor") or 0))
+    if payload.get("troco") is not None:
+        _add(node, "vTroco", _money(payload.get("troco"), "Troco"))
 
 
 def _additional(root: etree._Element, payload: dict[str, Any]) -> None:
@@ -536,7 +551,7 @@ def _additional(root: etree._Element, payload: dict[str, Any]) -> None:
 
 
 def montar_xml(
-    job: dict[str, Any], provider_xml: str | None = None
+    job: dict[str, Any], provider_xml: str | None = None, *, model: str = "55"
 ) -> tuple[str, str]:
     payload = job.get("payload") or {}
     fiscal = job.get("fiscal_config") or {}
@@ -544,7 +559,14 @@ def montar_xml(
     provider_key, provider_date = _provider_context(provider_xml)
     raw_date = provider_date or payload.get("dataEmissao") or invoice.get("issue_date")
     emitted_at = _parse_emission_time(raw_date)
-    key = _access_key(payload, fiscal, emitted_at, str(job.get("payload_sha256") or "0" * 64), provider_key)
+    key = _access_key(
+        payload,
+        fiscal,
+        emitted_at,
+        str(job.get("payload_sha256") or "0" * 64),
+        provider_key,
+        model=model,
+    )
 
     root = etree.Element(etree.QName(NS, "NFe"), nsmap={None: NS})
     inf = etree.SubElement(root, etree.QName(NS, "infNFe"), Id="NFe" + key, versao="4.00")
@@ -556,11 +578,12 @@ def montar_xml(
     fields = (
         ("cUF", key[:2]), ("cNF", key[35:43]),
         ("natOp", _text(payload.get("natureza"), "Natureza da operação", maximum=60)),
-        ("mod", "55"), ("serie", int(payload.get("serie") or 0)),
+        ("mod", model), ("serie", int(payload.get("serie") or 0)),
         ("nNF", int(payload.get("numero") or 0)),
         ("dhEmi", emitted_at.isoformat(timespec="seconds")),
         ("tpNF", "1" if payload.get("saida") is True else "0"),
-        ("idDest", destination), ("cMunFG", city_code), ("tpImp", "1"),
+        ("idDest", destination), ("cMunFG", city_code),
+        ("tpImp", "4" if model == "65" else "1"),
         ("tpEmis", key[34]), ("cDV", key[-1]),
         ("tpAmb", "2" if invoice.get("environment") == "homologacao" else "1"),
         ("finNFe", int(payload.get("finalidade") or 1)),
@@ -579,11 +602,12 @@ def montar_xml(
         node = etree.SubElement(ide, etree.QName(NS, "NFref"))
         _add(node, "refNFe", key_ref)
     _emit(inf, payload, fiscal)
-    _dest(inf, payload)
+    _dest(inf, payload, required=model == "55")
     _items(inf, payload)
     _totals(inf, payload)
     _transport(inf, payload)
-    _billing(inf, payload)
+    if model == "55":
+        _billing(inf, payload)
     _payments(inf, payload)
     _additional(inf, payload)
     return etree.tostring(root, encoding="unicode", xml_declaration=False), key

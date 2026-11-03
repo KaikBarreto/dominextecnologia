@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.14";
+export const APP_VERSION = "1.38.16";
 
 export const VERSION_NOTES =
-  "Janelas abertas dentro de outras janelas agora permanecem estáveis, inclusive ao adicionar materiais em um orçamento.";
+  "A impressora fiscal agora é preparada em Configurações > Integrações, separada das configurações do PDV.";

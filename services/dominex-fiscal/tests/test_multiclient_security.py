@@ -68,7 +68,9 @@ def test_capacidades_respeitam_escopos_e_chaves_de_producao(monkeypatch):
     monkeypatch.setattr(
         security,
         "clientes_configurados",
-        lambda: (_cliente("ecosistema", ECO_TOKEN, {"nfe:*", "mdfe:read"}),),
+        lambda: (
+            _cliente("ecosistema", ECO_TOKEN, {"nfe:*", "mdfe:read", "nfce:read"}),
+        ),
     )
     resposta = TestClient(app).get("/v1/capacidades", headers=_auth(ECO_TOKEN))
     assert resposta.status_code == 200
@@ -77,7 +79,11 @@ def test_capacidades_respeitam_escopos_e_chaves_de_producao(monkeypatch):
     assert dados["familias"]["nfe"]["disponivel"] is True
     assert dados["familias"]["mdfe"]["disponivel"] is True
     assert dados["familias"]["nfse"]["disponivel"] is False
-    assert dados["familias"]["nfce"]["disponivel"] is False
+    assert dados["familias"]["nfce"]["disponivel"] is True
+    assert dados["familias"]["nfce"]["operacoes"] == [
+        "preparar", "consultar", "autorizar", "cancelar", "danfce"
+    ]
+    assert dados["familias"]["nfce"]["producaoHabilitada"] is False
     assert dados["familias"]["nfe"]["producaoHabilitada"] is False
     assert dados["familias"]["mdfe"]["producaoHabilitada"] is False
 

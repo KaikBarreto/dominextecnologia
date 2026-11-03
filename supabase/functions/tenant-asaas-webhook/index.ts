@@ -22,7 +22,8 @@
 //                       apply_tenant_charge_installment_payment (venda parcelada no
 //                       cartão — isInstallmentPaymentEvent detecta payment.installment —
 //                       baixa POR PARCELA: cria filha "Recebimento parcial", só fecha
-//                       CONFIRMED quando a soma das filhas cobre o valor total).
+//                       CONFIRMED quando a soma das filhas cobre o valor total). Se for
+//                       ciclo recorrente, reconcilia status/próximo vencimento da assinatura.
 //   PAYMENT (estorno):  PAYMENT_REFUNDED / PAYMENT_REFUND_IN_PROGRESS / PAYMENT_CHARGEBACK_* /
 //                       PAYMENT_AWAITING_CHARGEBACK_REVERSAL → revert_tenant_charge_payment:
 //                       marca o status, APAGA as filhas de "Recebimento parcial" desta
@@ -60,6 +61,7 @@ import {
   vaultWebhookTokenSecretName,
 } from "../_shared/payments-auth.ts";
 import { asaasFor } from "../_shared/asaas-tenant-client.ts";
+import { resolveTenantSubscriptionState } from "../_shared/tenant-subscription-state.ts";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -529,6 +531,14 @@ async function processSubscriptionEvent(
         updated_at: new Date().toISOString(),
       };
       if (newStatus) patch.status = newStatus;
+      // O Asaas é a fonte canônica da agenda. Antes o evento atualizava só o
+      // status e deixava `next_due_date` congelado no primeiro ciclo.
+      if (
+        typeof subscription?.nextDueDate === "string" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(subscription.nextDueDate)
+      ) {
+        patch.next_due_date = subscription.nextDueDate;
+      }
       await applyWrite(
         "assinatura SUBSCRIPTION_*",
         supabase
@@ -564,6 +574,87 @@ async function processSubscriptionEvent(
       .eq("event_id", eventId);
     return false;
   }
+}
+
+/**
+ * Recalcula o status e o próximo vencimento da assinatura depois que um ciclo
+ * muda. A baixa da cobrança é aplicada primeiro; esta leitura já enxerga a
+ * charge como CONFIRMED e evita deixar a assinatura eternamente `overdue`.
+ */
+async function reconcileSubscriptionAfterPayment(
+  supabase: ReturnType<typeof serviceClient>,
+  payment: {
+    subscription?: unknown;
+    paymentDate?: unknown;
+    dueDate?: unknown;
+  },
+  companyId: string,
+): Promise<void> {
+  const asaasSubscriptionId = typeof payment?.subscription === "string"
+    ? payment.subscription
+    : null;
+  if (!asaasSubscriptionId) return;
+
+  let { data: subscription, error: subscriptionError } = await supabase
+    .from("tenant_subscriptions")
+    .select("id, status, next_due_date, cycle")
+    .eq("asaas_subscription_id", asaasSubscriptionId)
+    .eq("company_id", companyId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (!subscription?.id && !subscriptionError) {
+    const pixResult = await supabase
+      .from("tenant_subscriptions")
+      .select("id, status, next_due_date, cycle")
+      .eq("pix_auto_authorization_id", asaasSubscriptionId)
+      .eq("company_id", companyId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    subscription = pixResult.data;
+    subscriptionError = pixResult.error;
+  }
+  if (subscriptionError) {
+    throw new Error(`reconciliar assinatura falhou: ${subscriptionError.message}`);
+  }
+  if (!subscription?.id) return;
+
+  const { data: charges, error: chargesError } = await supabase
+    .from("tenant_charges")
+    .select("status, due_date")
+    .eq("subscription_id", subscription.id)
+    .eq("company_id", companyId);
+  if (chargesError) {
+    throw new Error(`ler ciclos da assinatura falhou: ${chargesError.message}`);
+  }
+
+  const paymentDate = typeof payment.paymentDate === "string"
+    ? payment.paymentDate.slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
+  const state = resolveTenantSubscriptionState({
+    currentStatus: subscription.status,
+    currentNextDueDate: subscription.next_due_date,
+    cycle: subscription.cycle,
+    charges: charges ?? [],
+    paymentDueDate: typeof payment.dueDate === "string" ? payment.dueDate : null,
+    today: /^\d{4}-\d{2}-\d{2}$/.test(paymentDate)
+      ? paymentDate
+      : new Date().toISOString().slice(0, 10),
+  });
+
+  await applyWrite(
+    "reconciliar estado da assinatura",
+    supabase
+      .from("tenant_subscriptions")
+      .update({
+        status: state.status,
+        next_due_date: state.nextDueDate,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", subscription.id)
+      .eq("company_id", companyId)
+      .is("deleted_at", null),
+  );
 }
 
 /**
@@ -1072,6 +1163,11 @@ async function processEvent(
           JSON.stringify(data),
         );
       }
+
+      // PAYMENT_RECEIVED_IN_CASH é exatamente a baixa feita no painel Asaas
+      // quando o cliente pagou por fora. A cobrança e o Financeiro já foram
+      // quitados acima; agora sincronizamos o card da recorrência.
+      await reconcileSubscriptionAfterPayment(supabase, payment, companyId);
     } else if (
       event === "PAYMENT_REFUNDED" ||
       event === "PAYMENT_REFUND_IN_PROGRESS" ||

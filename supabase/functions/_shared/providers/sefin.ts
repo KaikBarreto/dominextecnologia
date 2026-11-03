@@ -227,13 +227,14 @@ async function auditar(
   ctx: NfseProviderCtx,
   operacao: string,
   contexto: string,
+  origem = "edge:nfse",
 ): Promise<void> {
   try {
     await ctx.supabase.from("fiscal_certificate_audit").insert({
       company_id: ctx.companyId,
       operacao,
       contexto,
-      origem: "edge:nfse",
+      origem,
     });
   } catch (err) {
     console.error(`${TAG} auditoria`, {
@@ -255,9 +256,10 @@ async function auditar(
 export async function corpoBase(
   ctx: NfseProviderCtx,
   contextoAuditoria: string,
+  origemAuditoria = "edge:nfse",
 ): Promise<Record<string, unknown>> {
   const certificado = await carregarCertificado(ctx);
-  await auditar(ctx, "decifra", contextoAuditoria);
+  await auditar(ctx, "decifra", contextoAuditoria, origemAuditoria);
   return {
     empresaId: ctx.companyId,
     ambiente: ambienteDe(ctx),
