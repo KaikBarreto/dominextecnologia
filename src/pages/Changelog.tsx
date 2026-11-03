@@ -31,9 +31,9 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.39.0',
+    version: '1.38.17',
     date: '3 de novembro de 2026',
-    type: 'minor',
+    type: 'patch',
     changes: [
       {
         title: 'Orçamentos com preço mais fácil de entender',
