@@ -31,6 +31,38 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.0',
+    date: '3 de novembro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Orçamentos com preço mais fácil de entender',
+        description: 'Escolha entre usar BDI automaticamente ou montar um orçamento comum com preços de venda e ajustes manuais. A tela separa o custo da empresa do valor pago pelo cliente e mostra o impacto de serviços, materiais, deslocamento e descontos.',
+        category: 'recurso',
+      },
+      {
+        title: 'Estoque consolidado e Curva ABC',
+        description: 'Consulte saldos por local, trabalhe com compras em lista e detalhes e identifique os materiais mais relevantes por consumo, vendas e capital parado.',
+        category: 'recurso',
+      },
+      {
+        title: 'PDV mais rápido no teclado e no carrinho',
+        description: 'Navegue entre produtos com as setas, use quantidades fracionadas e acompanhe itens, unidades, descontos e imagens em uma apresentação mais compacta.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cadastros guiados de ordens de serviço e contratos',
+        description: 'Novas ordens de serviço e contratos agora usam etapas mais claras, resumo permanente e melhor adaptação ao computador e celular.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Acessos e rotinas administrativas mais seguros',
+        description: 'O vínculo entre funcionário e usuário ficou mais confiável, e as ações de contas, cartões e empresas ficaram mais fáceis de encontrar.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.38.16',
     date: '2 de novembro de 2026',
     type: 'patch',
