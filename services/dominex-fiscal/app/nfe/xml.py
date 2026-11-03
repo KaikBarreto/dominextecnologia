@@ -279,14 +279,37 @@ def _pis_cofins(parent: etree._Element, name: str, tax: dict[str, Any]) -> None:
         return
     if cst in {"01", "02"}:
         group_name = f"{name}Aliq"
-    elif cst in {"49", "98", "99"}:
+    elif cst == "03":
+        group = etree.SubElement(wrapper, etree.QName(NS, f"{name}Qtde"))
+        _add(group, "CST", cst)
+        quantity = tax.get("quantidadeVendida")
+        unit_rate = tax.get("aliquotaReais")
+        if quantity is None or unit_rate is None:
+            raise ErroNfeLocal(
+                f"CST {name} 03 exige quantidadeVendida e aliquotaReais."
+            )
+        _add(group, "qBCProd", _quantity(quantity, f"Quantidade {name}"))
+        _add(group, "vAliqProd", _rate(unit_rate, f"Alíquota em reais {name}"))
+        _add(group, f"v{name}", _money(tax.get("valor") or 0))
+        return
+    elif cst in {
+        "49", "50", "51", "52", "53", "54", "55", "56",
+        "60", "61", "62", "63", "64", "65", "66", "67",
+        "70", "71", "72", "73", "74", "75", "98", "99",
+    }:
         group_name = f"{name}Outr"
     else:
         raise ErroNfeLocal(f"CST {name} {cst or '(vazio)'} ainda não suportado.")
     group = etree.SubElement(wrapper, etree.QName(NS, group_name))
     _add(group, "CST", cst)
-    _add(group, "vBC", _money((tax.get("baseCalculo") or {}).get("valor") or 0))
-    _add(group, f"p{name}", _rate(tax.get("aliquota") or 0))
+    quantity = tax.get("quantidadeVendida")
+    unit_rate = tax.get("aliquotaReais")
+    if quantity is not None and unit_rate is not None:
+        _add(group, "qBCProd", _quantity(quantity, f"Quantidade {name}"))
+        _add(group, "vAliqProd", _rate(unit_rate, f"Alíquota em reais {name}"))
+    else:
+        _add(group, "vBC", _money((tax.get("baseCalculo") or {}).get("valor") or 0))
+        _add(group, f"p{name}", _rate(tax.get("aliquota") or 0))
     _add(group, f"v{name}", _money(tax.get("valor") or 0))
 
 

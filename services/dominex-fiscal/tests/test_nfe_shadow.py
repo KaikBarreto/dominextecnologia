@@ -352,6 +352,37 @@ class NfeHomologationFixtureTest(unittest.TestCase):
         self.assertIn("<vDesc>0.06</vDesc>", many_xml)
         self.assertIn("<vNF>86.94</vNF>", many_xml)
 
+    def test_matriz_completa_de_cst_pis_cofins_valida_no_xsd(self) -> None:
+        csts = [
+            "01", "02", "03", "04", "05", "06", "07", "08", "09", "49",
+            "50", "51", "52", "53", "54", "55", "56",
+            "60", "61", "62", "63", "64", "65", "66", "67",
+            "70", "71", "72", "73", "74", "75", "98", "99",
+        ]
+        for cst in csts:
+            job = job_base()
+            taxes = job["payload"]["itens"][0]["tributos"]
+            for name in ("pis", "cofins"):
+                taxes[name] = {"cst": cst}
+                if cst == "03":
+                    taxes[name].update({
+                        "quantidadeVendida": 10,
+                        "aliquotaReais": 0,
+                        "valor": 0,
+                    })
+                elif cst not in {"04", "05", "06", "07", "08", "09"}:
+                    taxes[name].update({
+                        "baseCalculo": {"valor": 0},
+                        "aliquota": 0,
+                        "valor": 0,
+                    })
+            unsigned, _ = montar_xml(job)
+            xml = assinar_xml(unsigned, fake_credential(), "11222333000181")
+            self.assertEqual([], validar_xsd(xml), cst)
+            if cst == "72":
+                self.assertIn("<PISOutr><CST>72</CST>", xml)
+                self.assertIn("<COFINSOutr><CST>72</CST>", xml)
+
 
 if __name__ == "__main__":
     unittest.main()
