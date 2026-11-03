@@ -71,6 +71,7 @@ import {
   useServiceOrderServiceTypes,
 } from '@/hooks/useServiceOrderBudget';
 import {
+  appendMissingServiceOrderBudgetItems,
   serviceOrderBudgetSignature,
   type ServiceOrderBudgetItem,
 } from '@/lib/serviceOrderBudget';
@@ -1296,7 +1297,7 @@ export function ServiceOrderFormDialog({
     },
   ];
 
-  const handleServiceTypesChange = (ids: string[]) => {
+  const handleServiceTypesChange = (ids: string[], addMissingBudgetItems = true) => {
     // Uma linha de serviço no orçamento também define o escopo operacional da
     // OS. Enquanto a linha existir, o tipo não pode desaparecer do seletor —
     // senão o valor seria faturado sem levar seus checklists/equipamentos.
@@ -1307,6 +1308,18 @@ export function ServiceOrderFormDialog({
     const addedIds = reconciledIds.filter(id => !selectedServiceTypeIds.includes(id));
     setSelectedServiceTypeIds(reconciledIds);
     form.setValue('service_type_id', reconciledIds[0] ?? '');
+
+    if (addMissingBudgetItems && addedIds.length > 0) {
+      const addedServices = addedIds.flatMap(id => {
+        const service = serviceTypes.find(item => item.id === id);
+        return service ? [{
+          id: service.id,
+          name: service.name,
+          default_price: service.default_price,
+        }] : [];
+      });
+      setBudgetItems(current => appendMissingServiceOrderBudgetItems(current, addedServices));
+    }
 
     // Serviço novo entra, por padrão, nos equipamentos já marcados. A partir daí
     // cada card pode ser refinado separadamente. Serviço removido da OS sai de
@@ -1380,7 +1393,7 @@ export function ServiceOrderFormDialog({
       selectedServiceTypeIds,
       items.map(item => item.service_type_id),
     );
-    if (merged.length !== selectedServiceTypeIds.length) handleServiceTypesChange(merged);
+    if (merged.length !== selectedServiceTypeIds.length) handleServiceTypesChange(merged, false);
   };
 
   // Bloco reutilizado nos dois modos (criar/editar): endereço de serviço próprio
@@ -2144,9 +2157,6 @@ export function ServiceOrderFormDialog({
                   </FormItem>
                 )} />
 
-                {/* Endereço de serviço (diferente do cliente) — alternativa ao endereço do cliente */}
-                {serviceAddressSection}
-
                 <FormField control={form.control} name="service_type_id" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t.labelServiceType}</FormLabel>
@@ -2156,20 +2166,28 @@ export function ServiceOrderFormDialog({
                         selectedIds={selectedServiceTypeIds}
                         onChange={handleServiceTypesChange}
                         lockedIds={budgetItems.map(item => item.service_type_id).filter((id): id is string => !!id)}
+                        showSelectedList={false}
+                        selectionTargetId="os-service-budget"
                         onCreate={() => setQuickCreateServiceTypeOpen(true)}
                       />
                     </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      O serviço entra abaixo com quantidade 1 e o preço cadastrado. Ajuste na própria linha — por exemplo, 3 condensadoras.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )} />
 
-                <section className="border-t pt-5">
+                <section id="os-service-budget" className="scroll-mt-12 border-t pt-5">
                   <ServiceOrderBudgetSection
                     items={budgetItems}
                     onChange={handleBudgetItemsChange}
                     loading={isEditing && budgetQuery.isLoading}
                   />
                 </section>
+
+                {/* Endereço de serviço (diferente do cliente) — alternativa ao endereço do cliente */}
+                {serviceAddressSection}
               </div>
             )}
 
@@ -2537,9 +2555,6 @@ export function ServiceOrderFormDialog({
                 </div>
               )}
 
-              {/* Endereço de serviço (diferente do cliente) — alternativa ao endereço do cliente */}
-              {serviceAddressSection}
-
               <FormField control={form.control} name="service_type_id" render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t.labelServiceType}</FormLabel>
@@ -2549,19 +2564,27 @@ export function ServiceOrderFormDialog({
                       selectedIds={selectedServiceTypeIds}
                       onChange={handleServiceTypesChange}
                       lockedIds={budgetItems.map(item => item.service_type_id).filter((id): id is string => !!id)}
+                      showSelectedList={false}
+                      selectionTargetId="os-service-budget"
                       onCreate={() => setQuickCreateServiceTypeOpen(true)}
                     />
                   </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    O serviço entra abaixo com quantidade 1 e o preço cadastrado. Ajuste na própria linha — por exemplo, 3 condensadoras.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )} />
 
-              <section className="border-t pt-5">
+              <section id="os-service-budget" className="scroll-mt-12 border-t pt-5">
                 <ServiceOrderBudgetSection
                   items={budgetItems}
                   onChange={handleBudgetItemsChange}
                 />
               </section>
+
+              {/* Endereço de serviço (diferente do cliente) — alternativa ao endereço do cliente */}
+              {serviceAddressSection}
             </div>
           )}
 

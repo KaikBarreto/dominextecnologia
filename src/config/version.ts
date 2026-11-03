@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.17";
+export const APP_VERSION = "1.38.18";
 
 export const VERSION_NOTES =
-  "Orçamentos, estoque, PDV, ordens de serviço e contratos ficaram mais claros, rápidos e adaptados ao celular.";
+  "A quantidade e o valor dos serviços voltaram a ficar visíveis e editáveis ao criar uma ordem de serviço.";

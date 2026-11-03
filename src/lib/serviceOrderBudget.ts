@@ -10,6 +10,12 @@ export interface ServiceOrderBudgetTotals {
   total: number;
 }
 
+export interface ServiceOrderBudgetCatalogService {
+  id: string;
+  name: string;
+  default_price: number | null;
+}
+
 const roundMoney = (value: number) => Math.round(value * 100) / 100;
 // Calcula em centavos para espelhar NUMERIC do Postgres e evitar que
 // 2.5 × 19.99 (49.974999...) arredonde um centavo abaixo.
@@ -35,6 +41,40 @@ export function calculateServiceOrderBudgetTotals(
   services = roundMoney(services);
   materials = roundMoney(materials);
   return { services, materials, total: roundMoney(services + materials) };
+}
+
+/**
+ * Inclui no orçamento os serviços recém-selecionados na OS. Assim o seletor
+ * operacional e a quantidade comercial não viram dois fluxos desconectados.
+ * Linhas já existentes são preservadas, inclusive preço negociado e quantidade.
+ */
+export function appendMissingServiceOrderBudgetItems(
+  items: ServiceOrderBudgetItem[],
+  services: ServiceOrderBudgetCatalogService[],
+): ServiceOrderBudgetItem[] {
+  const existingServiceIds = new Set(
+    items
+      .filter(item => item.item_type !== 'material')
+      .map(item => item.service_type_id)
+      .filter((id): id is string => !!id),
+  );
+  const additions = services
+    .filter(service => !existingServiceIds.has(service.id))
+    .map((service, index): ServiceOrderBudgetItem => {
+      const unitPrice = roundMoney(Number(service.default_price ?? 0));
+      return {
+        position: items.length + index,
+        item_type: 'servico',
+        description: service.name,
+        quantity: 1,
+        unit_price: unitPrice,
+        total_price: unitPrice,
+        inventory_id: null,
+        service_type_id: service.id,
+      };
+    });
+
+  return additions.length > 0 ? [...items, ...additions] : items;
 }
 
 /** Payload mínimo e estável aceito pela RPC sync_service_order_budget. */

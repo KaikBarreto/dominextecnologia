@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Plus, Trash2, Wrench, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NumericInput } from '@/components/ui/numeric-input';
+import { NumericInput, parseDecimalInputValue } from '@/components/ui/numeric-input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -28,6 +28,56 @@ interface QuoteItemsTableProps {
   items: QuoteItem[];
   onChange: (items: QuoteItem[]) => void;
   readOnly?: boolean;
+  showServicePicker?: boolean;
+}
+
+function EditableDecimalValue({
+  value,
+  onCommit,
+  ariaLabel,
+  maxDecimals,
+  allowZero = false,
+}: {
+  value: number;
+  onCommit: (value: number) => void;
+  ariaLabel: string;
+  maxDecimals: number;
+  allowZero?: boolean;
+}) {
+  const toDraft = (number: number) => String(number).replace('.', ',');
+  const [draft, setDraft] = useState(toDraft(value));
+
+  useEffect(() => {
+    setDraft(toDraft(value));
+  }, [value]);
+
+  const commit = () => {
+    const parsed = parseDecimalInputValue(draft);
+    if (parsed == null || (!allowZero && parsed <= 0) || (allowZero && parsed < 0)) {
+      setDraft(toDraft(value));
+      return;
+    }
+    onCommit(parsed);
+    setDraft(toDraft(parsed));
+  };
+
+  return (
+    <NumericInput
+      decimal
+      maxDecimals={maxDecimals}
+      value={draft}
+      onValueChange={setDraft}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          event.currentTarget.blur();
+        }
+      }}
+      aria-label={ariaLabel}
+      className="h-8 w-full min-w-[72px] bg-background text-xs tabular-nums md:w-20"
+    />
+  );
 }
 
 /* ─── Input row: Serviços / Mão de Obra ─── */
@@ -46,7 +96,7 @@ function ServiceInputRow({
   const [quantity, setQuantity] = useState('');
   const [unitPrice, setUnitPrice] = useState('');
 
-  const qtyNum = parseFloat(quantity) || 0;
+  const qtyNum = parseDecimalInputValue(quantity) ?? 0;
   const priceNum = parseFloat(unitPrice) || 0;
   const total = qtyNum * priceNum;
 
@@ -162,7 +212,7 @@ function MaterialInputRow({
   const [quantity, setQuantity] = useState('');
   const [unitPrice, setUnitPrice] = useState('');
 
-  const qtyNum = parseFloat(quantity) || 0;
+  const qtyNum = parseDecimalInputValue(quantity) ?? 0;
   const priceNum = parseFloat(unitPrice) || 0;
   const total = qtyNum * priceNum;
 
@@ -171,6 +221,7 @@ function MaterialInputRow({
     const inv = inventoryItems.find(m => m.id === id);
     if (inv) {
       setDescription(inv.name);
+      setQuantity(current => current || '1');
       const price = inv.sale_price ?? inv.cost_price ?? 0;
       if (price > 0) setUnitPrice(price.toString());
     }
@@ -261,7 +312,7 @@ function MaterialInputRow({
 }
 
 /* ─── Main ─── */
-export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTableProps) {
+export function QuoteItemsTable({ items, onChange, readOnly, showServicePicker = true }: QuoteItemsTableProps) {
   const { money } = useLocaleFormatters();
   const { serviceTypes } = useServiceTypes();
   const { items: inventoryItems } = useInventory();
@@ -299,6 +350,19 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
     onChange(items.filter((_, i) => i !== globalIdx));
   };
 
+  const updateItem = (globalIdx: number, patch: Partial<QuoteItem>) => {
+    onChange(items.map((item, index) => {
+      if (index !== globalIdx) return item;
+      const next = { ...item, ...patch };
+      return {
+        ...next,
+        total_price: Math.round(
+          Number(next.quantity || 0) * Math.round(Number(next.unit_price || 0) * 100),
+        ) / 100,
+      };
+    }));
+  };
+
   const getGlobalIndex = (item: QuoteItem) => items.indexOf(item);
 
   return (
@@ -324,13 +388,6 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
               </TableRow>
             </TableHeader>
             <TableBody className="block md:table-row-group">
-              {!readOnly && (
-                <ServiceInputRow
-                  serviceOptions={serviceOptions}
-                  serviceTypes={serviceTypes ?? []}
-                  onAdd={addItem}
-                />
-              )}
               {serviceItems.length === 0 ? (
                 <TableRow className="block md:table-row">
                   <TableCell colSpan={5} className="block py-4 text-center text-xs text-muted-foreground md:table-cell">
@@ -345,11 +402,30 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                       <TableCell className="col-span-2 p-0 text-sm font-medium md:table-cell md:p-4 md:text-xs">{item.description}</TableCell>
                       <TableCell className="p-0 text-xs md:table-cell md:p-4">
                         <span className="mb-0.5 block text-[10px] text-muted-foreground md:hidden">Quantidade</span>
-                        <span className="tabular-nums">{item.quantity}</span>
+                        {readOnly ? (
+                          <span className="tabular-nums">{item.quantity} serviço(s)</span>
+                        ) : (
+                          <EditableDecimalValue
+                            value={Number(item.quantity || 0)}
+                            onCommit={quantity => updateItem(idx, { quantity })}
+                            ariaLabel={`Quantidade de ${item.description}`}
+                            maxDecimals={3}
+                          />
+                        )}
                       </TableCell>
                       <TableCell className="p-0 text-right text-xs md:table-cell md:p-4 md:text-left">
                         <span className="mb-0.5 block text-[10px] text-muted-foreground md:hidden">Valor unitário</span>
-                        <span className="whitespace-nowrap tabular-nums">{money(item.unit_price || 0)}</span>
+                        {readOnly ? (
+                          <span className="whitespace-nowrap tabular-nums">{money(item.unit_price || 0)}</span>
+                        ) : (
+                          <EditableDecimalValue
+                            value={Number(item.unit_price || 0)}
+                            onCommit={unit_price => updateItem(idx, { unit_price })}
+                            ariaLabel={`Valor unitário de ${item.description}`}
+                            maxDecimals={2}
+                            allowZero
+                          />
+                        )}
                       </TableCell>
                       <TableCell className="p-0 text-xs font-medium md:table-cell md:p-4">
                         <span className="mb-0.5 block text-[10px] font-normal text-muted-foreground md:hidden">Total</span>
@@ -371,6 +447,13 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                     </TableRow>
                   );
                 })
+              )}
+              {!readOnly && showServicePicker && (
+                <ServiceInputRow
+                  serviceOptions={serviceOptions}
+                  serviceTypes={serviceTypes ?? []}
+                  onAdd={addItem}
+                />
               )}
               {serviceItems.length > 0 && (
                 <TableRow className="grid grid-cols-[1fr_auto] items-center bg-muted/30 px-3 py-2 md:table-row md:px-0 md:py-0">
@@ -430,11 +513,30 @@ export function QuoteItemsTable({ items, onChange, readOnly }: QuoteItemsTablePr
                       <TableCell className="col-span-2 p-0 text-sm font-medium md:table-cell md:p-4 md:text-xs">{item.description}</TableCell>
                       <TableCell className="p-0 text-xs md:table-cell md:p-4">
                         <span className="mb-0.5 block text-[10px] text-muted-foreground md:hidden">Quantidade</span>
-                        <span className="tabular-nums">{item.quantity}</span>
+                        {readOnly ? (
+                          <span className="tabular-nums">{item.quantity} un.</span>
+                        ) : (
+                          <EditableDecimalValue
+                            value={Number(item.quantity || 0)}
+                            onCommit={quantity => updateItem(idx, { quantity })}
+                            ariaLabel={`Quantidade de ${item.description}`}
+                            maxDecimals={3}
+                          />
+                        )}
                       </TableCell>
                       <TableCell className="p-0 text-right text-xs md:table-cell md:p-4 md:text-left">
                         <span className="mb-0.5 block text-[10px] text-muted-foreground md:hidden">Valor unitário</span>
-                        <span className="whitespace-nowrap tabular-nums">{money(item.unit_price || 0)}</span>
+                        {readOnly ? (
+                          <span className="whitespace-nowrap tabular-nums">{money(item.unit_price || 0)}</span>
+                        ) : (
+                          <EditableDecimalValue
+                            value={Number(item.unit_price || 0)}
+                            onCommit={unit_price => updateItem(idx, { unit_price })}
+                            ariaLabel={`Valor unitário de ${item.description}`}
+                            maxDecimals={2}
+                            allowZero
+                          />
+                        )}
                       </TableCell>
                       <TableCell className="p-0 text-xs font-medium md:table-cell md:p-4">
                         <span className="mb-0.5 block text-[10px] font-normal text-muted-foreground md:hidden">Total</span>

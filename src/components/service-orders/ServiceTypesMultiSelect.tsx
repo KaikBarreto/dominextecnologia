@@ -22,6 +22,10 @@ interface ServiceTypesMultiSelectProps {
   onChange: (ids: string[]) => void;
   /** Serviços usados no orçamento: só podem sair depois que a linha for removida. */
   lockedIds?: string[];
+  /** A tela pode representar a seleção em outro componente, como linhas quantificadas. */
+  showSelectedList?: boolean;
+  /** No mobile, leva o usuário às quantidades assim que ele fecha a seleção. */
+  selectionTargetId?: string;
   onCreate?: () => void;
   disabled?: boolean;
 }
@@ -32,6 +36,8 @@ export function ServiceTypesMultiSelect({
   selectedIds,
   onChange,
   lockedIds = [],
+  showSelectedList = true,
+  selectionTargetId,
   onCreate,
   disabled,
 }: ServiceTypesMultiSelectProps) {
@@ -184,11 +190,23 @@ export function ServiceTypesMultiSelect({
   );
 
   if (isMobile) {
+    const handleMobileOpenChange = (nextOpen: boolean) => {
+      setOpen(nextOpen);
+      if (!nextOpen && selectedIds.length > 0 && selectionTargetId) {
+        requestAnimationFrame(() => {
+          document.getElementById(selectionTargetId)?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+        });
+      }
+    };
+
     return (
       <div className="space-y-2">
-        {selectedList}
+        {showSelectedList && selectedList}
         <div className="flex">{trigger}{createButton}</div>
-        <ResponsiveModal open={open} onOpenChange={setOpen} title="Tipos de serviço da OS">
+        <ResponsiveModal open={open} onOpenChange={handleMobileOpenChange} title="Tipos de serviço da OS">
           <div className="overflow-hidden rounded-lg border">{body}</div>
         </ResponsiveModal>
       </div>
@@ -197,7 +215,7 @@ export function ServiceTypesMultiSelect({
 
   return (
     <div className="space-y-2">
-      {selectedList}
+      {showSelectedList && selectedList}
       <div className="flex">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>{trigger}</PopoverTrigger>

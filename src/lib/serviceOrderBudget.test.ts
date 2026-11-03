@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  appendMissingServiceOrderBudgetItems,
   calculateServiceOrderBudgetTotals,
   serviceOrderBudgetSignature,
   toServiceOrderBudgetPayload,
@@ -69,5 +70,32 @@ describe('serviceOrderBudget', () => {
     expect(serviceOrderBudgetSignature(items)).not.toBe(
       serviceOrderBudgetSignature([{ ...items[0], quantity: 4 }, items[1]]),
     );
+  });
+
+  it('transforma serviço selecionado em linha quantificável com preço cadastrado', () => {
+    const result = appendMissingServiceOrderBudgetItems([], [{
+      id: 'service-condensadora',
+      name: 'Venda de condensadora',
+      default_price: 1850,
+    }]);
+
+    expect(result).toEqual([expect.objectContaining({
+      service_type_id: 'service-condensadora',
+      description: 'Venda de condensadora',
+      quantity: 1,
+      unit_price: 1850,
+      total_price: 1850,
+    })]);
+  });
+
+  it('preserva quantidade e preço negociado de serviço que já está no orçamento', () => {
+    const result = appendMissingServiceOrderBudgetItems(items, [{
+      id: 'service-1',
+      name: 'Limpeza split',
+      default_price: 999,
+    }]);
+
+    expect(result).toBe(items);
+    expect(result[0]).toEqual(expect.objectContaining({ quantity: 3, unit_price: 380 }));
   });
 });

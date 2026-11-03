@@ -1,4 +1,4 @@
-import { Calculator, ReceiptText } from 'lucide-react';
+import { Calculator } from 'lucide-react';
 import { QuoteItemsTable } from '@/components/quotes/QuoteItemsTable';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
@@ -34,16 +34,6 @@ export function ServiceOrderBudgetSection({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <h3 className="flex items-center gap-2 text-sm font-semibold">
-          <ReceiptText className="h-4 w-4 text-primary" />
-          Serviços, mão de obra e materiais
-        </h3>
-        <p className="text-xs text-muted-foreground">
-          Estes valores formam o orçamento da OS e serão sugeridos ao faturar. O consumo real de estoque é registrado separadamente na execução.
-        </p>
-      </div>
-
       {!onChange && items.length === 0 ? (
         <NoticeBanner variant="info">
           Esta OS ainda não possui serviços ou materiais orçados.
@@ -53,6 +43,7 @@ export function ServiceOrderBudgetSection({
           items={items}
           onChange={next => onChange?.(next as ServiceOrderBudgetItem[])}
           readOnly={!onChange}
+          showServicePicker={false}
         />
       )}
 

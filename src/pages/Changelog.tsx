@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.18',
+    date: '3 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Quantidade de serviços na nova OS',
+        description: 'Ao selecionar um serviço, a OS agora mostra imediatamente a quantidade, o preço cadastrado e o total. Esses valores podem ser ajustados na própria linha, inclusive pelo celular.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.38.17',
     date: '3 de novembro de 2026',
     type: 'patch',

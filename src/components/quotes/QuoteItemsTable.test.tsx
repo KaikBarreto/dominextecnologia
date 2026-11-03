@@ -49,9 +49,12 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let container: HTMLDivElement;
 let root: Root;
 
-function mount() {
+function mount(
+  items: React.ComponentProps<typeof QuoteItemsTable>['items'] = [],
+  onChange: React.ComponentProps<typeof QuoteItemsTable>['onChange'] = () => {},
+) {
   act(() => {
-    root.render(<QuoteItemsTable items={[]} onChange={() => {}} />);
+    root.render(<QuoteItemsTable items={items} onChange={onChange} />);
   });
 }
 
@@ -62,6 +65,14 @@ function paste(input: HTMLInputElement, text: string) {
   Object.defineProperty(pasteEvent, 'clipboardData', { value: { getData: () => text } });
   act(() => {
     input.dispatchEvent(pasteEvent);
+  });
+}
+
+function typeInto(input: HTMLInputElement, value: string) {
+  act(() => {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!;
+    setter.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
   });
 }
 
@@ -109,5 +120,28 @@ describe('QuoteItemsTable — campo "Valor Unit." (prova real de DOM)', () => {
     const inputs = qAll('input[type="number"]');
     paste(inputs[1], '1.234,56');
     expect(inputs[1].value).toBe('1234.56');
+  });
+
+  it('permite alterar a quantidade do serviço já incluído e recalcula o total', () => {
+    const onChange = vi.fn();
+    mount([{
+      position: 0,
+      item_type: 'servico',
+      description: 'Venda de condensadora',
+      quantity: 1,
+      unit_price: 1750,
+      total_price: 1750,
+      service_type_id: 'svc-1',
+    }], onChange);
+
+    const quantity = container.querySelector(
+      'input[aria-label="Quantidade de Venda de condensadora"]',
+    ) as HTMLInputElement;
+    typeInto(quantity, '3');
+    act(() => quantity.dispatchEvent(new FocusEvent('focusout', { bubbles: true })));
+
+    expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({ quantity: 3, unit_price: 1750, total_price: 5250 }),
+    ]);
   });
 });
