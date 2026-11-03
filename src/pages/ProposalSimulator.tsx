@@ -116,7 +116,6 @@ const PLAN_ACCENTS: Record<string, { icon: typeof Zap; className: string }> = {
 };
 
 const PROPOSAL_BENEFITS = [
-  'Onboarding guiado pela DomiFlix, com treinamento ao vivo quando necessário',
   'Suporte humano pelo WhatsApp',
   'Atualizações e melhorias contínuas',
 ];

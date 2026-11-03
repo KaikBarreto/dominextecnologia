@@ -1178,7 +1178,6 @@ function renderPaymentPage(
 
   const conditions = [
     'Sem taxa de adesão e sem fidelidade',
-    'Onboarding guiado pela DomiFlix, com treinamento ao vivo quando necessário',
     'Suporte humano pelo WhatsApp',
     'Módulos e usuários ajustáveis a qualquer momento',
     'Atualizações e melhorias contínuas incluídas',
