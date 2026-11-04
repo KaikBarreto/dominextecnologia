@@ -1,11 +1,11 @@
 // =============================================================================
-// Handler de CONSULTA de status de NFS-e (rotas: nfse-status / fisqal-nfse-status).
+// Handler de CONSULTA de status de NFS-e (rota: nfse-status).
 // =============================================================================
 // AUTENTICADA: Authorization Bearer + módulo 'nfe' ativo + can_manage_system.
 //
-// Caminho de polling do MVP (webhook é best-effort).
+// Caminho de reconciliação com o Portal Nacional.
 // Body: { emissionId } (id local de nfse_emissions).
-//   - Pergunta ao provedor ativo o estado do documento.
+//   - Pergunta ao motor próprio o estado do documento.
 //   - Quando autorizada: grava numero/chave/protocolo/emitida_em + URLs de PDF e XML.
 //   - Insere nfse_events. Toda escrita filtrada por company_id.
 // =============================================================================
@@ -15,7 +15,7 @@ import {
   corsHeaders,
   jsonResponse,
 } from "../fiscal-auth.ts";
-import { getProvider } from "../nfse-provider.ts";
+import { getNfseEngine } from "../nfse-provider.ts";
 import type { NfseProviderCtx } from "../nfse-provider.ts";
 import { NFSE_STATUS } from "../nfse-status.ts";
 import { clean, logId, providerErrorResponse } from "./common.ts";
@@ -42,13 +42,19 @@ export async function handleNfseStatus(req: Request): Promise<Response> {
     try {
       body = await req.json();
     } catch {
-      return jsonResponse({ error: "invalid_body", message: "Requisição inválida." }, 400);
+      return jsonResponse({
+        error: "invalid_body",
+        message: "Requisição inválida.",
+      }, 400);
     }
 
     const emissionId = clean(body?.emissionId);
     if (!emissionId) {
       return jsonResponse(
-        { error: "missing_emission", message: "Informe a emissão da nota fiscal." },
+        {
+          error: "missing_emission",
+          message: "Informe a emissão da nota fiscal.",
+        },
         400,
       );
     }
@@ -70,18 +76,20 @@ export async function handleNfseStatus(req: Request): Promise<Response> {
       );
     }
 
-    const referencia = clean(emission.fisqal_dps_id);
+    const referencia = clean(emission.chave_acesso) ||
+      clean(emission.referencia_fiscal);
     if (!referencia) {
       return jsonResponse(
         {
-          error: "no_fisqal_id",
-          message: "Esta nota ainda não possui identificador na emissão fiscal.",
+          error: "missing_fiscal_reference",
+          message:
+            "Esta nota ainda não possui identificador na emissão fiscal.",
         },
         409,
       );
     }
 
-    // ---- Provedor ativo (linha inteira de company_fiscal_settings vira o contexto).
+    // ---- Motor próprio (linha inteira de company_fiscal_settings vira o contexto).
     const { data: fiscal } = await supabase
       .from("company_fiscal_settings")
       .select("*")
@@ -92,9 +100,9 @@ export async function handleNfseStatus(req: Request): Promise<Response> {
       companyId,
       fiscal: (fiscal ?? {}) as Record<string, unknown>,
     };
-    const provider = getProvider(fiscal as Record<string, unknown> | null);
+    const engine = getNfseEngine();
 
-    const resultado = await provider.consultar(ctx, referencia, {
+    const resultado = await engine.consultar(ctx, referencia, {
       statusAtual: clean(emission.status) || NFSE_STATUS.PENDENTE,
     });
 
@@ -105,8 +113,7 @@ export async function handleNfseStatus(req: Request): Promise<Response> {
       NFSE_STATUS.CANCELADA,
     ].includes(statusRecebido as any);
     // O status da tela só fecha quando o adaptador confirma que a consulta
-    // trouxe evidência fiscal. Resposta parcial, timeout ou status de fila do
-    // intermediário continuam em reconciliação.
+    // trouxe evidência fiscal. Resposta parcial ou timeout continuam em reconciliação.
     const newStatus = terminal && resultado.confirmadoPeloFisco !== true
       ? NFSE_STATUS.CONFIRMACAO_PENDENTE
       : statusRecebido;
@@ -152,7 +159,10 @@ export async function handleNfseStatus(req: Request): Promise<Response> {
         message: updErr.message,
       });
       return jsonResponse(
-        { error: "persist_failed", message: "Falha ao atualizar o status da nota." },
+        {
+          error: "persist_failed",
+          message: "Falha ao atualizar o status da nota.",
+        },
         500,
       );
     }
@@ -179,7 +189,10 @@ export async function handleNfseStatus(req: Request): Promise<Response> {
       message: (err as Error)?.message ?? String(err),
     });
     return jsonResponse(
-      { error: "internal_error", message: "Falha inesperada ao consultar o status." },
+      {
+        error: "internal_error",
+        message: "Falha inesperada ao consultar o status.",
+      },
       500,
     );
   }

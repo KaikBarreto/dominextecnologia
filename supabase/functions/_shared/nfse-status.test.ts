@@ -1,9 +1,9 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { isNfseTerminal, mapNfseStatus, NFSE_STATUS } from "./nfse-status.ts";
 
-Deno.test("falha do intermediário permanece em confirmação e não encerra polling", () => {
+Deno.test("estado oficial inconclusivo permanece em confirmação e não encerra polling", () => {
   assertEquals(
-    mapNfseStatus("failed", NFSE_STATUS.PENDENTE),
+    mapNfseStatus("aguardando_confirmacao", NFSE_STATUS.PENDENTE),
     NFSE_STATUS.CONFIRMACAO_PENDENTE,
   );
   assertEquals(isNfseTerminal(NFSE_STATUS.CONFIRMACAO_PENDENTE), false);

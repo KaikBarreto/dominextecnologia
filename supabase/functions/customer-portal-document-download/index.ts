@@ -1,9 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
-import { getProvider } from "../_shared/nfse-provider.ts";
+import { getNfseEngine } from "../_shared/nfse-provider.ts";
 import type { NfseProviderCtx } from "../_shared/nfse-provider.ts";
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TOKEN_RE = /^[0-9a-f]{64}$/i;
 const SIGNED_URL_TTL_SECONDS = 300;
 
@@ -32,7 +33,9 @@ function clean(value: unknown): string {
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
-  if (req.method !== "POST") return json(req, { error: "method_not_allowed" }, 405);
+  if (req.method !== "POST") {
+    return json(req, { error: "method_not_allowed" }, 405);
+  }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
@@ -96,8 +99,12 @@ Deno.serve(async (req) => {
     return json(req, { error: "not_found" }, 404);
   }
 
-  const invoices = Array.isArray(payload.invoices) ? payload.invoices as PortalItem[] : [];
-  const documents = Array.isArray(payload.documents) ? payload.documents as PortalItem[] : [];
+  const invoices = Array.isArray(payload.invoices)
+    ? payload.invoices as PortalItem[]
+    : [];
+  const documents = Array.isArray(payload.documents)
+    ? payload.documents as PortalItem[]
+    : [];
   const isReleased = [...invoices, ...documents].some(
     (item) => item.id === documentId && item.source === source,
   );
@@ -122,8 +129,13 @@ Deno.serve(async (req) => {
       .createSignedUrl(document.storage_path, SIGNED_URL_TTL_SECONDS, {
         download: document.file_name,
       });
-    if (error || !signed?.signedUrl) return json(req, { error: "download_unavailable" }, 503);
-    return json(req, { url: signed.signedUrl, expires_in: SIGNED_URL_TTL_SECONDS });
+    if (error || !signed?.signedUrl) {
+      return json(req, { error: "download_unavailable" }, 503);
+    }
+    return json(req, {
+      url: signed.signedUrl,
+      expires_in: SIGNED_URL_TTL_SECONDS,
+    });
   }
 
   if (source === "contract_attachment") {
@@ -134,7 +146,11 @@ Deno.serve(async (req) => {
       .eq("company_id", companyId)
       .maybeSingle();
     if (!attachment) return json(req, { error: "not_found" }, 404);
-    if (!attachment.storage_path.startsWith(`${companyId}/${attachment.contract_id}/`)) {
+    if (
+      !attachment.storage_path.startsWith(
+        `${companyId}/${attachment.contract_id}/`,
+      )
+    ) {
       return json(req, { error: "not_found" }, 404);
     }
 
@@ -153,13 +169,17 @@ Deno.serve(async (req) => {
       .createSignedUrl(attachment.storage_path, SIGNED_URL_TTL_SECONDS, {
         download: attachment.display_name,
       });
-    if (error || !signed?.signedUrl) return json(req, { error: "download_unavailable" }, 503);
-    return json(req, { url: signed.signedUrl, expires_in: SIGNED_URL_TTL_SECONDS });
+    if (error || !signed?.signedUrl) {
+      return json(req, { error: "download_unavailable" }, 503);
+    }
+    return json(req, {
+      url: signed.signedUrl,
+      expires_in: SIGNED_URL_TTL_SECONDS,
+    });
   }
 
-  // NFS-e nativa: provedores antigos podem ter URL pronta; o motor proprio
-  // gera DANFSe sob demanda pela chave. O gate do portal acima substitui a
-  // autenticacao administrativa da rota fiscal interna.
+  // NFS-e nativa: o motor próprio gera DANFSe sob demanda pela chave. O gate do
+  // portal acima substitui a autenticação administrativa da rota fiscal interna.
   const { data: emission } = await service
     .from("nfse_emissions")
     .select("*")
@@ -174,7 +194,8 @@ Deno.serve(async (req) => {
     return json(req, { url: clean(emission.pdf_url), expires_in: null });
   }
 
-  const reference = clean(emission.chave_acesso) || clean(emission.fisqal_dps_id);
+  const reference = clean(emission.chave_acesso) ||
+    clean(emission.referencia_fiscal);
   if (!reference) return json(req, { error: "download_unavailable" }, 409);
 
   const { data: fiscal } = await service
@@ -185,15 +206,18 @@ Deno.serve(async (req) => {
   if (!fiscal) return json(req, { error: "download_unavailable" }, 503);
 
   try {
-    const provider = getProvider(fiscal);
-    if (!provider.danfse) return json(req, { error: "download_unavailable" }, 501);
+    const engine = getNfseEngine();
     const ctx: NfseProviderCtx = { supabase: service, companyId, fiscal };
-    const result = await provider.danfse(ctx, reference);
-    if (result.pdfUrl) return json(req, { url: result.pdfUrl, expires_in: null });
+    const result = await engine.danfse(ctx, reference);
+    if (result.pdfUrl) {
+      return json(req, { url: result.pdfUrl, expires_in: null });
+    }
     if (result.pdfBase64) {
       return json(req, {
         pdf_base64: result.pdfBase64,
-        file_name: `NFSe-${clean(emission.numero_nfse) || reference.slice(0, 12)}.pdf`,
+        file_name: `NFSe-${
+          clean(emission.numero_nfse) || reference.slice(0, 12)
+        }.pdf`,
       });
     }
   } catch (error) {

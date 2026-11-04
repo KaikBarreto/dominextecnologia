@@ -3,8 +3,6 @@ import {
   Shield,
   Upload,
   Loader2,
-  AlertCircle,
-  AlertTriangle,
   Eye,
   EyeOff,
 } from 'lucide-react';
@@ -24,14 +22,11 @@ interface CertificadoSectionProps {
   t: NfseMessages;
   locale: LocaleCode;
   timezone: string;
-  isRegistered: boolean;
-  registerError: { kind: 'data' | 'platform'; message: string } | null;
   hasCertificate: boolean;
   certificateExpiresAt: string | null;
   expired: boolean;
   expiringSoon: boolean;
   expiresDays: number | null;
-  onGoToEmpresa: () => void;
   fileInputRef: RefObject<HTMLInputElement>;
   certFile: File | null;
   certName: string;
@@ -53,14 +48,11 @@ export function CertificadoSection({
   t,
   locale,
   timezone,
-  isRegistered,
-  registerError,
   hasCertificate,
   certificateExpiresAt,
   expired,
   expiringSoon,
   expiresDays,
-  onGoToEmpresa,
   fileInputRef,
   certFile,
   certName,
@@ -78,36 +70,10 @@ export function CertificadoSection({
 }: CertificadoSectionProps) {
   return (
     <div className="space-y-4">
-      {!isRegistered &&
-        (registerError ? (
-          /* Motivo real da falha de registro — substitui o aviso genérico */
-          <NoticeBanner
-            variant={registerError.kind === 'data' ? 'warning' : 'destructive'}
-            icon={registerError.kind === 'data' ? AlertCircle : AlertTriangle}
-            title={t.settings.certificado.registerFailedTitle}
-          >
-            {(registerError.kind === 'data'
-              ? t.settings.certificado.registerFailedData
-              : t.settings.certificado.registerFailedPlatform
-            ).replace('{error}', registerError.message)}
-          </NoticeBanner>
-        ) : (
-          /* Aviso genérico: ainda não tentou salvar ou erro foi limpo */
-          <NoticeBanner variant="warning" icon={AlertCircle}>
-            {t.settings.certificado.notRegisteredWarning.split('{link}')[0]}
-            <button
-              type="button"
-              onClick={onGoToEmpresa}
-              className="font-semibold underline underline-offset-2"
-            >
-              {t.settings.certificado.notRegisteredLink}
-            </button>
-            {t.settings.certificado.notRegisteredWarning.split('{link}')[1]}
-          </NoticeBanner>
-        ))}
-
       {hasCertificate && (
-        <NoticeBanner variant={expired ? 'destructive' : expiringSoon ? 'warning' : 'success'}>
+        <NoticeBanner
+          variant={expired || !certificateExpiresAt ? 'destructive' : expiringSoon ? 'warning' : 'success'}
+        >
           {expired
             ? t.settings.certificado.certExpired.replace(
                 '{date}',
@@ -121,7 +87,7 @@ export function CertificadoSection({
                 (expiringSoon
                   ? t.settings.certificado.certExpiringSoon.replace('{days}', String(expiresDays))
                   : '.')
-              : t.settings.certificado.certSent}
+              : t.settings.certificado.certValidityUnknown}
         </NoticeBanner>
       )}
 
@@ -133,16 +99,17 @@ export function CertificadoSection({
           accept=".pfx,.p12"
           onChange={onCertSelect}
           className="hidden"
+          disabled={uploadingCert}
         />
         <Button
           type="button"
           variant="outline"
           onClick={() => fileInputRef.current?.click()}
-          disabled={!isRegistered}
-          className="w-full justify-start"
+          disabled={uploadingCert}
+          className="w-full min-w-0 justify-start"
         >
           <Upload className="h-4 w-4 mr-2" />
-          {certFile ? certFile.name : t.settings.certificado.fileBtn}
+          <span className="min-w-0 truncate">{certFile ? certFile.name : t.settings.certificado.fileBtn}</span>
         </Button>
       </div>
 
@@ -152,6 +119,7 @@ export function CertificadoSection({
           placeholder={t.settings.certificado.namePlaceholder}
           value={certName}
           onChange={(e) => onCertNameChange(e.target.value)}
+          disabled={uploadingCert}
         />
       </div>
 
@@ -164,7 +132,7 @@ export function CertificadoSection({
             onChange={(e) => onCertPasswordChange(e.target.value)}
             placeholder={t.settings.certificado.passwordPlaceholder}
             autoComplete="off"
-            disabled={!isRegistered}
+            disabled={uploadingCert}
             className="pr-10"
           />
           <Button
@@ -173,6 +141,7 @@ export function CertificadoSection({
             size="icon"
             className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground"
             onClick={onToggleShowPassword}
+            disabled={uploadingCert}
             aria-label={showPassword ? t.settings.certificado.hidePassword : t.settings.certificado.showPassword}
           >
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -193,7 +162,7 @@ export function CertificadoSection({
             id="cert-custody-consent"
             checked={consentChecked}
             onCheckedChange={(checked) => onConsentChange(checked === true)}
-            disabled={!isRegistered || uploadingCert}
+            disabled={uploadingCert}
             className="mt-0.5"
           />
           <Label htmlFor="cert-custody-consent" className="cursor-pointer text-xs font-normal leading-relaxed">
@@ -223,7 +192,7 @@ export function CertificadoSection({
         <Button
           onClick={onUpload}
           disabled={
-            !isRegistered || uploadingCert || isRecordingConsent || !certFile || !certPassword.trim() || !consentChecked
+            uploadingCert || isRecordingConsent || !certFile || !certPassword.trim() || !consentChecked
           }
           className="w-full sm:w-auto"
         >

@@ -7,13 +7,13 @@
 // O motor próprio NÃO guarda o PDF numa URL: o DANFSE é gerado sob demanda (o
 // microserviço tenta o oficial do governo e cai para geração local quando ele
 // está fora — já esteve 503). Sem esta rota, a tela gateava o download por
-// `pdf_url`, que nunca é preenchida no provedor `sefin`, e o resultado era uma
+// `pdf_url`, que não é preenchida pelo motor próprio, e o resultado era uma
 // nota autorizada SEM NENHUMA forma de o cliente obter o documento.
 //
 // Body: { emissionId } (id local de nfse_emissions).
 // Resposta 200: { pdfBase64, nomeArquivo }.
 //
-// A trilha de auditoria da decifra do certificado é gravada pelo PROVEDOR
+// A trilha de auditoria da decifra do certificado é gravada pelo motor
 // (ver `_shared/providers/sefin.ts`), não aqui.
 // =============================================================================
 
@@ -22,7 +22,7 @@ import {
   corsHeaders,
   jsonResponse,
 } from "../fiscal-auth.ts";
-import { getProvider } from "../nfse-provider.ts";
+import { getNfseEngine } from "../nfse-provider.ts";
 import type { NfseProviderCtx } from "../nfse-provider.ts";
 import { clean, logId, providerErrorResponse } from "./common.ts";
 
@@ -48,7 +48,10 @@ export async function handleNfseDanfse(req: Request): Promise<Response> {
     try {
       body = await req.json();
     } catch {
-      return jsonResponse({ error: "invalid_body", message: "Requisição inválida." }, 400);
+      return jsonResponse({
+        error: "invalid_body",
+        message: "Requisição inválida.",
+      }, 400);
     }
 
     const emissionId = clean(body?.emissionId);
@@ -77,7 +80,9 @@ export async function handleNfseDanfse(req: Request): Promise<Response> {
     // ---- Só documento que EXISTIU tem DANFSE. Rascunho e rejeitada nunca
     // chegaram a virar nota; cancelada existiu e o cliente tem direito a ela.
     const status = clean(emission.status);
-    if (!["autorizada", "cancelada", "cancelamento_pendente"].includes(status)) {
+    if (
+      !["autorizada", "cancelada", "cancelamento_pendente"].includes(status)
+    ) {
       return jsonResponse(
         {
           error: "sem_documento",
@@ -88,14 +93,16 @@ export async function handleNfseDanfse(req: Request): Promise<Response> {
       );
     }
 
-    // O DANFSE é resolvido pela CHAVE DE ACESSO (50 dígitos). O identificador
-    // interno do provedor serve de reserva para provedores que indexam por ele.
-    const referencia = clean(emission.chave_acesso) || clean(emission.fisqal_dps_id);
+    // O DANFSE é resolvido pela CHAVE DE ACESSO (50 dígitos). A referência fiscal
+    // cobre apenas o intervalo em que a emissão ainda está sendo reconciliada.
+    const referencia = clean(emission.chave_acesso) ||
+      clean(emission.referencia_fiscal);
     if (!referencia) {
       return jsonResponse(
         {
           error: "sem_chave",
-          message: "Esta nota ainda não tem chave de acesso. Atualize o status e tente de novo.",
+          message:
+            "Esta nota ainda não tem chave de acesso. Atualize o status e tente de novo.",
         },
         409,
       );
@@ -111,26 +118,16 @@ export async function handleNfseDanfse(req: Request): Promise<Response> {
       return jsonResponse(
         {
           error: "fiscal_not_configured",
-          message: "Configuração fiscal não encontrada. Revise as Configurações Fiscais.",
+          message:
+            "Configuração fiscal não encontrada. Revise as Configurações Fiscais.",
         },
         422,
       );
     }
 
     const ctx: NfseProviderCtx = { supabase, companyId, fiscal };
-    const provider = getProvider(fiscal);
-
-    if (!provider.danfse) {
-      return jsonResponse(
-        {
-          error: "provider_unsupported",
-          message: "A geração do PDF não está disponível para esta empresa.",
-        },
-        501,
-      );
-    }
-
-    const resultado = await provider.danfse(ctx, referencia);
+    const engine = getNfseEngine();
+    const resultado = await engine.danfse(ctx, referencia);
 
     if (!resultado.pdfBase64 && !resultado.pdfUrl) {
       return jsonResponse(
@@ -165,7 +162,10 @@ export async function handleNfseDanfse(req: Request): Promise<Response> {
       message: (err as Error)?.message ?? String(err),
     });
     return jsonResponse(
-      { error: "internal_error", message: "Falha inesperada ao gerar o PDF da nota." },
+      {
+        error: "internal_error",
+        message: "Falha inesperada ao gerar o PDF da nota.",
+      },
       500,
     );
   }

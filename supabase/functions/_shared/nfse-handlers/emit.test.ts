@@ -8,17 +8,20 @@
 // dois custos opostos e ambos caros:
 //   - registrar demais → lista do cliente vira lixeira de indisponibilidade;
 //   - registrar de menos → a nota "some" e ninguém consegue diagnosticar nada.
-//     Foi exatamente o rastro de uma tentativa que revelou, em 2026-09-02, que o
-//     provedor antigo roteava o Rio de Janeiro para um endpoint morto.
+//     Foi exatamente o rastro de uma tentativa que revelou uma falha de
+//     roteamento fiscal difícil de reproduzir.
 // =============================================================================
 
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   NfseProviderError,
   NfseProviderUnconfiguredError,
-  NfseProviderUnsupportedError,
 } from "../nfse-provider.ts";
-import { deveRegistrarTentativa, ehRecusaDeDocumento } from "./emit.ts";
+import {
+  deveRegistrarTentativa,
+  ehRecusaDeDocumento,
+  validarProntidaoFiscal,
+} from "./emit.ts";
 
 // --- Recusa oficial → linha `rejeitada` ----------------------------------------
 
@@ -32,14 +35,18 @@ Deno.test("rejeição do governo (E0312) é recusa de documento e vira linha", (
   assertEquals(deveRegistrarTentativa(err), true);
 });
 
-Deno.test("rejeição do provedor intermediado (NFSE_REJECTED) também vira linha", () => {
-  const err = new NfseProviderError("Rejeitada", 422, { codigo: "NFSE_REJECTED" });
+Deno.test("rejeição de domínio do motor também vira linha", () => {
+  const err = new NfseProviderError("Rejeitada", 422, {
+    codigo: "documento_rejeitado",
+  });
   assertEquals(ehRecusaDeDocumento(err), true);
   assertEquals(deveRegistrarTentativa(err), true);
 });
 
-Deno.test("erro de validação do intermediário não afirma recusa da prefeitura", () => {
-  const err = new NfseProviderError("Dados inválidos", 400, { codigo: "VALIDATION_ERROR" });
+Deno.test("erro de validação local não afirma recusa da administração tributária", () => {
+  const err = new NfseProviderError("Dados inválidos", 400, {
+    codigo: "dados_invalidos",
+  });
   assertEquals(ehRecusaDeDocumento(err), false);
   assertEquals(deveRegistrarTentativa(err), true);
 });
@@ -57,26 +64,32 @@ Deno.test("certificado ausente não vira nota rejeitada", () => {
 });
 
 Deno.test("CNPJ ausente não vira nota rejeitada", () => {
-  const err = new NfseProviderError("Cadastre o CNPJ…", 422, { codigo: "cnpj_ausente" });
+  const err = new NfseProviderError("Cadastre o CNPJ…", 422, {
+    codigo: "cnpj_ausente",
+  });
   assertEquals(deveRegistrarTentativa(err), false);
 });
 
-Deno.test("limite de plano e rate limit não viram nota rejeitada", () => {
-  for (const codigo of ["COMPANY_PLAN_LIMIT", "RATE_LIMITED", "CERTIFICATE_INVALID"]) {
+Deno.test("falhas de certificado e cobertura não viram nota rejeitada", () => {
+  for (const codigo of ["certificado_invalido", "cobertura_indisponivel"]) {
     const err = new NfseProviderError("…", 422, { codigo });
     assertEquals(deveRegistrarTentativa(err), false, codigo);
   }
 });
 
 Deno.test("integração não configurada não vira linha", () => {
-  assertEquals(deveRegistrarTentativa(new NfseProviderUnconfiguredError()), false);
-  assertEquals(deveRegistrarTentativa(new NfseProviderUnsupportedError()), false);
+  assertEquals(
+    deveRegistrarTentativa(new NfseProviderUnconfiguredError()),
+    false,
+  );
 });
 
 // --- Indisponibilidade → NÃO vira linha (evita lixo a cada retentativa) -------
 
 Deno.test("serviço indisponível não vira linha nem recusa", () => {
-  const err = new NfseProviderError("Indisponível", 503, { codigo: "servico_indisponivel" });
+  const err = new NfseProviderError("Indisponível", 503, {
+    codigo: "servico_indisponivel",
+  });
   assertEquals(ehRecusaDeDocumento(err), false);
   assertEquals(deveRegistrarTentativa(err), false);
 });
@@ -84,7 +97,7 @@ Deno.test("serviço indisponível não vira linha nem recusa", () => {
 // --- Desconhecido → fica aguardando confirmação (o rastro continua) ----------
 
 Deno.test("erro 502 sem código vira linha, mas como falha e não como recusa", () => {
-  const err = new NfseProviderError("Erro do provedor", 502);
+  const err = new NfseProviderError("Erro do motor", 502);
   assertEquals(ehRecusaDeDocumento(err), false);
   assertEquals(deveRegistrarTentativa(err), true);
 });
@@ -93,4 +106,49 @@ Deno.test("erro inesperado (bug nosso) vira linha: é o caso que ninguém previu
   const err = new TypeError("undefined is not a function");
   assertEquals(ehRecusaDeDocumento(err), false);
   assertEquals(deveRegistrarTentativa(err), true);
+});
+
+// --- Gate de prontidão antes de qualquer efeito fiscal -----------------------
+
+const AGORA = Date.parse("2026-11-04T23:00:00Z");
+const CONFIG_OK = {
+  pode_emitir: true,
+  certificado_ref: "tenant/certificado-cifrado.b64",
+  certificate_expires_at: "2027-11-04T23:00:00Z",
+};
+
+Deno.test("configuração pronta passa pelo gate fiscal", () => {
+  assertEquals(validarProntidaoFiscal(CONFIG_OK, AGORA), null);
+});
+
+Deno.test("município não confirmado falha antes do certificado", () => {
+  assertEquals(
+    validarProntidaoFiscal({ ...CONFIG_OK, pode_emitir: false }, AGORA)?.error,
+    "municipality_not_enabled",
+  );
+});
+
+Deno.test("certificado ausente ou sem validade conhecida falha fechado", () => {
+  assertEquals(
+    validarProntidaoFiscal({ ...CONFIG_OK, certificado_ref: null }, AGORA)
+      ?.error,
+    "certificate_missing",
+  );
+  assertEquals(
+    validarProntidaoFiscal(
+      { ...CONFIG_OK, certificate_expires_at: null },
+      AGORA,
+    )?.error,
+    "certificate_expiry_unknown",
+  );
+});
+
+Deno.test("certificado expirado falha fechado", () => {
+  assertEquals(
+    validarProntidaoFiscal(
+      { ...CONFIG_OK, certificate_expires_at: "2026-11-04T22:59:59Z" },
+      AGORA,
+    )?.error,
+    "certificate_expired",
+  );
 });

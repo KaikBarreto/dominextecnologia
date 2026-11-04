@@ -8623,9 +8623,15 @@ export type Database = {
           pdf_url: string | null
           percentual_trib_sn: number | null
           protocolo: string | null
+          referencia_fiscal: string | null
           regime_apuracao: string | null
+          requisicao_fiscal_id: string | null
           service_type_id: string | null
           status: string
+          status_fiscal_confirmado: boolean
+          status_fiscal_confirmado_em: string | null
+          status_fiscal_evidencia: Json | null
+          status_fiscal_fonte: string | null
           tomador_avulso: Json | null
           tp_ret_issqn: string | null
           trib_issqn: string | null
@@ -8667,9 +8673,15 @@ export type Database = {
           pdf_url?: string | null
           percentual_trib_sn?: number | null
           protocolo?: string | null
+          referencia_fiscal?: string | null
           regime_apuracao?: string | null
+          requisicao_fiscal_id?: string | null
           service_type_id?: string | null
           status?: string
+          status_fiscal_confirmado?: boolean
+          status_fiscal_confirmado_em?: string | null
+          status_fiscal_evidencia?: Json | null
+          status_fiscal_fonte?: string | null
           tomador_avulso?: Json | null
           tp_ret_issqn?: string | null
           trib_issqn?: string | null
@@ -8711,9 +8723,15 @@ export type Database = {
           pdf_url?: string | null
           percentual_trib_sn?: number | null
           protocolo?: string | null
+          referencia_fiscal?: string | null
           regime_apuracao?: string | null
+          requisicao_fiscal_id?: string | null
           service_type_id?: string | null
           status?: string
+          status_fiscal_confirmado?: boolean
+          status_fiscal_confirmado_em?: string | null
+          status_fiscal_evidencia?: Json | null
+          status_fiscal_fonte?: string | null
           tomador_avulso?: Json | null
           tp_ret_issqn?: string | null
           trib_issqn?: string | null
@@ -16536,6 +16554,10 @@ export type Database = {
       }
       fiscal_texto_busca: { Args: { p_texto: string }; Returns: string }
       fisqal_next_dps_number: {
+        Args: { p_company_id: string }
+        Returns: number
+      }
+      nfse_next_dps_number: {
         Args: { p_company_id: string }
         Returns: number
       }

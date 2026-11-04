@@ -1,7 +1,7 @@
 // Wrapper de fetch para a Evolution API AUTO-HOSPEDADA (open source, NÃO a API
 // oficial da Meta) que o tenant conecta via QR code num VPS brasileiro.
 //
-// Espelha os wrappers asaas-client.ts / fisqal-client.ts:
+// Espelha o padrão de transporte autenticado usado nas integrações do backend:
 //  - Base URL vem de Deno.env (EVOLUTION_API_URL); NUNCA hardcoded (cada ambiente
 //    aponta pro seu VPS). A versão/rotas ficam no PATH chamado.
 //  - Auth: header global `apikey: <EVOLUTION_API_KEY>` (padrão da Evolution API).

@@ -94,8 +94,8 @@ export function nfseRowToEmission(row: NfseListRow): NfseEmission {
     created_at: row.created_at,
     created_by: row.created_by,
     updated_at: row.created_at,
-    fisqal_dps_id: null,
-    fisqal_fiscal_request_id: null,
+    referencia_fiscal: null,
+    requisicao_fiscal_id: null,
     tomador_avulso: row.tomador_avulso ?? null,
     intermediario_avulso: row.intermediario_avulso ?? null,
     // ⚠️ A RPC `get_nfse_emissions_paged` ainda NÃO devolve estas duas colunas

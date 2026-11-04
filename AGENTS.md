@@ -44,7 +44,7 @@
 - CRM e comercial: leads, etapas, webhooks, propostas, contratos e conversao.
 - Clientes, equipamentos e PMOC: cadastro, anexos, contratos, visitas, documentos e certificados.
 - Financeiro e RH: contas, categorias, cobrancas, DRE, pagamentos, funcionarios, folha, ponto e DISC.
-- Fiscal/NFS-e: integracao Fisqal, certificados, emissao, status, quotas e codigos de servico.
+- Fiscal/NFS-e: motor proprio Dominex no Padrao Nacional, certificados, emissao, status, quotas e codigos de servico.
 - Estoque/compras: materiais, fornecedores, cotacoes, compras, NFe, contagem, kardex e transferencia.
 - Domiflix: catalogo, player, preferencias, avatar, secoes e experiencia de video.
 - Landing/growth/blog/i18n: site publico, SEO, conteudo, rotas localizadas e internacionalizacao.

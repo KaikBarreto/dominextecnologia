@@ -69,17 +69,15 @@ export default function NotasFiscais() {
   const { emissions, isLoading, refetch: refetchEmissions } = useNfse();
   const { settings, readyToEmit, isLoading: settingsLoading } = useFiscalSettings();
 
-  // "Config fiscal completa" = município liberado + empresa registrada +
-  // certificado enviado (critério único em useFiscalSettings). `pode_emitir`
-  // sozinho só diz que o município é coberto e liberava o botão Emitir antes
-  // do certificado existir, o que dava erro na hora de emitir.
+  // "Config fiscal completa" = município no Padrão Nacional + A1 próprio válido
+  // (critério único em useFiscalSettings).
   const fiscalConfigured = readyToEmit;
-  // Mostrar as abas/listagem assim que HÁ atividade fiscal (empresa já registrada
-  // OU qualquer nota/rascunho), mesmo antes de `pode_emitir` — senão um rascunho
+  // Mostrar as abas/listagem assim que HÁ atividade fiscal (A1, cobertura
+  // OU qualquer nota/rascunho), mesmo antes da prontidão — senão um rascunho
   // salvo fica invisível até o onboarding concluir. A ação de EMITIR continua
   // travada por `fiscalConfigured` (canEmit).
   const hasFiscalActivity =
-    settings.pode_emitir || !!settings.provider_company_id || emissions.length > 0;
+    settings.pode_emitir || !!settings.certificado_ref || emissions.length > 0;
 
   const [searchParams, setSearchParams] = useSearchParams();
   // Abre na listagem (a informação que o usuário busca primeiro); "Relatório

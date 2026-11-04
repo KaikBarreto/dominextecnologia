@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowLeft, Building2, CheckCircle2, AlertCircle, Info, Landmark, Loader2, Shield, Wrench } from 'lucide-react';
+import { ArrowLeft, Building2, CheckCircle2, AlertCircle, AlertTriangle, Info, Landmark, Loader2, MapPin, RefreshCw, Shield, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import {
   useFiscalSettings,
+  isFiscalReadyToEmit,
   normalizeRegApTribSN,
   type FiscalAmbiente,
   type FiscalSettingsEditable,
@@ -23,6 +23,7 @@ import { invokeNfse } from '@/utils/nfseEdge';
 import { supabase } from '@/integrations/supabase/client';
 import { type CnpjData } from '@/components/customers/CnpjDocumentInput';
 import { cnpjMask, cepMask } from '@/utils/masks';
+import { formatDate as formatDateLib } from '@/lib/format';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { FISCAL_SCREEN_PERMISSION } from '@/components/fiscal/fiscalPermissions';
@@ -50,7 +51,7 @@ interface FiscalForm {
   reg_ap_trib_sn: RegApTribSN;
   percentual_trib_sn: string;
   // Identidade/endereço da empresa — salvos em company_settings (espelhados
-  // pra `companies` por trigger server-side; a edge de registro lê de lá).
+  // pra `companies` por trigger server-side).
   razao_social: string;
   cnpj: string;
   cep: string;
@@ -109,9 +110,7 @@ function percentualTribSnFromDisplay(s: string): number | null {
  * ⚠️ Dominex é own-row: UMA configuração fiscal por empresa (`useFiscalSettings`).
  * Não tem seletor de CNPJ/multi-emitente — isso existe só no EcoSistema.
  *
- * Ordem do onboarding: registrar a EMPRESA primeiro (dados + endereço + status
- * de cobertura) → subir o CERTIFICADO A1 (precisa do companyId já criado) →
- * ajustar Tributação → cadastrar Serviços (opcional, a qualquer momento).
+ * Para emitir: dados fiscais salvos + município no Padrão Nacional + A1 válido.
  */
 export default function FiscalSettings() {
   const isMobile = useIsMobile();
@@ -120,10 +119,20 @@ export default function FiscalSettings() {
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.nfse;
 
-  const { settings, readyToEmit, isLoading, save, isSaving, invalidate } = useFiscalSettings();
+  const {
+    settings,
+    isLoading,
+    isError,
+    refetch: refetchFiscal,
+    save,
+    isSaving,
+    invalidate,
+  } = useFiscalSettings();
   const {
     settings: companySettings,
     isLoading: isLoadingCompany,
+    isError: isCompanyError,
+    refetch: refetchCompany,
     updateSettings,
   } = useCompanySettings();
 
@@ -149,24 +158,15 @@ export default function FiscalSettings() {
   /** Garante que o auto-backfill do IBGE rode no máximo 1x por carregamento da tela. */
   const ibgeBackfilledRef = useRef(false);
 
-  // Erro persistente de registro no provedor (visível até a empresa ser registrada).
-  const [registerError, setRegisterError] = useState<{ kind: 'data' | 'platform'; message: string } | null>(null);
-
   // Resultado da checagem de cobertura do município. `kind: 'not_covered'` = o
   // município respondeu que ainda não emite; `kind: 'error'` = não conseguimos
   // consultar agora. Nunca derruba o salvamento — é sempre informativo.
   const [coverageError, setCoverageError] = useState<{ kind: 'not_covered' | 'error'; message: string } | null>(null);
   const [checkingCoverage, setCheckingCoverage] = useState(false);
-
-  // Limpa o erro de registro quando a empresa já está registrada.
-  useEffect(() => {
-    if (settings.provider_company_id) setRegisterError(null);
-  }, [settings.provider_company_id]);
-
-  // Cobertura confirmada → limpa o aviso.
-  useEffect(() => {
-    if (settings.pode_emitir) setCoverageError(null);
-  }, [settings.pode_emitir]);
+  // `null` usa o valor persistido; `false` bloqueia durante/falha da consulta;
+  // uma string identifica o IBGE efetivamente confirmado nesta sessão. Assim
+  // uma cobertura antiga nunca continua verde depois de trocar o município.
+  const [coverageConfirmedInSession, setCoverageConfirmedInSession] = useState<string | false | null>(null);
 
   // Certificado
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -194,9 +194,7 @@ export default function FiscalSettings() {
         inscricao_municipal: settings.inscricao_municipal || '',
         inscricao_estadual: settings.inscricao_estadual || '',
         municipio_ibge: settings.municipio_ibge || '',
-        // Empresa já registrada → respeita o ambiente salvo. Setup novo (sem
-        // registro no provedor) → assume Produção (default do time).
-        fiscal_ambiente: settings.provider_company_id ? settings.fiscal_ambiente : 'producao',
+        fiscal_ambiente: settings.fiscal_ambiente,
         reg_ap_trib_sn: normalizeRegApTribSN(settings.reg_ap_trib_sn),
         percentual_trib_sn:
           settings.percentual_trib_sn != null ? String(settings.percentual_trib_sn).replace('.', ',') : '',
@@ -270,7 +268,8 @@ export default function FiscalSettings() {
   const runCoverageCheck = useCallback(
     async ({ silent = false }: { silent?: boolean } = {}) => {
       const ibge = form.municipio_ibge.trim();
-      if (!ibge) return;
+      if (!ibge) return 'skipped' as const;
+      setCoverageConfirmedInSession(false);
       setCheckingCoverage(true);
       try {
         const res = await invokeNfse<{ pode_emitir?: boolean }>('nfse-check-coverage', { ibge });
@@ -280,21 +279,27 @@ export default function FiscalSettings() {
           const message = (actionable ? res.message : null) ?? t.settings.empresa.coverageCheckError;
           setCoverageError({ kind: 'error', message });
           if (!silent) toast.warning(message);
-          return;
+          return 'error' as const;
         }
         if (res.data?.pode_emitir === true) {
+          setCoverageConfirmedInSession(ibge);
           setCoverageError(null);
           if (!silent) toast.success(t.settings.empresa.coverageOkToast);
+          return 'ready' as const;
         } else {
+          setCoverageConfirmedInSession(false);
           setCoverageError({ kind: 'not_covered', message: t.settings.empresa.coverageNotCovered });
           if (!silent) toast.warning(t.settings.empresa.coverageNotCovered);
+          return 'not_covered' as const;
         }
       } catch {
+        setCoverageConfirmedInSession(false);
         setCoverageError({ kind: 'error', message: t.settings.empresa.coverageCheckError });
         if (!silent) toast.warning(t.settings.empresa.coverageCheckError);
+        return 'error' as const;
       } finally {
         setCheckingCoverage(false);
-        invalidate();
+        await invalidate();
       }
     },
     [form.municipio_ibge, t, invalidate],
@@ -321,10 +326,24 @@ export default function FiscalSettings() {
 
   /**
    * Salva os dados da EMPRESA: identidade/endereço em company_settings (espelha
-   * pra `companies`, de onde a edge de registro lê) e os campos fiscais próprios
+   * pra `companies`, usados pelo motor fiscal) e os campos fiscais próprios
    * (IM/IE/IBGE/ambiente) em company_fiscal_settings.
    */
   const handleSaveCompany = async () => {
+    const requiredMissing =
+      !form.razao_social.trim() ||
+      form.cnpj.replace(/\D/g, '').length !== 14 ||
+      !form.inscricao_municipal.trim() ||
+      form.cep.replace(/\D/g, '').length !== 8 ||
+      !form.logradouro.trim() ||
+      !form.cidade.trim() ||
+      !form.uf.trim() ||
+      !form.municipio_ibge.trim();
+    if (requiredMissing) {
+      toast.error(t.settings.empresa.requiredFields);
+      return;
+    }
+
     const fiscalPayload: Partial<FiscalSettingsEditable> = {
       regime_tributario: form.regime_tributario || null,
       inscricao_municipal: form.inscricao_municipal.trim() || null,
@@ -349,27 +368,8 @@ export default function FiscalSettings() {
         save(fiscalPayload),
       ]);
 
-      // Após salvar, registra/atualiza a empresa no provedor automaticamente
-      // (cria na 1ª vez, atualiza nas demais). Falha aqui NÃO derruba o fluxo.
-      try {
-        setRegisterError(null);
-        const res = await invokeNfse('nfse-register-company');
-        if (res.ok) {
-          toast.success(t.settings.certificado.toasts.saveSuccess);
-          await runCoverageCheck({ silent: true });
-        } else {
-          const kind = res.errorCode === 'missing_fields' ? 'data' : 'platform';
-          const msg = res.message ?? 'erro desconhecido';
-          setRegisterError({ kind, message: msg });
-          toast.warning(t.settings.certificado.toasts.registerWarning.replace('{error}', msg));
-        }
-      } catch (regErr) {
-        const msg = regErr instanceof Error ? regErr.message : 'erro desconhecido';
-        setRegisterError({ kind: 'platform', message: msg });
-        toast.warning(t.settings.certificado.toasts.registerWarning.replace('{error}', msg));
-      } finally {
-        invalidate();
-      }
+      toast.success(t.settings.certificado.toasts.saveSuccess);
+      await runCoverageCheck({ silent: true });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t.settings.certificado.toasts.saveError);
     }
@@ -486,20 +486,33 @@ export default function FiscalSettings() {
     }
   };
 
-  const hasCertificate = !!settings.provider_certificate_id;
-  const isRegistered = !!settings.provider_company_id;
+  const hasCertificate = !!settings.certificado_ref;
+  const expiresAt = settings.certificate_expires_at
+    ? new Date(settings.certificate_expires_at).getTime()
+    : Number.NaN;
   const expiresDays = daysUntil(settings.certificate_expires_at);
-  const expiringSoon = expiresDays != null && expiresDays <= 30;
-  const expired = expiresDays != null && expiresDays < 0;
+  const expired = hasCertificate && Number.isFinite(expiresAt) && expiresAt <= Date.now();
+  const expiringSoon = !expired && expiresDays != null && expiresDays <= 30;
+  const certificateReady = hasCertificate && Number.isFinite(expiresAt) && expiresAt > Date.now();
+  const currentIbge = form.municipio_ibge.trim();
+  const persistedIbge = settings.municipio_ibge?.trim() ?? '';
+  const municipalityReady =
+    typeof coverageConfirmedInSession === 'string'
+      ? coverageConfirmedInSession === currentIbge
+      : coverageConfirmedInSession === false
+        ? false
+        : !!currentIbge && currentIbge === persistedIbge && settings.pode_emitir;
+  const readyToEmit = isFiscalReadyToEmit({ ...settings, pode_emitir: municipalityReady });
 
   const navTabs: SettingsTab[] = [
-    { value: 'empresa', label: `1. ${t.settings.sections.empresa}`, icon: Building2 },
-    { value: 'certificado', label: `2. ${t.settings.sections.certificado}`, icon: Shield },
-    { value: 'impostos', label: `3. ${t.settings.sections.impostos}`, icon: Landmark },
-    { value: 'servicos', label: `4. ${t.settings.sections.servicos}`, icon: Wrench },
+    { value: 'empresa', label: t.settings.sections.empresa, icon: Building2 },
+    { value: 'certificado', label: t.settings.sections.certificado, icon: Shield },
+    { value: 'impostos', label: t.settings.sections.impostos, icon: Landmark },
+    { value: 'servicos', label: t.settings.sections.servicos, icon: Wrench },
   ];
 
   const anyLoading = isLoading || isLoadingCompany;
+  const loadError = isError || isCompanyError;
 
   return (
     <div className={cn('space-y-4 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
@@ -517,23 +530,85 @@ export default function FiscalSettings() {
 
       <MobilePageHeader title={t.settings.title} subtitle={t.settings.pageSubtitle} icon={Shield} />
 
-      {/* Selo de prontidão — verde SÓ quando município liberado + empresa
-          registrada + certificado enviado. */}
-      <div className="flex flex-wrap items-center gap-2">
-        {readyToEmit ? (
-          <Badge className="bg-success text-success-foreground gap-1">
-            <CheckCircle2 className="h-3.5 w-3.5" /> {t.settings.readyBadge}
-          </Badge>
-        ) : (
-          <Badge className="bg-warning text-warning-foreground gap-1">
-            <AlertCircle className="h-3.5 w-3.5" /> {t.settings.incompleteBadge}
-          </Badge>
-        )}
-      </div>
+      {!anyLoading && !loadError && (
+        <div className="rounded-lg border border-border p-3 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            {readyToEmit ? (
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+            ) : (
+              <AlertCircle className="h-4 w-4 shrink-0 text-warning" />
+            )}
+            <span>{readyToEmit ? t.settings.readyBadge : t.settings.incompleteBadge}</span>
+          </div>
+          <div className="grid gap-2 md:grid-cols-2">
+            <div className="flex min-w-0 items-center gap-2 text-sm">
+              <MapPin className={`h-4 w-4 shrink-0 ${municipalityReady ? 'text-success' : 'text-warning'}`} />
+              <span className="min-w-0 flex-1 text-muted-foreground">
+                {municipalityReady
+                  ? t.settings.empresa.statusCoverageOk
+                  : t.settings.empresa.statusCoveragePending}
+              </span>
+              {!municipalityReady && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={checkingCoverage}
+                  onClick={() => {
+                    if (form.municipio_ibge.trim()) void runCoverageCheck();
+                    else setSection('empresa');
+                  }}
+                >
+                  {checkingCoverage ? <Loader2 className="h-4 w-4 animate-spin" /> : t.settings.empresa.checkCoverageShort}
+                </Button>
+              )}
+            </div>
+            <div className="flex min-w-0 items-center gap-2 text-sm">
+              <Shield className={`h-4 w-4 shrink-0 ${certificateReady ? 'text-success' : 'text-warning'}`} />
+              <span className="min-w-0 flex-1 text-muted-foreground">
+                {certificateReady && settings.certificate_expires_at
+                  ? t.settings.certificado.certValidUntil.replace(
+                      '{date}',
+                      formatDateLib(settings.certificate_expires_at, locale, timezone),
+                    )
+                  : hasCertificate && expired
+                    ? t.settings.certificado.certExpired.replace(
+                        '{date}',
+                        formatDateLib(settings.certificate_expires_at!, locale, timezone),
+                      )
+                    : hasCertificate
+                      ? t.settings.certificado.certValidityUnknown
+                      : t.settings.empresa.statusCertPending}
+              </span>
+              {!certificateReady && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => setSection('certificado')}>
+                  {hasCertificate ? t.settings.certificado.replaceBtn : t.settings.certificado.uploadBtn}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {anyLoading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-7 w-7 animate-spin text-primary" />
+        </div>
+      ) : loadError ? (
+        <div className="rounded-lg border border-border p-6 text-center space-y-3">
+          <AlertTriangle className="mx-auto h-7 w-7 text-destructive" />
+          <div>
+            <p className="font-semibold text-destructive">{t.settings.loadErrorTitle}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t.settings.loadError}</p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void Promise.all([refetchFiscal(), refetchCompany()])}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            {t.settings.retryBtn}
+          </Button>
         </div>
       ) : (
         <SettingsSidebarLayout tabs={navTabs} activeTab={section} onTabChange={(v) => setSection(v as FiscalSettingsSection)}>
@@ -557,13 +632,9 @@ export default function FiscalSettings() {
                 onCnpjDataFound={handleCnpjDataFound}
                 onSave={handleSaveCompany}
                 saving={isSaving || updateSettings.isPending}
-                isRegistered={isRegistered}
-                hasCertificate={hasCertificate}
-                podeEmitir={settings.pode_emitir}
                 checkingCoverage={checkingCoverage}
                 onCheckCoverage={() => runCoverageCheck()}
                 coverageError={coverageError}
-                registerError={registerError}
                 onGoToCertificado={() => setSection('certificado')}
               />
             )}
@@ -573,14 +644,11 @@ export default function FiscalSettings() {
                 t={t}
                 locale={locale}
                 timezone={timezone}
-                isRegistered={isRegistered}
-                registerError={registerError}
                 hasCertificate={hasCertificate}
                 certificateExpiresAt={settings.certificate_expires_at}
                 expired={expired}
                 expiringSoon={expiringSoon}
                 expiresDays={expiresDays}
-                onGoToEmpresa={() => setSection('empresa')}
                 fileInputRef={fileInputRef}
                 certFile={certFile}
                 certName={certName}

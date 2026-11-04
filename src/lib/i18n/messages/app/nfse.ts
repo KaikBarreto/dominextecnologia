@@ -501,6 +501,9 @@ export const nfse = {
       back: 'Voltar',
       readyBadge: 'Apto a emitir',
       incompleteBadge: 'Configuração incompleta',
+      loadErrorTitle: 'Não foi possível carregar as configurações fiscais',
+      loadError: 'Seus dados não foram alterados. Tente carregar novamente antes de continuar.',
+      retryBtn: 'Tentar novamente',
       sections: {
         empresa: 'Empresa',
         certificado: 'Certificado A1',
@@ -513,9 +516,9 @@ export const nfse = {
       },
       steps: {
         hintEmpresa:
-          'Passo 1 de 2: preencha os dados e registre a empresa. Só depois libera o certificado.',
+          'Confira e salve os dados fiscais da empresa. Eles identificam o prestador em cada nota.',
         hintCertificado:
-          'Passo 2 de 2: com a empresa já registrada, envie o certificado A1 (.pfx/.p12).',
+          'Envie o certificado A1 (.pfx/.p12) usado para assinar as notas no Padrão Nacional.',
       },
       empresa: {
         companyName: 'Razão social / Nome',
@@ -535,16 +538,15 @@ export const nfse = {
         environmentHomologation: 'Homologação: notas de teste, sem valor fiscal.',
         environmentOff: 'Homologação',
         environmentOn: 'Produção',
-        saveBtn: 'Salvar dados da empresa',
-        statusSection: 'Status da emissão',
-        statusCompanyRegistered: 'Empresa: registrada',
-        statusCompanyPending: 'Empresa: não registrada',
-        statusCertSent: 'Certificado: enviado',
-        statusCertPending: 'Certificado: pendente',
+        saveBtn: 'Salvar dados fiscais',
+        statusCertPending: 'Certificado A1: pendente',
         nextBtn: 'Próximo: enviar certificado',
         inscricaoMunicipalHint:
-          'Exigida pela prefeitura para registrar a empresa e emitir notas. É o mesmo campo da aba Tributação.',
+          'Exigida pelo município para emitir notas. É o mesmo campo da aba Tributação.',
+        requiredFields:
+          'Preencha razão social, CNPJ, Inscrição Municipal e o endereço fiscal completo antes de salvar.',
         checkCoverageBtn: 'Verificar cobertura do município',
+        checkCoverageShort: 'Verificar',
         statusCoverageOk: 'Município: liberado para emitir notas',
         statusCoveragePending: 'Município: liberação ainda não confirmada',
         coverageNeedsCity: 'Informe o CEP ou a cidade da empresa para verificar a liberação do município.',
@@ -557,13 +559,11 @@ export const nfse = {
           'Não conseguimos verificar a liberação do município agora. Tente novamente em alguns minutos.',
       },
       certificado: {
-        notRegisteredWarning:
-          'Registre a empresa antes de subir o certificado. Volte ao passo {link} e registre a empresa primeiro.',
-        notRegisteredLink: '1. Empresa',
         certExpired: 'Certificado vencido em {date}. Envie um novo.',
         certValidUntil: 'Certificado válido até {date}',
         certExpiringSoon: ' — vence em {days} dia(s).',
         certSent: 'Certificado enviado.',
+        certValidityUnknown: 'A validade do certificado não foi confirmada. Envie o A1 novamente.',
         fileLabel: 'Arquivo do certificado',
         fileBtn: 'Selecionar arquivo (.pfx / .p12)',
         nameLabel: 'Nome do certificado (opcional)',
@@ -574,6 +574,7 @@ export const nfse = {
         showPassword: 'Mostrar senha',
         hidePassword: 'Ocultar senha',
         uploadBtn: 'Enviar certificado',
+        replaceBtn: 'Enviar novo',
         consent: {
           title: 'Autorização para guardar o certificado',
           checkbox:
@@ -623,14 +624,7 @@ export const nfse = {
             'Não foi possível registrar sua autorização. O certificado não foi enviado, tente novamente.',
           saveError: 'Não foi possível salvar os dados da empresa.',
           saveSuccess: 'Dados da empresa salvos.',
-          registerWarning:
-            'Dados salvos, mas o registro para emissão falhou: {error}. Revise os dados e salve novamente.',
         },
-        registerFailedTitle: 'Empresa ainda não registrada para emissão',
-        registerFailedData:
-          'Não conseguimos registrar sua empresa na emissão fiscal. Motivo: {error} Corrija os dados acima e salve novamente.',
-        registerFailedPlatform:
-          'Não foi possível registrar sua empresa na emissão fiscal no momento: {error} Isso não é problema nos seus dados — já estamos verificando. Tente novamente em alguns minutos ou fale com o suporte.',
       },
       impostos: {
         regime: 'Regime tributário',
@@ -871,7 +865,7 @@ export const nfse = {
         },
         retencoes: {
           sectionTitle: 'Retenções federais',
-          hint: 'Valores em R$ retidos na fonte (PIS, COFINS, CSLL). INSS e IRRF não se aplicam neste provedor.',
+          hint: 'Valores em R$ retidos na fonte (PIS, COFINS, CSLL). INSS e IRRF ainda não estão disponíveis nesta emissão de NFS-e.',
           pis: 'PIS retido (R$)',
           cofins: 'COFINS retido (R$)',
           csll: 'CSLL retido (R$)',
@@ -902,10 +896,13 @@ export const nfse = {
         habilitacaoBlockedTitle: 'Emissão bloqueada',
         habilitacaoWarningTitle: 'Atenção',
         habilitacaoError: 'Configure o certificado digital nas Configurações Fiscais.',
-        habilitacaoErrorRegistro:
-          'Conclua o cadastro da empresa nas Configurações Fiscais para liberar a emissão.',
+        habilitacaoErrorCertValidity:
+          'A validade do certificado não foi confirmada. Envie o A1 novamente nas Configurações Fiscais.',
+        habilitacaoErrorCertExpired:
+          'O certificado digital está vencido. Envie um novo A1 nas Configurações Fiscais.',
         habilitacaoErrorMunicipio:
           'O município ainda não está liberado para emitir NFS-e. Verifique nas Configurações Fiscais.',
+        habilitacaoAction: 'Abrir Configurações Fiscais',
         loadingMessage: 'Processando emissão...',
         issRetido: 'retido',
         issDue: 'devido',
@@ -1423,6 +1420,9 @@ export const nfse = {
       back: 'Back',
       readyBadge: 'Ready to issue',
       incompleteBadge: 'Setup incomplete',
+      loadErrorTitle: 'Could not load tax settings',
+      loadError: 'Your data was not changed. Try loading it again before continuing.',
+      retryBtn: 'Try again',
       sections: {
         empresa: 'Company',
         certificado: 'Digital Certificate',
@@ -1435,9 +1435,9 @@ export const nfse = {
       },
       steps: {
         hintEmpresa:
-          'Step 1 of 2: fill in your company details and register. The certificate step unlocks after this.',
+          'Review and save your company tax details. They identify the issuer on every invoice.',
         hintCertificado:
-          'Step 2 of 2: with your company registered, upload your A1 digital certificate (.pfx/.p12).',
+          'Upload the A1 digital certificate (.pfx/.p12) used to sign invoices on the National Standard.',
       },
       empresa: {
         companyName: 'Company name / Legal name',
@@ -1457,16 +1457,15 @@ export const nfse = {
         environmentHomologation: 'Sandbox: test invoices, no tax effect.',
         environmentOff: 'Sandbox',
         environmentOn: 'Production',
-        saveBtn: 'Save company details',
-        statusSection: 'Issuance status',
-        statusCompanyRegistered: 'Company: registered',
-        statusCompanyPending: 'Company: not registered',
-        statusCertSent: 'Certificate: uploaded',
-        statusCertPending: 'Certificate: pending',
+        saveBtn: 'Save tax details',
+        statusCertPending: 'A1 certificate: pending',
         nextBtn: 'Next: upload certificate',
         inscricaoMunicipalHint:
-          'Required by the city hall to register the company and issue invoices. It is the same field as on the Taxation tab.',
+          'Required by the municipality to issue invoices. It is the same field as on the Taxation tab.',
+        requiredFields:
+          'Fill in the legal name, CNPJ, Municipal Registration and full registered address before saving.',
         checkCoverageBtn: 'Check municipality availability',
+        checkCoverageShort: 'Check',
         statusCoverageOk: 'Municipality: cleared to issue invoices',
         statusCoveragePending: 'Municipality: clearance not confirmed yet',
         coverageNeedsCity: 'Fill in the company ZIP code or city to check the municipality clearance.',
@@ -1479,13 +1478,11 @@ export const nfse = {
           'We could not check the municipality clearance right now. Please try again in a few minutes.',
       },
       certificado: {
-        notRegisteredWarning:
-          'Register your company before uploading the certificate. Go back to step {link} and register the company first.',
-        notRegisteredLink: '1. Company',
         certExpired: 'Certificate expired on {date}. Please upload a new one.',
         certValidUntil: 'Certificate valid until {date}',
         certExpiringSoon: ' — expires in {days} day(s).',
         certSent: 'Certificate uploaded.',
+        certValidityUnknown: 'The certificate validity could not be confirmed. Upload the A1 again.',
         fileLabel: 'Certificate file',
         fileBtn: 'Select file (.pfx / .p12)',
         nameLabel: 'Certificate name (optional)',
@@ -1496,6 +1493,7 @@ export const nfse = {
         showPassword: 'Show password',
         hidePassword: 'Hide password',
         uploadBtn: 'Upload certificate',
+        replaceBtn: 'Upload new',
         consent: {
           title: 'Authorization to store your certificate',
           checkbox:
@@ -1545,14 +1543,7 @@ export const nfse = {
             'We could not record your authorization. The certificate was not uploaded, please try again.',
           saveError: 'Could not save company details.',
           saveSuccess: 'Company details saved.',
-          registerWarning:
-            'Details saved, but issuance registration failed: {error}. Review the data and save again.',
         },
-        registerFailedTitle: 'Company not yet registered for invoicing',
-        registerFailedData:
-          'We could not register your company for invoice issuance. Reason: {error} Please correct the details above and save again.',
-        registerFailedPlatform:
-          'We could not register your company for invoice issuance at this time: {error} This is not a problem with your data — our team is already looking into it. Please try again in a few minutes or contact support.',
       },
       impostos: {
         regime: 'Tax regime',
@@ -1790,7 +1781,7 @@ export const nfse = {
         },
         retencoes: {
           sectionTitle: 'Federal withholdings',
-          hint: 'R$ amounts withheld at source (PIS, COFINS, CSLL). INSS and IRRF are not supported by this provider.',
+          hint: 'R$ amounts withheld at source (PIS, COFINS, CSLL). INSS and IRRF are not yet available in this NFS-e issuance flow.',
           pis: 'PIS withheld (R$)',
           cofins: 'COFINS withheld (R$)',
           csll: 'CSLL withheld (R$)',
@@ -1820,10 +1811,13 @@ export const nfse = {
         habilitacaoBlockedTitle: 'Issuance blocked',
         habilitacaoWarningTitle: 'Attention',
         habilitacaoError: 'Set up your digital certificate in Tax Settings.',
-        habilitacaoErrorRegistro:
-          'Finish the company setup in Tax Settings to unlock invoice issuance.',
+        habilitacaoErrorCertValidity:
+          'The certificate validity could not be confirmed. Upload the A1 again in Tax Settings.',
+        habilitacaoErrorCertExpired:
+          'The digital certificate has expired. Upload a new A1 in Tax Settings.',
         habilitacaoErrorMunicipio:
           'This municipality is not cleared for invoice issuance yet. Check it in Tax Settings.',
+        habilitacaoAction: 'Open Tax Settings',
         loadingMessage: 'Processing issuance...',
         issRetido: 'withheld',
         issDue: 'due',
@@ -1972,7 +1966,7 @@ export const nfse = {
       },
       emptyNoCertificate: {
         title: 'Certificado digital necesario',
-        description: 'Tu empresa todavía no tiene un certificado A1 registrado. Sin él, ninguna factura destinada llega hasta aquí.',
+        description: 'Tu empresa todavía no tiene un certificado A1 válido. Sin él, ninguna factura destinada llega hasta aquí.',
         action: 'Ir a configuración fiscal',
       },
       emptyNoNotes: {
@@ -2342,6 +2336,9 @@ export const nfse = {
       back: 'Volver',
       readyBadge: 'Listo para emitir',
       incompleteBadge: 'Configuración incompleta',
+      loadErrorTitle: 'No se pudo cargar la configuración fiscal',
+      loadError: 'Tus datos no se modificaron. Intenta cargarlos de nuevo antes de continuar.',
+      retryBtn: 'Intentar de nuevo',
       sections: {
         empresa: 'Empresa',
         certificado: 'Certificado Digital',
@@ -2354,9 +2351,9 @@ export const nfse = {
       },
       steps: {
         hintEmpresa:
-          'Paso 1 de 2: completa los datos y registra la empresa. El certificado se desbloquea después.',
+          'Revisa y guarda los datos fiscales de la empresa. Identifican al emisor en cada factura.',
         hintCertificado:
-          'Paso 2 de 2: con la empresa registrada, sube el certificado digital A1 (.pfx/.p12).',
+          'Sube el certificado digital A1 (.pfx/.p12) usado para firmar facturas en el Estándar Nacional.',
       },
       empresa: {
         companyName: 'Razón social / Nombre',
@@ -2376,16 +2373,15 @@ export const nfse = {
         environmentHomologation: 'Homologación: facturas de prueba, sin efecto fiscal.',
         environmentOff: 'Homologación',
         environmentOn: 'Producción',
-        saveBtn: 'Guardar datos de la empresa',
-        statusSection: 'Estado de la emisión',
-        statusCompanyRegistered: 'Empresa: registrada',
-        statusCompanyPending: 'Empresa: no registrada',
-        statusCertSent: 'Certificado: enviado',
-        statusCertPending: 'Certificado: pendiente',
+        saveBtn: 'Guardar datos fiscales',
+        statusCertPending: 'Certificado A1: pendiente',
         nextBtn: 'Siguiente: enviar certificado',
         inscricaoMunicipalHint:
-          'Exigido por el ayuntamiento para registrar la empresa y emitir facturas. Es el mismo campo de la pestaña Tributación.',
+          'Exigido por el municipio para emitir facturas. Es el mismo campo de la pestaña Tributación.',
+        requiredFields:
+          'Completa la razón social, CNPJ, Registro Municipal y el domicilio fiscal antes de guardar.',
         checkCoverageBtn: 'Verificar disponibilidad del municipio',
+        checkCoverageShort: 'Verificar',
         statusCoverageOk: 'Municipio: habilitado para emitir facturas',
         statusCoveragePending: 'Municipio: habilitación aún no confirmada',
         coverageNeedsCity: 'Informa el código postal o la ciudad de la empresa para verificar la habilitación del municipio.',
@@ -2398,13 +2394,11 @@ export const nfse = {
           'No pudimos verificar la habilitación del municipio ahora. Inténtalo de nuevo en unos minutos.',
       },
       certificado: {
-        notRegisteredWarning:
-          'Registra la empresa antes de subir el certificado. Vuelve al paso {link} y registra la empresa primero.',
-        notRegisteredLink: '1. Empresa',
         certExpired: 'Certificado vencido el {date}. Sube uno nuevo.',
         certValidUntil: 'Certificado válido hasta {date}',
         certExpiringSoon: ' — vence en {days} día(s).',
         certSent: 'Certificado enviado.',
+        certValidityUnknown: 'No se pudo confirmar la validez del certificado. Sube el A1 de nuevo.',
         fileLabel: 'Archivo del certificado',
         fileBtn: 'Seleccionar archivo (.pfx / .p12)',
         nameLabel: 'Nombre del certificado (opcional)',
@@ -2416,6 +2410,7 @@ export const nfse = {
         showPassword: 'Mostrar contraseña',
         hidePassword: 'Ocultar contraseña',
         uploadBtn: 'Enviar certificado',
+        replaceBtn: 'Enviar nuevo',
         consent: {
           title: 'Autorización para guardar el certificado',
           checkbox:
@@ -2465,14 +2460,7 @@ export const nfse = {
             'No fue posible registrar tu autorización. El certificado no se envió, inténtalo de nuevo.',
           saveError: 'No se pudieron guardar los datos de la empresa.',
           saveSuccess: 'Datos de la empresa guardados.',
-          registerWarning:
-            'Datos guardados, pero el registro para emisión falló: {error}. Revisa los datos y guarda de nuevo.',
         },
-        registerFailedTitle: 'Empresa aún no registrada para emisión',
-        registerFailedData:
-          'No pudimos registrar tu empresa para la emisión de facturas fiscales. Motivo: {error} Corrige los datos anteriores y guarda de nuevo.',
-        registerFailedPlatform:
-          'No fue posible registrar tu empresa para la emisión de facturas en este momento: {error} Esto no es un problema en tus datos — ya lo estamos revisando. Intenta de nuevo en unos minutos o contacta con el soporte.',
       },
       impostos: {
         regime: 'Régimen tributario',
@@ -2710,7 +2698,7 @@ export const nfse = {
         },
         retencoes: {
           sectionTitle: 'Retenciones federales',
-          hint: 'Importes en R$ retenidos en la fuente (PIS, COFINS, CSLL). INSS e IRRF no aplican en este proveedor.',
+          hint: 'Importes en R$ retenidos en la fuente (PIS, COFINS, CSLL). INSS e IRRF todavía no están disponibles en esta emisión de NFS-e.',
           pis: 'PIS retenido (R$)',
           cofins: 'COFINS retenido (R$)',
           csll: 'CSLL retenido (R$)',
@@ -2740,10 +2728,13 @@ export const nfse = {
         habilitacaoBlockedTitle: 'Emisión bloqueada',
         habilitacaoWarningTitle: 'Atención',
         habilitacaoError: 'Configura el certificado digital en Configuración fiscal.',
-        habilitacaoErrorRegistro:
-          'Completa el registro de la empresa en Configuración fiscal para habilitar la emisión.',
+        habilitacaoErrorCertValidity:
+          'No se pudo confirmar la validez del certificado. Sube el A1 de nuevo en Configuración fiscal.',
+        habilitacaoErrorCertExpired:
+          'El certificado digital está vencido. Sube un nuevo A1 en Configuración fiscal.',
         habilitacaoErrorMunicipio:
           'El municipio todavía no está habilitado para emitir facturas. Verifícalo en Configuración fiscal.',
+        habilitacaoAction: 'Abrir Configuración fiscal',
         loadingMessage: 'Procesando emisión...',
         issRetido: 'retenido',
         issDue: 'debido',
@@ -2895,7 +2886,7 @@ export const nfse = {
       emptyNoCertificate: {
         title: 'Certificat numérique requis',
         description:
-          "Votre entreprise n'a pas encore de certificat A1 enregistré. Sans lui, aucune facture reçue n'arrive jusqu'ici.",
+          "Votre entreprise n'a pas encore de certificat A1 valide. Sans lui, aucune facture reçue n'arrive jusqu'ici.",
         action: 'Aller aux paramètres fiscaux',
       },
       emptyNoNotes: {
@@ -3265,6 +3256,9 @@ export const nfse = {
       back: 'Retour',
       readyBadge: 'Prêt à émettre',
       incompleteBadge: 'Configuration incomplète',
+      loadErrorTitle: 'Impossible de charger les paramètres fiscaux',
+      loadError: "Vos données n'ont pas été modifiées. Rechargez-les avant de continuer.",
+      retryBtn: 'Réessayer',
       sections: {
         empresa: 'Entreprise',
         certificado: 'Certificat numérique',
@@ -3277,9 +3271,9 @@ export const nfse = {
       },
       steps: {
         hintEmpresa:
-          'Étape 1 sur 2 : renseignez les données et enregistrez l\'entreprise. Le certificat se débloque ensuite.',
+          "Vérifiez et enregistrez les données fiscales de l'entreprise. Elles identifient l'émetteur sur chaque facture.",
         hintCertificado:
-          'Étape 2 sur 2 : avec l\'entreprise enregistrée, envoyez le certificat numérique A1 (.pfx/.p12).',
+          'Envoyez le certificat numérique A1 (.pfx/.p12) utilisé pour signer les factures selon le Standard National.',
       },
       empresa: {
         companyName: 'Raison sociale / Nom',
@@ -3299,16 +3293,15 @@ export const nfse = {
         environmentHomologation: 'Homologation : factures de test, sans effet fiscal.',
         environmentOff: 'Homologation',
         environmentOn: 'Production',
-        saveBtn: "Enregistrer les données de l'entreprise",
-        statusSection: "Statut de l'émission",
-        statusCompanyRegistered: 'Entreprise : enregistrée',
-        statusCompanyPending: 'Entreprise : non enregistrée',
-        statusCertSent: 'Certificat : envoyé',
-        statusCertPending: 'Certificat : en attente',
+        saveBtn: 'Enregistrer les données fiscales',
+        statusCertPending: 'Certificat A1 : en attente',
         nextBtn: 'Suivant : envoyer le certificat',
         inscricaoMunicipalHint:
-          "Exigée par la mairie pour enregistrer l'entreprise et émettre des factures. C'est le même champ que dans l'onglet Fiscalité.",
+          "Exigée par la commune pour émettre des factures. C'est le même champ que dans l'onglet Fiscalité.",
+        requiredFields:
+          "Renseignez la raison sociale, le CNPJ, l'inscription municipale et l'adresse fiscale complète avant d'enregistrer.",
         checkCoverageBtn: 'Vérifier la disponibilité de la commune',
+        checkCoverageShort: 'Vérifier',
         statusCoverageOk: 'Commune : autorisée à émettre des factures',
         statusCoveragePending: 'Commune : autorisation pas encore confirmée',
         coverageNeedsCity: "Renseignez le code postal ou la ville de l'entreprise pour vérifier l'autorisation de la commune.",
@@ -3321,13 +3314,11 @@ export const nfse = {
           "Nous n'avons pas pu vérifier l'autorisation de la commune pour le moment. Réessayez dans quelques minutes.",
       },
       certificado: {
-        notRegisteredWarning:
-          "Enregistrez l'entreprise avant d'envoyer le certificat. Revenez à l'étape {link} et enregistrez l'entreprise d'abord.",
-        notRegisteredLink: '1. Entreprise',
         certExpired: 'Certificat expiré le {date}. Veuillez en envoyer un nouveau.',
         certValidUntil: 'Certificat valide jusqu\'au {date}',
         certExpiringSoon: ' — expire dans {days} jour(s).',
         certSent: 'Certificat envoyé.',
+        certValidityUnknown: "La validité du certificat n'a pas pu être confirmée. Envoyez à nouveau l'A1.",
         fileLabel: 'Fichier du certificat',
         fileBtn: 'Sélectionner un fichier (.pfx / .p12)',
         nameLabel: 'Nom du certificat (facultatif)',
@@ -3339,6 +3330,7 @@ export const nfse = {
         showPassword: 'Afficher le mot de passe',
         hidePassword: 'Masquer le mot de passe',
         uploadBtn: 'Envoyer le certificat',
+        replaceBtn: 'Envoyer un nouveau',
         consent: {
           title: 'Autorisation de conservation du certificat',
           checkbox:
@@ -3389,14 +3381,7 @@ export const nfse = {
             "Impossible d'enregistrer votre autorisation. Le certificat n'a pas été envoyé, réessayez.",
           saveError: "Impossible d'enregistrer les données de l'entreprise.",
           saveSuccess: "Données de l'entreprise enregistrées.",
-          registerWarning:
-            "Données enregistrées, mais l'enregistrement pour émission a échoué : {error}. Vérifiez les données et enregistrez à nouveau.",
         },
-        registerFailedTitle: "Entreprise pas encore enregistrée pour l`émission",
-        registerFailedData:
-          "Nous n`avons pas pu enregistrer votre entreprise pour l`émission de factures fiscales. Motif : {error} Corrigez les données ci-dessus et enregistrez à nouveau.",
-        registerFailedPlatform:
-          "Nous n`avons pas pu enregistrer votre entreprise pour l`émission de factures pour le moment : {error} Ce n`est pas un problème lié à vos données — notre équipe vérifie déjà. Réessayez dans quelques minutes ou contactez le support.",
       },
       impostos: {
         regime: 'Régime fiscal',
@@ -3634,7 +3619,7 @@ export const nfse = {
         },
         retencoes: {
           sectionTitle: 'Retenues fédérales',
-          hint: 'Montants en R$ retenus à la source (PIS, COFINS, CSLL). INSS et IRRF ne sont pas pris en charge par ce prestataire.',
+          hint: "Montants en R$ retenus à la source (PIS, COFINS, CSLL). L'INSS et l'IRRF ne sont pas encore disponibles dans cette émission de NFS-e.",
           pis: 'PIS retenu (R$)',
           cofins: 'COFINS retenu (R$)',
           csll: 'CSLL retenu (R$)',
@@ -3664,10 +3649,13 @@ export const nfse = {
         habilitacaoBlockedTitle: 'Émission bloquée',
         habilitacaoWarningTitle: 'Attention',
         habilitacaoError: 'Configurez votre certificat numérique dans les Paramètres fiscaux.',
-        habilitacaoErrorRegistro:
-          "Terminez l'enregistrement de l'entreprise dans les Paramètres fiscaux pour débloquer l'émission.",
+        habilitacaoErrorCertValidity:
+          "La validité du certificat n'a pas pu être confirmée. Envoyez à nouveau l'A1 dans les Paramètres fiscaux.",
+        habilitacaoErrorCertExpired:
+          "Le certificat numérique a expiré. Envoyez un nouvel A1 dans les Paramètres fiscaux.",
         habilitacaoErrorMunicipio:
           "La commune n'est pas encore autorisée à émettre des factures. Vérifiez dans les Paramètres fiscaux.",
+        habilitacaoAction: 'Ouvrir les Paramètres fiscaux',
         loadingMessage: 'Traitement de l\'émission...',
         issRetido: 'retenue',
         issDue: 'due',
