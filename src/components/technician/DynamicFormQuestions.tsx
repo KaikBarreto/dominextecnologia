@@ -542,6 +542,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                 checked={value === 'true'}
                 onCheckedChange={(checked) => saveResponse(question.id, checked ? 'true' : 'false')}
                 disabled={isSaving}
+                className="data-[state=checked]:bg-foreground"
               />
               <span className="text-sm">
                 {value === 'true' ? (
@@ -762,6 +763,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                   checked={selectedValues.includes(opt)}
                   onCheckedChange={() => toggleOption(opt)}
                   disabled={isSaving}
+                  className="border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
                 />
                 {opt}
               </label>
@@ -953,8 +955,8 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           <div
             key={question.id}
             className={cn(
-              'space-y-2 p-3 rounded-lg',
-              plainQuestionSurface ? 'bg-transparent' : 'bg-muted/30',
+              'space-y-2',
+              plainQuestionSurface ? 'py-3' : 'rounded-lg bg-muted/30 p-3',
             )}
           >
             {/* Cabeçalho como <div> (NÃO <label>): um <label> nativo envolvendo os
@@ -975,7 +977,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
               }
             >
               <span className="font-bold text-muted-foreground">{index + 1}.</span>
-              <span className="flex-1 text-sm font-medium leading-none">
+              <span className="flex-1 text-sm font-medium leading-snug">
                 {question.question}
                 {question.is_required && <span className="text-destructive ml-1">*</span>}
               </span>
@@ -1002,7 +1004,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                   }}
                   title={t.btnCloseEdit}
                 >
-                  <Check className="h-3.5 w-3.5 text-primary" />
+                  <Check className="h-3.5 w-3.5 text-foreground" />
                 </button>
               )}
             </div>

@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.20',
+    date: '4 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Edição da OS mais flexível durante o atendimento',
+        description: 'Organize equipamentos e checklists na mesma tela, mova um checklist para o equipamento correto sem perder as respostas e ajuste a data e os horários sem sair do preenchimento da OS.',
+        category: 'recurso',
+      },
+      {
+        title: 'Preenchimento da OS mais claro no celular',
+        description: 'Cliente, contrato, descrição, observações e checklists agora têm uma hierarquia mais fácil de acompanhar, com menos bordas, nomes extensos legíveis e ações mais consistentes.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.19',
     date: '3 de novembro de 2026',
     type: 'patch',

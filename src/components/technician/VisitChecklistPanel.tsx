@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { ListChecks, Check, X, MinusCircle, Minus, AlertTriangle, Lock, Camera, ClipboardList, CheckCircle2 } from 'lucide-react';
+import { Check, X, MinusCircle, Minus, AlertTriangle, Lock, Camera, ClipboardList, CheckCircle2 } from 'lucide-react';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -332,12 +332,12 @@ function ActivityRow({
   };
 
   return (
-    <div className="space-y-2.5 p-3 rounded-lg bg-muted/30">
+    <div className="space-y-3 py-3">
       <div className="flex items-start gap-2">
         <span className="font-bold text-muted-foreground text-sm leading-5">{index}.</span>
         <div className="flex-1 min-w-0">
           {activity.section && (
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+            <p className="text-[11px] font-medium text-muted-foreground">
               {sectionLabel(activity.section) || activity.section}
               {activity.component ? ` · ${activity.component}` : ''}
             </p>
@@ -665,6 +665,7 @@ function TemplateQuestionRow({
                   checked={selected.includes(opt)}
                   onCheckedChange={() => toggle(opt)}
                   disabled={readOnly || saving}
+                  className="border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
                 />
                 {opt}
               </label>
@@ -805,7 +806,7 @@ function TemplateQuestionRow({
   };
 
   return (
-    <div className="space-y-2.5 p-3 rounded-lg bg-muted/30">
+    <div className="space-y-3 py-3">
       <div className="flex items-start gap-2">
         <span className="font-bold text-muted-foreground text-sm leading-5">{index}.</span>
         <div className="flex-1 min-w-0">
@@ -855,9 +856,9 @@ function TemplateActivityBlock({
   ).length;
 
   return (
-    <div className="rounded-lg border border-primary/30 bg-primary/[0.03] p-2.5 space-y-2.5">
+    <div className="space-y-3 py-2">
       <div className="flex items-center gap-2">
-        <ClipboardList className="h-4 w-4 text-primary shrink-0" />
+        <ClipboardList className="h-4 w-4 text-foreground shrink-0" />
         <p className="text-sm font-semibold text-foreground flex-1 min-w-0 break-words">
           {activity.description || t.customChecklistFallback}
         </p>
@@ -997,7 +998,7 @@ function VisitChecklistItem({
           // Grupo "Geral / Local" (sem equipamento): ícone discreto de checklist no
           // lugar da foto. O `name` já vem como o NOME do checklist quando o grupo é
           // de um único template (resolvido no hook); senão "Geral / Local".
-          leadingIcon={hidePhoto ? <ClipboardList className="h-5 w-5 text-primary" /> : undefined}
+          leadingIcon={hidePhoto ? <ClipboardList className="h-5 w-5 text-foreground" /> : undefined}
           photo={photo}
           name={group.equipmentName}
           category={category}
@@ -1104,14 +1105,13 @@ export function VisitChecklistPanel({
   const effectiveOpenKey = controlled ? (openKey ?? null) : firstKey;
 
   return (
-    <Card>
-      <CardHeader className="pb-2 px-3 sm:px-6">
-        <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl font-semibold">
-          <ListChecks className="h-5 w-5 text-primary shrink-0" />
+    <Card className="border-0 bg-transparent shadow-none">
+      <CardHeader className="px-0 pb-3 pt-1">
+        <CardTitle className="text-lg font-semibold sm:text-xl">
           {tPanel.panelTitle}
         </CardTitle>
       </CardHeader>
-      <CardContent className="px-3 sm:px-6 pb-3 space-y-4">
+      <CardContent className="space-y-4 px-0 pb-0">
         {readOnly && (
           <NoticeBanner variant="warning" icon={Lock}>
             {tPanel.pausedWarning}

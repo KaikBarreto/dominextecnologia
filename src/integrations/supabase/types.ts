@@ -12415,21 +12415,27 @@ export type Database = {
       }
       service_order_equipment: {
         Row: {
+          checklist_position: number
           created_at: string
+          equipment_position: number
           equipment_id: string | null
           form_template_id: string | null
           id: string
           service_order_id: string
         }
         Insert: {
+          checklist_position?: number
           created_at?: string
+          equipment_position?: number
           equipment_id?: string | null
           form_template_id?: string | null
           id?: string
           service_order_id: string
         }
         Update: {
+          checklist_position?: number
           created_at?: string
+          equipment_position?: number
           equipment_id?: string | null
           form_template_id?: string | null
           id?: string

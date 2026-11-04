@@ -3032,7 +3032,13 @@ O modo cliente pelo link público: o mesmo relatório que o técnico monta duran
 
 #### O que o técnico vê primeiro
 
-No topo, o número da OS e o status atual. Abaixo, os blocos Cliente (com nome, telefone e endereço), Descrição do Serviço e Observações. Se a OS tiver um endereço de serviço próprio, ele aparece em destaque com o rótulo Endereço deste serviço e a nota "O atendimento é neste local, diferente do endereço cadastrado do cliente."
+No topo, o número da OS e o status atual. Abaixo, o contexto do atendimento aparece em um bloco contínuo, sem empilhar um cartão para cada informação: horário do check-in, cliente, telefone, endereço, contrato, descrição do serviço e observações. Os rótulos auxiliares ficam menores; o nome do cliente e do contrato ganham peso; Descrição do serviço e Observações aparecem em negrito. Se a OS tiver um endereço de serviço próprio, ele aparece com o rótulo Endereço deste serviço e a nota "O atendimento é neste local, diferente do endereço cadastrado do cliente."
+
+Esse bloco usa o fundo natural da página, com espaçamento e tipografia para separar os assuntos. A foto do cliente não aparece ali: quando não existe uma imagem nessa área, o sistema usa o ícone padrão de usuário.
+
+[Print da tela: Tela móvel de preenchimento da OS com cabeçalho escuro, status Em andamento, check-in, cliente, telefone, endereço, contrato, descrição do serviço e observações em um bloco contínuo; abaixo, o título Checklists e o cabeçalho do equipamento; no rodapé, os botões Finalizar, Parcial e menu sobre fundo escuro opaco.]
+
+Preenchimento no celular: contexto do atendimento sem pilha de cartões, títulos com hierarquia clara e rodapé opaco com as ações principais.
 
 Antes do check-in, o cartão de ação se chama Ir para o Atendimento, com a orientação: "Informe ao cliente que você está a caminho ou faça o check-in ao chegar." e dois botões: A Caminho e Fazer Check-in.
 
@@ -3091,6 +3097,18 @@ Depois do check-in aparece o bloco Checklists. Ele é organizado por equipamento
 
 Cada bloco mostra o quanto já foi respondido e um selo: Concluído ou Pendente, mais o contador de N pendentes.
 
+#### Como a tela se organiza
+
+- O título geral Checklists não repete o ícone do checklist concreto que aparece logo abaixo.
+
+- Nomes extensos de checklist quebram linha em vez de serem cortados com reticências.
+
+- As perguntas comuns usam o próprio fundo da página. Bordas e fundos fortes ficam reservados para controles, avisos e estados que precisam de destaque.
+
+- Preto, branco e tons neutros são a base das ações operacionais. Verde indica sucesso ou conclusão; laranja identifica a finalização parcial; vermelho fica para erro ou exclusão.
+
+- No celular, o rodapé permanece fixo e opaco, com Finalizar, Parcial e o menu de mais ações.
+
 #### Como cada tipo de pergunta se comporta
 
 | Tipo | Como responder | Quando salva |
@@ -3114,7 +3132,29 @@ Em OS de contrato, uma pergunta pode ter frequência: mensal, trimestral, semest
 
 #### Editar a OS em campo
 
-Quem tiver a permissão Editar OS em campo encontra, no menu de mais ações, a opção Editar OS. Ela abre um painel com duas abas, Equipamentos e Checklists avulsos, para acrescentar um equipamento que apareceu na hora ou anexar um checklist que faltava.
+Quem tiver a permissão Editar OS em campo encontra, no menu de mais ações, a opção Editar OS. Ela abre uma folha alta no celular, com duas áreas: Equipamentos e checklists e Data e horários.
+
+Na primeira área, equipamentos e checklists ficam na mesma estrutura. Cada equipamento pode ser expandido para mostrar os checklists ligados a ele. O bloco Checklists sem equipamento reúne os checklists que valem para a OS inteira ou ainda não foram vinculados a uma máquina.
+
+[Print da tela: Folha Editar OS no celular, com a aba Equipamentos selecionada, botão Adicionar equipamento, dois equipamentos expansíveis e os checklists dentro do primeiro equipamento; um checklist longo quebra em várias linhas e o rodapé mostra Salvar equipamentos e checklists.]
+
+A nova estrutura unificada: equipamento e seus checklists no mesmo lugar, com expansão, contagem, inclusão, remoção e ordenação.
+
+#### Arrastar um checklist sem perder as respostas
+
+Segure a alça do item e arraste para reorganizar. É possível mover um checklist de Checklists sem equipamento para um equipamento, de um equipamento para outro ou de volta para a área sem equipamento. Também dá para reordenar os equipamentos e os checklists dentro de cada um.
+
+As respostas acompanham o checklist. Se o técnico já respondeu parte dele e depois o checklist for ligado ao equipamento correto, o que foi preenchido continua salvo. O sistema muda o vínculo do mesmo checklist; não apaga para criar outro.
+
+Esse é o caso comum em que a OS foi criada antes do equipamento existir: o checklist entra sem equipamento, o equipamento é cadastrado depois e, dentro de Editar OS, o checklist é arrastado para a máquina correta.
+
+#### Remarcar a OS sem sair do preenchimento
+
+Em Data e horários, quem tiver permissão pode ajustar data inicial, data final, duração e os horários planejados de cada dia. Quando houver mais de um dia, o botão Repetir primeiro horário replica o primeiro período e ainda permite ajustar cada dia. Conflitos de agenda são verificados antes de salvar.
+
+[Print da tela: Folha Editar OS no celular com a aba Data e horários selecionada, campos Data inicial e Data final, seção Horário de cada dia, botão Repetir primeiro horário e cartão do primeiro dia com campos de início e fim.]
+
+Data e horários dentro da própria OS: remarcar o atendimento e organizar cada dia sem abandonar o preenchimento.
 
  A opção Editar OS fica desativada quando não há internet, com a dica Disponível apenas online. Ela é uma das poucas partes do app que avisa isso explicitamente.
 
@@ -3796,6 +3836,12 @@ A chave Por material / Por grupo troca a organização da tabela. Por material, 
 As colunas são Material ou Grupo, Última compra, Compras, Qtd. comprada, Valor comprado, Média paga, Saldo atual, Qtd. vendida, Valor vendido e Lucro projetado. As colunas disponíveis podem ser ordenadas. A paginação oferece 10, 25 ou 50 linhas e guarda a preferência.
 
 Abrindo uma linha aparece o Histórico de compras, com data, fornecedor, local, número da O.C., responsável, situação ou forma de pagamento, quantidade, valor unitário e total. Compra direta mostra o pagamento que foi lançado no Financeiro. O.C. tradicional sem lançamento financeiro aparece como Não vinculado, nunca como pendente por suposição.
+
+#### Evolução do preço de compra
+
+Abaixo do resumo, a área Evolução do preço de compra compara cada material apenas com o próprio histórico. A Visão geral destaca as maiores altas e quedas do período. Selecionando um material, aparecem o último preço, a média ponderada pela quantidade recebida, o menor e o maior preço, a variação e um gráfico por dia, semana, mês ou trimestre, conforme o tamanho do intervalo.
+
+ Períodos sem compra ficam vazios no gráfico e unidades diferentes não são misturadas. Compras recebidas pelo fluxo de compras e compras diretas registradas no PDV atualizam essa análise.
 
 Saldo atual é o saldo de agora, mesmo quando o período do relatório está no passado. Para saber o saldo que existia numa data antiga, use a aba Posição de Estoque. Em recebimentos parciais antigos, o histórico comercial pode usar a data consolidada da O.C., porque essas compras não guardavam um evento detalhado para cada parcela recebida.
 

@@ -41,7 +41,14 @@
   <p>É essa tela — e não uma versão resumida — que o cliente final recebe quando pede "me manda o relatório do serviço": fotos de antes/durante/depois, o checklist completo com cada item marcado, observações do técnico, vídeo (quando o módulo está ativo) e as duas assinaturas, tudo no mesmo link que foi usado para acompanhar o atendimento. O cliente não edita nada nessa tela, mas pode baixar o PDF, imprimir ou copiar o link para reenviar.</p>
 
   <h3>O que o técnico vê primeiro</h3>
-  <p>No topo, o número da OS e o status atual. Abaixo, os blocos <span class="ui">Cliente</span> (com nome, telefone e endereço), <span class="ui">Descrição do Serviço</span> e <span class="ui">Observações</span>. Se a OS tiver um endereço de serviço próprio, ele aparece em destaque com o rótulo <span class="ui">Endereço deste serviço</span> e a nota "O atendimento é neste local, diferente do endereço cadastrado do cliente."</p>
+  <p>No topo, o número da OS e o status atual. Abaixo, o contexto do atendimento aparece em <b>um bloco contínuo</b>, sem empilhar um cartão para cada informação: horário do check-in, cliente, telefone, endereço, contrato, descrição do serviço e observações. Os rótulos auxiliares ficam menores; o nome do cliente e do contrato ganham peso; <span class="ui">Descrição do serviço</span> e <span class="ui">Observações</span> aparecem em negrito. Se a OS tiver um endereço de serviço próprio, ele aparece com o rótulo <span class="ui">Endereço deste serviço</span> e a nota "O atendimento é neste local, diferente do endereço cadastrado do cliente."</p>
+
+  <p>Esse bloco usa o fundo natural da página, com espaçamento e tipografia para separar os assuntos. A foto do cliente não aparece ali: quando não existe uma imagem nessa área, o sistema usa o ícone padrão de usuário.</p>
+
+  <figure>
+    <img src="img/t7-os-preenchimento-revisado.png" alt="Tela móvel de preenchimento da OS com cabeçalho escuro, status Em andamento, check-in, cliente, telefone, endereço, contrato, descrição do serviço e observações em um bloco contínuo; abaixo, o título Checklists e o cabeçalho do equipamento; no rodapé, os botões Finalizar, Parcial e menu sobre fundo escuro opaco.">
+    <figcaption>Preenchimento no celular: contexto do atendimento sem pilha de cartões, títulos com hierarquia clara e rodapé opaco com as ações principais.</figcaption>
+  </figure>
 
   <p>Antes do check-in, o cartão de ação se chama <span class="ui">Ir para o Atendimento</span>, com a orientação: "Informe ao cliente que você está a caminho ou faça o check-in ao chegar." e dois botões: <span class="ui">A Caminho</span> e <span class="ui">Fazer Check-in</span>.</p>
 
@@ -104,6 +111,15 @@
 
   <p>Cada bloco mostra o quanto já foi respondido e um selo: <span class="ui">Concluído</span> ou <span class="ui">Pendente</span>, mais o contador de <span class="ui">N pendentes</span>.</p>
 
+  <h3>Como a tela se organiza</h3>
+  <ul>
+    <li>O título geral <span class="ui">Checklists</span> não repete o ícone do checklist concreto que aparece logo abaixo.</li>
+    <li>Nomes extensos de checklist <b>quebram linha</b> em vez de serem cortados com reticências.</li>
+    <li>As perguntas comuns usam o próprio fundo da página. Bordas e fundos fortes ficam reservados para controles, avisos e estados que precisam de destaque.</li>
+    <li>Preto, branco e tons neutros são a base das ações operacionais. Verde indica sucesso ou conclusão; laranja identifica a finalização parcial; vermelho fica para erro ou exclusão.</li>
+    <li>No celular, o rodapé permanece fixo e opaco, com <span class="ui">Finalizar</span>, <span class="ui">Parcial</span> e o menu de mais ações.</li>
+  </ul>
+
   <h3>Como cada tipo de pergunta se comporta</h3>
 
   <table class="dados">
@@ -133,7 +149,31 @@
   <p>Em OS de contrato, uma pergunta pode ter <b>frequência</b>: mensal, trimestral, semestral, anual ou personalizada. Nesse caso ela só aparece na visita em que vence. Se nenhuma pergunta daquele checklist vence na visita atual, o bloco mostra "Nenhuma pergunta prevista para esta visita." Se o checklist estiver vazio, a mensagem é "Nenhuma pergunta configurada para este checklist."</p>
 
   <h3>Editar a OS em campo</h3>
-  <p>Quem tiver a permissão <span class="ui">Editar OS em campo</span> encontra, no menu de mais ações, a opção <span class="ui">Editar OS</span>. Ela abre um painel com duas abas, <span class="ui">Equipamentos</span> e <span class="ui">Checklists avulsos</span>, para acrescentar um equipamento que apareceu na hora ou anexar um checklist que faltava.</p>
+  <p>Quem tiver a permissão <span class="ui">Editar OS em campo</span> encontra, no menu de mais ações, a opção <span class="ui">Editar OS</span>. Ela abre uma folha alta no celular, com duas áreas: <span class="ui">Equipamentos e checklists</span> e <span class="ui">Data e horários</span>.</p>
+
+  <p>Na primeira área, equipamentos e checklists ficam na <b>mesma estrutura</b>. Cada equipamento pode ser expandido para mostrar os checklists ligados a ele. O bloco <span class="ui">Checklists sem equipamento</span> reúne os checklists que valem para a OS inteira ou ainda não foram vinculados a uma máquina.</p>
+
+  <figure>
+    <img src="img/t7-editar-os-equipamentos-checklists.png" alt="Folha Editar OS no celular, com a aba Equipamentos selecionada, botão Adicionar equipamento, dois equipamentos expansíveis e os checklists dentro do primeiro equipamento; um checklist longo quebra em várias linhas e o rodapé mostra Salvar equipamentos e checklists.">
+    <figcaption>A nova estrutura unificada: equipamento e seus checklists no mesmo lugar, com expansão, contagem, inclusão, remoção e ordenação.</figcaption>
+  </figure>
+
+  <h3>Arrastar um checklist sem perder as respostas</h3>
+  <p>Segure a alça do item e arraste para reorganizar. É possível mover um checklist de <span class="ui">Checklists sem equipamento</span> para um equipamento, de um equipamento para outro ou de volta para a área sem equipamento. Também dá para reordenar os equipamentos e os checklists dentro de cada um.</p>
+
+  <div class="regra">
+    <b>As respostas acompanham o checklist.</b> Se o técnico já respondeu parte dele e depois o checklist for ligado ao equipamento correto, o que foi preenchido continua salvo. O sistema muda o vínculo do mesmo checklist; não apaga para criar outro.
+  </div>
+
+  <p>Esse é o caso comum em que a OS foi criada antes do equipamento existir: o checklist entra sem equipamento, o equipamento é cadastrado depois e, dentro de <span class="ui">Editar OS</span>, o checklist é arrastado para a máquina correta.</p>
+
+  <h3>Remarcar a OS sem sair do preenchimento</h3>
+  <p>Em <span class="ui">Data e horários</span>, quem tiver permissão pode ajustar data inicial, data final, duração e os horários planejados de cada dia. Quando houver mais de um dia, o botão <span class="ui">Repetir primeiro horário</span> replica o primeiro período e ainda permite ajustar cada dia. Conflitos de agenda são verificados antes de salvar.</p>
+
+  <figure>
+    <img src="img/t7-editar-os-data-horarios.png" alt="Folha Editar OS no celular com a aba Data e horários selecionada, campos Data inicial e Data final, seção Horário de cada dia, botão Repetir primeiro horário e cartão do primeiro dia com campos de início e fim.">
+    <figcaption>Data e horários dentro da própria OS: remarcar o atendimento e organizar cada dia sem abandonar o preenchimento.</figcaption>
+  </figure>
 
   <div class="regra">
     A opção <span class="ui">Editar OS</span> fica <b>desativada quando não há internet</b>, com a dica <span class="ui">Disponível apenas online</span>. Ela é uma das poucas partes do app que avisa isso explicitamente.

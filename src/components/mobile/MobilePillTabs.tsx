@@ -293,7 +293,7 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
               onClick={() => onTabChange(tab.value)}
               style={accentStyle}
               className={cn(
-                'snap-start shrink-0 inline-flex items-center gap-1.5 transition-colors active:scale-95',
+                'snap-start shrink-0 inline-flex items-center gap-1.5 transition-colors active:scale-95 focus:outline-none focus-visible:bg-muted/60',
                 alturaEPeso,
                 variant === 'underline' && level === 'screen' && isActive && 'font-bold',
                 variant === 'underline'
