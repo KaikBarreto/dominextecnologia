@@ -1,18 +1,13 @@
 // =============================================================================
 // Handler de UPLOAD DO CERTIFICADO A1
-// (rotas: nfse-upload-certificate / fisqal-upload-certificate).
+// (rota: nfse-upload-certificate).
 // =============================================================================
 // AUTENTICADA: Authorization Bearer + módulo 'nfe' ativo + can_manage_system.
 //
 // Recebe multipart do client: file (.pfx/.p12), password, nome.
-// Delega ao provedor ativo e persiste SÓ o que o provedor devolve.
-//
-// DOIS MODELOS DE CUSTÓDIA, um handler:
-//   - provedor intermediado: o certificado fica com o fornecedor e guardamos um
-//     id (`fisqal_certificate_id`). Nunca vemos o .pfx de novo.
-//   - motor próprio: a custódia é NOSSA. O provedor devolve `custodia` com o
-//     material JÁ CIFRADO (ponteiro do ciphertext no Storage + DEK envelopada +
-//     senha cifrada + nonce) e é isso que gravamos.
+// Delega ao motor próprio. A custódia é NOSSA: o motor devolve o material JÁ
+// CIFRADO (ponteiro do ciphertext no Storage + DEK envelopada + senha cifrada +
+// nonce) e é somente isso que gravamos.
 //
 // ⚠️ Em NENHUM dos dois o .pfx ou a senha em claro tocam o banco ou o log.
 // =============================================================================
@@ -22,13 +17,54 @@ import {
   corsHeaders,
   jsonResponse,
 } from "../fiscal-auth.ts";
-import { getProvider } from "../nfse-provider.ts";
-import type { NfseProviderCtx } from "../nfse-provider.ts";
+import type { FiscalAuthOk } from "../fiscal-auth.ts";
+import { getNfseEngine } from "../nfse-provider.ts";
+import type {
+  NfseCustodiaCertificado,
+  NfseProviderCtx,
+} from "../nfse-provider.ts";
+import { BUCKET_CERTIFICADOS } from "../providers/sefin.ts";
 import { logId, providerErrorResponse } from "./common.ts";
 
 const TAG = "[nfse-upload-certificate]";
+const MAX_CERTIFICATE_BYTES = 2 * 1024 * 1024;
 
-export async function handleNfseUploadCertificate(req: Request): Promise<Response> {
+async function removerCertificadoDaEmpresa(
+  supabase: FiscalAuthOk["supabase"],
+  companyId: string,
+  referencia: string | null | undefined,
+): Promise<void> {
+  const caminho = referencia?.trim() ?? "";
+  if (!caminho.startsWith(`${companyId}/`) || !caminho.endsWith(".b64")) {
+    return;
+  }
+
+  const { error } = await supabase.storage
+    .from(BUCKET_CERTIFICADOS)
+    .remove([caminho]);
+  if (error) {
+    console.error(`${TAG} cleanup error`, {
+      company_id: logId(companyId),
+      message: error.message,
+    });
+  }
+}
+
+export function custodiaCompleta(
+  custodia: NfseCustodiaCertificado | undefined,
+): custodia is NfseCustodiaCertificado {
+  return Boolean(
+    custodia?.certificadoRef?.trim() &&
+      custodia.dekEnvelopada?.trim() &&
+      custodia.senhaCifrada?.trim() &&
+      custodia.nonce?.trim() &&
+      custodia.algoritmo?.trim(),
+  );
+}
+
+export async function handleNfseUploadCertificate(
+  req: Request,
+): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -50,27 +86,17 @@ export async function handleNfseUploadCertificate(req: Request): Promise<Respons
       .eq("company_id", companyId)
       .maybeSingle();
 
-    const provider = getProvider(fiscal as Record<string, unknown> | null);
-    if (!provider.enviarCertificado) {
+    if (!fiscal) {
       return jsonResponse(
         {
-          error: "provider_unsupported",
-          message: "O envio de certificado não está disponível na emissão fiscal atual.",
-        },
-        501,
-      );
-    }
-
-    // ---- Pré-condição do provedor intermediado: empresa já registrada.
-    if (provider.registrarEmpresa && !fiscal?.fisqal_company_id) {
-      return jsonResponse(
-        {
-          error: "company_not_registered",
-          message: "Registre a empresa na emissão fiscal antes de enviar o certificado.",
+          error: "fiscal_not_configured",
+          message:
+            "Salve os dados fiscais da empresa antes de enviar o certificado digital.",
         },
         422,
       );
     }
+    const engine = getNfseEngine();
 
     // ---- Lê o multipart do client.
     let form: FormData;
@@ -80,7 +106,8 @@ export async function handleNfseUploadCertificate(req: Request): Promise<Respons
       return jsonResponse(
         {
           error: "invalid_multipart",
-          message: "Envio inválido. Anexe o certificado e a senha e tente novamente.",
+          message:
+            "Envio inválido. Anexe o certificado e a senha e tente novamente.",
         },
         400,
       );
@@ -99,6 +126,15 @@ export async function handleNfseUploadCertificate(req: Request): Promise<Respons
         422,
       );
     }
+    if (file.size > MAX_CERTIFICATE_BYTES) {
+      return jsonResponse(
+        {
+          error: "certificate_too_large",
+          message: "O certificado deve ter no máximo 2 MB.",
+        },
+        422,
+      );
+    }
     const lowerName = (file.name ?? "").toLowerCase();
     if (!lowerName.endsWith(".pfx") && !lowerName.endsWith(".p12")) {
       return jsonResponse(
@@ -111,7 +147,10 @@ export async function handleNfseUploadCertificate(req: Request): Promise<Respons
     }
     if (typeof password !== "string" || !password.trim()) {
       return jsonResponse(
-        { error: "missing_password", message: "Informe a senha do certificado digital." },
+        {
+          error: "missing_password",
+          message: "Informe a senha do certificado digital.",
+        },
         422,
       );
     }
@@ -122,55 +161,66 @@ export async function handleNfseUploadCertificate(req: Request): Promise<Respons
       fiscal: (fiscal ?? {}) as Record<string, unknown>,
     };
 
-    const resultado = await provider.enviarCertificado(
+    const resultado = await engine.enviarCertificado(
       ctx,
       file,
       password,
       typeof nome === "string" && nome.trim() ? nome.trim() : file.name,
     );
 
-    // Trilha append-only: guardar certificado de terceiro sem registro de quem
-    // e quando é exposição desnecessária (§Custódia do plano).
-    if (resultado.ok && resultado.custodia) {
-      await supabase.from("fiscal_certificate_audit").insert({
-        company_id: companyId,
-        operacao: "upload",
-        contexto: "upload_certificado",
-        origem: "edge:nfse-upload-certificate",
-      });
-    }
+    const novaReferencia = resultado.custodia?.certificadoRef ??
+      resultado.referenciaCertificado;
 
-    if (!resultado.ok || !resultado.referenciaCertificado) {
+    if (
+      !resultado.ok || !resultado.referenciaCertificado ||
+      !custodiaCompleta(resultado.custodia)
+    ) {
+      await removerCertificadoDaEmpresa(supabase, companyId, novaReferencia);
       return jsonResponse(
         {
-          error: "fisqal_no_cert_id",
+          error: "certificate_seal_failed",
           message: resultado.mensagem ??
-            "A emissão fiscal respondeu sem identificador do certificado. Tente novamente.",
+            "Não foi possível guardar o certificado com segurança. Tente novamente.",
         },
         502,
       );
     }
 
-    const certificateId = resultado.referenciaCertificado;
-    const certificateExpiresAt = resultado.validadeAte ?? null;
-
-    // ---- Persiste o que o provedor devolveu (referência OU material cifrado).
-    const colunas: Record<string, unknown> = {
-      fisqal_certificate_id: certificateId,
-      certificate_expires_at: certificateExpiresAt,
-    };
-    if (resultado.custodia) {
-      // Custódia própria: o que vai para o banco é SÓ ciphertext e ponteiro. A
-      // chave que abre isto (KEK) vive na VPS e nunca passa por aqui.
-      colunas.certificado_ref = resultado.custodia.certificadoRef;
-      colunas.certificado_dek_envelopada = resultado.custodia.dekEnvelopada;
-      colunas.certificado_senha_cifrada = resultado.custodia.senhaCifrada;
-      colunas.certificado_nonce = resultado.custodia.nonce;
-      colunas.certificado_algoritmo = resultado.custodia.algoritmo;
-      // Sem cadastro prévio de empresa no padrão nacional: o certificado É a
-      // credencial. Com ele guardado, a empresa já pode emitir.
-      colunas.pode_emitir = true;
+    const certificateExpiresAt = resultado.validadeAte?.trim() || "";
+    const certificateExpiresAtMs = Date.parse(certificateExpiresAt);
+    if (!certificateExpiresAt || !Number.isFinite(certificateExpiresAtMs)) {
+      await removerCertificadoDaEmpresa(supabase, companyId, novaReferencia);
+      return jsonResponse(
+        {
+          error: "certificate_expiry_unknown",
+          message:
+            "Não foi possível confirmar a validade do certificado. Verifique o arquivo e tente novamente.",
+        },
+        422,
+      );
     }
+    if (certificateExpiresAtMs <= Date.now()) {
+      await removerCertificadoDaEmpresa(supabase, companyId, novaReferencia);
+      return jsonResponse(
+        {
+          error: "certificate_expired",
+          message:
+            "Este certificado digital está expirado. Envie um certificado válido.",
+        },
+        422,
+      );
+    }
+
+    // ---- Persiste SOMENTE custódia cifrada e validade. Cobertura municipal é
+    // outro conceito e nunca muda durante upload de certificado.
+    const colunas: Record<string, unknown> = {
+      certificate_expires_at: certificateExpiresAt,
+      certificado_ref: resultado.custodia.certificadoRef,
+      certificado_dek_envelopada: resultado.custodia.dekEnvelopada,
+      certificado_senha_cifrada: resultado.custodia.senhaCifrada,
+      certificado_nonce: resultado.custodia.nonce,
+      certificado_algoritmo: resultado.custodia.algoritmo,
+    };
 
     const { error: updateErr } = await supabase
       .from("company_fiscal_settings")
@@ -178,6 +228,7 @@ export async function handleNfseUploadCertificate(req: Request): Promise<Respons
       .eq("company_id", companyId);
 
     if (updateErr) {
+      await removerCertificadoDaEmpresa(supabase, companyId, novaReferencia);
       console.error(`${TAG} update error`, {
         company_id: logId(companyId),
         message: updateErr.message,
@@ -187,18 +238,36 @@ export async function handleNfseUploadCertificate(req: Request): Promise<Respons
           error: "persist_failed",
           message:
             "O certificado foi enviado, mas houve falha ao salvar localmente. Contate o suporte.",
-          fisqal_certificate_id: certificateId,
         },
         500,
       );
     }
 
+    const referenciaAnterior = typeof fiscal.certificado_ref === "string"
+      ? fiscal.certificado_ref
+      : null;
+    if (referenciaAnterior && referenciaAnterior !== novaReferencia) {
+      await removerCertificadoDaEmpresa(
+        supabase,
+        companyId,
+        referenciaAnterior,
+      );
+    }
+
+    // Trilha append-only somente depois de a referência cifrada estar persistida.
+    await supabase.from("fiscal_certificate_audit").insert({
+      company_id: companyId,
+      operacao: "upload",
+      contexto: "upload_certificado",
+      origem: "edge:nfse-upload-certificate",
+    });
+
     return jsonResponse(
       {
-        fisqal_certificate_id: certificateId,
         status: resultado.status ?? null,
         certificate_expires_at: certificateExpiresAt,
-        message: resultado.mensagem ?? "Certificado digital enviado com sucesso.",
+        message: resultado.mensagem ??
+          "Certificado digital enviado com sucesso.",
       },
       200,
     );

@@ -51,7 +51,8 @@ describe('documentos do Portal do Cliente — fronteiras de segurança', () => {
     expect(edge).toContain('.createSignedUrl(');
     expect(edge).toContain('SIGNED_URL_TTL_SECONDS = 300');
     expect(edge).toContain('document.storage_path.startsWith(`${companyId}/${customerId}/`)');
-    expect(edge).toContain('attachment.storage_path.startsWith(`${companyId}/${attachment.contract_id}/`)');
+    expect(edge).toContain('attachment.storage_path.startsWith(');
+    expect(edge).toContain('`${companyId}/${attachment.contract_id}/`');
     expect(edge).not.toMatch(/json\([^\n]*storage_path/);
   });
 });

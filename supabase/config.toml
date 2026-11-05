@@ -111,16 +111,11 @@ verify_jwt = false
 verify_jwt = false
 
 # -----------------------------------------------------------------------------
-# NFS-e — rotas ATUAIS (`nfse-*`). B4 do plano "NFS-e motor próprio".
+# NFS-e — motor fiscal próprio (`nfse-*`).
 # Todas com verify_jwt=false: o gate (Authorization Bearer + módulo 'nfe' +
 # can_manage_system) roda DENTRO da função, via _shared/fiscal-auth.ts, pra
-# poder traduzir os erros em PT-BR e checar módulo/permissão. Mesmas
-# configurações das rotas legadas `fisqal-*` logo abaixo.
+# poder traduzir os erros em PT-BR e checar módulo/permissão.
 # -----------------------------------------------------------------------------
-
-# nfse-register-company: onboarding fiscal (registro/atualização da empresa).
-[functions.nfse-register-company]
-verify_jwt = false
 
 # nfse-upload-certificate: upload do certificado A1 (multipart). Mesmo gate.
 [functions.nfse-upload-certificate]
@@ -138,7 +133,7 @@ verify_jwt = false
 [functions.nfse-status]
 verify_jwt = false
 
-# nfse-save-draft: upsert de rascunho (status='rascunho'). Não fala com provedor,
+# nfse-save-draft: upsert de rascunho (status='rascunho'). Não fala com o fisco,
 # não consome cota. Mesmo gate.
 [functions.nfse-save-draft]
 verify_jwt = false
@@ -149,11 +144,6 @@ verify_jwt = false
 
 # nfse-cancel: cancela uma NFS-e autorizada. Mesmo gate.
 [functions.nfse-cancel]
-verify_jwt = false
-
-# nfse-webhook: recepção assíncrona do provedor. SEM JWT de usuário — segurança
-# é HMAC-SHA256 do corpo cru contra FISQAL_WEBHOOK_SECRET.
-[functions.nfse-webhook]
 verify_jwt = false
 
 # nfse-tax-codes: catálogos fiscais (cTribNac/LC116 e NBS). Leitura, mesmo gate.
@@ -179,63 +169,6 @@ verify_jwt = false
 # exige JWT + módulo 'nfe' + can_manage_system. Mesmo desenho de
 # dfe-manifestar-worker.
 [functions.nfse-auto-runner]
-verify_jwt = false
-
-# -----------------------------------------------------------------------------
-# NFS-e — rotas LEGADAS (`fisqal-*`). ⚠️ SAEM NO RELEASE SEGUINTE.
-# Mantidas por 1 release só para o cliente com bundle antigo em cache não
-# quebrar. São cascas que chamam o MESMO handler das rotas `nfse-*`.
-# -----------------------------------------------------------------------------
-
-# fisqal-register-company: onboarding fiscal (NFS-e). Authorization Bearer +
-# módulo 'nfe' + can_manage_system validados DENTRO da função (gateway não valida
-# o JWT pra a função poder traduzir os erros em PT-BR + checar módulo/permissão).
-[functions.fisqal-register-company]
-verify_jwt = false
-
-# fisqal-upload-certificate: upload do certificado A1 (multipart). Mesmo gate.
-[functions.fisqal-upload-certificate]
-verify_jwt = false
-
-# fisqal-check-coverage: checa cobertura de NFS-e do município. Mesmo gate.
-[functions.fisqal-check-coverage]
-verify_jwt = false
-
-# fisqal-emit-nfse (Fase 2.1): emite NFS-e a partir de uma OS. Auth de tenant +
-# módulo 'nfe' + can_manage_system validados na própria função (verify_jwt=false
-# porque o gate é feito via auth.getUser() com o Bearer do usuário).
-[functions.fisqal-emit-nfse]
-verify_jwt = false
-
-# fisqal-nfse-status (Fase 2.2): polling de status da emissão. Mesmo gate.
-[functions.fisqal-nfse-status]
-verify_jwt = false
-
-# fisqal-save-nfse-draft (Onda 1b): upsert de rascunho de NFS-e (status='rascunho').
-# NÃO chama a Fisqal / NÃO consome cota. Mesmo gate de tenant (Authorization Bearer
-# + módulo 'nfe' + can_manage_system) via fiscal-auth.ts.
-[functions.fisqal-save-nfse-draft]
-verify_jwt = false
-
-# fisqal-delete-nfse-draft (Onda 1b): apaga um rascunho de NFS-e (nunca nota emitida).
-# Mesmo gate de tenant.
-[functions.fisqal-delete-nfse-draft]
-verify_jwt = false
-
-# fisqal-cancel-nfse (Fase 2.4): cancela uma NFS-e autorizada. Mesmo gate de
-# tenant (Authorization Bearer + módulo 'nfe' + can_manage_system).
-[functions.fisqal-cancel-nfse]
-verify_jwt = false
-
-# fisqal-webhook (Fase 2.3): recepção assíncrona da Fisqal. SEM JWT de usuário —
-# segurança é HMAC-SHA256 do corpo cru contra FISQAL_WEBHOOK_SECRET.
-[functions.fisqal-webhook]
-verify_jwt = false
-
-# fisqal-tax-codes: busca catálogos fiscais (códigos de tributação cTribNac/LC116
-# e NBS) via Fisqal. Leitura de catálogo (sem escrita). Mesmo gate de tenant
-# (Authorization Bearer + módulo 'nfe' + can_manage_system).
-[functions.fisqal-tax-codes]
 verify_jwt = false
 
 # time-clock-portal: ponto por link público (/ponto/:slug). Anon por design — o

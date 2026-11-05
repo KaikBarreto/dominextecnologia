@@ -39,7 +39,7 @@ import type {
   NfseCoberturaResultado,
   NfseDanfseResultado,
   NfseEmitirInput,
-  NfseProvider,
+  NfseEngine,
   NfseProviderCtx,
   NfseResultado,
 } from "../nfse-provider.ts";
@@ -77,6 +77,13 @@ function digits(v: unknown): string {
   return clean(v).replace(/\D/g, "");
 }
 
+/** `null` significa que a fonte oficial não produziu conclusão persistível. */
+export function classificarCoberturaAdn(status: number): boolean | null {
+  if (status === 404) return false;
+  if (status >= 200 && status < 300) return true;
+  return null;
+}
+
 /** company_id encurtado para log (nunca o id inteiro). */
 function logId(companyId: string): string {
   return companyId.slice(0, 8) + "...";
@@ -88,7 +95,9 @@ function logId(companyId: string): string {
  * cai em homologação, que é o lado seguro do erro.
  */
 function ambienteDe(ctx: NfseProviderCtx): number {
-  return clean(ctx.fiscal?.fiscal_ambiente).toLowerCase() === "producao" ? 1 : 2;
+  return clean(ctx.fiscal?.fiscal_ambiente).toLowerCase() === "producao"
+    ? 1
+    : 2;
 }
 
 // -----------------------------------------------------------------------------
@@ -129,7 +138,9 @@ async function chamar(
     });
   } catch (err) {
     console.error(`${TAG} rede`, { caminho, message: (err as Error)?.message });
-    throw new NfseProviderError(INDISPONIVEL, 503, { codigo: "servico_indisponivel" });
+    throw new NfseProviderError(INDISPONIVEL, 503, {
+      codigo: "servico_indisponivel",
+    });
   }
 
   if (resposta.ok) return resposta;
@@ -138,7 +149,9 @@ async function chamar(
   // usuário: para ele é indisponibilidade, e para nós é alarme no log.
   if (resposta.status === 401 || resposta.status === 403) {
     console.error(`${TAG} auth`, { caminho, status: resposta.status });
-    throw new NfseProviderError(INDISPONIVEL, 503, { codigo: "servico_indisponivel" });
+    throw new NfseProviderError(INDISPONIVEL, 503, {
+      codigo: "servico_indisponivel",
+    });
   }
 
   let payload: ErroDoServico = {};
@@ -185,12 +198,16 @@ const SEM_CERTIFICADO =
  * ele atravessa JSON sem reencode e o que está no bucket já é ilegível mesmo
  * para quem tiver a chave de service_role do Storage.
  */
-async function carregarCertificado(ctx: NfseProviderCtx): Promise<BlocoCertificado> {
+async function carregarCertificado(
+  ctx: NfseProviderCtx,
+): Promise<BlocoCertificado> {
   const ref = clean(ctx.fiscal?.certificado_ref);
   const dek = clean(ctx.fiscal?.certificado_dek_envelopada);
   const senha = clean(ctx.fiscal?.certificado_senha_cifrada);
   if (!ref || !dek || !senha) {
-    throw new NfseProviderError(SEM_CERTIFICADO, 422, { codigo: "certificado_ausente" });
+    throw new NfseProviderError(SEM_CERTIFICADO, 422, {
+      codigo: "certificado_ausente",
+    });
   }
 
   const { data, error } = await ctx.supabase.storage
@@ -294,8 +311,7 @@ interface RespostaNfse {
  *
  * ⚠️ `referencia` do motor próprio é a CHAVE DE ACESSO (50 dígitos): é ela que
  * identifica a nota no governo (não existe "id do documento no fornecedor").
- * O handler grava em `fisqal_dps_id` — coluna que a Fase D3 renomeia para
- * `provider_referencia`.
+ * O handler grava a chave em `referencia_fiscal` e `chave_acesso`.
  */
 function paraResultado(
   dados: RespostaNfse,
@@ -315,9 +331,11 @@ function paraResultado(
     chave && dados.cancelada === true,
   );
   const status = (
-    (mapeado === NFSE_STATUS.AUTORIZADA && !autorizacaoComprovada) ||
-    (mapeado === NFSE_STATUS.CANCELADA && !cancelamentoComprovado)
-  ) ? NFSE_STATUS.CONFIRMACAO_PENDENTE : mapeado;
+      (mapeado === NFSE_STATUS.AUTORIZADA && !autorizacaoComprovada) ||
+      (mapeado === NFSE_STATUS.CANCELADA && !cancelamentoComprovado)
+    )
+    ? NFSE_STATUS.CONFIRMACAO_PENDENTE
+    : mapeado;
   const confirmadoPeloFisco = autorizacaoComprovada || cancelamentoComprovado;
   return {
     status,
@@ -340,31 +358,48 @@ function paraResultado(
 }
 
 // -----------------------------------------------------------------------------
-// Provider
+// Motor próprio
 // -----------------------------------------------------------------------------
 
-export const sefinProvider: NfseProvider = {
+export const nfseEngine: NfseEngine = {
   nome: "sefin",
 
   // ---------------------------------------------------------------------------
   // Emissão — POST /v1/nfse/emitir. SÍNCRONA: volta autorizada ou rejeitada.
   // ---------------------------------------------------------------------------
-  async emitir(ctx: NfseProviderCtx, input: NfseEmitirInput): Promise<NfseResultado> {
+  async emitir(
+    ctx: NfseProviderCtx,
+    input: NfseEmitirInput,
+  ): Promise<NfseResultado> {
     const { dps, tomador, servico, valores } = input;
     // Fallback no rótulo histórico: só a emissão automática manda contexto
     // próprio (`emitir_nfse_auto:<job_id>`), pro rastro de decifra do
     // certificado dizer QUAL job usou a chave privada de QUAL CNPJ.
     const base = await corpoBase(ctx, ctx.contextoAuditoria || "emitir_nfse");
 
-    const valoresPayload: Record<string, unknown> = { valorServico: valores.valorServico };
+    const valoresPayload: Record<string, unknown> = {
+      valorServico: valores.valorServico,
+    };
     // Campo AUSENTE = não enviar (≠ zero). A supressão da alíquota (E0625) já
     // chega decidida do handler — aqui não se recalcula nem se chuta.
-    if (valores.aliquotaIssqn !== undefined) valoresPayload.aliquotaIssqn = valores.aliquotaIssqn;
-    if (valores.tribIssqn !== undefined) valoresPayload.tribIssqn = valores.tribIssqn;
-    if (valores.tpRetIssqn !== undefined) valoresPayload.tpRetIssqn = valores.tpRetIssqn;
-    if (valores.valorPis !== undefined) valoresPayload.valorPis = valores.valorPis;
-    if (valores.valorCofins !== undefined) valoresPayload.valorCofins = valores.valorCofins;
-    if (valores.valorCsll !== undefined) valoresPayload.valorCsll = valores.valorCsll;
+    if (valores.aliquotaIssqn !== undefined) {
+      valoresPayload.aliquotaIssqn = valores.aliquotaIssqn;
+    }
+    if (valores.tribIssqn !== undefined) {
+      valoresPayload.tribIssqn = valores.tribIssqn;
+    }
+    if (valores.tpRetIssqn !== undefined) {
+      valoresPayload.tpRetIssqn = valores.tpRetIssqn;
+    }
+    if (valores.valorPis !== undefined) {
+      valoresPayload.valorPis = valores.valorPis;
+    }
+    if (valores.valorCofins !== undefined) {
+      valoresPayload.valorCofins = valores.valorCofins;
+    }
+    if (valores.valorCsll !== undefined) {
+      valoresPayload.valorCsll = valores.valorCsll;
+    }
     if (valores.percentualTotalTributosSimplesNacional !== undefined) {
       valoresPayload.percentualTotalTributosSimplesNacional =
         valores.percentualTotalTributosSimplesNacional;
@@ -411,9 +446,10 @@ export const sefinProvider: NfseProvider = {
         municipioIncidencia: servico.municipioIncidencia,
         discriminacao: servico.discriminacao,
         // Rede de segurança: último ponto antes da prefeitura (E0312).
-        codigoTributacaoMunicipal: /^\d{3}$/.test(clean(servico.codigoTributacaoMunicipal))
-          ? clean(servico.codigoTributacaoMunicipal)
-          : undefined,
+        codigoTributacaoMunicipal:
+          /^\d{3}$/.test(clean(servico.codigoTributacaoMunicipal))
+            ? clean(servico.codigoTributacaoMunicipal)
+            : undefined,
       },
       valores: valoresPayload,
     });
@@ -433,7 +469,10 @@ export const sefinProvider: NfseProvider = {
   ): Promise<NfseResultado> {
     const chave = digits(referencia);
     const base = await corpoBase(ctx, chave || "consultar_nfse");
-    const dados = await chamarJson<RespostaNfse>(`/v1/nfse/${chave}/consultar`, base);
+    const dados = await chamarJson<RespostaNfse>(
+      `/v1/nfse/${chave}/consultar`,
+      base,
+    );
     return paraResultado(
       dados,
       clean(opts?.statusAtual) || NFSE_STATUS.PENDENTE,
@@ -484,10 +523,15 @@ export const sefinProvider: NfseProvider = {
   // DANFSE — POST /v1/nfse/{chave}/danfse. O microserviço tenta o PDF oficial
   // do governo e cai para geração local quando ele está fora (esteve 503).
   // ---------------------------------------------------------------------------
-  async danfse(ctx: NfseProviderCtx, referencia: string): Promise<NfseDanfseResultado> {
+  async danfse(
+    ctx: NfseProviderCtx,
+    referencia: string,
+  ): Promise<NfseDanfseResultado> {
     const chave = digits(referencia);
     const base = await corpoBase(ctx, chave || "danfse");
-    const resposta = await chamar(`/v1/nfse/${chave}/danfse`, base, { aceitaPdf: true });
+    const resposta = await chamar(`/v1/nfse/${chave}/danfse`, base, {
+      aceitaPdf: true,
+    });
 
     const bytes = new Uint8Array(await resposta.arrayBuffer());
     if (bytes.length === 0) {
@@ -516,8 +560,8 @@ export const sefinProvider: NfseProvider = {
   // cripto (Python), não duas (Deno + Python) que precisam concordar byte a byte
   // para sempre. A edge nunca vê DEK nem KEK; ela recebe só ciphertext. E a
   // exposição não é nova: o material já trafega browser→edge e a VPS já o decifra
-  // a cada emissão. Em troca, ganhamos a validade do certificado (que o provedor
-  // anterior não devolvia, deixando `certificate_expires_at` sempre nulo).
+  // a cada emissão. A VPS devolve também a validade comprovada, necessária ao
+  // gate de emissão.
   // ---------------------------------------------------------------------------
   async enviarCertificado(
     ctx: NfseProviderCtx,
@@ -547,7 +591,8 @@ export const sefinProvider: NfseProvider = {
     if (!cifrado?.pfxCifradoB64 || !cifrado?.dekEnvelopadaB64) {
       return {
         ok: false,
-        mensagem: "Não foi possível guardar o certificado com segurança. Tente novamente.",
+        mensagem:
+          "Não foi possível guardar o certificado com segurança. Tente novamente.",
       };
     }
 
@@ -559,10 +604,14 @@ export const sefinProvider: NfseProvider = {
     const caminho = `${ctx.companyId}/cert-${Date.now()}.b64`;
     const { error: erroUpload } = await ctx.supabase.storage
       .from(BUCKET_CERTIFICADOS)
-      .upload(caminho, new Blob([cifrado.pfxCifradoB64], { type: "text/plain" }), {
-        contentType: "text/plain",
-        upsert: false,
-      });
+      .upload(
+        caminho,
+        new Blob([cifrado.pfxCifradoB64], { type: "text/plain" }),
+        {
+          contentType: "text/plain",
+          upsert: false,
+        },
+      );
     if (erroUpload) {
       console.error(`${TAG} upload`, {
         company_id: logId(ctx.companyId),
@@ -570,7 +619,8 @@ export const sefinProvider: NfseProvider = {
       });
       return {
         ok: false,
-        mensagem: "Não foi possível guardar o certificado digital. Tente novamente.",
+        mensagem:
+          "Não foi possível guardar o certificado digital. Tente novamente.",
       };
     }
 
@@ -599,66 +649,66 @@ export const sefinProvider: NfseProvider = {
   // ---------------------------------------------------------------------------
   // Cobertura municipal.
   //
-  // ⚠️ No padrão nacional NÃO existe "cobertura por fornecedor": quem aderiu está
-  // no ADN e pronto (~3.413 municípios). Consultamos a parametrização do ADN só
-  // para confirmar e trazer município/UF.
-  //
-  // Regra da dúvida (deliberada): só devolvemos `podeEmitir: false` quando o ADN
-  // AFIRMA que o município não está parametrizado (404). Se o ADN não responde
-  // ou exige certificado, seguimos com `true` — bloquear todo mundo por causa de
-  // uma indisponibilidade do governo seria pior, e a prova definitiva acontece
-  // na emissão, que devolve erro legível da prefeitura.
+  // No padrão nacional, a parametrização do ADN é a fonte oficial de cobertura.
+  // Só uma resposta 2xx confirma habilitação e só 404 confirma ausência. Rede,
+  // autenticação ou 5xx são estado DESCONHECIDO e falham fechados: nunca gravamos
+  // `pode_emitir=true` por inferência.
   // ---------------------------------------------------------------------------
   async checarCobertura(
     ctx: NfseProviderCtx,
     ibge: string,
   ): Promise<NfseCoberturaResultado> {
     const producao = ambienteDe(ctx) === 1;
-    const base = producao ? "https://adn.nfse.gov.br" : "https://adn.producaorestrita.nfse.gov.br";
+    const base = producao
+      ? "https://adn.nfse.gov.br"
+      : "https://adn.producaorestrita.nfse.gov.br";
     const hoje = new Date();
     const competencia = `${hoje.getUTCFullYear()}-${
       String(hoje.getUTCMonth() + 1).padStart(2, "0")
     }-01`;
 
-    let status = 0;
-    let corpo: unknown = null;
+    let resposta: Response;
     try {
-      const resposta = await fetch(
+      resposta = await fetch(
         `${base}/parametrizacao/${ibge}/${competencia}/retencoes`,
         { headers: { "Accept": "application/json" } },
       );
-      status = resposta.status;
-      corpo = await resposta.json().catch(() => null);
     } catch (err) {
       console.error(`${TAG} cobertura`, { message: (err as Error)?.message });
+      throw new NfseProviderError(
+        "Não conseguimos confirmar a liberação do município agora. Tente novamente em alguns minutos.",
+        503,
+        { codigo: "cobertura_indisponivel" },
+      );
     }
 
-    const naoParametrizado = status === 404;
+    const corpo = await resposta.json().catch(() => null);
+    const coberturaConfirmada = classificarCoberturaAdn(resposta.status);
+    if (coberturaConfirmada == null) {
+      console.error(`${TAG} cobertura`, { status: resposta.status });
+      throw new NfseProviderError(
+        "Não conseguimos confirmar a liberação do município agora. Tente novamente em alguns minutos.",
+        503,
+        {
+          codigo: "cobertura_indisponivel",
+          raw: { status: resposta.status, corpo },
+        },
+      );
+    }
+
     return {
-      podeEmitir: !naoParametrizado,
+      podeEmitir: coberturaConfirmada,
       municipio: null,
       uf: null,
       raw: {
         origem: "padrao_nacional",
-        consultaAdn: { status, corpo },
-        observacao: naoParametrizado
+        consultaAdn: { status: resposta.status, corpo },
+        observacao: coberturaConfirmada === false
           ? "Este município ainda não está no padrão nacional de NFS-e."
           : "Município atendido pelo padrão nacional de NFS-e.",
       },
     };
   },
-
-  // ---------------------------------------------------------------------------
-  // NÃO IMPLEMENTADOS DE PROPÓSITO (o handler já responde bem sem eles):
-  //
-  //   registrarEmpresa — o padrão nacional NÃO tem cadastro prévio; a credencial
-  //     é o certificado A1. `emit.ts` usa a AUSÊNCIA deste método para saber que
-  //     não deve exigir "empresa registrada". Implementar aqui quebraria isso.
-  //
-  //   buscarCatalogo — o governo não publica API de catálogo de cTribNac/NBS.
-  //     O handler responde 501 e o campo da tela continua aceitando digitação
-  //     manual do código. Ver pendência no relatório da Fase C.
-  // ---------------------------------------------------------------------------
 };
 
 /**
@@ -671,10 +721,13 @@ export const sefinProvider: NfseProvider = {
  */
 async function garantirBucket(ctx: NfseProviderCtx): Promise<void> {
   try {
-    const { error } = await ctx.supabase.storage.createBucket(BUCKET_CERTIFICADOS, {
-      public: false,
-      fileSizeLimit: 1024 * 1024 * 2, // .pfx real tem alguns KB; 2 MB é folga
-    });
+    const { error } = await ctx.supabase.storage.createBucket(
+      BUCKET_CERTIFICADOS,
+      {
+        public: false,
+        fileSizeLimit: 1024 * 1024 * 2, // .pfx real tem alguns KB; 2 MB é folga
+      },
+    );
     // "already exists" é o caminho normal a partir do segundo upload.
     if (error && !/exist/i.test(error.message ?? "")) {
       console.error(`${TAG} bucket`, { message: error.message });

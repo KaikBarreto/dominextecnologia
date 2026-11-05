@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.21',
+    date: '4 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Emissão de NFS-e pelo Portal Nacional',
+        description: 'A configuração fiscal ficou mais simples: salve os dados da empresa, confirme o município e envie um certificado A1 válido. A emissão agora acontece diretamente pelo motor fiscal da Dominex, sem cadastro adicional em outro serviço.',
+        category: 'correcao',
+      },
+      {
+        title: 'Status fiscal mais claro e seguro',
+        description: 'A tela mostra exatamente o que falta para emitir e oferece atalhos para corrigir município ou certificado. Certificados vencidos ou sem validade confirmada não liberam a emissão.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.20',
     date: '4 de novembro de 2026',
     type: 'patch',

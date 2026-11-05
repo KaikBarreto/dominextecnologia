@@ -4,8 +4,8 @@
 > do governo** (Sefin Nacional), com o certificado A1 do cliente. Existe porque as
 > Edge Functions da Supabase **não fazem mTLS** e o governo só autentica por mTLS.
 >
-> **Por que é urgente:** a assinatura da Fisqal foi cancelada. **Hoje nenhum cliente
-> da Dominex emite nota fiscal.** Este serviço é o caminho de volta.
+> **Por que existe:** a Dominex aposentou a integração fiscal terceirizada. Este
+> serviço é o caminho único de emissão direta no Padrão Nacional da NFS-e.
 >
 > **Onde roda:** a mesma VPS Hostinger KVM 2 (Ubuntu 24.04, 8 GB, `46.202.149.193`)
 > que já roda a Evolution API.

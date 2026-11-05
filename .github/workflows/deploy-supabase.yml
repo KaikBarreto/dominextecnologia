@@ -48,3 +48,39 @@ jobs:
             echo "→ Deploying function: $fn_name"
             supabase functions deploy "$fn_name" --remote="$SUPABASE_PROJECT_ID" --yes
           done
+
+      - name: Remove retired fiscal edge functions
+        run: |
+          retired_functions=(
+            fisqal-register-company
+            fisqal-upload-certificate
+            fisqal-check-coverage
+            fisqal-emit-nfse
+            fisqal-nfse-status
+            fisqal-save-nfse-draft
+            fisqal-delete-nfse-draft
+            fisqal-cancel-nfse
+            fisqal-webhook
+            fisqal-tax-codes
+            nfse-register-company
+            nfse-webhook
+          )
+
+          deployed_json=$(supabase functions list --project-ref "$SUPABASE_PROJECT_ID" -o json)
+          for fn_name in "${retired_functions[@]}"; do
+            if jq -e --arg name "$fn_name" '.[] | select(.name == $name)' \
+              <<<"$deployed_json" >/dev/null; then
+              echo "→ Removing retired function: $fn_name"
+              supabase functions delete "$fn_name" --project-ref "$SUPABASE_PROJECT_ID" --yes
+            fi
+          done
+
+      - name: Remove retired fiscal secrets
+        run: |
+          supabase secrets unset \
+            FISQAL_API_KEY \
+            FISQAL_BASE_URL \
+            FISQAL_WEBHOOK_SECRET \
+            FISQAL_WEBHOOK_SIGNATURE_HEADER \
+            --remote="$SUPABASE_PROJECT_ID" \
+            --yes

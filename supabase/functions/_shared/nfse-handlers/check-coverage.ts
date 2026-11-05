@@ -1,11 +1,11 @@
 // =============================================================================
-// Handler de COBERTURA MUNICIPAL (rotas: nfse-check-coverage / fisqal-check-coverage).
+// Handler de COBERTURA MUNICIPAL (rota: nfse-check-coverage).
 // =============================================================================
 // AUTENTICADA: Authorization Bearer + módulo 'nfe' ativo + can_manage_system.
 //
 // Lê municipio_ibge de company_fiscal_settings (ou aceita { ibge } no body),
-// pergunta ao provedor ativo e atualiza pode_emitir. Devolve a cobertura crua
-// para a tela exibir o diagnóstico.
+// pergunta ao Portal Nacional e atualiza `pode_emitir`. Indisponibilidade é
+// estado desconhecido: retorna erro e NÃO persiste liberação por inferência.
 // =============================================================================
 
 import {
@@ -13,12 +13,35 @@ import {
   corsHeaders,
   jsonResponse,
 } from "../fiscal-auth.ts";
-import { getProvider } from "../nfse-provider.ts";
+import { getNfseEngine } from "../nfse-provider.ts";
 import type { NfseProviderCtx } from "../nfse-provider.ts";
 import { logId, providerErrorResponse } from "./common.ts";
 
 const TAG = "[nfse-check-coverage]";
 const IBGE_REGEX = /^\d{7}$/;
+
+class CoveragePersistError extends Error {
+  constructor() {
+    super("coverage_persist_failed");
+    this.name = "CoveragePersistError";
+  }
+}
+
+/**
+ * Invalida a cobertura anterior ANTES da rede. Assim, troca de município +
+ * timeout nunca herda `pode_emitir=true` do IBGE antigo.
+ */
+export async function executarConsultaCobertura<
+  T extends { podeEmitir: boolean },
+>(
+  persistir: (podeEmitir: boolean) => Promise<void>,
+  consultar: () => Promise<T>,
+): Promise<T> {
+  await persistir(false);
+  const cobertura = await consultar();
+  await persistir(cobertura.podeEmitir === true);
+  return cobertura;
+}
 
 export async function handleNfseCheckCoverage(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
@@ -68,22 +91,15 @@ export async function handleNfseCheckCoverage(req: Request): Promise<Response> {
     }
     if (!IBGE_REGEX.test(ibge)) {
       return jsonResponse(
-        { error: "invalid_ibge", message: "Código IBGE inválido. Ele deve ter 7 dígitos." },
+        {
+          error: "invalid_ibge",
+          message: "Código IBGE inválido. Ele deve ter 7 dígitos.",
+        },
         422,
       );
     }
 
-    const provider = getProvider(fiscal as Record<string, unknown> | null);
-    if (!provider.checarCobertura) {
-      return jsonResponse(
-        {
-          error: "provider_unsupported",
-          message:
-            "A verificação de cobertura não está disponível na emissão fiscal atual.",
-        },
-        501,
-      );
-    }
+    const engine = getNfseEngine();
 
     const ctx: NfseProviderCtx = {
       supabase,
@@ -91,25 +107,31 @@ export async function handleNfseCheckCoverage(req: Request): Promise<Response> {
       fiscal: (fiscal ?? {}) as Record<string, unknown>,
     };
 
-    const cobertura = await provider.checarCobertura(ctx, ibge);
+    const persistir = async (podeEmitir: boolean): Promise<void> => {
+      const { error: upsertErr } = await supabase
+        .from("company_fiscal_settings")
+        .upsert(
+          {
+            company_id: companyId,
+            municipio_ibge: ibge,
+            pode_emitir: podeEmitir,
+          },
+          { onConflict: "company_id" },
+        );
+      if (upsertErr) {
+        console.error(`${TAG} upsert error`, {
+          company_id: logId(companyId),
+          message: upsertErr.message,
+        });
+        throw new CoveragePersistError();
+      }
+    };
+
+    const cobertura = await executarConsultaCobertura(
+      persistir,
+      () => engine.checarCobertura(ctx, ibge),
+    );
     const podeEmitir = cobertura.podeEmitir === true;
-
-    // ---- Atualiza pode_emitir + municipio_ibge. Upsert pra garantir a linha
-    //      existir mesmo no fluxo só-de-cobertura.
-    const { error: upsertErr } = await supabase
-      .from("company_fiscal_settings")
-      .upsert(
-        { company_id: companyId, municipio_ibge: ibge, pode_emitir: podeEmitir },
-        { onConflict: "company_id" },
-      );
-
-    if (upsertErr) {
-      console.error(`${TAG} upsert error`, {
-        company_id: logId(companyId),
-        message: upsertErr.message,
-      });
-      // Não bloqueia: a cobertura foi consultada; só falhou ao persistir.
-    }
 
     return jsonResponse(
       {
@@ -117,14 +139,23 @@ export async function handleNfseCheckCoverage(req: Request): Promise<Response> {
         pode_emitir: podeEmitir,
         municipio: cobertura.municipio ?? null,
         uf: cobertura.uf ?? null,
-        coverage: cobertura.raw ?? null,
         message: podeEmitir
-          ? "Este município já permite emissão de NFS-e."
-          : "Este município ainda não permite emissão de NFS-e pela emissão fiscal.",
+          ? "Município habilitado para emissão de NFS-e no Portal Nacional."
+          : "Este município ainda não está habilitado para emissão de NFS-e no Portal Nacional.",
       },
       200,
     );
   } catch (err) {
+    if (err instanceof CoveragePersistError) {
+      return jsonResponse(
+        {
+          error: "coverage_persist_failed",
+          message:
+            "Não conseguimos salvar a verificação do município agora. Tente novamente.",
+        },
+        500,
+      );
+    }
     const providerResp = providerErrorResponse(err);
     if (providerResp) return providerResp;
 

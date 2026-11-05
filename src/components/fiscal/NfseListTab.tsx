@@ -462,8 +462,8 @@ export function NfseListTab({ canEmit, dateStart, dateEnd }: NfseListTabProps) {
 
     const canViewDetail = !isDraft;
     const canContinueDraft = isDraft;
-    // Emitir/Reenviar depende de a empresa estar apta (município liberado +
-    // registro + certificado — ver isFiscalReadyToEmit).
+    // Emitir/Reenviar depende de município no Padrão Nacional + A1 próprio
+    // válido — ver isFiscalReadyToEmit.
     const canEmitRow = (isDraft || isRejected) && canEmit;
     const canCheckStatus = isPending || isCancelPending;
     // O documento existe e vale enquanto o cancelamento não é efetivado.

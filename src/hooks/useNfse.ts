@@ -29,8 +29,17 @@ export type NfseStatus =
   | 'falhou'
   | string;
 
-/** Linha de `nfse_emissions` com `status` estreitado pro union de exibição. */
-export type NfseEmission = Omit<Tables<'nfse_emissions'>, 'status'> & {
+type NfseEmissionSchema = Tables<'nfse_emissions'>;
+type RetiredProviderColumn = Extract<
+  keyof NfseEmissionSchema,
+  `${string}_dps_id` | `${string}_fiscal_request_id`
+>;
+
+/** Linha de `nfse_emissions` com `status` estreitado e aliases aposentados fora da UI. */
+export type NfseEmission = Omit<
+  NfseEmissionSchema,
+  'status' | RetiredProviderColumn
+> & {
   status: NfseStatus;
 };
 
@@ -50,7 +59,7 @@ export interface EmitNfseInput {
   idempotencyKey?: string;
 }
 
-// Ids internos do provedor ficam de fora: nenhuma tela os usa.
+// Referências internas do motor fiscal ficam de fora: nenhuma tela as usa.
 // `data_competencia` é OBRIGATÓRIA aqui: o recorte por período dos contadores
 // lê `data_competencia || created_at`. Sem a coluna no select, o fallback
 // disparava sempre e o período era medido pela data de CRIAÇÃO da nota, não
@@ -107,7 +116,7 @@ export function useNfse() {
     onSettled: () => invalidateList(),
   });
 
-  /** Consulta/atualiza o status de uma emissão no provedor. */
+  /** Consulta/atualiza o status de uma emissão no motor fiscal. */
   const statusMutation = useMutation({
     mutationFn: async (emissionId: string): Promise<NfseEdgeResult> => {
       return invokeNfse('nfse-status', { emissionId });
@@ -228,9 +237,8 @@ export function useNfseStatusPolling(
       try {
         const res = await invokeNfse('nfse-status', { emissionId });
 
-        // 503 (integração não ativada) ou 501 (caminho de emissão indisponível):
-        // não adianta insistir — para.
-        if (res.unconfigured || res.providerUnsupported) {
+        // Serviço/operação fiscal indisponível: não adianta insistir — para.
+        if (res.unavailable) {
           stop();
           return;
         }
@@ -324,8 +332,8 @@ export function useNfseListPolling(pendingIds: string[]): void {
         const results = await Promise.all(
           ids.map((id) => invokeNfse('nfse-status', { emissionId: id })),
         );
-        // 503/501 em qualquer consulta = integração indisponível: não insiste.
-        if (results.some((r) => r.unconfigured || r.providerUnsupported)) {
+        // Indisponibilidade em qualquer consulta: não insiste.
+        if (results.some((r) => r.unavailable)) {
           clear();
           return;
         }

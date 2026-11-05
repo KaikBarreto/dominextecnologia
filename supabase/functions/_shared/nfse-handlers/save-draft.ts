@@ -1,9 +1,9 @@
 // =============================================================================
-// Handler de RASCUNHO de NFS-e (rotas: nfse-save-draft / fisqal-save-nfse-draft).
+// Handler de RASCUNHO de NFS-e (rota: nfse-save-draft).
 // =============================================================================
 // AUTENTICADA: Authorization Bearer + módulo 'nfe' ativo + can_manage_system
 // (via fiscal-auth.ts). Grava/atualiza uma linha em nfse_emissions com
-// status='rascunho' — NÃO fala com provedor, NÃO valida obrigatórios, NÃO consome
+// status='rascunho' — NÃO fala com o fisco, NÃO valida obrigatórios, NÃO consome
 // cota. É o "salvar e continuar" do modal de nova nota em etapas.
 //
 // Fluxo:
