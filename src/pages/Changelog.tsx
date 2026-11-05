@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.33',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Compatibilidade com o layout fiscal nacional atual',
+        description: 'A emissão de NFS-e agora inclui o indicador obrigatório de finalidade na posição exigida pelo Portal Nacional, evitando a rejeição estrutural E1235 durante o envio.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.38.32',
     date: '5 de novembro de 2026',
     type: 'patch',

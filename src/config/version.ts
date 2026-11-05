@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.32";
+export const APP_VERSION = "1.38.33";
 
 export const VERSION_NOTES =
-  "Rejeições do Portal Nacional agora mostram o código e o motivo fiscal para orientar a correção da nota.";
+  "Emissões fiscais usam o indicador obrigatório do layout nacional mais recente para evitar rejeição estrutural.";
