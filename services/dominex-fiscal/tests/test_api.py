@@ -473,6 +473,42 @@ def test_rejeicao_do_governo_vira_mensagem_ptbr(cliente, pfx_de_teste, monkeypat
     assert "sefin.nfse.gov.br" not in json.dumps(resposta.json())
 
 
+def test_rejeicao_do_governo_aceita_campos_em_pascal_case(
+    cliente, pfx_de_teste, monkeypatch
+):
+    """O Sefin real devolve Codigo/Descricao/Complemento em PascalCase."""
+    pfx, senha = pfx_de_teste
+    certificado = _selar(cliente, pfx, senha)["certificado"]
+
+    monkeypatch.setattr(
+        "app.sefin.client.requests.request",
+        lambda *_args, **_kwargs: RespostaFalsa(
+            422,
+            {
+                "Erros": [
+                    {
+                        "Codigo": "E0312",
+                        "Descricao": "Código não administrado pelo município",
+                        "Complemento": "Confira a competência.",
+                    }
+                ]
+            },
+        ),
+    )
+
+    resposta = cliente.post(
+        "/v1/nfse/emitir",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+        json={**CORPO_BASE, "empresaId": EMPRESA, "certificado": certificado},
+    )
+
+    assert resposta.status_code == 422
+    erro = resposta.json()["erro"]
+    assert erro["codigo"] == "E0312"
+    assert "Código não administrado" in erro["mensagem"]
+    assert "Confira a competência" in erro["mensagem"]
+
+
 def test_producao_bloqueada_recusa_ambiente_1(cliente, pfx_de_teste, monkeypatch, sefin_falso):
     """Servidor liberado só para homologação NÃO pode emitir em produção — e
     muito menos redirecionar em silêncio (o cliente acharia que emitiu)."""

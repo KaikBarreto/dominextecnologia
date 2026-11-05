@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.31";
+export const APP_VERSION = "1.38.32";
 
 export const VERSION_NOTES =
-  "A homologação de NFS-e agora envia o teste ao Portal Nacional mesmo quando a produção restrita não replica a cobertura do município.";
+  "Rejeições do Portal Nacional agora mostram o código e o motivo fiscal para orientar a correção da nota.";

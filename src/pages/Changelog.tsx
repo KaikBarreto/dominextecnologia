@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.32',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Motivo da rejeição fiscal mais claro',
+        description: 'Quando o Portal Nacional recusar uma NFS-e, a Dominex agora mostra o código oficial, o motivo e a orientação disponível para corrigir os dados antes de tentar novamente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.38.31',
     date: '5 de novembro de 2026',
     type: 'patch',

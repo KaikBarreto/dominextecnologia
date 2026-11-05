@@ -42,13 +42,22 @@ CERTIFICADO_RECUSADO = (
 )
 
 
+def _campo_sem_caixa(fonte: dict, nome: str):
+    """Lê JSON do governo sem depender da capitalização das chaves."""
+    alvo = nome.casefold()
+    for chave, valor in fonte.items():
+        if str(chave).casefold() == alvo:
+            return valor
+    return None
+
+
 def _mensagens(corpo: dict) -> list[dict]:
     if not isinstance(corpo, dict):
         return []
-    erros = corpo.get("erros")
+    erros = _campo_sem_caixa(corpo, "erros")
     if isinstance(erros, list):
         return [e for e in erros if isinstance(e, dict)]
-    erro = corpo.get("erro")
+    erro = _campo_sem_caixa(corpo, "erro")
     if isinstance(erro, dict):
         return [erro]
     return []
@@ -64,10 +73,14 @@ def _texto_da_rejeicao(mensagens: list[dict]) -> tuple[str, str]:
     if not mensagens:
         return "", "A administração tributária recusou a nota fiscal."
     primeira = mensagens[0]
-    codigo = str(primeira.get("codigo") or "").strip()
+    codigo = str(_campo_sem_caixa(primeira, "codigo") or "").strip()
     partes = [
-        str(primeira.get("descricao") or "").strip(),
-        str(primeira.get("complemento") or "").strip(),
+        str(
+            _campo_sem_caixa(primeira, "descricao")
+            or _campo_sem_caixa(primeira, "mensagem")
+            or ""
+        ).strip(),
+        str(_campo_sem_caixa(primeira, "complemento") or "").strip(),
     ]
     detalhe = " ".join(p for p in partes if p).strip()
     if not detalhe:
