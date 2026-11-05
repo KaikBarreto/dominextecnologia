@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.33";
+export const APP_VERSION = "1.38.34";
 
 export const VERSION_NOTES =
-  "Emissões fiscais usam o indicador obrigatório do layout nacional mais recente para evitar rejeição estrutural.";
+  "Empresas do Simples Nacional podem emitir NFS-e pela rota federal obrigatória, mesmo quando o município mantém emissor próprio.";

@@ -81,7 +81,11 @@ def checar_cobertura(req: schemas.CoberturaRequest) -> dict:
     pfx, senha = abrir(_envelope(req.certificado), req.empresa_id)
     with materializar_pem(pfx, senha) as par:
         cliente = SefinClient(req.ambiente, par)
-        return cliente.consultar_convenio(municipio)
+        return cliente.consultar_convenio(
+            municipio,
+            op_simp_nac=req.op_simp_nac,
+            data_competencia=req.data_competencia,
+        )
 
 
 # -----------------------------------------------------------------------------

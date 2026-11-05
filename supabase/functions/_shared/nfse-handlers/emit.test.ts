@@ -20,6 +20,7 @@ import {
 import {
   deveRegistrarTentativa,
   ehRecusaDeDocumento,
+  emissaoNacionalObrigatoriaSimples,
   validarProntidaoFiscal,
 } from "./emit.ts";
 
@@ -114,6 +115,7 @@ const AGORA = Date.parse("2026-11-04T23:00:00Z");
 const CONFIG_OK = {
   fiscal_ambiente: "producao",
   pode_emitir: true,
+  regime_tributario: "lucro_presumido",
   certificado_ref: "tenant/certificado-cifrado.b64",
   certificate_expires_at: "2027-11-04T23:00:00Z",
 };
@@ -136,6 +138,35 @@ Deno.test("homologação permite o envio de teste sem cobertura previamente conf
       AGORA,
     ),
     null,
+  );
+});
+
+Deno.test("Simples Nacional usa a porta federal desde a competência 01/11/2026", () => {
+  const simplesSemCoberturaMunicipal = {
+    ...CONFIG_OK,
+    pode_emitir: false,
+    regime_tributario: "simples_nacional",
+  };
+
+  assertEquals(
+    validarProntidaoFiscal(
+      simplesSemCoberturaMunicipal,
+      AGORA,
+      "2026-11-01",
+    ),
+    null,
+  );
+  assertEquals(
+    validarProntidaoFiscal(
+      simplesSemCoberturaMunicipal,
+      AGORA,
+      "2026-10-31",
+    )?.error,
+    "municipality_not_enabled",
+  );
+  assertEquals(
+    emissaoNacionalObrigatoriaSimples("lucro_presumido", "2026-11-01"),
+    false,
   );
 });
 

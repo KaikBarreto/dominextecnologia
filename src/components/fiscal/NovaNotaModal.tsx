@@ -26,7 +26,10 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { useFiscalSettings } from '@/hooks/useFiscalSettings';
+import {
+  emissaoNacionalObrigatoriaSimples,
+  useFiscalSettings,
+} from '@/hooks/useFiscalSettings';
 import { useNfse, type NfseEmission } from '@/hooks/useNfse';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -233,6 +236,10 @@ export function NovaNotaModal({
 
   // ---- Defaults da config fiscal ----
   const isSimples = settings.regime_tributario === 'simples_nacional';
+  const nationalEmissionRequiredBySimple = emissaoNacionalObrigatoriaSimples(
+    settings.regime_tributario,
+    dataCompetencia,
+  );
 
   // Pré-preenche campos de defaults a partir das configurações fiscais.
   useEffect(() => {
@@ -396,16 +403,22 @@ export function NovaNotaModal({
   const certificateExpired = Number.isFinite(certificateExpiresAt) && certificateExpiresAt <= Date.now();
   const habilitacaoErrors = useMemo(() => {
     const e: string[] = [];
-    if (settings.fiscal_ambiente === 'producao' && !settings.pode_emitir) {
+    if (
+      settings.fiscal_ambiente === 'producao'
+      && !settings.pode_emitir
+      && !nationalEmissionRequiredBySimple
+    ) {
       e.push(s.emitir.habilitacaoErrorMunicipio);
     }
     else if (!settings.certificado_ref) e.push(s.emitir.habilitacaoError);
     else if (!Number.isFinite(certificateExpiresAt)) e.push(s.emitir.habilitacaoErrorCertValidity);
     else if (certificateExpired) e.push(s.emitir.habilitacaoErrorCertExpired);
     return e;
-  }, [settings.fiscal_ambiente, settings.pode_emitir, settings.certificado_ref, certificateExpiresAt, certificateExpired, s]);
+  }, [settings.fiscal_ambiente, settings.pode_emitir, settings.certificado_ref, certificateExpiresAt, certificateExpired, nationalEmissionRequiredBySimple, s]);
 
-  const habilitacaoTab = settings.fiscal_ambiente === 'producao' && !settings.pode_emitir
+  const habilitacaoTab = settings.fiscal_ambiente === 'producao'
+    && !settings.pode_emitir
+    && !nationalEmissionRequiredBySimple
     ? 'empresa'
     : 'certificado';
 

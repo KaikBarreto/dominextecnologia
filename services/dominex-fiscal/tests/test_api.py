@@ -201,6 +201,50 @@ def test_cobertura_exige_porta_oficial_de_emissao(
     assert resposta.json()["podeEmitir"] is esperado
 
 
+@pytest.mark.parametrize(
+    "competencia,esperado",
+    [
+        ("data-invalida", False),
+        ("2026-10-31", False),
+        ("2026-11-01", True),
+        ("2026-11-05", True),
+    ],
+)
+def test_cobertura_aplica_obrigatoriedade_federal_do_simples_por_competencia(
+    cliente, pfx_de_teste, monkeypatch, competencia, esperado
+):
+    pfx, senha = pfx_de_teste
+    certificado = _selar(cliente, pfx, senha)["certificado"]
+    monkeypatch.setattr(
+        "app.sefin.client.requests.request",
+        lambda *_args, **_kwargs: RespostaFalsa(
+            200,
+            {
+                "parametrosConvenio": {
+                    "aderenteAmbienteNacional": 1,
+                    "aderenteEmissorNacional": 0,
+                    "situacaoEmissaoPadraoContribuintesRFB": 0,
+                }
+            },
+        ),
+    )
+
+    resposta = cliente.post(
+        "/v1/nfse/cobertura",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+        json=_corpo_cobertura(
+            certificado,
+            opSimpNac="3",
+            dataCompetencia=competencia,
+        ),
+    )
+
+    assert resposta.status_code == 200
+    assert resposta.json()["podeEmitir"] is esperado
+    if esperado:
+        assert resposta.json()["motivo"] == "simples_nacional_obrigatorio"
+
+
 def test_cobertura_inconclusiva_falha_fechado(cliente, pfx_de_teste, monkeypatch):
     pfx, senha = pfx_de_teste
     certificado = _selar(cliente, pfx, senha)["certificado"]

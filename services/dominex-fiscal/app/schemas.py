@@ -143,6 +143,12 @@ class CoberturaRequest(RequisicaoAutenticada):
     """
 
     municipio_ibge: str = Field(alias="municipioIbge")
+    #: Regime nacional do prestador: '2' MEI · '3' ME/EPP do Simples.
+    #: Usado apenas para aplicar obrigatoriedades federais por competência;
+    #: o Portal Nacional continua sendo a validação definitiva da emissão.
+    op_simp_nac: Optional[str] = Field(default=None, alias="opSimpNac")
+    #: YYYY-MM-DD. A cobertura depende da competência desde 01/11/2026.
+    data_competencia: Optional[str] = Field(default=None, alias="dataCompetencia")
 
 
 class CancelarRequest(RequisicaoAutenticada):

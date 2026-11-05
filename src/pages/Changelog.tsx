@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.34',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Emissão nacional liberada para empresas do Simples',
+        description: 'A Dominex agora reconhece a obrigatoriedade federal válida desde 1º de novembro e permite que ME e EPP do Simples Nacional emitam NFS-e pelo Portal Nacional, mesmo quando a prefeitura mantém um emissor próprio.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.38.33',
     date: '5 de novembro de 2026',
     type: 'patch',

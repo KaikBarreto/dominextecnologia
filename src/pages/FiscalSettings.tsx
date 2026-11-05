@@ -10,6 +10,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
 import {
   useFiscalSettings,
+  dataFiscalBrasil,
+  emissaoNacionalObrigatoriaSimples,
   isFiscalReadyToEmit,
   normalizeRegApTribSN,
   type FiscalAmbiente,
@@ -554,12 +556,19 @@ export default function FiscalSettings() {
       : coverageConfirmedInSession === false
         ? false
         : !!currentIbge && currentIbge === persistedIbge && settings.pode_emitir;
+  const nationalEmissionRequiredBySimple = emissaoNacionalObrigatoriaSimples(
+    form.regime_tributario,
+    dataFiscalBrasil(Date.now()),
+  );
   const municipalityReadyForEmission =
-    form.fiscal_ambiente === 'homologacao' || municipalityReady;
+    form.fiscal_ambiente === 'homologacao'
+    || municipalityReady
+    || nationalEmissionRequiredBySimple;
   const readyToEmit = isFiscalReadyToEmit({
     ...settings,
     fiscal_ambiente: form.fiscal_ambiente,
     pode_emitir: municipalityReadyForEmission,
+    regime_tributario: form.regime_tributario,
   });
 
   const navTabs: SettingsTab[] = [
@@ -602,13 +611,13 @@ export default function FiscalSettings() {
             <div className="flex min-w-0 items-center gap-2 text-sm">
               <MapPin className={`h-4 w-4 shrink-0 ${municipalityReadyForEmission ? 'text-success' : 'text-warning'}`} />
               <span className="min-w-0 flex-1 text-muted-foreground">
-                {municipalityReady
+                {municipalityReady || nationalEmissionRequiredBySimple
                   ? t.settings.empresa.statusCoverageOk
                   : form.fiscal_ambiente === 'homologacao'
                     ? t.settings.empresa.statusCoverageHomologation
                   : t.settings.empresa.statusCoveragePending}
               </span>
-              {!municipalityReady && (
+              {!municipalityReady && !nationalEmissionRequiredBySimple && (
                 <Button
                   type="button"
                   variant="ghost"

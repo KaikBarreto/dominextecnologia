@@ -77,6 +77,34 @@ function digits(v: unknown): string {
   return clean(v).replace(/\D/g, "");
 }
 
+/** Regime do cadastro fiscal no vocabulário nacional da DPS. */
+function opSimpNacDeRegime(regime: unknown): string | undefined {
+  switch (clean(regime).toLowerCase()) {
+    case "simples_nacional":
+      return "3";
+    case "mei":
+      return "2";
+    case "lucro_presumido":
+    case "lucro_real":
+      return "1";
+    default:
+      return undefined;
+  }
+}
+
+/** Dia civil fiscal brasileiro, sem antecipar a virada pelo relógio UTC. */
+function dataCompetenciaAtual(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const part = (type: string) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
 /** Só a conclusão booleana explícita do motor pode liberar a emissão. */
 export function coberturaConfirmadaPeloMotor(valor: unknown): boolean {
   return valor === true;
@@ -665,6 +693,8 @@ export const nfseEngine: NfseEngine = {
     }>("/v1/nfse/cobertura", {
       ...base,
       municipioIbge: ibge,
+      opSimpNac: opSimpNacDeRegime(ctx.fiscal?.regime_tributario),
+      dataCompetencia: dataCompetenciaAtual(),
     });
     const coberturaConfirmada = coberturaConfirmadaPeloMotor(dados.podeEmitir);
 

@@ -123,10 +123,30 @@ export interface NfseReadinessError {
   message: string;
 }
 
+export const SIMPLES_NACIONAL_EMISSOR_NACIONAL_DESDE = "2026-11-01";
+
+/**
+ * Regra federal da Resolução CGSN 191/2026.
+ *
+ * A partir de 01/11/2026, ME/EPP optante do Simples emite pela Sefin Nacional
+ * mesmo quando o município mantém emissor próprio. A comparação é por dia
+ * civil ISO da competência, não pelo instante UTC da requisição.
+ */
+export function emissaoNacionalObrigatoriaSimples(
+  regimeTributario: unknown,
+  dataCompetencia: unknown,
+): boolean {
+  const competencia = clean(dataCompetencia);
+  return clean(regimeTributario).toLowerCase() === "simples_nacional" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(competencia) &&
+    competencia >= SIMPLES_NACIONAL_EMISSOR_NACIONAL_DESDE;
+}
+
 /** Gate único de cobertura e certificado, antes de consumir número ou transmitir. */
 export function validarProntidaoFiscal(
   fiscal: Record<string, unknown>,
   agoraMs = Date.now(),
+  dataCompetencia?: string,
 ): NfseReadinessError | null {
   const ambiente = normalizeFiscalEnvironment(fiscal.fiscal_ambiente);
   if (!ambiente) {
@@ -140,7 +160,14 @@ export function validarProntidaoFiscal(
   // cobertura municipal real. Em homologacao, o proprio POST da DPS e a
   // validacao definitiva — sem efeito fiscal. Em producao, a cobertura
   // oficial continua obrigatoria e falha fechado.
-  if (ambiente === "producao" && fiscal.pode_emitir !== true) {
+  const coberturaFederalSimples = emissaoNacionalObrigatoriaSimples(
+    fiscal.regime_tributario,
+    dataCompetencia,
+  );
+  if (
+    ambiente === "producao" && fiscal.pode_emitir !== true &&
+    !coberturaFederalSimples
+  ) {
     return {
       error: "municipality_not_enabled",
       message:
@@ -1111,6 +1138,8 @@ export async function emitirNfseAutorizada(
     const missing: string[] = [];
     const readinessError = validarProntidaoFiscal(
       fiscal as Record<string, unknown>,
+      Date.now(),
+      dataCompetencia,
     );
     if (readinessError) {
       return jsonResponse(

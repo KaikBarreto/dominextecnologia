@@ -18,6 +18,29 @@ import { getErrorMessage } from '@/utils/errorMessages';
  */
 
 export type FiscalAmbiente = 'homologacao' | 'producao';
+export const SIMPLES_NACIONAL_EMISSOR_NACIONAL_DESDE = '2026-11-01';
+
+/** Obrigatoriedade federal de emissão nacional para ME/EPP do Simples. */
+export function emissaoNacionalObrigatoriaSimples(
+  regimeTributario: unknown,
+  dataCompetencia: unknown,
+): boolean {
+  const competencia = typeof dataCompetencia === 'string' ? dataCompetencia.trim() : '';
+  return regimeTributario === 'simples_nacional'
+    && /^\d{4}-\d{2}-\d{2}$/.test(competencia)
+    && competencia >= SIMPLES_NACIONAL_EMISSOR_NACIONAL_DESDE;
+}
+
+export function dataFiscalBrasil(now: number): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(now));
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? '';
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
 
 /**
  * Regime de apuração dos tributos no Simples Nacional (layout nacional da NFS-e).
@@ -43,10 +66,20 @@ export function normalizeRegApTribSN(value: unknown): RegApTribSN {
  * Qualquer tela que pergunte "já dá pra emitir?" tem que usar isto.
  */
 export function isFiscalReadyToEmit(
-  s: Pick<FiscalSettings, 'fiscal_ambiente' | 'pode_emitir' | 'certificado_ref' | 'certificate_expires_at'>,
+  s: Pick<
+    FiscalSettings,
+    | 'fiscal_ambiente'
+    | 'pode_emitir'
+    | 'certificado_ref'
+    | 'certificate_expires_at'
+    | 'regime_tributario'
+  >,
   now = Date.now(),
+  dataCompetencia = dataFiscalBrasil(now),
 ): boolean {
-  const coverageReady = s.fiscal_ambiente === 'homologacao' || s.pode_emitir;
+  const coverageReady = s.fiscal_ambiente === 'homologacao'
+    || s.pode_emitir
+    || emissaoNacionalObrigatoriaSimples(s.regime_tributario, dataCompetencia);
   if (!coverageReady || !s.certificado_ref || !s.certificate_expires_at) return false;
   const expiresAt = new Date(s.certificate_expires_at).getTime();
   return Number.isFinite(expiresAt) && expiresAt > now;

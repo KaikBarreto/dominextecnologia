@@ -12,6 +12,7 @@ Só GET é retentado.
 
 from __future__ import annotations
 
+from datetime import date
 import logging
 import time
 
@@ -204,7 +205,13 @@ class SefinClient:
 
     # -- operações ------------------------------------------------------------
 
-    def consultar_convenio(self, municipio_ibge: str) -> dict:
+    def consultar_convenio(
+        self,
+        municipio_ibge: str,
+        *,
+        op_simp_nac: str | None = None,
+        data_competencia: str | None = None,
+    ) -> dict:
         """Confirma no ADN se o município aderiu ao Ambiente Nacional.
 
         A API de parametrização exige o mesmo mTLS da emissão. Um HTTP 200 não
@@ -245,11 +252,27 @@ class SefinClient:
             else None
         )
 
-        # Município no ADN + uma das duas portas oficiais de emissão:
+        # Resolução CGSN 191/2026: desde 01/11/2026, ME/EPP optante pelo
+        # Simples emite obrigatoriamente pela Sefin Nacional (Web ou API),
+        # mesmo quando o município mantém emissor próprio. O parâmetro
+        # municipal é genérico e pode continuar 0; regime + competência são a
+        # porta federal específica do contribuinte. O POST da DPS ainda valida
+        # o enquadramento nas bases RFB/Simples e é a autoridade definitiva.
+        try:
+            competencia = date.fromisoformat(str(data_competencia))
+        except (TypeError, ValueError):
+            competencia = None
+        simples_nacional_obrigatorio = op_simp_nac == "3" and (
+            competencia is not None and competencia >= date(2026, 11, 1)
+        )
+
+        # Município no ADN + uma das portas oficiais de emissão:
         # adesão ao Emissor Nacional ou habilitação-padrão dos contribuintes
-        # RFB (inclui a obrigatoriedade de ME/EPP a partir de 01/11/2026).
+        # RFB, além da obrigatoriedade federal específica de ME/EPP.
         pode_emitir = ambiente_nacional == 1 and (
-            emissor_nacional == 1 or habilitacao_rfb == 1
+            emissor_nacional == 1
+            or habilitacao_rfb == 1
+            or simples_nacional_obrigatorio
         )
         valores_conclusivos = all(
             valor in (0, 1)
@@ -272,6 +295,8 @@ class SefinClient:
                 if emissor_nacional == 1
                 else "contribuinte_rfb_habilitado"
                 if habilitacao_rfb == 1
+                else "simples_nacional_obrigatorio"
+                if simples_nacional_obrigatorio
                 else "emissor_nacional_nao_habilitado"
             ),
         }
