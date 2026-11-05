@@ -503,6 +503,9 @@ export function EditOsScopeDrawer({
                 plan={schedulePlan}
                 onChange={setSchedulePlan}
                 locale={appLocale as 'pt-br' | 'en' | 'es' | 'fr'}
+                excludeServiceOrderId={serviceOrderId}
+                customerId={customerId}
+                equipmentIds={scopeState.equipmentGroups.map((group) => group.equipmentId)}
                 labels={{
                   period: t.schedulePeriod,
                   startDate: t.scheduleStartDate,

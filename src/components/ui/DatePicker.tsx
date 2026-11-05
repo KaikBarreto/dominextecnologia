@@ -1,12 +1,26 @@
 import * as React from 'react';
 import { format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
+import type { DayContentProps } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { getDateFnsLocale } from '@/lib/format';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+
+export type DatePickerIndicatorColor = 'amber' | 'blue' | 'violet';
+
+export interface DatePickerDayIndicator {
+  date: string;
+  color: DatePickerIndicatorColor;
+  label: string;
+}
+
+export interface DatePickerIndicatorLegendItem {
+  color: DatePickerIndicatorColor;
+  label: string;
+}
 
 export interface DatePickerProps {
   /** Valor no formato do banco: `yyyy-MM-dd`. String vazia = sem data. */
@@ -30,7 +44,19 @@ export interface DatePickerProps {
   ariaLabel?: string;
   /** Espelha o `aria-invalid` do `Input`: campo com erro de validação. */
   ariaInvalid?: boolean;
+  /** Marcadores operacionais opcionais. Não usar em calendários cadastrais. */
+  indicators?: DatePickerDayIndicator[];
+  /** Legenda exibida no rodapé do calendário quando há marcadores. */
+  indicatorLegend?: DatePickerIndicatorLegendItem[];
+  /** Informa o mês navegado para carregamento sob demanda dos marcadores. */
+  onVisibleMonthChange?: (month: Date) => void;
 }
+
+const INDICATOR_COLOR_CLASS: Record<DatePickerIndicatorColor, string> = {
+  amber: 'bg-amber-500',
+  blue: 'bg-blue-600',
+  violet: 'bg-violet-500',
+};
 
 /**
  * Converte `yyyy-MM-dd` em `Date` LOCAL, sem passar por UTC.
@@ -113,6 +139,9 @@ export function DatePicker({
   clearLabel,
   ariaLabel,
   ariaInvalid,
+  indicators = [],
+  indicatorLegend = [],
+  onVisibleMonthChange,
 }: DatePickerProps) {
   const { locale } = useAppLocaleContext();
   const dateFnsLocale = getDateFnsLocale(locale);
@@ -126,6 +155,42 @@ export function DatePicker({
   const displayFormat = locale === 'pt-br' ? 'dd/MM/yyyy' : 'P';
 
   const { fromYear, toYear } = resolveYearRange(selected, minDate, maxDate);
+  const indicatorsByDate = React.useMemo(() => {
+    const grouped = new Map<string, DatePickerDayIndicator[]>();
+    for (const indicator of indicators) {
+      const current = grouped.get(indicator.date) ?? [];
+      if (!current.some((item) => item.color === indicator.color && item.label === indicator.label)) {
+        current.push(indicator);
+      }
+      grouped.set(indicator.date, current);
+    }
+    return grouped;
+  }, [indicators]);
+
+  const IndicatorDayContent = React.useCallback(({ date }: DayContentProps) => {
+    const dayIndicators = indicatorsByDate.get(toIsoDate(date)) ?? [];
+    return (
+      <span
+        className="relative flex h-9 w-9 items-center justify-center"
+        title={dayIndicators.length > 0 ? dayIndicators.map((indicator) => indicator.label).join(' • ') : undefined}
+      >
+        <span>{date.getDate()}</span>
+        {dayIndicators.length > 0 && (
+          <span className="pointer-events-none absolute bottom-0.5 left-1/2 flex -translate-x-1/2 gap-0.5" aria-hidden="true">
+            {dayIndicators.map((indicator) => (
+              <span
+                key={`${indicator.color}:${indicator.label}`}
+                className={cn('h-1.5 w-1.5 rounded-full ring-1 ring-background', INDICATOR_COLOR_CLASS[indicator.color])}
+              />
+            ))}
+          </span>
+        )}
+        {dayIndicators.length > 0 && (
+          <span className="sr-only">, {dayIndicators.map((indicator) => indicator.label).join(', ')}</span>
+        )}
+      </span>
+    );
+  }, [indicatorsByDate]);
 
   return (
     <Popover open={open} onOpenChange={setOpen} modal>
@@ -184,9 +249,21 @@ export function DatePicker({
           captionLayout="dropdown-buttons"
           fromYear={fromYear}
           toYear={toYear}
+          onMonthChange={onVisibleMonthChange}
           initialFocus
           locale={dateFnsLocale}
+          components={{ DayContent: IndicatorDayContent }}
         />
+        {indicatorLegend.length > 0 && (
+          <div className="flex flex-wrap gap-x-3 gap-y-1 border-t border-border px-3 py-2 text-xs text-muted-foreground">
+            {indicatorLegend.map((item) => (
+              <span key={`${item.color}:${item.label}`} className="inline-flex items-center gap-1.5">
+                <span className={cn('h-2 w-2 rounded-full', INDICATOR_COLOR_CLASS[item.color])} aria-hidden="true" />
+                {item.label}
+              </span>
+            ))}
+          </div>
+        )}
         {clearable && value && (
           <div className="border-t border-border p-2">
             <Button

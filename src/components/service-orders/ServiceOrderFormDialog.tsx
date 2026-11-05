@@ -1659,6 +1659,9 @@ export function ServiceOrderFormDialog({
       plan={(watchedValues.schedule_plan ?? []) as ServiceOrderScheduleSlot[]}
       onChange={handleSchedulePlanChange}
       locale={locale}
+      excludeServiceOrderId={serviceOrder?.id}
+      customerId={selectedCustomerId}
+      equipmentIds={selectedEquipmentIds}
       labels={{
         period: t.schedulePeriod,
         startDate: t.scheduleStartDate,

@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.25";
+export const APP_VERSION = "1.38.26";
 
 export const VERSION_NOTES =
-  "A gestão de empresas ganhou navegação por etapas, resumo do plano e geração segura de links de redefinição de senha.";
+  "Os calendários de agendamento agora mostram as visitas e Ordens de Serviço já programadas para o cliente ou equipamento selecionado.";

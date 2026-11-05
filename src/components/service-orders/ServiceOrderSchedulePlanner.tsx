@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { Copy, Plus, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { TimePicker } from '@/components/ui/TimePicker';
+import { ScheduleDatePicker } from '@/components/schedule/ScheduleDatePicker';
 import {
   buildDailySchedulePlan,
   getScheduleSlotDurationMinutes,
@@ -35,6 +35,9 @@ interface ServiceOrderSchedulePlannerProps {
   onChange: (plan: ServiceOrderScheduleSlot[]) => void;
   locale: LocaleCode;
   labels: SchedulePlannerLabels;
+  excludeServiceOrderId?: string | null;
+  customerId?: string | null;
+  equipmentIds?: string[];
 }
 
 const LOCALE_TAG: Record<LocaleCode, string> = {
@@ -49,6 +52,9 @@ export function ServiceOrderSchedulePlanner({
   onChange,
   locale,
   labels,
+  excludeServiceOrderId,
+  customerId,
+  equipmentIds = [],
 }: ServiceOrderSchedulePlannerProps) {
   const [additionalDate, setAdditionalDate] = useState('');
   const first = plan[0];
@@ -125,11 +131,23 @@ export function ServiceOrderSchedulePlanner({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>{labels.startDate}</Label>
-          <DatePicker value={startDate} onValueChange={(value) => updateRange(value, endDate)} />
+          <ScheduleDatePicker
+            value={startDate}
+            onValueChange={(value) => updateRange(value, endDate)}
+            excludeServiceOrderId={excludeServiceOrderId}
+            customerId={customerId}
+            equipmentIds={equipmentIds}
+          />
         </div>
         <div className="space-y-2">
           <Label>{labels.endDate}</Label>
-          <DatePicker value={endDate} onValueChange={(value) => updateRange(startDate, value)} />
+          <ScheduleDatePicker
+            value={endDate}
+            onValueChange={(value) => updateRange(startDate, value)}
+            excludeServiceOrderId={excludeServiceOrderId}
+            customerId={customerId}
+            equipmentIds={equipmentIds}
+          />
         </div>
       </div>
 
@@ -151,7 +169,13 @@ export function ServiceOrderSchedulePlanner({
       <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
         <div className="space-y-2">
           <Label>{labels.addDate}</Label>
-          <DatePicker value={additionalDate} onValueChange={setAdditionalDate} />
+          <ScheduleDatePicker
+            value={additionalDate}
+            onValueChange={setAdditionalDate}
+            excludeServiceOrderId={excludeServiceOrderId}
+            customerId={customerId}
+            equipmentIds={equipmentIds}
+          />
         </div>
         <Button
           type="button"

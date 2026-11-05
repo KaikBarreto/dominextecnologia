@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.26',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agenda visível ao escolher uma data',
+        description: 'Ao agendar uma visita, O.S. ou tarefa, o calendário agora mostra pontos coloridos nos dias que já possuem atendimentos para o cliente selecionado. A legenda diferencia visitas de contrato e Ordens de Serviço avulsas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Planejamento com menos conflitos',
+        description: 'Quando houver equipamento selecionado, o calendário também identifica atendimentos ligados a ele. Passe o mouse sobre o marcador para entender o que já está programado naquele dia.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.25',
     date: '5 de novembro de 2026',
     type: 'patch',

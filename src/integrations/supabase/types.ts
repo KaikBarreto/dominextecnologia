@@ -18075,6 +18075,22 @@ export type Database = {
         }
         Returns: Json
       }
+      get_schedule_calendar_indicators: {
+        Args: {
+          p_customer_id?: string
+          p_end_date: string
+          p_equipment_ids?: string[]
+          p_exclude_service_order_id?: string
+          p_start_date: string
+        }
+        Returns: {
+          contract_occurrence_matches_equipment: boolean
+          has_contract_occurrence: boolean
+          has_service_order: boolean
+          schedule_date: string
+          service_order_matches_equipment: boolean
+        }[]
+      }
       schedule_book_service_order: {
         Args: {
           p_ends_at: string

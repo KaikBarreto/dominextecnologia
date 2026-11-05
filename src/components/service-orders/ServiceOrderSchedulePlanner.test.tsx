@@ -2,8 +2,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/components/ui/DatePicker', () => ({
-  DatePicker: ({ value, onValueChange }: { value: string; onValueChange: (value: string) => void }) => (
+vi.mock('@/components/schedule/ScheduleDatePicker', () => ({
+  ScheduleDatePicker: ({ value, onValueChange }: { value: string; onValueChange: (value: string) => void }) => (
     <button
       type="button"
       data-testid="date-picker"
