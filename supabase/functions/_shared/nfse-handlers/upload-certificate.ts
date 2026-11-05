@@ -29,6 +29,47 @@ import { logId, providerErrorResponse } from "./common.ts";
 const TAG = "[nfse-upload-certificate]";
 const MAX_CERTIFICATE_BYTES = 2 * 1024 * 1024;
 
+type IdentidadeCertificado =
+  | "ok"
+  | "empresa_sem_cnpj"
+  | "certificado_sem_cnpj"
+  | "cnpj_divergente";
+
+function somenteDigitos(value: unknown): string {
+  return typeof value === "string" ? value.replace(/\D/g, "") : "";
+}
+
+/**
+ * O A1 precisa pertencer ao CNPJ exato do tenant emissor.
+ *
+ * Não aceitamos só a raiz: uma filial não pode assinar a DPS de outra inscrição
+ * por acidente. Valores ausentes ou malformados também falham fechados.
+ */
+export function compararIdentidadeCertificado(
+  cnpjEmpresa: unknown,
+  cnpjCertificado: unknown,
+): IdentidadeCertificado {
+  const empresa = somenteDigitos(cnpjEmpresa);
+  if (empresa.length !== 14) return "empresa_sem_cnpj";
+  const certificado = somenteDigitos(cnpjCertificado);
+  if (certificado.length !== 14) return "certificado_sem_cnpj";
+  return empresa === certificado ? "ok" : "cnpj_divergente";
+}
+
+/** Executa a compensação do objeto novo antes de devolver qualquer rejeição. */
+export async function validarIdentidadeAntesDePersistir(
+  cnpjEmpresa: unknown,
+  cnpjCertificado: unknown,
+  removerObjetoNovo: () => Promise<void>,
+): Promise<IdentidadeCertificado> {
+  const identidade = compararIdentidadeCertificado(
+    cnpjEmpresa,
+    cnpjCertificado,
+  );
+  if (identidade !== "ok") await removerObjetoNovo();
+  return identidade;
+}
+
 async function removerCertificadoDaEmpresa(
   supabase: FiscalAuthOk["supabase"],
   companyId: string,
@@ -92,6 +133,40 @@ export async function handleNfseUploadCertificate(
           error: "fiscal_not_configured",
           message:
             "Salve os dados fiscais da empresa antes de enviar o certificado digital.",
+        },
+        422,
+      );
+    }
+
+    // A fonte canônica do emitente é `companies`, sempre filtrada pelo tenant
+    // resolvido no JWT. Conferir ANTES do upload evita criar objeto órfão quando
+    // a própria empresa ainda não tem CNPJ válido.
+    const { data: empresa, error: empresaErr } = await supabase
+      .from("companies")
+      .select("cnpj")
+      .eq("id", companyId)
+      .maybeSingle();
+    if (empresaErr) {
+      console.error(`${TAG} company lookup error`, {
+        company_id: logId(companyId),
+        message: empresaErr.message,
+      });
+      return jsonResponse(
+        {
+          error: "company_lookup_failed",
+          message:
+            "Não foi possível confirmar o CNPJ da empresa agora. Tente novamente.",
+        },
+        500,
+      );
+    }
+    const cnpjEmpresa = somenteDigitos(empresa?.cnpj);
+    if (cnpjEmpresa.length !== 14) {
+      return jsonResponse(
+        {
+          error: "company_cnpj_missing",
+          message:
+            "Cadastre um CNPJ válido para a empresa antes de enviar o certificado digital.",
         },
         422,
       );
@@ -183,6 +258,32 @@ export async function handleNfseUploadCertificate(
             "Não foi possível guardar o certificado com segurança. Tente novamente.",
         },
         502,
+      );
+    }
+
+    const identidade = await validarIdentidadeAntesDePersistir(
+      cnpjEmpresa,
+      resultado.cnpjTitular,
+      () => removerCertificadoDaEmpresa(supabase, companyId, novaReferencia),
+    );
+    if (identidade !== "ok") {
+      if (identidade === "certificado_sem_cnpj") {
+        return jsonResponse(
+          {
+            error: "certificate_cnpj_unknown",
+            message:
+              "Não foi possível confirmar o CNPJ titular deste certificado. Verifique o arquivo A1 e tente novamente.",
+          },
+          422,
+        );
+      }
+      return jsonResponse(
+        {
+          error: "certificate_cnpj_mismatch",
+          message:
+            "Este certificado digital não pertence ao CNPJ cadastrado para a empresa. Envie o A1 correto.",
+        },
+        422,
       );
     }
 

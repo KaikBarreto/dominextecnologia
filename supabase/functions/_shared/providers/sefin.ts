@@ -77,11 +77,9 @@ function digits(v: unknown): string {
   return clean(v).replace(/\D/g, "");
 }
 
-/** `null` significa que a fonte oficial não produziu conclusão persistível. */
-export function classificarCoberturaAdn(status: number): boolean | null {
-  if (status === 404) return false;
-  if (status >= 200 && status < 300) return true;
-  return null;
+/** Só a conclusão booleana explícita do motor pode liberar a emissão. */
+export function coberturaConfirmadaPeloMotor(valor: unknown): boolean {
+  return valor === true;
 }
 
 /** company_id encurtado para log (nunca o id inteiro). */
@@ -635,6 +633,7 @@ export const nfseEngine: NfseEngine = {
       referenciaCertificado: caminho,
       status: "ativo",
       validadeAte,
+      cnpjTitular: digits(selado.cnpj) || null,
       mensagem: "Certificado digital enviado e guardado com segurança.",
       custodia: {
         certificadoRef: caminho,
@@ -650,59 +649,32 @@ export const nfseEngine: NfseEngine = {
   // Cobertura municipal.
   //
   // No padrão nacional, a parametrização do ADN é a fonte oficial de cobertura.
-  // Só uma resposta 2xx confirma habilitação e só 404 confirma ausência. Rede,
-  // autenticação ou 5xx são estado DESCONHECIDO e falham fechados: nunca gravamos
-  // `pode_emitir=true` por inferência.
+  // Ela exige mTLS com o A1 do contribuinte. A Edge não abre a custódia e o seu
+  // fetch também é incompatível com o TLS atual do ADN; por isso a consulta
+  // passa pelo microserviço, que materializa o PEM apenas em tmpfs.
   // ---------------------------------------------------------------------------
   async checarCobertura(
     ctx: NfseProviderCtx,
     ibge: string,
   ): Promise<NfseCoberturaResultado> {
-    const producao = ambienteDe(ctx) === 1;
-    const base = producao
-      ? "https://adn.nfse.gov.br"
-      : "https://adn.producaorestrita.nfse.gov.br";
-    const hoje = new Date();
-    const competencia = `${hoje.getUTCFullYear()}-${
-      String(hoje.getUTCMonth() + 1).padStart(2, "0")
-    }-01`;
-
-    let resposta: Response;
-    try {
-      resposta = await fetch(
-        `${base}/parametrizacao/${ibge}/${competencia}/retencoes`,
-        { headers: { "Accept": "application/json" } },
-      );
-    } catch (err) {
-      console.error(`${TAG} cobertura`, { message: (err as Error)?.message });
-      throw new NfseProviderError(
-        "Não conseguimos confirmar a liberação do município agora. Tente novamente em alguns minutos.",
-        503,
-        { codigo: "cobertura_indisponivel" },
-      );
-    }
-
-    const corpo = await resposta.json().catch(() => null);
-    const coberturaConfirmada = classificarCoberturaAdn(resposta.status);
-    if (coberturaConfirmada == null) {
-      console.error(`${TAG} cobertura`, { status: resposta.status });
-      throw new NfseProviderError(
-        "Não conseguimos confirmar a liberação do município agora. Tente novamente em alguns minutos.",
-        503,
-        {
-          codigo: "cobertura_indisponivel",
-          raw: { status: resposta.status, corpo },
-        },
-      );
-    }
+    const base = await corpoBase(ctx, "verificar_cobertura");
+    const dados = await chamarJson<{
+      municipioIbge?: string;
+      podeEmitir?: boolean;
+      fonte?: string;
+    }>("/v1/nfse/cobertura", {
+      ...base,
+      municipioIbge: ibge,
+    });
+    const coberturaConfirmada = coberturaConfirmadaPeloMotor(dados.podeEmitir);
 
     return {
       podeEmitir: coberturaConfirmada,
       municipio: null,
       uf: null,
       raw: {
-        origem: "padrao_nacional",
-        consultaAdn: { status: resposta.status, corpo },
+        origem: dados.fonte || "adn_parametrizacao",
+        municipioIbge: dados.municipioIbge || ibge,
         observacao: coberturaConfirmada === false
           ? "Este município ainda não está no padrão nacional de NFS-e."
           : "Município atendido pelo padrão nacional de NFS-e.",

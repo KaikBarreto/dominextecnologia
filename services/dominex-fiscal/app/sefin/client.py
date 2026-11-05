@@ -1,7 +1,8 @@
 """Transporte mTLS com a API Sefin Nacional.
 
-Autenticação = o certificado A1 do PRÓPRIO cliente. Não há token, não há
-credenciamento, não há cadastro prévio: sem certificado, tudo devolve 403.
+Autenticação de transporte = o certificado A1 do PRÓPRIO cliente. O CNPJ também
+precisa ter feito o primeiro acesso/credenciamento exigido pelo Painel do
+Contribuinte; certificado válido sozinho não garante permissão de emissão.
 
 ⚠️ O `POST /nfse` é SÍNCRONO (201 já com a chave de acesso e a NFS-e). Não há
 fila nem polling — e, por isso mesmo, **NÃO se faz retry automático de POST**:
@@ -16,7 +17,7 @@ import time
 
 import requests
 
-from ..config import Config, base_sefin, get_config
+from ..config import Config, base_adn, base_sefin, get_config
 from ..custodia import ParDeChaves
 from ..errors import (
     AcessoNegadoNoGoverno,
@@ -96,8 +97,14 @@ class SefinClient:
 
     # -- transporte -----------------------------------------------------------
 
-    def _chamar(self, metodo: str, caminho: str, **kwargs) -> requests.Response:
-        url = f"{self.base}{caminho}"
+    def _chamar_em_base(
+        self,
+        metodo: str,
+        base: str,
+        caminho: str,
+        **kwargs,
+    ) -> requests.Response:
+        url = f"{base.rstrip('/')}{caminho}"
         tentativas = TENTATIVAS_GET if metodo == "GET" else 1
         ultimo_erro: Exception | None = None
 
@@ -130,6 +137,9 @@ class SefinClient:
         raise ServicoFiscalIndisponivel(
             INDISPONIVEL, detalhe=type(ultimo_erro).__name__ if ultimo_erro else "timeout"
         )
+
+    def _chamar(self, metodo: str, caminho: str, **kwargs) -> requests.Response:
+        return self._chamar_em_base(metodo, self.base, caminho, **kwargs)
 
     @staticmethod
     def _corpo(resposta: requests.Response) -> dict:
@@ -180,6 +190,78 @@ class SefinClient:
         )
 
     # -- operações ------------------------------------------------------------
+
+    def consultar_convenio(self, municipio_ibge: str) -> dict:
+        """Confirma no ADN se o município aderiu ao Ambiente Nacional.
+
+        A API de parametrização exige o mesmo mTLS da emissão. Um HTTP 200 não
+        basta: somente ``aderenteAmbienteNacional == 1`` libera o tenant.
+        ``0`` confirma ausência; ``-1`` é estado não informado e falha fechado.
+        """
+        base = f"{base_adn(self.ambiente).rstrip('/')}/parametrizacao"
+        resposta = self._chamar_em_base(
+            "GET",
+            base,
+            f"/{municipio_ibge}/convenio",
+            headers={"Accept": "application/json"},
+        )
+
+        if resposta.status_code == 404:
+            return {
+                "municipioIbge": municipio_ibge,
+                "podeEmitir": False,
+                "fonte": "adn_parametrizacao",
+                "motivo": "municipio_sem_parametrizacao",
+            }
+
+        corpo = self._avaliar(resposta, contexto="parametrizacao_municipal")
+        parametros = corpo.get("parametrosConvenio")
+        ambiente_nacional = (
+            parametros.get("aderenteAmbienteNacional")
+            if isinstance(parametros, dict)
+            else None
+        )
+        emissor_nacional = (
+            parametros.get("aderenteEmissorNacional")
+            if isinstance(parametros, dict)
+            else None
+        )
+        habilitacao_rfb = (
+            parametros.get("situacaoEmissaoPadraoContribuintesRFB")
+            if isinstance(parametros, dict)
+            else None
+        )
+
+        # Município no ADN + uma das duas portas oficiais de emissão:
+        # adesão ao Emissor Nacional ou habilitação-padrão dos contribuintes
+        # RFB (inclui a obrigatoriedade de ME/EPP a partir de 01/11/2026).
+        pode_emitir = ambiente_nacional == 1 and (
+            emissor_nacional == 1 or habilitacao_rfb == 1
+        )
+        valores_conclusivos = all(
+            valor in (0, 1)
+            for valor in (ambiente_nacional, emissor_nacional, habilitacao_rfb)
+        )
+        if not pode_emitir and not valores_conclusivos:
+            raise ServicoFiscalIndisponivel(
+                "Não conseguimos confirmar a liberação do município agora. "
+                "Tente novamente em alguns minutos.",
+                codigo="cobertura_indisponivel",
+                detalhe="aderencia_nao_informada",
+            )
+
+        return {
+            "municipioIbge": municipio_ibge,
+            "podeEmitir": pode_emitir,
+            "fonte": "adn_parametrizacao",
+            "motivo": (
+                "emissor_nacional_habilitado"
+                if emissor_nacional == 1
+                else "contribuinte_rfb_habilitado"
+                if habilitacao_rfb == 1
+                else "emissor_nacional_nao_habilitado"
+            ),
+        }
 
     def emitir(self, dps_gzip_b64: str) -> dict:
         resposta = self._chamar("POST", "/nfse", json={"dpsXmlGZipB64": dps_gzip_b64})

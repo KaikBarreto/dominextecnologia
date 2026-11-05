@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.22',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Município confirmado diretamente no Portal Nacional',
+        description: 'A verificação da cidade agora usa o certificado A1 da própria empresa e consulta a habilitação oficial para emissão. Ao enviar o certificado, o sistema já tenta concluir essa etapa automaticamente.',
+        category: 'correcao',
+      },
+      {
+        title: 'Homologação e produção totalmente separadas',
+        description: 'Testes em homologação não bloqueiam nem se misturam com notas reais. Cada nota mantém o ambiente em que foi emitida durante consultas, cancelamentos e geração do PDF.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Certificado A1 conferido com o CNPJ da empresa',
+        description: 'O sistema confirma se o certificado pertence ao mesmo CNPJ cadastrado antes de permitir seu uso na emissão fiscal.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.38.21',
     date: '4 de novembro de 2026',
     type: 'patch',

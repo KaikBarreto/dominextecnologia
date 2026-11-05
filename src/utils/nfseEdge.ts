@@ -8,8 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
  * é o `Response` original — daí lemos o corpo pra extrair a mensagem PT-BR e o
  * código de erro.
  *
- * Casos especiais tratados aqui: serviço fiscal indisponível (503) e operação
- * ainda não oferecida pelo motor próprio (501), sempre com texto de domínio.
+ * Casos especiais tratados aqui: integração não configurada, serviço fiscal
+ * temporariamente indisponível (503) e operação ainda não oferecida (501).
  */
 
 /** Códigos que significam "a integração fiscal ainda não foi ativada". */
@@ -86,7 +86,7 @@ export interface NfseEdgeResult<T = Record<string, unknown>> {
   errorCode: string | null;
   /** Mensagem PT-BR pronta pra exibir ao usuário. */
   message: string | null;
-  /** true quando a integração ainda não foi ativada (503). */
+  /** true somente quando o backend declara `nfse_unconfigured`. */
   unconfigured: boolean;
   /** true quando o serviço ou a operação fiscal está indisponível (503/501). */
   unavailable: boolean;
@@ -126,7 +126,8 @@ export async function invokeNfse<T = Record<string, unknown>>(
     const parsed = await readBody(resp);
     const errorCode = (parsed?.error as string) ?? null;
     const message = (parsed?.message as string) ?? error.message ?? 'Falha na integração fiscal.';
-    const unconfigured = (!!errorCode && UNCONFIGURED_CODES.has(errorCode)) || resp?.status === 503;
+    const unconfigured = !!errorCode && UNCONFIGURED_CODES.has(errorCode);
+    const serviceUnavailable = resp?.status === 503;
     const operationUnavailable =
       errorCode === OPERATION_UNSUPPORTED_CODE || (!unconfigured && resp?.status === 501);
     return {
@@ -139,7 +140,7 @@ export async function invokeNfse<T = Record<string, unknown>>(
           ? OPERATION_UNAVAILABLE_MESSAGE
           : message,
       unconfigured,
-      unavailable: unconfigured || operationUnavailable,
+      unavailable: unconfigured || operationUnavailable || serviceUnavailable,
       errorBody: parsed,
       orientacao: readOrientation(parsed),
     };

@@ -550,6 +550,8 @@ export const nfse = {
         statusCoverageOk: 'Município: liberado para emitir notas',
         statusCoveragePending: 'Município: liberação ainda não confirmada',
         coverageNeedsCity: 'Informe o CEP ou a cidade da empresa para verificar a liberação do município.',
+        coverageNeedsCertificate:
+          'Envie um certificado A1 válido antes de consultar a habilitação oficial do município.',
         coverageOkToast: 'Município liberado para emissão de NFS-e.',
         coverageNotCoveredTitle: 'Município ainda sem emissão de NFS-e',
         coverageNotCovered:
@@ -1469,6 +1471,8 @@ export const nfse = {
         statusCoverageOk: 'Municipality: cleared to issue invoices',
         statusCoveragePending: 'Municipality: clearance not confirmed yet',
         coverageNeedsCity: 'Fill in the company ZIP code or city to check the municipality clearance.',
+        coverageNeedsCertificate:
+          'Upload a valid A1 certificate before checking the municipality official authorization.',
         coverageOkToast: 'Municipality cleared for invoice issuance.',
         coverageNotCoveredTitle: 'Municipality not issuing invoices yet',
         coverageNotCovered:
@@ -2385,6 +2389,8 @@ export const nfse = {
         statusCoverageOk: 'Municipio: habilitado para emitir facturas',
         statusCoveragePending: 'Municipio: habilitación aún no confirmada',
         coverageNeedsCity: 'Informa el código postal o la ciudad de la empresa para verificar la habilitación del municipio.',
+        coverageNeedsCertificate:
+          'Envía un certificado A1 válido antes de consultar la habilitación oficial del municipio.',
         coverageOkToast: 'Municipio habilitado para la emisión de facturas.',
         coverageNotCoveredTitle: 'El municipio aún no emite facturas',
         coverageNotCovered:
@@ -3305,6 +3311,8 @@ export const nfse = {
         statusCoverageOk: 'Commune : autorisée à émettre des factures',
         statusCoveragePending: 'Commune : autorisation pas encore confirmée',
         coverageNeedsCity: "Renseignez le code postal ou la ville de l'entreprise pour vérifier l'autorisation de la commune.",
+        coverageNeedsCertificate:
+          "Importez un certificat A1 valide avant de vérifier l'autorisation officielle de la commune.",
         coverageOkToast: 'Commune autorisée pour l’émission de factures.',
         coverageNotCoveredTitle: "La commune n'émet pas encore de factures",
         coverageNotCovered:

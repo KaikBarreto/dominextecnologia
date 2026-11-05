@@ -14,6 +14,7 @@ from __future__ import annotations
 import base64
 import binascii
 import logging
+import re
 from typing import Optional
 
 from . import schemas
@@ -33,6 +34,8 @@ STATUS_CANCELADA = "cancelada"
 STATUS_AGUARDANDO_CONFIRMACAO = "aguardando_confirmacao"
 
 TIPO_EVENTO_CANCELAMENTO = evento_mod.TIPO_EVENTO_CANCELAMENTO
+
+_IBGE = re.compile(r"^\d{7}$")
 
 
 def _empresa_curta(empresa_id: str) -> str:
@@ -63,6 +66,22 @@ def _alertas(corpo: dict) -> list[schemas.Alerta]:
         for a in brutos
         if isinstance(a, dict)
     ]
+
+
+# -----------------------------------------------------------------------------
+# Cobertura municipal
+# -----------------------------------------------------------------------------
+
+
+def checar_cobertura(req: schemas.CoberturaRequest) -> dict:
+    municipio = (req.municipio_ibge or "").strip()
+    if not _IBGE.fullmatch(municipio):
+        raise DadosInvalidos("Código IBGE inválido. Ele deve ter 7 dígitos.")
+
+    pfx, senha = abrir(_envelope(req.certificado), req.empresa_id)
+    with materializar_pem(pfx, senha) as par:
+        cliente = SefinClient(req.ambiente, par)
+        return cliente.consultar_convenio(municipio)
 
 
 # -----------------------------------------------------------------------------

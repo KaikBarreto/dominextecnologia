@@ -8612,6 +8612,7 @@ export type Database = {
           financial_transaction_id: string | null
           fisqal_dps_id: string | null
           fisqal_fiscal_request_id: string | null
+          fiscal_ambiente: string | null
           id: string
           idempotency_key: string | null
           intermediario_avulso: Json | null
@@ -8662,6 +8663,7 @@ export type Database = {
           financial_transaction_id?: string | null
           fisqal_dps_id?: string | null
           fisqal_fiscal_request_id?: string | null
+          fiscal_ambiente?: string | null
           id?: string
           idempotency_key?: string | null
           intermediario_avulso?: Json | null
@@ -8712,6 +8714,7 @@ export type Database = {
           financial_transaction_id?: string | null
           fisqal_dps_id?: string | null
           fisqal_fiscal_request_id?: string | null
+          fiscal_ambiente?: string | null
           id?: string
           idempotency_key?: string | null
           intermediario_avulso?: Json | null

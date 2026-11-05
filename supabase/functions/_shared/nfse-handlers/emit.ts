@@ -106,6 +106,10 @@ import {
   withoutColumn,
 } from "./common.ts";
 import type { PessoaAvulsa } from "./common.ts";
+import {
+  normalizeFiscalEnvironment,
+  scopeNfseIdempotencyKey,
+} from "./environment.ts";
 
 const TAG = "[nfse-emit]";
 
@@ -114,7 +118,8 @@ export interface NfseReadinessError {
     | "municipality_not_enabled"
     | "certificate_missing"
     | "certificate_expiry_unknown"
-    | "certificate_expired";
+    | "certificate_expired"
+    | "fiscal_environment_invalid";
   message: string;
 }
 
@@ -123,6 +128,13 @@ export function validarProntidaoFiscal(
   fiscal: Record<string, unknown>,
   agoraMs = Date.now(),
 ): NfseReadinessError | null {
+  if (!normalizeFiscalEnvironment(fiscal.fiscal_ambiente)) {
+    return {
+      error: "fiscal_environment_invalid",
+      message:
+        "Selecione o ambiente fiscal nas configurações antes de emitir a nota.",
+    };
+  }
   if (fiscal.pode_emitir !== true) {
     return {
       error: "municipality_not_enabled",
@@ -178,6 +190,7 @@ const COLUNAS_TOLERANTES = [
   // nunca exigindo schema que ainda não existe).
   COL_ORIGEM,
   COL_NFSE_AUTO_JOB_ID,
+  "fiscal_ambiente",
 ];
 
 // ⚠️ Assimetria PROPOSITAL com `save-draft.ts`, onde as colunas do avulso NÃO
@@ -869,22 +882,87 @@ export async function emitirNfseAutorizada(
       dataCompetencia = hojeNoFuso(await fusoDaEmpresa(supabase, companyId));
     }
 
-    // ---- Idempotency-Key: body OU determinística estável (sem OS).
-    let idempotencyKey = clean(body?.idempotencyKey) ||
+    // ---- Config fiscal: uma única leitura define ambiente, cobertura,
+    // certificado e contexto do motor. O ambiente precisa existir antes da
+    // idempotência para homologação nunca bloquear produção.
+    const { data: fiscal } = await supabase
+      .from("company_fiscal_settings")
+      .select("*")
+      .eq("company_id", companyId)
+      .maybeSingle();
+    if (!fiscal) {
+      return jsonResponse(
+        {
+          error: "fiscal_not_configured",
+          message:
+            "A emissão fiscal ainda não foi configurada para esta empresa.",
+        },
+        422,
+      );
+    }
+    const fiscalEnvironment = normalizeFiscalEnvironment(
+      fiscal.fiscal_ambiente,
+    );
+    if (!fiscalEnvironment) {
+      return jsonResponse(
+        {
+          error: "fiscal_environment_invalid",
+          message:
+            "Selecione o ambiente fiscal nas configurações antes de emitir a nota.",
+        },
+        422,
+      );
+    }
+
+    // ---- Idempotency-Key: body OU determinística estável (sem OS). Até uma
+    // chave explícita recebe namespace do ambiente.
+    const rawIdempotencyKey = clean(body?.idempotencyKey) ||
       deterministicKey(
         companyId,
         identidadeDoTomador(customerId, tomadorAvulso),
         valorServico,
         dataCompetencia,
       );
+    let idempotencyKey = scopeNfseIdempotencyKey(
+      rawIdempotencyKey,
+      fiscalEnvironment,
+    );
 
     // ---- Idempotência local: se já existe emissão com essa chave, devolve a existente.
-    const { data: existing } = await supabase
+    let { data: existing } = await supabase
       .from("nfse_emissions")
       .select("*")
       .eq("company_id", companyId)
       .eq("idempotency_key", idempotencyKey)
       .maybeSingle();
+    // Compatibilidade com notas anteriores ao namespace por ambiente. Nunca
+    // reutilizamos uma chave legada sem ambiente comprovado: isso poderia
+    // confundir homologação com produção. Ambiente oposto não bloqueia a nova
+    // tentativa; ambiente igual preserva a idempotência histórica.
+    if (!existing && rawIdempotencyKey !== idempotencyKey) {
+      const { data: legacy } = await supabase
+        .from("nfse_emissions")
+        .select("*")
+        .eq("company_id", companyId)
+        .eq("idempotency_key", rawIdempotencyKey)
+        .maybeSingle();
+      if (legacy) {
+        const legacyEnvironment = normalizeFiscalEnvironment(
+          legacy.fiscal_ambiente,
+        );
+        if (!legacyEnvironment) {
+          return jsonResponse(
+            {
+              error: "fiscal_environment_unknown",
+              message:
+                "Já existe uma tentativa antiga com ambiente fiscal não confirmado. Fale com o suporte antes de emitir novamente.",
+            },
+            409,
+          );
+        }
+        if (legacyEnvironment === fiscalEnvironment) existing = legacy;
+      }
+    }
     // Tentativa anterior que FALHOU não bloqueia: a linha é reaproveitada pela
     // nova tentativa (UPDATE), em vez de virar 200 "já emitida" ou colidir com a
     // UNIQUE (company_id, idempotency_key) num INSERT.
@@ -937,7 +1015,7 @@ export async function emitirNfseAutorizada(
     // ---- Gate de cota mensal por nível (tier). Roda DEPOIS da idempotência
     // (reemissão de nota existente NÃO consome cota) e ANTES de chamar o motor.
     // O `error: "nfse_quota_exceeded"` é contrato com o front — não mudar.
-    {
+    if (fiscalEnvironment === "producao") {
       const { data: quota, error: quotaErr } = await supabase.rpc(
         "nfse_can_emit",
         {
@@ -980,35 +1058,27 @@ export async function emitirNfseAutorizada(
       }
     }
 
-    // ---- Carrega tomador (cliente) + config fiscal do prestador + CNPJ da empresa.
-    // `select("*")` em company_fiscal_settings: a linha inteira é o contexto do
-    // motor (NfseProviderCtx.fiscal) e o select tolera colunas novas sem precisar
-    // de deploy sincronizado com a migration.
-    const [{ data: customer }, { data: fiscal }, { data: companyRow }] =
-      await Promise.all([
-        // Tomador avulso não tem linha em `customers` — a consulta nem acontece.
-        // (Escopada por company_id quando acontece: o tomador é do tenant.)
-        customerId
-          ? supabase
-            .from("customers")
-            .select(
-              "id, name, company_name, customer_type, document, email, address, address_number, neighborhood, city, state, zip_code, ibge_municipality_code",
-            )
-            .eq("id", customerId)
-            .eq("company_id", companyId)
-            .maybeSingle()
-          : Promise.resolve({ data: null as Record<string, unknown> | null }),
-        supabase
-          .from("company_fiscal_settings")
-          .select("*")
+    // ---- Carrega tomador (cliente) + CNPJ da empresa. A configuração fiscal
+    // já foi carregada antes da idempotência e a mesma linha segue até o motor.
+    const [{ data: customer }, { data: companyRow }] = await Promise.all([
+      // Tomador avulso não tem linha em `customers` — a consulta nem acontece.
+      // (Escopada por company_id quando acontece: o tomador é do tenant.)
+      customerId
+        ? supabase
+          .from("customers")
+          .select(
+            "id, name, company_name, customer_type, document, email, address, address_number, neighborhood, city, state, zip_code, ibge_municipality_code",
+          )
+          .eq("id", customerId)
           .eq("company_id", companyId)
-          .maybeSingle(),
-        // `email` entra no XML como `prest/email` — é o ÚNICO dado do prestador
-        // além de CNPJ e regime que o layout nacional aceita quando ele é o
-        // emitente (nome/endereço/IM são rejeitados: E0121/E0128/E0120).
-        supabase.from("companies").select("cnpj, email").eq("id", companyId)
-          .maybeSingle(),
-      ]);
+          .maybeSingle()
+        : Promise.resolve({ data: null as Record<string, unknown> | null }),
+      // `email` entra no XML como `prest/email` — é o ÚNICO dado do prestador
+      // além de CNPJ e regime que o layout nacional aceita quando ele é o
+      // emitente (nome/endereço/IM são rejeitados: E0121/E0128/E0120).
+      supabase.from("companies").select("cnpj, email").eq("id", companyId)
+        .maybeSingle(),
+    ]);
 
     if (customerId && !customer) {
       return jsonResponse(
@@ -1034,16 +1104,6 @@ export async function emitirNfseAutorizada(
 
     // ---- VALIDAÇÕES (422 PT-BR antes de falar com o motor fiscal).
     const missing: string[] = [];
-    if (!fiscal) {
-      return jsonResponse(
-        {
-          error: "fiscal_not_configured",
-          message:
-            "A emissão fiscal ainda não foi configurada para esta empresa.",
-        },
-        422,
-      );
-    }
     const readinessError = validarProntidaoFiscal(
       fiscal as Record<string, unknown>,
     );
@@ -1394,6 +1454,9 @@ export async function emitirNfseAutorizada(
       customer_id: customerId ? clean(customer?.id) || customerId : null,
       [COL_TOMADOR_AVULSO]: tomadorAvulso,
       idempotency_key: idempotencyKey,
+      // Imutável depois da transmissão: operações futuras usam este ambiente,
+      // nunca o ambiente que a empresa estiver usando naquele momento.
+      fiscal_ambiente: fiscalEnvironment,
       valor_servico: valorServico,
       valor_iss: valorIssRegistrado,
       descricao_servico: discriminacao,
