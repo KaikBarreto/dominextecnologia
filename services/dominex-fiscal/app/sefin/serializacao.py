@@ -51,8 +51,9 @@ CAMPOS_INSERIDOS_HOMOLOGACAO: dict[str, tuple[str, str, str]] = {
 }
 
 #: Elementos cujo conteúdo continua válido, mas mudou de posição no xs:sequence
-#: do layout atual. Formato: (pai, elemento, elemento seguinte obrigatório).
-CAMPOS_REORDENADOS: tuple[tuple[str, str, str], ...] = (
+#: apenas da produção restrita. A produção ainda espera a ordem dos bindings.
+#: Formato: (pai, elemento, elemento seguinte obrigatório).
+CAMPOS_REORDENADOS_HOMOLOGACAO: tuple[tuple[str, str, str], ...] = (
     # A nfelib 2.5.2 serializa `cNBS` depois de `xDescServ`. No XSD v1.01 ele
     # passou a vir antes da descrição; manter a ordem antiga também gera E1235.
     ("cServ", "cNBS", "xDescServ"),
@@ -85,8 +86,11 @@ def _inserir_divergencias(root: etree._Element, *, ambiente: int | None) -> None
         anterior.addnext(elemento)
 
 
-def _reordenar_divergencias(root: etree._Element) -> None:
-    for tag_pai, tag, tag_seguinte in CAMPOS_REORDENADOS:
+def _reordenar_divergencias(root: etree._Element, *, ambiente: int | None) -> None:
+    if ambiente != 2:
+        return
+
+    for tag_pai, tag, tag_seguinte in CAMPOS_REORDENADOS_HOMOLOGACAO:
         for pai in root.iter(f"{{{NS}}}{tag_pai}"):
             elemento = pai.find(f"{{{NS}}}{tag}")
             seguinte = pai.find(f"{{{NS}}}{tag_seguinte}")
@@ -108,5 +112,5 @@ def serializar(objeto, *, ambiente: int | None = None) -> bytes:
     root = etree.fromstring(xml.encode("utf-8"))
     _remover_divergencias(root)
     _inserir_divergencias(root, ambiente=ambiente)
-    _reordenar_divergencias(root)
+    _reordenar_divergencias(root, ambiente=ambiente)
     return etree.tostring(root, xml_declaration=True, encoding="UTF-8")

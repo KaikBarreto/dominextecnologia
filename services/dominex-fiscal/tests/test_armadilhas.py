@@ -259,14 +259,24 @@ def test_armadilha_8_insercao_de_finnfse_e_idempotente():
     assert len(root.xpath("//n:infDPS/n:finNFSe", namespaces={"n": NS})) == 1
 
 
-def test_armadilha_9_cnbs_vai_antes_da_descricao_no_xsd_v101():
-    """O NBS permanece no XML, mas o XSD v1.01 mudou sua posição."""
-    xml = montar(_pedido())
+def test_armadilha_9_cnbs_vai_antes_da_descricao_na_homologacao():
+    """O NBS permanece no XML, mas o XSD restrito mudou sua posição."""
+    xml = montar(_pedido(ambiente=2))
     c_serv = _tags(xml, "//n:cServ")[0]
     nomes = [etree.QName(filho).localname for filho in c_serv]
 
     assert [e.text for e in _tags(xml, "//n:cServ/n:cNBS")] == ["120016000"]
     assert nomes.index("cNBS") < nomes.index("xDescServ")
+
+
+def test_armadilha_9_cnbs_vai_depois_da_descricao_em_producao():
+    """Produção rejeita cNBS antes de xDescServ; mantém a ordem da nfelib."""
+    xml = montar(_pedido(ambiente=1))
+    c_serv = _tags(xml, "//n:cServ")[0]
+    nomes = [etree.QName(filho).localname for filho in c_serv]
+
+    assert [e.text for e in _tags(xml, "//n:cServ/n:cNBS")] == ["120016000"]
+    assert nomes.index("cNBS") > nomes.index("xDescServ")
 
 
 def test_serializador_e_o_unico_caminho_do_xml():
