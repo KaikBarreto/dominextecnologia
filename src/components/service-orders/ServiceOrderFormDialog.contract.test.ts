@@ -76,6 +76,7 @@ describe('ServiceOrderFormDialog — contrato do wizard', () => {
 
   it('preserva o plano de múltiplos dias ao editar somente uma visita do contrato', () => {
     expect(source).toContain('schedule_plan: z.array(scheduleSlotSchema).min(1).max(31)');
+    expect(source.match(/\.max\(MAX_SERVICE_ORDER_SCHEDULE_DURATION_MINUTES\)/g)).toHaveLength(2);
     expect(source).toContain('schedule_plan: occurrencePlan');
     expect(source).toContain('plan={(watchedValues.schedule_plan ?? []) as ServiceOrderScheduleSlot[]}');
     expect(source).toContain('const cleanedData = await buildEditPayload(data)');

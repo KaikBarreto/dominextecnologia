@@ -9,6 +9,7 @@ import {
   buildDailySchedulePlan,
   getScheduleSlotDurationMinutes,
   getScheduleSlotEndTime,
+  MAX_SERVICE_ORDER_SCHEDULE_DURATION_MINUTES,
 } from '@/lib/serviceOrderSchedule';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import type { ServiceOrderScheduleSlot } from '@/types/database';
@@ -211,10 +212,10 @@ export function ServiceOrderSchedulePlanner({
                 value={getScheduleSlotEndTime(slot.time, slot.duration_minutes)}
                 minuteStep={15}
                 ariaLabel={`${labels.endTime} — ${dayLabel(slot.date)}`}
-                ariaInvalid={slot.duration_minutes < 15 || slot.duration_minutes > 480}
+                ariaInvalid={slot.duration_minutes < 15 || slot.duration_minutes > MAX_SERVICE_ORDER_SCHEDULE_DURATION_MINUTES}
                 onValueChange={(value) => updateEndTime(index, value)}
               />
-              {(slot.duration_minutes < 15 || slot.duration_minutes > 480) && (
+              {(slot.duration_minutes < 15 || slot.duration_minutes > MAX_SERVICE_ORDER_SCHEDULE_DURATION_MINUTES) && (
                 <p className="text-xs text-destructive sm:col-span-2">{labels.invalidTimeRange}</p>
               )}
             </div>

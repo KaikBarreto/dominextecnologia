@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.27',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Jornadas prolongadas na Ordem de Serviço',
+        description: 'A duração de cada jornada da O.S. agora pode ser informada manualmente em atendimentos de 10, 12 ou até 24 horas, inclusive quando o registro é feito após a execução do serviço.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cálculo e histórico das horas preservados',
+        description: 'O sistema continua calculando corretamente o término do atendimento, inclusive após a meia-noite, e mantém as horas registradas no histórico da O.S.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.26',
     date: '5 de novembro de 2026',
     type: 'patch',

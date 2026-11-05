@@ -16,8 +16,8 @@ vi.mock('@/components/schedule/ScheduleDatePicker', () => ({
 }));
 
 vi.mock('@/components/ui/TimePicker', () => ({
-  TimePicker: ({ value, ariaLabel }: { value: string; ariaLabel: string }) => (
-    <button type="button" aria-label={ariaLabel}>{value}</button>
+  TimePicker: ({ value, ariaLabel, ariaInvalid }: { value: string; ariaLabel: string; ariaInvalid?: boolean }) => (
+    <button type="button" aria-label={ariaLabel} aria-invalid={ariaInvalid}>{value}</button>
   ),
 }));
 
@@ -116,5 +116,19 @@ describe('ServiceOrderSchedulePlanner — dias flexíveis', () => {
     expect(remove.disabled).toBe(true);
     click(remove);
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('aceita jornada manual de 12 horas sem marcar o período como inválido', () => {
+    render([{ date: '2026-01-10', time: '08:00', duration_minutes: 720 }], vi.fn());
+
+    expect(document.querySelector('button[aria-label^="Termina"]')).toHaveAttribute('aria-invalid', 'false');
+    expect(document.body.textContent).not.toContain('Intervalo inválido');
+  });
+
+  it('mantém a validação para jornadas acima de 24 horas', () => {
+    render([{ date: '2026-01-10', time: '08:00', duration_minutes: 1441 }], vi.fn());
+
+    expect(document.querySelector('button[aria-label^="Termina"]')).toHaveAttribute('aria-invalid', 'true');
+    expect(document.body.textContent).toContain('Intervalo inválido');
   });
 });

@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.26";
+export const APP_VERSION = "1.38.27";
 
 export const VERSION_NOTES =
-  "Os calendários de agendamento agora mostram as visitas e Ordens de Serviço já programadas para o cliente ou equipamento selecionado.";
+  "A duração das jornadas da Ordem de Serviço agora pode ser informada manualmente em atendimentos prolongados de até 24 horas.";

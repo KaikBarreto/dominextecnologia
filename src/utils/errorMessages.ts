@@ -35,7 +35,7 @@ const SCHEDULE_ERROR_MESSAGES: Record<string, string> = {
   schedule_service_order_not_found: 'Esta ordem de serviço não está mais disponível. Atualize a página e tente novamente.',
   schedule_service_order_status_not_bookable: 'Esta ordem de serviço não pode ser agendada no status atual.',
   schedule_company_timezone_invalid: 'O fuso horário da empresa está inválido. Ajuste-o nas configurações antes de agendar.',
-  schedule_invalid_duration: 'A duração do atendimento deve ficar entre 15 minutos e 8 horas.',
+  schedule_invalid_duration: 'A duração do atendimento deve ficar entre 15 minutos e 24 horas.',
   schedule_invalid_request: 'Os dados do agendamento estão incompletos ou inválidos. Revise responsável, data, horário e duração.',
   schedule_invalid_plan: 'Uma das jornadas possui data, horário ou duração inválidos. Revise o período informado.',
   schedule_invalid_order_payload: 'Alguns dados obrigatórios da ordem de serviço estão incompletos ou inválidos. Revise o formulário.',

@@ -8,7 +8,7 @@ describe('erros da agenda', () => {
     ['22023', 'schedule_invalid_equipment_items', 'Não foi possível validar os equipamentos e checklists desta OS. Atualize a seleção e tente novamente.'],
     ['42501', 'schedule_override_permission_denied', 'Você não tem permissão para autorizar conflitos de agenda.'],
     ['42501', 'schedule_tenant_not_entitled', 'O acesso da empresa não está ativo para esta operação. Verifique a assinatura ou fale com o suporte.'],
-    ['22023', 'schedule_invalid_duration', 'A duração do atendimento deve ficar entre 15 minutos e 8 horas.'],
+    ['22023', 'schedule_invalid_duration', 'A duração do atendimento deve ficar entre 15 minutos e 24 horas.'],
     ['P0001', 'schedule_company_timezone_invalid', 'O fuso horário da empresa está inválido. Ajuste-o nas configurações antes de agendar.'],
     ['P0001', 'schedule_team_without_active_members', 'A equipe selecionada não possui integrantes ativos. Escolha outra equipe ou adicione um integrante.'],
   ])('traduz %s/%s sem expor codigo interno', (code, internalMessage, expected) => {

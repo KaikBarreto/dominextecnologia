@@ -100,6 +100,7 @@ import {
 } from '@/components/service-orders/ServiceOrderFormShell';
 import { WizardMobileSummary, WizardReviewChecklist } from '@/components/ui/WizardReviewChecklist';
 import {
+  MAX_SERVICE_ORDER_SCHEDULE_DURATION_MINUTES,
   normalizeServiceOrderSchedulePlan,
   shiftSchedulePlanToStart,
 } from '@/lib/serviceOrderSchedule';
@@ -107,7 +108,7 @@ import {
 const scheduleSlotSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   time: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/),
-  duration_minutes: z.coerce.number().int().min(15).max(480),
+  duration_minutes: z.coerce.number().int().min(15).max(MAX_SERVICE_ORDER_SCHEDULE_DURATION_MINUTES),
 });
 
 const serviceOrderSchema = z.object({
@@ -118,7 +119,7 @@ const serviceOrderSchema = z.object({
   service_type_id: z.string().optional(),
   scheduled_date: z.string().optional(),
   scheduled_time: z.string().optional(),
-  duration_minutes: z.coerce.number().int().min(15).max(480).default(120),
+  duration_minutes: z.coerce.number().int().min(15).max(MAX_SERVICE_ORDER_SCHEDULE_DURATION_MINUTES).default(120),
   schedule_plan: z.array(scheduleSlotSchema).min(1).max(31),
   description: z.string().optional(),
   notes: z.string().optional(),
