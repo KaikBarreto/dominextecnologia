@@ -5,7 +5,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { fuzzyIncludes } from '@/lib/utils';
 
@@ -75,7 +74,17 @@ export function ServiceTypesMultiSelect({
           />
         </div>
       </div>
-      <ScrollArea className="max-h-[50vh]">
+      {/*
+       * `ScrollArea` precisa de altura explícita. Com apenas `max-height`, o
+       * viewport interno crescia com o conteúdo e o root cortava o fim da
+       * lista sem criar rolagem. Como os serviços são ordenados por nome, os
+       * últimos (ex.: "Visita Técnica") pareciam ter sido excluídos.
+       */}
+      <div
+        className="max-h-[50vh] overflow-y-auto overscroll-contain"
+        role="region"
+        aria-label="Tipos de serviço disponíveis"
+      >
         <div className="p-1">
           {filtered.length === 0 ? (
             <p className="py-5 text-center text-sm text-muted-foreground">
@@ -110,7 +119,7 @@ export function ServiceTypesMultiSelect({
             );
           })}
         </div>
-      </ScrollArea>
+      </div>
     </>
   );
 
@@ -119,6 +128,7 @@ export function ServiceTypesMultiSelect({
       type="button"
       variant="outline"
       role="combobox"
+      aria-label={selectedIds.length === 0 ? 'Adicionar serviços' : 'Gerenciar serviços'}
       disabled={disabled}
       onClick={isMobile ? () => setOpen(true) : undefined}
       className={`h-10 w-full justify-center gap-2 border-dashed font-medium text-primary ${onCreate ? 'rounded-r-none' : ''}`}

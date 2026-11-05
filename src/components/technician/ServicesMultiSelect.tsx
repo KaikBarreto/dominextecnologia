@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn, fuzzyIncludes } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -94,7 +93,11 @@ export function ServicesMultiSelect({ services, selectedIds, onChange, disabled 
           />
         </div>
       </div>
-      <ScrollArea className="max-h-[50vh]">
+      <div
+        className="max-h-[50vh] overflow-y-auto overscroll-contain"
+        role="region"
+        aria-label="Tipos de serviço disponíveis"
+      >
         <div className="p-1">
           {/* Todos */}
           <label className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-muted/50 cursor-pointer font-medium">
@@ -123,7 +126,7 @@ export function ServicesMultiSelect({ services, selectedIds, onChange, disabled 
             ))
           )}
         </div>
-      </ScrollArea>
+      </div>
     </>
   );
 
@@ -132,6 +135,7 @@ export function ServicesMultiSelect({ services, selectedIds, onChange, disabled 
       variant="outline"
       size="sm"
       role="combobox"
+      aria-label={summary}
       disabled={disabled}
       className="h-8 justify-between font-normal max-w-[220px] text-muted-foreground"
       onClick={isMobile ? () => setOpen(true) : undefined}

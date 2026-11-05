@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.29',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Todos os serviços disponíveis na Ordem de Serviço',
+        description: 'Listas maiores agora permitem rolar até o último serviço normalmente. A busca também encontra nomes mesmo quando o texto é digitado sem acento, como “visita tecnica”.',
+        category: 'correcao',
+      },
+      {
+        title: 'Nota fiscal da assinatura pelo histórico de pagamentos',
+        description: 'Depois que o pagamento for confirmado, administradores e gestores podem solicitar a NFS-e e acompanhar a liberação do PDF e do XML diretamente na tela de assinatura.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.38.28',
     date: '5 de novembro de 2026',
     type: 'patch',
