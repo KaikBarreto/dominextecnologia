@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.35',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Layout fiscal correto em cada ambiente',
+        description: 'A Dominex agora aplica automaticamente a diferença de layout entre homologação e produção do Portal Nacional, evitando a rejeição estrutural E1235 na emissão real.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.38.34',
     date: '5 de novembro de 2026',
     type: 'patch',

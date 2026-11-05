@@ -228,9 +228,9 @@ def test_armadilha_6_a_lista_de_divergencias_e_o_ponto_unico():
     assert TAGS_REMOVIDAS["nPedRegEvento"], "toda divergência precisa de motivo escrito"
 
 
-def test_armadilha_8_finnfse_obrigatorio_vai_na_ordem_do_xsd_v101():
-    """O XSD restrito de 2026-10-20 exige finNFSe entre tpEmit e cLocEmi."""
-    xml = montar(_pedido())
+def test_armadilha_8_finnfse_obrigatorio_so_na_homologacao():
+    """O XSD restrito exige finNFSe; produção rejeita a mesma tag com E1235."""
+    xml = montar(_pedido(ambiente=2))
     inf_dps = _tags(xml, "//n:infDPS")[0]
     nomes = [etree.QName(filho).localname for filho in inf_dps]
 
@@ -239,12 +239,22 @@ def test_armadilha_8_finnfse_obrigatorio_vai_na_ordem_do_xsd_v101():
     assert nomes.index("cLocEmi") == nomes.index("finNFSe") + 1
 
 
+def test_armadilha_8_finnfse_nao_sai_em_producao():
+    """Produção espera cLocEmi logo após tpEmit e rejeita finNFSe com E1235."""
+    xml = montar(_pedido(ambiente=1))
+    inf_dps = _tags(xml, "//n:infDPS")[0]
+    nomes = [etree.QName(filho).localname for filho in inf_dps]
+
+    assert _tags(xml, "//n:infDPS/n:finNFSe") == []
+    assert nomes.index("cLocEmi") == nomes.index("tpEmit") + 1
+
+
 def test_armadilha_8_insercao_de_finnfse_e_idempotente():
     """Serializar novamente nunca pode duplicar o indicador de finalidade."""
     from app.sefin.serializacao import _inserir_divergencias
 
     root = _arvore(montar(_pedido()))
-    _inserir_divergencias(root)
+    _inserir_divergencias(root, ambiente=2)
 
     assert len(root.xpath("//n:infDPS/n:finNFSe", namespaces={"n": NS})) == 1
 

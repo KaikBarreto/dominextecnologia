@@ -34,10 +34,12 @@ TAGS_REMOVIDAS: dict[str, str] = {
     "nPedRegEvento": "E1235 no SefinNacional_1.6.0 — removido do layout do evento (2026-09-02)",
 }
 
-#: Campos obrigatórios no servidor que ainda não existem nos bindings fixados
-#: da `nfelib`. Cada entrada informa a tag imediatamente anterior, o valor e o
-#: motivo observado. A inserção é idempotente e preserva a ordem do xs:sequence.
-CAMPOS_INSERIDOS: dict[str, tuple[str, str, str]] = {
+#: Campos obrigatórios na produção restrita (ambiente 2) que ainda não existem
+#: nos bindings fixados da `nfelib`. A produção (ambiente 1) usa outro XSD e
+#: rejeita `finNFSe` com E1235; por isso esta lista nunca pode ser aplicada sem
+#: considerar o ambiente da DPS.
+#: Cada entrada informa a tag imediatamente anterior, o valor e o motivo.
+CAMPOS_INSERIDOS_HOMOLOGACAO: dict[str, tuple[str, str, str]] = {
     # O XSD v1.01 da produção restrita publicado em 2026-10-20 tornou
     # `finNFSe` obrigatório entre `tpEmit` e `cLocEmi`. O domínio vigente só
     # aceita "0" (NFS-e regular). Sem o campo, o Portal devolve E1235.
@@ -65,12 +67,12 @@ def _remover_divergencias(root: etree._Element) -> None:
                 pai.remove(elemento)
 
 
-def _inserir_divergencias(root: etree._Element) -> None:
+def _inserir_divergencias(root: etree._Element, *, ambiente: int | None) -> None:
     inf_dps = root.find(f".//{{{NS}}}infDPS")
-    if inf_dps is None:
+    if inf_dps is None or ambiente != 2:
         return
 
-    for tag, (tag_anterior, valor, _) in CAMPOS_INSERIDOS.items():
+    for tag, (tag_anterior, valor, _) in CAMPOS_INSERIDOS_HOMOLOGACAO.items():
         if inf_dps.find(f"{{{NS}}}{tag}") is not None:
             continue
 
@@ -95,7 +97,7 @@ def _reordenar_divergencias(root: etree._Element) -> None:
             seguinte.addprevious(elemento)
 
 
-def serializar(objeto) -> bytes:
+def serializar(objeto, *, ambiente: int | None = None) -> bytes:
     """Objeto da `nfelib` → XML pronto para assinar, já sem as divergências.
 
     Passar por aqui é OBRIGATÓRIO. Chamar o `XmlSerializer` direto em qualquer
@@ -105,6 +107,6 @@ def serializar(objeto) -> bytes:
     xml = XmlSerializer(config=cfg).render(objeto, ns_map={None: NS})
     root = etree.fromstring(xml.encode("utf-8"))
     _remover_divergencias(root)
-    _inserir_divergencias(root)
+    _inserir_divergencias(root, ambiente=ambiente)
     _reordenar_divergencias(root)
     return etree.tostring(root, xml_declaration=True, encoding="UTF-8")

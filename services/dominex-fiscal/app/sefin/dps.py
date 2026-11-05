@@ -218,4 +218,7 @@ def montar(req: EmitirRequest, agora: datetime | None = None) -> bytes:
         valores=valores,
         Id=id_dps,
     )
-    return serializar(dps_mod.Dps(infDPS=inf, versao="1.00"))
+    return serializar(
+        dps_mod.Dps(infDPS=inf, versao="1.00"),
+        ambiente=req.ambiente,
+    )
