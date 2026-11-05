@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.29',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Liberação municipal verificada automaticamente',
+        description: 'Ao abrir as Configurações Fiscais com o certificado A1 válido e o município já salvo, a Dominex confirma automaticamente a liberação para emissão. O botão permanece disponível apenas para tentar novamente quando necessário.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.28',
     date: '5 de novembro de 2026',
     type: 'patch',

@@ -31,6 +31,7 @@ import { EmpresaSection } from '@/components/fiscal/EmpresaSection';
 import { CertificadoSection } from '@/components/fiscal/CertificadoSection';
 import { ImpostosSection } from '@/components/fiscal/ImpostosSection';
 import { ServicosSection } from '@/components/fiscal/ServicosSection';
+import { automaticCoverageCheckKey } from '@/lib/fiscal/automaticCoverage';
 
 export { FISCAL_SCREEN_PERMISSION };
 
@@ -167,6 +168,8 @@ export default function FiscalSettings() {
   // uma string identifica o IBGE efetivamente confirmado nesta sessão. Assim
   // uma cobertura antiga nunca continua verde depois de trocar o município.
   const [coverageConfirmedInSession, setCoverageConfirmedInSession] = useState<string | false | null>(null);
+  /** Uma tentativa automática por combinação persistida de A1, município e ambiente. */
+  const automaticCoverageAttemptRef = useRef<string | null>(null);
 
   // Certificado
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -513,6 +516,28 @@ export default function FiscalSettings() {
 
   const currentIbge = form.municipio_ibge.trim();
   const persistedIbge = settings.municipio_ibge?.trim() ?? '';
+  const automaticCoverageKey = automaticCoverageCheckKey({
+    certificateReady,
+    certificateRef: settings.certificado_ref,
+    certificateExpiresAt: settings.certificate_expires_at,
+    municipalityAlreadyEnabled: settings.pode_emitir,
+    currentIbge,
+    persistedIbge,
+    currentEnvironment: form.fiscal_ambiente,
+    persistedEnvironment: settings.fiscal_ambiente,
+  });
+
+  // A1 válido + município/ambiente já salvos devem liberar a configuração sem
+  // exigir clique. Falha ou ausência de cobertura continua visível e o botão
+  // permanece disponível para retry manual.
+  useEffect(() => {
+    if (!automaticCoverageKey || checkingCoverage) return;
+    if (automaticCoverageAttemptRef.current === automaticCoverageKey) return;
+
+    automaticCoverageAttemptRef.current = automaticCoverageKey;
+    void runCoverageCheck({ silent: true });
+  }, [automaticCoverageKey, checkingCoverage, runCoverageCheck]);
+
   const municipalityReady =
     typeof coverageConfirmedInSession === 'string'
       ? coverageConfirmedInSession === currentIbge
