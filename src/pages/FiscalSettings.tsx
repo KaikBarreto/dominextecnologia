@@ -259,6 +259,14 @@ export default function FiscalSettings() {
 
   /** Optante do Simples Nacional — condiciona o campo de apuração de tributos. */
   const isSimples = form.regime_tributario === 'simples_nacional';
+  const hasCertificate = !!settings.certificado_ref;
+  const expiresAt = settings.certificate_expires_at
+    ? new Date(settings.certificate_expires_at).getTime()
+    : Number.NaN;
+  const expiresDays = daysUntil(settings.certificate_expires_at);
+  const expired = hasCertificate && Number.isFinite(expiresAt) && expiresAt <= Date.now();
+  const expiringSoon = !expired && expiresDays != null && expiresDays <= 30;
+  const certificateReady = hasCertificate && Number.isFinite(expiresAt) && expiresAt > Date.now();
 
   /**
    * Verifica se o município do endereço fiscal já emite NFS-e no padrão nacional.
@@ -266,16 +274,28 @@ export default function FiscalSettings() {
    * falha vira mensagem informativa na tela.
    */
   const runCoverageCheck = useCallback(
-    async ({ silent = false }: { silent?: boolean } = {}) => {
+    async ({
+      silent = false,
+      certificateAlreadyPersisted = false,
+    }: { silent?: boolean; certificateAlreadyPersisted?: boolean } = {}) => {
       const ibge = form.municipio_ibge.trim();
       if (!ibge) return 'skipped' as const;
+      if (!certificateReady && !certificateAlreadyPersisted) {
+        setSection('certificado');
+        setCoverageError({ kind: 'error', message: t.settings.empresa.coverageNeedsCertificate });
+        if (!silent) toast.warning(t.settings.empresa.coverageNeedsCertificate);
+        return 'error' as const;
+      }
       setCoverageConfirmedInSession(false);
       setCheckingCoverage(true);
       try {
         const res = await invokeNfse<{ pode_emitir?: boolean }>('nfse-check-coverage', { ibge });
         if (!res.ok) {
           const actionable =
-            res.unconfigured || res.errorCode === 'missing_ibge' || res.errorCode === 'invalid_ibge';
+            res.unconfigured ||
+            res.errorCode === 'missing_ibge' ||
+            res.errorCode === 'invalid_ibge' ||
+            res.errorCode === 'certificado_ausente';
           const message = (actionable ? res.message : null) ?? t.settings.empresa.coverageCheckError;
           setCoverageError({ kind: 'error', message });
           if (!silent) toast.warning(message);
@@ -302,7 +322,7 @@ export default function FiscalSettings() {
         await invalidate();
       }
     },
-    [form.municipio_ibge, t, invalidate],
+    [form.municipio_ibge, certificateReady, t, invalidate, setSection],
   );
 
   // Salva tributação / ambiente (company_fiscal_settings via useFiscalSettings).
@@ -369,7 +389,8 @@ export default function FiscalSettings() {
       ]);
 
       toast.success(t.settings.certificado.toasts.saveSuccess);
-      await runCoverageCheck({ silent: true });
+      if (certificateReady) await runCoverageCheck({ silent: true });
+      else setSection('certificado');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t.settings.certificado.toasts.saveError);
     }
@@ -479,21 +500,17 @@ export default function FiscalSettings() {
       setCertPassword('');
       setConsentChecked(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
-      invalidate();
+      await invalidate();
       void refreshCertificateAudit();
+      if (form.municipio_ibge.trim()) {
+        setSection('empresa');
+        await runCoverageCheck({ silent: true, certificateAlreadyPersisted: true });
+      }
     } finally {
       setUploadingCert(false);
     }
   };
 
-  const hasCertificate = !!settings.certificado_ref;
-  const expiresAt = settings.certificate_expires_at
-    ? new Date(settings.certificate_expires_at).getTime()
-    : Number.NaN;
-  const expiresDays = daysUntil(settings.certificate_expires_at);
-  const expired = hasCertificate && Number.isFinite(expiresAt) && expiresAt <= Date.now();
-  const expiringSoon = !expired && expiresDays != null && expiresDays <= 30;
-  const certificateReady = hasCertificate && Number.isFinite(expiresAt) && expiresAt > Date.now();
   const currentIbge = form.municipio_ibge.trim();
   const persistedIbge = settings.municipio_ibge?.trim() ?? '';
   const municipalityReady =
@@ -555,7 +572,8 @@ export default function FiscalSettings() {
                   size="sm"
                   disabled={checkingCoverage}
                   onClick={() => {
-                    if (form.municipio_ibge.trim()) void runCoverageCheck();
+                    if (!certificateReady) setSection('certificado');
+                    else if (form.municipio_ibge.trim()) void runCoverageCheck();
                     else setSection('empresa');
                   }}
                 >
@@ -633,6 +651,7 @@ export default function FiscalSettings() {
                 onSave={handleSaveCompany}
                 saving={isSaving || updateSettings.isPending}
                 checkingCoverage={checkingCoverage}
+                certificateReady={certificateReady}
                 onCheckCoverage={() => runCoverageCheck()}
                 coverageError={coverageError}
                 onGoToCertificado={() => setSection('certificado')}

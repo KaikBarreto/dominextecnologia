@@ -112,6 +112,7 @@ Deno.test("erro inesperado (bug nosso) vira linha: é o caso que ninguém previu
 
 const AGORA = Date.parse("2026-11-04T23:00:00Z");
 const CONFIG_OK = {
+  fiscal_ambiente: "producao",
   pode_emitir: true,
   certificado_ref: "tenant/certificado-cifrado.b64",
   certificate_expires_at: "2027-11-04T23:00:00Z",
@@ -125,6 +126,19 @@ Deno.test("município não confirmado falha antes do certificado", () => {
   assertEquals(
     validarProntidaoFiscal({ ...CONFIG_OK, pode_emitir: false }, AGORA)?.error,
     "municipality_not_enabled",
+  );
+});
+
+Deno.test("ambiente fiscal ausente ou inválido falha fechado", () => {
+  assertEquals(
+    validarProntidaoFiscal({ ...CONFIG_OK, fiscal_ambiente: null }, AGORA)
+      ?.error,
+    "fiscal_environment_invalid",
+  );
+  assertEquals(
+    validarProntidaoFiscal({ ...CONFIG_OK, fiscal_ambiente: "teste" }, AGORA)
+      ?.error,
+    "fiscal_environment_invalid",
   );
 });
 

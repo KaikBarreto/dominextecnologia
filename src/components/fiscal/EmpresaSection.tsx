@@ -51,6 +51,7 @@ interface EmpresaSectionProps {
   onSave: () => void;
   saving: boolean;
   checkingCoverage: boolean;
+  certificateReady: boolean;
   onCheckCoverage: () => void;
   coverageError: { kind: 'not_covered' | 'error'; message: string } | null;
   onGoToCertificado: () => void;
@@ -66,6 +67,7 @@ export function EmpresaSection({
   onSave,
   saving,
   checkingCoverage,
+  certificateReady,
   onCheckCoverage,
   coverageError,
   onGoToCertificado,
@@ -187,7 +189,7 @@ export function EmpresaSection({
           variant="outline"
           size="sm"
           onClick={onCheckCoverage}
-          disabled={checkingCoverage || !form.municipio_ibge.trim()}
+          disabled={checkingCoverage || !form.municipio_ibge.trim() || !certificateReady}
           className="w-full sm:w-auto sm:self-start"
         >
           {checkingCoverage ? (
@@ -199,6 +201,9 @@ export function EmpresaSection({
         </Button>
         {!form.municipio_ibge.trim() && (
           <p className="text-xs text-muted-foreground">{t.settings.empresa.coverageNeedsCity}</p>
+        )}
+        {!!form.municipio_ibge.trim() && !certificateReady && (
+          <p className="text-xs text-muted-foreground">{t.settings.empresa.coverageNeedsCertificate}</p>
         )}
       </div>
 

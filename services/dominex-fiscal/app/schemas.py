@@ -134,6 +134,17 @@ class EmitirRequest(RequisicaoAutenticada):
     valores: Valores
 
 
+class CoberturaRequest(RequisicaoAutenticada):
+    """Consulta oficial do convênio municipal no ADN.
+
+    A API de parametrização também exige mTLS. Por isso esta operação recebe o
+    mesmo certificado custodiado das demais chamadas e nunca roda direto na
+    Edge Function.
+    """
+
+    municipio_ibge: str = Field(alias="municipioIbge")
+
+
 class CancelarRequest(RequisicaoAutenticada):
     #: CNPJ/CPF de quem pede o cancelamento (o emitente). Só dígitos.
     cnpj_autor: str = Field(alias="cnpjAutor")

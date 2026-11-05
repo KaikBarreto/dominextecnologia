@@ -282,6 +282,8 @@ export interface NfseCertificadoResultado {
   status?: string | null;
   /** ISO 8601 da validade comprovada pelo motor. */
   validadeAte?: string | null;
+  /** CNPJ comprovado dentro do A1, somente dígitos. Nunca é inferido. */
+  cnpjTitular?: string | null;
   mensagem?: string;
   /** Presente só no motor próprio (custódia nossa). Ver NfseCustodiaCertificado. */
   custodia?: NfseCustodiaCertificado;

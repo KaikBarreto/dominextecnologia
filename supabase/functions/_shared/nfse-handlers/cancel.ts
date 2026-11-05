@@ -19,6 +19,7 @@ import { getNfseEngine } from "../nfse-provider.ts";
 import type { NfseProviderCtx } from "../nfse-provider.ts";
 import { NFSE_STATUS } from "../nfse-status.ts";
 import { clean, logId, providerErrorResponse } from "./common.ts";
+import { fiscalContextForEmission } from "./environment.ts";
 
 const TAG = "[nfse-cancel]";
 
@@ -142,10 +143,24 @@ export async function handleNfseCancel(req: Request): Promise<Response> {
       .select("*")
       .eq("company_id", companyId)
       .maybeSingle();
+    const fiscalContext = fiscalContextForEmission(
+      (fiscal ?? {}) as Record<string, unknown>,
+      emission as Record<string, unknown>,
+    );
+    if (!fiscalContext) {
+      return jsonResponse(
+        {
+          error: "fiscal_environment_unknown",
+          message:
+            "Não foi possível confirmar o ambiente fiscal desta nota antiga. Fale com o suporte antes de cancelar.",
+        },
+        409,
+      );
+    }
     const ctx: NfseProviderCtx = {
       supabase,
       companyId,
-      fiscal: (fiscal ?? {}) as Record<string, unknown>,
+      fiscal: fiscalContext,
     };
     const engine = getNfseEngine();
 
