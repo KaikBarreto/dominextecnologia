@@ -549,6 +549,7 @@ export const nfse = {
         checkCoverageShort: 'Verificar',
         statusCoverageOk: 'Município: liberado para emitir notas',
         statusCoveragePending: 'Município: liberação ainda não confirmada',
+        statusCoverageHomologation: 'Homologação: o Portal validará o município no envio do teste',
         coverageNeedsCity: 'Informe o CEP ou a cidade da empresa para verificar a liberação do município.',
         coverageNeedsCertificate:
           'Envie um certificado A1 válido antes de consultar a habilitação oficial do município.',
@@ -556,6 +557,9 @@ export const nfse = {
         coverageNotCoveredTitle: 'Município ainda sem emissão de NFS-e',
         coverageNotCovered:
           'O município ainda não está habilitado para emissão de NFS-e no padrão nacional. Assim que a prefeitura liberar, é só verificar de novo por aqui.',
+        coverageHomologationTitle: 'Teste de homologação disponível',
+        coverageHomologationUnconfirmed:
+          'A produção restrita não confirmou a parametrização do município. Você ainda pode enviar a nota de teste; o Portal Nacional dará a resposta definitiva, sem efeito fiscal.',
         coverageFailedTitle: 'Não foi possível confirmar a liberação do município',
         coverageCheckError:
           'Não conseguimos verificar a liberação do município agora. Tente novamente em alguns minutos.',
@@ -1470,6 +1474,7 @@ export const nfse = {
         checkCoverageShort: 'Check',
         statusCoverageOk: 'Municipality: cleared to issue invoices',
         statusCoveragePending: 'Municipality: clearance not confirmed yet',
+        statusCoverageHomologation: 'Sandbox: the portal will validate the municipality when the test is sent',
         coverageNeedsCity: 'Fill in the company ZIP code or city to check the municipality clearance.',
         coverageNeedsCertificate:
           'Upload a valid A1 certificate before checking the municipality official authorization.',
@@ -1477,6 +1482,9 @@ export const nfse = {
         coverageNotCoveredTitle: 'Municipality not issuing invoices yet',
         coverageNotCovered:
           'This municipality is not enabled for invoice issuance on the national standard yet. As soon as the city hall enables it, just check again here.',
+        coverageHomologationTitle: 'Sandbox test available',
+        coverageHomologationUnconfirmed:
+          'The sandbox did not confirm the municipality configuration. You can still send the test invoice; the national portal will give the final response with no tax effect.',
         coverageFailedTitle: 'Could not confirm the municipality clearance',
         coverageCheckError:
           'We could not check the municipality clearance right now. Please try again in a few minutes.',
@@ -2388,6 +2396,7 @@ export const nfse = {
         checkCoverageShort: 'Verificar',
         statusCoverageOk: 'Municipio: habilitado para emitir facturas',
         statusCoveragePending: 'Municipio: habilitación aún no confirmada',
+        statusCoverageHomologation: 'Homologación: el portal validará el municipio al enviar la prueba',
         coverageNeedsCity: 'Informa el código postal o la ciudad de la empresa para verificar la habilitación del municipio.',
         coverageNeedsCertificate:
           'Envía un certificado A1 válido antes de consultar la habilitación oficial del municipio.',
@@ -2395,6 +2404,9 @@ export const nfse = {
         coverageNotCoveredTitle: 'El municipio aún no emite facturas',
         coverageNotCovered:
           'El municipio todavía no está habilitado para la emisión de facturas en el estándar nacional. En cuanto el ayuntamiento lo habilite, basta con verificar de nuevo aquí.',
+        coverageHomologationTitle: 'Prueba de homologación disponible',
+        coverageHomologationUnconfirmed:
+          'El entorno de homologación no confirmó la parametrización del municipio. Aun así, puedes enviar la factura de prueba; el Portal Nacional dará la respuesta definitiva, sin efecto fiscal.',
         coverageFailedTitle: 'No fue posible confirmar la habilitación del municipio',
         coverageCheckError:
           'No pudimos verificar la habilitación del municipio ahora. Inténtalo de nuevo en unos minutos.',
@@ -3310,6 +3322,7 @@ export const nfse = {
         checkCoverageShort: 'Vérifier',
         statusCoverageOk: 'Commune : autorisée à émettre des factures',
         statusCoveragePending: 'Commune : autorisation pas encore confirmée',
+        statusCoverageHomologation: "Homologation : le portail validera la commune lors de l'envoi du test",
         coverageNeedsCity: "Renseignez le code postal ou la ville de l'entreprise pour vérifier l'autorisation de la commune.",
         coverageNeedsCertificate:
           "Importez un certificat A1 valide avant de vérifier l'autorisation officielle de la commune.",
@@ -3317,6 +3330,9 @@ export const nfse = {
         coverageNotCoveredTitle: "La commune n'émet pas encore de factures",
         coverageNotCovered:
           "Cette commune n'est pas encore autorisée à émettre des factures dans le standard national. Dès que la mairie l'activera, il suffira de vérifier à nouveau ici.",
+        coverageHomologationTitle: "Test d'homologation disponible",
+        coverageHomologationUnconfirmed:
+          "L'environnement d'homologation n'a pas confirmé le paramétrage de la commune. Vous pouvez tout de même envoyer la facture de test ; le portail national donnera la réponse définitive, sans effet fiscal.",
         coverageFailedTitle: "Impossible de confirmer l'autorisation de la commune",
         coverageCheckError:
           "Nous n'avons pas pu vérifier l'autorisation de la commune pour le moment. Réessayez dans quelques minutes.",

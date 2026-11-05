@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.31',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Teste fiscal liberado em homologação',
+        description: 'A produção restrita do governo nem sempre replica a cobertura real dos municípios. Em homologação, a Dominex agora envia a nota de teste para o Portal Nacional dar a resposta definitiva, sem efeito fiscal. Em produção, a confirmação municipal continua obrigatória.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.38.30',
     date: '5 de novembro de 2026',
     type: 'patch',

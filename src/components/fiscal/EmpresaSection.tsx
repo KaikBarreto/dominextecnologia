@@ -53,7 +53,10 @@ interface EmpresaSectionProps {
   checkingCoverage: boolean;
   certificateReady: boolean;
   onCheckCoverage: () => void;
-  coverageError: { kind: 'not_covered' | 'error'; message: string } | null;
+  coverageError: {
+    kind: 'not_covered' | 'homologation_unconfirmed' | 'error';
+    message: string;
+  } | null;
   onGoToCertificado: () => void;
 }
 
@@ -210,13 +213,21 @@ export function EmpresaSection({
       {/* Resultado da checagem de cobertura — card branco (padrão de
           estado do sistema), some assim que a empresa fica apta. */}
       {coverageError && (
-        <Alert className="bg-card border-border [&>svg]:text-destructive">
+        <Alert
+          className={
+            coverageError.kind === 'homologation_unconfirmed'
+              ? 'bg-card border-border [&>svg]:text-primary'
+              : 'bg-card border-border [&>svg]:text-destructive'
+          }
+        >
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="text-xs space-y-0.5">
-            <p className="font-bold text-destructive">
-              {coverageError.kind === 'not_covered'
-                ? t.settings.empresa.coverageNotCoveredTitle
-                : t.settings.empresa.coverageFailedTitle}
+            <p className={coverageError.kind === 'homologation_unconfirmed' ? 'font-bold text-primary' : 'font-bold text-destructive'}>
+              {coverageError.kind === 'homologation_unconfirmed'
+                ? t.settings.empresa.coverageHomologationTitle
+                : coverageError.kind === 'not_covered'
+                  ? t.settings.empresa.coverageNotCoveredTitle
+                  : t.settings.empresa.coverageFailedTitle}
             </p>
             <p>{coverageError.message}</p>
           </AlertDescription>

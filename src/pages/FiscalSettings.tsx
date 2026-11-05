@@ -159,10 +159,13 @@ export default function FiscalSettings() {
   /** Garante que o auto-backfill do IBGE rode no máximo 1x por carregamento da tela. */
   const ibgeBackfilledRef = useRef(false);
 
-  // Resultado da checagem de cobertura do município. `kind: 'not_covered'` = o
-  // município respondeu que ainda não emite; `kind: 'error'` = não conseguimos
-  // consultar agora. Nunca derruba o salvamento — é sempre informativo.
-  const [coverageError, setCoverageError] = useState<{ kind: 'not_covered' | 'error'; message: string } | null>(null);
+  // Resultado da checagem de cobertura do município. Em homologação, ausência
+  // de parametrização prévia é informativa: o envio da DPS fará a validação.
+  // Nunca derruba o salvamento.
+  const [coverageError, setCoverageError] = useState<{
+    kind: 'not_covered' | 'homologation_unconfirmed' | 'error';
+    message: string;
+  } | null>(null);
   const [checkingCoverage, setCheckingCoverage] = useState(false);
   // `null` usa o valor persistido; `false` bloqueia durante/falha da consulta;
   // uma string identifica o IBGE efetivamente confirmado nesta sessão. Assim
@@ -311,8 +314,15 @@ export default function FiscalSettings() {
           return 'ready' as const;
         } else {
           setCoverageConfirmedInSession(false);
-          setCoverageError({ kind: 'not_covered', message: t.settings.empresa.coverageNotCovered });
-          if (!silent) toast.warning(t.settings.empresa.coverageNotCovered);
+          const isHomologation = settings.fiscal_ambiente === 'homologacao';
+          const message = isHomologation
+            ? t.settings.empresa.coverageHomologationUnconfirmed
+            : t.settings.empresa.coverageNotCovered;
+          setCoverageError({
+            kind: isHomologation ? 'homologation_unconfirmed' : 'not_covered',
+            message,
+          });
+          if (!silent) toast.warning(message);
           return 'not_covered' as const;
         }
       } catch {
@@ -325,7 +335,7 @@ export default function FiscalSettings() {
         await invalidate();
       }
     },
-    [form.municipio_ibge, certificateReady, t, invalidate, setSection],
+    [form.municipio_ibge, settings.fiscal_ambiente, certificateReady, t, invalidate, setSection],
   );
 
   // Salva tributação / ambiente (company_fiscal_settings via useFiscalSettings).
@@ -544,7 +554,13 @@ export default function FiscalSettings() {
       : coverageConfirmedInSession === false
         ? false
         : !!currentIbge && currentIbge === persistedIbge && settings.pode_emitir;
-  const readyToEmit = isFiscalReadyToEmit({ ...settings, pode_emitir: municipalityReady });
+  const municipalityReadyForEmission =
+    form.fiscal_ambiente === 'homologacao' || municipalityReady;
+  const readyToEmit = isFiscalReadyToEmit({
+    ...settings,
+    fiscal_ambiente: form.fiscal_ambiente,
+    pode_emitir: municipalityReadyForEmission,
+  });
 
   const navTabs: SettingsTab[] = [
     { value: 'empresa', label: t.settings.sections.empresa, icon: Building2 },
@@ -584,10 +600,12 @@ export default function FiscalSettings() {
           </div>
           <div className="grid gap-2 md:grid-cols-2">
             <div className="flex min-w-0 items-center gap-2 text-sm">
-              <MapPin className={`h-4 w-4 shrink-0 ${municipalityReady ? 'text-success' : 'text-warning'}`} />
+              <MapPin className={`h-4 w-4 shrink-0 ${municipalityReadyForEmission ? 'text-success' : 'text-warning'}`} />
               <span className="min-w-0 flex-1 text-muted-foreground">
                 {municipalityReady
                   ? t.settings.empresa.statusCoverageOk
+                  : form.fiscal_ambiente === 'homologacao'
+                    ? t.settings.empresa.statusCoverageHomologation
                   : t.settings.empresa.statusCoveragePending}
               </span>
               {!municipalityReady && (

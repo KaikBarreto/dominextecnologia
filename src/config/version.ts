@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.30";
+export const APP_VERSION = "1.38.31";
 
 export const VERSION_NOTES =
-  "Com certificado A1 válido e município salvo, a liberação para emissão de NFS-e agora é verificada automaticamente.";
+  "A homologação de NFS-e agora envia o teste ao Portal Nacional mesmo quando a produção restrita não replica a cobertura do município.";

@@ -129,6 +129,16 @@ Deno.test("município não confirmado falha antes do certificado", () => {
   );
 });
 
+Deno.test("homologação permite o envio de teste sem cobertura previamente confirmada", () => {
+  assertEquals(
+    validarProntidaoFiscal(
+      { ...CONFIG_OK, fiscal_ambiente: "homologacao", pode_emitir: false },
+      AGORA,
+    ),
+    null,
+  );
+});
+
 Deno.test("ambiente fiscal ausente ou inválido falha fechado", () => {
   assertEquals(
     validarProntidaoFiscal({ ...CONFIG_OK, fiscal_ambiente: null }, AGORA)

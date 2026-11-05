@@ -388,21 +388,26 @@ export function NovaNotaModal({
     return e;
   }, [valores, s, isSimples]);
 
-  // Bloqueio de emissão: município no Padrão Nacional + A1 próprio válido.
+  // Produção exige cobertura municipal confirmada. Homologação envia a DPS de
+  // teste para o Portal dar a resposta definitiva, sempre sem efeito fiscal.
   const certificateExpiresAt = settings.certificate_expires_at
     ? new Date(settings.certificate_expires_at).getTime()
     : Number.NaN;
   const certificateExpired = Number.isFinite(certificateExpiresAt) && certificateExpiresAt <= Date.now();
   const habilitacaoErrors = useMemo(() => {
     const e: string[] = [];
-    if (!settings.pode_emitir) e.push(s.emitir.habilitacaoErrorMunicipio);
+    if (settings.fiscal_ambiente === 'producao' && !settings.pode_emitir) {
+      e.push(s.emitir.habilitacaoErrorMunicipio);
+    }
     else if (!settings.certificado_ref) e.push(s.emitir.habilitacaoError);
     else if (!Number.isFinite(certificateExpiresAt)) e.push(s.emitir.habilitacaoErrorCertValidity);
     else if (certificateExpired) e.push(s.emitir.habilitacaoErrorCertExpired);
     return e;
-  }, [settings.pode_emitir, settings.certificado_ref, certificateExpiresAt, certificateExpired, s]);
+  }, [settings.fiscal_ambiente, settings.pode_emitir, settings.certificado_ref, certificateExpiresAt, certificateExpired, s]);
 
-  const habilitacaoTab = !settings.pode_emitir ? 'empresa' : 'certificado';
+  const habilitacaoTab = settings.fiscal_ambiente === 'producao' && !settings.pode_emitir
+    ? 'empresa'
+    : 'certificado';
 
   const habilitacaoWarnings = useMemo(() => {
     const w: string[] = [];

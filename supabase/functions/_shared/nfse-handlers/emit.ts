@@ -128,14 +128,19 @@ export function validarProntidaoFiscal(
   fiscal: Record<string, unknown>,
   agoraMs = Date.now(),
 ): NfseReadinessError | null {
-  if (!normalizeFiscalEnvironment(fiscal.fiscal_ambiente)) {
+  const ambiente = normalizeFiscalEnvironment(fiscal.fiscal_ambiente);
+  if (!ambiente) {
     return {
       error: "fiscal_environment_invalid",
       message:
         "Selecione o ambiente fiscal nas configurações antes de emitir a nota.",
     };
   }
-  if (fiscal.pode_emitir !== true) {
+  // A parametrizacao da producao restrita nao replica necessariamente a
+  // cobertura municipal real. Em homologacao, o proprio POST da DPS e a
+  // validacao definitiva — sem efeito fiscal. Em producao, a cobertura
+  // oficial continua obrigatoria e falha fechado.
+  if (ambiente === "producao" && fiscal.pode_emitir !== true) {
     return {
       error: "municipality_not_enabled",
       message:

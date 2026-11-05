@@ -36,17 +36,18 @@ export function normalizeRegApTribSN(value: unknown): RegApTribSN {
 /**
  * CRITÉRIO ÚNICO de "empresa pronta pra emitir NFS-e".
  *
- * `pode_emitir` sozinho NÃO basta: essa flag só diz que o MUNICÍPIO está
- * coberto (é a única coisa que a checagem de cobertura sabe). Emitir de verdade
- * exige também o certificado A1 sob custódia própria, com validade conhecida e
- * futura. Validade ausente ou inválida falha fechado.
+ * Em produção, `pode_emitir` confirma a cobertura do município e é obrigatório.
+ * Em homologação, a produção restrita pode não espelhar a parametrização real;
+ * o envio da DPS de teste é a validação definitiva e não tem efeito fiscal.
+ * Nos dois ambientes, o certificado A1 próprio precisa estar válido.
  * Qualquer tela que pergunte "já dá pra emitir?" tem que usar isto.
  */
 export function isFiscalReadyToEmit(
-  s: Pick<FiscalSettings, 'pode_emitir' | 'certificado_ref' | 'certificate_expires_at'>,
+  s: Pick<FiscalSettings, 'fiscal_ambiente' | 'pode_emitir' | 'certificado_ref' | 'certificate_expires_at'>,
   now = Date.now(),
 ): boolean {
-  if (!s.pode_emitir || !s.certificado_ref || !s.certificate_expires_at) return false;
+  const coverageReady = s.fiscal_ambiente === 'homologacao' || s.pode_emitir;
+  if (!coverageReady || !s.certificado_ref || !s.certificate_expires_at) return false;
   const expiresAt = new Date(s.certificate_expires_at).getTime();
   return Number.isFinite(expiresAt) && expiresAt > now;
 }

@@ -4,9 +4,12 @@ import { isFiscalReadyToEmit, type FiscalSettings } from './useFiscalSettings';
 const NOW = new Date('2026-11-04T12:00:00.000Z').getTime();
 
 function settings(
-  patch: Partial<Pick<FiscalSettings, 'pode_emitir' | 'certificado_ref' | 'certificate_expires_at'>> = {},
+  patch: Partial<
+    Pick<FiscalSettings, 'fiscal_ambiente' | 'pode_emitir' | 'certificado_ref' | 'certificate_expires_at'>
+  > = {},
 ) {
   return {
+    fiscal_ambiente: 'producao' as const,
     pode_emitir: true,
     certificado_ref: 'tenant/certificado-cifrado',
     certificate_expires_at: '2027-11-04T12:00:00.000Z',
@@ -28,5 +31,11 @@ describe('isFiscalReadyToEmit', () => {
     ['certificado vencendo agora', { certificate_expires_at: '2026-11-04T12:00:00.000Z' }],
   ])('falha fechado quando %s', (_label, patch) => {
     expect(isFiscalReadyToEmit(settings(patch), NOW)).toBe(false);
+  });
+
+  it('permite testar em homologação mesmo sem cobertura previamente confirmada', () => {
+    expect(
+      isFiscalReadyToEmit(settings({ fiscal_ambiente: 'homologacao', pode_emitir: false }), NOW),
+    ).toBe(true);
   });
 });
