@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { BrandedQRCode } from '@/components/BrandedQRCode';
 import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
-import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText, Wrench, ClipboardCheck, XCircle, CreditCard, AlertTriangle, Megaphone } from 'lucide-react';
+import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText, Wrench, ClipboardCheck, XCircle, CreditCard, AlertTriangle, Megaphone, Link2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useContractPublicToken, useRegeneratePmocToken, useResolveContractId } from '@/hooks/usePmocPortal';
 import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
@@ -88,6 +88,7 @@ import { useTenantCharges } from '@/hooks/useTenantCharges';
 import { contractFrequencyToCycle } from '@/utils/contractBillingCycle';
 import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
 import { ServiceOrderFormDialog, type ServiceOrderFormData } from '@/components/service-orders/ServiceOrderFormDialog';
+import { LinkExistingServiceOrderDialog } from '@/components/service-orders/LinkExistingServiceOrderDialog';
 import { buildPortalCallsPath, isPortalCall } from '@/lib/portalCalls';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -232,7 +233,7 @@ export default function ContractDetail() {
   const { id: routeParam } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { id, isResolving: isResolvingId } = useResolveContractId(routeParam);
-  const { contract, isLoading, cancelOccurrenceOs, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
+  const { contract, isLoading, cancelOccurrenceOs, linkExistingServiceOrder, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
   const {
     serviceOrders,
     isLoading: isLoadingServiceOrders,
@@ -249,6 +250,7 @@ export default function ContractDetail() {
   // visita prevista pelo contrato; chamado é solicitação reativa vinda do portal.
   const [pmocTab, setPmocTab] = useState<'overview' | 'equipamentos' | 'ocorrencias' | 'chamados' | 'historico' | 'financeiro' | 'documentos' | 'cronograma'>('overview');
   const [planningOccurrenceId, setPlanningOccurrenceId] = useState<string | null>(null);
+  const [showLinkExistingOrder, setShowLinkExistingOrder] = useState(false);
   const planningOccurrence = useMemo<ServiceOrder | null>(
     () => serviceOrders.find(order => order.id === planningOccurrenceId) ?? null,
     [planningOccurrenceId, serviceOrders],
@@ -376,6 +378,9 @@ export default function ContractDetail() {
 
   const { hasRole, hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
   const canPlanOccurrences = isAdminOrGestor() || hasPermission('fn:edit_os');
+  const canLinkExistingOrder = isAdminOrGestor()
+    || hasRole('super_admin')
+    || hasPermission('fn:manage_contracts');
   // Excluir parcela/recebível é DELETE em financial_transactions → mesma
   // permissão da tela de Financeiro (`fn:delete_finance`).
   // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
@@ -584,7 +589,10 @@ export default function ContractDetail() {
   // Anexamos `occurrence_number` derivado a cada OS pra preservar a UI/sort/print
   // existentes sem reescrever a coluna "#".
   const sortedOccurrences = useMemo<(ContractServiceOrder & { occurrence_number: number })[]>(() => {
-    const orders = (contract?.service_orders || []).filter(order => order.origin !== 'portal').sort((a, b) => {
+    const orders = (contract?.service_orders || []).filter(order =>
+      order.origin === 'contract'
+      || (!!order.contract_reference_date && !!order.contract_visit_customized_at)
+    ).sort((a, b) => {
       const referenceA = a.contract_reference_date ?? a.scheduled_date;
       const referenceB = b.contract_reference_date ?? b.scheduled_date;
       const da = referenceA ? parseISO(referenceA).getTime() : 0;
@@ -1958,8 +1966,20 @@ export default function ContractDetail() {
         // DETALHE da OS vinculada na MESMA aba. Status/atrasada derivam da OS real.
         const occurrencesContent = (
           <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-transparent shadow-none">
-            <CardHeader>
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
               <CardTitle className="min-w-0 text-base sm:text-lg break-words">{td.occurrences.cardTitle.replace('{count}', String(occurrences.length))}</CardTitle>
+              {canLinkExistingOrder && contract.status === 'active' && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 gap-2 rounded-xl"
+                  onClick={() => setShowLinkExistingOrder(true)}
+                  disabled={isLoadingServiceOrders || !!serviceOrdersError}
+                >
+                  {isLoadingServiceOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                  {td.occurrences.linkAction}
+                </Button>
+              )}
             </CardHeader>
             <CardContent className={cn(isMobile ? 'p-3 min-w-0' : 'p-0 min-w-0')}>
               {serviceOrdersError && canPlanOccurrences && (
@@ -2015,7 +2035,9 @@ export default function ContractDetail() {
                           <div className="flex flex-wrap items-center justify-end gap-1.5">
                             {isLate && <Badge variant="warning" className="shrink-0">{td.occurrences.late}</Badge>}
                             {os.contract_visit_customized_at && (
-                              <Badge variant="info" className="shrink-0">{td.occurrences.plannedBadge}</Badge>
+                              <Badge variant="info" className="shrink-0">
+                                {os.origin === 'contract' ? td.occurrences.plannedBadge : td.occurrences.linkedBadge}
+                              </Badge>
                             )}
                             <Badge variant={statusVariant} className="shrink-0">{statusLabel}</Badge>
                           </div>
@@ -2193,7 +2215,9 @@ export default function ContractDetail() {
                               <div className="flex flex-wrap items-center gap-1.5">
                                 {isLate && <Badge variant="warning">{td.occurrences.late}</Badge>}
                                 {os.contract_visit_customized_at && (
-                                  <Badge variant="info">{td.occurrences.plannedBadge}</Badge>
+                                  <Badge variant="info">
+                                    {os.origin === 'contract' ? td.occurrences.plannedBadge : td.occurrences.linkedBadge}
+                                  </Badge>
                                 )}
                                 <Badge variant={statusVariant}>{statusLabel}</Badge>
                               </div>
@@ -3573,6 +3597,18 @@ export default function ContractDetail() {
         contractPlanningMode
         editTitle={td.occurrences.planDialogTitle}
         editDescription={td.occurrences.planDialogDescription}
+      />
+
+      <LinkExistingServiceOrderDialog
+        open={showLinkExistingOrder}
+        onOpenChange={setShowLinkExistingOrder}
+        contractId={contract.id}
+        customerId={contract.customer_id}
+        serviceOrders={serviceOrders}
+        occurrences={occurrences}
+        isLoadingOrders={isLoadingServiceOrders}
+        isSubmitting={linkExistingServiceOrder.isPending}
+        onSubmit={(input) => linkExistingServiceOrder.mutateAsync(input)}
       />
 
       {/* Cancelar visita (botão "Pular") — agora cancela a OS daquela data. */}

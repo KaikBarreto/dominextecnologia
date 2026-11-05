@@ -2999,11 +2999,14 @@ export function useContracts() {
 
       const { data: contractOss } = await supabase
         .from('service_orders')
-        .select('id, scheduled_date, status, public_short_code, contract_reference_date, contract_visit_customized_at')
-        .eq('contract_id', id)
-        .eq('origin', 'contract');
+        .select('id, scheduled_date, status, public_short_code, origin, contract_reference_date, contract_visit_customized_at')
+        .eq('contract_id', id);
 
-      const hasFutureVisits = (contractOss || []).some(
+      const occurrenceOss = (contractOss || []).filter(o =>
+        o.origin === 'contract' || (!!o.contract_reference_date && !!o.contract_visit_customized_at)
+      );
+
+      const hasFutureVisits = occurrenceOss.some(
         o => (o.scheduled_date ?? '') >= todayStr
           || (!!o.contract_visit_customized_at && (o.contract_reference_date ?? '') >= todayStr),
       );
@@ -3019,7 +3022,8 @@ export function useContracts() {
       // ⚠️ NÃO apaga aqui (P0 "gerar antes de apagar"). Os ids são capturados e
       // só serão removidos por regenerateFutureVisits DEPOIS de gerar+validar as
       // novas — evitando a janela em que o contrato ficaria sem visita futura.
-      const regenerableOss = (contractOss || []).filter(o =>
+      const regenerableOss = occurrenceOss.filter(o =>
+        o.origin === 'contract' &&
         REGENERABLE_OS_STATUSES.has(o.status ?? '') &&
         (o.scheduled_date ?? '') >= todayStr &&
         !o.contract_visit_customized_at
@@ -3120,7 +3124,7 @@ export function useContracts() {
           },
           todayStr,
         ),
-        (contractOss || [])
+        occurrenceOss
           .filter(o => !!o.contract_visit_customized_at)
           .map(o => o.contract_reference_date ?? o.scheduled_date),
       );
@@ -3298,11 +3302,14 @@ export function useContracts() {
 
       const { data: contractOss } = await supabase
         .from('service_orders')
-        .select('id, scheduled_date, status, public_short_code, contract_reference_date, contract_visit_customized_at')
-        .eq('contract_id', id)
-        .eq('origin', 'contract');
+        .select('id, scheduled_date, status, public_short_code, origin, contract_reference_date, contract_visit_customized_at')
+        .eq('contract_id', id);
 
-      const hasFutureVisits = (contractOss || []).some(
+      const occurrenceOss = (contractOss || []).filter(o =>
+        o.origin === 'contract' || (!!o.contract_reference_date && !!o.contract_visit_customized_at)
+      );
+
+      const hasFutureVisits = occurrenceOss.some(
         o => (o.scheduled_date ?? '') >= todayStr
           || (!!o.contract_visit_customized_at && (o.contract_reference_date ?? '') >= todayStr),
       );
@@ -3315,7 +3322,8 @@ export function useContracts() {
 
       // ⚠️ Captura os ids regeneráveis mas NÃO apaga aqui (P0 "gerar antes de
       // apagar"): regenerateFutureVisits remove só após gerar+validar as novas.
-      const regenerableOss = (contractOss || []).filter(o =>
+      const regenerableOss = occurrenceOss.filter(o =>
+        o.origin === 'contract' &&
         REGENERABLE_OS_STATUSES.has(o.status ?? '') &&
         (o.scheduled_date ?? '') >= todayStr &&
         !o.contract_visit_customized_at
@@ -3394,7 +3402,7 @@ export function useContracts() {
           },
           todayStr,
         ),
-        (contractOss || [])
+        occurrenceOss
           .filter(o => !!o.contract_visit_customized_at)
           .map(o => o.contract_reference_date ?? o.scheduled_date),
       );
@@ -3527,10 +3535,10 @@ export function useContracts() {
       // recriar nem pular competencias ao estender o horizonte.
       const { data: contractOss } = await supabase
         .from('service_orders')
-        .select('scheduled_date, contract_reference_date')
-        .eq('contract_id', id)
-        .eq('origin', 'contract');
+        .select('scheduled_date, origin, contract_reference_date, contract_visit_customized_at')
+        .eq('contract_id', id);
       const lastScheduled = (contractOss || [])
+        .filter(o => o.origin === 'contract' || (!!o.contract_reference_date && !!o.contract_visit_customized_at))
         .map(o => (o.contract_reference_date ?? o.scheduled_date) as string | null)
         .filter((d): d is string => !!d)
         .sort()

@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.24',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vinculação de OS existente ao contrato',
+        description: 'Na aba Ocorrências, escolha uma Ordem de Serviço já cadastrada ou concluída e informe qual visita do cronograma ela representa. O número, o status, as datas reais e o histórico original da OS são preservados.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cronograma protegido contra duplicidades',
+        description: 'A vinculação substitui somente uma visita automática ainda vazia. Visitas iniciadas, concluídas ou com histórico permanecem protegidas para evitar perda de informações.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
     version: '1.38.23',
     date: '5 de novembro de 2026',
     type: 'patch',

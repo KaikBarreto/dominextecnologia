@@ -17892,6 +17892,14 @@ export type Database = {
         }
         Returns: Json
       }
+      link_service_order_to_contract: {
+        Args: {
+          p_contract_id: string
+          p_reference_date: string
+          p_service_order_id: string
+        }
+        Returns: Json
+      }
       regenerate_pmoc_token: {
         Args: { p_contract_id: string }
         Returns: string

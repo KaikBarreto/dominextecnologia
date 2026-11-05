@@ -6,9 +6,9 @@ const source = readFileSync('src/hooks/useContracts.ts', 'utf8');
 describe('useContracts — guardas das visitas personalizadas', () => {
   it('renova o contrato pela referência e não pela data operacional reagendada', () => {
     const renewal = source.slice(source.indexOf('const renewContract = useMutation'), source.indexOf('const deleteContractMutation'));
-    expect(renewal).toContain(".select('scheduled_date, contract_reference_date')");
+    expect(renewal).toContain(".select('scheduled_date, origin, contract_reference_date, contract_visit_customized_at')");
     expect(renewal).toContain('o.contract_reference_date ?? o.scheduled_date');
-    expect(renewal).toContain(".eq('origin', 'contract')");
+    expect(renewal).toContain("o.origin === 'contract' || (!!o.contract_reference_date && !!o.contract_visit_customized_at)");
   });
 
   it('limpa metadados contratuais ao preservar uma OS passada como avulsa', () => {

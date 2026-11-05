@@ -111,6 +111,7 @@ vi.mock('@/hooks/useContractDetail', () => ({
     contract: baseContract,
     isLoading: false,
     cancelOccurrenceOs: { mutateAsync: vi.fn() },
+    linkExistingServiceOrder: { mutateAsync: vi.fn(), isPending: false },
     stats: { totalOccurrences: 0, completedOccurrences: 0, progressPercent: 0, nextOccurrence: null },
     linkedTransactions: [oneTransaction],
     isLoadingTransactions: false,
@@ -419,6 +420,45 @@ describe('ContractDetail — planejamento individual da visita', () => {
     goToOccurrences();
     expect(document.body.textContent).toMatch(/nenhuma visita gerada/i);
     expect(q('table')).toBeNull();
+  });
+
+  it('abre a vinculação, lista OS do mesmo cliente e identifica histórico já vinculado', () => {
+    const placeholder = order();
+    const linked = order({
+      id: 'os-linked',
+      order_number: 44,
+      status: 'concluida',
+      origin: 'manual',
+      contract_reference_date: '2026-11-10',
+      contract_visit_customized_at: '2026-11-11T10:00:00Z',
+    });
+    baseContract.service_orders = [placeholder, linked];
+    mockServiceOrders.push(
+      placeholder,
+      linked,
+      {
+        id: 'os-candidate',
+        order_number: 99,
+        customer_id: 'cust-1',
+        os_type: 'manutencao_corretiva',
+        status: 'concluida',
+        origin: 'manual',
+        scheduled_date: '2026-11-09',
+        description: 'Atendimento já realizado',
+        created_at: '2026-11-09T10:00:00Z',
+        updated_at: '2026-11-09T10:00:00Z',
+      },
+    );
+
+    goToOccurrences();
+    expect(document.body.textContent).toMatch(/vinculada/i);
+    const linkButton = qAll('button').find(button => /vincular os existente/i.test(button.textContent || ''));
+    expect(linkButton).toBeTruthy();
+    click(linkButton!);
+
+    expect(document.body.textContent).toMatch(/vincular os existente ao contrato/i);
+    expect(document.body.textContent).toContain('OS #99');
+    expect(document.body.textContent).toMatch(/data original: 09\/11\/2026/i);
   });
 });
 

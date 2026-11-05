@@ -101,11 +101,36 @@ export function useContractDetail(contractId: string | undefined) {
     onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
+  const linkExistingServiceOrder = useMutation({
+    mutationFn: async ({
+      serviceOrderId,
+      referenceDate,
+    }: {
+      serviceOrderId: string;
+      referenceDate: string;
+    }) => {
+      if (!contractId) throw new Error('contract_not_found');
+      const { data, error } = await supabase.rpc('link_service_order_to_contract', {
+        p_service_order_id: serviceOrderId,
+        p_contract_id: contractId,
+        p_reference_date: referenceDate,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contract-detail', contractId] });
+      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+    },
+  });
+
   // Stats derivadas 100% das OSs reais do contrato.
   // Chamado do portal pode carregar contract_id para preservar contexto, mas
   // não é visita/ocorrência prevista pelo contrato e não entra nestas stats.
   const contractOrders: ContractServiceOrder[] = (contract?.service_orders || [])
-    .filter(order => order.origin !== 'portal');
+    .filter(order => order.origin === 'contract'
+      || (!!order.contract_reference_date && !!order.contract_visit_customized_at));
   const totalOccurrences = contractOrders.length;
   const completedOccurrences = contractOrders.filter(o => o.status === 'concluida').length;
   // Próxima visita = OS ativa (≠ concluida/cancelada) com menor scheduled_date.
@@ -115,6 +140,7 @@ export function useContractDetail(contractId: string | undefined) {
     contract,
     isLoading,
     cancelOccurrenceOs,
+    linkExistingServiceOrder,
     linkedTransactions,
     isLoadingTransactions,
     stats: {
