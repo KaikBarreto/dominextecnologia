@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.25',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastro e edição de empresas mais claros',
+        description: 'O formulário de empresas agora organiza cadastro, plano e acesso em áreas fáceis de navegar, com resumo permanente no computador e recolhível no celular.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Redefinição de acesso direto pela empresa',
+        description: 'Administradores autorizados podem escolher um usuário da empresa e gerar um link temporário para redefinição de senha, sem precisar alterar os demais dados do cadastro.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.38.24',
     date: '5 de novembro de 2026',
     type: 'patch',

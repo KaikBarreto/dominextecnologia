@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.24";
+export const APP_VERSION = "1.38.25";
 
 export const VERSION_NOTES =
-  "Ordens de Serviço já cadastradas agora podem ser vinculadas às visitas do contrato sem perder datas, status ou histórico.";
+  "A gestão de empresas ganhou navegação por etapas, resumo do plano e geração segura de links de redefinição de senha.";
