@@ -12694,6 +12694,8 @@ export type Database = {
           company_id: string
           completed_at: string | null
           contract_id: string | null
+          contract_reference_date: string | null
+          contract_visit_customized_at: string | null
           created_at: string
           created_by: string | null
           customer_id: string | null
@@ -12782,6 +12784,8 @@ export type Database = {
           company_id: string
           completed_at?: string | null
           contract_id?: string | null
+          contract_reference_date?: string | null
+          contract_visit_customized_at?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
@@ -12870,6 +12874,8 @@ export type Database = {
           company_id?: string
           completed_at?: string | null
           contract_id?: string | null
+          contract_reference_date?: string | null
+          contract_visit_customized_at?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null

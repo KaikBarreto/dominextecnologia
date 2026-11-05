@@ -105,6 +105,7 @@ export function EditOsScopeDrawer({
     (MESSAGES[appLocale as keyof typeof MESSAGES]?.app?.os?.technicianFlow as TFlow) ??
     MESSAGES['pt-br'].app.os.technicianFlow;
   const t = flow.editScope;
+  const formT = MESSAGES[appLocale as keyof typeof MESSAGES].app.os.form;
   const { toast } = useToast();
   const { templates } = useFormTemplates();
   const { createEquipment } = useEquipment(customerId);
@@ -509,6 +510,9 @@ export function EditOsScopeDrawer({
                   dailyPlan: t.scheduleDailyPlan,
                   dailyPlanHelp: t.scheduleDailyPlanHelp,
                   applyFirstToAll: t.scheduleApplyFirstToAll,
+                  addDate: formT.scheduleAddDate,
+                  addDay: formT.scheduleAddDay,
+                  removeDay: formT.scheduleRemoveDay,
                   scheduledDaySingular: t.scheduleDaySingular,
                   scheduledDayPlural: t.scheduleDayPlural,
                   startTime: t.scheduleStartTime,

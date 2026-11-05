@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.23',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Planejamento individual das visitas do contrato',
+        description: 'Abra uma visita diretamente pelo contrato para ajustar equipe, horários, observações e datas. O mesmo atendimento também pode ser distribuído em vários dias, inclusive datas não consecutivas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cronograma contratual preservado nos reagendamentos',
+        description: 'A data prevista no contrato continua registrada mesmo quando a execução é reagendada. Assim, domingos, feriados e imprevistos podem ser ajustados sem mudar a periodicidade nem criar visitas duplicadas.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Histórico de visitas mais fácil de acompanhar',
+        description: 'O contrato agora separa a data prevista das datas realmente agendadas e identifica as visitas que receberam planejamento próprio.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.22',
     date: '5 de novembro de 2026',
     type: 'patch',

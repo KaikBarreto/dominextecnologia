@@ -1,4 +1,5 @@
-import { Copy } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Copy, Plus, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -19,6 +20,9 @@ interface SchedulePlannerLabels {
   dailyPlan: string;
   dailyPlanHelp: string;
   applyFirstToAll: string;
+  addDate: string;
+  addDay: string;
+  removeDay: string;
   scheduledDaySingular: string;
   scheduledDayPlural: string;
   startTime: string;
@@ -46,11 +50,16 @@ export function ServiceOrderSchedulePlanner({
   locale,
   labels,
 }: ServiceOrderSchedulePlannerProps) {
+  const [additionalDate, setAdditionalDate] = useState('');
   const first = plan[0];
   const startDate = first?.date ?? '';
   const endDate = plan.at(-1)?.date ?? startDate;
   const defaultTime = first?.time ?? '08:00';
   const defaultDuration = first?.duration_minutes ?? 120;
+
+  useEffect(() => {
+    setAdditionalDate('');
+  }, [startDate, endDate]);
 
   const updateRange = (nextStart: string, nextEnd: string) => {
     if (!nextStart) return;
@@ -83,6 +92,20 @@ export function ServiceOrderSchedulePlanner({
       time: first.time,
       duration_minutes: first.duration_minutes,
     })));
+  };
+
+  const addScheduledDay = () => {
+    if (!additionalDate || plan.length >= 31 || plan.some(slot => slot.date === additionalDate)) return;
+    onChange([
+      ...plan,
+      { date: additionalDate, time: defaultTime.slice(0, 5), duration_minutes: defaultDuration },
+    ].sort((a, b) => a.date.localeCompare(b.date)));
+    setAdditionalDate('');
+  };
+
+  const removeScheduledDay = (date: string) => {
+    if (plan.length <= 1) return;
+    onChange(plan.filter(slot => slot.date !== date));
   };
 
   const dayLabel = (date: string) => new Intl.DateTimeFormat(LOCALE_TAG[locale], {
@@ -125,9 +148,26 @@ export function ServiceOrderSchedulePlanner({
         )}
       </div>
 
+      <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="space-y-2">
+          <Label>{labels.addDate}</Label>
+          <DatePicker value={additionalDate} onValueChange={setAdditionalDate} />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-10 gap-2"
+          disabled={!additionalDate || plan.length >= 31 || plan.some(slot => slot.date === additionalDate)}
+          onClick={addScheduledDay}
+        >
+          <Plus className="h-4 w-4" />
+          {labels.addDay}
+        </Button>
+      </div>
+
       <div className="space-y-2">
         {plan.map((slot, index) => (
-          <div key={slot.date} className="grid items-start gap-3 rounded-md border bg-background p-3 sm:grid-cols-[minmax(120px,1fr)_150px_150px]">
+          <div key={slot.date} className="grid items-start gap-3 rounded-md border bg-background p-3 sm:grid-cols-[minmax(120px,1fr)_150px_150px_40px]">
             <div>
               <p className="text-sm font-medium capitalize">{dayLabel(slot.date)}</p>
               <p className="text-xs text-muted-foreground">{slot.date.split('-').reverse().join('/')}</p>
@@ -154,6 +194,18 @@ export function ServiceOrderSchedulePlanner({
                 <p className="text-xs text-destructive sm:col-span-2">{labels.invalidTimeRange}</p>
               )}
             </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="min-h-10 min-w-10 text-muted-foreground hover:text-destructive"
+              disabled={plan.length <= 1}
+              aria-label={`${labels.removeDay} — ${dayLabel(slot.date)}`}
+              title={labels.removeDay}
+              onClick={() => removeScheduledDay(slot.date)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         ))}
       </div>

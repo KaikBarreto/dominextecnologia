@@ -24,7 +24,7 @@ describe('ServiceOrderFormDialog — contrato do wizard', () => {
       expect(source).toContain(field);
     }
     expect(source).toContain('await onSubmit(cleanedData)');
-    expect(source).toContain("{ key: 'review' as const, label: 'Revisão' }");
+    expect(source).toContain("{ key: 'review' as const, label: t.stepReview }");
     expect(source).toContain('if (isLastStep) handleCreateSubmit()');
     expect(source).toContain('if (isLastStep) form.handleSubmit(handleEditSubmit)()');
   });
@@ -47,6 +47,39 @@ describe('ServiceOrderFormDialog — contrato do wizard', () => {
     expect(source).toContain('aria-label={t.requireTechSignatureLabel}');
     expect(source).toContain('aria-label={t.requireClientSignatureLabel}');
     expect(source).toContain('aria-label={t.npsLabel}');
+  });
+
+  it('permite que o contrato limite a mudança de data à visita atual', () => {
+    expect(source).toContain("contractDateChangeScope?: 'ask' | 'single'");
+    expect(source).toContain("contractDateChangeScope === 'ask'");
+    expect(source).toContain(".is('contract_visit_customized_at', null)");
+    expect(source).toContain("contractDateChangeScope = 'ask'");
+    expect(source).toContain("if (isContractOS && dateChanged && contractDateChangeScope === 'ask')");
+    expect(source).toContain('contractPlanningMode?: boolean');
+    expect(source).toContain('disabled={contractPlanningMode}');
+    expect(source).toContain('t.contractCustomerLocked');
+  });
+
+  it('não fecha o editor durante uma gravação em andamento', () => {
+    expect(source).toContain('const submitLocked = isLoading || isSubmitting');
+    expect(source).toContain('if (!nextOpen && submitLocked) return');
+    expect(source).toContain('disabled={submitLocked}');
+    expect(source.match(/onOpenChange=\{handleModalOpenChange\}/g)).toHaveLength(2);
+  });
+
+  it('expõe erro e recuperação sem liberar um escopo que não carregou', () => {
+    expect(source).toContain('setScopeLoadError(true)');
+    expect(source).toContain('disabled={isEditing && !scopeLoaded}');
+    expect(source).toContain('void loadExistingEquipmentItems(serviceOrder.id)');
+    expect(source).toContain('t.scopeLoadErrorDescription');
+  });
+
+  it('preserva o plano de múltiplos dias ao editar somente uma visita do contrato', () => {
+    expect(source).toContain('schedule_plan: z.array(scheduleSlotSchema).min(1).max(31)');
+    expect(source).toContain('schedule_plan: occurrencePlan');
+    expect(source).toContain('plan={(watchedValues.schedule_plan ?? []) as ServiceOrderScheduleSlot[]}');
+    expect(source).toContain('const cleanedData = await buildEditPayload(data)');
+    expect(source).toContain('await onSubmit({');
   });
 
   it('usa modal estável, rodapé externo e resumo responsivo', () => {

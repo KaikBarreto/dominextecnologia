@@ -174,6 +174,10 @@ export interface ServiceOrder {
   client_signature?: string;
   notes?: string;
   contract_id?: string;
+  /** Data da visita no cronograma do contrato, preservada mesmo após reagendamento. */
+  contract_reference_date?: string | null;
+  /** Presente quando esta visita recebeu planejamento individual e não pode ser regenerada. */
+  contract_visit_customized_at?: string | null;
   /** Orçamento comercial que originou a OS, quando criada pela ação Gerar OS. */
   quote_id?: string | null;
   created_by?: string;

@@ -25,18 +25,24 @@ class ResizeObserverStub {
 }
 (globalThis as any).ResizeObserver = (globalThis as any).ResizeObserver || ResizeObserverStub;
 
+const navigateMock = vi.fn();
+let isMobileMock = false;
+let canPlanMock = true;
+let serviceOrdersLoading = false;
+let serviceOrdersError: Error | null = null;
+
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>();
   return {
     ...actual,
     useParams: () => ({ id: 'contract-1' }),
-    useNavigate: () => vi.fn(),
+    useNavigate: () => navigateMock,
   };
 });
 
 vi.mock('@/hooks/use-mobile', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/use-mobile')>();
-  return { ...actual, useIsMobile: () => false };
+  return { ...actual, useIsMobile: () => isMobileMock };
 });
 
 vi.mock('@/contexts/AppLocaleContext', () => ({
@@ -52,8 +58,8 @@ vi.mock('@/contexts/AppLocaleContext', () => ({
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({
     hasRole: () => true,
-    hasPermission: () => true,
-    isAdminOrGestor: () => true,
+    hasPermission: () => canPlanMock,
+    isAdminOrGestor: () => canPlanMock,
     hasPermissionRecord: true,
     profile: { id: 'user-1', full_name: 'Teste' },
   }),
@@ -69,7 +75,7 @@ vi.mock('@/hooks/useBrandedQrConfig', () => ({
   useBrandedQrConfig: () => ({ logoUrl: null, dotStyle: 'square', cornerStyle: 'square', color: '#000000' }),
 }));
 
-const baseContract = {
+const baseContract: any = {
   id: 'contract-1',
   name: 'Contrato Teste',
   status: 'active',
@@ -87,6 +93,9 @@ const baseContract = {
   public_short_code: null,
   portal_is_public: true,
 };
+
+const mockServiceOrders: any[] = [];
+const updateServiceOrderMutateAsync = vi.fn();
 
 const oneTransaction = {
   id: 'tx-1',
@@ -106,7 +115,7 @@ vi.mock('@/hooks/useContractDetail', () => ({
     linkedTransactions: [oneTransaction],
     isLoadingTransactions: false,
   }),
-  isActiveContractOS: () => false,
+  isActiveContractOS: (order: any) => !['concluida', 'cancelada'].includes(order.status),
 }));
 
 vi.mock('@/hooks/useContracts', () => ({
@@ -120,8 +129,17 @@ vi.mock('@/hooks/useContracts', () => ({
 }));
 
 vi.mock('@/hooks/useServiceOrderActivities', () => ({
-  useServiceOrderActivities: () => ({ activitiesByOrderId: {} }),
+  useServiceOrderActivities: () => ({ activitiesByOrderId: new Map() }),
   freqCodeShortLabel: () => '',
+}));
+
+vi.mock('@/hooks/useServiceOrders', () => ({
+  useServiceOrders: () => ({
+    serviceOrders: mockServiceOrders,
+    isLoading: serviceOrdersLoading,
+    error: serviceOrdersError,
+    updateServiceOrder: { mutateAsync: updateServiceOrderMutateAsync, isPending: false },
+  }),
 }));
 
 vi.mock('@/hooks/useFinancial', () => ({
@@ -171,6 +189,17 @@ vi.mock('@/components/contracts/ContractAttachmentsSection', () => ({ ContractAt
 vi.mock('@/components/pmoc/PmocContractDocsTab', () => ({ PmocContractDocsTab: () => null }));
 vi.mock('@/components/pmoc/PmocContractCronogramaTab', () => ({ PmocContractCronogramaTab: () => null }));
 vi.mock('@/components/pmoc/PmocExecutionHistoryTab', () => ({ PmocExecutionHistoryTab: () => null }));
+vi.mock('@/components/service-orders/ServiceOrderFormDialog', () => ({
+  ServiceOrderFormDialog: ({ open, serviceOrder, contractDateChangeScope, contractPlanningMode, editTitle }: any) => open ? (
+    <div
+      data-testid="visit-planning-dialog"
+      data-contract-planning={String(contractPlanningMode)}
+      data-edit-title={editTitle}
+    >
+      {serviceOrder?.id}:{contractDateChangeScope}
+    </div>
+  ) : null,
+}));
 
 // Sidebar real tem grupos, ícones e o comportamento mobile/desktop do
 // componente de verdade — irrelevante pro campo de dinheiro. Substituído por
@@ -225,7 +254,21 @@ function click(el: HTMLElement) {
   });
 }
 
+function keydown(el: HTMLElement, key: string) {
+  act(() => {
+    el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+  });
+}
+
 beforeEach(() => {
+  baseContract.service_orders = [];
+  mockServiceOrders.splice(0);
+  updateServiceOrderMutateAsync.mockReset();
+  navigateMock.mockReset();
+  isMobileMock = false;
+  canPlanMock = true;
+  serviceOrdersLoading = false;
+  serviceOrdersError = null;
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -247,6 +290,137 @@ function goToFinanceiro() {
   expect(financeiroBtn).toBeTruthy();
   click(financeiroBtn!);
 }
+
+function goToOccurrences() {
+  mount();
+  const buttons = qAll('[data-testid="tab-switcher"] button');
+  const occurrencesBtn = buttons.find((b) => /ocorrências/i.test(b.textContent || ''));
+  expect(occurrencesBtn).toBeTruthy();
+  click(occurrencesBtn!);
+}
+
+describe('ContractDetail — planejamento individual da visita', () => {
+  const order = (overrides: Record<string, unknown> = {}) => ({
+    id: 'os-1',
+    order_number: 12,
+    status: 'agendada',
+    scheduled_date: '2026-12-10',
+    scheduled_time: '08:00',
+    duration_minutes: 120,
+    schedule_plan: [],
+    contract_reference_date: '2026-12-10',
+    contract_id: 'contract-1',
+    origin: 'contract',
+    description: 'Contrato Teste — Ocorrência 1',
+    created_at: '2026-01-01T00:00:00Z',
+    ...overrides,
+  });
+
+  it('abre a OS da ocorrência em modo que altera somente aquela visita', () => {
+    const visit = order();
+    baseContract.service_orders = [visit];
+    mockServiceOrders.push(visit);
+
+    goToOccurrences();
+    const planButton = qAll('button').find((button) => /planejar visita/i.test(button.textContent || ''));
+    expect(planButton).toBeTruthy();
+    click(planButton!);
+
+    expect(q('[data-testid="visit-planning-dialog"]')?.textContent).toBe('os-1:single');
+    expect(q('[data-testid="visit-planning-dialog"]')?.getAttribute('data-contract-planning')).toBe('true');
+    expect(q('[data-testid="visit-planning-dialog"]')?.getAttribute('data-edit-title')).toMatch(/planejar visita do contrato/i);
+  });
+
+  it('não navega para a OS quando Enter é pressionado na ação interna', () => {
+    const visit = order();
+    baseContract.service_orders = [visit];
+    mockServiceOrders.push(visit);
+
+    goToOccurrences();
+    const planButton = qAll('button').find((button) => /planejar visita/i.test(button.textContent || ''))!;
+    keydown(planButton, 'Enter');
+
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('respeita permissão e status da OS ao mostrar a ação', () => {
+    const visits = [
+      order({ id: 'os-scheduled', status: 'agendada' }),
+      order({ id: 'os-pending', status: 'pendente', order_number: 13, contract_reference_date: '2027-01-10' }),
+      order({ id: 'os-done', status: 'concluida', order_number: 14, contract_reference_date: '2027-02-10' }),
+      order({ id: 'os-cancelled', status: 'cancelada', order_number: 15, contract_reference_date: '2027-03-10' }),
+    ];
+    baseContract.service_orders = visits;
+    mockServiceOrders.push(...visits);
+
+    goToOccurrences();
+    expect(qAll('button').filter(button => /planejar visita/i.test(button.textContent || ''))).toHaveLength(2);
+
+    act(() => root.unmount());
+    root = createRoot(container);
+    canPlanMock = false;
+    goToOccurrences();
+    expect(qAll('button').filter(button => /planejar visita/i.test(button.textContent || ''))).toHaveLength(0);
+  });
+
+  it('mantém a ação visível e desabilitada durante carregamento, inclusive no mobile', () => {
+    const visit = order();
+    baseContract.service_orders = [visit];
+    mockServiceOrders.push(visit);
+    isMobileMock = true;
+    serviceOrdersLoading = true;
+
+    goToOccurrences();
+    const loadingButton = qAll('button').find(button => /carregando/i.test(button.textContent || '')) as HTMLButtonElement;
+    expect(loadingButton).toBeTruthy();
+    expect(loadingButton.disabled).toBe(true);
+  });
+
+  it('mostra erro recuperável e bloqueia o planejamento se a lista completa de OS falhar', () => {
+    const visit = order();
+    baseContract.service_orders = [visit];
+    mockServiceOrders.push(visit);
+    serviceOrdersError = new Error('falha de rede');
+
+    goToOccurrences();
+    expect(document.body.textContent).toMatch(/planejamento temporariamente indisponível/i);
+    const planButton = qAll('button').find(button => /planejar visita/i.test(button.textContent || '')) as HTMLButtonElement;
+    expect(planButton.disabled).toBe(true);
+  });
+
+  it('ordena pela referência contratual e exibe todos os dias efetivamente agendados', () => {
+    const firstCompetence = order({
+      id: 'os-first',
+      order_number: 21,
+      contract_reference_date: '2026-12-10',
+      scheduled_date: '2027-02-20',
+      schedule_plan: [
+        { date: '2027-02-20', time: '08:00', duration_minutes: 120 },
+        { date: '2027-02-22', time: '09:00', duration_minutes: 180 },
+      ],
+    });
+    const secondCompetence = order({
+      id: 'os-second',
+      order_number: 22,
+      contract_reference_date: '2027-01-10',
+      scheduled_date: '2026-12-15',
+    });
+    baseContract.service_orders = [secondCompetence, firstCompetence];
+    mockServiceOrders.push(secondCompetence, firstCompetence);
+
+    goToOccurrences();
+    const rows = qAll('tbody tr');
+    expect(rows[0].textContent).toContain('OS #21');
+    expect(rows[0].textContent).toContain('20/02');
+    expect(rows[0].textContent).toContain('22/02');
+  });
+
+  it('apresenta estado vazio em vez de uma tabela sem contexto', () => {
+    goToOccurrences();
+    expect(document.body.textContent).toMatch(/nenhuma visita gerada/i);
+    expect(q('table')).toBeNull();
+  });
+});
 
 describe('ContractDetail — "Novo recebimento" (prova real de DOM)', () => {
   it('colar "4.550" dá R$ 4.550,00 (não R$ 45,50, o bug residual do onPaste faltando)', () => {

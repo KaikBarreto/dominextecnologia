@@ -29,6 +29,7 @@ it('expande atividade por equipamento (caminho legado) sem inserir nada', () => 
   expect(order.os.contract_id).toBe('ct-1');
   expect(order.os.company_id).toBe('co-1');
   expect(order.os.scheduled_date).toBe('2026-03-10');
+  expect(order.os.contract_reference_date).toBe('2026-03-10');
   expect(order.os.status).toBe('agendada');
   expect(order.os.origin).toBe('contract');
   expect((order.os as any).id).toBeUndefined();
@@ -107,6 +108,29 @@ it('atribui cada código a um único mês e nega mês já reivindicado', () => {
   expect(codes.filter((c) => c === 'CODE-ABR')).toHaveLength(1);
 });
 
+it('mantém uma referência contratual independente para cada visita gerada', () => {
+  const visits: BuiltVisit[] = [
+    { date: new Date('2026-01-10T12:00:00'), activities: [] },
+    { date: new Date('2026-01-11T12:00:00'), activities: [] },
+  ];
+
+  const payload = buildRegenerationPayload({
+    args: { ...baseArgs },
+    visits,
+    baseVisitIndex: 0,
+    oldRegenerableIds: [],
+    oldRegenerableOss: [],
+  });
+
+  expect(payload.p_orders.map(order => ({
+    scheduled: order.os.scheduled_date,
+    reference: order.os.contract_reference_date,
+  }))).toEqual([
+    { scheduled: '2026-01-10', reference: '2026-01-10' },
+    { scheduled: '2026-01-11', reference: '2026-01-11' },
+  ]);
+});
+
 import { vi } from 'vitest';
 import { regenerateViaRpcOrFallback } from './useContracts';
 
@@ -123,16 +147,15 @@ it('usa a RPC quando ela tem sucesso e NÃO chama o fallback', async () => {
   expect(res).toEqual({ createdCount: 3, deletedCount: 2 });
 });
 
-it('cai no fallback quando a RPC erra', async () => {
+it('propaga o erro sem fallback quando a RPC transacional está habilitada', async () => {
   const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: 'boom' } });
   const fallback = vi.fn().mockResolvedValue({ createdCount: 5, deletedCount: 1 });
-  const res = await regenerateViaRpcOrFallback({
+  await expect(regenerateViaRpcOrFallback({
     enabled: true,
     payload: { p_contract_id: 'ct-1', p_orders: [], p_delete_ids: [] },
     rpc, fallback,
-  });
-  expect(fallback).toHaveBeenCalledOnce();
-  expect(res).toEqual({ createdCount: 5, deletedCount: 1 });
+  })).rejects.toEqual({ message: 'boom' });
+  expect(fallback).not.toHaveBeenCalled();
 });
 
 it('vai direto pro fallback quando a flag está desligada (nem chama a RPC)', async () => {
