@@ -173,6 +173,7 @@ export function ServiceOrderSchedulePlanner({
           <ScheduleDatePicker
             value={additionalDate}
             onValueChange={setAdditionalDate}
+            referenceDate={startDate}
             excludeServiceOrderId={excludeServiceOrderId}
             customerId={customerId}
             equipmentIds={equipmentIds}

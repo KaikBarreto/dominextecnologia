@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync(
-  resolve(process.cwd(), 'supabase/migrations/20261105123000_indicadores_agenda_no_calendario.sql'),
+  resolve(process.cwd(), 'supabase/migrations/20261105163000_aprimora_indicadores_agenda.sql'),
   'utf8',
 );
 
@@ -15,16 +15,27 @@ describe('migration dos indicadores do calendário de agendamento', () => {
     expect(migration).toMatch(/GRANT EXECUTE[\s\S]*TO authenticated/i);
   });
 
-  it('distingue visita contratual de OS e ignora tarefas e canceladas', () => {
+  it('distingue visita gerada ou vinculada de chamado reativo e ignora tarefas e canceladas', () => {
     expect(migration).toMatch(/entry_type IS DISTINCT FROM 'tarefa'/i);
     expect(migration).toMatch(/status IS DISTINCT FROM 'cancelada'/i);
-    expect(migration).toMatch(/contract_id IS NOT NULL[\s\S]*origin = 'contract'/i);
+    expect(migration).toMatch(/contract_id IS NOT NULL[\s\S]*origin = 'contract'[\s\S]*contract_reference_date IS NOT NULL[\s\S]*contract_visit_customized_at IS NOT NULL/i);
     expect(migration).toMatch(/has_service_order/i);
+  });
+
+  it('conta múltiplos atendimentos sem duplicar a mesma OS no mesmo dia', () => {
+    expect(migration).toMatch(/contract_occurrence_count integer/i);
+    expect(migration).toMatch(/service_order_count integer/i);
+    expect(migration.match(/count\(DISTINCT occupied_days\.id\)/gi)?.length).toBeGreaterThanOrEqual(6);
   });
 
   it('considera todas as jornadas de uma OS de múltiplos dias', () => {
     expect(migration.match(/jsonb_array_elements/g)?.length).toBeGreaterThanOrEqual(2);
-    expect(migration).toMatch(/slot\.item->>'date'/i);
+    expect(migration).toMatch(/SELECT \(item->>'date'\)::date AS occupied_date/i);
+  });
+
+  it('ignora jornadas inválidas sem derrubar toda a consulta', () => {
+    expect(migration).toMatch(/jsonb_typeof\(COALESCE\(so\.schedule_plan/i);
+    expect(migration).toMatch(/WHERE \(item->>'date'\) ~ '\^\\d\{4\}-\\d\{2\}-\\d\{2\}\$'/i);
   });
 
   it('aceita contexto de cliente e reconhece os equipamentos da OS', () => {

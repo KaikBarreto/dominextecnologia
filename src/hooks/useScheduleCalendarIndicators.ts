@@ -9,6 +9,10 @@ export interface ScheduleCalendarIndicator {
   hasServiceOrder: boolean;
   contractOccurrenceMatchesEquipment: boolean;
   serviceOrderMatchesEquipment: boolean;
+  contractOccurrenceCount: number;
+  serviceOrderCount: number;
+  contractOccurrenceEquipmentCount: number;
+  serviceOrderEquipmentCount: number;
 }
 
 interface UseScheduleCalendarIndicatorsOptions {
@@ -66,6 +70,14 @@ export function useScheduleCalendarIndicators({
         hasServiceOrder: row.has_service_order,
         contractOccurrenceMatchesEquipment: row.contract_occurrence_matches_equipment,
         serviceOrderMatchesEquipment: row.service_order_matches_equipment,
+        // O fallback mantém a UI segura durante uma publicação gradual em que
+        // o frontend novo encontre por instantes a versão anterior da RPC.
+        contractOccurrenceCount: row.contract_occurrence_count ?? (row.has_contract_occurrence ? 1 : 0),
+        serviceOrderCount: row.service_order_count ?? (row.has_service_order ? 1 : 0),
+        contractOccurrenceEquipmentCount: row.contract_occurrence_equipment_count
+          ?? (row.contract_occurrence_matches_equipment ? 1 : 0),
+        serviceOrderEquipmentCount: row.service_order_equipment_count
+          ?? (row.service_order_matches_equipment ? 1 : 0),
       }));
     },
   });

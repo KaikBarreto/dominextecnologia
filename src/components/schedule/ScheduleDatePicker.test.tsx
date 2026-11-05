@@ -43,6 +43,10 @@ beforeEach(() => {
         hasServiceOrder: true,
         contractOccurrenceMatchesEquipment: true,
         serviceOrderMatchesEquipment: false,
+        contractOccurrenceCount: 3,
+        serviceOrderCount: 2,
+        contractOccurrenceEquipmentCount: 2,
+        serviceOrderEquipmentCount: 0,
       },
       {
         date: '2027-01-11',
@@ -50,6 +54,10 @@ beforeEach(() => {
         hasServiceOrder: true,
         contractOccurrenceMatchesEquipment: false,
         serviceOrderMatchesEquipment: true,
+        contractOccurrenceCount: 0,
+        serviceOrderCount: 1,
+        contractOccurrenceEquipmentCount: 0,
+        serviceOrderEquipmentCount: 1,
       },
     ],
   });
@@ -87,13 +95,54 @@ describe('ScheduleDatePicker', () => {
     };
 
     expect(props.indicators).toEqual([
-      { date: '2027-01-10', color: 'amber', label: 'Visita de contrato deste equipamento' },
-      { date: '2027-01-10', color: 'blue', label: 'O.S. deste cliente' },
+      { date: '2027-01-10', color: 'amber', label: '2 visitas de contrato deste equipamento' },
+      { date: '2027-01-10', color: 'blue', label: '2 O.S. deste cliente' },
       { date: '2027-01-11', color: 'blue', label: 'O.S. deste equipamento' },
     ]);
     expect(props.indicatorLegend).toEqual([
       { color: 'amber', label: 'Visita de contrato' },
       { color: 'blue', label: 'O.S.' },
     ]);
+  });
+
+  it('informa carregamento, falha e usa a data de referência como mês inicial', () => {
+    useIndicators.mockReturnValue({ data: [], isPending: true, isError: false });
+
+    act(() => {
+      root.render(
+        <ScheduleDatePicker
+          value=""
+          referenceDate="2028-04-12"
+          onValueChange={() => undefined}
+        />,
+      );
+    });
+
+    let props = datePickerProps.mock.calls.at(-1)?.[0] as {
+      initialMonth: string;
+      indicatorStatus?: { type: string; label: string };
+    };
+    expect(props.initialMonth).toBe('2028-04-12');
+    expect(props.indicatorStatus).toEqual({
+      type: 'loading',
+      label: 'Consultando os compromissos deste mês…',
+    });
+
+    useIndicators.mockReturnValue({ data: [], isPending: false, isError: true });
+    act(() => {
+      root.render(
+        <ScheduleDatePicker
+          value=""
+          referenceDate="2028-04-12"
+          onValueChange={() => undefined}
+        />,
+      );
+    });
+
+    props = datePickerProps.mock.calls.at(-1)?.[0] as typeof props;
+    expect(props.indicatorStatus).toEqual({
+      type: 'error',
+      label: 'Não foi possível consultar a agenda. Confirme a data na tela Agenda antes de salvar.',
+    });
   });
 });

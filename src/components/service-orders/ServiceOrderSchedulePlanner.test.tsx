@@ -3,11 +3,12 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/components/schedule/ScheduleDatePicker', () => ({
-  ScheduleDatePicker: ({ value, onValueChange }: { value: string; onValueChange: (value: string) => void }) => (
+  ScheduleDatePicker: ({ value, referenceDate, onValueChange }: { value: string; referenceDate?: string; onValueChange: (value: string) => void }) => (
     <button
       type="button"
       data-testid="date-picker"
       data-value={value}
+      data-reference-date={referenceDate}
       onClick={() => onValueChange(value || '2026-01-20')}
     >
       {value || 'Escolher data'}
@@ -98,7 +99,9 @@ describe('ServiceOrderSchedulePlanner — dias flexíveis', () => {
       { date: '2026-01-12', time: '08:00', duration_minutes: 120 },
     ], onChange);
 
-    click(document.querySelector('[data-testid="date-picker"][data-value=""]')!);
+    const additionalDatePicker = document.querySelector('[data-testid="date-picker"][data-value=""]')!;
+    expect(additionalDatePicker.getAttribute('data-reference-date')).toBe('2026-01-10');
+    click(additionalDatePicker);
     click(Array.from(document.querySelectorAll('button')).find(button => button.textContent === 'Adicionar dia')!);
 
     expect(onChange).toHaveBeenCalledWith([

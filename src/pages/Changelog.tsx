@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.28',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Calendário mais confiável ao agendar',
+        description: 'O calendário agora informa quando há vários atendimentos no mesmo dia, reconhece corretamente as O.S. vinculadas a contratos e avisa quando não consegue consultar a agenda.',
+        category: 'correcao',
+      },
+      {
+        title: 'Escolha de datas mais prática',
+        description: 'Ao adicionar outro dia ao atendimento, o calendário abre no mesmo mês da visita. Os avisos de carregamento e falha também ficaram mais claros no computador e no celular.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.27',
     date: '5 de novembro de 2026',
     type: 'patch',

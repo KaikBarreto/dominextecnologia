@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { format } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
+import { AlertTriangle, CalendarIcon, Loader2 } from 'lucide-react';
 import type { DayContentProps } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -19,6 +19,11 @@ export interface DatePickerDayIndicator {
 
 export interface DatePickerIndicatorLegendItem {
   color: DatePickerIndicatorColor;
+  label: string;
+}
+
+export interface DatePickerIndicatorStatus {
+  type: 'loading' | 'error';
   label: string;
 }
 
@@ -48,6 +53,10 @@ export interface DatePickerProps {
   indicators?: DatePickerDayIndicator[];
   /** Legenda exibida no rodapé do calendário quando há marcadores. */
   indicatorLegend?: DatePickerIndicatorLegendItem[];
+  /** Estado da consulta que alimenta os marcadores operacionais. */
+  indicatorStatus?: DatePickerIndicatorStatus;
+  /** Mês inicial quando o campo ainda não possui valor. */
+  initialMonth?: string;
   /** Informa o mês navegado para carregamento sob demanda dos marcadores. */
   onVisibleMonthChange?: (month: Date) => void;
 }
@@ -141,6 +150,8 @@ export function DatePicker({
   ariaInvalid,
   indicators = [],
   indicatorLegend = [],
+  indicatorStatus,
+  initialMonth,
   onVisibleMonthChange,
 }: DatePickerProps) {
   const { locale } = useAppLocaleContext();
@@ -148,13 +159,14 @@ export function DatePicker({
   const [open, setOpen] = React.useState(false);
 
   const selected = parseIsoDate(value);
+  const initialMonthDate = initialMonth ? parseIsoDate(initialMonth) : undefined;
   const minDate = min ? parseIsoDate(min) : undefined;
   const maxDate = max ? parseIsoDate(max) : undefined;
 
   // `dd/MM/yyyy` em pt-br; nos demais idiomas o formato curto da própria locale.
   const displayFormat = locale === 'pt-br' ? 'dd/MM/yyyy' : 'P';
 
-  const { fromYear, toYear } = resolveYearRange(selected, minDate, maxDate);
+  const { fromYear, toYear } = resolveYearRange(selected ?? initialMonthDate, minDate, maxDate);
   const indicatorsByDate = React.useMemo(() => {
     const grouped = new Map<string, DatePickerDayIndicator[]>();
     for (const indicator of indicators) {
@@ -226,14 +238,14 @@ export function DatePicker({
           o gatilho e a borda da janela: com o campo perto do rodapé, o
           calendário rola por dentro em vez de vazar pra fora da tela. */}
       <PopoverContent
-        className="w-auto max-w-[calc(100vw-1.5rem)] overflow-y-auto p-0 max-h-[var(--radix-popover-content-available-height)]"
+        className="w-auto max-w-[min(20rem,calc(100vw-1.5rem))] overflow-y-auto p-0 max-h-[var(--radix-popover-content-available-height)]"
         align="start"
         collisionPadding={12}
       >
         <Calendar
           mode="single"
           selected={selected}
-          defaultMonth={selected}
+          defaultMonth={selected ?? initialMonthDate}
           onSelect={(date) => {
             if (!date) return;
             onValueChange(toIsoDate(date));
@@ -254,14 +266,35 @@ export function DatePicker({
           locale={dateFnsLocale}
           components={{ DayContent: IndicatorDayContent }}
         />
-        {indicatorLegend.length > 0 && (
-          <div className="flex flex-wrap gap-x-3 gap-y-1 border-t border-border px-3 py-2 text-xs text-muted-foreground">
-            {indicatorLegend.map((item) => (
-              <span key={`${item.color}:${item.label}`} className="inline-flex items-center gap-1.5">
-                <span className={cn('h-2 w-2 rounded-full', INDICATOR_COLOR_CLASS[item.color])} aria-hidden="true" />
-                {item.label}
-              </span>
-            ))}
+        {(indicatorLegend.length > 0 || indicatorStatus) && (
+          <div className="space-y-2 border-t border-border px-3 py-2 text-xs">
+            {indicatorLegend.length > 0 && (
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
+                {indicatorLegend.map((item) => (
+                  <span key={`${item.color}:${item.label}`} className="inline-flex items-center gap-1.5">
+                    <span className={cn('h-2 w-2 rounded-full', INDICATOR_COLOR_CLASS[item.color])} aria-hidden="true" />
+                    {item.label}
+                  </span>
+                ))}
+              </div>
+            )}
+            {indicatorStatus && (
+              <div
+                role={indicatorStatus.type === 'error' ? 'alert' : 'status'}
+                aria-live="polite"
+                className={cn(
+                  'flex items-start gap-1.5 leading-4',
+                  indicatorStatus.type === 'error' ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground',
+                )}
+              >
+                {indicatorStatus.type === 'error' ? (
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                ) : (
+                  <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                )}
+                <span>{indicatorStatus.label}</span>
+              </div>
+            )}
           </div>
         )}
         {clearable && value && (

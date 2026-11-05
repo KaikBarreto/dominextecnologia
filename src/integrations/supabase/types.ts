@@ -18084,10 +18084,14 @@ export type Database = {
           p_start_date: string
         }
         Returns: {
+          contract_occurrence_count: number
+          contract_occurrence_equipment_count: number
           contract_occurrence_matches_equipment: boolean
           has_contract_occurrence: boolean
           has_service_order: boolean
           schedule_date: string
+          service_order_count: number
+          service_order_equipment_count: number
           service_order_matches_equipment: boolean
         }[]
       }
