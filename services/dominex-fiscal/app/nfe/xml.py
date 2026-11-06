@@ -181,7 +181,23 @@ def _address(parent: etree._Element, data: dict[str, Any], prefix: str) -> None:
     _add(node, "xPais", "Brasil")
 
 
-def _emit(root: etree._Element, payload: dict[str, Any], fiscal: dict[str, Any]) -> None:
+def _resolve_crt(fiscal: dict[str, Any]) -> str:
+    regime = str(fiscal.get("regime_tributario") or "").strip().lower()
+    if regime == "simples_nacional_excesso_sublimite":
+        return "2"
+    if regime in {"simples_nacional", "simples"}:
+        return "1"
+    if regime:
+        return "3"
+    return "1" if fiscal.get("is_simples_nacional") is True else "3"
+
+
+def _emit(
+    root: etree._Element,
+    payload: dict[str, Any],
+    fiscal: dict[str, Any],
+    crt: str,
+) -> None:
     data = payload.get("emitente") or {}
     node = etree.SubElement(root, etree.QName(NS, "emit"))
     cnpj = _digits(fiscal.get("cnpj") or data.get("cpfCnpj"))
@@ -201,8 +217,6 @@ def _emit(root: etree._Element, payload: dict[str, Any], fiscal: dict[str, Any])
     if not ie:
         raise ErroNfeLocal("Inscrição estadual do emitente ausente.")
     _add(node, "IE", ie)
-    regime = str(fiscal.get("regime_tributario") or "").lower()
-    crt = "1" if regime == "simples_nacional" or fiscal.get("is_simples_nacional") is True else "3"
     _add(node, "CRT", crt)
 
 
@@ -382,7 +396,7 @@ def _allocated(total: Decimal, values: list[Decimal]) -> list[Decimal]:
     return parts
 
 
-def _items(root: etree._Element, payload: dict[str, Any]) -> None:
+def _items(root: etree._Element, payload: dict[str, Any], crt: str) -> None:
     items = payload.get("itens") or []
     if not isinstance(items, list) or not items:
         raise ErroNfeLocal("A NF-e precisa ter ao menos um item.")
@@ -429,6 +443,11 @@ def _items(root: etree._Element, payload: dict[str, Any]) -> None:
         if item.get("pedidoCompra") is not None:
             _add(prod, "nItemPed", int(item["pedidoCompra"]))
         taxes = item.get("tributos") or {}
+        icms_code = str((taxes.get("icms") or {}).get("cst") or "")
+        if crt == "1" and len(icms_code) != 3:
+            raise ErroNfeLocal("CRT 1 exige CSOSN no ICMS.")
+        if crt in {"2", "3"} and len(icms_code) != 2:
+            raise ErroNfeLocal(f"CRT {crt} exige CST no ICMS; CSOSN não é permitido.")
         tax_node = etree.SubElement(det, etree.QName(NS, "imposto"))
         if taxes.get("valorAproximadoTributos") is not None:
             _add(tax_node, "vTotTrib", _money(taxes["valorAproximadoTributos"]))
@@ -637,10 +656,11 @@ def montar_xml(
             raise ErroNfeLocal("Chave de NF-e referenciada inválida.")
         node = etree.SubElement(ide, etree.QName(NS, "NFref"))
         _add(node, "refNFe", key_ref)
-    _emit(inf, payload, fiscal)
+    crt = _resolve_crt(fiscal)
+    _emit(inf, payload, fiscal, crt)
     _dest(inf, payload, required=model == "55")
     _authorized_xml(inf, payload)
-    _items(inf, payload)
+    _items(inf, payload, crt)
     _totals(inf, payload)
     _transport(inf, payload)
     if model == "55":
