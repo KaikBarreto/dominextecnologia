@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   Clock,
@@ -33,6 +34,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import {
   useNfseAutoJobs,
+  useNfseAutoReadiness,
   nfseAutoRetryErrorMessage,
   type NfseAutoJobRow,
   type NfseAutoJobStatus,
@@ -41,6 +43,20 @@ import { useNfseEmission } from '@/hooks/useNfseEmission';
 import { NfseAutoStatusBadge } from '@/components/fiscal/nfseAutoStatus';
 import { NfseDetailModal } from '@/components/fiscal/NfseDetailModal';
 import type { NfseEmission } from '@/hooks/useNfse';
+
+const AUTO_GROUP_ORDER: {
+  key: 'blocked' | 'failed' | 'waitingDecision' | 'inProgress' | 'issued' | 'cancelled';
+  statuses: NfseAutoJobStatus[];
+  icon: LucideIcon;
+  iconClass: string;
+}[] = [
+  { key: 'blocked', statuses: ['bloqueada_assinatura', 'bloqueada_modulo', 'bloqueada_cota'], icon: Lock, iconClass: 'text-orange-500' },
+  { key: 'failed', statuses: ['falhou'], icon: AlertTriangle, iconClass: 'text-red-600' },
+  { key: 'waitingDecision', statuses: ['aguardando_decisao'], icon: HelpCircle, iconClass: 'text-sky-500' },
+  { key: 'inProgress', statuses: ['pendente', 'processando'], icon: Clock, iconClass: 'text-amber-500' },
+  { key: 'issued', statuses: ['emitida'], icon: CheckCircle2, iconClass: 'text-emerald-500' },
+  { key: 'cancelled', statuses: ['cancelada'], icon: Ban, iconClass: 'text-muted-foreground' },
+];
 
 /**
  * "Emissões automáticas" — Fiscal → onde a pendência da NFS-e automática
@@ -60,8 +76,15 @@ import type { NfseEmission } from '@/hooks/useNfse';
 export function AutoEmissoesTab() {
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.nfse.auto;
+  const navigate = useNavigate();
 
   const { jobs, isLoading, isError, refetch, retry, isRetrying } = useNfseAutoJobs();
+  const {
+    readiness,
+    isLoading: isLoadingReadiness,
+    isError: isReadinessError,
+    refetch: refetchReadiness,
+  } = useNfseAutoReadiness(timezone);
 
   const fmtMoney = (value: number | null | undefined) =>
     value == null ? null : formatMoney(value, currency, locale);
@@ -80,22 +103,8 @@ export function AutoEmissoesTab() {
   };
 
   // ─── Agrupamento por situação (régua: falha visível primeiro) ───────────
-  const GROUP_ORDER: {
-    key: 'blocked' | 'failed' | 'waitingDecision' | 'inProgress' | 'issued' | 'cancelled';
-    statuses: NfseAutoJobStatus[];
-    icon: LucideIcon;
-    iconClass: string;
-  }[] = [
-    { key: 'blocked', statuses: ['bloqueada_assinatura', 'bloqueada_modulo', 'bloqueada_cota'], icon: Lock, iconClass: 'text-orange-500' },
-    { key: 'failed', statuses: ['falhou'], icon: AlertTriangle, iconClass: 'text-red-600' },
-    { key: 'waitingDecision', statuses: ['aguardando_decisao'], icon: HelpCircle, iconClass: 'text-sky-500' },
-    { key: 'inProgress', statuses: ['pendente', 'processando'], icon: Clock, iconClass: 'text-amber-500' },
-    { key: 'issued', statuses: ['emitida'], icon: CheckCircle2, iconClass: 'text-emerald-500' },
-    { key: 'cancelled', statuses: ['cancelada'], icon: Ban, iconClass: 'text-muted-foreground' },
-  ];
-
   const grouped = useMemo(() => {
-    return GROUP_ORDER.map((g) => ({
+    return AUTO_GROUP_ORDER.map((g) => ({
       ...g,
       rows: jobs
         .filter((j) => g.statuses.includes(j.status))
@@ -161,6 +170,80 @@ export function AutoEmissoesTab() {
     status === 'bloqueada_modulo' ||
     status === 'bloqueada_cota';
 
+  const missingSources = readiness.filter((item) => item.state === 'missing_source');
+  const syncErrors = readiness.filter((item) => item.state === 'sync_error');
+  const waitingCycles = readiness.filter((item) => item.state === 'waiting_asaas_cycle');
+  const readinessNames = (items: typeof readiness) => {
+    const visible = items.slice(0, 3).map((item) => item.contract.name).join(', ');
+    const remaining = items.length - 3;
+    return remaining > 0
+      ? `${visible} ${t.readiness.moreNames.replace('{count}', String(remaining))}`
+      : visible;
+  };
+  const readinessAction = (items: typeof readiness) => (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="min-h-11 w-full sm:min-h-9 sm:w-auto"
+      onClick={() => navigate(items.length === 1 ? `/contratos/${items[0].contract.id}` : '/contratos')}
+    >
+      {items.length === 1 ? t.readiness.openContract : t.readiness.reviewContracts}
+    </Button>
+  );
+
+  const readinessNotice = (
+    <div className="space-y-3">
+      {isLoadingReadiness && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground" role="status">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          {t.readiness.loading}
+        </div>
+      )}
+      {isReadinessError && (
+        <div className="space-y-2">
+          <NoticeBanner variant="neutral">{t.readiness.loadError}</NoticeBanner>
+          <Button type="button" variant="outline" size="sm" onClick={() => void refetchReadiness()}>
+            {t.retryBtn}
+          </Button>
+        </div>
+      )}
+      {syncErrors.length > 0 && (
+        <div className="space-y-2">
+          <NoticeBanner
+            variant="warning"
+            title={(syncErrors.length === 1
+              ? t.readiness.syncErrorSingleTitle
+              : t.readiness.syncErrorPluralTitle
+            ).replace('{count}', String(syncErrors.length))}
+          >
+            {t.readiness.syncErrorDescription.replace('{contracts}', readinessNames(syncErrors))}
+          </NoticeBanner>
+          {readinessAction(syncErrors)}
+        </div>
+      )}
+      {missingSources.length > 0 && (
+        <div className="space-y-2">
+          <NoticeBanner
+            variant="warning"
+            title={(missingSources.length === 1
+              ? t.readiness.missingSingleTitle
+              : t.readiness.missingPluralTitle
+            ).replace('{count}', String(missingSources.length))}
+          >
+            {t.readiness.missingDescription.replace('{contracts}', readinessNames(missingSources))}
+          </NoticeBanner>
+          {readinessAction(missingSources)}
+        </div>
+      )}
+      {waitingCycles.length > 0 && jobs.length === 0 && (
+        <NoticeBanner variant="info" title={t.readiness.waitingTitle}>
+          {t.readiness.waitingDescription.replace('{contracts}', readinessNames(waitingCycles))}
+        </NoticeBanner>
+      )}
+    </div>
+  );
+
   // ─── Render ───────────────────────────────────────────────────────────────
 
   if (isLoading) {
@@ -188,16 +271,28 @@ export function AutoEmissoesTab() {
 
   if (jobs.length === 0) {
     return (
-      <EmptyState
-        icon={<RefreshCw className="h-10 w-10" />}
-        title={t.empty.title}
-        description={t.empty.description}
-      />
+      <div className="w-full min-w-0 space-y-4">
+        {readinessNotice}
+        <EmptyState
+          icon={<RefreshCw className="h-10 w-10" />}
+          title={t.empty.title}
+          description={syncErrors.length > 0
+            ? t.empty.syncErrorDescription
+            : missingSources.length > 0
+              ? t.empty.missingInstallmentsDescription
+              : waitingCycles.length > 0
+                ? t.empty.waitingDescription
+                : readiness.length > 0
+                  ? t.empty.healthyDescription
+                  : t.empty.description}
+        />
+      </div>
     );
   }
 
   return (
     <div className="space-y-6 min-w-0 w-full">
+      {readinessNotice}
       {grouped.map((group) => {
         const GroupIcon = group.icon;
         return (
@@ -220,10 +315,10 @@ export function AutoEmissoesTab() {
                   <div key={job.id} className="flex flex-col gap-2 px-4 py-3.5">
                     <div className="flex items-start justify-between gap-3 min-w-0">
                       <div className="min-w-0">
-                        <p className="font-semibold text-sm truncate leading-tight">
+                        <p className="font-semibold text-sm break-words leading-tight">
                           {customerLabel(job)}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="text-xs text-muted-foreground break-words">
                           {job.contract_name || t.card.contractFallback}
                         </p>
                       </div>

@@ -1,6 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserCompany } from '@/hooks/useUserCompany';
+import { todayInTz } from '@/lib/timezone';
+import {
+  classifyNfseAutoReadiness,
+  nfseReadinessMonthStart,
+  type ContractNfseAutoReadiness,
+  type NfseAutoReadinessContract,
+  type NfseAutoReadinessSubscription,
+  type NfseAutoReadinessTransaction,
+} from '@/lib/nfse-auto-readiness';
 
 /**
  * Fronteira do Supabase pra fila de NFS-e automática (`nfse_auto_jobs`),
@@ -175,6 +184,120 @@ export function useNfseAutoJobs() {
 
     retry: retryMutation.mutateAsync,
     isRetrying: retryMutation.isPending,
+  };
+}
+
+/**
+ * Mostra a configuração incompleta ANTES de existir um job na fila.
+ *
+ * Sem isto, um contrato com automação ligada e zero parcelas parece saudável:
+ * o produtor não tem o que enfileirar e, portanto, a aba fica vazia sem dizer
+ * que falta o valor da nota.
+ */
+export function useNfseAutoReadiness(timezone: string | null | undefined) {
+  const { companyId } = useUserCompany();
+  const today = todayInTz(timezone);
+  const monthStart = nfseReadinessMonthStart(today);
+
+  const readinessQuery = useQuery({
+    queryKey: ['nfse-auto-readiness', companyId, monthStart],
+    enabled: !!companyId,
+    queryFn: async (): Promise<ContractNfseAutoReadiness[]> => {
+      const { data: contracts, error: contractsError } = await supabase
+        .from('contracts')
+        .select('id, name')
+        .eq('company_id', companyId!)
+        .eq('nfse_auto_enabled', true)
+        .order('name', { ascending: true });
+
+      if (contractsError) throw contractsError;
+      const enabledContracts = (contracts ?? []) as NfseAutoReadinessContract[];
+      if (enabledContracts.length === 0) return [];
+
+      const contractIds = enabledContracts.map((contract) => contract.id);
+      const installmentFields = 'id, contract_id, tenant_charge_id, transaction_type, amount, due_date, transaction_date, cancelled_at, parent_transaction_id, category';
+
+      // Duas leituras mantêm o fallback `due_date || transaction_date` sem
+      // baixar o histórico financeiro inteiro de cada contrato.
+      const [withDueDate, withoutDueDate, subscriptions] = await Promise.all([
+        supabase
+          .from('financial_transactions')
+          .select(installmentFields)
+          .eq('company_id', companyId!)
+          .in('contract_id', contractIds)
+          .eq('transaction_type', 'entrada')
+          .is('cancelled_at', null)
+          .is('parent_transaction_id', null)
+          .gt('amount', 0)
+          .gte('due_date', monthStart),
+        supabase
+          .from('financial_transactions')
+          .select(installmentFields)
+          .eq('company_id', companyId!)
+          .in('contract_id', contractIds)
+          .eq('transaction_type', 'entrada')
+          .is('cancelled_at', null)
+          .is('parent_transaction_id', null)
+          .is('due_date', null)
+          .gt('amount', 0)
+          .gte('transaction_date', monthStart),
+        supabase
+          .from('tenant_subscriptions')
+          .select('id, source_id, status, next_due_date, value')
+          .eq('company_id', companyId!)
+          .eq('source_type', 'contract')
+          .in('source_id', contractIds)
+          .is('deleted_at', null)
+          .neq('status', 'cancelled'),
+      ]);
+
+      if (withDueDate.error) throw withDueDate.error;
+      if (withoutDueDate.error) throw withoutDueDate.error;
+      if (subscriptions.error) throw subscriptions.error;
+
+      const subscriptionRows = (subscriptions.data ?? []) as NfseAutoReadinessSubscription[];
+      const subscriptionIds = subscriptionRows
+        .map((subscription) => subscription.id)
+        .filter((id): id is string => !!id);
+      const failedSubscriptionIds = new Set<string>();
+
+      if (subscriptionIds.length > 0) {
+        const { data: failedCharges, error: failedChargesError } = await supabase
+          .from('tenant_charges')
+          .select('subscription_id')
+          .eq('company_id', companyId!)
+          .in('subscription_id', subscriptionIds)
+          .in('finance_sync_status', ['conflict', 'error'])
+          .neq('status', 'DELETED');
+
+        if (failedChargesError) throw failedChargesError;
+        (failedCharges ?? []).forEach((charge) => {
+          if (charge.subscription_id) failedSubscriptionIds.add(charge.subscription_id);
+        });
+      }
+
+      const transactions = [
+        ...(withDueDate.data ?? []),
+        ...(withoutDueDate.data ?? []),
+      ] as unknown as NfseAutoReadinessTransaction[];
+
+      return classifyNfseAutoReadiness(
+        enabledContracts,
+        transactions,
+        subscriptionRows.map((subscription) => ({
+          ...subscription,
+          hasFinanceSyncError: !!subscription.id && failedSubscriptionIds.has(subscription.id),
+        })),
+        today,
+      );
+    },
+  });
+
+  return {
+    readiness: readinessQuery.data ?? [],
+    isLoading: readinessQuery.isLoading,
+    isError: readinessQuery.isError,
+    refetch: readinessQuery.refetch,
   };
 }
 

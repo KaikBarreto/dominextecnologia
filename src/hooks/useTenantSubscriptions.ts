@@ -305,6 +305,9 @@ export function useTenantSubscriptions(options?: UseTenantSubscriptionsOptions) 
     // archivedKey, então arquivar/desarquivar atualiza os dois lados de uma vez.
     const queryKey = ['tenant-subscriptions', companyId];
     await queryClient.invalidateQueries({ queryKey });
+    await queryClient.invalidateQueries({ queryKey: ['nfse-auto-readiness', companyId] });
+    await queryClient.invalidateQueries({ queryKey: ['contracts'] });
+    await queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
     // `staleTime` é de 30s. O refetch explícito evita a lista antiga ficar
     // visível até sair e voltar da aba depois de criar/editar/excluir.
     await queryClient.refetchQueries({ queryKey, type: 'active' });

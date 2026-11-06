@@ -13979,6 +13979,9 @@ export type Database = {
           customer_id: string | null
           description: string | null
           due_date: string | null
+          finance_sync_checked_at: string | null
+          finance_sync_error: string | null
+          finance_sync_status: string | null
           id: string
           invoice_url: string | null
           net_value: number | null
@@ -14004,6 +14007,9 @@ export type Database = {
           customer_id?: string | null
           description?: string | null
           due_date?: string | null
+          finance_sync_checked_at?: string | null
+          finance_sync_error?: string | null
+          finance_sync_status?: string | null
           id?: string
           invoice_url?: string | null
           net_value?: number | null
@@ -14029,6 +14035,9 @@ export type Database = {
           customer_id?: string | null
           description?: string | null
           due_date?: string | null
+          finance_sync_checked_at?: string | null
+          finance_sync_error?: string | null
+          finance_sync_status?: string | null
           id?: string
           invoice_url?: string | null
           net_value?: number | null
@@ -16357,6 +16366,10 @@ export type Database = {
           p_tenant_charge_id: string
         }
         Returns: string
+      }
+      ensure_contract_subscription_receivable: {
+        Args: { p_company_id: string; p_tenant_charge_id: string }
+        Returns: Json
       }
       credit_card_bill_date_for: {
         Args: { p_closing_day: number; p_transaction_date: string }

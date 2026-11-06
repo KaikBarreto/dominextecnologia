@@ -313,6 +313,7 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
     queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     queryClient.invalidateQueries({ queryKey: ['contract-transactions'] });
+    queryClient.invalidateQueries({ queryKey: ['nfse-auto-readiness'] });
     queryClient.invalidateQueries({ queryKey: ['account-balances'] });
     // Uma transação vinculada a OS muda os selos da lista/quadro/agenda e o
     // estado do diálogo de faturamento. Invalidamos por prefixo porque edição,

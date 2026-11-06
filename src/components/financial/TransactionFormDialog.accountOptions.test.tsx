@@ -641,12 +641,14 @@ describe('TransactionFormDialog — cobranças das parcelas', () => {
     const onSubmit = vi.fn().mockResolvedValue({
       ids: ['receivable-1', 'receivable-2', 'receivable-3', 'receivable-4'],
     });
+    const dueYear = Number(todayInTz('America/Sao_Paulo').slice(0, 4)) + 1;
+    const firstDueDate = `${dueYear}-11-02`;
     mount('entrada', false, onSubmit, undefined, {
       transaction_type: 'entrada',
       description: 'HIT SKY CLUB',
       amount: 1000,
       transaction_date: '2026-10-23',
-      due_date: '2026-11-02',
+      due_date: firstDueDate,
       is_paid: false,
       payment_method: 'boleto',
       installment_count: 4,
@@ -679,10 +681,10 @@ describe('TransactionFormDialog — cobranças das parcelas', () => {
       due_date: request.due_date,
       billing_type: request.billing_type,
     }))).toEqual([
-      { source_id: 'receivable-1', value: 250, due_date: '2026-11-02', billing_type: 'BOLETO' },
-      { source_id: 'receivable-2', value: 250, due_date: '2026-12-02', billing_type: 'BOLETO' },
-      { source_id: 'receivable-3', value: 250, due_date: '2027-01-02', billing_type: 'BOLETO' },
-      { source_id: 'receivable-4', value: 250, due_date: '2027-02-02', billing_type: 'BOLETO' },
+      { source_id: 'receivable-1', value: 250, due_date: `${dueYear}-11-02`, billing_type: 'BOLETO' },
+      { source_id: 'receivable-2', value: 250, due_date: `${dueYear}-12-02`, billing_type: 'BOLETO' },
+      { source_id: 'receivable-3', value: 250, due_date: `${dueYear + 1}-01-02`, billing_type: 'BOLETO' },
+      { source_id: 'receivable-4', value: 250, due_date: `${dueYear + 1}-02-02`, billing_type: 'BOLETO' },
     ]);
   });
 });

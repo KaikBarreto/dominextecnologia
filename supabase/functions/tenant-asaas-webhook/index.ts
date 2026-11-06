@@ -691,7 +691,7 @@ async function ensureChargeForSubscriptionPayment(
   let { data: sub } = await supabase
     .from("tenant_subscriptions")
     .select(
-      "id, customer_id, description, category, cost_center_id, deleted_at",
+      "id, customer_id, description, category, cost_center_id, deleted_at, source_type, source_id",
     )
     .eq("asaas_subscription_id", asaasSubId)
     .eq("company_id", companyId)
@@ -700,7 +700,7 @@ async function ensureChargeForSubscriptionPayment(
     const { data: pixSub } = await supabase
       .from("tenant_subscriptions")
       .select(
-        "id, customer_id, description, category, cost_center_id, deleted_at",
+        "id, customer_id, description, category, cost_center_id, deleted_at, source_type, source_id",
       )
       .eq("pix_auto_authorization_id", asaasSubId)
       .eq("company_id", companyId)
@@ -789,9 +789,14 @@ async function ensureChargeForSubscriptionPayment(
         .eq("company_id", companyId)
         .maybeSingle();
       if (account?.auto_post_to_finance !== false) {
-        const { error: rpcErr } = await supabase.rpc(
-          "create_tenant_charge_receivable",
-          {
+        const isContractSubscription =
+          sub?.source_type === "contract" && typeof sub?.source_id === "string" && !!sub.source_id;
+        const { error: rpcErr } = isContractSubscription
+          ? await supabase.rpc("ensure_contract_subscription_receivable", {
+            p_company_id: companyId,
+            p_tenant_charge_id: saved.id,
+          })
+          : await supabase.rpc("create_tenant_charge_receivable", {
             p_company_id: companyId,
             p_tenant_charge_id: saved.id,
             p_customer_id: sub?.customer_id ?? null,
@@ -808,11 +813,10 @@ async function ensureChargeForSubscriptionPayment(
             // tenant_subscriptions.cost_center_id). Sem default de conta; assinatura
             // antiga (coluna NULL) materializa sem centro, como sempre foi.
             p_cost_center_id: sub?.cost_center_id ?? null,
-          },
-        );
+          });
         if (rpcErr) {
           console.warn(
-            "[tenant-webhook] create_tenant_charge_receivable (assinatura) falhou (não-fatal):",
+            `[tenant-webhook] ${isContractSubscription ? "ensure_contract_subscription_receivable" : "create_tenant_charge_receivable"} (assinatura) falhou (não-fatal):`,
             rpcErr.message,
           );
         }

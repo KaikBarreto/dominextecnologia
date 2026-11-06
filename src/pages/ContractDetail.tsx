@@ -121,6 +121,12 @@ import {
   type ContractNfseAutoRule,
   type ContractNfseAutoTrigger,
 } from '@/lib/contract-nfse-auto';
+import {
+  classifyContractNfseAutoReadiness,
+  type NfseAutoReadinessSubscription,
+  type NfseAutoReadinessTransaction,
+} from '@/lib/nfse-auto-readiness';
+import { useNfseAutoReadiness } from '@/hooks/useNfseAutoJobs';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { TaxCodeCombobox } from '@/components/fiscal/TaxCodeCombobox';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
@@ -203,6 +209,7 @@ const NFSE_AUTO_SAVE_DELAY_MS = 700;
 export default function ContractDetail() {
   const isMobile = useIsMobile();
   const { locale, currency, timezone } = useAppLocaleContext();
+  const nfseAutoReadinessQuery = useNfseAutoReadiness(timezone);
   const money = (value: number) => formatMoney(value, currency, locale);
   const tContracts = MESSAGES[locale].app.pmoc.contracts;
   const td = MESSAGES[locale].app.pmoc.contractDetail;
@@ -956,6 +963,31 @@ export default function ContractDetail() {
       .map((t: any) => t.due_date as string);
     return dates.length > 0 ? dates.reduce((a, b) => (a > b ? a : b)) : null;
   }, [linkedTransactions]);
+  const nfseReadiness = useMemo(() => {
+    if (!contract) return null;
+    const centralizedReadiness = nfseAutoReadinessQuery.readiness.find(
+      (item) => item.contract.id === contract.id,
+    );
+    if (centralizedReadiness) return centralizedReadiness;
+    return classifyContractNfseAutoReadiness(
+      { id: contract.id, name: contract.name },
+      (linkedTransactions || []) as NfseAutoReadinessTransaction[],
+      contractSubscriptions.subscriptions.map((subscription) => ({
+        id: subscription.id,
+        source_id: subscription.source_id ?? null,
+        status: subscription.status,
+        next_due_date: subscription.next_due_date ?? null,
+        value: Number(subscription.value),
+      } satisfies NfseAutoReadinessSubscription)),
+      todayInTz(timezone),
+    );
+  }, [
+    contract,
+    linkedTransactions,
+    contractSubscriptions.subscriptions,
+    nfseAutoReadinessQuery.readiness,
+    timezone,
+  ]);
 
   const recIntervalMonths = FREQUENCY_MONTHS[recFrequency] ?? 0;
   // "Única" não repete, então não há o que renovar: o interruptor fica
@@ -2356,6 +2388,14 @@ export default function ContractDetail() {
                       <div className="mt-0.5">{subStatusBadge(activeContractSubscription.status)}</div>
                     </div>
                   </div>
+                  <NoticeBanner variant="neutral">
+                    {tdBilling.activeSourceHint}
+                  </NoticeBanner>
+                  {financeIndeterminate && (
+                    <NoticeBanner variant="warning" title={tdBilling.duplicateSourceTitle}>
+                      {tdBilling.duplicateSourceDescription}
+                    </NoticeBanner>
+                  )}
                   <div className="border-t pt-3 flex justify-end">
                     <Button
                       variant="destructive-ghost"
@@ -2842,6 +2882,48 @@ export default function ContractDetail() {
                       aria-label={tNfseAuto.sectionLabel}
                     />
                   </div>
+
+                  {nfseEnabled && !isLoadingTransactions && !contractSubscriptions.isLoading && nfseReadiness?.state === 'ready_installment' && (
+                    <NoticeBanner variant="neutral" title={tNfseAuto.readyTitle}>
+                      {(nfseReadiness.source === 'asaas'
+                        ? tNfseAuto.readyAsaasDescription
+                        : tNfseAuto.readyInstallmentDescription)
+                        .replace('{date}', nfseReadiness.nextDate
+                          ? format(parseLocalDate(nfseReadiness.nextDate), 'dd/MM/yyyy')
+                          : '—')
+                        .replace('{amount}', nfseReadiness.amount != null
+                          ? money(nfseReadiness.amount)
+                          : '—')}
+                    </NoticeBanner>
+                  )}
+
+                  {nfseEnabled && !isLoadingTransactions && !contractSubscriptions.isLoading && nfseReadiness?.state === 'waiting_asaas_cycle' && (
+                    <NoticeBanner variant="info" title={tNfseAuto.waitingAsaasTitle}>
+                      {tNfseAuto.waitingAsaasDescription.replace(
+                        '{date}',
+                        nfseReadiness.nextDate
+                          ? format(parseLocalDate(nfseReadiness.nextDate), 'dd/MM/yyyy')
+                          : '—',
+                      )}
+                    </NoticeBanner>
+                  )}
+
+                  {nfseEnabled && !isLoadingTransactions && !contractSubscriptions.isLoading && nfseReadiness?.state === 'sync_error' && (
+                    <NoticeBanner variant="warning" title={tNfseAuto.syncErrorTitle}>
+                      {tNfseAuto.syncErrorDescription}
+                    </NoticeBanner>
+                  )}
+
+                  {nfseEnabled && !isLoadingTransactions && !contractSubscriptions.isLoading && nfseReadiness?.state === 'missing_source' && (
+                    <NoticeBanner
+                      variant="warning"
+                      title={tNfseAuto.missingSourceTitle}
+                      action={tNfseAuto.missingSourceAction}
+                      onClick={openBillingSetup}
+                    >
+                      {tNfseAuto.missingSourceDescription}
+                    </NoticeBanner>
+                  )}
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">

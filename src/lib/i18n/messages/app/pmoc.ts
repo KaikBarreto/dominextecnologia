@@ -496,9 +496,12 @@ export const pmoc = {
       },
       // ── Seção Faturamento Recorrente (Onda C) ──
       billing: {
-        sectionTitle: 'Faturamento Recorrente',
-        sectionDesc: 'Emita cobranças automáticas para este contrato via Asaas.',
+        sectionTitle: 'Cobrança automática via Asaas',
+        sectionDesc: 'O Asaas cobra este contrato automaticamente no ciclo configurado.',
         activateBtn: 'Ativar faturamento recorrente',
+        activeSourceHint: 'O Asaas gera uma única parcela deste contrato a cada ciclo e dá baixa nela quando o cliente paga. Não crie outra recorrência no Financeiro.',
+        duplicateSourceTitle: 'Duas recorrências configuradas',
+        duplicateSourceDescription: 'A cobrança do Asaas é a fonte principal. A renovação interna será desligada para impedir parcelas duplicadas; as parcelas já existentes serão preservadas.',
         cancelBtn: 'Cancelar faturamento',
         cycleLabel: 'Frequência',
         valueLabel: 'Valor',
@@ -1536,9 +1539,12 @@ export const pmoc = {
       },
       // ── Recurring Billing Section (Wave C) ──
       billing: {
-        sectionTitle: 'Recurring Billing',
-        sectionDesc: 'Automatically charge this contract through Asaas.',
+        sectionTitle: 'Automatic billing through Asaas',
+        sectionDesc: 'Asaas bills this contract automatically on the configured cycle.',
         activateBtn: 'Activate recurring billing',
+        activeSourceHint: 'Asaas creates one installment for this contract per cycle and settles it when the customer pays. Do not create another recurrence in Finance.',
+        duplicateSourceTitle: 'Two recurrences are configured',
+        duplicateSourceDescription: 'Asaas billing is the primary source. Internal renewal will be turned off to prevent duplicate installments; existing installments will be preserved.',
         cancelBtn: 'Cancel billing',
         cycleLabel: 'Frequency',
         valueLabel: 'Amount',
@@ -2512,9 +2518,12 @@ export const pmoc = {
       },
       // ── Facturación Recurrente (Onda C) ──
       billing: {
-        sectionTitle: 'Facturación Recurrente',
-        sectionDesc: 'Emite cobros automáticos para este contrato a través de Asaas.',
+        sectionTitle: 'Cobro automático por Asaas',
+        sectionDesc: 'Asaas cobra este contrato automáticamente en el ciclo configurado.',
         activateBtn: 'Activar facturación recurrente',
+        activeSourceHint: 'Asaas genera una única cuota de este contrato en cada ciclo y la marca como pagada cuando el cliente paga. No crees otra recurrencia en Finanzas.',
+        duplicateSourceTitle: 'Hay dos recurrencias configuradas',
+        duplicateSourceDescription: 'El cobro de Asaas es la fuente principal. La renovación interna se desactivará para evitar cuotas duplicadas; las cuotas existentes se conservarán.',
         cancelBtn: 'Cancelar facturación',
         cycleLabel: 'Frecuencia',
         valueLabel: 'Importe',
@@ -3488,9 +3497,12 @@ export const pmoc = {
       },
       // ── Facturation Récurrente (Vague C) ──
       billing: {
-        sectionTitle: 'Facturation Récurrente',
-        sectionDesc: `Émettez des prélèvements automatiques pour ce contrat via Asaas.`,
+        sectionTitle: 'Prélèvement automatique via Asaas',
+        sectionDesc: `Asaas prélève automatiquement ce contrat selon le cycle configuré.`,
         activateBtn: 'Activer la facturation récurrente',
+        activeSourceHint: `Asaas génère une seule échéance de ce contrat à chaque cycle et la règle lorsque le client paie. Ne créez pas une autre récurrence dans Finance.`,
+        duplicateSourceTitle: `Deux récurrences sont configurées`,
+        duplicateSourceDescription: `Le prélèvement Asaas est la source principale. Le renouvellement interne sera désactivé pour éviter les échéances en double ; les échéances existantes seront conservées.`,
         cancelBtn: 'Annuler la facturation',
         cycleLabel: 'Fréquence',
         valueLabel: 'Montant',
