@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.36";
+export const APP_VERSION = "1.38.37";
 
 export const VERSION_NOTES =
-  "Alterações feitas em jornadas, custos, cobranças e orçamentos agora permanecem preservadas durante carregamentos e atualizações da tela.";
+  "A edição da O.S. em campo ficou mais completa e confiável, com equipamentos existentes, checklists reorganizáveis, horários editáveis e marcadores da agenda corrigidos.";

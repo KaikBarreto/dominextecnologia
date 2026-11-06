@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.37',
+    date: '6 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Edição da O.S. mais completa durante o atendimento',
+        description: 'Agora é possível incluir um equipamento já cadastrado ou criar outro sem sair da O.S., reorganizar checklists entre equipamentos preservando as respostas e revisar datas e horários no mesmo fluxo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Alterações da O.S. preservadas e saída protegida',
+        description: 'Depois de salvar, equipamentos, checklists e agenda são atualizados imediatamente ao reabrir. Se houver mudanças ainda não salvas, o sistema pede confirmação antes de fechar a edição.',
+        category: 'correcao',
+      },
+      {
+        title: 'Marcadores da agenda visíveis para toda a empresa',
+        description: 'Os pontos de visitas de contrato e Ordens de Serviço voltaram a aparecer corretamente no calendário para os usuários da empresa, mantendo o isolamento seguro entre contas.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.38.36',
     date: '6 de novembro de 2026',
     type: 'patch',

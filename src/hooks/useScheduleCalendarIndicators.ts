@@ -29,8 +29,8 @@ export const SCHEDULE_CALENDAR_INDICATORS_KEY = ['service-orders', 'calendar-ind
 
 /**
  * Busca apenas o resumo dos dias ocupados no mês visível do DatePicker.
- * A RPC roda como invoker, portanto a RLS de service_orders continua sendo a
- * fonte de verdade do tenant e nenhuma informação operacional da OS é exposta.
+ * A RPC resolve o tenant a partir do usuário autenticado, valida a vigência e
+ * devolve só agregados; nenhum dado operacional da OS é exposto ao calendário.
  */
 export function useScheduleCalendarIndicators({
   month,

@@ -3,16 +3,20 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync(
-  resolve(process.cwd(), 'supabase/migrations/20261105163000_aprimora_indicadores_agenda.sql'),
+  resolve(process.cwd(), 'supabase/migrations/20261106020500_corrige_indicadores_agenda_tenant.sql'),
   'utf8',
 );
 
 describe('migration dos indicadores do calendário de agendamento', () => {
-  it('preserva RLS, limita o período e não libera acesso anônimo', () => {
-    expect(migration).toMatch(/SECURITY INVOKER/i);
+  it('resolve o tenant no servidor, valida a assinatura e não libera acesso anônimo', () => {
+    expect(migration).toMatch(/SECURITY DEFINER/i);
+    expect(migration).toMatch(/v_user_id uuid := \(SELECT auth\.uid\(\)\)/i);
+    expect(migration).toMatch(/v_company_id := public\.get_user_company_id\(v_user_id\)/i);
+    expect(migration).toMatch(/tenant_subscription_allows_access\(v_company_id\)/i);
+    expect(migration).toMatch(/so\.company_id = v_company_id/i);
     expect(migration).toMatch(/p_end_date - p_start_date > 62/i);
     expect(migration).toMatch(/REVOKE ALL[\s\S]*FROM PUBLIC, anon/i);
-    expect(migration).toMatch(/GRANT EXECUTE[\s\S]*TO authenticated/i);
+    expect(migration).toMatch(/GRANT EXECUTE[\s\S]*TO authenticated, service_role/i);
   });
 
   it('distingue visita gerada ou vinculada de chamado reativo e ignora tarefas e canceladas', () => {
