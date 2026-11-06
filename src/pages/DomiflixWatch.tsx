@@ -741,6 +741,196 @@ export interface NetflixPlayerProps {
   orientation?: "landscape" | "portrait";
 }
 
+type SubtitleSize = "small" | "medium" | "large";
+type SubtitleStyle = "contrast" | "soft" | "outline";
+
+const SUBTITLE_PREFERENCES_KEY = "domiflix:subtitle-preferences";
+const DEFAULT_SUBTITLE_PREFERENCES: {
+  size: SubtitleSize;
+  style: SubtitleStyle;
+} = { size: "medium", style: "contrast" };
+
+function loadSubtitlePreferences() {
+  if (typeof window === "undefined") return DEFAULT_SUBTITLE_PREFERENCES;
+  try {
+    const saved = JSON.parse(
+      window.localStorage.getItem(SUBTITLE_PREFERENCES_KEY) ?? "{}",
+    ) as { size?: SubtitleSize; style?: SubtitleStyle };
+    return {
+      size: ["small", "medium", "large"].includes(saved.size ?? "")
+        ? saved.size!
+        : DEFAULT_SUBTITLE_PREFERENCES.size,
+      style: ["contrast", "soft", "outline"].includes(saved.style ?? "")
+        ? saved.style!
+        : DEFAULT_SUBTITLE_PREFERENCES.style,
+    };
+  } catch {
+    return DEFAULT_SUBTITLE_PREFERENCES;
+  }
+}
+
+function SubtitleSettingsPanel({
+  subtitles,
+  activeSubtitleId,
+  size,
+  style,
+  onSelectSubtitle,
+  onChangeSize,
+  onChangeStyle,
+}: {
+  subtitles: DomiflixSubtitle[];
+  activeSubtitleId: string | null | undefined;
+  size: SubtitleSize;
+  style: SubtitleStyle;
+  onSelectSubtitle: (id: string | null) => void;
+  onChangeSize: (size: SubtitleSize) => void;
+  onChangeStyle: (style: SubtitleStyle) => void;
+}) {
+  return (
+    <div className="max-h-[60dvh] overflow-y-auto overscroll-contain px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
+      <section aria-labelledby="domiflix-subtitle-track-label">
+        <p
+          id="domiflix-subtitle-track-label"
+          className="px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500"
+        >
+          Faixa
+        </p>
+        <div role="radiogroup" aria-label="Faixa de legenda">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onSelectSubtitle(null);
+            }}
+            className={cn(
+              "flex min-h-11 w-full items-center justify-between gap-3 px-2 py-2 text-left text-xs",
+              !activeSubtitleId
+                ? "bg-white/[0.06] text-white"
+                : "text-stone-400 hover:bg-white/[0.04]",
+            )}
+            role="radio"
+            aria-checked={!activeSubtitleId}
+          >
+            <span>Sem legendas</span>
+            {!activeSubtitleId && <Check className="h-3.5 w-3.5 text-red-500" />}
+          </button>
+          {subtitles.map((subtitle) => (
+            <button
+              type="button"
+              key={subtitle.id}
+              onClick={(event) => {
+                event.stopPropagation();
+                onSelectSubtitle(subtitle.id);
+              }}
+              className={cn(
+                "flex min-h-11 w-full items-center justify-between gap-3 px-2 py-2 text-left text-xs",
+                activeSubtitleId === subtitle.id
+                  ? "bg-white/[0.06] text-white"
+                  : "text-stone-300 hover:bg-white/[0.04]",
+              )}
+              role="radio"
+              aria-checked={activeSubtitleId === subtitle.id}
+            >
+              <span>{subtitle.label}</span>
+              {activeSubtitleId === subtitle.id && (
+                <Check className="h-3.5 w-3.5 text-red-500" />
+              )}
+            </button>
+          ))}
+          {subtitles.length === 0 && (
+            <p className="px-2 py-2 text-[11px] leading-4 text-stone-500">
+              Nenhuma faixa opcional foi vinculada. Legendas gravadas na imagem
+              não podem ser desligadas.
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section className="mt-3 border-t border-white/10 pt-3" aria-labelledby="domiflix-subtitle-size-label">
+        <p
+          id="domiflix-subtitle-size-label"
+          className="px-1 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500"
+        >
+          Tamanho
+        </p>
+        <div className="grid grid-cols-3 gap-1" role="radiogroup" aria-label="Tamanho da legenda">
+          {([
+            ["small", "Pequena"],
+            ["medium", "Média"],
+            ["large", "Grande"],
+          ] as const).map(([value, label]) => (
+            <button
+              type="button"
+              key={value}
+              onClick={(event) => {
+                event.stopPropagation();
+                onChangeSize(value);
+              }}
+              className={cn(
+                "min-h-10 rounded-sm px-2 text-[11px] font-medium",
+                size === value
+                  ? "bg-red-600 text-white"
+                  : "bg-white/[0.05] text-stone-300 hover:bg-white/[0.09]",
+              )}
+              role="radio"
+              aria-checked={size === value}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-3 border-t border-white/10 pt-3" aria-labelledby="domiflix-subtitle-style-label">
+        <p
+          id="domiflix-subtitle-style-label"
+          className="px-1 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500"
+        >
+          Estilo
+        </p>
+        <div className="grid grid-cols-3 gap-1" role="radiogroup" aria-label="Estilo da legenda">
+          {([
+            ["contrast", "Escuro"],
+            ["soft", "Suave"],
+            ["outline", "Contorno"],
+          ] as const).map(([value, label]) => (
+            <button
+              type="button"
+              key={value}
+              onClick={(event) => {
+                event.stopPropagation();
+                onChangeStyle(value);
+              }}
+              className={cn(
+                "flex min-h-14 flex-col items-center justify-center gap-1 rounded-sm border px-1 text-[10px]",
+                style === value
+                  ? "border-red-500 bg-red-600 text-white"
+                  : "border-white/10 bg-white/[0.035] text-stone-300 hover:bg-white/[0.07]",
+              )}
+              role="radio"
+              aria-checked={style === value}
+            >
+              <span
+                className={cn(
+                  "text-sm font-semibold leading-none text-white",
+                  value === "contrast" && "bg-black px-1 py-0.5",
+                  value === "soft" && "bg-black/50 px-1 py-0.5",
+                  value === "outline" &&
+                    "[text-shadow:0_1px_2px_#000,1px_0_1px_#000,-1px_0_1px_#000]",
+                )}
+                aria-hidden="true"
+              >
+                Aa
+              </span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function NetflixPlayer({
   videoId,
   videoType,
@@ -789,6 +979,14 @@ export function NetflixPlayer({
   const [seeking, setSeeking] = useState(false);
   const [activeSubtitleId, setActiveSubtitleId] = useState<string | null | undefined>(undefined);
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
+  const [subtitlePreferences, setSubtitlePreferences] = useState(loadSubtitlePreferences);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      SUBTITLE_PREFERENCES_KEY,
+      JSON.stringify(subtitlePreferences),
+    );
+  }, [subtitlePreferences]);
 
   useEffect(() => {
     setActiveSubtitleId((current) => {
@@ -1510,7 +1708,20 @@ export function NetflixPlayer({
 
       {visibleSubtitle && (
         <div className="pointer-events-none absolute inset-x-4 bottom-[18%] z-[19] flex justify-center px-2 text-center sm:bottom-[15%]">
-          <span className="whitespace-pre-line rounded-sm bg-black/85 px-2.5 py-1 text-sm font-medium leading-snug text-white shadow-sm sm:text-base">
+          <span
+            className={cn(
+              "whitespace-pre-line text-center font-semibold leading-snug text-white",
+              subtitlePreferences.size === "small" && "text-xs sm:text-sm",
+              subtitlePreferences.size === "medium" && "text-sm sm:text-base",
+              subtitlePreferences.size === "large" && "text-base sm:text-xl",
+              subtitlePreferences.style === "contrast" &&
+                "rounded-sm bg-black/90 px-2.5 py-1 shadow-sm",
+              subtitlePreferences.style === "soft" &&
+                "rounded-sm bg-black/55 px-2.5 py-1 shadow-[0_2px_10px_rgba(0,0,0,0.7)]",
+              subtitlePreferences.style === "outline" &&
+                "px-1 py-0.5 [text-shadow:0_2px_3px_#000,2px_0_2px_#000,-2px_0_2px_#000,0_-2px_2px_#000]",
+            )}
+          >
             {visibleSubtitle}
           </span>
         </div>
@@ -1945,22 +2156,20 @@ export function NetflixPlayer({
                   <Subtitles className="h-7 w-7" />
                 </button>
                 {showSubtitleMenu && (
-                  <div className="absolute bottom-full right-0 mb-3 w-64 overflow-hidden rounded-md border border-white/10 bg-[#181818] py-1 shadow-2xl" role="menu" aria-label="Opções de legenda">
+                  <div className="absolute bottom-full right-0 mb-3 hidden w-72 overflow-hidden rounded-sm border border-white/10 bg-[#181818] shadow-2xl md:block" role="dialog" aria-label="Opções de legenda">
                     <div className="border-b border-white/10 px-3 py-2">
                       <p className="text-xs font-semibold text-white">Legendas</p>
-                      <p className="mt-0.5 text-[11px] leading-4 text-stone-500">Escolha uma faixa ou assista sem legenda adicional.</p>
+                      <p className="mt-0.5 text-[11px] leading-4 text-stone-500">Escolha a faixa e ajuste como o texto aparece.</p>
                     </div>
-                    <button onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(null); setShowSubtitleMenu(false); }} className={cn("flex min-h-10 w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs hover:bg-white/[0.06]", !activeSubtitle ? "text-white" : "text-stone-400")} role="menuitemradio" aria-checked={!activeSubtitle}>
-                      Sem legendas
-                      {!activeSubtitle && <Check className="h-3.5 w-3.5 text-red-400" />}
-                    </button>
-                    {subtitles.map((subtitle) => (
-                      <button key={subtitle.id} onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(subtitle.id); setShowSubtitleMenu(false); }} className={cn("flex min-h-10 w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs hover:bg-white/[0.06]", activeSubtitleId === subtitle.id ? "text-white" : "text-stone-300")} role="menuitemradio" aria-checked={activeSubtitleId === subtitle.id}>
-                        {subtitle.label}
-                        {activeSubtitleId === subtitle.id && <Check className="h-3.5 w-3.5 text-red-400" />}
-                      </button>
-                    ))}
-                    {subtitles.length === 0 && <p className="border-t border-white/10 px-3 py-2 text-[11px] leading-4 text-stone-500">Nenhuma faixa opcional foi vinculada. Se houver texto na imagem, ele faz parte do próprio vídeo e não pode ser desligado.</p>}
+                    <SubtitleSettingsPanel
+                      subtitles={subtitles}
+                      activeSubtitleId={activeSubtitleId}
+                      size={subtitlePreferences.size}
+                      style={subtitlePreferences.style}
+                      onSelectSubtitle={setActiveSubtitleId}
+                      onChangeSize={(size) => setSubtitlePreferences((current) => ({ ...current, size }))}
+                      onChangeStyle={(style) => setSubtitlePreferences((current) => ({ ...current, style }))}
+                    />
                   </div>
                 )}
               </div>
@@ -1990,14 +2199,6 @@ export function NetflixPlayer({
                 <Subtitles className="h-7 w-7" />
                 <span className="max-w-24 truncate text-[10px] font-light">{activeSubtitle?.label ?? "Sem legendas"}</span>
               </button>
-              {showSubtitleMenu && (
-                <div className="absolute bottom-full left-1/2 mb-3 w-64 -translate-x-1/2 overflow-hidden rounded-sm border border-white/10 bg-[#181818] py-1 shadow-2xl" role="menu" aria-label="Opções de legenda">
-                  <div className="border-b border-white/10 px-3 py-2"><p className="text-xs font-semibold text-white">Legendas</p><p className="mt-0.5 text-[11px] leading-4 text-stone-500">Escolha uma faixa ou assista sem legenda adicional.</p></div>
-                  <button onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(null); setShowSubtitleMenu(false); }} className={cn("flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs", !activeSubtitle ? "bg-white/[0.05] text-white" : "text-stone-400")} role="menuitemradio" aria-checked={!activeSubtitle}><span>Sem legendas</span>{!activeSubtitle && <Check className="h-3.5 w-3.5 text-red-400" />}</button>
-                  {subtitles.map((subtitle) => <button key={subtitle.id} onClick={(event) => { event.stopPropagation(); setActiveSubtitleId(subtitle.id); setShowSubtitleMenu(false); }} className={cn("flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs", activeSubtitleId === subtitle.id ? "bg-white/[0.05] text-white" : "text-stone-300")} role="menuitemradio" aria-checked={activeSubtitleId === subtitle.id}><span>{subtitle.label}</span>{activeSubtitleId === subtitle.id && <Check className="h-3.5 w-3.5 text-red-400" />}</button>)}
-                  {subtitles.length === 0 && <p className="border-t border-white/10 px-3 py-2 text-[11px] leading-4 text-stone-500">Nenhuma faixa opcional foi vinculada. Legendas gravadas na imagem não podem ser desligadas.</p>}
-                </div>
-              )}
             </div>
           {onChangePlaybackSpeed && (
             <button
@@ -2106,6 +2307,33 @@ export function NetflixPlayer({
           <Lock className="w-6 h-6" />
         </button>
       )}
+
+      <Drawer
+        open={showSubtitleMenu && isMobile}
+        onOpenChange={setShowSubtitleMenu}
+      >
+        <DrawerContent className="max-h-[82dvh] border-white/10 bg-[#181818] text-white">
+          <DrawerHeader className="border-b border-white/10 pb-3 text-left">
+            <DrawerTitle className="text-base text-white">Legendas</DrawerTitle>
+            <p className="text-xs leading-5 text-stone-400">
+              Escolha a faixa e ajuste o tamanho e o contraste do texto.
+            </p>
+          </DrawerHeader>
+          <SubtitleSettingsPanel
+            subtitles={subtitles}
+            activeSubtitleId={activeSubtitleId}
+            size={subtitlePreferences.size}
+            style={subtitlePreferences.style}
+            onSelectSubtitle={setActiveSubtitleId}
+            onChangeSize={(size) =>
+              setSubtitlePreferences((current) => ({ ...current, size }))
+            }
+            onChangeStyle={(style) =>
+              setSubtitlePreferences((current) => ({ ...current, style }))
+            }
+          />
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
