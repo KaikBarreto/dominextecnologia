@@ -56,7 +56,7 @@ export default function Tutoriais() {
           id: lesson.titleId,
           title: lesson.moduleTitle,
           description: lesson.moduleDescription,
-          cover: lesson.thumbnailUrl || lesson.bannerUrl,
+          cover: lesson.bannerUrl || lesson.thumbnailUrl,
           group: lesson.group,
           includedInPlan: lesson.includedInPlan,
           lessons: [lesson],
@@ -134,6 +134,117 @@ export default function Tutoriais() {
   const pageTitle = status.path.isOnboarding
     ? "Aprenda a usar a Dominex"
     : status.path.title;
+  const isModulesCatalog = searchParams.get("tipo") === "modulos";
+
+  if (isModulesCatalog) {
+    return (
+      <main className="min-h-screen bg-[#141414] pb-28 pt-20 text-stone-100">
+        <div className="mx-auto max-w-[1500px] px-4 sm:px-8 lg:px-12">
+          <header className="border-b border-white/10 pb-6 pt-5 sm:flex sm:items-end sm:justify-between sm:gap-8 sm:pb-8 sm:pt-9">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-500">
+                Biblioteca DomiFlix
+              </p>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+                Módulos
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-400 sm:text-base">
+                Explore os títulos da sua formação. Sua trilha continua indicando a ordem recomendada para assistir.
+              </p>
+            </div>
+            <div className="relative mt-5 sm:mt-0 sm:w-80">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-500" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Buscar módulo ou aula"
+                className="h-11 rounded-sm border-white/10 bg-white/[0.05] pl-9 text-white placeholder:text-stone-600 focus-visible:ring-red-600"
+              />
+            </div>
+          </header>
+
+          {visibleModules.length === 0 ? (
+            <div className="py-24 text-center">
+              <BookOpen className="mx-auto h-9 w-9 text-stone-700" />
+              <p className="mt-4 font-medium text-stone-300">
+                {modules.length === 0 ? "A biblioteca está sendo preparada" : "Nenhum módulo encontrado"}
+              </p>
+              <p className="mt-1 text-sm text-stone-500">
+                {modules.length === 0 ? "Os títulos aparecerão aqui assim que forem publicados." : "Tente buscar por outro termo."}
+              </p>
+            </div>
+          ) : (
+            <section className="grid gap-x-5 gap-y-9 py-7 sm:grid-cols-2 sm:py-9 xl:grid-cols-3">
+              {visibleModules.map((module, moduleIndex) => {
+                const completed = module.lessons.filter((lesson) => lesson.completed).length;
+                const progress = module.lessons.length > 0
+                  ? Math.round((completed / module.lessons.length) * 100)
+                  : 0;
+                const suffix = pathSlug === "tutoriais-do-sistema"
+                  ? ""
+                  : `?trilha=${encodeURIComponent(pathSlug)}`;
+
+                return (
+                  <button
+                    key={module.id}
+                    type="button"
+                    onClick={() => navigate(`/domiflix/${slugify(module.title)}${suffix}`)}
+                    className="group min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-4 focus-visible:ring-offset-[#141414]"
+                  >
+                    <div className="relative aspect-video overflow-hidden rounded-sm bg-stone-900 shadow-[0_14px_35px_rgba(0,0,0,0.28)]">
+                      {module.cover ? (
+                        <img
+                          src={module.cover}
+                          alt=""
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.035] group-hover:brightness-110"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-stone-800 to-stone-950">
+                          <BookOpen className="h-8 w-8 text-stone-600" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/5 to-black/20" />
+                      <div className="absolute left-3 top-3">
+                        <DomiflixModuleBadge group={module.group} includedInPlan={module.includedInPlan} />
+                      </div>
+                      <span className="absolute bottom-3 right-3 grid h-9 w-9 place-items-center rounded-full bg-white text-black opacity-0 shadow-lg transition group-hover:opacity-100">
+                        <Play className="h-4 w-4 fill-current" />
+                      </span>
+                      {progress > 0 && (
+                        <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20">
+                          <div className="h-full bg-red-600" style={{ width: `${progress}%` }} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="pt-3">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-red-500">
+                            Módulo {moduleIndex + 1}
+                          </p>
+                          <h2 className="mt-1 line-clamp-2 text-lg font-semibold leading-snug text-white transition-colors group-hover:text-red-400">
+                            {module.title}
+                          </h2>
+                        </div>
+                        <span className="shrink-0 pt-5 text-xs font-medium text-stone-500">
+                          {completed}/{module.lessons.length}
+                        </span>
+                      </div>
+                      {module.description && (
+                        <p className="mt-2 line-clamp-2 text-sm leading-5 text-stone-500">
+                          {module.description}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </section>
+          )}
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#141414] pb-24 pt-20 text-stone-100">
