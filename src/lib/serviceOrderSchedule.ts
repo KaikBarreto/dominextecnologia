@@ -9,6 +9,9 @@ export type ScheduledServiceOrderOccurrence<T extends ServiceOrder = ServiceOrde
 
 const MAX_SCHEDULED_DAYS = 31;
 
+/** Uma jornada da OS pode atravessar a meia-noite, mas permanece limitada a um dia completo. */
+export const MAX_SERVICE_ORDER_SCHEDULE_DURATION_MINUTES = 24 * 60;
+
 function timeToMinutes(time: string): number | null {
   const match = /^(\d{2}):(\d{2})(?::\d{2})?$/.exec(time);
   if (!match) return null;
@@ -58,7 +61,7 @@ function isScheduleSlot(value: unknown): value is ServiceOrderScheduleSlot {
     && /^\d{2}:\d{2}(?::\d{2})?$/.test(slot.time)
     && Number.isInteger(slot.duration_minutes)
     && Number(slot.duration_minutes) >= 15
-    && Number(slot.duration_minutes) <= 480;
+    && Number(slot.duration_minutes) <= MAX_SERVICE_ORDER_SCHEDULE_DURATION_MINUTES;
 }
 
 export function normalizeServiceOrderSchedulePlan(

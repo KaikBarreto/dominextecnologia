@@ -8612,6 +8612,7 @@ export type Database = {
           financial_transaction_id: string | null
           fisqal_dps_id: string | null
           fisqal_fiscal_request_id: string | null
+          fiscal_ambiente: string | null
           id: string
           idempotency_key: string | null
           intermediario_avulso: Json | null
@@ -8623,9 +8624,15 @@ export type Database = {
           pdf_url: string | null
           percentual_trib_sn: number | null
           protocolo: string | null
+          referencia_fiscal: string | null
           regime_apuracao: string | null
+          requisicao_fiscal_id: string | null
           service_type_id: string | null
           status: string
+          status_fiscal_confirmado: boolean
+          status_fiscal_confirmado_em: string | null
+          status_fiscal_evidencia: Json | null
+          status_fiscal_fonte: string | null
           tomador_avulso: Json | null
           tp_ret_issqn: string | null
           trib_issqn: string | null
@@ -8656,6 +8663,7 @@ export type Database = {
           financial_transaction_id?: string | null
           fisqal_dps_id?: string | null
           fisqal_fiscal_request_id?: string | null
+          fiscal_ambiente?: string | null
           id?: string
           idempotency_key?: string | null
           intermediario_avulso?: Json | null
@@ -8667,9 +8675,15 @@ export type Database = {
           pdf_url?: string | null
           percentual_trib_sn?: number | null
           protocolo?: string | null
+          referencia_fiscal?: string | null
           regime_apuracao?: string | null
+          requisicao_fiscal_id?: string | null
           service_type_id?: string | null
           status?: string
+          status_fiscal_confirmado?: boolean
+          status_fiscal_confirmado_em?: string | null
+          status_fiscal_evidencia?: Json | null
+          status_fiscal_fonte?: string | null
           tomador_avulso?: Json | null
           tp_ret_issqn?: string | null
           trib_issqn?: string | null
@@ -8700,6 +8714,7 @@ export type Database = {
           financial_transaction_id?: string | null
           fisqal_dps_id?: string | null
           fisqal_fiscal_request_id?: string | null
+          fiscal_ambiente?: string | null
           id?: string
           idempotency_key?: string | null
           intermediario_avulso?: Json | null
@@ -8711,9 +8726,15 @@ export type Database = {
           pdf_url?: string | null
           percentual_trib_sn?: number | null
           protocolo?: string | null
+          referencia_fiscal?: string | null
           regime_apuracao?: string | null
+          requisicao_fiscal_id?: string | null
           service_type_id?: string | null
           status?: string
+          status_fiscal_confirmado?: boolean
+          status_fiscal_confirmado_em?: string | null
+          status_fiscal_evidencia?: Json | null
+          status_fiscal_fonte?: string | null
           tomador_avulso?: Json | null
           tp_ret_issqn?: string | null
           trib_issqn?: string | null
@@ -12673,6 +12694,8 @@ export type Database = {
           company_id: string
           completed_at: string | null
           contract_id: string | null
+          contract_reference_date: string | null
+          contract_visit_customized_at: string | null
           created_at: string
           created_by: string | null
           customer_id: string | null
@@ -12761,6 +12784,8 @@ export type Database = {
           company_id: string
           completed_at?: string | null
           contract_id?: string | null
+          contract_reference_date?: string | null
+          contract_visit_customized_at?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
@@ -12849,6 +12874,8 @@ export type Database = {
           company_id?: string
           completed_at?: string | null
           contract_id?: string | null
+          contract_reference_date?: string | null
+          contract_visit_customized_at?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
@@ -16539,6 +16566,10 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: number
       }
+      nfse_next_dps_number: {
+        Args: { p_company_id: string }
+        Returns: number
+      }
       ft_signed_amount: {
         Args: { p_amount: number; p_type: string }
         Returns: number
@@ -17861,6 +17892,14 @@ export type Database = {
         }
         Returns: Json
       }
+      link_service_order_to_contract: {
+        Args: {
+          p_contract_id: string
+          p_reference_date: string
+          p_service_order_id: string
+        }
+        Returns: Json
+      }
       regenerate_pmoc_token: {
         Args: { p_contract_id: string }
         Returns: string
@@ -18035,6 +18074,26 @@ export type Database = {
           p_public_sections?: Json
         }
         Returns: Json
+      }
+      get_schedule_calendar_indicators: {
+        Args: {
+          p_customer_id?: string
+          p_end_date: string
+          p_equipment_ids?: string[]
+          p_exclude_service_order_id?: string
+          p_start_date: string
+        }
+        Returns: {
+          contract_occurrence_count: number
+          contract_occurrence_equipment_count: number
+          contract_occurrence_matches_equipment: boolean
+          has_contract_occurrence: boolean
+          has_service_order: boolean
+          schedule_date: string
+          service_order_count: number
+          service_order_equipment_count: number
+          service_order_matches_equipment: boolean
+        }[]
       }
       schedule_book_service_order: {
         Args: {

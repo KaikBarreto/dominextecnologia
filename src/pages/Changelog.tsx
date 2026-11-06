@@ -31,6 +31,263 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.36',
+    date: '6 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Horas e custos preservados ao editar',
+        description: 'As horas mensais informadas no cálculo de funcionários e mão de obra agora permanecem salvas ao aplicar e reabrir. Alterações em recursos de custo também não são mais desfeitas enquanto os dados terminam de carregar.',
+        category: 'correcao',
+      },
+      {
+        title: 'Cobranças e assinaturas sem perda de alterações',
+        description: 'Ajustes de multa, juros, desconto, descrição e lançamento financeiro permanecem no formulário mesmo quando as configurações da conta são atualizadas em segundo plano.',
+        category: 'correcao',
+      },
+      {
+        title: 'Taxas do orçamento mantidas durante o preenchimento',
+        description: 'Alterações manuais nas taxas e condições do orçamento não são mais substituídas pelos padrões da empresa enquanto a tela está aberta.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.35',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Layout fiscal correto em cada ambiente',
+        description: 'A Dominex agora aplica automaticamente a diferença de layout entre homologação e produção do Portal Nacional, evitando a rejeição estrutural E1235 na emissão real.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.34',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Emissão nacional liberada para empresas do Simples',
+        description: 'A Dominex agora reconhece a obrigatoriedade federal válida desde 1º de novembro e permite que ME e EPP do Simples Nacional emitam NFS-e pelo Portal Nacional, mesmo quando a prefeitura mantém um emissor próprio.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.33',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Compatibilidade com o layout fiscal nacional atual',
+        description: 'A emissão de NFS-e agora inclui o indicador obrigatório de finalidade na posição exigida pelo Portal Nacional, evitando a rejeição estrutural E1235 durante o envio.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.32',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Motivo da rejeição fiscal mais claro',
+        description: 'Quando o Portal Nacional recusar uma NFS-e, a Dominex agora mostra o código oficial, o motivo e a orientação disponível para corrigir os dados antes de tentar novamente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.31',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Teste fiscal liberado em homologação',
+        description: 'A produção restrita do governo nem sempre replica a cobertura real dos municípios. Em homologação, a Dominex agora envia a nota de teste para o Portal Nacional dar a resposta definitiva, sem efeito fiscal. Em produção, a confirmação municipal continua obrigatória.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.30',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Liberação municipal verificada automaticamente',
+        description: 'Ao abrir as Configurações Fiscais com o certificado A1 válido e o município já salvo, a Dominex confirma automaticamente a liberação para emissão. O botão permanece disponível apenas para tentar novamente quando necessário.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.29',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Todos os serviços disponíveis na Ordem de Serviço',
+        description: 'Listas maiores agora permitem rolar até o último serviço normalmente. A busca também encontra nomes mesmo quando o texto é digitado sem acento, como “visita tecnica”.',
+        category: 'correcao',
+      },
+      {
+        title: 'Nota fiscal da assinatura pelo histórico de pagamentos',
+        description: 'Depois que o pagamento for confirmado, administradores e gestores podem solicitar a NFS-e e acompanhar a liberação do PDF e do XML diretamente na tela de assinatura.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.28',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Calendário mais confiável ao agendar',
+        description: 'O calendário agora informa quando há vários atendimentos no mesmo dia, reconhece corretamente as O.S. vinculadas a contratos e avisa quando não consegue consultar a agenda.',
+        category: 'correcao',
+      },
+      {
+        title: 'Escolha de datas mais prática',
+        description: 'Ao adicionar outro dia ao atendimento, o calendário abre no mesmo mês da visita. Os avisos de carregamento e falha também ficaram mais claros no computador e no celular.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.27',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Jornadas prolongadas na Ordem de Serviço',
+        description: 'A duração de cada jornada da O.S. agora pode ser informada manualmente em atendimentos de 10, 12 ou até 24 horas, inclusive quando o registro é feito após a execução do serviço.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cálculo e histórico das horas preservados',
+        description: 'O sistema continua calculando corretamente o término do atendimento, inclusive após a meia-noite, e mantém as horas registradas no histórico da O.S.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.26',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agenda visível ao escolher uma data',
+        description: 'Ao agendar uma visita, O.S. ou tarefa, o calendário agora mostra pontos coloridos nos dias que já possuem atendimentos para o cliente selecionado. A legenda diferencia visitas de contrato e Ordens de Serviço avulsas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Planejamento com menos conflitos',
+        description: 'Quando houver equipamento selecionado, o calendário também identifica atendimentos ligados a ele. Passe o mouse sobre o marcador para entender o que já está programado naquele dia.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.25',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastro e edição de empresas mais claros',
+        description: 'O formulário de empresas agora organiza cadastro, plano e acesso em áreas fáceis de navegar, com resumo permanente no computador e recolhível no celular.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Redefinição de acesso direto pela empresa',
+        description: 'Administradores autorizados podem escolher um usuário da empresa e gerar um link temporário para redefinição de senha, sem precisar alterar os demais dados do cadastro.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.38.24',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vinculação de OS existente ao contrato',
+        description: 'Na aba Ocorrências, escolha uma Ordem de Serviço já cadastrada ou concluída e informe qual visita do cronograma ela representa. O número, o status, as datas reais e o histórico original da OS são preservados.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cronograma protegido contra duplicidades',
+        description: 'A vinculação substitui somente uma visita automática ainda vazia. Visitas iniciadas, concluídas ou com histórico permanecem protegidas para evitar perda de informações.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
+    version: '1.38.23',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Planejamento individual das visitas do contrato',
+        description: 'Abra uma visita diretamente pelo contrato para ajustar equipe, horários, observações e datas. O mesmo atendimento também pode ser distribuído em vários dias, inclusive datas não consecutivas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cronograma contratual preservado nos reagendamentos',
+        description: 'A data prevista no contrato continua registrada mesmo quando a execução é reagendada. Assim, domingos, feriados e imprevistos podem ser ajustados sem mudar a periodicidade nem criar visitas duplicadas.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Histórico de visitas mais fácil de acompanhar',
+        description: 'O contrato agora separa a data prevista das datas realmente agendadas e identifica as visitas que receberam planejamento próprio.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.22',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Município confirmado diretamente no Portal Nacional',
+        description: 'A verificação da cidade agora usa o certificado A1 da própria empresa e consulta a habilitação oficial para emissão. Ao enviar o certificado, o sistema já tenta concluir essa etapa automaticamente.',
+        category: 'correcao',
+      },
+      {
+        title: 'Homologação e produção totalmente separadas',
+        description: 'Testes em homologação não bloqueiam nem se misturam com notas reais. Cada nota mantém o ambiente em que foi emitida durante consultas, cancelamentos e geração do PDF.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Certificado A1 conferido com o CNPJ da empresa',
+        description: 'O sistema confirma se o certificado pertence ao mesmo CNPJ cadastrado antes de permitir seu uso na emissão fiscal.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
+    version: '1.38.21',
+    date: '4 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Emissão de NFS-e pelo Portal Nacional',
+        description: 'A configuração fiscal ficou mais simples: salve os dados da empresa, confirme o município e envie um certificado A1 válido. A emissão agora acontece diretamente pelo motor fiscal da Dominex, sem cadastro adicional em outro serviço.',
+        category: 'correcao',
+      },
+      {
+        title: 'Status fiscal mais claro e seguro',
+        description: 'A tela mostra exatamente o que falta para emitir e oferece atalhos para corrigir município ou certificado. Certificados vencidos ou sem validade confirmada não liberam a emissão.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.20',
     date: '4 de novembro de 2026',
     type: 'patch',

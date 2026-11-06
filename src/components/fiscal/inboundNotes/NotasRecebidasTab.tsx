@@ -50,10 +50,15 @@ export function NotasRecebidasTab() {
   const [search, setSearch] = useState('');
 
   const { settings: fiscalSettings } = useFiscalSettings();
-  // Mesmo critério de "certificado no ar" usado em `isFiscalReadyToEmit`: só o
-  // certificado, sem exigir `pode_emitir` (emissão e recebimento são fluxos
-  // distintos — uma empresa pode nunca emitir e ainda assim receber notas).
-  const hasCertificate = !!fiscalSettings.provider_certificate_id;
+  // Recebimento não exige cobertura municipal, mas exige A1 próprio dentro da
+  // validade. Validade ausente ou inválida falha fechado.
+  const certificateExpiresAt = fiscalSettings.certificate_expires_at
+    ? new Date(fiscalSettings.certificate_expires_at).getTime()
+    : Number.NaN;
+  const hasCertificate =
+    !!fiscalSettings.certificado_ref &&
+    Number.isFinite(certificateExpiresAt) &&
+    certificateExpiresAt > Date.now();
 
   const { optIn, activate, isActivating } = useDfeOptIn();
   const nfe = useInboundNfe();

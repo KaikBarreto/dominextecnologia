@@ -1,13 +1,15 @@
-import { Copy } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Copy, Plus, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { TimePicker } from '@/components/ui/TimePicker';
+import { ScheduleDatePicker } from '@/components/schedule/ScheduleDatePicker';
 import {
   buildDailySchedulePlan,
   getScheduleSlotDurationMinutes,
   getScheduleSlotEndTime,
+  MAX_SERVICE_ORDER_SCHEDULE_DURATION_MINUTES,
 } from '@/lib/serviceOrderSchedule';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import type { ServiceOrderScheduleSlot } from '@/types/database';
@@ -19,6 +21,9 @@ interface SchedulePlannerLabels {
   dailyPlan: string;
   dailyPlanHelp: string;
   applyFirstToAll: string;
+  addDate: string;
+  addDay: string;
+  removeDay: string;
   scheduledDaySingular: string;
   scheduledDayPlural: string;
   startTime: string;
@@ -31,6 +36,9 @@ interface ServiceOrderSchedulePlannerProps {
   onChange: (plan: ServiceOrderScheduleSlot[]) => void;
   locale: LocaleCode;
   labels: SchedulePlannerLabels;
+  excludeServiceOrderId?: string | null;
+  customerId?: string | null;
+  equipmentIds?: string[];
 }
 
 const LOCALE_TAG: Record<LocaleCode, string> = {
@@ -45,12 +53,20 @@ export function ServiceOrderSchedulePlanner({
   onChange,
   locale,
   labels,
+  excludeServiceOrderId,
+  customerId,
+  equipmentIds = [],
 }: ServiceOrderSchedulePlannerProps) {
+  const [additionalDate, setAdditionalDate] = useState('');
   const first = plan[0];
   const startDate = first?.date ?? '';
   const endDate = plan.at(-1)?.date ?? startDate;
   const defaultTime = first?.time ?? '08:00';
   const defaultDuration = first?.duration_minutes ?? 120;
+
+  useEffect(() => {
+    setAdditionalDate('');
+  }, [startDate, endDate]);
 
   const updateRange = (nextStart: string, nextEnd: string) => {
     if (!nextStart) return;
@@ -85,6 +101,20 @@ export function ServiceOrderSchedulePlanner({
     })));
   };
 
+  const addScheduledDay = () => {
+    if (!additionalDate || plan.length >= 31 || plan.some(slot => slot.date === additionalDate)) return;
+    onChange([
+      ...plan,
+      { date: additionalDate, time: defaultTime.slice(0, 5), duration_minutes: defaultDuration },
+    ].sort((a, b) => a.date.localeCompare(b.date)));
+    setAdditionalDate('');
+  };
+
+  const removeScheduledDay = (date: string) => {
+    if (plan.length <= 1) return;
+    onChange(plan.filter(slot => slot.date !== date));
+  };
+
   const dayLabel = (date: string) => new Intl.DateTimeFormat(LOCALE_TAG[locale], {
     weekday: 'short',
     day: '2-digit',
@@ -102,11 +132,23 @@ export function ServiceOrderSchedulePlanner({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>{labels.startDate}</Label>
-          <DatePicker value={startDate} onValueChange={(value) => updateRange(value, endDate)} />
+          <ScheduleDatePicker
+            value={startDate}
+            onValueChange={(value) => updateRange(value, endDate)}
+            excludeServiceOrderId={excludeServiceOrderId}
+            customerId={customerId}
+            equipmentIds={equipmentIds}
+          />
         </div>
         <div className="space-y-2">
           <Label>{labels.endDate}</Label>
-          <DatePicker value={endDate} onValueChange={(value) => updateRange(startDate, value)} />
+          <ScheduleDatePicker
+            value={endDate}
+            onValueChange={(value) => updateRange(startDate, value)}
+            excludeServiceOrderId={excludeServiceOrderId}
+            customerId={customerId}
+            equipmentIds={equipmentIds}
+          />
         </div>
       </div>
 
@@ -125,9 +167,33 @@ export function ServiceOrderSchedulePlanner({
         )}
       </div>
 
+      <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="space-y-2">
+          <Label>{labels.addDate}</Label>
+          <ScheduleDatePicker
+            value={additionalDate}
+            onValueChange={setAdditionalDate}
+            referenceDate={startDate}
+            excludeServiceOrderId={excludeServiceOrderId}
+            customerId={customerId}
+            equipmentIds={equipmentIds}
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-10 gap-2"
+          disabled={!additionalDate || plan.length >= 31 || plan.some(slot => slot.date === additionalDate)}
+          onClick={addScheduledDay}
+        >
+          <Plus className="h-4 w-4" />
+          {labels.addDay}
+        </Button>
+      </div>
+
       <div className="space-y-2">
         {plan.map((slot, index) => (
-          <div key={slot.date} className="grid items-start gap-3 rounded-md border bg-background p-3 sm:grid-cols-[minmax(120px,1fr)_150px_150px]">
+          <div key={slot.date} className="grid items-start gap-3 rounded-md border bg-background p-3 sm:grid-cols-[minmax(120px,1fr)_150px_150px_40px]">
             <div>
               <p className="text-sm font-medium capitalize">{dayLabel(slot.date)}</p>
               <p className="text-xs text-muted-foreground">{slot.date.split('-').reverse().join('/')}</p>
@@ -147,13 +213,25 @@ export function ServiceOrderSchedulePlanner({
                 value={getScheduleSlotEndTime(slot.time, slot.duration_minutes)}
                 minuteStep={15}
                 ariaLabel={`${labels.endTime} — ${dayLabel(slot.date)}`}
-                ariaInvalid={slot.duration_minutes < 15 || slot.duration_minutes > 480}
+                ariaInvalid={slot.duration_minutes < 15 || slot.duration_minutes > MAX_SERVICE_ORDER_SCHEDULE_DURATION_MINUTES}
                 onValueChange={(value) => updateEndTime(index, value)}
               />
-              {(slot.duration_minutes < 15 || slot.duration_minutes > 480) && (
+              {(slot.duration_minutes < 15 || slot.duration_minutes > MAX_SERVICE_ORDER_SCHEDULE_DURATION_MINUTES) && (
                 <p className="text-xs text-destructive sm:col-span-2">{labels.invalidTimeRange}</p>
               )}
             </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="min-h-10 min-w-10 text-muted-foreground hover:text-destructive"
+              disabled={plan.length <= 1}
+              aria-label={`${labels.removeDay} — ${dayLabel(slot.date)}`}
+              title={labels.removeDay}
+              onClick={() => removeScheduledDay(slot.date)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         ))}
       </div>

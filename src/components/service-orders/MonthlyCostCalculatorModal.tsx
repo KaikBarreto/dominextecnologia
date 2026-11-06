@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -108,6 +108,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
   const t = MESSAGES[locale].app.crm.costModals;
   const fmt = (v: number) => formatMoney(v, currency, locale);
   const [bd, setBd] = useState<MonthlyCostBreakdown>({ ...defaultBreakdown });
+  const monthlyHoursTouchedRef = useRef(false);
 
   // Auto-detecção do regime da empresa via configurações fiscais
   const { settings: fiscal } = useFiscalSettings();
@@ -135,6 +136,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
 
   useEffect(() => {
     if (!open) return;
+    monthlyHoursTouchedRef.current = false;
     const resolvedHours = defaultMonthlyHours || 176;
     const b: MonthlyCostBreakdown = initialBreakdown
       ? {
@@ -154,10 +156,10 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
       : { ...defaultBreakdown, baseSalary: initialSalary ?? 0, regime: regimeFromCompany, monthlyHours: resolvedHours };
     // Self-heal: remover chaves legadas para não serem re-persistidas ao aplicar.
     // Os campos permanecem opcionais no tipo MonthlyCostBreakdown para leitura de dados antigos.
-    delete (b as any).leisSociais;
-    delete (b as any).leisSociaisMode;
-    delete (b as any).periculosidade;
-    delete (b as any).periculosidadeMode;
+    delete b.leisSociais;
+    delete b.leisSociaisMode;
+    delete b.periculosidade;
+    delete b.periculosidadeMode;
     setBd(b);
     const fmtCurrency = (v: number) => v > 0
       ? currencyMask(String(Math.round(v * 100)), currency, locale)
@@ -172,18 +174,17 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
     setAsoDisplay(fmtCurrency(b.asoAnual));
     setEpiDisplay(fmtCurrency(b.epiAnual));
     setCelularDisplay(fmtCurrency(b.celularAnual));
-  }, [open, initialBreakdown, initialSalary, defaultMonthlyHours]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, initialBreakdown, initialSalary]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keep monthlyHours in sync when defaultMonthlyHours resolves after initial render
+  // A jornada pode chegar depois da abertura porque vem de query. Atualiza só
+  // o default de um cálculo novo e intocado; nunca reidrata o formulário todo,
+  // nem substitui horas já salvas ou digitadas pelo usuário.
   useEffect(() => {
-    if (!open || !defaultMonthlyHours) return;
-    setBd(prev => {
-      if (prev.monthlyHours !== defaultMonthlyHours) {
-        return { ...prev, monthlyHours: defaultMonthlyHours };
-      }
-      return prev;
-    });
-  }, [defaultMonthlyHours, open]);
+    if (!open || !defaultMonthlyHours || initialBreakdown?.monthlyHours || monthlyHoursTouchedRef.current) return;
+    setBd(prev => prev.monthlyHours === defaultMonthlyHours
+      ? prev
+      : { ...prev, monthlyHours: defaultMonthlyHours });
+  }, [defaultMonthlyHours, initialBreakdown?.monthlyHours, open]);
 
   const updateCurrencyField = (field: keyof MonthlyCostBreakdown, display: string, setDisplay: (v: string) => void) => {
     setDisplay(display);
@@ -412,7 +413,10 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
             <div className="relative">
               <NumericInput
                 value={bd.monthlyHours ? String(bd.monthlyHours) : ''}
-                onValueChange={v => setBd(prev => ({ ...prev, monthlyHours: Number(v) || 0 }))}
+                onValueChange={v => {
+                  monthlyHoursTouchedRef.current = true;
+                  setBd(prev => ({ ...prev, monthlyHours: Number(v) || 0 }));
+                }}
                 placeholder="176"
                 className="h-8 text-sm pr-8"
               />

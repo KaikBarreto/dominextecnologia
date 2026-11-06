@@ -69,6 +69,7 @@ from .custodia import ErroDeCustodia
 from .errors import CertificadoInvalido, ErroFiscal
 from .schemas import (
     CancelarRequest,
+    CoberturaRequest,
     ConsultarRequest,
     DanfseRequest,
     EmitirRequest,
@@ -271,6 +272,12 @@ async def autoteste() -> dict:
     isto aqui fica vermelho ANTES de a nota do cliente ser rejeitada.
     """
     return diagnostico.checar_assinatura()
+
+
+@rotas.post("/nfse/cobertura", dependencies=nfse_leitura)
+async def cobertura(req: CoberturaRequest) -> dict:
+    """Consulta o convênio municipal no ADN usando o A1 em mTLS."""
+    return servico.checar_cobertura(req)
 
 
 @rotas.get("/nfse/{chave_acesso}", dependencies=nfse_leitura)

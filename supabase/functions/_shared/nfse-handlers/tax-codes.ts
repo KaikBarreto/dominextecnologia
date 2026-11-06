@@ -1,11 +1,9 @@
 // =============================================================================
-// Handler de CATÁLOGOS FISCAIS (rotas: nfse-tax-codes / fisqal-tax-codes).
+// Handler de CATÁLOGOS FISCAIS (rota: nfse-tax-codes).
 // =============================================================================
 // AUTENTICADA: Authorization Bearer + módulo 'nfe' ativo + can_manage_system.
 //
 // É LEITURA de catálogo oficial (sem efeito colateral, sem escrita no banco).
-// O client NUNCA fala direto com o provedor — a credencial é secret do servidor.
-//
 // Contrato (body JSON): { type: 'servico' | 'nbs', q?: string, limit?: number }
 //   type='servico' → códigos cTribNac / itens LC116 (~337 itens: default traz tudo).
 //   type='nbs'     → Nomenclatura Brasileira de Serviços (tabela grande):
@@ -13,13 +11,8 @@
 //
 // Sempre devolve { items: [{ codigo, descricao, itemLc116? }], total }.
 //
-// FONTE DO CATÁLOGO — cadeia de fallback:
-//   1. Provedor ativo, SE ele implementa `buscarCatalogo` (Fisqal tinha API própria).
-//   2. Catálogo LOCAL (`nfse_codigos_tributacao` / `nfse_codigos_nbs`, seed da
-//      migration 20260903182000_nfse_catalogos_tributacao_e_nbs.sql) — usado quando
-//      o provedor não implementa (motor próprio/Sefin: o governo não publica API
-//      de catálogo, ver `_shared/providers/sefin.ts`) OU quando o provedor falha.
-//   3. Só devolve erro se as DUAS rotas falharem.
+// FONTE: catálogo local (`nfse_codigos_tributacao` / `nfse_codigos_nbs`),
+// semeado pela migration 20260903182000. O governo não publica API de catálogo.
 // Catálogo é global (sem company_id) — não precisa filtrar por empresa.
 // =============================================================================
 
@@ -28,14 +21,11 @@ import {
   corsHeaders,
   jsonResponse,
 } from "../fiscal-auth.ts";
-import { getProvider } from "../nfse-provider.ts";
-import type { NfseCatalogoResultado, NfseProviderCtx } from "../nfse-provider.ts";
-import { providerErrorResponse } from "./common.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const TAG = "[nfse-tax-codes]";
 
-// Limites de segurança pra não estourar o endpoint do provedor.
+// Limites de segurança e responsividade da busca.
 const SERVICO_DEFAULT_LIMIT = 400; // tabela cTribNac inteira (~337 itens)
 const SERVICO_MAX_LIMIT = 400;
 const NBS_DEFAULT_LIMIT = 50;
@@ -49,7 +39,7 @@ function clampLimit(value: unknown, def: number, max: number): number {
 }
 
 // -----------------------------------------------------------------------------
-// Fallback LOCAL (tabelas de catálogo, sem provedor)
+// Catálogo local
 // -----------------------------------------------------------------------------
 
 /**
@@ -76,16 +66,18 @@ interface CatalogoRow {
   item_lc116?: string | null;
 }
 
+interface CatalogoResultado {
+  items: Array<{ codigo: string; descricao: string; itemLc116?: string }>;
+  total: number;
+}
+
 /**
  * Busca no catálogo LOCAL (`nfse_codigos_tributacao` / `nfse_codigos_nbs`).
- * Usado quando o provedor ativo não implementa `buscarCatalogo`, ou quando ele
- * falha em runtime. Lança em caso de erro do banco — quem chama decide o que
- * fazer (aqui: só desiste depois que provedor E local falharam).
  */
 async function buscarCatalogoLocal(
   supabase: SupabaseClient,
   params: { tipo: "servico" | "nbs"; q?: string; limit: number },
-): Promise<NfseCatalogoResultado> {
+): Promise<CatalogoResultado> {
   const q = (params.q ?? "").trim();
 
   if (params.tipo === "servico") {
@@ -177,7 +169,7 @@ export async function handleNfseTaxCodes(req: Request): Promise<Response> {
   try {
     const auth = await authorizeFiscalManager(req);
     if (!auth.ok) return auth.response;
-    const { companyId, supabase } = auth;
+    const { supabase } = auth;
 
     const body = (await req.json().catch(() => null)) as
       | { type?: unknown; q?: unknown; limit?: unknown }
@@ -188,42 +180,12 @@ export async function handleNfseTaxCodes(req: Request): Promise<Response> {
 
     if (type !== "servico" && type !== "nbs") {
       return jsonResponse(
-        { error: "invalid_type", message: "Tipo de catálogo inválido. Use 'servico' ou 'nbs'." },
+        {
+          error: "invalid_type",
+          message: "Tipo de catálogo inválido. Use 'servico' ou 'nbs'.",
+        },
         422,
       );
-    }
-
-    const { data: fiscal } = await supabase
-      .from("company_fiscal_settings")
-      .select("*")
-      .eq("company_id", companyId)
-      .maybeSingle();
-
-    const provider = getProvider(fiscal as Record<string, unknown> | null);
-    const ctx: NfseProviderCtx = {
-      supabase,
-      companyId,
-      fiscal: (fiscal ?? {}) as Record<string, unknown>,
-    };
-
-    /**
-     * Resolve o catálogo pela cadeia de fallback: provedor (se implementa) →
-     * catálogo local → propaga o erro (o catch externo decide a resposta).
-     */
-    async function resolverCatalogo(
-      params: { tipo: "servico" | "nbs"; q?: string; limit: number },
-    ): Promise<NfseCatalogoResultado> {
-      if (provider.buscarCatalogo) {
-        try {
-          return await provider.buscarCatalogo(ctx, params);
-        } catch (err) {
-          console.error(`${TAG} provider buscarCatalogo failed, falling back to local`, {
-            provider: provider.nome,
-            message: (err as Error)?.message ?? String(err),
-          });
-        }
-      }
-      return await buscarCatalogoLocal(supabase, params);
     }
 
     // ---- type='nbs' — tabela grande: exige busca com >= 2 caracteres.
@@ -239,29 +201,35 @@ export async function handleNfseTaxCodes(req: Request): Promise<Response> {
         );
       }
       const limit = clampLimit(body?.limit, NBS_DEFAULT_LIMIT, NBS_MAX_LIMIT);
-      const resultado = await resolverCatalogo({ tipo: "nbs", q, limit });
+      const resultado = await buscarCatalogoLocal(supabase, {
+        tipo: "nbs",
+        q,
+        limit,
+      });
       return jsonResponse(resultado, 200);
     }
 
     // ---- type='servico' — códigos de tributação (cTribNac / LC116).
-    const limit = clampLimit(body?.limit, SERVICO_DEFAULT_LIMIT, SERVICO_MAX_LIMIT);
-    const resultado = await resolverCatalogo({
+    const limit = clampLimit(
+      body?.limit,
+      SERVICO_DEFAULT_LIMIT,
+      SERVICO_MAX_LIMIT,
+    );
+    const resultado = await buscarCatalogoLocal(supabase, {
       tipo: "servico",
       q: q || undefined,
       limit,
     });
     return jsonResponse(resultado, 200);
   } catch (err) {
-    const providerResp = providerErrorResponse(err);
-    if (providerResp) return providerResp;
-
     console.error(`${TAG} unexpected error`, {
       message: (err as Error)?.message ?? String(err),
     });
     return jsonResponse(
       {
         error: "internal_error",
-        message: "Falha inesperada ao buscar os códigos fiscais. Tente novamente.",
+        message:
+          "Falha inesperada ao buscar os códigos fiscais. Tente novamente.",
       },
       500,
     );

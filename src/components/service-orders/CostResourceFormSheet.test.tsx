@@ -13,9 +13,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as React from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import type { CostResourceItem } from '@/hooks/useCostResources';
 
+let mockedExistingItems: CostResourceItem[] | undefined;
 vi.mock('@/hooks/useCostResources', () => ({
-  useCostResourceItems: () => ({ data: undefined }),
+  useCostResourceItems: () => ({ data: mockedExistingItems }),
 }));
 
 import { CostResourceFormSheet } from './CostResourceFormSheet';
@@ -39,6 +41,33 @@ function mount(category: 'vehicle' | 'gift') {
   });
 }
 
+const editingResource = {
+  id: 'resource-1',
+  company_id: 'company-1',
+  category: 'vehicle' as const,
+  name: 'Veículo original',
+  is_active: true,
+  monthly_hours: 220,
+  notes: 'Observação original',
+  photo_url: null,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+};
+
+function renderEditingResource() {
+  act(() => {
+    root.render(
+      <CostResourceFormSheet
+        open
+        onOpenChange={() => {}}
+        resource={editingResource}
+        category="vehicle"
+        onSave={() => {}}
+      />
+    );
+  });
+}
+
 function paste(input: HTMLInputElement, text: string) {
   const pasteEvent = new Event('paste', { bubbles: true, cancelable: true }) as ClipboardEvent & { clipboardData: any };
   pasteEvent.clipboardData = { getData: () => text };
@@ -47,7 +76,16 @@ function paste(input: HTMLInputElement, text: string) {
   });
 }
 
+function typeInto(input: HTMLInputElement, value: string) {
+  act(() => {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!;
+    setter.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+}
+
 beforeEach(() => {
+  mockedExistingItems = undefined;
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -92,5 +130,31 @@ describe('CostResourceFormSheet — campos de dinheiro dos itens (prova real de 
 
     paste(input!, 'R$ 4.550');
     expect(input!.value).toBe('4550');
+  });
+});
+
+describe('CostResourceFormSheet — hidratação assíncrona dos itens', () => {
+  it('carrega os itens sem apagar nome e horas editados durante a consulta', () => {
+    renderEditingResource();
+    const nameInput = document.querySelector('input[placeholder="Ex: Spin 2024"]') as HTMLInputElement;
+    const hoursInput = document.querySelector('input[inputmode="numeric"]') as HTMLInputElement;
+
+    typeInto(nameInput, 'Veículo editado');
+    typeInto(hoursInput, '144');
+
+    mockedExistingItems = [{
+      id: 'item-1',
+      resource_id: editingResource.id,
+      name: 'Combustível',
+      value: 500,
+      is_monthly: true,
+      annual_value: null,
+      sort_order: 0,
+    }];
+    renderEditingResource();
+
+    expect(nameInput.value).toBe('Veículo editado');
+    expect(hoursInput.value).toBe('144');
+    expect(document.querySelector('input[value="Combustível"]')).toBeTruthy();
   });
 });

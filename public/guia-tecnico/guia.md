@@ -7187,7 +7187,7 @@ Bloco Como funciona?, com a explicação em linguagem simples e a legenda das si
 
 #### Por que configurar primeiro
 
-O sistema só libera a emissão quando três coisas estão prontas ao mesmo tempo: o município está habilitado para NFS-e no padrão nacional, a empresa está registrada para emissão, e o certificado digital A1 foi enviado. Faltando qualquer uma, a tela volta pro estado guiado com o card "Configure seus dados fiscais, configure seus dados fiscais para começar a emitir notas" e o botão Configurações fiscais. Não adianta tentar emitir antes: o passo 4 da emissão bloqueia e explica o que falta.
+O sistema só libera a emissão quando duas coisas estão prontas ao mesmo tempo: o município está habilitado no Padrão Nacional da NFS-e e existe um certificado digital A1 válido. A Dominex fala direto com o Portal Nacional pelo motor fiscal próprio, por isso não existe cadastro nem registro da empresa em um fornecedor externo. Faltando município ou certificado, a tela volta pro estado guiado com o botão Configurações fiscais, e o passo 4 da emissão explica o que falta.
 
 [Print da tela: Tela Notas Fiscais no estado inicial, com o selo verde 0/200 emitidas este mês, o bloco Como funciona fechado, o card Configure seus dados fiscais com botão Configurações fiscais e o botão flutuante Nova Nota no canto inferior direito]
 
@@ -7219,16 +7219,16 @@ A aba Notas Fiscais já se chamou NFS-e, e a Relatório fiscal já se chamou Vis
 
 A configuração fiscal é uma tela própria, no endereço /notas-fiscais/configuracoes. Ela já foi um modal que abria por cima de Notas Fiscais, mas isso mudou: hoje o botão Configurações fiscais no topo (ou o botão do estado guiado) navega pra essa tela, com um botão Voltar para retornar a Notas Fiscais. Não procure um item "Configurações fiscais" no menu lateral: ele não existe, você chega lá pelo botão de dentro de Notas Fiscais.
 
-A tela tem quatro seções numeradas na lateral no desktop (em pílulas, no celular): 1. Empresa, 2. Certificado A1, 3. Tributação e 4. Serviços. No cabeçalho aparece um selo com a situação atual: Apto a emitir ou Configuração incompleta, e um botão Voltar para retornar a Notas Fiscais.
+A tela tem quatro abas: Empresa, Certificado A1, Tributação e Serviços. No cabeçalho aparece um resumo com a situação atual: Apto a emitir ou Configuração incompleta, e um botão Voltar para retornar a Notas Fiscais.
 
-A ordem importa e o sistema força ela: primeiro a empresa é registrada, só depois o certificado é aceito. A dica na tela é literal: "Passo 1 de 2: preencha os dados e registre a empresa. Só depois libera o certificado." Tentando subir o certificado antes, aparece "Registre a empresa antes de subir o certificado. Volte ao passo 1. Empresa e registre a empresa primeiro."
+Preencha e salve os dados fiscais da empresa, confirme a cobertura do município e envie o certificado A1. Não existe uma etapa de registro externo: os dados ficam na Dominex e o certificado é guardado de forma criptografada para assinar somente as operações autorizadas pela empresa.
 
 #### Campos da seção Empresa
 
 | Campo | Observação |
 | Razão social / Nome | Como consta no CNPJ. |
 | CNPJ | Formato 00.000.000/0000-00. |
-| Inscrição Municipal | A tela avisa: "Exigida pela prefeitura para registrar a empresa e emitir notas. É o mesmo campo da aba Tributação." Preencher aqui ou lá dá no mesmo. |
+| Inscrição Municipal | É o cadastro municipal usado pela prefeitura na emissão. É o mesmo campo da aba Tributação; preencher aqui ou lá dá no mesmo. |
 | CEP | Chave do endereço. A dica é "Preenche endereço, cidade e o código do município automaticamente." |
 | Logradouro, Número, Complemento, Bairro, Cidade / UF | Endereço fiscal. Cidade e UF também podem ser escolhidas manualmente. |
 | Ambiente de emissão de NFS-e | Chave entre Homologação ("notas de teste, sem valor fiscal") e Produção ("as notas valem de verdade, têm efeito fiscal"). |
@@ -7237,11 +7237,9 @@ Não existe um campo "código do município (IBGE)" pra você digitar. Esse cód
 
 #### Verificar a cobertura do município
 
-O botão Verificar cobertura do município consulta se a prefeitura já emite NFS-e no padrão nacional. O bloco Status da emissão mostra o resultado em três linhas:
+O botão Verificar cobertura do município consulta se a prefeitura já emite NFS-e no Padrão Nacional. O bloco Status da emissão mostra os dois requisitos que realmente liberam a emissão:
 
 - Município: liberado para emitir notas ou Município: liberação ainda não confirmada
-
-- Empresa: registrada ou Empresa: não registrada
 
 - Certificado: enviado ou Certificado: pendente
 
@@ -7257,19 +7255,9 @@ Mensagens possíveis:
 
 Município sem cobertura bloqueia a emissão mesmo com todo o resto certo. Verifique a cobertura ANTES de comprar certificado ou prometer nota pro cliente. Se o município não estiver apto, o passo final da emissão mostra "Emissão bloqueada, o município ainda não está liberado para emitir NFS-e. Verifique nas Configurações Fiscais." Não há o que fazer do lado do sistema: depende da prefeitura aderir ao padrão nacional.
 
-[Print da tela: Tela Configurações fiscais na seção 1. Empresa, com o selo laranja Configuração incompleta, o aviso Passo 1 de 2, os campos Razão social / Nome, CNPJ, Inscrição Municipal, o bloco Endereço fiscal com CEP e demais campos, a chave Homologação/Produção, o botão Salvar dados da empresa e, na base, o bloco Status da emissão com os três itens Empresa, Certificado e Município, todos pendentes, e o botão Verificar cobertura do município]
+#### Salvar os dados fiscais
 
-Configurações fiscais, seção Empresa: dados cadastrais, chave de ambiente e o bloco Status da emissão.
-
-#### Salvar e registrar
-
-O botão é Salvar dados da empresa. Se salvar mas o registro para emissão falhar, o sistema é específico sobre a causa:
-
-- Erro de dado seu: "Não conseguimos registrar sua empresa na emissão fiscal. Motivo: [motivo]. Corrija os dados acima e salve novamente."
-
-- Erro do lado da plataforma: "Não foi possível registrar sua empresa na emissão fiscal no momento: [motivo]. Isso não é problema nos seus dados, já estamos verificando. Tente novamente em alguns minutos ou fale com o suporte."
-
-Deu certo, aparece "Dados da empresa salvos." e libera o botão Próximo: enviar certificado.
+O botão é Salvar dados da empresa. Ele grava os dados fiscais na Dominex, sem enviar cadastro para outro sistema. Deu certo, aparece "Dados da empresa salvos.". Se houver campo obrigatório incompleto ou falha ao salvar, a tela mantém os dados preenchidos e orienta a correção antes de tentar novamente.
 
 ### 3. Passo Certificado: subindo o A1 (.pfx), senha e o consentimento
 
@@ -7277,7 +7265,7 @@ O certificado digital A1 é o arquivo que assina as suas notas. Sem ele, o siste
 
 #### Passo a passo
 
-- Com a empresa já registrada, abra a seção 2. Certificado A1.
+- Depois de salvar os dados fiscais, abra a aba Certificado A1.
 
 - Clique em Selecionar arquivo (.pfx / .p12) e escolha o certificado.
 
@@ -7288,10 +7276,6 @@ O certificado digital A1 é o arquivo que assina as suas notas. Sem ele, o siste
 - Marque a autorização de guarda: "Autorizo o Dominex a guardar meu certificado digital de forma criptografada e a usá-lo somente para assinar as notas fiscais que a minha empresa mandar emitir." Ao lado há o link Ler a Seção 12 dos Termos de Uso.
 
 - Clique em Enviar certificado. A confirmação é "Certificado enviado com sucesso."
-
-[Print da tela: Tela Configurações fiscais na seção 2. Certificado A1, com o aviso 'Registre a empresa antes de subir o certificado', o campo Arquivo do certificado com o botão Selecionar arquivo (.pfx / .p12), o campo opcional Nome do certificado, o campo Senha do certificado com ícone de olho para mostrar, a caixa de Autorização para guardar o certificado com o link Ler a Seção 12 dos Termos de Uso, e o botão Enviar certificado]
-
-Configurações fiscais, seção Certificado A1: envio do arquivo, senha e a autorização de guarda.
 
 #### Mensagens de erro nesse passo
 
@@ -7429,7 +7413,7 @@ Cliente sem documento trava a nota: "Este cliente está sem CPF/CNPJ. Complete o
 
 - Retenção do ISS: três opções, Não retido, Retido pelo tomador e Retido pelo intermediário.
 
-- Retenções federais: PIS retido (R$), COFINS retido (R$) e CSLL retido (R$), em reais. A tela avisa: "INSS e IRRF não se aplicam neste provedor."
+- Retenções federais: PIS retido (R$), COFINS retido (R$) e CSLL retido (R$), em reais. A tela avisa: "INSS e IRRF ainda não estão disponíveis nesta emissão de NFS-e."
 
 - Percentual de tributos do Simples Nacional (%): aparece no Simples, explicado no capítulo seguinte.
 
@@ -7442,8 +7426,6 @@ A opção padrão de Retenção do ISS é "Não retido", e isso está certo. "N�
 Mostra a Pré-visualização da NFS-e com quatro blocos, Prestador, Tomador, Serviço e Valores, e o aviso "Número será atribuído após emissão". Se faltar habilitação, o bloco vermelho Emissão bloqueada diz exatamente o quê:
 
 - "Configure o certificado digital nas Configurações Fiscais."
-
-- "Conclua o cadastro da empresa nas Configurações Fiscais para liberar a emissão."
 
 - "O município ainda não está liberado para emitir NFS-e. Verifique nas Configurações Fiscais."
 
@@ -7585,7 +7567,7 @@ Depois de ligado, o botão Sincronizar busca notas novas a qualquer momento, mos
 | "Está tudo configurado e mesmo assim não emite" | Município sem cobertura do padrão nacional | Abra Configurações fiscais, seção Empresa, e clique em Verificar cobertura do município. Se voltar "Município ainda sem emissão de NFS-e", não há o que fazer do lado do sistema: depende de a prefeitura aderir ao padrão nacional. |
 | "A prefeitura recusou a nota e falou de alíquota" | Empresa do Simples com alíquota preenchida e ISS não retido | No Simples Nacional, com ISS não retido, a alíquota deve ficar em branco. A própria tela avisa: "Informar alíquota nesse caso faz a prefeitura recusar a nota." Apague a alíquota e reenvie a nota rejeitada. |
 | "A nota saiu dizendo que o cliente reteve o ISS, e ele não reteve" | Campo Retenção do ISS marcado errado | O padrão é "Não retido", que significa que quem recolhe é a sua empresa. Se alguém marcou "Retido pelo tomador" sem previsão em contrato, a nota precisa ser cancelada e emitida de novo com o campo certo. |
-| "Não consigo subir o certificado" | Empresa ainda não registrada, arquivo errado ou consentimento não marcado | A ordem é obrigatória: primeiro salvar e registrar a empresa, depois o certificado. O arquivo precisa ser .pfx ou .p12, a senha é a do certificado (não a do sistema) e a autorização de guarda precisa estar marcada. |
+| "Não consigo subir o certificado" | Arquivo errado, senha incorreta ou consentimento não marcado | O arquivo precisa ser .pfx ou .p12, a senha é a do próprio certificado (não a senha do sistema) e a autorização de guarda precisa estar marcada. Não existe registro da empresa em fornecedor externo. |
 | "Emitia normal e do nada parou" | Certificado vencido | Abra Configurações fiscais, seção Certificado A1. Vencido, aparece "Certificado vencido em DD/MM/AAAA. Envie um novo." Renove com a certificadora e suba o arquivo novo. |
 | "Não deixa emitir e fala de limite" | Cota mensal do nível atingida | O selo no topo mostra o consumo do mês. Batido o limite, é possível subir de nível pelo próprio modal, o que libera a cota na hora e conclui a nota que estava sendo emitida. Ou esperar virar o mês. |
 | "O cliente não recebe a nota, dá erro de dados" | Cliente sem CPF/CNPJ ou sem endereço completo | A nota exige cliente com documento e endereço. A mensagem é "Este cliente está sem CPF/CNPJ. Complete os dados fiscais antes de emitir." Complete a ficha do cliente na aba Fiscal e emita de novo. |

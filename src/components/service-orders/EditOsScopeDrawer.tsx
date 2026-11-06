@@ -105,6 +105,7 @@ export function EditOsScopeDrawer({
     (MESSAGES[appLocale as keyof typeof MESSAGES]?.app?.os?.technicianFlow as TFlow) ??
     MESSAGES['pt-br'].app.os.technicianFlow;
   const t = flow.editScope;
+  const formT = MESSAGES[appLocale as keyof typeof MESSAGES].app.os.form;
   const { toast } = useToast();
   const { templates } = useFormTemplates();
   const { equipment, isLoading: equipmentLoading, createEquipment } = useEquipment(customerId);
@@ -573,6 +574,9 @@ export function EditOsScopeDrawer({
                 plan={schedulePlan}
                 onChange={setSchedulePlan}
                 locale={appLocale as 'pt-br' | 'en' | 'es' | 'fr'}
+                excludeServiceOrderId={serviceOrderId}
+                customerId={customerId}
+                equipmentIds={scopeState.equipmentGroups.map((group) => group.equipmentId)}
                 labels={{
                   period: t.schedulePeriod,
                   startDate: t.scheduleStartDate,
@@ -580,6 +584,9 @@ export function EditOsScopeDrawer({
                   dailyPlan: t.scheduleDailyPlan,
                   dailyPlanHelp: t.scheduleDailyPlanHelp,
                   applyFirstToAll: t.scheduleApplyFirstToAll,
+                  addDate: formT.scheduleAddDate,
+                  addDay: formT.scheduleAddDay,
+                  removeDay: formT.scheduleRemoveDay,
                   scheduledDaySingular: t.scheduleDaySingular,
                   scheduledDayPlural: t.scheduleDayPlural,
                   startTime: t.scheduleStartTime,

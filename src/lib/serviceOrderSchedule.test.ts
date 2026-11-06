@@ -6,6 +6,7 @@ import {
   expandServiceOrderScheduledDays,
   getScheduleSlotDurationMinutes,
   getScheduleSlotEndTime,
+  normalizeServiceOrderSchedulePlan,
   shiftSchedulePlanToStart,
 } from './serviceOrderSchedule';
 
@@ -90,6 +91,7 @@ describe('expandServiceOrderScheduledDays', () => {
 
   it('calcula o horário de término a partir da duração persistida', () => {
     expect(getScheduleSlotEndTime('07:30', 480)).toBe('15:30');
+    expect(getScheduleSlotEndTime('07:30', 720)).toBe('19:30');
     expect(getScheduleSlotEndTime('20:00', 480)).toBe('04:00');
   });
 
@@ -97,5 +99,24 @@ describe('expandServiceOrderScheduledDays', () => {
     expect(getScheduleSlotDurationMinutes('07:30', '15:30')).toBe(480);
     expect(getScheduleSlotDurationMinutes('20:00', '04:00')).toBe(480);
     expect(getScheduleSlotDurationMinutes('08:00', '08:00')).toBe(1440);
+  });
+
+  it('preserva jornadas prolongadas de até 24 horas no plano normalizado', () => {
+    const plan = [
+      { date: '2026-10-20', time: '07:30', duration_minutes: 720 },
+      { date: '2026-10-21', time: '08:00', duration_minutes: 1440 },
+    ];
+
+    expect(normalizeServiceOrderSchedulePlan(makeOrder({ schedule_plan: plan }))).toEqual(plan);
+  });
+
+  it('descarta jornada superior a 24 horas do plano normalizado', () => {
+    expect(normalizeServiceOrderSchedulePlan(makeOrder({
+      schedule_plan: [{ date: '2026-10-20', time: '07:30', duration_minutes: 1441 }],
+    }))).toEqual([{
+      date: '2026-10-20',
+      time: '07:30',
+      duration_minutes: 480,
+    }]);
   });
 });

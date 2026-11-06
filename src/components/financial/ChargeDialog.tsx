@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { formatMoney, formatDate, toBcp47 } from '@/lib/format';
@@ -301,6 +301,15 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   const [interestPercent, setInterestPercent] = useState('');
   const [discountPercent, setDiscountPercent] = useState('');
   const [discountDays, setDiscountDays] = useState('');
+  const accountDefaultsTouchedRef = useRef({
+    fine: false,
+    interest: false,
+    discount: false,
+    discountDays: false,
+    description: false,
+    postToFinance: false,
+    feePayer: false,
+  });
 
   // Resultado (link gerado) — resultado normalizado da mutation
   const [result, setResult] = useState<CreateChargeResult | null>(null);
@@ -320,11 +329,20 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     [customers, customerId],
   );
 
-  // Inicializa os campos avançados com os defaults da conta ao abrir o dialog.
-  // Quando presetAmount ou presetDescription são fornecidos (ex.: orçamento),
-  // eles têm prioridade sobre os defaults da conta.
+  // Inicializa uma nova sessão do formulário. A jornada de carregamento da
+  // conta (fallback imediato -> valores persistidos) é tratada separadamente
+  // abaixo, para não reidratar o formulário inteiro por cima do usuário.
   useEffect(() => {
     if (open) {
+      accountDefaultsTouchedRef.current = {
+        fine: false,
+        interest: false,
+        discount: false,
+        discountDays: false,
+        description: false,
+        postToFinance: false,
+        feePayer: false,
+      };
       // O default da CONTA é percentual (default_fine_percent), então abrir
       // sempre começa em %. A escolha de reais vale só para a cobrança atual.
       setFineType('PERCENTAGE');
@@ -338,6 +356,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
       setCategory('');
       setCostCenterId(null);
       setPostToFinance(autoPostToFinance);
+      setFeePayer(feePayerDefault === 'customer' ? 'customer' : 'company');
       if (presetAmount != null && presetAmount > 0) {
         setAmount(presetAmount);
       }
@@ -347,7 +366,29 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
         setDueDate(presetDueDate);
       }
     }
-  }, [open, defaultFinePercent, defaultInterestPercent, defaultDiscountPercent, defaultDiscountDays, defaultDescription, autoPostToFinance, presetAmount, presetDescription, presetDueDate]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A conta pode resolver/refazer a query com o modal aberto. Cada default só
+  // preenche o campo enquanto ele ainda não foi tocado nesta cobrança.
+  useEffect(() => {
+    if (!open) return;
+    const touched = accountDefaultsTouchedRef.current;
+    if (!touched.fine) setFinePercent(defaultFinePercent != null ? String(defaultFinePercent) : '');
+    if (!touched.interest) setInterestPercent(defaultInterestPercent != null ? String(defaultInterestPercent) : '');
+    if (!touched.discount) setDiscountPercent(defaultDiscountPercent != null ? String(defaultDiscountPercent) : '');
+    if (!touched.discountDays) setDiscountDays(defaultDiscountDays != null ? String(defaultDiscountDays) : '');
+    if (!touched.description) setDescription(presetDescription ?? defaultDescription ?? '');
+    if (!touched.postToFinance) setPostToFinance(autoPostToFinance);
+    if (!touched.feePayer) setFeePayer(feePayerDefault === 'customer' ? 'customer' : 'company');
+  }, [open, defaultFinePercent, defaultInterestPercent, defaultDiscountPercent, defaultDiscountDays, defaultDescription, autoPostToFinance, presetDescription, feePayerDefault]);
+
+  useEffect(() => {
+    if (open && presetAmount != null && presetAmount > 0) setAmount(presetAmount);
+  }, [open, presetAmount]);
+
+  useEffect(() => {
+    if (open && presetDueDate) setDueDate(presetDueDate);
+  }, [open, presetDueDate]);
 
   // Sincroniza o cliente pré-selecionado quando o dialog abre com novo preset.
   useEffect(() => {
@@ -355,13 +396,6 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
       setCustomerId(presetCustomerId);
     }
   }, [open, presetCustomerId]);
-
-  // Inicializa o "quem paga a taxa" com o default da conta ao abrir o dialog.
-  useEffect(() => {
-    if (open) {
-      setFeePayer(feePayerDefault === 'customer' ? 'customer' : 'company');
-    }
-  }, [open, feePayerDefault]);
 
   // Sincroniza o método selecionado sempre que a lista de opções mudar (ex.: conta carregou).
   useEffect(() => {
@@ -381,6 +415,15 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   }, [open]);
 
   const resetForm = () => {
+    accountDefaultsTouchedRef.current = {
+      fine: false,
+      interest: false,
+      discount: false,
+      discountDays: false,
+      description: false,
+      postToFinance: false,
+      feePayer: false,
+    };
     setCustomerId(presetCustomerId ?? '');
     // "Nova cobrança" a partir de uma origem (parcela/orçamento) volta pro
     // valor da origem, nunca pra zero — no caso da parcela o valor é travado.
@@ -589,12 +632,16 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   // centavos pela direita; colar passa por readPastedCents). Em %, o campo
   // segue como texto decimal livre, como sempre foi.
   const handleFineAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    accountDefaultsTouchedRef.current.fine = true;
     const raw = e.target.value.replace(/\D/g, '');
     setFineAmount(parseInt(raw || '0', 10) / 100);
   };
   const handleFineAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const cents = readPastedCents(e);
-    if (cents != null) setFineAmount(cents / 100);
+    if (cents != null) {
+      accountDefaultsTouchedRef.current.fine = true;
+      setFineAmount(cents / 100);
+    }
   };
   const fineAmountDisplay = fineAmount
     ? fineAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -1344,7 +1391,10 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                   rows={2}
                   placeholder={t.fields.descriptionPlaceholder}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => {
+                    accountDefaultsTouchedRef.current.description = true;
+                    setDescription(e.target.value);
+                  }}
                 />
               </div>
             </TabsContent>
@@ -1413,7 +1463,10 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                       { value: 'customer' as const, label: t.installments.feePayerCustomer },
                     ]}
                     value={feePayer}
-                    onValueChange={(v) => setFeePayer(v)}
+                    onValueChange={(v) => {
+                      accountDefaultsTouchedRef.current.feePayer = true;
+                      setFeePayer(v);
+                    }}
                     aria-label={t.installments.feePayerLabel}
                   />
                   <p className="text-xs text-muted-foreground">
@@ -1449,7 +1502,10 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                       value={fineType}
                       // Arrow (e não `setFineType` direto): passar o setter cru
                       // faz o TS inferir T = string e perder o tipo da união.
-                      onValueChange={(v) => setFineType(v)}
+                      onValueChange={(v) => {
+                        accountDefaultsTouchedRef.current.fine = true;
+                        setFineType(v);
+                      }}
                       aria-label={t.advanced.fineTypeAria}
                     />
                   </div>
@@ -1474,7 +1530,10 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                       inputMode="decimal"
                       placeholder="2"
                       value={finePercent}
-                      onChange={(e) => setFinePercent(e.target.value)}
+                      onChange={(e) => {
+                        accountDefaultsTouchedRef.current.fine = true;
+                        setFinePercent(e.target.value);
+                      }}
                     />
                   )}
                 </div>
@@ -1492,7 +1551,10 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                     inputMode="decimal"
                     placeholder="1"
                     value={interestPercent}
-                    onChange={(e) => setInterestPercent(e.target.value)}
+                    onChange={(e) => {
+                      accountDefaultsTouchedRef.current.interest = true;
+                      setInterestPercent(e.target.value);
+                    }}
                   />
                 </div>
               </div>
@@ -1508,7 +1570,10 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                     inputMode="decimal"
                     placeholder="0"
                     value={discountPercent}
-                    onChange={(e) => setDiscountPercent(e.target.value)}
+                    onChange={(e) => {
+                      accountDefaultsTouchedRef.current.discount = true;
+                      setDiscountPercent(e.target.value);
+                    }}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -1520,7 +1585,10 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                     inputMode="numeric"
                     placeholder={t.advanced.discountDaysPlaceholder}
                     value={discountDays}
-                    onChange={(e) => setDiscountDays(e.target.value.replace(/\D/g, ''))}
+                    onChange={(e) => {
+                      accountDefaultsTouchedRef.current.discountDays = true;
+                      setDiscountDays(e.target.value.replace(/\D/g, ''));
+                    }}
                   />
                 </div>
               </div>
@@ -1537,7 +1605,10 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                   <Label className="text-sm font-medium">{t.postToFinance.label}</Label>
                   <LabeledSwitch<'no' | 'yes'>
                     value={postToFinance ? 'yes' : 'no'}
-                    onChange={(v) => setPostToFinance(v === 'yes')}
+                    onChange={(v) => {
+                      accountDefaultsTouchedRef.current.postToFinance = true;
+                      setPostToFinance(v === 'yes');
+                    }}
                     off={{ value: 'no', label: t.postToFinance.no }}
                     on={{ value: 'yes', label: t.postToFinance.yes }}
                     aria-label={t.postToFinance.label}

@@ -1,5 +1,5 @@
 // =============================================================================
-// Handler de EXCLUSÃO de rascunho (rotas: nfse-delete-draft / fisqal-delete-nfse-draft).
+// Handler de EXCLUSÃO de rascunho (rota: nfse-delete-draft).
 // =============================================================================
 // AUTENTICADA: Authorization Bearer + módulo 'nfe' ativo + can_manage_system
 // (via fiscal-auth.ts). Deleta uma linha de nfse_emissions SOMENTE quando ela é

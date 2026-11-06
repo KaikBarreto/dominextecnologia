@@ -90,6 +90,7 @@ def test_healthz_nao_exige_token(cliente):
     "metodo,caminho",
     [
         ("post", "/v1/nfse/emitir"),
+        ("post", "/v1/nfse/cobertura"),
         ("post", f"/v1/nfse/{CHAVE}/cancelar"),
         ("post", f"/v1/nfse/{CHAVE}/consultar"),
         ("post", "/v1/certificado/selar"),
@@ -109,6 +110,207 @@ def test_token_errado_tambem_401(cliente):
         "/v1/nfse/emitir", json={}, headers={"Authorization": "Bearer nao-e-o-token"}
     )
     assert resposta.status_code == 401
+
+
+# -----------------------------------------------------------------------------
+# Cobertura municipal
+# -----------------------------------------------------------------------------
+
+
+def _corpo_cobertura(certificado: dict, **extra) -> dict:
+    return {
+        "empresaId": EMPRESA,
+        "ambiente": 2,
+        "certificado": certificado,
+        "municipioIbge": "5205802",
+        **extra,
+    }
+
+
+def test_cobertura_consulta_convenio_com_mtls(cliente, pfx_de_teste, monkeypatch):
+    pfx, senha = pfx_de_teste
+    certificado = _selar(cliente, pfx, senha)["certificado"]
+    enviados: list[dict] = []
+
+    def responde(metodo, url, **kwargs):
+        enviados.append({"metodo": metodo, "url": url, "cert": kwargs.get("cert")})
+        return RespostaFalsa(
+            200,
+            {
+                "parametrosConvenio": {
+                    "aderenteAmbienteNacional": 1,
+                    "aderenteEmissorNacional": 1,
+                    "situacaoEmissaoPadraoContribuintesRFB": 0,
+                }
+            },
+        )
+
+    monkeypatch.setattr("app.sefin.client.requests.request", responde)
+    resposta = cliente.post(
+        "/v1/nfse/cobertura",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+        json=_corpo_cobertura(certificado),
+    )
+
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json()["podeEmitir"] is True
+    assert resposta.json()["fonte"] == "adn_parametrizacao"
+    assert enviados[0]["metodo"] == "GET"
+    assert enviados[0]["url"].endswith("/parametrizacao/5205802/convenio")
+    assert enviados[0]["cert"], "consulta oficial precisa usar o A1 em mTLS"
+
+
+@pytest.mark.parametrize(
+    "parametros,esperado",
+    [
+        (
+            {
+                "aderenteAmbienteNacional": 1,
+                "aderenteEmissorNacional": 0,
+                "situacaoEmissaoPadraoContribuintesRFB": 0,
+            },
+            False,
+        ),
+        (
+            {
+                "aderenteAmbienteNacional": 1,
+                "aderenteEmissorNacional": 0,
+                "situacaoEmissaoPadraoContribuintesRFB": 1,
+            },
+            True,
+        ),
+    ],
+)
+def test_cobertura_exige_porta_oficial_de_emissao(
+    cliente, pfx_de_teste, monkeypatch, parametros, esperado
+):
+    pfx, senha = pfx_de_teste
+    certificado = _selar(cliente, pfx, senha)["certificado"]
+    monkeypatch.setattr(
+        "app.sefin.client.requests.request",
+        lambda *_args, **_kwargs: RespostaFalsa(200, {"parametrosConvenio": parametros}),
+    )
+
+    resposta = cliente.post(
+        "/v1/nfse/cobertura",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+        json=_corpo_cobertura(certificado),
+    )
+
+    assert resposta.status_code == 200
+    assert resposta.json()["podeEmitir"] is esperado
+
+
+@pytest.mark.parametrize(
+    "competencia,esperado",
+    [
+        ("data-invalida", False),
+        ("2026-10-31", False),
+        ("2026-11-01", True),
+        ("2026-11-05", True),
+    ],
+)
+def test_cobertura_aplica_obrigatoriedade_federal_do_simples_por_competencia(
+    cliente, pfx_de_teste, monkeypatch, competencia, esperado
+):
+    pfx, senha = pfx_de_teste
+    certificado = _selar(cliente, pfx, senha)["certificado"]
+    monkeypatch.setattr(
+        "app.sefin.client.requests.request",
+        lambda *_args, **_kwargs: RespostaFalsa(
+            200,
+            {
+                "parametrosConvenio": {
+                    "aderenteAmbienteNacional": 1,
+                    "aderenteEmissorNacional": 0,
+                    "situacaoEmissaoPadraoContribuintesRFB": 0,
+                }
+            },
+        ),
+    )
+
+    resposta = cliente.post(
+        "/v1/nfse/cobertura",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+        json=_corpo_cobertura(
+            certificado,
+            opSimpNac="3",
+            dataCompetencia=competencia,
+        ),
+    )
+
+    assert resposta.status_code == 200
+    assert resposta.json()["podeEmitir"] is esperado
+    if esperado:
+        assert resposta.json()["motivo"] == "simples_nacional_obrigatorio"
+
+
+def test_cobertura_inconclusiva_falha_fechado(cliente, pfx_de_teste, monkeypatch):
+    pfx, senha = pfx_de_teste
+    certificado = _selar(cliente, pfx, senha)["certificado"]
+    monkeypatch.setattr(
+        "app.sefin.client.requests.request",
+        lambda *_args, **_kwargs: RespostaFalsa(
+            200,
+            {
+                "parametrosConvenio": {
+                    "aderenteAmbienteNacional": 1,
+                    "aderenteEmissorNacional": -1,
+                    "situacaoEmissaoPadraoContribuintesRFB": -1,
+                }
+            },
+        ),
+    )
+
+    resposta = cliente.post(
+        "/v1/nfse/cobertura",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+        json=_corpo_cobertura(certificado),
+    )
+
+    assert resposta.status_code == 503
+    assert resposta.json()["erro"]["codigo"] == "cobertura_indisponivel"
+
+
+def test_cobertura_404_confirma_nao_habilitado(cliente, pfx_de_teste, monkeypatch):
+    pfx, senha = pfx_de_teste
+    certificado = _selar(cliente, pfx, senha)["certificado"]
+    monkeypatch.setattr(
+        "app.sefin.client.requests.request",
+        lambda *_args, **_kwargs: RespostaFalsa(404, {"mensagem": "não encontrado"}),
+    )
+
+    resposta = cliente.post(
+        "/v1/nfse/cobertura",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+        json=_corpo_cobertura(certificado),
+    )
+
+    assert resposta.status_code == 200
+    assert resposta.json()["podeEmitir"] is False
+
+
+def test_cobertura_recusa_ibge_invalido_sem_rede(
+    cliente, pfx_de_teste, monkeypatch
+):
+    pfx, senha = pfx_de_teste
+    certificado = _selar(cliente, pfx, senha)["certificado"]
+    chamado = False
+
+    def nao_deveria_chamar(*_args, **_kwargs):
+        nonlocal chamado
+        chamado = True
+        return RespostaFalsa(500, {})
+
+    monkeypatch.setattr("app.sefin.client.requests.request", nao_deveria_chamar)
+    resposta = cliente.post(
+        "/v1/nfse/cobertura",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+        json=_corpo_cobertura(certificado, municipioIbge="52058"),
+    )
+
+    assert resposta.status_code == 422
+    assert chamado is False
 
 
 # -----------------------------------------------------------------------------
@@ -313,6 +515,42 @@ def test_rejeicao_do_governo_vira_mensagem_ptbr(cliente, pfx_de_teste, monkeypat
     # Mensagem acionável, em PT-BR, sem citar endpoint nem biblioteca.
     assert erro["mensagem"].startswith("A prefeitura recusou a nota fiscal")
     assert "sefin.nfse.gov.br" not in json.dumps(resposta.json())
+
+
+def test_rejeicao_do_governo_aceita_campos_em_pascal_case(
+    cliente, pfx_de_teste, monkeypatch
+):
+    """O Sefin real devolve Codigo/Descricao/Complemento em PascalCase."""
+    pfx, senha = pfx_de_teste
+    certificado = _selar(cliente, pfx, senha)["certificado"]
+
+    monkeypatch.setattr(
+        "app.sefin.client.requests.request",
+        lambda *_args, **_kwargs: RespostaFalsa(
+            422,
+            {
+                "Erros": [
+                    {
+                        "Codigo": "E0312",
+                        "Descricao": "Código não administrado pelo município",
+                        "Complemento": "Confira a competência.",
+                    }
+                ]
+            },
+        ),
+    )
+
+    resposta = cliente.post(
+        "/v1/nfse/emitir",
+        headers={"Authorization": f"Bearer {TOKEN}"},
+        json={**CORPO_BASE, "empresaId": EMPRESA, "certificado": certificado},
+    )
+
+    assert resposta.status_code == 422
+    erro = resposta.json()["erro"]
+    assert erro["codigo"] == "E0312"
+    assert "Código não administrado" in erro["mensagem"]
+    assert "Confira a competência" in erro["mensagem"]
 
 
 def test_producao_bloqueada_recusa_ambiente_1(cliente, pfx_de_teste, monkeypatch, sefin_falso):

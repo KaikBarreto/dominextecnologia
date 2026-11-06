@@ -8435,7 +8435,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
   </figure>
 
   <h3>Por que configurar primeiro</h3>
-  <div class="regra">O sistema só libera a emissão quando <b>três</b> coisas estão prontas ao mesmo tempo: o município está habilitado para NFS-e no padrão nacional, a empresa está registrada para emissão, e o certificado digital A1 foi enviado. Faltando qualquer uma, a tela volta pro estado guiado com o card "Configure seus dados fiscais, configure seus dados fiscais para começar a emitir notas" e o botão <span class="ui">Configurações fiscais</span>. Não adianta tentar emitir antes: o passo 4 da emissão bloqueia e explica o que falta.</div>
+  <div class="regra">O sistema só libera a emissão quando <b>duas</b> coisas estão prontas ao mesmo tempo: o município está habilitado no Padrão Nacional da NFS-e e existe um certificado digital A1 válido. A Dominex fala direto com o Portal Nacional pelo motor fiscal próprio, por isso não existe cadastro nem registro da empresa em um fornecedor externo. Faltando município ou certificado, a tela volta pro estado guiado com o botão <span class="ui">Configurações fiscais</span>, e o passo 4 da emissão explica o que falta.</div>
 
   <figure>
     <img src="img/t14-notas-fiscais.jpg" alt="Tela Notas Fiscais no estado inicial, com o selo verde 0/200 emitidas este mês, o bloco Como funciona fechado, o card Configure seus dados fiscais com botão Configurações fiscais e o botão flutuante Nova Nota no canto inferior direito" loading="lazy" decoding="async">
@@ -8468,9 +8468,9 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
 
   <div class="regra"><b>A configuração fiscal é uma tela própria, no endereço <code>/notas-fiscais/configuracoes</code>.</b> Ela já foi um modal que abria por cima de Notas Fiscais, mas isso mudou: hoje o botão <span class="ui">Configurações fiscais</span> no topo (ou o botão do estado guiado) <b>navega</b> pra essa tela, com um botão <span class="ui">Voltar</span> para retornar a Notas Fiscais. Não procure um item "Configurações fiscais" no menu lateral: ele não existe, você chega lá pelo botão de dentro de Notas Fiscais.</div>
 
-  <p>A tela tem quatro seções numeradas na lateral no desktop (em pílulas, no celular): <span class="ui">1. Empresa</span>, <span class="ui">2. Certificado A1</span>, <span class="ui">3. Tributação</span> e <span class="ui">4. Serviços</span>. No cabeçalho aparece um selo com a situação atual: <span class="ui">Apto a emitir</span> ou <span class="ui">Configuração incompleta</span>, e um botão <span class="ui">Voltar</span> para retornar a Notas Fiscais.</p>
+  <p>A tela tem quatro abas: <span class="ui">Empresa</span>, <span class="ui">Certificado A1</span>, <span class="ui">Tributação</span> e <span class="ui">Serviços</span>. No cabeçalho aparece um resumo com a situação atual: <span class="ui">Apto a emitir</span> ou <span class="ui">Configuração incompleta</span>, e um botão <span class="ui">Voltar</span> para retornar a Notas Fiscais.</p>
 
-  <div class="aviso">A ordem importa e o sistema força ela: primeiro a empresa é registrada, só depois o certificado é aceito. A dica na tela é literal: "Passo 1 de 2: preencha os dados e registre a empresa. Só depois libera o certificado." Tentando subir o certificado antes, aparece "Registre a empresa antes de subir o certificado. Volte ao passo 1. Empresa e registre a empresa primeiro."</div>
+  <div class="aviso">Preencha e salve os dados fiscais da empresa, confirme a cobertura do município e envie o certificado A1. Não existe uma etapa de registro externo: os dados ficam na Dominex e o certificado é guardado de forma criptografada para assinar somente as operações autorizadas pela empresa.</div>
 
   <h3>Campos da seção Empresa</h3>
   <table class="dados">
@@ -8478,7 +8478,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
     <tbody>
       <tr><td><span class="ui">Razão social / Nome</span></td><td>Como consta no CNPJ.</td></tr>
       <tr><td><span class="ui">CNPJ</span></td><td>Formato 00.000.000/0000-00.</td></tr>
-      <tr><td><span class="ui">Inscrição Municipal</span></td><td>A tela avisa: "Exigida pela prefeitura para registrar a empresa e emitir notas. É o mesmo campo da aba Tributação." Preencher aqui ou lá dá no mesmo.</td></tr>
+      <tr><td><span class="ui">Inscrição Municipal</span></td><td>É o cadastro municipal usado pela prefeitura na emissão. É o mesmo campo da aba Tributação; preencher aqui ou lá dá no mesmo.</td></tr>
       <tr><td><span class="ui">CEP</span></td><td>Chave do endereço. A dica é "Preenche endereço, cidade e o código do município automaticamente."</td></tr>
       <tr><td><span class="ui">Logradouro</span>, <span class="ui">Número</span>, <span class="ui">Complemento</span>, <span class="ui">Bairro</span>, <span class="ui">Cidade / UF</span></td><td>Endereço fiscal. Cidade e UF também podem ser escolhidas manualmente.</td></tr>
       <tr><td><span class="ui">Ambiente de emissão de NFS-e</span></td><td>Chave entre <span class="ui">Homologação</span> ("notas de teste, sem valor fiscal") e <span class="ui">Produção</span> ("as notas valem de verdade, têm efeito fiscal").</td></tr>
@@ -8488,10 +8488,9 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
   <div class="aviso"><b>Não existe um campo "código do município (IBGE)" pra você digitar.</b> Esse código é preenchido sozinho a partir do CEP ou da cidade escolhida, e é ele que o sistema usa para consultar a cobertura e para emitir. Empresa cadastrada há muito tempo, cujo endereço foi salvo antes desse campo existir, pode estar sem o código: nesse caso o sistema tenta preencher sozinho ao abrir a configuração. Se a verificação de município reclamar que falta cidade, apague e digite o CEP de novo para disparar o preenchimento.</div>
 
   <h3>Verificar a cobertura do município</h3>
-  <p>O botão <span class="ui">Verificar cobertura do município</span> consulta se a prefeitura já emite NFS-e no padrão nacional. O bloco <span class="ui">Status da emissão</span> mostra o resultado em três linhas:</p>
+  <p>O botão <span class="ui">Verificar cobertura do município</span> consulta se a prefeitura já emite NFS-e no Padrão Nacional. O bloco <span class="ui">Status da emissão</span> mostra os dois requisitos que realmente liberam a emissão:</p>
   <ul>
     <li><span class="ui">Município: liberado para emitir notas</span> ou <span class="ui">Município: liberação ainda não confirmada</span></li>
-    <li><span class="ui">Empresa: registrada</span> ou <span class="ui">Empresa: não registrada</span></li>
     <li><span class="ui">Certificado: enviado</span> ou <span class="ui">Certificado: pendente</span></li>
   </ul>
   <p>Mensagens possíveis:</p>
@@ -8503,18 +8502,10 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
   </ul>
   <div class="aviso"><b>Município sem cobertura bloqueia a emissão mesmo com todo o resto certo.</b> Verifique a cobertura ANTES de comprar certificado ou prometer nota pro cliente. Se o município não estiver apto, o passo final da emissão mostra "Emissão bloqueada, o município ainda não está liberado para emitir NFS-e. Verifique nas Configurações Fiscais." Não há o que fazer do lado do sistema: depende da prefeitura aderir ao padrão nacional.</div>
 
-  <figure>
-    <img src="img/t14-config-fiscal-empresa.jpg" alt="Tela Configurações fiscais na seção 1. Empresa, com o selo laranja Configuração incompleta, o aviso Passo 1 de 2, os campos Razão social / Nome, CNPJ, Inscrição Municipal, o bloco Endereço fiscal com CEP e demais campos, a chave Homologação/Produção, o botão Salvar dados da empresa e, na base, o bloco Status da emissão com os três itens Empresa, Certificado e Município, todos pendentes, e o botão Verificar cobertura do município" loading="lazy" decoding="async">
-    <figcaption>Configurações fiscais, seção Empresa: dados cadastrais, chave de ambiente e o bloco Status da emissão.</figcaption>
-  </figure>
 
-  <h3>Salvar e registrar</h3>
-  <p>O botão é <span class="ui">Salvar dados da empresa</span>. Se salvar mas o registro para emissão falhar, o sistema é específico sobre a causa:</p>
-  <ul>
-    <li>Erro de dado seu: "Não conseguimos registrar sua empresa na emissão fiscal. Motivo: [motivo]. Corrija os dados acima e salve novamente."</li>
-    <li>Erro do lado da plataforma: "Não foi possível registrar sua empresa na emissão fiscal no momento: [motivo]. Isso não é problema nos seus dados, já estamos verificando. Tente novamente em alguns minutos ou fale com o suporte."</li>
-  </ul>
-  <p>Deu certo, aparece "Dados da empresa salvos." e libera o botão <span class="ui">Próximo: enviar certificado</span>.</p>
+
+  <h3>Salvar os dados fiscais</h3>
+  <p>O botão é <span class="ui">Salvar dados da empresa</span>. Ele grava os dados fiscais na Dominex, sem enviar cadastro para outro sistema. Deu certo, aparece "Dados da empresa salvos.". Se houver campo obrigatório incompleto ou falha ao salvar, a tela mantém os dados preenchidos e orienta a correção antes de tentar novamente.</p>
 
   <h2>3. Passo Certificado: subindo o A1 (.pfx), senha e o consentimento</h2>
 
@@ -8522,7 +8513,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
 
   <h3>Passo a passo</h3>
   <ol>
-    <li>Com a empresa já registrada, abra a seção <span class="ui">2. Certificado A1</span>.</li>
+    <li>Depois de salvar os dados fiscais, abra a aba <span class="ui">Certificado A1</span>.</li>
     <li>Clique em <span class="ui">Selecionar arquivo (.pfx / .p12)</span> e escolha o certificado.</li>
     <li>Opcionalmente dê um <span class="ui">Nome do certificado</span>, por exemplo "Certificado da empresa".</li>
     <li>Digite a <span class="ui">Senha do certificado</span>. A dica é clara: "Use a senha do próprio certificado, não a senha do sistema." Há um botão <span class="ui">Mostrar senha</span> para conferir a digitação.</li>
@@ -8530,10 +8521,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
     <li>Clique em <span class="ui">Enviar certificado</span>. A confirmação é "Certificado enviado com sucesso."</li>
   </ol>
 
-  <figure>
-    <img src="img/t14-config-fiscal-certificado.jpg" alt="Tela Configurações fiscais na seção 2. Certificado A1, com o aviso 'Registre a empresa antes de subir o certificado', o campo Arquivo do certificado com o botão Selecionar arquivo (.pfx / .p12), o campo opcional Nome do certificado, o campo Senha do certificado com ícone de olho para mostrar, a caixa de Autorização para guardar o certificado com o link Ler a Seção 12 dos Termos de Uso, e o botão Enviar certificado" loading="lazy" decoding="async">
-    <figcaption>Configurações fiscais, seção Certificado A1: envio do arquivo, senha e a autorização de guarda.</figcaption>
-  </figure>
+
 
   <h3>Mensagens de erro nesse passo</h3>
   <ul>
@@ -8661,7 +8649,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
     <li><span class="ui">Valor do serviço</span>: obrigatório. Validação: "Informe um valor de serviço válido (maior que zero)."</li>
     <li><span class="ui">Alíquota ISS %</span>: opcional.</li>
     <li><span class="ui">Retenção do ISS</span>: três opções, <span class="ui">Não retido</span>, <span class="ui">Retido pelo tomador</span> e <span class="ui">Retido pelo intermediário</span>.</li>
-    <li><span class="ui">Retenções federais</span>: <span class="ui">PIS retido (R$)</span>, <span class="ui">COFINS retido (R$)</span> e <span class="ui">CSLL retido (R$)</span>, em reais. A tela avisa: "INSS e IRRF não se aplicam neste provedor."</li>
+    <li><span class="ui">Retenções federais</span>: <span class="ui">PIS retido (R$)</span>, <span class="ui">COFINS retido (R$)</span> e <span class="ui">CSLL retido (R$)</span>, em reais. A tela avisa: "INSS e IRRF ainda não estão disponíveis nesta emissão de NFS-e."</li>
     <li><span class="ui">Percentual de tributos do Simples Nacional (%)</span>: aparece no Simples, explicado no capítulo seguinte.</li>
     <li><span class="ui">Prévia do cálculo</span>: mostra valor do serviço, ISS (marcado como devido ou retido), retenções federais e valor líquido.</li>
   </ul>
@@ -8672,7 +8660,6 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
   <p>Mostra a <span class="ui">Pré-visualização da NFS-e</span> com quatro blocos, <span class="ui">Prestador</span>, <span class="ui">Tomador</span>, <span class="ui">Serviço</span> e <span class="ui">Valores</span>, e o aviso "Número será atribuído após emissão". Se faltar habilitação, o bloco vermelho <span class="ui">Emissão bloqueada</span> diz exatamente o quê:</p>
   <ul>
     <li>"Configure o certificado digital nas Configurações Fiscais."</li>
-    <li>"Conclua o cadastro da empresa nas Configurações Fiscais para liberar a emissão."</li>
     <li>"O município ainda não está liberado para emitir NFS-e. Verifique nas Configurações Fiscais."</li>
   </ul>
   <p>Estando tudo certo, o botão <span class="ui">Emitir NFS-e</span> envia. Durante o envio aparece "Processando emissão..." e depois "NFS-e enviada para emissão." A nota entra como <span class="ui">Processando</span> e o sistema consulta o status sozinho enquanto a tela está aberta. Havendo pendência, aparece "Corrija as pendências antes de emitir."</p>
@@ -8834,8 +8821,8 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
       </tr>
       <tr>
         <td>"Não consigo subir o certificado"</td>
-        <td>Empresa ainda não registrada, arquivo errado ou consentimento não marcado</td>
-        <td>A ordem é obrigatória: primeiro salvar e registrar a empresa, depois o certificado. O arquivo precisa ser .pfx ou .p12, a senha é a do certificado (não a do sistema) e a autorização de guarda precisa estar marcada.</td>
+        <td>Arquivo errado, senha incorreta ou consentimento não marcado</td>
+        <td>O arquivo precisa ser .pfx ou .p12, a senha é a do próprio certificado (não a senha do sistema) e a autorização de guarda precisa estar marcada. Não existe registro da empresa em fornecedor externo.</td>
       </tr>
       <tr>
         <td>"Emitia normal e do nada parou"</td>

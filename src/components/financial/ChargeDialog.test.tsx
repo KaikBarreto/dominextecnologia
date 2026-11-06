@@ -81,10 +81,28 @@ vi.mock('@/hooks/useTenantCharges', () => ({
 
 // Mutável entre testes: simula os flags allow_* da conta (única fonte de
 // verdade dos meios de pagamento habilitados no modal).
-const accountState = vi.hoisted(() => ({
+const accountState = vi.hoisted((): {
+  allowPix: boolean;
+  allowBoleto: boolean;
+  allowCard: boolean;
+  defaultFinePercent: number | null;
+  defaultInterestPercent: number | null;
+  defaultDiscountPercent: number | null;
+  defaultDiscountDays: number | null;
+  defaultDescription: string | null;
+  defaultMaxInstallments: number;
+  autoPostToFinance: boolean;
+} => ({
   allowPix: true,
   allowBoleto: true,
   allowCard: true,
+  defaultFinePercent: 2,
+  defaultInterestPercent: 1,
+  defaultDiscountPercent: null,
+  defaultDiscountDays: null,
+  defaultDescription: null,
+  defaultMaxInstallments: 12,
+  autoPostToFinance: true,
 }));
 
 vi.mock('@/hooks/useTenantPaymentAccount', () => ({
@@ -92,13 +110,13 @@ vi.mock('@/hooks/useTenantPaymentAccount', () => ({
     allowPix: accountState.allowPix,
     allowBoleto: accountState.allowBoleto,
     allowCard: accountState.allowCard,
-    defaultFinePercent: 2,
-    defaultInterestPercent: 1,
-    defaultDiscountPercent: null,
-    defaultDiscountDays: null,
-    defaultDescription: null,
-    defaultMaxInstallments: 12,
-    autoPostToFinance: true,
+    defaultFinePercent: accountState.defaultFinePercent,
+    defaultInterestPercent: accountState.defaultInterestPercent,
+    defaultDiscountPercent: accountState.defaultDiscountPercent,
+    defaultDiscountDays: accountState.defaultDiscountDays,
+    defaultDescription: accountState.defaultDescription,
+    defaultMaxInstallments: accountState.defaultMaxInstallments,
+    autoPostToFinance: accountState.autoPostToFinance,
   }),
 }));
 
@@ -181,8 +199,12 @@ let container: HTMLDivElement;
 let root: Root;
 
 function mount() {
+  renderDialog(true);
+}
+
+function renderDialog(open: boolean) {
   act(() => {
-    root.render(<ChargeDialog open onOpenChange={() => {}} />);
+    root.render(<ChargeDialog open={open} onOpenChange={() => {}} />);
   });
 }
 
@@ -241,6 +263,13 @@ beforeEach(() => {
   accountState.allowPix = true;
   accountState.allowBoleto = true;
   accountState.allowCard = true;
+  accountState.defaultFinePercent = 2;
+  accountState.defaultInterestPercent = 1;
+  accountState.defaultDiscountPercent = null;
+  accountState.defaultDiscountDays = null;
+  accountState.defaultDescription = null;
+  accountState.defaultMaxInstallments = 12;
+  accountState.autoPostToFinance = true;
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -420,6 +449,31 @@ describe('ChargeDialog — reorganização em abas', () => {
  * vale POR COBRANÇA — o padrão da conta continua sendo percentual.
  */
 describe('ChargeDialog — multa em R$ ou em %', () => {
+  it('aplica defaults assíncronos só enquanto multa e juros não foram editados', () => {
+    mount();
+    click(pillByLabel('Encargos'));
+
+    accountState.defaultFinePercent = 5;
+    accountState.defaultInterestPercent = 4;
+    renderDialog(true);
+    expect((q('#adv-fine') as HTMLInputElement).value).toBe('5');
+    expect((q('#adv-interest') as HTMLInputElement).value).toBe('4');
+
+    setInputValue(q('#adv-fine') as HTMLInputElement, '7,5');
+    setInputValue(q('#adv-interest') as HTMLInputElement, '3');
+    accountState.defaultFinePercent = 6;
+    accountState.defaultInterestPercent = 6;
+    renderDialog(true);
+    expect((q('#adv-fine') as HTMLInputElement).value).toBe('7,5');
+    expect((q('#adv-interest') as HTMLInputElement).value).toBe('3');
+
+    renderDialog(false);
+    renderDialog(true);
+    click(pillByLabel('Encargos'));
+    expect((q('#adv-fine') as HTMLInputElement).value).toBe('6');
+    expect((q('#adv-interest') as HTMLInputElement).value).toBe('6');
+  });
+
   it('começa em % (padrão da conta) e o seletor troca o campo para máscara de dinheiro', () => {
     mount();
     click(pillByLabel('Encargos'));

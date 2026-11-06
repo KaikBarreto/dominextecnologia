@@ -15,7 +15,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
 vi.mock('@/hooks/useEmployees', () => ({ useEmployees: () => ({ employees: [] }) }));
-vi.mock('@/hooks/useEmployeeWorkHours', () => ({ useEmployeeWorkHours: () => ({ monthlyHours: 176 }) }));
+let mockedCompanyMonthlyHours = 176;
+vi.mock('@/hooks/useEmployeeWorkHours', () => ({ useEmployeeWorkHours: () => ({ monthlyHours: mockedCompanyMonthlyHours }) }));
 // Sub-modal não é o alvo deste teste (tem sua própria prova em
 // MonthlyCostCalculatorModal.test.tsx) — stub pra não puxar useFiscalSettings/react-query aqui.
 vi.mock('./MonthlyCostCalculatorModal', () => ({
@@ -35,6 +36,12 @@ function mount() {
   });
 }
 
+function renderModal(open: boolean) {
+  act(() => {
+    root.render(<LaborCalculatorModal open={open} onOpenChange={() => {}} onApply={() => {}} />);
+  });
+}
+
 function paste(input: HTMLInputElement, text: string) {
   const pasteEvent = new Event('paste', { bubbles: true, cancelable: true }) as ClipboardEvent & { clipboardData: any };
   pasteEvent.clipboardData = { getData: () => text };
@@ -43,7 +50,16 @@ function paste(input: HTMLInputElement, text: string) {
   });
 }
 
+function typeInto(input: HTMLInputElement, value: string) {
+  act(() => {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!;
+    setter.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+}
+
 beforeEach(() => {
+  mockedCompanyMonthlyHours = 176;
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -89,5 +105,23 @@ describe('LaborCalculatorModal — campos de dinheiro por trabalhador (prova rea
 
     paste(fixedInput!, 'R$ 4.550');
     expect(fixedInput!.value).toBe('4550');
+  });
+});
+
+describe('LaborCalculatorModal — jornada mensal configurada', () => {
+  it('não sobrescreve a edição manual quando a configuração da empresa resolve', () => {
+    mount();
+    const monthlyHoursInput = document.querySelector('input[inputmode="numeric"]') as HTMLInputElement;
+    expect(monthlyHoursInput.value).toBe('176');
+
+    typeInto(monthlyHoursInput, '144');
+    mockedCompanyMonthlyHours = 220;
+    renderModal(true);
+    expect(monthlyHoursInput.value).toBe('144');
+
+    renderModal(false);
+    renderModal(true);
+    const reopenedInput = document.querySelector('input[inputmode="numeric"]') as HTMLInputElement;
+    expect(reopenedInput.value).toBe('220');
   });
 });

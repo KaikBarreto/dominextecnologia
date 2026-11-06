@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -17,7 +17,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { phoneMask, cpfCnpjMask } from '@/utils/masks';
 import { getErrorMessage } from '@/utils/errorMessages';
 import {
-  Loader2, Building2, CreditCard, KeyRound, RefreshCw, Copy, Check,
+  Loader2, Building2, CreditCard, KeyRound, RefreshCw, Copy, Check, ChevronLeft, ChevronRight,
   Mail, Lock, User, Phone, FileText, MapPin, StickyNote, Calendar,
   Tag, Briefcase, Link2, Layers, Handshake,
 } from 'lucide-react';
@@ -45,6 +45,9 @@ import {
   getCountryOptions,
   type CountryCode,
 } from '@/lib/i18n/countries';
+import { CompanyAccessTab } from './CompanyAccessTab';
+import { CompanyFormSummary, type CompanyFormSection } from './CompanyFormSummary';
+import { WizardMobileSummary } from '@/components/ui/WizardReviewChecklist';
 
 interface Props {
   open: boolean;
@@ -52,7 +55,7 @@ interface Props {
   company?: any;
   onSuccess: () => void;
   /** Permite abrir a edição direto no contexto comercial (ex.: módulos). */
-  initialTab?: 'basic' | 'commercial';
+  initialTab?: 'basic' | 'commercial' | 'access';
 }
 
 function generatePassword(length = 10): string {
@@ -98,7 +101,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const isEditing = !!company;
-  const [activeTab, setActiveTab] = useState('basic');
+  const [activeTab, setActiveTab] = useState<CompanyFormSection>('basic');
   const [copied, setCopied] = useState(false);
 
   // ========== Queries ==========
@@ -613,7 +616,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   });
 
   // ========== Validation by tab ==========
-  const validateTab = (tab: string): { valid: boolean; error?: string } => {
+  const validateTab = (tab: CompanyFormSection): { valid: boolean; error?: string } => {
     if (tab === 'basic') {
       if (!formData.name.trim()) return { valid: false, error: 'Nome da empresa é obrigatório' };
       if (!formData.email.trim()) return { valid: false, error: 'Email é obrigatório' };
@@ -637,7 +640,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Validate all tabs and jump to first failing
-    const tabs = isEditing ? ['basic', 'commercial'] : ['basic', 'commercial', 'access'];
+    const tabs: CompanyFormSection[] = isEditing ? ['basic', 'commercial'] : ['basic', 'commercial', 'access'];
     for (const t of tabs) {
       const v = validateTab(t);
       if (!v.valid) {
@@ -661,31 +664,94 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   };
 
   const title = isEditing
-    ? (initialTab === 'commercial' ? 'Gerenciar plano e módulos' : 'Editar Empresa')
-    : 'Nova Empresa';
+    ? (initialTab === 'commercial' ? 'Gerenciar plano e módulos' : 'Editar empresa')
+    : 'Nova empresa';
+  const description = isEditing
+    ? 'Atualize o cadastro, o plano e os acessos em um só lugar.'
+    : 'Preencha as três etapas para configurar a empresa e o primeiro acesso.';
+
+  const sectionOrder: CompanyFormSection[] = ['basic', 'commercial', 'access'];
+  const activeSectionIndex = sectionOrder.indexOf(activeTab);
+  const isLastCreationSection = activeTab === sectionOrder[sectionOrder.length - 1];
+  const selectedPlan = plansWithCustom.find((plan) => plan.code === formData.subscription_plan);
+  const selectedPlanName = selectedPlan?.name
+    ?? `${formData.subscription_plan.charAt(0).toUpperCase()}${formData.subscription_plan.slice(1)}`;
+  const summarySections = [
+    {
+      key: 'basic' as const,
+      label: 'Empresa',
+      complete: validateTab('basic').valid,
+    },
+    {
+      key: 'commercial' as const,
+      label: 'Plano e cobrança',
+      complete: validateTab('commercial').valid,
+    },
+    {
+      key: 'access' as const,
+      label: 'Acesso',
+      complete: !isEditing && validateTab('access').valid,
+      optional: isEditing,
+    },
+  ];
+
+  const handleContinue = () => {
+    const validation = validateTab(activeTab);
+    if (!validation.valid) {
+      toast({ variant: 'destructive', title: validation.error });
+      return;
+    }
+
+    const nextSection = sectionOrder[activeSectionIndex + 1];
+    if (nextSection) setActiveTab(nextSection);
+  };
+
+  const summaryContent = (
+    <CompanyFormSummary
+      companyName={formData.name}
+      contactName={formData.contact_name}
+      status={formData.subscription_status}
+      planName={selectedPlanName}
+      subscriptionValue={Number(formData.subscription_value)}
+      billingCycle={formData.billing_cycle}
+      maxUsers={Number(formData.max_users)}
+      expiresAt={formData.subscription_expires_at}
+      modulesLabel={formData.subscription_plan === 'personalizado'
+        ? `${selectedModules.length} selecionados`
+        : 'Conforme o plano'}
+      sections={summarySections}
+      activeSection={activeTab}
+      onNavigate={setActiveTab}
+    />
+  );
 
   // ========== Form content (shared) ==========
   const FormContent = (
     <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-        <TabsList variant="underline" className={`grid mb-4 shrink-0 ${isEditing ? 'grid-cols-2' : 'grid-cols-3'}`}>
-          <TabsTrigger variant="underline" value="basic" className="flex items-center gap-2">
-            <Building2 className="h-4 w-4" />
-            <span className="hidden sm:inline">Dados</span>
-          </TabsTrigger>
-          <TabsTrigger variant="underline" value="commercial" className="flex items-center gap-2">
-            <CreditCard className="h-4 w-4" />
-            <span className="hidden sm:inline">Comercial</span>
-          </TabsTrigger>
-          {!isEditing && (
-            <TabsTrigger variant="underline" value="access" className="flex items-center gap-2">
-              <KeyRound className="h-4 w-4" />
-              <span className="hidden sm:inline">Acesso</span>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as CompanyFormSection)}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <div className="shrink-0 px-4 sm:px-6">
+          <TabsList variant="underline" className="w-full">
+            <TabsTrigger variant="underline" value="basic" className="min-w-max gap-1 px-1.5 sm:gap-2 sm:px-4">
+              <Building2 className="h-4 w-4" aria-hidden="true" />
+              <span>Empresa</span>
             </TabsTrigger>
-          )}
-        </TabsList>
+            <TabsTrigger variant="underline" value="commercial" className="min-w-max gap-1 px-1.5 sm:gap-2 sm:px-4">
+              <CreditCard className="h-4 w-4" aria-hidden="true" />
+              <span>Plano e cobrança</span>
+            </TabsTrigger>
+            <TabsTrigger variant="underline" value="access" className="min-w-max gap-1 px-1.5 sm:gap-2 sm:px-4">
+              <KeyRound className="h-4 w-4" aria-hidden="true" />
+              <span>Acesso</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-        <div className="flex-1 overflow-y-auto min-h-0 pb-4 px-1">
+        <div className="grid min-h-0 flex-1 xl:grid-cols-[minmax(0,1fr)_19rem]">
+          <div className="min-h-0 overflow-y-auto px-4 py-5 sm:px-6">
           {/* ============ DADOS BÁSICOS ============ */}
           <TabsContent value="basic" className="m-0 space-y-4">
             <div className="space-y-2">
@@ -1135,67 +1201,116 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
             )}
           </TabsContent>
 
-          {/* ============ ACESSO (apenas criação) ============ */}
-          {!isEditing && (
-            <TabsContent value="access" className="m-0 space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Defina as credenciais de acesso do administrador da empresa.
-              </p>
+          {/* ============ ACESSO ============ */}
+          <TabsContent value="access" className="m-0 space-y-4">
+            {isEditing ? (
+              <CompanyAccessTab companyId={company.id} />
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Defina as credenciais de acesso do administrador da empresa.
+                </p>
 
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2"><Mail className="h-4 w-4" />Email do Administrador *</Label>
-                <Input type="email" value={formData.admin_email} onChange={e => updateField('admin_email', e.target.value)} placeholder="admin@empresa.com" required />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2"><Lock className="h-4 w-4" />Senha *</Label>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <PasswordInput
-                      value={formData.admin_password}
-                      onChange={e => updateField('admin_password', e.target.value)}
-                      placeholder="Crie uma senha segura"
-                    />
-                  </div>
-                  <Button type="button" variant="outline" size="icon" onClick={handleGeneratePassword} title="Gerar senha aleatória">
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><Mail className="h-4 w-4" />Email do Administrador *</Label>
+                  <Input type="email" value={formData.admin_email} onChange={e => updateField('admin_email', e.target.value)} placeholder="admin@empresa.com" required />
                 </div>
-                <PasswordStrengthIndicator password={formData.admin_password} />
-              </div>
 
-              {formData.admin_email && formData.admin_password && (
-                <Button type="button" variant="outline" size="sm" onClick={handleCopy} className="w-full">
-                  {copied ? (
-                    <><Check className="h-4 w-4 mr-2" />Copiado!</>
-                  ) : (
-                    <><Copy className="h-4 w-4 mr-2" />Copiar credenciais</>
-                  )}
-                </Button>
-              )}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><Lock className="h-4 w-4" />Senha *</Label>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <PasswordInput
+                        value={formData.admin_password}
+                        onChange={e => updateField('admin_password', e.target.value)}
+                        placeholder="Crie uma senha segura"
+                      />
+                    </div>
+                    <Button type="button" variant="outline" size="icon" onClick={handleGeneratePassword} title="Gerar senha aleatória">
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <PasswordStrengthIndicator password={formData.admin_password} />
+                </div>
 
-              <p className="text-xs text-muted-foreground">
-                As credenciais serão usadas para o primeiro acesso. O administrador poderá
-                alterar a senha posteriormente.
-              </p>
-            </TabsContent>
-          )}
+                {formData.admin_email && formData.admin_password && (
+                  <Button type="button" variant="outline" size="sm" onClick={handleCopy} className="w-full">
+                    {copied ? (
+                      <><Check className="h-4 w-4 mr-2" />Copiado!</>
+                    ) : (
+                      <><Copy className="h-4 w-4 mr-2" />Copiar credenciais</>
+                    )}
+                  </Button>
+                )}
+
+                <p className="text-xs text-muted-foreground">
+                  As credenciais serão usadas para o primeiro acesso. O administrador poderá
+                  alterar a senha posteriormente.
+                </p>
+              </>
+            )}
+          </TabsContent>
+          </div>
+
+          <aside className="hidden min-h-0 overflow-y-auto border-l bg-muted/20 p-5 xl:block">
+            {summaryContent}
+          </aside>
         </div>
       </Tabs>
 
-      <div className="flex justify-end gap-3 pt-4 border-t shrink-0">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => onOpenChange(false)}
-          className="hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+      <div className="shrink-0 border-t bg-background px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:px-6 sm:pb-4">
+        <WizardMobileSummary
+          title="Resumo"
+          summary={`${selectedPlanName || 'Plano'} • R$ ${Number(formData.subscription_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+          className="xl:hidden"
         >
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          {isEditing ? 'Salvar' : 'Criar Empresa'}
-        </Button>
+          <div className="pt-3">{summaryContent}</div>
+        </WizardMobileSummary>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
+          <p className="hidden text-xs text-muted-foreground sm:block">
+            {isEditing ? 'Revise as seções antes de salvar.' : `Etapa ${activeSectionIndex + 1} de ${sectionOrder.length}`}
+          </p>
+          <div className="ml-auto flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="hover:border-destructive hover:bg-destructive hover:text-destructive-foreground"
+            >
+              Cancelar
+            </Button>
+            {!isEditing && activeSectionIndex > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setActiveTab(sectionOrder[activeSectionIndex - 1])}
+              >
+                <ChevronLeft className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                Voltar
+              </Button>
+            ) : null}
+            {!isEditing && !isLastCreationSection ? (
+              <Button
+                type="button"
+                onClick={handleContinue}
+                className="bg-foreground text-background hover:bg-foreground/90 hover:text-background"
+              >
+                Continuar
+                <ChevronRight className="ml-1.5 h-4 w-4" aria-hidden="true" />
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={mutation.isPending}
+                className="bg-foreground text-background hover:bg-foreground/90 hover:text-background"
+              >
+                {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isEditing ? 'Salvar alterações' : 'Criar empresa'}
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
     </form>
   );
@@ -1209,7 +1324,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       className="gap-2"
     >
       <Link2 className="h-4 w-4" />
-      Gerar Link
+      Link de cadastro
     </Button>
   );
 
@@ -1218,12 +1333,17 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     return (
       <>
         <Drawer open={open} onOpenChange={onOpenChange} dismissible={false}>
-          <DrawerContent className="max-h-[90dvh]">
-            <DrawerHeader className="border-b pb-4 flex flex-row items-center justify-between">
-              <DrawerTitle>{title}</DrawerTitle>
-              {HeaderActions}
+          <DrawerContent className="flex max-h-[94dvh] flex-col overflow-hidden">
+            <DrawerHeader className="shrink-0 border-b px-4 pb-4 pt-5 text-left">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <DrawerTitle className="break-words">{title}</DrawerTitle>
+                  <DrawerDescription className="mt-1 text-xs leading-5">{description}</DrawerDescription>
+                </div>
+                {HeaderActions}
+              </div>
             </DrawerHeader>
-            <div className="p-4 overflow-y-auto flex-1 flex flex-col">
+            <div className="flex min-h-0 flex-1 flex-col">
               {FormContent}
             </div>
           </DrawerContent>
@@ -1238,16 +1358,19 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="max-w-2xl w-[95vw] h-[95dvh] max-h-[95dvh] flex flex-col min-h-0 overflow-hidden"
+          className="flex h-[92dvh] max-h-[900px] min-h-0 w-[96vw] max-w-6xl flex-col gap-0 overflow-hidden p-0"
           onPointerDownOutside={(e) => { if (!isEditing) e.preventDefault(); }}
           onEscapeKeyDown={(e) => { if (!isEditing) e.preventDefault(); }}
         >
           {/* pr-28 (não pr-8) reserva espaço pro botão "FECHAR" absoluto
               (right-4/top-4 em dialog.tsx) — com HeaderActions ("Gerar Link")
               presente, pr-8 deixava os dois botões se sobrepondo. */}
-          <DialogHeader className="shrink-0 flex flex-row items-center justify-between gap-4 pr-28">
-            <DialogTitle className="min-w-0 truncate">{title}</DialogTitle>
-            {HeaderActions}
+          <DialogHeader className="flex shrink-0 flex-row items-start justify-between gap-4 border-b px-6 py-5 pr-28 text-left">
+            <div className="min-w-0">
+              <DialogTitle className="break-words">{title}</DialogTitle>
+              <DialogDescription className="mt-1">{description}</DialogDescription>
+            </div>
+            <div className="shrink-0">{HeaderActions}</div>
           </DialogHeader>
           <div className="flex-1 min-h-0 flex flex-col">
             {FormContent}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
@@ -24,7 +25,11 @@ import {
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCustomers } from '@/hooks/useCustomers';
-import { useFiscalSettings } from '@/hooks/useFiscalSettings';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import {
+  emissaoNacionalObrigatoriaSimples,
+  useFiscalSettings,
+} from '@/hooks/useFiscalSettings';
 import { useNfse, type NfseEmission } from '@/hooks/useNfse';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -191,12 +196,14 @@ export function NovaNotaModal({
   initialDraft,
 }: NovaNotaModalProps) {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.nfse;
   const s = t.stepper;
   const { companyId } = useUserCompany();
   const { customers, isLoading: customersLoading } = useCustomers();
-  const { settings, isLoading: settingsLoading } = useFiscalSettings();
+  const { settings } = useFiscalSettings();
+  const { settings: companySettings } = useCompanySettings();
   const { invalidate: invalidateNfse } = useNfse();
 
   // ---- Estado do stepper ----
@@ -229,6 +236,10 @@ export function NovaNotaModal({
 
   // ---- Defaults da config fiscal ----
   const isSimples = settings.regime_tributario === 'simples_nacional';
+  const nationalEmissionRequiredBySimple = emissaoNacionalObrigatoriaSimples(
+    settings.regime_tributario,
+    dataCompetencia,
+  );
 
   // Pré-preenche campos de defaults a partir das configurações fiscais.
   useEffect(() => {
@@ -384,20 +395,36 @@ export function NovaNotaModal({
     return e;
   }, [valores, s, isSimples]);
 
-  // Bloqueio de emissão: aponta a peça que está faltando, na ordem do
-  // onboarding (registro da empresa → município liberado → certificado A1).
-  // `pode_emitir` sozinho só diz que o município é coberto.
+  // Produção exige cobertura municipal confirmada. Homologação envia a DPS de
+  // teste para o Portal dar a resposta definitiva, sempre sem efeito fiscal.
+  const certificateExpiresAt = settings.certificate_expires_at
+    ? new Date(settings.certificate_expires_at).getTime()
+    : Number.NaN;
+  const certificateExpired = Number.isFinite(certificateExpiresAt) && certificateExpiresAt <= Date.now();
   const habilitacaoErrors = useMemo(() => {
     const e: string[] = [];
-    if (!settings.provider_company_id) e.push(s.emitir.habilitacaoErrorRegistro);
-    else if (!settings.pode_emitir) e.push(s.emitir.habilitacaoErrorMunicipio);
-    else if (!settings.provider_certificate_id) e.push(s.emitir.habilitacaoError);
+    if (
+      settings.fiscal_ambiente === 'producao'
+      && !settings.pode_emitir
+      && !nationalEmissionRequiredBySimple
+    ) {
+      e.push(s.emitir.habilitacaoErrorMunicipio);
+    }
+    else if (!settings.certificado_ref) e.push(s.emitir.habilitacaoError);
+    else if (!Number.isFinite(certificateExpiresAt)) e.push(s.emitir.habilitacaoErrorCertValidity);
+    else if (certificateExpired) e.push(s.emitir.habilitacaoErrorCertExpired);
     return e;
-  }, [settings.provider_company_id, settings.pode_emitir, settings.provider_certificate_id, s]);
+  }, [settings.fiscal_ambiente, settings.pode_emitir, settings.certificado_ref, certificateExpiresAt, certificateExpired, nationalEmissionRequiredBySimple, s]);
+
+  const habilitacaoTab = settings.fiscal_ambiente === 'producao'
+    && !settings.pode_emitir
+    && !nationalEmissionRequiredBySimple
+    ? 'empresa'
+    : 'certificado';
 
   const habilitacaoWarnings = useMemo(() => {
     const w: string[] = [];
-    if (settings.provider_company_id && !settings.inscricao_municipal) {
+    if (settings.certificado_ref && !settings.inscricao_municipal) {
       w.push('Inscrição Municipal não configurada. A maioria dos municípios exige. Confira nas Configurações Fiscais.');
     }
     return w;
@@ -444,13 +471,13 @@ export function NovaNotaModal({
   // ---- Dados do prestador p/ revisão ----
   const prestador = useMemo(
     () => ({
-      razaoSocial: (settings as any).razao_social ?? null,
-      cnpj: (settings as any).cnpj ?? null,
+      razaoSocial: companySettings?.name ?? null,
+      cnpj: companySettings?.document ?? null,
       inscricaoMunicipal: settings.inscricao_municipal,
-      cidade: (settings as any).cidade ?? null,
-      uf: (settings as any).uf ?? null,
+      cidade: companySettings?.city ?? null,
+      uf: companySettings?.state ?? null,
     }),
-    [settings],
+    [companySettings, settings.inscricao_municipal],
   );
 
   // ---- Reset ----
@@ -667,7 +694,7 @@ export function NovaNotaModal({
             {s.summary.total}
           </p>
           <p className="text-lg font-bold leading-tight text-emerald-500 dark:text-emerald-400 tabular-nums">
-            {formatMoney(taxes.valorLiquido, currency, locale as any)}
+            {formatMoney(taxes.valorLiquido, currency, locale)}
           </p>
         </div>
         <Separator orientation="vertical" className="h-8" />
@@ -676,7 +703,7 @@ export function NovaNotaModal({
             {s.summary.baseIss}
           </p>
           <p className="text-lg font-bold leading-tight text-foreground tabular-nums">
-            {formatMoney(taxes.baseCalculo, currency, locale as any)}
+            {formatMoney(taxes.baseCalculo, currency, locale)}
           </p>
         </div>
       </div>
@@ -794,6 +821,10 @@ export function NovaNotaModal({
           taxes={taxes}
           habilitacaoErrors={habilitacaoErrors}
           habilitacaoWarnings={habilitacaoWarnings}
+          onFixHabilitacao={() => {
+            onOpenChange(false);
+            navigate(`/notas-fiscais/configuracoes?tab=${habilitacaoTab}`);
+          }}
         />
       )}
     </div>

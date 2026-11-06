@@ -134,6 +134,23 @@ class EmitirRequest(RequisicaoAutenticada):
     valores: Valores
 
 
+class CoberturaRequest(RequisicaoAutenticada):
+    """Consulta oficial do convênio municipal no ADN.
+
+    A API de parametrização também exige mTLS. Por isso esta operação recebe o
+    mesmo certificado custodiado das demais chamadas e nunca roda direto na
+    Edge Function.
+    """
+
+    municipio_ibge: str = Field(alias="municipioIbge")
+    #: Regime nacional do prestador: '2' MEI · '3' ME/EPP do Simples.
+    #: Usado apenas para aplicar obrigatoriedades federais por competência;
+    #: o Portal Nacional continua sendo a validação definitiva da emissão.
+    op_simp_nac: Optional[str] = Field(default=None, alias="opSimpNac")
+    #: YYYY-MM-DD. A cobertura depende da competência desde 01/11/2026.
+    data_competencia: Optional[str] = Field(default=None, alias="dataCompetencia")
+
+
 class CancelarRequest(RequisicaoAutenticada):
     #: CNPJ/CPF de quem pede o cancelamento (o emitente). Só dígitos.
     cnpj_autor: str = Field(alias="cnpjAutor")

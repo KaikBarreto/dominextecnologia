@@ -16,6 +16,7 @@ export const ADMIN_SCREEN_PERMISSIONS = [
 ] as const;
 
 export const ADMIN_FUNCTION_PERMISSIONS = [
+  { key: 'admin_empresas_acesso', label: 'Gerar link de redefinição de senha' },
   { key: 'admin_financeiro_lancamentos', label: 'Criar lançamentos no financeiro' },
   { key: 'admin_financeiro_totais', label: 'Visualizar totais e DRE' },
   { key: 'admin_vendedores_ver_todos', label: 'Ver todos os vendedores' },

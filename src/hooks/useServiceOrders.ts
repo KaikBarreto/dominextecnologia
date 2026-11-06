@@ -152,6 +152,8 @@ export interface ServiceOrderInput extends ScheduleBookingOverride {
 
 export interface ServiceOrderUpdate extends Partial<ServiceOrderInput> {
   id: string;
+  contract_reference_date?: string | null;
+  contract_visit_customized_at?: string | null;
   diagnosis?: string;
   solution?: string;
   parts_used?: any[];
@@ -471,13 +473,56 @@ export function useServiceOrders() {
         'team_id',
       ].some(key => Object.prototype.hasOwnProperty.call(input, key)) || assignee_user_ids !== undefined;
 
-      if (touchesSchedule) {
+      const touchesContractPlanning = touchesSchedule
+        || [
+          'description',
+          'notes',
+          'equipment_id',
+          'service_type_id',
+          'form_template_id',
+          'require_tech_signature',
+          'require_client_signature',
+        ].some(key => Object.prototype.hasOwnProperty.call(input, key))
+        || equipment_items !== undefined
+        || service_type_ids !== undefined;
+
+      let currentOrder: {
+        scheduled_date: string | null;
+        scheduled_time: string | null;
+        duration_minutes: number;
+        schedule_plan: unknown;
+        technician_id: string | null;
+        team_id: string | null;
+        contract_id: string | null;
+        origin: string;
+        contract_reference_date: string | null;
+        contract_visit_customized_at: string | null;
+      } | null = null;
+
+      if (touchesContractPlanning) {
         const { data: current, error: currentError } = await supabase
           .from('service_orders')
-          .select('scheduled_date, scheduled_time, duration_minutes, schedule_plan, technician_id, team_id')
+          .select('scheduled_date, scheduled_time, duration_minutes, schedule_plan, technician_id, team_id, contract_id, origin, contract_reference_date, contract_visit_customized_at')
           .eq('id', id)
           .single();
         if (currentError) throw currentError;
+        currentOrder = current;
+
+        // Qualquer edição de planejamento feita pelo editor de OS transforma a
+        // visita automática em uma visita individual. A referência nasce da
+        // data original e não acompanha reagendamentos operacionais.
+        if (current.contract_id && current.origin === 'contract') {
+          input.contract_reference_date = input.contract_reference_date
+            ?? current.contract_reference_date
+            ?? current.scheduled_date;
+          input.contract_visit_customized_at = input.contract_visit_customized_at
+            ?? current.contract_visit_customized_at
+            ?? new Date().toISOString();
+        }
+      }
+
+      if (touchesSchedule) {
+        const current = currentOrder!;
 
         const scheduledDate = input.scheduled_date ?? current.scheduled_date;
         const scheduledTime = input.scheduled_time ?? current.scheduled_time;
@@ -680,6 +725,8 @@ export function useServiceOrders() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['paused-orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
