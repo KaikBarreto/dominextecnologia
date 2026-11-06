@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { invokeNfse, type NfseEdgeResult } from '@/utils/nfseEdge';
 import { isNfseTerminal } from '@/components/fiscal/nfseStatus';
+import { requestNfsePagedRefresh } from '@/lib/fiscal/nfseRefreshSignal';
 import type { Tables } from '@/integrations/supabase/types';
 
 /**
@@ -90,7 +91,10 @@ export function useNfse() {
     },
   });
 
-  const invalidateList = () => queryClient.invalidateQueries({ queryKey: listKey });
+  const invalidateList = useCallback(() => {
+    requestNfsePagedRefresh();
+    return queryClient.invalidateQueries({ queryKey: ['nfse-emissions', companyId] });
+  }, [queryClient, companyId]);
 
   /** Emite uma NFS-e standalone (por cliente). Retorna o resultado normalizado. */
   const emitMutation = useMutation({
@@ -245,6 +249,7 @@ export function useNfseStatusPolling(
 
         // A cada consulta bem-sucedida, reflete na lista/detalhe.
         if (res.ok) {
+          requestNfsePagedRefresh();
           queryClient.invalidateQueries({ queryKey: ['nfse-emissions', companyId] });
         }
 
@@ -285,7 +290,8 @@ export function useNfseStatusPolling(
  * lista. Um único intervalo pro conjunto (não um por nota), pra não martelar.
  * Para quando todos os ids viram terminais, no unmount ou ao estourar o tempo.
  *
- * Recebe os ids já filtrados como NÃO-terminais pelo caller (deriva do dataset).
+ * Recebe os ids que exigem consulta oficial pelo caller: estados transitórios
+ * ou autorizações comprovadas cuja confirmação precisa ser renovada.
  */
 export function useNfseListPolling(pendingIds: string[]): void {
   const { companyId } = useUserCompany();
@@ -338,6 +344,7 @@ export function useNfseListPolling(pendingIds: string[]): void {
           return;
         }
         if (results.some((r) => r.ok)) {
+          requestNfsePagedRefresh();
           queryClient.invalidateQueries({ queryKey: ['nfse-emissions', companyId] });
         }
       } catch {

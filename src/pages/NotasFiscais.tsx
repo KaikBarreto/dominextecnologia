@@ -24,7 +24,10 @@ import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { useFiscalSettings } from '@/hooks/useFiscalSettings';
 import { useNfse, useNfseListPolling, type NfseEmission } from '@/hooks/useNfse';
-import { resolveNfseDisplayStatus } from '@/lib/fiscal/nfseStatusTruth';
+import {
+  nfseNeedsOfficialRefresh,
+  resolveNfseDisplayStatus,
+} from '@/lib/fiscal/nfseStatusTruth';
 import { useNfseEmissionsPaged } from '@/hooks/useNfseEmissionsPaged';
 import { NfseQuotaBadge } from '@/components/fiscal/NfseQuotaBadge';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -178,12 +181,15 @@ export default function NotasFiscais() {
     });
   }, [fetchRecent, dateStart, dateEnd]);
 
-  // Notas NÃO-terminais → polling automático em lote enquanto a tela está
-  // aberta. A Visão Geral usa `emissions` do `useNfse`.
+  // Notas não-terminais e autorizações cuja confirmação envelheceu → consulta
+  // oficial automática enquanto a tela está aberta. Uma autorização já
+  // comprovada mantém o selo correto durante a atualização em segundo plano.
   const pendingIds = useMemo(
     () =>
       emissions
-        .filter((e) => !isNfseTerminal(resolveNfseDisplayStatus(e)))
+        .filter((e) =>
+          !isNfseTerminal(resolveNfseDisplayStatus(e)) || nfseNeedsOfficialRefresh(e),
+        )
         .slice(0, 10)
         .map((e) => e.id),
     [emissions],

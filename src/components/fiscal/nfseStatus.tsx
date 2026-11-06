@@ -107,6 +107,8 @@ const TERMINAL_STATUSES = new Set<string>([
   'cancelada',
   'cancelled',
   'canceled',
+  'falhou',
+  'failed',
 ]);
 
 /**

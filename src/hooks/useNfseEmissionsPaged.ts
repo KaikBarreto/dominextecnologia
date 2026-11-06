@@ -2,6 +2,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { NfseEmission } from '@/hooks/useNfse';
+import { nfseNeedsOfficialRefresh } from '@/lib/fiscal/nfseStatusTruth';
+import { subscribeNfsePagedRefresh } from '@/lib/fiscal/nfseRefreshSignal';
 
 /**
  * Linha retornada pela RPC `get_nfse_emissions_paged`.
@@ -91,7 +93,7 @@ export interface UseNfseEmissionsPagedReturn {
 
 /** Status não-terminais — disparar polling/refetch enquanto presentes. */
 const PENDING_STATUSES = new Set([
-  'pendente', 'processando', 'rascunho', 'confirmacao_pendente', 'falhou',
+  'pendente', 'processando', 'rascunho', 'confirmacao_pendente',
 ]);
 
 /**
@@ -111,11 +113,11 @@ export function useNfseEmissionsPaged(): UseNfseEmissionsPagedReturn {
     if (!silent) setLoading(true);
 
     try {
-      const { data, error } = await (supabase.rpc as any)('get_nfse_emissions_paged', {
-        p_statuses: params.statuses && params.statuses.length ? params.statuses : null,
-        p_date_start: params.dateStart ?? null,
-        p_date_end: params.dateEnd ?? null,
-        p_search: params.search && params.search.trim() ? params.search.trim() : null,
+      const { data, error } = await supabase.rpc('get_nfse_emissions_paged', {
+        p_statuses: params.statuses && params.statuses.length ? params.statuses : undefined,
+        p_date_start: params.dateStart ?? undefined,
+        p_date_end: params.dateEnd ?? undefined,
+        p_search: params.search && params.search.trim() ? params.search.trim() : undefined,
         p_sort_key: params.sortKey ?? 'created_at',
         p_sort_dir: params.sortDir ?? 'desc',
         p_page: params.page ?? 1,
@@ -126,7 +128,9 @@ export function useNfseEmissionsPaged(): UseNfseEmissionsPagedReturn {
 
       // A RPC é RETURNS TABLE → devolve um ARRAY de linhas, com `total_count`
       // repetido em cada linha (count(*) OVER()). Não é um objeto {rows,total_count}.
-      const arr = (Array.isArray(data) ? data : []) as (NfseEmissionRow & { total_count?: number })[];
+      const arr = (Array.isArray(data) ? data : []) as unknown as (
+        NfseEmissionRow & { total_count?: number }
+      )[];
       setRows(arr as NfseEmissionRow[]);
       setTotalCount(arr.length ? Number(arr[0].total_count ?? 0) : 0);
     } catch (err) {
@@ -146,9 +150,16 @@ export function useNfseEmissionsPaged(): UseNfseEmissionsPagedReturn {
   }, [fetch]);
 
   // Polling leve enquanto houver emissões não-terminais.
-  const hasPending = rows.some((r) => PENDING_STATUSES.has(r.status));
+  const hasPending = rows.some(
+    (r) => PENDING_STATUSES.has(r.status) || nfseNeedsOfficialRefresh(r),
+  );
   const refetchRef = useRef(refetch);
   refetchRef.current = refetch;
+
+  useEffect(
+    () => subscribeNfsePagedRefresh(() => refetchRef.current()),
+    [],
+  );
 
   useEffect(() => {
     if (!hasPending) return;
