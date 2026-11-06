@@ -1660,7 +1660,11 @@ export function ServiceOrderFormDialog({
       plan={(watchedValues.schedule_plan ?? []) as ServiceOrderScheduleSlot[]}
       onChange={handleSchedulePlanChange}
       locale={locale}
-      excludeServiceOrderId={serviceOrder?.id}
+      // No planejamento contratual, a visita aberta também é contexto útil:
+      // manter seu ponto laranja explica a legenda e a data já persistida.
+      // Na edição comum, continuamos excluindo a própria OS para não sugerir
+      // um conflito dela com ela mesma.
+      excludeServiceOrderId={contractPlanningMode ? undefined : serviceOrder?.id}
       customerId={selectedCustomerId}
       equipmentIds={selectedEquipmentIds}
       labels={{

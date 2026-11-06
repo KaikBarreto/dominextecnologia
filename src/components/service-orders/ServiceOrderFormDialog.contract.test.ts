@@ -60,6 +60,12 @@ describe('ServiceOrderFormDialog — contrato do wizard', () => {
     expect(source).toContain('t.contractCustomerLocked');
   });
 
+  it('mantém a própria visita visível nos marcadores do planejamento contratual', () => {
+    expect(source).toContain(
+      'excludeServiceOrderId={contractPlanningMode ? undefined : serviceOrder?.id}',
+    );
+  });
+
   it('não fecha o editor durante uma gravação em andamento', () => {
     expect(source).toContain('const submitLocked = isLoading || isSubmitting');
     expect(source).toContain('if (!nextOpen && submitLocked) return');
