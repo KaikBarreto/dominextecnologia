@@ -19,9 +19,9 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { SegmentToolsSwitcher } from '@/components/technician-area/SegmentToolsSwitcher';
 import { SegmentLockedScreen } from '@/components/technician-area/SegmentLockedScreen';
-import { getTechToolsForSegment, getTeaserToolsForSegment } from '@/config/technicianArea';
+import { getTechToolsForSegment, getTeaserToolsForSegment, segmentHasTechTools } from '@/config/technicianArea';
 import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
-import { getSegment } from '@/utils/companySegments';
+import { getSegment, normalizeCompanySegments } from '@/utils/companySegments';
 import { Inicio } from '@/components/technician-area/Inicio';
 import { CargaTermica } from '@/components/technician-area/CargaTermica';
 import { Conversao, type ConversaoInicial } from '@/components/technician-area/Conversao';
@@ -125,12 +125,16 @@ function useSegmentNav(selectedSegment: string | null) {
   const { locale } = useAppLocaleContext();
   const tArea = MESSAGES[locale].app.os.technicianArea;
   const tToolsRegistry = MESSAGES[locale].app.technicianTools.toolsRegistry;
-  const companySegment = settings?.segment ?? null;
+  const companySegments = normalizeCompanySegments(settings?.segments, settings?.segment);
+  // O hub abre no primeiro segmento que realmente possui ferramentas. Assim,
+  // uma empresa com Manutenção Predial como primário e Refrigeração como
+  // adicional não cai numa tela vazia.
+  const companySegment = companySegments.find(segmentHasTechTools) ?? companySegments[0] ?? null;
   const effectiveSegment = selectedSegment ?? companySegment ?? null;
-  const isOwnSegment = !!companySegment && effectiveSegment === companySegment;
+  const isOwnSegment = !!effectiveSegment && companySegments.includes(effectiveSegment);
   const isLocked = !!effectiveSegment && !isOwnSegment;
 
-  const tools = getTechToolsForSegment(companySegment);
+  const tools = getTechToolsForSegment(effectiveSegment);
   const teaserTools = getTeaserToolsForSegment(effectiveSegment);
   const navItems = isLocked
     ? teaserTools.map((t) => ({ value: t.id, label: t.label, icon: t.icon, locked: true }))
@@ -145,7 +149,7 @@ function useSegmentNav(selectedSegment: string | null) {
         })),
       ];
 
-  return { companySegment, effectiveSegment, isOwnSegment, isLocked, navItems };
+  return { companySegment, companySegments, effectiveSegment, isOwnSegment, isLocked, navItems };
 }
 
 // ---------------------------------------------------------------------------
@@ -153,6 +157,7 @@ function useSegmentNav(selectedSegment: string | null) {
 // ---------------------------------------------------------------------------
 interface ShellProps {
   companySegment: string | null;
+  companySegments: string[];
   effectiveSegment: string | null;
   isOwnSegment: boolean;
   isLocked: boolean;
@@ -176,6 +181,7 @@ interface ShellProps {
 
 function ToolsShell({
   companySegment,
+  companySegments,
   effectiveSegment,
   isOwnSegment,
   isLocked,
@@ -220,7 +226,7 @@ function ToolsShell({
       {companySegment && (
         <SegmentToolsSwitcher
           selected={effectiveSegment ?? ''}
-          companySegment={companySegment}
+          companySegments={companySegments}
           onSelect={onSelectSegment}
         />
       )}
@@ -350,7 +356,7 @@ function RouteTools() {
   const nicho = searchParams.get('nicho');
   const selectedSegment = nicho;
 
-  const { companySegment, effectiveSegment, isOwnSegment, isLocked, navItems } =
+  const { companySegment, companySegments, effectiveSegment, isOwnSegment, isLocked, navItems } =
     useSegmentNav(selectedSegment);
 
   // Raiz TRADUZIDA pro idioma do usuário (só o 1º segmento; sub-slugs de
@@ -358,9 +364,10 @@ function RouteTools() {
   // bounce do redirect canônico a cada clique.
   const base = localizeAppPath(TOOLS_BASE, locale);
 
-  // Preserva ?nicho quando travado (vitrine de upsell navega entre teasers).
+  // Preserva ?nicho tanto para segmentos adicionais contratados quanto para a
+  // vitrine bloqueada; sem isso uma ferramenta voltaria ao segmento primário.
   const withNicho = (path: string) =>
-    isLocked && nicho ? `${path}?nicho=${encodeURIComponent(nicho)}` : path;
+    nicho ? `${path}?nicho=${encodeURIComponent(nicho)}` : path;
 
   const goTab = (tab: string, payload?: ToolNavPayload) => {
     // Deep-link de modelo (Recentes/Favoritos) → abre direto o detalhe no catálogo.
@@ -388,13 +395,14 @@ function RouteTools() {
           <RouteShellFrame
             activeTab="inicio"
             companySegment={companySegment}
+            companySegments={companySegments}
             effectiveSegment={effectiveSegment}
             isOwnSegment={isOwnSegment}
             isLocked={isLocked}
             navItems={navItems}
             onSwitchTab={goTab}
             onSelectSegment={handleSelectSegment}
-            content={<Inicio onNavigate={(id, payload) => goTab(id, payload)} />}
+            content={<Inicio segment={effectiveSegment} onNavigate={(id, payload) => goTab(id, payload)} />}
           />
         }
       />
@@ -403,6 +411,7 @@ function RouteTools() {
         element={
           <RouteToolFrame
             companySegment={companySegment}
+            companySegments={companySegments}
             effectiveSegment={effectiveSegment}
             isOwnSegment={isOwnSegment}
             isLocked={isLocked}
@@ -423,6 +432,7 @@ function RouteTools() {
 function RouteShellFrame(props: {
   activeTab: string;
   companySegment: string | null;
+  companySegments: string[];
   effectiveSegment: string | null;
   isOwnSegment: boolean;
   isLocked: boolean;
@@ -434,6 +444,7 @@ function RouteShellFrame(props: {
   return (
     <ToolsShell
       companySegment={props.companySegment}
+      companySegments={props.companySegments}
       effectiveSegment={props.effectiveSegment}
       isOwnSegment={props.isOwnSegment}
       isLocked={props.isLocked}
@@ -452,6 +463,7 @@ function RouteShellFrame(props: {
 /** Frame de uma ferramenta (`:toolId`). Deriva o conteúdo do slug + query. */
 function RouteToolFrame(props: {
   companySegment: string | null;
+  companySegments: string[];
   effectiveSegment: string | null;
   isOwnSegment: boolean;
   isLocked: boolean;
@@ -553,6 +565,7 @@ function RouteToolFrame(props: {
   return (
     <ToolsShell
       companySegment={props.companySegment}
+      companySegments={props.companySegments}
       effectiveSegment={props.effectiveSegment}
       isOwnSegment={props.isOwnSegment}
       isLocked={props.isLocked}
@@ -574,7 +587,7 @@ function RouteToolFrame(props: {
 // ---------------------------------------------------------------------------
 function EmbeddedTools() {
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null);
-  const { companySegment, effectiveSegment, isOwnSegment, isLocked, navItems } =
+  const { companySegment, companySegments, effectiveSegment, isOwnSegment, isLocked, navItems } =
     useSegmentNav(selectedSegment);
 
   const [activeTab, setActiveTab] = useState<string>('inicio');
@@ -608,7 +621,7 @@ function EmbeddedTools() {
     activeTab !== 'inicio' && !isLocked && !TOOLS_WITH_OWN_BACK.has(activeTab);
 
   let content: React.ReactNode = null;
-  if (activeTab === 'inicio') content = <Inicio onNavigate={handleNavigate} />;
+  if (activeTab === 'inicio') content = <Inicio segment={effectiveSegment} onNavigate={handleNavigate} />;
   else if (activeTab === 'catalogo')
     content = (
       <Catalogo key={modeloInicialId ?? 'browse'} embedded modeloInicialId={modeloInicialId} />
@@ -632,6 +645,7 @@ function EmbeddedTools() {
   return (
     <ToolsShell
       companySegment={companySegment}
+      companySegments={companySegments}
       effectiveSegment={effectiveSegment}
       isOwnSegment={isOwnSegment}
       isLocked={isLocked}

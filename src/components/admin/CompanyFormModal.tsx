@@ -21,7 +21,8 @@ import {
   Mail, Lock, User, Phone, FileText, MapPin, StickyNote, Calendar,
   Tag, Briefcase, Link2, Layers, Handshake,
 } from 'lucide-react';
-import { getSelectableSegments } from '@/utils/companySegments';
+import { normalizeCompanySegments } from '@/utils/companySegments';
+import { CompanySegmentMultiSelect } from '@/components/CompanySegmentMultiSelect';
 import { resolveOrigin, UNKNOWN_ORIGIN_COLOR, isAffiliateOriginName, type CatalogOrigin } from '@/utils/companyOriginCatalog';
 import { useAffiliates } from '@/hooks/useAffiliateData';
 import { Switch } from '@/components/ui/switch';
@@ -202,13 +203,14 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     country_code: DEFAULT_COUNTRY_CODE as CountryCode,
     subscription_status: 'testing', subscription_plan: 'start', subscription_value: '0',
     subscription_expires_at: '', billing_cycle: 'monthly', max_users: '5', notes: '',
-    origin: '', salesperson_id: '', affiliate_id: '', segment: '',
+    origin: '', salesperson_id: '', affiliate_id: '',
     admin_email: '', admin_password: '',
     use_custom_price: false,
     custom_price_permanent: true,
     custom_price_months: '3',
     nfse_tier: '1',
   });
+  const [companySegments, setCompanySegments] = useState<string[]>([]);
   const countryOptions = useMemo(() => getCountryOptions('pt-br'), []);
 
   const [showGenerateLink, setShowGenerateLink] = useState(false);
@@ -255,7 +257,6 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         origin: company.origin || '',
         salesperson_id: company.salesperson_id || '',
         affiliate_id: company.affiliate_id || '',
-        segment: company.segment || '',
         admin_email: '',
         admin_password: '',
         use_custom_price: !!company.custom_price && Number(company.custom_price) > 0,
@@ -263,6 +264,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         custom_price_months: company.custom_price_months ? String(company.custom_price_months) : '3',
         nfse_tier: String(company.nfse_tier ?? 1),
       });
+      setCompanySegments(normalizeCompanySegments(company.segments, company.segment));
       setAddr(parseAddress(company.address));
     } else {
       const defaultExpires = format(addDays(new Date(), 7), 'yyyy-MM-dd');
@@ -271,11 +273,12 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         country_code: DEFAULT_COUNTRY_CODE,
         subscription_status: 'testing', subscription_plan: 'start', subscription_value: '0',
         subscription_expires_at: defaultExpires, billing_cycle: 'monthly', max_users: '5',
-        notes: '', origin: '', salesperson_id: '', affiliate_id: '', segment: '',
+        notes: '', origin: '', salesperson_id: '', affiliate_id: '',
         admin_email: '', admin_password: '',
         use_custom_price: false, custom_price_permanent: true, custom_price_months: '3',
         nfse_tier: '1',
       });
+      setCompanySegments([]);
       setAddr({ logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '' });
     }
     setSelectedModules([...BASE_MODULE_CODES]);
@@ -540,7 +543,8 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           salesperson_id: formData.salesperson_id || null,
           sdr_id: null, // descontinuado (2026-10-14): a coluna segue no banco pelo histórico, mas nunca é preenchida de novo
           affiliate_id: affiliateIdToSave,
-          segment: formData.segment || null,
+          segment: companySegments[0] || null,
+          segments: companySegments,
           custom_price: customPriceVal,
           custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
           custom_price_months: customPriceMonthsVal,
@@ -580,7 +584,8 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
             salesperson_id: formData.salesperson_id || null,
             sdr_id: null, // descontinuado (2026-10-14): a coluna segue no banco pelo histórico, mas nunca é preenchida de novo
             affiliate_id: affiliateIdToSave,
-            segment: formData.segment || null,
+            segment: companySegments[0] || null,
+            segments: companySegments,
             custom_price: customPriceVal,
             custom_price_permanent: formData.use_custom_price ? formData.custom_price_permanent : true,
             custom_price_months: customPriceMonthsVal,
@@ -1149,24 +1154,8 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
               </div>
 
               <div className="space-y-2">
-                <Label className="flex items-center gap-2"><Layers className="h-4 w-4" />Segmento</Label>
-                <Select value={formData.segment || 'none'} onValueChange={v => updateField('segment', v === 'none' ? '' : v)}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {getSelectableSegments().map((s) => {
-                      const Icon = s.icon;
-                      return (
-                        <SelectItem key={s.value} value={s.value}>
-                          <span className="flex items-center gap-2">
-                            <Icon className="h-3.5 w-3.5" style={{ color: s.color }} />
-                            {s.label}
-                          </span>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+                <Label className="flex items-center gap-2"><Layers className="h-4 w-4" />Segmentos</Label>
+                <CompanySegmentMultiSelect value={companySegments} onChange={setCompanySegments} />
               </div>
 
             </div>

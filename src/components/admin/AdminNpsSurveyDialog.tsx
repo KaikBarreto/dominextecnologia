@@ -122,7 +122,7 @@ export function AdminNpsSurveyDialog({ open, onOpenChange, survey, onSubmit, isS
   const options = useMemo(() => ({
     statuses: uniqueSorted(companies.map((company) => company.subscription_status)),
     plans: uniqueSorted(companies.map((company) => company.subscription_plan)),
-    segments: uniqueSorted(companies.map((company) => company.segment)),
+    segments: uniqueSorted(companies.flatMap((company) => company.segments?.length ? company.segments : [company.segment])),
   }), [companies]);
 
   const filteredCompanies = useMemo(

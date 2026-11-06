@@ -27,10 +27,11 @@ import { isAcSection } from '@/components/contracts/pmocMachineRoutine';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { FAMILY_TOOLTIPS } from '@/components/contracts/PmocChecklistPicker';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { normalizeCompanySegments } from '@/utils/companySegments';
 import { useIsCompact } from '@/hooks/use-mobile';
 import {
-  getCatalogForSegment,
-  segmentHasPmocCatalog,
+  getCatalogForSegments,
+  segmentsHavePmocCatalog,
   type ChecklistTemplate,
   type CatalogQuestion,
 } from '@/data/checklistCatalog';
@@ -135,13 +136,16 @@ export function ChecklistCatalogModal({
   const t = MESSAGES[locale].app.os.checklistCatalog;
   const { toast } = useToast();
   const { settings } = useCompanySettings();
-  const segment = settings?.segment ?? null;
+  const segments = useMemo(
+    () => normalizeCompanySegments(settings?.segments, settings?.segment),
+    [settings?.segment, settings?.segments],
+  );
   const { createQuestionsBatch, createTemplate } = useFormTemplates();
   const { groups: pmocGroups, isLoading: pmocLoading } = usePmocActivityCatalog();
 
   const isCreate = mode === 'create';
-  const showPmoc = segmentHasPmocCatalog(segment);
-  const serviceTemplates = useMemo(() => getCatalogForSegment(segment), [segment]);
+  const showPmoc = segmentsHavePmocCatalog(segments);
+  const serviceTemplates = useMemo(() => getCatalogForSegments(segments), [segments]);
 
   const [search, setSearch] = useState('');
   // Fonte aberta na direita (modelo curado ou seção do PMOC).

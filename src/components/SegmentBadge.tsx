@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { getSegment } from '@/utils/companySegments';
+import { getSegment, normalizeCompanySegments } from '@/utils/companySegments';
 
 interface SegmentBadgeProps {
   /** Valor do segmento (ex.: 'refrigeracao'). null/undefined → não renderiza nada. */
@@ -29,5 +29,22 @@ export function SegmentBadge({ segment, className }: SegmentBadgeProps) {
       <seg.icon className="h-3 w-3" />
       <span className="truncate">{seg.label}</span>
     </Badge>
+  );
+}
+
+interface SegmentBadgesProps {
+  segments: readonly string[] | null | undefined;
+  legacySegment?: string | null;
+  className?: string;
+}
+
+export function SegmentBadges({ segments, legacySegment, className }: SegmentBadgesProps) {
+  const values = normalizeCompanySegments(segments, legacySegment);
+  if (values.length === 0) return null;
+
+  return (
+    <div className={cn('flex flex-wrap gap-1.5', className)}>
+      {values.map((segment) => <SegmentBadge key={segment} segment={segment} />)}
+    </div>
   );
 }

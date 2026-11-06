@@ -20,7 +20,7 @@ import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { getSelectableSegments, getSegment } from '@/utils/companySegments';
+import { SegmentBadges } from '@/components/SegmentBadge';
 import { resolveOrigin, UNKNOWN_ORIGIN_COLOR, type CatalogOrigin } from '@/utils/companyOriginCatalog';
 import { ResolvedOriginBadge } from '@/components/admin/OriginBadge';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
@@ -163,7 +163,7 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
               <SortableTableHead sortKey="contact_name" sortConfig={sortConfig} onSort={handleSort}>Usuário Master</SortableTableHead>
               <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort} className="min-w-[200px]">Empresa</SortableTableHead>
               <SortableTableHead sortKey="origin" sortConfig={sortConfig} onSort={handleSort}>Origem</SortableTableHead>
-              <SortableTableHead sortKey="segment" sortConfig={sortConfig} onSort={handleSort}>Segmento</SortableTableHead>
+              <SortableTableHead sortKey="segment" sortConfig={sortConfig} onSort={handleSort}>Segmentos</SortableTableHead>
               <SortableTableHead sortKey="subscription_plan" sortConfig={sortConfig} onSort={handleSort}>Plano</SortableTableHead>
               <SortableTableHead sortKey="salesperson_id" sortConfig={sortConfig} onSort={handleSort}>Vendedor</SortableTableHead>
               <SortableTableHead sortKey="_expiresAtTs" sortConfig={sortConfig} onSort={handleSort}>Vencimento</SortableTableHead>
@@ -259,42 +259,12 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
                         </SelectContent>
                       </Select>
                     </TableCell>
-                    {/* Segment - inline select */}
-                    <TableCell onClick={(e) => e.stopPropagation()} className="py-6 overflow-visible">
-                      {(() => {
-                        const seg = getSegment(company.segment);
-                        const isUpd = updatingField?.id === company.id && updatingField?.field === 'segment';
-                        return (
-                          <Select
-                            value={company.segment || ''}
-                            onValueChange={(value) => updateCompanyMutation.mutate({ id: company.id, field: 'segment', value })}
-                            disabled={isUpd}
-                          >
-                            <SelectTrigger className="w-[170px] h-auto min-h-[2.5rem] border-0 bg-transparent hover:bg-accent py-3">
-                              <SelectValue placeholder="Selecione">
-                                {isUpd ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : seg ? (
-                                  <Badge className="text-white border-0 gap-1" style={{ backgroundColor: seg.color }}>
-                                    <seg.icon className="h-3 w-3" />
-                                    <span className="truncate max-w-[110px]">{seg.label}</span>
-                                  </Badge>
-                                ) : '—'}
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent className="py-2 max-h-[320px]">
-                              {getSelectableSegments().map((s) => (
-                                <SelectItem key={s.value} value={s.value} className="py-2">
-                                  <Badge className="text-white border-0 gap-1" style={{ backgroundColor: s.color }}>
-                                    <s.icon className="h-3 w-3" />
-                                    {s.label}
-                                  </Badge>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        );
-                      })()}
+                    <TableCell className="py-6">
+                      <SegmentBadges
+                        segments={company.segments}
+                        legacySegment={company.segment}
+                        className="max-w-[260px]"
+                      />
                     </TableCell>
                     <TableCell>
                       {company.subscription_plan ? (

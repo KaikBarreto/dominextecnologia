@@ -9,7 +9,8 @@ import { AppLocaleProvider } from "@/contexts/AppLocaleContext";
 import { useForcedLogout } from "@/hooks/useForcedLogout";
 import { useCompanyModules, type ModuleCode } from "@/hooks/useCompanyModules";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { segmentHasTechTools } from "@/config/technicianArea";
+import { segmentsHaveTechTools } from "@/config/technicianArea";
+import { companyHasSegment, normalizeCompanySegments } from "@/utils/companySegments";
 import { ModuleGateModal, MODULE_INFO } from "@/components/ModuleGateModal";
 import { trackUsage } from "@/lib/trackUsage";
 import { podeAcessarDomiflixAdmin } from "@/lib/adminDomiflixAccess";
@@ -392,7 +393,7 @@ function SegmentRoute({ segment, children }: { segment: string; children: React.
   const { settings, isLoading } = useCompanySettings();
 
   if (isLoading) return null;
-  if (settings?.segment !== segment) return <Navigate to="/" replace />;
+  if (!companyHasSegment(settings?.segments, segment, settings?.segment)) return <Navigate to="/" replace />;
 
   return <>{children}</>;
 }
@@ -405,7 +406,7 @@ function TechnicianAreaRoute({ children }: { children: React.ReactNode }) {
   const { settings, isLoading } = useCompanySettings();
 
   if (isLoading) return null;
-  if (!segmentHasTechTools(settings?.segment)) return <Navigate to="/" replace />;
+  if (!segmentsHaveTechTools(normalizeCompanySegments(settings?.segments, settings?.segment))) return <Navigate to="/" replace />;
 
   return <>{children}</>;
 }

@@ -105,7 +105,8 @@ import { SystemFooter } from '@/components/layout/SystemFooter';
 import TechnicianArea from '@/pages/TechnicianArea';
 import { AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { getSegment } from '@/utils/companySegments';
+import { getSegment, normalizeCompanySegments } from '@/utils/companySegments';
+import { segmentHasTechTools, segmentsHaveTechTools } from '@/config/technicianArea';
 import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
 import { useStickyStuck } from '@/hooks/useStickyStuck';
 import { useSubscriptionBlock } from '@/hooks/useSubscriptionBlock';
@@ -1025,13 +1026,14 @@ function TechnicianOSInner() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [routeFullscreen]);
-  // "Área do Técnico™" é exclusiva do segmento Refrigeração e Climatização.
-  // Enquanto settings carrega (undefined/null), showTools é false → atalho oculto.
+  // A Área do Técnico aparece quando qualquer segmento contratado tem ferramentas.
   const { settings } = useCompanySettings();
-  const showTools = settings?.segment === 'refrigeracao';
-  // Cor canônica do segmento da empresa (ex.: #06b6d4 p/ refrigeração).
+  const companySegments = normalizeCompanySegments(settings?.segments, settings?.segment);
+  const toolsSegment = companySegments.find(segmentHasTechTools) ?? companySegments[0];
+  const showTools = segmentsHaveTechTools(companySegments);
+  // Cor canônica do primeiro segmento com ferramentas.
   // Fallback para o verde Dominex se o segmento não estiver mapeado.
-  const segColor = getSegment(settings?.segment)?.color ?? '#00C597';
+  const segColor = getSegment(toolsSegment)?.color ?? '#00C597';
 
   // FAB é EXCLUSIVO de "Área do Técnico™" (função única, ícone de ferramenta
   // — não 3 pontinhos). Copiar link público mudou pro 3-pontinhos do rodapé.

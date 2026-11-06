@@ -9,13 +9,18 @@ import {
 const companies: AdminAudienceCompany[] = [
   { id: '1', name: 'Alfa', subscription_status: 'active', subscription_plan: 'pro', segment: 'HVAC' },
   { id: '2', name: 'Beta', subscription_status: 'testing', subscription_plan: 'start', segment: 'HVAC' },
-  { id: '3', name: 'Gama', subscription_status: 'active', subscription_plan: 'pro', segment: 'Elétrica' },
+  { id: '3', name: 'Gama', subscription_status: 'active', subscription_plan: 'pro', segment: 'Elétrica', segments: ['Elétrica', 'HVAC'] },
 ];
 
 describe('segmentação materializada do NPS administrativo', () => {
   it('combina status, plano e segmento sem incluir empresas fora do recorte', () => {
     expect(filterAudienceCompanies(companies, { status: 'active', plan: 'pro', segment: 'HVAC' }))
-      .toEqual([companies[0]]);
+      .toEqual([companies[0], companies[2]]);
+  });
+
+  it('filtra também por um segmento adicional da empresa', () => {
+    expect(filterAudienceCompanies(companies, { status: 'active', plan: 'pro', segment: 'HVAC' }))
+      .toContain(companies[2]);
   });
 
   it('sem filtros materializa a base inteira e registra a contagem no snapshot', () => {

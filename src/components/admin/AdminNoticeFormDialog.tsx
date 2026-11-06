@@ -108,7 +108,7 @@ export function AdminNoticeFormDialog({
   const filterOptions = useMemo(() => ({
     statuses: uniqueSorted(companies.map((company) => company.subscription_status)),
     plans: uniqueSorted(companies.map((company) => company.subscription_plan)),
-    segments: uniqueSorted(companies.map((company) => company.segment)),
+    segments: uniqueSorted(companies.flatMap((company) => company.segments?.length ? company.segments : [company.segment])),
   }), [companies]);
   const filteredCompanies = useMemo(
     () => filterAudienceCompanies(companies, audienceFilters),

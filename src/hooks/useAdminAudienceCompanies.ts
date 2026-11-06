@@ -10,7 +10,7 @@ export function useAdminAudienceCompanies() {
     queryFn: async (): Promise<AdminAudienceCompany[]> => {
       const { data, error } = await supabase
         .from('companies')
-        .select('id, name, subscription_status, subscription_plan, segment')
+        .select('id, name, subscription_status, subscription_plan, segment, segments')
         .order('name');
       if (error) throw error;
       return (data ?? []) as AdminAudienceCompany[];

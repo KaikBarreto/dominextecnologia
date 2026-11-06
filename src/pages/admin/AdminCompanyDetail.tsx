@@ -29,7 +29,8 @@ import { cn } from '@/lib/utils';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { AdminNfseTierControl } from '@/components/admin/AdminNfseTierControl';
 import { AdminWhatsappTierControl } from '@/components/admin/AdminWhatsappTierControl';
-import { getSegment } from '@/utils/companySegments';
+import { normalizeCompanySegments } from '@/utils/companySegments';
+import { SegmentBadges } from '@/components/SegmentBadge';
 import { useSubscriptionModules } from '@/components/admin/ModuleGrid';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { OriginBadge } from '@/components/admin/OriginBadge';
@@ -109,7 +110,7 @@ export default function AdminCompanyDetail() {
   // affiliate_id. useAffiliate aceita uuid ou slug; aqui é sempre uuid (coluna
   // companies.affiliate_id).
   const { data: companyAffiliate } = useAffiliate(company?.affiliate_id ?? undefined);
-  const segmentData = getSegment(company?.segment);
+  const companySegments = normalizeCompanySegments(company?.segments, company?.segment);
 
   // ===== Recorrência automática (Asaas) =====
   // Presença de companies.asaas_subscription_id => há renovação automática ativa.
@@ -344,14 +345,9 @@ export default function AdminCompanyDetail() {
                   </div>
                 </div>
                 <div className="min-w-0">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Segmento</span>
-                  {segmentData ? (
-                    <div className="flex items-center gap-2 mt-0.5 min-w-0">
-                      <Badge className="text-xs text-white border-0 gap-1 max-w-full" style={{ backgroundColor: segmentData.color }}>
-                        <segmentData.icon className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{segmentData.label}</span>
-                      </Badge>
-                    </div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Segmentos</span>
+                  {companySegments.length > 0 ? (
+                    <SegmentBadges segments={companySegments} className="mt-1" />
                   ) : (
                     <p className="font-medium">N/A</p>
                   )}

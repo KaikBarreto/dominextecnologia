@@ -9,6 +9,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function normalizeSegments(value: unknown, fallback: unknown): string[] {
+  const raw = Array.isArray(value) ? value : []
+  const normalized = raw
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  if (normalized.length === 0 && typeof fallback === 'string' && fallback.trim()) {
+    normalized.push(fallback.trim())
+  }
+
+  return [...new Set(normalized)]
+}
+
 const REQUIRED_PERSONALIZED_MODULE_CODES = [
   'basic',
   'customer_portal',
@@ -124,6 +138,7 @@ Deno.serve(async (req) => {
       sdr_id,
       affiliate_id,
       segment,
+      segments,
       custom_price,
       custom_price_permanent,
       custom_price_months,
@@ -135,6 +150,16 @@ Deno.serve(async (req) => {
 
     const countryCode = resolveCountryCode(country_code)
     const regionalDefaults = COUNTRY_REGIONAL_DEFAULTS[countryCode]
+    if (
+      (segments !== undefined && !Array.isArray(segments))
+      || (Array.isArray(segments) && segments.some((item: unknown) => typeof item !== 'string'))
+    ) {
+      return new Response(JSON.stringify({ error: 'Os segmentos informados são inválidos.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    const normalizedSegments = normalizeSegments(segments, segment)
 
     if (!company_name || !admin_email || !admin_password) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
@@ -346,7 +371,8 @@ Deno.serve(async (req) => {
         salesperson_id: salesperson_id || null,
         sdr_id: sdr_id || null,
         affiliate_id: validAffiliateId,
-        segment: segment || null,
+        segments: normalizedSegments,
+        segment: normalizedSegments[0] || null,
         custom_price: custom_price ?? null,
         custom_price_permanent: custom_price_permanent ?? true,
         custom_price_months: custom_price_months ?? null,
@@ -474,6 +500,8 @@ Deno.serve(async (req) => {
         language: regionalDefaults.language,
         currency: regionalDefaults.currency,
         timezone: regionalDefaults.timezone,
+        segments: normalizedSegments,
+        segment: normalizedSegments[0] || null,
       }, { onConflict: 'company_id' })
     if (settingsError) {
       console.error('[create-company] Falha ao configurar regional:', settingsError.message)

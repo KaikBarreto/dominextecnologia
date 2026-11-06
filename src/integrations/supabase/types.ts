@@ -1489,6 +1489,7 @@ export type Database = {
           salesperson_id: string | null
           sdr_id: string | null
           segment: string | null
+          segments: string[]
           state: string | null
           street_number: string | null
           subscription_card_brand: string | null
@@ -1554,6 +1555,7 @@ export type Database = {
           salesperson_id?: string | null
           sdr_id?: string | null
           segment?: string | null
+          segments?: string[]
           state?: string | null
           street_number?: string | null
           subscription_card_brand?: string | null
@@ -1619,6 +1621,7 @@ export type Database = {
           salesperson_id?: string | null
           sdr_id?: string | null
           segment?: string | null
+          segments?: string[]
           state?: string | null
           street_number?: string | null
           subscription_card_brand?: string | null
@@ -2062,6 +2065,7 @@ export type Database = {
           report_header_text_color: string | null
           report_status_bar_color: string | null
           segment: string | null
+          segments: string[]
           show_address_in_documents: boolean
           show_cnpj_in_documents: boolean
           show_email_in_documents: boolean
@@ -2118,6 +2122,7 @@ export type Database = {
           report_header_text_color?: string | null
           report_status_bar_color?: string | null
           segment?: string | null
+          segments?: string[]
           show_address_in_documents?: boolean
           show_cnpj_in_documents?: boolean
           show_email_in_documents?: boolean
@@ -2174,6 +2179,7 @@ export type Database = {
           report_header_text_color?: string | null
           report_status_bar_color?: string | null
           segment?: string | null
+          segments?: string[]
           show_address_in_documents?: boolean
           show_cnpj_in_documents?: boolean
           show_email_in_documents?: boolean
@@ -17447,6 +17453,10 @@ export type Database = {
       }
       nfse_can_emit: { Args: { p_company_id: string }; Returns: Json }
       nfse_month_usage: { Args: { p_company_id: string }; Returns: number }
+      normalize_company_segments: {
+        Args: { p_fallback_segment?: string; p_segments: string[] }
+        Returns: string[]
+      }
       normalize_customer_portal_permissions: {
         Args: { p_permissions: Json }
         Returns: Json

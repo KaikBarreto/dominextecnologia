@@ -7,7 +7,8 @@ import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { getSegment } from '@/utils/companySegments';
+import { normalizeCompanySegments } from '@/utils/companySegments';
+import { SegmentBadges } from '@/components/SegmentBadge';
 import { resolveOrigin } from '@/utils/companyOriginCatalog';
 import { ResolvedOriginBadge } from '@/components/admin/OriginBadge';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
@@ -65,7 +66,7 @@ export function CompanyKanbanCard({ company, origins, salespersonMap, canSeeTota
   // src/utils/companyOriginCatalog.ts. Fora do catálogo vira badge cinza neutro;
   // empresa sem origem continua sem a linha "Origem" no card.
   const originData = resolveOrigin(company.origin, origins);
-  const segmentData = getSegment(company.segment);
+  const companySegments = normalizeCompanySegments(company.segments, company.segment);
   // Vendedor resolvido pelo mapa (companies.salesperson_id → salespeople_basic).
   const salesperson = company.salesperson_id ? salespersonMap?.get(company.salesperson_id) ?? null : null;
   const expirationInfo = getExpirationInfo(company.subscription_expires_at);
@@ -160,13 +161,10 @@ export function CompanyKanbanCard({ company, origins, salespersonMap, canSeeTota
             />
           </div>
         )}
-        {segmentData && (
-          <div className="flex min-w-0 items-center justify-between gap-2">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Segmento:</span>
-            <Badge className="text-xs px-2 py-0.5 h-5 font-normal text-white border-0 max-w-[60%] gap-1" style={{ backgroundColor: segmentData.color }}>
-              <segmentData.icon className="h-3 w-3 shrink-0" />
-              <span className="truncate">{segmentData.label}</span>
-            </Badge>
+        {companySegments.length > 0 && (
+          <div className="flex min-w-0 items-start justify-between gap-2">
+            <span className="pt-1 text-[10px] uppercase tracking-wider text-muted-foreground/70">Segmentos:</span>
+            <SegmentBadges segments={companySegments} className="max-w-[65%] justify-end" />
           </div>
         )}
         {/* Vendedor — espelha o EcoSistema: avatar + nome (truncate). Mobile + desktop. */}

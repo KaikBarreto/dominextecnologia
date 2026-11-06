@@ -104,9 +104,9 @@ export const settings = {
         cnpj: 'CNPJ/CPF',
         cnpjPlaceholder: '00.000.000/0000-00',
         showInDocs: 'Exibir em documentos',
-        segment: 'Segmento de Atuação da Empresa',
+        segment: 'Segmentos de Atuação da Empresa',
         segmentNotDefined: 'Não definido',
-        segmentHint: 'Define quais ferramentas e recursos do seu segmento aparecem no sistema. Para alterar, fale com a Dominex.',
+        segmentHint: 'Definem quais ferramentas e recursos aparecem no sistema. Para adicionar ou remover segmentos, fale com a Dominex.',
       },
 
       // Contato
@@ -1870,9 +1870,9 @@ export const settings = {
         cnpj: 'Tax ID',
         cnpjPlaceholder: '00.000.000/0000-00',
         showInDocs: 'Show in documents',
-        segment: 'Business Segment',
+        segment: 'Business Segments',
         segmentNotDefined: 'Not defined',
-        segmentHint: 'Defines which tools and features appear for your segment. To change it, contact Dominex.',
+        segmentHint: 'Define which tools and features appear in the system. To add or remove segments, contact Dominex.',
       },
 
       contact: {
@@ -3567,9 +3567,9 @@ export const settings = {
         cnpj: 'NIT/RUC',
         cnpjPlaceholder: '00.000.000/0000-00',
         showInDocs: 'Mostrar en documentos',
-        segment: 'Segmento de Negocio',
+        segment: 'Segmentos de Negocio',
         segmentNotDefined: 'No definido',
-        segmentHint: 'Define qué herramientas y funciones aparecen para tu segmento. Para cambiarlo, contacta a Dominex.',
+        segmentHint: 'Definen qué herramientas y funciones aparecen en el sistema. Para añadir o quitar segmentos, contacta a Dominex.',
       },
 
       contact: {
@@ -5264,9 +5264,9 @@ export const settings = {
         cnpj: 'Numéro fiscal',
         cnpjPlaceholder: '00.000.000/0000-00',
         showInDocs: 'Afficher dans les documents',
-        segment: "Secteur d'activité",
+        segment: "Secteurs d'activité",
         segmentNotDefined: 'Non défini',
-        segmentHint: "Définit quels outils et fonctions apparaissent pour votre secteur. Pour le modifier, contactez Dominex.",
+        segmentHint: "Définissent les outils et fonctions affichés dans le système. Pour ajouter ou supprimer des secteurs, contactez Dominex.",
       },
 
       contact: {

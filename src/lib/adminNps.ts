@@ -1,4 +1,5 @@
 import { calculateNps, classifyNps, type NpsClassification } from '@/hooks/useServiceRatings';
+import { companyHasSegment } from '@/utils/companySegments';
 
 export type AdminAudienceCompany = {
   id: string;
@@ -6,6 +7,7 @@ export type AdminAudienceCompany = {
   subscription_status: string | null;
   subscription_plan: string | null;
   segment: string | null;
+  segments?: string[] | null;
 };
 
 export type AdminNpsAudienceFilters = {
@@ -27,7 +29,7 @@ export function filterAudienceCompanies(
   return companies.filter((company) => {
     if (filters.status && company.subscription_status !== filters.status) return false;
     if (filters.plan && company.subscription_plan !== filters.plan) return false;
-    if (filters.segment && company.segment !== filters.segment) return false;
+    if (filters.segment && !companyHasSegment(company.segments, filters.segment, company.segment)) return false;
     return true;
   });
 }

@@ -17,6 +17,27 @@ const INCLUDED_USERS = 5
 
 class ValidationError extends Error {}
 
+function normalizeSegments(value: unknown, fallback: unknown): string[] {
+  if (value !== undefined && !Array.isArray(value)) {
+    throw new ValidationError('Os segmentos informados são inválidos.')
+  }
+
+  const raw = Array.isArray(value) ? value : []
+  if (raw.some((item) => typeof item !== 'string')) {
+    throw new ValidationError('Os segmentos informados são inválidos.')
+  }
+  const normalized = raw
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  if (normalized.length === 0 && typeof fallback === 'string' && fallback.trim()) {
+    normalized.push(fallback.trim())
+  }
+
+  return [...new Set(normalized)]
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
 
@@ -107,6 +128,7 @@ Deno.serve(async (req) => {
     }
 
     const status = typeof body.subscription_status === 'string' ? body.subscription_status : 'testing'
+    const segments = normalizeSegments(body.segments, body.segment)
     const negotiatedPrice = Number(body.custom_price) > 0 ? Number(body.custom_price) : null
     const isPureTrial = status === 'testing' && body.plan_locked !== true && negotiatedPrice === null && !(Number(body.subscription_value) > 0)
     const canonicalOrigin = await canonicalizeCompanyOrigin(
@@ -140,7 +162,8 @@ Deno.serve(async (req) => {
       salesperson_id: body.salesperson_id || null,
       sdr_id: null,
       affiliate_id: affiliateId,
-      segment: body.segment || null,
+      segments,
+      segment: segments[0] || null,
       custom_price: negotiatedPrice,
       custom_price_permanent: negotiatedPrice ? body.custom_price_permanent !== false : true,
       custom_price_months: negotiatedPrice && body.custom_price_permanent === false

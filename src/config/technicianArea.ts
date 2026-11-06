@@ -206,6 +206,11 @@ export function segmentHasTechTools(segment: string | null | undefined): boolean
   return getTechToolsForSegment(segment).length > 0;
 }
 
+/** Gate multi-segmento: basta um dos segmentos contratados ter ferramentas. */
+export function segmentsHaveTechTools(segments: readonly string[] | null | undefined): boolean {
+  return (segments ?? []).some(segmentHasTechTools);
+}
+
 /**
  * Ferramenta-teaser de um nicho BLOQUEADO (vitrine de upsell). NÃO tem componente
  * por trás — clicar nela apenas destaca o item; o conteúdo mostra sempre o gate

@@ -70,6 +70,27 @@ export function getSegment(value: string | null | undefined): CompanySegment | n
 }
 
 /**
+ * Normaliza a fonte múltipla e preserva compatibilidade com o campo legado.
+ * `segments` sempre vence; `segment` só entra como fallback quando o array ainda
+ * não existe (empresas anteriores à migration multi-segmento).
+ */
+export function normalizeCompanySegments(
+  segments: readonly string[] | null | undefined,
+  segment?: string | null,
+): string[] {
+  const source = segments?.length ? segments : segment ? [segment] : [];
+  return Array.from(new Set(source.map((value) => value.trim()).filter(Boolean)));
+}
+
+export function companyHasSegment(
+  segments: readonly string[] | null | undefined,
+  expected: string,
+  legacySegment?: string | null,
+): boolean {
+  return normalizeCompanySegments(segments, legacySegment).includes(expected);
+}
+
+/**
  * Os 9 nichos do site, na ordem do catálogo. Usado na Área do Técnico
  * (switcher de nicho) — só esses têm landing e ferramentas.
  */
