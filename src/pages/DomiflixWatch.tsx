@@ -959,6 +959,7 @@ export function NetflixPlayer({
   const ytContainerRef = useRef<HTMLDivElement>(null);
   const ytPlayerRef = useRef<any>(null);
   const videoElRef = useRef<HTMLVideoElement>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -1207,14 +1208,21 @@ export function NetflixPlayer({
   );
 
   const toggleFullscreen = useCallback(async () => {
-    const el = document.querySelector(".domiflix-player-root");
+    const el = playerContainerRef.current as (HTMLDivElement & {
+      webkitRequestFullscreen?: () => Promise<void> | void;
+    }) | null;
     if (!el) return;
-    if (document.fullscreenElement) {
-      await document.exitFullscreen();
+    const fullscreenDocument = document as Document & {
+      webkitFullscreenElement?: Element | null;
+      webkitExitFullscreen?: () => Promise<void> | void;
+    };
+    const fullscreenElement = document.fullscreenElement ?? fullscreenDocument.webkitFullscreenElement;
+    if (fullscreenElement) {
+      await Promise.resolve(document.exitFullscreen?.() ?? fullscreenDocument.webkitExitFullscreen?.());
       return;
     }
     try {
-      await (el as HTMLElement).requestFullscreen();
+      await Promise.resolve(el.requestFullscreen?.() ?? el.webkitRequestFullscreen?.());
       const screenOrientation = screen.orientation as ScreenOrientation & {
         lock?: (orientation: "landscape") => Promise<void>;
       };
@@ -1459,7 +1467,9 @@ export function NetflixPlayer({
   // Fullscreen listener
   useEffect(() => {
     const handler = () => {
-      const fs = !!document.fullscreenElement;
+      const fullscreenDocument = document as Document & { webkitFullscreenElement?: Element | null };
+      const fullscreenElement = document.fullscreenElement ?? fullscreenDocument.webkitFullscreenElement;
+      const fs = fullscreenElement === playerContainerRef.current;
       setIsFullscreen(fs);
       // Lock landscape on mobile while in fullscreen (Netflix-style)
       const screenOrientation = (screen as any).orientation;
@@ -1472,7 +1482,11 @@ export function NetflixPlayer({
       }
     };
     document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
+    document.addEventListener("webkitfullscreenchange", handler);
+    return () => {
+      document.removeEventListener("fullscreenchange", handler);
+      document.removeEventListener("webkitfullscreenchange", handler);
+    };
   }, [orientation]);
 
   // Show "Next Episode" preview when within last 20s
@@ -1532,10 +1546,18 @@ export function NetflixPlayer({
 
   return (
     <div
+      ref={playerContainerRef}
       // aspect-video (16:9) ocupando o máximo do viewport sem cropar.
       // Em viewports portrait → letterbox top/bottom; em ultrawide → pillarbox laterais.
       // O container pai (`domiflix-player-root`) já é flex/center com fundo preto.
-      className={cn("relative bg-black select-none overflow-hidden", orientation === "portrait" ? "aspect-[9/16] h-[min(78dvh,900px)] w-auto max-h-full max-w-full" : "aspect-video h-full w-full max-h-[56.25vw] max-w-[177.78vh]")}
+      className={cn(
+        "relative bg-black select-none overflow-hidden",
+        isFullscreen
+          ? "h-screen w-screen max-h-none max-w-none aspect-auto"
+          : orientation === "portrait"
+            ? "aspect-[9/16] h-[min(78dvh,900px)] w-auto max-h-full max-w-full"
+            : "aspect-video h-full w-full max-h-[56.25vw] max-w-[177.78vh]",
+      )}
       style={{ cursor: showHud ? "default" : "none" }}
       onMouseMove={resetHideTimer}
       onTouchStart={() => {
