@@ -71,7 +71,7 @@ export default function ServicesPage() {
       />
 
       <div className="min-w-0">
-        {activeTab === 'types' && <ServiceTypesPanel />}
+        {activeTab === 'types' && <ServiceTypesPanel initialSelectedId={searchParams.get('service')} />}
         {activeTab === 'task-types' && <TaskTypesPanel />}
         {activeTab === 'checklists' && <ChecklistsPanel />}
       </div>

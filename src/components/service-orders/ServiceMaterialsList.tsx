@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { NumericInput, parseDecimalInputValue } from '@/components/ui/numeric-input';
+import { CurrencyField } from '@/components/ui/CurrencyField';
 import { Label } from '@/components/ui/label';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import {
@@ -20,7 +21,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useInventory } from '@/hooks/useInventory';
 import { useServiceMaterials, type ServiceMaterial } from '@/hooks/useServiceMaterials';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, getCurrencySymbol } from '@/lib/format';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { unitLabel } from '@/lib/inventoryUnits';
 import {
@@ -88,6 +89,7 @@ function keepExistingDrafts(
 
 export function ServiceMaterialsList({ serviceId, bdiFactor }: Props) {
   const { locale, currency } = useAppLocaleContext();
+  const currencySymbol = getCurrencySymbol(currency, locale);
   const money = (value: number) => formatMoney(value, currency, locale);
   const t = MESSAGES[locale].app.os.serviceMaterials;
   const { items } = useInventory();
@@ -251,7 +253,7 @@ export function ServiceMaterialsList({ serviceId, bdiFactor }: Props) {
         </div>
 
         <p className="text-xs leading-relaxed text-muted-foreground">
-          “Seu custo” é o que sai da empresa para comprar o material. “Cliente paga com BDI” é a referência de venda com imposto, administração e lucro aplicados.
+          “Seu custo” é o que sai da empresa para comprar o insumo. “Cliente paga com BDI” é a referência de venda com imposto, administração e lucro aplicados.
         </p>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
@@ -277,16 +279,19 @@ export function ServiceMaterialsList({ serviceId, bdiFactor }: Props) {
           <div className="space-y-1.5">
             <Label className="text-xs">{t.labelUnitCost}</Label>
             <div className="flex items-center gap-2">
-              <NumericInput
-                decimal
-                value={stockItemId ? toRawDecimal(selectedInv?.cost_price) : purchasePriceText}
-                onValueChange={(raw) => {
-                  setPurchasePriceText(raw);
-                  setPurchasePrice(parseDecimalInputValue(raw) ?? 0);
-                }}
-                disabled={!!stockItemId}
-                aria-describedby={stockItemId ? 'canonical-purchase-cost-help' : undefined}
-              />
+              <CurrencyField symbol={currencySymbol} className="w-40 shrink-0">
+                <NumericInput
+                  decimal
+                  className="text-right"
+                  value={stockItemId ? toRawDecimal(selectedInv?.cost_price) : purchasePriceText}
+                  onValueChange={(raw) => {
+                    setPurchasePriceText(raw);
+                    setPurchasePrice(parseDecimalInputValue(raw) ?? 0);
+                  }}
+                  disabled={!!stockItemId}
+                  aria-describedby={stockItemId ? 'canonical-purchase-cost-help' : undefined}
+                />
+              </CurrencyField>
               {renderUnitSuffix(selectedInv?.unit ?? 'un')}
             </div>
             {stockItemId && (
@@ -307,15 +312,15 @@ export function ServiceMaterialsList({ serviceId, bdiFactor }: Props) {
         {overriddenMaterials.length > 0 && (
           <NoticeBanner variant="warning" title="Custo de compra sobrescrito">
             {overriddenMaterials.length === 1
-              ? '1 material usa um custo manual e deixou de acompanhar automaticamente o custo de compra do estoque. O BDI continua sendo aplicado sobre o valor informado.'
-              : `${overriddenMaterials.length} materiais usam custo manual e deixaram de acompanhar automaticamente o custo de compra do estoque. O BDI continua sendo aplicado sobre os valores informados.`}
+              ? '1 insumo usa um custo manual e deixou de acompanhar automaticamente o custo de compra do estoque. O BDI continua sendo aplicado sobre o valor informado.'
+              : `${overriddenMaterials.length} insumos usam custo manual e deixaram de acompanhar automaticamente o custo de compra do estoque. O BDI continua sendo aplicado sobre os valores informados.`}
           </NoticeBanner>
         )}
 
         {isLoading ? (
-          <div className="rounded-xl bg-muted/30 p-6 text-center text-sm text-muted-foreground">Carregando materiais…</div>
+          <div className="rounded-xl bg-muted/30 p-6 text-center text-sm text-muted-foreground">Carregando insumos…</div>
         ) : error ? (
-          <div className="rounded-xl bg-muted/30 p-6 text-center text-sm text-destructive">Não foi possível carregar os materiais.</div>
+          <div className="rounded-xl bg-muted/30 p-6 text-center text-sm text-destructive">Não foi possível carregar os insumos.</div>
         ) : materials.length === 0 ? (
           <div className="rounded-xl bg-muted/30 p-6 text-center text-sm text-muted-foreground">{t.emptyState}</div>
         ) : (
@@ -369,15 +374,18 @@ export function ServiceMaterialsList({ serviceId, bdiFactor }: Props) {
                       <TableCell>
                         <div className="min-w-[185px] space-y-1.5">
                           <div className="flex items-center gap-2">
-                            <NumericInput
-                              decimal
-                              value={rowCostText[material.id] ?? toRawDecimal(material.purchase_price)}
-                              onValueChange={(raw) => setRowCostText((current) => ({ ...current, [material.id]: raw }))}
-                              onBlur={() => commitCost(material)}
-                              onKeyDown={(event) => commitOnEnter(event, () => commitCost(material))}
-                              disabled={updateMaterial.isPending}
-                              aria-label={`Custo unitário de ${material.item_name}`}
-                            />
+                            <CurrencyField symbol={currencySymbol} className="w-40 shrink-0">
+                              <NumericInput
+                                decimal
+                                className="text-right"
+                                value={rowCostText[material.id] ?? toRawDecimal(material.purchase_price)}
+                                onValueChange={(raw) => setRowCostText((current) => ({ ...current, [material.id]: raw }))}
+                                onBlur={() => commitCost(material)}
+                                onKeyDown={(event) => commitOnEnter(event, () => commitCost(material))}
+                                disabled={updateMaterial.isPending}
+                                aria-label={`Custo unitário de ${material.item_name}`}
+                              />
+                            </CurrencyField>
                             {renderUnitSuffix(material.unit)}
                           </div>
                           {overridden && canonicalCost != null && (

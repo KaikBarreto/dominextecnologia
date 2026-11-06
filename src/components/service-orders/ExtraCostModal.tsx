@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyField } from '@/components/ui/CurrencyField';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Car, Wrench, HardHat, Fuel, ShieldCheck, MoreHorizontal, Plus } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { readPastedCents } from '@/lib/money-paste-mask';
+import { getCurrencySymbol } from '@/lib/format';
 
 // Internal key → icon mapping (keys are stable, labels come from i18n)
 const EXTRA_COST_ICONS = [
@@ -26,7 +28,8 @@ interface ExtraCostModalProps {
 }
 
 export function ExtraCostModal({ open, onOpenChange, onAdd }: ExtraCostModalProps) {
-  const { locale } = useAppLocaleContext();
+  const { locale, currency } = useAppLocaleContext();
+  const currencySymbol = getCurrencySymbol(currency, locale);
   const t = MESSAGES[locale].app.crm.costModals;
 
   const [typeKey, setTypeKey] = useState<string>('vehicle');
@@ -63,8 +66,8 @@ export function ExtraCostModal({ open, onOpenChange, onAdd }: ExtraCostModalProp
       title={t.extraCostTitle}
       footer={
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">{t.extraCostCancel}</Button>
-          <Button onClick={handleAdd} disabled={amount <= 0} className="flex-1">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="h-11 flex-1">{t.extraCostCancel}</Button>
+          <Button onClick={handleAdd} disabled={amount <= 0} className="h-11 flex-1">
             <Plus className="h-3.5 w-3.5 mr-1" />{t.extraCostAdd}
           </Button>
         </div>
@@ -72,9 +75,9 @@ export function ExtraCostModal({ open, onOpenChange, onAdd }: ExtraCostModalProp
     >
       <div className="space-y-4">
         <div className="space-y-1.5">
-          <Label className="text-xs">{t.extraCostTypeLabel}</Label>
+          <Label htmlFor="quote-extra-type" className="text-sm font-semibold text-foreground">{t.extraCostTypeLabel}</Label>
           <Select value={typeKey} onValueChange={setTypeKey}>
-            <SelectTrigger>
+            <SelectTrigger id="quote-extra-type" className="min-h-11">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -92,8 +95,10 @@ export function ExtraCostModal({ open, onOpenChange, onAdd }: ExtraCostModalProp
 
         {typeKey === 'other' && (
           <div className="space-y-1.5">
-            <Label className="text-xs">{t.extraCostDescLabel}</Label>
+            <Label htmlFor="quote-extra-description" className="text-sm font-semibold text-foreground">{t.extraCostDescLabel}</Label>
             <Input
+              id="quote-extra-description"
+              className="h-11 text-base"
               value={customLabel}
               onChange={e => setCustomLabel(e.target.value)}
               placeholder={t.extraCostDescPlaceholder}
@@ -102,14 +107,18 @@ export function ExtraCostModal({ open, onOpenChange, onAdd }: ExtraCostModalProp
         )}
 
         <div className="space-y-1.5">
-          <Label className="text-xs">{t.extraCostAmountLabel}</Label>
+          <Label htmlFor="quote-extra-amount" className="text-sm font-semibold text-foreground">{t.extraCostAmountLabel}</Label>
+          <CurrencyField symbol={currencySymbol} className="max-w-48">
           <Input
+            id="quote-extra-amount"
+            className="h-11 text-right text-base"
             type="number" min={0} step="0.01"
             value={amount || ''}
             onChange={e => setAmount(Number(e.target.value) || 0)}
             onPaste={handleAmountPaste}
             placeholder={t.extraCostAmountPlaceholder}
           />
+          </CurrencyField>
         </div>
       </div>
     </ResponsiveModal>

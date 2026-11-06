@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Calculator, Save, CheckCircle2, Loader2, Trash2, Wrench } from 'lucide-react';
+import { ArrowLeft, Calculator, Save, CheckCircle2, Loader2, Trash2, Wrench, Plus, Pencil } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyField } from '@/components/ui/CurrencyField';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +22,7 @@ import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useBDICalculator } from '@/hooks/useBDICalculator';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, getCurrencySymbol } from '@/lib/format';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { LaborCalculatorModal } from '@/components/service-orders/LaborCalculatorModal';
 import { ExtraCostModal } from '@/components/service-orders/ExtraCostModal';
@@ -35,6 +36,10 @@ import { FilterButton } from '@/components/ui/FilterButton';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { QuickServiceTypeDialog } from '@/components/service-orders/QuickServiceTypeDialog';
+import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,7 +60,7 @@ const UI = {
   searchPlaceholder: 'Buscar tipo de serviço...',
   emptyList: 'Nenhum tipo de serviço encontrado.',
   selectTitle: 'Selecione um tipo de serviço',
-  selectDescription: 'A composição de mão de obra, recursos, materiais e o resumo aparecerão aqui.',
+  selectDescription: 'A composição de mão de obra, recursos, insumos e o resumo aparecerão aqui.',
   active: 'Ativo',
   inactive: 'Inativo',
   statusFilter: 'Situação',
@@ -88,8 +93,23 @@ function ServiceTypeAvatar({
   );
 }
 
-export function ServiceCostsTab() {
+interface ServiceCostsTabProps {
+  /** Serviço fixo para reutilizar o editor dentro de outra ficha. */
+  serviceId?: string;
+  /** Oculta cabeçalho e coluna de lista, preservando o mesmo editor real. */
+  embedded?: boolean;
+  /** Evita repetir o nome do serviço quando a ficha pai já o apresenta. */
+  showServiceHeader?: boolean;
+}
+
+export function ServiceCostsTab({
+  serviceId: fixedServiceId,
+  embedded = false,
+  showServiceHeader = true,
+}: ServiceCostsTabProps = {}) {
   const { locale, currency } = useAppLocaleContext();
+  const currencySymbol = getCurrencySymbol(currency, locale);
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const tsc = MESSAGES[locale].app.crm.serviceCosts;
@@ -97,9 +117,11 @@ export function ServiceCostsTab() {
 
   const isMobile = useIsMobile();
   const { serviceTypes, isLoading: serviceTypesLoading } = useServiceTypes();
-  const [serviceId, setServiceId] = useState<string>('');
+  const [selectedServiceId, setSelectedServiceId] = useState<string>('');
+  const serviceId = fixedServiceId ?? selectedServiceId;
   const [costsTab, setCostsTab] = useState<string>('mao_de_obra');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const { cost, saveCost, isLoading: costLoading, error: costError } = useServiceCosts(serviceId || null);
   const {
     materials,
@@ -306,9 +328,50 @@ export function ServiceCostsTab() {
     if (!companyId || !serviceId || detailLoading || detailError) return;
     queryClient.setQueryData(
       serviceCostBreakdownQueryKey(companyId, serviceId),
-      costBreakdown,
+      {
+        ...costBreakdown,
+        composition: {
+          supplies: materials.map(material => ({
+            id: material.id,
+            label: material.item_name,
+            quantity: Number(material.quantity ?? 0),
+            unitCost: Number(material.purchase_price ?? 0),
+            source: 'supply' as const,
+            sourceId: material.id,
+            stockItemId: material.stock_item_id,
+            unit: material.unit,
+          })),
+          resources: [
+            ...extraCosts.map((line, index) => ({
+              id: `extra-${index}`,
+              label: line.label || 'Custo extra',
+              quantity: 1,
+              unitCost: Number(line.amount ?? 0),
+              source: 'extra' as const,
+            })),
+            ...resourcesState.linkedResources.map(link => ({
+              id: link.id,
+              label: link.resource.name,
+              quantity: 1,
+              unitCost: link.calculatedCost,
+              source: 'resource' as const,
+              sourceId: link.id,
+              resourceId: link.resource_id,
+            })),
+            ...resourcesState.gifts.map(gift => ({
+              id: gift.id,
+              label: gift.name,
+              quantity: Number(gift.quantity ?? 0),
+              unitCost: Number(gift.unit_cost ?? 0),
+              source: 'gift' as const,
+              sourceId: gift.id,
+              resourceId: gift.resource_id,
+            })),
+          ],
+        },
+      },
     );
-  }, [costBreakdown, detailError, detailLoading, profile?.company_id, queryClient, serviceId]);
+  }, [costBreakdown, detailError, detailLoading, extraCosts, materials, profile?.company_id, queryClient, resourcesState.gifts, resourcesState.linkedResources, serviceId]);
 
   const selectedService = useMemo(
     () => serviceTypes.find((service) => service.id === serviceId) ?? null,
@@ -334,7 +397,21 @@ export function ServiceCostsTab() {
         {service.is_active ? UI.active : UI.inactive}
       </Badge>
     ),
-  })), [visibleServices]);
+    actions: (
+      <RowActionsMenu
+        ariaLabel={`Ações de ${service.name}`}
+        actions={[{
+          label: 'Editar cadastro',
+          icon: Pencil,
+          variant: 'edit',
+          onClick: () => {
+            flushSave();
+            navigate(`${localizeAppPath('/servicos', locale)}?tab=types&service=${service.id}`);
+          },
+        }]}
+      />
+    ),
+  })), [flushSave, locale, navigate, visibleServices]);
   const sortOptions = useMemo<ListDetailSortOption[]>(() => {
     const byName = (a: ListDetailItem, b: ListDetailItem) =>
       a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' });
@@ -350,30 +427,30 @@ export function ServiceCostsTab() {
     loadedRef.current = false;
     dirtyRef.current = false;
     setCostsTab('mao_de_obra');
-    setServiceId(nextServiceId);
+    setSelectedServiceId(nextServiceId);
   }, [flushSave, serviceId]);
 
   useEffect(() => {
-    if (serviceId && !visibleServices.some((service) => service.id === serviceId)) {
+    if (!fixedServiceId && serviceId && !visibleServices.some((service) => service.id === serviceId)) {
       flushSave();
-      setServiceId('');
+      setSelectedServiceId('');
     }
-  }, [flushSave, serviceId, visibleServices]);
+  }, [fixedServiceId, flushSave, serviceId, visibleServices]);
 
   return (
     <div className="space-y-4">
-      <div>
+      {!embedded && <div>
         <h2 className="text-lg font-semibold text-foreground sm:text-xl">{tsc.title}</h2>
         <p className="mt-0.5 text-sm text-muted-foreground">{tsc.subtitle}</p>
-      </div>
+      </div>}
 
       {serviceTypesLoading ? (
-        <div className="grid gap-5 lg:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)]">
-          <div className="space-y-2">
+        <div className={cn('grid gap-5', !embedded && 'lg:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)]')}>
+          {!embedded && <div className="space-y-2">
             <Skeleton className="h-10 w-full" />
             {[1, 2, 3, 4, 5].map((index) => <Skeleton key={index} className="h-16 w-full" />)}
-          </div>
-          <Skeleton className="hidden min-h-[32rem] w-full lg:block" />
+          </div>}
+          <Skeleton className={cn('min-h-[32rem] w-full', !embedded && 'hidden lg:block')} />
         </div>
       ) : (
         <ListDetailLayout
@@ -381,6 +458,18 @@ export function ServiceCostsTab() {
           selectedId={serviceId || undefined}
           listTitle={UI.listTitle}
           listDescription={UI.listDescription}
+          listHeaderAction={(
+            <Button
+              type="button"
+              size="icon"
+              className="h-7 w-7"
+              aria-label="Novo tipo de serviço"
+              title="Novo tipo de serviço"
+              onClick={() => setQuickCreateOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          )}
           listFilters={(
             <FilterButton
               activeCount={statusFilter.length > 0 ? 1 : 0}
@@ -405,6 +494,8 @@ export function ServiceCostsTab() {
           searchPlaceholder={UI.searchPlaceholder}
           emptyLabel={UI.emptyList}
           mobileDetailOpen={!!serviceId}
+          hideList={embedded}
+          selectedItemClassName="bg-zinc-950 text-white hover:bg-zinc-900 [&_.text-muted-foreground]:text-zinc-300"
           onSelect={handleSelectService}
         >
           {!selectedService ? (
@@ -418,17 +509,17 @@ export function ServiceCostsTab() {
             </div>
           ) : (
             <div className="min-w-0 space-y-4">
-              <button
+              {!embedded && <button
                 type="button"
                 className="inline-flex items-center gap-1 text-xs text-muted-foreground lg:hidden"
                 onClick={() => {
                   flushSave();
-                  setServiceId('');
+                  setSelectedServiceId('');
                 }}
               >
                 <ArrowLeft className="h-3.5 w-3.5" /> Voltar aos tipos de serviço
-              </button>
-              <div className="flex flex-wrap items-start justify-between gap-3">
+              </button>}
+              {showServiceHeader && <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <ServiceTypeAvatar
@@ -444,7 +535,7 @@ export function ServiceCostsTab() {
                     <p className="mt-1 text-sm text-muted-foreground">{selectedService.description}</p>
                   )}
                 </div>
-              </div>
+              </div>}
 
               {detailLoading ? (
                 <div className="space-y-3">
@@ -499,16 +590,18 @@ export function ServiceCostsTab() {
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                   <Card className="border-0 bg-background/80 shadow-sm">
                     <CardContent className="p-4 space-y-3">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
                         <p className="text-sm font-semibold text-foreground">{tsc.laborTitle}</p>
-                        <Button size="sm" variant="outline" onClick={() => setLaborCalcOpen(true)}>
+                        <Button size="sm" variant="outline" className="shrink-0" onClick={() => setLaborCalcOpen(true)}>
                           <Calculator className="h-3.5 w-3.5 mr-1" />{tsc.laborCalculate}
                         </Button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
                         <div className="space-y-1.5">
                           <Label className="text-xs">{tsc.laborHourlyCost}</Label>
-                          <Input type="number" min={0} step="0.01" value={hourlyRate} onChange={(e) => setHourlyRate(Number(e.target.value) || 0)} onPaste={handleHourlyRatePaste} onBlur={flushSave} />
+                          <CurrencyField symbol={currencySymbol} className="max-w-48">
+                            <Input className="text-right" type="number" min={0} step="0.01" value={hourlyRate} onChange={(e) => setHourlyRate(Number(e.target.value) || 0)} onPaste={handleHourlyRatePaste} onBlur={flushSave} />
+                          </CurrencyField>
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs">{tsc.laborHours}</Label>
@@ -546,7 +639,9 @@ export function ServiceCostsTab() {
                               <div className="sm:col-span-2 space-y-1">
                                 <Label className="text-xs">{tsc.extrasValueLabel}</Label>
                                 <div className="flex gap-2">
-                                  <Input type="number" min={0} step="0.01" value={l.amount} onChange={(e) => updateExtraLine(idx, { amount: Number(e.target.value) || 0 })} onPaste={handleExtraAmountPaste(idx)} onBlur={flushSave} />
+                                  <CurrencyField symbol={currencySymbol} className="max-w-44 flex-1">
+                                    <Input className="text-right" type="number" min={0} step="0.01" value={l.amount} onChange={(e) => updateExtraLine(idx, { amount: Number(e.target.value) || 0 })} onPaste={handleExtraAmountPaste(idx)} onBlur={flushSave} />
+                                  </CurrencyField>
                                   <Button
                                     type="button"
                                     variant="destructive-ghost"
@@ -612,7 +707,7 @@ export function ServiceCostsTab() {
                       </div>
 
                       <p className="text-xs leading-relaxed text-muted-foreground">
-                        Mão de obra, materiais, recursos e extras abaixo são custos da empresa. O preço ao cliente é formado aplicando as taxas do BDI sobre esse custo total.
+                        Mão de obra, insumos, recursos e extras abaixo são custos da empresa. O preço ao cliente é formado aplicando as taxas do BDI sobre esse custo total.
                       </p>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -701,6 +796,17 @@ export function ServiceCostsTab() {
         onOpenChange={setExtraCostModalOpen}
         onAdd={addExtraLine}
       />
+
+      {!embedded && quickCreateOpen && (
+        <QuickServiceTypeDialog
+          open={quickCreateOpen}
+          onOpenChange={setQuickCreateOpen}
+          onCreated={(service) => {
+            setQuickCreateOpen(false);
+            handleSelectService(service.id);
+          }}
+        />
+      )}
 
       <AlertDialog
         open={pendingExtraDeleteIndex != null}

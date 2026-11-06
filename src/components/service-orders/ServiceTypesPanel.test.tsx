@@ -4,24 +4,44 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const testState = vi.hoisted(() => ({
   createMutateAsync: vi.fn().mockResolvedValue({ id: 'service-new' }),
   updateMutateAsync: vi.fn().mockResolvedValue({ id: 'service-1' }),
-  serviceTypes: [{
-    id: 'service-1',
-    name: 'Primeiro serviço',
-    color: '#2563eb',
-    description: 'Cadastro existente',
-    is_active: true,
-    requires_equipment: true,
-    number_prefix: 'PS',
-    category_id: null,
-    codigo_servico: null,
-    codigo_tributacao_municipal: null,
-    codigo_nbs: null,
-    iss_aliquota: null,
-    item_lc116: null,
-    default_price: 120,
-    created_at: '2026-11-02T00:00:00Z',
-    updated_at: '2026-11-02T00:00:00Z',
-  }],
+  serviceTypes: [
+    {
+      id: 'service-1',
+      name: 'Primeiro serviço',
+      color: '#2563eb',
+      description: 'Cadastro existente',
+      is_active: true,
+      requires_equipment: true,
+      number_prefix: 'PS',
+      category_id: null,
+      codigo_servico: null,
+      codigo_tributacao_municipal: null,
+      codigo_nbs: null,
+      iss_aliquota: null,
+      item_lc116: null,
+      default_price: 120,
+      created_at: '2026-11-02T00:00:00Z',
+      updated_at: '2026-11-02T00:00:00Z',
+    },
+    {
+      id: 'service-2',
+      name: 'Serviço solicitado pela URL',
+      color: '#16a34a',
+      description: null,
+      is_active: true,
+      requires_equipment: false,
+      number_prefix: 'SS',
+      category_id: null,
+      codigo_servico: null,
+      codigo_tributacao_municipal: null,
+      codigo_nbs: null,
+      iss_aliquota: null,
+      item_lc116: null,
+      default_price: 80,
+      created_at: '2026-11-03T00:00:00Z',
+      updated_at: '2026-11-03T00:00:00Z',
+    },
+  ],
 }));
 
 vi.mock('@/contexts/AppLocaleContext', () => ({
@@ -43,6 +63,11 @@ vi.mock('@/components/service-orders/ServiceTypeCategoriesDialog', () => ({
   ServiceTypeCategoriesDialog: () => null,
 }));
 vi.mock('@/components/fiscal/TaxCodeCombobox', () => ({ TaxCodeCombobox: () => null }));
+vi.mock('@/components/service-orders/ServiceCostsTab', () => ({
+  ServiceCostsTab: ({ serviceId, embedded }: { serviceId: string; embedded: boolean }) => (
+    <div data-testid="service-cost-editor" data-service-id={serviceId} data-embedded={String(embedded)} />
+  ),
+}));
 
 import { ScreenActionsSlot } from '@/components/ui/ScreenActions';
 import { ServiceTypesPanel } from './ServiceTypesPanel';
@@ -99,5 +124,22 @@ describe('ServiceTypesPanel — criação isolada da edição', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Novo Serviço' }));
     dialog = await screen.findByRole('dialog', { name: 'Novo Serviço' });
     expect(within(dialog).getByPlaceholderText('Ex: Manutenção Preventiva')).toHaveValue('');
+  });
+
+  it('abre custos e precificação na mesma ficha do tipo de serviço', async () => {
+    render(<ServiceTypesPanel />);
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Custos e precificação' }));
+
+    const editor = await screen.findByTestId('service-cost-editor');
+    expect(editor).toHaveAttribute('data-service-id', 'service-1');
+    expect(editor).toHaveAttribute('data-embedded', 'true');
+    expect(screen.queryByRole('button', { name: 'Salvar' })).not.toBeInTheDocument();
+  });
+
+  it('abre diretamente o tipo de serviço informado pela URL', async () => {
+    render(<ServiceTypesPanel initialSelectedId="service-2" />);
+
+    expect(await screen.findByDisplayValue('Serviço solicitado pela URL')).toBeInTheDocument();
   });
 });

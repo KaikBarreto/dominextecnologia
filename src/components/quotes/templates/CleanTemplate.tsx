@@ -10,6 +10,7 @@ import {
   formatValidUntil,
   hasDisplacement,
   resolveSectionText as resolveSectionTextShared,
+  getProposalItemCostDetails,
   scaledLogoHeightPx,
   sumTotal,
 } from './shared';
@@ -126,6 +127,13 @@ export function CleanTemplate(props: ProposalTemplateProps) {
                         {item.details}
                       </p>
                     )}
+                    {getProposalItemCostDetails(quote, item, money, locale).length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]" style={{ color: '#64748b' }}>
+                        {getProposalItemCostDetails(quote, item, money, locale).map(detail => (
+                          <span key={detail.label}>{detail.label} <strong style={{ color: '#334155' }}>{detail.value}</strong></span>
+                        ))}
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-3 text-right tabular-nums align-top whitespace-nowrap" style={{ color: '#334155', borderBottom: '1px solid #f1f5f9' }}>
                     {money(item.unit_price || 0)}
@@ -163,6 +171,13 @@ export function CleanTemplate(props: ProposalTemplateProps) {
                 <p className="text-xs leading-relaxed mt-1 whitespace-pre-wrap break-words" style={{ color: '#64748b', overflowWrap: 'anywhere' }}>
                   {item.details}
                 </p>
+              )}
+              {getProposalItemCostDetails(quote, item, money, locale).length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px]" style={{ color: '#64748b' }}>
+                  {getProposalItemCostDetails(quote, item, money, locale).map(detail => (
+                    <span key={detail.label}>{detail.label} <strong style={{ color: '#334155' }}>{detail.value}</strong></span>
+                  ))}
+                </div>
               )}
               <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
                 <div>

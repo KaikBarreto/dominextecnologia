@@ -28,6 +28,8 @@ export interface ListDetailItem {
   onImageClick?: () => void;
   leading?: ReactNode;
   trailing?: ReactNode;
+  /** Ação interativa renderizada como irmã do botão principal (evita botão aninhado). */
+  actions?: ReactNode;
 }
 
 export interface ListDetailSortOption {
@@ -53,6 +55,8 @@ interface ListDetailLayoutProps {
    * junto do que ele filtra em vez de solto acima do layout.
    */
   listFilters?: ReactNode;
+  /** Ação primária do cabeçalho da lista, como quick-create. */
+  listHeaderAction?: ReactNode;
   /**
    * Critérios de ordenação da coluna da esquerda. Sem isso, a lista oferece
    * Nome (A-Z) e Nome (Z-A). O primeiro da lista é o padrão.
@@ -74,6 +78,10 @@ interface ListDetailLayoutProps {
   mobileDetailOpen?: boolean;
   className?: string;
   detailClassName?: string;
+  /** Reutiliza apenas o painel de detalhe, sem montar a coluna de lista. */
+  hideList?: boolean;
+  /** Aparência da linha selecionada quando a tela usa um contraste próprio. */
+  selectedItemClassName?: string;
 }
 
 /** Lê/grava o estado da coluna (busca, ordenação) por tela, sem quebrar em SSR. */
@@ -114,6 +122,7 @@ export function ListDetailLayout({
   listTitle,
   listDescription,
   listFilters,
+  listHeaderAction,
   sortOptions,
   pageSize = 25,
   storageKey,
@@ -125,6 +134,8 @@ export function ListDetailLayout({
   mobileDetailOpen,
   className,
   detailClassName,
+  hideList = false,
+  selectedItemClassName,
 }: ListDetailLayoutProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.common.listDetail;
@@ -252,7 +263,7 @@ export function ListDetailLayout({
         onClick={() => onSelect(item.id)}
         className={cn(
           'flex w-full cursor-pointer items-center gap-3 border-b border-border/60 px-3 py-3 text-left outline-none transition-colors last:border-b-0',
-          selected ? 'bg-muted' : 'hover:bg-muted/50',
+          selected ? (selectedItemClassName ?? 'bg-muted') : 'hover:bg-muted/50',
         )}
       >
         {item.imageUrl ? (
@@ -303,9 +314,14 @@ export function ListDetailLayout({
           </span>
           {item.trailing && <span className="shrink-0">{item.trailing}</span>}
         </button>
+        {item.actions && <div className="shrink-0">{item.actions}</div>}
       </div>
     );
   };
+
+  if (hideList) {
+    return <div className={cn('min-w-0', detailClassName)}>{children}</div>;
+  }
 
   return (
     <div
@@ -355,6 +371,7 @@ export function ListDetailLayout({
                   >
                     {formatNumber(pagination.totalItems, locale)}
                   </span>
+                  {listHeaderAction && <span className="ml-auto shrink-0">{listHeaderAction}</span>}
                 </div>
                 {listDescription && (
                   <p className="mt-0.5 text-xs text-muted-foreground">{listDescription}</p>

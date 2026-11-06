@@ -63,16 +63,17 @@ export function useServiceMaterials(serviceId?: string | null) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-materials'] });
       queryClient.invalidateQueries({ queryKey: ['service-cost-breakdown'] });
-      toast({ title: 'Material adicionado!' });
+      toast({ title: 'Insumo adicionado!' });
     },
     onError: (error: unknown) => {
-      toast({ variant: 'destructive', title: 'Erro ao adicionar material', description: getErrorMessage(error) });
+      toast({ variant: 'destructive', title: 'Erro ao adicionar insumo', description: getErrorMessage(error) });
     },
   });
 
   const updateMaterial = useMutation({
     mutationFn: async ({ id, ...updates }: ServiceMaterialUpdate & { id: string }) => {
-      const { subtotal: _subtotal, ...rest } = updates;
+      const { subtotal: _subtotal, ...updatesWithoutSubtotal } = updates;
+      const rest: ServiceMaterialUpdate = { ...updatesWithoutSubtotal };
 
       // Recalcular subtotal quando quantity e/ou purchase_price mudarem.
       // O componente envia updates PARCIAIS (só quantity OU só purchase_price),
@@ -99,10 +100,10 @@ export function useServiceMaterials(serviceId?: string | null) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-materials'] });
       queryClient.invalidateQueries({ queryKey: ['service-cost-breakdown'] });
-      toast({ title: 'Material atualizado!' });
+      toast({ title: 'Insumo atualizado!' });
     },
     onError: (error: unknown) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar material', description: getErrorMessage(error) });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar insumo', description: getErrorMessage(error) });
     },
   });
 
@@ -114,10 +115,10 @@ export function useServiceMaterials(serviceId?: string | null) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-materials'] });
       queryClient.invalidateQueries({ queryKey: ['service-cost-breakdown'] });
-      toast({ title: 'Material removido!' });
+      toast({ title: 'Insumo removido!' });
     },
     onError: (error: unknown) => {
-      toast({ variant: 'destructive', title: 'Erro ao remover material', description: getErrorMessage(error) });
+      toast({ variant: 'destructive', title: 'Erro ao remover insumo', description: getErrorMessage(error) });
     },
   });
 

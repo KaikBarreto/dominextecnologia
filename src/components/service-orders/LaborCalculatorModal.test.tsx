@@ -79,7 +79,7 @@ describe('LaborCalculatorModal — campos de dinheiro por trabalhador (prova rea
   it('colar "R$ 4.550" no custo mensal dá 4550, não 4.55 (bug do sócio)', () => {
     mount();
     // Único trabalhador nasce sem custo fixo: campo visível é "Custo mensal".
-    const salaryInput = moneyInputs().find(i => i.placeholder === 'Ex: 3500');
+    const salaryInput = moneyInputs().find(i => i.getAttribute('aria-label') === 'Custo mensal');
     expect(salaryInput).toBeTruthy();
 
     paste(salaryInput!, 'R$ 4.550');
@@ -88,7 +88,7 @@ describe('LaborCalculatorModal — campos de dinheiro por trabalhador (prova rea
 
   it('digitar continua number nativo (comportamento inalterado)', () => {
     mount();
-    const salaryInput = moneyInputs().find(i => i.placeholder === 'Ex: 3500')!;
+    const salaryInput = moneyInputs().find(i => i.getAttribute('aria-label') === 'Custo mensal')!;
     expect(salaryInput.type).toBe('number');
   });
 

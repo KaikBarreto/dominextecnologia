@@ -231,7 +231,7 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.monthlyCostTitle} className="sm:max-w-lg" footer={footer}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.monthlyCostTitle} className="sm:max-w-lg [&_label]:text-sm [&_label]:font-semibold [&_label]:text-foreground" footer={footer}>
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-primary mb-1">
           <Calculator className="h-4 w-4" />

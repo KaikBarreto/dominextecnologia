@@ -10891,6 +10891,7 @@ export type Database = {
       quote_items: {
         Row: {
           bdi: number
+          cost_composition: Json | null
           created_at: string
           description: string
           details: string | null
@@ -10898,6 +10899,7 @@ export type Database = {
           inventory_id: string | null
           item_type: string
           position: number
+          pricing_mode: string
           price_override: number | null
           profit_rate: number
           quantity: number
@@ -10914,6 +10916,7 @@ export type Database = {
         }
         Insert: {
           bdi?: number
+          cost_composition?: Json | null
           created_at?: string
           description: string
           details?: string | null
@@ -10921,6 +10924,7 @@ export type Database = {
           inventory_id?: string | null
           item_type?: string
           position?: number
+          pricing_mode?: string
           price_override?: number | null
           profit_rate?: number
           quantity?: number
@@ -10937,6 +10941,7 @@ export type Database = {
         }
         Update: {
           bdi?: number
+          cost_composition?: Json | null
           created_at?: string
           description?: string
           details?: string | null
@@ -10944,6 +10949,7 @@ export type Database = {
           inventory_id?: string | null
           item_type?: string
           position?: number
+          pricing_mode?: string
           price_override?: number | null
           profit_rate?: number
           quantity?: number
@@ -11042,6 +11048,8 @@ export type Database = {
           last_viewed_at: string | null
           notes: string | null
           profit_rate: number
+          show_inputs_cost_in_proposal: boolean
+          show_labor_cost_in_proposal: boolean
           proposal_template_id: string | null
           prospect_email: string | null
           prospect_name: string | null
@@ -11086,6 +11094,8 @@ export type Database = {
           last_viewed_at?: string | null
           notes?: string | null
           profit_rate?: number
+          show_inputs_cost_in_proposal?: boolean
+          show_labor_cost_in_proposal?: boolean
           proposal_template_id?: string | null
           prospect_email?: string | null
           prospect_name?: string | null
@@ -11130,6 +11140,8 @@ export type Database = {
           last_viewed_at?: string | null
           notes?: string | null
           profit_rate?: number
+          show_inputs_cost_in_proposal?: boolean
+          show_labor_cost_in_proposal?: boolean
           proposal_template_id?: string | null
           prospect_email?: string | null
           prospect_name?: string | null
@@ -17019,6 +17031,16 @@ export type Database = {
         }
       }
       get_quote_public_payload: { Args: { _token: string }; Returns: Json }
+      save_service_cost_composition_from_quote: {
+        Args: {
+          _hours: number
+          _hourly_rate: number
+          _resources: Json
+          _service_id: string
+          _supplies: Json
+        }
+        Returns: undefined
+      }
       get_rating_by_token: {
         Args: { _token: string }
         Returns: {

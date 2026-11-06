@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Plus, Trash2, Wrench, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyField } from '@/components/ui/CurrencyField';
 import { NumericInput, parseDecimalInputValue } from '@/components/ui/numeric-input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -12,6 +13,8 @@ import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useInventory } from '@/hooks/useInventory';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { useLocaleFormatters } from '@/lib/format/hooks';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { getCurrencySymbol } from '@/lib/format';
 import type { ServiceType } from '@/hooks/useServiceTypes';
 import type { ServiceOrderBudgetItem, ServiceOrderBudgetPricingMode } from '@/lib/serviceOrderBudget';
 
@@ -40,12 +43,14 @@ function EditableDecimalValue({
   ariaLabel,
   maxDecimals,
   allowZero = false,
+  currencySymbol,
 }: {
   value: number;
   onCommit: (value: number) => void;
   ariaLabel: string;
   maxDecimals: number;
   allowZero?: boolean;
+  currencySymbol?: string;
 }) {
   const toDraft = (number: number) => String(number).replace('.', ',');
   const [draft, setDraft] = useState(toDraft(value));
@@ -64,7 +69,7 @@ function EditableDecimalValue({
     setDraft(toDraft(parsed));
   };
 
-  return (
+  const field = (
     <NumericInput
       decimal
       maxDecimals={maxDecimals}
@@ -81,6 +86,7 @@ function EditableDecimalValue({
       className="h-8 w-full min-w-[72px] bg-background text-xs tabular-nums md:w-20"
     />
   );
+  return currencySymbol ? <CurrencyField symbol={currencySymbol} className="w-full md:w-24">{field}</CurrencyField> : field;
 }
 
 /* ─── Input row: Serviços / Mão de Obra ─── */
@@ -88,10 +94,12 @@ function ServiceInputRow({
   serviceOptions,
   serviceTypes,
   onAdd,
+  currencySymbol,
 }: {
   serviceOptions: { value: string; label: string; sublabel?: string; icon?: ReactNode }[];
   serviceTypes: Pick<ServiceType, 'id' | 'name' | 'default_price'>[];
   onAdd: (item: ServiceOrderBudgetItem) => void;
+  currencySymbol: string;
 }) {
   const { money } = useLocaleFormatters();
   const [serviceId, setServiceId] = useState('');
@@ -161,16 +169,9 @@ function ServiceInputRow({
       </TableCell>
       <TableCell className="p-0 md:table-cell md:p-4">
         <span className="mb-1 block text-[11px] font-medium text-muted-foreground md:hidden">Valor unitário</span>
-        <Input
-          type="number"
-          placeholder="0,00"
-          value={unitPrice}
-          onChange={(e) => setUnitPrice(e.target.value)}
-          onPaste={(e) => handleUnitPricePaste(e, setUnitPrice)}
-          className="h-9 w-full bg-background text-xs md:h-8 md:w-24"
-          min={0}
-          step="0.01"
-        />
+        <CurrencyField symbol={currencySymbol} className="w-full md:w-24">
+          <Input type="number" placeholder="0,00" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} onPaste={(e) => handleUnitPricePaste(e, setUnitPrice)} className="h-9 w-full bg-background text-right text-xs md:h-8" min={0} step="0.01" />
+        </CurrencyField>
       </TableCell>
       <TableCell className="flex items-end p-0 text-sm font-medium md:table-cell md:p-4">
         <div>
@@ -206,10 +207,12 @@ function MaterialInputRow({
   materialOptions,
   inventoryItems,
   onAdd,
+  currencySymbol,
 }: {
   materialOptions: { value: string; label: string; sublabel?: string }[];
   inventoryItems: { id: string; name: string; sale_price: number | null; cost_price: number | null }[];
   onAdd: (item: ServiceOrderBudgetItem) => void;
+  currencySymbol: string;
 }) {
   const { money } = useLocaleFormatters();
   const [inventoryId, setInventoryId] = useState('');
@@ -279,16 +282,9 @@ function MaterialInputRow({
       </TableCell>
       <TableCell className="p-0 md:table-cell md:p-4">
         <span className="mb-1 block text-[11px] font-medium text-muted-foreground md:hidden">Valor unitário</span>
-        <Input
-          type="number"
-          placeholder="0,00"
-          value={unitPrice}
-          onChange={(e) => setUnitPrice(e.target.value)}
-          onPaste={(e) => handleUnitPricePaste(e, setUnitPrice)}
-          className="h-9 w-full bg-background text-xs md:h-8 md:w-24"
-          min={0}
-          step="0.01"
-        />
+        <CurrencyField symbol={currencySymbol} className="w-full md:w-24">
+          <Input type="number" placeholder="0,00" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} onPaste={(e) => handleUnitPricePaste(e, setUnitPrice)} className="h-9 w-full bg-background text-right text-xs md:h-8" min={0} step="0.01" />
+        </CurrencyField>
       </TableCell>
       <TableCell className="flex items-end p-0 text-sm font-medium md:table-cell md:p-4">
         <div>
@@ -329,6 +325,8 @@ export function QuoteItemsTable({
   bdiFactor = 0.68,
 }: QuoteItemsTableProps) {
   const { money } = useLocaleFormatters();
+  const { currency, locale } = useAppLocaleContext();
+  const currencySymbol = getCurrencySymbol(currency, locale);
   const { serviceTypes } = useServiceTypes();
   const { items: inventoryItems } = useInventory();
 
@@ -506,6 +504,7 @@ export function QuoteItemsTable({
                             ariaLabel={`Valor unitário de ${item.description}`}
                             maxDecimals={2}
                             allowZero
+                            currencySymbol={currencySymbol}
                           />
                         )}
                       </TableCell>
@@ -535,6 +534,7 @@ export function QuoteItemsTable({
                   serviceOptions={serviceOptions}
                   serviceTypes={serviceTypes ?? []}
                   onAdd={addItem}
+                  currencySymbol={currencySymbol}
                 />
               )}
               {serviceItems.length > 0 && (
@@ -579,6 +579,7 @@ export function QuoteItemsTable({
                   materialOptions={materialOptions}
                   inventoryItems={inventoryItems ?? []}
                   onAdd={addItem}
+                  currencySymbol={currencySymbol}
                 />
               )}
               {materialItems.length === 0 ? (
@@ -624,6 +625,7 @@ export function QuoteItemsTable({
                             ariaLabel={`Valor unitário de ${item.description}`}
                             maxDecimals={2}
                             allowZero
+                            currencySymbol={currencySymbol}
                           />
                         )}
                       </TableCell>

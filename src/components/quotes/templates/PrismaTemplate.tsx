@@ -7,6 +7,7 @@ import {
   buildProposalData,
   colorAdjust,
   pageFolioStyle,
+  getProposalItemCostDetails,
   folioLabel,
   flagOn,
   formatValidUntil,
@@ -99,6 +100,11 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
                   <p className="text-xs text-white/45 mt-1 leading-snug whitespace-pre-wrap">{item.details}</p>
                 )}
                 <p className="text-xs text-white/35 mt-1">{item.quantity} un × {money(item.unit_price || 0)}</p>
+                {getProposalItemCostDetails(quote, item, money, locale).length > 0 && (
+                  <p className="mt-1 text-[10px] text-white/40">
+                    {getProposalItemCostDetails(quote, item, money, locale).map(detail => `${detail.label} ${detail.value}`).join(' · ')}
+                  </p>
+                )}
               </div>
             </div>
             <p className="font-bold text-base tabular-nums whitespace-nowrap text-white">

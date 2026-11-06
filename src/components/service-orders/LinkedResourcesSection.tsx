@@ -172,7 +172,7 @@ export function LinkedResourcesSection({
                       return (
                         <div
                           key={resource.id}
-                          className={`flex flex-col gap-2 rounded-xl p-3 transition-colors ${isLinked ? 'bg-primary/5 shadow-sm ring-1 ring-primary/20' : 'bg-muted/30 hover:bg-muted/45'}`}
+                          className={`flex flex-col gap-2 rounded-xl p-3 transition-colors ${isLinked ? 'bg-zinc-950 text-white [&_.text-muted-foreground]:text-zinc-300 [&_.text-foreground]:text-white' : 'bg-muted/30 hover:bg-muted/45'}`}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -261,7 +261,7 @@ export function LinkedResourcesSection({
                     return (
                       <div
                         key={resource.id}
-                        className={`flex items-center justify-between rounded-xl p-3 transition-colors ${isLinked ? 'bg-primary/5 shadow-sm ring-1 ring-primary/20' : 'bg-muted/30 hover:bg-muted/45'}`}
+                        className={`flex items-center justify-between rounded-xl p-3 transition-colors ${isLinked ? 'bg-zinc-950 text-white [&_.text-muted-foreground]:text-zinc-300 [&_.text-foreground]:text-white' : 'bg-muted/30 hover:bg-muted/45'}`}
                       >
                         <div className="flex items-center gap-2">
                           <Checkbox

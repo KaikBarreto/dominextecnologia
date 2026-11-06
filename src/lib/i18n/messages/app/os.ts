@@ -615,6 +615,7 @@ export const os = {
       btnCreate: 'Criar',
       tabDados: 'Dados',
       tabFiscal: 'Fiscal',
+      tabCostsPricing: 'Custos e precificação',
       fiscalTitle: 'Fiscal (NFS-e)',
       fiscalSubtitle: 'Classificação tributária usada ao emitir nota fiscal de serviço. Todos os campos são opcionais.',
       labelCTribNac: 'Código de serviço (cTribNac)',
@@ -1379,8 +1380,8 @@ export const os = {
 
     // ── Lista de materiais da OS ──────────────────────────────────────────
     serviceMaterials: {
-      sectionTitle: 'Materiais do serviço',
-      sectionSubtitle: 'Vincule materiais do estoque ou cadastre manualmente.',
+      sectionTitle: 'Insumos do serviço',
+      sectionSubtitle: 'Vincule insumos do estoque ou cadastre manualmente.',
       totalLabel: 'Total',
       labelStockItem: 'Item do estoque (opcional)',
       placeholderStockItem: 'Selecione do estoque',
@@ -1389,8 +1390,8 @@ export const os = {
       labelQuantity: 'Quantidade',
       labelUnitCost: 'Custo unit. (R$)',
       btnAdd: 'Adicionar',
-      emptyState: 'Nenhum material vinculado.',
-      colMaterial: 'Material',
+      emptyState: 'Nenhum insumo vinculado.',
+      colMaterial: 'Insumo',
       colQty: 'Qtd.',
       colUnitCost: 'Custo unit.',
       colSubtotal: 'Subtotal',
@@ -2399,6 +2400,7 @@ export const os = {
       btnCreate: 'Create',
       tabDados: 'Details',
       tabFiscal: 'Tax',
+      tabCostsPricing: 'Costs and pricing',
       fiscalTitle: 'Tax (NFS-e)',
       fiscalSubtitle: 'Tax classification used when issuing a service invoice. All fields are optional.',
       labelCTribNac: 'Service code (cTribNac)',
@@ -3090,8 +3092,8 @@ export const os = {
 
     // ── Service materials list ────────────────────────────────────────────
     serviceMaterials: {
-      sectionTitle: 'Service materials',
-      sectionSubtitle: 'Link materials from stock or enter them manually.',
+      sectionTitle: 'Service supplies',
+      sectionSubtitle: 'Link supplies from stock or enter them manually.',
       totalLabel: 'Total',
       labelStockItem: 'Stock item (optional)',
       placeholderStockItem: 'Select from stock',
@@ -3100,8 +3102,8 @@ export const os = {
       labelQuantity: 'Quantity',
       labelUnitCost: 'Unit cost',
       btnAdd: 'Add',
-      emptyState: 'No materials linked.',
-      colMaterial: 'Material',
+      emptyState: 'No supplies linked.',
+      colMaterial: 'Supply',
       colQty: 'Qty.',
       colUnitCost: 'Unit cost',
       colSubtotal: 'Subtotal',
@@ -4107,6 +4109,7 @@ export const os = {
       btnCreate: 'Crear',
       tabDados: 'Datos',
       tabFiscal: 'Fiscal',
+      tabCostsPricing: 'Costos y precios',
       fiscalTitle: 'Fiscal (NFS-e)',
       fiscalSubtitle: 'Clasificación tributaria usada al emitir factura de servicio. Todos los campos son opcionales.',
       labelCTribNac: 'Código de servicio (cTribNac)',
@@ -4798,8 +4801,8 @@ export const os = {
 
     // ── Lista de materiales de la orden ───────────────────────────────────
     serviceMaterials: {
-      sectionTitle: 'Materiales del servicio',
-      sectionSubtitle: 'Vincule materiales del inventario o regístrelos manualmente.',
+      sectionTitle: 'Insumos del servicio',
+      sectionSubtitle: 'Vincule insumos del inventario o regístrelos manualmente.',
       totalLabel: 'Total',
       labelStockItem: 'Artículo de inventario (opcional)',
       placeholderStockItem: 'Seleccione del inventario',
@@ -4808,8 +4811,8 @@ export const os = {
       labelQuantity: 'Cantidad',
       labelUnitCost: 'Coste unit.',
       btnAdd: 'Agregar',
-      emptyState: 'Sin materiales vinculados.',
-      colMaterial: 'Material',
+      emptyState: 'Sin insumos vinculados.',
+      colMaterial: 'Insumo',
       colQty: 'Cant.',
       colUnitCost: 'Coste unit.',
       colSubtotal: 'Subtotal',
@@ -5815,6 +5818,7 @@ export const os = {
       btnCreate: 'Créer',
       tabDados: 'Données',
       tabFiscal: 'Fiscal',
+      tabCostsPricing: 'Coûts et tarification',
       fiscalTitle: 'Fiscal (NFS-e)',
       fiscalSubtitle: `Classification fiscale utilisée lors de l'émission d'une facture de service. Tous les champs sont facultatifs.`,
       labelCTribNac: 'Code de service (cTribNac)',
@@ -6506,8 +6510,8 @@ export const os = {
 
     // ── Liste de matériaux de l'ordre ─────────────────────────────────────
     serviceMaterials: {
-      sectionTitle: 'Matériaux du service',
-      sectionSubtitle: 'Liez des matériaux du stock ou saisissez-les manuellement.',
+      sectionTitle: 'Fournitures du service',
+      sectionSubtitle: 'Liez des fournitures du stock ou saisissez-les manuellement.',
       totalLabel: 'Total',
       labelStockItem: `Article de stock (facultatif)`,
       placeholderStockItem: 'Sélectionner dans le stock',
@@ -6516,8 +6520,8 @@ export const os = {
       labelQuantity: 'Quantité',
       labelUnitCost: `Coût unit.`,
       btnAdd: 'Ajouter',
-      emptyState: 'Aucun matériau lié.',
-      colMaterial: 'Matériau',
+      emptyState: 'Aucune fourniture liée.',
+      colMaterial: 'Fourniture',
       colQty: `Qté.`,
       colUnitCost: `Coût unit.`,
       colSubtotal: 'Sous-total',

@@ -184,8 +184,8 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
  */
 const DialogContent = React.forwardRef<
   HTMLDivElement,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { hideCloseButton?: boolean }
+>(({ className, children, hideCloseButton = false, ...props }, ref) => {
   const mode = useDialogMode();
   const innerRef = React.useRef<HTMLDivElement>(null);
 
@@ -253,9 +253,11 @@ const DialogContent = React.forwardRef<
         {...props}
       >
         {children}
-        <DialogPrimitive.Close asChild>
-          <ModalCloseButton className="absolute right-4 top-4" />
-        </DialogPrimitive.Close>
+        {!hideCloseButton && (
+          <DialogPrimitive.Close asChild>
+            <ModalCloseButton className="absolute right-4 top-4" />
+          </DialogPrimitive.Close>
+        )}
       </DialogPrimitive.Content>
     </DialogPortal>
   );

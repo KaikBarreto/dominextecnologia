@@ -14,6 +14,7 @@ import * as React from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('@/hooks/useServiceTypes', () => ({
   useServiceTypes: () => ({
@@ -66,6 +67,9 @@ vi.mock('@/components/service-orders/LinkedResourcesSection', () => ({ LinkedRes
 // pelo ServiceCostsTab mesmo fechados, e puxam useAuth/useEmployees.
 vi.mock('@/components/service-orders/LaborCalculatorModal', () => ({ LaborCalculatorModal: () => null }));
 vi.mock('@/components/service-orders/ExtraCostModal', () => ({ ExtraCostModal: () => null }));
+vi.mock('@/components/service-orders/QuickServiceTypeDialog', () => ({
+  QuickServiceTypeDialog: ({ open }: { open: boolean }) => open ? <div role="dialog">Cadastro rápido</div> : null,
+}));
 
 import { ServiceCostsTab } from './ServiceCostsTab';
 
@@ -78,7 +82,9 @@ function mount(selectService = true) {
   act(() => {
     root.render(
       <QueryClientProvider client={new QueryClient()}>
-        <ServiceCostsTab />
+        <MemoryRouter>
+          <ServiceCostsTab />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
   });
@@ -134,6 +140,22 @@ describe('ServiceCostsTab — campos de dinheiro nativos (prova real de DOM)', (
     expect(document.body.textContent).toContain('Tipos de serviço');
     expect(document.body.textContent).toContain('Selecione um tipo de serviço');
     expect(moneyInputs()).toHaveLength(0);
+  });
+
+  it('oferece quick-create e mantém ações da linha fora do botão de seleção', () => {
+    mount(false);
+
+    const createButton = document.querySelector('button[aria-label="Novo tipo de serviço"]') as HTMLButtonElement;
+    const rowActions = document.querySelector('button[aria-label="Ações de Manutenção"]') as HTMLButtonElement;
+    const selectionButton = Array.from(document.querySelectorAll('button'))
+      .find((button) => button.textContent?.includes('Manutenção')) as HTMLButtonElement;
+    expect(createButton).toBeTruthy();
+    expect(rowActions).toBeTruthy();
+    expect(selectionButton).toBeTruthy();
+    expect(selectionButton.contains(rowActions)).toBe(false);
+
+    act(() => createButton.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Cadastro rápido');
   });
 
   it('carrega recursos no Resumo sem visitar antes a aba Recursos', () => {

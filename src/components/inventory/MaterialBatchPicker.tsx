@@ -3,13 +3,14 @@ import { Minus, Package, Plus, Search } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyField } from '@/components/ui/CurrencyField';
 import { Label } from '@/components/ui/label';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { formatQty } from '@/components/inventory/InventoryMaterialSelect';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, getCurrencySymbol } from '@/lib/format';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import type { InventoryItem } from '@/hooks/useInventory';
@@ -88,6 +89,7 @@ export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [
   // copy que o seletor de material da OS já usa.
   const tOs = MESSAGES[locale].app.os.stockConsumption;
   const fmt = (v: number) => formatMoney(round2(v), currency, locale);
+  const currencySymbol = getCurrencySymbol(currency, locale);
 
   const [search, setSearch] = useState('');
   const [qtyMap, setQtyMap] = useState<Record<string, string>>({});
@@ -236,7 +238,7 @@ export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [
         }}
         className={cn(
           'flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors',
-          selected ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted/40',
+          selected ? 'border-zinc-950 bg-muted/50 ring-1 ring-zinc-950' : 'border-border hover:bg-muted/40',
         )}
       >
         <div className="min-w-0 flex-1">
@@ -337,13 +339,14 @@ export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [
             <div
               className={cn(
                 'flex flex-col gap-2 rounded-lg border border-dashed p-3',
-                (manualDraft?.quantity ?? 0) > 0 && 'border-primary border-solid bg-primary/10',
+                (manualDraft?.quantity ?? 0) > 0 && 'border-zinc-950 border-solid bg-muted/50',
               )}
             >
-              <p className="text-sm font-medium text-primary">{tq.materialPickerManual.replace('{name}', trimmedSearch)}</p>
+              <p className="text-sm font-medium">{tq.materialPickerManual.replace('{name}', trimmedSearch)}</p>
               <div className="flex flex-wrap items-end gap-2">
                 <div className="space-y-1">
-                  <Label className="block whitespace-nowrap text-xs text-muted-foreground">{tq.serviceColUnitCost}</Label>
+                  <Label className="block whitespace-nowrap text-sm font-semibold text-foreground">{tq.serviceColUnitCost}</Label>
+                  <CurrencyField symbol={currencySymbol} className="w-32">
                   <Input
                     aria-label={`${tq.serviceColUnitCost} de ${trimmedSearch}`}
                     type="number"
@@ -351,12 +354,15 @@ export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [
                     step="0.01"
                     value={manualDraft?.unitCost || ''}
                     onChange={(e) => upsertManualDraft({ unitCost: parseFloat(e.target.value) || 0 })}
-                    className="h-9 w-24 text-sm"
+                    className="h-11 text-right text-base"
                   />
+                  </CurrencyField>
                 </div>
                 <div className="space-y-1">
-                  <Label className="block whitespace-nowrap text-xs text-muted-foreground">{tq.materialPickerManualPrice}</Label>
+                  <Label className="block whitespace-nowrap text-sm font-semibold text-foreground">{tq.materialPickerManualPrice}</Label>
+                  <CurrencyField symbol={currencySymbol} className="w-32">
                   <Input
+                    aria-label={`${tq.materialPickerManualPrice} de ${trimmedSearch}`}
                     type="number"
                     min={0}
                     step="0.01"
@@ -367,8 +373,9 @@ export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [
                       if (cents == null) return;
                       upsertManualDraft({ unitPrice: cents / 100 });
                     }}
-                    className="h-9 w-24 text-sm"
+                    className="h-11 text-right text-base"
                   />
+                  </CurrencyField>
                 </div>
                 <div className="ml-auto flex items-center gap-1">
                   <Button

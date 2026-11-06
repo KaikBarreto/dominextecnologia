@@ -7,6 +7,8 @@ import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { MESSAGES } from '@/lib/i18n/messages';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { getQuoteCommercialTotal } from '@/lib/quote-commercial-total';
+import type { QuoteCostComposition } from '@/components/quotes/QuoteServiceCostEditor';
+import type { Json } from '@/integrations/supabase/types';
 
 export interface QuoteItem {
   id?: string;
@@ -31,6 +33,8 @@ export interface QuoteItem {
   profit_rate?: number;
   bdi?: number;
   price_override?: number | null;
+  pricing_mode?: 'registered' | 'cost_bdi' | 'manual';
+  cost_composition?: QuoteCostComposition | null;
 }
 
 export interface QuoteInput {
@@ -70,6 +74,8 @@ export interface QuoteInput {
   include_gifts?: boolean;
   card_discount_rate?: number;
   card_installments?: number;
+  show_labor_cost_in_proposal?: boolean;
+  show_inputs_cost_in_proposal?: boolean;
   items: QuoteItem[];
 }
 
@@ -119,6 +125,8 @@ export interface Quote {
   include_gifts?: boolean | null;
   card_discount_rate?: number | null;
   card_installments?: number | null;
+  show_labor_cost_in_proposal?: boolean | null;
+  show_inputs_cost_in_proposal?: boolean | null;
   customers?: {
     name: string;
     email: string | null;
@@ -191,6 +199,8 @@ function buildItemPayload(item: QuoteItem, quoteId: string, idx: number) {
     profit_rate: item.profit_rate ?? 10,
     bdi: item.bdi ?? 0.68,
     price_override: item.price_override ?? null,
+    pricing_mode: item.pricing_mode ?? 'manual',
+    cost_composition: (item.cost_composition ?? null) as unknown as Json,
   }, ['inventory_id', 'service_type_id']);
 }
 
@@ -346,6 +356,8 @@ export function useQuotes() {
           distance_km: source.distance_km,
           bdi: source.bdi,
           use_bdi: source.use_bdi ?? true,
+          show_labor_cost_in_proposal: source.show_labor_cost_in_proposal === true,
+          show_inputs_cost_in_proposal: source.show_inputs_cost_in_proposal === true,
         } as any)
         .select()
         .single();

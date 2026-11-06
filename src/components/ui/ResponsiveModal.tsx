@@ -8,6 +8,8 @@ import {
   DialogDescription,
   ModalCloseButton,
 } from '@/components/ui/dialog';
+import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Drawer,
   DrawerContent,
@@ -43,8 +45,12 @@ export interface ResponsiveModalProps {
   lockBackdrop?: boolean;
   overlayId?: string;
   overlayPriority?: number;
+  /** Liga um modal irmão ao modal pai para ambos permanecerem visíveis na pilha. */
+  overlayParentId?: string | null;
   /** Reduz o cabeçalho e os intervalos sem alterar a área útil/altura do modal. */
   density?: 'default' | 'compact';
+  /** Ocupa a viewport inteira e usa saída no topo esquerdo. Ideal para fluxos longos. */
+  fullScreen?: boolean;
 }
 
 export function ResponsiveModal({
@@ -58,15 +64,17 @@ export function ResponsiveModal({
   footer,
   overlayId,
   overlayPriority = OVERLAY_PRIORITY.userAction,
+  overlayParentId,
   density = 'default',
+  fullScreen = false,
 }: ResponsiveModalProps) {
   const isCompact = useIsCompact();
   const generatedOverlayId = React.useId();
   const resolvedOverlayId = overlayId ?? `responsive-modal-${generatedOverlayId}`;
-  const isActiveOverlay = useOverlaySlot(open, { id: resolvedOverlayId, priority: overlayPriority });
+  const isActiveOverlay = useOverlaySlot(open, { id: resolvedOverlayId, priority: overlayPriority, ...(overlayParentId !== undefined ? { parentId: overlayParentId } : {}) });
   const visibleOpen = open && isActiveOverlay;
 
-  if (isCompact) {
+  if (isCompact && !fullScreen) {
     return (
       <OverlayNestingProvider id={resolvedOverlayId}>
         {/* handleOnly: só o handle de cima arrasta pra fechar; arrastar no conteúdo rola. */}
@@ -134,13 +142,15 @@ export function ResponsiveModal({
   return (
     <OverlayNestingProvider id={resolvedOverlayId}>
       {/* Modal de formulário: clique fora NUNCA fecha (bloqueado aqui, não no primitivo). Escape segue ativo. */}
-      <Dialog open={visibleOpen} onOpenChange={onOpenChange}>
+      <Dialog open={visibleOpen} onOpenChange={onOpenChange} disableMobileDrawer={fullScreen}>
         <DialogContent
           className={cn(
             'flex max-h-[90vh] flex-col sm:max-w-[600px]',
             density === 'compact' && 'gap-3 p-5',
+            fullScreen && '!left-0 !top-0 h-[100dvh] max-h-none w-screen !max-w-none !translate-x-0 !translate-y-0 gap-0 rounded-none border-0 p-0 shadow-none duration-0 data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100 sm:rounded-none',
             className,
           )}
+          hideCloseButton={fullScreen}
           // Clique fora não fecha; Escape segue ativo (não bloqueado).
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
@@ -148,13 +158,30 @@ export function ResponsiveModal({
           // Sem description, opta-se por não descrever (evita o warning de a11y do Radix).
           {...(description ? {} : { 'aria-describedby': undefined })}
         >
-          {/* pr-8 reserva espaço pro botão "FECHAR" que o DialogContent injeta no canto. */}
-          <DialogHeader className={cn('shrink-0 pr-8', density === 'compact' && 'space-y-0.5')}>
-            <DialogTitle>{title}</DialogTitle>
-            {description ? <DialogDescription className={cn(density === 'compact' && 'text-xs')}>{description}</DialogDescription> : null}
-          </DialogHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-          {footer ? <div className={cn('shrink-0 border-t', density === 'compact' ? 'pt-2.5' : 'pt-3')}>{footer}</div> : null}
+          {fullScreen ? (
+            <DialogHeader className="relative shrink-0 border-b px-4 py-3 pl-16 text-left sm:px-10 sm:py-6 sm:pl-24">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute left-3 top-1/2 h-10 w-10 -translate-y-1/2 sm:left-6"
+                onClick={() => onOpenChange(false)}
+                aria-label="Sair"
+                title="Sair"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <DialogTitle className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</DialogTitle>
+              {description ? <DialogDescription className="mt-1.5 hidden text-sm sm:block sm:text-base">{description}</DialogDescription> : null}
+            </DialogHeader>
+          ) : (
+            <DialogHeader className={cn('shrink-0 pr-8', density === 'compact' && 'space-y-0.5')}>
+              <DialogTitle>{title}</DialogTitle>
+              {description ? <DialogDescription className={cn(density === 'compact' && 'text-xs')}>{description}</DialogDescription> : null}
+            </DialogHeader>
+          )}
+          <div className={cn('min-h-0 flex-1 overflow-y-auto', fullScreen && 'px-4 pb-5 pt-0 sm:px-10 sm:pb-6')}>{children}</div>
+          {footer ? <div className={cn('shrink-0 border-t', fullScreen ? 'bg-background px-4 py-3 sm:px-10 sm:py-4' : density === 'compact' ? 'pt-2.5' : 'pt-3')}>{footer}</div> : null}
         </DialogContent>
       </Dialog>
     </OverlayNestingProvider>

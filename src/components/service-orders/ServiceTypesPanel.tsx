@@ -3,7 +3,7 @@ import { ArrowLeft, Plus, Trash2, Wrench, Tags, SlidersHorizontal } from 'lucide
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
-import { fuzzyIncludesAny } from '@/lib/utils';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScreenActions } from '@/components/ui/ScreenActions';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,7 @@ import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { ServiceTypeCategoriesDialog } from '@/components/service-orders/ServiceTypeCategoriesDialog';
 import { ListDetailLayout, type ListDetailItem } from '@/components/ui/ListDetailLayout';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ServiceCostsTab } from '@/components/service-orders/ServiceCostsTab';
 
 /** Converte string crua de input numérico em number (padrão do time anti-"0" preso). */
 const num = (s: string, fallback = 0): number => {
@@ -82,7 +83,7 @@ const defaultForm: ServiceTypeForm = {
 };
 
 /** Abas do formulário de tipo de serviço. */
-export type ServiceTypeFormTab = 'dados' | 'fiscal';
+export type ServiceTypeFormTab = 'dados' | 'fiscal' | 'custos';
 
 export interface ServiceTypesPanelProps {
   /**
@@ -98,11 +99,14 @@ export interface ServiceTypesPanelProps {
    * atrás do drawer e vira ação inalcançável) e enxuga o cabeçalho.
    */
   embedded?: boolean;
+  /** Abre uma ficha específica quando a navegação veio de outra tela. */
+  initialSelectedId?: string | null;
 }
 
 export function ServiceTypesPanel({
   defaultFormTab = 'dados',
   embedded = false,
+  initialSelectedId = null,
 }: ServiceTypesPanelProps = {}) {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.serviceTypes;
@@ -144,9 +148,9 @@ export function ServiceTypesPanel({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [toDeleteId, setToDeleteId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // Aba ativa do formulário. Sem o módulo de nota fiscal só existe "Dados".
+  // A aba Fiscal depende do módulo; Dados e Custos sempre ficam disponíveis.
   const [formTab, setFormTab] = useState<ServiceTypeFormTab>('dados');
-  const activeFormTab: ServiceTypeFormTab = showFiscal ? formTab : 'dados';
+  const activeFormTab: ServiceTypeFormTab = formTab === 'fiscal' && !showFiscal ? 'dados' : formTab;
 
   const handleNew = () => {
     setEditingId(null);
@@ -246,6 +250,12 @@ export function ServiceTypesPanel({
   );
 
   useEffect(() => {
+    if (!initialSelectedId || selectedId === initialSelectedId) return;
+    const requested = serviceTypes.find((serviceType) => serviceType.id === initialSelectedId);
+    if (requested) handleEdit(requested);
+  }, [handleEdit, initialSelectedId, selectedId, serviceTypes]);
+
+  useEffect(() => {
     if (isMobile) return;
     if (selectedId && serviceTypes.some((serviceType) => serviceType.id === selectedId)) return;
     const first = filteredTypes[0];
@@ -276,14 +286,29 @@ export function ServiceTypesPanel({
 
   const inlineEditor = (
     <Tabs value={activeFormTab} onValueChange={(value) => setFormTab(value as ServiceTypeFormTab)} className="space-y-5">
-      {showFiscal && (
-        <MobilePillTabs
-          variant="underline"
-          tabs={[{ value: 'dados', label: t.tabDados }, { value: 'fiscal', label: t.tabFiscal }]}
-          activeTab={activeFormTab}
-          onTabChange={(value) => setFormTab(value as ServiceTypeFormTab)}
-        />
-      )}
+      <div className="flex gap-1 overflow-x-auto border-b no-scrollbar" role="tablist" aria-label="Seções do tipo de serviço">
+        {[
+          { value: 'dados', label: t.tabDados },
+          ...(showFiscal ? [{ value: 'fiscal', label: t.tabFiscal }] : []),
+          { value: 'custos', label: t.tabCostsPricing },
+        ].map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            role="tab"
+            aria-selected={activeFormTab === tab.value}
+            onClick={() => setFormTab(tab.value as ServiceTypeFormTab)}
+            className={cn(
+              '-mb-px shrink-0 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+              activeFormTab === tab.value
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
       <TabsContent value="dados" className="mt-0 space-y-5">
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
           <div className="space-y-2">
@@ -391,6 +416,11 @@ export function ServiceTypesPanel({
           </div>
         </TabsContent>
       )}
+      <TabsContent value="custos" className="mt-0">
+        {selectedType && (
+          <ServiceCostsTab serviceId={selectedType.id} embedded showServiceHeader={false} />
+        )}
+      </TabsContent>
     </Tabs>
   );
 
@@ -413,9 +443,9 @@ export function ServiceTypesPanel({
         </Button>
       </div>
       {inlineEditor}
-      <div className="mt-6 flex justify-end border-t pt-4">
+      {activeFormTab !== 'custos' && <div className="mt-6 flex justify-end border-t pt-4">
         <Button onClick={handleSave} disabled={!form.name.trim() || cTribMunInvalid || updateServiceType.isPending}>{t.btnSave}</Button>
-      </div>
+      </div>}
     </section>
   ) : (
     <div className="flex min-h-72 items-center justify-center text-center text-sm text-muted-foreground">
@@ -619,6 +649,7 @@ export function ServiceTypesPanel({
           searchPlaceholder={t.searchPlaceholder}
           emptyLabel={t.noResults}
           storageKey="service-types-list"
+          selectedItemClassName="bg-zinc-950 text-white hover:bg-zinc-900 [&_.text-muted-foreground]:text-zinc-300"
           onSelect={(id) => {
             const serviceType = serviceTypes.find((item) => item.id === id);
             if (serviceType) handleEdit(serviceType);

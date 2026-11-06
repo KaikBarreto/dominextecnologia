@@ -15,6 +15,7 @@ interface FormWizardStepperProps {
   onStepChange?: (index: number) => void;
   ariaLabel?: string;
   className?: string;
+  tone?: 'primary' | 'contrast';
 }
 
 /**
@@ -31,6 +32,7 @@ export function FormWizardStepper({
   onStepChange,
   ariaLabel = 'Etapas do formulário',
   className,
+  tone = 'primary',
 }: FormWizardStepperProps) {
   const activeStep = steps[currentIndex];
   const progress = steps.length > 0 ? ((currentIndex + 1) / steps.length) * 100 : 0;
@@ -41,7 +43,10 @@ export function FormWizardStepper({
     <nav aria-label={ariaLabel} className={cn('min-w-0', className)}>
       <div className="lg:hidden">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+          <span className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+            tone === 'contrast' ? 'bg-zinc-950 text-white' : 'bg-primary text-primary-foreground',
+          )}>
             {currentIndex + 1}
           </span>
           <div className="min-w-0 flex-1">
@@ -62,7 +67,10 @@ export function FormWizardStepper({
           className="mt-2 h-1 overflow-hidden rounded-full bg-muted"
         >
           <div
-            className="h-full rounded-full bg-primary transition-[width] duration-200 motion-reduce:transition-none"
+            className={cn(
+              'h-full rounded-full transition-[width] duration-200 motion-reduce:transition-none',
+              tone === 'contrast' ? 'bg-zinc-950' : 'bg-primary',
+            )}
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -98,9 +106,11 @@ export function FormWizardStepper({
                 <span
                   className={cn(
                     'relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-semibold transition-colors',
-                    active && 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/15',
+                    active && (tone === 'contrast'
+                      ? 'border-zinc-950 bg-zinc-950 text-white ring-2 ring-zinc-950/15'
+                      : 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/15'),
                     completed && 'border-primary bg-primary text-primary-foreground',
-                    !reached && 'border-muted text-muted-foreground opacity-70',
+                    !reached && (tone === 'contrast' ? 'border-border text-muted-foreground' : 'border-muted text-muted-foreground opacity-70'),
                     reached && !active && !completed && 'border-border text-foreground',
                   )}
                 >
@@ -109,9 +119,10 @@ export function FormWizardStepper({
                 <span
                   className={cn(
                     'mt-1.5 block min-h-5 w-full whitespace-normal break-words text-[11px] font-medium leading-4',
+                    tone === 'contrast' && 'text-sm leading-5',
                     active && 'font-semibold text-foreground',
                     completed && 'text-foreground',
-                    !reached && 'text-muted-foreground opacity-70',
+                    !reached && (tone === 'contrast' ? 'text-muted-foreground' : 'text-muted-foreground opacity-70'),
                   )}
                 >
                   {step.label}

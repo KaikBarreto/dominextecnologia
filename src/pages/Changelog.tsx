@@ -31,6 +31,43 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.0',
+    date: '6 de novembro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Novo orçamento em tela cheia e por etapas',
+        description: 'A criação do orçamento foi reorganizada em cliente, serviços e custos, materiais e deslocamento, preço e condições, revisão e envio. Títulos maiores, campos mais legíveis e resumo financeiro ajudam a conferir os valores no computador e no celular.',
+        category: 'recurso',
+      },
+      {
+        title: 'Composição completa de cada serviço no orçamento',
+        description: 'Abra um serviço e ajuste mão de obra, insumos, recursos e custos extras no próprio orçamento. A calculadora de mão de obra permite considerar funcionários, custos mensais e horas de trabalho.',
+        category: 'recurso',
+      },
+      {
+        title: 'Crie serviços na hora e escolha o que salvar',
+        description: 'Adicione um serviço existente ou crie um durante o orçamento. As alterações de custo ficam naquele orçamento, com a opção de salvar a composição como padrão do serviço para os próximos trabalhos.',
+        category: 'recurso',
+      },
+      {
+        title: 'Formação de preço mais fácil de entender',
+        description: 'O BDI fica sempre visível, com impostos, administração e lucro organizados por cor e uma composição visual do preço. Materiais cobrados à parte ficam separados dos insumos usados dentro de cada serviço.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Controle dos custos que aparecem na proposta',
+        description: 'Escolha se o cliente poderá ver os valores de mão de obra e insumos junto ao preço do serviço. Essas informações ficam ocultas por padrão. A prévia da proposta também se adapta à tela do celular.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cadastro e edição de custos mais acessíveis',
+        description: 'Crie e edite serviços pela lista de custos e acesse a nova aba Custos e precificação no cadastro do serviço. Campos de valores exibem a moeda, o deslocamento aceita vírgula decimal e as janelas de cálculo mantêm o orçamento visível ao fundo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.38.37',
     date: '6 de novembro de 2026',
     type: 'patch',

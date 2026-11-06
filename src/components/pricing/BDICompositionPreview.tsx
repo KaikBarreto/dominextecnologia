@@ -22,7 +22,7 @@ export interface BDICompositionPreviewProps {
   formatMoney: (value: number) => string;
   formatRate: (value: number) => string;
   labels: BDICompositionLabels;
-  variant?: 'full' | 'inline' | 'compact';
+  variant?: 'full' | 'inline' | 'compact' | 'vertical';
   className?: string;
 }
 
@@ -97,6 +97,34 @@ export function BDICompositionPreview({
   const accessibleSummary = layers
     .map((layer) => `${layer.label}: ${formatRate(layer.rate)}%, ${formatMoney(layer.amount)}`)
     .join('. ');
+
+  if (variant === 'vertical') {
+    return (
+      <section
+        className={cn('overflow-hidden rounded-xl border border-border bg-background', className)}
+        aria-label={`${labels.finalPrice}: ${formatMoney(finalPrice)}. ${accessibleSummary}`}
+      >
+        <div className="flex items-end justify-between gap-4 border-b bg-muted/25 px-5 py-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{labels.composition ?? labels.finalPrice}</p>
+            <p className="mt-1 text-3xl font-black tabular-nums">{formatMoney(finalPrice)}</p>
+          </div>
+          <div className="text-right"><p className="text-xs text-muted-foreground">Coeficiente</p><p className="font-mono text-base font-bold">{factor.toFixed(4)}</p></div>
+        </div>
+        <div className="p-5">
+          <div className="flex min-h-[21rem] flex-col overflow-hidden rounded-xl" role="img" aria-label={accessibleSummary}>
+            {layers.map(layer => (
+              <div key={layer.id} data-testid={`bdi-layer-${layer.id}`} className={cn('flex min-h-14 items-center justify-between gap-4 border-b border-white/30 px-4 py-3 last:border-b-0', layer.className)} style={{ flexGrow: Math.max(4, layer.rate) }}>
+                <span className="font-bold">{layer.label}</span>
+                <span className="text-right"><span className="block text-xs font-semibold opacity-85">{formatRate(layer.rate)}%</span><span className="block font-black tabular-nums">{formatMoney(layer.amount)}</span></span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-center font-mono text-sm font-semibold tabular-nums text-foreground">{formatMoney(totalCost)} ÷ {factor.toFixed(4)} = {formatMoney(finalPrice)}</p>
+        </div>
+      </section>
+    );
+  }
 
   if (variant !== 'full') {
     const compact = variant === 'compact';

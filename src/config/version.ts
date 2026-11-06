@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.37";
+export const APP_VERSION = "1.39.0";
 
 export const VERSION_NOTES =
-  "A edição da O.S. em campo ficou mais completa e confiável, com equipamentos existentes, checklists reorganizáveis, horários editáveis e marcadores da agenda corrigidos.";
+  "Novo orçamento em tela cheia e por etapas, com composição de cada serviço, cálculo de mão de obra, insumos, recursos e controle dos custos exibidos na proposta.";

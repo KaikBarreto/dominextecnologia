@@ -80,10 +80,11 @@ export function OverlayCoordinatorProvider({ children }: { children: React.React
 
   return <OverlayContext.Provider value={value}>{children}</OverlayContext.Provider>;
 }
-export function useOverlaySlot(open: boolean, options?: { id?: string; priority?: number }) {
+export function useOverlaySlot(open: boolean, options?: { id?: string; priority?: number; parentId?: string | null }) {
   const generatedId = useId();
   const coordinator = useContext(OverlayContext);
-  const parentId = useContext(OverlayParentContext);
+  const contextualParentId = useContext(OverlayParentContext);
+  const parentId = options && 'parentId' in options ? (options.parentId ?? null) : contextualParentId;
   const id = options?.id ?? `overlay-${generatedId}`;
   const priority = options?.priority ?? OVERLAY_PRIORITY.userAction;
   const register = coordinator?.register;

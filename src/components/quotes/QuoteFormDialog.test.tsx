@@ -37,6 +37,7 @@ const testState = vi.hoisted(() => ({
   },
   fetchBreakdown: vi.fn(),
   createMutate: vi.fn(),
+  costsSaving: false,
 }));
 
 vi.mock('@/contexts/AppLocaleContext', () => ({
@@ -73,6 +74,10 @@ vi.mock('@/hooks/useServiceTypes', () => ({
 }));
 vi.mock('@/hooks/useInventory', () => ({
   useInventory: () => ({ items: [{ id: 'inv-1', name: 'Filtro', sale_price: 50, cost_price: 30, sku: null }] }),
+}));
+vi.mock('@/hooks/useCostResources', () => ({ useCostResources: () => ({ resources: [] }) }));
+vi.mock('@/hooks/useSaveQuoteServiceCosts', () => ({
+  useSaveQuoteServiceCosts: () => ({ mutateAsync: vi.fn(), isPending: testState.costsSaving }),
 }));
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({ profile: testState.profile }),
@@ -186,18 +191,25 @@ function findButtonByText(text: string) {
   return qAll('button').find((b) => b.textContent?.includes(text));
 }
 
-/** Preenche o destinatário no início da etapa Montagem, sem depender do
- * CustomerSelectField mockado. Cliente e itens agora pertencem à mesma etapa. */
+/** Preenche o destinatário sem depender do CustomerSelectField mockado e
+ * avança para a etapa de serviços. */
 async function goPastRecipient() {
-  // LabeledSwitch alterna existing/prospect — clicamos no rótulo "prospect".
-  const prospectToggle = findButtonByText(tq.recipientProspect) ?? qAll('[role="switch"]')[0];
-  if (prospectToggle) click(prospectToggle);
-  const nameInput = q('input[placeholder="' + tq.recipientNamePlaceholder + '"]') as HTMLInputElement;
+  let nameInput = q('input[placeholder="' + tq.recipientNamePlaceholder + '"]') as HTMLInputElement;
+  if (!nameInput) {
+    // LabeledSwitch alterna existing/prospect — clicamos no rótulo "prospect".
+    const prospectToggle = findButtonByText(tq.recipientProspect) ?? qAll('[role="switch"]')[0];
+    if (prospectToggle) click(prospectToggle);
+    nameInput = q('input[placeholder="' + tq.recipientNamePlaceholder + '"]') as HTMLInputElement;
+  }
   expect(nameInput).toBeTruthy();
-  typeInto(nameInput, 'Cliente Prospect Teste');
+  if (!nameInput.value) typeInto(nameInput, 'Cliente Prospect Teste');
+  await clickAsync(findButtonByText(tq.next)!);
 }
 
 async function addServiceItem() {
+  const openPicker = findButtonByText('Adicionar serviço');
+  expect(openPicker).toBeTruthy();
+  click(openPicker!);
   const serviceSelect = q('select[aria-label="' + tq.serviceSelectPlaceholder + '"]') as HTMLSelectElement;
   expect(serviceSelect).toBeTruthy();
   act(() => {
@@ -205,14 +217,19 @@ async function addServiceItem() {
     setter.call(serviceSelect, 'svc-1');
     serviceSelect.dispatchEvent(new Event('change', { bubbles: true }));
   });
-  await clickAsync(findButtonByText(tq.serviceAddButton)!);
+  const confirmAdd = qAll('button').find(button => button.textContent?.trim() === 'Adicionar');
+  expect(confirmAdd).toBeTruthy();
+  await clickAsync(confirmAdd!);
 }
 
 async function advanceToCommercial() {
   await addServiceItem();
-  const nextBtn = findButtonByText(tq.next);
-  expect(nextBtn).toBeTruthy();
-  await clickAsync(nextBtn!);
+  await clickAsync(findButtonByText(tq.next)!); // materiais e deslocamento
+  await clickAsync(findButtonByText(tq.next)!); // preço e condições
+}
+
+async function advanceToMaterials() {
+  await clickAsync(findButtonByText(tq.next)!);
 }
 
 beforeEach(() => {
@@ -221,6 +238,7 @@ beforeEach(() => {
   testState.pricing = null;
   testState.fetchBreakdown.mockReset();
   testState.createMutate.mockReset();
+  testState.costsSaving = false;
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -250,13 +268,7 @@ describe('QuoteFormDialog — preço unitário do serviço na tabela (prova real
     mount();
     await goPastRecipient();
 
-    const serviceSelect = q('select[aria-label="' + tq.serviceSelectPlaceholder + '"]') as HTMLSelectElement;
-    act(() => {
-      const setter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value')!.set!;
-      setter.call(serviceSelect, 'svc-1');
-      serviceSelect.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    await clickAsync(findButtonByText(tq.serviceAddButton)!);
+    await addServiceItem();
 
     expect(testState.fetchBreakdown).toHaveBeenCalledTimes(1);
     expect(document.body.textContent).toContain('110,45');
@@ -266,7 +278,7 @@ describe('QuoteFormDialog — preço unitário do serviço na tabela (prova real
       && !button.textContent?.includes(tq.serviceAddButton));
     expect(serviceRowButton).toBeTruthy();
     click(serviceRowButton!);
-    expect(document.body.textContent).toContain('Recursos e extras');
+    expect(document.body.textContent).toContain('Recursos');
     expect(document.body.textContent).toContain('84,85');
   });
 
@@ -274,16 +286,8 @@ describe('QuoteFormDialog — preço unitário do serviço na tabela (prova real
     mount();
     await goPastRecipient(); // agora em "services"
 
-    const serviceSelect = q('select[aria-label="' + tq.serviceSelectPlaceholder + '"]') as HTMLSelectElement;
-    expect(serviceSelect).toBeTruthy();
-    act(() => {
-      const setter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value')!.set!;
-      setter.call(serviceSelect, 'svc-1');
-      serviceSelect.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    const addBtn = findButtonByText(tq.serviceAddButton);
-    expect(addBtn).toBeTruthy();
-    await clickAsync(addBtn!);
+    await addServiceItem();
+    click(q('button[aria-label="Abrir serviço Manutenção Preventiva"]')!);
 
     // Depois de adicionado, a tabela mostra o preço unitário editável. A
     // linha da tabela (`ServiceItemsList`) mapeia sem key estável no
@@ -304,7 +308,8 @@ describe('QuoteFormDialog — preço unitário do serviço na tabela (prova real
 describe('QuoteFormDialog — preço manual de material no MaterialBatchPicker (prova real de DOM)', () => {
   it('colar "4.550" dá 4550 (não 4.55, o bug do sócio)', async () => {
     mount();
-    await goPastRecipient(); // "serviços e materiais"
+    await goPastRecipient();
+    await advanceToMaterials();
 
     // Um caminho só (desktop e celular): abre o picker em lote.
     const openPickerBtn = findButtonByText(tq.materialPickerOpen);
@@ -317,12 +322,10 @@ describe('QuoteFormDialog — preço manual de material no MaterialBatchPicker (
 
     // Sem correspondência exata no catálogo mockado ("Filtro") → nasce a linha
     // "Criar ... como material avulso" com o campo de preço unitário.
-    const priceInput = (qAll('input[type="number"]') as HTMLInputElement[])
-      .filter(input => input.className.includes('h-9') && input.className.includes('w-24'))[1]!;
+    const priceInput = q(`input[aria-label="${tq.materialPickerManualPrice} de Material Avulso"]`) as HTMLInputElement;
     expect(priceInput).toBeTruthy();
     paste(priceInput, '4.550');
-    const priceInputAfter = (qAll('input[type="number"]') as HTMLInputElement[])
-      .filter(input => input.className.includes('h-9') && input.className.includes('w-24'))[1]!;
+    const priceInputAfter = q(`input[aria-label="${tq.materialPickerManualPrice} de Material Avulso"]`) as HTMLInputElement;
     expect(priceInputAfter.value).toBe('4550');
   });
 });
@@ -330,7 +333,8 @@ describe('QuoteFormDialog — preço manual de material no MaterialBatchPicker (
 describe('QuoteFormDialog — quantidade decimal do MaterialBatchPicker até o item (prova real de DOM)', () => {
   it('"2,5" sobrevive do picker até a tabela de itens adicionados', async () => {
     mount();
-    await goPastRecipient(); // "serviços e materiais"
+    await goPastRecipient();
+    await advanceToMaterials();
 
     await clickAsync(findButtonByText(tq.materialPickerOpen)!);
 
@@ -575,10 +579,10 @@ describe('QuoteFormDialog — desconto em R$ (prova real de DOM)', () => {
     await goPastRecipient();
     await advanceToCommercial();
 
-    const discountInput = q('input[type="number"]') as HTMLInputElement;
+    const discountInput = q(`input[aria-label="${tq.discountHeader}"]`) as HTMLInputElement;
     expect(discountInput).toBeTruthy();
     paste(discountInput, '4.550');
-    const discountInputAfter = q('input[type="number"]') as HTMLInputElement;
+    const discountInputAfter = q(`input[aria-label="${tq.discountHeader}"]`) as HTMLInputElement;
     expect(discountInputAfter.value).toBe('4550');
   });
 });
@@ -592,7 +596,8 @@ describe('QuoteFormDialog — desconto em R$ (prova real de DOM)', () => {
 describe('QuoteFormDialog — editar quantidade decimal na lista de materiais (prova real de DOM)', () => {
   async function addOneMaterial() {
     mount();
-    await goPastRecipient(); // "serviços e materiais"
+    await goPastRecipient();
+    await advanceToMaterials();
     await clickAsync(findButtonByText(tq.materialPickerOpen)!);
     const pickerQty = qAll('input').find((i) => (i as HTMLInputElement).placeholder === '0') as HTMLInputElement;
     typeInto(pickerQty, '1');
@@ -628,12 +633,30 @@ describe('QuoteFormDialog — editar quantidade decimal na lista de materiais (p
 });
 
 describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () => {
-  it('preserva campo de BDI editado quando os padrões da empresa resolvem depois', () => {
+  it('bloqueia um segundo envio enquanto salva os custos no catálogo', async () => {
     mount();
-    click(findButtonByText('Ajustar taxas e entender o BDI')!);
+    await goPastRecipient();
+    await advanceToCommercial();
+    await clickAsync(findButtonByText(tq.next)!);
+    testState.costsSaving = true;
+    mount();
+
+    const saving = findButtonByText(tq.saving) as HTMLButtonElement;
+    expect(saving).toBeTruthy();
+    expect(saving.disabled).toBe(true);
+    click(saving);
+    expect(testState.createMutate).not.toHaveBeenCalled();
+  });
+
+  it('preserva campo de BDI editado quando os padrões da empresa resolvem depois', async () => {
+    mount();
+    await goPastRecipient();
+    await addServiceItem();
+    await clickAsync(findButtonByText(tq.next)!);
+    await clickAsync(findButtonByText(tq.next)!);
 
     const advanced = q('#quote-bdi-advanced')!;
-    const fields = Array.from(advanced.querySelectorAll('input[type="number"]')) as HTMLInputElement[];
+    const fields = Array.from(advanced.querySelectorAll('input')) as HTMLInputElement[];
     expect(fields.map(field => field.value)).toEqual(['10', '12', '10', '1', '6', '10']);
 
     typeInto(fields[0], '17');
@@ -647,37 +670,73 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     };
     mount();
 
-    const updatedFields = Array.from(q('#quote-bdi-advanced')!.querySelectorAll('input[type="number"]')) as HTMLInputElement[];
-    expect(updatedFields.map(field => field.value)).toEqual(['17', '9', '15', '2.5', '4', '12']);
+    const updatedFields = Array.from(q('#quote-bdi-advanced')!.querySelectorAll('input')) as HTMLInputElement[];
+    expect(updatedFields.map(field => field.value)).toEqual(['17', '9', '15', '2,5', '4', '12']);
   });
 
-  it('mostra a composição BDI na montagem e novamente no resumo da revisão', async () => {
+  it('preserva a vírgula durante a digitação do custo por km e salva o valor numérico correto', async () => {
+    testState.pricing = {
+      tax_rate: 10, admin_indirect_rate: 12, default_profit_rate: 10,
+      km_cost: 1.5, card_discount_rate: 6, card_installments: 10,
+    };
     mount();
     await goPastRecipient();
-
-    expect(document.body.textContent).toContain(tq.bdiCompositionTitle);
-    expect(q('[data-testid="bdi-strip-cost"]')).toBeTruthy();
-
     await advanceToCommercial();
-    expect(document.body.textContent).not.toContain(tq.bdiCompositionTitle);
+
+    const kmCostInput = q(`input[aria-label="${tq.bdiKmCost}"]`) as HTMLInputElement;
+    expect(kmCostInput.value).toBe('1,5');
+    typeInto(kmCostInput, '2,');
+    expect(kmCostInput.value).toBe('2,');
+    typeInto(kmCostInput, '2,75');
+    expect(kmCostInput.value).toBe('2,75');
+
+    await clickAsync(findButtonByText(tq.saveDraft)!);
+    expect(testState.createMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ km_cost: 2.75 }),
+      expect.anything(),
+    );
+  });
+
+  it('mostra a composição BDI nas condições e o resumo comercial na revisão', async () => {
+    mount();
+    await goPastRecipient();
+    await advanceToCommercial();
+    expect(document.body.textContent).toContain(tq.bdiCompositionTitle);
+    expect(q('[data-testid="bdi-layer-cost"]')).toBeTruthy();
     await clickAsync(findButtonByText(tq.next)!);
 
-    expect(document.body.textContent).toContain(tq.bdiCompositionTitle);
-    expect(q('[data-testid="bdi-strip-profit"]')).toBeTruthy();
+    expect(document.body.textContent).toContain('Revise e finalize');
+    expect(document.body.textContent).toContain('Preço praticado');
+    expect(document.body.textContent).toContain('Apresentação e validade');
   });
 
-  it('mantém os ajustes avançados de BDI recolhidos até o usuário pedir', async () => {
+  it('recalcula o preço comercial ao editar o lucro no compositor BDI', async () => {
+    testState.profile = { company_id: 'company-1' };
+    testState.fetchBreakdown.mockResolvedValue({
+      hourlyRate: 50, hours: 2, laborCost: 100, materialsCost: 0,
+      quoteExtrasCost: 0, totalCost: 100,
+    });
     mount();
     await goPastRecipient();
+    await advanceToCommercial();
 
-    expect(q('#quote-bdi-advanced')).toBeNull();
-    const advancedButton = findButtonByText('Ajustar taxas e entender o BDI');
-    expect(advancedButton).toHaveAttribute('aria-expanded', 'false');
+    const profitInput = q('input[aria-label="Percentual de lucro"]') as HTMLInputElement;
+    expect(profitInput).toBeTruthy();
+    typeInto(profitInput, '20');
 
-    await clickAsync(advancedButton!);
+    expect(document.body.textContent).toContain('172,41');
+    expect(document.body.textContent).toContain('0.5800');
+    expect(testState.createMutate).not.toHaveBeenCalled();
+  });
+
+  it('mantém os ajustes de BDI expandidos e visíveis sem ação adicional', async () => {
+    mount();
+    await goPastRecipient();
+    await advanceToCommercial();
 
     expect(q('#quote-bdi-advanced')).toBeTruthy();
-    expect(findButtonByText('Ocultar ajustes avançados')).toHaveAttribute('aria-expanded', 'true');
+    expect(findButtonByText('Ajustar taxas e entender o BDI')).toBeFalsy();
+    expect(findButtonByText('Ocultar ajustes avançados')).toBeFalsy();
   });
 
   it('mantém o resumo comercial visível ao avançar para condições comerciais', async () => {
@@ -685,26 +744,31 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     await goPastRecipient();
     await advanceToCommercial();
 
-    expect(q('[aria-label="Resumo do orçamento"]')).toBeTruthy();
+    expect(findButtonByText('Resumo do orçamento')).toBeTruthy();
     expect(document.body.textContent).toContain('Pagamento');
   });
 
-  it('só avança da montagem com destinatário e item, mas permite salvar rascunho com destinatário', async () => {
+  it('exige destinatário na primeira etapa e ao menos um item antes das condições comerciais', async () => {
     mount();
-    await goPastRecipient();
 
     expect(findButtonByText(tq.next)).toHaveAttribute('aria-disabled', 'true');
+    await clickAsync(findButtonByText(tq.next)!);
+    expect(document.body.textContent).toContain('Selecione um cliente ou informe o nome do prospecto para continuar.');
+
+    await goPastRecipient();
+
+    expect(findButtonByText(tq.next)).toHaveAttribute('aria-disabled', 'false');
     expect(findButtonByText(tq.saveDraft)).not.toBeDisabled();
     await clickAsync(findButtonByText(tq.next)!);
+    expect(findButtonByText(tq.next)).toHaveAttribute('aria-disabled', 'true');
+    await clickAsync(findButtonByText(tq.next)!);
     expect(document.body.textContent).toContain('Adicione ao menos um serviço ou material para continuar.');
-
-    await addServiceItem();
-    expect(findButtonByText(tq.next)).toHaveAttribute('aria-disabled', 'false');
   });
 
   it('persiste use_bdi=false no rascunho quando a precificação manual é ativada', async () => {
     mount();
     await goPastRecipient();
+    await advanceToCommercial();
 
     const useBdiToggle = q('#quote-use-bdi') as HTMLElement;
     expect(useBdiToggle).toBeTruthy();
@@ -735,22 +799,25 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     mount();
     await goPastRecipient();
     await addServiceItem();
+    await clickAsync(findButtonByText(tq.next)!);
+    await clickAsync(findButtonByText(tq.next)!);
 
     const useBdiToggle = q('#quote-use-bdi') as HTMLElement;
     click(useBdiToggle);
     click(useBdiToggle);
 
-    expect(document.body.textContent).toContain('itens já definidos como manuais continuam com o preço atual');
+    expect(document.body.textContent).toContain('Itens com preço manual mantêm o valor atual');
     const applyButton = findButtonByText('Aplicar BDI aos itens com custo');
     expect(applyButton).toBeTruthy();
     await clickAsync(applyButton!);
-    expect(document.body.textContent).not.toContain('itens já definidos como manuais continuam com o preço atual');
+    expect(document.body.textContent).not.toContain('Itens com preço manual mantêm o valor atual');
   });
 
   it('permite escolher a modalidade de preço de cada serviço', async () => {
     mount();
     await goPastRecipient();
     await addServiceItem();
+    click(q('button[aria-label="Abrir serviço Manutenção Preventiva"]')!);
 
     expect(q('[aria-label="Modo de preço de Manutenção Preventiva"]')).toBeTruthy();
   });
@@ -785,6 +852,10 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
       quote_items: [],
     });
 
+    await goPastRecipient();
+    await addServiceItem();
+    await clickAsync(findButtonByText(tq.next)!);
+    await clickAsync(findButtonByText(tq.next)!);
     expect(q('#quote-use-bdi')).toHaveAttribute('data-state', 'unchecked');
     expect(document.body.textContent).toContain('Orçamento padrão ativo');
   });
@@ -794,14 +865,16 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
 
     const dialog = q('[role="dialog"]');
     expect(dialog).toBeTruthy();
-    expect(dialog?.className).toContain('sm:h-[88vh]');
+    expect(dialog?.className).toContain('h-[100dvh]');
+    expect(q('button[aria-label="Sair"]')).toBeTruthy();
     expect(q('.sticky.top-0')).toBeTruthy();
-    expect(q('[aria-label="Resumo do orçamento"]')).toBeTruthy();
+    expect(findButtonByText('Resumo do orçamento')).toBeTruthy();
     const stepper = q('[aria-label="Etapas do orçamento"]');
-    expect(stepper?.textContent).toContain(tq.stepAssembly);
-    expect(stepper?.textContent).toContain(tq.stepCommercial);
-    expect(stepper?.textContent).toContain(tq.stepReviewSend);
-    expect(stepper?.textContent).not.toContain(tq.stepRecipient);
+    expect(stepper?.textContent).toContain('Cliente');
+    expect(stepper?.textContent).toContain('Serviços e custos');
+    expect(stepper?.textContent).toContain('Materiais e deslocamento');
+    expect(stepper?.textContent).toContain('Preço e condições');
+    expect(stepper?.textContent).toContain('Revisão e envio');
   });
 
   it('pré-visualiza o template selecionado sem salvar o orçamento', async () => {
@@ -818,7 +891,7 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     expect(previewButton).toBeTruthy();
     await clickAsync(previewButton!);
 
-    expect(document.body.textContent).toContain('Pré-visualização da proposta');
+    expect(document.body.textContent).toContain('Prévia da proposta');
     expect(document.body.textContent).toContain('Prévia renderizada');
     expect(testState.createMutate).not.toHaveBeenCalled();
   });

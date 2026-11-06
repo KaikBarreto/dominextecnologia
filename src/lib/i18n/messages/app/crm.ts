@@ -634,7 +634,7 @@ export const crm = {
       reviewTemplatePlaceholder: 'Selecione o template',
       reviewCoverTitle: 'Capa da proposta',
       reviewCoverHint: 'A capa é atualizada imediatamente quando você troca o template.',
-      reviewFullPreview: 'Abrir proposta completa',
+      reviewFullPreview: 'Ver prévia',
       receivableInstallmentsLabel: 'Nº de parcelas',
       receivableInstallmentsCash: 'À vista',
       receivableFirstDueDateLabel: '1º vencimento',
@@ -755,14 +755,14 @@ export const crm = {
     // ── Custos de Serviço (ServiceCostsTab) ──
     serviceCosts: {
       title: 'Custos por Tipo de Serviço',
-      subtitle: 'Defina mão de obra e materiais para precificação automática.',
+      subtitle: 'Defina mão de obra e insumos para precificação automática.',
       serviceTypeLabel: 'Tipo de serviço',
       serviceTypePlaceholder: 'Selecione o tipo de serviço',
       noServiceSelected: 'Selecione um tipo de serviço para configurar custos.',
 
       tabLabor: 'Mão de obra',
       tabResources: 'Recursos',
-      tabMaterials: 'Materiais',
+      tabMaterials: 'Insumos',
       tabSummary: 'Resumo',
 
       laborTitle: 'Mão de obra',
@@ -785,7 +785,7 @@ export const crm = {
 
       summaryTitle: 'Resumo e preço sugerido (BDI)',
       summaryLabor: 'Mão de obra',
-      summaryMaterials: 'Materiais',
+      summaryMaterials: 'Insumos',
       summaryResources: 'Recursos',
       summaryExtras: 'Extras manuais',
       summaryTotalCost: 'Custo total',
@@ -1801,7 +1801,7 @@ export const crm = {
       reviewTemplatePlaceholder: 'Select template',
       reviewCoverTitle: 'Proposal cover',
       reviewCoverHint: 'The cover updates immediately when you change the template.',
-      reviewFullPreview: 'Open full proposal',
+      reviewFullPreview: 'Preview',
       receivableInstallmentsLabel: 'Number of installments',
       receivableInstallmentsCash: 'Upfront',
       receivableFirstDueDateLabel: 'First due date',
@@ -1915,14 +1915,14 @@ export const crm = {
 
     serviceCosts: {
       title: 'Costs by Service Type',
-      subtitle: 'Set labor and materials for automatic pricing.',
+      subtitle: 'Set labor and supplies for automatic pricing.',
       serviceTypeLabel: 'Service type',
       serviceTypePlaceholder: 'Select service type',
       noServiceSelected: 'Select a service type to configure costs.',
 
       tabLabor: 'Labor',
       tabResources: 'Resources',
-      tabMaterials: 'Materials',
+      tabMaterials: 'Supplies',
       tabSummary: 'Summary',
 
       laborTitle: 'Labor',
@@ -1945,7 +1945,7 @@ export const crm = {
 
       summaryTitle: 'Summary & suggested price (BDI)',
       summaryLabor: 'Labor',
-      summaryMaterials: 'Materials',
+      summaryMaterials: 'Supplies',
       summaryResources: 'Resources',
       summaryExtras: 'Manual extras',
       summaryTotalCost: 'Total cost',
@@ -2931,7 +2931,7 @@ export const crm = {
       reviewTemplatePlaceholder: 'Seleccionar plantilla',
       reviewCoverTitle: 'Portada de la propuesta',
       reviewCoverHint: 'La portada se actualiza inmediatamente al cambiar la plantilla.',
-      reviewFullPreview: 'Abrir propuesta completa',
+      reviewFullPreview: 'Ver vista previa',
       receivableInstallmentsLabel: 'Nº de cuotas',
       receivableInstallmentsCash: 'Al contado',
       receivableFirstDueDateLabel: '1er vencimiento',
@@ -3045,14 +3045,14 @@ export const crm = {
 
     serviceCosts: {
       title: 'Costos por Tipo de Servicio',
-      subtitle: 'Define mano de obra y materiales para la tarificación automática.',
+      subtitle: 'Define mano de obra e insumos para la tarificación automática.',
       serviceTypeLabel: 'Tipo de servicio',
       serviceTypePlaceholder: 'Selecciona el tipo de servicio',
       noServiceSelected: 'Selecciona un tipo de servicio para configurar costos.',
 
       tabLabor: 'Mano de obra',
       tabResources: 'Recursos',
-      tabMaterials: 'Materiales',
+      tabMaterials: 'Insumos',
       tabSummary: 'Resumen',
 
       laborTitle: 'Mano de obra',
@@ -3075,7 +3075,7 @@ export const crm = {
 
       summaryTitle: 'Resumen y precio sugerido (BDI)',
       summaryLabor: 'Mano de obra',
-      summaryMaterials: 'Materiales',
+      summaryMaterials: 'Insumos',
       summaryResources: 'Recursos',
       summaryExtras: 'Extras manuales',
       summaryTotalCost: 'Costo total',
@@ -4059,7 +4059,7 @@ export const crm = {
       reviewTemplatePlaceholder: 'Sélectionner le modèle',
       reviewCoverTitle: 'Couverture de la proposition',
       reviewCoverHint: 'La couverture est immédiatement mise à jour lorsque vous changez de modèle.',
-      reviewFullPreview: 'Ouvrir la proposition complète',
+      reviewFullPreview: 'Aperçu',
       receivableInstallmentsLabel: `Nombre d'échéances`,
       receivableInstallmentsCash: 'Comptant',
       receivableFirstDueDateLabel: `1ère échéance`,
@@ -4174,14 +4174,14 @@ export const crm = {
 
     serviceCosts: {
       title: 'Coûts par Type de Service',
-      subtitle: 'Définissez la main-d\'œuvre et les matériaux pour la tarification automatique.',
+      subtitle: 'Définissez la main-d\'œuvre et les fournitures pour la tarification automatique.',
       serviceTypeLabel: 'Type de service',
       serviceTypePlaceholder: 'Sélectionner le type de service',
       noServiceSelected: 'Sélectionnez un type de service pour configurer les coûts.',
 
       tabLabor: 'Main-d\'œuvre',
       tabResources: 'Ressources',
-      tabMaterials: 'Matériaux',
+      tabMaterials: 'Fournitures',
       tabSummary: 'Résumé',
 
       laborTitle: 'Main-d\'œuvre',
@@ -4204,7 +4204,7 @@ export const crm = {
 
       summaryTitle: 'Résumé et prix suggéré (BDI)',
       summaryLabor: 'Main-d\'œuvre',
-      summaryMaterials: 'Matériaux',
+      summaryMaterials: 'Fournitures',
       summaryResources: 'Ressources',
       summaryExtras: 'Extras manuels',
       summaryTotalCost: 'Coût total',
