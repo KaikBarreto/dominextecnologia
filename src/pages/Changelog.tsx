@@ -31,28 +31,6 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.40.0',
-    date: '6 de novembro de 2026',
-    type: 'minor',
-    changes: [
-      {
-        title: 'Regras de avanço por etapa do CRM',
-        description: 'Cada coluna pode exigir tarefas, checklists e campos antes de permitir que uma oportunidade avance, deixando o processo comercial mais consistente.',
-        category: 'recurso',
-      },
-      {
-        title: 'Automações configuráveis no funil',
-        description: 'Ao entrar ou concluir uma etapa, a Dominex pode criar tarefas, aplicar checklists, definir prazos e responsáveis, adicionar etiquetas ou movimentar e copiar oportunidades automaticamente.',
-        category: 'recurso',
-      },
-      {
-        title: 'Tarefas e checklists integrados ao CRM',
-        description: 'As atividades criadas pelas automações permanecem ligadas à oportunidade e podem ser acompanhadas sem perder o histórico do trabalho.',
-        category: 'melhoria',
-      },
-    ],
-  },
-  {
     version: '1.39.0',
     date: '6 de novembro de 2026',
     type: 'minor',
