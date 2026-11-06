@@ -33,14 +33,14 @@ export function DomiflixLearningReminder() {
   const critical = status.reminder.severity === "critical";
   const copy = getTutorialReminderCopy(status);
   return (
-    <section aria-label="Lembrete da trilha de tutoriais" className={cn("shrink-0 border-b px-3 py-2.5 text-white sm:px-4", critical ? "border-[#991B1B] bg-[#B91C1C]" : "border-[#C8141D] bg-[#E11D2E]")}>
+    <section aria-label="Lembrete da trilha de tutoriais" className={cn("shrink-0 border-b px-3 py-2.5 text-white sm:px-4", critical ? "border-[#991B1B] bg-[#B91C1C]" : "border-white/10 bg-[#161616]")}>
       <div className="relative mx-auto flex max-w-[1600px] flex-col gap-3 sm:flex-row sm:items-center">
         <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-white sm:flex">
           {critical ? <AlertTriangle className="h-4 w-4" /> : <BookOpen className="h-4 w-4" />}
         </div>
-        <div className="min-w-0 pr-11 sm:flex-1 sm:pr-0"><div className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2"><p className="min-w-0 text-sm font-semibold leading-snug">{copy.title}</p><span className={cn("shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white", status.user.accountStage === "trial" ? "bg-red-600" : status.user.accountStage === "paid" ? "bg-emerald-600" : "bg-stone-600")}>{status.user.accountStage === "trial" ? "Em teste" : status.user.accountStage === "paid" ? "Contratado" : "Conta"}</span></div><p className="mt-1 text-xs leading-relaxed text-white/80 sm:mt-0 sm:line-clamp-1 sm:leading-normal">{copy.description}</p></div>
-        <Button size="sm" onClick={() => navigate(getDomiflixContinueUrl(status))} className="h-11 w-full shrink-0 justify-between rounded-sm bg-white px-4 text-sm font-semibold text-red-700 hover:bg-white/90 sm:h-8 sm:w-auto sm:justify-center sm:px-3 sm:text-xs">
-          <span className="hidden sm:inline">{copy.actionLabel}</span><span className="sm:hidden">Continuar tutorial</span><ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+        <div className="min-w-0 pr-11 sm:flex-1 sm:pr-0"><div className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2"><p className="min-w-0 text-sm font-semibold leading-snug">{copy.title}</p><span className={cn("shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white", critical ? "bg-black/20" : "bg-white/15")}>{status.user.accountStage === "trial" ? "Em teste" : status.user.accountStage === "paid" ? "Contratado" : "Conta"}</span></div><p className="mt-1 text-xs leading-relaxed text-white/80 sm:mt-0 sm:line-clamp-1 sm:leading-normal">{copy.description}</p></div>
+        <Button size="sm" onClick={() => navigate(getDomiflixContinueUrl(status))} className={cn("h-11 w-full shrink-0 justify-between rounded-sm bg-white px-4 text-sm font-semibold hover:bg-white/90 sm:h-8 sm:w-auto sm:justify-center sm:px-3 sm:text-xs", critical ? "text-red-700" : "text-[#161616]")}>
+          <span>{copy.actionLabel}</span><ArrowRight className="ml-1.5 h-3.5 w-3.5" />
         </Button>
         <Button variant="ghost" size="icon" disabled={dismiss.isPending} onClick={() => dismiss.mutate()} className="absolute right-0 top-0 h-10 w-10 shrink-0 text-white/75 hover:bg-white/10 hover:text-white sm:static sm:h-8 sm:w-8" aria-label="Lembrar novamente amanhã"><X className="h-4 w-4" /></Button>
       </div>

@@ -26,25 +26,48 @@ export function getTutorialReminderCopy(status: DomiflixLearningStatus) {
   const lesson = status.nextLesson?.lessonTitle ?? "próxima aula";
   const variants = COPY[accountStage];
   const detail = variants[daySeed(onboardingDay, firstName, lesson) % variants.length];
-  const idleDays = status.progress.lastProgressAt
-    ? Math.max(0, Math.floor((Date.now() - new Date(status.progress.lastProgressAt).getTime()) / 86_400_000))
+  const lastProgressTime = status.progress.lastProgressAt
+    ? new Date(status.progress.lastProgressAt).getTime()
+    : Number.NaN;
+  const idleDays = Number.isFinite(lastProgressTime)
+    ? Math.max(0, Math.floor((Date.now() - lastProgressTime) / 86_400_000))
     : onboardingDay;
   const hasStarted = status.progress.trackCompleted > 0;
   const basicComplete = status.progress.coreTotal > 0
     && status.progress.coreCompleted >= status.progress.coreTotal;
   const hasRequiredPlanLessons = status.progress.trackTotal > status.progress.coreTotal;
+  const remaining = Math.max(0, status.progress.trackTotal - status.progress.trackCompleted);
+  const critical = status.reminder.severity === "critical";
 
-  const title = status.reminder.severity === "critical"
-    ? `${firstName}, sua trilha precisa de atenção.`
-    : status.reminder.severity === "soft"
-      ? `${firstName}, vamos retomar de onde você parou?`
-      : basicComplete && hasRequiredPlanLessons
-        ? `${firstName}, continue pelos módulos do seu plano.`
-        : `${firstName}, comece sua trilha guiada.`;
+  let title: string;
+  let context: string;
+  let actionLabel: string;
 
-  const context = hasStarted
-    ? `${basicComplete && hasRequiredPlanLessons ? "A formação básica está concluída. " : ""}Você concluiu ${status.progress.trackCompleted} de ${status.progress.trackTotal} aulas da sua trilha${idleDays > 0 ? ` e está há ${idleDays} dia${idleDays === 1 ? "" : "s"} sem avançar` : ""}.`
-    : `A próxima aula é “${lesson}”.`;
+  if (critical && !hasStarted) {
+    title = `${firstName}, sua trilha ainda não começou.`;
+    context = `Já se passaram ${onboardingDay} dias do seu onboarding. Comece pela aula “${lesson}”.`;
+    actionLabel = "Começar agora";
+  } else if (critical) {
+    title = `${firstName}, sua trilha está parada há ${idleDays} dia${idleDays === 1 ? "" : "s"}.`;
+    context = `Você concluiu ${status.progress.trackCompleted} de ${status.progress.trackTotal} aulas. Faltam ${remaining}; retome por “${lesson}”.`;
+    actionLabel = "Retomar agora";
+  } else if (hasStarted && remaining === 1) {
+    title = `${firstName}, falta só uma aula para concluir sua trilha.`;
+    context = `Finalize “${lesson}” e complete os tutoriais da formação básica e dos módulos do seu plano.`;
+    actionLabel = "Concluir trilha";
+  } else if (basicComplete && hasRequiredPlanLessons) {
+    title = `${firstName}, agora continue pelos módulos do seu plano.`;
+    context = `A formação básica está concluída. Sua próxima aula é “${lesson}”.`;
+    actionLabel = "Continuar trilha";
+  } else if (hasStarted) {
+    title = `${firstName}, continue de onde parou.`;
+    context = `Você já concluiu ${status.progress.trackPercent}% da sua trilha. A próxima aula é “${lesson}”.`;
+    actionLabel = "Continuar trilha";
+  } else {
+    title = `${firstName}, comece sua trilha guiada.`;
+    context = `A primeira aula é “${lesson}”.`;
+    actionLabel = "Começar agora";
+  }
 
-  return { title, description: `${context} ${detail}`, actionLabel: hasStarted ? "Continuar trilha" : "Começar agora" };
+  return { title, description: `${context} ${detail}`, actionLabel };
 }
