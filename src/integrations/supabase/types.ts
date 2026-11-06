@@ -3510,6 +3510,127 @@ export type Database = {
           },
         ]
       }
+      crm_automation_executions: {
+        Row: {
+          company_id: string
+          created_at: string
+          error_message: string | null
+          event_key: string
+          executed_at: string | null
+          id: string
+          lead_id: string
+          rule_id: string
+          status: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          error_message?: string | null
+          event_key: string
+          executed_at?: string | null
+          id?: string
+          lead_id: string
+          rule_id: string
+          status?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          error_message?: string | null
+          event_key?: string
+          executed_at?: string | null
+          id?: string
+          lead_id?: string
+          rule_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_automation_executions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_automation_executions_rule_company_fkey"
+            columns: ["rule_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "crm_automation_rules"
+            referencedColumns: ["id", "company_id"]
+          },
+        ]
+      }
+      crm_automation_rules: {
+        Row: {
+          actions: Json
+          company_id: string
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          id: string
+          name: string
+          pipeline_id: string
+          position: number
+          trigger_config: Json
+          trigger_stage_id: string
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          actions: Json
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          name: string
+          pipeline_id: string
+          position?: number
+          trigger_config?: Json
+          trigger_stage_id: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Update: {
+          actions?: Json
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          name?: string
+          pipeline_id?: string
+          position?: number
+          trigger_config?: Json
+          trigger_stage_id?: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_automation_rules_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_automation_rules_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_automation_rules_trigger_stage_id_fkey"
+            columns: ["trigger_stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_checklist_templates: {
         Row: {
           company_id: string
@@ -3668,6 +3789,7 @@ export type Database = {
           color: string
           company_id: string
           created_at: string
+          description: string | null
           icon: string | null
           id: string
           is_lost: boolean
@@ -3675,12 +3797,14 @@ export type Database = {
           name: string
           pipeline_id: string
           position: number
+          requirements: Json
           updated_at: string
         }
         Insert: {
           color?: string
           company_id: string
           created_at?: string
+          description?: string | null
           icon?: string | null
           id?: string
           is_lost?: boolean
@@ -3688,12 +3812,14 @@ export type Database = {
           name: string
           pipeline_id: string
           position?: number
+          requirements?: Json
           updated_at?: string
         }
         Update: {
           color?: string
           company_id?: string
           created_at?: string
+          description?: string | null
           icon?: string | null
           id?: string
           is_lost?: boolean
@@ -3701,6 +3827,7 @@ export type Database = {
           name?: string
           pipeline_id?: string
           position?: number
+          requirements?: Json
           updated_at?: string
         }
         Relationships: [
@@ -12710,6 +12837,8 @@ export type Database = {
           contract_visit_customized_at: string | null
           created_at: string
           created_by: string | null
+          crm_automation_rule_id: string | null
+          crm_checklist_id: string | null
           customer_id: string | null
           description: string | null
           diagnosis: string | null
@@ -12800,6 +12929,8 @@ export type Database = {
           contract_visit_customized_at?: string | null
           created_at?: string
           created_by?: string | null
+          crm_automation_rule_id?: string | null
+          crm_checklist_id?: string | null
           customer_id?: string | null
           description?: string | null
           diagnosis?: string | null
@@ -12890,6 +13021,8 @@ export type Database = {
           contract_visit_customized_at?: string | null
           created_at?: string
           created_by?: string | null
+          crm_automation_rule_id?: string | null
+          crm_checklist_id?: string | null
           customer_id?: string | null
           description?: string | null
           diagnosis?: string | null
@@ -12979,6 +13112,13 @@ export type Database = {
             columns: ["contract_id"]
             isOneToOne: false
             referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_orders_crm_automation_rule_id_fkey"
+            columns: ["crm_automation_rule_id"]
+            isOneToOne: false
+            referencedRelation: "crm_automation_rules"
             referencedColumns: ["id"]
           },
           {

@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import type { CrmStageRequirements } from '@/types/crmAutomation';
+import type { Json } from '@/integrations/supabase/types';
 
 export interface CrmStage {
   id: string;
@@ -11,6 +13,8 @@ export interface CrmStage {
   position: number;
   is_won: boolean;
   is_lost: boolean;
+  description: string | null;
+  requirements: CrmStageRequirements;
   /** Funil dono da etapa (Onda D — multi-pipeline). Sempre presente no banco
    *  (NOT NULL); ver migration 20260918100000_crm_multi_pipeline.sql. */
   pipeline_id: string;
@@ -25,6 +29,8 @@ export interface CrmStageInsert {
   position?: number;
   is_won?: boolean;
   is_lost?: boolean;
+  description?: string | null;
+  requirements?: CrmStageRequirements;
   /**
    * Funil dono da nova etapa. REQUIRED de propósito (espelha
    * `TablesInsert<'crm_stages'>` gerado do banco, onde a coluna é NOT NULL
@@ -44,6 +50,8 @@ export interface CrmStageUpdate {
   position?: number;
   is_won?: boolean;
   is_lost?: boolean;
+  description?: string | null;
+  requirements?: CrmStageRequirements;
   /** Mover a etapa de funil — o trigger AFTER propaga o novo pipeline_id
    *  pros leads que estão nela (denormalização em leads.pipeline_id). */
   pipeline_id?: string;
@@ -115,7 +123,12 @@ export function useCrmStages() {
       const company_id = await getCurrentUserCompanyId();
       const { data, error } = await supabase
         .from('crm_stages')
-        .insert({ ...stage, position: stage.position ?? maxPosition, company_id })
+        .insert({
+          ...stage,
+          requirements: stage.requirements as unknown as Json | undefined,
+          position: stage.position ?? maxPosition,
+          company_id,
+        })
         .select()
         .single();
 
@@ -182,7 +195,10 @@ export function useCrmStages() {
     mutationFn: async ({ id, ...updates }: CrmStageUpdate) => {
       const { data, error } = await supabase
         .from('crm_stages')
-        .update(updates)
+        .update({
+          ...updates,
+          requirements: updates.requirements as unknown as Json | undefined,
+        })
         .eq('id', id)
         .select()
         .single();
