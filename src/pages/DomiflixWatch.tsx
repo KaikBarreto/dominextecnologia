@@ -572,7 +572,7 @@ export default function DomiflixWatchPage() {
   const selectedVideoType = usePortraitVideo ? episode.mobile_video_type || episode.video_type : episode.video_type;
 
   return (
-    <div className="domiflix-player-root fixed inset-0 z-[100] overflow-y-auto bg-[#141414] text-white lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:overflow-hidden">
+    <div className="domiflix-player-root fixed inset-0 z-40 overflow-y-auto bg-[#141414] text-white lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:overflow-hidden">
       <aside className="hidden min-h-0 border-r border-white/10 lg:block">
         <DomiflixTrackPanel status={learningStatus} currentEpisodeId={episode.id} onSelect={navigateToTrackLesson} />
       </aside>
