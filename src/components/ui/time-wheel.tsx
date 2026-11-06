@@ -189,7 +189,13 @@ function WheelColumn({
   // Posiciona (sem animação) ao montar e quando o valor muda por fora.
   useEffect(() => {
     centerIndexRef.current = selectedIndex;
-    scrollToIndex(selectedIndex, false);
+    const el = scrollRef.current;
+    // Quando a própria rolagem acabou de escolher este índice, o elemento já
+    // está na posição certa. Evita interromper o gesto/momentum com um novo
+    // scroll programático a cada valor emitido.
+    if (!el || Math.abs(el.scrollTop - selectedIndex * ITEM_HEIGHT) > 1) {
+      scrollToIndex(selectedIndex, false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIndex]);
 
@@ -236,6 +242,13 @@ function WheelColumn({
       if (center !== centerIndexRef.current) {
         centerIndexRef.current = center;
         applyStyles(center);
+        if (!programmaticRef.current && center >= 0 && center < items.length) {
+          // Atualiza o rascunho assim que a linha central muda. Antes o valor só
+          // era emitido 120ms após o scroll parar; tocar em “Concluir” nesse
+          // intervalo salvava o minuto anterior apesar de a roleta já mostrar o
+          // novo (ex.: mostrava 45, mas mantinha 41).
+          onSelect(center);
+        }
       }
     });
 
@@ -252,7 +265,6 @@ function WheelColumn({
       if (Math.abs(el.scrollTop - idx * ITEM_HEIGHT) > 1) {
         scrollToIndex(idx, true);
       }
-      onSelect(idx);
     }, 120);
   }, [applyStyles, items.length, onSelect, scrollToIndex]);
 

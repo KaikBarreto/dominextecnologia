@@ -64,4 +64,29 @@ describe('TimePicker', () => {
 
     expect(onValueChange).toHaveBeenCalledWith('16:45');
   });
+
+  it('permite digitar o horário e mostra o rascunho antes de concluir', () => {
+    const onValueChange = vi.fn();
+    mount(<TimePicker value="15:41" onValueChange={onValueChange} />);
+
+    act(() => {
+      (container.querySelector('button') as HTMLButtonElement).click();
+    });
+
+    const input = document.querySelector('input[inputmode="numeric"]') as HTMLInputElement;
+    act(() => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(input, '1545');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    expect(input.value).toBe('15:45');
+    expect(container.textContent).toContain('15:45');
+
+    const doneButton = Array.from(document.querySelectorAll('button'))
+      .find((button) => button.textContent === 'Concluir') as HTMLButtonElement;
+    act(() => doneButton.click());
+
+    expect(onValueChange).toHaveBeenCalledWith('15:45');
+  });
 });

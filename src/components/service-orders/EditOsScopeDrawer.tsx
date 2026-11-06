@@ -85,7 +85,7 @@ interface EditOsScopeDrawerProps {
   schedule?: EditOsScheduleSeed;
   canEditSchedule?: boolean;
   canOverrideScheduleConflict?: boolean;
-  onSaved: () => void;
+  onSaved: () => void | Promise<void>;
 }
 
 type TFlow = typeof MESSAGES['pt-br']['app']['os']['technicianFlow'];
@@ -107,7 +107,7 @@ export function EditOsScopeDrawer({
   const t = flow.editScope;
   const { toast } = useToast();
   const { templates } = useFormTemplates();
-  const { createEquipment } = useEquipment(customerId);
+  const { equipment, isLoading: equipmentLoading, createEquipment } = useEquipment(customerId);
   const { editScope, reschedule } = useEditOsScope();
 
   const [tab, setTab] = useState<'scope' | 'schedule'>('scope');
@@ -117,7 +117,10 @@ export function EditOsScopeDrawer({
   const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
   const [overGroupKey, setOverGroupKey] = useState<string | null>(null);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const [equipmentPickerOpen, setEquipmentPickerOpen] = useState(false);
+  const [equipmentSearch, setEquipmentSearch] = useState('');
   const [confirmLossOpen, setConfirmLossOpen] = useState(false);
+  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [pickerSearch, setPickerSearch] = useState('');
   const [schedulePlan, setSchedulePlan] = useState<ServiceOrderScheduleSlot[]>([]);
@@ -135,6 +138,18 @@ export function EditOsScopeDrawer({
     () => (templates ?? []).filter((template) => template.is_active !== false),
     [templates],
   );
+  const availableEquipment = useMemo(() => {
+    const selectedIds = new Set(scopeState.equipmentGroups.map((group) => group.equipmentId));
+    const available = equipment.filter((item) => !selectedIds.has(item.id));
+    if (!equipmentSearch.trim()) return available;
+    return available.filter((item) => fuzzyIncludes([
+      item.name,
+      item.identifier,
+      item.brand,
+      item.model,
+      item.location,
+    ].filter(Boolean).join(' '), equipmentSearch));
+  }, [equipment, equipmentSearch, scopeState.equipmentGroups]);
 
   useEffect(() => { setPickerSearch(''); }, [pickerFor]);
   useEffect(() => {
@@ -156,6 +171,8 @@ export function EditOsScopeDrawer({
     setSavedScheduleSignature(JSON.stringify(normalizedPlan));
     setTab('scope');
     setPickerFor(null);
+    setEquipmentPickerOpen(false);
+    setEquipmentSearch('');
     setScheduleConflict(null);
   }, [
     open,
@@ -171,7 +188,30 @@ export function EditOsScopeDrawer({
 
   const scopeDirty = isScopeStateDirty(initialScope, scopeState);
   const scheduleDirty = JSON.stringify(schedulePlan) !== savedScheduleSignature;
+  const hasUnsavedChanges = scopeDirty || scheduleDirty;
   const saving = editScope.isPending || reschedule.isPending;
+
+  const revealEquipment = (equipmentId: string) => {
+    // Modais aninhados levam alguns frames para devolver o foco/scroll ao drawer
+    // principal. Rola depois da transição para o item recém-adicionado não ficar
+    // escondido abaixo da dobra e parecer que a ação não teve efeito.
+    window.setTimeout(() => {
+      document.getElementById(`edit-os-equipment-${equipmentId}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 520);
+  };
+
+  useEffect(() => {
+    if (!open || !hasUnsavedChanges) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warnBeforeUnload);
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload);
+  }, [hasUnsavedChanges, open]);
 
   const toggleExpanded = (groupKey: string) => {
     setExpandedGroups((current) => {
@@ -191,6 +231,7 @@ export function EditOsScopeDrawer({
       return result.state;
     });
     setExpandedGroups((current) => new Set(current).add(targetGroupKey));
+    if (targetGroupKey !== STANDALONE_SCOPE_KEY) revealEquipment(targetGroupKey);
   };
 
   const addTemplateTo = (groupKey: string, templateId: string) => {
@@ -243,8 +284,38 @@ export function EditOsScopeDrawer({
             ],
           });
       setExpandedGroups((current) => new Set(current).add(equipment.id));
+      revealEquipment(equipment.id);
     }
     return created as { id?: string } | undefined;
+  };
+
+  const addEquipmentToScope = (item: { id: string; name: string }) => {
+    setScopeState((current) => current.equipmentGroups.some((group) => group.equipmentId === item.id)
+      ? current
+      : {
+          ...current,
+          equipmentGroups: [
+            ...current.equipmentGroups,
+            { key: item.id, equipmentId: item.id, equipmentName: item.name, checklists: [] },
+          ],
+        });
+    setExpandedGroups((current) => new Set(current).add(item.id));
+    setEquipmentPickerOpen(false);
+    setEquipmentSearch('');
+    revealEquipment(item.id);
+  };
+
+  const requestOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      onOpenChange(true);
+      return;
+    }
+    if (saving) return;
+    if (hasUnsavedChanges) {
+      setConfirmDiscardOpen(true);
+      return;
+    }
+    onOpenChange(false);
   };
 
   const handleDragStart = ({ active }: DragStartEvent) => {
@@ -292,11 +363,11 @@ export function EditOsScopeDrawer({
       const rebased = rebaseSavedScope(scopeState);
       setInitialScope(rebased);
       setScopeState(rebased);
+      await onSaved();
       toast({
         title: t.toastSaved,
         description: result.responses_moved ? t.toastAnswersMoved.replace('{n}', String(result.responses_moved)) : undefined,
       });
-      onSaved();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       toast({ variant: 'destructive', title: t.errGeneric, description: mapRpcError(message, t) });
@@ -330,8 +401,8 @@ export function EditOsScopeDrawer({
       });
       setSavedScheduleSignature(JSON.stringify(schedulePlan));
       setScheduleConflict(null);
+      await onSaved();
       toast({ title: t.toastScheduleSaved });
-      onSaved();
     } catch (error) {
       if (isScheduleConflictError(error)) {
         setScheduleConflict({ conflicts: error.conflicts, requestId });
@@ -377,7 +448,7 @@ export function EditOsScopeDrawer({
     <>
       <ResponsiveModal
         open={open}
-        onOpenChange={onOpenChange}
+        onOpenChange={requestOpenChange}
         title={t.title}
         footer={footer}
         className={isCompact ? 'bg-[#f2f2f7] pb-2 dark:bg-background' : undefined}
@@ -437,7 +508,7 @@ export function EditOsScopeDrawer({
                   <h3 className="text-sm font-semibold">{t.scopeHeading}</h3>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t.scopeDragHint}</p>
                 </div>
-                <Button type="button" variant="outline" size="sm" className="w-full shrink-0 sm:w-auto" onClick={() => setQuickCreateOpen(true)}>
+                <Button type="button" variant="outline" size="sm" className="w-full shrink-0 sm:w-auto" onClick={() => setEquipmentPickerOpen(true)}>
                   <Plus className="mr-1.5 h-4 w-4" />
                   {t.addEquipment}
                 </Button>
@@ -522,6 +593,88 @@ export function EditOsScopeDrawer({
       </ResponsiveModal>
 
       <ResponsiveModal
+        open={equipmentPickerOpen}
+        onOpenChange={(nextOpen) => {
+          setEquipmentPickerOpen(nextOpen);
+          if (!nextOpen) setEquipmentSearch('');
+        }}
+        title={t.equipmentSelectorTitle}
+      >
+        <div className="space-y-3 pt-2">
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {t.equipmentSelectorDescription}
+          </p>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={equipmentSearch}
+              onChange={(event) => setEquipmentSearch(event.target.value)}
+              placeholder={t.equipmentSearchPlaceholder}
+              className="pl-9 focus-visible:ring-foreground"
+              autoFocus
+            />
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="h-auto w-full justify-start gap-3 px-3 py-3 text-left"
+            onClick={() => {
+              setEquipmentPickerOpen(false);
+              setQuickCreateOpen(true);
+            }}
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-foreground text-background">
+              <Plus className="h-4 w-4" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold">{t.newEquipment}</span>
+              <span className="block text-xs font-normal text-muted-foreground">{t.quickCreateEquipmentHint}</span>
+            </span>
+          </Button>
+
+          <div className="border-t pt-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t.customerEquipmentLabel}
+            </p>
+            {equipmentLoading ? (
+              <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />{t.loadingEquipment}
+              </div>
+            ) : availableEquipment.length === 0 ? (
+              <EmptyState
+                size="compact"
+                icon={<Wrench className="h-full w-full" />}
+                title={equipmentSearch.trim() ? t.equipmentSearchEmpty : t.noAvailableEquipment}
+              />
+            ) : (
+              <div className="max-h-[48dvh] space-y-1 overflow-y-auto">
+                {availableEquipment.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => addEquipmentToScope(item)}
+                  >
+                    <Wrench className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block break-words text-sm font-medium leading-snug">{item.name}</span>
+                      {(item.identifier || item.brand || item.model || item.location) && (
+                        <span className="mt-0.5 block break-words text-xs text-muted-foreground">
+                          {[item.identifier, item.brand, item.model, item.location].filter(Boolean).join(' · ')}
+                        </span>
+                      )}
+                    </span>
+                    <Plus className="h-4 w-4 shrink-0" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </ResponsiveModal>
+
+      <ResponsiveModal
         open={pickerFor !== null}
         onOpenChange={(nextOpen) => { if (!nextOpen) setPickerFor(null); }}
         title={t.selectorTitle}
@@ -547,6 +700,7 @@ export function EditOsScopeDrawer({
         onSubmit={handleQuickCreate}
         customers={customer ? [customer as unknown as Customer] : []}
         isLoading={createEquipment.isPending}
+        focusNameOnOpen
       />
 
       <AlertDialog open={confirmLossOpen} onOpenChange={setConfirmLossOpen}>
@@ -561,6 +715,27 @@ export function EditOsScopeDrawer({
             <AlertDialogCancel>{t.confirmLossCancel}</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => void saveScope()}>
               {t.confirmLossConfirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmDiscardOpen} onOpenChange={setConfirmDiscardOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.confirmDiscardTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{t.confirmDiscardDesc}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.confirmDiscardCancel}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-foreground text-background hover:bg-foreground/90"
+              onClick={() => {
+                setConfirmDiscardOpen(false);
+                onOpenChange(false);
+              }}
+            >
+              {t.confirmDiscardConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -603,7 +778,7 @@ function EquipmentScopeCard({
     opacity: isDragging ? 0.4 : 1, zIndex: isDragging ? 30 : undefined,
   };
   return (
-    <section ref={setNodeRef} style={style} className={cn(
+    <section id={`edit-os-equipment-${group.key}`} ref={setNodeRef} style={style} className={cn(
       'rounded-xl border bg-card transition-colors',
       activeChecklistDrag && highlighted && 'border-foreground bg-card ring-2 ring-foreground/15 shadow-md',
     )}>

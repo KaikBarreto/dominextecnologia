@@ -43,12 +43,15 @@ interface EquipmentFormDialogProps {
   categories?: EquipmentCategory[];
   isLoading?: boolean;
   equipmentCount?: number;
+  /** Ao criar dentro de um fluxo rápido, abre o teclado já no nome. */
+  focusNameOnOpen?: boolean;
 }
 
 const builtInFieldKeys = new Set(['brand', 'model', 'serial_number', 'capacity', 'location', 'install_date']);
 
 export function EquipmentFormDialog({
   open, onOpenChange, equipment, onSubmit, customers, categories = [], isLoading, equipmentCount = 0,
+  focusNameOnOpen = false,
 }: EquipmentFormDialogProps) {
   const { fields: fieldConfig } = useEquipmentFieldConfig();
   const { activeLabels, labelIdsFor, setEntityLabels } = usePartyLabels('equipment');
@@ -167,6 +170,15 @@ export function EquipmentFormDialog({
     setPhotoPreview(equipment?.photo_url ?? null);
     setCustomFieldErrors([]);
   }, [open, formContextKey, form, defaultCustomerId, equipment]);
+
+  useEffect(() => {
+    if (!open || equipment || !focusNameOnOpen) return;
+    // ResponsiveModal bloqueia o autofoco do Radix para evitar saltos de scroll.
+    // No quick create, o foco explícito após a montagem é intencional: abre o
+    // teclado no campo que inicia a tarefa, sem exigir um toque extra.
+    const focusTimer = window.setTimeout(() => form.setFocus('name'), 120);
+    return () => window.clearTimeout(focusTimer);
+  }, [equipment, focusNameOnOpen, form, open]);
 
   useEffect(() => {
     if (!open) return;

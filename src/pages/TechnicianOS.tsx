@@ -64,6 +64,7 @@ import { reverseGeocodeShort } from '@/utils/reverseGeocode';
 type GeoLocation = { lat: number; lng: number; address?: string };
 import { useGeoTracking, recordLocationEvent } from '@/hooks/useTechnicianLocations';
 import { OSReport } from '@/components/technician/OSReport';
+import { REPORT_HEADER_DARK_GRADIENT } from '@/components/technician/ReportHeader';
 import { ContractInfoCard } from '@/components/technician/ContractInfoCard';
 import { OSRatingSurvey } from '@/components/technician/OSRatingSurvey';
 import { RateServiceAffordance } from '@/components/technician/RateServiceAffordance';
@@ -935,25 +936,37 @@ function TechnicianOSInner() {
   // encolhe) via requestAnimationFrame. A chave pode pertencer a qualquer um dos
   // dois accordions (questionários `os-eq-...` ou visita PMOC `os-pmoc-...`).
   const scrollExecHeaderToTop = useCallback((key: string) => {
-    const run = () => {
+    const run = (behavior: ScrollBehavior) => {
       const el =
         document.getElementById(`os-eq-${key}`) ||
         document.getElementById(`os-pmoc-${key}`);
-      if (!el) return;
+      if (!el || el.dataset.state !== 'open') return;
       // Mede DEPOIS da expansão/colapso: o single-open anima os irmãos fechando
       // (accordion-up) e o aberto crescendo (accordion-down) por ~200ms; medir
       // antes disso fixa um alvo que ainda vai se mover e a rolagem para na
       // última pergunta. Medimos só quando o layout estabilizou.
       const top =
         el.getBoundingClientRect().top + window.scrollY - headerHeightRef.current;
-      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      window.scrollTo({ top: Math.max(0, top), behavior });
     };
     // Espera o fim da animação do Radix Accordion (0.2s). setTimeout 260ms cobre
     // a animação + reflow; dois rAFs garantem que o DOM já trocou de estado antes
     // de armar o timer.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        window.setTimeout(run, 260);
+        window.setTimeout(() => run('smooth'), 260);
+        // Fotos e perguntas dinâmicas podem alterar a altura durante a abertura.
+        // Uma segunda medição só corrige se o mesmo accordion continuar aberto e
+        // ainda estiver fora do alinhamento esperado — evita parar no meio do
+        // checklist em aparelhos mais lentos/iOS.
+        window.setTimeout(() => {
+          const el =
+            document.getElementById(`os-eq-${key}`) ||
+            document.getElementById(`os-pmoc-${key}`);
+          if (!el || el.dataset.state !== 'open') return;
+          const expectedTop = headerHeightRef.current;
+          if (Math.abs(el.getBoundingClientRect().top - expectedTop) > 12) run('smooth');
+        }, 620);
       });
     });
   }, []);
@@ -3705,25 +3718,22 @@ function TechnicianOSInner() {
   return (
     <div className="min-h-screen bg-background lg:flex lg:flex-col">
       {/* Header fixo no topo: o botão Voltar fica sempre acessível ao rolar.
-          Visual premium SEM trocar a marca: a base é `bg-primary` (cor de
-          white-label da empresa) e o texto usa `text-primary-foreground` (o
-          sistema já garante o contraste claro/escuro por empresa). Por cima,
-          um overlay de degradê NEUTRO (clareia leve no topo, escurece leve na
-          base) dá profundidade sem deslocar a matiz da marca — funciona tanto
-          em cor clara quanto escura. O elemento `headerRef` (medido pelo
+          O preenchimento usa a mesma superfície escura do rodapé e do relatório,
+          com texto/ícones brancos. Cor de destaque fica reservada aos badges e
+          ações semânticas. O elemento `headerRef` (medido pelo
           ResizeObserver pra `headerHeight`) continua sendo EXATAMENTE este
           container sticky externo — não mexer nisso preserva o offset dos
           cabeçalhos de equipamento que grudam abaixo. */}
       <div
         ref={headerRef}
-        className="relative sticky top-0 z-20 bg-primary text-primary-foreground shadow-lg rounded-b-2xl overflow-hidden"
-        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+        className="relative sticky top-0 z-20 overflow-hidden rounded-b-2xl text-white shadow-lg"
+        style={{ background: REPORT_HEADER_DARK_GRADIENT, paddingTop: 'env(safe-area-inset-top)' }}
       >
-        {/* Overlay de profundidade (degradê neutro sobre a cor da marca) */}
+        {/* Luz sutil para preservar profundidade sem reintroduzir a cor da marca. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
-          style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 38%, rgba(0,0,0,0.16) 100%)' }}
+          style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 42%, rgba(0,0,0,0.18) 100%)' }}
         />
         <div className="relative max-w-2xl mx-auto lg:max-w-screen-2xl lg:px-8 p-3 sm:p-4">
           {/* TODO o conteúdo do header fica centralizado no eixo da tela. O
@@ -3740,7 +3750,7 @@ function TechnicianOSInner() {
             <Button
               variant="ghost"
               size="sm"
-              className="text-primary-foreground hover:bg-primary-foreground/15 shrink-0 px-2 gap-1.5"
+              className="shrink-0 gap-1.5 px-2 text-white hover:bg-white/10 hover:text-white"
               onClick={() => navigate(-1)}
             >
               <ArrowLeft className="h-5 w-5" />
@@ -3777,10 +3787,10 @@ function TechnicianOSInner() {
                   {activeServiceTypes.map(service => (
                     <span
                       key={service.id}
-                      className="inline-flex items-center gap-1 rounded-full bg-primary-foreground/15 px-2 py-0.5 text-[11px] font-semibold"
+                      className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white"
                     >
                       <span
-                        className="h-1.5 w-1.5 rounded-full ring-1 ring-primary-foreground/50"
+                        className="h-1.5 w-1.5 rounded-full ring-1 ring-white/50"
                         style={{ backgroundColor: service.color || 'currentColor' }}
                       />
                       {service.name}
@@ -4816,10 +4826,12 @@ function TechnicianOSInner() {
           }}
           canEditSchedule={canEditScheduleInOs}
           canOverrideScheduleConflict={canOverrideScheduleConflict}
-          onSaved={() => {
-            fetchServiceOrder();
-            fetchEquipmentItems();
-            fetchFormResponses();
+          onSaved={async () => {
+            await Promise.all([
+              fetchServiceOrder(),
+              fetchEquipmentItems(),
+              fetchFormResponses(),
+            ]);
           }}
         />
       )}
