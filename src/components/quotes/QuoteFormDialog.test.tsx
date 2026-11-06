@@ -27,6 +27,14 @@ class ResizeObserverStub {
 
 const testState = vi.hoisted(() => ({
   profile: null as { company_id: string } | null,
+  pricing: null as null | {
+    tax_rate: number;
+    admin_indirect_rate: number;
+    default_profit_rate: number;
+    km_cost: number;
+    card_discount_rate: number;
+    card_installments: number;
+  },
   fetchBreakdown: vi.fn(),
   createMutate: vi.fn(),
 }));
@@ -56,7 +64,7 @@ vi.mock('@/hooks/useCompanySettings', () => ({
 vi.mock('@/hooks/useProposalTemplates', () => ({
   useProposalTemplates: () => ({ templates: [{ id: 'tpl-1', slug: 'clean', name: 'Clean' }] }),
 }));
-vi.mock('@/hooks/usePricingSettings', () => ({ usePricingSettings: () => ({ settings: null }) }));
+vi.mock('@/hooks/usePricingSettings', () => ({ usePricingSettings: () => ({ settings: testState.pricing }) }));
 vi.mock('@/hooks/useServiceTypes', () => ({
   useServiceTypes: () => ({
     serviceTypes: [{ id: 'svc-1', name: 'Manutenção Preventiva', is_active: true, color: '#00C597', default_price: 250, description: '' }],
@@ -210,6 +218,7 @@ async function advanceToCommercial() {
 beforeEach(() => {
   sessionStorage.clear();
   testState.profile = null;
+  testState.pricing = null;
   testState.fetchBreakdown.mockReset();
   testState.createMutate.mockReset();
   container = document.createElement('div');
@@ -619,6 +628,29 @@ describe('QuoteFormDialog — editar quantidade decimal na lista de materiais (p
 });
 
 describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () => {
+  it('preserva campo de BDI editado quando os padrões da empresa resolvem depois', () => {
+    mount();
+    click(findButtonByText('Ajustar taxas e entender o BDI')!);
+
+    const advanced = q('#quote-bdi-advanced')!;
+    const fields = Array.from(advanced.querySelectorAll('input[type="number"]')) as HTMLInputElement[];
+    expect(fields.map(field => field.value)).toEqual(['10', '12', '10', '1', '6', '10']);
+
+    typeInto(fields[0], '17');
+    testState.pricing = {
+      tax_rate: 8,
+      admin_indirect_rate: 9,
+      default_profit_rate: 15,
+      km_cost: 2.5,
+      card_discount_rate: 4,
+      card_installments: 12,
+    };
+    mount();
+
+    const updatedFields = Array.from(q('#quote-bdi-advanced')!.querySelectorAll('input[type="number"]')) as HTMLInputElement[];
+    expect(updatedFields.map(field => field.value)).toEqual(['17', '9', '15', '2.5', '4', '12']);
+  });
+
   it('mostra a composição BDI na montagem e novamente no resumo da revisão', async () => {
     mount();
     await goPastRecipient();

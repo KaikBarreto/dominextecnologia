@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import { readPastedCents } from '@/lib/money-paste-mask';
+import type { Json } from '@/integrations/supabase/types';
 
 interface Worker {
   id: string;
@@ -137,6 +138,8 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
   const fmt = (v: number) => formatMoney(v, currency, locale);
   const { monthlyHours: companyMonthlyHours } = useEmployeeWorkHours(null);
   const [monthlyHours, setMonthlyHours] = useState(176);
+  const monthlyHoursTouchedRef = useRef(false);
+  const wasOpenRef = useRef(false);
   const [defaultServiceHours, setDefaultServiceHours] = useState(2);
   const [workers, setWorkers] = useState<Worker[]>(() => [makeWorker(2)]);
   const [costCalcWorkerId, setCostCalcWorkerId] = useState<string | null>(null);
@@ -151,8 +154,15 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
     Object.fromEntries(workers.map((w) => [w.id, toNumericText(w.hours)]))
   );
 
-  // Sync company hours when available
-  useEffect(() => { setMonthlyHours(companyMonthlyHours); }, [companyMonthlyHours]);
+  // Usa a jornada da empresa como padrão ao iniciar cada cálculo. Se a query
+  // resolver enquanto o usuário já estiver editando, preserva a escolha manual
+  // durante a sessão em vez de sobrescrevê-la silenciosamente.
+  useEffect(() => {
+    const justOpened = open && !wasOpenRef.current;
+    if (justOpened) monthlyHoursTouchedRef.current = false;
+    if (open && !monthlyHoursTouchedRef.current) setMonthlyHours(companyMonthlyHours);
+    wasOpenRef.current = open;
+  }, [companyMonthlyHours, open]);
 
   const costCalcWorker = costCalcWorkerId ? workers.find(w => w.id === costCalcWorkerId) : null;
 
@@ -277,7 +287,10 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
               <Label className="text-xs">{t.laborMonthlyHoursLabel}</Label>
               <NumericInput
                 value={String(monthlyHours ?? '')}
-                onValueChange={v => setMonthlyHours(Number(v) || 0)}
+                onValueChange={v => {
+                  monthlyHoursTouchedRef.current = true;
+                  setMonthlyHours(Number(v) || 0);
+                }}
               />
               <p className="text-[11px] text-muted-foreground">{t.laborMonthlyHoursHint}</p>
             </div>
@@ -470,7 +483,7 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
             if (worker?.employeeId) {
               supabase.from('employees').update({
                 monthly_cost: totalCost,
-                monthly_cost_breakdown: breakdown as any,
+                monthly_cost_breakdown: breakdown as unknown as Json,
               }).eq('id', worker.employeeId).then(({ error }) => {
                 if (error) console.error('Erro ao salvar custo mensal do funcionário:', error);
               });

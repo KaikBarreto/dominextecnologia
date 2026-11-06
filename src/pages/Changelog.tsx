@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.38.36',
+    date: '6 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Horas e custos preservados ao editar',
+        description: 'As horas mensais informadas no cálculo de funcionários e mão de obra agora permanecem salvas ao aplicar e reabrir. Alterações em recursos de custo também não são mais desfeitas enquanto os dados terminam de carregar.',
+        category: 'correcao',
+      },
+      {
+        title: 'Cobranças e assinaturas sem perda de alterações',
+        description: 'Ajustes de multa, juros, desconto, descrição e lançamento financeiro permanecem no formulário mesmo quando as configurações da conta são atualizadas em segundo plano.',
+        category: 'correcao',
+      },
+      {
+        title: 'Taxas do orçamento mantidas durante o preenchimento',
+        description: 'Alterações manuais nas taxas e condições do orçamento não são mais substituídas pelos padrões da empresa enquanto a tela está aberta.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
     version: '1.38.35',
     date: '5 de novembro de 2026',
     type: 'patch',

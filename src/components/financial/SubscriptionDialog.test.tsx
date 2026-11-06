@@ -66,13 +66,21 @@ vi.mock('@/hooks/useTenantSubscriptions', async () => {
   };
 });
 
+const subscriptionAccountState = vi.hoisted((): {
+  defaultFinePercent: number | null;
+  defaultInterestPercent: number | null;
+} => ({
+  defaultFinePercent: 2,
+  defaultInterestPercent: 1,
+}));
+
 vi.mock('@/hooks/useTenantPaymentAccount', () => ({
   useTenantPaymentAccount: () => ({
     allowPix: true,
     allowBoleto: true,
     allowCard: true,
-    defaultFinePercent: 2,
-    defaultInterestPercent: 1,
+    defaultFinePercent: subscriptionAccountState.defaultFinePercent,
+    defaultInterestPercent: subscriptionAccountState.defaultInterestPercent,
     // Features dormentes LIGADAS aqui de propósito: o bug do CEO aparece justo
     // na forma "Pix Automático", que só existe no select com este flag.
     cardRecurringEnabled: true,
@@ -156,8 +164,12 @@ let container: HTMLDivElement;
 let root: Root;
 
 function mount() {
+  renderDialog(true);
+}
+
+function renderDialog(open: boolean) {
   act(() => {
-    root.render(<SubscriptionDialog open onOpenChange={() => {}} />);
+    root.render(<SubscriptionDialog open={open} onOpenChange={() => {}} />);
   });
 }
 
@@ -211,6 +223,8 @@ function expandNetSummary() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  subscriptionAccountState.defaultFinePercent = 2;
+  subscriptionAccountState.defaultInterestPercent = 1;
   createMutateAsync.mockResolvedValue(undefined);
   authorizePixAutoMutateAsync.mockResolvedValue({
     subscription: { id: 'sub-pix-auto' },
@@ -279,6 +293,33 @@ describe('SubscriptionDialog — categoria e centro de custo em toda forma de pa
     const payload = createMutateAsync.mock.calls[0][0];
     expect(payload.category).toBe('Mensalidade');
     expect(payload.cost_center_id).toBe('cc-1');
+  });
+});
+
+describe('SubscriptionDialog — defaults financeiros assíncronos', () => {
+  it('atualiza campos intocados, preserva edição manual e reseta na próxima abertura', () => {
+    mount();
+    click(buttonByText('Opções avançadas'));
+
+    subscriptionAccountState.defaultFinePercent = 5;
+    subscriptionAccountState.defaultInterestPercent = 4;
+    renderDialog(true);
+    expect((q('#sub-fine') as HTMLInputElement).value).toBe('5');
+    expect((q('#sub-interest') as HTMLInputElement).value).toBe('4');
+
+    setInputValue(q('#sub-fine') as HTMLInputElement, '7,5');
+    setInputValue(q('#sub-interest') as HTMLInputElement, '3');
+    subscriptionAccountState.defaultFinePercent = 6;
+    subscriptionAccountState.defaultInterestPercent = 6;
+    renderDialog(true);
+    expect((q('#sub-fine') as HTMLInputElement).value).toBe('7,5');
+    expect((q('#sub-interest') as HTMLInputElement).value).toBe('3');
+
+    renderDialog(false);
+    renderDialog(true);
+    if (!q('#sub-fine')) click(buttonByText('Opções avançadas'));
+    expect((q('#sub-fine') as HTMLInputElement).value).toBe('6');
+    expect((q('#sub-interest') as HTMLInputElement).value).toBe('6');
   });
 });
 

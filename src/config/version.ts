@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.38.35";
+export const APP_VERSION = "1.38.36";
 
 export const VERSION_NOTES =
-  "A NFS-e agora usa automaticamente o layout XML correto para homologação e produção no Portal Nacional.";
+  "Alterações feitas em jornadas, custos, cobranças e orçamentos agora permanecem preservadas durante carregamentos e atualizações da tela.";

@@ -595,6 +595,14 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const [kmCostCfg, setKmCostCfg] = useState(1);
   const [cardDiscountRateCfg, setCardDiscountRateCfg] = useState(6);
   const [cardInstallmentsCfg, setCardInstallmentsCfg] = useState(10);
+  const pricingTouchedRef = useRef({
+    taxRate: false,
+    adminRate: false,
+    profitRate: false,
+    kmCost: false,
+    cardDiscountRate: false,
+    cardInstallments: false,
+  });
   const [useBdi, setUseBdi] = useState(true);
   const [bdiAdvancedOpen, setBdiAdvancedOpen] = useState(false);
 
@@ -691,6 +699,14 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   };
 
   const resetQuoteForm = () => {
+    pricingTouchedRef.current = {
+      taxRate: false,
+      adminRate: false,
+      profitRate: false,
+      kmCost: false,
+      cardDiscountRate: false,
+      cardInstallments: false,
+    };
     setCustomerMode('existing');
     setCustomerId('');
     setProspectName('');
@@ -714,14 +730,12 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     setProposalTemplateId(
       (templates.find(t => t.slug === 'clean') ?? templates[0])?.id ?? ''
     );
-    if (pricing) {
-      setTaxRate(Number(pricing.tax_rate ?? 10));
-      setAdminRate(Number(pricing.admin_indirect_rate ?? 12));
-      setProfitRate(Number(pricing.default_profit_rate ?? 10));
-      setKmCostCfg(Number(pricing.km_cost ?? 1));
-      setCardDiscountRateCfg(Number(pricing.card_discount_rate ?? 6));
-      setCardInstallmentsCfg(Number(pricing.card_installments ?? 10));
-    }
+    setTaxRate(Number(pricing?.tax_rate ?? 10));
+    setAdminRate(Number(pricing?.admin_indirect_rate ?? 12));
+    setProfitRate(Number(pricing?.default_profit_rate ?? 10));
+    setKmCostCfg(Number(pricing?.km_cost ?? 1));
+    setCardDiscountRateCfg(Number(pricing?.card_discount_rate ?? 6));
+    setCardInstallmentsCfg(Number(pricing?.card_installments ?? 10));
   };
 
   // ── Default de template pra NOVO orçamento: "Clean" (branco/enxuto) ──
@@ -734,16 +748,19 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   }, [open, isEditing, proposalTemplateId, templates]);
 
   // ── Initialize BDI config from pricing settings (new quote) ──
+  // A query pode resolver ou refazer fetch com o formulário aberto. Nesse caso,
+  // aplica o padrão apenas aos campos ainda intocados nesta sessão, sem apagar
+  // ajustes manuais que o usuário já começou a fazer.
   useEffect(() => {
-    if (pricing && !quote) {
-      setTaxRate(Number(pricing.tax_rate ?? 10));
-      setAdminRate(Number(pricing.admin_indirect_rate ?? 12));
-      setProfitRate(Number(pricing.default_profit_rate ?? 10));
-      setKmCostCfg(Number(pricing.km_cost ?? 1));
-      setCardDiscountRateCfg(Number(pricing.card_discount_rate ?? 6));
-      setCardInstallmentsCfg(Number(pricing.card_installments ?? 10));
-    }
-  }, [pricing, quote]);
+    if (!open || !pricing || quote) return;
+    const touched = pricingTouchedRef.current;
+    if (!touched.taxRate) setTaxRate(Number(pricing.tax_rate ?? 10));
+    if (!touched.adminRate) setAdminRate(Number(pricing.admin_indirect_rate ?? 12));
+    if (!touched.profitRate) setProfitRate(Number(pricing.default_profit_rate ?? 10));
+    if (!touched.kmCost) setKmCostCfg(Number(pricing.km_cost ?? 1));
+    if (!touched.cardDiscountRate) setCardDiscountRateCfg(Number(pricing.card_discount_rate ?? 6));
+    if (!touched.cardInstallments) setCardInstallmentsCfg(Number(pricing.card_installments ?? 10));
+  }, [open, pricing, quote]);
 
   // ── Reset wizard nav on open/close + reset draft id ──
   useEffect(() => {
@@ -1480,10 +1497,22 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                 <div>
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{tq.bdiTax} &amp; {tq.bdiProfit}</p>
                   <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-                    <BdiField label={tq.bdiTax} suffix="%" value={taxRate} onChange={v => setTaxRate(v)} />
-                    <BdiField label={tq.bdiAdmin} suffix="%" value={adminRate} onChange={v => setAdminRate(v)} />
-                    <BdiField label={tq.bdiProfit} suffix="%" value={profitRate} onChange={v => setProfitRate(v)} />
-                    <BdiField label={tq.bdiKmCost} value={kmCostCfg} onChange={v => setKmCostCfg(v)} step={0.01} />
+                    <BdiField label={tq.bdiTax} suffix="%" value={taxRate} onChange={v => {
+                      pricingTouchedRef.current.taxRate = true;
+                      setTaxRate(v);
+                    }} />
+                    <BdiField label={tq.bdiAdmin} suffix="%" value={adminRate} onChange={v => {
+                      pricingTouchedRef.current.adminRate = true;
+                      setAdminRate(v);
+                    }} />
+                    <BdiField label={tq.bdiProfit} suffix="%" value={profitRate} onChange={v => {
+                      pricingTouchedRef.current.profitRate = true;
+                      setProfitRate(v);
+                    }} />
+                    <BdiField label={tq.bdiKmCost} value={kmCostCfg} onChange={v => {
+                      pricingTouchedRef.current.kmCost = true;
+                      setKmCostCfg(v);
+                    }} step={0.01} />
                   </div>
                 </div>
 
@@ -1492,8 +1521,14 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                     <CreditCard className="h-3 w-3" /> Opções exibidas na proposta
                   </p>
                   <div className="grid grid-cols-2 gap-3">
-                    <BdiField label={tq.bdiCashDiscount} suffix="%" value={cardDiscountRateCfg} onChange={v => setCardDiscountRateCfg(v)} />
-                    <BdiField label={tq.bdiInstallments} value={cardInstallmentsCfg} onChange={v => setCardInstallmentsCfg(Math.max(1, v))} step={1} min={1} />
+                    <BdiField label={tq.bdiCashDiscount} suffix="%" value={cardDiscountRateCfg} onChange={v => {
+                      pricingTouchedRef.current.cardDiscountRate = true;
+                      setCardDiscountRateCfg(v);
+                    }} />
+                    <BdiField label={tq.bdiInstallments} value={cardInstallmentsCfg} onChange={v => {
+                      pricingTouchedRef.current.cardInstallments = true;
+                      setCardInstallmentsCfg(Math.max(1, v));
+                    }} step={1} min={1} />
                   </div>
                 </div>
               </div>
