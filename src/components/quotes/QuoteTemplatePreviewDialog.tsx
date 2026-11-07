@@ -14,12 +14,14 @@ export function QuoteTemplatePreviewDialog({
   quote,
   company,
   templateSlug,
+  incomplete = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   quote: Quote;
   company: CompanySettings | null | undefined;
   templateSlug: string;
+  incomplete?: boolean;
 }) {
   const { locale, currency } = useAppLocaleContext();
   const documentRef = useRef<HTMLDivElement>(null);
@@ -58,6 +60,7 @@ export function QuoteTemplatePreviewDialog({
           <div className="flex flex-col-reverse gap-2 text-left sm:flex-row sm:items-start sm:justify-between sm:gap-5">
             <p className="min-w-0 flex-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">
               {visibleCosts.length ? `Custos compartilhados: ${visibleCosts.join(' e ')}.` : 'Custos de mão de obra e insumos ocultos.'}
+              {incomplete && <span className="mt-1 block">Prévia em preenchimento. Os dados aparecem conforme você monta o orçamento.</span>}
             </p>
             <p className="flex shrink-0 items-center justify-between gap-3 text-xs text-muted-foreground sm:block sm:text-right">Total da proposta<span className="text-lg font-semibold tabular-nums text-foreground sm:mt-0.5 sm:block sm:text-xl">{formatMoney(quote.total_value ?? quote.final_price ?? 0, currency, locale)}</span></p>
           </div>

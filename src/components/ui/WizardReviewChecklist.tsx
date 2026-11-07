@@ -92,26 +92,35 @@ interface WizardMobileSummaryProps {
   summary: ReactNode;
   children: ReactNode;
   className?: string;
+  actions?: ReactNode;
 }
 
 /** Resumo recolhível que vive no rodapé fixo dos wizards em telas compactas. */
-export function WizardMobileSummary({ title, summary, children, className }: WizardMobileSummaryProps) {
+export function WizardMobileSummary({ title, summary, children, className, actions }: WizardMobileSummaryProps) {
   return (
     <Collapsible className={cn('xl:hidden', className)}>
       <CollapsibleContent className="max-h-[34dvh] overflow-y-auto border-b pb-3 [@media(max-height:500px)]:max-h-10">
         {children}
       </CollapsibleContent>
+      <div className="flex items-center gap-2">
       <CollapsibleTrigger asChild>
         <button
           type="button"
-          className="group flex min-h-10 w-full items-center gap-2 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="group flex min-h-11 min-w-0 flex-1 items-center gap-2 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <span className="text-xs font-semibold text-foreground">{title}</span>
-          <span className="min-w-0 flex-1 truncate text-right text-xs text-muted-foreground">{summary}</span>
+          {actions ? <span className="min-w-0 flex-1">
+            <span className="block text-xs font-semibold text-foreground">{title}</span>
+            <span className="block text-xs text-muted-foreground">{summary}</span>
+          </span> : <>
+            <span className="text-xs font-semibold text-foreground">{title}</span>
+            <span className="min-w-0 flex-1 truncate text-right text-xs text-muted-foreground">{summary}</span>
+          </>}
           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180 motion-reduce:transition-none" />
         </button>
       </CollapsibleTrigger>
+      {actions && <div className="shrink-0">{actions}</div>}
+      </div>
     </Collapsible>
   );
 }

@@ -1642,8 +1642,17 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   );
 
   // ─── Reusable summary block (review step) ───────────────────────────────────
+  const previewAction = (compact = false) => (
+    <Button type="button" variant="outline" className={compact ? 'h-11 w-11 p-0' : 'min-h-11 w-full font-semibold'}
+      aria-label={compact ? 'Ver prévia da proposta' : tq.reviewFullPreview}
+      title={selectedTemplate ? 'Conferir a proposta com os dados atuais, sem salvar o orçamento.' : 'Carregando o modelo da proposta…'}
+      disabled={!selectedTemplate || (!isEditing && draft.isLoading)} onClick={() => setPreviewOpen(true)}>
+      <Eye className={compact ? 'h-5 w-5' : 'mr-2 h-4 w-4'} />{!compact && tq.reviewFullPreview}
+    </Button>
+  );
   const summaryBlock = (
     <section className="space-y-3">
+      {currentStepKey !== 'review' && <div className="hidden xl:block">{previewAction()}</div>}
       {useBdi && bdiDanger && (
         <NoticeBanner variant="destructive" icon={AlertTriangle}>
           {tq.bdiAlertDanger}
@@ -1788,10 +1797,13 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                 </div>
               )}
               </div>
+              <div className="space-y-4">
               <QuoteRecipientSummary
                 customer={customerMode === 'existing' ? customers?.find(customer => customer.id === customerId) : undefined}
                 prospect={customerMode === 'prospect' ? { name: prospectName, phone: prospectPhone, email: prospectEmail } : undefined}
               />
+              <div className="hidden xl:block">{previewAction()}</div>
+              </div>
               </div>
             </section>
           )}
@@ -1843,7 +1855,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                   />
                 )}
               </section>
-              {serviceItems.length > 0 && <div className="space-y-2 border-t pt-4 lg:hidden">
+              {serviceItems.length > 0 && <div className="space-y-2 border-t pt-4">
                 <Button type="button" variant="outline" className="min-h-12 w-full text-base font-semibold" onClick={() => { setNavigationMessage(''); setStep(STEP_KEYS.indexOf('review')); }}>
                   Revisar orçamento <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -2363,7 +2375,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       <WizardMobileSummary
         title="Resumo do orçamento"
         summary={`${fmt(finalTotal)} · ${items.length} ${items.length === 1 ? 'item' : 'itens'}`}
-        className="lg:hidden"
+        className={currentStepKey === 'review' ? 'lg:hidden' : 'xl:hidden'}
+        actions={previewAction(true)}
       >
         {summaryBlock}
       </WizardMobileSummary>
@@ -2433,7 +2446,12 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         onOpenChange={handleQuoteOpenChange}
         title={title}
         exitLabel={tq.formExitLabel}
-        headerActions={!isEditing && !draftQuoteId ? <FormDraftStatus status={draft.status} savedAt={draft.savedAt} persistence={draft.persistence} expiresAt={draft.expiresAt} isLoading={draft.isLoading} syncIssue={draft.syncIssue} onRetry={draft.retry} /> : undefined}
+        headerActions={!isEditing && !draftQuoteId ? <div className="flex flex-col items-end gap-0.5">
+          <FormDraftStatus status={draft.status} savedAt={draft.savedAt} persistence={draft.persistence} expiresAt={draft.expiresAt} isLoading={draft.isLoading} syncIssue={draft.syncIssue} onRetry={draft.retry} />
+          <span className="text-[11px] text-muted-foreground sm:text-xs" title="O número definitivo é atribuído ao criar ou salvar o orçamento na lista. O rascunho automático ainda não tem número.">
+            <span className="sm:hidden">Nº ao criar</span><span className="hidden sm:inline">Número gerado ao criar</span>
+          </span>
+        </div> : undefined}
         description="Monte os itens, confira a precificação e revise a proposta antes de salvar."
         className="min-w-0 overflow-x-hidden"
         footer={wizardFooter}
@@ -2466,6 +2484,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         quote={previewQuote}
         company={companySettings}
         templateSlug={selectedTemplate?.slug ?? 'clean'}
+        incomplete={!hasCustomer || items.length === 0}
       />
 
       <ResponsiveModal

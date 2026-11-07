@@ -20,6 +20,8 @@ export const colorAdjust: React.CSSProperties = {
 };
 
 export interface ProposalData {
+  /** Número real; o travessão identifica uma proposta ainda sem numeração. */
+  numberLabel: string;
   companyName: string;
   /** customization?.logo_url vence o logo da empresa. */
   logoUrl?: string;
@@ -96,6 +98,7 @@ export function buildProposalData(
   const subjectLine = subjectRaw.toUpperCase();
 
   return {
+    numberLabel: quote.quote_number > 0 ? String(quote.quote_number) : '—',
     companyName,
     logoUrl,
     clientName,

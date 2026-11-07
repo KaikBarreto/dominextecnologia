@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.6',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Confira a proposta em qualquer etapa',
+        description: 'A prévia acompanha os dados atuais e pode ser aberta pelo resumo lateral no computador ou pelo botão de olho no resumo do celular, sem sair da etapa nem salvar o orçamento. O atalho para revisão também está disponível no computador, e o cabeçalho informa que a numeração definitiva é gerada ao criar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.39.5',
     date: '7 de novembro de 2026',
     type: 'patch',

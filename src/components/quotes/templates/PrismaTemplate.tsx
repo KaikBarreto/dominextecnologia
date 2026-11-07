@@ -156,7 +156,7 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-white/45">{t.dateLabel}</p>
             <p className="text-sm font-semibold text-white/85 mt-1">{validOrIssue}</p>
-            <p className="text-[11px] text-white/40 mt-0.5">{t.proposalFooter} {quote.quote_number}</p>
+            <p className="text-[11px] text-white/40 mt-0.5">{t.proposalFooter} {d.numberLabel}</p>
           </div>
           {d.logoUrl ? (
             <img
@@ -361,7 +361,7 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
         </div>
 
         <p className="text-[11px] text-white/30 mt-10 tracking-wider">
-          {t.proposalFooter} {quote.quote_number} · {d.companyName}
+          {t.proposalFooter} {d.numberLabel} · {d.companyName}
         </p>
         <Folio page={closingPage} />
       </section>

@@ -31,6 +31,7 @@ describe('QuoteTemplatePreviewDialog', () => {
     expect(within(preview).getAllByText('Higienização').length).toBeGreaterThan(0);
     expect(within(preview).getAllByText('Pagamento na conclusão').length).toBeGreaterThan(0);
     expect(within(preview).getAllByText(/175,00/).length).toBeGreaterThan(0);
+    expect(within(preview).queryByText('#0')).not.toBeInTheDocument();
     expect(within(preview).queryByText(/Mão de obra \/ un\./)).not.toBeInTheDocument();
     expect(within(preview).queryByText(/Insumos \/ un\./)).not.toBeInTheDocument();
   });

@@ -89,7 +89,7 @@ vi.mock('@/hooks/useServiceCostBreakdown', () => ({
 }));
 vi.mock('@/components/customers/CustomerSelectField', () => ({ CustomerSelectField: () => null }));
 vi.mock('@/components/quotes/ProposalRenderer', () => ({
-  ProposalRenderer: () => <div>Prévia renderizada</div>,
+  ProposalRenderer: ({ quote }: { quote: Quote }) => <div data-testid="quote-preview-data" data-total={quote.total_value} data-items={quote.quote_items?.length}>Prévia renderizada</div>,
 }));
 
 // `StepTransition` usa `AnimatePresence mode="wait"`, que só monta o conteúdo
@@ -1113,6 +1113,26 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     expect(findButtonByText(tq.saveDraft)).not.toBeDisabled();
     await goPastRecipient();
     expect(findButtonByText('Adicionar serviço')).toBeTruthy();
+  });
+
+  it('abre a prévia durante o preenchimento e acompanha os preços sem salvar nem mudar de etapa', async () => {
+    mount();
+    await clickAsync(findButtonByText(tq.reviewFullPreview)!);
+    expect(document.body.textContent).toContain('Prévia em preenchimento.');
+    expect(q('[data-testid="quote-preview-data"]')).toHaveAttribute('data-total', '0');
+    await clickAsync(findButtonByText('Fechar')!);
+    await goPastRecipient();
+    await addServiceItem();
+    await clickAsync(q('button[aria-label="Abrir serviço Manutenção Preventiva"]')!);
+    typeInto(q('input[aria-label="Preço de Manutenção Preventiva"]') as HTMLInputElement, '375');
+    await clickAsync(findButtonByText(tq.reviewFullPreview)!);
+    expect(q('[data-testid="quote-preview-data"]')).toHaveAttribute('data-total', '375');
+    expect(q('[data-testid="quote-preview-data"]')).toHaveAttribute('data-items', '1');
+    expect(document.body.textContent).not.toContain('Prévia em preenchimento.');
+    await clickAsync(findButtonByText('Fechar')!);
+    expect(q('input[aria-label="Preço de Manutenção Preventiva"]')).toHaveValue(375);
+    expect(testState.createMutate).not.toHaveBeenCalled();
+    expect(testState.updateMutate).not.toHaveBeenCalled();
   });
 });
 

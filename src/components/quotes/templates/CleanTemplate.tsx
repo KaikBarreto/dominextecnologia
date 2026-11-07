@@ -265,7 +265,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
           </div>
           <div className="clean-document-meta text-right shrink-0">
             <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: primary }}>{t.cleanDocTitle}</p>
-            <p className="text-sm font-semibold mt-1" style={{ color: '#0f172a' }}>#{quote.quote_number}</p>
+            <p className="text-sm font-semibold mt-1" style={{ color: '#0f172a' }}>{quote.quote_number > 0 ? `#${d.numberLabel}` : '—'}</p>
             {validUntil && (
               <span
                 className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full text-[11px] font-semibold"

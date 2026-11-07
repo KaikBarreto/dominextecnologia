@@ -203,7 +203,7 @@ export function VanguardaTemplate(props: ProposalTemplateProps) {
             {d.subjectLine}
           </p>
           <div className="mt-5 inline-flex items-center gap-2 text-xs text-white/55">
-            <span>{t.quotationNumber} {quote.quote_number}</span>
+            <span>{t.quotationNumber} {d.numberLabel}</span>
             <span className="text-white/30">·</span>
             <span>{formatDateTime(quote.created_at, locale, timezone, { year: 'numeric', month: 'long', day: '2-digit', hour: undefined, minute: undefined })}</span>
           </div>
@@ -393,7 +393,7 @@ export function VanguardaTemplate(props: ProposalTemplateProps) {
         </div>
 
         <p className="text-[11px] text-white/30 mt-10 tracking-wider">
-          {t.proposalFooter} {quote.quote_number} · {d.companyName}
+          {t.proposalFooter} {d.numberLabel} · {d.companyName}
         </p>
         <Folio page={closingPage} />
       </section>
