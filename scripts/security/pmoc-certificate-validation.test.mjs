@@ -25,6 +25,7 @@ test('numeração PMOC é linear por empresa e reserva idempotente por conteúdo
   assert.match(migration, /FOR UPDATE/);
   assert.match(migration, /last_number = c\.last_number \+ 1/);
   assert.match(migration, /'PMOC-' \|\| lpad\(v_number::text, 6, '0'\)/);
+  assert.match(migration, /extensions\.gen_random_bytes\(12\)/);
   assert.match(migration, /auth\.role\(\) IS DISTINCT FROM 'service_role'/g);
 });
 

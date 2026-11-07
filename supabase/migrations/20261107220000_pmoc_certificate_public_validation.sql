@@ -16,7 +16,7 @@ CREATE TABLE public.pmoc_certificate_validations (
   company_id uuid NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
   certificate_number bigint NOT NULL CHECK (certificate_number > 0),
   validation_token text NOT NULL DEFAULT rtrim(
-    translate(encode(gen_random_bytes(12), 'base64'), '+/', '-_'),
+    translate(encode(extensions.gen_random_bytes(12), 'base64'), '+/', '-_'),
     '='
   ) CHECK (validation_token ~ '^[A-Za-z0-9_-]{16}$'),
   idempotency_key text NOT NULL CHECK (idempotency_key ~ '^[0-9a-f]{64}$'),
