@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.4',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Novas aulas disponíveis na DomiFlix',
+        description: 'Assista às aulas de Integração com WhatsApp e Ferramentas de RH. A formação de RH apresenta o perfil comportamental DISC, o organograma e o fluxograma, com capas próprias e acesso pela trilha de tutoriais.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
     version: '1.39.3',
     date: '7 de novembro de 2026',
     type: 'patch',
