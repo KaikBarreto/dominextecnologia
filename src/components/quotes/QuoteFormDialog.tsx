@@ -326,7 +326,7 @@ function ServiceItemsList({
               <div className="flex items-stretch gap-2 py-2 sm:gap-3">
                 <button
                   type="button"
-                  className="group grid min-w-0 flex-1 grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-3 rounded-2xl bg-zinc-950 px-3 py-4 text-left text-white transition-colors hover:bg-zinc-900 sm:grid-cols-[3rem_minmax(0,1fr)_auto] sm:gap-4 sm:px-4"
+                  className="group grid min-w-0 flex-1 grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-3 rounded-2xl bg-primary px-3 py-4 text-left text-primary-foreground transition-colors hover:bg-primary/90 sm:grid-cols-[3rem_minmax(0,1fr)_auto] sm:gap-4 sm:px-4"
                   onClick={() => setExpandedIdx(isExpanded ? null : globalIdx)}
                   aria-label={`${isExpanded ? 'Recolher serviço' : 'Abrir serviço'} ${item.description}`}
                   aria-expanded={isExpanded}
@@ -337,27 +337,27 @@ function ServiceItemsList({
 
                   <span className="min-w-0">
                     <span className="block text-lg font-semibold leading-6 sm:text-xl">{item.description}</span>
-                    <span className="mt-1 block text-xs leading-relaxed text-white/75 sm:text-sm">
+                    <span className="mt-1 block text-xs leading-relaxed text-primary-foreground/75 sm:text-sm">
                       {hasCosts
                         ? `Mão de obra ${fmt(item.unit_labor_cost)} · Insumos ${fmt(item.unit_materials_cost)} · Recursos ${fmt(item.unit_extras_cost)}`
                         : tq.serviceNoCosts}
                     </span>
                   </span>
 
-                  <span className="col-span-2 flex items-center justify-between gap-5 border-t border-white/15 pt-3 sm:col-span-1 sm:justify-end sm:border-0 sm:pt-0">
-                    <span className="text-xs text-zinc-300 sm:hidden">{item.quantity} × {fmt(item.unit_price)}</span>
+                  <span className="col-span-2 flex items-center justify-between gap-5 border-t border-primary-foreground/15 pt-3 sm:col-span-1 sm:justify-end sm:border-0 sm:pt-0">
+                    <span className="text-xs text-primary-foreground/75 sm:hidden">{item.quantity} × {fmt(item.unit_price)}</span>
                     <span className="hidden gap-6 lg:flex">
                       <span>
-                        <span className="block text-xs font-medium uppercase tracking-wide text-zinc-300">Qtd.</span>
+                        <span className="block text-xs font-medium uppercase tracking-wide text-primary-foreground/75">Qtd.</span>
                         <span className="mt-0.5 block font-semibold tabular-nums">{item.quantity}</span>
                       </span>
                       <span>
-                        <span className="block text-xs font-medium uppercase tracking-wide text-zinc-300">Custo unit.</span>
+                        <span className="block text-xs font-medium uppercase tracking-wide text-primary-foreground/75">Custo unit.</span>
                         <span className="mt-0.5 block font-semibold tabular-nums">{hasCosts ? fmt(item.unit_total_cost) : '—'}</span>
                       </span>
                     </span>
                     <span className="text-right">
-                      <span className="block text-xs font-medium uppercase tracking-wide text-zinc-300">Total</span>
+                      <span className="block text-xs font-medium uppercase tracking-wide text-primary-foreground/75">Total</span>
                       <span className="mt-0.5 block text-base font-semibold tabular-nums sm:text-lg">{fmt(item.total_price)}</span>
                     </span>
                     <ChevronDown className={cn('h-5 w-5 shrink-0 transition-transform', isExpanded && 'rotate-180')} />
