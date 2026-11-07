@@ -8,7 +8,7 @@ import {
   DialogDescription,
   ModalCloseButton,
 } from '@/components/ui/dialog';
-import { ArrowLeft } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Drawer,
@@ -51,8 +51,10 @@ export interface ResponsiveModalProps {
   density?: 'default' | 'compact';
   /** Ocupa a viewport inteira e usa saída no topo esquerdo. Ideal para fluxos longos. */
   fullScreen?: boolean;
-  /** Texto da saída do fluxo em tela cheia. */
+  /** @deprecated Use exitLabel para a ação que encerra o fluxo. */
   backLabel?: string;
+  /** Texto da saída do fluxo em tela cheia. Voltar pertence à navegação entre etapas. */
+  exitLabel?: string;
   /** Aviso não modal ancorado acima do rodapé do fluxo fullscreen. */
   floatingContent?: React.ReactNode;
   /** Acompanhamento ou ação contextual à direita do título fullscreen. */
@@ -73,7 +75,8 @@ export function ResponsiveModal({
   overlayParentId,
   density = 'default',
   fullScreen = false,
-  backLabel = 'Voltar',
+  backLabel,
+  exitLabel,
   floatingContent,
   headerActions,
 }: ResponsiveModalProps) {
@@ -82,6 +85,7 @@ export function ResponsiveModal({
   const resolvedOverlayId = overlayId ?? `responsive-modal-${generatedOverlayId}`;
   const isActiveOverlay = useOverlaySlot(open, { id: resolvedOverlayId, priority: overlayPriority, ...(overlayParentId !== undefined ? { parentId: overlayParentId } : {}) });
   const visibleOpen = open && isActiveOverlay;
+  const resolvedExitLabel = exitLabel ?? backLabel ?? 'Sair';
   const [footerElement, setFooterElement] = React.useState<HTMLDivElement | null>(null);
   const [footerHeight, setFooterHeight] = React.useState<number | null>(null);
   const hasFooter = !!footer;
@@ -192,10 +196,10 @@ export function ResponsiveModal({
                 variant="cancel-ghost"
                 className="h-11 shrink-0 gap-2 px-2 text-sm font-semibold sm:h-12 sm:px-3 sm:text-base"
                 onClick={() => onOpenChange(false)}
-                aria-label={backLabel}
+                aria-label={resolvedExitLabel}
               >
-                <ArrowLeft className="h-5 w-5" />
-                {backLabel}
+                <LogOut className="h-5 w-5" />
+                {resolvedExitLabel}
               </Button>
               <div className={cn('min-w-0 flex-1', headerActions && 'col-span-2 row-start-2')}>
                 <DialogTitle className="break-words text-2xl font-semibold tracking-tight sm:text-3xl">{title}</DialogTitle>

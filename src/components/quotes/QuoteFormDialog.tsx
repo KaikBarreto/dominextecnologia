@@ -2406,7 +2406,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         open={open}
         onOpenChange={handleQuoteOpenChange}
         title={title}
-        backLabel={tq.back}
+        exitLabel={tq.formExitLabel}
         headerActions={!isEditing && !draftQuoteId ? <FormDraftStatus status={draft.status} savedAt={draft.savedAt} /> : undefined}
         description="Monte os itens, confira a precificação e revise a proposta antes de salvar."
         className="min-w-0 overflow-x-hidden"

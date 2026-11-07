@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.1";
+export const APP_VERSION = "1.39.2";
 
 export const VERSION_NOTES =
-  "Orçamento mais claro no computador e no celular, edição de recursos sem sair do serviço, seleção de materiais com fotos e certificados com novos visuais e melhor leitura.";
+  "Formulários em tela cheia com Sair no topo e Voltar entre etapas, preservando o rascunho automático ao encerrar o preenchimento.";

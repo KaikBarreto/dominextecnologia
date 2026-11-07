@@ -931,7 +931,7 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     const dialog = q('[role="dialog"]');
     expect(dialog).toBeTruthy();
     expect(dialog?.className).toContain('h-[100dvh]');
-    expect(q('button[aria-label="Voltar"]')).toHaveTextContent('Voltar');
+    expect(q('button[aria-label="Sair"]')).toHaveTextContent('Sair');
     expect(q('.sticky.top-0')).toBeTruthy();
     expect(findButtonByText('Resumo do orçamento')).toBeTruthy();
     const stepper = q('[aria-label="Etapas do orçamento"]');

@@ -4,7 +4,7 @@ import { ResponsiveModal, type ResponsiveModalProps } from '@/components/ui/Resp
 import { cn } from '@/lib/utils';
 
 /**
- * Padrão de fluxos longos: viewport inteira, Voltar no cabeçalho, corpo com
+ * Padrão de fluxos longos: viewport inteira, Sair no cabeçalho, corpo com
  * rolagem única e rodapé fixo. Use FormWizardStepper no conteúdo e
  * FullscreenWizardAction nas ações. Avisos secundários usam floatingNotice:
  * não criam backdrop, não prendem foco e respeitam a altura real do rodapé.

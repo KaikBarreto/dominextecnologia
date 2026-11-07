@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.2',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Saída dos formulários em tela cheia mais clara',
+        description: 'O botão Sair, com ícone de saída no canto superior esquerdo, encerra o formulário e preserva o rascunho automático. Voltar continua no rodapé para retornar à etapa anterior.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.39.1',
     date: '7 de novembro de 2026',
     type: 'patch',

@@ -528,6 +528,7 @@ export const crm = {
 
       // QuoteFormDialog — wizard steps
       formTitleNew: 'Criar orçamento',
+      formExitLabel: 'Sair',
       formTitleEdit: 'Editar Orçamento #{number}',
       formTitleDraft: 'Rascunho de Orçamento',
 
@@ -1695,6 +1696,7 @@ export const crm = {
       whatsAppMsg: 'Hi! Here is proposal #{number} for {value}.\n\nAccess it at: {url}',
 
       formTitleNew: 'Create quote',
+      formExitLabel: 'Exit',
       formTitleEdit: 'Edit Quote #{number}',
       formTitleDraft: 'Quote Draft',
 
@@ -2825,6 +2827,7 @@ export const crm = {
       whatsAppMsg: '¡Hola! Te comparto la propuesta #{number} por valor de {value}.\n\nAccede aquí: {url}',
 
       formTitleNew: 'Crear presupuesto',
+      formExitLabel: 'Salir',
       formTitleEdit: 'Editar Presupuesto #{number}',
       formTitleDraft: 'Borrador de Presupuesto',
 
@@ -3953,6 +3956,7 @@ export const crm = {
       whatsAppMsg: 'Bonjour ! Voici la proposition #{number} pour un montant de {value}.\n\nAccédez-y ici : {url}',
 
       formTitleNew: 'Créer un devis',
+      formExitLabel: 'Quitter',
       formTitleEdit: 'Modifier le Devis #{number}',
       formTitleDraft: 'Brouillon de Devis',
 
