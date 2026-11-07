@@ -588,13 +588,15 @@ Deno.serve(async (req) => {
     // Arte (2026-10): bump pra cert_v5. O slug e a config entram no hash —
     // trocar de arte ou de cor tem que invalidar o PDF guardado, senão o
     // gestor salva e continua baixando o certificado antigo.
+    // Arte (2026-11): v6 inclui temas refinados, contraste do logo e paginação.
     const hashInput = JSON.stringify({
-      v: "cert_v5",
+      v: effectiveArt ? "cert_v6" : "cert_v5",
       tenant: {
         name: tenantName,
         cnpj,
         city: cidade,
         logo: !!certLogoBytes,
+        logo_url: certLogoUrl,
         phone: companySettings?.phone ?? null,
         email: companySettings?.email ?? null,
         address: companySettings?.address ?? null,

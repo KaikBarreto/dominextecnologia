@@ -8,6 +8,8 @@ interface InventoryItemThumbnailProps {
   imageUrl?: string | null;
   accentColor?: string | null;
   fallbackVariant?: 'accent' | 'plain';
+  /** Mantém o produto inteiro em seletores; cover continua padrão nas listas existentes. */
+  fit?: 'cover' | 'contain';
   className?: string;
 }
 
@@ -20,6 +22,7 @@ export function InventoryItemThumbnail({
   imageUrl,
   accentColor,
   fallbackVariant = 'accent',
+  fit = 'cover',
   className,
 }: InventoryItemThumbnailProps) {
   const source = imageUrl ?? '';
@@ -75,7 +78,7 @@ export function InventoryItemThumbnail({
           alt={`Foto de ${name}`}
           loading="lazy"
           decoding="async"
-          className="h-full w-full object-cover"
+          className={cn('h-full w-full', fit === 'contain' ? 'object-contain' : 'object-cover')}
           onError={() => {
             setImageState((current) => current.source === source
               ? { ...current, failed: true }

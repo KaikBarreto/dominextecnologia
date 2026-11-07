@@ -177,7 +177,7 @@ function toWords(runs: InlineRun[]): Word[] {
  */
 export function layoutParagraph(
   runs: InlineRun[],
-  opts: { maxWidth: number; size: number; letterSpacing?: number; measure: MeasureFn },
+  opts: { maxWidth: number; size: number; letterSpacing?: number; measure: MeasureFn; breakLongWords?: boolean },
 ): LaidOutLine[] {
   const { maxWidth, size, measure } = opts;
   const spacing = opts.letterSpacing ?? 0;
@@ -188,7 +188,20 @@ export function layoutParagraph(
   const empty = (): LaidOutLine[] => [{ pieces: [], width: 0, paragraphIndex: 0 }];
   if (runs.length === 0) return empty();
 
-  const words = toWords(runs);
+  const words = toWords(runs).flatMap((word) => {
+    if (!opts.breakLongWords || widthOf(word.text, word.bold, word.italic) <= maxWidth) return [word];
+    const pieces: Word[] = [];
+    let chunk = '';
+    for (const char of Array.from(word.text)) {
+      if (chunk && widthOf(chunk + char, word.bold, word.italic) > maxWidth) {
+        pieces.push({ ...word, text: chunk, leadingSpace: pieces.length === 0 && word.leadingSpace });
+        chunk = '';
+      }
+      chunk += char;
+    }
+    if (chunk) pieces.push({ ...word, text: chunk, leadingSpace: pieces.length === 0 && word.leadingSpace });
+    return pieces;
+  });
   if (words.length === 0) return empty();
 
   const lines: LaidOutLine[] = [];
@@ -235,6 +248,7 @@ export function layoutParagraphs(
     letterSpacing?: number;
     maxLines?: number;
     measure: MeasureFn;
+    breakLongWords?: boolean;
   },
 ): LaidOutLine[] {
   const out: LaidOutLine[] = [];

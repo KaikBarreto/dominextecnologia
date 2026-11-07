@@ -45,7 +45,7 @@ export function FormWizardStepper({
         <div className="flex min-w-0 items-center gap-2.5">
           <span className={cn(
             'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
-            tone === 'contrast' ? 'bg-zinc-950 text-white' : 'bg-primary text-primary-foreground',
+            'bg-primary text-primary-foreground',
           )}>
             {currentIndex + 1}
           </span>
@@ -69,7 +69,7 @@ export function FormWizardStepper({
           <div
             className={cn(
               'h-full rounded-full transition-[width] duration-200 motion-reduce:transition-none',
-              tone === 'contrast' ? 'bg-zinc-950' : 'bg-primary',
+              'bg-primary',
             )}
             style={{ width: `${progress}%` }}
           />
@@ -106,9 +106,7 @@ export function FormWizardStepper({
                 <span
                   className={cn(
                     'relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-semibold transition-colors',
-                    active && (tone === 'contrast'
-                      ? 'border-zinc-950 bg-zinc-950 text-white ring-2 ring-zinc-950/15'
-                      : 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/15'),
+                    active && 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/15',
                     completed && 'border-primary bg-primary text-primary-foreground',
                     !reached && (tone === 'contrast' ? 'border-border text-muted-foreground' : 'border-muted text-muted-foreground opacity-70'),
                     reached && !active && !completed && 'border-border text-foreground',

@@ -86,6 +86,10 @@
 - Dashboards usam hierarquia, tipografia e respiro para agrupar informacao; evitar borda, fundo branco e sombra em toda secao. Reservar superficies fortes para o resumo ou a acao principal.
 - Valores monetarios operacionais nunca usam ellipsis: o container deve refluir, crescer ou adotar apresentacao compacta preservando o numero completo.
 - Graficos de pizza destacam a fatia em hover/foco e atenuam as demais; tooltip e legenda acompanham o destaque, permanecem legiveis e sem clipping, e a geometria final deve renderizar sem animacao inicial enganosa.
+- Fluxos longos em tela cheia reutilizam `src/components/ui/FullscreenWizard.tsx`: Voltar rotulado no topo esquerdo, etapas no corpo, uma unica rolagem vertical, tipografia maior e acoes fixas no rodape com `FullscreenWizardAction` (52 px no celular, 56 px no desktop, texto negrito). Resumo contextual fica a direita no desktop e compacto no celular.
+- Titulos de criacao devem explicitar a acao com verbo no infinitivo + entidade, como `Criar orçamento` e `Adicionar serviço`; evitar o artigo quando nao acrescenta clareza e prejudica a leitura no celular. O acompanhamento de rascunho automatico fica no canto superior direito do cabecalho e informa salvando, salvo neste navegador ou falha real, sem sugerir salvamento na conta.
+- Nesse padrao fullscreen, avisos secundarios como recuperacao de rascunho usam `FullscreenWizardNotice`/`DraftResumeNotice` no slot `floatingNotice`: centralizados horizontalmente acima da altura REAL do rodape, sem backdrop, sem capturar foco nem abrir modal sobre modal; animacao de entrada curta respeita movimento reduzido.
+- Cancelar, Voltar, Fechar e acoes destrutivas/negativas usam vermelho saturado com texto e icone brancos no hover; acoes primarias e estados selecionados usam os tokens `primary`/`primary-foreground`: preto com conteudo branco no tema claro, branco com conteudo escuro no tema escuro. Nao fixar `bg-zinc-950 text-white` em controles que precisam acompanhar o tema. Verde fica reservado ao destaque e identidade da entidade.
 
 ## Seguranca e Segredos
 

@@ -143,6 +143,7 @@ function CertSheet({
   images,
   className,
   title,
+  compact = false,
 }: {
   template: DocArtTemplate;
   config?: DocArtConfig;
@@ -151,11 +152,16 @@ function CertSheet({
   images: DocArtImageUrls;
   className?: string;
   title?: string;
+  compact?: boolean;
 }) {
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
+  useEffect(() => setPageIndex(index => Math.min(index, pageCount - 1)), [pageCount]);
   return (
+    <div className="space-y-3">
     <div
       className={cn('w-full overflow-hidden rounded-lg border bg-white shadow-sm', className)}
-      style={{ aspectRatio: template.orientation === 'portrait' ? '210 / 297' : '297 / 210' }}
+      style={{ aspectRatio: compact ? '4 / 3' : template.orientation === 'portrait' ? '210 / 297' : '297 / 210' }}
     >
       <DocArtSvgRenderer
         template={template}
@@ -164,20 +170,31 @@ function CertSheet({
         brand={brand}
         images={images}
         title={title}
+        className="h-full w-full"
+        pageIndex={compact ? 0 : pageIndex}
+        onPageCountChange={setPageCount}
       />
+    </div>
+    {!compact && pageCount > 1 && (
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <Button type="button" variant="outline" size="sm" aria-label="Página anterior do certificado" disabled={pageIndex === 0} onClick={() => setPageIndex(index => index - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+        <span className="font-medium">Página {pageIndex + 1} de {pageCount}</span>
+        <Button type="button" variant="outline" size="sm" aria-label="Próxima página do certificado" disabled={pageIndex + 1 === pageCount} onClick={() => setPageIndex(index => index + 1)}><ChevronRight className="h-4 w-4" /></Button>
+      </div>
+    )}
     </div>
   );
 }
 
 /** Card "Texto simples" — sem arte, só o ícone num fundo neutro. */
-function PlainSheet({ className }: { className?: string }) {
+function PlainSheet({ className, compact = false }: { className?: string; compact?: boolean }) {
   return (
     <div
       className={cn(
         'flex w-full items-center justify-center overflow-hidden rounded-lg border bg-muted/40',
         className,
       )}
-      style={{ aspectRatio: '210 / 297' }}
+      style={{ aspectRatio: compact ? '4 / 3' : '210 / 297' }}
     >
       <FileText className="h-8 w-8 text-muted-foreground/50" />
     </div>
@@ -401,22 +418,22 @@ export function CertificadoArtConfigDialog({
 
   // ── Cards do seletor de modelo ──
   const modelCards = (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-2 items-start gap-4 lg:grid-cols-3 xl:grid-cols-4">
       <button
         type="button"
         onClick={() => setSelectedSlug(null)}
         className={cn(
           'flex flex-col gap-2 rounded-xl border-2 p-2.5 text-left transition-all',
           selectedSlug === null
-            ? 'border-primary bg-primary/5 shadow-sm'
+            ? 'border-zinc-950 bg-muted/30 shadow-sm'
             : 'border-border hover:border-muted-foreground/30',
         )}
       >
         <div className="relative">
-          <PlainSheet />
+          <PlainSheet compact />
           {selectedSlug === null && (
-            <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary">
-              <Check className="h-3 w-3 text-primary-foreground" />
+            <span className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-zinc-950 text-white">
+              <Check className="h-3.5 w-3.5" />
             </span>
           )}
         </div>
@@ -435,14 +452,14 @@ export function CertificadoArtConfigDialog({
             onClick={() => setSelectedSlug(tpl.slug)}
             className={cn(
               'flex flex-col gap-2 rounded-xl border-2 p-2.5 text-left transition-all',
-              selected ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-muted-foreground/30',
+              selected ? 'border-zinc-950 bg-muted/30 shadow-sm' : 'border-border hover:border-muted-foreground/30',
             )}
           >
             <div className="relative">
-              <CertSheet template={tpl} substitute={substitute} brand={brandTheme} images={baseImages} />
+              <CertSheet template={tpl} substitute={substitute} brand={brandTheme} images={baseImages} compact />
               {selected && (
-                <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary">
-                  <Check className="h-3 w-3 text-primary-foreground" />
+                <span className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-zinc-950 text-white">
+                  <Check className="h-3.5 w-3.5" />
                 </span>
               )}
             </div>
@@ -459,7 +476,7 @@ export function CertificadoArtConfigDialog({
   // ── Preview ao vivo grande (usado na Personalizar — lado a lado no desktop
   //    — e na Revisão — folha inteira, sozinha). ──
   const livePreview = (
-    <div className="mx-auto w-full" style={{ maxWidth: selectedTemplate?.orientation === 'landscape' ? 480 : 340 }}>
+    <div className="mx-auto w-full" style={{ maxWidth: selectedTemplate?.orientation === 'landscape' ? 720 : 440 }}>
       {selectedTemplate ? (
         <CertSheet
           template={selectedTemplate}
@@ -595,7 +612,7 @@ export function CertificadoArtConfigDialog({
                         <p className="text-xs text-muted-foreground mt-0.5">{t.logoSectionSubtitle}</p>
                       </div>
                       <div className="flex items-center gap-4">
-                        <div className="h-16 w-28 rounded-lg border border-border bg-muted/40 flex items-center justify-center overflow-hidden shrink-0">
+                        <div className="h-20 w-36 rounded-lg border border-border bg-[#757575] p-2 flex items-center justify-center overflow-hidden shrink-0">
                           {effectiveLogo ? (
                             <img src={effectiveLogo} alt={t.logoSectionTitle} className="max-h-full max-w-full object-contain" />
                           ) : (
@@ -735,7 +752,7 @@ export function CertificadoArtConfigDialog({
               ) : (
                 <div
                   className="mx-auto w-full"
-                  style={{ maxWidth: selectedTemplate.orientation === 'landscape' ? 640 : 440 }}
+                  style={{ maxWidth: selectedTemplate.orientation === 'landscape' ? 900 : 520 }}
                 >
                   <CertSheet
                     template={selectedTemplate}
@@ -758,7 +775,7 @@ export function CertificadoArtConfigDialog({
   const wizardFooter = (
     <div className="flex flex-row items-center justify-between gap-2">
       <Button
-        variant="outline"
+        variant="cancel"
         onClick={() => (step === 0 ? onOpenChange(false) : setStep(step - 1))}
         disabled={isSaving}
       >
@@ -778,7 +795,7 @@ export function CertificadoArtConfigDialog({
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.configTitle} className="sm:max-w-4xl" footer={wizardFooter}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.configTitle} className="sm:max-w-6xl" footer={wizardFooter}>
       {wizardContent}
     </ResponsiveModal>
   );

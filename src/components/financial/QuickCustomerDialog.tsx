@@ -178,7 +178,7 @@ export function QuickCustomerDialog({
 
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
           <Button
-            variant="outline"
+            variant="cancel"
             onClick={() => handleOpenChange(false)}
             disabled={createCustomer.isPending}
           >

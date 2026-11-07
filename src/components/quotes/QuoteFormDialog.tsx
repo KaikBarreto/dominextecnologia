@@ -29,6 +29,7 @@ import { useSaveQuoteServiceCosts } from '@/hooks/useSaveQuoteServiceCosts';
 import { useToast } from '@/hooks/use-toast';
 import { QuotePricingSummary } from '@/components/quotes/QuotePricingSummary';
 import { QuoteBdiComposer } from '@/components/quotes/QuoteBdiComposer';
+import { QuoteRecipientSummary } from '@/components/quotes/QuoteRecipientSummary';
 import { QuoteTemplatePreviewDialog } from '@/components/quotes/QuoteTemplatePreviewDialog';
 import { ProposalCoverPreview } from '@/components/quotes/ProposalCoverPreview';
 import {
@@ -39,11 +40,14 @@ import {
 } from '@/components/quotes/QuoteServiceCostEditor';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { MaterialBatchPicker, type MaterialBatchSelection } from '@/components/inventory/MaterialBatchPicker';
+import { InventoryItemThumbnail } from '@/components/inventory/InventoryItemThumbnail';
 import { formatQty } from '@/components/inventory/InventoryMaterialSelect';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { QuickServiceTypeDialog } from '@/components/service-orders/QuickServiceTypeDialog';
 import { useFormDraft } from '@/hooks/useFormDraft';
-import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
+import { DraftResumeNotice } from '@/components/ui/DraftResumeNotice';
+import { FullscreenWizard, FullscreenWizardAction } from '@/components/ui/FullscreenWizard';
+import { FormDraftStatus } from '@/components/ui/FormDraftStatus';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { FormWizardStepper } from '@/components/ui/FormWizardStepper';
 import { WizardMobileSummary } from '@/components/ui/WizardReviewChecklist';
@@ -51,7 +55,7 @@ import { StepTransition } from '@/components/ui/step-transition';
 import { cn } from '@/lib/utils';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import {
-  User, Palette, Wrench, MapPin, Package,
+  User, Palette, Wrench, Package,
   Calculator, Plus, Minus, Trash2, Tag, AlertTriangle, Gift, CreditCard, ChevronDown,
   ChevronLeft, ChevronRight, Save, Loader2, Inbox, Eye,
 } from 'lucide-react';
@@ -463,10 +467,10 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const { locale, currency } = useAppLocaleContext();
   const tq = MESSAGES[locale].app.crm.quotes;
   const stepLabels: Record<typeof locale, Record<StepKey, string>> = {
-    'pt-br': { recipient: 'Cliente', services: 'Serviços e custos', materials: 'Materiais e deslocamento', commercial: 'Preço e condições', review: 'Revisão e envio' },
-    en: { recipient: 'Customer', services: 'Services and costs', materials: 'Materials and travel', commercial: 'Pricing and terms', review: 'Review and send' },
-    es: { recipient: 'Cliente', services: 'Servicios y costes', materials: 'Materiales y desplazamiento', commercial: 'Precio y condiciones', review: 'Revisión y envío' },
-    fr: { recipient: 'Client', services: 'Services et coûts', materials: 'Matériaux et déplacement', commercial: 'Prix et conditions', review: 'Révision et envoi' },
+    'pt-br': { recipient: 'Cliente', services: 'Serviços e custos', materials: 'Materiais', commercial: 'Preço e condições', review: 'Revisão e envio' },
+    en: { recipient: 'Customer', services: 'Services and costs', materials: 'Materials', commercial: 'Pricing and terms', review: 'Review and send' },
+    es: { recipient: 'Cliente', services: 'Servicios y costes', materials: 'Materiales', commercial: 'Precio y condiciones', review: 'Revisión y envío' },
+    fr: { recipient: 'Client', services: 'Services et coûts', materials: 'Matériaux', commercial: 'Prix et conditions', review: 'Révision et envoi' },
   };
   const STEPS = STEP_KEYS.map(key => ({ key, label: stepLabels[locale][key] }));
   const fmt = (v: number) => formatMoney(Math.round(v * 100) / 100, currency, locale);
@@ -583,24 +587,39 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     receivableInstallments: number; receivableFirstDueDate: string;
     useBdi: boolean; displacementPricingMode: DisplacementPricingMode; manualDisplacementPrice: number;
     showLaborCostInProposal: boolean; showInputsCostInProposal: boolean;
+    items?: FormQuoteItem[];
+    taxRate?: number; adminRate?: number; profitRate?: number; kmCost?: number;
+    cardDiscountRate?: number; cardInstallments?: number;
   };
-  const draft = useFormDraft<QuoteDraft>({ key: 'quote-form', isOpen: open, isEditing });
+  const draftScopeKey = profile?.company_id ? `quote-form:${profile.company_id}:${profile.user_id || profile.id || 'session'}` : 'quote-form';
+  const draftScopeRef = useRef(draftScopeKey);
+  const draftScopeChanged = draftScopeRef.current !== draftScopeKey;
+  const draft = useFormDraft<QuoteDraft>({
+    key: draftScopeKey,
+    isOpen: open, isEditing, debounceMs: 500,
+    ignoreKeys: ['customerMode', 'discountType', 'useBdi', 'includeGifts', 'receivableInstallments', 'proposalTemplateId', 'displacementPricingMode', 'taxRate', 'adminRate', 'profitRate', 'kmCost', 'cardDiscountRate', 'cardInstallments'],
+  });
+  const currentDraft = useMemo<QuoteDraft>(() => ({
+    customerMode, customerId, prospectName, prospectPhone, prospectEmail,
+    distanceKm, discountType, discountValue, includeGifts,
+    validUntil, notes, terms, proposalTemplateId,
+    receivableInstallments, receivableFirstDueDate,
+    useBdi, displacementPricingMode, manualDisplacementPrice,
+    showLaborCostInProposal, showInputsCostInProposal,
+    items, taxRate, adminRate, profitRate, kmCost: kmCostCfg,
+    cardDiscountRate: cardDiscountRateCfg, cardInstallments: cardInstallmentsCfg,
+  }), [customerMode, customerId, prospectName, prospectPhone, prospectEmail, distanceKm, discountType, discountValue, includeGifts, validUntil, notes, terms, proposalTemplateId, receivableInstallments, receivableFirstDueDate, useBdi, displacementPricingMode, manualDisplacementPrice, showLaborCostInProposal, showInputsCostInProposal, items, taxRate, adminRate, profitRate, kmCostCfg, cardDiscountRateCfg, cardInstallmentsCfg]);
+  const startNewDraftIfNeeded = (patch: Partial<QuoteDraft>) => {
+    if (!draftScopeChanged && draft.showResumePrompt) draft.startNewDraft({ ...currentDraft, ...patch });
+  };
 
-  // Save draft on changes (lightweight — excludes items to avoid perf issues).
-  // Suspende enquanto um rascunho PERSISTIDO está sendo retomado (draftQuoteId)
-  // pra o auto-resume do sessionStorage não conflitar com a edição do banco.
+  // Rascunho local completo, com debounce. O rascunho da conta continua sendo
+  // salvo apenas pela ação explícita; a edição do banco não recebe autosave.
   useEffect(() => {
-    if (open && !isEditing && !draftQuoteId && !draft.showResumePrompt) {
-      draft.saveDraft({
-        customerMode, customerId, prospectName, prospectPhone, prospectEmail,
-        distanceKm, discountType, discountValue, includeGifts,
-        validUntil, notes, terms, proposalTemplateId,
-        receivableInstallments, receivableFirstDueDate,
-        useBdi, displacementPricingMode, manualDisplacementPrice,
-        showLaborCostInProposal, showInputsCostInProposal,
-      });
+    if (open && !isEditing && !draftQuoteId && !draft.showResumePrompt && !draftScopeChanged) {
+      draft.saveDraft(currentDraft);
     }
-  }, [customerMode, customerId, prospectName, prospectPhone, prospectEmail, distanceKm, discountType, discountValue, includeGifts, validUntil, notes, terms, proposalTemplateId, receivableInstallments, receivableFirstDueDate, useBdi, displacementPricingMode, manualDisplacementPrice, showLaborCostInProposal, showInputsCostInProposal, open, isEditing, draftQuoteId, draft.showResumePrompt]);
+  }, [currentDraft, open, isEditing, draftQuoteId, draft.showResumePrompt, draft.saveDraft, draftScopeChanged]);
 
   const applyQuoteDraft = (d: QuoteDraft) => {
     setCustomerMode(d.customerMode === 'prospect' ? 'prospect' : 'existing');
@@ -623,12 +642,20 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     setManualDisplacementPrice(Number(d.manualDisplacementPrice ?? 0));
     setShowLaborCostInProposal(d.showLaborCostInProposal === true);
     setShowInputsCostInProposal(d.showInputsCostInProposal === true);
-    // O rascunho leve (sessionStorage) NÃO guarda itens de propósito. Ao retomar,
-    // zeramos os itens pra não herdar os da sessão anterior que sobreviveram.
-    setItems([]);
+    const restoredRates = { taxRate: d.taxRate, adminRate: d.adminRate, profitRate: d.profitRate, kmCost: d.kmCost, cardDiscountRate: d.cardDiscountRate, cardInstallments: d.cardInstallments };
+    for (const [key, value] of Object.entries(restoredRates)) {
+      if (typeof value === 'number' && Number.isFinite(value)) pricingTouchedRef.current[key as keyof typeof restoredRates] = true;
+    }
+    if (Number.isFinite(d.taxRate)) setTaxRate(d.taxRate!);
+    if (Number.isFinite(d.adminRate)) setAdminRate(d.adminRate!);
+    if (Number.isFinite(d.profitRate)) setProfitRate(d.profitRate!);
+    if (Number.isFinite(d.kmCost)) setKmCostCfg(d.kmCost!);
+    if (Number.isFinite(d.cardDiscountRate)) setCardDiscountRateCfg(d.cardDiscountRate!);
+    if (Number.isFinite(d.cardInstallments)) setCardInstallmentsCfg(d.cardInstallments!);
+    setItems(Array.isArray(d.items) ? d.items.map(item => ({ ...item, cost_composition: createQuoteCostComposition(item.cost_composition ?? undefined) })) : []);
   };
 
-  const resetQuoteForm = () => {
+  const resetQuoteForm = useCallback(() => {
     pricingTouchedRef.current = {
       taxRate: false,
       adminRate: false,
@@ -668,7 +695,19 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     setKmCostCfg(Number(pricing?.km_cost ?? 1));
     setCardDiscountRateCfg(Number(pricing?.card_discount_rate ?? 6));
     setCardInstallmentsCfg(Number(pricing?.card_installments ?? 10));
-  };
+  }, [templates, pricing]);
+
+  useEffect(() => {
+    if (draftScopeRef.current === draftScopeKey) return;
+    draftScopeRef.current = draftScopeKey;
+    resetQuoteForm();
+    setStep(0);
+    setMaxStepReached(0);
+    setDraftQuoteId(null);
+    // A troca de empresa/usuário encerra o formulário sem gravar o snapshot
+    // anterior sob o novo contexto. O rascunho da outra conta fica isolado.
+    if (open) onOpenChange(false);
+  }, [draftScopeKey, open, onOpenChange, resetQuoteForm]);
 
   // ── Default de template pra NOVO orçamento: "Clean" (branco/enxuto) ──
   // Os templates carregam async; quando chegam e ainda não há seleção (orçamento
@@ -807,7 +846,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         });})
       );
     } else if (!isEditing && draft.hasDraft && draft.draftData) {
-      // Draft will be applied via DraftResumeDialog
+      // O usuário escolhe retomar o preenchimento pelo aviso flutuante.
     } else {
       resetQuoteForm();
     }
@@ -1473,82 +1512,117 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
   const mutating = createQuote.isPending || updateQuote.isPending || saveQuoteServiceCosts.isPending;
 
-  // ─── BDI config block (reused inside the Services step) ─────────────────────
-  const bdiConfigBlock = (
-    <section className="border-y py-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <SectionHeader icon={<Calculator className="h-4 w-4 text-primary" />} title={tq.bdiHeader} />
-        <label htmlFor="quote-use-bdi" className="ml-auto flex shrink-0 cursor-pointer items-center gap-2 text-sm font-medium">
-          <Checkbox
-            id="quote-use-bdi"
-            checked={useBdi}
-            onCheckedChange={checked => handleUseBdiChange(checked === true)}
-          />
-          Usar BDI
-        </label>
-        {useBdi && (
-          <Badge
-            variant={bdiDanger ? 'destructive' : bdiWarning ? 'warning' : 'default'}
-            className="px-2.5 py-0.5 font-mono text-xs"
-          >
-            Coeficiente {bdiFactor.toFixed(4)}
-          </Badge>
-        )}
-      </div>
-
-      {useBdi ? (
-        <div id="quote-bdi-advanced" className="grid gap-6 pt-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)] lg:items-start">
-          <QuoteBdiComposer
-            totalCost={mixedPricing.automaticCost}
-            finalPrice={mixedPricing.automaticPrice}
-            bdiFactor={bdiFactor}
-            taxRate={taxRate}
-            adminRate={adminRate}
-            profitRate={profitRate}
-            formatMoney={fmt}
-            formatRate={fmtRate}
-            onTaxChange={value => { pricingTouchedRef.current.taxRate = true; setTaxRate(value); }}
-            onAdminChange={value => { pricingTouchedRef.current.adminRate = true; setAdminRate(value); }}
-            onProfitChange={value => { pricingTouchedRef.current.profitRate = true; setProfitRate(value); }}
-          />
-
-          <div className="space-y-6 rounded-2xl bg-muted/30 p-4 sm:p-5">
-            <section className="space-y-6">
-              <div className="space-y-3">
-                <div><h3 className="text-xl font-semibold sm:text-2xl">Deslocamento</h3><p className="mt-1 text-sm text-muted-foreground">Custo operacional por quilômetro.</p></div>
-                <BdiField label={tq.bdiKmCost} prefix={currencySymbol} value={kmCostCfg} onChange={v => {
-                  pricingTouchedRef.current.kmCost = true;
-                  setKmCostCfg(v);
-                }} step={0.01} />
-              </div>
-              <div className="space-y-3 border-t pt-5">
-                <div><h3 className="text-xl font-semibold sm:text-2xl">Condições da proposta</h3><p className="mt-1 text-sm text-muted-foreground">Desconto à vista e parcelamento exibidos ao cliente.</p></div>
-                <div className="grid grid-cols-2 gap-3">
-                  <BdiField label={tq.bdiCashDiscount} suffix="%" value={cardDiscountRateCfg} onChange={v => {
-                    pricingTouchedRef.current.cardDiscountRate = true;
-                    setCardDiscountRateCfg(v);
-                  }} />
-                  <BdiField label={tq.bdiInstallments} value={cardInstallmentsCfg} onChange={v => {
-                    pricingTouchedRef.current.cardInstallments = true;
-                    setCardInstallmentsCfg(Math.max(1, v));
-                  }} step={1} min={1} />
-                </div>
-              </div>
-            </section>
-
-            {items.some(item => item.pricing_mode === 'manual' && item.unit_total_cost > 0) && (
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-5">
-                <p className="max-w-md text-xs leading-relaxed text-muted-foreground">Itens com preço manual mantêm o valor atual até você optar por recalculá-los.</p>
-                <Button type="button" variant="outline" onClick={applyBdiToItemsWithCost}>Aplicar BDI aos itens com custo</Button>
-              </div>
-            )}
-          </div>
+  const displacementBlock = (
+    <section id="quote-displacement" className="space-y-4">
+      <h3 className="text-xl font-semibold sm:text-2xl">{tq.displacementHeader}</h3>
+      <p className="text-sm text-muted-foreground">Defina a distância, seu custo por quilômetro e como o deslocamento será cobrado.</p>
+      <div className="grid gap-5 border-y py-5 sm:grid-cols-2 sm:items-end">
+        <div className="space-y-2">
+          <Label htmlFor="quote-distance-km" className="text-sm font-semibold text-foreground">Distância (km)</Label>
+          <NumericInput id="quote-distance-km" value={distanceKm ? String(distanceKm) : ''}
+            onValueChange={v => setDistanceKm(Number(v) || 0)}
+            className="h-11 text-base" placeholder={tq.displacementPlaceholder} />
         </div>
-      ) : (
-        <p className="pt-3 text-sm leading-relaxed text-muted-foreground">
-          Orçamento padrão ativo. Os itens usam o preço de venda cadastrado ou o valor informado por você; nenhum preço será recalculado pelo BDI.
-        </p>
+        <BdiField label={tq.bdiKmCost} prefix={currencySymbol} value={kmCostCfg} onChange={value => {
+          pricingTouchedRef.current.kmCost = true;
+          setKmCostCfg(value);
+        }} step={0.01} />
+        <div className="space-y-2">
+          <Label className="text-sm font-semibold text-foreground">Modalidade</Label>
+          <Select
+            value={displacementPricingMode}
+            onValueChange={value => {
+              const mode = value === 'manual' ? 'manual' : 'cost_bdi';
+              setDisplacementPricingMode(mode);
+              if (mode === 'manual') setManualDisplacementPrice(displacementSalePrice);
+            }}
+          >
+            <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cost_bdi" disabled={!useBdi}>Custo + BDI</SelectItem>
+              <SelectItem value="manual">Valor manual</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <BdiField label="Preço cobrado" prefix={currencySymbol} value={displacementSalePrice}
+          disabled={displacementPricingMode !== 'manual'} onChange={setManualDisplacementPrice} step={0.01} />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Custo {fmt(bdi.displacementCost)} · Preço resultante {fmt(displacementSalePrice)}
+      </p>
+      {displacementPricingMode === 'manual' && (
+        <p className="text-xs text-warning">Valor manual: o deslocamento saiu da precificação automática estrita.</p>
       )}
+    </section>
+  );
+
+  const proposalConditionsBlock = (
+    <section className={cn('space-y-4 border-t pt-6', !useBdi && 'lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0')}>
+      <div><h3 className="text-xl font-semibold sm:text-2xl">Condições da proposta</h3><p className="mt-1 text-sm text-muted-foreground">Desconto à vista e parcelamento exibidos ao cliente.</p></div>
+      <div className="grid grid-cols-2 gap-3">
+        <BdiField label={tq.bdiCashDiscount} suffix="%" value={cardDiscountRateCfg} onChange={value => {
+          pricingTouchedRef.current.cardDiscountRate = true;
+          setCardDiscountRateCfg(value);
+        }} />
+        <BdiField label={tq.bdiInstallments} value={cardInstallmentsCfg} onChange={value => {
+          pricingTouchedRef.current.cardInstallments = true;
+          setCardInstallmentsCfg(Math.max(1, value));
+        }} step={1} min={1} />
+      </div>
+    </section>
+  );
+
+  const bdiConfigBlock = (
+    <section className="space-y-6">
+      <SectionHeader icon={<Calculator className="h-4 w-4 text-primary" />} title="Como formar o preço?" />
+      <div role="group" aria-label="Modo de formação do preço" className="grid gap-3 sm:grid-cols-2">
+        <button type="button" id="quote-use-bdi" aria-pressed={useBdi} onClick={() => handleUseBdiChange(true)}
+          className={cn('min-h-24 rounded-xl border px-5 py-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', useBdi ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:border-primary')}>
+          <span className="block text-lg font-semibold">Calcular com BDI</span>
+          <span className={cn('mt-1 block text-sm leading-relaxed', useBdi ? 'text-primary-foreground/80' : 'text-muted-foreground')}>Impostos, administração e lucro sobre os custos.</span>
+        </button>
+        <button type="button" id="quote-manual-pricing" aria-pressed={!useBdi} onClick={() => handleUseBdiChange(false)}
+          className={cn('min-h-24 rounded-xl border px-5 py-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', !useBdi ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:border-primary')}>
+          <span className="block text-lg font-semibold">Preço cadastrado ou manual</span>
+          <span className={cn('mt-1 block text-sm leading-relaxed', !useBdi ? 'text-primary-foreground/80' : 'text-muted-foreground')}>Mantém os preços dos itens, sem recálculo automático.</span>
+        </button>
+      </div>
+      <div className={cn('grid gap-7 lg:items-start', useBdi && 'lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]')}>
+        <div>
+          {useBdi ? (
+            <div id="quote-bdi-advanced" className="space-y-5">
+              <QuoteBdiComposer
+                totalCost={mixedPricing.automaticCost}
+                finalPrice={mixedPricing.automaticPrice}
+                bdiFactor={bdiFactor}
+                taxRate={taxRate}
+                adminRate={adminRate}
+                profitRate={profitRate}
+                formatMoney={fmt}
+                formatRate={fmtRate}
+                onTaxChange={value => { pricingTouchedRef.current.taxRate = true; setTaxRate(value); }}
+                onAdminChange={value => { pricingTouchedRef.current.adminRate = true; setAdminRate(value); }}
+                onProfitChange={value => { pricingTouchedRef.current.profitRate = true; setProfitRate(value); }}
+              />
+              {items.some(item => item.pricing_mode === 'manual' && item.unit_total_cost > 0) && (
+                <div className="space-y-3 border-t pt-5">
+                  <p className="text-sm leading-relaxed text-muted-foreground">Itens com preço manual mantêm o valor atual até você optar por recalculá-los.</p>
+                  <Button type="button" variant="outline" onClick={applyBdiToItemsWithCost}>Aplicar BDI aos itens com custo</Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="max-w-3xl space-y-3 py-2">
+              <h3 className="text-xl font-semibold">Preços definidos nos itens</h3>
+              <p className="text-base leading-relaxed text-muted-foreground">Os valores atuais são preservados, inclusive os que foram calculados com BDI. Para usar o preço cadastrado, selecione essa modalidade no item.</p>
+            </div>
+          )}
+        </div>
+        <div className={cn('space-y-6 rounded-2xl bg-muted/30 p-4 sm:p-5', !useBdi && 'lg:grid lg:grid-cols-2 lg:gap-8 lg:space-y-0')}>
+          {displacementBlock}
+          {proposalConditionsBlock}
+        </div>
+      </div>
     </section>
   );
 
@@ -1607,7 +1681,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     },
     {
       key: 'materials',
-      label: 'Materiais e deslocamento',
+      label: 'Materiais',
       detail: materialItems.length > 0
         ? `${materialItems.length} ${materialItems.length === 1 ? 'material externo adicionado' : 'materiais externos adicionados'}.`
         : 'Sem materiais cobrados por fora.',
@@ -1657,27 +1731,32 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
           {/* ══ STEP 1: CLIENTE ══ */}
           {currentStepKey === 'recipient' && (
-            <section ref={recipientSectionRef} className="space-y-3">
+            <section ref={recipientSectionRef} className="space-y-7">
               <SectionHeader icon={<User className="h-4 w-4 text-primary" />} title={tq.recipientHeader} />
+              <div className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-12 xl:gap-20">
+              <div className="space-y-6">
               <div role="group" aria-label="Tipo de destinatário" className="grid max-w-md grid-cols-2 gap-2 rounded-xl bg-muted/50 p-1">
-                <button type="button" aria-pressed={customerMode === 'existing'} onClick={() => setCustomerMode('existing')} className={cn('min-h-12 rounded-lg px-3 text-sm font-semibold transition-colors', customerMode === 'existing' ? 'bg-zinc-950 text-white' : 'text-muted-foreground hover:text-foreground')}>{tq.recipientExisting}</button>
-                <button type="button" aria-pressed={customerMode === 'prospect'} onClick={() => setCustomerMode('prospect')} className={cn('min-h-12 rounded-lg px-3 text-sm font-semibold transition-colors', customerMode === 'prospect' ? 'bg-zinc-950 text-white' : 'text-muted-foreground hover:text-foreground')}>{tq.recipientProspect}</button>
+                <button type="button" aria-pressed={customerMode === 'existing'} onClick={() => setCustomerMode('existing')} className={cn('min-h-12 rounded-lg px-3 text-sm font-semibold transition-colors', customerMode === 'existing' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}>{tq.recipientExisting}</button>
+                <button type="button" aria-pressed={customerMode === 'prospect'} onClick={() => setCustomerMode('prospect')} className={cn('min-h-12 rounded-lg px-3 text-sm font-semibold transition-colors', customerMode === 'prospect' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}>{tq.recipientProspect}</button>
               </div>
-              <div className="grid max-w-3xl gap-3">
+              <div className="grid gap-5">
                 {customerMode === 'existing' ? (
-                  <div className="space-y-1">
-                    <Label className="text-sm font-semibold text-foreground">{tq.recipientCustomerLabel}</Label>
+                  <div className="space-y-3">
+                    <Label htmlFor="quote-customer" className="text-base font-semibold text-foreground">{tq.recipientCustomerLabel}</Label>
                     <CustomerSelectField
+                      id="quote-customer"
+                      variant="large"
                       customers={customers ?? []}
                       value={customerId}
-                      onValueChange={setCustomerId}
+                      onValueChange={value => { startNewDraftIfNeeded({ customerId: value }); setCustomerId(value); }}
                       placeholder={tq.recipientCustomerPlaceholder}
                     />
+                    <p className="text-sm leading-relaxed text-muted-foreground">Busque por nome, documento ou contato. Use o botão + para cadastrar um cliente.</p>
                   </div>
                 ) : (
                   <div className="space-y-1">
                     <Label className="text-sm font-semibold text-foreground">{tq.recipientNameLabel}</Label>
-                    <Input placeholder={tq.recipientNamePlaceholder} value={prospectName} onChange={e => setProspectName(e.target.value)} />
+                    <Input placeholder={tq.recipientNamePlaceholder} value={prospectName} onChange={e => { startNewDraftIfNeeded({ prospectName: e.target.value }); setProspectName(e.target.value); }} />
                   </div>
                 )}
               </div>
@@ -1685,14 +1764,20 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
                     <Label className="text-sm font-semibold text-foreground">{tq.recipientPhoneLabel}</Label>
-                    <Input placeholder={tq.recipientPhonePlaceholder} value={prospectPhone} onChange={e => setProspectPhone(e.target.value)} />
+                    <Input placeholder={tq.recipientPhonePlaceholder} value={prospectPhone} onChange={e => { startNewDraftIfNeeded({ prospectPhone: e.target.value }); setProspectPhone(e.target.value); }} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-sm font-semibold text-foreground">{tq.recipientEmailLabel}</Label>
-                    <Input type="email" placeholder={tq.recipientEmailPlaceholder} value={prospectEmail} onChange={e => setProspectEmail(e.target.value)} />
+                    <Input type="email" placeholder={tq.recipientEmailPlaceholder} value={prospectEmail} onChange={e => { startNewDraftIfNeeded({ prospectEmail: e.target.value }); setProspectEmail(e.target.value); }} />
                   </div>
                 </div>
               )}
+              </div>
+              <QuoteRecipientSummary
+                customer={customerMode === 'existing' ? customers?.find(customer => customer.id === customerId) : undefined}
+                prospect={customerMode === 'prospect' ? { name: prospectName, phone: prospectPhone, email: prospectEmail } : undefined}
+              />
+              </div>
             </section>
           )}
 
@@ -1702,12 +1787,12 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
               <section ref={itemsSectionRef} className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <SectionHeader icon={<Wrench className="h-4 w-4 text-primary" />} title={tq.servicesHeader} />
-                  <div className="flex w-full items-center justify-between gap-3 sm:w-auto">
+                  {serviceItems.length > 0 && <div className="flex w-full items-center justify-between gap-3 sm:w-auto">
                     <span className="text-sm text-muted-foreground">{serviceItems.length} {serviceItems.length === 1 ? 'serviço' : 'serviços'}</span>
-                    <Button type="button" className="h-11 bg-zinc-950 px-5 text-white hover:bg-zinc-800" onClick={() => setServicePickerOpen(true)}>
+                    <Button type="button" className="h-11 bg-primary px-5 text-primary-foreground hover:bg-primary/90" onClick={() => setServicePickerOpen(true)}>
                       <Plus className="mr-2 h-4 w-4" /> Adicionar serviço
                     </Button>
-                  </div>
+                  </div>}
                 </div>
 
                 {serviceItems.length > 0 ? (
@@ -1736,7 +1821,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                     costResources={costResources}
                   />
                 ) : (
-                  <EmptyState>{tq.serviceEmpty}</EmptyState>
+                  <EmptyState
+                    title={tq.serviceEmpty}
+                    description="Adicione um serviço do catálogo ou crie um para este orçamento. Depois, ajuste sua composição e o preço."
+                    action={<Button type="button" className="h-12 bg-primary px-6 text-base font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => setServicePickerOpen(true)}><Plus className="h-5 w-5" />Adicionar serviço</Button>}
+                  />
                 )}
               </section>
             </div>
@@ -1751,9 +1840,9 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                     <SectionHeader icon={<Package className="h-4 w-4 text-primary" />} title={tq.materialsHeader} />
                     <p className="mt-2 text-sm text-muted-foreground">Inclua materiais do estoque ou itens avulsos e defina a modalidade de preço.</p>
                   </div>
-                  <Button type="button" className="h-11 px-5" onClick={() => setMaterialPickerOpen(true)}>
+                  {materialItems.length > 0 && <Button type="button" className="h-12 bg-primary px-5 font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => setMaterialPickerOpen(true)}>
                     <Plus className="mr-1.5 h-4 w-4" />{tq.materialPickerOpen}
-                  </Button>
+                  </Button>}
                 </div>
 
                 {/* Um caminho só, igual desktop/celular: abre o seletor em lote
@@ -1774,11 +1863,14 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                         return (
                           <article key={globalIdx} className="space-y-4 py-5">
                             <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
+                              <div className="flex min-w-0 items-center gap-3">
+                                <InventoryItemThumbnail name={item.description} imageUrl={inventoryItems.find(candidate => candidate.id === item.inventory_id)?.image_url} fit="contain" fallbackVariant="plain" className="h-12 w-12 bg-muted/30" />
+                                <div className="min-w-0">
                                 <p className="text-lg font-semibold leading-6">{item.description}</p>
                                 {unit && (
                                   <p aria-label={tq.materialColUnit} className="text-xs text-muted-foreground">{unit}</p>
                                 )}
+                                </div>
                               </div>
                               <div className="ml-auto flex items-start gap-4">
                                 <div className="text-right">
@@ -1971,7 +2063,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                     </div>
                   </>
                 ) : (
-                  <EmptyState>{tq.materialEmpty}</EmptyState>
+                  <EmptyState
+                    title={tq.materialEmpty}
+                    description="Inclua aqui os materiais cobrados à parte. Os insumos usados na execução ficam dentro de cada serviço."
+                    action={<Button type="button" className="h-12 bg-primary px-6 text-base font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => setMaterialPickerOpen(true)}><Plus className="h-5 w-5" />{tq.materialPickerOpen}</Button>}
+                  />
                 )}
 
                 <MaterialBatchPicker
@@ -1983,54 +2079,6 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                 />
               </section>
 
-              <section className="space-y-5 border-t pt-7">
-                <SectionHeader icon={<MapPin className="h-4 w-4 text-primary" />} title={tq.displacementHeader} />
-                <div className="grid gap-5 border-y py-5 sm:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-foreground">Distância (km)</Label>
-                    <NumericInput value={distanceKm ? String(distanceKm) : ''}
-                      onValueChange={v => setDistanceKm(Number(v) || 0)}
-                      className="h-11 text-base" placeholder={tq.displacementPlaceholder} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-foreground">Modalidade</Label>
-                    <Select
-                      value={displacementPricingMode}
-                      onValueChange={value => {
-                        const mode = value === 'manual' ? 'manual' : 'cost_bdi';
-                        setDisplacementPricingMode(mode);
-                        if (mode === 'manual') setManualDisplacementPrice(displacementSalePrice);
-                      }}
-                    >
-                      <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cost_bdi" disabled={!useBdi}>Custo por km + BDI</SelectItem>
-                        <SelectItem value="manual">Valor manual</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-foreground">Preço do deslocamento</Label>
-                    <CurrencyField symbol={currencySymbol} className="max-w-48">
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={displacementSalePrice || ''}
-                        disabled={displacementPricingMode !== 'manual'}
-                        onChange={event => setManualDisplacementPrice(Number(event.target.value) || 0)}
-                        className="h-11 text-base"
-                      />
-                    </CurrencyField>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Custo {fmt(bdi.displacementCost)} · Preço resultante {fmt(displacementSalePrice)}
-                </p>
-                {displacementPricingMode === 'manual' && (
-                  <p className="text-xs text-warning">Valor manual: o deslocamento saiu da precificação automática estrita.</p>
-                )}
-              </section>
 
             </div>
           )}
@@ -2145,7 +2193,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
               </div>
               <div className="grid items-start gap-6 lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[22rem_minmax(0,1fr)]">
                 <div className="hidden lg:sticky lg:top-28 lg:block">{summaryBlock}</div>
-                <div className="flex items-center justify-between gap-4 rounded-xl bg-zinc-950 px-4 py-4 text-white lg:hidden">
+                <div className="flex items-center justify-between gap-4 rounded-xl bg-primary px-4 py-4 text-primary-foreground lg:hidden">
                   <span className="text-sm">Total do orçamento</span>
                   <span className="text-xl font-semibold tabular-nums">{fmt(finalTotal)}</span>
                 </div>
@@ -2169,7 +2217,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                   </p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <label htmlFor="quote-show-labor-cost" className={cn('flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors', showLaborCostInProposal ? 'border-zinc-950 bg-zinc-950 text-white' : 'border-border bg-background')}>
+                  <label htmlFor="quote-show-labor-cost" className={cn('flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors', showLaborCostInProposal ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background')}>
                     <Checkbox
                       id="quote-show-labor-cost"
                       checked={showLaborCostInProposal}
@@ -2177,10 +2225,10 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                     />
                     <span>
                       <span className="block text-sm font-medium">Mostrar custo de mão de obra</span>
-                      <span className={cn('mt-1 block text-xs', showLaborCostInProposal ? 'text-zinc-300' : 'text-muted-foreground')}>Exibe o valor por serviço, além do preço comercial.</span>
+                      <span className={cn('mt-1 block text-xs', showLaborCostInProposal ? 'text-primary-foreground/80' : 'text-muted-foreground')}>Exibe o valor por serviço, além do preço comercial.</span>
                     </span>
                   </label>
-                  <label htmlFor="quote-show-inputs-cost" className={cn('flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors', showInputsCostInProposal ? 'border-zinc-950 bg-zinc-950 text-white' : 'border-border bg-background')}>
+                  <label htmlFor="quote-show-inputs-cost" className={cn('flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors', showInputsCostInProposal ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background')}>
                     <Checkbox
                       id="quote-show-inputs-cost"
                       checked={showInputsCostInProposal}
@@ -2188,7 +2236,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                     />
                     <span>
                       <span className="block text-sm font-medium">Mostrar custo de insumos</span>
-                      <span className={cn('mt-1 block text-xs', showInputsCostInProposal ? 'text-zinc-300' : 'text-muted-foreground')}>Não inclui os materiais cobrados separadamente.</span>
+                      <span className={cn('mt-1 block text-xs', showInputsCostInProposal ? 'text-primary-foreground/80' : 'text-muted-foreground')}>Não inclui os materiais cobrados separadamente.</span>
                     </span>
                   </label>
                 </div>
@@ -2284,6 +2332,10 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   );
 
   // ── Wizard footer (navegação + salvar rascunho) ──
+  const handleQuoteOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && !isEditing && !draftQuoteId && !draft.showResumePrompt && !draftScopeChanged) draft.flush(currentDraft);
+    onOpenChange(nextOpen);
+  };
   const wizardFooter = (
     <div className="flex flex-col gap-2">
       <WizardMobileSummary
@@ -2298,19 +2350,19 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
           {navigationMessage}
         </p>
       )}
-      <div className="grid grid-cols-[auto_2.75rem_minmax(0,1fr)] items-center gap-2 sm:flex sm:flex-wrap sm:justify-end">
-          <Button
-            variant="outline"
-            className="h-11 sm:h-10"
-            onClick={() => step === 0 ? onOpenChange(false) : setStep(step - 1)}
+      <div className="grid grid-cols-[auto_3.25rem_minmax(0,1fr)] items-center gap-2 sm:flex sm:flex-wrap sm:justify-end sm:gap-3">
+          <FullscreenWizardAction
+            variant="cancel"
+            className="h-[3.25rem] px-3 text-base font-bold sm:h-14 sm:min-w-36 sm:px-7"
+            onClick={() => step === 0 ? handleQuoteOpenChange(false) : setStep(step - 1)}
             disabled={mutating || savingDraft}
           >
             {step === 0 ? tq.cancel : <><ChevronLeft className="mr-1 h-4 w-4" /> {tq.back}</>}
-          </Button>
+          </FullscreenWizardAction>
           {/* Salvar rascunho — visível em QUALQUER etapa. */}
-          <Button
+          <FullscreenWizardAction
             variant="outline"
-            className="h-11 w-11 px-0 sm:h-10 sm:w-auto sm:px-4"
+            className="h-[3.25rem] w-[3.25rem] px-0 text-base font-bold sm:h-14 sm:w-auto sm:min-w-48 sm:px-7"
             aria-label={savingDraft ? tq.saving : tq.saveDraft}
             onClick={handleSaveDraft}
             disabled={mutating || savingDraft || !hasCustomer}
@@ -2318,26 +2370,27 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
             {savingDraft
               ? <><Loader2 className="h-4 w-4 animate-spin sm:mr-1" /><span className="sr-only sm:not-sr-only">{tq.saving}</span></>
               : <><Save className="h-4 w-4 sm:mr-1" /><span className="sr-only sm:not-sr-only">{tq.saveDraft}</span></>}
-          </Button>
+          </FullscreenWizardAction>
 
           {step < STEPS.length - 1 ? (
-            <Button
+            <FullscreenWizardAction
               onClick={advanceWithValidation}
               aria-disabled={!canNext()}
-              className="h-11 bg-zinc-950 text-white hover:bg-zinc-800 aria-disabled:opacity-50 sm:h-10"
+              className="h-[3.25rem] bg-primary px-3 text-base font-bold text-primary-foreground hover:bg-primary/90 aria-disabled:opacity-50 sm:h-14 sm:min-w-48 sm:px-8"
+              disabled={mutating || savingDraft}
             >
               {tq.next} <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
+            </FullscreenWizardAction>
           ) : (
-            <Button
+            <FullscreenWizardAction
               onClick={handleSubmit}
               disabled={!canNext() || mutating || savingDraft}
-              className="h-11 bg-zinc-950 text-white hover:bg-zinc-800 sm:h-10"
+              className="h-[3.25rem] bg-primary px-3 text-base font-bold text-primary-foreground hover:bg-primary/90 sm:h-14 sm:min-w-56 sm:px-8"
             >
               {mutating
                 ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {tq.saving}</>
                 : quote ? tq.saveChanges : tq.createQuote}
-            </Button>
+            </FullscreenWizardAction>
           )}
       </div>
     </div>
@@ -2349,19 +2402,32 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
   return (
     <>
-      <ResponsiveModal
+      <FullscreenWizard
         open={open}
-        onOpenChange={onOpenChange}
+        onOpenChange={handleQuoteOpenChange}
         title={title}
+        backLabel={tq.back}
+        headerActions={!isEditing && !draftQuoteId ? <FormDraftStatus status={draft.status} savedAt={draft.savedAt} /> : undefined}
         description="Monte os itens, confira a precificação e revise a proposta antes de salvar."
         className="min-w-0 overflow-x-hidden"
-        fullScreen
         footer={wizardFooter}
+        floatingNotice={!isEditing && !draftQuoteId && draft.showResumePrompt ? (
+          <DraftResumeNotice
+            onResume={() => {
+              if (draft.draftData) applyQuoteDraft(draft.draftData);
+              draft.acceptDraft();
+            }}
+            onDiscard={() => {
+              draft.startNewDraft();
+              resetQuoteForm();
+            }}
+          />
+        ) : null}
         lockBackdrop
         overlayId="quote-form-modal"
       >
         {wizardContent}
-      </ResponsiveModal>
+      </FullscreenWizard>
 
       <QuoteTemplatePreviewDialog
         open={previewOpen}
@@ -2370,22 +2436,6 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         company={companySettings}
         templateSlug={selectedTemplate?.slug ?? 'clean'}
       />
-
-      {/* Rascunho local (sessionStorage) — só em criação e quando NÃO retomando
-          um rascunho persistido do banco (não conflitam). */}
-      {!isEditing && !draftQuoteId && (
-        <DraftResumeDialog
-          open={draft.showResumePrompt}
-          onResume={() => {
-            if (draft.draftData) applyQuoteDraft(draft.draftData);
-            draft.acceptDraft();
-          }}
-          onDiscard={() => {
-            draft.discardDraft();
-            resetQuoteForm();
-          }}
-        />
-      )}
 
       <ResponsiveModal
         open={servicePickerOpen}
@@ -2397,8 +2447,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         overlayParentId="quote-form-modal"
         footer={
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => setServicePickerOpen(false)}>Cancelar</Button>
-            <Button type="button" className="bg-zinc-950 text-white hover:bg-zinc-800" onClick={handleAddService} disabled={!addSvcId || isFetchingSvc}>
+            <Button type="button" variant="cancel-ghost" onClick={() => setServicePickerOpen(false)}>Cancelar</Button>
+            <Button type="button" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleAddService} disabled={!addSvcId || isFetchingSvc}>
               {isFetchingSvc ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
               Adicionar
             </Button>
@@ -2556,7 +2606,7 @@ function QuantityField({ quantity, onCommit, className }: {
 function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <div className="flex items-center gap-4">
-      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-zinc-950 text-white [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-white">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground [&_svg]:h-5 [&_svg]:w-5 [&_svg]:text-primary-foreground">
         {icon}
       </span>
       <h2 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{title}</h2>
@@ -2564,9 +2614,9 @@ function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }
   );
 }
 
-function BdiField({ label, value, onChange, suffix, prefix, step = 0.1, min = 0 }: {
+function BdiField({ label, value, onChange, suffix, prefix, step = 0.1, min = 0, disabled }: {
   label: string; value: number; onChange: (v: number) => void;
-  suffix?: string; prefix?: string; step?: number; min?: number;
+  suffix?: string; prefix?: string; step?: number; min?: number; disabled?: boolean;
 }) {
   const [moneyDraft, setMoneyDraft] = useState<string | null>(null);
   const fieldId = useId();
@@ -2582,6 +2632,7 @@ function BdiField({ label, value, onChange, suffix, prefix, step = 0.1, min = 0 
           id={fieldId}
           decimal
           aria-label={label}
+          disabled={disabled}
           value={moneyDraft ?? String(value).replace('.', ',')}
           onValueChange={raw => {
             setMoneyDraft(raw);
@@ -2591,6 +2642,8 @@ function BdiField({ label, value, onChange, suffix, prefix, step = 0.1, min = 0 
           className={fieldClassName}
         /> : <Input
           id={fieldId}
+          aria-label={label}
+          disabled={disabled}
           type="number" min={min} max={suffix === '%' ? 100 : undefined} step={step}
           value={value}
           onChange={e => onChange(Number(e.target.value) || 0)}
@@ -2604,11 +2657,18 @@ function BdiField({ label, value, onChange, suffix, prefix, step = 0.1, min = 0 
   );
 }
 
-function EmptyState({ children }: { children: React.ReactNode }) {
+function EmptyState({ children, title, description, action }: {
+  children?: React.ReactNode;
+  title?: string;
+  description?: string;
+  action?: React.ReactNode;
+}) {
   return (
-    <div className="flex flex-col items-center gap-1.5 py-6 text-center text-sm text-muted-foreground">
-      <Inbox className="h-5 w-5 text-muted-foreground/50" />
-      {children}
+    <div className={cn('flex flex-col items-center gap-3 py-6 text-center text-sm text-muted-foreground', action && 'py-12 sm:py-16')}>
+      <Inbox className={cn('h-5 w-5 text-muted-foreground/50', action && 'mb-2 h-10 w-10 text-foreground')} strokeWidth={1.5} />
+      {title ? <h3 className="text-xl font-semibold text-foreground sm:text-2xl">{title}</h3> : children}
+      {description && <p className="max-w-md text-base leading-relaxed">{description}</p>}
+      {action && <div className="mt-3">{action}</div>}
     </div>
   );
 }

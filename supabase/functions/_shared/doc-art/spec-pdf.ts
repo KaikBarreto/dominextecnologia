@@ -24,7 +24,10 @@ import {
   degrees,
   rgb,
 } from "https://esm.sh/pdf-lib@1.17.1";
-import fontkit from "https://esm.sh/@pdf-lib/fontkit@1.1.1";
+import * as fontkitModule from "https://esm.sh/@pdf-lib/fontkit@1.1.1";
+
+// O CDN declara exports nomeados, mas entrega default em alguns targets Deno.
+const fontkit = (fontkitModule as unknown as { default?: typeof fontkitModule }).default ?? fontkitModule;
 
 import {
   DISPLAY_BOLD,
@@ -41,6 +44,8 @@ import type {
   ResolvedTextShape,
 } from "./types.ts";
 import { layoutParagraphs, type MeasureFn } from "./inline.ts";
+import { paginateDocArt } from "./layout.ts";
+import { logoPlateFromPng, UNKNOWN_LOGO_PLATE } from "./logoContrast.ts";
 import {
   alignOffsetMm,
   lineBaselineMm,
@@ -206,7 +211,6 @@ export async function drawDocArtPage(
 
   const pageW = mmToPt(art.page.w);
   const pageH = mmToPt(art.page.h);
-  const page = pdf.addPage([pageW, pageH]);
 
   pdf.registerFontkit(fontkit);
   const fonts = await embedFonts(pdf);
@@ -216,15 +220,23 @@ export async function drawDocArtPage(
   };
 
   const embedded = await embedImages(pdf, options.images);
+  const logoPlate = options.images?.logo?.format === 'png'
+    ? await logoPlateFromPng(options.images.logo.data)
+    : options.images?.logo?.format === 'jpg' ? null : UNKNOWN_LOGO_PLATE;
 
   /** mm medido do topo → pt medido da base. */
   const toPdfY = (mm: number) => pageH - mmToPt(mm);
 
-  for (const shape of art.shapes) {
-    drawShape(page, shape, { fonts, measures, embedded, toPdfY, pageH });
+  let firstPage: PDFPage | undefined;
+  for (const sheet of paginateDocArt(art, measures)) {
+    const page = pdf.addPage([pageW, pageH]);
+    firstPage ??= page;
+    for (const shape of sheet.shapes) {
+      drawShape(page, shape, { fonts, measures, embedded, toPdfY, pageH, logoPlate });
+    }
   }
 
-  return page;
+  return firstPage!;
 }
 
 async function embedImages(
@@ -255,6 +267,7 @@ interface DrawCtx {
   embedded: Partial<Record<DocArtImageRef, PDFImage>>;
   toPdfY: (mm: number) => number;
   pageH: number;
+  logoPlate: string | null;
 }
 
 function drawShape(page: PDFPage, shape: ResolvedShape, ctx: DrawCtx): void {
@@ -311,7 +324,8 @@ function drawShape(page: PDFPage, shape: ResolvedShape, ctx: DrawCtx): void {
         scale: mmToPt(1),
         color: toRgb(shape.fill),
         borderColor: toRgb(shape.stroke),
-        borderWidth: shape.strokeWidth ? mmToPt(shape.strokeWidth) : undefined,
+        // O path inteiro já é escalado de mm para pt, inclusive a espessura.
+        borderWidth: shape.strokeWidth,
         opacity: shape.opacity,
         borderOpacity: shape.opacity,
       });
@@ -324,14 +338,15 @@ function drawShape(page: PDFPage, shape: ResolvedShape, ctx: DrawCtx): void {
 
       // A plaqueta é desenhada aqui dentro, DEPOIS do early return acima: é o
       // que garante que ela não apareça sozinha quando não há imagem.
-      if (shape.plate) {
+      const plate = shape.src === 'logo' ? ctx.logoPlate : shape.plate;
+      if (plate) {
         const pad = mmToPt(shape.platePadding ?? 3);
         page.drawRectangle({
           x: mmToPt(shape.x) - pad,
           y: ctx.toPdfY(shape.y + shape.h) - pad,
           width: mmToPt(shape.w) + pad * 2,
           height: mmToPt(shape.h) + pad * 2,
-          color: toRgb(shape.plate),
+          color: toRgb(plate),
         });
       }
 
@@ -371,7 +386,7 @@ function drawText(page: PDFPage, shape: ResolvedTextShape, ctx: DrawCtx): void {
   const color = toRgb(shape.color) ?? rgb(0, 0, 0);
   const spacing = shape.letterSpacing ?? 0;
 
-  const lines = layoutParagraphs(shape.paragraphs, {
+  const lines = shape.lines ?? layoutParagraphs(shape.paragraphs, {
     maxWidth: mmToPt(shape.w),
     size: shape.size,
     letterSpacing: shape.letterSpacing,

@@ -51,6 +51,12 @@ export interface ResponsiveModalProps {
   density?: 'default' | 'compact';
   /** Ocupa a viewport inteira e usa saída no topo esquerdo. Ideal para fluxos longos. */
   fullScreen?: boolean;
+  /** Texto da saída do fluxo em tela cheia. */
+  backLabel?: string;
+  /** Aviso não modal ancorado acima do rodapé do fluxo fullscreen. */
+  floatingContent?: React.ReactNode;
+  /** Acompanhamento ou ação contextual à direita do título fullscreen. */
+  headerActions?: React.ReactNode;
 }
 
 export function ResponsiveModal({
@@ -67,12 +73,33 @@ export function ResponsiveModal({
   overlayParentId,
   density = 'default',
   fullScreen = false,
+  backLabel = 'Voltar',
+  floatingContent,
+  headerActions,
 }: ResponsiveModalProps) {
   const isCompact = useIsCompact();
   const generatedOverlayId = React.useId();
   const resolvedOverlayId = overlayId ?? `responsive-modal-${generatedOverlayId}`;
   const isActiveOverlay = useOverlaySlot(open, { id: resolvedOverlayId, priority: overlayPriority, ...(overlayParentId !== undefined ? { parentId: overlayParentId } : {}) });
   const visibleOpen = open && isActiveOverlay;
+  const [footerElement, setFooterElement] = React.useState<HTMLDivElement | null>(null);
+  const [footerHeight, setFooterHeight] = React.useState<number | null>(null);
+  const hasFooter = !!footer;
+
+  React.useEffect(() => {
+    if (!fullScreen || !visibleOpen) {
+      setFooterHeight(null);
+      return;
+    }
+    const element = footerElement;
+    if (!element) { setFooterHeight(hasFooter ? null : 0); return; }
+    const measure = () => setFooterHeight(Math.ceil(element.getBoundingClientRect().height));
+    measure();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    observer?.observe(element);
+    window.addEventListener('resize', measure);
+    return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
+  }, [fullScreen, visibleOpen, hasFooter, footerElement]);
 
   if (isCompact && !fullScreen) {
     return (
@@ -159,20 +186,22 @@ export function ResponsiveModal({
           {...(description ? {} : { 'aria-describedby': undefined })}
         >
           {fullScreen ? (
-            <DialogHeader className="relative shrink-0 border-b px-4 py-3 pl-16 text-left sm:px-10 sm:py-6 sm:pl-24">
+            <DialogHeader className={cn('flex shrink-0 flex-row items-center gap-3 space-y-0 border-b px-4 py-3 text-left sm:gap-6 sm:px-10 sm:py-5 [@media(max-height:500px)]:py-2', headerActions && 'grid grid-cols-[auto_minmax(0,1fr)] gap-y-1 py-2 sm:flex sm:py-5')}>
               <Button
                 type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute left-3 top-1/2 h-10 w-10 -translate-y-1/2 sm:left-6"
+                variant="cancel-ghost"
+                className="h-11 shrink-0 gap-2 px-2 text-sm font-semibold sm:h-12 sm:px-3 sm:text-base"
                 onClick={() => onOpenChange(false)}
-                aria-label="Sair"
-                title="Sair"
+                aria-label={backLabel}
               >
                 <ArrowLeft className="h-5 w-5" />
+                {backLabel}
               </Button>
-              <DialogTitle className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</DialogTitle>
-              {description ? <DialogDescription className="mt-1.5 hidden text-sm sm:block sm:text-base">{description}</DialogDescription> : null}
+              <div className={cn('min-w-0 flex-1', headerActions && 'col-span-2 row-start-2')}>
+                <DialogTitle className="break-words text-2xl font-semibold tracking-tight sm:text-3xl">{title}</DialogTitle>
+                {description ? <DialogDescription className="mt-1.5 hidden text-base lg:block [@media(max-height:500px)]:hidden">{description}</DialogDescription> : null}
+              </div>
+              {headerActions && <div className="col-start-2 row-start-1 ml-auto shrink-0">{headerActions}</div>}
             </DialogHeader>
           ) : (
             <DialogHeader className={cn('shrink-0 pr-8', density === 'compact' && 'space-y-0.5')}>
@@ -181,7 +210,12 @@ export function ResponsiveModal({
             </DialogHeader>
           )}
           <div className={cn('min-h-0 flex-1 overflow-y-auto', fullScreen && 'px-4 pb-5 pt-0 sm:px-10 sm:pb-6')}>{children}</div>
-          {footer ? <div className={cn('shrink-0 border-t', fullScreen ? 'bg-background px-4 py-3 sm:px-10 sm:py-4' : density === 'compact' ? 'pt-2.5' : 'pt-3')}>{footer}</div> : null}
+          {fullScreen && floatingContent && footerHeight !== null ? (
+            <div data-fullscreen-floating className="pointer-events-none absolute inset-x-0 z-30 flex justify-center px-4" style={{ bottom: footerHeight + 16 }}>
+              <div className="pointer-events-auto w-full max-w-3xl motion-safe:animate-in motion-safe:slide-in-from-bottom-3 motion-safe:fade-in duration-200">{floatingContent}</div>
+            </div>
+          ) : null}
+          {footer ? <div ref={setFooterElement} data-fullscreen-footer={fullScreen || undefined} className={cn('shrink-0 border-t', fullScreen ? 'bg-background px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:px-10 sm:py-4' : density === 'compact' ? 'pt-2.5' : 'pt-3')}>{footer}</div> : null}
         </DialogContent>
       </Dialog>
     </OverlayNestingProvider>

@@ -31,6 +31,43 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.1',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Edite recursos sem sair do orçamento ou do serviço',
+        description: 'Abra o cadastro de veículos, ferramentas, EPIs e brindes pela própria composição do serviço. A tela avisa quando a edição altera o cadastro da empresa, e os custos são atualizados após salvar. Busca, categorias e filtro de selecionados facilitam encontrar cada recurso.',
+        category: 'recurso',
+      },
+      {
+        title: 'Preenchimento do orçamento mais fácil de acompanhar',
+        description: 'O cliente aparece com foto e resumo dos dados, os botões de navegação ficaram maiores e as áreas vazias oferecem a ação de adicionar. O aviso para retomar um rascunho fica acima do rodapé. O cabeçalho acompanha o salvamento automático de serviços, custos e condições neste navegador.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Escolha materiais com fotos e confira a seleção',
+        description: 'A janela de materiais ganhou mais espaço, fotos dos produtos e um resumo do que será incluído. Quantidades e valores ficam mais fáceis de conferir no computador e no celular.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Preços e deslocamento reunidos no mesmo lugar',
+        description: 'A etapa Preço e condições concentra o deslocamento e a escolha entre calcular com BDI ou manter os preços dos itens. O resumo mostra o saldo sobre os custos informados, sem confundi-lo com lucro líquido.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Mais contraste nos temas claro e escuro',
+        description: 'Botões, seleções e indicadores acompanham o tema: preto com texto branco no claro e branco com texto escuro no escuro. Cancelar, Voltar e Fechar recebem destaque vermelho ao passar o cursor.',
+        category: 'correcao',
+      },
+      {
+        title: 'Certificados com novos visuais e melhor leitura',
+        description: 'Os onze modelos de certificado foram refinados, com melhor contraste do logotipo e prévia ampliada. Textos longos continuam em páginas adicionais para preservar todas as informações no documento.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.39.0',
     date: '6 de novembro de 2026',
     type: 'minor',

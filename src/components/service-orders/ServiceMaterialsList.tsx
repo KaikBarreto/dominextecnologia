@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { NumericInput, parseDecimalInputValue } from '@/components/ui/numeric-input';
 import { CurrencyField } from '@/components/ui/CurrencyField';
+import { InventoryItemThumbnail } from '@/components/inventory/InventoryItemThumbnail';
 import { Label } from '@/components/ui/label';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import {
@@ -124,6 +125,7 @@ export function ServiceMaterialsList({ serviceId, bdiFactor }: Props) {
       value: item.id,
       label: item.name,
       sublabel: item.sku ? `SKU: ${item.sku}` : undefined,
+      icon: <InventoryItemThumbnail name={item.name} imageUrl={item.image_url} fit="contain" fallbackVariant="plain" className="h-9 w-9 bg-muted/30" />,
     })),
     [items],
   );
@@ -303,7 +305,7 @@ export function ServiceMaterialsList({ serviceId, bdiFactor }: Props) {
         </div>
 
         <div className="flex justify-end">
-          <Button size="sm" onClick={addMaterial} disabled={createMaterial.isPending}>
+          <Button size="sm" className="h-11 bg-primary font-semibold text-primary-foreground hover:bg-primary/90" onClick={addMaterial} disabled={createMaterial.isPending}>
             <Plus className="mr-2 h-4 w-4" />
             {t.btnAdd}
           </Button>
@@ -348,12 +350,15 @@ export function ServiceMaterialsList({ serviceId, bdiFactor }: Props) {
                   return (
                     <TableRow key={material.id}>
                       <TableCell>
-                        <div className="min-w-[160px] space-y-1">
+                        <div className="flex min-w-[160px] items-center gap-3">
+                          <InventoryItemThumbnail name={material.item_name} imageUrl={linkedItem?.image_url} fit="contain" fallbackVariant="plain" className="h-11 w-11 bg-muted/30" />
+                          <div className="space-y-1">
                           <p className="text-sm font-medium text-foreground">{material.item_name}</p>
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span className="text-xs text-muted-foreground">{readableUnit}</span>
                             {!material.stock_item_id && <Badge variant="secondary">Manual</Badge>}
                             {overridden && <Badge className="bg-warning text-warning-foreground hover:bg-warning">Override manual</Badge>}
+                          </div>
                           </div>
                         </div>
                       </TableCell>

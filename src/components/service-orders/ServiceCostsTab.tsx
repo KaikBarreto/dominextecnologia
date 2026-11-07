@@ -495,7 +495,7 @@ export function ServiceCostsTab({
           emptyLabel={UI.emptyList}
           mobileDetailOpen={!!serviceId}
           hideList={embedded}
-          selectedItemClassName="bg-zinc-950 text-white hover:bg-zinc-900 [&_.text-muted-foreground]:text-zinc-300"
+          selectedItemClassName="bg-primary text-primary-foreground hover:bg-primary/90 [&_.text-muted-foreground]:text-primary-foreground/75"
           onSelect={handleSelectService}
         >
           {!selectedService ? (
@@ -592,7 +592,7 @@ export function ServiceCostsTab({
                     <CardContent className="p-4 space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
                         <p className="text-sm font-semibold text-foreground">{tsc.laborTitle}</p>
-                        <Button size="sm" variant="outline" className="shrink-0" onClick={() => setLaborCalcOpen(true)}>
+                        <Button size="sm" className="h-11 shrink-0 bg-primary font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => setLaborCalcOpen(true)}>
                           <Calculator className="h-3.5 w-3.5 mr-1" />{tsc.laborCalculate}
                         </Button>
                       </div>
@@ -619,7 +619,8 @@ export function ServiceCostsTab({
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-semibold text-foreground">{tsc.extrasTitle}</p>
-                        <Button size="sm" variant="outline" onClick={() => setExtraCostModalOpen(true)}>
+                        <Button size="sm" className="h-11 bg-primary font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => setExtraCostModalOpen(true)}>
+                          <Plus className="h-4 w-4" />
                           {tsc.extrasAdd}
                         </Button>
                       </div>

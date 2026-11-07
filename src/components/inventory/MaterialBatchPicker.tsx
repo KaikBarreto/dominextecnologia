@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Minus, Package, Plus, Search } from 'lucide-react';
+import { Check, ChevronDown, Minus, Package, Plus, Search, X } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { formatQty } from '@/components/inventory/InventoryMaterialSelect';
+import { InventoryItemThumbnail } from '@/components/inventory/InventoryItemThumbnail';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney, getCurrencySymbol } from '@/lib/format';
@@ -47,6 +48,7 @@ interface MaterialBatchPickerProps {
 interface ManualDraft {
   name: string;
   quantity: number;
+  quantityInput: string;
   unitCost: number;
   unitPrice: number;
 }
@@ -71,6 +73,20 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+const pickerCopy = {
+  'pt-br': { description: 'Escolha os materiais, ajuste as quantidades e adicione tudo de uma vez.', selection: 'Sua seleção', emptySelection: 'Sua seleção começa aqui', selectionHint: 'Escolha um material na lista para incluir no orçamento.', catalog: 'Catálogo de materiais', quantity: 'Quantidade', remove: 'Remover', increase: 'Aumentar quantidade de', decrease: 'Diminuir quantidade de', manual: 'Material avulso', total: 'Total dos materiais', unit: 'por unidade' },
+  en: { description: 'Choose materials, adjust quantities and add them all at once.', selection: 'Your selection', emptySelection: 'Your selection starts here', selectionHint: 'Choose a material from the list to include in the quote.', catalog: 'Materials catalog', quantity: 'Quantity', remove: 'Remove', increase: 'Increase quantity of', decrease: 'Decrease quantity of', manual: 'Custom material', total: 'Materials total', unit: 'per unit' },
+  es: { description: 'Elija materiales, ajuste las cantidades y agréguelos todos a la vez.', selection: 'Su selección', emptySelection: 'Su selección comienza aquí', selectionHint: 'Elija un material de la lista para incluirlo en el presupuesto.', catalog: 'Catálogo de materiales', quantity: 'Cantidad', remove: 'Eliminar', increase: 'Aumentar cantidad de', decrease: 'Disminuir cantidad de', manual: 'Material sin registrar', total: 'Total de materiales', unit: 'por unidad' },
+  fr: { description: 'Choisissez les matériaux, ajustez les quantités et ajoutez-les en une fois.', selection: 'Votre sélection', emptySelection: 'Votre sélection commence ici', selectionHint: 'Choisissez un matériau dans la liste pour l’inclure dans le devis.', catalog: 'Catalogue de matériaux', quantity: 'Quantité', remove: 'Supprimer', increase: 'Augmenter la quantité de', decrease: 'Diminuer la quantité de', manual: 'Matériau personnalisé', total: 'Total des matériaux', unit: 'par unité' },
+};
+
+function MaterialPhoto({ src, name, small = false }: { src?: string | null; name: string; small?: boolean }) {
+  return (
+    <InventoryItemThumbnail imageUrl={src} name={name} fit="contain" fallbackVariant="plain"
+      className={cn('border-0 bg-zinc-100 dark:bg-zinc-900 [&_svg]:text-zinc-400 dark:[&_svg]:text-zinc-500', small ? 'h-11 w-11' : 'h-16 w-16 sm:h-20 sm:w-20 [&_svg]:h-7 [&_svg]:w-7')} />
+  );
+}
+
 /**
  * Sheet de seleção em lote de materiais, mobile-first (Drawer no celular,
  * Dialog no desktop, via `ResponsiveModal`). Um toque abre, busca com foco
@@ -85,6 +101,7 @@ function round2(n: number): number {
 export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [], onConfirm }: MaterialBatchPickerProps) {
   const { locale, currency } = useAppLocaleContext();
   const tq = MESSAGES[locale].app.crm.quotes;
+  const copy = pickerCopy[locale];
   // Só pra a unidade padrão ("un") de material sem unidade cadastrada — mesma
   // copy que o seletor de material da OS já usa.
   const tOs = MESSAGES[locale].app.os.stockConsumption;
@@ -156,7 +173,7 @@ export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [
     setManualDrafts((prev) => {
       const idx = prev.findIndex((d) => normalize(d.name) === normalizedSearch);
       if (idx === -1) {
-        return [...prev, { name: trimmedSearch, quantity: 0, unitCost: 0, unitPrice: 0, ...patch }];
+        return [...prev, { name: trimmedSearch, quantity: 0, quantityInput: '', unitCost: 0, unitPrice: 0, ...patch }];
       }
       const next = [...prev];
       next[idx] = { ...next[idx], ...patch };
@@ -180,6 +197,42 @@ export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [
       return sum + qty * price;
     }, 0) +
     manualDrafts.reduce((sum, d) => (d.quantity > 0 ? sum + d.quantity * d.unitPrice : sum), 0);
+
+  const selectedEntries = [
+    ...items.filter(item => getQty(item.id) > 0).map(item => ({
+      id: item.id, name: item.name, imageUrl: item.image_url,
+      quantity: getQty(item.id), unit: item.unit || tOs.sectionUnit,
+      price: Number(item.sale_price ?? item.cost_price ?? 0), manual: false,
+    })),
+    ...manualDrafts.filter(draft => draft.quantity > 0).map(draft => ({
+      id: draft.name, name: draft.name, imageUrl: null,
+      quantity: draft.quantity, unit: tOs.sectionUnit, price: draft.unitPrice, manual: true,
+    })),
+  ];
+
+  const removeSelected = (id: string, manual: boolean) => {
+    if (manual) setManualDrafts(previous => previous.filter(draft => draft.name !== id));
+    else setQtyFor(id, 0);
+  };
+
+  const selectionList = (
+    <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+      {selectedEntries.map(entry => (
+        <li key={`${entry.manual ? 'manual' : 'catalog'}-${entry.id}`} className="flex items-start gap-3 py-4">
+          <MaterialPhoto src={entry.imageUrl} name={entry.name} small />
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="break-words text-sm font-semibold leading-snug">{entry.name}</p>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">{formatQty(entry.quantity)} {entry.unit} × {fmt(entry.price)}</p>
+            {entry.manual && <p className="text-xs text-zinc-500 dark:text-zinc-400">{copy.manual}</p>}
+            <p className="break-words text-sm font-bold tabular-nums">{fmt(entry.quantity * entry.price)}</p>
+          </div>
+          <Button type="button" variant="destructive-ghost" size="icon" className="-mr-2 -mt-1 h-9 w-9 shrink-0" aria-label={`${copy.remove} ${entry.name}`} onClick={() => removeSelected(entry.id, entry.manual)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </li>
+      ))}
+    </ul>
+  );
 
   const handleConfirm = () => {
     const selections: MaterialBatchSelection[] = [];
@@ -227,31 +280,31 @@ export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [
     return (
       <div
         key={item.id}
-        role="button"
-        tabIndex={0}
-        onClick={() => handleRowTap(item.id)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleRowTap(item.id);
-          }
-        }}
         className={cn(
-          'flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors',
-          selected ? 'border-zinc-950 bg-muted/50 ring-1 ring-zinc-950' : 'border-border hover:bg-muted/40',
+          'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 border-b border-zinc-200 py-5 transition-colors dark:border-zinc-800 sm:gap-x-5',
+          selected && 'border-primary',
         )}
       >
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{item.name}</p>
-          {sublabel && <p className="truncate text-xs text-muted-foreground">{sublabel}</p>}
-          <p className="text-xs text-muted-foreground">{fmt(price)} / {unit}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <button type="button" aria-label={`${tq.materialPickerConfirm}: ${item.name}`} aria-pressed={selected} onClick={() => handleRowTap(item.id)} className="col-span-2 flex min-w-0 items-center gap-4 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 dark:focus-visible:ring-zinc-100 sm:col-span-1">
+          <span className="relative shrink-0">
+            <MaterialPhoto src={item.image_url} name={item.name} />
+            {selected && <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground"><Check className="h-3.5 w-3.5" aria-hidden="true" /></span>}
+          </span>
+          <span className="min-w-0 space-y-1.5">
+            <span className="block break-words text-base font-semibold leading-snug sm:text-lg">{item.name}</span>
+            {sublabel && <span className="block break-words text-xs text-zinc-500 dark:text-zinc-400 sm:text-sm">{sublabel}</span>}
+            <span className="block text-sm font-medium tabular-nums text-zinc-700 dark:text-zinc-200">{fmt(price)} <span className="font-normal text-zinc-500 dark:text-zinc-400">/ {unit}</span></span>
+          </span>
+        </button>
+        <div className="col-span-2 flex flex-wrap items-center justify-between gap-3 pl-20 sm:col-span-1 sm:flex-col sm:items-end sm:gap-2 sm:pl-0">
+          <div className="flex shrink-0 items-center gap-1.5">
           <Button
             type="button"
             variant="outline"
             size="icon"
-            className="h-10 w-10 shrink-0"
+            aria-label={`${copy.decrease} ${item.name}`}
+            className="h-11 w-11 shrink-0"
+            disabled={qty <= 0}
             onClick={() => setQtyFor(item.id, qty - 1)}
           >
             <Minus className="h-4 w-4" />
@@ -259,20 +312,23 @@ export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [
           <NumericInput
             decimal
             maxDecimals={2}
+            aria-label={`${copy.quantity} de ${item.name}`}
             value={qtyMap[item.id] ?? ''}
             onValueChange={(v) => setQtyMap((prev) => ({ ...prev, [item.id]: v }))}
             placeholder="0"
-            className="h-10 w-14 text-center px-1"
+            className="h-11 w-14 border-x-0 border-t-0 rounded-none px-1 text-center text-base font-semibold"
           />
           <Button
             type="button"
-            variant="outline"
             size="icon"
-            className="h-10 w-10 shrink-0"
+            aria-label={`${copy.increase} ${item.name}`}
+            className="h-11 w-11 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setQtyFor(item.id, qty + 1)}
           >
             <Plus className="h-4 w-4" />
           </Button>
+          </div>
+          {selected && <p className="text-right text-sm font-bold tabular-nums">{fmt(qty * price)}</p>}
         </div>
       </div>
     );
@@ -283,28 +339,33 @@ export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [
       open={open}
       onOpenChange={onOpenChange}
       title={tq.materialPickerTitle}
+      className="sm:h-[min(88dvh,900px)] sm:!max-w-[min(1280px,calc(100vw-3rem))] sm:p-7 [&_h2]:text-xl sm:[&_h2]:text-2xl"
+      drawerClassName="h-[94dvh] max-h-[94dvh]"
       footer={
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0 text-sm">
-            <p className="font-medium">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 sm:justify-start">
+            <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 sm:text-base">
               {selectedCount === 1
                 ? tq.materialPickerSelectedCountOne
                 : tq.materialPickerSelectedCount.replace('{count}', String(selectedCount))}
             </p>
-            <p className="truncate text-xs text-muted-foreground">
+            <p className="break-words text-lg font-bold tabular-nums text-zinc-950 dark:text-zinc-50 sm:text-xl">
               {tq.materialPickerSelectedTotal.replace('{total}', fmt(selectedTotal))}
             </p>
           </div>
-          <Button type="button" onClick={handleConfirm} disabled={selectedCount === 0} className="shrink-0">
+          <Button type="button" onClick={handleConfirm} disabled={selectedCount === 0} className="h-[3.25rem] w-full shrink-0 bg-primary px-7 text-base font-bold text-primary-foreground hover:bg-primary/90 sm:h-14 sm:w-auto">
+            <Plus className="h-5 w-5" />
             {tq.materialPickerConfirm}
           </Button>
         </div>
       }
     >
-      <div className="flex flex-col gap-3">
-        <div className="sticky top-0 z-10 -mt-1 border-b bg-background pb-3 pt-1">
+      <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_19rem] lg:gap-9">
+      <div className="min-w-0">
+        <div className="sticky top-0 z-10 -mt-1 bg-background pb-4 pt-1">
+          <p className="mb-4 hidden text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 sm:block">{copy.description}</p>
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500 dark:text-zinc-400" />
             <Input
               ref={searchInputRef}
               autoFocus
@@ -313,37 +374,44 @@ export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={tq.materialPickerSearch}
-              className="h-11 pl-9"
+              className="h-[3.25rem] rounded-lg border-zinc-300 bg-zinc-50 pl-12 pr-4 text-base dark:border-zinc-700 dark:bg-zinc-900 sm:h-14"
             />
           </div>
         </div>
 
-        <div className="space-y-3">
+        {selectedCount > 0 && (
+          <details className="mb-5 border-y border-zinc-200 dark:border-zinc-800 lg:hidden">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-3 text-sm font-semibold">
+              <span>{copy.selection} ({selectedCount})</span><ChevronDown className="h-4 w-4" />
+            </summary>
+            {selectionList}
+          </details>
+        )}
+
+        <div className="space-y-6">
           {frequentGroup.length > 0 && (
             <div className="space-y-2">
-              <p className="px-1 text-xs font-medium uppercase text-muted-foreground">{tq.materialPickerGroupFrequent}</p>
-              <div className="space-y-2">{frequentGroup.map(renderRow)}</div>
+              <p className="text-sm font-bold tracking-wide text-zinc-600 dark:text-zinc-400">{tq.materialPickerGroupFrequent}</p>
+              <div>{frequentGroup.map(renderRow)}</div>
             </div>
           )}
 
           {restGroup.length > 0 && (
             <div className="space-y-2">
-              {frequentGroup.length > 0 && (
-                <p className="px-1 text-xs font-medium uppercase text-muted-foreground">{tq.materialPickerGroupAll}</p>
-              )}
-              <div className="space-y-2">{restGroup.map(renderRow)}</div>
+              <p className="text-sm font-bold tracking-wide text-zinc-600 dark:text-zinc-400">{frequentGroup.length > 0 ? tq.materialPickerGroupAll : copy.catalog}</p>
+              <div>{restGroup.map(renderRow)}</div>
             </div>
           )}
 
           {showManualRow && (
             <div
               className={cn(
-                'flex flex-col gap-2 rounded-lg border border-dashed p-3',
-                (manualDraft?.quantity ?? 0) > 0 && 'border-zinc-950 border-solid bg-muted/50',
+                'flex flex-col gap-5 rounded-lg border border-dashed border-zinc-300 p-4 dark:border-zinc-700 sm:p-5',
+                (manualDraft?.quantity ?? 0) > 0 && 'border-primary border-solid',
               )}
             >
-              <p className="text-sm font-medium">{tq.materialPickerManual.replace('{name}', trimmedSearch)}</p>
-              <div className="flex flex-wrap items-end gap-2">
+              <div className="flex items-center gap-3"><Package className="h-5 w-5 shrink-0" /><p className="break-words text-base font-semibold">{tq.materialPickerManual.replace('{name}', trimmedSearch)}</p></div>
+              <div className="flex flex-wrap items-end gap-x-4 gap-y-5">
                 <div className="space-y-1">
                   <Label className="block whitespace-nowrap text-sm font-semibold text-foreground">{tq.serviceColUnitCost}</Label>
                   <CurrencyField symbol={currencySymbol} className="w-32">
@@ -383,24 +451,32 @@ export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [
                     variant="outline"
                     size="icon"
                     className="h-10 w-10 shrink-0"
-                    onClick={() => upsertManualDraft({ quantity: Math.max(0, round2((manualDraft?.quantity ?? 0) - 1)) })}
+                    aria-label={`${copy.decrease} ${trimmedSearch}`}
+                    onClick={() => {
+                      const quantity = Math.max(0, round2((manualDraft?.quantity ?? 0) - 1));
+                      upsertManualDraft({ quantity, quantityInput: quantity > 0 ? formatQty(quantity) : '' });
+                    }}
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
                   <NumericInput
                     decimal
                     maxDecimals={2}
-                    value={manualDraft && manualDraft.quantity > 0 ? formatQty(manualDraft.quantity) : ''}
-                    onValueChange={(v) => upsertManualDraft({ quantity: parseQtyInput(v) })}
+                    aria-label={`${copy.quantity} de ${trimmedSearch}`}
+                    value={manualDraft?.quantityInput ?? ''}
+                    onValueChange={(v) => upsertManualDraft({ quantity: parseQtyInput(v), quantityInput: v })}
                     placeholder="0"
                     className="h-10 w-14 text-center px-1"
                   />
                   <Button
                     type="button"
-                    variant="outline"
                     size="icon"
-                    className="h-10 w-10 shrink-0"
-                    onClick={() => upsertManualDraft({ quantity: round2((manualDraft?.quantity ?? 0) + 1) })}
+                    aria-label={`${copy.increase} ${trimmedSearch}`}
+                    className="h-11 w-11 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
+                    onClick={() => {
+                      const quantity = round2((manualDraft?.quantity ?? 0) + 1);
+                      upsertManualDraft({ quantity, quantityInput: formatQty(quantity) });
+                    }}
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -413,6 +489,26 @@ export function MaterialBatchPicker({ open, onOpenChange, items, frequentIds = [
             <EmptyState icon={<Package className="h-8 w-8" />} title={tq.materialPickerEmpty} size="compact" />
           )}
         </div>
+      </div>
+      <aside className="hidden min-w-0 border-l border-zinc-200 pl-7 dark:border-zinc-800 lg:block">
+        <div className="sticky top-0 space-y-5 pt-1">
+          <div className="flex items-center justify-between gap-3 border-b border-zinc-200 pb-4 dark:border-zinc-800">
+            <h3 className="text-xl font-bold tracking-tight">{copy.selection}</h3>
+            <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-primary px-2 text-sm font-bold text-primary-foreground">{selectedCount}</span>
+          </div>
+          {selectedCount > 0 ? <div className="max-h-[47dvh] overflow-y-auto pr-1">{selectionList}</div> : (
+            <div className="space-y-3 py-10 text-center">
+              <Package className="mx-auto h-9 w-9 text-zinc-300 dark:text-zinc-700" aria-hidden="true" />
+              <p className="font-semibold text-zinc-800 dark:text-zinc-100">{copy.emptySelection}</p>
+              <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">{copy.selectionHint}</p>
+            </div>
+          )}
+          <div className="space-y-1 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+            <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{copy.total}</p>
+            <p className="break-words text-2xl font-bold tracking-tight tabular-nums text-zinc-950 dark:text-zinc-50">{fmt(selectedTotal)}</p>
+          </div>
+        </div>
+      </aside>
       </div>
     </ResponsiveModal>
   );

@@ -26,7 +26,7 @@ export function QuoteBdiComposer({
   const id = useId();
   const costRate = Math.max(0, bdiFactor * 100);
   const parts = [
-    { key: 'cost', label: 'Custo de execução', rate: costRate, amount: totalCost, color: 'bg-zinc-950', icon: Wrench },
+    { key: 'cost', label: 'Custo de execução', rate: costRate, amount: totalCost, color: 'bg-primary', icon: Wrench },
     { key: 'tax', label: 'Imposto', rate: taxRate, amount: finalPrice * taxRate / 100, color: 'bg-red-600', icon: Percent, onChange: onTaxChange },
     { key: 'admin', label: 'Administração', rate: adminRate, amount: finalPrice * adminRate / 100, color: 'bg-amber-500', icon: Building2, onChange: onAdminChange },
     { key: 'profit', label: 'Lucro', rate: profitRate, amount: finalPrice * profitRate / 100, color: 'bg-emerald-600', icon: TrendingUp, onChange: onProfitChange },
@@ -36,12 +36,12 @@ export function QuoteBdiComposer({
 
   return (
     <section className="min-w-0 overflow-hidden rounded-2xl border border-border bg-background" aria-label="Composição do preço sugerido">
-      <div className="flex flex-wrap items-end justify-between gap-3 bg-zinc-950 px-5 py-5 text-white sm:px-6">
+      <div className="flex flex-wrap items-end justify-between gap-3 bg-primary px-5 py-5 text-primary-foreground sm:px-6">
         <div className="min-w-0">
-          <p className="text-sm text-zinc-300">Composição do preço sugerido</p>
+          <p className="text-sm text-primary-foreground/80">Composição do preço sugerido</p>
           <p className="mt-1 break-words text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">{formatMoney(finalPrice)}</p>
         </div>
-        <div className="hidden text-right sm:block"><p className="text-xs text-zinc-400">Coeficiente BDI</p><p className="mt-1 font-mono text-base font-semibold">{bdiFactor.toFixed(4)}</p></div>
+        <div className="hidden text-right sm:block"><p className="text-xs text-primary-foreground/70">Coeficiente BDI</p><p className="mt-1 font-mono text-base font-semibold">{bdiFactor.toFixed(4)}</p></div>
       </div>
 
       <div className="flex gap-5 p-4 sm:gap-6 sm:p-6">
@@ -58,7 +58,7 @@ export function QuoteBdiComposer({
               <div key={part.key} data-testid={`bdi-layer-${part.key}`} className="grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-3 py-3 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_6.5rem] sm:py-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white', part.color)}><Icon className="h-3.5 w-3.5" /></span>
+                    <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-md', part.key === 'cost' ? 'text-primary-foreground' : 'text-white', part.color)}><Icon className="h-3.5 w-3.5" /></span>
                     <Label htmlFor={part.onChange ? `${id}-${part.key}` : undefined} className="text-base font-semibold sm:text-lg">{part.label}</Label>
                   </div>
                   <p className="mt-1.5 pl-9 text-sm font-medium tabular-nums text-foreground/80">{formatMoney(part.amount)}</p>

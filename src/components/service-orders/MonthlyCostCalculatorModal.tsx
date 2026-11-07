@@ -223,8 +223,8 @@ export function MonthlyCostCalculatorModal({ open, onOpenChange, initialSalary, 
 
   const footer = (
     <div className="flex gap-2 w-full">
-      <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>{t.monthlyCostCancel}</Button>
-      <Button className="flex-1" onClick={handleApply}>
+      <Button variant="cancel" className="flex-1" onClick={() => onOpenChange(false)}>{t.monthlyCostCancel}</Button>
+      <Button className="flex-1 bg-primary font-semibold text-primary-foreground hover:bg-primary/90" onClick={handleApply}>
         {t.monthlyCostApply.replace('{amount}', fmt(total))}
       </Button>
     </div>

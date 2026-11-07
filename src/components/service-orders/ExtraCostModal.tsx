@@ -66,8 +66,8 @@ export function ExtraCostModal({ open, onOpenChange, onAdd }: ExtraCostModalProp
       title={t.extraCostTitle}
       footer={
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="h-11 flex-1">{t.extraCostCancel}</Button>
-          <Button onClick={handleAdd} disabled={amount <= 0} className="h-11 flex-1">
+          <Button variant="cancel" onClick={() => onOpenChange(false)} className="h-11 flex-1">{t.extraCostCancel}</Button>
+          <Button onClick={handleAdd} disabled={amount <= 0} className="h-11 flex-1 bg-primary font-semibold text-primary-foreground hover:bg-primary/90">
             <Plus className="h-3.5 w-3.5 mr-1" />{t.extraCostAdd}
           </Button>
         </div>

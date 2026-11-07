@@ -74,4 +74,13 @@ describe('InventoryItemThumbnail', () => {
     expect(container.firstChild).toHaveClass('border-transparent', 'bg-transparent');
     expect(container.querySelector('svg')).toHaveClass('text-foreground');
   });
+
+  it('permite mostrar o produto inteiro sem alterar o recorte padrão das outras listas', async () => {
+    resolveStorageUrl.mockResolvedValue('/produto.jpg');
+    const { rerender } = render(<InventoryItemThumbnail name="Produto" imageUrl="/produto.jpg" />);
+    expect(await screen.findByRole('img')).toHaveClass('object-cover');
+    rerender(<InventoryItemThumbnail name="Produto" imageUrl="/produto.jpg" fit="contain" />);
+    expect(screen.getByRole('img')).toHaveClass('object-contain');
+    expect(screen.getByRole('img')).not.toHaveClass('object-cover');
+  });
 });

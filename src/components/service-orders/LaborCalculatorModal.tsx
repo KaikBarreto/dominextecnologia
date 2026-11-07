@@ -263,8 +263,8 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
 
   const footer = (
     <div className="flex gap-2 w-full">
-      <Button variant="outline" className="h-11 flex-1" onClick={() => onOpenChange(false)}>{t.laborCancel}</Button>
-      <Button className="h-11 flex-1" onClick={handleApply} disabled={calculations.totalCost <= 0}>
+      <Button variant="cancel" className="h-11 flex-1" onClick={() => onOpenChange(false)}>{t.laborCancel}</Button>
+      <Button className="h-11 flex-1 bg-primary font-semibold text-primary-foreground hover:bg-primary/90" onClick={handleApply} disabled={calculations.totalCost <= 0}>
         {t.laborApply.replace('{rate}', `${fmt(calculations.avgRate)}`)}
       </Button>
     </div>
@@ -317,7 +317,7 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
                 <Users className="h-4 w-4" />
                 {t.laborEmployeesHeader.replace('{count}', String(workers.length))}
               </div>
-              <Button size="sm" className="h-11" variant="outline" onClick={addWorker}>
+              <Button size="sm" className="h-11 bg-primary font-semibold text-primary-foreground hover:bg-primary/90" onClick={addWorker}>
                 <Plus className="h-3.5 w-3.5 mr-1" />{t.laborAddEmployee}
               </Button>
             </div>
@@ -401,9 +401,8 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
                           </CurrencyField>
                           <Button
                             type="button"
-                            variant="outline"
                             size="sm"
-                            className="h-11 px-2 shrink-0"
+                            className="h-11 shrink-0 bg-primary px-3 text-primary-foreground hover:bg-primary/90"
                             onClick={() => setCostCalcWorkerId(w.id)}
                             title={t.laborCalcMonthlyDetail}
                           >

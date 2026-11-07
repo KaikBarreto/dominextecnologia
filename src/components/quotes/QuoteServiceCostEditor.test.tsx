@@ -70,7 +70,7 @@ describe('QuoteServiceCostEditor', () => {
     });
 
     const laborButton = Array.from(container.querySelectorAll('button')).find(button => button.textContent?.includes('Mão de obra'));
-    expect(laborButton?.className).toContain('border-zinc-950');
+    expect(laborButton?.className).toContain('border-primary');
     expect(container.textContent).toContain('Custo HH');
 
     const calculatorButton = Array.from(container.querySelectorAll('button')).find(button => button.textContent?.includes('Calcular'));

@@ -233,6 +233,8 @@ export interface TextShape extends ShapeBase {
    * Protege a arte de um texto longo demais vazar por cima do desenho.
    */
   maxLines?: number;
+  /** Altura útil em mm. O excedente segue em páginas de continuação. */
+  h?: Mm;
 }
 
 export type DocArtShape =
@@ -347,6 +349,8 @@ export interface ResolvedTextShape extends Omit<TextShape, 'color'> {
    * ele sabe medir a própria fonte.
    */
   paragraphs: InlineRun[][];
+  /** Linhas medidas uma única vez pelo paginador compartilhado. */
+  lines?: LaidOutLine[];
 }
 
 export type ResolvedShape =

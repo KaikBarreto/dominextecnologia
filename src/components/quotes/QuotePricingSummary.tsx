@@ -50,14 +50,15 @@ const COPY: Record<LocaleCode, {
   practiced: string;
   discount: string;
   profit: string;
+  balanceNote: string;
   margin: string;
   payment: string;
   cash: string;
 }> = {
-  'pt-br': { title: 'Resumo do orçamento', automatic: 'BDI automático', manual: 'Orçamento padrão', labor: 'Mão de obra', resources: 'Recursos e extras', inputs: 'Insumos dos serviços', materials: 'Materiais', displacement: 'Deslocamento', totalCost: 'Custo total', suggested: 'Preço sugerido', practiced: 'Preço praticado', discount: 'Desconto', profit: 'Lucro estimado', margin: 'Margem', payment: 'Pagamentos', cash: 'À vista' },
-  en: { title: 'Quote summary', automatic: 'Automatic BDI', manual: 'Standard quote', labor: 'Labor', resources: 'Resources and extras', inputs: 'Service supplies', materials: 'Materials', displacement: 'Travel', totalCost: 'Total cost', suggested: 'Suggested price', practiced: 'Applied price', discount: 'Discount', profit: 'Estimated profit', margin: 'Margin', payment: 'Payments', cash: 'Cash' },
-  es: { title: 'Resumen del presupuesto', automatic: 'BDI automático', manual: 'Presupuesto estándar', labor: 'Mano de obra', resources: 'Recursos y extras', inputs: 'Insumos de servicios', materials: 'Materiales', displacement: 'Desplazamiento', totalCost: 'Costo total', suggested: 'Precio sugerido', practiced: 'Precio aplicado', discount: 'Descuento', profit: 'Beneficio estimado', margin: 'Margen', payment: 'Pagos', cash: 'Al contado' },
-  fr: { title: 'Résumé du devis', automatic: 'BDI automatique', manual: 'Devis standard', labor: "Main-d'œuvre", resources: 'Ressources et extras', inputs: 'Fournitures des services', materials: 'Matériaux', displacement: 'Déplacement', totalCost: 'Coût total', suggested: 'Prix suggéré', practiced: 'Prix appliqué', discount: 'Remise', profit: 'Bénéfice estimé', margin: 'Marge', payment: 'Paiements', cash: 'Comptant' },
+  'pt-br': { title: 'Resumo do orçamento', automatic: 'Sugestão com BDI', manual: 'Preços dos itens', labor: 'Mão de obra', resources: 'Recursos e extras', inputs: 'Insumos dos serviços', materials: 'Materiais', displacement: 'Deslocamento', totalCost: 'Custo total', suggested: 'Preço sugerido', practiced: 'Preço praticado', discount: 'Desconto', profit: 'Saldo sobre custos', margin: 'Margem sobre preço', payment: 'Pagamentos', cash: 'À vista', balanceNote: 'Preço após desconto menos custos informados. Não representa lucro líquido.' },
+  en: { title: 'Quote summary', automatic: 'BDI estimate', manual: 'Item prices', labor: 'Labor', resources: 'Resources and extras', inputs: 'Service supplies', materials: 'Materials', displacement: 'Travel', totalCost: 'Total cost', suggested: 'Suggested price', practiced: 'Applied price', discount: 'Discount', profit: 'Price minus costs', margin: 'Margin on price', payment: 'Payments', cash: 'Cash', balanceNote: 'Price after discount minus entered costs. This is not net profit.' },
+  es: { title: 'Resumen del presupuesto', automatic: 'Estimación con BDI', manual: 'Precios de artículos', labor: 'Mano de obra', resources: 'Recursos y extras', inputs: 'Insumos de servicios', materials: 'Materiales', displacement: 'Desplazamiento', totalCost: 'Costo total', suggested: 'Precio sugerido', practiced: 'Precio aplicado', discount: 'Descuento', profit: 'Saldo sobre costos', margin: 'Margen sobre precio', payment: 'Pagos', cash: 'Al contado', balanceNote: 'Precio tras descuento menos costos informados. No representa beneficio neto.' },
+  fr: { title: 'Résumé du devis', automatic: 'Estimation avec BDI', manual: 'Prix des articles', labor: "Main-d'œuvre", resources: 'Ressources et extras', inputs: 'Fournitures des services', materials: 'Matériaux', displacement: 'Déplacement', totalCost: 'Coût total', suggested: 'Prix suggéré', practiced: 'Prix appliqué', discount: 'Remise', profit: 'Solde sur coûts', margin: 'Marge sur le prix', payment: 'Paiements', cash: 'Comptant', balanceNote: 'Prix après remise moins coûts saisis. Ce n’est pas un bénéfice net.' },
 };
 
 export function QuotePricingSummary({
@@ -78,7 +79,7 @@ export function QuotePricingSummary({
   const copy = COPY[locale];
   const result = calculateQuotePricingSummary(data);
   const fmt = (value: number) => formatMoney(Math.round(value * 100) / 100, currency, locale);
-  const labelClassName = cn('font-medium', tone === 'contrast' ? 'text-zinc-300' : 'text-foreground/80');
+  const labelClassName = cn('font-medium', tone === 'contrast' ? 'text-primary-foreground/80' : 'text-foreground/80');
   const rows = [
     [copy.labor, data.laborCost],
     [copy.resources, data.resourcesCost],
@@ -88,7 +89,7 @@ export function QuotePricingSummary({
   ] as const;
 
   return (
-    <aside className={cn('rounded-xl border bg-background p-4', tone === 'contrast' && 'border-zinc-950 bg-zinc-950 p-6 text-white [&_.text-muted-foreground]:text-zinc-400 [&_.border-y]:border-white/15 [&_.border-t]:border-white/15 [&_.border-l]:border-white/15 [&_[data-summary-mode]]:bg-white/10 [&_[data-summary-mode]]:text-white', className)} aria-label={copy.title}>
+    <aside className={cn('rounded-xl border bg-background p-4', tone === 'contrast' && 'border-primary bg-primary p-6 text-primary-foreground [&_.text-muted-foreground]:text-primary-foreground/70 [&_.border-y]:border-primary-foreground/15 [&_.border-t]:border-primary-foreground/15 [&_.border-l]:border-primary-foreground/15 [&_[data-summary-mode]]:bg-primary-foreground/10 [&_[data-summary-mode]]:text-primary-foreground', className)} aria-label={copy.title}>
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-base font-semibold">{copy.title}</h3>
         <Badge data-summary-mode variant="default" className="whitespace-nowrap">
@@ -140,6 +141,8 @@ export function QuotePricingSummary({
           </p>
         </div>
       </div>
+
+      <p className={cn('mt-2 text-xs leading-relaxed', tone === 'contrast' ? 'text-primary-foreground/70' : 'text-muted-foreground')}>{copy.balanceNote}</p>
 
       <div className="mt-4 space-y-2 text-sm">
         <p className={cn('text-xs font-semibold uppercase tracking-wide', labelClassName)}>{copy.payment}</p>

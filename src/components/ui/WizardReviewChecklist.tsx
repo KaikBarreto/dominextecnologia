@@ -98,7 +98,7 @@ interface WizardMobileSummaryProps {
 export function WizardMobileSummary({ title, summary, children, className }: WizardMobileSummaryProps) {
   return (
     <Collapsible className={cn('xl:hidden', className)}>
-      <CollapsibleContent className="max-h-[34dvh] overflow-y-auto border-b pb-3">
+      <CollapsibleContent className="max-h-[34dvh] overflow-y-auto border-b pb-3 [@media(max-height:500px)]:max-h-10">
         {children}
       </CollapsibleContent>
       <CollapsibleTrigger asChild>

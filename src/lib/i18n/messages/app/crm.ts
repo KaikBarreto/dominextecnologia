@@ -527,7 +527,7 @@ export const crm = {
       whatsAppMsg: 'Olá! Segue a proposta #{number} no valor de {value}.\n\nAcesse: {url}',
 
       // QuoteFormDialog — wizard steps
-      formTitleNew: 'Novo Orçamento',
+      formTitleNew: 'Criar orçamento',
       formTitleEdit: 'Editar Orçamento #{number}',
       formTitleDraft: 'Rascunho de Orçamento',
 
@@ -1694,7 +1694,7 @@ export const crm = {
       viewPDFError: 'Could not generate the PDF. Please try again.',
       whatsAppMsg: 'Hi! Here is proposal #{number} for {value}.\n\nAccess it at: {url}',
 
-      formTitleNew: 'New Quote',
+      formTitleNew: 'Create quote',
       formTitleEdit: 'Edit Quote #{number}',
       formTitleDraft: 'Quote Draft',
 
@@ -2824,7 +2824,7 @@ export const crm = {
       viewPDFError: 'No fue posible generar el PDF. Inténtalo de nuevo.',
       whatsAppMsg: '¡Hola! Te comparto la propuesta #{number} por valor de {value}.\n\nAccede aquí: {url}',
 
-      formTitleNew: 'Nuevo Presupuesto',
+      formTitleNew: 'Crear presupuesto',
       formTitleEdit: 'Editar Presupuesto #{number}',
       formTitleDraft: 'Borrador de Presupuesto',
 
@@ -3952,7 +3952,7 @@ export const crm = {
       viewPDFError: 'Impossible de générer le PDF. Veuillez réessayer.',
       whatsAppMsg: 'Bonjour ! Voici la proposition #{number} pour un montant de {value}.\n\nAccédez-y ici : {url}',
 
-      formTitleNew: 'Nouveau Devis',
+      formTitleNew: 'Créer un devis',
       formTitleEdit: 'Modifier le Devis #{number}',
       formTitleDraft: 'Brouillon de Devis',
 

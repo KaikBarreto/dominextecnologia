@@ -81,6 +81,8 @@ interface CostResourceFormSheetProps {
     items: CostItem[];
   }) => void;
   isPending?: boolean;
+  /** Edição aberta dentro de serviço/orçamento continua alterando o cadastro compartilhado. */
+  sharedCatalogNotice?: boolean;
 }
 
 const DEFAULT_VEHICLE_ITEMS: CostItem[] = [
@@ -120,13 +122,15 @@ export function CostResourceFormSheet({
   category,
   onSave,
   isPending,
+  sharedCatalogNotice = false,
 }: CostResourceFormSheetProps) {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm.costModals;
   const fmt = (v: number) => formatMoney(v, currency, locale);
 
   const resourceId = resource?.id ?? null;
-  const { data: existingItems } = useCostResourceItems(resourceId);
+  const { data: existingItems, isError: itemsLoadFailed, refetch: refetchItems } = useCostResourceItems(resourceId);
+  const waitingForItems = !!resourceId && existingItems === undefined;
 
   const [name, setName] = useState('');
   const [monthlyHours, setMonthlyHours] = useState(176);
@@ -261,7 +265,7 @@ export function CostResourceFormSheet({
   };
 
   const handleSubmit = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || waitingForItems) return;
     setIsUploading(true);
 
     let finalPhotoUrl = photoUrl;
@@ -292,7 +296,7 @@ export function CostResourceFormSheet({
   };
 
   const footer = (
-    <Button className="w-full" onClick={handleSubmit} disabled={!name.trim() || isPending || isUploading}>
+    <Button className="h-12 w-full bg-primary font-bold text-primary-foreground hover:bg-primary/90" onClick={handleSubmit} disabled={!name.trim() || waitingForItems || isPending || isUploading}>
       <Save className="h-4 w-4 mr-2" />
       {isPending || isUploading ? t.saving : t.save}
     </Button>
@@ -309,6 +313,13 @@ export function CostResourceFormSheet({
       footer={footer}
     >
       <div className="space-y-6">
+        {sharedCatalogNotice && <aside role="note" aria-label="Cadastro compartilhado" className="border-l-2 border-zinc-950 pl-4 text-sm leading-relaxed dark:border-zinc-300">
+          <p className="font-semibold text-foreground">Você está editando o cadastro da empresa</p>
+          <p className="mt-1 text-muted-foreground">As alterações serão compartilhadas com os locais que usam este recurso. Esta edição não se limita ao serviço ou orçamento atual.</p>
+        </aside>}
+        {waitingForItems && <div role="status" className="text-sm leading-relaxed text-muted-foreground">
+          {itemsLoadFailed ? <><p>Não foi possível carregar os custos deste recurso. Tente novamente antes de salvar.</p><Button type="button" variant="outline" className="mt-2" onClick={() => { void refetchItems(); }}>Tentar novamente</Button></> : 'Carregando os custos cadastrados deste recurso…'}
+        </div>}
         <p className="text-sm text-muted-foreground">
           {isGift ? t.descGift : t.descResource}
         </p>
@@ -333,7 +344,7 @@ export function CostResourceFormSheet({
                 <button
                   type="button"
                   onClick={removePhoto}
-                  className="absolute top-1 right-1 rounded-full bg-black/50 p-0.5 text-white hover:bg-black/70"
+                  className="absolute top-1 right-1 rounded-full bg-black/50 p-0.5 text-white hover:bg-red-600 hover:text-white"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -442,7 +453,7 @@ export function CostResourceFormSheet({
                       placeholder={isGift ? t.itemPlaceholderNameGift : t.itemPlaceholderName}
                       value={item.name}
                       onChange={e => handleItemChange(index, 'name', e.target.value)}
-                      className="flex-1"
+                      className="min-w-0 flex-1"
                     />
                     <Button variant="destructive-ghost" size="icon" className="shrink-0" onClick={() => handleRemoveItem(index)}>
                       <Trash2 className="h-4 w-4" />
@@ -500,18 +511,18 @@ export function CostResourceFormSheet({
                       )}
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex shrink-0 items-center gap-2">
                         <Switch id={`annual-${index}`} checked={!item.is_monthly} onCheckedChange={checked => handleItemChange(index, 'is_monthly', !checked)} />
                         <Label htmlFor={`annual-${index}`} className="text-xs cursor-pointer">{t.itemAnnualToggle}</Label>
                       </div>
                       {!item.is_monthly ? (
-                        <div className="flex-1 flex items-center gap-2">
-                          <Input type="number" min={0} step="0.01" placeholder={t.itemPlaceholderAnnual} value={item.annual_value ?? ''} onChange={e => handleItemChange(index, 'annual_value', Number(e.target.value) || 0)} onPaste={handleItemMoneyPaste(index, 'annual_value')} className="flex-1" />
+                        <div className="flex min-w-0 flex-1 basis-48 flex-wrap items-center gap-2">
+                          <Input type="number" min={0} step="0.01" placeholder={t.itemPlaceholderAnnual} value={item.annual_value ?? ''} onChange={e => handleItemChange(index, 'annual_value', Number(e.target.value) || 0)} onPaste={handleItemMoneyPaste(index, 'annual_value')} className="min-w-0 flex-1" />
                           <span className="text-xs text-muted-foreground whitespace-nowrap">{t.itemMonthlyEquiv.replace('{amount}', fmt(item.value))}</span>
                         </div>
                       ) : (
-                        <Input type="number" min={0} step="0.01" placeholder={t.itemPlaceholderMonthly} value={item.value || ''} onChange={e => handleItemChange(index, 'value', Number(e.target.value) || 0)} onPaste={handleItemMoneyPaste(index, 'value')} className="flex-1" />
+                        <Input type="number" min={0} step="0.01" placeholder={t.itemPlaceholderMonthly} value={item.value || ''} onChange={e => handleItemChange(index, 'value', Number(e.target.value) || 0)} onPaste={handleItemMoneyPaste(index, 'value')} className="min-w-0 flex-1" />
                       )}
                     </div>
                   )}

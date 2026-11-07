@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.0";
+export const APP_VERSION = "1.39.1";
 
 export const VERSION_NOTES =
-  "Novo orçamento em tela cheia e por etapas, com composição de cada serviço, cálculo de mão de obra, insumos, recursos e controle dos custos exibidos na proposta.";
+  "Orçamento mais claro no computador e no celular, edição de recursos sem sair do serviço, seleção de materiais com fotos e certificados com novos visuais e melhor leitura.";
