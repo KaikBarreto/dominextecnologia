@@ -652,7 +652,7 @@ export const crm = {
       next: 'Próximo',
       saveChanges: 'Salvar Alterações',
       createQuote: 'Criar Orçamento',
-      saveDraft: 'Salvar rascunho',
+      saveDraft: 'Salvar rascunho na lista',
       saving: 'Salvando…',
     },
 
@@ -1820,7 +1820,7 @@ export const crm = {
       next: 'Next',
       saveChanges: 'Save Changes',
       createQuote: 'Create Quote',
-      saveDraft: 'Save draft',
+      saveDraft: 'Save draft to list',
       saving: 'Saving…',
     },
 
@@ -2951,7 +2951,7 @@ export const crm = {
       next: 'Siguiente',
       saveChanges: 'Guardar Cambios',
       createQuote: 'Crear Presupuesto',
-      saveDraft: 'Guardar borrador',
+      saveDraft: 'Guardar borrador en la lista',
       saving: 'Guardando…',
     },
 
@@ -4080,7 +4080,7 @@ export const crm = {
       next: 'Suivant',
       saveChanges: 'Enregistrer les modifications',
       createQuote: 'Créer le Devis',
-      saveDraft: 'Enregistrer le brouillon',
+      saveDraft: 'Enregistrer le brouillon dans la liste',
       saving: 'Enregistrement…',
     },
 

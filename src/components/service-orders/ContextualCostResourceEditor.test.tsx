@@ -37,7 +37,7 @@ describe('ContextualCostResourceEditor', () => {
     expect(within(form).getByRole('note', { name: 'Cadastro compartilhado' })).toBeTruthy();
     expect(state.mutate).not.toHaveBeenCalled();
     fireEvent.change(within(form).getByPlaceholderText('Ex: Manômetro Testo'), { target: { value: 'Bomba revisada' } });
-    fireEvent.click(within(form).getByRole('button', { name: 'Salvar' }));
+    fireEvent.click(within(form).getByRole('button', { name: 'Salvar cadastro' }));
     await waitFor(() => expect(state.mutate).toHaveBeenCalledWith(expect.objectContaining({ id: resource.id, name: 'Bomba revisada', monthly_hours: 176, items: [] }), expect.objectContaining({ onSuccess: expect.any(Function) })));
     expect(close).not.toHaveBeenCalled();
     act(() => state.mutate.mock.calls[0][1].onSuccess());
@@ -47,7 +47,7 @@ describe('ContextualCostResourceEditor', () => {
   it('bloqueia salvar antes de carregar os custos para não apagar uma composição ainda desconhecida', () => {
     state.items = undefined;
     render(<ContextualCostResourceEditor resource={resource} onClose={() => undefined} />);
-    expect(screen.getByRole('button', { name: 'Salvar' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Salvar cadastro' })).toBeDisabled();
     expect(screen.getByRole('status')).toHaveTextContent('Carregando os custos cadastrados');
   });
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Calculator, Plus, Trash2 } from 'lucide-react';
 
 import { LaborCalculatorModal } from '@/components/service-orders/LaborCalculatorModal';
@@ -175,6 +175,7 @@ function LocalResourcesEditor({ lines, resources, hours, formatMoney, onChange }
 
 export function QuoteServiceCostEditor({ value, onChange, bdiFactor, formatMoney, currencySymbol, inventoryItems = [], costResources = [] }: QuoteServiceCostEditorProps) {
   const isMobile = useIsMobile();
+  const laborFieldId = useId();
   const [activeSection, setActiveSection] = useState<CostSection>('labor');
   const [laborCalculatorOpen, setLaborCalculatorOpen] = useState(false);
   const [extraCostModalOpen, setExtraCostModalOpen] = useState(false);
@@ -207,8 +208,8 @@ export function QuoteServiceCostEditor({ value, onChange, bdiFactor, formatMoney
   return (
     <div className="space-y-5">
       <div className="grid gap-4 border-b pb-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)] lg:items-start">
-        <div className="min-w-0"><h4 className="text-xl font-semibold leading-tight">Composição de custos deste serviço</h4><p className="mt-1 text-sm text-muted-foreground">Edite mão de obra, recursos e insumos somente para este orçamento.</p></div>
-        {value.serviceTypeId && <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-muted/35 px-4 py-3 text-sm"><Checkbox checked={value.saveAsCatalogDefault === true} onCheckedChange={checked => onChange({ ...value, saveAsCatalogDefault: checked === true })} /><span><span className="block font-medium">Salvar também como padrão do serviço</span><span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">Atualiza a composição usada nos próximos orçamentos.</span></span></label>}
+        <div className="min-w-0"><h4 className="text-xl font-semibold leading-tight">Composição de custos deste serviço</h4><p className="mt-1 text-sm leading-relaxed text-muted-foreground">Mão de obra, insumos e quantidades são ajustados para este orçamento. Editar o cadastro de um recurso é uma ação compartilhada, indicada no próprio editor.</p></div>
+        {value.serviceTypeId && <label className={cn('flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 text-sm', value.saveAsCatalogDefault ? 'border-primary' : 'border-border')}><Checkbox checked={value.saveAsCatalogDefault === true} onCheckedChange={checked => onChange({ ...value, saveAsCatalogDefault: checked === true })} /><span><span className="block font-semibold">Atualizar também o custo cadastrado do serviço</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{value.saveAsCatalogDefault ? 'Ao salvar este orçamento, esta composição será o padrão para os próximos orçamentos.' : 'Desmarcado: a composição vale apenas para este orçamento.'}</span></span></label>}
       </div>
 
       <Tabs value={activeSection} onValueChange={next => setActiveSection(next as CostSection)}>
@@ -221,8 +222,8 @@ export function QuoteServiceCostEditor({ value, onChange, bdiFactor, formatMoney
             <Card className="border-0 bg-background/80 shadow-sm"><CardContent className="space-y-4 p-4 sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3"><h5 className="text-lg font-semibold sm:text-xl">Mão de obra</h5><Button type="button" className="h-11 shrink-0 bg-primary font-semibold text-primary-foreground hover:bg-primary/90" size="sm" onClick={() => setLaborCalculatorOpen(true)}><Calculator className="mr-1.5 h-4 w-4" /> Calcular</Button></div>
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
-                <div className="space-y-1.5"><Label className="text-sm font-semibold text-foreground">Custo por hora</Label><CurrencyField symbol={currencySymbol} className="max-w-48"><NumericInput decimal className="text-right" value={String(value.composition.labor.hourlyRate).replace('.', ',')} onValueChange={raw => updateComposition({ labor: { ...value.composition.labor, hourlyRate: parseDecimalInputValue(raw) ?? 0 } })} /></CurrencyField></div>
-                <div className="space-y-1.5"><Label className="text-sm font-semibold text-foreground">Horas do serviço</Label><NumericInput decimal value={String(value.composition.labor.hours).replace('.', ',')} onValueChange={raw => updateComposition({ labor: { ...value.composition.labor, hours: parseDecimalInputValue(raw) ?? 0 } })} /></div>
+                <div className="space-y-1.5"><Label htmlFor={`${laborFieldId}-rate`} className="text-sm font-semibold text-foreground">Custo por hora</Label><CurrencyField symbol={currencySymbol} className="max-w-48"><NumericInput id={`${laborFieldId}-rate`} decimal className="text-right" value={String(value.composition.labor.hourlyRate).replace('.', ',')} onValueChange={raw => updateComposition({ labor: { ...value.composition.labor, hourlyRate: parseDecimalInputValue(raw) ?? 0 } })} /></CurrencyField></div>
+                <div className="space-y-1.5"><Label htmlFor={`${laborFieldId}-hours`} className="text-sm font-semibold text-foreground">Horas do serviço</Label><NumericInput id={`${laborFieldId}-hours`} decimal value={String(value.composition.labor.hours).replace('.', ',')} onValueChange={raw => updateComposition({ labor: { ...value.composition.labor, hours: parseDecimalInputValue(raw) ?? 0 } })} /></div>
               </div>
               <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Custo HH</p><p className="font-semibold">{formatMoney(totals.labor)}</p></div>
             </CardContent></Card>

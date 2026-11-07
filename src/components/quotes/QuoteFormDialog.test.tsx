@@ -27,6 +27,7 @@ class ResizeObserverStub {
 
 const testState = vi.hoisted(() => ({
   profile: null as { company_id: string } | null,
+  userId: null as string | null,
   pricing: null as null | {
     tax_rate: number;
     admin_indirect_rate: number;
@@ -37,6 +38,7 @@ const testState = vi.hoisted(() => ({
   },
   fetchBreakdown: vi.fn(),
   createMutate: vi.fn(),
+  updateMutate: vi.fn(),
   costsSaving: false,
 }));
 
@@ -55,7 +57,7 @@ vi.mock('@/hooks/useCustomers', () => ({ useCustomers: () => ({ customers: [] })
 vi.mock('@/hooks/useQuotes', () => ({
   useQuotes: () => ({
     createQuote: { mutate: testState.createMutate, mutateAsync: vi.fn(), isPending: false },
-    updateQuote: { mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false },
+    updateQuote: { mutate: testState.updateMutate, mutateAsync: vi.fn(), isPending: false },
     quotes: [],
   }),
 }));
@@ -80,7 +82,7 @@ vi.mock('@/hooks/useSaveQuoteServiceCosts', () => ({
   useSaveQuoteServiceCosts: () => ({ mutateAsync: vi.fn(), isPending: testState.costsSaving }),
 }));
 vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: () => ({ profile: testState.profile }),
+  useAuth: () => ({ profile: testState.profile, user: testState.userId ? { id: testState.userId } : null }),
 }));
 vi.mock('@/hooks/useServiceCostBreakdown', () => ({
   fetchServiceCostBreakdown: testState.fetchBreakdown,
@@ -235,9 +237,11 @@ async function advanceToMaterials() {
 beforeEach(() => {
   sessionStorage.clear();
   testState.profile = null;
+  testState.userId = null;
   testState.pricing = null;
   testState.fetchBreakdown.mockReset();
   testState.createMutate.mockReset();
+  testState.updateMutate.mockReset();
   testState.costsSaving = false;
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -1052,9 +1056,63 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     expect(previewButton).toBeTruthy();
     await clickAsync(previewButton!);
 
-    expect(document.body.textContent).toContain('Prévia da proposta');
+    expect(document.body.textContent).toContain('Como o cliente verá');
     expect(document.body.textContent).toContain('Prévia renderizada');
     expect(testState.createMutate).not.toHaveBeenCalled();
+  });
+
+  it('vai dos serviços à revisão sem alterar preços ou criar um orçamento antes de confirmar', async () => {
+    mount();
+    await goPastRecipient();
+    await addServiceItem();
+    await clickAsync(findButtonByText('Revisar orçamento')!);
+    expect(document.body.textContent).toContain('Revise e finalize');
+    expect(document.body.textContent).toContain('Sem materiais cobrados por fora.');
+    expect(document.body.textContent).toContain('Parcela única · Sem desconto.');
+    expect(document.body.textContent).not.toContain('observações revisados');
+    expect(testState.createMutate).not.toHaveBeenCalled();
+    await clickAsync(findButtonByText(tq.createQuote)!);
+    expect(testState.createMutate.mock.calls[0][0]).toMatchObject({
+      total_value: 250, displacement_cost: 0, discount_value: 0, receivable_installments: 1,
+      items: [expect.objectContaining({ unit_price: 250, quantity: 1, pricing_mode: 'registered' })],
+    });
+  });
+
+  it('aponta um serviço sem preço e permite voltar à composição pela revisão', async () => {
+    mount();
+    await goPastRecipient();
+    await addServiceItem();
+    await clickAsync(q('button[aria-label="Abrir serviço Manutenção Preventiva"]')!);
+    typeInto(q('input[aria-label="Preço de Manutenção Preventiva"]') as HTMLInputElement, '0');
+    await clickAsync(findButtonByText('Revisar orçamento')!);
+    expect(document.body.textContent).toContain('Há itens sem preço');
+    expect(findButtonByText(tq.createQuote)).not.toBeDisabled();
+    await clickAsync(findButtonByText('Rever serviços')!);
+    expect(q('button[aria-label="Abrir serviço Manutenção Preventiva"]')).toBeTruthy();
+    expect(testState.createMutate).not.toHaveBeenCalled();
+  });
+
+  it('preserva o rascunho pessoal de criação ao salvar outro orçamento existente', async () => {
+    const personalDraft = JSON.stringify({ prospectName: 'Orçamento ainda em criação', customerMode: 'prospect' });
+    sessionStorage.setItem('form-draft:quote-form', personalDraft);
+    testState.updateMutate.mockImplementation((_payload, callbacks) => callbacks.onSuccess());
+    mount({ id: 'existing-quote', quote_number: 42, prospect_name: 'Outro cliente', quote_items: [], use_bdi: false } as Quote);
+    await goPastRecipient();
+    await addServiceItem();
+    await clickAsync(findButtonByText('Revisar orçamento')!);
+    await clickAsync(findButtonByText(tq.saveChanges)!);
+    expect(testState.updateMutate).toHaveBeenCalledTimes(1);
+    expect(sessionStorage.getItem('form-draft:quote-form')).toBe(personalDraft);
+  });
+
+  it('permite editar orçamento existente com usuário autenticado sem esperar o autosave pessoal', async () => {
+    testState.profile = { company_id: 'company-editing' };
+    testState.userId = 'user-editing';
+    mount({ id: 'existing-quote', quote_number: 42, prospect_name: 'Cliente existente', quote_items: [], use_bdi: false } as Quote);
+    expect(findButtonByText(tq.next)).toHaveAttribute('aria-disabled', 'false');
+    expect(findButtonByText(tq.saveDraft)).not.toBeDisabled();
+    await goPastRecipient();
+    expect(findButtonByText('Adicionar serviço')).toBeTruthy();
   });
 });
 

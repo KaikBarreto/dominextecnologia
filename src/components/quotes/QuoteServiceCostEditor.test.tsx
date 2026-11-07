@@ -41,6 +41,21 @@ afterEach(() => {
 });
 
 describe('QuoteServiceCostEditor', () => {
+  it('mantém o cadastro intacto por padrão e exige uma escolha explícita para atualizá-lo', () => {
+    const onChange = vi.fn();
+    const composition = createQuoteCostComposition({ labor: { hourlyRate: 80, hours: 2 } });
+    act(() => root.render(<QuoteServiceCostEditor
+      value={{ serviceTypeId: 'service-1', composition }} onChange={onChange}
+      bdiFactor={0.68} formatMoney={value => `R$ ${value}`} currencySymbol="R$"
+    />));
+    const checkbox = container.querySelector<HTMLButtonElement>('[role="checkbox"]');
+    expect(checkbox?.getAttribute('data-state')).toBe('unchecked');
+    expect(container.textContent).toContain('a composição vale apenas para este orçamento');
+    expect(onChange).not.toHaveBeenCalled();
+    act(() => checkbox?.click());
+    expect(onChange).toHaveBeenCalledWith({ serviceTypeId: 'service-1', composition, saveAsCatalogDefault: true });
+  });
+
   it('mantém mão de obra, insumos e recursos separados no cálculo local', () => {
     const composition = createQuoteCostComposition({
       labor: { hourlyRate: 80, hours: 2.5 },

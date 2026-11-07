@@ -30,6 +30,9 @@ import { useToast } from '@/hooks/use-toast';
 import { QuotePricingSummary } from '@/components/quotes/QuotePricingSummary';
 import { QuoteBdiComposer } from '@/components/quotes/QuoteBdiComposer';
 import { QuoteRecipientSummary } from '@/components/quotes/QuoteRecipientSummary';
+import { QuoteReviewWarnings } from '@/components/quotes/QuoteReviewWarnings';
+import { QuoteServicePickerField } from '@/components/quotes/QuoteServicePickerField';
+import { buildQuoteReviewIssues, type QuoteReviewSection } from '@/lib/quote-review';
 import { QuoteTemplatePreviewDialog } from '@/components/quotes/QuoteTemplatePreviewDialog';
 import { ProposalCoverPreview } from '@/components/quotes/ProposalCoverPreview';
 import {
@@ -38,13 +41,12 @@ import {
   getQuoteCostCompositionTotals,
   type QuoteCostComposition,
 } from '@/components/quotes/QuoteServiceCostEditor';
-import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { MaterialBatchPicker, type MaterialBatchSelection } from '@/components/inventory/MaterialBatchPicker';
 import { InventoryItemThumbnail } from '@/components/inventory/InventoryItemThumbnail';
 import { formatQty } from '@/components/inventory/InventoryMaterialSelect';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { QuickServiceTypeDialog } from '@/components/service-orders/QuickServiceTypeDialog';
-import { useFormDraft } from '@/hooks/useFormDraft';
+import { useQuoteFormDraft } from '@/hooks/useQuoteFormDraft';
 import { DraftResumeNotice } from '@/components/ui/DraftResumeNotice';
 import { FullscreenWizard, FullscreenWizardAction } from '@/components/ui/FullscreenWizard';
 import { FormDraftStatus } from '@/components/ui/FormDraftStatus';
@@ -483,7 +485,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const { serviceTypes } = useServiceTypes();
   const { items: inventoryItems } = useInventory();
   const { resources: costResources } = useCostResources();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const { settings: companySettings } = useCompanySettings();
   const queryClient = useQueryClient();
   const saveQuoteServiceCosts = useSaveQuoteServiceCosts();
@@ -502,6 +504,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   // atualizam a MESMA linha. Guarda o id retornado pra não duplicar.
   const [draftQuoteId, setDraftQuoteId] = useState<string | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
+  const [finishingQuote, setFinishingQuote] = useState(false);
 
   // ── Customer ──
   const [customerMode, setCustomerMode] = useState<'existing' | 'prospect'>('existing');
@@ -591,11 +594,13 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     taxRate?: number; adminRate?: number; profitRate?: number; kmCost?: number;
     cardDiscountRate?: number; cardInstallments?: number;
   };
-  const draftScopeKey = profile?.company_id ? `quote-form:${profile.company_id}:${profile.user_id || profile.id || 'session'}` : 'quote-form';
+  const draftScopeKey = profile?.company_id ? `quote-form:${profile.company_id}:${user?.id || profile.user_id || profile.id || 'session'}` : 'quote-form';
   const draftScopeRef = useRef(draftScopeKey);
   const draftScopeChanged = draftScopeRef.current !== draftScopeKey;
-  const draft = useFormDraft<QuoteDraft>({
+  const draft = useQuoteFormDraft<QuoteDraft>({
     key: draftScopeKey,
+    companyId: profile?.company_id,
+    userId: user?.id ?? profile?.user_id,
     isOpen: open, isEditing, debounceMs: 500,
     ignoreKeys: ['customerMode', 'discountType', 'useBdi', 'includeGifts', 'receivableInstallments', 'proposalTemplateId', 'displacementPricingMode', 'taxRate', 'adminRate', 'profitRate', 'kmCost', 'cardDiscountRate', 'cardInstallments'],
   });
@@ -613,13 +618,13 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     if (!draftScopeChanged && draft.showResumePrompt) draft.startNewDraft({ ...currentDraft, ...patch });
   };
 
-  // Rascunho local completo, com debounce. O rascunho da conta continua sendo
-  // salvo apenas pela ação explícita; a edição do banco não recebe autosave.
+  // O autosave pessoal não cria orçamento comercial nem altera o catálogo.
+  // A edição de um orçamento existente continua exigindo confirmação explícita.
   useEffect(() => {
-    if (open && !isEditing && !draftQuoteId && !draft.showResumePrompt && !draftScopeChanged) {
+    if (open && !isEditing && !draftQuoteId && !draft.showResumePrompt && !draftScopeChanged && !draft.isLoading) {
       draft.saveDraft(currentDraft);
     }
-  }, [currentDraft, open, isEditing, draftQuoteId, draft.showResumePrompt, draft.saveDraft, draftScopeChanged]);
+  }, [currentDraft, open, isEditing, draftQuoteId, draft.showResumePrompt, draft.saveDraft, draftScopeChanged, draft.isLoading]);
 
   const applyQuoteDraft = (d: QuoteDraft) => {
     setCustomerMode(d.customerMode === 'prospect' ? 'prospect' : 'existing');
@@ -736,6 +741,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   // ── Reset wizard nav on open/close + reset draft id ──
   useEffect(() => {
     if (!open) {
+      setFinishingQuote(false);
       setStep(0);
       setMaxStepReached(0);
       setDraftQuoteId(null);
@@ -1291,6 +1297,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   });
 
   const finishSavedQuote = async () => {
+    setFinishingQuote(true);
     const snapshots = items
       .filter(item => item.save_costs_to_catalog && item.service_type_id && item.cost_composition)
       .map(item => ({ serviceId: item.service_type_id!, composition: item.cost_composition! }));
@@ -1306,7 +1313,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         });
       }
     }
-    draft.clearDraft();
+    if (!isEditing) await draft.clearDraft();
     onOpenChange(false);
   };
 
@@ -1408,8 +1415,6 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       .slice(0, 5);
   }, [inventoryItems, usageFreq.inv]);
 
-  const hasAnyService = activeServices.length > 0;
-
   const serviceItems = items.filter(i => i.item_type === 'servico');
   const materialItems = items.filter(i => i.item_type === 'material');
   const hasCustomer = customerMode === 'existing' ? !!customerId : !!prospectName;
@@ -1421,6 +1426,15 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const selectedCustomer = customerMode === 'existing'
     ? customers?.find(customer => customer.id === customerId)
     : null;
+  const reviewIssues = buildQuoteReviewIssues({
+    items, finalTotal, displacementCost: distanceKm * kmCostCfg,
+    validUntil, receivableInstallments, receivableFirstDueDate,
+  });
+  const pendingCatalogUpdates = items.filter(item => item.save_costs_to_catalog && item.service_type_id && item.cost_composition);
+  const editReviewSection = (section: QuoteReviewSection) => {
+    setStep(STEP_KEYS.indexOf(section));
+    if (section === 'review') requestAnimationFrame(() => document.getElementById('quote-valid-until')?.focus());
+  };
   const previewItems = items.map(({ save_costs_to_catalog: _saveCatalog, ...item }, position) => ({ ...item, position }));
   const previewQuote: Quote = {
     id: quote?.id ?? 'preview',
@@ -1472,6 +1486,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
   // ── Wizard gating ──
   const canNext = () => {
+    if (!isEditing && draft.isLoading) return false;
     switch (currentStepKey) {
       case 'recipient':
         return hasCustomer;
@@ -1510,7 +1525,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     });
   };
 
-  const mutating = createQuote.isPending || updateQuote.isPending || saveQuoteServiceCosts.isPending;
+  const mutating = createQuote.isPending || updateQuote.isPending || saveQuoteServiceCosts.isPending || finishingQuote;
 
   const displacementBlock = (
     <section id="quote-displacement" className="space-y-4">
@@ -1691,7 +1706,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     {
       key: 'commercial',
       label: 'Condições comerciais',
-      detail: 'Desconto, pagamentos e observações revisados.',
+      detail: `${useBdi && mixedPricing.automaticCost > 0 ? 'BDI nos itens calculados' : 'Preços cadastrados ou manuais'} · ${receivableInstallments === 1 ? 'Parcela única' : `${receivableInstallments} parcelas`}${discountValue > 0 ? ` · Desconto ${discountType === 'percentual' ? `${fmtRate(discountValue)}%` : fmt(discountValue)}` : ' · Sem desconto'}.`,
       complete: maxStepReached >= 3,
       stepIndex: 3,
     },
@@ -1828,6 +1843,12 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                   />
                 )}
               </section>
+              {serviceItems.length > 0 && <div className="space-y-2 border-t pt-4 lg:hidden">
+                <Button type="button" variant="outline" className="min-h-12 w-full text-base font-semibold" onClick={() => { setNavigationMessage(''); setStep(STEP_KEYS.indexOf('review')); }}>
+                  Revisar orçamento <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+                <p className="text-sm leading-relaxed text-muted-foreground">Use os preços e condições atuais. Na revisão, você ainda pode incluir materiais e ajustar as condições.</p>
+              </div>}
             </div>
           )}
 
@@ -2189,8 +2210,18 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                   <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Revise e finalize</h2>
                   <p className="mt-1 text-sm text-muted-foreground">Confira os valores e escolha como a proposta será apresentada ao cliente.</p>
                 </div>
-                <p className="text-sm font-medium">{items.length} {items.length === 1 ? 'item no orçamento' : 'itens no orçamento'}</p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-sm font-medium">{items.length} {items.length === 1 ? 'item no orçamento' : 'itens no orçamento'}</p>
+                  <Button type="button" variant="outline" className="min-h-11 font-semibold" disabled={!selectedTemplate} onClick={() => setPreviewOpen(true)}>
+                    <Eye className="mr-2 h-4 w-4" />{tq.reviewFullPreview}
+                  </Button>
+                </div>
               </div>
+              <QuoteReviewWarnings issues={reviewIssues} onEditSection={editReviewSection} />
+              {pendingCatalogUpdates.length > 0 && <div className="flex items-start gap-3 border-l-2 border-primary pl-4 py-2 text-sm">
+                <Save aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0" />
+                <p><strong>Também será atualizado no cadastro:</strong> {pendingCatalogUpdates.map(item => item.description).join(', ')}. Você marcou essa opção na composição; o novo custo poderá ser usado nos próximos orçamentos.</p>
+              </div>}
               <div className="grid items-start gap-6 lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[22rem_minmax(0,1fr)]">
                 <div className="hidden lg:sticky lg:top-28 lg:block">{summaryBlock}</div>
                 <div className="flex items-center justify-between gap-4 rounded-xl bg-primary px-4 py-4 text-primary-foreground lg:hidden">
@@ -2244,7 +2275,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
               <section className="grid items-start gap-5 border-t pt-5 md:grid-cols-[minmax(0,1fr)_11rem] xl:grid-cols-[minmax(0,1fr)_13rem]">
                 <div className="space-y-4">
                   <h3 className="text-xl font-semibold sm:text-2xl">Apresentação e validade</h3>
-                  <div className="grid grid-cols-2 items-end gap-3 xl:grid-cols-[10rem_minmax(9rem,1fr)_auto]">
+                  <div className="grid grid-cols-2 items-end gap-3 xl:grid-cols-[10rem_minmax(9rem,1fr)]">
                   <div className="min-w-0 space-y-2">
                     <Label htmlFor="quote-valid-until" className="font-semibold text-foreground">{tq.reviewValidUntil}</Label>
                     {/* Opcional (valid_until vira undefined se vazio), por isso clearable */}
@@ -2279,16 +2310,6 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                       </SelectContent>
                     </Select>
                   </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="col-span-2 h-11 xl:col-span-1"
-                      disabled={!selectedTemplate}
-                      onClick={() => setPreviewOpen(true)}
-                    >
-                      <Eye className="mr-2 h-4 w-4" />
-                      {tq.reviewFullPreview}
-                    </Button>
                   </div>
                 </div>
 
@@ -2333,6 +2354,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
   // ── Wizard footer (navegação + salvar rascunho) ──
   const handleQuoteOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && finishingQuote) return;
     if (!nextOpen && !isEditing && !draftQuoteId && !draft.showResumePrompt && !draftScopeChanged) draft.flush(currentDraft);
     onOpenChange(nextOpen);
   };
@@ -2364,8 +2386,9 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
             variant="outline"
             className="h-[3.25rem] w-[3.25rem] px-0 text-base font-bold sm:h-14 sm:w-auto sm:min-w-48 sm:px-7"
             aria-label={savingDraft ? tq.saving : tq.saveDraft}
+            title="Guarda um orçamento em rascunho na listagem, sem a expiração de 30 dias do preenchimento automático."
             onClick={handleSaveDraft}
-            disabled={mutating || savingDraft || !hasCustomer}
+            disabled={mutating || savingDraft || !hasCustomer || (!isEditing && draft.isLoading)}
           >
             {savingDraft
               ? <><Loader2 className="h-4 w-4 animate-spin sm:mr-1" /><span className="sr-only sm:not-sr-only">{tq.saving}</span></>
@@ -2384,12 +2407,15 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
           ) : (
             <FullscreenWizardAction
               onClick={handleSubmit}
+              aria-label={quote ? tq.saveChanges : tq.createQuote}
               disabled={!canNext() || mutating || savingDraft}
               className="h-[3.25rem] bg-primary px-3 text-base font-bold text-primary-foreground hover:bg-primary/90 sm:h-14 sm:min-w-56 sm:px-8"
             >
               {mutating
                 ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {tq.saving}</>
-                : quote ? tq.saveChanges : tq.createQuote}
+                : <><span className="min-[360px]:hidden">{quote
+                  ? ({ 'pt-br': 'Salvar', en: 'Save', es: 'Guardar', fr: 'Enregistrer' }[locale])
+                  : ({ 'pt-br': 'Criar', en: 'Create', es: 'Crear', fr: 'Créer' }[locale])}</span><span className="hidden min-[360px]:inline">{quote ? tq.saveChanges : tq.createQuote}</span></>}
             </FullscreenWizardAction>
           )}
       </div>
@@ -2407,12 +2433,15 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         onOpenChange={handleQuoteOpenChange}
         title={title}
         exitLabel={tq.formExitLabel}
-        headerActions={!isEditing && !draftQuoteId ? <FormDraftStatus status={draft.status} savedAt={draft.savedAt} /> : undefined}
+        headerActions={!isEditing && !draftQuoteId ? <FormDraftStatus status={draft.status} savedAt={draft.savedAt} persistence={draft.persistence} expiresAt={draft.expiresAt} isLoading={draft.isLoading} syncIssue={draft.syncIssue} onRetry={draft.retry} /> : undefined}
         description="Monte os itens, confira a precificação e revise a proposta antes de salvar."
         className="min-w-0 overflow-x-hidden"
         footer={wizardFooter}
         floatingNotice={!isEditing && !draftQuoteId && draft.showResumePrompt ? (
           <DraftResumeNotice
+            hasConflict={draft.syncIssue === 'conflict'}
+            persistence={draft.persistence}
+            expiresAt={draft.expiresAt}
             onResume={() => {
               if (draft.draftData) applyQuoteDraft(draft.draftData);
               draft.acceptDraft();
@@ -2426,7 +2455,9 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         lockBackdrop
         overlayId="quote-form-modal"
       >
-        {wizardContent}
+        {draft.isLoading && !isEditing
+          ? <div className="flex min-h-64 items-center justify-center gap-3 text-base text-muted-foreground" role="status"><Loader2 aria-hidden="true" className="h-5 w-5 animate-spin motion-reduce:animate-none" />Buscando seu rascunho…</div>
+          : wizardContent}
       </FullscreenWizard>
 
       <QuoteTemplatePreviewDialog
@@ -2457,20 +2488,13 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       >
         <div className="space-y-2">
           <Label className="text-sm font-semibold text-foreground">Serviço</Label>
-          <SearchableSelect
+          <QuoteServicePickerField
             groups={serviceGroups}
             value={addSvcId}
             onValueChange={setAddSvcId}
             onSearchChange={setServiceSearchQuery}
             placeholder={tq.serviceSelectPlaceholder}
             searchPlaceholder={tq.serviceSearchPlaceholder}
-            className="h-12 w-full justify-between px-4 text-base font-normal"
-            emptyContent={!hasAnyService ? (
-              <div className="flex flex-col items-center gap-1.5 px-2 py-5 text-center">
-                <p className="text-base font-medium text-foreground">{tq.serviceSelectEmptyTitle}</p>
-                <p className="text-sm text-muted-foreground">{tq.serviceSearchPlaceholder}</p>
-              </div>
-            ) : undefined}
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-end">

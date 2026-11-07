@@ -15,6 +15,7 @@ import {
   sumTotal,
 } from './shared';
 import type { QuoteItem } from '@/hooks/useQuotes';
+import { ProposalLogo } from './ProposalLogo';
 
 /**
  * Clean — proposta comercial ENXUTA em documento BRANCO (não segue o tema do
@@ -212,6 +213,10 @@ export function CleanTemplate(props: ProposalTemplateProps) {
       <style>{`
         .clean-page { width: 100%; max-width: 794px; background: #ffffff; color: #0f172a; padding: 48px 52px; }
         .clean-header { flex-direction: column; gap: 24px; }
+        .clean-company { width: 100%; flex-wrap: wrap; }
+        .clean-company > div { flex: 1 1 12rem; overflow-wrap: anywhere; }
+        .clean-footer-brand > div { min-width: 0; overflow-wrap: anywhere; }
+        .clean-client { overflow-wrap: anywhere; }
         .clean-document-meta { width: 100%; text-align: center !important; }
         /* Tabela contida: em telas estreitas rola só a tabela, sem estourar a página. */
         .clean-table-wrap { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
@@ -242,12 +247,10 @@ export function CleanTemplate(props: ProposalTemplateProps) {
         <div className="clean-header flex items-start justify-between gap-6 flex-wrap">
           <div className="clean-company min-w-0 flex items-start gap-4">
             {d.logoUrl ? (
-              <img
+              <ProposalLogo
                 src={d.logoUrl}
                 alt={d.companyName}
-                className="w-auto object-contain shrink-0"
-                style={{ height: scaledLogoHeightPx(56, customization?.logo_scale) }}
-                crossOrigin="anonymous"
+                height={scaledLogoHeightPx(56, customization?.logo_scale)}
               />
             ) : null}
             <div className="min-w-0">
@@ -278,7 +281,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
         <div className="mt-6 h-px w-full" style={{ background: '#e5e7eb', ...colorAdjust }} />
 
         {/* ── Bloco Cliente ── */}
-        <div className="mt-6">
+        <div className="clean-client mt-6">
           <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: primary }}>{t.cleanClientLabel}</p>
           <p className="text-base font-bold mt-1.5" style={{ color: '#0f172a' }}>{d.clientName}</p>
           <div className="text-xs mt-1 leading-relaxed" style={{ color: '#64748b' }}>
@@ -408,14 +411,12 @@ export function CleanTemplate(props: ProposalTemplateProps) {
         {/* ── Rodapé: profissional/marca do tenant ── */}
         <div className="mt-10 pt-6 clean-block" style={{ borderTop: '1px solid #e5e7eb' }} data-pdf-keep>
           <p className="text-[11px] uppercase tracking-[0.18em] font-semibold" style={{ color: '#94a3b8' }}>{t.cleanFooterPrepared}</p>
-          <div className="mt-2 flex items-center gap-3 flex-wrap">
+          <div className="clean-footer-brand mt-2 flex items-center gap-3 flex-wrap">
             {d.logoUrl ? (
-              <img
+              <ProposalLogo
                 src={d.logoUrl}
                 alt={d.companyName}
-                className="w-auto object-contain"
-                style={{ height: scaledLogoHeightPx(32, customization?.logo_scale) }}
-                crossOrigin="anonymous"
+                height={scaledLogoHeightPx(32, customization?.logo_scale)}
               />
             ) : null}
             <div>
@@ -443,7 +444,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
 
 function Row({ label, value, negative, primary }: { label: string; value: string; negative?: boolean; primary?: string }) {
   return (
-    <div className="flex items-center justify-between text-sm">
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
       <span style={{ color: '#64748b' }}>{label}</span>
       <span className="tabular-nums font-medium" style={{ color: negative ? (primary || '#0f172a') : '#334155' }}>{value}</span>
     </div>

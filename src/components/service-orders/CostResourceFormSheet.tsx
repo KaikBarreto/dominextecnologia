@@ -298,7 +298,7 @@ export function CostResourceFormSheet({
   const footer = (
     <Button className="h-12 w-full bg-primary font-bold text-primary-foreground hover:bg-primary/90" onClick={handleSubmit} disabled={!name.trim() || waitingForItems || isPending || isUploading}>
       <Save className="h-4 w-4 mr-2" />
-      {isPending || isUploading ? t.saving : t.save}
+      {isPending || isUploading ? t.saving : sharedCatalogNotice ? 'Salvar cadastro' : t.save}
     </Button>
   );
 
@@ -313,9 +313,9 @@ export function CostResourceFormSheet({
       footer={footer}
     >
       <div className="space-y-6">
-        {sharedCatalogNotice && <aside role="note" aria-label="Cadastro compartilhado" className="border-l-2 border-zinc-950 pl-4 text-sm leading-relaxed dark:border-zinc-300">
+        {sharedCatalogNotice && <aside role="note" aria-label="Cadastro compartilhado" className="border-l-2 border-primary pl-4 text-sm leading-relaxed">
           <p className="font-semibold text-foreground">Você está editando o cadastro da empresa</p>
-          <p className="mt-1 text-muted-foreground">As alterações serão compartilhadas com os locais que usam este recurso. Esta edição não se limita ao serviço ou orçamento atual.</p>
+          <p className="mt-1 text-muted-foreground">Salvar cadastro altera este recurso para os serviços que o utilizam. O custo do orçamento aberto também será recalculado. Para ajustar apenas este orçamento, feche e altere a quantidade do recurso na composição.</p>
         </aside>}
         {waitingForItems && <div role="status" className="text-sm leading-relaxed text-muted-foreground">
           {itemsLoadFailed ? <><p>Não foi possível carregar os custos deste recurso. Tente novamente antes de salvar.</p><Button type="button" variant="outline" className="mt-2" onClick={() => { void refetchItems(); }}>Tentar novamente</Button></> : 'Carregando os custos cadastrados deste recurso…'}

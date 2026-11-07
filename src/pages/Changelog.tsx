@@ -31,6 +31,38 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.3',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Continue seu orçamento em outro dispositivo',
+        description: 'O preenchimento é salvo automaticamente para seu usuário na empresa e pode ser retomado no computador ou celular. O prazo é de 30 dias desde a última edição, com indicação quando o salvamento fica apenas no navegador por falta de conexão.',
+        category: 'recurso',
+      },
+      {
+        title: 'Revisão que ajuda a evitar esquecimentos',
+        description: 'Antes de finalizar, confira avisos sobre itens sem preço, valores abaixo dos custos informados, validade vencida e primeiro vencimento ainda não definido. Você pode voltar ao ponto indicado ou continuar quando a condição for intencional.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Mais clareza ao personalizar custos',
+        description: 'A composição identifica os ajustes exclusivos do orçamento e a opção de atualizar o padrão do serviço. Recursos compartilhados deixam claro quando o cadastro será alterado, e a revisão lista os serviços que você escolheu atualizar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Prévia mais fácil de conferir',
+        description: 'Abra a prévia no topo da revisão, confira o total e veja quais custos serão compartilhados com o cliente. A leitura se adapta ao celular e o modo documento permite ampliar a proposta.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Orçamento simples com menos toques no celular',
+        description: 'Escolha serviços diretamente na lista e siga para a revisão com os preços e condições atuais. Materiais e condições continuam disponíveis para ajuste, com ações que cabem também nas telas menores.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.39.2',
     date: '7 de novembro de 2026',
     type: 'patch',

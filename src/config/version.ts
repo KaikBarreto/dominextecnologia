@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.2";
+export const APP_VERSION = "1.39.3";
 
 export const VERSION_NOTES =
-  "Formulários em tela cheia com Sair no topo e Voltar entre etapas, preservando o rascunho automático ao encerrar o preenchimento.";
+  "Orçamentos com rascunho pessoal entre dispositivos por 30 dias, revisão de valores, prévia legível e caminho mais rápido no celular.";

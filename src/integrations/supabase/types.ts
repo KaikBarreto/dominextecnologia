@@ -9617,6 +9617,12 @@ export type Database = {
           },
         ]
       }
+      quote_form_drafts: {
+        Row: { company_id: string; user_id: string; payload: Json | null; revision: number; last_request_id: string; updated_at: string; expires_at: string }
+        Insert: { company_id: string; user_id: string; payload?: Json | null; revision?: number; last_request_id: string; updated_at?: string; expires_at?: string }
+        Update: { company_id?: string; user_id?: string; payload?: Json | null; revision?: number; last_request_id?: string; updated_at?: string; expires_at?: string }
+        Relationships: [{ foreignKeyName: "quote_form_drafts_company_id_fkey"; columns: ["company_id"]; isOneToOne: false; referencedRelation: "companies"; referencedColumns: ["id"] }]
+      }
       pdv_order_drafts: {
         Row: {
           company_id: string
@@ -17567,6 +17573,9 @@ export type Database = {
           transaction_count: number
         }[]
       }
+      get_quote_form_draft: { Args: { p_company_id: string; p_user_id: string }; Returns: Json }
+      save_quote_form_draft: { Args: { p_company_id: string; p_user_id: string; p_payload: Json; p_expected_revision: number; p_request_id: string }; Returns: Json }
+      quote_form_draft_assert_access: { Args: { p_company_id: string; p_user_id: string }; Returns: undefined }
       pdv_assert_draft_access: { Args: never; Returns: string }
       pdv_assert_ref_company: {
         Args: {
