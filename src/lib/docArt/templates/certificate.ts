@@ -181,23 +181,24 @@ export function createCertificateTemplate(options: CertificateOptions): DocArtTe
   const techTextW = landscape ? cardW - 39 : cardW - 48;
   const productX = (landscape ? contentX + cardW + cardGap : contentX) + 6;
   const techIconX = contentX + 6;
-  const techIconY = cardY + 3.8;
+  const techIconY = cardY + 2.7;
   shapes.push(
     { shape: { kind: 'path', d: `M ${techIconX + 0.7},${techIconY + 4.9} V ${techIconY + 4.2} C ${techIconX + 0.7},${techIconY + 2.2} ${techIconX + 1.8},${techIconY + 1.1} ${techIconX + 3.1},${techIconY + 1.1} C ${techIconX + 4.4},${techIconY + 1.1} ${techIconX + 5.5},${techIconY + 2.2} ${techIconX + 5.5},${techIconY + 4.2} V ${techIconY + 4.9}`, stroke: 'ink', strokeWidth: 0.7, layoutRole: 'certificateDetails', iconFor: 'assinaturaTitulo' } },
     { shape: { kind: 'path', d: `M ${techIconX + 2.5},${techIconY + 3.6} V ${techIconY + 0.8} H ${techIconX + 3.7} V ${techIconY + 3.6}`, stroke: 'ink', strokeWidth: 0.7, layoutRole: 'certificateDetails', iconFor: 'assinaturaTitulo' } },
     { shape: { kind: 'rect', x: techIconX + 0.2, y: techIconY + 4.8, w: 5.8, h: 1.1, stroke: 'ink', strokeWidth: 0.7, layoutRole: 'certificateDetails', iconFor: 'assinaturaTitulo' } },
   );
   const productIconX = productX;
-  const productIconY = productY + 3.7;
+  const productIconY = productY + 3.1;
   shapes.push(
     { unlessSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'path', d: `M ${productIconX + 0.5},${productIconY + 2} L ${productIconX + 3.2},${productIconY + 0.6} L ${productIconX + 5.9},${productIconY + 2} L ${productIconX + 3.2},${productIconY + 3.5} Z`, stroke: 'ink', strokeWidth: 0.65, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
     { unlessSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'path', d: `M ${productIconX + 0.5},${productIconY + 2} V ${productIconY + 5} L ${productIconX + 3.2},${productIconY + 6.4} V ${productIconY + 3.5}`, stroke: 'ink', strokeWidth: 0.65, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
     { unlessSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'path', d: `M ${productIconX + 5.9},${productIconY + 2} V ${productIconY + 5} L ${productIconX + 3.2},${productIconY + 6.4}`, stroke: 'ink', strokeWidth: 0.65, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
-    { whenSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'path', d: `M ${productIconX + 0.3},${productIconY + 1.6} L ${productIconX + 3.2},${productIconY + 0.4} L ${productIconX + 6.1},${productIconY + 1.6}`, stroke: 'ink', strokeWidth: 0.65, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
-    { whenSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'rect', x: productIconX + 0.7, y: productIconY + 1.6, w: 5, h: 4.8, stroke: 'ink', strokeWidth: 0.65, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
-    { whenSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'line', x1: productIconX + 3.2, y1: productIconY + 1.6, x2: productIconX + 3.2, y2: productIconY + 6.4, stroke: 'ink', strokeWidth: 0.55, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
-    { whenSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'line', x1: productIconX + 0.7, y1: productIconY + 3.2, x2: productIconX + 5.7, y2: productIconY + 3.2, stroke: 'ink', strokeWidth: 0.55, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
-    { whenSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'line', x1: productIconX + 0.7, y1: productIconY + 4.8, x2: productIconX + 5.7, y2: productIconY + 4.8, stroke: 'ink', strokeWidth: 0.55, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
+    { whenSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'rect', x: productIconX + 0.5, y: productIconY + 0.2, w: 5.4, h: 6.2, stroke: 'ink', strokeWidth: 0.7, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
+    { whenSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'rect', x: productIconX + 1.3, y: productIconY + 1.1, w: 1, h: 1, fill: 'ink', layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
+    { whenSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'rect', x: productIconX + 4.1, y: productIconY + 1.1, w: 1, h: 1, fill: 'ink', layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
+    { whenSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'rect', x: productIconX + 1.3, y: productIconY + 3, w: 1, h: 1, fill: 'ink', layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
+    { whenSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'rect', x: productIconX + 4.1, y: productIconY + 3, w: 1, h: 1, fill: 'ink', layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
+    { whenSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'rect', x: productIconX + 2.6, y: productIconY + 4.6, w: 1.3, h: 1.8, stroke: 'ink', strokeWidth: 0.55, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
   );
   addText('assinaturaTitulo', contentX + 13, cardY + 3.5, techTextW - 7, 16.4, 9, 'bold', 'ink', 'left', 0.42, 'certificateDetails');
   addText('assinaturaNome', contentX + 6, cardY + 13.5, techTextW, 11.2, 7, 'regular', 'ink', 'left', undefined, 'certificateDetails');

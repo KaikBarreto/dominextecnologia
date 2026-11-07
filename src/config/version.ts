@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.9";
+export const APP_VERSION = "1.39.10";
 
 export const VERSION_NOTES =
-  "Emita certificados PMOC verificáveis pela O.S. ou pelo contrato, com validade escolhida, visual profissional e anexos automáticos.";
+  "Gerencie documentos PMOC em uma visão mais clara e emita certificados com QR Code de validação e histórico confiável.";

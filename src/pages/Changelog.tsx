@@ -31,6 +31,33 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.10',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Documentos PMOC mais fáceis de gerenciar',
+        description: 'A aba do contrato agora organiza os tipos de documento em uma lista compacta com detalhes, configurações e histórico no mesmo lugar. No celular, a navegação alterna entre lista e detalhe sem apertar o conteúdo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Downloads preservam a versão emitida',
+        description: 'Cada item do histórico baixa exatamente o PDF daquela emissão, com um nome claro que inclui o tipo de documento, o estabelecimento, a data e a versão.',
+        category: 'correcao',
+      },
+      {
+        title: 'Certificados com QR Code de validação',
+        description: 'O QR Code ficou maior no canto inferior direito e leva à validação pública do certificado. Os ícones de responsável técnico e empresa também foram alinhados e redesenhados para melhorar a leitura.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Portal e estados da tela mais claros',
+        description: 'O controle de documentos no portal ficou mais compacto, e a tela agora informa carregamento, falha e ausência de dados com ações adequadas para continuar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.39.9',
     date: '7 de novembro de 2026',
     type: 'patch',

@@ -3,22 +3,23 @@ import { Link } from 'react-router-dom';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import {
+  ArrowLeft,
   Download,
   FileText,
   Loader2,
   Pencil,
   RefreshCw,
-  ChevronDown,
   ShieldCheck,
   AlertTriangle,
-  Eye,
-  EyeOff,
   Globe,
   Table2,
   Palette,
   Building2,
   CalendarClock,
   Files,
+  ChevronRight,
+  History,
+  Settings2,
 } from 'lucide-react';
 import { dateInTz, timeInTz } from '@/lib/timezone';
 import {
@@ -30,7 +31,7 @@ import {
 } from '@/lib/documentValidity';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import {
@@ -41,11 +42,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 
 import { PmocDocEditorDialog } from './PmocDocEditorDialog';
@@ -66,11 +64,11 @@ import {
 } from '@/hooks/usePmocDocuments';
 import {
   useGenerateDossiePdf,
-  useGenerateCronogramaPdf,
   useGenerateTrtPdf,
   useGenerateCertificadoPdf,
   useGeneratePlanilhaPdf,
 } from '@/hooks/useGeneratePmocDocument';
+import { useToast } from '@/hooks/use-toast';
 import {
   buildDefaultTermoRtHtml,
   buildDefaultCertificadoHtml,
@@ -181,6 +179,7 @@ export interface PmocContractDocsTabProps {
 }
 
 type DocsT = ReturnType<typeof useDocsT>;
+type ManagedDocumentType = Exclude<PmocDocumentType, 'cronograma_anual'>;
 
 function useDocsT() {
   const { locale } = useAppLocaleContext();
@@ -254,57 +253,6 @@ function ValidityBadge({ status }: { status: DocumentValidityStatus }) {
   );
 }
 
-export function DocumentRow({
-  icon: Icon,
-  title,
-  description,
-  badges,
-  metadata,
-  actions,
-  settings,
-  emphasized = false,
-}: {
-  icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>;
-  title: string;
-  description: string;
-  badges?: ReactNode;
-  metadata?: ReactNode;
-  actions: ReactNode;
-  settings?: ReactNode;
-  emphasized?: boolean;
-}) {
-  return (
-    <article className={cn('p-4 sm:p-5', emphasized && 'bg-muted/20')}>
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex min-w-0 items-start gap-3.5">
-          <div className={cn(
-            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
-            emphasized ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground',
-          )}>
-            <Icon className="h-5 w-5" aria-hidden="true" />
-          </div>
-          <div className="min-w-0 space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-base font-bold tracking-tight text-foreground">{title}</h3>
-              {badges}
-            </div>
-            <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{description}</p>
-            {metadata && (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
-                {metadata}
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2 lg:max-w-[46%] lg:justify-end">
-          {actions}
-        </div>
-      </div>
-      {settings && <div className="mt-4 border-t border-border/70 pt-4">{settings}</div>}
-    </article>
-  );
-}
-
 export function PmocContractDocsTab({
   contractId,
   templateContext,
@@ -335,7 +283,14 @@ export function PmocContractDocsTab({
   // dentro de cada editor. NULL pra um doc = empresa nunca definiu modelo.
   const { templates: companyTemplates } = useCompanyPmocDocTemplates();
 
-  const { documents, latestByType, isLoading: isLoadingDocs, refetch } = usePmocDocuments(contractId);
+  const {
+    documents,
+    latestByType,
+    isLoading: isLoadingDocs,
+    error: documentsError,
+    refetch,
+    getSignedDownloadUrl,
+  } = usePmocDocuments(contractId);
 
   const generateDossie = useGenerateDossiePdf();
   const generateTrt = useGenerateTrtPdf();
@@ -345,6 +300,7 @@ export function PmocContractDocsTab({
   const [editorOpen, setEditorOpen] = useState<'termo_rt' | 'certificado' | null>(null);
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
   const [artWizardOpen, setArtWizardOpen] = useState(false);
+  const [selectedDocumentType, setSelectedDocumentType] = useState<ManagedDocumentType | null>(null);
 
   // Onda H — templates default NÃO recebem mais ctx: emitem `<span
   // data-pmoc-var>` que vira badge visual no editor. Substituição pelo valor
@@ -458,23 +414,99 @@ export function PmocContractDocsTab({
 
   const handleGenerateDossie = async () => {
     await generateDossie.mutateAsync({ contract_id: contractId });
-    refetch();
   };
   const handleGenerateTrt = async () => {
     await generateTrt.mutateAsync({ contract_id: contractId });
-    refetch();
   };
   const handleGenerateCertificado = async () => {
     await generateCertificado.mutateAsync({ contract_id: contractId });
-    refetch();
   };
   const handleGeneratePlanilha = async () => {
     await generatePlanilha.mutateAsync({ contract_id: contractId });
-    refetch();
   };
   const handleCertValidityChange = async (value: string) => {
     await saveCertificadoValidity(value === 'inherit' ? null : Number(value));
   };
+
+  const generationBlocked = missingFields.length > 0;
+  const generationBlockedTitle = generationBlocked ? t.generationBlockedHint : undefined;
+  const documentCatalog: Array<{
+    type: ManagedDocumentType;
+    icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>;
+    title: string;
+    description: string;
+    latest?: PmocDocument;
+    badges: ReactNode;
+    metadata: ReactNode;
+  }> = [
+    {
+      type: 'certificado',
+      icon: Building2,
+      title: t.certContractTitle,
+      description: t.certContractDesc,
+      latest: latestCertificado,
+      badges: (
+        <>
+          {latestCertificado && <Badge variant="secondary">v{latestCertificado.version}</Badge>}
+          <SignatureStatusBadge status={certStatus} t={t} />
+          {latestCertificado && <ValidityBadge status={certValidityStatus} />}
+        </>
+      ),
+      metadata: (
+        <>
+          <span>{t.dossieLastGenerated}: {formatGeneratedAt(latestCertificado?.generated_at, timezone)}</span>
+          {latestCertificado && certValidUntil && <span>{t.certValidUntil} {formatValidUntil(certValidUntil)}</span>}
+          {certArtModelNote}
+        </>
+      ),
+    },
+    {
+      type: 'termo_rt',
+      icon: FileText,
+      title: t.trtTitle,
+      description: t.trtTooltip,
+      latest: latestTrt,
+      badges: (
+        <>
+          {latestTrt && <Badge variant="secondary">v{latestTrt.version}</Badge>}
+          <SignatureStatusBadge status={trtStatus} t={t} />
+          {latestTrt && <ValidityBadge status={trtValidityStatus} />}
+          <Badge variant="outline">{termoRtHtml ? t.customized : t.defaultText}</Badge>
+        </>
+      ),
+      metadata: (
+        <>
+          <span>{t.dossieLastGenerated}: {formatGeneratedAt(latestTrt?.generated_at, timezone)}</span>
+          {latestTrt && trtValidUntil && <span>{t.trtValidUntil} {formatValidUntil(trtValidUntil)}</span>}
+        </>
+      ),
+    },
+    {
+      type: 'dossie_pmoc',
+      icon: Files,
+      title: t.dossieTitle,
+      description: t.dossieDesc,
+      latest: latestDossie,
+      badges: (
+        <>
+          {latestDossie && <Badge variant="secondary">v{latestDossie.version}</Badge>}
+          <SignatureStatusBadge status={dossieStatus} t={t} />
+        </>
+      ),
+      metadata: <span>{t.dossieLastGenerated}: {formatGeneratedAt(latestDossie?.generated_at, timezone)}</span>,
+    },
+    {
+      type: 'planilha',
+      icon: Table2,
+      title: t.planilhaTitle,
+      description: t.planilhaDesc,
+      latest: latestPlanilha,
+      badges: latestPlanilha ? <Badge variant="secondary">v{latestPlanilha.version}</Badge> : <SignatureStatusBadge status={null} t={t} />,
+      metadata: <span>{t.planilhaLastGenerated}: {formatGeneratedAt(latestPlanilha?.generated_at, timezone)}</span>,
+    },
+  ];
+  const selectedDocument = documentCatalog.find((document) => document.type === selectedDocumentType) ?? null;
+  const SelectedDocumentIcon = selectedDocument?.icon ?? FileText;
 
   return (
     <div className="space-y-6">
@@ -514,64 +546,6 @@ export function PmocContractDocsTab({
         </NoticeBanner>
       )}
 
-      {/* Gate do portal público — libera/oculta os documentos pro cliente final.
-          Quando liberado, o cliente vê Dossiê, Termo, Certificado e Cronograma
-          no portal público da unidade (QR Code). Ação neutra/primária. */}
-      <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-muted/25 shadow-none">
-        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
-            <div
-              className={cn(
-                'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
-                portalDocumentsReleased ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground',
-              )}
-            >
-              <Globe className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold">{t.portalGateTitle}</p>
-                <Badge variant={portalDocumentsReleased ? 'success' : 'outline'} className="gap-1 text-[10px]">
-                  {portalDocumentsReleased ? (
-                    <>
-                      <Eye className="h-3 w-3" aria-hidden="true" /> {t.portalGateLiberado}
-                    </>
-                  ) : (
-                    <>
-                      <EyeOff className="h-3 w-3" aria-hidden="true" /> {t.portalGateOculto}
-                    </>
-                  )}
-                </Badge>
-              </div>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {t.portalGateDesc}
-              </p>
-            </div>
-          </div>
-          <Button
-            size="sm"
-            variant={portalDocumentsReleased ? 'outline' : 'default'}
-            onClick={() =>
-              setPortalDocumentsReleased.mutate({
-                contractId,
-                released: !portalDocumentsReleased,
-              })
-            }
-            disabled={setPortalDocumentsReleased.isPending}
-            className="min-h-11 shrink-0 active:scale-[0.97] transition-transform rounded-xl"
-          >
-            {setPortalDocumentsReleased.isPending ? (
-              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-            ) : portalDocumentsReleased ? (
-              <EyeOff className="mr-1.5 h-4 w-4" />
-            ) : (
-              <Eye className="mr-1.5 h-4 w-4" />
-            )}
-            {portalDocumentsReleased ? t.portalGateHideBtn : t.portalGateReleaseBtn}
-          </Button>
-        </CardContent>
-      </Card>
-
       {trtStatus === 'pending' && (
         <NoticeBanner variant="warning" title={t.rtSignaturePendingTitle}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -598,180 +572,284 @@ export function PmocContractDocsTab({
           <p className="mt-1 text-sm text-muted-foreground">{t.officialDocumentsDesc}</p>
         </div>
 
-        <Card className="overflow-hidden border-border/80 shadow-none">
-          <div className="divide-y divide-border/80">
-            <DocumentRow
-              icon={Building2}
-              title={t.certContractTitle}
-              description={t.certContractDesc}
-              emphasized
-              badges={
-                <>
-                  {latestCertificado && <Badge variant="secondary">v{latestCertificado.version}</Badge>}
-                  <SignatureStatusBadge status={certStatus} t={t} />
-                  {latestCertificado && <ValidityBadge status={certValidityStatus} />}
-                </>
-              }
-              metadata={
-                <>
-                  <span>{t.dossieLastGenerated}: {formatGeneratedAt(latestCertificado?.generated_at, timezone)}</span>
-                  {latestCertificado && certValidUntil && (
-                    <span>{t.certValidUntil} {formatValidUntil(certValidUntil)}</span>
-                  )}
-                  {certArtModelNote}
-                </>
-              }
-              actions={
-                <>
-                  {latestCertificado?.pdf_storage_path && (
-                    <DownloadLatestButton doc={latestCertificado} label={t.certDownloadBtn} />
-                  )}
-                  <Button
-                    size="sm"
-                    onClick={handleGenerateCertificado}
-                    disabled={generateCertificado.isPending}
-                    className="min-h-11 rounded-xl"
-                  >
-                    {generateCertificado.isPending ? (
-                      <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="mr-1.5 h-4 w-4" />
-                    )}
-                    {latestCertificado ? t.certRegenerateBtn : t.certGenerateBtn}
-                  </Button>
-                </>
-              }
-              settings={
-                <div className="grid gap-4 rounded-xl bg-background/80 p-4 sm:grid-cols-[minmax(220px,0.8fr)_minmax(0,1.2fr)] sm:items-end">
-                  <div className="space-y-2">
-                    <Label htmlFor="contract-cert-validity" className="flex items-center gap-2 text-sm font-semibold">
-                      <CalendarClock className="h-4 w-4" aria-hidden="true" />
-                      {tTemplates.certValidityLabel}
-                    </Label>
-                    <Select
-                      value={contractCertValidityMonths === null ? 'inherit' : String(contractCertValidityMonths)}
-                      onValueChange={handleCertValidityChange}
-                      disabled={isSavingCertificadoValidity}
-                    >
-                      <SelectTrigger id="contract-cert-validity" className="h-11 rounded-xl">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="inherit">
-                          {t.validityInherit.replace('{n}', String(companyCertValidityMonths))}
-                        </SelectItem>
-                        {[3, 6, 12, 18, 24, 36].map((months) => (
-                          <SelectItem key={months} value={String(months)}>
-                            {t.validityMonths.replace('{n}', String(months))}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      {t.validityEffective.replace('{n}', String(effectiveCertValidityMonths))}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setArtWizardOpen(true)}
-                      className="min-h-11 rounded-xl"
-                    >
-                      <Palette className="mr-1.5 h-4 w-4" />
-                      {tCertArt.openWizardBtn}
-                    </Button>
-                    <Button
-                      variant="edit-ghost"
-                      size="sm"
-                      className="min-h-11 rounded-xl"
-                      onClick={() => setEditorOpen('certificado')}
-                    >
-                      <Pencil className="mr-1.5 h-4 w-4" />
-                      {t.editTextBtn}
-                    </Button>
-                  </div>
-                </div>
-              }
-            />
-
-            <DocumentRow
-              icon={FileText}
-              title={t.trtTitle}
-              description={t.trtTooltip}
-              badges={
-                <>
-                  {latestTrt && <Badge variant="secondary">v{latestTrt.version}</Badge>}
-                  <SignatureStatusBadge status={trtStatus} t={t} />
-                  {latestTrt && <ValidityBadge status={trtValidityStatus} />}
-                  <Badge variant="outline">{termoRtHtml ? t.customized : t.defaultText}</Badge>
-                </>
-              }
-              metadata={
-                <>
-                  <span>{t.dossieLastGenerated}: {formatGeneratedAt(latestTrt?.generated_at, timezone)}</span>
-                  {latestTrt && trtValidUntil && <span>{t.trtValidUntil} {formatValidUntil(trtValidUntil)}</span>}
-                </>
-              }
-              actions={
-                <>
-                  <Button variant="edit-ghost" size="sm" className="min-h-11 rounded-xl" onClick={() => setEditorOpen('termo_rt')}>
-                    <Pencil className="mr-1.5 h-4 w-4" />
-                    {t.editTextBtn}
-                  </Button>
-                  {latestTrt?.pdf_storage_path && <DownloadLatestButton doc={latestTrt} label={t.trtDownloadBtn} />}
-                  <Button size="sm" variant="outline" onClick={handleGenerateTrt} disabled={generateTrt.isPending} className="min-h-11 rounded-xl">
-                    {generateTrt.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-4 w-4" />}
-                    {latestTrt ? t.trtRegenerateBtn : t.trtGenerateBtn}
-                  </Button>
-                </>
-              }
-            />
-
-            <DocumentRow
-              icon={Files}
-              title={t.dossieTitle}
-              description={t.dossieDesc}
-              badges={
-                <>
-                  {latestDossie && <Badge variant="secondary">v{latestDossie.version}</Badge>}
-                  <SignatureStatusBadge status={dossieStatus} t={t} />
-                </>
-              }
-              metadata={<span>{t.dossieLastGenerated}: {formatGeneratedAt(latestDossie?.generated_at, timezone)}</span>}
-              actions={
-                <>
-                  {latestDossie?.pdf_storage_path && <DownloadLatestButton doc={latestDossie} label={t.dossieDownloadBtn} />}
-                  <Button size="sm" variant="outline" onClick={handleGenerateDossie} disabled={generateDossie.isPending} className="min-h-11 rounded-xl">
-                    {generateDossie.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-4 w-4" />}
-                    {latestDossie ? t.dossieRegenerateBtn : t.dossieGenerateBtn}
-                  </Button>
-                </>
-              }
-            />
-
-            <DocumentRow
-              icon={Table2}
-              title={t.planilhaTitle}
-              description={t.planilhaDesc}
-              badges={latestPlanilha ? <Badge variant="secondary">v{latestPlanilha.version}</Badge> : undefined}
-              metadata={<span>{t.planilhaLastGenerated}: {formatGeneratedAt(latestPlanilha?.generated_at, timezone)}</span>}
-              actions={
-                <>
-                  {latestPlanilha?.pdf_storage_path && <DownloadLatestButton doc={latestPlanilha} label={t.planilhaDownloadBtn} />}
-                  <Button size="sm" variant="outline" onClick={handleGeneratePlanilha} disabled={generatePlanilha.isPending} className="min-h-11 rounded-xl">
-                    {generatePlanilha.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-4 w-4" />}
-                    {latestPlanilha ? t.planilhaRegenerateBtn : t.planilhaGenerateBtn}
-                  </Button>
-                </>
-              }
-            />
+        <div>
+          <div className="flex min-h-14 items-center justify-between gap-4 rounded-t-lg bg-primary px-4 py-3 text-primary-foreground sm:px-5">
+            <div className="flex min-w-0 items-start gap-3">
+              <Globe className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="text-sm font-bold">{t.portalGateTitle}</p>
+                <p className="text-xs text-primary-foreground/70">{t.portalGateCompactDesc}</p>
+              </div>
+            </div>
+            <label className="flex shrink-0 cursor-pointer items-center gap-2 self-start text-xs font-bold sm:self-center">
+              <span className="hidden sm:inline">{portalDocumentsReleased ? t.portalGateLiberado : t.portalGateOculto}</span>
+              {setPortalDocumentsReleased.isPending ? (
+                <Loader2 className="h-5 w-5 animate-spin" aria-label={t.portalGateUpdatingLabel} />
+              ) : (
+                <Switch
+                  checked={portalDocumentsReleased}
+                  onCheckedChange={(released) => setPortalDocumentsReleased.mutate({ contractId, released })}
+                  aria-label={t.portalGateToggleLabel}
+                  className="data-[state=checked]:bg-primary-foreground data-[state=unchecked]:bg-primary-foreground/30 [&[data-state=checked]>span]:bg-primary [&[data-state=unchecked]>span]:bg-primary-foreground"
+                />
+              )}
+            </label>
           </div>
-        </Card>
-      </section>
 
-      {/* Histórico de versões */}
-      <VersionHistory documents={documents} isLoading={isLoadingDocs} t={t} />
+          {isLoadingDocs ? (
+            <DocumentsWorkspaceSkeleton />
+          ) : documentsError ? (
+            <div className="rounded-b-lg border border-t-0 border-border/80 p-4">
+              <NoticeBanner variant="destructive" title={t.documentsLoadErrorTitle}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p>{t.documentsLoadErrorDesc}</p>
+                  <Button size="sm" variant="secondary" className="min-h-10 shrink-0" onClick={() => refetch()}>
+                    <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                    {t.retryBtn}
+                  </Button>
+                </div>
+              </NoticeBanner>
+            </div>
+          ) : (
+          <Card className="overflow-hidden rounded-t-none border-t-0 border-border/80 shadow-none">
+            <div className="grid md:min-h-[500px] md:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
+              <aside
+                className={cn(
+                  'border-border/80 md:border-r',
+                  selectedDocumentType ? 'hidden md:block' : 'block',
+                )}
+                aria-label={t.documentsListAriaLabel}
+              >
+                <div className="border-b border-border/80 px-4 py-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                    {t.documentsListTitle}
+                  </p>
+                </div>
+                <nav className="divide-y divide-border/70">
+                  {documentCatalog.map((document) => {
+                    const Icon = document.icon;
+                    const selected = selectedDocumentType === document.type;
+                    return (
+                      <button
+                        key={document.type}
+                        type="button"
+                        className={cn(
+                          'group flex min-h-[104px] w-full items-start gap-3 border-l-[3px] px-4 py-4 text-left transition-colors',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                          selected
+                            ? 'border-l-primary bg-muted/60'
+                            : 'border-l-transparent hover:bg-muted/35',
+                        )}
+                        aria-current={selected ? 'true' : undefined}
+                        onClick={() => setSelectedDocumentType(document.type)}
+                      >
+                        <span className={cn(
+                          'mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+                          selected ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground group-hover:bg-muted/80',
+                        )}>
+                          <Icon className="h-5 w-5" aria-hidden="true" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-bold leading-snug text-foreground">{document.title}</span>
+                          <span className="mt-1 block text-xs text-muted-foreground">
+                            {document.latest ? `v${document.latest.version} · ${formatGeneratedAt(document.latest.generated_at, timezone)}` : t.notGeneratedBadge}
+                          </span>
+                        </span>
+                        <ChevronRight className="mt-3 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                      </button>
+                    );
+                  })}
+                </nav>
+              </aside>
+
+              <div
+                className={cn(
+                  'min-w-0 bg-background',
+                  selectedDocument ? 'block' : 'hidden md:flex md:items-center md:justify-center',
+                )}
+                aria-live="polite"
+              >
+                {!selectedDocument ? (
+                  <div className="max-w-sm px-8 py-14 text-center">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-muted text-foreground">
+                      <FileText className="h-6 w-6" aria-hidden="true" />
+                    </div>
+                    <h3 className="mt-4 text-base font-bold text-foreground">{t.selectDocumentTitle}</h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{t.selectDocumentDesc}</p>
+                  </div>
+                ) : (
+                  <div className="w-full min-w-0">
+                    <div className="border-b border-border/80 p-4 sm:p-5 lg:p-6">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mb-3 -ml-2 min-h-10 md:hidden"
+                        onClick={() => setSelectedDocumentType(null)}
+                      >
+                        <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                        {t.backToDocumentsBtn}
+                      </Button>
+
+                      <div>
+                        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                          <div className="flex min-w-0 items-start gap-3.5">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                            <SelectedDocumentIcon className="h-5 w-5" aria-hidden="true" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="text-lg font-extrabold tracking-tight text-foreground">{selectedDocument.title}</h3>
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              {selectedDocument.badges}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex shrink-0 flex-wrap items-center gap-2 xl:justify-end">
+                          {selectedDocument.latest?.pdf_storage_path && (
+                            <DownloadDocumentButton
+                              doc={selectedDocument.latest}
+                              label={
+                                selectedDocument.type === 'certificado' ? t.certDownloadBtn
+                                  : selectedDocument.type === 'termo_rt' ? t.trtDownloadBtn
+                                    : selectedDocument.type === 'dossie_pmoc' ? t.dossieDownloadBtn
+                                      : t.planilhaDownloadBtn
+                              }
+                              getSignedDownloadUrl={getSignedDownloadUrl}
+                              establishmentName={templateContext?.customer_name}
+                              errorTitle={t.downloadErrorTitle}
+                              errorDescription={t.downloadErrorDesc}
+                            />
+                          )}
+                          {selectedDocument.type === 'certificado' && (
+                            <Button
+                              size="sm"
+                              onClick={handleGenerateCertificado}
+                              disabled={generateCertificado.isPending || generationBlocked}
+                              title={generationBlockedTitle}
+                              className="min-h-11"
+                            >
+                              {generateCertificado.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-4 w-4" />}
+                              {latestCertificado ? t.certRegenerateBtn : t.certGenerateBtn}
+                            </Button>
+                          )}
+                          {selectedDocument.type === 'termo_rt' && (
+                            <Button
+                              size="sm"
+                              onClick={handleGenerateTrt}
+                              disabled={generateTrt.isPending || generationBlocked}
+                              title={generationBlockedTitle}
+                              className="min-h-11"
+                            >
+                              {generateTrt.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-4 w-4" />}
+                              {latestTrt ? t.trtRegenerateBtn : t.trtGenerateBtn}
+                            </Button>
+                          )}
+                          {selectedDocument.type === 'dossie_pmoc' && (
+                            <Button
+                              size="sm"
+                              onClick={handleGenerateDossie}
+                              disabled={generateDossie.isPending || generationBlocked}
+                              title={generationBlockedTitle}
+                              className="min-h-11"
+                            >
+                              {generateDossie.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-4 w-4" />}
+                              {latestDossie ? t.dossieRegenerateBtn : t.dossieGenerateBtn}
+                            </Button>
+                          )}
+                          {selectedDocument.type === 'planilha' && (
+                            <Button
+                              size="sm"
+                              onClick={handleGeneratePlanilha}
+                              disabled={generatePlanilha.isPending || generationBlocked}
+                              title={generationBlockedTitle}
+                              className="min-h-11"
+                            >
+                              {generatePlanilha.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-4 w-4" />}
+                              {latestPlanilha ? t.planilhaRegenerateBtn : t.planilhaGenerateBtn}
+                            </Button>
+                          )}
+                        </div>
+                        </div>
+                        <p className="mt-4 w-full text-sm leading-relaxed text-muted-foreground">{selectedDocument.description}</p>
+                        <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+                          {selectedDocument.metadata}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6 p-4 sm:p-5 lg:p-6">
+                      {selectedDocument.type === 'certificado' && (
+                        <section className="space-y-3" aria-labelledby="certificate-settings-title">
+                          <div className="flex items-center gap-2">
+                            <Settings2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                            <h4 id="certificate-settings-title" className="text-sm font-bold text-foreground">{t.documentSettingsTitle}</h4>
+                          </div>
+                          <div className="grid gap-4 rounded-lg bg-muted/30 p-4 sm:grid-cols-[minmax(220px,0.8fr)_minmax(0,1.2fr)] sm:items-end">
+                            <div className="space-y-2">
+                              <Label htmlFor="contract-cert-validity" className="flex items-center gap-2 text-sm font-semibold">
+                                <CalendarClock className="h-4 w-4" aria-hidden="true" />
+                                {tTemplates.certValidityLabel}
+                              </Label>
+                              <Select
+                                value={contractCertValidityMonths === null ? 'inherit' : String(contractCertValidityMonths)}
+                                onValueChange={handleCertValidityChange}
+                                disabled={isSavingCertificadoValidity}
+                              >
+                                <SelectTrigger id="contract-cert-validity" className="h-11">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="inherit">{t.validityInherit.replace('{n}', String(companyCertValidityMonths))}</SelectItem>
+                                  {[3, 6, 12, 18, 24, 36].map((months) => (
+                                    <SelectItem key={months} value={String(months)}>{t.validityMonths.replace('{n}', String(months))}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs leading-relaxed text-muted-foreground">{t.validityEffective.replace('{n}', String(effectiveCertValidityMonths))}</p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                              <Button size="sm" variant="outline" onClick={() => setArtWizardOpen(true)} className="min-h-11">
+                                <Palette className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                                {tCertArt.openWizardBtn}
+                              </Button>
+                              <Button variant="edit-ghost" size="sm" className="min-h-11" onClick={() => setEditorOpen('certificado')}>
+                                <Pencil className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                                {t.editFutureVersionsBtn}
+                              </Button>
+                            </div>
+                          </div>
+                        </section>
+                      )}
+
+                      {selectedDocument.type === 'termo_rt' && (
+                        <section className="flex flex-col gap-3 rounded-lg bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <h4 className="text-sm font-bold text-foreground">{t.documentSettingsTitle}</h4>
+                            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t.futureVersionsHint}</p>
+                          </div>
+                          <Button variant="edit-ghost" size="sm" className="min-h-11 shrink-0" onClick={() => setEditorOpen('termo_rt')}>
+                            <Pencil className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                            {t.editFutureVersionsBtn}
+                          </Button>
+                        </section>
+                      )}
+
+                      <VersionHistory
+                        documents={documents.filter((document) => document.doc_type === selectedDocument.type)}
+                        documentTitle={selectedDocument.title}
+                        getSignedDownloadUrl={getSignedDownloadUrl}
+                        establishmentName={templateContext?.customer_name}
+                        t={t}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+          )}
+        </div>
+      </section>
 
       {/* Anexos externos — card abaixo dos documentos gerados */}
       <ContractAttachmentsSection contractId={contractId} />
@@ -826,48 +904,48 @@ export function PmocContractDocsTab({
   );
 }
 
-/**
- * Botão de download da última versão de um doc PMOC.
- *
- * Por enquanto, baixa via signed URL gerada pela edge function (a Database
- * vai expor um endpoint `pmoc-document-signed-url` ou retornar URL na edge
- * function de geração). Como ainda não temos esse endpoint na Onda C parcial,
- * o handler chama a mesma edge de geração — que faz cache hit quando hash
- * não mudou e retorna a URL existente.
- */
-function DownloadLatestButton({
+type SignedDownloadResolver = (
+  document: Pick<PmocDocument, 'contract_id' | 'doc_type' | 'version' | 'generated_at' | 'pdf_storage_path'>,
+  establishmentName?: string | null,
+) => Promise<string>;
+
+/** Baixa exatamente a versão recebida, sem chamar o gerador nem criar versão. */
+function DownloadDocumentButton({
   doc,
   label,
+  getSignedDownloadUrl,
+  establishmentName,
+  errorTitle,
+  errorDescription,
 }: {
   doc: PmocDocument;
   label: string;
+  getSignedDownloadUrl: SignedDownloadResolver;
+  establishmentName?: string | null;
+  errorTitle: string;
+  errorDescription: string;
 }) {
-  const generateDossie = useGenerateDossiePdf();
-  const generateCronograma = useGenerateCronogramaPdf();
-  const generateTrt = useGenerateTrtPdf();
-  const generateCertificado = useGenerateCertificadoPdf();
-  const generatePlanilha = useGeneratePlanilhaPdf();
+  const { toast } = useToast();
   const [busy, setBusy] = useState(false);
 
   const handleClick = async () => {
+    const targetWindow = window.open('', '_blank');
+    if (targetWindow) targetWindow.opener = null;
     setBusy(true);
     try {
-      let result;
-      if (doc.doc_type === 'dossie_pmoc') {
-        result = await generateDossie.mutateAsync({ contract_id: doc.contract_id });
-      } else if (doc.doc_type === 'cronograma_anual') {
-        result = await generateCronograma.mutateAsync({ contract_id: doc.contract_id });
-      } else if (doc.doc_type === 'certificado') {
-        result = await generateCertificado.mutateAsync({ contract_id: doc.contract_id });
-      } else if (doc.doc_type === 'planilha') {
-        result = await generatePlanilha.mutateAsync({ contract_id: doc.contract_id });
+      const signedUrl = await getSignedDownloadUrl(doc, establishmentName);
+      if (targetWindow && !targetWindow.closed) {
+        targetWindow.location.replace(signedUrl);
       } else {
-        // termo_rt (Onda E)
-        result = await generateTrt.mutateAsync({ contract_id: doc.contract_id });
+        const link = document.createElement('a');
+        link.href = signedUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.click();
       }
-      if (result.pdf_url) {
-        window.open(result.pdf_url, '_blank', 'noopener,noreferrer');
-      }
+    } catch {
+      targetWindow?.close();
+      toast({ variant: 'destructive', title: errorTitle, description: errorDescription });
     } finally {
       setBusy(false);
     }
@@ -879,9 +957,9 @@ function DownloadLatestButton({
       size="sm"
       onClick={handleClick}
       disabled={busy}
-      className="min-h-11 sm:min-h-[40px] active:scale-[0.97] transition-transform rounded-xl"
+      className="min-h-11 active:scale-[0.97] transition-transform"
     >
-      {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Download className="mr-1 h-4 w-4" />}
+      {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="mr-1 h-4 w-4" aria-hidden="true" />}
       {label}
     </Button>
   );
@@ -889,103 +967,83 @@ function DownloadLatestButton({
 
 function VersionHistory({
   documents,
-  isLoading,
+  documentTitle,
+  getSignedDownloadUrl,
+  establishmentName,
   t,
 }: {
   documents: PmocDocument[];
-  isLoading: boolean;
+  documentTitle: string;
+  getSignedDownloadUrl: SignedDownloadResolver;
+  establishmentName?: string | null;
   t: DocsT;
 }) {
-  const [open, setOpen] = useState(false);
-
-  if (isLoading) {
-    return (
-      <Card className="w-full border-0 bg-muted/25 shadow-none">
-        <CardContent className="py-4 text-center text-xs text-muted-foreground">
-          {t.versionHistoryLoading}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (documents.length === 0) {
-    return (
-      <Card className="w-full border-0 bg-muted/25 shadow-none">
-        <CardContent className="py-4 text-center text-xs text-muted-foreground">
-          {t.versionHistoryEmpty}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Agrupar por doc_type
-  const byType = documents.reduce<Record<PmocDocumentType, PmocDocument[]>>(
-    (acc, d) => {
-      (acc[d.doc_type] ||= []).push(d);
-      return acc;
-    },
-    { dossie_pmoc: [], cronograma_anual: [], termo_rt: [], certificado: [], planilha: [] },
-  );
+  const { timezone } = useAppLocaleContext();
 
   return (
-    <Card className="w-full border-0 bg-transparent shadow-none">
-      <Collapsible open={open} onOpenChange={setOpen}>
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              'flex w-full items-center justify-between gap-2 px-4 py-3 text-left min-h-11',
-              'text-sm font-semibold active:scale-[0.995] transition-transform',
-            )}
-          >
-            <span>{t.versionHistoryTitle.replace('{n}', String(documents.length))}</span>
-            <ChevronDown
-              className={cn('h-4 w-4 transition-transform', open && 'rotate-180')}
-              aria-hidden="true"
-            />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <CardContent className="space-y-4 border-t pt-4">
-            <TypeBlock title={t.trtTitle} docs={byType.termo_rt} downloadLabel={t.downloadBtn} />
-            <TypeBlock title={t.certTitle} docs={byType.certificado} downloadLabel={t.downloadBtn} />
-            <TypeBlock title={t.dossieTitle} docs={byType.dossie_pmoc} downloadLabel={t.downloadBtn} />
-            <TypeBlock title={t.planilhaTitle} docs={byType.planilha} downloadLabel={t.downloadBtn} />
-            <TypeBlock title={t.cronogramaAnualTitle} docs={byType.cronograma_anual} downloadLabel={t.downloadBtn} />
-          </CardContent>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
+    <section className="space-y-3" aria-label={`${t.versionHistoryLabel}: ${documentTitle}`}>
+      <div className="flex items-center gap-2">
+        <History className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+        <h4 className="text-sm font-bold text-foreground">
+          {t.versionHistoryTitle.replace('{n}', String(documents.length))}
+        </h4>
+      </div>
+      {documents.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+          {t.versionHistoryEmpty}
+        </div>
+      ) : (
+        <ul className="max-h-72 divide-y divide-border/70 overflow-y-auto rounded-lg border border-border/80">
+          {documents.map((document, index) => (
+            <li key={document.id} className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-bold text-foreground">v{document.version}</p>
+                  {index === 0 && <Badge variant="secondary">{t.currentVersionBadge}</Badge>}
+                  {document.signature_status && <SignatureStatusBadge status={document.signature_status} t={t} />}
+                </div>
+                <p className="mt-1 text-xs tabular-nums text-muted-foreground">{formatGeneratedAt(document.generated_at, timezone)}</p>
+              </div>
+              <DownloadDocumentButton
+                doc={document}
+                label={t.downloadVersionBtn.replace('{n}', String(document.version))}
+                getSignedDownloadUrl={getSignedDownloadUrl}
+                establishmentName={establishmentName}
+                errorTitle={t.downloadErrorTitle}
+                errorDescription={t.downloadErrorDesc}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
-function TypeBlock({ title, docs, downloadLabel }: { title: string; docs: PmocDocument[]; downloadLabel: string }) {
-  // Fuso da empresa (não o do navegador do gestor) — regra do time.
-  const { timezone } = useAppLocaleContext();
-  if (docs.length === 0) return null;
+function DocumentsWorkspaceSkeleton() {
   return (
-    <div className="space-y-1.5">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {title}
-      </p>
-      <ul className="space-y-1.5">
-        {docs.map(d => (
-          <li
-            key={d.id}
-            className="flex items-center justify-between gap-2 rounded-xl bg-muted/25 px-3 py-2"
-          >
-            <div className="min-w-0">
-              <p className="text-sm font-medium">
-                v{d.version}{' '}
-                <span className="font-mono text-xs text-muted-foreground">
-                  • {formatGeneratedAt(d.generated_at, timezone)}
-                </span>
-              </p>
+    <Card className="overflow-hidden border-border/80 shadow-none" aria-label="Carregando documentos">
+      <div className="grid md:min-h-[500px] md:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
+        <div className="space-y-3 border-border/80 p-4 md:border-r">
+          <Skeleton className="h-4 w-28" />
+          {[1, 2, 3, 4].map((item) => (
+            <div key={item} className="flex items-start gap-3 border-t border-border/70 pt-4">
+              <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-4/5" />
+                <Skeleton className="h-3 w-3/5" />
+              </div>
             </div>
-            <DownloadLatestButton doc={d} label={downloadLabel} />
-          </li>
-        ))}
-      </ul>
-    </div>
+          ))}
+        </div>
+        <div className="hidden items-center justify-center p-8 md:flex">
+          <div className="w-full max-w-sm space-y-3">
+            <Skeleton className="mx-auto h-12 w-12 rounded-lg" />
+            <Skeleton className="mx-auto h-5 w-2/3" />
+            <Skeleton className="mx-auto h-4 w-full" />
+          </div>
+        </div>
+      </div>
+    </Card>
   );
 }
