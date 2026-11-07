@@ -2333,6 +2333,14 @@ Passando o mouse sobre um cartão, aparecem dois botões no canto superior direi
 
 Clicando no cartão, abre o resumo da OS. Nele estão o cliente, o equipamento, o check-in e check-out, as fotos, os detalhes do serviço, os valores e a conformidade PMOC quando houver, mais uma linha de botões redondos: Retomar, Pausar, Finalizar, Resetar OS (quando a OS já passou de Agendada), Editar, Excluir e um botão para copiar o link, além do botão grande embaixo que muda de nome conforme o estado: Preencher OS em OS aberta, Relatório de Serviço em OS concluída. Quando a empresa tem o recurso de consumo de estoque na OS ligado e o técnico lançou material nesse atendimento, o resumo também mostra o bloco Materiais utilizados, só leitura: cada linha traz o material, a quantidade, a unidade e o local de estoque, com o custo da linha e o Custo total ao final (item ainda não baixado do estoque mostra o aviso Ainda não baixado do estoque).
 
+#### Gerar documentos PMOC pela OS concluída
+
+Quando a empresa atua com refrigeração, toda OS concluída oferece a ação Gerar documentos PMOC no menu de três pontos. Ela aparece no cartão do kanban, na visão em lista, na Agenda, nas ocorrências do contrato, no resumo da OS e no relatório aberto pelo técnico logado. A OS pode ter vindo de um contrato ou ter sido criada avulsa.
+
+Na janela, escolha Relatório de serviço ou Certificado de conformidade. O sistema confere cliente, equipamentos atendidos, produto bactericida PMOC vigente e Responsável Técnico. Se o RT ainda não estiver pronto, administradores e gestores podem cadastrá-lo ali mesmo. No certificado também é possível escolher o modelo visual antes de gerar.
+
+ A ação só aparece em OS concluída e para empresas com o segmento de refrigeração. O relatório usa o que foi realmente registrado no atendimento; o certificado também exige os dados regulatórios do produto e do Responsável Técnico.
+
 #### O "+" no cabeçalho da coluna
 
 Cada coluna do kanban tem, ao lado da contagem, um botão de mais (+). Ele abre a janela Nova Ordem de Serviço já com o status daquela coluna. É o atalho para quem recebe um chamado que já entra "agendado" ou já entra "em andamento", sem ter que criar em pendente e arrastar depois.
@@ -2671,6 +2679,8 @@ Ao lado do telefone do cliente, tanto numa OS quanto numa Tarefa, fica um ícone
 Para quem tem permissão de faturar, o resumo de uma OS também traz o botão Faturar OS e, quando já existe cobrança ou receita lançada, o selo Faturada ou Cobrança enviada ao lado do nome, exatamente como nas outras telas que mostram OS (tabela, lista do celular e kanban). Não é preciso abrir a Ordem de Serviço só para faturar: a agenda já resolve.
 
 Quando a OS já teve material lançado nela, o resumo também mostra o bloco Materiais utilizados: cada linha traz o material, a quantidade, a unidade e o local de estoque de onde saiu, com o custo de cada linha e o Custo total ao final. Um material ainda não baixado do estoque aparece com o aviso Ainda não baixado do estoque. É a mesma informação que já aparecia na tela de Ordem de Serviço, agora também aqui, sem precisar sair da Agenda.
+
+Em empresa de refrigeração, o resumo de uma OS concluída também oferece Gerar documentos PMOC. Assim, o gestor pode emitir o relatório de serviço ou o certificado de conformidade sem sair da Agenda, inclusive quando a OS não veio de contrato.
 
  O bloco Materiais utilizados só aparece quando existe material lançado naquela OS. Sem lançamento nenhum, o bloco simplesmente não aparece. Ele também não existe no resumo de uma Tarefa, porque Tarefa é compromisso interno e não tem consumo de estoque.
 
@@ -3019,7 +3029,7 @@ O técnico não precisa navegar por menu nenhum: ele abre o link da OS, que cheg
 
 | Quem abre | O que aparece |
 | Técnico ou gestor logado, OS em aberto | A tela de execução, com os botões de ação. |
-| Técnico ou gestor logado, OS concluída | O relatório do serviço, com baixar PDF, imprimir e copiar link. |
+| Técnico ou gestor logado, OS concluída | O relatório do serviço, com baixar PDF, imprimir, copiar link e, em empresas de refrigeração, gerar os documentos PMOC. |
 | Qualquer pessoa sem login | O modo cliente, somente leitura. O sistema entra nesse modo sozinho, sem ninguém precisar escolher nada. |
 
  O mesmo endereço serve para os três. Sem sessão iniciada, ele vira modo cliente automaticamente. Por isso, quando o técnico reclama que "não aparecem os botões", a primeira pergunta é: ele está logado no celular? Deslogado, ele vê a OS como o cliente veria, e não consegue fazer check-in nem preencher.
@@ -3112,7 +3122,7 @@ Cada bloco mostra o quanto já foi respondido e um selo: Concluído ou Pendente,
 #### Como cada tipo de pergunta se comporta
 
 | Tipo | Como responder | Quando salva |
-| Sim/Não | Uma chave. Ligada mostra o selo verde Sim, desligada o selo vermelho Não. Sem responder, aparece Não respondido. | No toque. |
+| Sim/Não | Dois botões sempre visíveis. Sim fica verde quando escolhido e Não fica vermelho. É possível trocar a resposta diretamente, sem abrir um modo de edição. | No toque. |
 | Conformidade | Três botões: Conforme (verde), Não Conforme (vermelho) e N/A (laranja). Tocar de novo no mesmo botão limpa a resposta. | No toque. |
 | Texto | Caixa de texto de duas linhas. | Ao sair do campo, não a cada letra. |
 | Número | Teclado numérico, aceita decimal. | Ao sair do campo. |
@@ -3509,6 +3519,12 @@ O botão Cadastrar Material (no celular, o botão flutuante "Material") abre a j
 | Preço de Custo (R$) | Não | Quanto você paga. Alimenta o Valor investido e o custo em orçamento. A nota da tela é "Valor por unidade." |
 | Preço de Venda (R$) | Não | Quanto você cobra. Alimenta a Projeção venda. |
 | Locais deste material | Não | Bloco por local de estoque, com a explicação "Marque os locais onde este material está presente. Defina a quantidade mínima para cada local." Tem Marcar todos e Desmarcar todos. |
+
+#### Produto bactericida usado nos documentos PMOC
+
+Para empresas de refrigeração, o cadastro tem a opção Produto de PMOC. Ao ligá-la, aparecem os campos Fabricante, Registro na Anvisa, Lote, Data de fabricação e Validade. Preencha esses dados exatamente como constam na embalagem.
+
+Na geração de relatório ou certificado de uma OS, a Dominex procura um produto PMOC ativo e dentro da validade. Produto vencido, com fabricação futura, arquivado ou com dados regulatórios incompletos não é usado no documento.
 
 Categoria e Grupo não são a mesma coisa. Categoria é uma lista fechada, igual para todo mundo (Peças, Filtros, Gases, Ferramentas, Materiais, Equipamentos, Outros). Grupo é livre, criado pela sua empresa em Configurações do Estoque → Grupos de material. Muita gente usa grupo para separar por marca, por linha ou por finalidade.
 
@@ -5312,6 +5328,8 @@ Etapa Unidade & RT do assistente PMOC, com o seletor de Responsável Técnico e 
 
 É um seletor com os Responsáveis Técnicos ativos da empresa, mais um botão de mais (+) que abre o cadastro rápido sem sair do assistente. O texto de ajuda diz: "Engenheiro ou Técnico em Refrigeração com CFT/CREA que assina o Termo de Responsabilidade Técnica conforme Lei Federal 13.589/2018. Diferente do Técnico Executor (quem executa as OSs no campo)."
 
+O mesmo cadastro rápido também aparece ao gerar um certificado PMOC por uma OS concluída. Nesse caminho, não é necessário criar um contrato: o Responsável Técnico fica salvo para os próximos documentos da empresa.
+
 Responsável Técnico e Técnico Executor são pessoas diferentes e papéis diferentes. O RT é quem assina os documentos da norma, com registro no conselho profissional. O Técnico Executor é quem vai até o local fazer a manutenção. Podem ser a mesma pessoa na prática, mas no sistema são campos separados, em etapas diferentes do assistente.
 
 Salvar um contrato PMOC sem RT é permitido, mas o sistema avisa com Sem Responsável Técnico (RT) definido e a explicação "Recomendamos definir um RT antes de ativar PMOC. Você pode atribuir depois." Sem RT completo os documentos regulatórios não saem certos.
@@ -5578,7 +5596,7 @@ Aba Documentos das Configurações de Contrato: os modelos padrão do TRT e do C
 
 É onde ficam os Modelos padrão de documentos PMOC: "Modelos usados como ponto de partida ao criar um novo contrato PMOC. Editar aqui não altera contratos já existentes." Há um modelo para o Termo de Responsabilidade Técnica e outro para o Certificado de Conformidade, cada um com Editar texto e Restaurar texto padrão. O editor aceita negrito, listas, links e variáveis (que aparecem como etiquetas e são substituídas pelos dados de cada contrato no PDF).
 
-Só o card do Certificado de Conformidade tem o botão extra Modelo visual, que abre um assistente de 3 passos com várias artes prontas (temas claros e escuros) para o fundo do certificado, com pré-visualização ao vivo. O modelo escolhido aqui é o padrão herdado por todo contrato novo; cada contrato pode trocar o próprio modelo visual na sua aba Documentos. Certificado sem modelo escolhido sai com a arte simples de sempre.
+Só o card do Certificado de Conformidade tem o botão extra Modelo visual, que abre um assistente de 3 passos com várias artes prontas (temas claros e escuros) para o fundo do certificado, com pré-visualização ao vivo. É possível editar o título principal, os demais textos e a cor de destaque. No tema claro, o destaque padrão é preto; no escuro, textos e logos se ajustam ao fundo. O modelo escolhido aqui é usado também como padrão ao gerar certificado por uma OS concluída, e cada contrato pode trocar o próprio modelo na aba Documentos.
 
 Abaixo fica Validade dos documentos: "Quantos meses cada documento gerado fica válido. A data de vencimento é calculada a partir da data de geração." Os campos são Validade do TRT (meses) e Validade do Certificado (meses).
 

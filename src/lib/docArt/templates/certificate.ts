@@ -90,7 +90,7 @@ export function createCertificateTemplate(options: CertificateOptions): DocArtTe
   };
   addText('sobretitulo', titleY - 12, 7.4, 8, 'regular', 'inkSoft');
   addText('titulo', titleY, landscape ? 36 : 31, 20, 'bold');
-  addText('subtitulo', titleY + 22, 11, 11, 'regular', 'inkSoft');
+  addText('subtitulo', titleY + 22, 11, 11, 'bold', 'ink');
   line(x, bodyY - 7, x + Math.min(contentW, 54), bodyY - 7, 'accent', 1, 0.9);
   addText('corpo', bodyY, landscape ? 10 : 10.5, bodyH);
   addText('destaque', highlightY, 11, landscape ? 9 : 13, 'bold');
@@ -115,9 +115,9 @@ export function createCertificateTemplate(options: CertificateOptions): DocArtTe
   shapes.push({ ...footer, requires: 'footer' });
   return {
     slug, name, orientation, previewColor: dark ? '#111815' : '#00a878',
-    defaultTheme: { primary: dark ? '#00a878' : '#111815', accent: '#00a878', bg: dark ? '#111815' : '#ffffff', paper: dark ? '#111815' : '#ffffff' },
+    defaultTheme: { primary: dark ? '#f8fafc' : '#111815', accent: dark ? '#dbeafe' : '#00a878', bg: dark ? '#0b1220' : '#ffffff', paper: dark ? '#0b1220' : '#ffffff' },
     defaultSlots: CERTIFICADO_DEFAULT_SLOTS,
-    slots: ['sobretitulo', 'titulo', 'subtitulo', 'corpo', 'destaque', 'assinaturaNome', 'assinaturaCargo', 'lateral', 'rodape'],
+    slots: ['titulo', 'subtitulo', 'sobretitulo', 'corpo', 'destaque', 'assinaturaNome', 'assinaturaCargo', 'lateral', 'rodape'],
     toggles: ['signature', 'footer'], shapes,
   };
 }

@@ -39,7 +39,7 @@ import { usePmocContractCustomDocs } from '@/hooks/usePmocContractCustomDocs';
 import { useResponsibleTechnicians } from '@/hooks/useResponsibleTechnicians';
 
 import { DocArtSvgRenderer, type DocArtImageUrls } from '@/lib/docArt/DocArtSvgRenderer';
-import { idealForeground } from '@/lib/docArt/resolve';
+import { idealForeground, resolveTheme } from '@/lib/docArt/resolve';
 import { DOC_ART_TEMPLATES, getDocArtTemplate } from '@/lib/docArt/templates';
 import type {
   DocArtConfig,
@@ -661,7 +661,7 @@ export function CertificadoArtConfigDialog({
                         <div className="space-y-1.5">
                           <Label className="text-xs text-muted-foreground">{t.colorAccent}</Label>
                           <ColorPicker
-                            value={theme.accent ?? selectedTemplate.defaultTheme.accent}
+                            value={resolveTheme(selectedTemplate, { theme }, brandTheme).accent}
                             onChange={(c) => setTheme((prev) => ({ ...prev, accent: c }))}
                           />
                         </div>

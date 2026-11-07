@@ -250,7 +250,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
       <div class="ficha"><div class="n">07</div><div class="l">Fases</div></div>
     </div>
     <div class="meta-doc">
-      <b>Versão do sistema</b> v1.38.20 &nbsp;·&nbsp; <b>Atualizado em</b> 04 de novembro de 2026
+      <b>Versão do sistema</b> v1.39.5 &nbsp;·&nbsp; <b>Atualizado em</b> 07 de novembro de 2026
     </div>
   </div>
 </header>
@@ -2988,6 +2988,14 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
 
   <p>Clicando no cartão, abre o resumo da OS. Nele estão o cliente, o equipamento, o check-in e check-out, as fotos, os detalhes do serviço, os valores e a conformidade PMOC quando houver, mais uma linha de botões redondos: <span class="ui">Retomar</span>, <span class="ui">Pausar</span>, <span class="ui">Finalizar</span>, <span class="ui">Resetar OS</span> (quando a OS já passou de Agendada), <span class="ui">Editar</span>, <span class="ui">Excluir</span> e um botão para copiar o link, além do botão grande embaixo que muda de nome conforme o estado: <span class="ui">Preencher OS</span> em OS aberta, <span class="ui">Relatório de Serviço</span> em OS concluída. Quando a empresa tem o recurso de consumo de estoque na OS ligado e o técnico lançou material nesse atendimento, o resumo também mostra o bloco <span class="ui">Materiais utilizados</span>, só leitura: cada linha traz o material, a quantidade, a unidade e o local de estoque, com o custo da linha e o <span class="ui">Custo total</span> ao final (item ainda não baixado do estoque mostra o aviso <span class="ui">Ainda não baixado do estoque</span>).</p>
 
+  <h3>Gerar documentos PMOC pela OS concluída</h3>
+  <p>Quando a empresa atua com refrigeração, toda OS concluída oferece a ação <span class="ui">Gerar documentos PMOC</span> no menu de três pontos. Ela aparece no cartão do kanban, na visão em lista, na Agenda, nas ocorrências do contrato, no resumo da OS e no relatório aberto pelo técnico logado. A OS pode ter vindo de um contrato ou ter sido criada avulsa.</p>
+  <p>Na janela, escolha <span class="ui">Relatório de serviço</span> ou <span class="ui">Certificado de conformidade</span>. O sistema confere cliente, equipamentos atendidos, produto bactericida PMOC vigente e Responsável Técnico. Se o RT ainda não estiver pronto, administradores e gestores podem cadastrá-lo ali mesmo. No certificado também é possível escolher o modelo visual antes de gerar.</p>
+
+  <div class="regra">
+    A ação só aparece em <b>OS concluída</b> e para empresas com o segmento de refrigeração. O relatório usa o que foi realmente registrado no atendimento; o certificado também exige os dados regulatórios do produto e do Responsável Técnico.
+  </div>
+
   <h3>O "+" no cabeçalho da coluna</h3>
 
   <p>Cada coluna do kanban tem, ao lado da contagem, um botão de mais (+). Ele abre a janela <span class="ui">Nova Ordem de Serviço</span> já com o status daquela coluna. É o atalho para quem recebe um chamado que já entra "agendado" ou já entra "em andamento", sem ter que criar em pendente e arrastar depois.</p>
@@ -3436,6 +3444,8 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
 
   <p>Quando a OS já teve material lançado nela, o resumo também mostra o bloco <span class="ui">Materiais utilizados</span>: cada linha traz o material, a quantidade, a unidade e o local de estoque de onde saiu, com o custo de cada linha e o <span class="ui">Custo total</span> ao final. Um material ainda não baixado do estoque aparece com o aviso <span class="ui">Ainda não baixado do estoque</span>. É a mesma informação que já aparecia na tela de Ordem de Serviço, agora também aqui, sem precisar sair da Agenda.</p>
 
+  <p>Em empresa de refrigeração, o resumo de uma OS concluída também oferece <span class="ui">Gerar documentos PMOC</span>. Assim, o gestor pode emitir o relatório de serviço ou o certificado de conformidade sem sair da Agenda, inclusive quando a OS não veio de contrato.</p>
+
   <div class="regra">
     O bloco <span class="ui">Materiais utilizados</span> só aparece quando existe material lançado naquela OS. Sem lançamento nenhum, o bloco simplesmente não aparece. Ele também não existe no resumo de uma <b>Tarefa</b>, porque Tarefa é compromisso interno e não tem consumo de estoque.
   </div>
@@ -3873,7 +3883,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
     <thead><tr><th>Quem abre</th><th>O que aparece</th></tr></thead>
     <tbody>
       <tr><td>Técnico ou gestor <b>logado</b>, OS em aberto</td><td>A tela de execução, com os botões de ação.</td></tr>
-      <tr><td>Técnico ou gestor <b>logado</b>, OS concluída</td><td>O relatório do serviço, com baixar PDF, imprimir e copiar link.</td></tr>
+      <tr><td>Técnico ou gestor <b>logado</b>, OS concluída</td><td>O relatório do serviço, com baixar PDF, imprimir, copiar link e, em empresas de refrigeração, gerar os documentos PMOC.</td></tr>
       <tr><td>Qualquer pessoa <b>sem login</b></td><td>O modo cliente, somente leitura. O sistema entra nesse modo sozinho, sem ninguém precisar escolher nada.</td></tr>
     </tbody>
   </table>
@@ -3974,7 +3984,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
   <table class="dados">
     <thead><tr><th>Tipo</th><th>Como responder</th><th>Quando salva</th></tr></thead>
     <tbody>
-      <tr><td>Sim/Não</td><td>Uma chave. Ligada mostra o selo verde <span class="ui">Sim</span>, desligada o selo vermelho <span class="ui">Não</span>. Sem responder, aparece <span class="ui">Não respondido</span>.</td><td>No toque.</td></tr>
+      <tr><td>Sim/Não</td><td>Dois botões sempre visíveis. <span class="ui">Sim</span> fica verde quando escolhido e <span class="ui">Não</span> fica vermelho. É possível trocar a resposta diretamente, sem abrir um modo de edição.</td><td>No toque.</td></tr>
       <tr><td>Conformidade</td><td>Três botões: <span class="ui">Conforme</span> (verde), <span class="ui">Não Conforme</span> (vermelho) e <span class="ui">N/A</span> (laranja). Tocar de novo no mesmo botão limpa a resposta.</td><td>No toque.</td></tr>
       <tr><td>Texto</td><td>Caixa de texto de duas linhas.</td><td><b>Ao sair do campo</b>, não a cada letra.</td></tr>
       <tr><td>Número</td><td>Teclado numérico, aceita decimal.</td><td><b>Ao sair do campo.</b></td></tr>
@@ -4479,6 +4489,10 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
       <tr><td><span class="ui">Locais deste material</span></td><td>Não</td><td>Bloco por local de estoque, com a explicação "Marque os locais onde este material está presente. Defina a quantidade mínima para cada local." Tem <span class="ui">Marcar todos</span> e <span class="ui">Desmarcar todos</span>.</td></tr>
     </tbody>
   </table>
+
+  <h3>Produto bactericida usado nos documentos PMOC</h3>
+  <p>Para empresas de refrigeração, o cadastro tem a opção <span class="ui">Produto de PMOC</span>. Ao ligá-la, aparecem os campos <span class="ui">Fabricante</span>, <span class="ui">Registro na Anvisa</span>, <span class="ui">Lote</span>, <span class="ui">Data de fabricação</span> e <span class="ui">Validade</span>. Preencha esses dados exatamente como constam na embalagem.</p>
+  <p>Na geração de relatório ou certificado de uma OS, a Dominex procura um produto PMOC ativo e dentro da validade. Produto vencido, com fabricação futura, arquivado ou com dados regulatórios incompletos não é usado no documento.</p>
 
   <div class="regra">
     <b>Categoria e Grupo não são a mesma coisa.</b> Categoria é uma lista fechada, igual para todo mundo (Peças, Filtros, Gases, Ferramentas, Materiais, Equipamentos, Outros). Grupo é livre, criado pela sua empresa em <span class="ui">Configurações do Estoque</span> → <span class="ui">Grupos de material</span>. Muita gente usa grupo para separar por marca, por linha ou por finalidade.
@@ -6431,6 +6445,8 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
   </figure>
   <p>É um seletor com os Responsáveis Técnicos ativos da empresa, mais um botão de mais (+) que abre o cadastro rápido sem sair do assistente. O texto de ajuda diz: "Engenheiro ou Técnico em Refrigeração com CFT/CREA que assina o Termo de Responsabilidade Técnica conforme Lei Federal 13.589/2018. Diferente do Técnico Executor (quem executa as OSs no campo)."</p>
 
+  <p>O mesmo cadastro rápido também aparece ao gerar um certificado PMOC por uma OS concluída. Nesse caminho, não é necessário criar um contrato: o Responsável Técnico fica salvo para os próximos documentos da empresa.</p>
+
   <div class="aviso">
     <b>Responsável Técnico e Técnico Executor são pessoas diferentes e papéis diferentes.</b> O RT é quem assina os documentos da norma, com registro no conselho profissional. O Técnico Executor é quem vai até o local fazer a manutenção. Podem ser a mesma pessoa na prática, mas no sistema são campos separados, em etapas diferentes do assistente.
   </div>
@@ -6717,7 +6733,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
     <figcaption>Aba Documentos das Configurações de Contrato: os modelos padrão do TRT e do Certificado de Conformidade (este com o botão Modelo visual), e a validade dos documentos em meses.</figcaption>
   </figure>
   <p>É onde ficam os <span class="ui">Modelos padrão de documentos PMOC</span>: "Modelos usados como ponto de partida ao criar um novo contrato PMOC. Editar aqui não altera contratos já existentes." Há um modelo para o Termo de Responsabilidade Técnica e outro para o Certificado de Conformidade, cada um com <span class="ui">Editar texto</span> e <span class="ui">Restaurar texto padrão</span>. O editor aceita negrito, listas, links e variáveis (que aparecem como etiquetas e são substituídas pelos dados de cada contrato no PDF).</p>
-  <p>Só o card do Certificado de Conformidade tem o botão extra <span class="ui">Modelo visual</span>, que abre um assistente de 3 passos com várias artes prontas (temas claros e escuros) para o fundo do certificado, com pré-visualização ao vivo. O modelo escolhido aqui é o padrão herdado por todo contrato novo; cada contrato pode trocar o próprio modelo visual na sua aba Documentos. Certificado sem modelo escolhido sai com a arte simples de sempre.</p>
+  <p>Só o card do Certificado de Conformidade tem o botão extra <span class="ui">Modelo visual</span>, que abre um assistente de 3 passos com várias artes prontas (temas claros e escuros) para o fundo do certificado, com pré-visualização ao vivo. É possível editar o título principal, os demais textos e a cor de destaque. No tema claro, o destaque padrão é preto; no escuro, textos e logos se ajustam ao fundo. O modelo escolhido aqui é usado também como padrão ao gerar certificado por uma OS concluída, e cada contrato pode trocar o próprio modelo na aba Documentos.</p>
   <p>Abaixo fica <span class="ui">Validade dos documentos</span>: "Quantos meses cada documento gerado fica válido. A data de vencimento é calculada a partir da data de geração." Os campos são <span class="ui">Validade do TRT (meses)</span> e <span class="ui">Validade do Certificado (meses)</span>.</p>
 
   <div class="dica">
@@ -10349,7 +10365,7 @@ footer.rodape a{color:var(--sinal);text-decoration:none}
 
 <footer class="rodape">
   <div class="wrap">
-    <div>Dominex · Guia Técnico &nbsp;·&nbsp; atualizado em 04 de novembro de 2026</div>
+    <div>Dominex · Guia Técnico &nbsp;·&nbsp; atualizado em 07 de novembro de 2026</div>
     <div><a href="https://www.dominex.app">www.dominex.app</a></div>
   </div>
 </footer>
@@ -10650,6 +10666,6 @@ document.querySelectorAll('main table').forEach(function (t) {
 </script>
 <a class="baixar" href="https://byqldosixshhuiuarszp.supabase.co/storage/v1/object/public/guia-tecnico/Guia-Tecnico-Dominex.pdf" target="_blank" rel="noopener" download>
   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-  <span>Baixar o guia</span>
+  <span>Baixar o guia</span><span class="peso">PDF · 5.2 MB</span>
 </a>
 </body></html>

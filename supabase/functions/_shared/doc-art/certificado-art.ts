@@ -22,6 +22,8 @@ import {
   type DocArtImageSources,
 } from "./spec-pdf.ts";
 import type { DocArtConfig } from "./types.ts";
+import { drawCertificateGeneratedByFooter } from "../pmoc-templates/footer.ts";
+import { idealForeground, resolveTheme } from "./resolve.ts";
 
 /**
  * Arte efetiva de um contrato: o que o contrato definiu, senão o padrão da
@@ -109,12 +111,22 @@ export async function drawCertificadoArtPage(
   const signature = await fetchImageBytes(input.signatureUrl);
 
   const images: DocArtImageSources = { logo, signature };
+  const brand = input.brandPrimary ? { primary: input.brandPrimary } : undefined;
+  const dark = idealForeground(resolveTheme(template, input.config, brand).paper) === '#ffffff';
 
+  const pagesBefore = pdf.getPageCount();
   await drawDocArtPage(pdf, template, input.config, {
     substitute: (html) => substituteVariables(html, input.variables),
-    brand: input.brandPrimary ? { primary: input.brandPrimary } : undefined,
+    brand,
     images,
   });
+
+  // O motor pode paginar um tema. Toda pagina nova do certificado recebe a
+  // assinatura institucional, sem depender do toggle de rodape do tema.
+  const certificatePages = pdf.getPages().slice(pagesBefore);
+  for (const page of certificatePages) {
+    await drawCertificateGeneratedByFooter(pdf, page, { dark });
+  }
 
   return { signaturePending: signature === null };
 }

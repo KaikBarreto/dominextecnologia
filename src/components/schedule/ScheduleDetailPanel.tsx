@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Link2, Check, Trash2, UsersRound, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckCircle, Pencil, RotateCcw, Pause, Play, Receipt, MoreHorizontal } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, Phone, FileText, ArrowLeft, ClipboardList, Link2, Check, Trash2, UsersRound, Zap, Shield, Truck, Hammer, HardHat, Settings, HeartPulse, Flame, Droplets, Wind, Thermometer, Cable, Plug, Lightbulb, Gauge, CheckCircle, Pencil, RotateCcw, Pause, Play, Receipt, MoreHorizontal, Files } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -28,6 +28,9 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { getDateFnsLocale } from '@/lib/format';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { canGenerateOsPmocDocuments } from '@/lib/osPmocDocuments';
+import { OsPmocDocumentsDialog } from '@/components/service-orders/OsPmocDocumentsDialog';
 
 interface AssigneeInfo {
   id: string;
@@ -88,6 +91,7 @@ function OrderDetail({
   // depois de concluída. Mesma trava das outras telas (hook compartilhado);
   // sem permissão o botão nem é renderizado.
   const billing = useOsBillingAction();
+  const { settings: companySettings } = useCompanySettings();
   // Selo "já faturada" no painel. Uma OS só aqui, então usa a RPC de UMA OS
   // (a de lote serve pras listagens). Só consulta pra quem pode ver.
   const { snapshot: billingSnapshot } = useOsBillingState(
@@ -109,6 +113,7 @@ function OrderDetail({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
   const [showReopenConfirm, setShowReopenConfirm] = useState(false);
+  const [pmocDocumentsOpen, setPmocDocumentsOpen] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'single' | 'group' | null>(null);
   const isFinancialEvent = !!(order as any)._isFinancialEvent;
   const hasFinancialGroup = isFinancialEvent && !!((order as any)._contractId || (order as any)._installmentGroupId);
@@ -165,6 +170,11 @@ function OrderDetail({
 
   const isTask = (order as any).entry_type === 'tarefa';
   const taskTitle = (order as any).task_title;
+  const canGeneratePmocDocs = canGenerateOsPmocDocuments(
+    order,
+    companySettings?.segments,
+    companySettings?.segment,
+  );
 
   return (
     <>
@@ -389,7 +399,7 @@ function OrderDetail({
               {isFinancialEvent ? t.btnReopenBilling : t.btnReopenTask}
             </Button>
           )}
-          {(onEdit || onDelete || (!isTask && (onFinalize || onReset || onPause || onResume || billing.canBill || order.customer_id))) && (
+          {(onEdit || onDelete || canGeneratePmocDocs || (!isTask && (onFinalize || onReset || onPause || onResume || billing.canBill || order.customer_id))) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="mt-2 w-full">
@@ -426,6 +436,12 @@ function OrderDetail({
                   <DropdownMenuItem onClick={() => billing.open(order as any)}>
                     <Receipt className="mr-2 h-4 w-4 text-success" />
                     {t.btnBilling}
+                  </DropdownMenuItem>
+                )}
+                {canGeneratePmocDocs && (
+                  <DropdownMenuItem onClick={() => setPmocDocumentsOpen(true)}>
+                    <Files className="mr-2 h-4 w-4 text-info" />
+                    Gerar documentos PMOC
                   </DropdownMenuItem>
                 )}
                 {onEdit && (
@@ -602,6 +618,11 @@ function OrderDetail({
               context={billing.context}
             />
           )}
+          <OsPmocDocumentsDialog
+            open={pmocDocumentsOpen}
+            onOpenChange={setPmocDocumentsOpen}
+            serviceOrderId={order.id}
+          />
         </div>
       </ScrollArea>
     </>

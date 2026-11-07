@@ -590,7 +590,9 @@ Deno.serve(async (req) => {
     // gestor salva e continua baixando o certificado antigo.
     // Arte (2026-11): v6 inclui temas refinados, contraste do logo e paginação.
     const hashInput = JSON.stringify({
-      v: effectiveArt ? "cert_v6" : "cert_v5",
+      // O rodape institucional e obrigatorio inclusive em white-label. O bump
+      // impede que um certificado ja cacheado sem a marca Dominex seja servido.
+      v: effectiveArt ? "cert_v7_generated_by" : "cert_v6_generated_by",
       tenant: {
         name: tenantName,
         cnpj,

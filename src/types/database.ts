@@ -256,6 +256,7 @@ export interface FormQuestion {
   guidance?: string | null;
   require_camera?: boolean;
   require_camera_video?: boolean;
+  allow_multiple_photos?: boolean;
   answer_types?: string[];
   answer_mode?: 'exclusive' | 'combined';
   /** Onda D v1.9.x — campos sanitários PMOC.

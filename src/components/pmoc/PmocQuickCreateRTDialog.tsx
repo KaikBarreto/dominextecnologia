@@ -35,6 +35,8 @@ interface PmocQuickCreateRTDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: (rt: ResponsibleTechnician) => void;
+  /** Exige dados profissionais mínimos quando o RT será usado na emissão imediata. */
+  requireProfessionalData?: boolean;
 }
 
 interface QuickFormState {
@@ -55,6 +57,7 @@ export function PmocQuickCreateRTDialog({
   open,
   onOpenChange,
   onCreated,
+  requireProfessionalData = false,
 }: PmocQuickCreateRTDialogProps) {
   const { toast } = useToast();
   const { locale } = useAppLocaleContext();
@@ -78,6 +81,22 @@ export function PmocQuickCreateRTDialog({
         variant: 'destructive',
         title: trt.quickNameRequired,
         description: trt.quickNameRequiredDesc,
+      });
+      return;
+    }
+    if (requireProfessionalData && !form.modality.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'Informe a modalidade profissional',
+        description: 'A modalidade do responsável técnico é obrigatória para emitir o documento.',
+      });
+      return;
+    }
+    if (requireProfessionalData && !form.cft_crea.trim() && !form.registry_number.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'Informe o registro profissional',
+        description: 'Preencha o CFT/CREA ou o registro ART/TRT para emitir o documento.',
       });
       return;
     }
@@ -113,7 +132,11 @@ export function PmocQuickCreateRTDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={saving || !form.full_name.trim()}
+            disabled={
+              saving
+              || !form.full_name.trim()
+              || (requireProfessionalData && (!form.modality.trim() || (!form.cft_crea.trim() && !form.registry_number.trim())))
+            }
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

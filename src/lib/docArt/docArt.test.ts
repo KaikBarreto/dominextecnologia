@@ -203,12 +203,19 @@ describe('cor', () => {
 describe('tema e toggles', () => {
   const template = DOC_ART_TEMPLATES[0];
 
-  it('config sobrescreve campo a campo, ignorando hex inválido', () => {
+  it('usa accent preto no claro, contraste no escuro e preserva personalização válida', () => {
     const theme = resolveTheme(template, {
       theme: { primary: '#ff0000', accent: 'vermelho' },
     });
     expect(theme.primary).toBe('#ff0000');
-    expect(theme.accent).toBe(template.defaultTheme.accent);
+    expect(theme.accent).toBe('#000000');
+
+    const noturno = getDocArtTemplate('noturno')!;
+    expect(resolveTheme(noturno).accent).toBe('#dbeafe');
+
+    const customized = resolveTheme(template, { theme: { accent: '#2563eb' } });
+    expect(customized.accent).toBe('#2563eb');
+    expect(resolveTheme(noturno, { theme: { accent: '#000000' } }).accent).toBe('#000000');
   });
 
   it('toggle ausente nasce ligado', () => {

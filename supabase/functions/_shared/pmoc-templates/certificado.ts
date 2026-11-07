@@ -22,7 +22,7 @@ import {
   SIGNATURE_BLOCK_HEIGHT,
 } from "./signature-embed.ts";
 import { PmocVariableContext, substituteVariables } from "./variables.ts";
-import { drawDominexFooter } from "./footer.ts";
+import { drawCertificateGeneratedByFooter } from "./footer.ts";
 
 /**
  * Template padrão do Certificado de Conformidade com spans `data-pmoc-var`
@@ -70,6 +70,7 @@ export async function drawCertificadoPage(
   customHtml: string | null,
   variableContext: PmocVariableContext | null = null,
 ): Promise<RenderCertificadoResult> {
+  const pagesBefore = pdf.getPageCount();
   const raw = customHtml && customHtml.trim().length > 0
     ? customHtml
     : buildDefaultCertificadoHtml();
@@ -89,9 +90,8 @@ export async function drawCertificadoPage(
   });
 
   // -- Onda E: bloco de assinatura do RT (acima do rodapé).
-  //    Reservamos espaço pro footer Dominex (~72pt) quando não é white-label.
-  const isWhiteLabel = ctx.empresa.white_label_enabled === true;
-  const FOOTER_RESERVED = isWhiteLabel ? 40 : 80;
+  //    O footer Dominex e obrigatorio inclusive em white-label.
+  const FOOTER_RESERVED = 80;
   const SPACE_NEEDED = SIGNATURE_BLOCK_HEIGHT + 20 + FOOTER_RESERVED;
 
   let sigPage = result.page;
@@ -121,12 +121,10 @@ export async function drawCertificadoPage(
 
   const finalPage = sigPage;
 
-  // -- Onda I (v1.9.x): rodapé Dominex centralizado (logo + URL).
-  //    SÓ aparece quando NÃO é white-label — substitui o antigo
-  //    "Powered by Dominex" texto-puro.
-  await drawDominexFooter(pdf, finalPage, {
-    enabled: !isWhiteLabel,
-  });
+  // Certificados preservam a origem Dominex inclusive em white-label.
+  for (const certificatePage of pdf.getPages().slice(pagesBefore)) {
+    await drawCertificateGeneratedByFooter(pdf, certificatePage);
+  }
 
   return {
     page: finalPage,

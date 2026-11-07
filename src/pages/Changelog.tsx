@@ -31,6 +31,33 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.5',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Documentos PMOC direto pela O.S. finalizada',
+        description: 'Empresas de refrigeração podem gerar o relatório de serviço e o certificado de conformidade pela própria Ordem de Serviço, mesmo quando ela não pertence a um contrato. A ação está disponível no Kanban, na lista, na agenda, nas ocorrências do contrato e no relatório do técnico.',
+        category: 'recurso',
+      },
+      {
+        title: 'Produto bactericida e responsável técnico preenchidos no documento',
+        description: 'O cadastro de materiais agora identifica produtos de PMOC e reúne fabricante, registro na Anvisa, lote, fabricação e validade. Na emissão, o sistema usa um produto vigente e permite configurar o responsável técnico sem abandonar o fluxo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Certificados mais bonitos e personalizáveis',
+        description: 'Escolha o tema, ajuste cores e edite o título do certificado. Logos e rodapés se adaptam corretamente a fundos claros e escuros, e os arquivos baixados recebem nomes organizados com os dados da O.S.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Respostas da O.S. mais rápidas de preencher',
+        description: 'Perguntas de Sim ou Não, conformidade e seleção continuam visíveis e podem ser alteradas com um toque. Os botões de Sim e Não mostram claramente a escolha em verde ou vermelho no computador e no celular.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.39.4',
     date: '7 de novembro de 2026',
     type: 'patch',

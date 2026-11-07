@@ -7461,10 +7461,16 @@ export type Database = {
           group_id: string | null
           id: string
           image_url: string | null
+          is_pmoc_product: boolean
           is_sellable: boolean
           min_quantity: number | null
           name: string
           notes: string | null
+          pmoc_anvisa_registration: string | null
+          pmoc_batch_number: string | null
+          pmoc_expires_on: string | null
+          pmoc_manufactured_on: string | null
+          pmoc_manufacturer: string | null
           quantity: number | null
           sale_price: number | null
           sku: string | null
@@ -7498,10 +7504,16 @@ export type Database = {
           group_id?: string | null
           id?: string
           image_url?: string | null
+          is_pmoc_product?: boolean
           is_sellable?: boolean
           min_quantity?: number | null
           name: string
           notes?: string | null
+          pmoc_anvisa_registration?: string | null
+          pmoc_batch_number?: string | null
+          pmoc_expires_on?: string | null
+          pmoc_manufactured_on?: string | null
+          pmoc_manufacturer?: string | null
           quantity?: number | null
           sale_price?: number | null
           sku?: string | null
@@ -7535,10 +7547,16 @@ export type Database = {
           group_id?: string | null
           id?: string
           image_url?: string | null
+          is_pmoc_product?: boolean
           is_sellable?: boolean
           min_quantity?: number | null
           name?: string
           notes?: string | null
+          pmoc_anvisa_registration?: string | null
+          pmoc_batch_number?: string | null
+          pmoc_expires_on?: string | null
+          pmoc_manufactured_on?: string | null
+          pmoc_manufacturer?: string | null
           quantity?: number | null
           sale_price?: number | null
           sku?: string | null
@@ -12770,6 +12788,73 @@ export type Database = {
             columns: ["stock_id"]
             isOneToOne: false
             referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_order_pmoc_documents: {
+        Row: {
+          company_id: string
+          content_hash: string
+          doc_type: string
+          file_name: string
+          generated_at: string
+          generated_by: string | null
+          id: string
+          pdf_storage_path: string
+          service_order_id: string
+          snapshot: Json
+          valid_until: string | null
+          version: number
+        }
+        Insert: {
+          company_id: string
+          content_hash: string
+          doc_type: string
+          file_name: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          pdf_storage_path: string
+          service_order_id: string
+          snapshot: Json
+          valid_until?: string | null
+          version: number
+        }
+        Update: {
+          company_id?: string
+          content_hash?: string
+          doc_type?: string
+          file_name?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          pdf_storage_path?: string
+          service_order_id?: string
+          snapshot?: Json
+          valid_until?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_order_pmoc_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_pmoc_documents_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "contract_activity_execution"
+            referencedColumns: ["service_order_id"]
+          },
+          {
+            foreignKeyName: "service_order_pmoc_documents_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
             referencedColumns: ["id"]
           },
         ]

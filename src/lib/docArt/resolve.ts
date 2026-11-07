@@ -131,18 +131,26 @@ export function resolveTheme(
   brand?: Partial<DocArtTheme>,
 ): DocArtTheme {
   const saved = config?.theme ?? {};
-  const pick = (key: keyof DocArtTheme): string => {
+  const pickBase = (key: keyof DocArtTheme): string => {
     const value = saved[key];
     if (typeof value === 'string' && parseHex(value)) return value;
     const fromBrand = brand?.[key];
     if (typeof fromBrand === 'string' && parseHex(fromBrand)) return fromBrand;
     return template.defaultTheme[key];
   };
+  const paper = pickBase('paper');
+  const savedAccent = saved.accent;
+  const brandAccent = brand?.accent;
+  const accent = typeof savedAccent === 'string' && parseHex(savedAccent)
+    ? savedAccent
+    : typeof brandAccent === 'string' && parseHex(brandAccent)
+      ? brandAccent
+      : idealForeground(paper) === '#ffffff' ? '#dbeafe' : '#000000';
   return {
-    primary: pick('primary'),
-    accent: pick('accent'),
-    bg: pick('bg'),
-    paper: pick('paper'),
+    primary: pickBase('primary'),
+    accent,
+    bg: pickBase('bg'),
+    paper,
   };
 }
 

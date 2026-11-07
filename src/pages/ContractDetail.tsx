@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { BrandedQRCode } from '@/components/BrandedQRCode';
 import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
-import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText, Wrench, ClipboardCheck, XCircle, CreditCard, AlertTriangle, Megaphone, Link2 } from 'lucide-react';
+import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText, Wrench, ClipboardCheck, XCircle, CreditCard, AlertTriangle, Megaphone, Link2, Files } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useContractPublicToken, useRegeneratePmocToken, useResolveContractId } from '@/hooks/usePmocPortal';
 import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
@@ -88,6 +88,8 @@ import { useTenantCharges } from '@/hooks/useTenantCharges';
 import { contractFrequencyToCycle } from '@/utils/contractBillingCycle';
 import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
 import { ServiceOrderFormDialog, type ServiceOrderFormData } from '@/components/service-orders/ServiceOrderFormDialog';
+import { OsPmocDocumentsDialog } from '@/components/service-orders/OsPmocDocumentsDialog';
+import { canGenerateOsPmocDocuments } from '@/lib/osPmocDocuments';
 import { LinkExistingServiceOrderDialog } from '@/components/service-orders/LinkExistingServiceOrderDialog';
 import { buildPortalCallsPath, isPortalCall } from '@/lib/portalCalls';
 import { supabase } from '@/integrations/supabase/client';
@@ -257,6 +259,7 @@ export default function ContractDetail() {
   // visita prevista pelo contrato; chamado é solicitação reativa vinda do portal.
   const [pmocTab, setPmocTab] = useState<'overview' | 'equipamentos' | 'ocorrencias' | 'chamados' | 'historico' | 'financeiro' | 'documentos' | 'cronograma'>('overview');
   const [planningOccurrenceId, setPlanningOccurrenceId] = useState<string | null>(null);
+  const [pmocDocumentsOsId, setPmocDocumentsOsId] = useState<string | null>(null);
   const [showLinkExistingOrder, setShowLinkExistingOrder] = useState(false);
   const planningOccurrence = useMemo<ServiceOrder | null>(
     () => serviceOrders.find(order => order.id === planningOccurrenceId) ?? null,
@@ -396,6 +399,8 @@ export default function ContractDetail() {
   // `hasPermission` (sem registro => libera por ter qualquer role) NÃO vale
   // aqui: mostraria o botão pra quem o banco recusa. UX; a trava é a RLS.
   const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
+  const canGeneratePmocDocuments = (order: Pick<ServiceOrder, 'status' | 'entry_type'>) =>
+    canGenerateOsPmocDocuments(order, companySettings?.segments, companySettings?.segment);
   const isPmoc = (contract as any)?.is_pmoc === true;
   const canRegenerateToken =
     hasRole('admin' as any) || hasRole('gestor' as any) || hasRole('super_admin' as any);
@@ -2126,8 +2131,17 @@ export default function ContractDetail() {
                             </div>
                           );
                         })()}
-                        {isActive && (
+                        {(isActive || canGeneratePmocDocuments(os as unknown as ServiceOrder)) && (
                           <div className="flex flex-wrap items-center justify-end gap-2">
+                            {canGeneratePmocDocuments(os as unknown as ServiceOrder) && (
+                              <Button
+                                variant="outline" size="sm" className="min-h-11 gap-2 rounded-xl"
+                                onClick={(e) => { e.stopPropagation(); setPmocDocumentsOsId(os.id); }}
+                              >
+                                <Files className="h-4 w-4" />
+                                Gerar documentos PMOC
+                              </Button>
+                            )}
                             {showPlanOccurrence && (
                               <Button
                                 variant="outline" size="sm" className="min-h-11 gap-2 rounded-xl"
@@ -2166,7 +2180,7 @@ export default function ContractDetail() {
                         <SortableTableHead sortKey="order_number" sortConfig={occSortConfig} onSort={handleOccSort}>{td.occurrences.colOs}</SortableTableHead>
                         <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>{td.occurrences.colServices}</SortableTableHead>
                         <SortableTableHead sortKey="status" sortConfig={occSortConfig} onSort={handleOccSort}>{td.occurrences.colStatus}</SortableTableHead>
-                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}} className="w-[190px]">{td.occurrences.colActions}</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}} className="w-[260px]">{td.occurrences.colActions}</SortableTableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -2255,7 +2269,7 @@ export default function ContractDetail() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center justify-end gap-1">
+                              <div className="flex flex-wrap items-center justify-end gap-1">
                                 {showPlanOccurrence && (
                                   <Button
                                     variant="outline" size="sm" className="min-h-10 gap-1.5"
@@ -2265,6 +2279,15 @@ export default function ContractDetail() {
                                   >
                                     {isLoadingServiceOrders ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Pencil className="h-3.5 w-3.5" />}
                                     {isLoadingServiceOrders ? td.occurrences.loadingAction : td.occurrences.planAction}
+                                  </Button>
+                                )}
+                                {canGeneratePmocDocuments(os as unknown as ServiceOrder) && (
+                                  <Button
+                                    variant="outline" size="sm" className="min-h-10 gap-1.5"
+                                    onClick={(e) => { e.stopPropagation(); setPmocDocumentsOsId(os.id); }}
+                                  >
+                                    <Files className="h-3.5 w-3.5" />
+                                    Gerar documentos PMOC
                                   </Button>
                                 )}
                                 {isActive && (
@@ -3868,6 +3891,14 @@ export default function ContractDetail() {
       </ResponsiveModal>
 
       {/* Documento "Plano de Manutenção" — overlay de impressão (contrato comum). */}
+      {pmocDocumentsOsId && (
+        <OsPmocDocumentsDialog
+          open
+          onOpenChange={(open) => { if (!open) setPmocDocumentsOsId(null); }}
+          serviceOrderId={pmocDocumentsOsId}
+        />
+      )}
+
       {showMaintenancePlan && contract && (
         <ContractMaintenancePlanDocument
           contract={contract}

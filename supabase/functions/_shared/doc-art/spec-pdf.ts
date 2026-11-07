@@ -45,9 +45,10 @@ import type {
 } from "./types.ts";
 import { layoutParagraphs, type MeasureFn } from "./inline.ts";
 import { paginateDocArt } from "./layout.ts";
-import { logoPlateFromPng, UNKNOWN_LOGO_PLATE } from "./logoContrast.ts";
+import { flattenPngForPdf, logoPlateFromPng, normalizePngForPdf, UNKNOWN_LOGO_PLATE } from "./logoContrast.ts";
 import {
   alignOffsetMm,
+  idealForeground,
   lineBaselineMm,
   mmToPt,
   parseHex,
@@ -219,10 +220,19 @@ export async function drawDocArtPage(
     display: makeMeasure(fonts.display),
   };
 
-  const embedded = await embedImages(pdf, options.images);
-  const logoPlate = options.images?.logo?.format === 'png'
+  const detectedLogoPlate = options.images?.logo?.format === 'png'
     ? await logoPlateFromPng(options.images.logo.data)
     : options.images?.logo?.format === 'jpg' ? null : UNKNOWN_LOGO_PLATE;
+  const darkPaper = idealForeground(art.theme.paper) === '#ffffff';
+  // Logo claro vai direto sobre papel escuro. Logo escuro ainda recebe uma
+  // superfície slate discreta; nunca uma placa branca gritante no tema dark.
+  const logoPlate = darkPaper
+    ? detectedLogoPlate === '#111815' ? null : detectedLogoPlate === '#ffffff' ? '#253044' : detectedLogoPlate
+    : detectedLogoPlate;
+  const flattenedLogoBackground = detectedLogoPlate
+    ? parseHex(logoPlate ?? art.theme.paper) ?? undefined
+    : undefined;
+  const embedded = await embedImages(pdf, options.images, flattenedLogoBackground);
 
   /** mm medido do topo → pt medido da base. */
   const toPdfY = (mm: number) => pageH - mmToPt(mm);
@@ -242,6 +252,7 @@ export async function drawDocArtPage(
 async function embedImages(
   pdf: PDFDocument,
   images: DocArtImageSources | undefined,
+  logoBackground?: readonly [number, number, number],
 ): Promise<Partial<Record<DocArtImageRef, PDFImage>>> {
   const out: Partial<Record<DocArtImageRef, PDFImage>> = {};
   if (!images) return out;
@@ -251,7 +262,11 @@ async function embedImages(
     if (!entry || !entry.data || entry.data.length === 0) continue;
     try {
       out[key] =
-        entry.format === "png" ? await pdf.embedPng(entry.data) : await pdf.embedJpg(entry.data);
+        entry.format === "png"
+          ? await pdf.embedPng(key === 'logo' && logoBackground
+            ? await flattenPngForPdf(entry.data, logoBackground)
+            : await normalizePngForPdf(entry.data))
+          : await pdf.embedJpg(entry.data);
     } catch (err) {
       // Logo corrompido não pode derrubar o certificado inteiro — o shape
       // simplesmente não aparece.

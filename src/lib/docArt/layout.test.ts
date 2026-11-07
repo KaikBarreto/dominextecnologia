@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { paginateDocArt } from './layout';
 import { resolveDocArt, mmToPt, ptToMm } from './resolve';
-import { logoPlateFromPixels, logoPlateFromPng, UNKNOWN_LOGO_PLATE } from './logoContrast';
+import { flattenPngForPdf, logoPlateFromPixels, logoPlateFromPng, normalizePngForPdf, tintPngForPdf, UNKNOWN_LOGO_PLATE } from './logoContrast';
 import { DOC_ART_TEMPLATES } from './templates';
 import type { ResolvedDocArt, ResolvedTextShape } from './types';
 import { deflateSync } from 'node:zlib';
@@ -67,6 +67,24 @@ describe('contraste de logos', () => {
     try {
       const png = readFileSync(`src/assets/${name}`);
       expect(await logoPlateFromPng(png)).toBe(expected);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+  it('normaliza PNG indexado para RGBA e preserva contraste/transparência', async () => {
+    vi.stubGlobal('Blob', NodeBlob);
+    try {
+      const indexed = new Uint8Array(readFileSync('src/assets/logo-black-horizontal.png'));
+      const normalized = await normalizePngForPdf(indexed);
+      expect(indexed[25]).toBe(3);
+      expect(normalized[25]).toBe(6);
+      expect(await logoPlateFromPng(normalized)).toBe('#ffffff');
+      const white = await tintPngForPdf(indexed, [255, 255, 255]);
+      expect(white[25]).toBe(6);
+      expect(await logoPlateFromPng(white)).toBe('#111815');
+      const flattened = await flattenPngForPdf(white, [11, 18, 32]);
+      expect(flattened[25]).toBe(2);
+      expect(await logoPlateFromPng(flattened)).toBeNull();
     } finally {
       vi.unstubAllGlobals();
     }

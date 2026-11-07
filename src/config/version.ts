@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.4";
+export const APP_VERSION = "1.39.5";
 
 export const VERSION_NOTES =
-  "DomiFlix com novas aulas de Integração com WhatsApp e Ferramentas de RH, incluindo DISC, organograma e fluxograma.";
+  "Gere relatórios de serviço e certificados PMOC diretamente pela O.S. finalizada, com dados do produto, responsável técnico e visual personalizável.";

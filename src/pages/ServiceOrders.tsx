@@ -22,6 +22,7 @@ import {
   Megaphone,
   Receipt,
   RotateCcw,
+  FileText,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -85,6 +86,9 @@ import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
 import { isOpenPortalCall } from '@/lib/portalCalls';
 import { ResetServiceOrderDialog } from '@/components/service-orders/ResetServiceOrderDialog';
 import { isServiceOrderEntry } from '@/lib/serviceOrderAccess';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { canGenerateOsPmocDocuments } from '@/lib/osPmocDocuments';
+import { OsPmocDocumentsDialog } from '@/components/service-orders/OsPmocDocumentsDialog';
 
 export default function ServiceOrders() {
   const isMobile = useIsMobile();
@@ -143,6 +147,7 @@ export default function ServiceOrders() {
   const [osToReset, setOsToReset] = useState<ServiceOrder | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingOsId, setViewingOsId] = useState<string | null>(null);
+  const [pmocDocumentsOsId, setPmocDocumentsOsId] = useState<string | null>(null);
   const [statusConfigOpen, setStatusConfigOpen] = useState(false);
   // Default = kanban (preferência do CEO). Persiste a escolha do usuário em localStorage:
   // se ele alternar pra lista, fica em lista nas próximas visitas.
@@ -167,6 +172,7 @@ export default function ServiceOrders() {
   // O usuário salvava, via "criada com sucesso" e não achava mais.
   const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('all');
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder, resetServiceOrder } = useServiceOrders();
+  const { settings: companySettings } = useCompanySettings();
   const { statuses } = useOsStatuses();
   // Receita ao finalizar a OS. `maybeOpen` decide sozinho se abre (toggle da
   // empresa + permissão + OS ainda sem receita) e nunca lança — não duplicar
@@ -183,6 +189,8 @@ export default function ServiceOrders() {
   const canEditOS = isAdminOrGestor() || hasPermission('fn:edit_os');
   const canDeleteOS = isAdminOrGestor() || hasPermission('fn:delete_os');
   const canResetOS = isAdminOrGestor() || hasPermission('fn:reopen_os');
+  const canGeneratePmocDocuments = (os: Pick<ServiceOrder, 'status' | 'entry_type'>) =>
+    canGenerateOsPmocDocuments(os, companySettings?.segments, companySettings?.segment);
 
   const getOsCode = (os: ServiceOrder) => {
     const prefix = (os as any).service_type?.number_prefix || 'OS';
@@ -822,6 +830,12 @@ export default function ServiceOrders() {
                               icon: <Receipt className="h-4 w-4" />,
                               onClick: () => billing.open(os as any),
                             }] : []),
+                            ...(canGeneratePmocDocuments(os) ? [{
+                              key: 'pmoc-documents',
+                              label: 'Gerar documentos PMOC',
+                              icon: <FileText className="h-4 w-4" />,
+                              onClick: () => setPmocDocumentsOsId(os.id),
+                            }] : []),
                             ...(canDeleteOS ? [{
                               key: 'delete',
                               label: t.rowActions.delete,
@@ -1031,6 +1045,12 @@ export default function ServiceOrders() {
                                               hidden: !billing.canBill,
                                             },
                                             {
+                                              label: 'Gerar documentos PMOC',
+                                              icon: FileText,
+                                              onClick: () => setPmocDocumentsOsId(os.id),
+                                              hidden: !canGeneratePmocDocuments(os),
+                                            },
+                                            {
                                               label: t.rowActions.delete,
                                               icon: Trash2,
                                               variant: 'delete',
@@ -1233,6 +1253,17 @@ export default function ServiceOrders() {
                                     <RotateCcw className="h-3 w-3" />
                                   </Button>
                                 )}
+                                {canGeneratePmocDocuments(os) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 hover:bg-info hover:text-white"
+                                    onClick={(e) => { e.stopPropagation(); setPmocDocumentsOsId(os.id); }}
+                                    title="Gerar documentos PMOC"
+                                  >
+                                    <FileText className="h-3 w-3" />
+                                  </Button>
+                                )}
                                 {canDeleteOS && (
                                   <Button
                                     variant="ghost"
@@ -1397,6 +1428,13 @@ export default function ServiceOrders() {
         isPending={resetServiceOrder.isPending}
         onConfirm={handleResetConfirm}
       />
+      {pmocDocumentsOsId && (
+        <OsPmocDocumentsDialog
+          open
+          onOpenChange={(open) => { if (!open) setPmocDocumentsOsId(null); }}
+          serviceOrderId={pmocDocumentsOsId}
+        />
+      )}
     </div>
   );
 }
