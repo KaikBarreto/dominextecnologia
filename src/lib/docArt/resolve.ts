@@ -20,8 +20,11 @@ import type {
   DocArtTemplate,
   DocArtTheme,
   DocArtToggleKey,
+  Mm,
   ResolvedDocArt,
   ResolvedShape,
+  ResolvedTextShape,
+  TextAlign,
   TextShape,
 } from './types.ts';
 import { PAGE_MM } from './types.ts';
@@ -191,17 +194,87 @@ export function resolveDocArt(
 
   for (const entry of template.shapes) {
     if (entry.requires && !isToggleOn(entry.requires, config)) continue;
+    const slotContains = (condition: NonNullable<typeof entry.whenSlotContains>) =>
+      getSlotHtml(template, config, condition.slot).toLocaleUpperCase().includes(condition.text.toLocaleUpperCase());
+    if (entry.whenSlotContains && !slotContains(entry.whenSlotContains)) continue;
+    if (entry.unlessSlotContains && slotContains(entry.unlessSlotContains)) continue;
     const resolved = resolveShape(entry.shape, palette, template, config, substitute);
     if (resolved) shapes.push(resolved);
   }
 
+  const page = PAGE_MM[template.orientation];
   return {
     slug: template.slug,
     orientation: template.orientation,
-    page: PAGE_MM[template.orientation],
+    page,
     theme,
-    shapes,
+    shapes: alignCertificateLayout(shapes, page, config?.headerAlign ?? 'center'),
   };
+}
+
+/**
+ * O alinhamento escolhido vale para a composição inteira do certificado.
+ * O centro preserva a base editorial (título central e corpo corrido à
+ * esquerda); esquerda/direita alinham todos os blocos textuais na mesma
+ * direção. O rodapé institucional "Gerado por Dominex" é desenhado depois,
+ * fora desta spec, e permanece centralizado por regra de marca.
+ */
+function alignCertificateLayout(
+  shapes: ResolvedShape[],
+  page: { w: Mm; h: Mm },
+  align: TextAlign,
+): ResolvedShape[] {
+  const margin = page.w > page.h ? 26 : 20;
+  return shapes.map((shape) => {
+    // A validação é elemento marginal fixo: permanece colada à borda direita
+    // mesmo quando o conteúdo editorial muda de alinhamento.
+    if (shape.layoutRole === 'validationSeal') return shape;
+    if (align === 'right' && shape.iconFor) {
+      const title = shapes.find(
+        (candidate): candidate is ResolvedTextShape => candidate.kind === 'text' && candidate.slot === shape.iconFor,
+      );
+      return title ? shiftShapeHorizontally(shape, title.w + 8) : shape;
+    }
+    if (shape.kind === 'image' && shape.src === 'logo') {
+      const x = align === 'left'
+        ? margin
+        : align === 'right'
+          ? page.w - margin - shape.w
+          : (page.w - shape.w) / 2;
+      return { ...shape, x };
+    }
+    if (shape.kind === 'text') {
+      const isHeader = ['titulo', 'subtitulo', 'sobretitulo'].includes(shape.slot);
+      if (isHeader) return { ...shape, x: margin, w: page.w - margin * 2, align };
+      if (align !== 'center') return { ...shape, align };
+    }
+    return shape;
+  });
+}
+
+function shiftShapeHorizontally(shape: ResolvedShape, offset: number): ResolvedShape {
+  if (shape.kind === 'text' || shape.kind === 'rect' || shape.kind === 'image') return { ...shape, x: shape.x + offset };
+  if (shape.kind === 'circle') return { ...shape, cx: shape.cx + offset };
+  if (shape.kind === 'line') return { ...shape, x1: shape.x1 + offset, x2: shape.x2 + offset };
+  if (shape.kind === 'path') return { ...shape, d: translatePathHorizontally(shape.d, offset) };
+  return shape;
+}
+
+function translatePathHorizontally(path: string, offset: number): string {
+  const arity: Record<string, number> = { M: 2, L: 2, H: 1, V: 1, C: 6, S: 4, Q: 4, T: 2 };
+  const xParameters: Record<string, number[]> = { M: [0], L: [0], H: [0], C: [0, 2, 4], S: [0, 2], Q: [0, 2], T: [0] };
+  let command = '';
+  let index = 0;
+  return path.replace(/[A-Za-z]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/gi, token => {
+    if (/^[A-Za-z]$/.test(token)) {
+      command = token.toUpperCase();
+      index = 0;
+      return token;
+    }
+    const parameter = index++ % (arity[command] ?? 1);
+    if (!(xParameters[command] ?? []).includes(parameter)) return token;
+    return String(Number(token) + offset);
+  });
 }
 
 function resolveShape(
@@ -266,9 +339,21 @@ export function getSlotHtml(
   config: DocArtConfig | undefined,
   slot: TextShape['slot'],
 ): string {
+  // O selo é prova de auditoria, não conteúdo editorial: nem config antiga nem
+  // JSON gravado manualmente podem substituir o identificador calculado.
+  if (slot === 'validacao') return template.defaultSlots.validacao ?? '';
   const saved = config?.slots?.[slot];
-  if (typeof saved === 'string') return saved;
-  return template.defaultSlots[slot] ?? '';
+  const value = typeof saved === 'string' ? saved : template.defaultSlots[slot] ?? '';
+  // Compatibilidade com configurações salvas antes de os títulos técnicos
+  // virarem caixas próprias, maiores que os dados. Sem esta normalização, um
+  // certificado antigo repetiria o título ao lado do novo heading.
+  if (slot === 'assinaturaNome') {
+    return value.replace(/^\s*<strong>\s*RESPONSÁVEL TÉCNICO\s*<\/strong>\s*<br\s*\/?>(?:\s*)/i, '');
+  }
+  if (slot === 'produto') {
+    return value.replace(/^\s*<strong>\s*PRODUTOS? UTILIZADOS?\s*<\/strong>\s*<br\s*\/?>(?:\s*)/i, '');
+  }
+  return value;
 }
 
 // -----------------------------------------------------------------------------

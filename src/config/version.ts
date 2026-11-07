@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.8";
+export const APP_VERSION = "1.39.9";
 
 export const VERSION_NOTES =
-  "Gere documentos PMOC minimalistas com validade escolhida, data no arquivo e anexos automáticos no cliente e nos equipamentos.";
+  "Emita certificados PMOC verificáveis pela O.S. ou pelo contrato, com validade escolhida, visual profissional e anexos automáticos.";

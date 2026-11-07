@@ -84,6 +84,8 @@ export interface DrawCertificadoArtInput {
   signatureUrl: string | null;
   /** Cor da marca do tenant — vira o default do tema da arte. */
   brandPrimary?: string | null;
+  /** URL pública do registro canônico, também aplicada como link no selo. */
+  validationUrl?: string | null;
 }
 
 export interface DrawCertificadoArtResult {
@@ -128,6 +130,7 @@ export async function drawCertificadoArtPage(
     substitute: (html) => substituteVariables(html, input.variables),
     brand,
     images,
+    validationUrl: input.validationUrl ?? undefined,
   });
 
   // O motor pode paginar um tema. Toda pagina nova do certificado recebe a

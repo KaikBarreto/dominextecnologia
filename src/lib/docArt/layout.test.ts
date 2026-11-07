@@ -3,7 +3,7 @@ import { paginateDocArt } from './layout';
 import { resolveDocArt, mmToPt, ptToMm } from './resolve';
 import { flattenPngForPdf, logoPlateFromPixels, logoPlateFromPng, normalizePngForPdf, tintPngForPdf, UNKNOWN_LOGO_PLATE } from './logoContrast';
 import { DOC_ART_TEMPLATES } from './templates';
-import type { ResolvedDocArt, ResolvedTextShape } from './types';
+import type { DocArtLayoutRole, ResolvedDocArt, ResolvedShape, ResolvedTextShape } from './types';
 import { deflateSync } from 'node:zlib';
 import { Blob as NodeBlob } from 'node:buffer';
 import { readFileSync } from 'node:fs';
@@ -15,7 +15,38 @@ const content = (pages: ResolvedDocArt[], slot: ResolvedTextShape['slot']) => te
   .filter(shape => shape.slot === slot).flatMap(shape => shape.lines ?? [])
   .flatMap(line => line.pieces.map(piece => piece.text)).join('').replace(/\s/g, '');
 
+const bounds = (shape: ResolvedShape) => {
+  if (shape.kind === 'text') {
+    const lines = shape.lines ?? [];
+    const last = lines.at(-1);
+    const height = last ? ptToMm((lines.length - 1) * shape.lineHeight + shape.size + (shape.paragraphSpacing ?? 0) * last.paragraphIndex) : 0;
+    return { top: shape.y, bottom: shape.y + height };
+  }
+  if (shape.kind === 'rect' || shape.kind === 'image') return { top: shape.y, bottom: shape.y + shape.h };
+  if (shape.kind === 'circle') return { top: shape.cy - shape.r, bottom: shape.cy + shape.r };
+  if (shape.kind === 'line') return { top: Math.min(shape.y1, shape.y2), bottom: Math.max(shape.y1, shape.y2) };
+  return null;
+};
+
+const roleBounds = (shapes: ResolvedShape[], role: DocArtLayoutRole) => {
+  const items = shapes.filter(shape => shape.layoutRole === role).map(bounds).filter((item): item is { top: number; bottom: number } => item !== null);
+  return { top: Math.min(...items.map(item => item.top)), bottom: Math.max(...items.map(item => item.bottom)) };
+};
+
 describe('certificados com conteúdo variável', () => {
+  it.each(DOC_ART_TEMPLATES)('$slug equilibra declaração, emissão, detalhes e destaque com o mesmo intervalo', template => {
+    const art = resolveDocArt(template, {}, { substitute: html => html.replace(/<span[^>]*><\/span>/g, 'Demonstração') });
+    const page = paginateDocArt(art, measures)[0];
+    const body = page.shapes.find((shape): shape is ResolvedTextShape => shape.kind === 'text' && shape.slot === 'corpo')!;
+    const bodyBox = bounds(body)!;
+    const meta = roleBounds(page.shapes, 'certificateMeta');
+    const details = roleBounds(page.shapes, 'certificateDetails');
+    const highlight = roleBounds(page.shapes, 'certificateHighlight');
+    const gaps = [meta.top - bodyBox.bottom, details.top - meta.bottom, highlight.top - details.bottom];
+    expect(gaps[1], `${template.slug}: corpo → emissão / emissão → detalhes`).toBeCloseTo(gaps[0], 8);
+    expect(gaps[2], `${template.slug}: emissão → detalhes / detalhes → destaque`).toBeCloseTo(gaps[1], 8);
+  });
+
   it.each(DOC_ART_TEMPLATES)('$slug mantém todo o conteúdo longo, com nomes e identificadores extensos', template => {
     const body = `${'Empresa com razão social longa e endereço extenso. '.repeat(150)} FIM-DO-CONTEÚDO`;
     const responsible = 'Responsável Técnico com Sobrenome Extenso '.repeat(5);

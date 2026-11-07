@@ -1,4 +1,4 @@
-import type { ColorRef, DocArtConditionalShape, DocArtTemplate, Orientation } from '../types.ts';
+import type { ColorRef, DocArtConditionalShape, DocArtLayoutRole, DocArtTemplate, Orientation } from '../types.ts';
 import { CERTIFICADO_DEFAULT_SLOTS } from './slots.ts';
 import { text } from './blocks.ts';
 
@@ -22,8 +22,8 @@ export function createCertificateTemplate(options: CertificateOptions): DocArtTe
   const shapes: DocArtConditionalShape[] = [];
   const rect = (x: number, y: number, width: number, height: number, fill: string, opacity = 1) =>
     shapes.push({ shape: { kind: 'rect', x, y, w: width, h: height, fill, opacity } });
-  const line = (x1: number, y1: number, x2: number, y2: number, stroke: string, opacity = 1, strokeWidth = 0.3) =>
-    shapes.push({ shape: { kind: 'line', x1, y1, x2, y2, stroke, opacity, strokeWidth } });
+  const line = (x1: number, y1: number, x2: number, y2: number, stroke: string, opacity = 1, strokeWidth = 0.3, layoutRole?: DocArtLayoutRole) =>
+    shapes.push({ shape: { kind: 'line', x1, y1, x2, y2, stroke, opacity, strokeWidth, layoutRole } });
   const path = (d: string, fill: string, opacity = 1) => shapes.push({ shape: { kind: 'path', d, fill, opacity } });
   rect(0, 0, w, h, 'paper');
 
@@ -103,23 +103,28 @@ export function createCertificateTemplate(options: CertificateOptions): DocArtTe
 
   // Estrutura inspirada em certificados técnicos de campo: título institucional
   // centralizado, declaração ampla e dados de execução distribuídos em quadros.
-  const layoutX = split ? 34 : landscape ? 22 : 20;
+  const layoutX = landscape ? 22 : 20;
   const layoutRight = landscape ? 22 : 20;
   const layoutW = w - layoutX - layoutRight;
   const contentX = layoutX + 4;
   const contentW = layoutW - 8;
-  const logoX = split ? 36 : layoutX;
-  const titleX = landscape ? 62 : layoutX;
-  const titleW = landscape ? w - titleX * 2 : layoutW;
-  const titleY = landscape ? 15 : 45;
-  const bodyY = landscape ? 64 : 92;
+  const logoW = landscape ? 42 : 42;
+  const logoX = (w - logoW) / 2;
+  const titleX = contentX;
+  const titleW = contentW;
+  const titleY = landscape ? 27 : 45;
+  const bodyY = landscape ? 67.5 : 92;
   const bodyH = landscape ? 36 : 67;
-  const cardY = landscape ? 113 : 176;
-  const cardH = landscape ? 37 : 36;
+  const validationLength = landscape ? 118 : 128;
+  const validationStripW = 7.5;
+  const validationX = w - validationStripW;
+  const validationY = (h - validationLength) / 2;
+  const cardY = landscape ? 118 : 176;
+  const cardH = landscape ? 46 : 36;
   const cardGap = landscape ? 8 : 7;
   const cardW = landscape ? (contentW - cardGap) / 2 : contentW;
   const productY = landscape ? cardY : cardY + cardH + cardGap;
-  const highlightY = landscape ? 156 : 258;
+  const highlightY = landscape ? 168.5 : 258;
   const addText = (
     slot: Parameters<typeof text>[0]['slot'],
     tx: number,
@@ -130,52 +135,90 @@ export function createCertificateTemplate(options: CertificateOptions): DocArtTe
     weight: 'regular' | 'bold' = 'regular',
     color = 'ink',
     align: 'left' | 'center' | 'right' = 'left',
+    outlineWidth?: number,
+    layoutRole?: DocArtLayoutRole,
   ) => {
     const shape = text({ slot, x: tx, y, w: width, size, lineHeight: size * 1.4, weight, color, align, paragraphSpacing: slot === 'corpo' ? 4 : 0 });
+    if (shape.shape.kind === 'text') shape.shape.outlineWidth = outlineWidth;
     if (shape.shape.kind === 'text') shape.shape.h = height;
+    if (shape.shape.kind === 'text') shape.shape.layoutRole = layoutRole;
     shapes.push(shape);
   };
 
-  // Logo do tenant à esquerda e título centralizado na página, não apenas no
-  // espaço que sobra depois do logo.
-  rect(logoX, 13, 10, 1.2, 'accent');
-  shapes.push({ shape: { kind: 'image', src: 'logo', x: logoX, y: 17, w: landscape ? 39 : 48, h: 14, align: 'left', plate: '#757575', platePadding: 2.2 } });
-  addText('titulo', titleX, titleY, titleW, landscape ? 21.5 : 20, landscape ? 14 : 13, 'bold', titleColor, 'center');
-  addText('subtitulo', titleX, titleY + (landscape ? 16 : 14), titleW, landscape ? 12.5 : 11.5, 9, 'bold', 'ink', 'center');
-  addText('sobretitulo', titleX, titleY + (landscape ? 30 : 28), titleW, 8.6, 7, 'regular', 'ink', 'center');
+  // Cabeçalho vertical: logo do tenant acima e duas linhas de título com a
+  // mesma escala, peso e fonte. O resolve aplica centro/esquerda/direita.
+  shapes.push({ shape: { kind: 'image', src: 'logo', x: logoX, y: 7.5, w: logoW, h: 13.5, align: 'center', plate: '#757575', platePadding: 1.8 } });
+  addText('titulo', titleX, titleY, titleW, landscape ? 25 : 22, landscape ? 11 : 12, 'bold', titleColor, 'center', 0.72);
+  addText('subtitulo', titleX, titleY + (landscape ? 11 : 12), titleW, landscape ? 25 : 22, landscape ? 11 : 12, 'bold', titleColor, 'center', 0.72);
+  addText('sobretitulo', titleX, titleY + (landscape ? 24.5 : 26), titleW, landscape ? 9.6 : 9, 7, 'bold', 'ink', 'center');
   line(contentX, bodyY - 4, contentX + contentW, bodyY - 4, 'accent', 0.72, 0.55);
 
   // Apenas a declaração longa fica alinhada à esquerda; os demais blocos
   // usam alinhamento central ou organização em colunas.
-  addText('corpo', contentX + 3, bodyY, contentW - 6, landscape ? 10.8 : 10.2, bodyH, 'regular', 'ink', 'left');
-  addText('lateral', contentX, landscape ? 103 : 163, contentW, 8.4, 8, 'bold', 'ink', 'center');
+  addText('corpo', contentX + 3, bodyY, contentW - 6, landscape ? 12.2 : 11.4, bodyH, 'regular', 'ink', 'left');
+  shapes.push({ shape: { kind: 'rect', x: validationX, y: validationY, w: validationStripW, h: validationLength, fill: 'primary', layoutRole: 'validationSeal' } });
+  const validationTextW = validationLength - 10;
+  const validationTextSize = 7.6;
+  // Depois da rotação, o ascent vira deslocamento horizontal. Compensá-lo
+  // coloca o centro ótico do texto exatamente no meio da faixa, enquanto o
+  // pivô abaixo mantém o comprimento centralizado na altura da página.
+  const validationAscentMm = validationTextSize * 0.76 * (25.4 / 72);
+  const validationTextX = validationX + validationStripW / 2 - validationAscentMm;
+  const validationTextY = h / 2 + validationTextW / 2;
+  addText('validacao', validationTextX, validationTextY, validationTextW, validationTextSize, 4.8, 'regular', 'onPrimary', 'center', undefined, 'validationSeal');
+  const validationText = shapes.at(-1)?.shape;
+  if (validationText?.kind === 'text') validationText.rotate = -90;
+  addText('lateral', contentX, landscape ? 108 : 166, contentW, landscape ? 9.8 : 9, 8, 'bold', 'ink', 'center', undefined, 'certificateMeta');
 
   // Todos os temas partem da mesma base minimalista: o conteúdo pertence ao
   // papel, sem um painel branco flutuante nem cartões internos. Linhas finas
   // organizam técnico e produto sem competir com a arte discreta das bordas.
-  line(contentX, cardY, contentX + contentW, cardY, 'inkSoft', 0.55, 0.3);
+  line(contentX, cardY, contentX + contentW, cardY, 'inkSoft', 0.55, 0.3, 'certificateDetails');
   if (landscape) {
-    line(contentX + cardW + cardGap / 2, cardY + 5, contentX + cardW + cardGap / 2, cardY + cardH - 5, 'inkSoft', 0.45, 0.25);
+    line(contentX + cardW + cardGap / 2, cardY + 5, contentX + cardW + cardGap / 2, cardY + cardH - 5, 'inkSoft', 0.45, 0.25, 'certificateDetails');
   }
 
   const techTextW = landscape ? cardW - 39 : cardW - 48;
-  addText('assinaturaNome', contentX + 6, cardY + 5, techTextW, 8.5, 14, 'regular', 'ink');
-  addText('assinaturaCargo', contentX + 6, cardY + 20, techTextW, 7.8, 12, 'regular', 'ink');
-  addText('produto', (landscape ? contentX + cardW + cardGap : contentX) + 6, productY + 5, cardW - 12, 8, cardH - 9, 'regular', 'ink');
+  const productX = (landscape ? contentX + cardW + cardGap : contentX) + 6;
+  const techIconX = contentX + 6;
+  const techIconY = cardY + 3.8;
+  shapes.push(
+    { shape: { kind: 'path', d: `M ${techIconX + 0.7},${techIconY + 4.9} V ${techIconY + 4.2} C ${techIconX + 0.7},${techIconY + 2.2} ${techIconX + 1.8},${techIconY + 1.1} ${techIconX + 3.1},${techIconY + 1.1} C ${techIconX + 4.4},${techIconY + 1.1} ${techIconX + 5.5},${techIconY + 2.2} ${techIconX + 5.5},${techIconY + 4.2} V ${techIconY + 4.9}`, stroke: 'ink', strokeWidth: 0.7, layoutRole: 'certificateDetails', iconFor: 'assinaturaTitulo' } },
+    { shape: { kind: 'path', d: `M ${techIconX + 2.5},${techIconY + 3.6} V ${techIconY + 0.8} H ${techIconX + 3.7} V ${techIconY + 3.6}`, stroke: 'ink', strokeWidth: 0.7, layoutRole: 'certificateDetails', iconFor: 'assinaturaTitulo' } },
+    { shape: { kind: 'rect', x: techIconX + 0.2, y: techIconY + 4.8, w: 5.8, h: 1.1, stroke: 'ink', strokeWidth: 0.7, layoutRole: 'certificateDetails', iconFor: 'assinaturaTitulo' } },
+  );
+  const productIconX = productX;
+  const productIconY = productY + 3.7;
+  shapes.push(
+    { unlessSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'path', d: `M ${productIconX + 0.5},${productIconY + 2} L ${productIconX + 3.2},${productIconY + 0.6} L ${productIconX + 5.9},${productIconY + 2} L ${productIconX + 3.2},${productIconY + 3.5} Z`, stroke: 'ink', strokeWidth: 0.65, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
+    { unlessSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'path', d: `M ${productIconX + 0.5},${productIconY + 2} V ${productIconY + 5} L ${productIconX + 3.2},${productIconY + 6.4} V ${productIconY + 3.5}`, stroke: 'ink', strokeWidth: 0.65, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
+    { unlessSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'path', d: `M ${productIconX + 5.9},${productIconY + 2} V ${productIconY + 5} L ${productIconX + 3.2},${productIconY + 6.4}`, stroke: 'ink', strokeWidth: 0.65, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
+    { whenSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'path', d: `M ${productIconX + 0.3},${productIconY + 1.6} L ${productIconX + 3.2},${productIconY + 0.4} L ${productIconX + 6.1},${productIconY + 1.6}`, stroke: 'ink', strokeWidth: 0.65, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
+    { whenSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'rect', x: productIconX + 0.7, y: productIconY + 1.6, w: 5, h: 4.8, stroke: 'ink', strokeWidth: 0.65, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
+    { whenSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'line', x1: productIconX + 3.2, y1: productIconY + 1.6, x2: productIconX + 3.2, y2: productIconY + 6.4, stroke: 'ink', strokeWidth: 0.55, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
+    { whenSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'line', x1: productIconX + 0.7, y1: productIconY + 3.2, x2: productIconX + 5.7, y2: productIconY + 3.2, stroke: 'ink', strokeWidth: 0.55, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
+    { whenSlotContains: { slot: 'produtoTitulo', text: 'CONTRATO E ESTABELECIMENTO' }, shape: { kind: 'line', x1: productIconX + 0.7, y1: productIconY + 4.8, x2: productIconX + 5.7, y2: productIconY + 4.8, stroke: 'ink', strokeWidth: 0.55, layoutRole: 'certificateDetails', iconFor: 'produtoTitulo' } },
+  );
+  addText('assinaturaTitulo', contentX + 13, cardY + 3.5, techTextW - 7, 16.4, 9, 'bold', 'ink', 'left', 0.42, 'certificateDetails');
+  addText('assinaturaNome', contentX + 6, cardY + 13.5, techTextW, 11.2, 7, 'regular', 'ink', 'left', undefined, 'certificateDetails');
+  addText('assinaturaCargo', contentX + 6, cardY + 21.5, techTextW, 9.2, 11, 'regular', 'ink', 'left', undefined, 'certificateDetails');
+  addText('produtoTitulo', productX + 7, productY + 3.5, cardW - 19, 16.4, 9, 'bold', 'ink', 'left', 0.42, 'certificateDetails');
+  addText('produto', productX, productY + 13.5, cardW - 12, 10.2, cardH - 17.5, 'regular', 'ink', 'left', undefined, 'certificateDetails');
 
   shapes.push(
-    { requires: 'signature', shape: { kind: 'image', src: 'signature', x: contentX + cardW - (landscape ? 35 : 44), y: cardY + 8, w: landscape ? 30 : 39, h: cardH - 16, align: 'right', valign: 'middle' } },
+    { requires: 'signature', shape: { kind: 'image', src: 'signature', x: contentX + cardW - (landscape ? 35 : 44), y: cardY + 8, w: landscape ? 30 : 39, h: cardH - 16, align: 'right', valign: 'middle', layoutRole: 'certificateDetails' } },
   );
 
-  addText('destaque', contentX, highlightY, contentW, landscape ? 8.4 : 7.8, landscape ? 13 : 12, 'bold', 'ink', 'center');
-  const footer = text({ slot: 'rodape', x: contentX, y: landscape ? 184 : 277, w: landscape ? contentW * 0.46 : contentW, size: 7.4, lineHeight: 9.4, color: 'ink', align: landscape ? 'left' : 'center' });
-  if (footer.shape.kind === 'text') footer.shape.h = 7;
+  addText('destaque', contentX + contentW * 0.08, highlightY, contentW * 0.84, landscape ? 9.4 : 8.6, landscape ? 13 : 12, 'bold', 'ink', 'center', undefined, 'certificateHighlight');
+  const footer = text({ slot: 'rodape', x: contentX + 6, y: landscape ? cardY + 34 : 273.5, w: landscape ? techTextW : contentW, size: 7.6, lineHeight: 8.8, weight: 'regular', color: 'ink', align: landscape ? 'left' : 'center' });
+  if (footer.shape.kind === 'text') footer.shape.h = landscape ? 10 : 9;
+  if (footer.shape.kind === 'text' && landscape) footer.shape.layoutRole = 'certificateDetails';
   shapes.push({ ...footer, requires: 'footer' });
   return {
     slug, name, orientation, previewColor: dark ? '#111815' : '#00a878',
     defaultTheme: { primary: dark ? '#f8fafc' : '#111815', accent: dark ? '#f8fafc' : '#111815', bg: dark ? '#0b1220' : '#ffffff', paper: dark ? '#0b1220' : '#ffffff' },
     defaultSlots: CERTIFICADO_DEFAULT_SLOTS,
-    slots: ['titulo', 'subtitulo', 'sobretitulo', 'corpo', 'produto', 'assinaturaNome', 'assinaturaCargo', 'destaque', 'lateral', 'rodape'],
+    slots: ['titulo', 'subtitulo', 'sobretitulo', 'corpo', 'validacao', 'assinaturaTitulo', 'assinaturaNome', 'assinaturaCargo', 'produtoTitulo', 'produto', 'destaque', 'lateral', 'rodape'],
     toggles: ['signature', 'footer'], shapes,
   };
 }

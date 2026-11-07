@@ -185,6 +185,16 @@ export const PMOC_VARIABLES = {
     source: 'pmoc_documents.generated_at formatado DD/MM/AAAA',
     category: 'documento',
   },
+  'documento.codigo_validacao': {
+    label: 'Código de Validação',
+    source: 'pmoc_certificate_validations.certificate_number — sequência por empresa',
+    category: 'documento',
+  },
+  'documento.url_validacao': {
+    label: 'Link de Validação',
+    source: 'pmoc_certificate_validations.validation_token — capability pública',
+    category: 'documento',
+  },
 } as const satisfies Record<string, PmocVariableMeta>;
 
 /** Chave válida (`'empresa.cnpj' | 'rt.nome' | ...`). */
@@ -234,6 +244,8 @@ export const PMOC_PREVIEW_SAMPLE: Record<PmocVariableKey, string> = {
   'documento.validade': '12 meses',
   'documento.data_vencimento': '01/01/2027',
   'documento.data_emissao': '01/01/2026',
+  'documento.codigo_validacao': 'PMOC-000001',
+  'documento.url_validacao': 'dominex.app/c/AbCdEfGhIjKlMnOp',
 };
 
 /**

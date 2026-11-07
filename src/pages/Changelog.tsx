@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.9',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Certificados PMOC com validação pública',
+        description: 'Cada certificado recebe uma numeração sequencial da empresa e um link curto e clicável para conferir sua autenticidade. O código fica discretamente na lateral do PDF sem ocupar a área principal do documento.',
+        category: 'recurso',
+      },
+      {
+        title: 'Certificado geral do contrato e estabelecimento',
+        description: 'A área de documentos do contrato agora usa os mesmos modelos profissionais do certificado da O.S., permite escolher a duração e deixa claro que a cobertura se refere ao contrato e ao estabelecimento como um todo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Leitura e acabamento mais consistentes',
+        description: 'Títulos, dados variáveis, responsável técnico, empresa e produtos receberam hierarquia mais forte. Os blocos se distribuem com espaçamento equilibrado, ícones próprios e rodapé Dominex padronizado em fundos claros e escuros.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.39.8',
     date: '7 de novembro de 2026',
     type: 'patch',

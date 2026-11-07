@@ -33,6 +33,8 @@ export interface PmocCustomDocs {
   certificado_art_slug: string | null;
   /** Config da arte deste contrato. `null` junto de `certificado_art_slug: null` = herda da empresa. */
   certificado_art_config: DocArtConfig | null;
+  /** Validade do certificado deste contrato. `null` = herda o padrão da empresa. */
+  certificado_validity_months: number | null;
   termo_rt_updated_at: string | null;
   certificado_updated_at: string | null;
   updated_by: string | null;
@@ -208,6 +210,44 @@ export function usePmocContractCustomDocs(contractId: string | null | undefined)
     },
   });
 
+  async function upsertCertificadoValidity(months: number | null): Promise<void> {
+    if (!contractId) throw new Error('Contrato não identificado.');
+    if (months !== null && (!Number.isInteger(months) || months < 1 || months > 60)) {
+      throw new Error('Escolha uma validade entre 1 e 60 meses.');
+    }
+    const company_id = await getCurrentUserCompanyId();
+    const { error } = await supabase
+      .from('pmoc_contract_documents_custom')
+      .upsert(
+        {
+          contract_id: contractId,
+          company_id,
+          updated_by: (await supabase.auth.getUser()).data.user?.id ?? null,
+          certificado_validity_months: months,
+        } as never,
+        { onConflict: 'contract_id' },
+      );
+
+    if (error) {
+      const code = (error as { code?: string }).code;
+      if (code === '42703' || code === '42P01') {
+        throw new Error('Recurso em deploy. Aguarde a próxima atualização para definir a validade.');
+      }
+      throw error;
+    }
+  }
+
+  const saveCertificadoValidityMutation = useMutation({
+    mutationFn: (months: number | null) => upsertCertificadoValidity(months),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pmoc-contract-custom-docs', contractId] });
+      toast({ title: 'Validade do Certificado salva!' });
+    },
+    onError: (err) => {
+      toast({ variant: 'destructive', title: 'Erro ao salvar a validade', description: getErrorMessage(err) });
+    },
+  });
+
   return {
     customDocs: query.data ?? null,
     isLoading: query.isLoading,
@@ -219,7 +259,10 @@ export function usePmocContractCustomDocs(contractId: string | null | undefined)
     saveCertificadoArt: (slug: string | null, config: DocArtConfig | null) =>
       saveCertificadoArtMutation.mutateAsync({ slug, config }),
     resetCertificadoArtToDefault: () => resetCertificadoArtMutation.mutateAsync(),
+    saveCertificadoValidity: (months: number | null) =>
+      saveCertificadoValidityMutation.mutateAsync(months),
     isSavingCertificadoArt: saveCertificadoArtMutation.isPending || resetCertificadoArtMutation.isPending,
+    isSavingCertificadoValidity: saveCertificadoValidityMutation.isPending,
     isSaving:
       saveTermoRTMutation.isPending ||
       saveCertificadoMutation.isPending ||

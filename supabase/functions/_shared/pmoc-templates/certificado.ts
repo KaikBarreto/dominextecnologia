@@ -35,7 +35,7 @@ export function buildDefaultCertificadoHtml(): string {
 
 <p>&nbsp;</p>
 
-<p>A empresa <strong><span data-pmoc-var="empresa.razao_social"></span></strong>, inscrita no CNPJ nº <strong><span data-pmoc-var="empresa.cnpj"></span></strong>, certifica que a unidade <strong><span data-pmoc-var="cliente.nome"></span></strong>, inscrita no CNPJ nº <strong><span data-pmoc-var="cliente.documento"></span></strong>, localizada em <span data-pmoc-var="cliente.endereco"></span>, está sob plano formal de manutenção preventiva e operacional conforme estabelecido pela Lei Federal nº 13.589 de 4 de janeiro de 2018, sob supervisão técnica de <strong><span data-pmoc-var="rt.nome"></span></strong> (<span data-pmoc-var="rt.modalidade"></span> — CFT <span data-pmoc-var="rt.cft_crea"></span>).</p>
+<p>A empresa <strong><span data-pmoc-var="empresa.razao_social"></span></strong>, inscrita no CNPJ nº <strong><span data-pmoc-var="empresa.cnpj"></span></strong>, certifica que a unidade <strong><span data-pmoc-var="cliente.nome"></span></strong>, inscrita no CNPJ nº <strong><span data-pmoc-var="cliente.documento"></span></strong>, localizada em <span data-pmoc-var="cliente.endereco"></span>, está sob plano formal de manutenção preventiva e operacional conforme estabelecido pela Lei Federal nº 13.589/2018 e pela Portaria GM/MS nº 3.523/1998, sob supervisão técnica de <strong><span data-pmoc-var="rt.nome"></span></strong> (<span data-pmoc-var="rt.modalidade"></span> — CFT <span data-pmoc-var="rt.cft_crea"></span>).</p>
 
 <p>&nbsp;</p>
 
@@ -71,9 +71,22 @@ export async function drawCertificadoPage(
   variableContext: PmocVariableContext | null = null,
 ): Promise<RenderCertificadoResult> {
   const pagesBefore = pdf.getPageCount();
-  const raw = customHtml && customHtml.trim().length > 0
+  const configuredRaw = customHtml && customHtml.trim().length > 0
     ? customHtml
     : buildDefaultCertificadoHtml();
+  const validationCode = variableContext?.["documento.codigo_validacao"]?.trim();
+  const validationUrl = variableContext?.["documento.url_validacao"]?.trim();
+  const validationLines = [
+    validationCode && !configuredRaw.includes('data-pmoc-var="documento.codigo_validacao"')
+      ? '<strong>Código de validação:</strong> <span data-pmoc-var="documento.codigo_validacao"></span>.'
+      : "",
+    validationUrl && !configuredRaw.includes('data-pmoc-var="documento.url_validacao"')
+      ? '<strong>Valide em:</strong> <span data-pmoc-var="documento.url_validacao"></span>.'
+      : "",
+  ].filter(Boolean);
+  const raw = validationLines.length > 0
+    ? `${configuredRaw}<p>${validationLines.join("<br>")}</p>`
+    : configuredRaw;
 
   // ---- (Onda H) Substituir variáveis ANTES do sanitizer.
   //      Sanitizer remove o atributo data-pmoc-var de <span>; ordem inversa

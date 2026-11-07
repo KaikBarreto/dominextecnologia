@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -9,7 +9,6 @@ import {
   Pencil,
   RefreshCw,
   ChevronDown,
-  Info,
   ShieldCheck,
   AlertTriangle,
   Eye,
@@ -17,6 +16,9 @@ import {
   Globe,
   Table2,
   Palette,
+  Building2,
+  CalendarClock,
+  Files,
 } from 'lucide-react';
 import { dateInTz, timeInTz } from '@/lib/timezone';
 import {
@@ -28,15 +30,22 @@ import {
 } from '@/lib/documentValidity';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 import { PmocDocEditorDialog } from './PmocDocEditorDialog';
@@ -65,7 +74,6 @@ import {
 import {
   buildDefaultTermoRtHtml,
   buildDefaultCertificadoHtml,
-  htmlPreview,
   type PmocTemplateContext,
 } from '@/utils/pmocDocumentTemplates';
 import type { PmocVariableContext } from '@/utils/pmocVariables';
@@ -246,116 +254,54 @@ function ValidityBadge({ status }: { status: DocumentValidityStatus }) {
   );
 }
 
-function DocCardHeader({
+export function DocumentRow({
+  icon: Icon,
   title,
-  version,
-  generatedAt,
+  description,
+  badges,
+  metadata,
+  actions,
+  settings,
+  emphasized = false,
 }: {
+  icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>;
   title: string;
-  version?: number;
-  generatedAt?: string;
-}) {
-  // Fuso da empresa (não o do navegador do gestor) — regra do time.
-  const { timezone } = useAppLocaleContext();
-  return (
-    <div className="flex items-start justify-between gap-2">
-      <div className="min-w-0">
-        <p className="break-words text-base font-semibold">
-          {title}
-          {version && (
-            <Badge variant="secondary" className="ml-2 align-middle">
-              v{version}
-            </Badge>
-          )}
-        </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Última geração: {formatGeneratedAt(generatedAt, timezone)}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function SubDocCard({
-  title,
-  preview,
-  helperTooltip,
-  onEdit,
-  edited,
-  extraActions,
-  topRightSlot,
-  validityNote,
-  modelNote,
-  t,
-}: {
-  title: string;
-  preview: string;
-  helperTooltip: string;
-  onEdit: () => void;
-  edited: boolean;
-  /** Ações extras (ex: baixar TRT individual, adicionar assinatura) — vão no rodapé do sub-card, antes do botão Editar. */
-  extraActions?: ReactNode;
-  /** Slot opcional no canto superior direito (ex: badge de status). */
-  topRightSlot?: ReactNode;
-  /** Linha opcional de validade ("Válido até DD/MM/AAAA" + selo de status). */
-  validityNote?: ReactNode;
-  /** Linha opcional sobre o modelo visual (arte) em uso — só o Certificado usa. */
-  modelNote?: ReactNode;
-  t: DocsT;
+  description: string;
+  badges?: ReactNode;
+  metadata?: ReactNode;
+  actions: ReactNode;
+  settings?: ReactNode;
+  emphasized?: boolean;
 }) {
   return (
-    <div className="flex h-full flex-col gap-2 rounded-xl bg-muted/25 p-3 transition-transform">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <p className="break-words text-sm font-semibold">{title}</p>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                <Info className="h-3 w-3" aria-hidden="true" />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="left" className="max-w-xs text-xs">
-              {helperTooltip}
-            </TooltipContent>
-          </Tooltip>
+    <article className={cn('p-4 sm:p-5', emphasized && 'bg-muted/20')}>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex min-w-0 items-start gap-3.5">
+          <div className={cn(
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+            emphasized ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground',
+          )}>
+            <Icon className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-base font-bold tracking-tight text-foreground">{title}</h3>
+              {badges}
+            </div>
+            <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{description}</p>
+            {metadata && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
+                {metadata}
+              </div>
+            )}
+          </div>
         </div>
-        {topRightSlot}
-      </div>
-      <p className="min-h-[40px] flex-1 break-words text-xs text-muted-foreground">
-        {preview || t.defaultTextPlaceholder}
-      </p>
-      {validityNote && (
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          {validityNote}
-        </div>
-      )}
-      {modelNote && (
-        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-          {modelNote}
-        </div>
-      )}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        {edited ? (
-          <Badge variant="outline" className="self-start text-[10px]">
-            {t.customized}
-          </Badge>
-        ) : (
-          <span className="text-[10px] text-muted-foreground">{t.defaultText}</span>
-        )}
-        <div className="flex flex-wrap items-center gap-2">
-          {extraActions}
-          <Button
-            variant="edit-ghost"
-            size="sm"
-            className="min-h-11 sm:min-h-[40px] active:scale-[0.97] transition-transform rounded-xl"
-            onClick={onEdit}
-          >
-            <Pencil className="mr-1 h-3.5 w-3.5" />
-            {t.editTextBtn}
-          </Button>
+        <div className="flex shrink-0 flex-wrap items-center gap-2 lg:max-w-[46%] lg:justify-end">
+          {actions}
         </div>
       </div>
-    </div>
+      {settings && <div className="mt-4 border-t border-border/70 pt-4">{settings}</div>}
+    </article>
   );
 }
 
@@ -370,12 +316,15 @@ export function PmocContractDocsTab({
   // o selo de validade dos documentos regulatórios, sai no calendário dela.
   const { timezone, locale } = useAppLocaleContext();
   const tCertArt = MESSAGES[locale].app.pmoc.certArt;
+  const tTemplates = MESSAGES[locale].app.pmoc.templates;
   const {
     customDocs,
     saveTermoRT,
     saveCertificado,
     resetTermoRTToDefault,
     resetCertificadoToDefault,
+    saveCertificadoValidity,
+    isSavingCertificadoValidity,
     isSaving,
   } = usePmocContractCustomDocs(contractId);
 
@@ -414,15 +363,6 @@ export function PmocContractDocsTab({
   const termoRtHtml = customDocs?.termo_rt_content ?? null;
   const certificadoHtml = customDocs?.certificado_content ?? null;
 
-  const termoRtPreview = useMemo(
-    () => htmlPreview(termoRtHtml ?? defaultTermoRt, 220),
-    [termoRtHtml, defaultTermoRt],
-  );
-  const certificadoPreview = useMemo(
-    () => htmlPreview(certificadoHtml ?? defaultCertificado, 220),
-    [certificadoHtml, defaultCertificado],
-  );
-
   // Modelo visual (arte) do Certificado — só pra exibir a dica "Modelo
   // visual: X" no card. O contrato HERDA o padrão da empresa quando não tem
   // o seu próprio (`certificado_art_slug: null`); a lógica de edição/
@@ -448,6 +388,9 @@ export function PmocContractDocsTab({
   const latestTrt = latestByType.termo_rt;
   const latestCertificado = latestByType.certificado;
   const latestPlanilha = latestByType.planilha;
+  const companyCertValidityMonths = companyTemplates?.certificado_validity_months ?? 12;
+  const contractCertValidityMonths = customDocs?.certificado_validity_months ?? null;
+  const effectiveCertValidityMonths = contractCertValidityMonths ?? companyCertValidityMonths;
 
   // Onda G — diagnóstico de campos faltantes no `templateContext`. Quando
   // algum campo crítico estiver vazio, exibimos banner warning no topo da aba
@@ -528,6 +471,9 @@ export function PmocContractDocsTab({
   const handleGeneratePlanilha = async () => {
     await generatePlanilha.mutateAsync({ contract_id: contractId });
     refetch();
+  };
+  const handleCertValidityChange = async (value: string) => {
+    await saveCertificadoValidity(value === 'inherit' ? null : Number(value));
   };
 
   return (
@@ -626,245 +572,203 @@ export function PmocContractDocsTab({
         </CardContent>
       </Card>
 
-      {/* Card 1 — Dossiê PMOC (TRT + Certificado vivem aqui dentro)
-          ===========================================================
-          Onda I (v1.9.x): TRT NÃO é mais um card separado no topo. Vive como
-          sub-card do Dossiê — assim o gestor edita o TRT num lugar SÓ. Mesmo
-          conteúdo é usado pelo TRT standalone (botão "Baixar TRT individual"
-          dentro do sub-card) e pelo Dossiê completo. */}
-      <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-transparent shadow-none">
-        <CardHeader>
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <CardTitle className="flex items-center gap-2 break-words text-lg sm:text-xl">
-              <FileText className="h-5 w-5 shrink-0" />
-              <span className="min-w-0 break-words">{t.dossieTitle}</span>
-              {latestDossie && (
-                <Badge variant="secondary" className="ml-2">
-                  v{latestDossie.version}
-                </Badge>
-              )}
-            </CardTitle>
-            <SignatureStatusBadge status={dossieStatus} t={t} />
+      {trtStatus === 'pending' && (
+        <NoticeBanner variant="warning" title={t.rtSignaturePendingTitle}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p>{t.rtSignaturePendingDesc}</p>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="min-h-10 shrink-0"
+              onClick={() => setSignatureDialogOpen(true)}
+              disabled={!responsibleTechnicianId}
+            >
+              <Pencil className="mr-1.5 h-3.5 w-3.5" />
+              {t.rtSignatureAddBtn}
+            </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            {t.dossieDesc}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {t.dossieLastGenerated}: {formatGeneratedAt(latestDossie?.generated_at, timezone)}
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4 min-w-0">
-          {trtStatus === 'pending' && (
-            <NoticeBanner variant="warning" title={t.rtSignaturePendingTitle}>
-              <div className="space-y-2">
-                <p>
-                  {t.rtSignaturePendingDesc}
-                </p>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="mt-1 min-h-[40px] active:scale-[0.97] transition-transform"
-                  onClick={() => setSignatureDialogOpen(true)}
-                  disabled={!responsibleTechnicianId}
-                >
-                  <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                  {t.rtSignatureAddBtn}
-                </Button>
-                {!responsibleTechnicianId && (
-                  <p className="text-[11px] text-warning-foreground/80">
-                    {t.rtSignatureNoRtHint}
-                  </p>
-                )}
-              </div>
-            </NoticeBanner>
-          )}
+        </NoticeBanner>
+      )}
 
-          {/* Stack vertical sempre (mobile-first). No desktop também vertical
-              porque os sub-cards carregam ação própria e ficam mais legíveis. */}
-          <div className="flex flex-col gap-3">
-            <SubDocCard
-              t={t}
-              title={t.trtTitle}
-              preview={termoRtPreview}
-              edited={!!termoRtHtml}
-              helperTooltip={t.trtTooltip}
-              onEdit={() => setEditorOpen('termo_rt')}
-              validityNote={
-                latestTrt && trtValidUntil ? (
-                  <>
-                    <span>{t.trtValidUntil} {formatValidUntil(trtValidUntil)}</span>
-                    <ValidityBadge status={trtValidityStatus} />
-                  </>
-                ) : null
-              }
-              topRightSlot={
-                <div className="flex items-center gap-1.5">
-                  {latestTrt && (
-                    <Badge variant="secondary" className="text-[10px]">
-                      v{latestTrt.version}
-                    </Badge>
-                  )}
-                  <SignatureStatusBadge status={trtStatus} t={t} />
-                </div>
-              }
-              extraActions={
+      <section className="space-y-3" aria-labelledby="pmoc-documents-title">
+        <div>
+          <h2 id="pmoc-documents-title" className="text-xl font-bold tracking-tight text-foreground">
+            {t.officialDocumentsTitle}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t.officialDocumentsDesc}</p>
+        </div>
+
+        <Card className="overflow-hidden border-border/80 shadow-none">
+          <div className="divide-y divide-border/80">
+            <DocumentRow
+              icon={Building2}
+              title={t.certContractTitle}
+              description={t.certContractDesc}
+              emphasized
+              badges={
                 <>
-                  {latestTrt?.pdf_storage_path && (
-                    <DownloadLatestButton doc={latestTrt} label={t.trtDownloadBtn} />
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleGenerateTrt}
-                    disabled={generateTrt.isPending}
-                    className="min-h-11 sm:min-h-[40px] active:scale-[0.97] transition-transform rounded-xl"
-                  >
-                    {generateTrt.isPending ? (
-                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="mr-1 h-4 w-4" />
-                    )}
-                    {latestTrt ? t.trtRegenerateBtn : t.trtGenerateBtn}
-                  </Button>
+                  {latestCertificado && <Badge variant="secondary">v{latestCertificado.version}</Badge>}
+                  <SignatureStatusBadge status={certStatus} t={t} />
+                  {latestCertificado && <ValidityBadge status={certValidityStatus} />}
                 </>
               }
-            />
-            <SubDocCard
-              t={t}
-              title={t.certTitle}
-              preview={certificadoPreview}
-              edited={!!certificadoHtml}
-              helperTooltip={t.certTooltip}
-              onEdit={() => setEditorOpen('certificado')}
-              validityNote={
-                latestCertificado && certValidUntil ? (
-                  <>
-                    <span>{t.certValidUntil} {formatValidUntil(certValidUntil)}</span>
-                    <ValidityBadge status={certValidityStatus} />
-                  </>
-                ) : null
-              }
-              modelNote={certArtModelNote}
-              topRightSlot={
-                <div className="flex items-center gap-1.5">
-                  {latestCertificado && (
-                    <Badge variant="secondary" className="text-[10px]">
-                      v{latestCertificado.version}
-                    </Badge>
-                  )}
-                  <SignatureStatusBadge status={certStatus} t={t} />
-                </div>
-              }
-              extraActions={
+              metadata={
                 <>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setArtWizardOpen(true)}
-                    className="min-h-11 sm:min-h-[40px] active:scale-[0.97] transition-transform rounded-xl"
-                  >
-                    <Palette className="mr-1 h-3.5 w-3.5" />
-                    {tCertArt.openWizardBtn}
-                  </Button>
+                  <span>{t.dossieLastGenerated}: {formatGeneratedAt(latestCertificado?.generated_at, timezone)}</span>
+                  {latestCertificado && certValidUntil && (
+                    <span>{t.certValidUntil} {formatValidUntil(certValidUntil)}</span>
+                  )}
+                  {certArtModelNote}
+                </>
+              }
+              actions={
+                <>
                   {latestCertificado?.pdf_storage_path && (
                     <DownloadLatestButton doc={latestCertificado} label={t.certDownloadBtn} />
                   )}
                   <Button
                     size="sm"
-                    variant="outline"
                     onClick={handleGenerateCertificado}
                     disabled={generateCertificado.isPending}
-                    className="min-h-11 sm:min-h-[40px] active:scale-[0.97] transition-transform rounded-xl"
+                    className="min-h-11 rounded-xl"
                   >
                     {generateCertificado.isPending ? (
-                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                     ) : (
-                      <RefreshCw className="mr-1 h-4 w-4" />
+                      <RefreshCw className="mr-1.5 h-4 w-4" />
                     )}
                     {latestCertificado ? t.certRegenerateBtn : t.certGenerateBtn}
                   </Button>
                 </>
               }
+              settings={
+                <div className="grid gap-4 rounded-xl bg-background/80 p-4 sm:grid-cols-[minmax(220px,0.8fr)_minmax(0,1.2fr)] sm:items-end">
+                  <div className="space-y-2">
+                    <Label htmlFor="contract-cert-validity" className="flex items-center gap-2 text-sm font-semibold">
+                      <CalendarClock className="h-4 w-4" aria-hidden="true" />
+                      {tTemplates.certValidityLabel}
+                    </Label>
+                    <Select
+                      value={contractCertValidityMonths === null ? 'inherit' : String(contractCertValidityMonths)}
+                      onValueChange={handleCertValidityChange}
+                      disabled={isSavingCertificadoValidity}
+                    >
+                      <SelectTrigger id="contract-cert-validity" className="h-11 rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="inherit">
+                          {t.validityInherit.replace('{n}', String(companyCertValidityMonths))}
+                        </SelectItem>
+                        {[3, 6, 12, 18, 24, 36].map((months) => (
+                          <SelectItem key={months} value={String(months)}>
+                            {t.validityMonths.replace('{n}', String(months))}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {t.validityEffective.replace('{n}', String(effectiveCertValidityMonths))}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setArtWizardOpen(true)}
+                      className="min-h-11 rounded-xl"
+                    >
+                      <Palette className="mr-1.5 h-4 w-4" />
+                      {tCertArt.openWizardBtn}
+                    </Button>
+                    <Button
+                      variant="edit-ghost"
+                      size="sm"
+                      className="min-h-11 rounded-xl"
+                      onClick={() => setEditorOpen('certificado')}
+                    >
+                      <Pencil className="mr-1.5 h-4 w-4" />
+                      {t.editTextBtn}
+                    </Button>
+                  </div>
+                </div>
+              }
+            />
+
+            <DocumentRow
+              icon={FileText}
+              title={t.trtTitle}
+              description={t.trtTooltip}
+              badges={
+                <>
+                  {latestTrt && <Badge variant="secondary">v{latestTrt.version}</Badge>}
+                  <SignatureStatusBadge status={trtStatus} t={t} />
+                  {latestTrt && <ValidityBadge status={trtValidityStatus} />}
+                  <Badge variant="outline">{termoRtHtml ? t.customized : t.defaultText}</Badge>
+                </>
+              }
+              metadata={
+                <>
+                  <span>{t.dossieLastGenerated}: {formatGeneratedAt(latestTrt?.generated_at, timezone)}</span>
+                  {latestTrt && trtValidUntil && <span>{t.trtValidUntil} {formatValidUntil(trtValidUntil)}</span>}
+                </>
+              }
+              actions={
+                <>
+                  <Button variant="edit-ghost" size="sm" className="min-h-11 rounded-xl" onClick={() => setEditorOpen('termo_rt')}>
+                    <Pencil className="mr-1.5 h-4 w-4" />
+                    {t.editTextBtn}
+                  </Button>
+                  {latestTrt?.pdf_storage_path && <DownloadLatestButton doc={latestTrt} label={t.trtDownloadBtn} />}
+                  <Button size="sm" variant="outline" onClick={handleGenerateTrt} disabled={generateTrt.isPending} className="min-h-11 rounded-xl">
+                    {generateTrt.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-4 w-4" />}
+                    {latestTrt ? t.trtRegenerateBtn : t.trtGenerateBtn}
+                  </Button>
+                </>
+              }
+            />
+
+            <DocumentRow
+              icon={Files}
+              title={t.dossieTitle}
+              description={t.dossieDesc}
+              badges={
+                <>
+                  {latestDossie && <Badge variant="secondary">v{latestDossie.version}</Badge>}
+                  <SignatureStatusBadge status={dossieStatus} t={t} />
+                </>
+              }
+              metadata={<span>{t.dossieLastGenerated}: {formatGeneratedAt(latestDossie?.generated_at, timezone)}</span>}
+              actions={
+                <>
+                  {latestDossie?.pdf_storage_path && <DownloadLatestButton doc={latestDossie} label={t.dossieDownloadBtn} />}
+                  <Button size="sm" variant="outline" onClick={handleGenerateDossie} disabled={generateDossie.isPending} className="min-h-11 rounded-xl">
+                    {generateDossie.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-4 w-4" />}
+                    {latestDossie ? t.dossieRegenerateBtn : t.dossieGenerateBtn}
+                  </Button>
+                </>
+              }
+            />
+
+            <DocumentRow
+              icon={Table2}
+              title={t.planilhaTitle}
+              description={t.planilhaDesc}
+              badges={latestPlanilha ? <Badge variant="secondary">v{latestPlanilha.version}</Badge> : undefined}
+              metadata={<span>{t.planilhaLastGenerated}: {formatGeneratedAt(latestPlanilha?.generated_at, timezone)}</span>}
+              actions={
+                <>
+                  {latestPlanilha?.pdf_storage_path && <DownloadLatestButton doc={latestPlanilha} label={t.planilhaDownloadBtn} />}
+                  <Button size="sm" variant="outline" onClick={handleGeneratePlanilha} disabled={generatePlanilha.isPending} className="min-h-11 rounded-xl">
+                    {generatePlanilha.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-4 w-4" />}
+                    {latestPlanilha ? t.planilhaRegenerateBtn : t.planilhaGenerateBtn}
+                  </Button>
+                </>
+              }
             />
           </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-muted-foreground">
-              {t.dossieCoverNote}
-            </p>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              {latestDossie?.pdf_storage_path && (
-                <DownloadLatestButton doc={latestDossie} label={t.dossieDownloadBtn} />
-              )}
-              <Button
-                size="sm"
-                onClick={handleGenerateDossie}
-                disabled={generateDossie.isPending}
-                className="min-h-11 active:scale-[0.97] transition-transform rounded-xl"
-              >
-                {generateDossie.isPending ? (
-                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-1 h-4 w-4" />
-                )}
-                {latestDossie ? t.dossieRegenerateBtn : t.dossieGenerateBtn}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Card 2 — Planilha PMOC (Fase 4)
-          ================================
-          Espelha o modelo do cliente: identificação + RT + relação de
-          equipamentos + plano de manutenção M/T/S/A + matriz de 12 meses +
-          registro de execução. Também vive embutida no Dossiê completo. */}
-      <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-transparent shadow-none">
-        <CardHeader>
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <CardTitle className="flex items-center gap-2 break-words text-lg sm:text-xl">
-              <Table2 className="h-5 w-5 shrink-0" />
-              <span className="min-w-0 break-words">{t.planilhaTitle}</span>
-              {latestPlanilha && (
-                <Badge variant="secondary" className="ml-2">
-                  v{latestPlanilha.version}
-                </Badge>
-              )}
-            </CardTitle>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {t.planilhaDesc}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {t.planilhaLastGenerated}: {formatGeneratedAt(latestPlanilha?.generated_at, timezone)}
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-muted-foreground">
-              {t.planilhaEmptyNote}
-            </p>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              {latestPlanilha?.pdf_storage_path && (
-                <DownloadLatestButton doc={latestPlanilha} label={t.planilhaDownloadBtn} />
-              )}
-              <Button
-                size="sm"
-                onClick={handleGeneratePlanilha}
-                disabled={generatePlanilha.isPending}
-                className="min-h-11 active:scale-[0.97] transition-transform rounded-xl"
-              >
-                {generatePlanilha.isPending ? (
-                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-1 h-4 w-4" />
-                )}
-                {latestPlanilha ? t.planilhaRegenerateBtn : t.planilhaGenerateBtn}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        </Card>
+      </section>
 
       {/* Histórico de versões */}
       <VersionHistory documents={documents} isLoading={isLoadingDocs} t={t} />

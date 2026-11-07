@@ -85,6 +85,13 @@ export type FontWeight = 'regular' | 'bold';
 export type TextAlign = 'left' | 'center' | 'right';
 export type TextTransform = 'none' | 'uppercase';
 
+/** Grupos estruturais que participam do balanceamento vertical do certificado. */
+export type DocArtLayoutRole =
+  | 'validationSeal'
+  | 'certificateMeta'
+  | 'certificateDetails'
+  | 'certificateHighlight';
+
 // -----------------------------------------------------------------------------
 // Slots — o que o gestor edita
 // -----------------------------------------------------------------------------
@@ -108,12 +115,16 @@ export type DocArtSlotKey =
   /** Faixa de destaque em caixa alta (ex: "SEGURANÇA ALIMENTAR"). */
   | 'destaque'
   /** Produto bactericida e dados regulatórios usados na execução. */
+  | 'produtoTitulo'
   | 'produto'
   /** Rodapé (ex: site da empresa). */
   | 'rodape'
   /** Texto fino girado na margem (ex: nº do documento + validade). */
   | 'lateral'
+  /** Código imutável que autentica o conteúdo emitido. Não é editável. */
+  | 'validacao'
   /** Nome sob a linha de assinatura. */
+  | 'assinaturaTitulo'
   | 'assinaturaNome'
   /** Cargo/registro sob o nome. */
   | 'assinaturaCargo';
@@ -134,6 +145,10 @@ export type DocArtImageRef = 'logo' | 'signature' | 'background';
 interface ShapeBase {
   /** 0..1. Default 1. */
   opacity?: number;
+  /** Papel estrutural usado para alinhar grupos compostos (fundo + texto). */
+  layoutRole?: DocArtLayoutRole;
+  /** Título semântico ao qual um ícone vetorial pertence. */
+  iconFor?: 'assinaturaTitulo' | 'produtoTitulo';
 }
 
 export interface RectShape extends ShapeBase {
@@ -230,6 +245,11 @@ export interface TextShape extends ShapeBase {
   transform?: TextTransform;
   /** Espaçamento entre letras em pt. Útil em títulos caixa-alta. */
   letterSpacing?: number;
+  /**
+   * Contorno tipográfico em pt, na mesma cor do texto. Usado apenas quando a
+   * hierarquia pede um peso visual acima da face bold embutida.
+   */
+  outlineWidth?: number;
   /** Graus, sentido horário, pivô em (x, y). Usado no slot `lateral`. */
   rotate?: number;
   /**
@@ -263,6 +283,10 @@ export type DocArtToggleKey = 'signature' | 'footer';
 export interface DocArtConditionalShape {
   /** Só desenha quando o toggle correspondente estiver ligado. */
   requires?: DocArtToggleKey;
+  /** Exibe o shape somente quando o título do slot contém este texto. */
+  whenSlotContains?: { slot: DocArtSlotKey; text: string };
+  /** Oculta o shape quando o título do slot contém este texto. */
+  unlessSlotContains?: { slot: DocArtSlotKey; text: string };
   shape: DocArtShape;
 }
 
@@ -302,6 +326,8 @@ export interface DocArtTheme {
  */
 export interface DocArtConfig {
   theme?: Partial<DocArtTheme>;
+  /** Alinhamento do conjunto logo + títulos. Ausente = centro. */
+  headerAlign?: TextAlign;
   /** Logo específico do documento; ausente = logo da empresa. */
   logoUrl?: string | null;
   /** `auto` protege o contraste; `none` deixa o logo diretamente sobre a arte. */

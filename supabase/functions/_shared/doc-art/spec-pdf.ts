@@ -20,7 +20,9 @@ import {
   PDFDocument,
   PDFFont,
   PDFImage,
+  PDFName,
   PDFPage,
+  PDFString,
   degrees,
   rgb,
 } from "https://esm.sh/pdf-lib@1.17.1";
@@ -191,6 +193,8 @@ function toRgb(hex: string | undefined) {
 
 export interface DrawDocArtOptions extends ResolveOptions {
   images?: DocArtImageSources;
+  /** Capability pública desenhada no selo; também vira link clicável no PDF. */
+  validationUrl?: string;
 }
 
 /**
@@ -247,9 +251,42 @@ export async function drawDocArtPage(
     for (const shape of sheet.shapes) {
       drawShape(page, shape, { fonts, measures, embedded, toPdfY, pageH, logoPlate });
     }
+    const validationSeal = sheet.shapes.find(
+      (shape) => shape.kind === 'rect' && shape.layoutRole === 'validationSeal',
+    );
+    if (
+      validationSeal?.kind === 'rect'
+      && /^https:\/\/dominex\.app\/c\/[A-Za-z0-9_-]{16}$/.test(options.validationUrl ?? '')
+    ) {
+      addUriLink(pdf, page, validationSeal, options.validationUrl!);
+    }
   }
 
   return firstPage!;
+}
+
+function addUriLink(
+  pdf: PDFDocument,
+  page: PDFPage,
+  rect: Extract<ResolvedShape, { kind: 'rect' }>,
+  url: string,
+): void {
+  const x = mmToPt(rect.x);
+  const y = page.getHeight() - mmToPt(rect.y + rect.h);
+  const annotation = pdf.context.obj({
+    Type: 'Annot',
+    Subtype: 'Link',
+    Rect: [x, y, x + mmToPt(rect.w), y + mmToPt(rect.h)],
+    Border: [0, 0, 0],
+    A: {
+      Type: 'Action',
+      S: 'URI',
+      URI: PDFString.of(url),
+    },
+  });
+  page.node.addAnnot(pdf.context.register(annotation));
+  // Evita que viewers desenhem uma borda própria sobre a faixa.
+  annotation.set(PDFName.of('F'), pdf.context.obj(4));
 }
 
 async function embedImages(
@@ -474,15 +511,26 @@ function drawText(page: PDFPage, shape: ResolvedTextShape, ctx: DrawCtx): void {
       for (const chunk of chunks) {
         const at = place(cursorX, baselineY);
         try {
-          page.drawText(chunk, {
-            x: at.x,
-            y: at.y,
-            size: shape.size,
-            font,
-            color,
-            opacity: shape.opacity,
-            rotate: rotation ? degrees(rotation) : undefined,
-          });
+          const radius = (shape.outlineWidth ?? 0) / 2;
+          const offsets = radius > 0
+            ? [
+              [-radius, -radius], [0, -radius], [radius, -radius],
+              [-radius, 0], [radius, 0],
+              [-radius, radius], [0, radius], [radius, radius],
+              [0, 0],
+            ]
+            : [[0, 0]];
+          for (const [dx, dy] of offsets) {
+            page.drawText(chunk, {
+              x: at.x + dx,
+              y: at.y + dy,
+              size: shape.size,
+              font,
+              color,
+              opacity: shape.opacity,
+              rotate: rotation ? degrees(rotation) : undefined,
+            });
+          }
         } catch (err) {
           console.warn("[doc-art] trecho ignorado ao desenhar texto:", err);
         }

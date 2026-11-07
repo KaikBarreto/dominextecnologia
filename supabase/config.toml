@@ -63,6 +63,12 @@ verify_jwt = false
 [functions.pmoc-portal-share]
 verify_jwt = false
 
+# validate-pmoc-certificate: consulta pública por capability token aleatório.
+# A edge usa service_role somente para localizar uma validação ativa e devolve
+# um payload mínimo, sem PDF privado, IDs internos ou leitura anon das tabelas.
+[functions.validate-pmoc-certificate]
+verify_jwt = false
+
 # customer-portal-document-download: download anon por capability token do
 # Portal do Cliente. A funcao revalida portal ativo, sessao/senha, permissao,
 # empresa, cliente e documento antes de emitir URL assinada curta.

@@ -14,8 +14,30 @@ import {
   StandardFonts,
   rgb,
 } from "https://esm.sh/pdf-lib@1.17.1";
+import * as fontkitModule from "https://esm.sh/@pdf-lib/fontkit@1.1.1";
 import { getDominexLogoBytes } from "./dominex-logo.ts";
 import { tintPngForPdf } from "../doc-art/logoContrast.ts";
+import { SANS_BOLD } from "../doc-art/fonts/data.ts";
+
+const fontkit = (fontkitModule as unknown as { default?: typeof fontkitModule }).default ?? fontkitModule;
+const generatedByFontCache = new WeakMap<PDFDocument, Promise<PDFFont>>();
+
+function decodeBase64(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
+
+function embedGeneratedByFont(pdf: PDFDocument): Promise<PDFFont> {
+  const cached = generatedByFontCache.get(pdf);
+  if (cached) return cached;
+  pdf.registerFontkit(fontkit);
+  const embedded = pdf.embedFont(decodeBase64(SANS_BOLD), { subset: true })
+    .catch(() => pdf.embedFont(StandardFonts.HelveticaBold));
+  generatedByFontCache.set(pdf, embedded);
+  return embedded;
+}
 
 const MUTED = rgb(0.45, 0.45, 0.45);
 
@@ -151,15 +173,15 @@ export async function drawGeneratedByDominexFooter(
   opts: { dark?: boolean; prominent?: boolean } = {},
 ): Promise<void> {
   const { width } = page.getSize();
-  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const font = await embedGeneratedByFont(pdf);
   const label = "Gerado por";
   // Assinatura visual unica para certificados e relatorios: legivel sem
   // competir com o conteudo e sem a antiga borda que atravessava o logo.
-  const labelSize = opts.prominent ? 10.5 : 7.5;
-  const logoWidth = opts.prominent ? 82 : 46;
-  const gap = opts.prominent ? 9 : 6;
-  const bottom = opts.prominent ? 7.5 : 9;
-  const color = opts.dark ? rgb(1, 1, 1) : MUTED;
+  const labelSize = opts.prominent ? 15.75 : 11.25;
+  const logoWidth = opts.prominent ? 123 : 69;
+  const gap = opts.prominent ? 13.5 : 9;
+  const bottom = opts.prominent ? 18 : 12;
+  const color = opts.dark ? rgb(1, 1, 1) : rgb(0, 0, 0);
 
   try {
     const logoBytes = opts.dark

@@ -72,6 +72,7 @@ export const useResolvedRouteTitle = (): string => {
     else if (pathname.startsWith("/orcamento/")) title = "Orçamento";
     else if (pathname.startsWith("/proposta/")) title = "Proposta";
     else if (pathname.startsWith("/portal/")) title = "Portal do Cliente";
+    else if (pathname.startsWith("/c/")) title = "Validar certificado PMOC";
   }
 
   return title ?? "";

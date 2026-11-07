@@ -169,6 +169,9 @@ const PdvSettings = React.lazy(() => import("./pages/PdvSettings"));
 const PdvUiReview = import.meta.env.DEV
   ? React.lazy(() => import("./pages/dev/PdvUiReview"))
   : null;
+const PmocContractDocsUiReview = import.meta.env.DEV
+  ? React.lazy(() => import("./pages/dev/PmocContractDocsUiReview"))
+  : null;
 const Finance = React.lazy(() => import("./pages/Finance"));
 const FiscalSettings = React.lazy(() => import("./pages/FiscalSettings"));
 const NotasFiscais = React.lazy(() => import("./pages/NotasFiscais"));
@@ -208,6 +211,7 @@ const PublicLeadCapture = React.lazy(() => import("./pages/PublicLeadCapture"));
 // Portal PMOC público (Onda B — v1.9.1). Lazy: rota pública sem auth,
 // só carrega quando o cliente final escaneia o QR Code.
 const PmocPublicPortal = React.lazy(() => import("./pages/public/PmocPublicPortal"));
+const PmocCertificateValidation = React.lazy(() => import("./pages/PmocCertificateValidation"));
 
 const AdminCompanies = React.lazy(() => import("./pages/admin/AdminCompanies"));
 const AdminCompanyDetail = React.lazy(() => import("./pages/admin/AdminCompanyDetail"));
@@ -691,6 +695,9 @@ const AppRoutes = () => (
     {PdvUiReview && (
       <Route path="/__dev/pdv-ui-review/*" element={<PdvUiReview />} />
     )}
+    {PmocContractDocsUiReview && (
+      <Route path="/__dev/pmoc-contract-docs-review" element={<PmocContractDocsUiReview />} />
+    )}
     {/* Rotas públicas de marketing SEM prefixo = pt-br (canônicas). O layout
         monta a auto-detecção client-side (só para humano) que, sem cookie e com
         navigator.language en/es/fr, redireciona pro idioma detectado. */}
@@ -779,6 +786,8 @@ const AppRoutes = () => (
     <Route path="/contrato/unidade/:token" element={<PmocPublicPortal />} />
     {/* Alias legado: QR Codes físicos já impressos apontam pro caminho antigo */}
     <Route path="/pmoc/unidade/:token" element={<PmocPublicPortal />} />
+    {/* Validação pública impressa e clicável nos certificados PMOC. */}
+    <Route path="/c/:token" element={<PmocCertificateValidation />} />
 
     {/* Checkout - full screen, no layout */}
     <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />

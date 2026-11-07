@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -41,12 +44,14 @@ import { useResponsibleTechnicians } from '@/hooks/useResponsibleTechnicians';
 import { DocArtSvgRenderer, type DocArtImageUrls } from '@/lib/docArt/DocArtSvgRenderer';
 import { idealForeground, resolveTheme } from '@/lib/docArt/resolve';
 import { DOC_ART_TEMPLATES, getDocArtTemplate } from '@/lib/docArt/templates';
+import { CERTIFICADO_CONTRACT_SLOTS } from '@/lib/docArt/templates/slots';
 import type {
   DocArtConfig,
   DocArtSlotKey,
   DocArtTemplate,
   DocArtTheme,
   DocArtToggleKey,
+  TextAlign,
 } from '@/lib/docArt/types';
 
 import { PmocRichTextEditor } from './PmocRichTextEditor';
@@ -101,10 +106,13 @@ function slotLabel(t: CertArtT, key: DocArtSlotKey): string {
     titulo: t.slotTitulo,
     subtitulo: t.slotSubtitulo,
     corpo: t.slotCorpo,
+    produtoTitulo: t.slotProdutoTitulo,
     produto: t.slotProduto,
     destaque: t.slotDestaque,
     rodape: t.slotRodape,
     lateral: t.slotLateral,
+    validacao: t.slotValidacao,
+    assinaturaTitulo: t.slotAssinaturaTitulo,
     assinaturaNome: t.slotAssinaturaNome,
     assinaturaCargo: t.slotAssinaturaCargo,
   };
@@ -278,6 +286,7 @@ export function CertificadoArtConfigDialog({
   const [theme, setTheme] = useState<Partial<DocArtTheme>>({});
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoPlate, setLogoPlate] = useState<'auto' | 'none'>('auto');
+  const [headerAlign, setHeaderAlign] = useState<TextAlign>('center');
   const [toggles, setToggles] = useState<Partial<Record<DocArtToggleKey, boolean>>>({});
   const [slots, setSlots] = useState<Partial<Record<DocArtSlotKey, string>>>({});
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -297,6 +306,7 @@ export function CertificadoArtConfigDialog({
     setTheme(baselineConfig?.theme ?? {});
     setLogoUrl(baselineConfig?.logoUrl ?? null);
     setLogoPlate(baselineConfig?.logoPlate ?? 'auto');
+    setHeaderAlign(baselineConfig?.headerAlign ?? 'center');
     setToggles(baselineConfig?.toggles ?? {});
     setSlots(baselineConfig?.slots ?? {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -357,10 +367,22 @@ export function CertificadoArtConfigDialog({
     if (Object.keys(themeOverrides).length > 0) cfg.theme = themeOverrides;
     if (logoUrl) cfg.logoUrl = logoUrl;
     if (logoPlate === 'none') cfg.logoPlate = 'none';
+    if (headerAlign !== 'center') cfg.headerAlign = headerAlign;
     if (Object.keys(toggles).length > 0) cfg.toggles = toggles;
     if (Object.keys(slots).length > 0) cfg.slots = slots;
     return cfg;
-  }, [theme, logoUrl, logoPlate, toggles, slots]);
+  }, [theme, logoUrl, logoPlate, headerAlign, toggles, slots]);
+
+  const previewConfig = useMemo<DocArtConfig>(() => {
+    if (!isContract) return draftConfig;
+    return {
+      ...draftConfig,
+      slots: {
+        ...CERTIFICADO_CONTRACT_SLOTS,
+        ...draftConfig.slots,
+      },
+    };
+  }, [draftConfig, isContract]);
 
   const setToggle = (key: DocArtToggleKey, value: boolean) =>
     setToggles((prev) => ({ ...prev, [key]: value }));
@@ -417,6 +439,7 @@ export function CertificadoArtConfigDialog({
     setTheme(companyConfig?.theme ?? {});
     setLogoUrl(companyConfig?.logoUrl ?? null);
     setLogoPlate(companyConfig?.logoPlate ?? 'auto');
+    setHeaderAlign(companyConfig?.headerAlign ?? 'center');
     setToggles(companyConfig?.toggles ?? {});
     setSlots(companyConfig?.slots ?? {});
   };
@@ -514,7 +537,14 @@ export function CertificadoArtConfigDialog({
             )}
           >
             <div className="relative">
-              <CertSheet template={tpl} substitute={substitute} brand={brandTheme} images={baseImages} compact />
+              <CertSheet
+                template={tpl}
+                config={isContract ? { slots: CERTIFICADO_CONTRACT_SLOTS } : undefined}
+                substitute={substitute}
+                brand={brandTheme}
+                images={baseImages}
+                compact
+              />
               {selected && (
                 <span className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
                   <Check className="h-3.5 w-3.5" />
@@ -539,7 +569,7 @@ export function CertificadoArtConfigDialog({
       {selectedTemplate ? (
         <CertSheet
           template={selectedTemplate}
-          config={draftConfig}
+          config={previewConfig}
           substitute={substitute}
           brand={brandTheme}
           images={draftImages}
@@ -718,6 +748,31 @@ export function CertificadoArtConfigDialog({
                           aria-label={t.logoPlateLabel}
                         />
                       </div>
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{t.headerAlignmentTitle}</p>
+                          <p className="text-xs text-muted-foreground">{t.headerAlignmentDesc}</p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2" role="group" aria-label={t.headerAlignmentTitle}>
+                          {([
+                            { value: 'left' as const, label: t.headerAlignmentLeft, icon: AlignLeft },
+                            { value: 'center' as const, label: t.headerAlignmentCenter, icon: AlignCenter },
+                            { value: 'right' as const, label: t.headerAlignmentRight, icon: AlignRight },
+                          ]).map(({ value, label, icon: Icon }) => (
+                            <Button
+                              key={value}
+                              type="button"
+                              variant={headerAlign === value ? 'default' : 'outline'}
+                              className="h-10 gap-2"
+                              aria-pressed={headerAlign === value}
+                              onClick={() => setHeaderAlign(value)}
+                            >
+                              <Icon className="h-4 w-4" />
+                              {label}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
 
                     <Separator />
@@ -770,9 +825,12 @@ export function CertificadoArtConfigDialog({
                         <p className="text-sm font-semibold text-foreground">{t.slotsSectionTitle}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{t.slotsSectionSubtitle}</p>
                       </div>
-                      {selectedTemplate.slots.map((key) => {
+                      {selectedTemplate.slots.filter((key) => key !== 'validacao').map((key) => {
                         const overridden = slots[key] !== undefined;
-                        const value = slots[key] ?? selectedTemplate.defaultSlots[key] ?? '';
+                        const value = slots[key]
+                          ?? (isContract ? CERTIFICADO_CONTRACT_SLOTS[key] : undefined)
+                          ?? selectedTemplate.defaultSlots[key]
+                          ?? '';
                         return (
                           <div key={key} className="space-y-1.5">
                             <div className="flex items-center justify-between gap-2">
@@ -831,7 +889,7 @@ export function CertificadoArtConfigDialog({
                 >
                   <CertSheet
                     template={selectedTemplate}
-                    config={draftConfig}
+                    config={previewConfig}
                     substitute={substitute}
                     brand={brandTheme}
                     images={draftImages}

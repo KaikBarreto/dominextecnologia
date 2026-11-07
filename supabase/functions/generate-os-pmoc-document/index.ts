@@ -16,7 +16,7 @@ import {
   type TemplateContext,
 } from "../_shared/pmoc-templates/context.ts";
 import { drawCertificadoPage } from "../_shared/pmoc-templates/certificado.ts";
-import type { PmocVariableContext } from "../_shared/pmoc-templates/variables.ts";
+import { type PmocVariableContext } from "../_shared/pmoc-templates/variables.ts";
 import {
   drawCertificadoArtPage,
   fetchImageBytes,
@@ -25,6 +25,10 @@ import {
 import type { DocArtConfig } from "../_shared/doc-art/types.ts";
 import { drawGeneratedByDominexFooter } from "../_shared/pmoc-templates/footer.ts";
 import { getDocArtTemplate } from "../_shared/doc-art/templates/index.ts";
+import {
+  finalizePmocCertificateValidation,
+  reservePmocCertificateValidation,
+} from "../_shared/pmoc-certificate-validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -372,16 +376,28 @@ function certificateHtml(product: JsonRecord): string {
 <ul>
   <li><strong>Produto:</strong> ${html(product.name)} · <strong>Fabricante:</strong> ${html(product.pmoc_manufacturer)}</li>
   <li><strong>Registro ANVISA:</strong> ${html(product.pmoc_anvisa_registration)} · <strong>Lote:</strong> ${html(product.pmoc_batch_number || "Não informado")}</li>
-  <li><strong>Validade do produto:</strong> ${html(displayDate(product.pmoc_expires_on))}</li>
+  <li><strong>Fabricação:</strong> ${html(displayDate(product.pmoc_manufactured_on))} · <strong>Validade do produto:</strong> ${html(displayDate(product.pmoc_expires_on))}</li>
 </ul>
 <h3>CONFORMIDADE E VALIDADE</h3>
-<p>Serviço executado sob responsabilidade técnica, em conformidade com a Lei Federal nº 13.589/2018 e com as normas sanitárias aplicáveis.</p>
-<p><strong>Validade do certificado:</strong> <span data-pmoc-var="documento.validade"></span>, até <span data-pmoc-var="documento.data_vencimento"></span>.<br><strong>Emissão eletrônica:</strong> <span data-pmoc-var="documento.data_emissao"></span>.</p>
+<p>Serviço executado sob responsabilidade técnica, em conformidade com a Lei Federal nº 13.589/2018, a Portaria GM/MS nº 3.523/1998 e as normas sanitárias aplicáveis.</p>
+<p><strong>Validade do certificado:</strong> <span data-pmoc-var="documento.validade"></span>, até <span data-pmoc-var="documento.data_vencimento"></span>.<br><strong>Emissão eletrônica:</strong> <span data-pmoc-var="documento.data_emissao"></span>.<br><strong>Código de validação:</strong> <span data-pmoc-var="documento.codigo_validacao"></span>.<br><strong>Valide em:</strong> <span data-pmoc-var="documento.url_validacao"></span>.</p>
 `.trim();
 }
 
 function certificateProductHtml(product: JsonRecord, orderNumber: string): string {
-  return `<strong>PRODUTO UTILIZADO</strong><br><strong>${html(product.name)}</strong><br>Fabricante: ${html(product.pmoc_manufacturer)}<br>ANVISA: ${html(product.pmoc_anvisa_registration)} · Lote: ${html(product.pmoc_batch_number || "Não informado")}<br>Validade: ${html(displayDate(product.pmoc_expires_on))} · OS ${html(orderNumber)}`;
+  return `<strong>${html(product.name)}</strong><br>Fabricante: <strong>${html(product.pmoc_manufacturer)}</strong><br>ANVISA: <strong>${html(product.pmoc_anvisa_registration)}</strong> · Lote: <strong>${html(product.pmoc_batch_number || "Não informado")}</strong><br>Fabricação: <strong>${html(displayDate(product.pmoc_manufactured_on))}</strong> · Validade: <strong>${html(displayDate(product.pmoc_expires_on))}</strong><br>OS <strong>${html(orderNumber)}</strong>`;
+}
+
+function ensureCertificateValidationHtml(content: string): string {
+  const lines = [
+    content.includes('data-pmoc-var="documento.codigo_validacao"')
+      ? ""
+      : '<strong>Código de validação:</strong> <span data-pmoc-var="documento.codigo_validacao"></span>.',
+    content.includes('data-pmoc-var="documento.url_validacao"')
+      ? ""
+      : '<strong>Valide em:</strong> <span data-pmoc-var="documento.url_validacao"></span>.',
+  ].filter(Boolean);
+  return lines.length > 0 ? `${content}<p>${lines.join("<br>")}</p>` : content;
 }
 
 Deno.serve(async (req) => {
@@ -563,15 +579,55 @@ Deno.serve(async (req) => {
       issued: { generated_at: generatedAt.toISOString(), generated_by: userData.user.id },
     };
     const { issued: _issued, ...hashSnapshot } = snapshot;
-    const contentHash = await sha256({ ...hashSnapshot, renderer: docType === "relatorio_servico" ? "os-report-v3-grid-black-accent" : "os-certificate-v5-institutional-cards" });
+    const contentHash = await sha256({ ...hashSnapshot, renderer: docType === "relatorio_servico" ? "os-report-v3-grid-black-accent" : "os-certificate-v7-public-validation" });
+    const validationIdentity = docType === "certificado_conformidade"
+      ? await reservePmocCertificateValidation(db, {
+          companyId: order.company_id,
+          contentHash,
+          sourceKind: "service_order",
+          sourceId: order.id,
+        })
+      : null;
+    const persistedSnapshot = validationIdentity
+      ? {
+          ...snapshot,
+          document: {
+            ...snapshot.document,
+            validation_code: validationIdentity.validationCode,
+            validation_url: validationIdentity.validationUrl,
+            certificate_number: validationIdentity.certificateNumber,
+          },
+        }
+      : snapshot;
 
     const { data: cached } = await db.from("service_order_pmoc_documents")
-      .select("version,pdf_storage_path,file_name,valid_until")
+      .select("id,version,pdf_storage_path,file_name,valid_until,generated_at")
       .eq("service_order_id", order.id).eq("doc_type", docType).eq("content_hash", contentHash)
       .order("version", { ascending: false }).limit(1).maybeSingle();
     if (cached) {
+      if (validationIdentity) {
+        await finalizePmocCertificateValidation(db, {
+          companyId: order.company_id,
+          contentHash,
+          sourceKind: "service_order",
+          documentId: cached.id,
+          issuerName: companyName,
+          holderName: customer.name,
+          sourceLabel: `OS ${orderNumber}`,
+          issuedAt: cached.generated_at,
+          validUntil: cached.valid_until,
+        });
+      }
       const { data: signed } = await db.storage.from(BUCKET).createSignedUrl(cached.pdf_storage_path, 3600);
-      if (signed?.signedUrl) return response({ pdf_url: signed.signedUrl, file_name: cached.file_name, version: cached.version, valid_until: cached.valid_until, cached: true });
+      if (signed?.signedUrl) return response({
+        pdf_url: signed.signedUrl,
+        file_name: cached.file_name,
+        version: cached.version,
+        valid_until: cached.valid_until,
+        validation_code: validationIdentity?.validationCode ?? null,
+        validation_url: validationIdentity?.validationUrl ?? null,
+        cached: true,
+      });
     }
 
     const pdf = await PDFDocument.create();
@@ -632,7 +688,7 @@ Deno.serve(async (req) => {
         "rt.nome": rt.full_name, "rt.modalidade": text(rt.modality), "rt.cft_crea": text(rt.cft_crea), "rt.registro": text(rt.registry_number),
         "cliente.nome": customer.name, "cliente.documento": text(customer.document), "cliente.endereco": customerAddress, "cliente.cidade": text(customer.city),
         "contrato.nome": contract?.name ?? `OS ${orderNumber}`, "contrato.vigencia_inicio": dateToExtenso(completionInstant, timeZone), "contrato.frequencia": contract ? "Conforme contrato" : "Atendimento avulso",
-        "data.hoje_extenso": dateToExtenso(generatedAt, timeZone), "documento.validade": productLimitsValidity ? "limitada à validade do produto" : `${validityMonths} ${validityMonths === 1 ? "mês" : "meses"}`, "documento.data_vencimento": displayDate(validUntil), "documento.data_emissao": formatDateBr(generatedAt, timeZone),
+        "data.hoje_extenso": dateToExtenso(generatedAt, timeZone), "documento.validade": productLimitsValidity ? "limitada à validade do produto" : `${validityMonths} ${validityMonths === 1 ? "mês" : "meses"}`, "documento.data_vencimento": displayDate(validUntil), "documento.data_emissao": formatDateBr(generatedAt, timeZone), "documento.codigo_validacao": validationIdentity?.validationCode ?? "", "documento.url_validacao": validationIdentity?.displayUrl ?? "",
       };
       const effectiveArt = resolveEffectiveArt(
         contractCustom?.certificado_art_slug,
@@ -648,15 +704,15 @@ Deno.serve(async (req) => {
           slots: {
             ...originalConfig.slots,
             produto: certificateProductHtml(product, orderNumber),
-            lateral: `OS ${orderNumber} · Emitido em ${formatDateBr(generatedAt, timeZone)} · Válido até ${displayDate(validUntil)}`,
+            lateral: `<strong>OS ${orderNumber}</strong> · Emitido em <strong>${formatDateBr(generatedAt, timeZone)}</strong> · Válido até <strong>${displayDate(validUntil)}</strong>`,
           },
         };
-        await drawCertificadoArtPage(pdf, { slug: effectiveArt.slug, config: adaptedConfig, variables: variableContext, logo: await fetchImageBytes(logoUrl), signatureUrl: rt.signature_image_url, brandPrimary: settings?.white_label_primary_color });
+        await drawCertificadoArtPage(pdf, { slug: effectiveArt.slug, config: adaptedConfig, variables: variableContext, logo: await fetchImageBytes(logoUrl), signatureUrl: rt.signature_image_url, brandPrimary: settings?.white_label_primary_color, validationUrl: validationIdentity?.validationUrl });
       } else {
         const savedCertificateHtml = text(contractCustom?.certificado_content) || text(templates?.certificado_content);
-        const configuredHtml = savedCertificateHtml
+        const configuredHtml = ensureCertificateValidationHtml(savedCertificateHtml
           ? `${savedCertificateHtml}${certificateProductHtml(product, orderNumber)}`
-          : certificateHtml(product);
+          : certificateHtml(product));
         await drawCertificadoPage(pdf, ctx, configuredHtml, variableContext);
       }
     }
@@ -671,15 +727,15 @@ Deno.serve(async (req) => {
     const { error: uploadError } = await db.storage.from(BUCKET).upload(path, bytes, { contentType: "application/pdf", upsert: false });
     if (uploadError) throw new Error(`storage_upload_failed:${uploadError.message}`);
 
-    let inserted = false;
-    for (let attempt = 0; attempt < 3 && !inserted; attempt += 1) {
-      const { error: insertError } = await db.from("service_order_pmoc_documents").insert({
+    let insertedDocumentId: string | null = null;
+    for (let attempt = 0; attempt < 3 && !insertedDocumentId; attempt += 1) {
+      const { data: insertedDocument, error: insertError } = await db.from("service_order_pmoc_documents").insert({
         company_id: order.company_id, service_order_id: order.id, doc_type: docType, version,
-        content_hash: contentHash, pdf_storage_path: path, file_name: fileName, snapshot,
+        content_hash: contentHash, pdf_storage_path: path, file_name: fileName, snapshot: persistedSnapshot,
         valid_until: validUntil, generated_at: generatedAt.toISOString(), generated_by: userData.user.id,
-      });
+      }).select("id").single();
       if (!insertError) {
-        inserted = true;
+        insertedDocumentId = insertedDocument.id;
         break;
       }
       if (insertError.code !== "23505") {
@@ -688,15 +744,36 @@ Deno.serve(async (req) => {
       }
 
       const { data: winner } = await db.from("service_order_pmoc_documents")
-        .select("version,pdf_storage_path,file_name,valid_until")
+        .select("id,version,pdf_storage_path,file_name,valid_until,generated_at")
         .eq("service_order_id", order.id).eq("doc_type", docType).eq("content_hash", contentHash)
         .maybeSingle();
       if (winner) {
         // Esta tentativa perdeu a disputa do mesmo hash; remove somente o seu
         // objeto unico e preserva o artefato imutavel do vencedor.
         await db.storage.from(BUCKET).remove([path]);
+        if (validationIdentity) {
+          await finalizePmocCertificateValidation(db, {
+            companyId: order.company_id,
+            contentHash,
+            sourceKind: "service_order",
+            documentId: winner.id,
+            issuerName: companyName,
+            holderName: customer.name,
+            sourceLabel: `OS ${orderNumber}`,
+            issuedAt: winner.generated_at,
+            validUntil: winner.valid_until,
+          });
+        }
         const { data: winnerUrl } = await db.storage.from(BUCKET).createSignedUrl(winner.pdf_storage_path, 3600);
-        if (winnerUrl?.signedUrl) return response({ pdf_url: winnerUrl.signedUrl, file_name: winner.file_name, version: winner.version, valid_until: winner.valid_until, cached: true });
+        if (winnerUrl?.signedUrl) return response({
+          pdf_url: winnerUrl.signedUrl,
+          file_name: winner.file_name,
+          version: winner.version,
+          valid_until: winner.valid_until,
+          validation_code: validationIdentity?.validationCode ?? null,
+          validation_url: validationIdentity?.validationUrl ?? null,
+          cached: true,
+        });
       }
       const { data: newest } = await db.from("service_order_pmoc_documents")
         .select("version").eq("service_order_id", order.id).eq("doc_type", docType)
@@ -704,13 +781,34 @@ Deno.serve(async (req) => {
       version = (newest?.version ?? version) + 1;
       await new Promise((resolve) => setTimeout(resolve, 75));
     }
-    if (!inserted) {
+    if (!insertedDocumentId) {
       await db.storage.from(BUCKET).remove([path]);
       throw new Error("document_insert_conflict");
     }
+    if (validationIdentity) {
+      await finalizePmocCertificateValidation(db, {
+        companyId: order.company_id,
+        contentHash,
+        sourceKind: "service_order",
+        documentId: insertedDocumentId,
+        issuerName: companyName,
+        holderName: customer.name,
+        sourceLabel: `OS ${orderNumber}`,
+        issuedAt: generatedAt.toISOString(),
+        validUntil,
+      });
+    }
     const { data: signed, error: signedError } = await db.storage.from(BUCKET).createSignedUrl(path, 3600);
     if (signedError || !signed?.signedUrl) throw new Error("signed_url_failed");
-    return response({ pdf_url: signed.signedUrl, file_name: fileName, version, valid_until: validUntil, cached: false });
+    return response({
+      pdf_url: signed.signedUrl,
+      file_name: fileName,
+      version,
+      valid_until: validUntil,
+      validation_code: validationIdentity?.validationCode ?? null,
+      validation_url: validationIdentity?.validationUrl ?? null,
+      cached: false,
+    });
   } catch (error) {
     console.error("[generate-os-pmoc-document] falha", error instanceof Error ? error.message : "unknown");
     return failure("document_generation_failed", "Não foi possível gerar o documento PMOC. Tente novamente.", 500);

@@ -10132,6 +10132,7 @@ export type Database = {
           certificado_art_config: Json | null
           certificado_art_slug: string | null
           certificado_content: string | null
+          certificado_validity_months: number | null
           certificado_updated_at: string | null
           company_id: string
           contract_id: string
@@ -10144,6 +10145,7 @@ export type Database = {
           certificado_art_config?: Json | null
           certificado_art_slug?: string | null
           certificado_content?: string | null
+          certificado_validity_months?: number | null
           certificado_updated_at?: string | null
           company_id: string
           contract_id: string
@@ -10156,6 +10158,7 @@ export type Database = {
           certificado_art_config?: Json | null
           certificado_art_slug?: string | null
           certificado_content?: string | null
+          certificado_validity_months?: number | null
           certificado_updated_at?: string | null
           company_id?: string
           contract_id?: string
@@ -10184,6 +10187,114 @@ export type Database = {
             columns: ["contract_id"]
             isOneToOne: true
             referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pmoc_certificate_number_counters: {
+        Row: {
+          company_id: string
+          last_number: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          last_number?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          last_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pmoc_certificate_number_counters_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pmoc_certificate_validations: {
+        Row: {
+          certificate_number: number
+          company_id: string
+          contract_document_id: string | null
+          created_at: string
+          finalized_at: string | null
+          holder_name: string | null
+          id: string
+          idempotency_key: string
+          issued_at: string | null
+          issuer_name: string | null
+          service_order_document_id: string | null
+          source_id: string
+          source_kind: string
+          source_label: string | null
+          status: string
+          valid_until: string | null
+          validation_token: string
+        }
+        Insert: {
+          certificate_number: number
+          company_id: string
+          contract_document_id?: string | null
+          created_at?: string
+          finalized_at?: string | null
+          holder_name?: string | null
+          id?: string
+          idempotency_key: string
+          issued_at?: string | null
+          issuer_name?: string | null
+          service_order_document_id?: string | null
+          source_id: string
+          source_kind: string
+          source_label?: string | null
+          status?: string
+          valid_until?: string | null
+          validation_token?: string
+        }
+        Update: {
+          certificate_number?: number
+          company_id?: string
+          contract_document_id?: string | null
+          created_at?: string
+          finalized_at?: string | null
+          holder_name?: string | null
+          id?: string
+          idempotency_key?: string
+          issued_at?: string | null
+          issuer_name?: string | null
+          service_order_document_id?: string | null
+          source_id?: string
+          source_kind?: string
+          source_label?: string | null
+          status?: string
+          valid_until?: string | null
+          validation_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pmoc_certificate_validations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pmoc_certificate_validations_contract_document_id_fkey"
+            columns: ["contract_document_id"]
+            isOneToOne: false
+            referencedRelation: "pmoc_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pmoc_certificate_validations_service_order_document_id_fkey"
+            columns: ["service_order_document_id"]
+            isOneToOne: false
+            referencedRelation: "service_order_pmoc_documents"
             referencedColumns: ["id"]
           },
         ]
@@ -16912,6 +17023,20 @@ export type Database = {
             }
             Returns: number
           }
+      finalize_pmoc_certificate_validation: {
+        Args: {
+          p_company_id: string
+          p_document_id: string
+          p_holder_name: string
+          p_idempotency_key: string
+          p_issued_at: string
+          p_issuer_name: string
+          p_source_kind: string
+          p_source_label: string
+          p_valid_until: string
+        }
+        Returns: boolean
+      }
       generate_pmoc_token: { Args: never; Returns: string }
       generate_ponto_slug: { Args: { p_employee_id: string }; Returns: string }
       generate_public_short_code: { Args: { p_len?: number }; Returns: string }
@@ -18247,6 +18372,19 @@ export type Database = {
       regenerate_pmoc_token: {
         Args: { p_contract_id: string }
         Returns: string
+      }
+      reserve_pmoc_certificate_validation: {
+        Args: {
+          p_company_id: string
+          p_idempotency_key: string
+          p_source_id: string
+          p_source_kind: string
+        }
+        Returns: {
+          certificate_number: number
+          validation_code: string
+          validation_token: string
+        }[]
       }
       register_inventory_movement: {
         Args: {

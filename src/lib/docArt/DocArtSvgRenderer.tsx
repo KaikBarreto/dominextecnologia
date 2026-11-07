@@ -316,6 +316,10 @@ function TextBlock({ shape, measure }: { shape: ResolvedTextShape; measure: Meas
         x={originX + ptToMm(piece.x)}
         y={y}
         fill={shape.color}
+        stroke={shape.outlineWidth ? shape.color : undefined}
+        strokeWidth={shape.outlineWidth ? ptToMm(shape.outlineWidth) : undefined}
+        strokeLinejoin={shape.outlineWidth ? 'round' : undefined}
+        paintOrder={shape.outlineWidth ? 'stroke fill' : undefined}
         fontFamily={FONT_STACK[shape.font]}
         fontSize={ptToMm(shape.size)}
         fontWeight={piece.bold ? 700 : 400}
