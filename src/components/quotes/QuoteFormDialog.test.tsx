@@ -28,6 +28,8 @@ class ResizeObserverStub {
 const testState = vi.hoisted(() => ({
   profile: null as { company_id: string } | null,
   userId: null as string | null,
+  numberReservation: null as { id: string; number: number; expiresAt: number } | null,
+  numberOptions: null as { requestId?: string | null } | null,
   pricing: null as null | {
     tax_rate: number;
     admin_indirect_rate: number;
@@ -81,6 +83,12 @@ vi.mock('@/hooks/useCostResources', () => ({ useCostResources: () => ({ resource
 vi.mock('@/hooks/useSaveQuoteServiceCosts', () => ({
   useSaveQuoteServiceCosts: () => ({ mutateAsync: vi.fn(), isPending: testState.costsSaving }),
 }));
+vi.mock('@/hooks/useQuoteNumberReservation', () => ({
+  useQuoteNumberReservation: (options: { requestId?: string | null }) => {
+    testState.numberOptions = options;
+    return { reservation: testState.numberReservation, isLoading: false, error: null, errorKind: null, retry: vi.fn() };
+  },
+}));
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({ profile: testState.profile, user: testState.userId ? { id: testState.userId } : null }),
 }));
@@ -89,7 +97,7 @@ vi.mock('@/hooks/useServiceCostBreakdown', () => ({
 }));
 vi.mock('@/components/customers/CustomerSelectField', () => ({ CustomerSelectField: () => null }));
 vi.mock('@/components/quotes/ProposalRenderer', () => ({
-  ProposalRenderer: ({ quote }: { quote: Quote }) => <div data-testid="quote-preview-data" data-total={quote.total_value} data-items={quote.quote_items?.length}>Prévia renderizada</div>,
+  ProposalRenderer: ({ quote }: { quote: Quote }) => <div data-testid="quote-preview-data" data-total={quote.total_value} data-items={quote.quote_items?.length} data-number={quote.quote_number}>Prévia renderizada</div>,
 }));
 
 // `StepTransition` usa `AnimatePresence mode="wait"`, que só monta o conteúdo
@@ -146,12 +154,12 @@ const tq = MESSAGES['pt-br'].app.crm.quotes;
 let container: HTMLDivElement;
 let root: Root;
 
-function mount(quote?: Quote) {
+function mount(quote?: Quote, open = true) {
   act(() => {
     root.render(
       <QueryClientProvider client={new QueryClient()}>
         <OverlayCoordinatorProvider>
-          <QuoteFormDialog open onOpenChange={() => {}} quote={quote} />
+          <QuoteFormDialog open={open} onOpenChange={() => {}} quote={quote} />
         </OverlayCoordinatorProvider>
       </QueryClientProvider>,
     );
@@ -238,6 +246,8 @@ beforeEach(() => {
   sessionStorage.clear();
   testState.profile = null;
   testState.userId = null;
+  testState.numberReservation = null;
+  testState.numberOptions = null;
   testState.pricing = null;
   testState.fetchBreakdown.mockReset();
   testState.createMutate.mockReset();
@@ -1133,6 +1143,48 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     expect(q('input[aria-label="Preço de Manutenção Preventiva"]')).toHaveValue(375);
     expect(testState.createMutate).not.toHaveBeenCalled();
     expect(testState.updateMutate).not.toHaveBeenCalled();
+  });
+
+  it('mostra o número reservado no cabeçalho e na prévia e usa a mesma reserva ao salvar', async () => {
+    const reservationId = '71717171-7171-4171-8171-717171717171';
+    testState.numberReservation = { id: reservationId, number: 731, expiresAt: Date.now() + 86400000 };
+    mount();
+    expect(document.body.textContent).toContain('Nº 731');
+    await clickAsync(findButtonByText(tq.reviewFullPreview)!);
+    expect(q('[data-testid="quote-preview-data"]')).toHaveAttribute('data-number', '731');
+    await clickAsync(findButtonByText('Fechar')!);
+    await goPastRecipient();
+    await addServiceItem();
+    await clickAsync(findButtonByText('Revisar orçamento')!);
+    await clickAsync(findButtonByText(tq.createQuote)!);
+    expect(testState.createMutate.mock.calls[0][0]).toMatchObject({ number_reservation_id: reservationId, total_value: 250 });
+  });
+
+  it('recupera o identificador da reserva do rascunho antes e depois de retomar', async () => {
+    const requestId = '72727272-7272-4272-8272-727272727272';
+    sessionStorage.setItem('form-draft:quote-form', JSON.stringify({ customerMode: 'prospect', prospectName: 'Cliente em preenchimento', numberRequestId: requestId }));
+    mount();
+    expect(testState.numberOptions?.requestId).toBe(requestId);
+    await clickAsync(findButtonByText('Retomar')!);
+    expect(testState.numberOptions?.requestId).toBe(requestId);
+    expect(testState.createMutate).not.toHaveBeenCalled();
+  });
+
+  it('não apaga outro preenchimento quando a confirmação de uma criação anterior chega atrasada', async () => {
+    mount();
+    await goPastRecipient();
+    await addServiceItem();
+    await clickAsync(findButtonByText('Revisar orçamento')!);
+    await clickAsync(findButtonByText(tq.createQuote)!);
+    const previousSuccess = testState.createMutate.mock.calls[0][1].onSuccess;
+    mount(undefined, false);
+    mount();
+    await clickAsync(findButtonByText('Começar do zero')!);
+    await clickAsync(findButtonByText(tq.recipientProspect)!);
+    typeInto(q(`input[placeholder="${tq.recipientNamePlaceholder}"]`) as HTMLInputElement, 'Outro orçamento em criação');
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 550)); });
+    await act(async () => { previousSuccess(); });
+    expect(JSON.parse(sessionStorage.getItem('form-draft:quote-form')!)).toMatchObject({ prospectName: 'Outro orçamento em criação' });
   });
 });
 

@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.7',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Veja o número do orçamento antes de salvar',
+        description: 'O número definitivo já aparece ao abrir a criação e acompanha a prévia e o orçamento salvo. Ao retomar o rascunho em outro dispositivo, a numeração é preservada. Números de preenchimentos abandonados ficam sem uso na sequência.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.39.6',
     date: '7 de novembro de 2026',
     type: 'patch',

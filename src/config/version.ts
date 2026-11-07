@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.6";
+export const APP_VERSION = "1.39.7";
 
 export const VERSION_NOTES =
-  "Prévia da proposta disponível durante todo o preenchimento e atalho para revisão também no computador.";
+  "Número definitivo reservado ao abrir a criação do orçamento, mantido na prévia, na retomada do rascunho e no salvamento.";

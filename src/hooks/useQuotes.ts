@@ -9,6 +9,7 @@ import type { LocaleCode } from '@/lib/i18n/locales';
 import { getQuoteCommercialTotal } from '@/lib/quote-commercial-total';
 import type { QuoteCostComposition } from '@/components/quotes/QuoteServiceCostEditor';
 import type { Json } from '@/integrations/supabase/types';
+import { quoteNumberErrorMessage } from '@/lib/quote-number-errors';
 
 export interface QuoteItem {
   id?: string;
@@ -38,6 +39,8 @@ export interface QuoteItem {
 }
 
 export interface QuoteInput {
+  /** Reserva privada; o número e a identidade são confirmados pelo servidor. */
+  number_reservation_id?: string;
   customer_id?: string;
   prospect_name?: string;
   prospect_phone?: string;
@@ -226,12 +229,36 @@ export function useQuotes() {
     mutationFn: async (input: QuoteInput) => {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
-      const { items, final_price, ...quoteData } = input as any;
+      const { items, final_price, number_reservation_id, ...quoteData } = input as any;
       const sanitizedQuoteData = normalizeOptionalForeignKeys(quoteData, [
         'customer_id',
         'assigned_to',
         'proposal_template_id',
       ]);
+
+      if (number_reservation_id) {
+        if (!user?.id) throw new Error('Entre novamente para criar o orçamento.');
+        const { data, error } = await supabase.rpc('create_reserved_quote', {
+          p_reservation_id: number_reservation_id,
+          p_company_id: company_id,
+          p_user_id: user.id,
+          p_quote: sanitizedQuoteData as Json,
+          p_items: items.map((item: QuoteItem, index: number) => {
+            const { quote_id: _quoteId, ...row } = buildItemPayload(item, '', index);
+            return row;
+          }) as Json,
+        });
+        if (error) {
+          if (error.code === 'QNR02' || error.code === 'QNR03') {
+            void queryClient.invalidateQueries({ queryKey: ['quote-number-reservation', company_id, user.id, number_reservation_id], exact: true });
+          }
+          throw new Error(quoteNumberErrorMessage(error));
+        }
+        if (!data || typeof data !== 'object' || Array.isArray(data) || typeof data.id !== 'string' || !Number.isSafeInteger(data.quote_number) || Number(data.quote_number) <= 0) {
+          throw new Error('Não foi possível confirmar o salvamento. Seus dados foram mantidos; tente novamente para conferir este orçamento.');
+        }
+        return data as unknown as Quote;
+      }
 
       const { data: quote, error } = await supabase
         .from('quotes')
@@ -261,7 +288,7 @@ export function useQuotes() {
   });
 
   const updateQuote = useMutation({
-    mutationFn: async ({ id, items, final_price, ...quoteData }: QuoteInput & { id: string } & { final_price?: any }) => {
+    mutationFn: async ({ id, items, final_price, number_reservation_id: _reservationId, ...quoteData }: QuoteInput & { id: string } & { final_price?: any }) => {
       const sanitizedQuoteData = normalizeOptionalForeignKeys(quoteData as any, [
         'customer_id',
         'assigned_to',

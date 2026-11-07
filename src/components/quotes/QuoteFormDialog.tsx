@@ -47,6 +47,7 @@ import { formatQty } from '@/components/inventory/InventoryMaterialSelect';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { QuickServiceTypeDialog } from '@/components/service-orders/QuickServiceTypeDialog';
 import { useQuoteFormDraft } from '@/hooks/useQuoteFormDraft';
+import { useQuoteNumberReservation } from '@/hooks/useQuoteNumberReservation';
 import { DraftResumeNotice } from '@/components/ui/DraftResumeNotice';
 import { FullscreenWizard, FullscreenWizardAction } from '@/components/ui/FullscreenWizard';
 import { FormDraftStatus } from '@/components/ui/FormDraftStatus';
@@ -505,6 +506,9 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const [draftQuoteId, setDraftQuoteId] = useState<string | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
   const [finishingQuote, setFinishingQuote] = useState(false);
+  const [numberRequestId, setNumberRequestId] = useState<string>(() => crypto.randomUUID());
+  const [numberSessionReady, setNumberSessionReady] = useState(false);
+  useEffect(() => { setNumberSessionReady(open); }, [open]);
 
   // ── Customer ──
   const [customerMode, setCustomerMode] = useState<'existing' | 'prospect'>('existing');
@@ -584,6 +588,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const [openMaterialDetails, setOpenMaterialDetails] = useState<Set<number>>(new Set());
 
   type QuoteDraft = {
+    numberRequestId?: string;
     customerMode: string; customerId: string; prospectName: string; prospectPhone: string; prospectEmail: string;
     distanceKm: number; discountType: string; discountValue: number; includeGifts: boolean;
     validUntil: string; notes: string; terms: string; proposalTemplateId: string;
@@ -595,6 +600,11 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     cardDiscountRate?: number; cardInstallments?: number;
   };
   const draftScopeKey = profile?.company_id ? `quote-form:${profile.company_id}:${user?.id || profile.user_id || profile.id || 'session'}` : 'quote-form';
+  const formSessionRef = useRef({ open, quoteId: quote?.id, scope: draftScopeKey, generation: 0 });
+  if (formSessionRef.current.open !== open || formSessionRef.current.quoteId !== quote?.id || formSessionRef.current.scope !== draftScopeKey) {
+    formSessionRef.current = { open, quoteId: quote?.id, scope: draftScopeKey, generation: formSessionRef.current.generation + 1 };
+  }
+  useEffect(() => () => { formSessionRef.current.generation += 1; }, []);
   const draftScopeRef = useRef(draftScopeKey);
   const draftScopeChanged = draftScopeRef.current !== draftScopeKey;
   const draft = useQuoteFormDraft<QuoteDraft>({
@@ -602,9 +612,21 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     companyId: profile?.company_id,
     userId: user?.id ?? profile?.user_id,
     isOpen: open, isEditing, debounceMs: 500,
-    ignoreKeys: ['customerMode', 'discountType', 'useBdi', 'includeGifts', 'receivableInstallments', 'proposalTemplateId', 'displacementPricingMode', 'taxRate', 'adminRate', 'profitRate', 'kmCost', 'cardDiscountRate', 'cardInstallments'],
+    ignoreKeys: ['numberRequestId', 'customerMode', 'discountType', 'useBdi', 'includeGifts', 'receivableInstallments', 'proposalTemplateId', 'displacementPricingMode', 'taxRate', 'adminRate', 'profitRate', 'kmCost', 'cardDiscountRate', 'cardInstallments'],
   });
+  const isNumberRequestId = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+  const recoveryNumberId = draft.draftData?.numberRequestId;
+  const numberReservation = useQuoteNumberReservation({
+    companyId: profile?.company_id,
+    userId: user?.id ?? profile?.user_id,
+    requestId: draft.showResumePrompt && isNumberRequestId(recoveryNumberId) ? recoveryNumberId : numberRequestId,
+    isOpen: open,
+    isEditing,
+    enabled: numberSessionReady && !draft.isLoading && !draftScopeChanged && !draftQuoteId,
+  });
+  const requiresNumber = !isEditing && !draftQuoteId && !!profile?.company_id && !!(user?.id ?? profile?.user_id);
   const currentDraft = useMemo<QuoteDraft>(() => ({
+    numberRequestId,
     customerMode, customerId, prospectName, prospectPhone, prospectEmail,
     distanceKm, discountType, discountValue, includeGifts,
     validUntil, notes, terms, proposalTemplateId,
@@ -613,7 +635,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     showLaborCostInProposal, showInputsCostInProposal,
     items, taxRate, adminRate, profitRate, kmCost: kmCostCfg,
     cardDiscountRate: cardDiscountRateCfg, cardInstallments: cardInstallmentsCfg,
-  }), [customerMode, customerId, prospectName, prospectPhone, prospectEmail, distanceKm, discountType, discountValue, includeGifts, validUntil, notes, terms, proposalTemplateId, receivableInstallments, receivableFirstDueDate, useBdi, displacementPricingMode, manualDisplacementPrice, showLaborCostInProposal, showInputsCostInProposal, items, taxRate, adminRate, profitRate, kmCostCfg, cardDiscountRateCfg, cardInstallmentsCfg]);
+  }), [numberRequestId, customerMode, customerId, prospectName, prospectPhone, prospectEmail, distanceKm, discountType, discountValue, includeGifts, validUntil, notes, terms, proposalTemplateId, receivableInstallments, receivableFirstDueDate, useBdi, displacementPricingMode, manualDisplacementPrice, showLaborCostInProposal, showInputsCostInProposal, items, taxRate, adminRate, profitRate, kmCostCfg, cardDiscountRateCfg, cardInstallmentsCfg]);
   const startNewDraftIfNeeded = (patch: Partial<QuoteDraft>) => {
     if (!draftScopeChanged && draft.showResumePrompt) draft.startNewDraft({ ...currentDraft, ...patch });
   };
@@ -627,6 +649,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   }, [currentDraft, open, isEditing, draftQuoteId, draft.showResumePrompt, draft.saveDraft, draftScopeChanged, draft.isLoading]);
 
   const applyQuoteDraft = (d: QuoteDraft) => {
+    if (isNumberRequestId(d.numberRequestId)) setNumberRequestId(d.numberRequestId.toLowerCase());
     setCustomerMode(d.customerMode === 'prospect' ? 'prospect' : 'existing');
     setCustomerId(d.customerId || '');
     setProspectName(d.prospectName || '');
@@ -661,6 +684,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   };
 
   const resetQuoteForm = useCallback(() => {
+    setNumberRequestId(crypto.randomUUID());
     pricingTouchedRef.current = {
       taxRate: false,
       adminRate: false,
@@ -742,6 +766,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   useEffect(() => {
     if (!open) {
       setFinishingQuote(false);
+      setSavingDraft(false);
       setStep(0);
       setMaxStepReached(0);
       setDraftQuoteId(null);
@@ -1227,6 +1252,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
   // ── Build payload (shared by submit + draft) ──
   const buildPayload = (status?: string): QuoteInput => ({
+    ...(!isEditing && numberReservation.reservation ? { number_reservation_id: numberReservation.reservation.id } : {}),
     customer_id: customerMode === 'existing' ? customerId : undefined,
     prospect_name: customerMode === 'prospect' ? prospectName : undefined,
     prospect_phone: customerMode === 'prospect' ? prospectPhone : undefined,
@@ -1296,7 +1322,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     }),
   });
 
-  const finishSavedQuote = async () => {
+  const finishSavedQuote = async (session: number) => {
+    if (formSessionRef.current.generation !== session) return;
     setFinishingQuote(true);
     const snapshots = items
       .filter(item => item.save_costs_to_catalog && item.service_type_id && item.cost_composition)
@@ -1313,24 +1340,27 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         });
       }
     }
+    if (formSessionRef.current.generation !== session) return;
     if (!isEditing) await draft.clearDraft();
-    onOpenChange(false);
+    if (formSessionRef.current.generation === session) onOpenChange(false);
   };
 
   // ── Submit (finaliza: cria/atualiza com validação completa) ──
   const handleSubmit = () => {
     const hasCustomer = customerMode === 'existing' ? !!customerId : !!prospectName;
     if (!hasCustomer || items.length === 0) return;
+    if (requiresNumber && !numberReservation.reservation) return;
 
     const payload = buildPayload();
+    const session = formSessionRef.current.generation;
 
     // Se estiver editando, ou se já existe um rascunho persistido pra esta sessão,
     // atualiza a MESMA linha — nunca duplica.
     const targetId = quote?.id ?? draftQuoteId;
     if (targetId) {
-      updateQuote.mutate({ ...payload, id: targetId }, { onSuccess: () => { void finishSavedQuote(); } });
+      updateQuote.mutate({ ...payload, id: targetId }, { onSuccess: () => { void finishSavedQuote(session); } });
     } else {
-      createQuote.mutate(payload, { onSuccess: () => { void finishSavedQuote(); } });
+      createQuote.mutate(payload, { onSuccess: () => { void finishSavedQuote(session); } });
     }
   };
 
@@ -1338,22 +1368,25 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   // Cria a linha no 1º salvar (guarda o id) e atualiza nas chamadas seguintes,
   // sempre via o hook useQuotes (nunca supabase.from direto — hook é a fronteira).
   const handleSaveDraft = () => {
+    if (requiresNumber && !numberReservation.reservation) return;
     setSavingDraft(true);
     const payload = buildPayload('rascunho');
+    const session = formSessionRef.current.generation;
     const targetId = quote?.id ?? draftQuoteId;
     if (targetId) {
       updateQuote.mutate({ ...payload, id: targetId }, {
-        onSuccess: () => { setSavingDraft(false); void finishSavedQuote(); },
-        onError: () => setSavingDraft(false),
+        onSuccess: () => { if (formSessionRef.current.generation === session) { setSavingDraft(false); void finishSavedQuote(session); } },
+        onError: () => { if (formSessionRef.current.generation === session) setSavingDraft(false); },
       });
     } else {
       createQuote.mutate(payload, {
         onSuccess: (created: { id?: string | null }) => {
+          if (formSessionRef.current.generation !== session) return;
           if (created?.id) setDraftQuoteId(created.id);
           setSavingDraft(false);
-          void finishSavedQuote();
+          void finishSavedQuote(session);
         },
-        onError: () => setSavingDraft(false),
+        onError: () => { if (formSessionRef.current.generation === session) setSavingDraft(false); },
       });
     }
   };
@@ -1438,7 +1471,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const previewItems = items.map(({ save_costs_to_catalog: _saveCatalog, ...item }, position) => ({ ...item, position }));
   const previewQuote: Quote = {
     id: quote?.id ?? 'preview',
-    quote_number: quote?.quote_number ?? 0,
+    quote_number: quote?.quote_number ?? numberReservation.reservation?.number ?? 0,
     customer_id: customerMode === 'existing' ? customerId || null : null,
     prospect_name: customerMode === 'prospect' ? prospectName || null : null,
     prospect_phone: customerMode === 'prospect' ? prospectPhone || null : null,
@@ -1494,7 +1527,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         return items.length > 0;
       case 'review':
         // Finalizar exige destinatário + ao menos 1 item.
-        return hasCustomer && items.length > 0;
+        return hasCustomer && items.length > 0 && (!requiresNumber || !!numberReservation.reservation);
       default:
         return true;
     }
@@ -1740,6 +1773,15 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         tone="contrast"
         className="sticky top-0 z-20 -mx-4 border-b bg-background px-4 pb-4 pt-4 sm:-mx-10 sm:px-10 sm:pt-6"
       />
+      {requiresNumber && numberReservation.error && <NoticeBanner variant="warning" icon={AlertTriangle} className="mt-4">
+        <p>{numberReservation.error}</p>
+        <Button type="button" variant="outline" className="mt-2 min-h-11" onClick={() => {
+          if (numberReservation.errorKind === 'expired' || numberReservation.errorKind === 'consumed') {
+            if (draft.showResumePrompt && draft.draftData) { applyQuoteDraft(draft.draftData); draft.acceptDraft(); }
+            setNumberRequestId(crypto.randomUUID());
+          } else void numberReservation.retry();
+        }}>{numberReservation.errorKind === 'expired' || numberReservation.errorKind === 'consumed' ? 'Gerar novo número' : 'Tentar novamente'}</Button>
+      </NoticeBanner>}
 
       {/* Content */}
       <div className={cn(
@@ -2401,7 +2443,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
             aria-label={savingDraft ? tq.saving : tq.saveDraft}
             title="Guarda um orçamento em rascunho na listagem, sem a expiração de 30 dias do preenchimento automático."
             onClick={handleSaveDraft}
-            disabled={mutating || savingDraft || !hasCustomer || (!isEditing && draft.isLoading)}
+            disabled={mutating || savingDraft || !hasCustomer || (!isEditing && draft.isLoading) || (requiresNumber && !numberReservation.reservation)}
           >
             {savingDraft
               ? <><Loader2 className="h-4 w-4 animate-spin sm:mr-1" /><span className="sr-only sm:not-sr-only">{tq.saving}</span></>
@@ -2448,8 +2490,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         exitLabel={tq.formExitLabel}
         headerActions={!isEditing && !draftQuoteId ? <div className="flex flex-col items-end gap-0.5">
           <FormDraftStatus status={draft.status} savedAt={draft.savedAt} persistence={draft.persistence} expiresAt={draft.expiresAt} isLoading={draft.isLoading} syncIssue={draft.syncIssue} onRetry={draft.retry} />
-          <span className="text-[11px] text-muted-foreground sm:text-xs" title="O número definitivo é atribuído ao criar ou salvar o orçamento na lista. O rascunho automático ainda não tem número.">
-            <span className="sm:hidden">Nº ao criar</span><span className="hidden sm:inline">Número gerado ao criar</span>
+          <span className="text-xs font-semibold text-foreground sm:text-sm" title="Este número é reservado para este orçamento e será mantido ao salvar.">
+            {numberReservation.reservation ? `Nº ${numberReservation.reservation.number}` : requiresNumber ? numberReservation.error ? 'Número indisponível' : 'Gerando número…' : 'Número ao salvar'}
           </span>
         </div> : undefined}
         description="Monte os itens, confira a precificação e revise a proposta antes de salvar."
