@@ -226,11 +226,14 @@ export async function drawDocArtPage(
   const darkPaper = idealForeground(art.theme.paper) === '#ffffff';
   // Logo claro vai direto sobre papel escuro. Logo escuro ainda recebe uma
   // superfície slate discreta; nunca uma placa branca gritante no tema dark.
-  const logoPlate = darkPaper
+  const autoLogoPlate = darkPaper
     ? detectedLogoPlate === '#111815' ? null : detectedLogoPlate === '#ffffff' ? '#253044' : detectedLogoPlate
     : detectedLogoPlate;
-  const flattenedLogoBackground = detectedLogoPlate
-    ? parseHex(logoPlate ?? art.theme.paper) ?? undefined
+  const logoPlate = config?.logoPlate === 'none' ? null : autoLogoPlate;
+  // Sem plaqueta, preserve o canal alpha. Achatar no papel transformava um
+  // logo branco transparente em um retângulo escuro visível no PDF.
+  const flattenedLogoBackground = logoPlate
+    ? parseHex(logoPlate) ?? undefined
     : undefined;
   const embedded = await embedImages(pdf, options.images, flattenedLogoBackground);
 
@@ -366,6 +369,16 @@ function drawShape(page: PDFPage, shape: ResolvedShape, ctx: DrawCtx): void {
       }
 
       const box = { w: mmToPt(shape.w), h: mmToPt(shape.h) };
+      if (shape.fit === 'stretch') {
+        page.drawImage(image, {
+          x: mmToPt(shape.x),
+          y: ctx.toPdfY(shape.y + shape.h),
+          width: box.w,
+          height: box.h,
+          opacity: shape.opacity,
+        });
+        return;
+      }
       // `contain`: encaixa preservando proporção, igual ao `meet` do SVG.
       const scale = Math.min(box.w / image.width, box.h / image.height);
       const w = image.width * scale;

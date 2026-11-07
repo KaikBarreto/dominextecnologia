@@ -226,16 +226,14 @@ describe('tema e toggles', () => {
 });
 
 describe('peso da caixa de texto', () => {
-  it('caixa em negrito marca TODOS os runs — medida e desenho usam a mesma fonte', () => {
-    // Regressão: medir em peso normal e desenhar em negrito deixa o texto mais
-    // largo que o medido e come o espaço entre as palavras.
+  it('preserva o peso regular da caixa para destacar apenas dados com strong', () => {
     const template = DOC_ART_TEMPLATES[0];
     const art = resolveDocArt(template, { slots: { assinaturaNome: 'Carlos Eduardo' } });
     const nome = art.shapes.find(
       (s): s is ResolvedTextShape => s.kind === 'text' && s.slot === 'assinaturaNome',
     );
-    expect(nome?.weight).toBe('bold');
-    expect(nome?.paragraphs[0].every((r) => r.bold)).toBe(true);
+    expect(nome?.weight).toBe('regular');
+    expect(nome?.paragraphs[0].every((r) => !r.bold)).toBe(true);
   });
 });
 
@@ -308,7 +306,7 @@ describe('resolveDocArt', () => {
   });
 
   it('a página segue a orientação declarada pela arte', () => {
-    expect(resolveDocArt(getDocArtTemplate('portico')!).page).toEqual({ w: 210, h: 297 });
+    expect(resolveDocArt(getDocArtTemplate('portico')!).page).toEqual({ w: 297, h: 210 });
     expect(resolveDocArt(getDocArtTemplate('bloco')!).page).toEqual({ w: 297, h: 210 });
   });
 });
@@ -328,6 +326,42 @@ describe('registro de artes', () => {
         .map((s) => s.src);
       expect(refs, template.slug).not.toContain('seal');
       expect(template.toggles, template.slug).not.toContain('seal');
+    }
+  });
+
+  it('artes autorais usam fundo individual e essenciais ficam 100% vetoriais', () => {
+    for (const template of DOC_ART_TEMPLATES) {
+      const backgrounds = template.shapes.filter(
+        ({ shape }) => shape.kind === 'image' && shape.src === 'background',
+      );
+      expect(backgrounds, template.slug).toHaveLength(template.slug.startsWith('essencial-') ? 0 : 1);
+      expect(template.shapes.some(({ shape }) => shape.kind !== 'image'), template.slug).toBe(true);
+    }
+  });
+
+  it('mantém contrato mínimo de leitura e alinhamento nos certificados', () => {
+    for (const template of DOC_ART_TEMPLATES) {
+      const page = resolveDocArt(template).page;
+      const textShapes = template.shapes
+        .map(({ shape }) => shape)
+        .filter((shape) => shape.kind === 'text');
+      for (const shape of textShapes) {
+        expect(shape.size, `${template.slug}/${shape.slot}`).toBeGreaterThanOrEqual(7.4);
+        expect(shape.font, `${template.slug}/${shape.slot}`).toBe('sans');
+      }
+      const title = textShapes.find((shape) => shape.slot === 'titulo');
+      expect(title, `${template.slug}/titulo`).toBeDefined();
+      if (title?.kind === 'text') {
+        expect(title.x + title.w / 2, `${template.slug}/titulo`).toBeCloseTo(page.w / 2, 5);
+      }
+      const readingSurface = template.shapes
+        .map(({ shape }) => shape)
+        .find((shape) => shape.kind === 'rect' && shape.y === 55 && shape.h === 119);
+      expect(readingSurface, `${template.slug}/sem-superficie-flutuante`).toBeUndefined();
+      const floatingCards = template.shapes
+        .map(({ shape }) => shape)
+        .filter((shape) => shape.kind === 'rect' && shape.y === 113 && shape.h === 37);
+      expect(floatingCards, `${template.slug}/sem-cartoes-flutuantes`).toHaveLength(0);
     }
   });
 

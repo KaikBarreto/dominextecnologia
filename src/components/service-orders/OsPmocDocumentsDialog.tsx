@@ -38,6 +38,7 @@ export function OsPmocDocumentsDialog({
     products,
     contractId,
     contractResponsibleTechnicianId,
+    defaultValidityMonths,
     isLoadingOptions,
     optionsError,
     generateDocument,
@@ -46,6 +47,8 @@ export function OsPmocDocumentsDialog({
   const [docType, setDocType] = useState<OsPmocDocumentType>('relatorio_servico');
   const [inventoryId, setInventoryId] = useState('');
   const [responsibleTechnicianId, setResponsibleTechnicianId] = useState('');
+  const [validityMonths, setValidityMonths] = useState('12');
+  const [validityChanged, setValidityChanged] = useState(false);
   const [quickRtOpen, setQuickRtOpen] = useState(false);
   const [artConfigOpen, setArtConfigOpen] = useState(false);
 
@@ -61,7 +64,13 @@ export function OsPmocDocumentsDialog({
     setDocType('relatorio_servico');
     setInventoryId('');
     setResponsibleTechnicianId('');
+    setValidityMonths('12');
+    setValidityChanged(false);
   }, [open, serviceOrderId]);
+
+  useEffect(() => {
+    if (open && !validityChanged) setValidityMonths(String(defaultValidityMonths));
+  }, [defaultValidityMonths, open, validityChanged]);
 
   useEffect(() => {
     if (inventoryId || isLoadingOptions) return;
@@ -90,10 +99,11 @@ export function OsPmocDocumentsDialog({
         doc_type: docType,
         inventory_id: inventoryId,
         responsible_technician_id: responsibleTechnicianId,
+        validity_months: Number(validityMonths),
       });
       toast({
         title: result.cached ? 'Documento atualizado baixado' : 'Documento PMOC gerado',
-        description: `${result.file_name} · versão ${result.version}`,
+        description: `${result.file_name} · versão ${result.version} · salvo nos anexos do cliente e dos equipamentos atendidos`,
       });
       onOpenChange(false);
     } catch (error) {
@@ -106,7 +116,8 @@ export function OsPmocDocumentsDialog({
   };
 
   const loading = isLoadingOptions || isLoadingTechnicians;
-  const canGenerate = Boolean(inventoryId && responsibleTechnicianId && selectedTechnicianComplete) && !loading && !isGenerating;
+  const validDuration = Number.isInteger(Number(validityMonths)) && Number(validityMonths) >= 1 && Number(validityMonths) <= 60;
+  const canGenerate = Boolean(inventoryId && responsibleTechnicianId && selectedTechnicianComplete && validDuration) && !loading && !isGenerating;
 
   return (
     <>
@@ -171,6 +182,30 @@ export function OsPmocDocumentsDialog({
           {optionsError && (
             <NoticeBanner variant="destructive">Não foi possível carregar os dados PMOC desta OS.</NoticeBanner>
           )}
+
+          <div className="space-y-2">
+            <Label>{docType === 'certificado_conformidade' ? 'Duração do certificado' : 'Validade documental do relatório'}</Label>
+            <Select
+              value={validityMonths}
+              onValueChange={(value) => {
+                setValidityMonths(value);
+                setValidityChanged(true);
+              }}
+              disabled={loading}
+            >
+              <SelectTrigger><SelectValue placeholder="Selecione a duração" /></SelectTrigger>
+              <SelectContent>
+                {[1, 3, 6, 12, 18, 24, 36, 60].map((months) => (
+                  <SelectItem key={months} value={String(months)}>
+                    {months === 1 ? '1 mês' : `${months} meses`}{months === defaultValidityMonths ? ' · padrão da empresa' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              A validade começa na data de conclusão da O.S. e nunca ultrapassa a validade do produto utilizado.
+            </p>
+          </div>
 
           <div className="space-y-2">
             <Label>Produto bactericida vigente</Label>

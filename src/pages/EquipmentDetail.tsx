@@ -485,12 +485,12 @@ export function EquipmentDetailContent() {
               </PopoverContent>
             </Popover>
           <PartyLabelBadges labels={equipmentLabels} mode="summary" className="mt-2" />
-          <p className="text-muted-foreground text-sm flex items-center gap-2 flex-wrap">
+          <div className="text-muted-foreground text-sm flex items-center gap-2 flex-wrap">
             {equipment.identifier && <span className="font-mono">ID: {equipment.identifier}</span>}
             <Badge variant={equipment.status === 'active' ? 'default' : 'secondary'}>
               {equipment.status === 'active' ? te.statusActive : te.statusInactive}
             </Badge>
-          </p>
+          </div>
         </div>
         {/* Todas as ações ficam concentradas em um único menu para preservar
             o espaço disponível para o nome do equipamento. */}
@@ -765,6 +765,16 @@ export function EquipmentDetailContent() {
                     className="w-full aspect-square object-cover cursor-pointer hover:opacity-80 transition-opacity"
                     onClick={() => setPreviewImage(att.file_url)}
                   />
+                ) : isPdf(att.file_name) && att.source === 'pmoc' ? (
+                  <button
+                    type="button"
+                    className="flex aspect-square w-full flex-col items-center justify-center gap-2 bg-muted/20 p-4 text-center hover:bg-muted/40"
+                    onClick={() => window.open(att.file_url, '_blank', 'noopener,noreferrer')}
+                  >
+                    <FileText className="h-9 w-9 text-primary" />
+                    <span className="text-xs font-semibold">Documento PMOC</span>
+                    <span className="line-clamp-2 text-[10px] text-muted-foreground">{att.description}</span>
+                  </button>
                 ) : isPdf(att.file_name) ? (
                   <div className="w-full aspect-square relative bg-white overflow-hidden cursor-pointer" onClick={() => window.open(att.file_url, '_blank')}>
                     <iframe
@@ -780,13 +790,18 @@ export function EquipmentDetailContent() {
                     <p className="text-xs text-muted-foreground text-center truncate w-full px-2">{att.file_name}</p>
                   </div>
                 )}
+                {att.source === 'pmoc' && (
+                  <Badge className="absolute left-1 top-1 bg-primary text-[9px] text-primary-foreground">Gerado pela OS</Badge>
+                )}
                 <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                   <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="rounded-full bg-background/80 p-1 hover:bg-background shadow-sm">
                     <Download className="h-3.5 w-3.5" />
                   </a>
-                  <button onClick={() => setDeleteAttachmentId(att.id)} className="rounded-full bg-background/80 p-1 hover:bg-destructive hover:text-white shadow-sm">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  {att.source === 'manual' && (
+                    <button onClick={() => setDeleteAttachmentId(att.id)} className="rounded-full bg-background/80 p-1 hover:bg-destructive hover:text-white shadow-sm">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground truncate px-2 py-1.5 bg-background/80 backdrop-blur-sm">{att.file_name}</p>
               </motion.div>
@@ -808,9 +823,13 @@ export function EquipmentDetailContent() {
                   <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 text-sm hover:underline truncate">
                     {att.file_name}
                   </a>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => setDeleteAttachmentId(att.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  {att.source === 'pmoc' ? (
+                    <Badge className="shrink-0 bg-primary text-[10px] text-primary-foreground">Gerado pela OS</Badge>
+                  ) : (
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => setDeleteAttachmentId(att.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             );

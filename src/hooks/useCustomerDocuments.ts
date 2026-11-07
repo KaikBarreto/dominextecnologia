@@ -5,7 +5,12 @@ import { useUserCompany } from '@/hooks/useUserCompany';
 import { sanitizeStorageFileName } from '@/utils/storagePath';
 import { tenantFileOptions } from '@/utils/tenantStorage';
 
-export type CustomerDocument = Tables<'customer_documents'>;
+type CustomerDocumentRow = Tables<'customer_documents'>;
+export type CustomerDocument = CustomerDocumentRow & {
+  source: 'manual' | 'pmoc';
+  pmoc_document_id?: string | null;
+  service_order_id?: string | null;
+};
 export type CustomerDocumentKind = 'invoice' | 'document';
 export type CustomerDocumentType = 'nfse' | 'nfe_product' | 'contract' | 'other';
 
@@ -19,6 +24,29 @@ export interface UploadCustomerDocumentInput {
   issueDate?: string;
   amount?: number | null;
   visibleInPortal: boolean;
+}
+
+interface LinkedPmocDocument {
+  id: string;
+  doc_type: string;
+  file_name: string;
+  pdf_storage_path: string;
+  generated_at: string;
+  valid_until: string | null;
+  service_order_id: string;
+  service_orders: { order_number: number | null } | Array<{ order_number: number | null }> | null;
+}
+
+interface CustomerPmocLink {
+  id: string;
+  company_id: string;
+  customer_id: string;
+  created_at: string;
+  service_order_pmoc_documents: LinkedPmocDocument | LinkedPmocDocument[] | null;
+}
+
+function firstRelation<T>(value: T | T[] | null): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value;
 }
 
 const BUCKET = 'customer-documents';
@@ -52,13 +80,63 @@ export function useCustomerDocuments(customerId?: string) {
     queryKey,
     enabled: !!customerId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('customer_documents')
-        .select('*')
-        .eq('customer_id', customerId!)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data ?? [];
+      const [manualResult, pmocResult] = await Promise.all([
+        supabase
+          .from('customer_documents')
+          .select('*')
+          .eq('customer_id', customerId!)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('service_order_pmoc_document_links')
+          .select(`
+            id, company_id, customer_id, created_at,
+            service_order_pmoc_documents!inner(
+              id, doc_type, file_name, pdf_storage_path, generated_at,
+              valid_until, service_order_id,
+              service_orders!inner(order_number)
+            )
+          `)
+          .eq('customer_id', customerId!)
+          .order('created_at', { ascending: false }),
+      ]);
+      if (manualResult.error) throw manualResult.error;
+      if (pmocResult.error) throw pmocResult.error;
+
+      const manual = (manualResult.data ?? []).map((document) => ({
+        ...document,
+        source: 'manual' as const,
+      }));
+      const links = (pmocResult.data ?? []) as unknown as CustomerPmocLink[];
+      const pmoc = links.flatMap((link): CustomerDocument[] => {
+        const document = firstRelation(link.service_order_pmoc_documents);
+        if (!document) return [];
+        const order = firstRelation(document.service_orders);
+        const certificate = document.doc_type === 'certificado_conformidade';
+        return [{
+          id: link.id,
+          company_id: link.company_id,
+          customer_id: link.customer_id,
+          document_kind: 'document',
+          document_type: 'other',
+          title: certificate ? 'Certificado de conformidade' : 'Relatório de serviço PMOC',
+          description: 'Gerado automaticamente a partir de uma ordem de serviço concluída.',
+          document_number: order?.order_number != null ? `OS ${String(order.order_number).padStart(6, '0')}` : null,
+          issue_date: document.generated_at?.slice(0, 10) ?? null,
+          amount: null,
+          storage_path: document.pdf_storage_path,
+          file_name: document.file_name,
+          mime_type: 'application/pdf',
+          size_bytes: null,
+          is_visible_in_portal: false,
+          uploaded_by: null,
+          created_at: document.generated_at ?? link.created_at,
+          updated_at: document.generated_at ?? link.created_at,
+          source: 'pmoc',
+          pmoc_document_id: document.id,
+          service_order_id: document.service_order_id,
+        }];
+      });
+      return [...manual, ...pmoc].sort((a, b) => b.created_at.localeCompare(a.created_at));
     },
   });
 
@@ -122,7 +200,8 @@ export function useCustomerDocuments(customerId?: string) {
   });
 
   const remove = useMutation({
-    mutationFn: async (document: Pick<CustomerDocument, 'id' | 'storage_path'>) => {
+    mutationFn: async (document: Pick<CustomerDocument, 'id' | 'storage_path' | 'source'>) => {
+      if (document.source === 'pmoc') throw new Error('Documentos gerados pela OS fazem parte do histórico e não podem ser excluídos por esta tela.');
       const { error } = await supabase
         .from('customer_documents')
         .delete()
@@ -134,9 +213,10 @@ export function useCustomerDocuments(customerId?: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
-  const getSignedUrl = async (document: Pick<CustomerDocument, 'storage_path' | 'file_name'>) => {
+  const getSignedUrl = async (document: Pick<CustomerDocument, 'storage_path' | 'file_name' | 'source'>) => {
+    const bucket = document.source === 'pmoc' ? 'pmoc-documents' : BUCKET;
     const { data, error } = await supabase.storage
-      .from(BUCKET)
+      .from(bucket)
       .createSignedUrl(document.storage_path, 60, { download: document.file_name });
     if (error || !data?.signedUrl) throw error ?? new Error('Não foi possível abrir o arquivo.');
     return data.signedUrl;

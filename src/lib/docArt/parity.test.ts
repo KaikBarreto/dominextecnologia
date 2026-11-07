@@ -31,6 +31,8 @@ const SHARED_FILES = [
   'templates/aurora.ts',
   'templates/bloco.ts',
   'templates/circuito.ts',
+  'templates/essencial-claro.ts',
+  'templates/essencial-escuro.ts',
   'templates/grade.ts',
   'templates/marca.ts',
   'templates/monolito.ts',

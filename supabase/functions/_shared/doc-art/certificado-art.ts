@@ -5,8 +5,8 @@
 // (logo do tenant e assinatura do RT) e desenhar a página.
 //
 // O que ele NÃO faz: decidir se a arte está ligada. Isso é do chamador — e a
-// regra é simples e não pode regredir: **sem slug de arte, o Certificado sai
-// no layout de texto puro de sempre.**
+// regra atual: **sem slug de arte, o Certificado usa Conformidade**, modelo
+// institucional que preserva a leitura e a identidade do tenant.
 // =============================================================================
 
 import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
@@ -36,8 +36,7 @@ export function resolveEffectiveArt(
   companySlug: string | null | undefined,
   companyConfig: unknown,
 ): { slug: string; config: DocArtConfig | undefined } | null {
-  const slug = contractSlug ?? companySlug ?? null;
-  if (!slug) return null;
+  const slug = contractSlug ?? companySlug ?? "aurora";
   if (!getDocArtTemplate(slug)) {
     // Slug gravado por uma versão futura/removida: volta pro texto puro em vez
     // de cair num default qualquer.
@@ -92,6 +91,13 @@ export interface DrawCertificadoArtResult {
   signaturePending: boolean;
 }
 
+function certificateBackgroundUrl(slug: string): string | null {
+  if (slug.startsWith("essencial-")) return null;
+  const baseUrl = (Deno.env.get("DOC_ART_BACKGROUND_BASE_URL") ?? "https://dominex.app")
+    .replace(/\/+$/, "");
+  return `${baseUrl}/images/certificate-backgrounds/${slug}.jpg`;
+}
+
 /**
  * Desenha a página do Certificado com arte. Retorna o status da assinatura no
  * mesmo contrato que `drawCertificadoPage`, pra edge não precisar saber qual
@@ -108,9 +114,12 @@ export async function drawCertificadoArtPage(
     ? ((await fetchImageBytes(input.config.logoUrl)) ?? input.logo)
     : input.logo;
 
-  const signature = await fetchImageBytes(input.signatureUrl);
+  const [signature, background] = await Promise.all([
+    fetchImageBytes(input.signatureUrl),
+    fetchImageBytes(certificateBackgroundUrl(input.slug)),
+  ]);
 
-  const images: DocArtImageSources = { logo, signature };
+  const images: DocArtImageSources = { logo, signature, background };
   const brand = input.brandPrimary ? { primary: input.brandPrimary } : undefined;
   const dark = idealForeground(resolveTheme(template, input.config, brand).paper) === '#ffffff';
 

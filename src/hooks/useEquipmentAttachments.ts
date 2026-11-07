@@ -14,6 +14,29 @@ export interface EquipmentAttachment {
   description?: string;
   uploaded_by?: string;
   created_at: string;
+  source: 'manual' | 'pmoc';
+  pmoc_document_id?: string;
+  service_order_id?: string;
+}
+
+interface LinkedEquipmentPmocDocument {
+  id: string;
+  doc_type: string;
+  file_name: string;
+  pdf_storage_path: string;
+  generated_at: string;
+  service_order_id: string;
+}
+
+interface EquipmentPmocLink {
+  id: string;
+  equipment_id: string;
+  created_at: string;
+  service_order_pmoc_documents: LinkedEquipmentPmocDocument | LinkedEquipmentPmocDocument[] | null;
+}
+
+function firstRelation<T>(value: T | T[] | null): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value;
 }
 
 export function useEquipmentAttachments(equipmentId?: string) {
@@ -23,13 +46,55 @@ export function useEquipmentAttachments(equipmentId?: string) {
   const attachmentsQuery = useQuery({
     queryKey: ['equipment-attachments', equipmentId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('equipment_attachments')
-        .select('*')
-        .eq('equipment_id', equipmentId!)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
-      return data as EquipmentAttachment[];
+      const [manualResult, pmocResult] = await Promise.all([
+        supabase
+          .from('equipment_attachments')
+          .select('*')
+          .eq('equipment_id', equipmentId!)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('service_order_pmoc_document_links')
+          .select(`
+            id, equipment_id, created_at,
+            service_order_pmoc_documents!inner(
+              id, doc_type, file_name, pdf_storage_path, generated_at,
+              service_order_id
+            )
+          `)
+          .eq('equipment_id', equipmentId!)
+          .order('created_at', { ascending: false }),
+      ]);
+      if (manualResult.error) throw manualResult.error;
+      if (pmocResult.error) throw pmocResult.error;
+
+      const manual = (manualResult.data ?? []).map((attachment) => ({
+        ...attachment,
+        source: 'manual' as const,
+      })) as EquipmentAttachment[];
+      const links = (pmocResult.data ?? []) as unknown as EquipmentPmocLink[];
+      const pmoc = (await Promise.all(links.map(async (link): Promise<EquipmentAttachment | null> => {
+        const document = firstRelation(link.service_order_pmoc_documents);
+        if (!document) return null;
+        const { data: signed, error: signedError } = await supabase.storage
+          .from('pmoc-documents')
+          .createSignedUrl(document.pdf_storage_path, 3600, { download: document.file_name });
+        if (signedError || !signed?.signedUrl) throw signedError ?? new Error('Não foi possível abrir o documento PMOC.');
+        return {
+          id: link.id,
+          equipment_id: link.equipment_id,
+          file_url: signed.signedUrl,
+          file_name: document.file_name,
+          file_type: 'application/pdf',
+          description: document.doc_type === 'certificado_conformidade'
+            ? 'Certificado de conformidade gerado pela OS'
+            : 'Relatório de serviço PMOC gerado pela OS',
+          created_at: document.generated_at ?? link.created_at,
+          source: 'pmoc',
+          pmoc_document_id: document.id,
+          service_order_id: document.service_order_id,
+        };
+      }))).filter((attachment): attachment is EquipmentAttachment => attachment !== null);
+      return [...manual, ...pmoc].sort((a, b) => b.created_at.localeCompare(a.created_at));
     },
     enabled: !!equipmentId,
   });

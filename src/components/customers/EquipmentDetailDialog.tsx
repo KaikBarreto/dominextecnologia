@@ -628,9 +628,13 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                     <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm hover:underline truncate">
                       {att.file_name}
                     </a>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteAttachmentId(att.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    {att.source === 'pmoc' ? (
+                      <Badge className="shrink-0 bg-primary text-[10px] text-primary-foreground">Gerado pela OS</Badge>
+                    ) : (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteAttachmentId(att.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>

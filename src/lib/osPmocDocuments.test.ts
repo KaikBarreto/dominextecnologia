@@ -34,18 +34,18 @@ describe('canGenerateOsPmocDocuments', () => {
 
 describe('buildServiceReportPdfFilename', () => {
   it('monta nome legivel com numero da OS e cliente', () => {
-    expect(buildServiceReportPdfFilename({ orderNumber: 1234, customerName: 'Cliente XPTO' }))
-      .toBe('Relatório de Serviço - OS 001234 - Cliente XPTO.pdf');
+    expect(buildServiceReportPdfFilename({ orderNumber: 1234, customerName: 'Cliente XPTO', generatedAt: '2026-11-07T12:00:00Z', timeZone: 'America/Sao_Paulo' }))
+      .toBe('Relatório de Serviço - OS 001234 - Cliente XPTO - 07 NOV 2026.pdf');
   });
 
   it('remove caracteres invalidos de arquivo sem perder o nome legivel', () => {
-    expect(buildServiceReportPdfFilename({ orderNumber: 7, customerName: 'Loja / Centro: Sul' }))
-      .toBe('Relatório de Serviço - OS 000007 - Loja Centro Sul.pdf');
+    expect(buildServiceReportPdfFilename({ orderNumber: 7, customerName: 'Loja / Centro: Sul', generatedAt: '2026-11-07T12:00:00Z' }))
+      .toBe('Relatório de Serviço - OS 000007 - Loja Centro Sul - 07 NOV 2026.pdf');
   });
 
   it.each([null, undefined, '', '   ', 'OS-legada'])('nao transforma numero ausente ou invalido em OS 000000', (orderNumber) => {
-    expect(buildServiceReportPdfFilename({ orderNumber, customerName: 'Cliente XPTO' }))
-      .toBe('Relatório de Serviço - OS sem-numero - Cliente XPTO.pdf');
+    expect(buildServiceReportPdfFilename({ orderNumber, customerName: 'Cliente XPTO', generatedAt: '2026-11-07T12:00:00Z' }))
+      .toBe('Relatório de Serviço - OS sem-numero - Cliente XPTO - 07 NOV 2026.pdf');
   });
 });
 
@@ -54,11 +54,21 @@ describe('buildCertificateConformityPdfFilename', () => {
     expect(buildCertificateConformityPdfFilename({
       orderNumber: 1234,
       customerName: 'Cliente / Unidade: Sul',
-    })).toBe('Certificado de Conformidade - OS 001234 - Cliente Unidade Sul.pdf');
+      generatedAt: '2026-11-07T12:00:00Z',
+    })).toBe('Certificado de Conformidade - OS 001234 - Cliente Unidade Sul - 07 NOV 2026.pdf');
   });
 
   it('usa fallback legivel quando o numero da OS nao existe', () => {
-    expect(buildCertificateConformityPdfFilename({ orderNumber: null, customerName: 'Cliente XPTO' }))
-      .toBe('Certificado de Conformidade - OS sem-numero - Cliente XPTO.pdf');
+    expect(buildCertificateConformityPdfFilename({ orderNumber: null, customerName: 'Cliente XPTO', generatedAt: '2026-11-07T12:00:00Z' }))
+      .toBe('Certificado de Conformidade - OS sem-numero - Cliente XPTO - 07 NOV 2026.pdf');
+  });
+
+  it('respeita o dia civil do fuso da empresa', () => {
+    expect(buildCertificateConformityPdfFilename({
+      orderNumber: 1,
+      customerName: 'Cliente',
+      generatedAt: '2026-11-08T01:30:00Z',
+      timeZone: 'America/Sao_Paulo',
+    })).toContain('07 NOV 2026.pdf');
   });
 });

@@ -864,6 +864,8 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       await generateReportPDF(reportRef.current, buildServiceReportPdfFilename({
         orderNumber: serviceOrder.order_number,
         customerName: serviceOrder.customer?.name,
+        generatedAt: new Date(),
+        timeZone: timezone,
       }));
     } catch (err) {
       console.error('PDF generation error:', err);

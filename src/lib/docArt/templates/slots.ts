@@ -27,20 +27,22 @@ function v(key: string): string {
 export const CERTIFICADO_DEFAULT_SLOTS: Partial<Record<DocArtSlotKey, string>> = {
   sobretitulo: 'Lei Federal nº 13.589, de 4 de janeiro de 2018',
 
-  titulo: 'Certificado',
+  titulo: 'CERTIFICADO DE CONFORMIDADE',
 
-  subtitulo: 'de Conformidade',
+  subtitulo: 'AMBIENTES CLIMATIZADOS',
 
   corpo: [
-    `<p>A empresa <strong>${v('empresa.razao_social')}</strong>, inscrita no CNPJ nº <strong>${v('empresa.cnpj')}</strong>, certifica que a unidade <strong>${v('cliente.nome')}</strong>, inscrita no CNPJ nº <strong>${v('cliente.documento')}</strong>, localizada em ${v('cliente.endereco')}, está sob plano formal de manutenção preventiva e operacional, sob supervisão técnica de <strong>${v('rt.nome')}</strong> (${v('rt.modalidade')}, CFT ${v('rt.cft_crea')}).</p>`,
-    `<p><strong>Periodicidade das manutenções:</strong> ${v('contrato.frequencia')}. <strong>Vigência:</strong> a partir de ${v('contrato.vigencia_inicio')}.</p>`,
+    `<p>Certificamos que os equipamentos de climatização da unidade <strong>${v('cliente.nome')}</strong>, inscrita no CNPJ/CPF nº <strong>${v('cliente.documento')}</strong>, foram submetidos ao processo de manutenção, limpeza e higienização, em conformidade com a Lei Federal nº 13.589/2018 e as normas aplicáveis.</p>`,
+    `<p>O atendimento foi executado sob responsabilidade técnica de <strong>${v('rt.nome')}</strong>, com os procedimentos e o produto identificados neste certificado e no relatório da execução.</p>`,
   ].join(''),
 
-  destaque: 'Plano de Manutenção, Operação e Controle',
+  destaque: 'Este certificado é válido mediante a apresentação do relatório de execução com a relação dos equipamentos atendidos.',
 
-  assinaturaNome: v('rt.nome'),
+  produto: '<strong>PRODUTO UTILIZADO</strong><br>Dados do produto conforme o relatório de execução vinculado.',
 
-  assinaturaCargo: `${v('rt.modalidade')} · CFT ${v('rt.cft_crea')}`,
+  assinaturaNome: `<strong>RESPONSÁVEL TÉCNICO</strong><br><strong>${v('rt.nome')}</strong>`,
+
+  assinaturaCargo: `${v('rt.modalidade')}<br>CFT/CREA ${v('rt.cft_crea')} · Registro ${v('rt.registro')}`,
 
   rodape: `${v('empresa.nome')} · ${v('empresa.telefone')}`,
 

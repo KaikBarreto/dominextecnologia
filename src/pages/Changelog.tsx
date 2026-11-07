@@ -31,6 +31,33 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.8',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Certificados PMOC mais minimalistas e legíveis',
+        description: 'Todos os temas agora partem de uma base visual limpa, sem quadros flutuantes ou molduras pesadas. Nome do cliente, CNPJ, responsável técnico e produto ficam destacados com leitura consistente em fundos claros e escuros.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Modelos organizados por estilo',
+        description: 'Agora é mais fácil escolher entre modelos essenciais, institucionais, editoriais, clássicos e tecnológicos. Também há opções claras e escuras sem moldura para quem prefere um documento mais sóbrio.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Duração escolhida na emissão',
+        description: 'Ao gerar o certificado ou o relatório PMOC, escolha a duração entre 1 e 60 meses. A validade começa na conclusão da O.S. e nunca ultrapassa a validade do produto utilizado.',
+        category: 'recurso',
+      },
+      {
+        title: 'Arquivos identificados e anexados automaticamente',
+        description: 'Relatórios e certificados recebem a data de emissão no nome e ficam disponíveis automaticamente nos anexos do cliente e de todos os equipamentos atendidos, mantendo o PDF protegido e sem cópias duplicadas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.39.7',
     date: '7 de novembro de 2026',
     type: 'patch',

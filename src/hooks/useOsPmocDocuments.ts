@@ -17,6 +17,7 @@ export interface GenerateOsPmocDocumentInput {
   doc_type: OsPmocDocumentType;
   inventory_id: string;
   responsible_technician_id: string;
+  validity_months: number;
 }
 
 export interface GenerateOsPmocDocumentResult {
@@ -90,7 +91,7 @@ export function useOsPmocDocuments(serviceOrderId: string | null, enabled = true
         .single();
       if (orderError) throw orderError;
 
-      const [{ data: products, error: productError }, { data: consumed, error: consumedError }, contractResult, settingsResult] = await Promise.all([
+      const [{ data: products, error: productError }, { data: consumed, error: consumedError }, contractResult, settingsResult, templatesResult] = await Promise.all([
         supabase
           .from('inventory')
           .select('id, name, pmoc_manufacturer, pmoc_anvisa_registration, pmoc_batch_number, pmoc_manufactured_on, pmoc_expires_on')
@@ -107,11 +108,13 @@ export function useOsPmocDocuments(serviceOrderId: string | null, enabled = true
           ? supabase.from('contracts').select('responsible_technician_id').eq('id', order.contract_id).maybeSingle()
           : Promise.resolve({ data: null, error: null }),
         supabase.from('company_settings').select('timezone').eq('company_id', order.company_id).maybeSingle(),
+        supabase.from('company_pmoc_document_templates').select('certificado_validity_months').eq('company_id', order.company_id).maybeSingle(),
       ]);
       if (productError) throw productError;
       if (consumedError) throw consumedError;
       if (contractResult.error) throw contractResult.error;
       if (settingsResult.error) throw settingsResult.error;
+      if (templatesResult.error) throw templatesResult.error;
 
       const consumedIds = new Set((consumed ?? []).map((row) => row.inventory_id));
       const completionInstant = order.completed_at ?? order.check_out_time;
@@ -141,6 +144,7 @@ export function useOsPmocDocuments(serviceOrderId: string | null, enabled = true
         products: productOptions.sort((a, b) => Number(b.consumedInOrder) - Number(a.consumedInOrder)),
         contractId: order.contract_id,
         contractResponsibleTechnicianId: contractResult.data?.responsible_technician_id ?? null,
+        defaultValidityMonths: Math.min(60, Math.max(1, Number(templatesResult.data?.certificado_validity_months ?? 12))),
       };
     },
   });
@@ -154,6 +158,8 @@ export function useOsPmocDocuments(serviceOrderId: string | null, enabled = true
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-order-pmoc-documents', normalizedServiceOrderId] });
+      queryClient.invalidateQueries({ queryKey: ['customer-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment-attachments'] });
     },
   });
 
@@ -161,6 +167,7 @@ export function useOsPmocDocuments(serviceOrderId: string | null, enabled = true
     products: optionsQuery.data?.products ?? [],
     contractId: optionsQuery.data?.contractId ?? null,
     contractResponsibleTechnicianId: optionsQuery.data?.contractResponsibleTechnicianId ?? null,
+    defaultValidityMonths: optionsQuery.data?.defaultValidityMonths ?? 12,
     isLoadingOptions: optionsQuery.isLoading,
     optionsError: optionsQuery.error,
     generateDocument: generateMutation.mutateAsync,

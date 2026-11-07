@@ -38,22 +38,53 @@ function readableOrderNumber(value: number | string | null | undefined): string 
     : 'sem-numero';
 }
 
+const FILE_MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'] as const;
+
+function readableFileDate(value: Date | string | number | null | undefined, timeZone?: string): string {
+  const date = value instanceof Date ? value : new Date(value ?? Date.now());
+  const validDate = Number.isNaN(date.getTime()) ? new Date() : date;
+  let parts: Intl.DateTimeFormatPart[];
+  try {
+    parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timeZone || undefined,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(validDate);
+  } catch {
+    parts = new Intl.DateTimeFormat('en-CA', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(validDate);
+  }
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? '';
+  const month = Number(part('month'));
+  return `${part('day')} ${FILE_MONTHS[month - 1] ?? 'DATA'} ${part('year')}`;
+}
+
 /** Nome legivel do PDF tradicional da OS, preservando acentos do cliente. */
 export function buildServiceReportPdfFilename(input: {
   orderNumber: number | string | null | undefined;
   customerName: string | null | undefined;
+  generatedAt?: Date | string | number | null;
+  timeZone?: string;
 }): string {
   const orderNumber = readableOrderNumber(input.orderNumber);
   const customerName = safeFilenamePart(input.customerName, 'Cliente');
-  return `Relatório de Serviço - OS ${orderNumber} - ${customerName}.pdf`;
+  const generatedOn = readableFileDate(input.generatedAt, input.timeZone);
+  return `Relatório de Serviço - OS ${orderNumber} - ${customerName} - ${generatedOn}.pdf`;
 }
 
 /** Nome canônico do Certificado PMOC emitido pela OS. */
 export function buildCertificateConformityPdfFilename(input: {
   orderNumber: number | string | null | undefined;
   customerName: string | null | undefined;
+  generatedAt?: Date | string | number | null;
+  timeZone?: string;
 }): string {
   const orderNumber = readableOrderNumber(input.orderNumber);
   const customerName = safeFilenamePart(input.customerName, 'Cliente');
-  return `Certificado de Conformidade - OS ${orderNumber} - ${customerName}.pdf`;
+  const generatedOn = readableFileDate(input.generatedAt, input.timeZone);
+  return `Certificado de Conformidade - OS ${orderNumber} - ${customerName} - ${generatedOn}.pdf`;
 }

@@ -12798,6 +12798,62 @@ export type Database = {
           },
         ]
       }
+      service_order_pmoc_document_links: {
+        Row: {
+          company_id: string
+          created_at: string
+          customer_id: string | null
+          equipment_id: string | null
+          id: string
+          pmoc_document_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          customer_id?: string | null
+          equipment_id?: string | null
+          id?: string
+          pmoc_document_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          customer_id?: string | null
+          equipment_id?: string | null
+          id?: string
+          pmoc_document_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_order_pmoc_document_links_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_pmoc_document_links_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_pmoc_document_links_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_pmoc_document_links_pmoc_document_id_fkey"
+            columns: ["pmoc_document_id"]
+            isOneToOne: false
+            referencedRelation: "service_order_pmoc_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_order_pmoc_documents: {
         Row: {
           company_id: string

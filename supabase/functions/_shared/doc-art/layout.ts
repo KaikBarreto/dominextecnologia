@@ -6,6 +6,7 @@ export type DocArtMeasures = Record<'sans' | 'display', MeasureFn>;
 const labels = {
   sobretitulo: 'Referência', titulo: 'Título', subtitulo: 'Subtítulo', corpo: 'Texto do certificado',
   destaque: 'Plano de manutenção', assinaturaNome: 'Responsável técnico', assinaturaCargo: 'Registro profissional',
+  produto: 'Produto utilizado',
   lateral: 'Emissão e validade', rodape: 'Dados da empresa',
 };
 

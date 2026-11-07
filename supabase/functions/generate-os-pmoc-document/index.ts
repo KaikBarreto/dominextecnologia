@@ -70,16 +70,28 @@ function filenamePart(value: unknown, fallback: string): string {
   return (clean || fallback).slice(0, 100).trim();
 }
 
-function documentFileName(docType: DocType, orderNumber: unknown, customerName: unknown): string {
+const FILE_MONTHS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"] as const;
+
+function readableOrderNumber(orderNumber: unknown): string {
   const normalizedOrderNumber = typeof orderNumber === "number" || typeof orderNumber === "string"
     ? String(orderNumber).trim()
     : "";
   const parsed = normalizedOrderNumber ? Number(normalizedOrderNumber) : Number.NaN;
-  const number = Number.isFinite(parsed) ? String(Math.trunc(parsed)).padStart(6, "0") : "sem-numero";
+  return Number.isFinite(parsed) ? String(Math.trunc(parsed)).padStart(6, "0") : "sem-numero";
+}
+
+function readableFileDate(generatedAt: Date, timeZone: string): string {
+  const ymd = ymdInTimeZone(generatedAt.toISOString(), timeZone);
+  if (!ymd) return "DATA NÃO INFORMADA";
+  return `${String(ymd.day).padStart(2, "0")} ${FILE_MONTHS[ymd.month - 1]} ${ymd.year}`;
+}
+
+function documentFileName(docType: DocType, orderNumber: unknown, customerName: unknown, generatedAt: Date, timeZone: string): string {
+  const number = readableOrderNumber(orderNumber);
   const label = docType === "relatorio_servico"
     ? "Relatório de Serviço"
     : "Certificado de Conformidade";
-  return `${label} - OS ${number} - ${filenamePart(customerName, "Cliente")}.pdf`;
+  return `${label} - OS ${number} - ${filenamePart(customerName, "Cliente")} - ${readableFileDate(generatedAt, timeZone)}.pdf`;
 }
 
 function dateOnly(value: unknown, timeZone: string): string | null {
@@ -369,7 +381,7 @@ function certificateHtml(product: JsonRecord): string {
 }
 
 function certificateProductHtml(product: JsonRecord, orderNumber: string): string {
-  return `<p><strong>OS ${html(orderNumber)}.</strong> Produto bactericida: <strong>${html(product.name)}</strong> · Fabricante: ${html(product.pmoc_manufacturer)} · Registro ANVISA: ${html(product.pmoc_anvisa_registration)} · Lote: ${html(product.pmoc_batch_number || "Não informado")} · Validade: ${html(displayDate(product.pmoc_expires_on))}.</p>`;
+  return `<strong>PRODUTO UTILIZADO</strong><br><strong>${html(product.name)}</strong><br>Fabricante: ${html(product.pmoc_manufacturer)}<br>ANVISA: ${html(product.pmoc_anvisa_registration)} · Lote: ${html(product.pmoc_batch_number || "Não informado")}<br>Validade: ${html(displayDate(product.pmoc_expires_on))} · OS ${html(orderNumber)}`;
 }
 
 Deno.serve(async (req) => {
@@ -386,8 +398,14 @@ Deno.serve(async (req) => {
     const inventoryId = text(body?.inventory_id);
     const responsibleTechnicianId = text(body?.responsible_technician_id);
     const docType = text(body?.doc_type) as DocType;
+    const requestedValidityMonths = body?.validity_months == null
+      ? null
+      : Number(body.validity_months);
     if (!UUID_RE.test(serviceOrderId)) return failure("invalid_service_order_id", "Ordem de serviço inválida.", 400, "service_order_id");
     if (!DOC_TYPES.has(docType)) return failure("invalid_doc_type", "Tipo de documento inválido.", 400, "doc_type");
+    if (requestedValidityMonths !== null && (!Number.isInteger(requestedValidityMonths) || requestedValidityMonths < 1 || requestedValidityMonths > 60)) {
+      return failure("invalid_validity_months", "Escolha uma duração entre 1 e 60 meses.", 400, "validity_months");
+    }
     if (!UUID_RE.test(inventoryId)) return failure("invalid_inventory_id", "Selecione um produto bactericida válido.", 400, "inventory_id");
     if (!UUID_RE.test(responsibleTechnicianId)) return failure("invalid_responsible_technician_id", "Selecione um responsável técnico válido.", 400, "responsible_technician_id");
 
@@ -499,16 +517,17 @@ Deno.serve(async (req) => {
       ? await db.from("equipment").select("id,company_id,name,identifier,brand,model,capacity,location,serial_number").in("id", equipmentIds).eq("company_id", order.company_id)
       : { data: [] };
 
-    const validityMonths = Math.max(1, Number(templates?.certificado_validity_months ?? 12));
+    const configuredValidityMonths = Math.min(60, Math.max(1, Number(templates?.certificado_validity_months ?? 12)));
+    const validityMonths = requestedValidityMonths ?? configuredValidityMonths;
     const nominalValidUntil = addMonthsDateOnly(completedDate, validityMonths);
     const validUntil = minDate(nominalValidUntil, product.pmoc_expires_on);
     const productLimitsValidity = validUntil < nominalValidUntil;
     const companyName = text(settings?.name, text(company?.name, "Empresa"));
     const customerAddress = addressOf(customer, order) || addressOf(customer);
-    const orderNumber = String(Number(order.order_number)).padStart(6, "0");
-    const fileName = documentFileName(docType, order.order_number, customer.name);
-    const consumed = (consumedRows ?? []).find((row) => row.inventory_id === product.id && Number(row.committed_quantity) > 0) ?? null;
+    const orderNumber = readableOrderNumber(order.order_number);
     const generatedAt = new Date();
+    const fileName = documentFileName(docType, order.order_number, customer.name, generatedAt, timeZone);
+    const consumed = (consumedRows ?? []).find((row) => row.inventory_id === product.id && Number(row.committed_quantity) > 0) ?? null;
 
     const snapshot = {
       schema_version: 2,
@@ -544,7 +563,7 @@ Deno.serve(async (req) => {
       issued: { generated_at: generatedAt.toISOString(), generated_by: userData.user.id },
     };
     const { issued: _issued, ...hashSnapshot } = snapshot;
-    const contentHash = await sha256({ ...hashSnapshot, renderer: docType === "relatorio_servico" ? "os-report-v3-grid-black-accent" : "os-certificate-v4-standard-footer" });
+    const contentHash = await sha256({ ...hashSnapshot, renderer: docType === "relatorio_servico" ? "os-report-v3-grid-black-accent" : "os-certificate-v5-institutional-cards" });
 
     const { data: cached } = await db.from("service_order_pmoc_documents")
       .select("version,pdf_storage_path,file_name,valid_until")
@@ -624,12 +643,11 @@ Deno.serve(async (req) => {
       if (effectiveArt) {
         const originalConfig = effectiveArt.config ?? {};
         const template = getDocArtTemplate(effectiveArt.slug);
-        const baseBody = originalConfig.slots?.corpo ?? template?.defaultSlots.corpo ?? "";
         const adaptedConfig: DocArtConfig = {
           ...originalConfig,
           slots: {
             ...originalConfig.slots,
-            corpo: `${baseBody}${certificateProductHtml(product, orderNumber)}`,
+            produto: certificateProductHtml(product, orderNumber),
             lateral: `OS ${orderNumber} · Emitido em ${formatDateBr(generatedAt, timeZone)} · Válido até ${displayDate(validUntil)}`,
           },
         };

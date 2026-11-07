@@ -1,4 +1,4 @@
-import type { DocArtConditionalShape, DocArtTemplate, Orientation } from '../types.ts';
+import type { ColorRef, DocArtConditionalShape, DocArtTemplate, Orientation } from '../types.ts';
 import { CERTIFICADO_DEFAULT_SLOTS } from './slots.ts';
 import { text } from './blocks.ts';
 
@@ -7,18 +7,18 @@ interface CertificateOptions {
   name: string;
   orientation: Orientation;
   dark?: boolean;
-  motif: 'frame' | 'wave' | 'seal' | 'split' | 'portal' | 'stripe' | 'grid' | 'prism' | 'circuit' | 'minimal';
+  motif: 'frame' | 'wave' | 'seal' | 'split' | 'portal' | 'stripe' | 'grid' | 'prism' | 'circuit' | 'minimal' | 'essential';
+  backgroundArtwork?: boolean;
+  titleColor?: ColorRef;
 }
 
 /** Um sistema editorial comum, com artes vetoriais próprias e caixas protegidas. */
 export function createCertificateTemplate(options: CertificateOptions): DocArtTemplate {
-  const { slug, name, orientation, motif, dark = false } = options;
+  const { slug, name, orientation, motif, dark = false, backgroundArtwork = true, titleColor = 'primary' } = options;
   const landscape = orientation === 'landscape';
   const w = landscape ? 297 : 210, h = landscape ? 210 : 297;
   const margin = landscape ? 25 : 22;
   const split = motif === 'split';
-  const x = split ? 98 : margin;
-  const contentW = w - x - margin;
   const shapes: DocArtConditionalShape[] = [];
   const rect = (x: number, y: number, width: number, height: number, fill: string, opacity = 1) =>
     shapes.push({ shape: { kind: 'rect', x, y, w: width, h: height, fill, opacity } });
@@ -28,40 +28,53 @@ export function createCertificateTemplate(options: CertificateOptions): DocArtTe
   rect(0, 0, w, h, 'paper');
 
   if (motif === 'frame') {
-    rect(11, 11, w - 22, h - 22, 'paper');
-    line(11, 11, w - 11, 11, 'accent', 0.8, 0.6);
-    line(11, h - 11, w - 11, h - 11, 'ink', 0.15);
-    line(11, 11, 11, 34, 'accent', 0.8, 0.6);
-    line(w - 11, h - 34, w - 11, h - 11, 'accent', 0.8, 0.6);
+    line(8, 8, w - 8, 8, 'ink', 0.35, 0.7);
+    line(8, h - 8, w - 8, h - 8, 'ink', 0.35, 0.7);
+    line(8, 8, 8, h - 8, 'ink', 0.35, 0.7);
+    line(w - 8, 8, w - 8, h - 8, 'ink', 0.35, 0.7);
+    line(11, 11, w - 11, 11, 'accent', 0.85, 0.35);
+    line(11, h - 11, w - 11, h - 11, 'accent', 0.85, 0.35);
+    path(`M 8,34 L 8,8 L 34,8 L 24,13 L 13,24 Z`, 'primary', 0.85);
+    path(`M ${w - 8},${h - 34} L ${w - 8},${h - 8} L ${w - 34},${h - 8} L ${w - 24},${h - 13} L ${w - 13},${h - 24} Z`, 'accent', 0.85);
   } else if (motif === 'wave') {
+    path(`M 0,0 L ${w},0 L ${w},8 C ${w * 0.72},22 ${w * 0.45},-5 0,15 Z`, 'accent', 0.18);
     path(`M 0,${h - 16} C ${w * 0.3},${h - 38} ${w * 0.65},${h + 3} ${w},${h - 25} L ${w},${h} L 0,${h} Z`, 'accent', 0.2);
     path(`M 0,${h - 8} C ${w * 0.4},${h - 27} ${w * 0.7},${h + 9} ${w},${h - 13} L ${w},${h} L 0,${h} Z`, 'primary');
   } else if (motif === 'seal') {
-    rect(w - 62, 0, 62, 49, 'primary');
-    path(`M ${w - 62},49 L ${w - 31},65 L ${w},49 Z`, 'primary');
-    line(w - 48, 20, w - 37, 31, 'onPrimary', 1, 1.2);
-    line(w - 37, 31, w - 16, 12, 'onPrimary', 1, 1.2);
-    rect(0, h - 3, w, 3, 'accent');
+    path(`M ${w - 48},0 L ${w},0 L ${w},48 L ${w - 13},26 Z`, 'primary');
+    path(`M ${w - 31},0 L ${w},0 L ${w},30 Z`, 'accent', 0.82);
+    line(w - 33, 13, w - 26, 20, 'onPrimary', 1, 1.05);
+    line(w - 26, 20, w - 14, 9, 'onPrimary', 1, 1.05);
+    rect(0, h - 4, w, 4, 'primary');
+    rect(0, h - 5.2, w * 0.36, 1.2, 'accent');
   } else if (split) {
-    rect(0, 0, 78, h, 'primary');
-    rect(78, 0, 2, h, 'accent');
-    for (let y = 20; y < h - 10; y += 9) line(16, y, 62, y, 'onPrimary', 0.06);
+    rect(0, 0, 25, h, 'primary');
+    rect(25, 0, 2, h, 'accent');
+    for (let y = 18; y < h - 10; y += 9) line(7, y, 19, y, 'onPrimary', 0.12, 0.22);
+    path(`M 0,${h - 42} L 25,${h - 67} L 25,${h} L 0,${h} Z`, 'accent', 0.35);
   } else if (motif === 'portal') {
-    rect(0, 0, w, 10, 'primary');
-    rect(w - 10, 10, 10, 60, 'accent');
-    line(margin, 52, w - margin, 52, 'ink', 0.15);
+    rect(0, 0, w, 8, 'primary');
+    rect(0, 8, w, 2, 'accent');
+    rect(0, 8, 7, h - 8, 'primary');
+    rect(w - 7, 8, 7, h - 8, 'primary');
+    line(12, 15, w - 12, 15, 'accent', 0.7, 0.35);
   } else if (motif === 'stripe') {
-    rect(0, 0, 9, h, 'primary');
-    rect(9, 0, 2, h, 'accent');
-    rect(w - 37, 18, 15, 3, 'accent');
+    rect(0, 0, 8, h, 'primary');
+    rect(8, 0, 2, h, 'accent');
+    path(`M ${w - 56},0 L ${w},0 L ${w},19 L ${w - 38},19 Z`, 'primary', 0.92);
+    rect(w - 29, 19, 29, 2, 'accent');
   } else if (motif === 'grid') {
+    rect(0, 0, w, 1.8, 'primary');
     for (let gx = 0; gx < w; gx += 7) line(gx, 0, gx, 48, 'ink', 0.055, 0.16);
     for (let gy = 0; gy <= 48; gy += 7) line(0, gy, w, gy, 'ink', 0.055, 0.16);
     line(margin, 49, w - margin, 49, 'accent', 1, 0.7);
+    for (let gx = 0; gx < w; gx += 7) line(gx, h - 22, gx, h, 'accent', 0.07, 0.16);
   } else if (motif === 'prism') {
-    path(`M ${w - 70},0 L ${w},0 L ${w},88 Z`, 'primary', 0.8);
-    path(`M ${w - 46},0 L ${w},0 L ${w},58 Z`, 'accent', 0.7);
-    path(`M ${w - 26},${h} L ${w},${h - 28} L ${w},${h} Z`, 'accent', 0.35);
+    path(`M 0,0 L ${w * 0.46},0 L ${w * 0.28},18 L 0,39 Z`, 'accent', 0.12);
+    path(`M ${w - 78},0 L ${w},0 L ${w},74 Z`, 'primary', 0.72);
+    path(`M ${w - 52},0 L ${w},0 L ${w},52 Z`, 'accent', 0.65);
+    path(`M 0,${h - 30} L 54,${h} L 0,${h} Z`, 'accent', 0.18);
+    line(10, 10, w - 10, 10, 'accent', 0.4, 0.35);
   } else if (motif === 'circuit') {
     for (let i = 0; i < 4; i++) {
       const y = 17 + i * 10, start = w - 75 + i * 10;
@@ -69,55 +82,100 @@ export function createCertificateTemplate(options: CertificateOptions): DocArtTe
       shapes.push({ shape: { kind: 'circle', cx: start - 12, cy: y + 13, r: 0.9, fill: 'accent', opacity: 0.7 } });
     }
     rect(0, 0, 3, h, 'accent');
-  } else {
-    rect(0, 0, w, 3, 'accent');
-    line(margin, 48, w - margin, 48, 'ink', 0.15);
+    rect(w - 3, 0, 3, h, 'primary');
+    line(9, h - 12, w - 9, h - 12, 'accent', 0.34, 0.35);
+    for (let i = 0; i < 5; i++) {
+      const cx = 19 + i * 15;
+      shapes.push({ shape: { kind: 'circle', cx, cy: h - 12, r: 0.75, fill: 'accent', opacity: 0.72 } });
+    }
+  } else if (motif !== 'essential') {
+    rect(0, 0, w, 4, 'accent');
+    rect(0, h - 4, w, 4, 'primary');
+    line(margin, 48, w - margin, 48, 'ink', 0.18, 0.28);
+    line(margin, h - 27, w - margin, h - 27, 'accent', 0.45, 0.28);
   }
 
-  // O logo é analisado pelos dois renderizadores. A placa neutra é só fallback
-  // de segurança, nunca um retângulo branco imposto pelo tema escuro.
-  rect(x, 18, 9, 1.1, 'primary');
-  shapes.push({ shape: { kind: 'image', src: 'logo', x, y: 23, w: 53, h: 15, align: 'left', plate: '#757575', platePadding: 2.5 } });
-  const titleY = landscape ? 58 : 69;
-  const bodyY = landscape ? 103 : 119;
-  const bodyH = landscape ? 34 : 72;
-  const highlightY = bodyY + bodyH + 6;
-  const signatureY = landscape ? 154 : 232;
-  const addText = (slot: Parameters<typeof text>[0]['slot'], y: number, size: number, height: number, weight: 'regular' | 'bold' = 'regular', color = 'ink') => {
-    const shape = text({ slot, x, y, w: contentW, size, lineHeight: size * 1.5, weight, color, paragraphSpacing: slot === 'corpo' ? 5 : 0 });
+  // Cada tema usa uma arte autoral completa em alta resolução. Os modelos
+  // essenciais são vetoriais e não dependem de bitmap.
+  if (backgroundArtwork) {
+    shapes.push({ shape: { kind: 'image', src: 'background', x: 0, y: 0, w, h, fit: 'stretch', align: 'left', valign: 'top' } });
+  }
+
+  // Estrutura inspirada em certificados técnicos de campo: título institucional
+  // centralizado, declaração ampla e dados de execução distribuídos em quadros.
+  const layoutX = split ? 34 : landscape ? 22 : 20;
+  const layoutRight = landscape ? 22 : 20;
+  const layoutW = w - layoutX - layoutRight;
+  const contentX = layoutX + 4;
+  const contentW = layoutW - 8;
+  const logoX = split ? 36 : layoutX;
+  const titleX = landscape ? 62 : layoutX;
+  const titleW = landscape ? w - titleX * 2 : layoutW;
+  const titleY = landscape ? 15 : 45;
+  const bodyY = landscape ? 64 : 92;
+  const bodyH = landscape ? 36 : 67;
+  const cardY = landscape ? 113 : 176;
+  const cardH = landscape ? 37 : 36;
+  const cardGap = landscape ? 8 : 7;
+  const cardW = landscape ? (contentW - cardGap) / 2 : contentW;
+  const productY = landscape ? cardY : cardY + cardH + cardGap;
+  const highlightY = landscape ? 156 : 258;
+  const addText = (
+    slot: Parameters<typeof text>[0]['slot'],
+    tx: number,
+    y: number,
+    width: number,
+    size: number,
+    height: number,
+    weight: 'regular' | 'bold' = 'regular',
+    color = 'ink',
+    align: 'left' | 'center' | 'right' = 'left',
+  ) => {
+    const shape = text({ slot, x: tx, y, w: width, size, lineHeight: size * 1.4, weight, color, align, paragraphSpacing: slot === 'corpo' ? 4 : 0 });
     if (shape.shape.kind === 'text') shape.shape.h = height;
     shapes.push(shape);
   };
-  addText('sobretitulo', titleY - 12, 7.4, 8, 'regular', 'inkSoft');
-  addText('titulo', titleY, landscape ? 36 : 31, 20, 'bold');
-  addText('subtitulo', titleY + 22, 11, 11, 'bold', 'ink');
-  line(x, bodyY - 7, x + Math.min(contentW, 54), bodyY - 7, 'accent', 1, 0.9);
-  addText('corpo', bodyY, landscape ? 10 : 10.5, bodyH);
-  addText('destaque', highlightY, 11, landscape ? 9 : 13, 'bold');
-  const signatureW = Math.min(92, contentW * 0.58);
-  shapes.push(
-    { requires: 'signature', shape: { kind: 'image', src: 'signature', x, y: signatureY - 1, w: signatureW, h: 11, align: 'left', valign: 'bottom' } },
-    { requires: 'signature', shape: { kind: 'line', x1: x, y1: signatureY + 12, x2: x + signatureW, y2: signatureY + 12, stroke: 'inkSoft', strokeWidth: 0.25 } },
-  );
-  const nameShape = text({ slot: 'assinaturaNome', x, y: signatureY + 15, w: signatureW, size: 8.5, lineHeight: 11, weight: 'bold' });
-  const roleShape = text({ slot: 'assinaturaCargo', x, y: signatureY + 24, w: signatureW, size: 7, lineHeight: 9.5, color: 'inkSoft' });
-  if (nameShape.shape.kind === 'text') nameShape.shape.h = landscape ? 7 : 8;
-  if (roleShape.shape.kind === 'text') roleShape.shape.h = landscape ? 6 : 7;
-  shapes.push({ ...nameShape, requires: 'signature' }, { ...roleShape, requires: 'signature' });
-  addText('lateral', landscape ? 178 : 270, 6.8, landscape ? 12 : 7, 'regular', 'inkSoft');
-  const lateral = shapes[shapes.length - 1].shape;
-  if (lateral.kind === 'text' && landscape) {
-    lateral.x = x + signatureW + 8;
-    lateral.w = contentW - signatureW - 8;
+
+  // Logo do tenant à esquerda e título centralizado na página, não apenas no
+  // espaço que sobra depois do logo.
+  rect(logoX, 13, 10, 1.2, 'accent');
+  shapes.push({ shape: { kind: 'image', src: 'logo', x: logoX, y: 17, w: landscape ? 39 : 48, h: 14, align: 'left', plate: '#757575', platePadding: 2.2 } });
+  addText('titulo', titleX, titleY, titleW, landscape ? 21.5 : 20, landscape ? 14 : 13, 'bold', titleColor, 'center');
+  addText('subtitulo', titleX, titleY + (landscape ? 16 : 14), titleW, landscape ? 12.5 : 11.5, 9, 'bold', 'ink', 'center');
+  addText('sobretitulo', titleX, titleY + (landscape ? 30 : 28), titleW, 8.6, 7, 'regular', 'ink', 'center');
+  line(contentX, bodyY - 4, contentX + contentW, bodyY - 4, 'accent', 0.72, 0.55);
+
+  // Apenas a declaração longa fica alinhada à esquerda; os demais blocos
+  // usam alinhamento central ou organização em colunas.
+  addText('corpo', contentX + 3, bodyY, contentW - 6, landscape ? 10.8 : 10.2, bodyH, 'regular', 'ink', 'left');
+  addText('lateral', contentX, landscape ? 103 : 163, contentW, 8.4, 8, 'bold', 'ink', 'center');
+
+  // Todos os temas partem da mesma base minimalista: o conteúdo pertence ao
+  // papel, sem um painel branco flutuante nem cartões internos. Linhas finas
+  // organizam técnico e produto sem competir com a arte discreta das bordas.
+  line(contentX, cardY, contentX + contentW, cardY, 'inkSoft', 0.55, 0.3);
+  if (landscape) {
+    line(contentX + cardW + cardGap / 2, cardY + 5, contentX + cardW + cardGap / 2, cardY + cardH - 5, 'inkSoft', 0.45, 0.25);
   }
-  const footer = text({ slot: 'rodape', x, y: h - 17, w: contentW, size: 6.8, lineHeight: 9, color: 'inkSoft' });
+
+  const techTextW = landscape ? cardW - 39 : cardW - 48;
+  addText('assinaturaNome', contentX + 6, cardY + 5, techTextW, 8.5, 14, 'regular', 'ink');
+  addText('assinaturaCargo', contentX + 6, cardY + 20, techTextW, 7.8, 12, 'regular', 'ink');
+  addText('produto', (landscape ? contentX + cardW + cardGap : contentX) + 6, productY + 5, cardW - 12, 8, cardH - 9, 'regular', 'ink');
+
+  shapes.push(
+    { requires: 'signature', shape: { kind: 'image', src: 'signature', x: contentX + cardW - (landscape ? 35 : 44), y: cardY + 8, w: landscape ? 30 : 39, h: cardH - 16, align: 'right', valign: 'middle' } },
+  );
+
+  addText('destaque', contentX, highlightY, contentW, landscape ? 8.4 : 7.8, landscape ? 13 : 12, 'bold', 'ink', 'center');
+  const footer = text({ slot: 'rodape', x: contentX, y: landscape ? 184 : 277, w: landscape ? contentW * 0.46 : contentW, size: 7.4, lineHeight: 9.4, color: 'ink', align: landscape ? 'left' : 'center' });
   if (footer.shape.kind === 'text') footer.shape.h = 7;
   shapes.push({ ...footer, requires: 'footer' });
   return {
     slug, name, orientation, previewColor: dark ? '#111815' : '#00a878',
-    defaultTheme: { primary: dark ? '#f8fafc' : '#111815', accent: dark ? '#dbeafe' : '#00a878', bg: dark ? '#0b1220' : '#ffffff', paper: dark ? '#0b1220' : '#ffffff' },
+    defaultTheme: { primary: dark ? '#f8fafc' : '#111815', accent: dark ? '#f8fafc' : '#111815', bg: dark ? '#0b1220' : '#ffffff', paper: dark ? '#0b1220' : '#ffffff' },
     defaultSlots: CERTIFICADO_DEFAULT_SLOTS,
-    slots: ['titulo', 'subtitulo', 'sobretitulo', 'corpo', 'destaque', 'assinaturaNome', 'assinaturaCargo', 'lateral', 'rodape'],
+    slots: ['titulo', 'subtitulo', 'sobretitulo', 'corpo', 'produto', 'assinaturaNome', 'assinaturaCargo', 'destaque', 'lateral', 'rodape'],
     toggles: ['signature', 'footer'], shapes,
   };
 }

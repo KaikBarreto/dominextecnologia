@@ -170,10 +170,13 @@ function concatBytes(parts: Uint8Array[]): Uint8Array {
  * lossless; PNGs RGB/RGBA e JPEGs permanecem exatamente como foram enviados.
  */
 export async function normalizePngForPdf(bytes: Uint8Array): Promise<Uint8Array> {
-  if (!isPng(bytes) || bytes[25] !== 3) return bytes;
+  if (!isPng(bytes)) return bytes;
   const decoded = await decodePng(bytes);
   if (!decoded) return bytes;
 
+  // Regrava também PNGs RGBA já válidos. Isso remove perfis/chunks que alguns
+  // leitores PDF interpretam como grupo de transparência e evita que o fundo
+  // do certificado seja pintado por cima dos textos seguintes.
   return encodeRgbaPng(decoded.width, decoded.height, decoded.rgba);
 }
 

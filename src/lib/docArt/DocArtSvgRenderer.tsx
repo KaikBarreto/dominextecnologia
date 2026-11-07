@@ -171,7 +171,7 @@ export const DocArtSvgRenderer = forwardRef<SVGSVGElement, DocArtSvgRendererProp
         xmlns="http://www.w3.org/2000/svg"
       >
         {page.shapes.map((shape, i) => (
-          <Shape key={i} shape={shape} images={images} measures={measures} logoPlate={logoPlate} />
+          <Shape key={i} shape={shape} images={images} measures={measures} logoPlate={config?.logoPlate === 'none' ? null : logoPlate} />
         ))}
       </svg>
     );
@@ -270,7 +270,7 @@ function Shape({ shape, images, measures, logoPlate }: ShapeProps) {
           y={shape.y}
           width={shape.w}
           height={shape.h}
-            preserveAspectRatio={`${align}${valign} meet`}
+          preserveAspectRatio={shape.fit === 'stretch' ? 'none' : `${align}${valign} meet`}
             opacity={shape.opacity ?? 1}
           />
         </>

@@ -107,6 +107,8 @@ export type DocArtSlotKey =
   | 'corpo'
   /** Faixa de destaque em caixa alta (ex: "SEGURANÇA ALIMENTAR"). */
   | 'destaque'
+  /** Produto bactericida e dados regulatórios usados na execução. */
+  | 'produto'
   /** Rodapé (ex: site da empresa). */
   | 'rodape'
   /** Texto fino girado na margem (ex: nº do documento + validade). */
@@ -123,7 +125,7 @@ export type DocArtSlotKey =
  * inventado, sem lastro em órgão nenhum, e certificado não carimba autoridade
  * que não tem.
  */
-export type DocArtImageRef = 'logo' | 'signature';
+export type DocArtImageRef = 'logo' | 'signature' | 'background';
 
 // -----------------------------------------------------------------------------
 // Primitivas
@@ -188,6 +190,8 @@ export interface ImageShape extends ShapeBase {
   y: Mm;
   w: Mm;
   h: Mm;
+  /** `contain` preserva logos/assinaturas; `stretch` preenche fundos de página. */
+  fit?: 'contain' | 'stretch';
   /** Alinhamento dentro da caixa quando sobra espaço. Default `center`. */
   align?: TextAlign;
   /** Default `middle`. */
@@ -300,6 +304,8 @@ export interface DocArtConfig {
   theme?: Partial<DocArtTheme>;
   /** Logo específico do documento; ausente = logo da empresa. */
   logoUrl?: string | null;
+  /** `auto` protege o contraste; `none` deixa o logo diretamente sobre a arte. */
+  logoPlate?: 'auto' | 'none';
   toggles?: Partial<Record<DocArtToggleKey, boolean>>;
   /** Texto editado de cada slot (HTML inline). Ausente = default da arte. */
   slots?: Partial<Record<DocArtSlotKey, string>>;

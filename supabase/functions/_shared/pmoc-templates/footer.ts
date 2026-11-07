@@ -148,16 +148,17 @@ export async function drawDominexFooter(
 export async function drawGeneratedByDominexFooter(
   pdf: PDFDocument,
   page: PDFPage,
-  opts: { dark?: boolean } = {},
+  opts: { dark?: boolean; prominent?: boolean } = {},
 ): Promise<void> {
   const { width } = page.getSize();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const label = "Gerado por";
   // Assinatura visual unica para certificados e relatorios: legivel sem
   // competir com o conteudo e sem a antiga borda que atravessava o logo.
-  const labelSize = 7.5;
-  const logoWidth = 46;
-  const gap = 6;
+  const labelSize = opts.prominent ? 10.5 : 7.5;
+  const logoWidth = opts.prominent ? 82 : 46;
+  const gap = opts.prominent ? 9 : 6;
+  const bottom = opts.prominent ? 7.5 : 9;
   const color = opts.dark ? rgb(1, 1, 1) : MUTED;
 
   try {
@@ -170,14 +171,14 @@ export async function drawGeneratedByDominexFooter(
     const startX = (width - totalWidth) / 2;
     page.drawText(label, {
       x: startX,
-      y: 9 + Math.max(0, (logoHeight - labelSize) / 2),
+      y: bottom + Math.max(0, (logoHeight - labelSize) / 2),
       size: labelSize,
       font,
       color,
     });
     page.drawImage(logo, {
       x: startX + font.widthOfTextAtSize(label, labelSize) + gap,
-      y: 9,
+      y: bottom,
       width: logoWidth,
       height: logoHeight,
     });
@@ -186,7 +187,7 @@ export async function drawGeneratedByDominexFooter(
     const fallbackWidth = font.widthOfTextAtSize(fallback, labelSize);
     page.drawText(fallback, {
       x: (width - fallbackWidth) / 2,
-      y: 9,
+      y: bottom,
       size: labelSize,
       font,
       color,
@@ -200,5 +201,5 @@ export async function drawCertificateGeneratedByFooter(
   page: PDFPage,
   opts: { dark?: boolean } = {},
 ): Promise<void> {
-  await drawGeneratedByDominexFooter(pdf, page, opts);
+  await drawGeneratedByDominexFooter(pdf, page, { ...opts, prominent: true });
 }
