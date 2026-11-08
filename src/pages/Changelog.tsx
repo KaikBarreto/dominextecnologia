@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.12',
+    date: '8 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Rodapés das propostas com mais presença',
+        description: 'Os quatro modelos de proposta passam a exibir logo e site da Dominex com mais destaque, adaptados aos fundos claros, escuros e ao celular. O endereço também pode ser aberto pelo PDF. Empresas com marca própria continuam sem a assinatura Dominex.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.39.11',
     date: '8 de novembro de 2026',
     type: 'patch',

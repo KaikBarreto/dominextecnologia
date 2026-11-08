@@ -35,6 +35,10 @@ export const PROPOSAL_PDF_CLONE_CSS = `
     min-height: 1123px !important;
     padding: 56px !important;
     border-top: 0 !important;
+    /* O espaçamento entre folhas pertence à leitura no site, não ao PDF. */
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
   }
 `;
 

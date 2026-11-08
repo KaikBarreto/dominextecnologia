@@ -16,6 +16,7 @@ import {
 } from './shared';
 import type { QuoteItem } from '@/hooks/useQuotes';
 import { ProposalLogo } from './ProposalLogo';
+import { ProposalPlatformFooter } from './ProposalPlatformFooter';
 
 /**
  * Clean — proposta comercial ENXUTA em documento BRANCO (não segue o tema do
@@ -28,7 +29,7 @@ import { ProposalLogo } from './ProposalLogo';
  * FORA (ProposalPublic.tsx) quando status==='enviado' — este template só deixa
  * um respiro no rodapé pra eles.
  *
- * White-label: a marca exibida é SEMPRE a do tenant (company/customization).
+ * White-label: identidade da empresa; assinatura da plataforma somente fora do white-label.
  */
 export function CleanTemplate(props: ProposalTemplateProps) {
   const { quote, company, customization } = props;
@@ -433,6 +434,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
               {t.cleanGeneratedAt.replace('{date}', generatedDate).replace('{time}', generatedTime)}
             </p>
           )}
+          <ProposalPlatformFooter company={company} />
         </div>
 
         {/* Respiro pra os botões Aprovar/Rejeitar injetados por fora (ProposalPublic). */}

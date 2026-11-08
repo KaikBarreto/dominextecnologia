@@ -1,5 +1,6 @@
 import type { ProposalTemplateProps } from './types';
 import { getProposalSections } from './types';
+import { ProposalPlatformFooter } from './ProposalPlatformFooter';
 import { formatDateTime } from '@/lib/format';
 import { useLocaleFormatters } from '@/lib/format/hooks';
 import { MESSAGES } from '@/lib/i18n';
@@ -335,7 +336,7 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
       </section>
 
       {/* ====================== ENCERRAMENTO ====================== */}
-      <section className="pr-page flex flex-col items-center justify-center text-center">
+      <section className="pr-page flex flex-col items-center justify-center text-center" data-pdf-keep>
         <div className="h-1 w-20 rounded-full mb-9" style={{ background: IRID, ...colorAdjust }} />
         <h2 className="font-black uppercase tracking-tight text-white" style={{ fontSize: 'clamp(44px, 10vw, 64px)' }}>{t.thankYouNoPunct}</h2>
         <p className="text-white/55 text-lg mt-5 max-w-md leading-relaxed">
@@ -363,6 +364,7 @@ export function PrismaTemplate(props: ProposalTemplateProps) {
         <p className="text-[11px] text-white/30 mt-10 tracking-wider">
           {t.proposalFooter} {d.numberLabel} · {d.companyName}
         </p>
+        <ProposalPlatformFooter company={company} dark />
         <Folio page={closingPage} />
       </section>
     </div>

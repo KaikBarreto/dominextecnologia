@@ -1,5 +1,6 @@
 import type { ProposalTemplateProps } from './types';
 import { getProposalSections } from './types';
+import { ProposalPlatformFooter } from './ProposalPlatformFooter';
 import { formatDateTime } from '@/lib/format';
 import { useLocaleFormatters } from '@/lib/format/hooks';
 import { MESSAGES } from '@/lib/i18n';
@@ -369,7 +370,7 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
       </section>
 
       {/* ====================== ENCERRAMENTO ====================== */}
-      <section className="au-page flex flex-col items-center justify-center text-center">
+      <section className="au-page flex flex-col items-center justify-center text-center" data-pdf-keep>
         <div
           className="h-1.5 w-20 rounded-full mb-8"
           style={{ background: `linear-gradient(90deg, ${BLUE}, ${VIOLET}, ${PINK})`, ...colorAdjust }}
@@ -403,6 +404,7 @@ export function AuroraTemplate(props: ProposalTemplateProps) {
         <p className="text-[11px] text-white/30 mt-10 tracking-wider">
           {t.proposalFooter} {d.numberLabel} · {d.companyName}
         </p>
+        <ProposalPlatformFooter company={company} dark />
         <Folio page={closingPage} />
       </section>
     </div>

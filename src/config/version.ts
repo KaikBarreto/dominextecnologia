@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.11";
+export const APP_VERSION = "1.39.12";
 
 export const VERSION_NOTES =
-  "Certificados de conformidade com identificação visual mais clara da empresa e rodapé institucional melhor posicionado.";
+  "Logo e site da Dominex com mais presença nos rodapés das propostas, com leitura adaptada ao celular e link clicável no PDF.";

@@ -318,7 +318,7 @@ function ProposalPublicContent({
         </Tooltip>
       </TooltipProvider>
 
-      <div className="max-w-3xl mx-auto py-8 px-4">
+      <div className="max-w-3xl mx-auto px-4 pt-8 pb-28 sm:pb-8">
         <div ref={proposalRef} className="print-area proposal-public-pages shadow-xl rounded-xl overflow-hidden">
           <ProposalRenderer quote={quote} company={company} templateSlug={templateSlug} customization={company?.proposal_customization} />
         </div>

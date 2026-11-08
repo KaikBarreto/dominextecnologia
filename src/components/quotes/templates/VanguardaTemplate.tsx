@@ -1,5 +1,6 @@
 import type { ProposalTemplateProps } from './types';
 import { getProposalSections } from './types';
+import { ProposalPlatformFooter } from './ProposalPlatformFooter';
 import { formatDateTime } from '@/lib/format';
 import { useLocaleFormatters } from '@/lib/format/hooks';
 import { MESSAGES } from '@/lib/i18n';
@@ -367,7 +368,7 @@ export function VanguardaTemplate(props: ProposalTemplateProps) {
       </section>
 
       {/* ====================== ENCERRAMENTO ====================== */}
-      <section className="vg-page flex flex-col items-center justify-center text-center">
+      <section className="vg-page flex flex-col items-center justify-center text-center" data-pdf-keep>
         <div className="h-1.5 w-20 rounded-full mb-8" style={{ background: brandGradient, ...colorAdjust }} />
         <h2 className="font-black tracking-tight text-white" style={{ fontSize: 'clamp(40px, 9vw, 60px)' }}>{t.thankYou}</h2>
         <p className="text-white/55 text-lg mt-4 max-w-md leading-relaxed">
@@ -395,6 +396,7 @@ export function VanguardaTemplate(props: ProposalTemplateProps) {
         <p className="text-[11px] text-white/30 mt-10 tracking-wider">
           {t.proposalFooter} {d.numberLabel} · {d.companyName}
         </p>
+        <ProposalPlatformFooter company={company} dark />
         <Folio page={closingPage} />
       </section>
     </div>
