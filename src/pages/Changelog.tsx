@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.11',
+    date: '8 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Acabamento dos certificados de conformidade',
+        description: 'A seção do contrato recebeu um ícone corporativo mais claro, e a assinatura “Gerado por Dominex” ganhou mais distância da borda para deixar o certificado visualmente mais equilibrado.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.39.10',
     date: '7 de novembro de 2026',
     type: 'patch',

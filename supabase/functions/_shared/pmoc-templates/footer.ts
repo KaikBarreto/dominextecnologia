@@ -180,7 +180,7 @@ export async function drawGeneratedByDominexFooter(
   const labelSize = opts.prominent ? 15.75 : 11.25;
   const logoWidth = opts.prominent ? 123 : 69;
   const gap = opts.prominent ? 13.5 : 9;
-  const bottom = opts.prominent ? 18 : 12;
+  const bottom = opts.prominent ? 30 : 12;
   const color = opts.dark ? rgb(1, 1, 1) : rgb(0, 0, 0);
 
   try {
