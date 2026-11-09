@@ -23,6 +23,8 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { applyWhiteLabelTheme } from '@/hooks/useWhiteLabel';
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
+import { cn } from '@/lib/utils';
+import { useLogoInk } from '@/hooks/useLogoInk';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
@@ -390,6 +392,7 @@ export default function Settings() {
       ? settings.white_label_logo_url
       : settings?.logo_url || null;
   const socialPreviewSource = socialDraftUrl || settings?.os_social_image_url || currentBrandLogo;
+  const logoInk = useLogoInk(settings?.logo_url);
 
   useEffect(() => {
     if (!socialEditorOpen || !currentBrandLogo) {
@@ -787,7 +790,15 @@ export default function Settings() {
 
                     {settings?.logo_url ? (
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                        <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-2xl bg-muted/40 p-3">
+                        <div
+                          className={cn(
+                            'flex h-28 w-28 shrink-0 items-center justify-center rounded-2xl p-3',
+                            // A prévia tem que mostrar o arquivo como ele é. Logo de
+                            // tinta escura sobre `bg-muted` sumia no tema escuro; aqui
+                            // o fundo acompanha a arte, igual ao menu.
+                            logoInk === 'dark' ? 'bg-white' : 'bg-muted/40'
+                          )}
+                        >
                           <img src={settings.logo_url} alt="Logo" className="max-h-full max-w-full object-contain" />
                         </div>
                         <div className="grid w-full gap-2 sm:w-auto">

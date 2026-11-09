@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.14',
+    date: '9 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Logo da empresa não ganha mais fundo preto ao ser enviado',
+        category: 'correcao',
+        description: 'Ao enviar um logo com fundo transparente, o sistema trocava esse fundo por preto, e as partes escuras da marca ficavam escondidas dentro dele. Agora o arquivo é guardado como você envia, com a transparência preservada. Se o seu logo já estava assim, basta enviá-lo de novo em Configurações.',
+      },
+      {
+        title: 'Marca de traço escuro aparece inteira no menu',
+        category: 'melhoria',
+        description: 'Logo de cores escuras ganha um fundo claro atrás no menu, na barra de topo e na prévia das Configurações, para ficar legível tanto no tema claro quanto no escuro.',
+      },
+    ],
+  },
+  {
     version: '1.39.13',
     date: '9 de novembro de 2026',
     type: 'patch',

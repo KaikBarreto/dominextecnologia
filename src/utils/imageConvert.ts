@@ -39,10 +39,50 @@ const JPEG_QUALITY = 0.82;
 const COMPRESS_THRESHOLD = 500 * 1024;
 
 /**
+ * Formatos que PODEM carregar canal alfa. JPEG/HEIC nunca carregam, então o
+ * caminho das FOTOS (o mais quente) nunca paga a amostragem de transparência.
+ */
+const ALPHA_CAPABLE = /^image\/(png|webp|gif|avif)$/i;
+const ALPHA_CAPABLE_EXT = /\.(png|webp|gif|avif)$/i;
+
+/**
+ * Detecta transparência REAL no arquivo (não basta o formato suportar alfa).
+ *
+ * Por que importa: `canvas.toBlob('image/jpeg')` não tem onde guardar o alfa e
+ * achata TODO pixel transparente em PRETO. Um logo PNG de fundo transparente
+ * subia virando uma placa preta — e as partes escuras da arte (texto cinza,
+ * traço fino) sumiam dentro dela, nos DOIS temas, porque o preto fica gravado
+ * no arquivo e não depende de CSS. Caso real: logo do cliente Victor Repara.
+ *
+ * Amostra 64x64 ESTICADO (sem respeitar proporção de propósito): só o alfa
+ * interessa, e esticar evita que a sobra do canvas — que nasce transparente —
+ * seja lida como transparência do próprio arquivo.
+ */
+function hasTransparency(img: HTMLImageElement): boolean {
+  try {
+    const probe = document.createElement('canvas');
+    probe.width = 64;
+    probe.height = 64;
+    const ctx = probe.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return true; // na dúvida, preserva o alfa
+    ctx.drawImage(img, 0, 0, probe.width, probe.height);
+    const { data } = ctx.getImageData(0, 0, probe.width, probe.height);
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] < 250) return true;
+    }
+    return false;
+  } catch {
+    return true; // canvas tainted / browser antigo: preserva o alfa
+  }
+}
+
+/**
  * Compresses and resizes an image file to JPEG.
  * - Resizes to max 1920px on the longest side
  * - Compresses to ~82% JPEG quality
  * - Skips compression for files under 500 KB that are already JPEG
+ * - Imagem COM transparência real é reencodada em PNG (nunca em JPEG), pra não
+ *   achatar o fundo transparente em preto
  */
 function compressImage(file: File, opts?: CompressOptions): Promise<File> {
   const maxDimension = opts?.maxDimension ?? MAX_DIMENSION;
@@ -84,6 +124,12 @@ function compressImage(file: File, opts?: CompressOptions): Promise<File> {
 
       ctx.drawImage(img, 0, 0, width, height);
 
+      const alphaCapable = ALPHA_CAPABLE.test(file.type || '')
+        || ALPHA_CAPABLE_EXT.test(file.name);
+      const keepAlpha = alphaCapable && hasTransparency(img);
+      const outType = keepAlpha ? 'image/png' : 'image/jpeg';
+      const outExt = keepAlpha ? '.png' : '.jpg';
+
       canvas.toBlob(
         (blob) => {
           if (!blob || blob.size >= file.size) {
@@ -91,11 +137,11 @@ function compressImage(file: File, opts?: CompressOptions): Promise<File> {
             resolve(file);
             return;
           }
-          const newName = file.name.replace(/\.[^.]+$/, '.jpg');
-          resolve(new File([blob], newName, { type: 'image/jpeg' }));
+          const newName = file.name.replace(/\.[^.]+$/, outExt);
+          resolve(new File([blob], newName, { type: outType }));
         },
-        'image/jpeg',
-        quality
+        outType,
+        keepAlpha ? undefined : quality
       );
     };
 

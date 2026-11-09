@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.13";
+export const APP_VERSION = "1.39.14";
 
 export const VERSION_NOTES =
-  "A lista de checklists ganhou as abas Ativos e Inativos: o checklist desativado não some mais da tela e volta a ser usado com um clique.";
+  "O logo da empresa deixa de ganhar um fundo preto ao ser enviado: o fundo transparente é preservado e a marca aparece inteira no menu, nos documentos e ao compartilhar.";
