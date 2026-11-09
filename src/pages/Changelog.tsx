@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.13',
+    date: '9 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Checklist desativado não some mais da tela',
+        category: 'correcao',
+        description: 'A lista de checklists passou a ter duas abas, Ativos e Inativos. Ao desativar um checklist ele muda de aba em vez de desaparecer, continua podendo ser aberto e volta a ficar disponível para as ordens de serviço pelo botão Reativar.',
+      },
+    ],
+  },
+  {
     version: '1.39.12',
     date: '8 de novembro de 2026',
     type: 'patch',

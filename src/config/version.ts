@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.12";
+export const APP_VERSION = "1.39.13";
 
 export const VERSION_NOTES =
-  "Logo e site da Dominex com mais presença nos rodapés das propostas, com leitura adaptada ao celular e link clicável no PDF.";
+  "A lista de checklists ganhou as abas Ativos e Inativos: o checklist desativado não some mais da tela e volta a ser usado com um clique.";
