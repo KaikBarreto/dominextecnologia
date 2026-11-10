@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.17',
+    date: '10 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Resumo do formulário enquanto você monta',
+        category: 'melhoria',
+        description: 'A tela de montar formulário passou a mostrar um resumo fixo do lado, com o título, a finalidade, quantos dados do cliente estão ligados, quantas perguntas você já criou e onde o formulário vai aparecer. No celular esse resumo fica numa barrinha no rodapé, que abre quando você toca. A tela também aproveita melhor o monitor, e os dados do cliente ficam em duas colunas.',
+      },
+    ],
+  },
+  {
     version: '1.39.16',
     date: '10 de novembro de 2026',
     type: 'patch',
