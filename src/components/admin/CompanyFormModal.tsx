@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -104,6 +104,8 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   const isEditing = !!company;
   const [activeTab, setActiveTab] = useState<CompanyFormSection>('basic');
   const [copied, setCopied] = useState(false);
+  const creationIdempotencyKeyRef = useRef<string | null>(null);
+  const submitLockRef = useRef(false);
 
   // ========== Queries ==========
   const { data: plans = [] } = useQuery({
@@ -232,7 +234,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
 
   // ========== Initialize on open ==========
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      creationIdempotencyKeyRef.current = null;
+      submitLockRef.current = false;
+      return;
+    }
     if (company) {
       setFormData({
         name: company.name || '',
@@ -267,6 +273,8 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       setCompanySegments(normalizeCompanySegments(company.segments, company.segment));
       setAddr(parseAddress(company.address));
     } else {
+      creationIdempotencyKeyRef.current = crypto.randomUUID();
+      submitLockRef.current = false;
       const defaultExpires = format(addDays(new Date(), 7), 'yyyy-MM-dd');
       setFormData({
         name: '', cnpj: '', email: '', phone: '', contact_name: '',
@@ -595,6 +603,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
             modules: modulesPayload,
             custom_price_note: customPriceNote,
             nfse_tier: parseInt(formData.nfse_tier) || 1,
+            idempotency_key: creationIdempotencyKeyRef.current ??= crypto.randomUUID(),
           },
           headers: { Authorization: `Bearer ${session.session.access_token}` },
         });
@@ -606,12 +615,16 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       }
     },
     onSuccess: () => {
+      creationIdempotencyKeyRef.current = null;
       toast({ title: isEditing ? 'Empresa atualizada!' : 'Empresa criada com sucesso!' });
       queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
       if (company?.id) queryClient.invalidateQueries({ queryKey: ['company-modules', company.id] });
       onSuccess();
     },
     onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
+    onSettled: () => {
+      submitLockRef.current = false;
+    },
   });
 
   // ========== Validation by tab ==========
@@ -638,6 +651,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitLockRef.current || mutation.isPending) return;
     // Validate all tabs and jump to first failing
     const tabs: CompanyFormSection[] = isEditing ? ['basic', 'commercial'] : ['basic', 'commercial', 'access'];
     for (const t of tabs) {
@@ -648,6 +662,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         return;
       }
     }
+    submitLockRef.current = true;
     mutation.mutate();
   };
 

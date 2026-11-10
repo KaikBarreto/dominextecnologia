@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.19";
+export const APP_VERSION = "1.39.20";
 
 export const VERSION_NOTES =
-  "Usuários autorizados voltaram a criar empresas pelo painel comercial, e links de teste ou venda sempre acompanham a configuração escolhida.";
+  "O cadastro de empresas agora evita duplicações mesmo com cliques repetidos, lentidão ou reenvio da mesma tentativa.";

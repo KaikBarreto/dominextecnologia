@@ -1441,6 +1441,9 @@ export type Database = {
           complement: string | null
           contact_name: string | null
           created_at: string | null
+          creation_completed_at: string | null
+          creation_idempotency_key: string | null
+          creation_requested_by: string | null
           custom_price: number | null
           custom_price_months: number | null
           custom_price_payments_made: number
@@ -1508,6 +1511,9 @@ export type Database = {
           complement?: string | null
           contact_name?: string | null
           created_at?: string | null
+          creation_completed_at?: string | null
+          creation_idempotency_key?: string | null
+          creation_requested_by?: string | null
           custom_price?: number | null
           custom_price_months?: number | null
           custom_price_payments_made?: number
@@ -1575,6 +1581,9 @@ export type Database = {
           complement?: string | null
           contact_name?: string | null
           created_at?: string | null
+          creation_completed_at?: string | null
+          creation_idempotency_key?: string | null
+          creation_requested_by?: string | null
           custom_price?: number | null
           custom_price_months?: number | null
           custom_price_payments_made?: number
@@ -19881,6 +19890,10 @@ export type Database = {
       reserve_quote_number: {
         Args: { p_company_id: string; p_request_id: string; p_user_id: string }
         Returns: Json
+      }
+      rollback_admin_company_creation: {
+        Args: { p_company_id: string; p_idempotency_key: string }
+        Returns: boolean
       }
       reset_service_order: {
         Args: { _clear_responses?: boolean; _service_order_id: string }

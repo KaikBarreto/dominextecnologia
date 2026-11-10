@@ -9,6 +9,10 @@ const form = readFileSync(
   `${process.cwd()}/src/components/admin/CompanyFormModal.tsx`,
   'utf8',
 );
+const idempotencyMigration = readFileSync(
+  `${process.cwd()}/supabase/migrations/20261110150000_admin_company_creation_idempotency.sql`,
+  'utf8',
+);
 
 describe('autorizacao da criacao administrativa de empresas', () => {
   it('aceita super-admin ou a permissao granular de empresas', () => {
@@ -40,5 +44,21 @@ describe('autorizacao da criacao administrativa de empresas', () => {
   it('le o corpo real do FunctionsHttpError pelo helper compartilhado', () => {
     expect(form).toContain('const edgeMessage = await getInvokeErrorMessage(error);');
     expect(form).not.toContain('JSON.parse(error.context.body)');
+  });
+
+  it('impede criacoes concorrentes no cliente e no servidor', () => {
+    expect(form).toContain('submitLockRef.current');
+    expect(form).toContain('idempotency_key: creationIdempotencyKeyRef.current ??= crypto.randomUUID()');
+    expect(edge).toContain(".eq('creation_idempotency_key', creationIdempotencyKey)");
+    expect(edge).toContain('creation_completed_at');
+    expect(edge.indexOf('auth.admin.createUser')).toBeLessThan(edge.indexOf('// 1. Create the company.'));
+  });
+
+  it('mantem rollback de criacao incompleta restrito ao service role', () => {
+    expect(edge).toContain("supabaseAdmin.rpc('rollback_admin_company_creation'");
+    expect(idempotencyMigration).toContain('companies_creation_idempotency_key_uidx');
+    expect(idempotencyMigration).toContain('creation_completed_at IS NULL');
+    expect(idempotencyMigration).toContain('FROM PUBLIC, anon, authenticated');
+    expect(idempotencyMigration).toContain('TO service_role');
   });
 });

@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.20',
+    date: '10 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastro de empresa não duplica mais',
+        category: 'correcao',
+        description: 'Cliques repetidos, lentidão da internet ou o reenvio da mesma tentativa agora resultam em uma única empresa. Se alguma etapa obrigatória falhar, o cadastro incompleto e o acesso criado durante a tentativa são removidos automaticamente.',
+      },
+    ],
+  },
+  {
     version: '1.39.19',
     date: '10 de novembro de 2026',
     type: 'patch',
