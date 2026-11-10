@@ -8,6 +8,10 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+  status,
+  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+})
 
 function normalizeSegments(value: unknown, fallback: unknown): string[] {
   const raw = Array.isArray(value) ? value : []
@@ -85,34 +89,34 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    // Verify caller is super_admin
+    // Esta edge usa service role e cria tenant + usuario. A autorizacao precisa
+    // acontecer antes de ler/processar o payload e falhar fechada se qualquer
+    // uma das verificacoes nao puder ser concluida.
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    if (!authHeader?.startsWith('Bearer ')) return json({ error: 'Não autenticado.' }, 401)
+
+    const { data: { user: caller }, error: authError } = await supabaseAdmin.auth.getUser(authHeader.slice(7))
+    if (authError || !caller) return json({ error: 'Não autenticado.' }, 401)
+
+    const [superAdminResult, companyPermissionResult] = await Promise.all([
+      supabaseAdmin.rpc('has_role', {
+        _user_id: caller.id,
+        _role: 'super_admin',
+      }),
+      supabaseAdmin.rpc('has_admin_permission', {
+        _user_id: caller.id,
+        _permission: 'admin_empresas',
+      }),
+    ])
+    if (superAdminResult.error || companyPermissionResult.error) {
+      console.error('[create-company] Falha ao validar permissao do solicitante', {
+        role: superAdminResult.error?.message,
+        permission: companyPermissionResult.error?.message,
       })
+      return json({ error: 'Não foi possível validar sua permissão para criar empresas. Tente novamente.' }, 503)
     }
-
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user: caller } } = await supabaseAdmin.auth.getUser(token)
-    if (!caller) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    const { data: hasRole } = await supabaseAdmin.rpc('has_role', {
-      _user_id: caller.id,
-      _role: 'super_admin',
-    })
-
-    if (!hasRole) {
-      return new Response(JSON.stringify({ error: 'Forbidden: requires super_admin role' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+    if (!superAdminResult.data && !companyPermissionResult.data) {
+      return json({ error: 'Você não tem permissão para criar empresas.' }, 403)
     }
 
     const body = await req.json()
@@ -162,7 +166,7 @@ Deno.serve(async (req) => {
     const normalizedSegments = normalizeSegments(segments, segment)
 
     if (!company_name || !admin_email || !admin_password) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+      return new Response(JSON.stringify({ error: 'Nome da empresa, e-mail e senha do administrador são obrigatórios.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -444,7 +448,10 @@ Deno.serve(async (req) => {
       // Rollback: delete the company
       await supabaseAdmin.from('companies').delete().eq('id', company.id)
       const isDuplicate = userError.message.toLowerCase().includes('already') || userError.message.toLowerCase().includes('duplicate')
-      const msg = isDuplicate ? 'Este e-mail já está cadastrado no sistema.' : userError.message
+      console.error('[create-company] Falha ao criar usuário administrador:', userError.message)
+      const msg = isDuplicate
+        ? 'Este e-mail já está cadastrado no sistema.'
+        : 'Não foi possível criar o acesso do administrador. Tente novamente.'
       return new Response(JSON.stringify({ error: msg }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -591,9 +598,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Erro interno'
     console.error('create-company error:', error)
-    return new Response(JSON.stringify({ error: message }), {
+    return new Response(JSON.stringify({ error: 'Não foi possível criar a empresa. Tente novamente.' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
