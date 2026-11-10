@@ -13,6 +13,12 @@ import { CepLookup } from '@/components/CepLookup';
 import { resolvePrimaryContrast } from '@/hooks/useWhiteLabel';
 import { cpfCnpjMask, phoneMask, cepMask } from '@/utils/masks';
 import { compressSelfie } from '@/utils/imageConvert';
+import { PublicFormQuestionField, publicFormQuestionDomId } from '@/components/forms/PublicFormQuestionField';
+import { uploadPublicFormFile } from '@/utils/publicFormUpload';
+import {
+  buildAnswersPayload, parsePublicFormQuestions, validatePublicFormAnswers,
+  type PublicFormAnswers, type PublicFormAnswerValue,
+} from '@/lib/publicFormQuestions';
 
 // -----------------------------------------------------------------------------
 // Tipos do contrato do backend (RPC get_lead_capture_form).
@@ -32,6 +38,11 @@ interface FormPayload {
   consent_text: string | null;
   is_active: boolean;
   expired: boolean;
+  /** `lead` cria cliente (comportamento de sempre); `generic` só coleta respostas. */
+  purpose?: 'lead' | 'generic';
+  success_message?: string | null;
+  /** Perguntas personalizadas; normalizadas por `parsePublicFormQuestions`. */
+  questions?: unknown;
 }
 
 interface CompanySettingsPayload {
@@ -65,8 +76,12 @@ function normalizeLang(l?: string | null): Lang {
 const UI = {
   'pt-br': {
     submit: 'Enviar cadastro', sending: 'Enviando...',
+    submitGeneric: 'Enviar respostas',
     successTitle: 'Cadastro enviado com sucesso',
     successBody: 'Recebemos seus dados. Em breve entraremos em contato.',
+    successTitleGeneric: 'Respostas enviadas com sucesso',
+    successBodyGeneric: 'Recebemos suas respostas. Obrigado!',
+    uploadWaitMsg: 'Aguarde o envio do arquivo terminar.',
     notFoundTitle: 'Formulário não encontrado',
     notFoundBody: 'Confira o link e tente novamente.',
     unavailableTitle: 'Formulário indisponível',
@@ -84,8 +99,12 @@ const UI = {
   },
   en: {
     submit: 'Submit', sending: 'Sending...',
+    submitGeneric: 'Submit answers',
     successTitle: 'Registration sent successfully',
     successBody: 'We received your details. We will contact you soon.',
+    successTitleGeneric: 'Answers sent successfully',
+    successBodyGeneric: 'We received your answers. Thank you!',
+    uploadWaitMsg: 'Please wait for the file to finish uploading.',
     notFoundTitle: 'Form not found',
     notFoundBody: 'Please check the link and try again.',
     unavailableTitle: 'Form unavailable',
@@ -103,8 +122,12 @@ const UI = {
   },
   es: {
     submit: 'Enviar', sending: 'Enviando...',
+    submitGeneric: 'Enviar respuestas',
     successTitle: 'Registro enviado con éxito',
     successBody: 'Recibimos tus datos. Pronto nos pondremos en contacto.',
+    successTitleGeneric: 'Respuestas enviadas con éxito',
+    successBodyGeneric: 'Recibimos tus respuestas. ¡Gracias!',
+    uploadWaitMsg: 'Espera a que el archivo termine de subir.',
     notFoundTitle: 'Formulario no encontrado',
     notFoundBody: 'Verifica el enlace e inténtalo de nuevo.',
     unavailableTitle: 'Formulario no disponible',
@@ -122,8 +145,12 @@ const UI = {
   },
   fr: {
     submit: 'Envoyer', sending: 'Envoi...',
+    submitGeneric: 'Envoyer les réponses',
     successTitle: 'Inscription envoyée avec succès',
     successBody: 'Nous avons reçu vos informations. Nous vous contacterons bientôt.',
+    successTitleGeneric: 'Réponses envoyées avec succès',
+    successBodyGeneric: 'Nous avons reçu vos réponses. Merci !',
+    uploadWaitMsg: 'Veuillez attendre la fin de l`envoi du fichier.',
     notFoundTitle: 'Formulaire introuvable',
     notFoundBody: 'Vérifiez le lien et réessayez.',
     unavailableTitle: 'Formulaire indisponible',
@@ -206,6 +233,15 @@ export default function PublicLeadCapture() {
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const honeypotRef = useRef('');
+
+  // ── Perguntas personalizadas ──
+  // `answers` guarda o valor bruto por question.id; `answerError` é o PRIMEIRO
+  // problema apontado por validatePublicFormAnswers (um campo por vez). Foto e
+  // assinatura sobem na hora (edge de upload) e guardam só a URL; `busyUploads`
+  // segura o botão de envio enquanto algum ainda está subindo.
+  const [answers, setAnswers] = useState<PublicFormAnswers>({});
+  const [answerError, setAnswerError] = useState<{ questionId: string | null; message: string } | null>(null);
+  const [busyUploads, setBusyUploads] = useState<Set<string>>(() => new Set());
 
   // ── Foto: upload acontece ao selecionar (ANTES do envio), não no submit. ──
   // `photoUrl` só fica preenchida quando o upload teve sucesso — é o único
@@ -293,9 +329,31 @@ export default function PublicLeadCapture() {
   const form = result?.form ?? null;
   const cs = result?.company_settings ?? null;
   const config = form?.field_config ?? {};
+  const isGeneric = form?.purpose === 'generic';
+  const questions = useMemo(() => parsePublicFormQuestions(form?.questions), [form?.questions]);
 
   const enabledFields = FIELD_ORDER.filter((k) => config[k]?.enabled);
-  const isRequired = (k: FieldKey) => !!config[k]?.required;
+  // Formulário genérico não cadastra cliente: os campos de cadastro, se algum
+  // estiver ligado, são só complemento e nunca bloqueiam o envio (o servidor
+  // também não exige).
+  const isRequired = (k: FieldKey) => !isGeneric && !!config[k]?.required;
+
+  const setAnswer = (questionId: string, value: PublicFormAnswerValue) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: value }));
+    setAnswerError((prev) => (prev?.questionId === questionId ? null : prev));
+  };
+  const setUploadBusy = (questionId: string, busy: boolean) => {
+    setBusyUploads((prev) => {
+      if (prev.has(questionId) === busy) return prev;
+      const next = new Set(prev);
+      if (busy) next.add(questionId); else next.delete(questionId);
+      return next;
+    });
+  };
+  const handleUploadFile = useCallback(
+    (dataUrl: string) => uploadPublicFormFile(shortCode, dataUrl),
+    [shortCode],
+  );
 
   const setValue = (k: FieldKey, v: string) => setValues((prev) => ({ ...prev, [k]: v }));
 
@@ -382,8 +440,14 @@ export default function PublicLeadCapture() {
     if (!form) return;
     setErrorMsg(null);
 
+    setAnswerError(null);
+
     if (photoUploading) {
       setErrorMsg(ui.photoWaitMsg);
+      return;
+    }
+    if (busyUploads.size > 0) {
+      setErrorMsg(ui.uploadWaitMsg);
       return;
     }
 
@@ -401,6 +465,17 @@ export default function PublicLeadCapture() {
         setErrorMsg(ui.requiredMsg);
         return;
       }
+    }
+    // Perguntas personalizadas: mesma régua do servidor, destaca o 1º campo ruim.
+    const validation = validatePublicFormAnswers(questions, answers);
+    if (!validation.ok) {
+      setAnswerError({ questionId: validation.questionId, message: validation.message });
+      setErrorMsg(validation.message);
+      if (validation.questionId) {
+        document.getElementById(publicFormQuestionDomId(validation.questionId))
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
     }
     if (form.require_consent && !consent) {
       setErrorMsg(ui.consentMsg);
@@ -424,6 +499,7 @@ export default function PublicLeadCapture() {
           short_code: shortCode,
           fields,
           consent: form.require_consent ? consent : true,
+          answers: buildAnswersPayload(questions, answers),
           honeypot: honeypotRef.current,
         },
       });
@@ -487,8 +563,12 @@ export default function PublicLeadCapture() {
     return (
       <CenterCard>
         <CheckCircle2 className="mb-3 h-14 w-14 text-emerald-600" />
-        <h1 className="text-lg font-semibold">{ui.successTitle}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{ui.successBody}</p>
+        <h1 className="text-lg font-semibold">
+          {isGeneric ? ui.successTitleGeneric : ui.successTitle}
+        </h1>
+        <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">
+          {form.success_message?.trim() || (isGeneric ? ui.successBodyGeneric : ui.successBody)}
+        </p>
       </CenterCard>
     );
   }
@@ -666,6 +746,24 @@ export default function PublicLeadCapture() {
               );
             })}
 
+            {questions.length > 0 ? (
+              <div className="space-y-4">
+                {questions.map((question) => (
+                  <PublicFormQuestionField
+                    key={question.id}
+                    question={question}
+                    value={answers[question.id]}
+                    onChange={(v) => setAnswer(question.id, v)}
+                    error={answerError?.questionId === question.id ? answerError.message : null}
+                    disabled={submitting}
+                    lang={cs?.language}
+                    onUploadFile={handleUploadFile}
+                    onBusyChange={(busy) => setUploadBusy(question.id, busy)}
+                  />
+                ))}
+              </div>
+            ) : null}
+
             {form.require_consent ? (
               <label className="flex items-start gap-2.5 rounded-lg border p-3">
                 <Checkbox
@@ -686,9 +784,9 @@ export default function PublicLeadCapture() {
               </div>
             ) : null}
 
-            <Button type="submit" className="w-full gap-2" disabled={submitting || photoUploading}>
+            <Button type="submit" className="w-full gap-2" disabled={submitting || photoUploading || busyUploads.size > 0}>
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {submitting ? ui.sending : ui.submit}
+              {submitting ? ui.sending : isGeneric ? ui.submitGeneric : ui.submit}
             </Button>
           </form>
         </div>

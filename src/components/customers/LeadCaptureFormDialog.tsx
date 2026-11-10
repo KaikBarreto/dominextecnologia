@@ -1,14 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link2, Loader2 } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { useToast } from '@/hooks/use-toast';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import { buildSlugSegment } from '@/utils/prettyLinks';
 import {
   LEAD_CAPTURE_FIELDS,
@@ -17,35 +21,27 @@ import {
   type LeadCaptureForm,
   type LeadCaptureFormInput,
 } from '@/hooks/useLeadCaptureForms';
+import {
+  toQuestionDraft,
+  usePublicFormQuestions,
+  type PublicFormQuestionDraft,
+} from '@/hooks/usePublicFormQuestions';
+import { PublicFormQuestionsEditor } from '@/components/forms/PublicFormQuestionsEditor';
 
-const FIELD_LABELS: Record<LeadCaptureFieldKey, string> = {
-  name: 'Nome',
-  customer_type: 'Tipo de cliente (PF/PJ)',
-  document: 'CPF / CNPJ',
-  email: 'E-mail',
-  phone: 'Telefone',
-  celular: 'Celular',
-  company_name: 'Razão social',
-  nome_fantasia: 'Nome fantasia',
-  zip_code: 'CEP',
-  address: 'Endereço',
-  address_number: 'Número',
-  neighborhood: 'Bairro',
-  complement: 'Complemento',
-  city: 'Cidade',
-  state: 'Estado (UF)',
-  notes: 'Observações',
-  photo_url: 'Foto',
-};
-
-const DEFAULT_CONSENT_TEXT =
-  'Autorizo o contato e o tratamento dos meus dados para fins de atendimento, conforme a Lei Geral de Proteção de Dados (LGPD).';
+type BuilderTab = 'customer' | 'questions' | 'publish';
+type FormPurpose = 'lead' | 'generic';
 
 interface LeadCaptureFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   form: LeadCaptureForm | null;
-  onSubmit: (data: LeadCaptureFormInput) => Promise<void> | void;
+  /**
+   * Grava o formulário e devolve o registro salvo. `formId` é o id já gravado
+   * (edição, ou criação que o próprio diálogo já concluiu numa tentativa
+   * anterior), `null` quando ainda precisa criar. Assim um "Salvar" que falha
+   * nas perguntas e é repetido não cria o formulário em duplicata.
+   */
+  onSubmit: (data: LeadCaptureFormInput, formId: string | null) => Promise<LeadCaptureForm>;
   isLoading?: boolean;
 }
 
@@ -83,26 +79,67 @@ export function LeadCaptureFormDialog({
   isLoading,
 }: LeadCaptureFormDialogProps) {
   const { toast } = useToast();
-  const [tab, setTab] = useState('geral');
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.customers.leadFormBuilder;
+
+  const [tab, setTab] = useState<BuilderTab>('customer');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [purpose, setPurpose] = useState<FormPurpose>('lead');
+  const [showInPortal, setShowInPortal] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [expiresAt, setExpiresAt] = useState('');
+  const [maxSubmissions, setMaxSubmissions] = useState('');
   const [requireConsent, setRequireConsent] = useState(true);
   const [consentText, setConsentText] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [fieldConfig, setFieldConfig] = useState<LeadCaptureFieldConfig>(buildInitialConfig(null));
+  const [drafts, setDrafts] = useState<PublicFormQuestionDraft[]>([]);
+  // Só vira true depois que as perguntas gravadas foram carregadas pro editor.
+  // Sem isso, salvar um formulário cujas perguntas ainda não chegaram apagaria todas.
+  const [draftsReady, setDraftsReady] = useState(false);
+  const [saving, setSaving] = useState(false);
+  // Id gravado por uma tentativa de "Salvar" que criou o formulário mas falhou depois.
+  const createdFormIdRef = useRef<string | null>(null);
+
+  const savedFormId = form?.id ?? null;
+  const {
+    questions: savedQuestions,
+    isSuccess: questionsLoaded,
+    isFetching: questionsFetching,
+    isError: questionsError,
+    refetch: refetchQuestions,
+    saveQuestions,
+  } = usePublicFormQuestions(open ? savedFormId : null);
 
   useEffect(() => {
     if (!open) return;
-    setTab('geral');
+    setTab('customer');
     setTitle(form?.title ?? '');
     setDescription(form?.description ?? '');
+    setPurpose(form?.purpose === 'generic' ? 'generic' : 'lead');
+    setShowInPortal(form?.show_in_customer_portal ?? false);
     setIsActive(form?.is_active ?? true);
     setExpiresAt(isoToLocalInput(form?.expires_at));
+    setMaxSubmissions(form?.max_submissions ? String(form.max_submissions) : '');
     setRequireConsent(form?.require_consent ?? true);
     setConsentText(form?.consent_text ?? '');
+    setSuccessMessage(form?.success_message ?? '');
     setFieldConfig(buildInitialConfig(form));
+    setDrafts([]);
+    setDraftsReady(!form);
+    createdFormIdRef.current = null;
   }, [open, form]);
+
+  // Edição: carrega as perguntas gravadas UMA vez por abertura (esperando o
+  // refetch terminar pra não partir de cache velho).
+  useEffect(() => {
+    if (!open || !form || draftsReady) return;
+    if (questionsLoaded && !questionsFetching) {
+      setDrafts(savedQuestions.map(toQuestionDraft));
+      setDraftsReady(true);
+    }
+  }, [open, form, draftsReady, questionsLoaded, questionsFetching, savedQuestions]);
 
   const setField = (key: LeadCaptureFieldKey, patch: Partial<{ enabled: boolean; required: boolean }>) => {
     setFieldConfig((prev) => {
@@ -118,30 +155,38 @@ export function LeadCaptureFormDialog({
     if (!form?.short_code) {
       toast({
         variant: 'destructive',
-        title: 'Salve o formulário primeiro',
-        description: 'O link é gerado depois que o formulário é criado.',
+        title: t.saveFirstTitle,
+        description: t.saveFirstDesc,
       });
       return;
     }
     const segment = buildSlugSegment([form.title], form.short_code, 'cadastro');
     const url = `${window.location.origin}/cadastro/${segment}`;
     navigator.clipboard?.writeText(url).then(
-      () => toast({ title: 'Link gerado e copiado!' }),
-      () => toast({ title: 'Link gerado', description: url }),
+      () => toast({ title: t.linkCopied }),
+      () => toast({ title: t.linkGenerated, description: url }),
     );
   };
 
   const handleSave = async () => {
     if (!title.trim()) {
-      setTab('geral');
-      toast({ variant: 'destructive', title: 'Informe um título para o formulário' });
+      setTab('publish');
+      toast({ variant: 'destructive', title: t.errTitleRequired });
       return;
     }
-    // Garante ao menos um campo habilitado.
-    const anyEnabled = Object.values(fieldConfig).some((f) => f?.enabled);
-    if (!anyEnabled) {
-      setTab('campos');
-      toast({ variant: 'destructive', title: 'Habilite ao menos um campo do formulário' });
+    const anyFieldEnabled = Object.values(fieldConfig).some((f) => f?.enabled);
+    if (purpose === 'lead' && !anyFieldEnabled) {
+      setTab('customer');
+      toast({ variant: 'destructive', title: t.errNoField });
+      return;
+    }
+    if (purpose === 'generic' && !anyFieldEnabled && drafts.length === 0) {
+      setTab('questions');
+      toast({ variant: 'destructive', title: t.errNothingToAsk });
+      return;
+    }
+    if (!draftsReady) {
+      toast({ variant: 'destructive', title: t.errQuestionsNotLoaded });
       return;
     }
 
@@ -151,153 +196,247 @@ export function LeadCaptureFormDialog({
       if (f?.enabled) cleanConfig[key] = { enabled: true, required: !!f.required };
     }
 
-    await onSubmit({
-      title: title.trim(),
-      description: description.trim() || null,
-      field_config: cleanConfig,
-      is_active: isActive,
-      expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
-      require_consent: requireConsent,
-      consent_text: requireConsent ? consentText.trim() || null : null,
-    });
-    onOpenChange(false);
+    const parsedMax = Number.parseInt(maxSubmissions, 10);
+
+    setSaving(true);
+    try {
+      const saved = await onSubmit(
+        {
+          title: title.trim(),
+          description: description.trim() || null,
+          field_config: cleanConfig,
+          is_active: isActive,
+          expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
+          require_consent: requireConsent,
+          consent_text: requireConsent ? consentText.trim() || null : null,
+          max_submissions: Number.isFinite(parsedMax) && parsedMax > 0 ? parsedMax : null,
+          purpose,
+          show_in_customer_portal: showInPortal,
+          success_message: successMessage.trim() || null,
+        },
+        savedFormId ?? createdFormIdRef.current,
+      );
+      if (!savedFormId) createdFormIdRef.current = saved.id;
+
+      await saveQuestions.mutateAsync({ formId: saved.id, questions: drafts });
+      onOpenChange(false);
+    } catch {
+      // Os toasts de erro já saem nos hooks; o diálogo fica aberto pra tentar de novo.
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const busy = saving || !!isLoading || saveQuestions.isPending;
 
   return (
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title={form ? 'Editar formulário' : 'Novo formulário de captação'}
-      description="Compartilhe um link público para o cliente se cadastrar sozinho."
+      title={form ? t.dialogTitleEdit : t.dialogTitleNew}
+      description={t.dialogDesc}
       footer={
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
           {form?.short_code ? (
             <Button type="button" variant="outline" onClick={handleCopyLink} className="gap-2">
               <Link2 className="h-4 w-4" />
-              Gerar e copiar link
+              {t.copyLinkBtn}
             </Button>
           ) : (
             <span />
           )}
-          <Button onClick={handleSave} disabled={isLoading} className="gap-2">
-            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Salvar
+          <Button onClick={handleSave} disabled={busy} className="gap-2">
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+            {t.saveBtn}
           </Button>
         </div>
       }
     >
-      <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList variant="underline" className="grid w-full grid-cols-3">
-          <TabsTrigger variant="underline" value="geral">Geral</TabsTrigger>
-          <TabsTrigger variant="underline" value="campos">Campos</TabsTrigger>
-          <TabsTrigger variant="underline" value="lgpd">LGPD</TabsTrigger>
-        </TabsList>
+      <div className="space-y-4">
+        <MobilePillTabs
+          variant="underline"
+          level="section"
+          tabs={[
+            { value: 'customer', label: t.tabCustomer },
+            { value: 'questions', label: t.tabQuestions, sublabel: drafts.length > 0 ? String(drafts.length) : undefined },
+            { value: 'publish', label: t.tabPublish },
+          ]}
+          activeTab={tab}
+          onTabChange={(value) => setTab(value as BuilderTab)}
+        />
 
-        <TabsContent value="geral" className="space-y-4 pt-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="lcf-title">Título</Label>
-            <Input
-              id="lcf-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex.: Cadastro de novos clientes"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="lcf-desc">Descrição (opcional)</Label>
-            <Textarea
-              id="lcf-desc"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Texto que aparece no topo do formulário público"
-              rows={3}
-            />
-          </div>
-          <div className="flex items-center justify-between rounded-lg border p-3">
-            <div>
-              <p className="text-sm font-medium">Formulário ativo</p>
-              <p className="text-xs text-muted-foreground">Desative para pausar os cadastros sem apagar o link.</p>
-            </div>
-            <Switch checked={isActive} onCheckedChange={setIsActive} aria-label="Formulário ativo" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="lcf-expires">Expira em (opcional)</Label>
-            {/* Opcional (expires_at vira null se vazio), por isso clearable */}
-            <DateTimePicker
-              id="lcf-expires"
-              value={expiresAt}
-              onValueChange={setExpiresAt}
-              placeholder="dd/mm/aaaa --:--"
-              clearable
-            />
-            <p className="text-xs text-muted-foreground">Depois dessa data o link deixa de aceitar cadastros.</p>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="campos" className="pt-2">
-          <p className="mb-3 text-xs text-muted-foreground">
-            Escolha quais campos aparecem no formulário e quais são obrigatórios.
-          </p>
-          <div className="rounded-xl border bg-card">
-            {LEAD_CAPTURE_FIELDS.map((key, idx) => {
-              const f = fieldConfig[key] ?? { enabled: false, required: false };
-              return (
-                <div
-                  key={key}
-                  className={`flex items-center justify-between gap-3 px-3 py-3 ${idx > 0 ? 'border-t' : ''}`}
-                >
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{FIELD_LABELS[key]}</span>
-                  <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <span>Exibir</span>
-                      <Switch
-                        checked={f.enabled}
-                        onCheckedChange={(v) => setField(key, { enabled: v })}
-                        aria-label={`Exibir ${FIELD_LABELS[key]}`}
-                      />
-                    </label>
-                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <span>Obrigatório</span>
-                      <Switch
-                        checked={f.required}
-                        disabled={!f.enabled}
-                        onCheckedChange={(v) => setField(key, { required: v })}
-                        aria-label={`${FIELD_LABELS[key]} obrigatório`}
-                      />
-                    </label>
+        {tab === 'customer' && (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              {purpose === 'lead' ? t.customerIntro : t.customerIntroGeneric}
+            </p>
+            <div className="rounded-xl border bg-card">
+              {LEAD_CAPTURE_FIELDS.map((key, idx) => {
+                const f = fieldConfig[key] ?? { enabled: false, required: false };
+                const label = t.fieldLabels[key];
+                return (
+                  <div
+                    key={key}
+                    className={`flex items-center justify-between gap-3 px-3 py-3 ${idx > 0 ? 'border-t' : ''}`}
+                  >
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span>{t.fieldShow}</span>
+                        <Switch
+                          checked={f.enabled}
+                          onCheckedChange={(v) => setField(key, { enabled: v })}
+                          aria-label={`${t.fieldShow} ${label}`}
+                        />
+                      </label>
+                      <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span>{t.fieldRequired}</span>
+                        <Switch
+                          checked={f.required}
+                          disabled={!f.enabled}
+                          onCheckedChange={(v) => setField(key, { required: v })}
+                          aria-label={`${label}: ${t.fieldRequired}`}
+                        />
+                      </label>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </TabsContent>
+        )}
 
-        <TabsContent value="lgpd" className="space-y-4 pt-2">
-          <div className="flex items-center justify-between rounded-lg border p-3">
-            <div>
-              <p className="text-sm font-medium">Exigir consentimento</p>
+        {tab === 'questions' && (
+          <>
+            {!draftsReady && questionsError ? (
+              <div className="space-y-3 py-6 text-center">
+                <p className="text-sm text-muted-foreground">{t.questionsLoadError}</p>
+                <Button type="button" variant="outline" size="sm" onClick={() => refetchQuestions()}>
+                  {t.retry}
+                </Button>
+              </div>
+            ) : !draftsReady ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <PublicFormQuestionsEditor questions={drafts} onChange={setDrafts} />
+            )}
+          </>
+        )}
+
+        {tab === 'publish' && (
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="lcf-title">{t.pubTitleLabel}</Label>
+              <Input
+                id="lcf-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={t.pubTitlePlaceholder}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="lcf-desc">{t.pubDescLabel}</Label>
+              <Textarea
+                id="lcf-desc"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={t.pubDescPlaceholder}
+                rows={3}
+              />
+            </div>
+
+            <div className="flex flex-col items-start gap-2">
+              <Label>{t.purposeLabel}</Label>
+              <LabeledSwitch<FormPurpose>
+                value={purpose}
+                onChange={setPurpose}
+                off={{ value: 'generic', label: t.purposeOffLabel }}
+                on={{ value: 'lead', label: t.purposeOnLabel }}
+                size="default"
+                aria-label={t.purposeLabel}
+              />
               <p className="text-xs text-muted-foreground">
-                O cliente precisa marcar a caixa de aceite antes de enviar (recomendado).
+                {purpose === 'lead' ? t.purposeLeadDesc : t.purposeGenericDesc}
               </p>
             </div>
-            <Switch checked={requireConsent} onCheckedChange={setRequireConsent} aria-label="Exigir consentimento" />
+
+            <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{t.activeTitle}</p>
+                <p className="text-xs text-muted-foreground">{t.activeDesc}</p>
+              </div>
+              <Switch checked={isActive} onCheckedChange={setIsActive} aria-label={t.activeTitle} />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{t.portalTitle}</p>
+                <p className="text-xs text-muted-foreground">{t.portalDesc}</p>
+              </div>
+              <Switch checked={showInPortal} onCheckedChange={setShowInPortal} aria-label={t.portalTitle} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="lcf-expires">{t.expiresLabel}</Label>
+              {/* Opcional (expires_at vira null se vazio), por isso clearable */}
+              <DateTimePicker
+                id="lcf-expires"
+                value={expiresAt}
+                onValueChange={setExpiresAt}
+                placeholder="dd/mm/aaaa --:--"
+                clearable
+              />
+              <p className="text-xs text-muted-foreground">{t.expiresHint}</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="lcf-max">{t.maxLabel}</Label>
+              <NumericInput
+                id="lcf-max"
+                value={maxSubmissions}
+                onValueChange={setMaxSubmissions}
+                placeholder={t.maxPlaceholder}
+              />
+              <p className="text-xs text-muted-foreground">{t.maxHint}</p>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{t.consentTitle}</p>
+                <p className="text-xs text-muted-foreground">{t.consentDesc}</p>
+              </div>
+              <Switch checked={requireConsent} onCheckedChange={setRequireConsent} aria-label={t.consentTitle} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="lcf-consent">{t.consentTextLabel}</Label>
+              <Textarea
+                id="lcf-consent"
+                value={consentText}
+                onChange={(e) => setConsentText(e.target.value)}
+                placeholder={t.consentDefault}
+                rows={3}
+                disabled={!requireConsent}
+              />
+              <p className="text-xs text-muted-foreground">{t.consentHint}</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="lcf-success">{t.successLabel}</Label>
+              <Textarea
+                id="lcf-success"
+                value={successMessage}
+                onChange={(e) => setSuccessMessage(e.target.value)}
+                placeholder={t.successPlaceholder}
+                maxLength={2000}
+                rows={2}
+              />
+              <p className="text-xs text-muted-foreground">{t.successHint}</p>
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="lcf-consent">Texto do consentimento</Label>
-            <Textarea
-              id="lcf-consent"
-              value={consentText}
-              onChange={(e) => setConsentText(e.target.value)}
-              placeholder={DEFAULT_CONSENT_TEXT}
-              rows={3}
-              disabled={!requireConsent}
-            />
-            <p className="text-xs text-muted-foreground">
-              Se ficar em branco, usamos um texto padrão de aceite conforme a LGPD.
-            </p>
-          </div>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </ResponsiveModal>
   );
 }

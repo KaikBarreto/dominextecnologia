@@ -31,6 +31,33 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.40.0',
+    date: '10 de novembro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Monte formulários com as suas próprias perguntas',
+        category: 'recurso',
+        description: 'O formulário de cadastro de cliente virou um construtor completo. Além dos campos de cadastro, você cria as perguntas que quiser, em texto curto ou longo, número, sim ou não, escolha única, múltipla escolha, data, foto, assinatura e nota de 0 a 10, marcando quais são obrigatórias e em que ordem aparecem.',
+      },
+      {
+        title: 'Formulário dentro do Portal do Cliente',
+        category: 'recurso',
+        description: 'Você escolhe se o formulário fica só no link público ou se também aparece no portal do seu cliente. Respondido pelo portal, o envio já chega ligado ao cadastro dele, sem você digitar nada. A seção Formulários aparece sozinha no portal assim que você publica o primeiro.',
+      },
+      {
+        title: 'Formulário que só coleta respostas',
+        category: 'recurso',
+        description: 'Agora o formulário pode ter duas finalidades: cadastrar um cliente novo, como já funcionava, ou apenas recolher respostas, útil para pesquisa de satisfação, atualização de dados e levantamento antes da visita. Você também personaliza a mensagem de agradecimento.',
+      },
+      {
+        title: 'Respostas guardadas e fáceis de consultar',
+        category: 'melhoria',
+        description: 'Cada formulário tem a sua lista de respostas, com data, de onde veio o envio e o cliente ligado quando houver. Fotos e assinaturas abrem em tela cheia.',
+      },
+    ],
+  },
+  {
     version: '1.39.14',
     date: '9 de novembro de 2026',
     type: 'patch',
