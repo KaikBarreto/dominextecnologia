@@ -3,6 +3,9 @@ import { cn } from '@/lib/utils';
 import { Check, ChevronLeft, ChevronRight, ClipboardList, Link2, Loader2, UserPlus } from 'lucide-react';
 import { FullscreenWizard, FullscreenWizardAction } from '@/components/ui/FullscreenWizard';
 import { FormWizardStepper } from '@/components/ui/FormWizardStepper';
+import { WizardMobileSummary } from '@/components/ui/WizardReviewChecklist';
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
@@ -27,6 +30,8 @@ import {
   type PublicFormQuestionDraft,
 } from '@/hooks/usePublicFormQuestions';
 import { PublicFormQuestionsEditor } from '@/components/forms/PublicFormQuestionsEditor';
+import { PUBLIC_FORM_QUESTION_TYPES } from '@/lib/publicFormQuestions';
+import { fillMessage } from '@/lib/leadFormBuilderText';
 
 const STEP_KEYS = ['form', 'customer', 'questions', 'publish'] as const;
 const LAST_STEP = STEP_KEYS.length - 1;
@@ -269,8 +274,111 @@ export function LeadCaptureFormDialog({
     { value: 'generic', icon: <ClipboardList className="h-5 w-5" />, title: t.purposeGenericTitle, description: t.purposeGenericCard },
   ];
 
+  // ── Resumo (rascunho atual): mesma peça na lateral (xl) e no rodapé (abaixo de xl) ──
+  const fieldsOnCount = LEAD_CAPTURE_FIELDS.filter((key) => fieldConfig[key]?.enabled).length;
+  const fieldsRequiredCount = LEAD_CAPTURE_FIELDS.filter((key) => fieldConfig[key]?.enabled && fieldConfig[key]?.required).length;
+  const typeCounts = PUBLIC_FORM_QUESTION_TYPES
+    .map((meta) => ({ meta, count: drafts.filter((question) => question.question_type === meta.value).length }))
+    .filter((entry) => entry.count > 0);
+  const expiresDate = expiresAt ? new Date(expiresAt) : null;
+  const expiresText = expiresDate && !Number.isNaN(expiresDate.getTime()) ? format(expiresDate, 'dd/MM/yyyy HH:mm') : null;
+  const limitValue = Number.parseInt(maxSubmissions, 10);
+  const whereLabels = [t.sumWhereLink, ...(showInPortal ? [t.sumWherePortal] : [])].join(', ');
+
+  const summaryHeading = (label: string) => (
+    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+  );
+
+  const summaryBlock = (
+    <div className="space-y-5 text-sm">
+      <div className="space-y-2">
+        <p className={cn('break-words text-base font-semibold leading-snug', !title.trim() && 'font-normal text-muted-foreground')}>
+          {title.trim() || t.sumUntitled}
+        </p>
+        {purpose === 'generic' ? (
+          <Badge variant="info" className="gap-1">
+            <ClipboardList className="h-3 w-3" />
+            {t.purposeGenericTitle}
+          </Badge>
+        ) : (
+          <Badge variant="default" className="gap-1">
+            <UserPlus className="h-3 w-3" />
+            {t.purposeLeadTitle}
+          </Badge>
+        )}
+      </div>
+
+      <div className="space-y-1">
+        {summaryHeading(t.sumCustomerHeading)}
+        <p className="font-medium">{fillMessage(t.sumFieldsOn, { n: fieldsOnCount, total: LEAD_CAPTURE_FIELDS.length })}</p>
+        <p className="text-muted-foreground">
+          {fillMessage(fieldsRequiredCount === 1 ? t.sumRequiredOne : t.sumRequiredMany, { n: fieldsRequiredCount })}
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        {summaryHeading(t.sumQuestionsHeading)}
+        {drafts.length === 0 ? (
+          <p className="text-muted-foreground">{t.sumQuestionsNone}</p>
+        ) : (
+          <>
+            <p className="font-medium">{fillMessage(drafts.length === 1 ? t.questionsOne : t.questionsMany, { n: drafts.length })}</p>
+            <div className="flex flex-wrap gap-1">
+              {typeCounts.map(({ meta, count }) => {
+                const TypeIcon = meta.icon;
+                return (
+                  <Badge key={meta.value} variant="outline" className="gap-1 px-1.5 py-0 text-[11px] font-normal text-muted-foreground">
+                    <TypeIcon className="h-3 w-3" />
+                    {t.typeLabels[meta.value]} {count}
+                  </Badge>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="space-y-1.5">
+        {summaryHeading(t.sumPublishHeading)}
+        <dl className="space-y-1.5">
+          <div>
+            <dt className="text-xs text-muted-foreground">{t.sumWhere}</dt>
+            <dd className="font-medium">{whereLabels}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">{t.sumStatus}</dt>
+            <dd className="font-medium">{isActive ? t.statusActive : t.statusInactive}</dd>
+          </div>
+          {expiresText && (
+            <div>
+              <dt className="text-xs text-muted-foreground">{t.sumExpires}</dt>
+              <dd className="font-medium">{expiresText}</dd>
+            </div>
+          )}
+          {Number.isFinite(limitValue) && limitValue > 0 && (
+            <div>
+              <dt className="text-xs text-muted-foreground">{t.sumLimit}</dt>
+              <dd className="font-medium">{limitValue}</dd>
+            </div>
+          )}
+        </dl>
+      </div>
+    </div>
+  );
+
+  const mobileSummaryLine = [
+    fillMessage(drafts.length === 1 ? t.questionsOne : t.questionsMany, { n: drafts.length }),
+    fillMessage(fieldsOnCount === 1 ? t.sumFieldsShortOne : t.sumFieldsShortMany, { n: fieldsOnCount }),
+    showInPortal ? `${t.sumWhereLink}, ${t.sumWherePortal}` : t.sumWhereLink,
+  ].join(' · ');
+
   const wizardFooter = (
     <div className="flex flex-col gap-2">
+      {step > 0 && (
+        <WizardMobileSummary title={t.sumTitle} summary={mobileSummaryLine}>
+          {summaryBlock}
+        </WizardMobileSummary>
+      )}
       {showStepError && currentError && (
         <p className="text-right text-xs text-destructive" role="alert">
           {currentError}
@@ -338,7 +446,18 @@ export function LeadCaptureFormDialog({
           className="sticky top-0 z-20 -mx-4 border-b bg-background px-4 pb-4 pt-4 sm:-mx-10 sm:px-10 sm:pt-6"
         />
 
-        <div className="mx-auto mt-8 w-full max-w-3xl flex-1 space-y-7 text-[15px] [&_input]:min-h-11 [&_input]:text-base [&_textarea]:text-base [&_[role=combobox]]:min-h-11">
+        <div
+          className={cn(
+            'mx-auto mt-8 w-full max-w-[92rem] flex-1',
+            step > 0 && 'xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start xl:gap-10',
+          )}
+        >
+        <div
+          className={cn(
+            'min-w-0 space-y-7 text-[15px] [&_input]:min-h-11 [&_input]:text-base [&_textarea]:text-base [&_[role=combobox]]:min-h-11',
+            step === 0 && 'mx-auto w-full max-w-3xl',
+          )}
+        >
           {step === 0 && (
             <section className="space-y-6">
               {stepHeading(t.stepForm)}
@@ -407,17 +526,22 @@ export function LeadCaptureFormDialog({
           {step === 1 && (
             <section className="space-y-4">
               {stepHeading(t.tabCustomer, purpose === 'lead' ? t.customerIntro : t.customerIntroGeneric)}
-              <div className="rounded-xl border bg-card">
+              <div className="overflow-hidden rounded-xl border bg-card xl:grid xl:grid-cols-2">
                 {LEAD_CAPTURE_FIELDS.map((key, idx) => {
                   const f = fieldConfig[key] ?? { enabled: false, required: false };
                   const label = t.fieldLabels[key];
                   return (
                     <div
                       key={key}
-                      className={`flex items-center justify-between gap-3 px-3 py-3 ${idx > 0 ? 'border-t' : ''}`}
+                      className={cn(
+                        'flex min-w-0 items-center justify-between gap-3 px-3 py-3',
+                        idx > 0 && 'border-t',
+                        idx === 1 && 'xl:border-t-0',
+                        idx % 2 === 1 && 'xl:border-l',
+                      )}
                     >
                       <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
-                      <div className="flex items-center gap-4">
+                      <div className="flex shrink-0 items-center gap-4">
                         <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <span>{t.fieldShow}</span>
                           <Switch
@@ -548,6 +672,12 @@ export function LeadCaptureFormDialog({
               )}
             </section>
           )}
+        </div>
+        {step > 0 && (
+          <aside className="sticky top-28 hidden border-l pl-8 xl:block" aria-label={t.sumTitle}>
+            {summaryBlock}
+          </aside>
+        )}
         </div>
       </div>
     </FullscreenWizard>

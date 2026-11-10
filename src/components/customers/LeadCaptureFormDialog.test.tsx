@@ -42,4 +42,15 @@ describe('LeadCaptureFormDialog (wizard)', () => {
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.getByText('Nome')).toBeTruthy();
   });
+
+  it('mostra o resumo do rascunho a partir da etapa 2', () => {
+    renderDialog();
+    fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Pesquisa de satisfação' } });
+    fireEvent.click(screen.getByRole('button', { name: /Avançar/ }));
+    const aside = screen.getByRole('complementary', { name: 'Resumo do formulário' });
+    expect(aside.textContent).toContain('Pesquisa de satisfação');
+    expect(aside.textContent).toContain('1 de 17 campos ligados');
+    expect(aside.textContent).toContain('Ainda sem perguntas');
+    expect(aside.textContent).toContain('Link público');
+  });
 });
