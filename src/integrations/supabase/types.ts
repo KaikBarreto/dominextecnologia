@@ -9143,6 +9143,89 @@ export type Database = {
           },
         ]
       }
+      master_data_import_batches: {
+        Row: {
+          client_request_id: string
+          company_id: string
+          completed_at: string
+          created_at: string
+          created_by: string
+          customer_created_count: number
+          customer_input_count: number
+          customer_updated_count: number
+          equipment_created_count: number
+          equipment_input_count: number
+          equipment_updated_count: number
+          file_hash: string
+          id: string
+          inventory_movement_count: number
+          material_created_count: number
+          material_input_count: number
+          material_updated_count: number
+          request_hash: string
+          source: string
+          supplier_created_count: number
+          supplier_input_count: number
+          supplier_updated_count: number
+        }
+        Insert: {
+          client_request_id: string
+          company_id: string
+          completed_at?: string
+          created_at?: string
+          created_by: string
+          customer_created_count?: number
+          customer_input_count?: number
+          customer_updated_count?: number
+          equipment_created_count?: number
+          equipment_input_count?: number
+          equipment_updated_count?: number
+          file_hash: string
+          id?: string
+          inventory_movement_count?: number
+          material_created_count?: number
+          material_input_count?: number
+          material_updated_count?: number
+          request_hash: string
+          source?: string
+          supplier_created_count?: number
+          supplier_input_count?: number
+          supplier_updated_count?: number
+        }
+        Update: {
+          client_request_id?: string
+          company_id?: string
+          completed_at?: string
+          created_at?: string
+          created_by?: string
+          customer_created_count?: number
+          customer_input_count?: number
+          customer_updated_count?: number
+          equipment_created_count?: number
+          equipment_input_count?: number
+          equipment_updated_count?: number
+          file_hash?: string
+          id?: string
+          inventory_movement_count?: number
+          material_created_count?: number
+          material_input_count?: number
+          material_updated_count?: number
+          request_hash?: string
+          source?: string
+          supplier_created_count?: number
+          supplier_input_count?: number
+          supplier_updated_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_data_import_batches_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       master_login_audit: {
         Row: {
           created_at: string
@@ -18829,6 +18912,20 @@ export type Database = {
         Args: { p_company_id: string; p_dry_run?: boolean }
         Returns: Json
       }
+      import_legacy_master_data: {
+        Args: {
+          p_client_request_id: string
+          p_customers?: Json
+          p_equipment?: Json
+          p_file_hash: string
+          p_materials?: Json
+          p_preview_hash?: string
+          p_source?: string
+          p_stock_id?: string
+          p_suppliers?: Json
+        }
+        Returns: Json
+      }
       immutable_unaccent:
         | { Args: { p_itens: string[] }; Returns: string }
         | { Args: { p_texto: string }; Returns: string }
@@ -19345,6 +19442,17 @@ export type Database = {
       }
       preview_financial_import: {
         Args: { p_file_hash: string; p_rows: Json }
+        Returns: Json
+      }
+      preview_legacy_master_data: {
+        Args: {
+          p_customers?: Json
+          p_equipment?: Json
+          p_file_hash: string
+          p_materials?: Json
+          p_stock_id?: string
+          p_suppliers?: Json
+        }
         Returns: Json
       }
       preview_service_order_scope_removal: {

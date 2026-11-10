@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Boxes, Plus, Settings } from 'lucide-react';
+import { Boxes, Plus, Settings, Upload } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipment } from '@/hooks/useEquipment';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
 import { EquipmentSettingsDialog } from '@/components/customers/EquipmentSettingsDialog';
+import { SpreadsheetImportAssistant } from '@/components/imports/SpreadsheetImportAssistant';
 
 /**
  * Cabeçalho da tela Equipamentos: título e ações da tela
@@ -33,6 +34,7 @@ export function EquipmentPageChrome() {
 
   const [configOpen, setConfigOpen] = useState(false);
   const [novoOpen, setNovoOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   // No celular criar equipamento é o botão flutuante da lista, não aqui.
   const showActions = !isMobile;
@@ -50,6 +52,12 @@ export function EquipmentPageChrome() {
                 <Settings className="mr-2 h-4 w-4" />
                 {tEq.configureFields}
               </Button>
+              {canManageEquipment && (
+                <Button variant="outline" onClick={() => setImportOpen(true)} title="Importar equipamentos">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Importar
+                </Button>
+              )}
               {canManageEquipment && (
                 <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setNovoOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
@@ -75,6 +83,15 @@ export function EquipmentPageChrome() {
       />
 
       <EquipmentSettingsDialog open={configOpen} onOpenChange={setConfigOpen} />
+
+      {importOpen && (
+        <SpreadsheetImportAssistant
+          open
+          onOpenChange={setImportOpen}
+          entity="equipment"
+          disabledSources={{ auvo: 'A exportação recebida não contém dados de equipamentos.' }}
+        />
+      )}
     </>
   );
 }

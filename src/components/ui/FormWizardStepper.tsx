@@ -16,6 +16,7 @@ interface FormWizardStepperProps {
   ariaLabel?: string;
   className?: string;
   tone?: 'primary' | 'contrast';
+  accent?: 'primary' | 'black';
 }
 
 /**
@@ -33,6 +34,7 @@ export function FormWizardStepper({
   ariaLabel = 'Etapas do formulário',
   className,
   tone = 'primary',
+  accent = 'primary',
 }: FormWizardStepperProps) {
   const activeStep = steps[currentIndex];
   const progress = steps.length > 0 ? ((currentIndex + 1) / steps.length) * 100 : 0;
@@ -45,7 +47,7 @@ export function FormWizardStepper({
         <div className="flex min-w-0 items-center gap-2.5">
           <span className={cn(
             'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
-            'bg-primary text-primary-foreground',
+            accent === 'black' ? 'bg-black text-white' : 'bg-primary text-primary-foreground',
           )}>
             {currentIndex + 1}
           </span>
@@ -69,7 +71,7 @@ export function FormWizardStepper({
           <div
             className={cn(
               'h-full rounded-full transition-[width] duration-200 motion-reduce:transition-none',
-              'bg-primary',
+              accent === 'black' ? 'bg-black' : 'bg-primary',
             )}
             style={{ width: `${progress}%` }}
           />
@@ -101,13 +103,18 @@ export function FormWizardStepper({
                   'group flex w-full min-w-0 flex-col items-center rounded-lg px-1 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   reached && onStepChange && 'cursor-pointer',
                   !reached && 'cursor-not-allowed',
+                  accent === 'black' && 'focus-visible:ring-black',
                 )}
               >
                 <span
                   className={cn(
                     'relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-semibold transition-colors',
-                    active && 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/15',
-                    completed && 'border-primary bg-primary text-primary-foreground',
+                    active && (accent === 'black'
+                      ? 'border-black bg-black text-white ring-2 ring-black/15'
+                      : 'border-primary bg-primary text-primary-foreground ring-2 ring-primary/15'),
+                    completed && (accent === 'black'
+                      ? 'border-black bg-black text-white'
+                      : 'border-primary bg-primary text-primary-foreground'),
                     !reached && (tone === 'contrast' ? 'border-border text-muted-foreground' : 'border-muted text-muted-foreground opacity-70'),
                     reached && !active && !completed && 'border-border text-foreground',
                   )}

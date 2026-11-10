@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, Pencil, Trash2, Package, Settings } from 'lucide-react';
+import { Plus, Pencil, Trash2, Package, Settings, Upload, MoreHorizontal } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,8 @@ import { isUuid, extractShortCode } from '@/utils/prettyLinks';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { usePartyLabels, type PartyLabel } from '@/hooks/usePartyLabels';
 import { PartyLabelBadge, PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
+import { SpreadsheetImportAssistant } from '@/components/imports/SpreadsheetImportAssistant';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface EquipmentGridCardProps {
   eq: Equipment & { customer?: any };
@@ -146,6 +148,7 @@ export function EquipmentPanel() {
   const [configOpen, setConfigOpen] = useState(false);
   const [viewMode, setViewMode] = useViewMode('equipment-view-mode');
   const [previewImage, setPreviewImage] = useState<{ src: string; alt: string } | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const canManageEquipment = isAdminOrGestor() || hasPermission('fn:manage_equipment');
   const { locale } = useAppLocaleContext();
@@ -354,18 +357,22 @@ export function EquipmentPanel() {
               {filterContent}
             </FilterSheet>
             {canManageEquipment && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-10 shrink-0 gap-2 px-3 text-warning"
-                onClick={() => setConfigOpen(true)}
-                title={tEq.configureFields}
-                aria-label={tEq.configureFields}
-              >
-                <Settings className="h-4 w-4" />
-                {/* Rótulo some só em tela muito estreita, pra engrenagem sozinha não virar adivinhação. */}
-                <span className="hidden min-[340px]:inline">{tEq.fieldsShort}</span>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-10 shrink-0 gap-2 px-3" aria-label="Mais ações de equipamentos">
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="hidden min-[340px]:inline">Ações</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-52">
+                  <DropdownMenuItem onSelect={() => setImportOpen(true)}>
+                    <Upload className="mr-2 h-4 w-4" />Importar equipamentos
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setConfigOpen(true)}>
+                    <Settings className="mr-2 h-4 w-4 text-warning" />{tEq.configureFields}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </MobileListToolbar>
 
@@ -768,6 +775,15 @@ export function EquipmentPanel() {
         open={configOpen}
         onOpenChange={setConfigOpen}
       />
+
+      {importOpen && (
+        <SpreadsheetImportAssistant
+          open
+          onOpenChange={setImportOpen}
+          entity="equipment"
+          disabledSources={{ auvo: 'A exportação recebida não contém dados de equipamentos.' }}
+        />
+      )}
 
       <ImagePreviewModal
         src={previewImage?.src ?? ''}

@@ -102,6 +102,8 @@ import {
   getGeneralStockQuantity,
 } from '@/lib/inventoryGeneralStock';
 import { StockLocationNavigator } from '@/components/inventory/StockLocationNavigator';
+import { SpreadsheetImportAssistant } from '@/components/imports/SpreadsheetImportAssistant';
+import type { SpreadsheetImportSource } from '@/hooks/useSpreadsheetImportAssistant';
 
 /** Sentinela somente de UI; nunca é enviada ao banco como `stock_id`. */
 const GENERAL_STOCK_VIEW = '__general_stock__';
@@ -183,6 +185,8 @@ export default function Inventory() {
   const [exportFormat, setExportFormat] = useState<ExportFormat | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [nfeImportOpen, setNfeImportOpen] = useState(false);
+  const [spreadsheetImportOpen, setSpreadsheetImportOpen] = useState(false);
+  const [spreadsheetImportSource, setSpreadsheetImportSource] = useState<SpreadsheetImportSource>('dominex');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferItem, setTransferItem] = useState<InventoryItem | null>(null);
@@ -631,18 +635,38 @@ export default function Inventory() {
   // Subabas dos depósitos dentro da aba Estoque Atual — mobile renderiza pílulas
   // próprias com flex-wrap (ver bloco isMobile abaixo); desktop usa abas underline.
 
-  // Botões Importar XML e Configurações — ficam no canto superior direito do header (sempre)
+  const openSpreadsheetImport = (source: SpreadsheetImportSource) => {
+    setSpreadsheetImportSource(source);
+    setSpreadsheetImportOpen(true);
+  };
+
+  // Um único ponto de entrada mantém Planilha, XML de NF-e e Auvo juntos.
   const headerRightButtons = (
     <div className="flex items-center gap-1.5 shrink-0">
-      <Button
-        variant="outline"
-        className="h-9 w-9 lg:w-auto lg:px-3 shrink-0 rounded-xl gap-1.5"
-        aria-label={t.ariaLabels.importXml}
-        onClick={() => setNfeImportOpen(true)}
-      >
-        <FileUp className="h-4 w-4 shrink-0" />
-        <span className="hidden lg:inline">{t.actions.importXml}</span>
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            className="h-9 w-9 lg:w-auto lg:px-3 shrink-0 rounded-xl gap-1.5"
+            aria-label="Importar materiais"
+          >
+            <FileUp className="h-4 w-4 shrink-0" />
+            <span className="hidden lg:inline">Importar</span>
+            <ChevronDown className="hidden h-3.5 w-3.5 lg:block" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-56">
+          <DropdownMenuItem onSelect={() => openSpreadsheetImport('dominex')}>
+            <FileSpreadsheet className="mr-2 h-4 w-4" />Planilha
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setNfeImportOpen(true)}>
+            <FileText className="mr-2 h-4 w-4" />XML de NF-e
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => openSpreadsheetImport('auvo')}>
+            <FileUp className="mr-2 h-4 w-4" />Exportação da Auvo
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <Button
         variant="outline"
         className="h-9 w-9 lg:w-auto lg:px-3 shrink-0 rounded-xl gap-1.5"
@@ -1166,6 +1190,18 @@ export default function Inventory() {
 
       {/* Importação via XML de NF-e */}
       <NfeImportDialog open={nfeImportOpen} onOpenChange={setNfeImportOpen} />
+
+      {spreadsheetImportOpen && (
+        <SpreadsheetImportAssistant
+          open
+          onOpenChange={setSpreadsheetImportOpen}
+          entity="inventory"
+          initialSource={spreadsheetImportSource}
+          sourceLocked
+          stocks={stocks.map((stock) => ({ id: stock.id, name: stock.name, isDefault: stock.is_default }))}
+          defaultStockId={defaultStock?.id}
+        />
+      )}
 
       {/* Seleção de materiais p/ exportar */}
       <InventoryExportDialog

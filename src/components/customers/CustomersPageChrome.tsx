@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClipboardList, Plus, Settings2, Truck, Users } from 'lucide-react';
+import { ClipboardList, Plus, Settings2, Truck, Upload, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCustomers, type CustomerInput } from '@/hooks/useCustomers';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -11,6 +11,7 @@ import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { CustomerSettingsDialog } from '@/components/customers/CustomerSettingsDialog';
 import { LeadCaptureManagerDialog } from '@/components/customers/LeadCaptureManagerDialog';
+import { SpreadsheetImportAssistant } from '@/components/imports/SpreadsheetImportAssistant';
 
 export type CustomersMainTab = 'clientes' | 'fornecedores';
 
@@ -38,10 +39,13 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
   const { createCustomer } = useCustomers();
 
   const canCreateCustomer = isAdminOrGestor() || hasPermission('fn:create_customer');
+  const canImportCustomers = isAdminOrGestor()
+    || (hasPermission('fn:create_customer') && hasPermission('fn:edit_customer'));
 
   const [novoOpen, setNovoOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [leadFormsOpen, setLeadFormsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   // No celular as ações da tela vivem na toolbar/FAB da própria lista, não aqui.
   const showActions = !isMobile;
@@ -61,6 +65,12 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
                 <Settings2 className="mr-2 h-4 w-4" />
                 Configurações
               </Button>
+              {canImportCustomers && (
+                <Button variant="outline" onClick={() => setImportOpen(true)} title={`Importar ${activeTab}`}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Importar
+                </Button>
+              )}
               {activeTab === 'clientes' && <Button variant="outline" onClick={() => setLeadFormsOpen(true)} title={t.leadFormsFull}>
                 <ClipboardList className="mr-2 h-4 w-4" />
                 {t.leadFormsFull}
@@ -99,6 +109,14 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
       <CustomerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 
       <LeadCaptureManagerDialog open={leadFormsOpen} onOpenChange={setLeadFormsOpen} />
+
+      {importOpen && (
+        <SpreadsheetImportAssistant
+          open
+          onOpenChange={setImportOpen}
+          entity={activeTab === 'clientes' ? 'customers' : 'suppliers'}
+        />
+      )}
     </>
   );
 }

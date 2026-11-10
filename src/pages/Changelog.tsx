@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.19',
+    date: '10 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Importe cadastros por planilha ou pela Auvo',
+        category: 'recurso',
+        description: 'Clientes, fornecedores e materiais ganharam importação pelo modelo Dominex ou pela Auvo. Equipamentos podem ser importados pelo modelo Dominex. Em todos os casos, você confere o que será criado, atualizado ou bloqueado antes de confirmar.',
+      },
+      {
+        title: 'Todas as importações do estoque em um só lugar',
+        category: 'melhoria',
+        description: 'O botão Importar do estoque agora reúne planilha, XML de NF-e e exportação da Auvo. Na importação por planilha, você escolhe o local que receberá o saldo e revisa conflitos antes de alterar os materiais.',
+      },
+    ],
+  },
+  {
     version: '1.39.18',
     date: '10 de novembro de 2026',
     type: 'patch',

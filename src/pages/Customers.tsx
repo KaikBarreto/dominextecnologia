@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { fuzzyIncludesAny, cn } from '@/lib/utils';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Users, Plus, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye, ClipboardList, Handshake, Truck, Wrench, Store, Check } from 'lucide-react';
+import { Users, Plus, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye, ClipboardList, Handshake, Truck, Wrench, Store, Check, Upload } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
@@ -50,6 +50,7 @@ import { formatCustomerDocument, formatCustomerPhone } from '@/lib/customerDispl
 import { usePartyLabels } from '@/hooks/usePartyLabels';
 import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import type { PartyLabel } from '@/hooks/usePartyLabels';
+import { SpreadsheetImportAssistant } from '@/components/imports/SpreadsheetImportAssistant';
 
 export type CustomerKindFilter = 'all' | 'servico' | 'loja';
 
@@ -254,11 +255,13 @@ export default function Customers() {
   // CustomersPageChrome, que aparece também na ficha do cliente.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [leadFormsOpen, setLeadFormsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const tSuppliers = MESSAGES[locale].app.customers.suppliers;
   const tCommon = MESSAGES[locale].app.common;
 
   const canCreateCustomer = isAdminOrGestor() || hasPermission('fn:create_customer');
   const canEditCustomer = isAdminOrGestor() || hasPermission('fn:edit_customer');
+  const canImportCustomers = canCreateCustomer && canEditCustomer;
   const canDeleteCustomer = isAdminOrGestor() || hasPermission('fn:delete_customer');
   // Ação "Criar oportunidade no CRM" só aparece pra quem tem o módulo CRM
   // contratado (mesmo gate de `hasModule('crm')` usado no menu/rota do CRM).
@@ -383,11 +386,18 @@ export default function Customers() {
           (fora da MobileListToolbar, cuja 2ª linha já está no limite de 3
           controles). No COMPUTADOR ele entra DENTRO do painel Lista de
           Clientes, junto da busca que ele filtra — ver `listFilters` abaixo. */}
-      {isMobile && mainTab === 'fornecedores' && (
-        <div className="flex justify-end">
-          <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
-            <Settings2 className="mr-2 h-4 w-4" />Configurações
-          </Button>
+      {isMobile && (
+        <div className="flex justify-end gap-2">
+          {canImportCustomers && (
+            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" />Importar
+            </Button>
+          )}
+          {mainTab === 'fornecedores' && (
+            <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
+              <Settings2 className="mr-2 h-4 w-4" />Configurações
+            </Button>
+          )}
         </div>
       )}
 
@@ -916,6 +926,14 @@ export default function Customers() {
           <CustomerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
           <LeadCaptureManagerDialog open={leadFormsOpen} onOpenChange={setLeadFormsOpen} />
         </>
+      )}
+
+      {importOpen && (
+        <SpreadsheetImportAssistant
+          open
+          onOpenChange={setImportOpen}
+          entity={mainTab === 'clientes' ? 'customers' : 'suppliers'}
+        />
       )}
 
       <ImagePreviewModal
