@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.19',
+    date: '10 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Criação de empresa liberada para usuários autorizados',
+        category: 'correcao',
+        description: 'Usuários com acesso à gestão de empresas podem voltar a concluir a criação pelo painel comercial. Se algo impedir o cadastro, a mensagem agora explica o problema em vez de mostrar apenas um erro genérico.',
+      },
+      {
+        title: 'Link de teste não reutiliza mais uma venda anterior',
+        category: 'correcao',
+        description: 'Ao trocar o tipo, o plano, o preço ou o vendedor depois de gerar um link, o endereço anterior deixa de ficar disponível. Um novo link passa a ser gerado com exatamente as opções mostradas no resumo, evitando enviar uma venda quando a intenção era oferecer um teste.',
+      },
+    ],
+  },
+  {
     version: '1.39.18',
     date: '10 de novembro de 2026',
     type: 'patch',

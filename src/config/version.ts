@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.18";
+export const APP_VERSION = "1.39.19";
 
 export const VERSION_NOTES =
-  "Textos e títulos maiores em todas as etapas de montar formulário, e a etapa de publicação agora vem organizada em dois grupos lado a lado.";
+  "Usuários autorizados voltaram a criar empresas pelo painel comercial, e links de teste ou venda sempre acompanham a configuração escolhida.";

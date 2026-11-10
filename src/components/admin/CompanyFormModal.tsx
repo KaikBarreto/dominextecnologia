@@ -599,14 +599,8 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           headers: { Authorization: `Bearer ${session.session.access_token}` },
         });
         if (error) {
-          let msg = 'Erro ao criar empresa';
-          try {
-            if (error.context?.body) {
-              const p = JSON.parse(error.context.body);
-              if (p.error) msg = p.error;
-            }
-          } catch {}
-          throw new Error(msg);
+          const edgeMessage = await getInvokeErrorMessage(error);
+          throw new Error(edgeMessage || 'Não foi possível criar a empresa. Tente novamente.');
         }
         if (data?.error) throw new Error(data.error);
       }

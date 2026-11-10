@@ -34,6 +34,12 @@ interface Props {
 
 type PlanMode = 'livre' | 'plano' | 'personalizado';
 
+interface GeneratedLinkSnapshot {
+  link: string;
+  configurationSignature: string;
+  summaryLines: string[];
+}
+
 export function GenerateLinkModal({ open, onOpenChange }: Props) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -44,7 +50,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   const [linkType, setLinkType] = useState<'teste' | 'venda'>('teste');
   const [trialDays, setTrialDays] = useState(7);
   const [isCustomTrialDays, setIsCustomTrialDays] = useState(false);
-  const [generatedLink, setGeneratedLink] = useState('');
+  const [generatedSnapshot, setGeneratedSnapshot] = useState<GeneratedLinkSnapshot | null>(null);
   const [copied, setCopied] = useState(false);
 
   const [planMode, setPlanMode] = useState<PlanMode>('livre');
@@ -165,6 +171,56 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   const finalCustomPlanPrice = useCustomPrice && customPriceValue
     ? parseFloat(customPriceValue) || 0
     : suggestedModulesPrice;
+  const selectedSalespersonDetails = salespeople.find((salesperson) => salesperson.id === selectedSalesperson);
+  const selectedAffiliateDetails = activeAffiliates.find((a) => a.id === selectedAffiliate);
+  const affiliateOriginName = selectedAffiliate
+    ? resolveAffiliateOriginName(origins as CatalogOrigin[])
+    : null;
+  const configuredModuleCodes = withBaseModules(customModules);
+  const configuredModuleNames = allModules
+    .filter((module) => configuredModuleCodes.includes(module.code))
+    .map((module) => module.name);
+
+  // O link gerado e o resumo formam um snapshot. Qualquer mudança capaz de
+  // alterar a URL ou o texto comercial invalida esse snapshot antes que ele
+  // possa ser copiado novamente. Os valores resolvidos do catálogo entram na
+  // assinatura para cobrir também refetch de vendedor, afiliado, plano e módulo.
+  const configurationSignature = JSON.stringify({
+    linkType,
+    trialDays,
+    selectedOrigin,
+    selectedSalesperson,
+    salespersonReferralCode: selectedSalespersonDetails?.referral_code || null,
+    salespersonName: selectedSalespersonDetails?.name || null,
+    selectedAffiliate,
+    affiliateReference: selectedAffiliateDetails?.slug?.trim() || null,
+    affiliateName: selectedAffiliateDetails?.name || null,
+    affiliateOriginName,
+    planMode,
+    selectedPlanCode,
+    selectedPlanName: selectedPlan?.name || null,
+    selectedPlanPrice: selectedPlan?.price ?? null,
+    billingCycle,
+    useCustomPrice,
+    customPriceValue,
+    isPermanent,
+    customPriceMonths,
+    configuredModuleCodes: [...configuredModuleCodes].sort(),
+    configuredModuleNames: [...configuredModuleNames].sort(),
+    customMaxUsers,
+    suggestedModulesPrice,
+    finalCustomPlanPrice,
+  });
+
+  useEffect(() => {
+    setGeneratedSnapshot((current) => (
+      current && current.configurationSignature !== configurationSignature ? null : current
+    ));
+    setCopied(false);
+  }, [configurationSignature]);
+  const currentGeneratedSnapshot = generatedSnapshot?.configurationSignature === configurationSignature
+    ? generatedSnapshot
+    : null;
 
   const handleToggleModule = (code: string) => {
     setCustomModules(prev => withBaseModules(
@@ -181,15 +237,13 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
     // Registration.tsx lê `afiliado` e manda affiliate_id pro self-register,
     // que resolve slug/uuid e grava companies.affiliate_id.
     if (selectedAffiliate) {
-      params.append('origem', resolveAffiliateOriginName(origins as CatalogOrigin[]));
-      const aff = activeAffiliates.find((a) => a.id === selectedAffiliate);
-      params.append('afiliado', aff?.slug?.trim() || selectedAffiliate);
+      params.append('origem', affiliateOriginName!);
+      params.append('afiliado', selectedAffiliateDetails?.slug?.trim() || selectedAffiliate);
     } else if (selectedOrigin) {
       params.append('origem', selectedOrigin);
     }
     if (selectedSalesperson) {
-      const sp = salespeople.find((s: any) => s.id === selectedSalesperson);
-      params.append('vendedor', sp?.referral_code || selectedSalesperson);
+      params.append('vendedor', selectedSalespersonDetails?.referral_code || selectedSalesperson);
     }
     params.append('tipo', linkType);
     if (linkType === 'teste' && trialDays !== 7) params.append('dias', String(trialDays));
@@ -206,7 +260,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
       }
     } else if (planMode === 'personalizado') {
       params.append('plano', 'personalizado');
-      params.append('modulos', withBaseModules(customModules).join(','));
+      params.append('modulos', configuredModuleCodes.join(','));
       if (parseInt(customMaxUsers) > 0) params.append('usuarios', String(parseInt(customMaxUsers)));
       params.append('ciclo', billingCycle);
       params.append('bloqueado', '1');
@@ -219,7 +273,42 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
     }
 
     const link = params.toString() ? `${baseUrl}/cadastro?${params.toString()}` : `${baseUrl}/cadastro`;
-    setGeneratedLink(link);
+    const summaryLines = [
+      `Tipo: ${linkType === 'teste' ? `Teste (${trialDays} dias)` : 'Venda direta'}`,
+    ];
+    if (selectedAffiliate || selectedOrigin) {
+      summaryLines.push(`Origem: ${affiliateOriginName || selectedOrigin}`);
+    }
+    if (selectedSalesperson) {
+      summaryLines.push(`Vendedor: ${selectedSalespersonDetails?.name || 'Não identificado'}`);
+    }
+    if (selectedAffiliate) {
+      summaryLines.push(`Afiliado: ${selectedAffiliateDetails?.name || 'Não identificado'}`);
+    }
+    if (planMode === 'plano' && selectedPlan) {
+      summaryLines.push(`Plano: ${selectedPlan.name} (${billingCycle === 'yearly' ? 'Anual' : 'Mensal'})`);
+      if (useCustomPrice && customPriceValue) {
+        summaryLines.push(
+          `Preço: R$ ${customPriceValue} ${isPermanent
+            ? '(permanente)'
+            : `por ${customPriceMonths} meses, depois R$ ${Number(selectedPlan.price).toFixed(2)}`}`,
+        );
+      }
+    }
+    if (planMode === 'personalizado') {
+      summaryLines.push(
+        `Plano: Personalizado (${billingCycle === 'yearly' ? 'Anual' : 'Mensal'}) — ${configuredModuleNames.join(', ')}`,
+      );
+      summaryLines.push(`Máx. usuários: ${customMaxUsers}`);
+      summaryLines.push(
+        `Preço: R$ ${finalCustomPlanPrice.toFixed(2)}${useCustomPrice && customPriceValue
+          ? (isPermanent
+            ? ' (personalizado, permanente)'
+            : ` por ${customPriceMonths} meses, depois R$ ${suggestedModulesPrice.toFixed(2)}`)
+          : ''}`,
+      );
+    }
+    setGeneratedSnapshot({ link, configurationSignature, summaryLines });
 
     // Auto-copy: gerou → já está na área de transferência. Se o clipboard
     // falhar (ex.: contexto não-seguro), o botão de copiar manual continua lá.
@@ -234,8 +323,9 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   };
 
   const handleCopyLink = async () => {
+    if (!currentGeneratedSnapshot) return;
     try {
-      await navigator.clipboard.writeText(generatedLink);
+      await navigator.clipboard.writeText(currentGeneratedSnapshot.link);
       setCopied(true);
       toast({ title: 'Link copiado!' });
       setTimeout(() => setCopied(false), 2000);
@@ -251,7 +341,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
     setLinkType('teste');
     setTrialDays(7);
     setIsCustomTrialDays(false);
-    setGeneratedLink('');
+    setGeneratedSnapshot(null);
     setCopied(false);
     setPlanMode('livre');
     setSelectedPlanCode('');
@@ -709,11 +799,11 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
           <LinkIcon className="h-4 w-4 mr-2" />Gerar Link
         </Button>
 
-        {generatedLink && (
+        {currentGeneratedSnapshot && (
           <div className="space-y-2 pt-2 border-t">
             <Label>Link Gerado</Label>
             <div className="flex gap-2">
-              <Input value={generatedLink} readOnly className="text-xs" />
+              <Input value={currentGeneratedSnapshot.link} readOnly className="text-xs" />
               <Button type="button" variant="outline" size="icon" onClick={handleCopyLink}>
                 {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
               </Button>
@@ -723,38 +813,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
             <div className="bg-muted/50 rounded-lg p-3 space-y-1">
               <p className="text-xs font-medium">Resumo do Link:</p>
               <div className="text-xs text-muted-foreground space-y-0.5">
-                <p>• Tipo: {linkType === 'teste' ? `Teste (${trialDays} dias)` : 'Venda direta'}</p>
-                {(selectedAffiliate || selectedOrigin) && (
-                  <p>• Origem: {selectedAffiliate ? resolveAffiliateOriginName(origins as CatalogOrigin[]) : selectedOrigin}</p>
-                )}
-                {selectedSalesperson && <p>• Vendedor: {salespeople.find((s: any) => s.id === selectedSalesperson)?.name}</p>}
-                {selectedAffiliate && <p>• Afiliado: {activeAffiliates.find((a) => a.id === selectedAffiliate)?.name}</p>}
-                {planMode === 'plano' && selectedPlan && (
-                  <>
-                    <p>• Plano: {selectedPlan.name} ({billingCycle === 'yearly' ? 'Anual' : 'Mensal'})</p>
-                    {useCustomPrice && customPriceValue && (
-                      <p>
-                        • Preço: R$ {customPriceValue}{' '}
-                        {isPermanent ? '(permanente)' : `por ${customPriceMonths} meses, depois R$ ${Number(selectedPlan.price).toFixed(2)}`}
-                      </p>
-                    )}
-                  </>
-                )}
-                {planMode === 'personalizado' && (
-                  <>
-                    <p>
-                      • Plano: Personalizado ({billingCycle === 'yearly' ? 'Anual' : 'Mensal'}) — {' '}
-                      {allModules.filter(m => withBaseModules(customModules).includes(m.code)).map(m => m.name).join(', ')}
-                    </p>
-                    <p>• Máx. usuários: {customMaxUsers}</p>
-                    <p>
-                      • Preço: R$ {finalCustomPlanPrice.toFixed(2)}
-                      {useCustomPrice && customPriceValue
-                        ? (isPermanent ? ' (personalizado, permanente)' : ` por ${customPriceMonths} meses, depois R$ ${suggestedModulesPrice.toFixed(2)}`)
-                        : ''}
-                    </p>
-                  </>
-                )}
+                {currentGeneratedSnapshot.summaryLines.map((line) => <p key={line}>• {line}</p>)}
               </div>
             </div>
           </div>
