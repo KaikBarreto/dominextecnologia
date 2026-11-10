@@ -296,7 +296,7 @@ export function PublicFormQuestionsEditor({ questions, onChange }: PublicFormQue
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
-        <p className="min-w-0 text-xs text-muted-foreground">{t.questionsIntro}</p>
+        <p className="min-w-0 text-sm text-muted-foreground">{t.questionsIntro}</p>
         {questions.length > 0 && (
           <Button type="button" size="sm" className="shrink-0 gap-1.5" onClick={openNew}>
             <Plus className="h-4 w-4" />
@@ -379,16 +379,16 @@ export function PublicFormQuestionsEditor({ questions, onChange }: PublicFormQue
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 items-center gap-2">
                     <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground lg:hidden">{index + 1}.</span>
-                    <p className="truncate text-sm font-medium leading-snug">{question.question}</p>
+                    <p className="truncate text-base font-medium leading-snug">{question.question}</p>
                     {question.is_required && (
                       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" title={t.requiredMark} />
                     )}
                   </div>
                   {question.description && (
-                    <p className="mt-0.5 line-clamp-1 text-xs leading-snug text-muted-foreground">{question.description}</p>
+                    <p className="mt-0.5 line-clamp-1 text-sm leading-snug text-muted-foreground">{question.description}</p>
                   )}
                   {question.options.length > 0 && (
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    <p className="mt-0.5 truncate text-sm text-muted-foreground">
                       {fillMessage(t.optionsCount, { n: question.options.length, list: question.options.join(', ') })}
                     </p>
                   )}

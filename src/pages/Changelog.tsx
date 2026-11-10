@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.18',
+    date: '10 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Montar formulário ficou mais fácil de ler',
+        category: 'melhoria',
+        description: 'Os títulos e os textos das quatro etapas ficaram maiores, no mesmo tamanho do orçamento, e as opções de ligar e desligar passaram a ter o nome em destaque com a explicação logo abaixo.',
+      },
+      {
+        title: 'Etapa de publicação organizada em dois grupos',
+        category: 'melhoria',
+        description: 'A última etapa deixou de ser uma pilha de opções e virou dois grupos lado a lado: onde o formulário aparece e as regras de envio. A validade e o limite de envios ficam na mesma linha, e a mensagem de agradecimento ganhou espaço próprio embaixo.',
+      },
+    ],
+  },
+  {
     version: '1.39.17',
     date: '10 de novembro de 2026',
     type: 'patch',

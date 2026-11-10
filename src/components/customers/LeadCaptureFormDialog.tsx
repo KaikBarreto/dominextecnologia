@@ -290,9 +290,9 @@ export function LeadCaptureFormDialog({
   );
 
   const summaryBlock = (
-    <div className="space-y-5 text-sm">
+    <div className="space-y-6 text-base">
       <div className="space-y-2">
-        <p className={cn('break-words text-base font-semibold leading-snug', !title.trim() && 'font-normal text-muted-foreground')}>
+        <p className={cn('break-words text-lg font-semibold leading-snug', !title.trim() && 'font-normal text-muted-foreground')}>
           {title.trim() || t.sumUntitled}
         </p>
         {purpose === 'generic' ? (
@@ -342,22 +342,22 @@ export function LeadCaptureFormDialog({
         {summaryHeading(t.sumPublishHeading)}
         <dl className="space-y-1.5">
           <div>
-            <dt className="text-xs text-muted-foreground">{t.sumWhere}</dt>
+            <dt className="text-sm text-muted-foreground">{t.sumWhere}</dt>
             <dd className="font-medium">{whereLabels}</dd>
           </div>
           <div>
-            <dt className="text-xs text-muted-foreground">{t.sumStatus}</dt>
+            <dt className="text-sm text-muted-foreground">{t.sumStatus}</dt>
             <dd className="font-medium">{isActive ? t.statusActive : t.statusInactive}</dd>
           </div>
           {expiresText && (
             <div>
-              <dt className="text-xs text-muted-foreground">{t.sumExpires}</dt>
+              <dt className="text-sm text-muted-foreground">{t.sumExpires}</dt>
               <dd className="font-medium">{expiresText}</dd>
             </div>
           )}
           {Number.isFinite(limitValue) && limitValue > 0 && (
             <div>
-              <dt className="text-xs text-muted-foreground">{t.sumLimit}</dt>
+              <dt className="text-sm text-muted-foreground">{t.sumLimit}</dt>
               <dd className="font-medium">{limitValue}</dd>
             </div>
           )}
@@ -418,9 +418,22 @@ export function LeadCaptureFormDialog({
   );
 
   const stepHeading = (label: string, intro?: string) => (
-    <div className="space-y-1">
-      <h2 className="text-xl font-semibold tracking-tight">{label}</h2>
-      {intro && <p className="text-sm text-muted-foreground">{intro}</p>}
+    <div className="space-y-2">
+      <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">{label}</h2>
+      {intro && <p className="max-w-3xl text-base text-muted-foreground">{intro}</p>}
+    </div>
+  );
+
+  const blockTitle = 'text-xl font-semibold sm:text-2xl';
+
+  /** Linha de opção ligar/desligar: rótulo forte + explicação, interruptor à direita. */
+  const optionRow = (titleText: string, descText: string, checked: boolean, onChange: (value: boolean) => void) => (
+    <div className="flex items-center justify-between gap-4 rounded-xl border bg-card p-4">
+      <div className="min-w-0">
+        <p className="text-lg font-semibold leading-snug">{titleText}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{descText}</p>
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} aria-label={titleText} />
     </div>
   );
 
@@ -454,39 +467,40 @@ export function LeadCaptureFormDialog({
         >
         <div
           className={cn(
-            'min-w-0 space-y-7 text-[15px] [&_input]:min-h-11 [&_input]:text-base [&_textarea]:text-base [&_[role=combobox]]:min-h-11',
-            step === 0 && 'mx-auto w-full max-w-3xl',
+            'min-w-0 space-y-7 text-[15px] sm:space-y-9 [&_input]:min-h-11 [&_input]:text-base [&_textarea]:text-base [&_[role=combobox]]:min-h-11',
           )}
         >
           {step === 0 && (
-            <section className="space-y-6">
+            <section className="space-y-8">
               {stepHeading(t.stepForm)}
-              <div className="space-y-2">
-                <Label htmlFor="lcf-title" className="text-base font-semibold">{t.pubTitleLabel}</Label>
-                <Input
-                  id="lcf-title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder={t.pubTitlePlaceholder}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lcf-desc" className="text-base font-semibold">{t.pubDescLabel}</Label>
-                <Textarea
-                  id="lcf-desc"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder={t.pubDescPlaceholder}
-                  rows={3}
-                />
+              <div className="max-w-2xl space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="lcf-title" className="text-lg font-semibold">{t.pubTitleLabel}</Label>
+                  <Input
+                    id="lcf-title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder={t.pubTitlePlaceholder}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lcf-desc" className="text-lg font-semibold">{t.pubDescLabel}</Label>
+                  <Textarea
+                    id="lcf-desc"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder={t.pubDescPlaceholder}
+                    rows={3}
+                  />
+                </div>
               </div>
 
-              <div className="space-y-3">
-                <p id="lcf-purpose-label" className="text-base font-semibold">{t.purposeLabel}</p>
+              <div className="space-y-4">
+                <p id="lcf-purpose-label" className={blockTitle}>{t.purposeLabel}</p>
                 <div
                   role="radiogroup"
                   aria-labelledby="lcf-purpose-label"
-                  className="grid gap-3 sm:grid-cols-2"
+                  className="grid gap-4 sm:grid-cols-2 sm:gap-6"
                 >
                   {purposeOptions.map((option) => {
                     const selected = purpose === option.value;
@@ -498,22 +512,22 @@ export function LeadCaptureFormDialog({
                         aria-checked={selected}
                         onClick={() => setPurpose(option.value)}
                         className={cn(
-                          'flex min-w-0 items-start gap-3 rounded-xl border bg-card p-4 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                          selected && 'bg-primary/5 ring-1 ring-inset ring-primary',
+                          'flex min-w-0 items-start gap-4 rounded-2xl border bg-card p-5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:p-6',
+                          selected && 'border-primary ring-1 ring-inset ring-primary',
                         )}
                       >
                         <span
                           aria-hidden="true"
                           className={cn(
-                            'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+                            'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl [&_svg]:h-6 [&_svg]:w-6',
                             selected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
                           )}
                         >
                           {option.icon}
                         </span>
                         <span className="min-w-0">
-                          <span className="block text-base font-semibold leading-snug">{option.title}</span>
-                          <span className="mt-1 block text-sm leading-snug text-muted-foreground">{option.description}</span>
+                          <span className="block text-lg font-semibold leading-snug sm:text-xl">{option.title}</span>
+                          <span className="mt-1.5 block text-base leading-snug text-muted-foreground">{option.description}</span>
                         </span>
                       </button>
                     );
@@ -524,7 +538,7 @@ export function LeadCaptureFormDialog({
           )}
 
           {step === 1 && (
-            <section className="space-y-4">
+            <section className="space-y-6">
               {stepHeading(t.tabCustomer, purpose === 'lead' ? t.customerIntro : t.customerIntroGeneric)}
               <div className="overflow-hidden rounded-xl border bg-card xl:grid xl:grid-cols-2">
                 {LEAD_CAPTURE_FIELDS.map((key, idx) => {
@@ -534,15 +548,15 @@ export function LeadCaptureFormDialog({
                     <div
                       key={key}
                       className={cn(
-                        'flex min-w-0 items-center justify-between gap-3 px-3 py-3',
+                        'flex min-w-0 items-center justify-between gap-3 px-4 py-3.5',
                         idx > 0 && 'border-t',
                         idx === 1 && 'xl:border-t-0',
                         idx % 2 === 1 && 'xl:border-l',
                       )}
                     >
-                      <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
+                      <span className="min-w-0 flex-1 truncate text-base font-medium">{label}</span>
                       <div className="flex shrink-0 items-center gap-4">
-                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <label className="flex items-center gap-2 text-sm text-muted-foreground">
                           <span>{t.fieldShow}</span>
                           <Switch
                             checked={f.enabled}
@@ -550,7 +564,7 @@ export function LeadCaptureFormDialog({
                             aria-label={`${t.fieldShow} ${label}`}
                           />
                         </label>
-                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <label className="flex items-center gap-2 text-sm text-muted-foreground">
                           <span>{t.fieldRequired}</span>
                           <Switch
                             checked={f.required}
@@ -568,7 +582,7 @@ export function LeadCaptureFormDialog({
           )}
 
           {step === 2 && (
-            <section className="space-y-4">
+            <section className="space-y-6">
               {stepHeading(t.tabQuestions)}
               {!draftsReady && questionsError ? (
                 <div className="space-y-3 py-6 text-center">
@@ -588,88 +602,77 @@ export function LeadCaptureFormDialog({
           )}
 
           {step === 3 && (
-            <section className="space-y-5">
+            <section className="space-y-8">
               {stepHeading(t.tabPublish)}
 
-              <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">{t.activeTitle}</p>
-                  <p className="text-xs text-muted-foreground">{t.activeDesc}</p>
+              <div className="space-y-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0 xl:gap-10">
+                <div className="space-y-4">
+                  <h3 className={blockTitle}>{t.groupWhereTitle}</h3>
+                  {optionRow(t.activeTitle, t.activeDesc, isActive, setIsActive)}
+                  {optionRow(t.portalTitle, t.portalDesc, showInPortal, setShowInPortal)}
+                  {form?.short_code && (
+                    <Button type="button" variant="outline" onClick={handleCopyLink} className="h-12 gap-2 text-base">
+                      <Link2 className="h-4 w-4" />
+                      {t.copyLinkBtn}
+                    </Button>
+                  )}
                 </div>
-                <Switch checked={isActive} onCheckedChange={setIsActive} aria-label={t.activeTitle} />
-              </div>
 
-              <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">{t.portalTitle}</p>
-                  <p className="text-xs text-muted-foreground">{t.portalDesc}</p>
+                <div className="space-y-4">
+                  <h3 className={blockTitle}>{t.groupRulesTitle}</h3>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="lcf-expires" className="text-base font-semibold">{t.expiresLabel}</Label>
+                      {/* Opcional (expires_at vira null se vazio), por isso clearable */}
+                      <DateTimePicker
+                        id="lcf-expires"
+                        value={expiresAt}
+                        onValueChange={setExpiresAt}
+                        placeholder="dd/mm/aaaa --:--"
+                        clearable
+                      />
+                      <p className="text-sm text-muted-foreground">{t.expiresHint}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lcf-max" className="text-base font-semibold">{t.maxLabel}</Label>
+                      <NumericInput
+                        id="lcf-max"
+                        value={maxSubmissions}
+                        onValueChange={setMaxSubmissions}
+                        placeholder={t.maxPlaceholder}
+                      />
+                      <p className="text-sm text-muted-foreground">{t.maxHint}</p>
+                    </div>
+                  </div>
+
+                  {optionRow(t.consentTitle, t.consentDesc, requireConsent, setRequireConsent)}
+                  <div className="space-y-2">
+                    <Label htmlFor="lcf-consent" className="text-base font-semibold">{t.consentTextLabel}</Label>
+                    <Textarea
+                      id="lcf-consent"
+                      value={consentText}
+                      onChange={(e) => setConsentText(e.target.value)}
+                      placeholder={t.consentDefault}
+                      rows={3}
+                      disabled={!requireConsent}
+                    />
+                    <p className="text-sm text-muted-foreground">{t.consentHint}</p>
+                  </div>
                 </div>
-                <Switch checked={showInPortal} onCheckedChange={setShowInPortal} aria-label={t.portalTitle} />
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="lcf-expires">{t.expiresLabel}</Label>
-                {/* Opcional (expires_at vira null se vazio), por isso clearable */}
-                <DateTimePicker
-                  id="lcf-expires"
-                  value={expiresAt}
-                  onValueChange={setExpiresAt}
-                  placeholder="dd/mm/aaaa --:--"
-                  clearable
-                />
-                <p className="text-xs text-muted-foreground">{t.expiresHint}</p>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="lcf-max">{t.maxLabel}</Label>
-                <NumericInput
-                  id="lcf-max"
-                  value={maxSubmissions}
-                  onValueChange={setMaxSubmissions}
-                  placeholder={t.maxPlaceholder}
-                />
-                <p className="text-xs text-muted-foreground">{t.maxHint}</p>
-              </div>
-
-              <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">{t.consentTitle}</p>
-                  <p className="text-xs text-muted-foreground">{t.consentDesc}</p>
-                </div>
-                <Switch checked={requireConsent} onCheckedChange={setRequireConsent} aria-label={t.consentTitle} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="lcf-consent">{t.consentTextLabel}</Label>
-                <Textarea
-                  id="lcf-consent"
-                  value={consentText}
-                  onChange={(e) => setConsentText(e.target.value)}
-                  placeholder={t.consentDefault}
-                  rows={3}
-                  disabled={!requireConsent}
-                />
-                <p className="text-xs text-muted-foreground">{t.consentHint}</p>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="lcf-success">{t.successLabel}</Label>
+              <div className="space-y-3">
+                <Label htmlFor="lcf-success" className={blockTitle}>{t.successLabel}</Label>
                 <Textarea
                   id="lcf-success"
                   value={successMessage}
                   onChange={(e) => setSuccessMessage(e.target.value)}
                   placeholder={t.successPlaceholder}
                   maxLength={2000}
-                  rows={2}
+                  rows={3}
                 />
-                <p className="text-xs text-muted-foreground">{t.successHint}</p>
+                <p className="text-sm text-muted-foreground">{t.successHint}</p>
               </div>
-
-              {form?.short_code && (
-                <Button type="button" variant="outline" onClick={handleCopyLink} className="gap-2">
-                  <Link2 className="h-4 w-4" />
-                  {t.copyLinkBtn}
-                </Button>
-              )}
             </section>
           )}
         </div>
