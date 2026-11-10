@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.16',
+    date: '10 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'O CNPJ agora traz a inscrição estadual',
+        description: 'No cadastro de cliente, digitar o CNPJ já trazia nome, endereço, telefone e e-mail. Faltava a inscrição estadual, que precisava ser digitada à mão. Agora ela vem preenchida quando a empresa tem uma inscrição ativa no estado dela. Se o campo já estiver preenchido com um número diferente, nada é sobrescrito: o sistema mostra os dois e você escolhe.',
+        category: 'recurso',
+      },
+      {
+        title: 'Configurações fiscais sugerem a inscrição estadual e o regime da sua empresa',
+        description: 'Ao informar o CNPJ da sua própria empresa nas configurações fiscais, a inscrição estadual e o regime tributário passam a vir sugeridos, em vez de você preencher os dois na mão. O regime vem da última declaração que a Receita tem, que pode estar com alguns anos de atraso, então o sistema mostra o ano junto para você confirmar com o contador antes de salvar.',
+        category: 'recurso',
+      },
+      {
+        title: 'Aviso quando o CNPJ está baixado na Receita',
+        description: 'Ao buscar os dados pelo CNPJ, se a situação cadastral da empresa não estiver ativa, aparece um aviso no cadastro. Antes isso passava em silêncio.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
     version: '1.39.15',
     date: '10 de novembro de 2026',
     type: 'patch',

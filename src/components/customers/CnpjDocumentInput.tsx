@@ -6,6 +6,8 @@ import { useToast } from '@/hooks/use-toast';
 import { cpfCnpjMask, cnpjMask } from '@/utils/masks';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { consultarIe, type ConsultaIeResult, type IeEncontrada } from '@/utils/consultaIe';
+import { regimeEcfMaisRecente } from '@/utils/regimeSugerido';
 
 // Shape normalizado retornado ao consumidor após consulta bem-sucedida.
 // Apenas os campos que vierem NÃO-vazios da API são incluídos no objeto.
@@ -24,6 +26,35 @@ export interface CnpjData {
   neighborhood?: string;
   city?: string;
   state?: string;
+
+  // ── Campos ADITIVOS (todos opcionais) ──────────────────────────────────────
+  // Nenhum consumidor antigo lê nada daqui; quem não quiser IE/regime continua
+  // funcionando exatamente como antes.
+
+  /**
+   * Inscrições estaduais do CNPJ (origem Sintegra/SEFAZ). Presente só quando a
+   * consulta de IE deu certo. `[]` é AFIRMAÇÃO de que não há inscrição — não
+   * confundir com ausência do campo. Ver `src/utils/consultaIe.ts`.
+   */
+  inscricoesEstaduais?: IeEncontrada[];
+  /** "Ativa" | "Baixada" | "Suspensa" | "Inapta" (texto cru da base). */
+  situacaoCadastral?: string | null;
+  /**
+   * `true` quando a consulta de IE falhou (rede, formato ou limite de 3/min).
+   * A consulta de cadastro pode ter dado certo e esta não: os outros campos
+   * vêm normais e só a IE fica indisponível.
+   */
+  ieIndisponivel?: boolean;
+  /** `opcao_pelo_simples` — TRI-STATE: `null` = a Receita não informa. */
+  optanteSimples?: boolean | null;
+  /** `opcao_pelo_mei` — TRI-STATE: `null` = a Receita não informa. */
+  optanteMei?: boolean | null;
+  /** Ano da opção pelo Simples, quando informado. */
+  anoOpcaoSimples?: number | null;
+  /** Ano da opção pelo MEI, quando informado. */
+  anoOpcaoMei?: number | null;
+  /** Escrituração (ECF) de MAIOR ano, nunca o último item do array. */
+  regimeEcf?: { ano: number | null; formaDeTributacao: string } | null;
 }
 
 interface CnpjDocumentInputProps {
@@ -39,6 +70,22 @@ interface CnpjDocumentInputProps {
    * cliente aceita CPF ou CNPJ).
    */
   cnpjOnly?: boolean;
+  /**
+   * Liga a consulta de INSCRIÇÃO ESTADUAL (Sintegra) junto da consulta de
+   * cadastro. Default `false` DE PROPÓSITO, e não é economia estética:
+   *
+   * a base de IE aceita 3 REQUISIÇÕES POR MINUTO POR IP. Este campo dispara
+   * sozinho a cada 14º dígito digitado, então três CNPJs em sequência já
+   * estouram a cota — e o 429 cai justamente na próxima tela, que pode ser a
+   * que precisa da IE de verdade.
+   *
+   * Por isso só ligue `buscarIe` onde o resultado é EXIBIDO ou GRAVADO: hoje o
+   * cadastro de cliente (`CustomerFormDialog`) e a seção Empresa de
+   * Configurações Fiscais (`EmpresaSection`). Telas sem campo de inscrição
+   * estadual (cadastro rápido do financeiro, colaboradores) devem continuar
+   * SEM a prop: a requisição ali é perda pura e rouba a cota de quem precisa.
+   */
+  buscarIe?: boolean;
 }
 
 function normalize(raw: string): string {
@@ -50,12 +97,29 @@ function nonEmpty(v: string | null | undefined): string | undefined {
   return s.length > 0 ? s : undefined;
 }
 
+/** Ano de uma data ISO ("2019-01-01") ou `null`. Usado só pra citar procedência. */
+function anoDe(v: unknown): number | null {
+  if (typeof v !== 'string') return null;
+  const m = /^(\d{4})/.exec(v.trim());
+  if (!m) return null;
+  const ano = Number(m[1]);
+  return Number.isFinite(ano) ? ano : null;
+}
+
+/** Tri-state preservado: só `true`/`false` viram booleano; o resto é `null`. */
+function triState(v: unknown): boolean | null {
+  if (v === true) return true;
+  if (v === false) return false;
+  return null;
+}
+
 export function CnpjDocumentInput({
   value,
   onChange,
   onDataFound,
   placeholder,
   cnpjOnly = false,
+  buscarIe = false,
 }: CnpjDocumentInputProps) {
   const resolvedPlaceholder = placeholder ?? (cnpjOnly ? '00.000.000/0000-00' : '000.000.000-00');
   const [loading, setLoading] = useState(false);
@@ -65,6 +129,14 @@ export function CnpjDocumentInput({
 
   // Evita disparar nova consulta se os 14 dígitos já foram consultados
   const lastQueriedRef = useRef<string>('');
+  /**
+   * Cache de IE por CNPJ. A consulta de inscrição estadual tem limite de 3
+   * requisições por minuto por IP, e este campo dispara automaticamente a cada
+   * CNPJ completado durante a digitação — sem cache, o limite queima em três
+   * cadastros seguidos. Só guardamos resultado BEM-SUCEDIDO: falha não fica
+   * cacheada, então o clique na lupa pode tentar de novo.
+   */
+  const ieCacheRef = useRef<Map<string, ConsultaIeResult>>(new Map());
 
   const isCnpj = (digits: string) => digits.length === 14;
 
@@ -75,15 +147,37 @@ export function CnpjDocumentInput({
 
     setLoading(true);
     try {
-      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
+      // As duas consultas correm EM PARALELO (cadastro + inscrição estadual).
+      // `allSettled`: a falha da IE nunca derruba a consulta de cadastro.
+      // Sem `buscarIe`, a 2ª consulta NÃO SAI — ver a nota do limite de 3/min
+      // na prop. `null` aqui significa "não foi consultada", diferente de
+      // "consultada e falhou": nenhum campo de IE entra no resultado.
+      const ieCached = ieCacheRef.current.get(digits);
+      const [cadastro, ieSettled] = await Promise.allSettled([
+        fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`).then(async (r) => ({
+          ok: r.ok,
+          // `json()` só é lido quando a resposta foi ok (igual ao fluxo antigo).
+          body: r.ok ? await r.json() : null,
+        })),
+        buscarIe ? (ieCached ? Promise.resolve(ieCached) : consultarIe(digits)) : Promise.resolve(null),
+      ]);
 
-      if (!res.ok) {
+      // `consultarIe` nunca lança, mas tratamos `rejected` por segurança.
+      const ie: ConsultaIeResult | null = ieSettled.status === 'fulfilled' ? ieSettled.value : null;
+      if (ie?.success) ieCacheRef.current.set(digits, ie);
+
+      if (cadastro.status === 'rejected') {
+        toast({ variant: 'destructive', title: tLookup.error });
+        return;
+      }
+
+      if (!cadastro.value.ok) {
         // 404 = CNPJ não encontrado; outros status tratamos igual
         toast({ variant: 'destructive', title: tLookup.notFound });
         return;
       }
 
-      const data = await res.json();
+      const data = cadastro.value.body;
 
       // A API pode retornar { message: '...' } em caso de erro mesmo com status 2xx
       if (data?.message) {
@@ -134,6 +228,30 @@ export function CnpjDocumentInput({
 
       const state = nonEmpty(data.uf);
       if (state) result.state = state;
+
+      // ── Sinais tributários da própria consulta de cadastro ───────────────
+      // Tri-state preservado: `null` = a Receita não informa, NUNCA "não é".
+      result.optanteSimples = triState(data.opcao_pelo_simples);
+      result.optanteMei = triState(data.opcao_pelo_mei);
+      result.anoOpcaoSimples = anoDe(data.data_opcao_pelo_simples);
+      result.anoOpcaoMei = anoDe(data.data_opcao_pelo_mei);
+      // Escrituração (ECF): item de MAIOR ano, nunca o último do array.
+      result.regimeEcf = regimeEcfMaisRecente(data.regime_tributario);
+
+      // ── Inscrição estadual ──────────────────────────────────────────────
+      // Só quando a tela pediu (`buscarIe`): sem isso, nenhum campo de IE entra
+      // no resultado e o componente se comporta como antes desta feature.
+      // Falha (inclusive limite de 3/min) NÃO vira toast vermelho: o cadastro
+      // veio normal e só a IE ficou indisponível. Quem consome decide o aviso.
+      if (buscarIe) {
+        if (ie?.success) {
+          result.inscricoesEstaduais = ie.inscricoes ?? [];
+          result.situacaoCadastral = ie.situacaoCadastral ?? null;
+        } else {
+          result.ieIndisponivel = true;
+          if (ie?.situacaoCadastral) result.situacaoCadastral = ie.situacaoCadastral;
+        }
+      }
 
       onDataFound(result);
       toast({ title: tLookup.found });
