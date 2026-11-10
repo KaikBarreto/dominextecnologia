@@ -31,36 +31,14 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.40.1',
+    version: '1.39.15',
     date: '10 de novembro de 2026',
     type: 'patch',
     changes: [
       {
-        title: 'Montar formulário ficou passo a passo, em tela cheia',
-        category: 'melhoria',
-        description: 'A criação de formulário abre em tela cheia e caminha em quatro passos, do mesmo jeito que o orçamento: formulário, dados do cliente, perguntas e publicação. Dá para voltar e avançar sem perder nada, e no celular cada passo ocupa a tela inteira.',
-      },
-      {
-        title: 'Dá para ver de longe o que cada formulário faz',
-        category: 'melhoria',
-        description: 'A escolha entre cadastrar um cliente novo ou apenas guardar as respostas virou duas opções ilustradas, com a explicação do lado. Essa mesma marcação aparece na lista, então você bate o olho e sabe para que serve cada formulário.',
-      },
-      {
-        title: 'Lista de perguntas igual à do checklist',
-        category: 'melhoria',
-        description: 'As perguntas do formulário passaram a ser montadas com a mesma cara do checklist: arrastar para reordenar, bolinha vermelha nas obrigatórias e o tipo de resposta marcado em cada linha.',
-      },
-    ],
-  },
-  {
-    version: '1.40.0',
-    date: '10 de novembro de 2026',
-    type: 'minor',
-    changes: [
-      {
         title: 'Monte formulários com as suas próprias perguntas',
         category: 'recurso',
-        description: 'O formulário de cadastro de cliente virou um construtor completo. Além dos campos de cadastro, você cria as perguntas que quiser, em texto curto ou longo, número, sim ou não, escolha única, múltipla escolha, data, foto, assinatura e nota de 0 a 10, marcando quais são obrigatórias e em que ordem aparecem.',
+        description: 'O formulário de cadastro de cliente virou um construtor completo, que abre em tela cheia e caminha em quatro passos. Além dos campos de cadastro, você cria as perguntas que quiser, em texto curto ou longo, número, sim ou não, escolha única, múltipla escolha, data, foto, assinatura e nota de 0 a 10, marcando quais são obrigatórias e arrastando para mudar a ordem, do mesmo jeito que no checklist.',
       },
       {
         title: 'Formulário dentro do Portal do Cliente',
@@ -70,7 +48,7 @@ export const changelog: ChangelogEntry[] = [
       {
         title: 'Formulário que só coleta respostas',
         category: 'recurso',
-        description: 'Agora o formulário pode ter duas finalidades: cadastrar um cliente novo, como já funcionava, ou apenas recolher respostas, útil para pesquisa de satisfação, atualização de dados e levantamento antes da visita. Você também personaliza a mensagem de agradecimento.',
+        description: 'Agora o formulário pode ter duas finalidades: cadastrar um cliente novo, como já funcionava, ou apenas recolher respostas, útil para pesquisa de satisfação, atualização de dados e levantamento antes da visita. A finalidade fica marcada na lista, então você bate o olho e sabe para que serve cada um. Você também personaliza a mensagem de agradecimento.',
       },
       {
         title: 'Respostas guardadas e fáceis de consultar',

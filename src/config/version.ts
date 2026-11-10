@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.40.1";
+export const APP_VERSION = "1.39.15";
 
 export const VERSION_NOTES =
-  "Montar um formulário agora abre em tela cheia, passo a passo, e a lista de perguntas ficou igual à de checklist.";
+  "Agora dá para montar formulários com as perguntas que você quiser, enviar por link e publicar dentro do Portal do Cliente, com as respostas guardadas no sistema.";

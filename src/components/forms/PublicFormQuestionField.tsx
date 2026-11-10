@@ -96,14 +96,11 @@ export function PublicFormQuestionField({
     </Label>
   );
 
+  // Erro NÃO ganha caixa com fundo tingido: régua do CEO, nada de vermelho
+  // dessaturado de fundo. Quem sinaliza é a borda saturada do campo, o rótulo
+  // em vermelho e a mensagem abaixo.
   return (
-    <div
-      className={cn(
-        'space-y-1.5 scroll-mt-4',
-        hasError && 'rounded-lg border border-destructive/60 bg-destructive/5 p-2.5',
-      )}
-      data-question-id={question.id}
-    >
+    <div className="space-y-1.5 scroll-mt-4" data-question-id={question.id}>
       {labelNode}
       {question.description ? (
         <p className="text-xs text-muted-foreground">{question.description}</p>
