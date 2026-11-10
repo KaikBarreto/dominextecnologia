@@ -40,4 +40,20 @@ describe('buildCrmChecklistTemplateCopies', () => {
     expect(() => buildCrmChecklistTemplateCopies(source, 'Cópia', 21)).toThrow('entre 1 e 20');
     expect(() => buildCrmChecklistTemplateCopies(source, 'Cópia', 1.5)).toThrow('entre 1 e 20');
   });
+
+  it('considera o maior sufixo no limite final de 100 caracteres', () => {
+    expect(buildCrmChecklistTemplateCopies(source, 'a'.repeat(95), 20)).toHaveLength(20);
+    expect(() => buildCrmChecklistTemplateCopies(source, 'a'.repeat(96), 20))
+      .toThrow('até 100 caracteres, incluindo a numeração');
+    expect(buildCrmChecklistTemplateCopies(source, 'a'.repeat(100), 1)).toHaveLength(1);
+    expect(() => buildCrmChecklistTemplateCopies(source, 'a'.repeat(101), 1))
+      .toThrow('até 100 caracteres, incluindo a numeração');
+  });
+
+  it('mede nomes por code points para não penalizar emojis', () => {
+    expect(buildCrmChecklistTemplateCopies(source, '😀'.repeat(100), 1)[0].name)
+      .toBe('😀'.repeat(100));
+    expect(() => buildCrmChecklistTemplateCopies(source, `${'😀'.repeat(100)}a`, 1))
+      .toThrow('até 100 caracteres, incluindo a numeração');
+  });
 });

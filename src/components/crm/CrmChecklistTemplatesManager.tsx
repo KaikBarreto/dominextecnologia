@@ -158,6 +158,7 @@ export function CrmChecklistTemplatesManager({ admin = false }: CrmChecklistTemp
         }}
         initialName={duplicating ? `${duplicating.name} - ${t.duplicateNameSuffix}` : ''}
         isPending={duplicateTemplate.isPending}
+        maxNameLength={100}
         labels={{
           title: t.duplicateTitle,
           description: t.duplicateDescription,

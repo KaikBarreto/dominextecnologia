@@ -58,11 +58,13 @@ export function buildCrmChecklistTemplateCopies(
   copyCount: number,
 ): Array<{ name: string; items: CrmChecklistTemplateItem[] }> {
   const normalizedName = baseName.trim();
-  if (!normalizedName || normalizedName.length > 200) {
-    throw new Error('Informe um nome com até 200 caracteres');
-  }
   if (!Number.isInteger(copyCount) || copyCount < 1 || copyCount > 20) {
     throw new Error('A quantidade deve ficar entre 1 e 20');
+  }
+  const largestSuffix = copyCount > 1 ? ` (${copyCount})` : '';
+  const finalNameLength = Array.from(`${normalizedName}${largestSuffix}`).length;
+  if (!normalizedName || finalNameLength > 100) {
+    throw new Error('Informe um nome cujo resultado final tenha até 100 caracteres, incluindo a numeração');
   }
 
   return Array.from({ length: copyCount }, (_, index) => ({

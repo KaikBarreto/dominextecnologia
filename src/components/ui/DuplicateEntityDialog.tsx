@@ -70,16 +70,27 @@ export function DuplicateEntityDialog({
   const submit = () => {
     const trimmedName = name.trim();
     const parsedQuantity = Number(quantity);
-    const validName = trimmedName.length > 0 && trimmedName.length <= maxNameLength;
     const validQuantity =
       Number.isInteger(parsedQuantity) && parsedQuantity >= 1 && parsedQuantity <= maxCopies;
+    const largestSuffix = validQuantity && parsedQuantity > 1 ? ` (${parsedQuantity})` : '';
+    const finalNameLength = Array.from(`${trimmedName}${largestSuffix}`).length;
+    const validName = Array.from(trimmedName).length > 0 && finalNameLength <= maxNameLength;
 
     setNameError(validName ? '' : labels.nameRequired);
     setQuantityError(validQuantity ? '' : labels.quantityInvalid);
     if (!validName || !validQuantity || isPending || submittingRef.current) return;
 
     submittingRef.current = true;
-    void Promise.resolve(onConfirm(trimmedName, parsedQuantity))
+    let confirmation: void | Promise<void>;
+    try {
+      confirmation = onConfirm(trimmedName, parsedQuantity);
+    } catch {
+      // Excecao sincrona segue o mesmo contrato de uma Promise rejeitada: o
+      // dominio apresenta o erro e o dialogo fica disponivel para nova tentativa.
+      submittingRef.current = false;
+      return;
+    }
+    void Promise.resolve(confirmation)
       // O hook do domínio já apresenta o erro ao usuário. Consumir a rejeição
       // aqui evita unhandled promise e mantém o diálogo aberto para nova tentativa.
       .catch(() => undefined)
@@ -92,14 +103,21 @@ export function DuplicateEntityDialog({
     <ResponsiveModal
       open={open}
       onOpenChange={(nextOpen) => {
-        if (!isPending) onOpenChange(nextOpen);
+        if (!isPending && !submittingRef.current) onOpenChange(nextOpen);
       }}
       title={labels.title}
       description={labels.description}
       className="space-y-5"
       footer={
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" disabled={isPending} onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isPending}
+            onClick={() => {
+              if (!submittingRef.current) onOpenChange(false);
+            }}
+          >
             {labels.cancel}
           </Button>
           <Button type="button" disabled={isPending} onClick={submit} className="gap-2">
@@ -114,7 +132,10 @@ export function DuplicateEntityDialog({
         <Input
           id={nameId}
           value={name}
-          maxLength={maxNameLength}
+          // `maxLength` conta unidades UTF-16 e bloquearia emojis válidos pela
+          // metade. Duas unidades por code point é o teto necessário; a regra
+          // real, incluindo o sufixo do lote, é validada em `submit`.
+          maxLength={maxNameLength * 2}
           placeholder={labels.namePlaceholder}
           disabled={isPending}
           autoFocus

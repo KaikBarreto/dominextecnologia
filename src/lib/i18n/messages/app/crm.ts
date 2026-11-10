@@ -27,7 +27,7 @@ export const crm = {
       duplicateCancel: 'Cancelar',
       duplicateConfirm: 'Gerar cópia',
       duplicateConfirming: 'Gerando...',
-      duplicateNameRequired: 'Informe um nome para a nova cópia.',
+      duplicateNameRequired: 'Informe um nome. Com a numeração, o nome final deve ter até 100 caracteres.',
       duplicateQuantityInvalid: 'Informe uma quantidade inteira entre 1 e 20.',
     },
 
@@ -1277,7 +1277,7 @@ export const crm = {
       duplicateCancel: 'Cancel',
       duplicateConfirm: 'Create copy',
       duplicateConfirming: 'Creating...',
-      duplicateNameRequired: 'Enter a name for the new copy.',
+      duplicateNameRequired: 'Enter a name. Including numbering, the final name must be at most 100 characters.',
       duplicateQuantityInvalid: 'Enter a whole number between 1 and 20.',
     },
 
@@ -2421,7 +2421,7 @@ export const crm = {
       duplicateCancel: 'Cancelar',
       duplicateConfirm: 'Generar copia',
       duplicateConfirming: 'Generando...',
-      duplicateNameRequired: 'Escribe un nombre para la nueva copia.',
+      duplicateNameRequired: 'Escribe un nombre. Con la numeración, el nombre final debe tener hasta 100 caracteres.',
       duplicateQuantityInvalid: 'Escribe una cantidad entera entre 1 y 20.',
     },
 
@@ -3567,7 +3567,7 @@ export const crm = {
       duplicateCancel: 'Annuler',
       duplicateConfirm: 'Créer la copie',
       duplicateConfirming: 'Création...',
-      duplicateNameRequired: 'Saisissez un nom pour la nouvelle copie.',
+      duplicateNameRequired: 'Saisissez un nom. Avec la numérotation, le nom final doit contenir au maximum 100 caractères.',
       duplicateQuantityInvalid: 'Saisissez un nombre entier entre 1 et 20.',
     },
 
