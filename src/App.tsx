@@ -213,6 +213,10 @@ const PublicLeadCapture = React.lazy(() => import("./pages/PublicLeadCapture"));
 const PmocPublicPortal = React.lazy(() => import("./pages/public/PmocPublicPortal"));
 const PmocCertificateValidation = React.lazy(() => import("./pages/PmocCertificateValidation"));
 
+const FormulariosUiReview = import.meta.env.DEV
+  ? React.lazy(() => import("./pages/dev/FormulariosUiReview"))
+  : null;
+
 const AdminCompanies = React.lazy(() => import("./pages/admin/AdminCompanies"));
 const AdminCompanyDetail = React.lazy(() => import("./pages/admin/AdminCompanyDetail"));
 const AdminHealthScore = React.lazy(() => import("./pages/admin/AdminHealthScore"));
@@ -697,6 +701,9 @@ const AppRoutes = () => (
     )}
     {PmocContractDocsUiReview && (
       <Route path="/__dev/pmoc-contract-docs-review" element={<PmocContractDocsUiReview />} />
+    )}
+    {FormulariosUiReview && (
+      <Route path="/__dev/formularios-ui-review" element={<FormulariosUiReview />} />
     )}
     {/* Rotas públicas de marketing SEM prefixo = pt-br (canônicas). O layout
         monta a auto-detecção client-side (só para humano) que, sem cookie e com

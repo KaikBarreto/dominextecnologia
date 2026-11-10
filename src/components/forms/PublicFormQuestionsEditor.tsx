@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp, GripVertical, ListChecks, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -320,7 +322,7 @@ export function PublicFormQuestionsEditor({ questions, onChange }: PublicFormQue
               <div
                 key={question.id}
                 className={cn(
-                  'flex items-center gap-2 px-2 py-3 transition-colors hover:bg-muted/30 sm:px-3',
+                  'grid grid-cols-[36px_minmax(0,1fr)] items-center gap-x-2 gap-y-2 px-1 py-3 transition-colors hover:bg-muted/30 sm:px-2 lg:grid-cols-[40px_minmax(0,1fr)_minmax(150px,220px)_auto]',
                   draggedId === question.id && 'opacity-50',
                   dragOverId === question.id && 'bg-primary/5 ring-1 ring-inset ring-primary',
                 )}
@@ -343,9 +345,12 @@ export function PublicFormQuestionsEditor({ questions, onChange }: PublicFormQue
                   setDragOverId(null);
                 }}
               >
-                {/* Reordenar: arrastar no desktop, setas no celular (HTML5 DnD não existe no toque). */}
-                <GripVertical className="hidden h-4 w-4 shrink-0 cursor-grab text-muted-foreground/60 active:cursor-grabbing lg:block" />
-                <div className="flex shrink-0 flex-col lg:hidden">
+                {/* Reordenar: alça + posição no desktop, setas no celular (HTML5 DnD não existe no toque). */}
+                <div className="hidden shrink-0 items-center gap-1.5 lg:flex">
+                  <GripVertical className="h-4 w-4 cursor-grab text-muted-foreground/60 active:cursor-grabbing" />
+                  <span className="w-5 text-right text-xs font-medium tabular-nums text-muted-foreground">{index + 1}</span>
+                </div>
+                <div className="flex shrink-0 flex-col gap-0.5 lg:hidden">
                   <Button
                     type="button"
                     variant="ghost"
@@ -370,48 +375,68 @@ export function PublicFormQuestionsEditor({ questions, onChange }: PublicFormQue
                   </Button>
                 </div>
 
-                <span className="w-5 shrink-0 text-right text-xs font-medium tabular-nums text-muted-foreground">
-                  {index + 1}
-                </span>
-
+                {/* Conteúdo */}
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 items-center gap-2">
-                    <p className="min-w-0 truncate text-sm font-medium leading-snug">{question.question}</p>
+                    <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground lg:hidden">{index + 1}.</span>
+                    <p className="truncate text-sm font-medium leading-snug">{question.question}</p>
                     {question.is_required && (
                       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" title={t.requiredMark} />
                     )}
                   </div>
-                  <p className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
-                    {Icon && <Icon className="h-3 w-3 shrink-0" />}
-                    <span className="truncate">
-                      {t.typeLabels[question.question_type]}
-                      {question.options.length > 0 && ` · ${fillMessage(t.optionsCount, { n: question.options.length })}`}
-                    </span>
-                  </p>
+                  {question.description && (
+                    <p className="mt-0.5 line-clamp-1 text-xs leading-snug text-muted-foreground">{question.description}</p>
+                  )}
+                  {question.options.length > 0 && (
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      {fillMessage(t.optionsCount, { n: question.options.length, list: question.options.join(', ') })}
+                    </p>
+                  )}
                 </div>
 
-                <div className="flex shrink-0 items-center">
-                  <Button
-                    type="button"
-                    variant="edit-ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    aria-label={`${t.editQuestion}: ${question.question}`}
-                    onClick={() => openEdit(question)}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="destructive-ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    aria-label={`${t.removeQuestion}: ${question.question}`}
-                    onClick={() => onChange(questions.filter((item) => item.id !== question.id))}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                {/* Tipo */}
+                <div className="col-start-2 flex min-w-0 flex-wrap items-center gap-1 lg:col-start-auto">
+                  <Badge variant="outline" className="gap-1 px-1.5 py-0 text-[11px] font-normal text-muted-foreground">
+                    {Icon && <Icon className="h-3 w-3" />}
+                    {t.typeLabels[question.question_type]}
+                  </Badge>
                 </div>
+
+                {/* Ações em ícone, com tooltip e aria-label (mesmo padrão do checklist). */}
+                <TooltipProvider delayDuration={200}>
+                  <div className="col-start-2 flex shrink-0 items-center gap-0.5 lg:col-start-auto lg:justify-end">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="edit-ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          aria-label={`${t.editQuestion}: ${question.question}`}
+                          onClick={() => openEdit(question)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t.editQuestion}</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="destructive-ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          aria-label={`${t.removeQuestion}: ${question.question}`}
+                          onClick={() => onChange(questions.filter((item) => item.id !== question.id))}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t.removeQuestion}</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </TooltipProvider>
               </div>
             );
           })}

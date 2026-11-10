@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Link2, ClipboardList, MessageSquareText } from 'lucide-react';
+import { Plus, Pencil, Trash2, Link2, ClipboardList, MessageSquareText, UserPlus } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -120,8 +120,19 @@ export function LeadCaptureManagerDialog({ open, onOpenChange }: Props) {
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <p className="min-w-0 truncate text-sm font-medium">{form.title}</p>
                       {statusBadge(form)}
+                      {form.purpose === 'generic' ? (
+                        <Badge variant="info" className="gap-1">
+                          <ClipboardList className="h-3 w-3" />
+                          {t.purposeGenericTitle}
+                        </Badge>
+                      ) : (
+                        <Badge variant="default" className="gap-1">
+                          <UserPlus className="h-3 w-3" />
+                          {t.purposeLeadTitle}
+                        </Badge>
+                      )}
                       {form.show_in_customer_portal && (
-                        <Badge variant="info">{t.badgePortal}</Badge>
+                        <Badge className="border-transparent bg-violet-600 text-white hover:bg-violet-600">{t.badgePortal}</Badge>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
