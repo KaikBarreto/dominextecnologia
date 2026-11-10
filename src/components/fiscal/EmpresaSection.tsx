@@ -102,6 +102,10 @@ export function EmpresaSection({
               cliente. Só preenche campo vazio (ver onCnpjDataFound). */}
           <CnpjDocumentInput
             cnpjOnly
+            // A IE e o regime desta empresa vão pro provedor de emissão, e os
+            // dois campos aparecem na seção Tributação: vale gastar a cota da
+            // consulta de inscrição estadual (3/min por IP).
+            buscarIe
             value={form.cnpj}
             onChange={(v) => onChange({ cnpj: v })}
             onDataFound={onCnpjDataFound}

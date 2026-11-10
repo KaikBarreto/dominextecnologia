@@ -23,16 +23,55 @@ export interface ImpostosFormFields {
   inscricao_estadual: string;
 }
 
+/**
+ * Aviso da consulta de CNPJ sobre a inscrição estadual. Todos os campos são
+ * opcionais e meramente informativos: a consulta NUNCA sobrescreve IE digitada.
+ * `ausente` é afirmação de que não existe IE ativa; `indisponivel` é falha de
+ * consulta (inclui o limite de requisições) e não afirma nada.
+ */
+export type IeHint =
+  | { kind: 'preenchida'; ie: string; uf: string }
+  | { kind: 'divergente'; ie: string; uf: string; atual: string }
+  | { kind: 'ausente' }
+  | { kind: 'indisponivel' };
+
+/**
+ * Sugestão de regime tributário vinda da consulta de CNPJ. `applied` = o campo
+ * estava vazio e já foi preenchido; `false` = só sugerimos, com botão.
+ * `regime` é um literal do select (ver REGIMES abaixo) — nunca texto livre.
+ */
+export interface RegimeHint {
+  regime: string;
+  fonte: 'mei' | 'simples' | 'ecf';
+  ano: number | null;
+  applied: boolean;
+}
+
 interface ImpostosSectionProps {
   t: NfseMessages;
   form: ImpostosFormFields;
   onChange: (patch: Partial<ImpostosFormFields>) => void;
   onSave: () => void;
   saving: boolean;
+  /** Aditivos: sem eles a seção se comporta exatamente como antes. */
+  ieHint?: IeHint | null;
+  onUseSintegraIe?: () => void;
+  regimeHint?: RegimeHint | null;
+  onUseSuggestedRegime?: () => void;
 }
 
 /** Seção "Tributação" da tela de Configurações fiscais: regime, apuração do Simples e inscrições. */
-export function ImpostosSection({ t, form, onChange, onSave, saving }: ImpostosSectionProps) {
+export function ImpostosSection({
+  t,
+  form,
+  onChange,
+  onSave,
+  saving,
+  ieHint = null,
+  onUseSintegraIe,
+  regimeHint = null,
+  onUseSuggestedRegime,
+}: ImpostosSectionProps) {
   const isSimples = form.regime_tributario === 'simples_nacional';
 
   const REGIMES = [
@@ -41,6 +80,32 @@ export function ImpostosSection({ t, form, onChange, onSave, saving }: ImpostosS
     { value: 'lucro_real', label: t.settings.impostos.regimes.lucroReal },
     { value: 'mei', label: t.settings.impostos.regimes.mei },
   ];
+
+  const tSintegra = t.settings.impostos.sintegra;
+  const regimeLabel = (value: string) => REGIMES.find((r) => r.value === value)?.label ?? value;
+
+  /**
+   * Frase de procedência da sugestão de regime. Sempre cita a fonte e, quando a
+   * base informa, o ANO — a escrituração mais recente pode estar desatualizada,
+   * então o usuário precisa saber de onde veio para conferir com o contador.
+   */
+  const regimeProcedencia = (hint: RegimeHint): string => {
+    const label = regimeLabel(hint.regime);
+    const ano = hint.ano != null ? String(hint.ano) : null;
+    if (hint.fonte === 'mei') {
+      return ano
+        ? tSintegra.regimeMei.replace('{ano}', ano)
+        : tSintegra.regimeMeiSemAno;
+    }
+    if (hint.fonte === 'simples') {
+      return ano
+        ? tSintegra.regimeSimples.replace('{ano}', ano)
+        : tSintegra.regimeSimplesSemAno;
+    }
+    return ano
+      ? tSintegra.regimeEcf.replace('{ano}', ano).replace('{regime}', label)
+      : tSintegra.regimeEcfSemAno.replace('{regime}', label);
+  };
 
   const REG_AP_TRIB_SN_OPTIONS: { value: RegApTribSN; label: string }[] = [
     { value: '1', label: t.settings.impostos.regApTribSnOptions.opt1 },
@@ -68,6 +133,23 @@ export function ImpostosSection({ t, form, onChange, onSave, saving }: ImpostosS
               ))}
             </SelectContent>
           </Select>
+          {/* Procedência da sugestão vinda da consulta de CNPJ. Quando o campo
+              já tinha valor, nada é sobrescrito: só oferecemos a troca. */}
+          {regimeHint && (
+            <div className="space-y-0.5">
+              <p className="text-xs text-muted-foreground">{regimeProcedencia(regimeHint)}</p>
+              {!regimeHint.applied && regimeHint.regime !== form.regime_tributario && (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-xs"
+                  onClick={onUseSuggestedRegime}
+                >
+                  {tSintegra.regimeUsar.replace('{regime}', regimeLabel(regimeHint.regime))}
+                </Button>
+              )}
+            </div>
+          )}
         </div>
         {/* Apuração de tributos no Simples Nacional — obrigatório no
             layout nacional da NFS-e quando a empresa é optante. */}
@@ -123,6 +205,35 @@ export function ImpostosSection({ t, form, onChange, onSave, saving }: ImpostosS
             value={form.inscricao_estadual}
             onChange={(e) => onChange({ inscricao_estadual: e.target.value })}
           />
+          {ieHint?.kind === 'preenchida' && (
+            <p className="text-xs text-muted-foreground">
+              {tSintegra.iePreenchida.replace('{ie}', ieHint.ie).replace('{uf}', ieHint.uf)}
+            </p>
+          )}
+          {ieHint?.kind === 'divergente' && (
+            <div className="space-y-0.5">
+              <p className="text-xs text-muted-foreground">
+                {tSintegra.ieDivergente
+                  .replace('{ie}', ieHint.ie)
+                  .replace('{uf}', ieHint.uf)
+                  .replace('{atual}', ieHint.atual)}
+              </p>
+              <Button
+                type="button"
+                variant="link"
+                className="h-auto p-0 text-xs"
+                onClick={onUseSintegraIe}
+              >
+                {tSintegra.ieUsar}
+              </Button>
+            </div>
+          )}
+          {ieHint?.kind === 'ausente' && (
+            <p className="text-xs text-muted-foreground">{tSintegra.ieAusente}</p>
+          )}
+          {ieHint?.kind === 'indisponivel' && (
+            <p className="text-xs text-muted-foreground">{tSintegra.ieIndisponivel}</p>
+          )}
         </div>
       </div>
 

@@ -139,6 +139,13 @@ export const customers = {
         found: 'Dados da empresa preenchidos!',
         notFound: 'CNPJ não encontrado na Receita',
         error: 'Não foi possível consultar o CNPJ agora',
+        // Inscrição estadual trazida do Sintegra. {ie}/{atual} = inscrições, {uf} = sigla do estado.
+        ieDivergente: 'O Sintegra informa a inscrição estadual {ie} para este CNPJ em {uf}. A ficha tem {atual}.',
+        ieUsarSintegra: 'Usar a do Sintegra',
+        ieAusente: 'O Sintegra não tem inscrição estadual ativa para este CNPJ.',
+        ieIndisponivel: 'Não foi possível consultar a inscrição estadual agora. Tente de novo em 1 minuto ou preencha à mão.',
+        // {situacao} = situação cadastral informada pela Receita (Baixada, Suspensa, Inapta...).
+        situacaoAlerta: 'Atenção: a Receita informa que este CNPJ está {situacao}.',
       },
     },
 
@@ -695,6 +702,11 @@ export const customers = {
         found: 'Company details filled in!',
         notFound: 'CNPJ not found',
         error: 'Could not look up the CNPJ right now',
+        ieDivergente: 'Sintegra reports state registration {ie} for this CNPJ in {uf}. This record has {atual}.',
+        ieUsarSintegra: 'Use the Sintegra one',
+        ieAusente: 'Sintegra has no active state registration for this CNPJ.',
+        ieIndisponivel: 'Could not check the state registration right now. Try again in 1 minute or fill it in manually.',
+        situacaoAlerta: 'Warning: the tax authority reports this CNPJ as {situacao}.',
       },
     },
 
@@ -1209,6 +1221,11 @@ export const customers = {
         found: '¡Datos de la empresa completados!',
         notFound: 'CNPJ no encontrado',
         error: 'No se pudo consultar el CNPJ ahora',
+        ieDivergente: 'El Sintegra informa el registro estatal {ie} para este CNPJ en {uf}. La ficha tiene {atual}.',
+        ieUsarSintegra: 'Usar el del Sintegra',
+        ieAusente: 'El Sintegra no tiene registro estatal activo para este CNPJ.',
+        ieIndisponivel: 'No se pudo consultar el registro estatal ahora. Inténtalo en 1 minuto o complétalo a mano.',
+        situacaoAlerta: 'Atención: la Receita informa que este CNPJ está {situacao}.',
       },
     },
 
@@ -1723,6 +1740,11 @@ export const customers = {
         found: `Données de l'entreprise remplies !`,
         notFound: 'CNPJ introuvable',
         error: 'Impossible de consulter le CNPJ pour le moment',
+        ieDivergente: 'Le Sintegra indique le numéro d`inscription départementale {ie} pour ce CNPJ en {uf}. La fiche contient {atual}.',
+        ieUsarSintegra: 'Utiliser celui du Sintegra',
+        ieAusente: 'Le Sintegra n`a aucune inscription départementale active pour ce CNPJ.',
+        ieIndisponivel: 'Impossible de consulter l`inscription départementale pour le moment. Réessayez dans 1 minute ou saisissez-la à la main.',
+        situacaoAlerta: 'Attention : le fisc indique que ce CNPJ est {situacao}.',
       },
     },
 
